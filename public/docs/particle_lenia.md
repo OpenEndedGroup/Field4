@@ -447,7 +447,7 @@ three places shown in the table changes which creature some of the seeds settle 
 video below takes the rule in full, as the box prints it. It runs seeds 3 and 4 for 8000 steps, each
 panel framed on its own creature with the path its centre has travelled.
 
-```diffstatic_runner {data-lang=kotlin video="assets/particle_lenia/glider.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="600" w="800" embed=true name="particle-lenia-glider-video" alt="two panels, each following a cluster of 40 white dots: the scattered dots pull together into a small ring of dots inside a bright halo, which then slides steadily across the field, trailing a straight dotted line behind it, gently curving in the right-hand panel"}
+```diffstatic_runner {data-lang=kotlin video="assets/particle_lenia/glider.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="600" w="800" embed=true name="particle-lenia-glider-video" alt="two panels, each following 40 white dots: the scattered dots pull together into a small ring of dots with a few more strung along the edge of a bright halo, and the creature then slides steadily across the field, trailing its straight dotted path behind it, 101 and 75 units by step 8000"}
 // Evolution's best rule, in full as the search box prints it, from two of the held-out seeds. Each panel is
 // framed on its own creature, with the path its centre has travelled.
 val rule = ParticleLeniaParams(
