@@ -641,6 +641,9 @@ object DemoTranscriptExecSmokeTest {
         // through the audio device. CharGridTest checks the cells, the panel's diffs and the sound
         // grouping headless.
         "madp_chargrid",
+        // Shape-aware ASCII: the cube box is a charGrid that runs until stopped. ShapeAsciiTest pins
+        // the matcher headless.
+        "ascii_shape",
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
         "chain_scene_to_light",
