@@ -26,8 +26,8 @@ import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_UNORM
 import java.util.concurrent.CompletableFuture
 
 /**
- * [ShapeAscii] as a GPU pass: a live Vulkan scene turned into characters every frame, after the
- * real-time version in Alex Harri's essay [ASCII characters are not pixels](https://alexharri.com/blog/ascii-rendering).
+ * [ShapeAscii] as a GPU pass: a live Vulkan scene turned into characters every frame, as in the
+ * real-time 3-D scenes of Alex Harri's essay [ASCII characters are not pixels](https://alexharri.com/blog/ascii-rendering).
  *
  * Draw any module into [scene], an offscreen target exactly [cols] × [rows] cells of the charset's
  * font in size. Each frame a full-screen pass over a [cols] × [rows] target, one fragment per cell,
@@ -44,6 +44,8 @@ import java.util.concurrent.CompletableFuture
  * ascii.scene += "mine" to module
  * ascii.installInto()
  * ```
+ *
+ * @param configure set [contrast], [directional] and the rest after the passes are built.
  */
 class ShapeAsciiGpu(
     /** Columns of characters. */
