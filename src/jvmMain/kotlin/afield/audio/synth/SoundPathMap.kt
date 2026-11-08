@@ -322,6 +322,18 @@ object SoundPathMap {
             page = "public/docs/sonic_pi.md",
         ),
 
+        SoundPath(
+            id = "modal-drum",
+            role = Role.MAKES, timing = Timing.OFFLINE, onSeam = false,
+            needs = "nothing",
+            channels = "mono",
+            what = "a drawn shape solved for its vibration modes by finite elements, struck, and " +
+                "summed as one damped sinusoid per mode — modal synthesis straight into a buffer",
+            file = "src/jvmMain/kotlin/afield/audio/modal/Eigendrum.kt",
+            entryPoint = "class DrumModes",
+            page = "public/docs/eigendrum.md",
+        ),
+
         // ── things that take samples out ───────────────────────────────────────────────────
 
         SoundPath(
@@ -461,8 +473,10 @@ object SoundPathMap {
      * change pass without it.
      * Ten after Csound arrived: its CsoundNode joins the same seam, and its orchestra/score can
      * also render offline. This was caught by the marker before the map declared the route.
+     * Eleven with `modal-drum`, the eigendrum page's modal synthesis, which the docs-audio-producer
+     * and inline-audio-player markers caught when it landed undeclared.
      */
-    const val SOURCE_COUNT = 10
+    const val SOURCE_COUNT = 11
 
     /** How many ways samples leave this process. Five, of which three are separate OpenAL contexts. */
     const val SINK_COUNT = 5
@@ -577,6 +591,8 @@ object SoundPathMap {
                 // The binaural output itself; needs libphonon (./gradlew fetchSteamAudioNatives).
                 "src/jvmMain/kotlin/afield/audio/synth/PatSpatialHeadTrackedDocs.kt" to "pat-spatial",
                 "src/jvmMain/kotlin/afield/audio/synth/PatSpatialPlacementDocs.kt" to "pat-spatial",
+                "src/jvmMain/kotlin/afield/audio/modal/EigendrumDocs.kt" to "modal-drum",
+                "src/jvmMain/kotlin/afield/audio/modal/PenroseSpectraDocs.kt" to "modal-drum",
             ),
         ),
         Marker(
@@ -593,6 +609,8 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/synth/PatSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/audio/synth/FaustPattern.kt" to "faust",
                 "src/jvmMain/kotlin/afield/audio/synth/CsoundBox.kt" to "box-output-player",
+                // DrumModes.modeTable puts one player per mode in a table cell, not one per box.
+                "src/jvmMain/kotlin/afield/audio/modal/Eigendrum.kt" to "modal-drum",
             ),
         ),
         Marker(

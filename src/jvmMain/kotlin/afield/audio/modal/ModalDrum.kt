@@ -1,6 +1,6 @@
 /**
  * [ModalDrum]: a live drum voice for Field's audio engine, one damped complex phasor per mode of a
- * [DrumModes]. Box code returns it (it is a [Signal]) and calls [ModalDrum.strike] or
+ * [ModeSet]: a meshed drum's [DrumModes] or a spring network's [GraphModes]. Box code returns it (it is a [Signal]) and calls [ModalDrum.strike] or
  * [ModalDrum.retune] from anywhere; those only post requests, and the audio thread applies them
  * at the top of its next block, so the oscillator state stays owned by the audio thread.
  */
@@ -17,7 +17,7 @@ import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * A playable drum made from [modes]. Each mode is a phasor z ← z·r·e^(iω) whose imaginary part is
+ * A playable drum made from [modes] (a [DrumModes] or a [GraphModes]). Each mode is a phasor z ← z·r·e^(iω) whose imaginary part is
  * summed into the output; a strike adds its projection onto each mode to that mode's phasor, and a
  * retune changes ω and r while keeping the phasors, so a morphing shape glides instead of clicking.
  *
@@ -30,7 +30,7 @@ import kotlin.math.sin
  *   the audio thread, so the pitch of every ringing mode bends as the outline changes.
  */
 class ModalDrum @JvmOverloads constructor(
-    modes: DrumModes,
+    modes: ModeSet,
     val fundamental: Double = 110.0,
     val alpha: Double = 1.5,
     val beta: Double = 0.25,
@@ -38,10 +38,10 @@ class ModalDrum @JvmOverloads constructor(
     val every: Double = 0.0,
     val autoX: Double = 0.0,
     val autoY: Double = 0.0,
-    morph: List<DrumModes> = emptyList(),
+    morph: List<ModeSet> = emptyList(),
     val morphPeriod: Double = 4.0,
 ) : Signal() {
-    private class Bank(val modes: DrumModes, val ratio: DoubleArray, val auto: DoubleArray?)
+    private class Bank(val modes: ModeSet, val ratio: DoubleArray, val auto: DoubleArray?)
 
     private val pending = AtomicReference(bankOf(modes))
     private val strikes = ConcurrentLinkedQueue<DoubleArray>()
@@ -75,24 +75,24 @@ class ModalDrum @JvmOverloads constructor(
         private set
 
     /** The modes currently sounding (the latest retune, once the audio thread has taken it). */
-    val modes: DrumModes get() = pending.get().modes
+    val modes: ModeSet get() = pending.get().modes
 
     /** Strike the drum at (x, y) with a mallet of [radius]; applied at the start of the next block. */
     @JvmOverloads
     fun strike(x: Double, y: Double, radius: Double = 0.03, velocity: Double = 1.0) {
-        val a = pending.get().modes.strike(x, y, radius)
-        // divide by the mallet's own mass (∫g = 2πr²), so aᵢ ≈ φᵢ(x, y) whatever the radius
-        for (i in a.indices) a[i] *= velocity / (2 * PI * radius * radius)
+        // strikeShape divides out the mallet's own mass, so aᵢ ≈ φᵢ(x, y) whatever the radius
+        val a = pending.get().modes.strikeShape(x, y, radius)
+        for (i in a.indices) a[i] *= velocity
         strikes.add(a)
     }
 
     /** Swap in new modes (a changed shape); ringing modes keep their energy and change pitch. */
-    fun retune(newModes: DrumModes) {
+    fun retune(newModes: ModeSet) {
         pending.set(bankOf(newModes))
     }
 
     // built on the caller's thread, so the audio thread never projects a strike itself
-    private fun bankOf(m: DrumModes) = Bank(m, m.ratios(), if (every > 0) m.strike(autoX, autoY, 0.03).map { it / (2 * PI * 0.03 * 0.03) }.toDoubleArray() else null)
+    private fun bankOf(m: ModeSet) = Bank(m, m.ratios(), if (every > 0) m.strikeShape(autoX, autoY, 0.03) else null)
 
     override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
         val b = pending.get()

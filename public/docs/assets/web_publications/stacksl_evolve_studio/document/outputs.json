@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-31T14:01:16.383Z",
+  "capturedAt": "2026-11-08T10:41:23.071Z",
   "documentName": "stacksl_evolve_studio",
   "outputs": [
     {
@@ -22,7 +22,7 @@
         "svg"
       ],
       "width": 472,
-      "height": 262,
+      "height": 237,
       "path": "outputs/1.html"
     }
   ]

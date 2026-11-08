@@ -97,6 +97,59 @@ user section `alife_examples.md` §7 "Several species on one field".
 Segregation = share of pixels with total trail > 0.5 x mean whose top channel holds >= 80 %.
 All runs ~8.3 ms/frame (the smoke pumps a shared window; per-run cost is dominated by present).
 
+## Transport networks: food sources and Tero's measures (2026-11-08)
+
+Sources: `alife_networks.kt` (`PhysarumFood`, `PhysarumSwarm.meanTrail`, `TransportNetwork`,
+`NetworkScore`, `costTolerancePlot`); `PhysarumSwarm.step(p, rng, food)` in `alife_agents.kt`;
+`ShaderPhysarumSettings.food / foodDeposit / foodRadiusPx / foodChannels / recycle` and the
+`foodBuffer` + `foodModule` (full-screen Gaussian deposit pass) in `alife_physarum_gpu.kt`. Tests:
+`PhysarumNetworkTest` (jvmTest), smoke `alife.physarum-networks-gpu.smoke`
+(`PhysarumNetworkGpuSmoke.kt`). Transcripts: `gpu_physarum_networks.yaml` (starting point: map,
+slime, measure, reset) and `docs_capture/gpu_physarum_networks_video.yaml`. User section:
+`alife_examples.md` §7 "Designing a network" and the two subsections after it.
+
+- **Food alone does not make a network between the food.** On a torus the population at any density
+  covers the field with a cellular net that merely passes through the sources. What works is
+  `recycle`: the field gets an edge and an agent that reaches it re-enters at a random source. Once
+  every agent is on a road, total road length is set by the agent count, so the count is the cost
+  knob (tree-ish at the smallest budget that still joins everything, mesh beyond). Prototyped in
+  numpy first (bounded walls without recycling anchor roads to the walls).
+- **Measure on a time-averaged trail.** A single step's trail cut at a threshold reads a faint road
+  that is fading for a step as a break: the 3200-agent CPU network read 0.75 joined pairs at one
+  threshold and 1.00 at another. `meanTrail` (CPU) / ten readbacks over the last 300 frames (GPU)
+  plus hysteresis thresholding (`threshold`, `weakThreshold = threshold / 3`) fixed it; at /1 the
+  agent runs fragment, at /2 the blind control joins 21 % of pairs, at /3 4 %.
+- Extraction: threshold + hysteresis, fill holes < 40 px, Zhang–Suen thinning, nodes = skeleton
+  pixels with != 2 neighbours plus the skeleton pixel nearest each source (8 px), trace runs,
+  Douglas–Peucker (1 px) lengths, merge junctions < 4 px apart, drop sourceless parts, prune spurs,
+  contract pass-through nodes. Fault tolerance is length-weighted (a fault strikes a random point);
+  `linkFaultTolerance` is per link. Controls come from `vec2MinimumSpanningTree` /
+  `vec2DelaunayGraph` (graph_connectivity.kt).
+- Orientation: the native window shows readback row 0 at the bottom, so the drawing's frame is read
+  with `y = side..0` for the window to match the drawing.
+- `notation.onChange` fires only for edits made in a page (`notation-scene` messages), not for marks
+  box code writes; the video's late dot therefore re-reads the frame itself.
+
+| run (CPU, 8 sources, 200², 3000 steps, mean of last 300) | cost x MST | stretch | fault tol. | joined |
+| --- | --- | --- | --- | --- |
+| 1600 / 2400 / 3200 / 4800 agents | 1.27 / 1.72 / 2.08 / 2.54 | 1.49 / 1.57 / 1.24 / 1.26 | 0.89 / 1.00 / 1.00 / 1.00 | all |
+| decay 0.85 / 0.96 (2400) | 1.91 / 1.46 | 1.22 / 1.55 | 1.00 / 0.91 | 1.00 / 0.75 |
+| sensors 22.5° / 67.5° | 1.41 / 0.70 | 1.29 / 1.07 | 0.77 / 0 | 1.00 / 0.14 |
+| blur 0 / 2 | — | — | — | 0.36 / 0.07 |
+| blind (2400) | — | — | — | 0.04 |
+| MST / Delaunay | 1 / 3.31 | 1.44 / 1.05 | 0 / 1 | all |
+
+GPU (14 sources, 512², exclusive + recycle, 6000 frames, 15 systems in one frame loop at 9.3 ms):
+2000 agents join 0.62; 3000: 1.36x MST, FT 0.71; 4000: 1.79, 0.99; 6000: 1.89, 1.00; 8000: 2.19;
+12000: 2.58, 0.99. Half-life 4: 1.66, 0.96; 16: joins 0.62; 32: nothing. Diffusion 0.25: joins 0.86;
+0.5: 1.89. Sensor 22.5°: 1.86, 1.00; 67.5°: 0.19; 90°: agents collapse to spots, nothing. Blind:
+nothing. MST 1230 px, Delaunay 3.25x, complete 16.1x.
+
+No run reaches a true tree while joining every source: below the budget that gives a near-tree with
+one loop, the network breaks rather than thinning. The Tero comparison is therefore qualitative
+(the mould's networks sit between the MST and a mesh, so do these); Tero's own figures for the
+Tokyo layout were not checked against the paper and are not quoted.
+
 ## Open / next
 
 - canonical_graphics lessons `12. stigmergy` / `12b. trail followers` landed 2026-11-06 (one box per
@@ -107,3 +160,9 @@ All runs ~8.3 ms/frame (the smoke pumps a shared window; per-run cost is dominat
 - Followers that also deposit (become a species of their own); a predator/prey measurement for the
   chase matrix (the segregation metric does not apply when one species writes another's channel).
 - `attachShader` still lets an inherited `vertex_fragment` (shared) tab win; only per-stage tabs were fixed.
+- Networks: food sources with different strengths (Tero's cities differ in size) and obstacles
+  (Tero lit mountains and lakes; a `TrailField` channel that agents avoid would do); the Tokyo layout
+  itself as a fixture, with the rail network's three numbers for comparison; population growth and
+  shrinkage after Jones, which might reach true trees; edge-betweenness (which roads carry the
+  traffic) as a fourth measure; and the notation map drawing the extracted network back onto the
+  drawing layer as strokes.

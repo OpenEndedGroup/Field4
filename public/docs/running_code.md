@@ -18,7 +18,7 @@ where this page leaves off. To find where an inherited value came from, try
 
 ## Running code around the cursor
 
-In the code editor, **alt/option-Enter** runs the selected text if you have a selection. With no
+In the code editor, ++alt+enter++ runs the selected text if you have a selection. With no
 selection, it runs the line under the cursor. If that line is inside a `{ … }` block, it runs the
 **outer enclosing block**, from its opening line through its closing line. This includes the whole
 outer block when the cursor is inside a nested block:
@@ -31,13 +31,13 @@ repeat(2) {
 }
 ```
 
-Select just the inner lines when you want to run less. **alt/option-0** runs the whole box, regardless of
+Select just the inner lines when you want to run less. ++alt+0++ runs the whole box, regardless of
 the cursor position.
 
-**alt/option-1** is for relaunching part of a box you have already run. It picks out the same code
-as alt/option-Enter (the selection, or the line, or its outer enclosing block) and *launches* just
+++alt+1++ is for relaunching part of a box you have already run. It picks out the same code
+as ++alt+enter++ (the selection, or the line, or its outer enclosing block) and *launches* just
 that, so the setup at the top of the box is not run again. The fragment sees the variables earlier
-runs left behind: below, the box has been run once, and Alt+1 inside the `loop` relaunches the loop
+runs left behind: below, the box has been run once, and ++alt+1++ inside the `loop` relaunches the loop
 with the `count` the top part already made. Launched from a box that has never been run, the same
 fragment fails with `Unresolved reference 'count'`. The striped green bar in the margin marks the
 lines that were launched while they keep running:
@@ -69,10 +69,10 @@ ui.eval(
 
 To tune a value while watching its effect, put the cursor on a numeric literal and use **Increment
 number under cursor and rerun** or **Decrement number under cursor and rerun**. The shortcuts are
-**ctrl/command-alt/option-K/J** (K increments, J decrements). Each
-command changes that number and then performs the same run as alt/option-Enter, so a number inside a block
+++cmd+alt+k++ and ++cmd+alt+j++ (K increments, J decrements). Each
+command changes that number and then performs the same run as ++alt+enter++, so a number inside a block
 reruns the outer enclosing block. Integers change by one; decimal numbers use a step scaled to the
-value and keep their decimal precision. You can also find both commands by name in the **ctrl/command-shift-P**
+value and keep their decimal precision. You can also find both commands by name in the ++cmd+shift+p++
 palette.
 
 ---
@@ -98,8 +98,8 @@ operation; an `aiTool { action { ... } }` can call suspend functions directly.
 
 While a `go` block is still running, the box shows it: a striped square in its top-right corner
 holds the number of `go` blocks that have not finished, and the box is not drawn as launched. If
-you started the block with Alt+1, its margin marker stays on until the block ends too. Stopping the
-box (Alt+Down) cancels them and clears both. Inside `go { }`, `delay(ms)` waits without holding up
+you started the block with ++alt+1++, its margin marker stays on until the block ends too. Stopping the
+box (++alt+arrow-down++) cancels them and clears both. Inside `go { }`, `delay(ms)` waits without holding up
 the rest of Field:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1000x420" clip="40,40,940,330" screenshot="assets/running_code/go-jobs-badge.png" transcript="../../dev_docs/agents/transcripts/docs_capture/go_jobs_badge.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="running-code-go-jobs-badge" alt="A box named counting with a small striped square holding the number 1 in its top-right corner. Beside it, Field's editor shows the box's go block with the cursor inside it after Alt+1: a striped bar in the margin spans the go block, and the count printed beside print(ticks) reads 3."}
@@ -302,13 +302,13 @@ aside("reset") {
 }
 ```
 
-Running the whole box skips the block. Put the cursor inside it and press alt/option-Enter to run
+Running the whole box skips the block. Put the cursor inside it and press ++alt+enter++ to run
 just that block. (Running a selection that includes it runs it too.) The name is only a label for
 you; it changes nothing. It saves keeping that code commented out and uncommenting it each time.
 
 ### `flipbox`: a block with a checkbox
 
-A `flipbox` is a block you switch on and off with a checkbox. Press ctrl/command-shift-. to insert
+A `flipbox` is a block you switch on and off with a checkbox. Press ++cmd+shift+period++ to insert
 a marker (drawn as a single rune), then write `.flipbox(true) { … }` after it:
 
 ```diffstatic {data-lang=kotlin}
@@ -320,7 +320,7 @@ __m("Zk3q-a1").flipbox(true) {
 The editor draws the `true` as a checkbox. The block runs when the box runs with the box ticked,
 and each run unticks it. With `true` it starts ticked, so it runs on the first run like `once`, and
 later runs skip it. Click the checkbox to run the block again, without running the box, like
-alt/option-Enter on an `aside`. With `false` it runs only when you click. The tick is not saved
+++alt+enter++ on an `aside`. With `false` it runs only when you click. The tick is not saved
 with the document, so `true` applies again after Field restarts.
 
 ### What lasts how long
@@ -583,7 +583,7 @@ delay before the automatic interrupt (`0` turns it off and leaves only the comma
 - **Macros** (`prop`, `moduleHere`, …) rewrite calls *before* compilation and inject glue into the **preamble**; some also mutate box state or compile shaders during expansion.
 - **`@exported`** promotes declarations into the preamble *after* a run.
 - **`once`** and **`cached`** keep a value across runs; `cached` keeps one per type and key, and closes the old one when a key changes (see **What lasts how long**).
-- **`aside { }`** is the reverse: a block a full run skips, run by hand with alt/option-Enter.
+- **`aside { }`** is the reverse: a block a full run skips, run by hand with ++alt+enter++.
 - The **preamble** is the shared glue layer: a box's effective preamble is gathered from itself plus its ancestors' `import` and ` /**/`-tagged lines — which is how typed accessors from `prop`/`@exported` reach child boxes. `moduleHere`'s generated shader accessors are *not* tagged, so they stay in the box whose shader declared them.
 - **Property inheritance** resolves values by walking *up the box graph*, so **connecting boxes** (topology) decides what a box can see — the reason a graphics box must be a child of its renderer.
 

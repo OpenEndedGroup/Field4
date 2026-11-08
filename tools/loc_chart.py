@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Render the series from `tools/loc_history.py` as a self-contained HTML chart.
 
-A stacked area of hand-written code by language over time, topped by the box code in starting
-points and lessons, and beneath it a second chart of the docs site's hand-written pages. Both
+A stacked area of the project's own code by language over time (neither generated nor
+vendored), topped by the box code in starting points and lessons, and beneath it a second chart
+of the docs site's prose pages (not the generated reference). Both
 have a crosshair tooltip; there is a table view and light and dark themes. No build step and no
 CDN — the output is one file you can open or drop into a page.
 
@@ -143,11 +144,12 @@ SHELL = r"""<div class="viz-root">
 
 <div class="head">
   <div class="titles">
-    <h2>Field4 &mdash; hand-written lines of code</h2>
+    <h2>Field4 &mdash; lines of code</h2>
     <p class="sub">Every language across
        <span style="white-space:nowrap">OpenEndedGroup/Field4</span> and its
-       <span style="white-space:nowrap">field-audio-ai</span> submodule, with the box code
-       in its starting points and lessons on top &middot; __RANGE__</p>
+       <span style="white-space:nowrap">field-audio-ai</span> submodule, less generated and
+       vendored code, with the box code in its starting points and lessons on top
+       &middot; __RANGE__</p>
   </div>
   <div class="figure">
     <div class="hero">__TOTAL__</div>
@@ -166,7 +168,7 @@ SHELL = r"""<div class="viz-root">
 
 <div class="head">
   <div class="titles">
-    <h3>Documentation &mdash; hand-written pages</h3>
+    <h3>Documentation &mdash; lines of prose</h3>
     <p class="sub">The <code>.md</code> pages the docs site's contents links to, less the
        reference pages generated from KDoc and other generators</p>
   </div>
@@ -504,9 +506,10 @@ def render(series: list[dict]) -> str:
             .replace("__DOCSPAGES__", f"{docs[-1]['pages']:,}")
             .replace("__RANGE__", f"{first_month} &ndash; {last_month}")
             .replace("__FIRSTMONTH__", first_month.split()[0])
-            .replace("__ALT__", f"Stacked area chart of hand-written lines of code in Field4, "
+            .replace("__ALT__", f"Stacked area chart of lines of code in Field4, less generated "
+                                f"and vendored code, "
                                 f"growing from zero in {first_month} to {total:,} in {last_month}")
-            .replace("__DOCSALT__", f"Line chart of hand-written documentation lines, "
+            .replace("__DOCSALT__", f"Line chart of documentation lines, "
                                     f"{docs[-1]['lines']:,} across {docs[-1]['pages']} pages "
                                     f"in {last_month}")
             .replace("__FOOT__", FOOT.format(vendored=last["vendored"],

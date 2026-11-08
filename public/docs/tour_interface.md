@@ -1,11 +1,14 @@
 # A Tour of the Interface
 
-Field has one canvas of boxes, one code editor, and a handful of panels that open over them. This
-page shows each one: what it is for, how to open it, its shortcut, and how to close it. Every
-panel closes the same way, with the **×** in its top-right corner or with **Esc** while it has
-the focus. The command palette and Open Anything have no ×; **Esc** closes them.
+The canvas is where your boxes live; the editor is where you write in them. Around those two are
+panels for finding things, browsing history, drawing, recording macros and talking to AI. This tour
+shows where to find them and what each one is for.
 
-If you have not made a box yet, start with the [Survival Guide](survivalGuide.md). The other
+Close a panel with the **×** in its top-right corner or press ++escape++ while it has focus. The
+command palette and Open Anything have no ×; ++escape++ closes them.
+
+If you haven't run a box yet, try [Your first five minutes](first_steps.md). The
+[Survival Guide](survivalGuide.md) covers the moves you'll use every day. The other
 tours go further into one subject each: [Connecting Boxes](tour_connecting_boxes.md),
 [Graphics on the GPU](tour_gpu_graphics.md) and [Looking at Data](tour_data.md).
 
@@ -13,24 +16,25 @@ tours go further into one subject each: [Connecting Boxes](tour_connecting_boxes
 
 These are the shortcuts for the parts of Field on this page; [Keyboard shortcuts](keybindings.md)
 has the complete list. You can change any of them in `~/.afield/keybindings.yaml`, and a command
-with no shortcut runs from the command palette. On Windows and Linux, `cmd` is `ctrl`.
+with no shortcut runs from the command palette. ++cmd++ is Command on macOS and Control on
+Windows and Linux; ++alt++ is Option or Alt.
 
 | What | Command | Default shortcut |
 | --- | --- | --- |
-| Command palette | `open-command-palette` | `cmd+shift+p`, `f1` |
-| Open Anything | `open-anything` | <kbd>⌘</kbd><kbd>P</kbd> / <kbd>^</kbd><kbd>P</kbd> |
-| Insert a template | `insert-from-workspace` | `cmd+t` |
-| AI chat for the selected box | `ai-chat-panel` | `cmd+4` |
-| Shortcut card | `show-cheatsheet` | `?` |
-| Documentation pane | `toggle-docs` | `cmd+/` |
-| Run the line or selection | `execute-fragment` | `alt+enter` |
-| Code history for a line | `history-lens-selection` | `alt+shift+h` |
-| Search boxes | `document-search` | `cmd+f` (canvas focused) |
-| Bookmarks panel | `show-bookmarks` | `alt+b` |
-| Frame the selection | `frame-selected` | `alt+f` |
-| Reset the view | `reset-view` | `alt+h` |
-| Layers panel | `show-layers-panel` | `alt+l` |
-| Drawing layer | `toggle-drawing-layer` | `alt+d` |
+| Command palette | `open-command-palette` | ++cmd+shift+p++ or ++f1++ |
+| Open Anything | `open-anything` | ++cmd+p++ |
+| Insert a template | `insert-from-workspace` | ++cmd+t++ |
+| AI chat for the selected box | `ai-chat-panel` | ++cmd+4++ |
+| Shortcut card | `show-cheatsheet` | ++question++ |
+| Documentation pane | `toggle-docs` | ++cmd+slash++ |
+| Run the line or selection | `execute-fragment` | ++alt+enter++ |
+| Code history for a line | `history-lens-selection` | ++alt+shift+h++ |
+| Search boxes | `document-search` | ++cmd+f++ (canvas focused) |
+| Bookmarks panel | `show-bookmarks` | ++alt+b++ |
+| Frame the selection | `frame-selected` | ++alt+f++ |
+| Reset the view | `reset-view` | ++alt+h++ |
+| Layers panel | `show-layers-panel` | ++alt+l++ |
+| Drawing layer | `toggle-drawing-layer` | ++alt+d++ |
 | Macro Recorder | `macro-transcript-panel` | none |
 | Document history | `show-document-history` | none |
 | Document guide | `show-document-guide` | none |
@@ -41,8 +45,8 @@ with no shortcut runs from the command palette. On Windows and Linux, `cmd` is `
 
 Click a box to select it, and its code opens in the editor on the right. The editor is
 [Monaco](https://microsoft.github.io/monaco-editor/), the editor inside VS Code, so its own
-shortcuts work: `cmd+f` finds in the code, `cmd+d` adds the next match to the selection.
-`alt+enter` runs the current line or selection; the [Survival Guide](survivalGuide.md) (and its [Autocomplete](survivalGuide.md#autocomplete) section)
+shortcuts work: ++cmd+f++ finds in the code, ++cmd+d++ adds the next match to the selection.
+++alt+enter++ runs the current line or selection; the [Survival Guide](survivalGuide.md) (and its [Autocomplete](survivalGuide.md#autocomplete) section)
 covers running code and autocomplete. Click the empty canvas to deselect and hide it.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector=".monaco-editor-container" screenshot="assets/tour_interface/editor.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface.yaml" document="docs-tour-interface-editor" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-editor" alt="The code editor beside the canvas, showing the four lines of the box named sketch: a comment, val radius = 64.0, val count = 12, and a println of both."}
@@ -54,11 +58,9 @@ ui.pause(600)
 
 ## The command palette and Open Anything
 
-The command palette (`cmd+shift+p` or `F1`) lists every command Field has, with its shortcut,
-and filters as you type. Open Anything (<kbd>⌘</kbd><kbd>P</kbd> on macOS, <kbd>^</kbd><kbd>P</kbd>
-on Windows and Linux) searches
-boxes, controls, properties and text across the document, as well as documentation, and jumps to
-what you pick. **Esc** closes either. The
+The command palette (++cmd+shift+p++ or ++f1++) lists every command Field has, with its shortcut,
+and filters as you type. Open Anything (++cmd+p++) searches boxes, controls, properties and text across the document, as well as documentation, and jumps to
+what you pick. ++escape++ closes either. The
 [Survival Guide](survivalGuide.md#the-command-palette) has more on the palette.
 
 Type a label such as `gain` to find a control alongside the other results, or start your search with
@@ -72,13 +74,13 @@ one character to choose a category:
 | `,` | Box names | `, renderer` |
 
 Control results show the owning box and output channel, so repeated labels can be told apart. The
-preview pane shows the current value and a live, read-only view of the control. Press **Enter** to
+preview pane shows the current value and a live, read-only view of the control. Press ++enter++ to
 select its box, open its output panel and scroll the control into view. Field centres the control
 in the space left by the editor and other panels, using the same framing rules as **Frame Selected**.
 This searches controls that the boxes have already created in their output areas; run a box first
 if its controls do not exist yet.
 
-**Insert template** (`cmd+t`) is the same kind of palette over your saved templates: pick one and
+**Insert template** (++cmd+t++) is the same kind of palette over your saved templates: pick one and
 a copy of its boxes lands where the mouse is. [Templates](templates.md) covers saving them.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector=".afield-palette-shell" screenshot="assets/tour_interface/command-palette.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface.yaml" document="docs-tour-interface-command-palette" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-command-palette" alt="The command palette opened with F1: Document Commands beside its filter field, the list of commands with their shortcuts on the left and a preview of the highlighted one on the right."}
@@ -87,14 +89,14 @@ ui.press("F1")
 ui.pause(1200)
 ```
 
-Press `?` on the canvas to see every shortcut on one card. It reads your current bindings, so a
+Press ++question++ on the canvas to see every shortcut on one card. It reads your current bindings, so a
 change to `keybindings.yaml` shows up there; see [Keyboard shortcuts](keybindings.md).
 
 ## Search boxes
 
-With the canvas focused, `cmd+f` opens a search bar at the bottom left of the canvas. It finds
+With the canvas focused, ++cmd+f++ opens a search bar at the bottom left of the canvas. It finds
 text in every box's name and code (shaders and metadata too), outlines the boxes that match, and
-marks each with the properties it matched in. `Enter` and `Shift+Enter`, or the ↑ and ↓ buttons,
+marks each with the properties it matched in. ++enter++ and ++shift+enter++, or the ↑ and ↓ buttons,
 step through the matches: each one is selected in the editor and its box scrolled into view.
 With the editor focused, the same key opens the editor's own Find instead, at the top of the
 editor, for the code in front of you.
@@ -111,11 +113,11 @@ ui.pause(1200)
 
 ## Bookmarks
 
-`shift+F1` to `shift+F9` restore a saved view of the canvas; `cmd+shift+F1` to `F9` save one.
-`alt+b` opens the bookmarks panel, which lists the slots with their names and a small map of
+++shift+f1++ to ++shift+f9++ restore a saved view of the canvas; ++cmd+shift+f1++ to ++cmd+shift+f9++ save one.
+++alt+b++ opens the bookmarks panel, which lists the slots with their names and a small map of
 what each one shows; below, two slots are saved and named, `ideas` and `render`.
 [Moving around the canvas](moving_around_the_canvas.md) explains views,
-framing (`alt+f`) and resetting (`alt+h`).
+framing (++alt+f++) and resetting (++alt+h++).
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x900" clip-selector="#bookmarks-panel" screenshot="assets/tour_interface/bookmarks.png" transcript="../../dev_docs/agents/transcripts/docs_capture/bookmarks_panel.yaml" document="docs-tour-interface-bookmarks" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-bookmarks" alt="The Bookmarks panel with two of its nine slots saved, F1 named ideas and F2 named render: each shows a small map of the document's boxes with the saved view as a dashed rectangle, the view position, the box being edited and the output panels that were open, with Restore, Save and delete buttons. The other slots read empty."}
 // Slot 1: `sketch` selected with its editor open. Slot 2: the same for `render`.
@@ -156,7 +158,7 @@ ui.pause(600)
 
 ## Layers
 
-Layers hide and show groups of boxes. `alt+l` opens the layers panel, where you can show, hide,
+Layers hide and show groups of boxes. ++alt+l++ opens the layers panel, where you can show, hide,
 solo and activate each layer; new boxes go on the active layer. Here a document has four
 layers, and `draft` is active.
 
@@ -190,8 +192,8 @@ ui.pause(900)
 
 ## The drawing layer
 
-`alt+d` turns on a drawing layer over the whole canvas, for notes, arrows and sketches beside the
-boxes. While it is on, the mouse and keyboard draw; press `alt+d` again to go back to the boxes.
+++alt+d++ turns on a drawing layer over the whole canvas, for notes, arrows and sketches beside the
+boxes. While it is on, the mouse and keyboard draw; press ++alt+d++ again to go back to the boxes.
 The drawing stays visible either way and moves with the canvas. Boxes can draw on it too: here
 the `notes` box draws the arrow with `notation { arrow(from = sketch, to = thisBox) }`, and its
 ends follow the boxes when they move. Boxes can also read what you draw:
@@ -371,7 +373,7 @@ ui.pause(1200)
 ```
 
 For one line of code rather than the whole document, put the cursor on it and press
-`alt+shift+h`: the editor opens that line's history in place, version by version.
+++alt+shift+h++: the editor opens that line's history in place, version by version.
 
 ## The document guide
 
@@ -441,7 +443,7 @@ or under the line that printed. Each panel has a title bar to open or fold it; d
 resize it. [Box output](box_output.md) has the details.
 
 Some panels look like the floating ones above but belong to one box. The
-[AI chat](aiFeatures.md#chat-about-one-box) (`cmd+4` with a box selected) opens as that box's
+[AI chat](aiFeatures.md#chat-about-one-box) (++cmd+4++ with a box selected) opens as that box's
 `ai-chat` output: it reads the box's code and can propose edits to it. Here is one restored from a
 saved conversation, in [a worked example](stackauto_conversation.md):
 

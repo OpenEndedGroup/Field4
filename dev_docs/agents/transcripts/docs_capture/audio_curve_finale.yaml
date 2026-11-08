@@ -1,0 +1,49 @@
+name: audio_curve_finale
+description: The 3D rolling audio curve under Field's waveform player, for the closing video of audio_curves.md.
+operations:
+  - create:
+      box: audio_curve_finale
+      name: a voice as a moving 3D curve
+      frame: { x: 80.0, y: 100.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          val wav = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
+          val curve = audioCurves(wav, AudioCurveSettings(dimensions = 3)).first()
+          val scale = 100 / curve.extent()
+
+          // The player keeps the audio clock and tells this box where it is, or where you are scrubbing.
+          var t = 0.0
+          displayAudioBytes(wav.toFile().readBytes(), options = AudioVisualizerOptions(onTime = { t = it }))
+
+          // A faint cube around where the curve lives, so the view holds still while you orbit.
+          val room = fline {
+              for (z in [-80, 80]) {
+                  moveTo(-80, -80, z)
+                  lineTo(80, -80, z)
+                  lineTo(80, 80, z)
+                  lineTo(-80, 80, z)
+                  lineTo(-80, -80, z)
+              }
+              for (x in [-80, 80]) for (y in [-80, 80]) {
+                  moveTo(x, y, -80)
+                  lineTo(x, y, 80)
+              }
+              color = vec(1, 1, 1, 0.12)
+          }
+
+          var shown = Double.NaN
+          loop {
+              // Before the first complete window, show the first curve.
+              val frame = curve.frameAt(t) ?: curve.frame(0)
+              if (frame.timeSeconds != shown) {
+                  shown = frame.timeSeconds
+                  threeLines(frame.flines(scale, bands = 16, centered = true) + room, channel = "curve", height = 560)
+              }
+          }
+              .end { curve.close() }
+  - launch: { box: audio_curve_finale }
+  # The box analyses the recording before it returns its loop; let that and the 3D view settle
+  # here, so the recording that follows starts on a live view rather than a minute of waiting.
+  - await: {}
+  - wait:
+      seconds: 4

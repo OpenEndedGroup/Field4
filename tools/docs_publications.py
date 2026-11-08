@@ -27,6 +27,12 @@ CATALOG = PUBLICATIONS / "catalog.json"
 FIELDML_DEMOS = ("fieldml_suspend_demo", "fieldml_frames_sequence_demo", "fieldml_frames_demo",
                  "fieldml_mesh_demo", "fieldml_macro_module_demo")
 PILOTS = ("fline_examples", "three_output_gallery", "canonical_graphics") + FIELDML_DEMOS
+# Transcripts whose boxes run a synchronous search longer than the interactive 30 s runloop
+# watchdog, so they capture under a 120 s budget. The execution harness records ~67 s for Morpho's.
+# The evolution and fitting searches joined on 2026-11-08: a full refresh (any change to the
+# capture digest) stalled them on four landing attempts in a row, one of them on an idle host.
+LONG_COMPUTE = frozenset({"petri_tala_layout", "morpho_circuit_search", "alife_evolution",
+                          "braitenberg_brain_search", "braitenberg_where_next", "stacksl_fit_demo"})
 
 
 def publication_node() -> str | None:
@@ -97,12 +103,41 @@ def write_catalog(index: dict) -> None:
     pending.replace(CATALOG)
 
 
+RUNNER_FENCE = re.compile(r'^```diffstatic_runner\s+\{([^\n]+)\}', re.M)
+# Marks a `sources` key naming one capture box's runner fences on a page rather than the whole page.
+FENCE_SOURCE = '#capture-box='
+
+
+def runner_fences(text: str) -> list[tuple[str, dict[str, str]]]:
+    """Each `diffstatic_runner` fence header on a docs page, with its parsed attributes."""
+    return [(header, dict(part.split('=', 1) for part in shlex.split(header) if '=' in part))
+            for header in RUNNER_FENCE.findall(text)]
+
+
+def source_digest(name: str) -> str | None:
+    """The digest a publication records for one of its `sources`, or None when it is gone.
+
+    A plain name is a file. `<page>#capture-box=<uid>` is the header of every runner fence on that
+    page whose `capture-box` is `<uid>`: a native capture takes its box, image and alt text from
+    those attributes and nothing else from the page, so prose elsewhere on it (a new starting point
+    in `agent_transcripts.md`, say) does not make the publication stale. The image is its own
+    source."""
+    file, _, box = name.partition(FENCE_SOURCE)
+    path = ROOT / file
+    if not path.is_file():
+        return None
+    if not box:
+        return digest(path)
+    headers = [header for header, attrs in runner_fences(path.read_text()) if attrs.get('capture-box') == box]
+    return hashlib.sha256('\n'.join(headers).encode()).hexdigest() if headers else None
+
+
 def recipe_sources(recipe: dict) -> dict[str, str]:
     sources = source_files(recipe['source'], recipe.get('transcript'))
     for image in recipe.get('nativeCaptures', []):
-        for name in (image['path'], image['page']):
-            path = DOCS / name
-            sources[str(path.relative_to(ROOT))] = digest(path)
+        for name in ((DOCS / image['path']).relative_to(ROOT).as_posix(),
+                     (DOCS / image['page']).relative_to(ROOT).as_posix() + FENCE_SOURCE + image['uid']):
+            sources[name] = source_digest(name)
     return sources
 
 
@@ -224,8 +259,7 @@ def registry(*, verify: bool = True, index: dict | None = None) -> dict:
     for source, entry in (catalog() if index is None else index)["documents"].items():
         if verify:
             for name, expected in entry["sources"].items():
-                path = ROOT / name
-                if not path.is_file() or digest(path) != expected:
+                if source_digest(name) != expected:
                     raise ValueError(f"Stale publication {source}: {name}; recapture with tools/docs_publications.py")
             transcript = next((name for name in entry['sources'] if name.startswith('dev_docs/agents/transcripts/')), None)
             document_sources = source_files(source, transcript)
@@ -344,16 +378,13 @@ def recipes(group: str) -> list[dict]:
     names = re.findall(r'"([a-z0-9_-]+)"', block)
     result = [{"name": name, "source": f"assets/agent_transcripts/{name}/metadata.edn",
              "transcript": f"dev_docs/agents/transcripts/{name}.yaml",
-             # The execution harness records ~67s for Morpho's synchronous search; both
-             # benchmarks need a dedicated budget rather than the interactive watchdog.
-             "longCompute": name in {'petri_tala_layout', 'morpho_circuit_search'}} for name in names
+             "longCompute": name in LONG_COMPUTE} for name in names
             if (DOCS / f"assets/agent_transcripts/{name}/metadata.edn").is_file()]
     # Reuse genuine native captures owned by docs. Their hardware profiles and refresh timing
     # stay with the existing runner; publishing never executes arbitrary compile-only recipes.
     native = {}
     for page in sorted(DOCS.glob('*.md')):
-        for fence in re.findall(r'^```diffstatic_runner\s+\{([^\n]+)\}', page.read_text(), re.M):
-            attrs = dict(part.split('=', 1) for part in shlex.split(fence) if '=' in part)
+        for _, attrs in runner_fences(page.read_text()):
             macro = attrs.get('macro-file', '')
             match = re.fullmatch(r'../../dev_docs/agents/transcripts/([a-z0-9_-]+)\.yaml', macro)
             if attrs.get('capture') != 'native-window' or not match or not attrs.get('capture-box'):

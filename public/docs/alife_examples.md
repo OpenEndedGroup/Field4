@@ -745,6 +745,10 @@ showImg(
 
 ![three rows of five dark panels: the top row's creature swells into a ring and by step 250 has become about 25 bright loops covering the field, the middle row's creature keeps its shape while moving, and the bottom row's creature shrinks over the first twenty steps and is gone by step 250](assets/alife_examples/lenia.png)
 
+Lenia without the grid is [Particle Lenia](particle_lenia.md): a fixed set of particles carries the
+same kernel and growth curve, and each particle slides downhill on an energy field, so the mass never
+changes.
+
 ### Checking the implementation against Life
 
 Lenia has a limit in which it becomes an ordinary on/off automaton, and that gives a check on the
@@ -1204,6 +1208,209 @@ Without exclusion both collapse, to 0.998 and 1.000.
     reason the GPU's figure sits above the CPU's. The follower figure comes from a probe in the
     `gpu_stigmergy` demo transcript, `dev_docs/agents/transcripts/gpu_stigmergy.yaml`, whose chase box
     sets the deposit and attraction matrices while it runs.
+
+### Designing a network
+
+Tero and colleagues grew *Physarum polycephalum* over oat flakes placed like the cities around Tokyo
+("Rules for biologically inspired adaptive network design", *Science* 327, 2010). The mould joined
+the flakes with a network of tubes that compared well with the region's rail system on three
+numbers: what it costs (total length), how direct a trip between two cities is, and how likely one
+broken link is to cut a city off. Jones' agents grow the same kind of network when the food feeds
+their trail.
+
+`PhysarumFood` is a list of points that add to the trail every step. It also gives the field an
+edge: an agent that walks off it comes back in at a random food source. Without an edge the agents
+would cover a torus with roads that join nothing. With it, the agent count becomes a budget of road,
+because once every agent is on a road, the total length of road is set by how many agents there are.
+
+`TransportNetwork.extract` reads the network back from the trail. It thresholds the trail, thins the
+roads to lines one pixel wide, and turns those lines into a graph whose nodes are the food sources and
+the junctions between them. `score` then gives Tero's three numbers:
+
+- **cost**: total length, as a multiple of the minimum spanning tree (MST), the cheapest network
+  that joins every source;
+- **stretch**: how much longer the route between two sources is than the straight line, averaged
+  over every pair;
+- **fault tolerance**: the chance that one break, at a random point of the network, leaves every
+  source still connected. A tree scores 0; a network where every road lies on a loop scores 1.
+
+The example below grows networks between eight food sources with two budgets, 1600 and 4800 agents,
+and with the blind control from the start of this section. It scores each one beside the MST and the
+Delaunay triangulation of the same eight points:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/physarum-network.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="Delaunay" timeout="300" padding="20" name="alife-physarum-network" alt="three trail fields side by side with the extracted network drawn over each in cyan and the eight food sources as white squares. With 1600 agents the roads form a near-tree with one loop through all eight sources; with 4800 agents the same sources sit in a mesh of rounded cells; the blind control has bright spots at the sources and no roads between them"}
+:::static
+/*
+Eight food sources on a 200 x 200 field. The trail is averaged over the last 300 of 3000 steps,
+because a single step's trail shows roads that are fading for a moment as breaks. A road is any
+cell at a quarter of the level a cell reaches when an agent stands on it every step.
+*/
+val food = PhysarumFood.scattered(200, 200, 8, seed = 3L)
+val p = PhysarumParams()
+val road = 0.25 * p.deposit / (1 - p.decay)
+
+fun grow(label: String, agents: Int, params: PhysarumParams) =
+    label to PhysarumSwarm.random(200, 200, agents, seed = 5L).meanTrail(params, 3000, averageOver = 300, seed = 5L, food = food)
+
+val trails = [
+    grow("1600 agents", 1600, p),
+    grow("4800 agents", 4800, p),
+    grow("CONTROL: blind", 2400, p.copy(sensing = false)),
+]
+val networks = trails.map { (label, trail) -> label to TransportNetwork.extract(trail, food.points, road) }
+
+val controls: List<NetworkScore> = [
+    TransportNetwork.mst(food.points).score("MST"),
+    TransportNetwork.delaunay(food.points).score("Delaunay"),
+]
+markdown("scores", "```\n" + NetworkScore.table(networks.map { (label, net) -> net.score(label) } + controls) + "\n```", width = 560)
+
+:::fold draw each network over its trail
+showImg(
+    montage(
+        networks.zip(trails).map { (n, t) -> n.first to n.second.drawOver(t.second.colormap("magma", 0f, (road * 4).toFloat())) },
+        columns = 3,
+        cellSide = 300,
+    ),
+)
+:::endfold
+```
+
+![three trail fields side by side with the extracted network drawn over each in cyan and the eight food sources as white squares. With 1600 agents the roads form a near-tree with one loop through all eight sources; with 4800 agents the same sources sit in a mesh of rounded cells; the blind control has bright spots at the sources and no roads between them](assets/alife_examples/physarum-network.png)
+
+With 1600 agents the network costs **1.27** times the MST and has one loop, which already carries
+most of its length, so its fault tolerance is **0.89**. Its stretch is **1.49**, against 1.44 for
+the MST. With 4800 agents it costs **2.54** times the MST and has eight loops. Its fault tolerance
+is **1.00** and its stretch falls to **1.26**. The Delaunay triangulation costs 3.31 times the MST
+for a stretch of 1.05. The blind control joins **4 %** of the source pairs: the sources are bright
+because they are fed, but nothing carries the trail between them.
+
+### The range of networks: a sweep
+
+Tero compared networks on a plane: cost across, fault tolerance up. A tree sits at the bottom left,
+at cost 1 and fault tolerance 0, and a dense mesh at the top right. The sweep below varies one
+parameter at a time about the defaults: the agent count (the budget of road), the decay (how
+quickly an unused road fades), the sensor angle and the blur. Each run that joins every source is a
+dot on the plane; the table lists every run, including the ones that break apart:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/physarum-network-plane.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="breaks apart" timeout="600" padding="20" name="alife-physarum-network-plane" alt="a scatter plot of cost (as a multiple of the minimum spanning tree) across against fault tolerance up. The MST sits at cost 1, fault tolerance 0, and the Delaunay triangulation at the top right near cost 3.3. The agent-count runs climb from cost 1.3 at fault tolerance 0.9 to cost 2.5 at 1.0, with the decay and sensor-angle runs between them"}
+:::static
+:::fold the same eight sources, and a run that grows and measures one network
+val food = PhysarumFood.scattered(200, 200, 8, seed = 3L)
+
+fun run(label: String, agents: Int, p: PhysarumParams): NetworkScore {
+    val trail = PhysarumSwarm.random(200, 200, agents, seed = 5L).meanTrail(p, 3000, averageOver = 300, seed = 5L, food = food)
+    return TransportNetwork.extract(trail, food.points, 0.25 * p.deposit / (1 - p.decay)).score(label)
+}
+:::endfold
+
+val base = PhysarumParams()
+val arms = [
+    "1600 agents" to (1600 to base),
+    "2400 agents" to (2400 to base),
+    "3200 agents" to (3200 to base),
+    "4800 agents" to (4800 to base),
+    "decay 0.85" to (2400 to base.copy(decay = 0.85)),
+    "decay 0.96" to (2400 to base.copy(decay = 0.96)),
+    "sensors 22.5 deg" to (2400 to base.copy(sensorAngle = Math.PI / 8)),
+    "sensors 67.5 deg" to (2400 to base.copy(sensorAngle = 3 * Math.PI / 8)),
+    "no blur" to (2400 to base.copy(blurRadius = 0)),
+    "blur 2" to (2400 to base.copy(blurRadius = 2)),
+]
+// every run is independent, so run them side by side
+val scores = arms.parallelStream().map { (label, a) -> run(label, a.first, a.second) }.toList()
+val joined = scores.filter { it.connectedPairs > 0.99 }
+
+val broken = scores.filter { it.connectedPairs <= 0.99 }.joinToString { it.label }
+markdown("scores", "```\n" + NetworkScore.table(scores) + "\n```\nbreaks apart: " + broken, width = 560)
+val controls: List<NetworkScore> = [
+    TransportNetwork.mst(food.points).score("MST"),
+    TransportNetwork.delaunay(food.points).score("Delaunay"),
+]
+showImg(
+    costTolerancePlot(
+        controls + joined,
+        width = 560,
+        height = 380,
+        costRange = 0.8..3.6,
+    ),
+)
+```
+
+![a scatter plot of cost (as a multiple of the minimum spanning tree) across against fault tolerance up. The MST sits at cost 1, fault tolerance 0, and the Delaunay triangulation at the top right near cost 3.3. The agent-count runs climb from cost 1.3 at fault tolerance 0.9 to cost 2.5 at 1.0, with the decay and sensor-angle runs between them](assets/alife_examples/physarum-network-plane.png)
+
+Every network that joins all eight sources sits high on the plane, at fault tolerance 0.77 or
+more: the agents close loops readily. The budget moves a network along the top, from **1.27** times
+the MST with 1600 agents to **2.54** with 4800, and the stretch falls from 1.49 to 1.26 as the loops
+add shortcuts. The other parameters mostly decide whether there is a network at all. A trail that
+fades faster (decay 0.85) gives more loops from the same 2400 agents, 1.91 times the MST against
+1.72. One that lingers (decay 0.96) lets the roads wander, and two sources fall off. Narrow sensors
+(22.5°) give the cheapest tolerant network at the default budget, 1.41 times the MST at fault
+tolerance 0.77. At 67.5° the agents circle where they are and the network falls into short pieces,
+and with no blur, or a blur of radius 2, it breaks as well.
+
+None of these runs comes down to a tree. The cheapest network that joins every source still has a
+loop. With fewer agents the network breaks before it thins to a tree.
+
+### Drawing the food
+
+On the GPU the same food is `ShaderPhysarumSettings.food`, a list of points read every frame. That
+makes the drawing layer a map editor. Draw a frame named "network" (++alt+d++), put dots in it, and the
+box below reads them through [`notation`](drawing_and_notation.md) as food sources in trail pixels.
+`notation.onChange` hands every edit back to the agents, so dragging a dot moves the food while the
+network grows:
+
+```diffstatic {data-lang=kotlin}
+val side = 512
+// the frame, read as trail pixels: x across, and y up, as the window draws the field
+val map = notation.space("network", x = 0.0..side.toDouble(), y = side.toDouble()..0.0)
+
+fun dots() = map.marks.filter { it.kind == MarkType.ELLIPSE }.map { map.toSpace(it.center) }
+
+prop<ShaderPhysarumSystem>(physarum) = ShaderPhysarumSystem() {
+    width = side
+    height = side
+    agentCount = 4000
+    exclusive = true
+    recycle = true
+    food = dots()
+}
+physarum.installInto()
+
+// every edit to the drawing moves the food
+notation.onChange { physarum.settings.food = dots() }
+```
+
+`recycle = true` is the GPU form of the field's edge. The video starts from 4000 agents scattered at
+random over twelve dots. Four seconds in, a thirteenth dot is drawn at the top right and the network
+grows a road to it:
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="net_video_renderer" transcript="dev_docs/agents/transcripts/docs_capture/gpu_physarum_networks_video.yaml" video="assets/alife_examples/physarum-network-gpu.mp4" duration="20" fps="12" wait="0.2" timeout="300" embed=true hidden=true name="alife-physarum-network-gpu" alt="a square trail field with twelve bright food sources. Faint noise from 4000 scattered agents gathers into roads that join the sources, thins to a network of a few loops, and after a few seconds grows a new road to a thirteenth source that appears at the top right"}
+// The transcript draws the dots, builds the renderer and the slime box above, and launches both.
+```
+
+On the GPU, with fourteen food sources on a 512 x 512 field, the same sweep lands the same way:
+3000 agents cost **1.36** times the MST at fault tolerance **0.71**, 4000 cost 1.79 at 0.99, and
+12 000 cost 2.58. With 2000 agents only 62 % of the source pairs are joined. At 90° the sensors
+gather the agents into isolated spots and no road forms, and the blind control builds no road at
+all.
+
+??? aside "Where the network numbers come from"
+    `PhysarumNetworkTest` pins the CPU numbers above and checks the extraction itself on drawn roads:
+    a triangle of roads with a dead-end spur reads back as three links and one loop within 6 % of its
+    perimeter, and a three-armed star finds its junction within 4 pixels (and costs 0.86 times the
+    MST, because a junction away from the sources is cheaper than any tree through them). The GPU
+    sweep varies the trail's half-life and diffusion too: a half-life of 4 frames gives 1.66 times the
+    MST at fault tolerance 0.96, 16 frames joins 62 % of the pairs and 32 frames none, and diffusion
+    0.25 joins 86 %. Each GPU network is measured on ten readbacks across the last 300 of 6000
+    frames, with all fifteen configurations stepped in the same frames at 9.3 ms a frame. Measuring
+    one step's trail, rather than the average over 300 steps, made the result depend on the threshold:
+    the 3200-agent network read as joining 75 % of its source pairs at one threshold and all of them
+    at another, because a faint road that is fading for a step reads as a break. The GPU numbers come
+    from the smoke test `alife.physarum-networks-gpu.smoke` (`PhysarumNetworkGpuSmoke.kt`), which also
+    checks that a food source deposits on its own pixel. The starting-point document, with a measure
+    box that scores the live network every 120 frames and a slider for the trail's half-life, is the
+    transcript `dev_docs/agents/transcripts/gpu_physarum_networks.yaml`.
 
 ## 8. Diffusion-limited aggregation
 

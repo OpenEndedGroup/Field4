@@ -26,7 +26,7 @@ On it:
   boxes named `cue 1`, `cue 2` and so on. Drag it sideways and it starts each box it enters and stops
   each one it leaves.
 - **Drawing.** `notes` draws circles, arrows, frames and labels on the drawing layer, over the
-  boxes they point at ([Drawing and Notation](drawing_and_notation.md)). `alt/option-D` turns the
+  boxes they point at ([Drawing and Notation](drawing_and_notation.md)). ++alt+d++ turns the
   layer on, so you can draw on it by hand.
 
 ## The film

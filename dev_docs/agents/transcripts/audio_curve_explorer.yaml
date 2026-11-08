@@ -1,0 +1,197 @@
+name: audio_curve_explorer
+description: >
+  Rolling perceptual audio curves: a recording analysed into one moving curve per channel (mel
+  spectra, Wasserstein distances, MDS, Procrustes alignment), drawn as FLines in the Three.js viewer
+  at whatever time Field's waveform player is playing or scrubbing.
+docs:
+  - page: audio_curves.md
+    why: "Explains rolling audio curves, how they are computed and the .f4curve file."
+operations:
+  - create:
+      box: audio_curve_voice
+      name: 1 · a film voice as a moving 3D curve — play or scrub
+      frame: { x: 40.0, y: 40.0, w: 460.0, h: 100.0 }
+      properties:
+        code: |
+          val wav = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
+          val curve = audioCurves(wav, AudioCurveSettings(dimensions = 3)).first()
+          val scale = 100 / curve.extent()
+
+          // The player keeps the audio clock and tells this box where it is, or where you are scrubbing.
+          var t = 0.0
+          displayAudioBytes(wav.toFile().readBytes(), options = AudioVisualizerOptions(onTime = { t = it }))
+
+          // A faint cube around where the curve lives, so the view holds still while you orbit.
+          val room = fline {
+              for (z in [-80, 80]) {
+                  moveTo(-80, -80, z)
+                  lineTo(80, -80, z)
+                  lineTo(80, 80, z)
+                  lineTo(-80, 80, z)
+                  lineTo(-80, -80, z)
+              }
+              for (x in [-80, 80]) for (y in [-80, 80]) {
+                  moveTo(x, y, -80)
+                  lineTo(x, y, 80)
+              }
+              color = vec(1, 1, 1, 0.12)
+          }
+
+          var shown = Double.NaN
+          loop {
+              // Before the first complete window, show the first curve.
+              val frame = curve.frameAt(t) ?: curve.frame(0)
+              if (frame.timeSeconds != shown) {
+                  shown = frame.timeSeconds
+                  threeLines(frame.flines(scale, bands = 16, centered = true) + room, channel = "curve", height = 560)
+              }
+          }
+              .end { curve.close() }
+  - create:
+      box: audio_curve_music
+      name: 2 · stereo music, one curve per channel
+      frame: { x: 1240.0, y: 40.0, w: 460.0, h: 100.0 }
+      properties:
+        code: |
+          val wav = "%docs/assets/audio_ai_muscriptor/source.wav".path
+          val curves = audioCurves(wav)
+          val colors = [vec(0.39, 0.78, 0.86, 1.0), vec(0.96, 0.70, 0.36, 1.0)]
+
+          var t = 3.0
+          displayAudioBytes(
+              wav.toFile().readBytes(),
+              options = AudioVisualizerOptions(initialPositionSeconds = t, onTime = { t = it }),
+          )
+
+          var shown = Double.NaN
+          loop {
+              val frames = curves.map { it.frameAt(t) }
+              val time = frames.firstOrNull()?.timeSeconds
+              if (time != null && time != shown) {
+                  shown = time
+                  // Left channel on the left, right on the right; each channel has its own axes.
+                  val lines = frames.flatMapIndexed { i, frame ->
+                      val offset = vec(if (i == 0) -110.0 else 110.0, 0.0, 0.0)
+                      frame!!.flines(80 / curves[i].extent(), depth = 150.0, color = colors[i]).map { it + offset }
+                  }
+                  threeLines(lines, channel = "curves", height = 520)
+              }
+          }
+              .end { curves.forEach { it.close() } }
+  - create:
+      box: audio_curve_dense
+      name: 3 · finer hop, longer memory
+      frame: { x: 2440.0, y: 40.0, w: 460.0, h: 100.0 }
+      properties:
+        code: |
+          val wav = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
+          // A curve every 256 samples (5.3 ms at 48 kHz) that remembers 384 spectra (2 s).
+          val curve = audioCurves(wav, AudioCurveSettings(hopSize = 256, history = 384)).first()
+          val scale = 100 / curve.extent()
+
+          var t = 2.0
+          displayAudioBytes(
+              wav.toFile().readBytes(),
+              options = AudioVisualizerOptions(initialPositionSeconds = t, onTime = { t = it }),
+          )
+
+          var shown = Double.NaN
+          loop {
+              val frame = curve.frameAt(t)
+              if (frame != null && frame.timeSeconds != shown) {
+                  shown = frame.timeSeconds
+                  threeLines(frame.flines(scale, depth = 300.0, bands = 16), channel = "curve", height = 560)
+              }
+          }
+              .end { curve.close() }
+  - create:
+      box: audio_curve_ema
+      name: 4 · averages from one hop to 20 s instead of a window
+      frame: { x: 3640.0, y: 40.0, w: 460.0, h: 100.0 }
+      properties:
+        code: |
+          val wav = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
+          // 48 running averages of the spectrum, from one hop up to 20 seconds, longest first.
+          val settings = AudioCurveSettings(dimensions = 3, history = 48, emaLongestSeconds = 20.0)
+          val curve = audioCurves(wav, settings).first()
+          val scale = 100 / curve.extent()
+
+          var t = 0.0
+          displayAudioBytes(wav.toFile().readBytes(), options = AudioVisualizerOptions(onTime = { t = it }))
+
+          var shown = Double.NaN
+          loop {
+              val frame = curve.frameAt(t)
+              if (frame != null && frame.timeSeconds != shown) {
+                  shown = frame.timeSeconds
+                  threeLines(frame.flines(scale, bands = 16), channel = "curve", height = 560)
+              }
+          }
+              .end { curve.close() }
+  - create:
+      box: audio_curve_maps
+      name: 5 · the sounds heard so far, remembered on a sheet and a lattice
+      frame: { x: 4840.0, y: 40.0, w: 460.0, h: 100.0 }
+      properties:
+        code: |
+          val wav = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
+          // A sheet of 12 × 12 prototypes and a lattice of 6 × 6 × 6, each learning with a 0.5 s time constant.
+          val sheet = audioCurves(wav, AudioCurveSettings(dimensions = 3, somLearnSeconds = 0.5, somGrid = [12, 12])).first()
+          val lattice = audioCurves(wav, AudioCurveSettings(dimensions = 3, somLearnSeconds = 0.5, somGrid = [6, 6, 6])).first()
+
+          // Start six seconds in, so a learned map shows before you press play.
+          var t = 6.0
+          displayAudioBytes(
+              wav.toFile().readBytes(),
+              options = AudioVisualizerOptions(initialPositionSeconds = t, onTime = { t = it }),
+          )
+
+          // A faint room around each map, so the view holds still while the maps turn.
+          fun room(cx: Double) = fline {
+              for (z in [-80.0, 80.0]) {
+                  moveTo(cx - 80, -80.0, z)
+                  lineTo(cx + 80, -80.0, z)
+                  lineTo(cx + 80, 80.0, z)
+                  lineTo(cx - 80, 80.0, z)
+                  lineTo(cx - 80, -80.0, z)
+              }
+              for (x in [cx - 80, cx + 80]) for (y in [-80.0, 80.0]) {
+                  moveTo(x, y, -80.0)
+                  lineTo(x, y, 80.0)
+              }
+              color = vec(1, 1, 1, 0.1)
+          }
+          val rooms = [room(-100.0), room(100.0)]
+
+          // Turn a map slowly about the vertical axis as the sound plays, then move it into its room.
+          fun place(lines: List<FLine>, turn: Double, cx: Double) = lines.map { line ->
+              line.transform { p -> vec(p.x * cos(turn) + p.z * sin(turn) + cx, p.y, -p.x * sin(turn) + p.z * cos(turn)) }
+          }
+
+          var shown = Double.NaN
+          var first = true
+          loop {
+              val a = sheet.frameAt(t) ?: sheet.frame(0)
+              if (a.timeSeconds != shown) {
+                  shown = a.timeSeconds
+                  val b = lattice.frameAt(t) ?: lattice.frame(0)
+                  val turn = 0.3 * t
+                  val left = place(
+                      a.flines(55 / a.spread(), centered = true, stretch = true, trail = sheet.recentMatches(t, 0.5)),
+                      turn,
+                      -100.0,
+                  )
+                  val right = place(
+                      b.flines(55 / b.spread(), centered = true, stretch = true, trail = lattice.recentMatches(t, 0.5)),
+                      turn,
+                      100.0,
+                  )
+                  // Frame the view once; after that the rooms hold it still while the maps turn.
+                  threeLines(left + right + rooms, channel = "maps", height = 560, autoFrame = first)
+                  first = false
+              }
+          }
+              .end {
+                  sheet.close()
+                  lattice.close()
+              }

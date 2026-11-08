@@ -1,0 +1,110 @@
+name: particle_lenia
+description: >
+  Particle Lenia (Mordvintsev, Niklasson and Randazzo, Google Research 2022), as three pure-CPU
+  boxes from public/docs/particle_lenia.md. Box 1 runs the article's default rule from 200
+  particles in a 12-unit square to step 3000 and draws the particles over the energy field, the
+  potential U and the mean particle energy, beside the control (wK = 0, repulsion only). Box 2 is
+  the same run animated. Box 3 is the rotator rule (sigmaK 0.6, cRep 0.3, 100 particles) with
+  its centroid track. Neither opens a Window or a Renderer.
+docs:
+  - page: particle_lenia.md
+    why: "The page these two boxes come from."
+operations:
+  - create:
+      box: particle_lenia_still
+      name: "1 — Particle Lenia: 3000 steps, the energy field and a control"
+      frame:
+        x: 60.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val pl = ParticleLenia.random(200, side = 12.0, seed = 1L)
+          for (n in [0, 100, 500, 3000]) {
+              pl.stepTimes(n - pl.steps)
+              println(pl)
+          }
+          showImg(
+              montage(
+                  [
+                      "particles over -E, step 3000" to pl.render(extent = 24.0, size = 360),
+                      "U, step 3000" to pl.fieldImg(extent = 24.0, size = 360, which = "U").colormap("magma", 0f, 1f),
+                  ],
+                  columns = 2,
+                  cellSide = 360,
+              ),
+          )
+          // Control: the same seed with no kernel, so repulsion alone moves the particles.
+          val control = ParticleLenia.random(200, side = 12.0, seed = 1L, params = ParticleLeniaParams(wK = 0.0)).stepTimes(3000)
+          println("CONTROL, wK = 0: " + control)
+          showImg(
+              energyPlotImg(pl.energyHistory, 720, 160),
+              channel = "energy",
+              caption =
+                  "mean particle energy, steps 0 to 3000: %.3f down to %.3f".format(pl.energyHistory.first(), pl.currentEnergy()),
+          )
+  - create:
+      box: particle_lenia_movie
+      name: "2 — Particle Lenia, animated"
+      frame:
+        x: 560.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // 200 particles from a random square, 3000 steps, drawn over the energy field.
+          animateEvolution(
+              ParticleLenia.random(200, side = 12.0, seed = 1L),
+              totalSteps = 3000,
+              seconds = 7.0,
+              cellSide = 400,
+              step = { it.step() },
+              panels = { pl, n ->
+                  [
+                      "step %d   mean E %.3f".format(n, pl.currentEnergy()) to
+                          pl.render(extent = 24.0, size = 300, cx = 0.0, cy = 0.0),
+                  ]
+              },
+          )
+  - create:
+      box: particle_lenia_rotator
+      name: "3 — Particle Lenia: a creature that turns and travels"
+      frame:
+        x: 1060.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // The rotator rule: a narrower kernel ring and weaker repulsion than the article's defaults.
+          val rule = ParticleLeniaParams(sigmaK = 0.6, cRep = 0.3)
+          val track = mutableListOf<Pair<Double, Double>>()
+
+          animateEvolution(
+              ParticleLenia.random(100, side = 12.0 * Math.sqrt(0.5), seed = 1L, params = rule),
+              totalSteps = 12000,
+              seconds = 7.0,
+              cellSide = 400,
+              step = { pl ->
+                  pl.step()
+                  if (pl.steps % 50 == 0) track += pl.centroid()
+                  pl
+              },
+              panels = { pl, n ->
+                  val img = pl.render(extent = 24.0, size = 300, cx = 0.0, cy = 0.0)
+                  // the centroid's path so far, as small dots
+                  ["step %d".format(n) to splatDots(img, track, 24.0, 0.0, 0.0, dotRadius = 1.0)]
+              },
+          )
+  - execute:
+      box: particle_lenia_still
+      property: code
+      type: fragment
+  - launch: { box: particle_lenia_movie, property: code }
+  - launch: { box: particle_lenia_rotator, property: code }
+  - await:
+      wait: pending
+  - wait:
+      millis: 400

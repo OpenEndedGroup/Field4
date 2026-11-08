@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-31T13:34:37.136Z",
+  "capturedAt": "2026-11-08T10:10:32.272Z",
   "documentName": "mapper_explorer",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 536,
-      "height": 172,
+      "height": 160,
       "path": "outputs/0.html"
     },
     {

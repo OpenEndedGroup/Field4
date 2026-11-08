@@ -123,6 +123,20 @@ class NotationIntersectionTest {
     }
 
     @Test
+    fun dotsInAFrameReadAsPointsInTheFramesOwnUnits() {
+        // the map of alife_examples.md "Drawing the food": a 400-unit frame read as 512 trail pixels, y up
+        n { frame("network", 400, 200, 400, 400) { ellipse(400 + 0.25 * 400 - 6, 200 + 0.75 * 400 - 6, 12, 12) } }
+        val map = n.space("network", x = 0.0..512.0, y = 512.0..0.0)
+        val dots = map.marks.filter { it.kind == MarkType.ELLIPSE }.map { map.toSpace(it.center) }
+        assertEquals(1, dots.size)
+        assertEquals(128.0, dots[0].x.toDouble(), 1e-3)
+        assertEquals(128.0, dots[0].y.toDouble(), 1e-3, "three quarters down the frame is a quarter of the way up the field")
+        val back = map.toWorld(128.0, 128.0)
+        assertEquals(500.0, back.x.toDouble(), 1e-3)
+        assertEquals(500.0, back.y.toDouble(), 1e-3)
+    }
+
+    @Test
     fun theScoreFollowsTheBoxItIs() {
         val stage = Box("stage").also { it.inside = session; session.boxes[it.id] = it; it.frame = Rect(0.0, 0.0, 100.0, 100.0) }
         n { line(listOf(vec(0, 50), vec(1000, 50)), name = "h") }

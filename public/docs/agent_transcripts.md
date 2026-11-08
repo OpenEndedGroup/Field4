@@ -149,6 +149,18 @@ from your last stroke on the drawing layer. Pure CPU.
 
 [Open →](offline.html?file=assets/agent_transcripts/eigendrum/metadata.edn)
 
+### penrose_spectra
+
+**Strike a Penrose tiling.** The starting point of [Hearing a Penrose Tiling](penrose_spectra.md):
+exact counts of the tiling's zero-energy states against 81 − 50τ, beside a square lattice and a
+jittered tiling; the confined states drawn on the tiles; the density of states and its gap; a sweep
+over symmetry, disorder and offset sum; three strikes with players; two sliders that recount as you
+drag; and a live `ModalDrum` voice (launch it). Pure CPU.
+
+![Two grey Penrose tilings, one with orange discs on its three-edged vertices, one with a single ring of orange and blue discs](assets/penrose_spectra/states.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/penrose_spectra/metadata.edn)
+
 ### teaching_a_pen
 
 **Pens with other hands.** The starting point of [Teaching a pen](teaching_a_pen.md): Hershey plotter
@@ -667,6 +679,16 @@ renderer, including glyph outlines. No parser service, model download or GPU is 
 
 [Open →](offline.html?file=assets/agent_transcripts/sentence_diagrams/metadata.edn)
 
+### dependency_length
+
+[Dependency length in real texts](dependency_length.md): the Gettysburg Address, the first chapters
+of Pride and Prejudice and Moby-Dick, Shakespeare's first ten sonnets and Genesis 1, measured the way
+Futrell, Mahowald and Gibson measured 37 languages. One sentence is drawn beside random reorderings of
+its tree, the speech as small multiples with each sentence's ratio to chance, and every sentence's
+total against its length. The parses are retained, so no parser is needed.
+
+[Open →](offline.html?file=assets/agent_transcripts/dependency_length/metadata.edn)
+
 ### kolakoski_euclid
 
 **Kolakoski counts, Euclid places.** A Euclidean rhythm spreads a density you chose in advance as
@@ -1048,6 +1070,15 @@ counterfactual is its own `initialLoss`, measured in the same run. None of the f
 
 [Open →](offline.html?file=assets/agent_transcripts/alife_evolution/metadata.edn)
 
+### particle_lenia
+
+[Particle Lenia](particle_lenia.md) as three boxes. Box 1 runs the article's default rule from 200
+particles in a random square to step 3000, prints mean energy, spread, rotation and drift at four
+moments, and draws the particles over the energy field, the potential `U` and the energy curve beside
+a control with the kernel switched off. Box 2 animates the same run. Box 3 animates a rule that makes a spinning, drifting creature. All three are pure CPU.
+
+[Open →](offline.html?file=assets/agent_transcripts/particle_lenia/metadata.edn)
+
 ### alife_search_comparison
 
 The "Does search beat random?" part of [spatial artificial life](alife_examples.md#does-search-beat-random)
@@ -1289,6 +1320,18 @@ and counts shared edges; *slider* moves one family of lines; *offset sweep* anim
 (launch it); *relief* extrudes every tile through Manifold into one closed solid.
 
 [Open →](offline.html?file=assets/agent_transcripts/debruijn_tilings_demo/metadata.edn)
+
+### debruijn_tilings_3d_demo
+
+The same multigrid with planes, the companion to
+[Penrose tilings in three dimensions](debruijn_tilings_3d.md). *Triacontahedron* welds the twenty
+Ammann rhombohedra of one plane per family through Manifold beside their convex hull; *patch* draws
+the cells nearest the centre of a 3D Penrose tiling and prints the prolate/oblate ratio against
+radius; *slices* cuts the tiling across 5-, 3- and 2-fold axes into FLine polygons; *offset sweep*
+slides one family of planes and counts the cells that survive; *stars* cuts the five
+`DeBruijnStar` direction sets along one plane; *slab* welds a slab of cells into a printable solid.
+
+[Open →](offline.html?file=assets/agent_transcripts/debruijn_tilings_3d_demo/metadata.edn)
 
 ### lp_curves
 
@@ -2572,6 +2615,21 @@ Walkthrough: [Loris partial tracks and resynthesis](loris.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/loris_partial_explorer/metadata.edn)
 
+### audio_curve_explorer
+
+A film voice analysed into a rolling curve of its recent spectra (mel bands, earth mover's distances,
+MDS, alignment) and drawn as FLines in the Three.js viewer at whatever time Field's waveform player is
+playing or scrubbing. Further boxes draw a stereo recording as one curve per channel, the voice with a
+finer hop and a longer memory, a curve of running averages from one hop to twenty seconds, and a
+12 × 12 sheet and 6 × 6 × 6 lattice of prototype spectra (self-organizing maps) of the sounds heard
+so far. Every
+box is compile-checked; the analysis runs the `fieldaudio_curve` Python package through `uv`.
+Walkthrough: [Audio curves: a sound as a few slow controls](audio_curves.md).
+
+![The voice's curve of running averages in the Three.js viewer: faint at its 20-second end, bright at the present](assets/audio_curves/ema-curve.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/audio_curve_explorer/metadata.edn)
+
 ### audio_ai_underfit_mancini
 
 Import a held-out excerpt, hash the completed Experiment in Terror
@@ -2739,6 +2797,22 @@ under the grids shows what Kotlin heard and changed. Launch the box, then type i
 [ORCA](orca.md#two-orcas-and-kotlin-between-them) has the video and a recording.
 
 [Open →](offline.html?file=assets/agent_transcripts/orca_duet/metadata.edn)
+
+### ascii_shape
+
+**Characters chosen by shape, not only brightness.** `ShapeAscii` summarises each cell of an image
+by the light in six staggered circles and picks the character whose own six numbers are nearest,
+after Alex Harri's essay [ASCII characters are not pixels](https://alexharri.com/blog/ascii-rendering).
+The lead box draws a ring, a triangle and a disc as FLines and shows them by brightness and by
+shape side by side; the others show the sampling circles over five characters, a lit sphere, the
+two contrast steps, and a wireframe cube spinning live in a `charGrid`. The walkthrough is
+[Shape-aware ASCII](ascii_shape.md).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/ascii_shape_shapes.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="180" padding="12" name="gallery-ascii-shape-shapes" alt="a ring, a triangle and a disc drawn twice in white characters: by brightness on the left, by shape on the right, where the outlines run as underscores, slashes and quote marks" macro-file="../../dev_docs/agents/transcripts/ascii_shape.yaml" capture-box="ascii_shape_shapes"}
+// The transcript builds and runs every box; this is the lead, brightness vs shape.
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/ascii_shape/metadata.edn)
 
 ### madp_chargrid
 
@@ -3569,6 +3643,20 @@ slime and followers boxes.
 
 [Open →](offline.html?file=assets/agent_transcripts/gpu_stigmergy/metadata.edn)
 
+### gpu_physarum_networks
+
+**Physarum as a transport-network designer**, on the GPU, after Tero et al. (*Science*, 2010). A
+map box draws a frame named "network" on the drawing layer with twelve food sources as dots in it; a
+slime box reads the dots through `notation.space` as `ShaderPhysarumSettings.food` and follows hand
+edits with `notation.onChange`, so drawing or dragging a dot moves the food while 4000 agents
+contract into a network between the dots; a measure box reads the trail back every 120 frames,
+extracts the network with `TransportNetwork.extract` and prints its cost against the minimum
+spanning tree, stretch and fault tolerance beside the MST and Delaunay controls, with a slider for
+the trail's half-life; and a reset box.
+[Drawing the food](alife_examples.md#drawing-the-food) walks through the map and slime boxes.
+
+[Open →](offline.html?file=assets/agent_transcripts/gpu_physarum_networks/metadata.edn)
+
 ### fern_iterated_systems
 
 **Fern**, the classroom demo of iterated systems, on the GPU. Each system is tens or hundreds of
@@ -4365,6 +4453,14 @@ who else is publishing, and hands the stream you pick to its program as a second
 ```
 
 [Open →](offline.html?file=assets/agent_transcripts/stacktrinket_feedback/metadata.edn)
+
+### particle_lenia_gpu
+
+The GPU half of [Particle Lenia](particle_lenia.md#thousands-of-particles-on-the-gpu): a renderer box
+and, beneath it, `ShaderParticleLenia` running 6400 particles in 64 clusters under the rotator rule,
+20 steps per frame, in the native window. Clusters that drift into each other merge.
+
+[Open →](offline.html?file=assets/agent_transcripts/particle_lenia_gpu/metadata.edn)
 
 ## Graphics building blocks
 
