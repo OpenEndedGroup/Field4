@@ -91,11 +91,6 @@ one compute pass reads the first and writes the second, a barrier follows, and a
 back. The fragment shader draws the colour channels. Hold the left mouse button over the window to
 erase cells. While `autoCut` is on, the box also cuts a random disc every 600 steps:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/growing_nca/gpu_window.png" capture="native-window" wait="6" native-wait-frames="30" embed=true hidden=true timeout="600" duration="0" name="growing-nca-gpu" alt="The Vulkan window: a pink six-petalled flower with a yellow centre and a green stem, grown by the compute shader on a white 96 by 96 grid between grey margins" macro-file="../../dev_docs/agents/transcripts/growing_nca.yaml" capture-box="nca_renderer"}
-// Built and launched from dev_docs/agents/transcripts/growing_nca.yaml
-// (the CPU strip, a renderer, and the GPU box beneath it).
-```
-
 ```diffstatic {data-lang=kotlin}
 /*
 A growing neural cellular automaton on the GPU. Run this box beneath the renderer (`window`) box.
@@ -189,6 +184,11 @@ WindowBrush.install(window, "growing-nca") { fx, fy ->
     val side = minOf(w, h)
     brush = vec((fx * w - (w - side) / 2) / side * n, (fy * h - (h - side) / 2) / side * n, 6.0, 1.0)
 }
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/growing_nca/gpu_window.png" capture="native-window" wait="6" native-wait-frames="30" embed=true hidden=true timeout="600" duration="0" name="growing-nca-gpu" alt="The Vulkan window: a pink six-petalled flower with a yellow centre and a green stem, grown by the compute shader on a white 96 by 96 grid between grey margins" macro-file="../../dev_docs/agents/transcripts/growing_nca.yaml" capture-box="nca_renderer"}
+// Built and launched from dev_docs/agents/transcripts/growing_nca.yaml
+// (the CPU strip, a renderer, and the GPU box beneath it).
 ```
 
 The compute shader is in the box's `compute` property. Open it with the property switcher to see
