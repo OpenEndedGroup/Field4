@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-31T13:33:29.758Z",
+  "capturedAt": "2026-11-08T10:08:10.325Z",
   "documentName": "controls_presets_morph_midi",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 536,
-      "height": 646,
+      "height": 618,
       "path": "outputs/0.html"
     },
     {
@@ -36,7 +36,7 @@
         "svg"
       ],
       "width": 536,
-      "height": 154,
+      "height": 142,
       "path": "outputs/2.html"
     }
   ]

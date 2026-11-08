@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-31T13:51:47.937Z",
+  "capturedAt": "2026-11-08T10:34:34.363Z",
   "documentName": "gp_instruments",
   "outputs": [
     {
@@ -10,7 +10,7 @@
       "warnings": [],
       "kinds": [],
       "width": 536,
-      "height": 100,
+      "height": 92,
       "path": "outputs/0.html"
     },
     {
