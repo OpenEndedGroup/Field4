@@ -20,9 +20,9 @@ class DeBruijnTiling3DTest {
     private fun length(v: Vector3d) = sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
 
     /** Face sharing, closed cells and no overlaps; [interior] is the crossing radius to hold faces shared. */
-    private fun checkTiling(t: DeBruijnTiling3D, interior: Double) {
+    private fun checkTiling(t: DeBruijnTiling3D, interior: Double, minCells: Int = 40) {
         val cells = t.cells
-        assertTrue(cells.size > 40, "expected many cells, got ${cells.size}")
+        assertTrue(cells.size >= minCells, "expected many cells, got ${cells.size}")
 
         for (c in cells) {
             // Every cell is a closed parallelepiped: its outward faces enclose its volume.
@@ -44,7 +44,7 @@ class DeBruijnTiling3DTest {
         for (c in cells) for (f in c.faces()) byFace.merge(c.faceKey(f), 1, Int::plus)
         assertTrue(byFace.values.all { it <= 2 }, "a face is shared by more than two cells")
         val inner = cells.filter { length(it.crossing) < interior }
-        assertTrue(inner.size > 10, "only ${inner.size} interior cells")
+        assertTrue(interior == 0.0 || inner.size > 10, "only ${inner.size} interior cells")
         for (c in inner) for (f in c.faces()) assertEquals(2, byFace[c.faceKey(f)], "an interior face has no neighbour")
 
         // Shared vertices are bit-identical: one lift, one position.
@@ -107,7 +107,7 @@ class DeBruijnTiling3DTest {
     @Test
     fun onePlanePerFamilyFillsARhombicTriacontahedron() {
         val t = deBruijnTiling3D(planes = 0..0, scale = 1.0)
-        checkTiling(t, 0.0)
+        checkTiling(t, 0.0, minCells = 20)
         assertEquals(mapOf(1 to 10, 2 to 10), t.shapeCounts())
         // Unit-edge rhombic triacontahedron: 4 sqrt(5 + 2 sqrt 5).
         assertEquals(4 * sqrt(5 + 2 * sqrt(5.0)), t.volume(), 1e-9)
