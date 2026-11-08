@@ -259,12 +259,12 @@ class SyahiDesign(
     /** Density at the centre, the heaviest point. */
     val peak: Double get() = density(0.0)
 
-    /** The density profile ρ(r) as a line, r across [w] and ρ / [top] up [h]. */
+    /** The density profile ρ(r) as a line for `lines(...)` (whose y runs down): r across [w], ρ / [top] up [h]. */
     @JvmOverloads
     fun profile(w: Double = 1.0, h: Double = 1.0, top: Double = peak): FLine = FLine().apply {
         for (i in 0..200) {
             val r = i / 200.0
-            val y = h * density(r) / top
+            val y = h * (1 - density(r) / top)
             if (i == 0) moveTo(0.0, y) else lineTo(w * r, y)
         }
         color = afield.math.linalg.vec(1.0, 0.85, 0.3, 1.0)

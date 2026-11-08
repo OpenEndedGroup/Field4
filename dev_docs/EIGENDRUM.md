@@ -125,6 +125,16 @@ Code: `HarmonicDrum.kt` (density, labels, harmonicity, sweep), `DrumDesign.kt` (
 - Fitting outlines to Raman's target with LM: every start walks back towards the circle (the
   Ashbaugh–Benguria bound makes the octave unreachable); the page shows a random-shape sweep instead.
 
+### Captures and runtime (2026-11-08)
+- Captured with the docs runner (incremental, own port `FIELD_DOCS_RUNNER_PORT=9573`: the default
+  9478 was a sibling checkout's Field, which the runner refuses to use): raman, sand, map, shapes,
+  syahi, triad, raman-morph PNGs and disk-bare / disk-raman / disk-syahi / triad WAVs (2.5 s, decaying).
+- `lines(...)` draws y downward: `HarmonicityMap.cells` and `SyahiDesign.profile` flip so mass,
+  density and "closer to harmonic" read upward.
+- The live Runloop watchdog interrupts box code after 30 s (the docs runner raises it to 300 s). The
+  syahi box (three fits in parallel) ran ~45 s before `designSyahi` solved to 1e-8 with warm starts;
+  now ~19 s sequential at load 30. On a slow machine it can still approach the limit.
+
 ### Where to go next
 - Air loading: the kettle raises modes with net volume change (the (0,n) family most); a
   boundary-coupled air cavity term would move the fundamental, the one mode still sharp here.

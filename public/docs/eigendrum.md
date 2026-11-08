@@ -365,8 +365,7 @@ values agree with the exact ones to within 1%, which `HarmonicDrumTest` checks, 
 claim that the fifteen lowest modes fall into Raman's five groups exactly as the table above lists
 them.
 
-Each tone sounds like a string's harmonics, and the strikes show it. The bare drum, struck between
-the paste and the rim:
+Listen to the difference. The bare drum, struck halfway between the centre and the rim:
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/eigendrum/disk-bare.wav" audio-spec="disk-bare" audio-renderer="afield.audio.modal.EigendrumDocs" embed=true hidden=true name="eigendrum-disk-bare"}
 // offline-rendered by EigendrumDocs.renderWav("disk-bare", ...): a bare disk struck at (0.62, 0.15)
@@ -439,8 +438,8 @@ println("bare skin: ${map.cents[0][0].f1} cents")
 The most harmonic cell is radius 0.4 at about ten times the skin's density, Ramakrishna and Sondhi's
 own choice. Around it runs a valley: a smaller patch has to be heavier, a wider one lighter. Makers'
 drums sit along it; Sathej and Adhikari give densities of 6 to 16 times the skin over 45–55% of the
-radius. Past about twenty times the skin the scores stop improving. The paste then does all the
-moving and the bare skin only acts as a spring.
+radius. Above about twenty times the skin the scores hardly change: the paste then does nearly all
+the moving, and the bare skin acts only as a spring.
 
 ## Designing a drum
 
@@ -519,7 +518,7 @@ skin, the top of the range makers use. Each step needs only one solve, because t
 exact: making a patch 1% heavier lowers each mode's λ by that mode's share of energy on the patch,
 times 1%.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/syahi.png" embed=true timeout="300" alt="A table of syahi designs with one, two and three layers, their radii, added densities and distances from a harmonic series falling from about 27 to 19 cents; below it four density profiles stepping down from the centre to the rim"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/syahi.png" embed=true timeout="300" alt="A table of syahi designs with one, two and three layers, their radii, centre densities and distances from a harmonic series falling from about 27 to 19 cents; below it four density profiles, high at the centre on the left and stepping down to the bare skin towards the rim on the right"}
 import afield.audio.modal.*
 
 // Fit a syahi of one, two and three stacked layers to 1:2:3:4:5, each starting from
@@ -539,10 +538,10 @@ display(
 val colours = [vec(0.35, 0.6, 1.0, 1.0), vec(1.0, 0.85, 0.3, 1.0), vec(1.0, 0.45, 0.3, 1.0)]
 val profiles = designs.mapIndexed { i, d -> d.profile(w = 3.0, h = 1.0, top = 16.0).apply { color = colours[i] } }
 val composite = fline {
-    moveTo(0.0, 9.77 / 16)
-    lineTo(1.2, 9.77 / 16)
-    lineTo(1.2, 1.0 / 16)
-    lineTo(3.0, 1.0 / 16)
+    moveTo(0.0, 1 - 9.77 / 16)
+    lineTo(1.2, 1 - 9.77 / 16)
+    lineTo(1.2, 1 - 1.0 / 16)
+    lineTo(3.0, 1 - 1.0 / 16)
 }
     .apply { color = vec(0.6, 0.6, 0.6, 1.0) }
 lines(profiles + composite, w = 520.0, h = 180.0, fitToSize = true)
@@ -566,7 +565,7 @@ the target is a major triad, 4:5:6. The starting guess is your last drawn stroke
 drawn it is the heart from that section. Grey is the start, yellow the fitted drum, followed by its
 three lowest modes.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/triad.png" embed=true alt="A grey heart outline with a yellow, more lopsided outline over it, then three copies of the yellow shape coloured by its first three modes: all orange, then split by one nodal line, then by a curved line"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/triad.png" embed=true alt="A grey rounded three-lobed outline with a yellow, more lopsided outline over it, then three copies of the yellow shape coloured by its first three modes: all orange, then split in two by one curved nodal line, then into three by two"}
 import afield.audio.engine.WavFloatArrayWriter
 import afield.audio.modal.*
 
@@ -611,7 +610,7 @@ display(
 ### Morphing between them
 
 The live voice glides between any drums with the same number of modes. This one runs from the bare
-drum through Ramakrishna and Sondhi's syahi to the fitted one-layer one and back, every four
+drum through Ramakrishna and Sondhi's syahi to the fitted one-layer syahi and back, every four
 seconds, striking itself between the paste and the rim. The table lists the overtones it passes
 through.
 
@@ -633,6 +632,15 @@ names.forEach { n -> spectra.format(n) { (it as Double).f3 } }
 display("spectra", spectra)
 ModalDrum(bare, fundamental = 220.0, every = 0.7, autoX = 0.62, autoY = 0.15, morph = drums, morphPeriod = 4.0)
 ```
+
+The loaded drum follows C. V. Raman, "The Indian musical drums", *Proc. Indian Acad. Sci.* A 1,
+179–188 (1935), and C. V. Raman and S. Kumar, "Musical drums with harmonic overtones", *Nature* 104,
+500 (1920); the composite membrane is B. S. Ramakrishna and M. M. Sondhi, *J. Acoust. Soc. Am.* 26,
+523 (1954). The measured and exact frequencies in the table are from G. Sathej and R. Adhikari, "The
+eigenspectra of Indian musical drums", *J. Acoust. Soc. Am.* 125, 831 (2009),
+[arXiv:0809.1320](https://arxiv.org/abs/0809.1320), Table I. The bound on f₂/f₁ is M. S. Ashbaugh and
+R. D. Benguria, "A sharp bound for the ratio of the first two eigenvalues of Dirichlet Laplacians and
+extensions", *Annals of Mathematics* 135, 601–628 (1992).
 
 ## How it is computed
 
@@ -657,12 +665,3 @@ The method and the Gordon–Webb–Wolpert coordinates follow Toby Driscoll, "Ei
 drums", *SIAM Review* 39 (1997), and Cleve Moler's
 [blog post](https://blogs.mathworks.com/cleve/2012/08/06/can-one-hear-the-shape-of-a-drum-part-1-eigenvalues/);
 the idea of a drum you draw is [eigendrum.com](https://eigendrum.com)'s.
-
-The loaded drum follows C. V. Raman, "The Indian musical drums", *Proc. Indian Acad. Sci.* A 1,
-179–188 (1935), and C. V. Raman and S. Kumar, "Musical drums with harmonic overtones", *Nature* 104,
-500 (1920); the composite membrane is B. S. Ramakrishna and M. M. Sondhi, *J. Acoust. Soc. Am.* 26,
-523 (1954). The measured and exact frequencies in the table are from G. Sathej and R. Adhikari, "The
-eigenspectra of Indian musical drums", *J. Acoust. Soc. Am.* 125, 831 (2009),
-[arXiv:0809.1320](https://arxiv.org/abs/0809.1320), Table I. The bound on f₂/f₁ is M. S. Ashbaugh and
-R. D. Benguria, "A sharp bound for the ratio of the first two eigenvalues of Dirichlet Laplacians and
-extensions", *Annals of Mathematics* 135, 601–628 (1992).
