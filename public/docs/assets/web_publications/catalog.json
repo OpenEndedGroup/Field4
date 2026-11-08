@@ -1017,6 +1017,36 @@
         "public/docs/assets/agent_transcripts/debruijn_tilings_demo/metadata.edn": "bfe49d2b99ccf5872745687280bb511949612538edcf8d750fc34ce2d4483fdc"
       }
     },
+    "assets/agent_transcripts/dependency_length/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-08T13:36:56.420Z",
+      "channels": 5,
+      "file": "assets/web_publications/dependency_length/document/metadata.edn",
+      "files": {
+        "assets/web_publications/dependency_length/document/metadata.edn": "9f41b329505f148fd3eb8c4d3fffbd2acc41e73db8a95d472f5175240fd170b8",
+        "assets/web_publications/dependency_length/document/outputs.json": "3b5916b6cd699f788a6172cf6b780530c255ed216f06d988f046ced4cc754703",
+        "assets/web_publications/dependency_length/outputs/0.html": "f06438d59fde5b2d50c6670053c79b75ed948ddd45655c4a16d0e1ad68dfe057",
+        "assets/web_publications/dependency_length/outputs/1.html": "ccaceeb262f56d9c650c062caaf08281fbbd4dff16a98a3752cc8146a6e80582",
+        "assets/web_publications/dependency_length/outputs/2.html": "84f7a1a67d49d38999fff716d1b4e381f38f77d05990a5cf33b6a08d5dada162",
+        "assets/web_publications/dependency_length/outputs/3.html": "e25103085f8e01b8e410c8a07350cca9149efdebf6b0fdce0d1a777b68c1d912",
+        "assets/web_publications/dependency_length/outputs/4.html": "44ae8668db19d45df784cf556c2b0217742cebff7cdcd91be378726a16f99feb"
+      },
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "outputs": "assets/web_publications/dependency_length/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/dependency_length.yaml": "71b4d0e26719368209ee1d9c52900333defe5278346a1de251b2d175f6442111",
+        "public/docs/assets/agent_transcripts/dependency_length/dl_gettysburg_code_.kt": "2f4430636b43ef2b916444f3a1d29368612d1c9d9f8f67b6f84378bb2cc0204a",
+        "public/docs/assets/agent_transcripts/dependency_length/dl_growth_code_.kt": "d0c3180d21304a43b597aec84323a47170dc52fddc82929ba3a61ca6d4b3e391",
+        "public/docs/assets/agent_transcripts/dependency_length/dl_ratios_code_.kt": "d80fbe16956a0da64cb7c62bed68ac757749aa0f6dafbf6f9737f0f1245b2148",
+        "public/docs/assets/agent_transcripts/dependency_length/dl_reorderings_code_.kt": "89b008453614409aa1c8f1530c4329c7a0fe16f7d20a701e8e23eaf60012b434",
+        "public/docs/assets/agent_transcripts/dependency_length/dl_table_code_.kt": "d853c8db2997c420f9e07ed7bd36148e5e84893081965dcf9ab20a4c1a39ab75",
+        "public/docs/assets/agent_transcripts/dependency_length/guides/dependency_length.md": "35847a12b9d69fb10aae48fda087381d9b0697e40c5cdd007f1e3bed7c8c50ad",
+        "public/docs/assets/agent_transcripts/dependency_length/metadata.edn": "033a360c22dea89e224dd72d9769a1328da74134ef932a3c40f776234bf3e1e1"
+      }
+    },
     "assets/agent_transcripts/drawn_morph/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
       "capturedAt": "2026-11-08T10:11:47.977Z",
