@@ -1,9 +1,9 @@
 # Penrose and Other Quasiperiodic Tilings
 
-`deBruijnTiling(...)` covers the plane with rhombi that never repeat: Penrose's tiling of thin and
-thick rhombs, the 8-fold Ammann–Beenker tiling, and the same thing at any symmetry from 3 to 12 or
-beyond. Every tile is a closed `FLine`, so a tiling draws with `lines(...)`, exports as SVG, and
-can go straight to a pen plotter.
+Cover a plane with rhombi. Some patterns repeat; others, like Penrose's, never quite do.
+`deBruijnTiling(...)` makes Penrose's tiling of thin and thick rhombs, the 8-fold Ammann–Beenker
+tiling, and tilings at other symmetries from 3 to 12 and beyond. Every tile is a closed `FLine`: draw it with `lines(...)`,
+export it as SVG, or send it to a pen plotter.
 
 The method is N. G. de Bruijn's *multigrid* construction ("Algebraic theory of Penrose's
 non-periodic tilings of the plane", 1981). This implementation follows Aatish Bhatia's
@@ -238,8 +238,8 @@ showMesh(
 )
 ```
 
-The demo document `dev_docs/agents/transcripts/debruijn_tilings_demo.yaml` holds all of these
-boxes.
+Open the [tiling starting point](agent_transcripts.md#debruijn_tilings_demo) to try these boxes in
+your own document.
 
 ??? aside "What the tests check"
     `DeBruijnTilingTest` builds tilings at 3, 4, 5, 6 (with disorder), 7, 8, 9 and 12-fold and

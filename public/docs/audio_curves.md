@@ -1,17 +1,14 @@
 # Audio curves: a sound as a few slow controls
 
-Suppose you want a sound to steer something: a camera, a synthesis parameter, the shape of a
-drawing. The usual move is to pick features in advance (loudness, pitch, spectral centroid) and hope
-they are the ones that matter for this particular sound. An audio curve takes the other route. It
-asks the recording itself which differences are large and which are small over the last second or
-so, and lays its recent history out as a curve in two or three dimensions. The newest point on
-that curve is your control: two or three numbers, about ninety times a second.
+Let a sound steer a camera, a synthesis parameter, or the shape of a drawing. An audio curve gives
+you a few numbers to work with: it measures how the sound has changed over the last second or so,
+then lays that recent history out as a curve in two or three dimensions. The newest point is your
+control, updated about ninety times a second.
 
-What makes those numbers usable is that they are *locally consistent*. Moments that sound alike
-land near each other, a sound that changes slowly moves the point slowly, and a sudden change moves
-it a long way. And the coordinate system does not flip or spin from one moment to the next, so a
-value means the same thing now as it did a tenth of a second ago. Over longer spans the frame is
-free to drift, because the map is only ever made from the recent past.
+The numbers stay *locally consistent*. Moments that sound alike land near each other; a sound that
+changes slowly moves the point slowly, and a sudden change moves it a long way. The axes don't flip
+or spin from one moment to the next, so a value means the same thing now as it did a tenth of a
+second ago. Over longer spans the frame can drift: the map is made from the recent past.
 
 *To run the examples on this page, open the [audio_curve_explorer](agent_transcripts.md#audio_curve_explorer) starting point.*
 
@@ -44,8 +41,8 @@ showSignals(
 ```
 
 
-`audioCurves(wav)` runs the analysis once and keeps the result next to your system's temporary
-files, so running the box again costs nothing. It returns one `AudioCurveFile` per channel. Each
+`audioCurves(wav)` runs the analysis once and caches the result in your system's temporary
+files, so later runs can reuse it. It returns one `AudioCurveFile` per channel. Each
 holds a curve for every hop, and `frameAt(seconds)` gives you the one current at that moment.
 
 The rest of this page builds that curve one step at a time, on the same recording, from
@@ -304,8 +301,8 @@ markdown(
 ```
 
 
-Each fit only looks one hop back, so this is what keeps values *locally* consistent, and it is also
-why the frame can wander over many seconds: small fits add up. Distances within one curve stay
+Each fit looks one hop back. It keeps values consistent from moment to moment, but small changes
+in the frame can add up over many seconds. Distances within one curve stay
 meaningful; absolute coordinates far apart in time should not be compared.
 
 ## 7. Play it
@@ -352,8 +349,8 @@ loop {
     .end { curve.close() }
 ```
 
-Launch the box rather than running it: the `loop` keeps drawing until you stop it. Press play, or
-drag across the waveform to scrub:
+Launch the box so its `loop` keeps drawing until you stop it. Press play, or drag across the
+waveform to scrub:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="audio_curve_finale" video="assets/audio_curves/finale.mp4" fps="12" transcript="../../dev_docs/agents/transcripts/docs_capture/audio_curve_finale.yaml" hide-toasts=true padding="8" wait="0" timeout="300" embed=true hidden=true name="audio-curves-finale" alt="Field's waveform player above a Three.js view of the voice's 3D curve inside a faint cube. Play is pressed; the gold playhead runs across the waveform and the curve writhes and stretches with each phrase, folding back into a small knot in the pauses."}
 // The setup transcript creates and launches the box and waits for it; press play.
@@ -482,8 +479,8 @@ follows the sound closely and forgets it quickly. The [audio_curve_explorer](age
 starting point has the 3D curve above, a stereo recording drawn as one curve per channel, the
 voice with half the hop and three times the history, and the averaged curve.
 
-A stereo file gives two curves, one per channel, each with its own axes: the left channel's x is
-not the right channel's x. To compare the channels in one frame, fit one to the other with
+A stereo file gives two curves, one per channel, and each has its own axes. To compare the
+channels in one frame, fit one to the other with
 `python -m fieldaudio_curve.stereo` (see the
 [package README](https://github.com/OpenEndedGroup/Field4/blob/main/python/fieldaudio_curve/README.md)).
 
