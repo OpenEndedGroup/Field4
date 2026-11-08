@@ -4907,7 +4907,7 @@ without it the fragment logs to the console and draws nothing.
 
 `src/jvmMain/kotlin/afield/ui/visualization/plotly.kt` — [read the source](source/jvmMain/afield/ui/visualization/plotly/)
 
-**Used in:** [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md), [Looking at Data](../tour_data.md), [Dependency length in real texts](../dependency_length.md)
+**Used in:** [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md), [Looking at Data](../tour_data.md), [Values over time: interpolants & keyframes](../interpolants_examples.md)
 
 ### Top-level functions { #plotly-kt-functions }
 
