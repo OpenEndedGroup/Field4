@@ -1,0 +1,72 @@
+name: particle_lenia
+description: >
+  Particle Lenia (Mordvintsev, Niklasson and Randazzo, Google Research 2022), as two pure-CPU
+  boxes from public/docs/particle_lenia.md. Box 1 runs the article's default rule from 200
+  particles in a 12-unit square to step 3000 and draws the particles over the energy field, the
+  potential U and the mean particle energy, beside the control (wK = 0, repulsion only). Box 2 is
+  the same run animated. Neither opens a Window or a Renderer.
+docs:
+  - page: particle_lenia.md
+    why: "The page these two boxes come from."
+operations:
+  - create:
+      box: particle_lenia_still
+      name: "1 — Particle Lenia: 3000 steps, the energy field and a control"
+      frame:
+        x: 60.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val pl = ParticleLenia.random(200, side = 12.0, seed = 1L)
+          for (n in [0, 100, 500, 3000]) {
+              pl.stepTimes(n - pl.steps)
+              println(pl)
+          }
+          showImg(
+              montage(
+                  [
+                      "particles over -E, step 3000" to pl.render(extent = 24.0, size = 360),
+                      "U, step 3000" to pl.fieldImg(extent = 24.0, size = 360, which = "U").colormap("magma", 0f, 1f),
+                  ],
+                  columns = 2,
+                  cellSide = 360,
+              ),
+          )
+          // Control: the same seed with no kernel, so repulsion alone moves the particles.
+          val control = ParticleLenia.random(200, side = 12.0, seed = 1L, params = ParticleLeniaParams(wK = 0.0)).stepTimes(3000)
+          println("CONTROL, wK = 0: " + control)
+          showImg(
+              energyPlotImg(pl.energyHistory, 720, 160),
+              channel = "energy",
+              caption = "mean particle energy, steps 0 to 3000: %.3f down to %.3f".format(pl.energyHistory.first(), pl.energyHistory.last()),
+          )
+  - create:
+      box: particle_lenia_movie
+      name: "2 — Particle Lenia, animated"
+      frame:
+        x: 560.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // 200 particles from a random square, 3000 steps, drawn over the energy field.
+          animateEvolution(
+              ParticleLenia.random(200, side = 12.0, seed = 1L),
+              totalSteps = 3000,
+              seconds = 7.0,
+              cellSide = 400,
+              step = { it.step() },
+              panels = { pl, n -> ["step %d   mean E %.3f".format(n, pl.energyHistory.last()) to pl.render(extent = 24.0, size = 300, cx = 0.0, cy = 0.0)] },
+          )
+  - execute:
+      box: particle_lenia_still
+      property: code
+      type: fragment
+  - launch: { box: particle_lenia_movie, property: code }
+  - await:
+      wait: pending
+  - wait:
+      millis: 400

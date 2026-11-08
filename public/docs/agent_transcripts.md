@@ -1048,6 +1048,15 @@ counterfactual is its own `initialLoss`, measured in the same run. None of the f
 
 [Open →](offline.html?file=assets/agent_transcripts/alife_evolution/metadata.edn)
 
+### particle_lenia
+
+[Particle Lenia](particle_lenia.md) as two boxes. Box 1 runs the article's default rule from 200
+particles in a random square to step 3000, prints mean energy, spread, rotation and drift at four
+moments, and draws the particles over the energy field, the potential `U` and the energy curve beside
+a control with the kernel switched off. Box 2 animates the same run. Both are pure CPU.
+
+[Open →](offline.html?file=assets/agent_transcripts/particle_lenia/metadata.edn)
+
 ### alife_search_comparison
 
 The "Does search beat random?" part of [spatial artificial life](alife_examples.md#does-search-beat-random)
