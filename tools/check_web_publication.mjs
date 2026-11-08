@@ -29,6 +29,14 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({headless:true,executablePath:process.env.FIELD_CHROMIUM_EXECUTABLE || undefined});
 const context = await browser.newContext({viewport:{width:1600,height:1100},deviceScaleFactor:1});
 const blocked = [], missing = [], errors = [], sockets = [];
+// waitForFunction polls through `new Function` in the page, which the publication's CSP
+// (no 'unsafe-eval') refuses; evaluate() is not subject to it.
+async function until(target, predicate, timeout = 30000) {
+    for (const end = Date.now() + timeout; !(await target.evaluate(predicate).catch(() => false));) {
+        if (Date.now() > end) throw new Error(`Timed out waiting for ${predicate}`);
+        await new Promise(r => setTimeout(r, 50));
+    }
+}
 await context.route('**/*',route => {
     if (/^(blob:|data:)/.test(route.request().url())) return route.continue();
     if (route.request().url().startsWith(origin + prefix)) return route.continue();
@@ -42,23 +50,25 @@ try {
     const page = await context.newPage();
     await page.goto(origin + prefix + 'index.html');
     await page.waitForSelector('.has-published-outputs');
-    await page.waitForFunction(() => document.getElementById('loading').style.display === 'none');
+    await until(page,() => document.getElementById('loading').style.display === 'none');
     assert.equal(await page.locator('.published-output').count(),manifest.outputs.length);
     assert.equal(await page.locator('#error:visible').count(),0);
     // Open closed channels too, exercising lazy iframes.
     await page.locator('.published-output').evaluateAll(nodes => nodes.forEach(n => n.open=true));
     const checks = [];
+    // Output frames carry a `?v=<capturedAt>` cache-buster, so match them by path.
+    const path = frame => frame.url().split('?')[0];
     for (const output of manifest.outputs) {
         if (!output.path) continue;
         const url = origin + prefix + output.path;
-        const frame = await page.waitForEvent('framenavigated',{predicate:f => f.url() === url,timeout:1000}).catch(() => page.frames().find(f => f.url() === url));
+        const frame = await page.waitForEvent('framenavigated',{predicate:f => path(f) === url,timeout:1000}).catch(() => page.frames().find(f => path(f) === url));
         assert.ok(frame,`Missing output frame: ${output.channel}`);
-        await frame.waitForFunction(() => document.documentElement.dataset.captureReady === 'true');
+        await until(frame,() => document.documentElement.dataset.captureReady === 'true');
         checks.push({channel:output.channel,ready:true});
     }
     if (pilot) {
         assert.equal(manifest.outputs.length,7);
-        const plotFrame = page.frames().find(f => f.url().endsWith('/outputs/' + manifest.outputs.find(o => o.channel==='plot').path.split('/').pop()));
+        const plotFrame = page.frames().find(f => path(f).endsWith('/outputs/' + manifest.outputs.find(o => o.channel==='plot').path.split('/').pop()));
         const plot = await plotFrame.evaluate(async () => {
             const p=document.querySelector('.js-plotly-plot');
             await Plotly.relayout(p,{'xaxis.range':[4,12]});
@@ -86,14 +96,10 @@ try {
         }
         assert.equal(viewers.length,2,'Published Three.js viewers were not restored');
         for (const frame of viewers) {
-            await frame.waitForFunction(() => window.FieldViewer.captureStatus().ready);
+            await until(frame,() => window.FieldViewer.captureStatus().ready);
             const restored = await frame.evaluate(() => ({saved:window.__fieldThreePublication.view.camera,current:FieldInspector.snapshot().camera}));
             assert.ok(restored.current.every((v,i) => Math.abs(v-restored.saved[i]) < 1e-5),'Published camera was not preserved');
-            assert.equal(await frame.locator('#camera-link').isVisible(),false);
-            assert.equal(await frame.locator('#feature-tools').isVisible(),false);
-            const partsBar = await frame.locator('#part-inspector').boundingBox();
-            const xrayBar = await frame.locator('#xray-tools').boundingBox();
-            assert.ok(Math.abs(partsBar.y-xrayBar.y) < 1,'Parts should share the top row with X-ray');
+            assert.equal(await frame.locator('#xray-tools').isVisible(),false,'A published view shows controls its box did not ask for');
             const before = await frame.evaluate(() => FieldInspector.snapshot().camera);
             const canvas = frame.locator('#canvas-wrap canvas'), rect = await canvas.boundingBox();
             assert.ok(rect && rect.width > 100 && rect.height > 100);
@@ -101,12 +107,20 @@ try {
             await page.mouse.down();
             await page.mouse.move(rect.x + rect.width*.7,rect.y + rect.height*.8,{steps:10});
             await page.mouse.up();
-            await frame.waitForFunction(() => {const r=FieldViewer.renderStats();return !r.pending&&!r.dirty;});
+            await until(frame,() => {const r=FieldViewer.renderStats();return !r.pending&&!r.dirty;});
             const after = await frame.evaluate(() => FieldInspector.snapshot().camera);
             assert.ok(after.some((v,i)=>Math.abs(v-before[i])>.01),'Mouse drag did not orbit the published scene');
+            // E shows the controls a box did not ask for; the drag above focused this viewer.
+            await page.keyboard.press('e');
+            await frame.locator('#xray-tools').waitFor();
+            assert.equal(await frame.locator('#camera-link').isVisible(),false);
+            assert.equal(await frame.locator('#feature-tools').isVisible(),false);
         }
         const partView = (await Promise.all(viewers.map(async frame => ({frame,count:await frame.evaluate(() => FieldInspector.rendered().length)})))).find(v=>v.count >= 2)?.frame;
         assert.ok(partView,'Publication lost the mesh parts');
+        const partsBar = await partView.locator('#part-inspector').boundingBox();
+        const xrayBar = await partView.locator('#xray-tools').boundingBox();
+        assert.ok(partsBar && Math.abs(partsBar.y-xrayBar.y) < 1,'Parts should share the top row with X-ray');
         await partView.locator('#part-inspector summary').click();
         for (const folder of await partView.locator('.part-toggle[aria-expanded="false"]').all()) await folder.click();
         const baseline = await partView.locator('#canvas-wrap').screenshot();
@@ -121,7 +135,7 @@ try {
         await partView.locator('#xray-opacity').evaluate(input => {input.value='35';input.dispatchEvent(new Event('input',{bubbles:true}));});
         const xray = await partView.evaluate(() => FieldInspector.snapshot());
         assert.equal(xray.xray,true); assert.equal(xray.xrayOpacity,.35);
-        await partView.waitForFunction(() => {const r=FieldViewer.renderStats();return !r.pending&&!r.dirty;});
+        await until(partView,() => {const r=FieldViewer.renderStats();return !r.pending&&!r.dirty;});
         const xrayImage = await partView.locator('#canvas-wrap').screenshot();
         assert.notDeepEqual(xrayImage,baseline,'X-ray did not change the rendered picture');
         await partView.locator('body').screenshot({path:resolve(evidence,'parts-and-xray.png')});
@@ -143,7 +157,7 @@ try {
         const framePage = await context.newPage();
         await framePage.setViewportSize({width:Math.min(1600,output.width),height:Math.min(1200,output.height)});
         await framePage.goto(origin + prefix + output.path);
-        await framePage.waitForFunction(() => document.documentElement.dataset.captureReady === 'true');
+        await until(framePage,() => document.documentElement.dataset.captureReady === 'true');
         await framePage.screenshot({path:resolve(evidence,output.channel.replace(/[^a-z0-9-]/gi,'_')+'.png')});
         await framePage.close();
     }
