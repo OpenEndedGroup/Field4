@@ -1,8 +1,8 @@
 name: text_one_vr
-description: 'Five shallow-3D reading spaces: marked breath, constituency canopy, dependency undertow,
-  Reed-Kellogg sentence furniture and a mixed-font typography playground. CPU SIMDVerlet, per-eye FLine
-  thickening and Slug text, with independent scores. Starts in desktop preview; OpenXR is an explicit
-  fresh-process mode. Generated from templates/text_one by build_transcript.py.'
+description: 'Six shallow-3D reading spaces: marked breath, constituency canopy, dependency undertow,
+  Reed-Kellogg sentence furniture, a mixed-font typography playground and slow word-local Gaussian blur.
+  CPU SIMDVerlet, per-eye FLine thickening and Slug text, with independent scores. Starts in desktop preview;
+  OpenXR is an explicit fresh-process mode. Generated from templates/text_one by build_transcript.py.'
 docs:
 - page: sentence_diagrams.md
   why: Parser setup, four diagrams, mixed-font typography and the reading-space DSL.
@@ -626,6 +626,46 @@ operations:
             player,
         )
 - create:
+    box: text1_word_blur
+    name: 14 · Words becoming weather
+    frame:
+      x: 650
+      y: 550
+      w: 480
+      h: 100
+    properties:
+      code: |
+        import afield.graphics.scene.reading.*
+        import afield.graphics.text.*
+
+        // Separate words can breathe on separate clocks. The blur radius is measured in ems;
+        // opacity is independent, so a word can stay bright while its outline dissolves.
+        val serif = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
+        val graph = readingDiagram {
+            for ((i, word) in listOf("words", "becoming", "weather").withIndex()) {
+                val p = point("word-$i", (i - 1) * .65f, .04f, pinned = true)
+                text("blur-word-$i", word, p) {
+                    font = serif
+                    scale = .48f
+                    // Reserve once, before Drawing. Scrubbing blur then only samples cached masks.
+                    blurCapacity = 2.2f
+                }
+            }
+        }
+        val progress = progressReporter("Prepare words becoming weather", showDelayMillis = 0)
+        val player = try {
+            ReadingDiagramPlayer.prepare(graph, serif, "field-slug".file, diagramScore(graph, 32.0) {}) { n, total, text ->
+                progress.update(n.toDouble() / total, "$n / $total: $text")
+            }
+        } finally {
+                progress.close()
+            }
+        prop<ReadingExample>(exampleSix) = ReadingExample(
+            "6 · Words becoming weather",
+            "Slow word-local Gaussian blur: emerge from a soft cloud, hold in focus, then dissolve again. Structural lines and other words stay sharp.",
+            player,
+        )
+- create:
     box: text1_score
     name: 6 · Scores / example selector
     frame:
@@ -637,13 +677,20 @@ operations:
       code: |
         import afield.graphics.scene.reading.*
 
-        // All five scores are separate from graph construction and native typography preparation.
+        // All six scores are separate from graph construction and native typography preparation.
         // Re-run this box to rescore the existing players; their physics and Slug buffers are retained.
-        val allExamples = listOf(exampleOne, exampleTwo, exampleThree, exampleFour, exampleFive)
+        val allExamples = listOf(exampleOne, exampleTwo, exampleThree, exampleFour, exampleFive, exampleSix)
         for ((index, example) in allExamples.withIndex()) {
             val graph = example.player.diagram
-            example.player.playback.score = diagramScore(graph, duration = if (index == 3) 24.0 else 20.0) {
-                if (index == 3) {
+            example.player.playback.score = diagramScore(graph, duration = if (index == 5) 32.0 else if (index == 3) 24.0 else 20.0) {
+                if (index == 5) {
+                    for ((i, word) in graph.texts.withIndex()) {
+                        blurIn(word, at = i * .7, seconds = 7.0, radius = .9f)
+                        fadeIn(word, at = i * .7, seconds = 3.5)
+                        blurOut(word, at = 18.0 + i * .7, seconds = 8.0, radius = 1.2f)
+                        fadeOut(word, at = 24.0 + i * .7, seconds = 5.0)
+                    }
+                } else if (index == 3) {
                     val furniture = graph.group("furniture")
                     val reading = graph.group("reading")
                     fadeIn(furniture, at = 0.0, seconds = 1.0)
@@ -672,7 +719,7 @@ operations:
             val e = poem.examples[poem.selected]
             display("selected example", "<div style='padding:12px;width:440px'><b>${e.title}</b><p>${e.description}</p></div>")
         }
-        controlGroup("four reading spaces") {
+        controlGroup("reading spaces") {
             for ((i, e) in allExamples.withIndex()) button(e.title) { down ->
                 if (down) {
                     poem.select(i)
@@ -684,7 +731,7 @@ operations:
         controlGroup("score") {
             checkbox("Play score", initialValue = true) { poem.current.playback.playing = it }
             checkbox("Repeat score", initialValue = true) { poem.current.playback.repeat = it }
-            slider("Score time (seconds)", initialValue = 6.0, min = 0.0, max = 24.0) {
+            slider("Score time (seconds)", initialValue = 6.0, min = 0.0, max = 32.0) {
                 poem.current.playback.playing = false
                 poem.current.playback.seek(it.toDouble())
             }
@@ -1652,7 +1699,7 @@ operations:
                 lastStats = now
                 display(
                     "frame",
-                    "<div style='padding:12px;width:440px'>Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.</div>",
+                    "<div style='padding:12px;width:440px'>${if (drawing.textBlurNeedsRebuild) "Blur capacity changed: rebuild Drawing. " else ""}Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.</div>",
                 )
             }
             frame()
@@ -1673,6 +1720,9 @@ operations:
 - connect:
     parent: text1_context
     child: text1_typography
+- connect:
+    parent: text1_context
+    child: text1_word_blur
 - connect:
     parent: text1_context
     child: text1_stroke
@@ -1702,6 +1752,9 @@ operations:
     child: text1_score
 - connect:
     parent: text1_typography
+    child: text1_score
+- connect:
+    parent: text1_word_blur
     child: text1_score
 - connect:
     parent: text1_poem
@@ -1736,6 +1789,8 @@ operations:
     box: text1_example4
 - launch:
     box: text1_typography
+- launch:
+    box: text1_word_blur
 - launch:
     box: text1_score
 - launch:

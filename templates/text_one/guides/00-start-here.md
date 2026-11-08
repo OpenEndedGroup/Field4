@@ -18,6 +18,7 @@ The score-time slider is seekable. Pausing the score does not stop physics or he
 
 ## Read these next
 
+- [Word blur](07-word-blur.md): slow, independent Gaussian entrances and exits.
 - [Typography and style](02-typography-and-style.md): fonts, bold, italics, numeric weights and inline selections.
 - [Measurements](03-measurements.md): ink, advances, words, baselines, cap height, x-height and descenders.
 - [Drawing in text coordinates](04-shapes-and-anchors.md): rectangles, rules, dots and arbitrary FLines that remain attached to text.
