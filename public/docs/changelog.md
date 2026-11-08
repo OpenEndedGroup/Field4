@@ -7,6 +7,57 @@ Welcome screen lists every commit in your own checkout.
 
 ## November 2026
 
+<!-- changelog: 29cb7e43af..96b9003473 -->
+### Audio curves: a sound as a few slow controls
+
+*8 November 2026*
+
+- **Audio curves**: a new page turns a recording into a handful of slow curves, step by step from
+  overlapping windows and ear-weighted spectra to a map that holds still, drawn as FLines under the
+  waveform player. [Audio curves](audio_curves.md).
+- **Three.js toolbar controls are opt-in**: a view starts as a picture you can orbit, and
+  `controls(...)` asks for the tools you want. [Toolbar controls](three_output.md#toolbar-controls).
+- Keyboard shortcuts in the docs are drawn as keycaps in one spelling.
+
+<!-- changelog: 095294fc5b..45f8ab1c5e -->
+### Penrose tilings and sentence diagrams
+
+*7 November 2026*
+
+- **Quasiperiodic tilings**: Penrose and other rhombus tilings built from de Bruijn grids, as
+  FLines, with sliding offsets, animation and a Manifold relief.
+  [Penrose and Other Quasiperiodic Tilings](debruijn_tilings.md).
+- **Sentence diagrams**: parse a sentence and draw its constituency canopy, dependency arcs and
+  Reed–Kellogg layout, up to a shallow-3D reading space. [Sentence diagrams](sentence_diagrams.md).
+- Open Anything searches live controls, and the shortcuts on the
+  [Keyboard shortcuts](keybindings.md) page and elsewhere are written as keycaps.
+
+<!-- changelog: 2c39e7131c..5609e9b460 -->
+### Hear the shape of a drum, and an AI4 that remembers
+
+*7 November 2026*
+
+- **Eigendrum**: compute the vibration modes of any polygon, strike it anywhere and hear it, with
+  a live voice whose shape can change while it plays. [Eigendrum](eigendrum.md).
+- **AI4 memory**: AI4 keeps short notes between sessions in a folder you can read and edit, and
+  consolidates them against saved chats. [Keeping track of the work](ai4_tools.md#keeping-track-of-the-work).
+- The AI4 chat box gains fast autocomplete and a spelling menu, and `Table.heat` colours numeric
+  cells from a colormap.
+
+<!-- changelog: cc4e522709..b41c117366 -->
+### Overnight routines and a knight-tour drawing laboratory
+
+*6–7 November 2026*
+
+- **Routines**: Field's overnight loops are described on one page, with how to see, adopt and
+  change them. [Overnight Routines](routines.md).
+- **Knight tours**: a workshop starting point that finds eighteen tours and draws them four ways.
+  [Knight tours: a drawing laboratory](knight_tour_workshop.md).
+- **AI4 in the reference**: a new codebase reference page for Field's agent harness.
+  [AI4](reference/ai4.md).
+- Sliders and canvas panning accept unbounded mouse drags, and clicks reach the top of a
+  full-screen window again.
+
 <!-- changelog: 706771453e..5664df2184 -->
 ### Several Physarum species sharing one GPU field
 
