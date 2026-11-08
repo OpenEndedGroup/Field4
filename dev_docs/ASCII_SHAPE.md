@@ -13,7 +13,7 @@ Decisions that differ from the essay:
 - No k-d tree: brute force over 95 glyphs plus a 5-bit-per-component cache is fast enough for a
   60 x 26 live `charGrid`. The cache answers every vector that rounds the same way with the glyph
   nearest the first one it met, so it differs from the exhaustive search on about 1 % of cells of
-  a turning 3-D scene (98.9-99.4 % agreement in the smoke). `convert(..., exact = true)` skips it.
+  a turning 3-D scene (99.6-99.7 % agreement in the smoke; 97.6-98.4 % in a live box on a larger knot). `convert(..., exact = true)` skips it.
 - Outer (directional) circles are the inner circles pushed 2.6x away from the cell centre.
 
 GPU pass (`ShapeAsciiGpu`):
@@ -31,8 +31,8 @@ GPU pass (`ShapeAsciiGpu`):
   window's bottom; the draw and scene-view passes flip `v`. The first cut drew rows and glyphs upside
   down; the smoke's "upright" check pins it.
 - Measured (smoke, Apple silicon, GPU shared with other sessions): 100.00 % agreement with the exact
-  CPU search on every frame; matching pass ~1.2 ms fixed cost, 3.2 ms (10th pct) at 512 x 192 cells,
-  where the CPU takes ~120 ms.
+  CPU search on every frame; matching pass ~1.2 ms fixed cost, ~4.5 ms at 512 x 192 cells, where the
+  CPU takes 117-209 ms.
 
 Known limits:
 - Large even grey areas (photos, UI screenshots, the shaded side of a lit object) fill with one

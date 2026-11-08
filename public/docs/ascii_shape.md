@@ -226,7 +226,7 @@ matcher as a GPU pass, so it keeps up with a Vulkan scene. Draw any module into 
 and the characters come out in the window every frame, as in the real-time 3-D scenes of Harri's
 essay. Here it is a lit torus knot, turning, with the scene itself in the corner:
 
-```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="ascii_gpu_renderer" transcript="dev_docs/agents/transcripts/docs_capture/ascii_shape_gpu.yaml" video="assets/ascii_shape/gpu-knot.mp4" duration="8" wait="1" timeout="300" embed=true hidden=true name="ascii-shape-gpu-knot" alt="a native window of light gray characters on near-black: a torus knot turning about two axes, drawn in 128 columns and 48 rows of characters. The lit upper-left sides of the tube are runs of @, B and 8, the shaded sides Z, Q and S, and the rims are underscores, quotes, slashes and pipes that follow the curve. In the lower right corner a small inset shows the same knot as a smooth white shaded render"}
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="ascii_gpu_renderer" transcript="dev_docs/agents/transcripts/docs_capture/ascii_shape_gpu.yaml" video="assets/ascii_shape/gpu-knot.mp4" duration="5" wait="1" timeout="300" embed=true hidden=true name="ascii-shape-gpu-knot" alt="a native window of light gray characters on near-black: a torus knot turning about two axes, drawn in 128 columns and 48 rows of characters. The lit upper-left sides of the tube are runs of @, B and 8, the shaded sides Z, Q and S, and the rims are underscores, quotes, slashes and pipes that follow the curve. In the lower right corner a small inset shows the same knot as a smooth white shaded render"}
 // The transcript builds a renderer whose window is the grid's size, and the knot box below beneath it.
 ```
 
@@ -304,10 +304,10 @@ void main() {
     mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cos(b), sin(b), 0.0, -sin(b), cos(b));
     vec3 p = rx * ry * pos;
     fnormal = rx * ry * normal;
-    // a camera 4 units back looking along +z; +y is up, since Field flips its viewports;
+    // a camera 5 units back looking along +z; +y is up, since Field flips its viewports;
     // depth runs 0..1 from z = 1 to z = 8
-    float z = p.z + 4.0;
-    gl_Position = vec4(p.x * 2.6 / pc.aspect, p.y * 2.6, (z - 1.0) / 7.0 * z, z);
+    float z = p.z + 5.0;
+    gl_Position = vec4(p.x * 2.4 / pc.aspect, p.y * 2.4, (z - 1.0) / 7.0 * z, z);
 }
 ```
 
@@ -366,27 +366,28 @@ frames {
 Over five frames of the turning knot, each at three settings (no contrast, `contrast = 3`, and
 `contrast = 3, directional = 3`), the GPU picked the same character as
 `convert(..., exact = true)` in every cell of every frame, 6,144 cells a frame: 100.00 %. The
-default `convert` agrees with it on 98 to 99 % of cells; the share moves with the frames its cache
-has already met. The difference is the cache, not the GPU. `convert` rounds each
-cell's six numbers to 32 levels and answers every vector that rounds the same way with the glyph
-nearest the first such vector it met, so about one cell in a hundred gets a near neighbour instead
-of the nearest glyph. `exact = true` searches all 95 glyphs for every cell, as the GPU does.
+default `convert` agrees with it on 99.6 to 99.7 % of cells. The difference is the cache, not the
+GPU. `convert` rounds each cell's six numbers to 32 levels and answers every vector that rounds the
+same way with the glyph nearest the first such vector it met, so a few cells in a thousand get a
+near neighbour instead of the nearest glyph. `exact = true` searches all 95 glyphs for every cell,
+as the GPU does.
 
 That search is cheap on the GPU, and its cost grows slowly with the grid. GPU time is the matching
-pass alone, from timestamp queries, over 240 frames of the knot; CPU time is one `convert` of the
-same frame with `contrast = 3, directional = 3`, the median of five:
+pass alone, from timestamp queries, the median over 240 frames of the knot; CPU time is one
+`convert` of the same frame with `contrast = 3, directional = 3`, the median of five. Each figure is
+the median of three runs:
 
-| Grid | Scene pixels | GPU, median | GPU, 10th percentile | CPU, `exact = true` | CPU, cached |
-| --- | --- | --- | --- | --- | --- |
-| 64 x 24 | 640 x 456 | 1.8 ms | 1.2 ms | 2.1 ms | 2.0 ms |
-| 128 x 48 | 1280 x 912 | 2.5 ms | 1.7 ms | 8.0 ms | 7.9 ms |
-| 256 x 96 | 2560 x 1824 | 2.6 ms | 1.8 ms | 32 ms | 27 ms |
-| 512 x 192 | 5120 x 3648 | 4.3 ms | 3.2 ms | 121 ms | 107 ms |
+| Grid | Scene pixels | GPU matching pass | CPU, `exact = true` | CPU, cached |
+| --- | --- | --- | --- | --- |
+| 64 x 24 | 640 x 456 | 1.2 ms | 5.7 ms | 5.3 ms |
+| 128 x 48 | 1280 x 912 | 1.6 ms | 7.3 ms | 6.6 ms |
+| 256 x 96 | 2560 x 1824 | 1.7 ms | 31 ms | 27 ms |
+| 512 x 192 | 5120 x 3648 | 4.5 ms | 153 ms | 128 ms |
 
-On the GPU about 1.2 ms is fixed cost, and 98,304 cells add only about 2 ms to it. The CPU's time
-grows with the number of pixels it averages, so a 128-column grid fits in a 60 Hz frame on either,
-but only the GPU keeps up at 256 columns and beyond. The cache saves the CPU little here because a
-turning scene keeps meeting new cell patterns.
+On the GPU about 1.2 ms is fixed cost, and 98,304 cells add about 3 ms to it. The CPU's time grows
+with the number of pixels it averages: a 128-column grid fits in a 60 Hz frame either way, but only
+the GPU keeps up at 256 columns and beyond. The cache saves the CPU little here, because a turning
+scene keeps meeting new cell patterns.
 
 ??? aside "Where the GPU numbers come from"
     The smoke test `ascii.shape-gpu.smoke` (`ShapeAsciiGpuSmoke.kt`) draws this knot on a real
@@ -395,9 +396,10 @@ turning scene keeps meeting new cell patterns.
     100.00 %. It also checks that an empty scene reads back as spaces, and that a scene lit in its
     top half has ink in the top rows. That check exists because Field flips its viewports so that
     clip-space +y is up, so a full-screen pass sees the window's bottom row at `uv.y = 0`. The first
-    cut drew every row and glyph upside down. The timings are from an Apple-silicon Mac with other
-    Field sessions sharing the GPU, so the medians wander by about a millisecond between runs.
-    The 10th percentile is closer to an idle machine.
+    cut drew every row and glyph upside down. The timings are from an Apple-silicon Mac shared with
+    other Field sessions. The GPU medians held within 0.1 ms across the three runs except at
+    512 x 192 (3.7 to 4.7 ms); the CPU's wandered more, from 2.3 to 5.9 ms at 64 x 24 and from 117 to
+    209 ms at 512 x 192.
 
 ## Reference
 
