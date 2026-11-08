@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-224 source file(s), 709 public symbol(s), 313 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+225 source file(s), 711 public symbol(s), 314 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -323,7 +323,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L997) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1006) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -1886,6 +1886,20 @@ The renderer goes away while an [`OpenDlssNrStudy`](graphics.md#opendlssnrstudy-
 | Declaration | Summary |
 | --- | --- |
 | <a id="opendlssnrteardownsmoke-kt--opendlssnrteardownsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrTeardownSmoke/#L43) |  |
+
+## ParticleLeniaSmoke.kt { #particleleniasmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/ParticleLeniaSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/ParticleLeniaSmoke/)
+
+### ParticleLeniaSmoke { #particleleniasmoke-kt-particleleniasmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">ParticleLeniaSmoke</span></code>](source/jvmMain/afield/examples/four/ParticleLeniaSmoke/#L40)
+
+Grades [`ShaderParticleLenia`](simulation.md#shaderparticlelenia-kt-shaderparticlelenia) against the CPU reference [`ParticleLenia`](alife.md#alife-particle-lenia-kt-particlelenia).
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="particleleniasmoke-kt--particleleniasmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ParticleLeniaSmoke/#L44) |  |
 
 ## ParticleSketchSmoke.kt { #particlesketchsmoke-kt }
 
