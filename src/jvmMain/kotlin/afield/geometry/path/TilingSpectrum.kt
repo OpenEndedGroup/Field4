@@ -394,25 +394,32 @@ class GraphSpectrum(
     }
 
     /**
-     * The integrated density of states N(E) as a stepped FLine: x is E mapped onto 0..[width]
-     * between the lowest and highest eigenvalue, y is the fraction of states at or below E scaled to
-     * 0..[height], drawn upward (y is negated, so it reads correctly in `lines(...)`). With [weights]
-     * (one per state, such as [weightOn] the interior) each state counts by its weight instead of 1.
-     * A vertical jump is a degenerate level; a flat stretch is a gap.
+     * The integrated density of states N(E) as a stepped FLine: x is E mapped from [from]..[to]
+     * (default: the whole spectrum) onto 0..[width], y is the share of the window's states at or
+     * below E scaled to 0..[height], drawn upward (y is negated, so it reads correctly in
+     * `lines(...)`). With [weights] (one per state, such as [weightOn] the interior) each state
+     * counts by its weight instead of 1. A vertical jump is a degenerate level; a flat stretch is a
+     * gap. Pass a narrow window around zero to see the gaps beside the E = 0 jump.
      */
     @JvmOverloads
-    fun idosLine(width: Double = 480.0, height: Double = 260.0, weights: DoubleArray? = null): FLine {
-        val lo = energies.first()
-        val hi = energies.last()
-        val total = weights?.sum() ?: energies.size.toDouble()
+    fun idosLine(
+        width: Double = 480.0,
+        height: Double = 260.0,
+        weights: DoubleArray? = null,
+        from: Double = energies.first(),
+        to: Double = energies.last(),
+    ): FLine {
+        val inside = energies.indices.filter { energies[it] in from..to }
+        val total = inside.sumOf { weights?.get(it) ?: 1.0 }
         val f = FLine().moveTo(0.0, 0.0)
         var acc = 0.0
-        for (i in energies.indices) {
-            val ex = (energies[i] - lo) / (hi - lo) * width
+        for (i in inside) {
+            val ex = (energies[i] - from) / (to - from) * width
             f.lineTo(ex, -acc / total * height)
             acc += weights?.get(i) ?: 1.0
             f.lineTo(ex, -acc / total * height)
         }
+        f.lineTo(width, -height)
         return f.apply { stroked = true }
     }
 
