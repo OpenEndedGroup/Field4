@@ -13264,7 +13264,7 @@ make prepositions and complementizers heads; it reports the same pattern on cont
 
 `src/jvmMain/kotlin/afield/graphics/text/sentences/DependencyLength.kt` — [read the source](source/jvmMain/afield/graphics/text/sentences/DependencyLength/)
 
-**Used in:** [Dependency length in real texts](../dependency_length.md)
+**Used in:** [Sentence diagrams](../sentence_diagrams.md)
 
 ### Top-level functions { #dependencylength-kt-functions }
 
@@ -13410,7 +13410,7 @@ you know the key you want.
 
 `src/jvmMain/kotlin/afield/graphics/text/sentences/Flines.kt` — [read the source](source/jvmMain/afield/graphics/text/sentences/Flines/)
 
-**Used in:** [Sentence diagrams](../sentence_diagrams.md), [Dependency length in real texts](../dependency_length.md)
+**Used in:** [Sentence diagrams](../sentence_diagrams.md)
 
 ### Top-level functions { #flines-kt-functions }
 
@@ -14090,7 +14090,7 @@ Constants: `UD`, `SD_BASIC`, `SD_COLLAPSED`.
 
 `src/jvmMain/kotlin/afield/graphics/text/sentences/SentenceDiagram.kt` — [read the source](source/jvmMain/afield/graphics/text/sentences/SentenceDiagram/)
 
-**Used in:** [Dependency length in real texts](../dependency_length.md), [Sentence diagrams](../sentence_diagrams.md)
+**Used in:** [Sentence diagrams](../sentence_diagrams.md)
 
 ### SentenceDiagram { #sentencediagram-kt-sentencediagram }
 

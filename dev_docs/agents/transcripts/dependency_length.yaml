@@ -4,7 +4,7 @@ description: 'Dependency length minimisation measured on five retained public-do
   ratio to chance, total length against sentence length, and five texts compared. Retained Stanza parses;
   no parser, model or GPU needed.'
 docs:
-- page: dependency_length.md
+- page: sentence_diagrams.md
   why: The measurement, its baselines (Futrell, Mahowald and Gibson 2015) and how to add a text.
 operations:
 - create:

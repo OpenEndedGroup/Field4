@@ -1051,17 +1051,17 @@
     },
     "assets/agent_transcripts/dependency_length/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
-      "capturedAt": "2026-11-08T18:03:21.331Z",
+      "capturedAt": "2026-11-08T19:31:16.724Z",
       "channels": 5,
       "file": "assets/web_publications/dependency_length/document/metadata.edn",
       "files": {
         "assets/web_publications/dependency_length/document/metadata.edn": "d0af5d8809a09ccca8385e3f5789dca618f043631da450d99f5523037699edc5",
-        "assets/web_publications/dependency_length/document/outputs.json": "bb26a9f74f2f215c515442eb1064e72edffa965c7d349c7aeeb37ac02cc95c3c",
-        "assets/web_publications/dependency_length/outputs/0.html": "d26310f4207c99bb6b739c3853078056333d025fe47c4c009554bab3ac9ce7c3",
-        "assets/web_publications/dependency_length/outputs/1.html": "9c2d627f621b5414938c032166ff171106ba72bd2be000860fa520cf1889ac3e",
-        "assets/web_publications/dependency_length/outputs/2.html": "edc05303c25465bb752a40c5864690ec36a8030a09f46031d51094bee416965c",
-        "assets/web_publications/dependency_length/outputs/3.html": "7cd266da3e00b35242f17fbb76b407b0ee0cee010da8e12656409529cbb6c6ed",
-        "assets/web_publications/dependency_length/outputs/4.html": "b5d4722c8491bb36a24cfa98977a612f1093328e3edf9998c3d43542d9bc42a4"
+        "assets/web_publications/dependency_length/document/outputs.json": "fd59f760b9dddc25d49a5652befa6af79f656e86dbe8be3c40263f4b9a5e1666",
+        "assets/web_publications/dependency_length/outputs/0.html": "f9eb772c73305cb34b7079e856c04acfc3a27e0e1fddc07610f3f5cf93f3af77",
+        "assets/web_publications/dependency_length/outputs/1.html": "3ec3f649504720caf76216aed4650903dbbb648597f832d59437807b91ee63ea",
+        "assets/web_publications/dependency_length/outputs/2.html": "00ce5d2a38200b5dc9d8889fd2b2caf2b6811c70c740737b398ffaf7e624e7cb",
+        "assets/web_publications/dependency_length/outputs/3.html": "4b471cf91501d0f04e5f0e7886586c61ce87df1c5c9a0767c1061d7e49288b87",
+        "assets/web_publications/dependency_length/outputs/4.html": "62e2a924747fff850f8270e50d372af164eae379913bf84e6236856b9e6cc042"
       },
       "kinds": [
         "plotly",
@@ -1069,13 +1069,13 @@
       ],
       "outputs": "assets/web_publications/dependency_length/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/dependency_length.yaml": "2ada12baf97b4ebc09e326be8bcdea02d74a81319296c224587773f2d3f79c95",
+        "dev_docs/agents/transcripts/dependency_length.yaml": "b555e4bed0472cd42f82a48090f8007dd5ae5e47dd3ed2a0b2849845c21ddd4e",
         "public/docs/assets/agent_transcripts/dependency_length/dl_gettysburg_code_.kt": "88ea5ef8d0a26061c6036bd5b35dcc7eb301543ffeecd186ef3608d37fe004a7",
         "public/docs/assets/agent_transcripts/dependency_length/dl_growth_code_.kt": "d4a1bfe616b83176d40365b74217ba13c65094cc1ccfc774c3875b4de3bc1735",
         "public/docs/assets/agent_transcripts/dependency_length/dl_ratios_code_.kt": "d80fbe16956a0da64cb7c62bed68ac757749aa0f6dafbf6f9737f0f1245b2148",
         "public/docs/assets/agent_transcripts/dependency_length/dl_reorderings_code_.kt": "3b90d87cf09f0f43a2a7364385083e61150d5cf52d91c5ddc81014f92bc67e71",
         "public/docs/assets/agent_transcripts/dependency_length/dl_table_code_.kt": "4ef7df13adf14a26ee921c8026ff22fa556e64ccbf76bd2f165ddf04530c9282",
-        "public/docs/assets/agent_transcripts/dependency_length/guides/dependency_length.md": "35847a12b9d69fb10aae48fda087381d9b0697e40c5cdd007f1e3bed7c8c50ad",
+        "public/docs/assets/agent_transcripts/dependency_length/guides/sentence_diagrams.md": "a2be49324399fa491cedff1fd13fda539aa7863c945613ec11ca92bdfec78fce",
         "public/docs/assets/agent_transcripts/dependency_length/metadata.edn": "d66a6ee210ad3ad5af945d7e1accdf08844ed62e6f98fca1ac43090d8bce0ffd"
       }
     },
