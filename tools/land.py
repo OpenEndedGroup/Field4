@@ -51,7 +51,8 @@ checkout holding `main`; later landings wait until the build finishes. It reuses
 and reports its own failure without undoing a landing. It refuses to build while that checkout has
 uncommitted changes under src/ or public/docs, because the site would mix them with pages generated
 from HEAD. Docs builds back to back coalesce: `doc` joins one already waiting at the tail of the
-queue (printing its id), and the lander answers consecutive docs items with a single build. The
+queue (printing its id), and the lander answers consecutive docs items with a single build. A docs item
+queued while a build was running is answered by that build if it succeeds and main has not moved. The
 running lander must be restarted after
 changes to this script are landed, because Python does not reload it while running.
 
@@ -420,7 +421,8 @@ def _describe(state: str, item: dict, queue: Path | None = None) -> str:
         if state == PENDING and item.get("started"):
             lines.append(f"         building for {_span(_since(item['started']))}; log: {item.get('log', '')}")
         elif state == LANDED:
-            lines.append(f"         main {item.get('built_from', '')[:9]}, {_span(_since(item.get('finished')))} ago")
+            lines.append(f"         main {item.get('built_from', '')[:9]}, {_span(_since(item.get('finished')))} ago"
+                         + (f"; built by {item['coalesced_into']}" if item.get("coalesced_into") else ""))
         elif state == BOUNCED:
             lines.append(f"         {_span(_since(item.get('finished')))} ago: {item.get('reason', '?')}")
             lines.append(f"         log: {item.get('log', '')}")
@@ -1889,6 +1891,20 @@ def _dirty_doc_reason(checkout: Path, dirty: list[str]) -> str:
             f"build would read ({shown}); commit or set them aside, then queue `land.py doc` again")
 
 
+def _covering_doc(queue: Path, item: dict, head: str) -> dict | None:
+    """A docs build of this checkout that was already running when [item] was queued, built [head],
+    and succeeded. Nothing lands between two docs items, so [item] would build the same site again."""
+    queued = _when(item.get("enqueued"))
+    if queued is None:
+        return None
+    for done in _items(queue, LANDED):
+        start, end = _when(done.get("started")), _when(done.get("finished"))
+        if (_is_doc(done) and done["checkout"] == item["checkout"] and done.get("built_from") == head
+                and start is not None and end is not None and start <= queued <= end):
+            return done
+    return None
+
+
 def _run_doc(item: dict, primary: Path, queue: Path) -> None:
     """Build the served checkout after earlier queue items, without changing Git history."""
     checkout = Path(item["checkout"])
@@ -1899,6 +1915,13 @@ def _run_doc(item: dict, primary: Path, queue: Path) -> None:
     if holder is None or holder.resolve() != checkout.resolve():
         item.update(reason="the checkout holding main changed; queue a new doc item for the current checkout", finished=_now())
         _move(queue, item, BOUNCED)
+        return
+    # Asked for while the previous build was running, with main unchanged since: that build answers it.
+    # A request made after a build finished is honoured, even for the same commit.
+    head = _git(checkout, "rev-parse", "HEAD")
+    if covering := _covering_doc(queue, item, head):
+        item.update(built_from=head, log=covering.get("log", str(log)), coalesced_into=covering["id"], finished=_now())
+        _move(queue, item, LANDED)
         return
     script = checkout / "tools" / "build_zensical_docs.py"
     if not script.is_file():
