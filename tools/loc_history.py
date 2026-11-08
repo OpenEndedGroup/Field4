@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Measure hand-written code across the project's whole git history, one point per day.
+"""Measure the project's own code, neither generated nor vendored, over its whole git history.
 
 Counts Kotlin, JavaScript, HTML, Swift, Python, Rust, C/C++/Objective-C, Go and shader source
 (see `EXT_LANG`) in Field4 *and* in the repos it pulls in as submodules, and emits a JSON series
