@@ -359,6 +359,9 @@ object DemoTranscriptExecSmokeTest {
         // De Bruijn tilings: lines / showPlaneGrid / showPlane through drawToSVG, sliders, and a
         // Manifold relief drawn by showMesh's CPU rasteriser. No Window, no Renderer.
         "debruijn_tilings_demo",
+        // The 3D multigrid: rhombohedra as showMesh / showMeshGrid meshes, slices through
+        // showPlaneGrid, and Manifold unions (toSolid, hullOfPointsD) on the CPU. No Window, no Renderer.
+        "debruijn_tilings_3d_demo",
         // lp_curves.md's companion: LP methods as curve generators over LpPolygon, drawn through
         // showPlaneGrid / showPlane. The second box ends in `animate { }` and is launched; the third
         // draws the fan map in an editable threeLines viewer. CPU only.
