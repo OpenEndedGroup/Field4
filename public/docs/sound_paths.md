@@ -32,7 +32,7 @@ then follow the links for the details.
 
 ---
 
-## The ten that make samples
+## The eleven that make samples
 
 | path | what it is | needs | offline? | shares `render`? | page |
 | --- | --- | --- | --- | --- | --- |
@@ -46,8 +46,9 @@ then follow the links for the details.
 | `dough-engine` | the whole dough/Strudel engine as a wasm module, with its own 128-frame block loop. `class DoughEngine` in `src/jvmMain/kotlin/afield/audio/synth/Dough.kt`, wrapped onto the shared `render` call by `DoughAudioSink` | the dough wasm build | both | **yes**, through `parkDough` | — |
 | `pat-spatial` | a pattern **placed in space**: one dough engine per `spat` tag, its output taken as mono and aimed by Steam Audio's HRTF. `fun patSpatial` in `src/jvmMain/kotlin/afield/audio/synth/PatSpatial.kt` | dough, plus an uncommitted `libphonon` — `./gradlew fetchSteamAudioNatives` | both | **yes** | [A pattern in space](pat_spatial.md) |
 | `sonic-pi` | a Ruby program handed to Sonic Pi's own scsynth over OSC. `class SonicPi` in `src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt` | a local Sonic Pi v5 | realtime only | no | [Sonic Pi](sonic_pi.md) |
+| `modal-drum` | a drawn shape heard as a drum: its vibration modes solved by finite elements, struck, and summed as one damped sinusoid per mode. `class DrumModes` in `src/jvmMain/kotlin/afield/audio/modal/Eigendrum.kt` | nothing | offline only | no | [Eigendrum](eigendrum.md) |
 
-Four of those ten are pattern voices: `pat-stand-in`, `dirt-samples`, `faust-poly` and
+Four of those eleven are pattern voices: `pat-stand-in`, `dirt-samples`, `faust-poly` and
 `pat-spatial`. The first two are what [Sound](sound.md) covers, with the fallback behaviour and the
 provenance audit; `faust-poly` is on [Faust](faust.md), because what it needs explaining is the voice
 allocator rather than the pattern; and `pat-spatial` has [a page of its
@@ -55,7 +56,7 @@ own](pat_spatial.md), because what it needs explaining is why a tag in a pattern
 why the synthesis is a thread away from the audio. Read whichever you have picked; this page only
 helps you pick.
 
-One of the ten is **realtime only**: `sonic-pi`, the only path where **no sample ever
+One of the eleven is **realtime only**: `sonic-pi`, the only path where **no sample ever
 enters this process**. Field sends text and receives log lines; the audio exists entirely inside
 another program's synthesiser. You cannot filter, plot or record Sonic Pi's output the way you can
 the others'. The way back in is `link-audio-in`, below.
@@ -146,8 +147,9 @@ and N WebAssembly instances in one GraalVM context, none of which the engine has
 Because both share `render`, both get the speakers, the engine's visualisers, the Link output and
 the box lifecycle with no adapter.
 
-Of the ten paths that make samples, `sonic-pi` is the only one that does not share `render`, and no
-wrapper can make it: it is a different process, and no sample ever enters this one.
+Of the eleven paths that make samples, two do not share `render`. No wrapper can bring `sonic-pi`
+onto it: it is a different process, and no sample ever enters this one. `modal-drum` renders a
+whole strike into a buffer at once, and you hear it as a WAV file or as a player in the box's output.
 
 `dough-engine` reaches `render` through a wrapper: `class DoughAudioSink` is a `StereoNode` in the
 same file as `DoughEngine`, and `parkDough` registers `audio(sink)` with the engine.
