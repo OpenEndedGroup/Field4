@@ -3902,7 +3902,10 @@ private fun normalizeAngle(angle: Float): Float {
 // ---------- Higher-order B-splines ----------
 
 /**
- * Evaluate a uniform open B-spline of arbitrary degree using Cox-de Boor.
+ * A B-spline of [degree] through [controlPoints], evaluated with Cox-de Boor at [samples] points.
+ * Open, the knots are clamped, so the curve starts at the first control point and ends at the last.
+ * [closed] wraps the first [degree] points round to the end and uses uniform knots, so the curve
+ * is a smooth loop whose last sample is its first; it passes through none of the control points.
  */
 fun bsplineFrom(
     controlPoints: List<Vec3>,
@@ -3912,22 +3915,28 @@ fun bsplineFrom(
 ): FLine {
     if (controlPoints.size < degree + 1) return FLine()
 
-    val cp = if (closed) {
-        val wrap = controlPoints.take(degree)
-        controlPoints + wrap
-    } else controlPoints
+    // Appended with addAll, not `controlPoints + ...`: on a List<Vec3> that `+` adds the two lists
+    // point by point (and throws when their sizes differ), so closed curves used to throw.
+    val cp = if (closed) controlPoints.toMutableList().apply { addAll(controlPoints.take(degree)) } else controlPoints
 
     val n = cp.size - 1
     val p = degree
     val knotCount = n + p + 2
     val knots = FloatArray(knotCount)
 
-    for (i in 0..p) knots[i] = 0f
-    val interior = n - p
-    for (j in 1..interior) {
-        knots[p + j] = j.toFloat() / (interior + 1).toFloat()
+    if (closed) {
+        // Uniform knots; the loop is the span where p + 1 basis functions overlap, [knots[p], knots[n + 1]].
+        for (i in 0 until knotCount) knots[i] = i.toFloat() / (knotCount - 1)
+    } else {
+        for (i in 0..p) knots[i] = 0f
+        val interior = n - p
+        for (j in 1..interior) {
+            knots[p + j] = j.toFloat() / (interior + 1).toFloat()
+        }
+        for (i in (p + interior + 1) until knotCount) knots[i] = 1f
     }
-    for (i in (p + interior + 1) until knotCount) knots[i] = 1f
+    val uStart = if (closed) knots[p] else 0f
+    val uEnd = if (closed) knots[n + 1] else 1f
 
     fun basis(u: Float): FloatArray {
         val N = FloatArray(n + 1)
@@ -3951,8 +3960,13 @@ fun bsplineFrom(
 
     val pts = ArrayList<Vec3>(samples)
     for (s in 0 until samples) {
-        val u = if (samples == 1) 0f else s.toFloat() / (samples - 1)
-        val N = basis(u.coerceIn(0f, 1f))
+        // A loop ends where it began; its end knot is outside every half-open basis span.
+        if (closed && s == samples - 1 && s > 0) {
+            pts.add(Vec3(pts[0]))
+            continue
+        }
+        val u = if (samples == 1) uStart else uStart + (uEnd - uStart) * s.toFloat() / (samples - 1)
+        val N = basis(u.coerceIn(uStart, uEnd))
         val pnt = Vec3()
         for (i in 0..n) {
             pnt.add(Vec3(cp[i]).mul(N[i]))
