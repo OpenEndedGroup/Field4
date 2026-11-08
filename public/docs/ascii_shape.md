@@ -355,8 +355,8 @@ frames {
         val cached = gpu.ascii.convert(scene, gpu.cols, contrast = c, directional = d, rows = gpu.rows)
         display(
             "agreement",
-            "GPU = CPU exact on ${"%.2f".format(100 * chars.agreement(exact))}% of cells, " +
-                "= CPU cached on ${"%.2f".format(100 * chars.agreement(cached))}%",
+            "GPU = CPU exact on ${(100 * chars.agreement(exact)).f2}% of cells, " +
+                "= CPU cached on ${(100 * chars.agreement(cached)).f2}%",
         )
         repeat(30) { frame() }
     }
@@ -365,8 +365,9 @@ frames {
 
 Over five frames of the turning knot, each at three settings (no contrast, `contrast = 3`, and
 `contrast = 3, directional = 3`), the GPU picked the same character as
-`convert(..., exact = true)` in every one of the 6,144 cells: 100.00 %. The default `convert` agrees
-with it on 98.9 to 99.0 % of cells. The difference is the cache, not the GPU. `convert` rounds each
+`convert(..., exact = true)` in every cell of every frame, 6,144 cells a frame: 100.00 %. The
+default `convert` agrees with it on 98 to 99 % of cells; the share moves with the frames its cache
+has already met. The difference is the cache, not the GPU. `convert` rounds each
 cell's six numbers to 32 levels and answers every vector that rounds the same way with the glyph
 nearest the first such vector it met, so about one cell in a hundred gets a near neighbour instead
 of the nearest glyph. `exact = true` searches all 95 glyphs for every cell, as the GPU does.

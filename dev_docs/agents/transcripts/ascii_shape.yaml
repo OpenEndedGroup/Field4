@@ -323,8 +323,8 @@ operations:
                   val cached = gpu.ascii.convert(scene, gpu.cols, contrast = c, directional = d, rows = gpu.rows)
                   display(
                       "agreement",
-                      "GPU = CPU exact on ${"%.2f".format(100 * chars.agreement(exact))}% of cells, " +
-                          "= CPU cached on ${"%.2f".format(100 * chars.agreement(cached))}%",
+                      "GPU = CPU exact on ${(100 * chars.agreement(exact)).f2}% of cells, " +
+                          "= CPU cached on ${(100 * chars.agreement(cached)).f2}%",
                   )
                   repeat(30) { frame() }
               }
