@@ -19,7 +19,7 @@ import struct
 
 import numpy as np
 
-from .curve import CurveConfig, _embed_distances, _mel_filter, read_wav_channels
+from .curve import PROGRESS_HELP, CurveConfig, _embed_distances, _mel_filter, progress_printer, read_wav_channels
 
 #: Header ``kind`` at byte 40 of a .f4curve file (0, the reserved default, is a rolling window).
 KIND_EMA = 1
@@ -80,20 +80,27 @@ class EmaCurveAnalyzer:
         return x @ (u @ vt) + ym
 
 
-def write_ema_curves(path, samples, config, longest_seconds=20.0):
-    """Write a .f4curve file of EMA curves; history is the number of timescales."""
+def write_ema_curves(path, samples, config, longest_seconds=20.0, progress=None):
+    """Write a .f4curve file of EMA curves; history is the number of timescales.
+
+    ``progress``, if given, is called as ``progress(done, frames)`` after each chunk of records.
+    """
     samples = np.asarray(samples)
     frames = max(0, 1 + (len(samples) - config.fft_size) // config.hop_size)
     header = struct.pack('<8sIIIIIIQId12x', b'F4CURVE\0', 1, config.sample_rate, config.fft_size,
                          config.hop_size, config.history, config.dimensions, frames,
                          KIND_EMA, longest_seconds)
     analyzer = EmaCurveAnalyzer(config, longest_seconds)
+    done = 0
     with open(Path(path), 'wb') as out:
         out.write(header)
         for start in range(0, len(samples), config.hop_size * 16):
             for timestamp, coords in analyzer.push(samples[start:start + config.hop_size * 16]):
+                done += 1
                 out.write(struct.pack('<dII', timestamp, len(coords), 0))
                 out.write(coords.astype('<f4').tobytes())
+            if progress is not None:
+                progress(done, frames)
 
 
 def main():
@@ -107,14 +114,17 @@ def main():
     parser.add_argument('--mel-bands', type=int, default=64)
     parser.add_argument('--dimensions', type=int, choices=(2, 3), default=2)
     parser.add_argument('--compression', type=float, default=0.3)
+    parser.add_argument('--progress', action='store_true', help=PROGRESS_HELP)
     args = parser.parse_args()
     rate, samples = read_wav_channels(args.input)
     config = CurveConfig(rate, args.fft_size, args.hop_size, args.mel_bands, args.points, args.dimensions,
                          compression=args.compression)
     output = Path(args.output)
-    for channel in range(samples.shape[1]):
-        path = output if samples.shape[1] == 1 else output.with_name(f"{output.stem}.ch{channel + 1}{output.suffix}")
-        write_ema_curves(path, samples[:, channel], config, args.longest)
+    channels = samples.shape[1]
+    for channel in range(channels):
+        path = output if channels == 1 else output.with_name(f"{output.stem}.ch{channel + 1}{output.suffix}")
+        report = progress_printer(channel, channels) if args.progress else None
+        write_ema_curves(path, samples[:, channel], config, args.longest, report)
         print(f"channel {channel + 1}: {path}")
 
 

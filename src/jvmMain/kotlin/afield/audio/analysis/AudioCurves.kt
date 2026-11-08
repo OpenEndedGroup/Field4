@@ -8,6 +8,8 @@ import afield.graphics.render.fline
 import afield.graphics.render.thickness
 import afield.math.linalg.Vec4
 import afield.math.linalg.vec
+import afield.ui.output.ProgressReporter
+import afield.ui.output.withProgress
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -63,13 +65,32 @@ data class AudioCurveSettings(
  * This runs the `fieldaudio_curve` Python package from this checkout through `uv` (dependency group
  * `audio-curve`: NumPy and SciPy). The files land in [directory], named after the WAV and the
  * [settings], and are reused while they are newer than the WAV, so a box that calls this on every
- * run only pays for the analysis once. Close the returned files when you are done with them.
+ * run only pays for the analysis once. While an analysis runs, a progress bar under the calling box
+ * shows how far it has got. Close the returned files when you are done with them.
+ *
+ * A long analysis blocks the box's run. To keep the box live, move it to a worker inside `go { }`.
+ * The box travels with the coroutine, so the progress bar still draws under it, and stopping the
+ * box interrupts the analysis:
+ *
+ * ```kotlin
+ * import kotlinx.coroutines.Dispatchers
+ * import kotlinx.coroutines.runInterruptible
+ *
+ * go {
+ *     val curves = runInterruptible(Dispatchers.IO) { audioCurves(wav) }
+ *     println("${curves.first().frameCount} frames")
+ * }
+ * ```
  */
 fun audioCurves(
     wav: Path,
     settings: AudioCurveSettings = AudioCurveSettings(),
     directory: Path = Paths.get(System.getProperty("java.io.tmpdir"), "field-audio-curves"),
-): List<AudioCurveFile> {
+): List<AudioCurveFile> = withProgress(PROGRESS_BAR) { bar -> openAudioCurves(wav, settings, directory, bar) }
+
+private const val PROGRESS_BAR = "audio curves"
+
+private fun openAudioCurves(wav: Path, settings: AudioCurveSettings, directory: Path, bar: ProgressReporter): List<AudioCurveFile> {
     val source = wav.toAbsolutePath().normalize()
     require(Files.isRegularFile(source)) { "No such WAV file: $source" }
     val channels = AudioSystem.getAudioFileFormat(source.toFile()).format.channels
@@ -78,14 +99,16 @@ fun audioCurves(
     val outputs = if (channels == 1) listOf(base)
         else (1..channels).map { base.resolveSibling(base.fileName.toString().replace(".f4curve", ".ch$it.f4curve")) }
     val modified = Files.getLastModifiedTime(source)
-    if (outputs.any { !Files.isRegularFile(it) || Files.getLastModifiedTime(it) < modified }) runCurveAnalysis(source, base, settings)
+    if (outputs.any { !Files.isRegularFile(it) || Files.getLastModifiedTime(it) < modified }) runCurveAnalysis(source, base, settings, bar)
     return outputs.map { AudioCurveFile(it) }
 }
 
-private fun runCurveAnalysis(wav: Path, output: Path, settings: AudioCurveSettings) {
-    val files = listOf(wav.toString(), output.toString())
+/** Run the analyzer, drawing its progress on [bar] (a cache hit never gets here, so never draws). */
+private fun runCurveAnalysis(wav: Path, output: Path, settings: AudioCurveSettings, bar: ProgressReporter) {
+    val files = listOf(wav.toString(), output.toString(), "--progress")
     val ema = settings.emaLongestSeconds
-    if (ema == null) runFieldaudioCurve("fieldaudio_curve", files + settings.cliArguments)
+    val onProgress = { done: Long, total: Long -> bar.update(done, total, "analysing ${wav.fileName}: $done/$total") }
+    if (ema == null) runFieldaudioCurve("fieldaudio_curve", files + settings.cliArguments, onProgress)
     else runFieldaudioCurve(
         "fieldaudio_curve.ema",
         files + listOf(
@@ -93,6 +116,7 @@ private fun runCurveAnalysis(wav: Path, output: Path, settings: AudioCurveSettin
             "--fft-size", "${settings.fftSize}", "--hop-size", "${settings.hopSize}", "--mel-bands", "${settings.melBands}",
             "--dimensions", "${settings.dimensions}", "--compression", "${settings.compression}",
         ),
+        onProgress,
     )
 }
 
@@ -101,8 +125,11 @@ private val AudioCurveSettings.cliArguments get() = listOf(
     "--history", "$history", "--dimensions", "$dimensions", "--compression", "$compression",
 )
 
-/** Run a `fieldaudio_curve` module from this checkout through `uv`, failing with its output. */
-private fun runFieldaudioCurve(module: String, arguments: List<String>) {
+/**
+ * Run a `fieldaudio_curve` module from this checkout through `uv`, failing with its output. Lines
+ * it prints as `progress <done> <total>` go to [onProgress] as they arrive.
+ */
+private fun runFieldaudioCurve(module: String, arguments: List<String>, onProgress: ((Long, Long) -> Unit)? = null) {
     val checkout = generateSequence(File(System.getProperty("user.dir")).absoluteFile) { it.parentFile }
         .firstOrNull { File(it, "python/fieldaudio_curve/curve.py").isFile }
         ?: error("python/fieldaudio_curve not found above ${System.getProperty("user.dir")}: run Field from its checkout")
@@ -114,13 +141,29 @@ private fun runFieldaudioCurve(module: String, arguments: List<String>) {
     val log = Files.createTempFile("field-audio-curve", ".log").toFile()
     val process = ProcessBuilder(
         listOf(uv, "run", "--project", checkout.path, "--group", "audio-curve", "--", "python", "-m", module) + arguments,
-    ).directory(checkout).redirectErrorStream(true).redirectOutput(log).apply {
+    ).directory(checkout).redirectErrorStream(true).apply {
         environment()["PYTHONPATH"] = File(checkout, "python").path
         environment()["OPENBLAS_NUM_THREADS"] = "1"
         environment().remove("VIRTUAL_ENV")
     }.start()
+    // Copy the output to the log, picking out progress lines, on a thread of its own so the timeout
+    // below still holds while the process is quiet.
+    val reader = Thread({
+        log.bufferedWriter().use { out ->
+            process.inputStream.bufferedReader().forEachLine { line ->
+                out.appendLine(line)
+                val fields = line.split(' ')
+                if (onProgress != null && fields.size == 3 && fields[0] == "progress") {
+                    val done = fields[1].toLongOrNull()
+                    val total = fields[2].toLongOrNull()
+                    if (done != null && total != null) onProgress(done, total)
+                }
+            }
+        }
+    }, "fieldaudio_curve output").apply { isDaemon = true; start() }
     try {
         if (!process.waitFor(30, TimeUnit.MINUTES)) error("$module timed out; log: $log")
+        reader.join(5_000)
     } finally {
         if (process.isAlive) process.destroyForcibly()
     }
