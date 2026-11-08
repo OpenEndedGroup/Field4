@@ -84,8 +84,8 @@ class ShapeAscii(
             circleOffsets(0.5 + (cx - 0.5) * OUTER_PUSH, 0.5 + (cy - 0.5) * OUTER_PUSH)
         }
         val raw = Array(glyphs.length) { rasterVector(glyphs[it]) }
-        val norm = DoubleArray(6) { d -> raw.maxOf { it.first[d] }.takeIf { it > 0 } ?: 1.0 }
-        glyphVectors = Array(raw.size) { g -> DoubleArray(6) { raw[g].first[it] / norm[it] } }
+        val norm = raw.maxOf { it.first.max() }.takeIf { it > 0 } ?: 1.0
+        glyphVectors = Array(raw.size) { g -> DoubleArray(6) { raw[g].first[it] / norm } }
         val maxCov = raw.maxOf { it.second }.takeIf { it > 0 } ?: 1.0
         coverage = DoubleArray(raw.size) { raw[it].second / maxCov }
         byCoverage = coverage.indices.sortedBy { coverage[it] }.toIntArray()
@@ -93,6 +93,22 @@ class ShapeAscii(
 
     /** The normalised six-component shape vector of glyph [index] (each component in `0..1`). */
     fun glyphVector(index: Int): DoubleArray = glyphVectors[index].copyOf()
+
+    /**
+     * The sampling circles in cell pixels, as (centre x, centre y, radius): the six inner circles
+     * first, then the six outer ones directional contrast reads, in the same order.
+     */
+    fun samplingCircles(): List<Triple<Double, Double, Double>> {
+        val r = RADIUS * cellWidth
+        return (0 until 12).map {
+            val k = it % 6
+            val push = if (it < 6) 1.0 else OUTER_PUSH
+            Triple((0.5 + (INNER[k * 2] - 0.5) * push) * cellWidth, (0.5 + (INNER[k * 2 + 1] - 0.5) * push) * cellHeight, r)
+        }
+    }
+
+    /** Glyph [index] rasterised into one cell, as a gray [Img] (white ink on black): what its vector was read from. */
+    fun glyphImg(index: Int): Img = Img(cellWidth, cellHeight, 1, raster(glyphs[index]))
 
     /** The ink coverage of glyph [index], normalised so the densest glyph is 1. */
     fun glyphCoverage(index: Int): Double = coverage[index]
@@ -231,6 +247,12 @@ class ShapeAscii(
     }
 
     private fun rasterVector(ch: Char): Pair<DoubleArray, Double> {
+        val lum = raster(ch)
+        val v = DoubleArray(6) { sample(lum, cellWidth, cellHeight, 0, 0, inner[it]) }
+        return v to lum.sum().toDouble() / (cellWidth * cellHeight)
+    }
+
+    private fun raster(ch: Char): FloatArray {
         val img = BufferedImage(cellWidth, cellHeight, BufferedImage.TYPE_BYTE_GRAY)
         val g = img.createGraphics()
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
@@ -238,16 +260,8 @@ class ShapeAscii(
         g.font = font
         g.drawString(ch.toString(), 0, ascent)
         g.dispose()
-        val lum = FloatArray(cellWidth * cellHeight)
         val raster = img.raster
-        var total = 0.0
-        for (y in 0 until cellHeight) for (x in 0 until cellWidth) {
-            val l = raster.getSample(x, y, 0) / 255f
-            lum[y * cellWidth + x] = l
-            total += l
-        }
-        val v = DoubleArray(6) { sample(lum, cellWidth, cellHeight, 0, 0, inner[it]) }
-        return v to total / (cellWidth * cellHeight)
+        return FloatArray(cellWidth * cellHeight) { raster.getSample(it % cellWidth, it / cellWidth, 0) / 255f }
     }
 
     /** Draw [frame]'s characters as an image, light on [background], one cell per character. */
