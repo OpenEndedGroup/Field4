@@ -1358,8 +1358,8 @@ network grows:
 
 ```diffstatic {data-lang=kotlin}
 val side = 512
-// the frame, read as trail pixels: x across, y down
-val map = notation.space("network", x = 0.0..side.toDouble(), y = 0.0..side.toDouble())
+// the frame, read as trail pixels: x across, and y up, as the window draws the field
+val map = notation.space("network", x = 0.0..side.toDouble(), y = side.toDouble()..0.0)
 
 fun dots() = map.marks.filter { it.kind == MarkType.ELLIPSE }.map { map.toSpace(it.center) }
 

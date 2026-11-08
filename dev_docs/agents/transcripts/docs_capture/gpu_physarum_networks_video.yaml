@@ -55,8 +55,8 @@ operations:
       properties:
         code: |
           val side = 512
-          // the frame, read as trail pixels: x across, y down
-          val map = notation.space("network", x = 0.0..side.toDouble(), y = 0.0..side.toDouble())
+          // the frame, read as trail pixels: x across, and y up, as the window draws the field
+          val map = notation.space("network", x = 0.0..side.toDouble(), y = side.toDouble()..0.0)
 
           fun dots() = map.marks.filter { it.kind == MarkType.ELLIPSE }.map { map.toSpace(it.center) }
 
@@ -80,7 +80,7 @@ operations:
       properties:
         code: |
           // six seconds in, draw one more food source into the frame and read the frame's dots again
-          val map = notation.space("network", x = 0.0..512.0, y = 0.0..512.0)
+          val map = notation.space("network", x = 0.0..512.0, y = 512.0..0.0)
           frames {
               val start = System.nanoTime()
               while (frame() && System.nanoTime() - start < 6_000_000_000L) { }
