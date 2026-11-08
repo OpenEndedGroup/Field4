@@ -1,5 +1,6 @@
 package afield.ui.output
 
+import afield.document.graph.Box
 import afield.media.image.Img
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -65,5 +66,46 @@ class ShapeAsciiTest {
             if (ascii.nearestShape(v) == ascii.bruteNearest(v)) agree++
         }
         assertTrue(agree > 400, "cache agreed on $agree/500")
+    }
+
+    /** Six inner circles inside the cell, six outer ones pushed outwards, all of one radius. */
+    @Test
+    fun samplingCirclesSitInsideThenOutside() {
+        val circles = ascii.samplingCircles()
+        assertEquals(12, circles.size)
+        val cx = ascii.cellWidth / 2.0
+        val cy = ascii.cellHeight / 2.0
+        val r = circles[0].third
+        assertTrue(circles.all { it.third == r }, "one radius for every circle")
+        for (k in 0 until 6) {
+            val (ix, iy, _) = circles[k]
+            val (ox, oy, _) = circles[k + 6]
+            assertTrue(ix in 0.0..ascii.cellWidth.toDouble() && iy in 0.0..ascii.cellHeight.toDouble(), "inner $k inside the cell")
+            assertTrue(Math.hypot(ox - cx, oy - cy) > Math.hypot(ix - cx, iy - cy), "outer $k further from the centre than inner $k")
+        }
+    }
+
+    /** drawAscii writes each matched character into the grid at its own cell. */
+    @Test
+    fun drawAsciiWritesTheFrameIntoAGrid() {
+        val img = Img.generate(4 * ascii.cellWidth, 2 * ascii.cellHeight) { x, _ -> if (x < 2 * ascii.cellWidth) 1f else 0f }
+        val frame = ascii.convert(img, 4, rows = 2)
+        val grid = CharGridBuffer(frame.cols, frame.rows, ascii.glyphs)
+        CharGridFrame(grid, CharGridSounds(emptyList(), null, cells = grid.cols * grid.rows) { _, _ -> }).drawAscii(frame)
+        for (y in 0 until frame.rows) for (x in 0 until frame.cols)
+            assertEquals(grid.glyphIndex(frame.char(x, y).toString()), grid.get(x, y), "cell ($x, $y)")
+        assertEquals(' ', frame.char(3, 0), "the black half stays blank")
+    }
+
+    /** showAscii puts every panel up as one display payload on the asked channel. */
+    @Test
+    fun showAsciiEmitsOnePayload() {
+        val box = Box("shape-ascii-test")
+        val seen = mutableListOf<Pair<String, Any?>>()
+        box.output.displayProxy = { channel, content -> seen += channel to content }
+        val img = Img.generate(64, 64) { x, y -> if ((x - 32) * (x - 32) + (y - 32) * (y - 32) < 400) 1f else 0f }
+        box.showAscii("brightness" to ascii.convert(img, 8, shape = false), "shape" to ascii.convert(img, 8), channel = "ascii")
+        assertEquals(1, seen.size, "one payload for both panels")
+        assertEquals("ascii", seen[0].first)
     }
 }

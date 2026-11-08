@@ -21,10 +21,12 @@ fun ring(cx: Double, cy: Double, r: Double, sides: Int, turn: Double = 0.0) = fl
     thickness = 6.0
 }
 val disc = ring(360.0, 100.0, 55.0, 64).apply { filled = true }
-val drawing = Img.zeros(440, 200, 3).drawFLines(
-    [ring(90.0, 100.0, 70.0, 64), ring(210.0, 105.0, 65.0, 3, -PI / 2), disc],
-    color = Vec4(1f, 1f, 1f, 1f),
-)
+val drawing =
+    Img.zeros(440, 200, 3)
+        .drawFLines(
+            [ring(90.0, 100.0, 70.0, 64), ring(210.0, 105.0, 65.0, 3, -PI / 2), disc],
+            color = Vec4(1f, 1f, 1f, 1f),
+        )
 val ascii = ShapeAscii()
 showAscii(
     "brightness" to ascii.convert(drawing, 44, shape = false),
@@ -59,18 +61,33 @@ fun circle(cx: Double, cy: Double, r: Double) = fline {
     }
 }
 val circles = ascii.samplingCircles()
-val panels = "TL/o@".map { ch ->
-    val i = ascii.glyphs.indexOf(ch)
-    // pad the cell so the outer circles fit, then draw the circles over it
-    val pad = ascii.cellWidth
-    val cell = ascii.glyphImg(i).pad(pad, Border.ZERO)
-    val inner = circles.take(6).map { (x, y, r) -> circle(x + pad, y + pad, r).apply { color = Vec4(1f, 0.55f, 0.1f, 1f) } }
-    val outer = circles.drop(6).map { (x, y, r) -> circle(x + pad, y + pad, r).apply { color = Vec4(0.3f, 0.6f, 1f, 1f) } }
-    val w = ascii.cellWidth.toDouble(); val h = ascii.cellHeight.toDouble()
-    val box = fline { moveTo(pad, pad); lineTo(pad + w, pad); lineTo(pad + w, pad + h); lineTo(pad, pad + h); lineTo(pad, pad) }
-    box.color = Vec4(0.5f, 0.5f, 0.5f, 1f)
-    "'$ch'" to cell.drawFLines(inner + outer + box, scale = k, thickness = 2.0)
-}
+val panels =
+    "TL/o@"
+        .map { ch ->
+            val i = ascii.glyphs.indexOf(ch)
+            // pad the cell so the outer circles fit, then draw the circles over it
+            val pad = ascii.cellWidth
+            val cell = ascii.glyphImg(i).pad(pad, Border.ZERO)
+            val inner =
+                circles.take(6).map { (x, y, r) ->
+                    circle(x + pad, y + pad, r).apply { color = Vec4(1f, 0.55f, 0.1f, 1f) }
+                }
+            val outer =
+                circles.drop(6).map { (x, y, r) ->
+                    circle(x + pad, y + pad, r).apply { color = Vec4(0.3f, 0.6f, 1f, 1f) }
+                }
+            val w = ascii.cellWidth.toDouble()
+            val h = ascii.cellHeight.toDouble()
+            val box = fline {
+                moveTo(pad, pad)
+                lineTo(pad + w, pad)
+                lineTo(pad + w, pad + h)
+                lineTo(pad, pad + h)
+                lineTo(pad, pad)
+            }
+            box.color = Vec4(0.5f, 0.5f, 0.5f, 1f)
+            "'$ch'" to cell.drawFLines(inner + outer + box, scale = k, thickness = 2.0)
+        }
 showImgGrid(*panels.toTypedArray(), columns = 5, cellSide = 200)
 ```
 
@@ -85,15 +102,16 @@ Shading works too. A sphere lit from the upper left, shaded by hand into an `Img
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/ascii_shape/sphere.png" alt="two panels of a sphere drawn in characters. Left, brightness: a disc of mixed letters and digits, densest at the upper left, with a ragged rim. Right, shape: the lit upper left is a block of @ and B, fading through 8, E, S, Z and I towards the lower right, and the rim is traced with underscores, g, i, d and quote marks" wait="3" timeout="240" capture="box" open-outputs="true" padding="20" name="ascii-shape-sphere" embed=true}
 // A lit sphere on black, shaded by hand: brightness is the cosine between the surface normal and a light.
-val scene = Img.generate(300, 240) { x, y ->
-    val nx = (x - 150) / 100.0
-    val ny = (y - 120) / 100.0
-    val r2 = nx * nx + ny * ny
-    if (r2 < 1) {
-        val nz = sqrt(1 - r2)
-        (-0.5 * nx - 0.6 * ny + 0.62 * nz).coerceAtLeast(0.0).toFloat()
-    } else 0f
-}
+val scene =
+    Img.generate(300, 240) { x, y ->
+        val nx = (x - 150) / 100.0
+        val ny = (y - 120) / 100.0
+        val r2 = nx * nx + ny * ny
+        if (r2 < 1) {
+            val nz = sqrt(1 - r2)
+            (-0.5 * nx - 0.6 * ny + 0.62 * nz).coerceAtLeast(0.0).toFloat()
+        } else 0f
+    }
 val ascii = ShapeAscii()
 showAscii(
     "brightness" to ascii.convert(scene, 40, shape = false),
@@ -136,16 +154,19 @@ fun ring(cx: Double, cy: Double, r: Double, sides: Int, turn: Double = 0.0) = fl
     thickness = 6.0
 }
 val disc = ring(360.0, 100.0, 55.0, 64).apply { filled = true }
-val drawing = Img.zeros(440, 200, 3).drawFLines(
-    [ring(90.0, 100.0, 70.0, 64), ring(210.0, 105.0, 65.0, 3, -PI / 2), disc],
-    color = Vec4(1f, 1f, 1f, 1f),
-)
+val drawing =
+    Img.zeros(440, 200, 3)
+        .drawFLines(
+            [ring(90.0, 100.0, 70.0, 64), ring(210.0, 105.0, 65.0, 3, -PI / 2), disc],
+            color = Vec4(1f, 1f, 1f, 1f),
+        )
 val ascii = ShapeAscii()
 showAscii(
     "contrast 1" to ascii.convert(drawing, 44),
     "contrast 3" to ascii.convert(drawing, 44, contrast = 3.0),
     "contrast 3, directional 3" to ascii.convert(drawing, 44, contrast = 3.0, directional = 3.0),
-    columns = 1, cellSide = 600,
+    columns = 1,
+    cellSide = 600,
 )
 ```
 
@@ -165,7 +186,10 @@ FLine drawing every tick, and matches it by shape. Pass the charset to `charGrid
 // A wireframe cube turning about two axes, drawn into an Img each tick and matched by shape.
 val ascii = ShapeAscii()
 // Corner i has x, y, z = ±1 from its three bits; an edge joins corners one bit apart.
-val corners = (0 until 8).map { i -> Triple(if (i and 1 == 0) -1.0 else 1.0, if (i and 2 == 0) -1.0 else 1.0, if (i and 4 == 0) -1.0 else 1.0) }
+val corners =
+    (0 until 8).map { i ->
+        Triple(if (i and 1 == 0) -1.0 else 1.0, if (i and 2 == 0) -1.0 else 1.0, if (i and 4 == 0) -1.0 else 1.0)
+    }
 val edges = (0 until 8).flatMap { i -> [1, 2, 4].filter { i and it == 0 }.map { i to (i or it) } }
 
 charGrid(cols = 60, rows = 26, glyphs = ascii.glyphs) {
