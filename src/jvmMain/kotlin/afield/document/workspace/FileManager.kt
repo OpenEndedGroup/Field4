@@ -260,6 +260,19 @@ class FieldFileManager internal constructor(private val session: SessionInformat
         return FileResolution(resolveChild(root, rest), source)
     }
 
+    /**
+     * The directory each `%name` prefix this session can resolve stands for, in the order a person
+     * would want them offered: `document`, then `project` when the document is in exactly one, then
+     * every registered name. Records nothing in the access history and creates nothing but the
+     * document's own `files/` (as [documentFilesDirectory] does) — the file chooser calls it to
+     * complete `%…` as you type.
+     */
+    internal fun mappedRoots(): Map<String, Path> = LinkedHashMap<String, Path>().apply {
+        this["document"] = documentFilesDirectory
+        currentProjectFileRoots(create = false).singleOrNull()?.let { this["project"] = it.path }
+        putAll(FileManager.namedDirectoryMap())
+    }
+
     private fun searchRoots(): List<FileSearchRoot> {
         return listOf(FileSearchRoot("document", documentFilesDirectory)) +
             currentProjectFileRoots(create = false) +
@@ -560,6 +573,9 @@ object FileManager {
     }
 
     internal fun namedDirectory(name: String): Path? = namedDirectories[validateName(name)]
+
+    /** Every name registered with [add] or `FileManager["name"] = dir`, sorted, without the `%`. */
+    internal fun namedDirectoryMap(): Map<String, Path> = namedDirectories.toSortedMap()
 
     internal fun globalVersion(): Long = version.get()
 

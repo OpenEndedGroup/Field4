@@ -1923,7 +1923,7 @@ data class FileCompletionRequest(val controlId: String, val text: String, val se
 
 /**
  * One candidate in a [FileCompletionReply]: [insert] is the whole new input text, which keeps the
- * person's own spelling of the path so far (relative, `~/`, or absolute).
+ * person's own spelling of the path so far (relative, `~/`, `%name/`, or absolute).
  */
 @Serializable
 data class FileCompletionEntry(
@@ -1931,7 +1931,9 @@ data class FileCompletionEntry(
     val insert: String,
     val directory: Boolean,
     val size: Long = 0,
-    val modified: Long = 0
+    val modified: Long = 0,
+    /** A note shown beside the name instead of size and date: where a `%name` directory points. */
+    val detail: String = ""
 )
 
 /**

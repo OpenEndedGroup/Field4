@@ -129,10 +129,19 @@ function render(input) {
         if (i === s.index) item.setAttribute('aria-selected', 'true');
         const name = document.createElement('span');
         name.className = 'field-file-name';
-        name.textContent = entry.directory ? `${entry.name}/` : entry.name;
+        name.textContent = entry.directory && !entry.name.startsWith('%') ? `${entry.name}/` : entry.name;
+        if (entry.name.startsWith('%')) item.classList.add('mapped');
         const meta = document.createElement('span');
         meta.className = 'field-file-meta';
-        meta.textContent = entry.directory ? '' : [formatSize(entry.size), formatDate(entry.modified)].filter(Boolean).join('  ');
+        if (entry.detail) {
+            // Where a %name points: clipped from the left, so the folder's own name stays.
+            const where = document.createElement('bdi');
+            where.textContent = entry.detail;
+            meta.appendChild(where);
+            meta.title = entry.detail;
+        } else {
+            meta.textContent = entry.directory ? '' : [formatSize(entry.size), formatDate(entry.modified)].filter(Boolean).join('  ');
+        }
         item.append(name, meta);
         m.appendChild(item);
     });
@@ -143,6 +152,8 @@ function render(input) {
         m.appendChild(more);
     }
     m.classList.add('visible');
+    // The list is what the person is looking at now; a tooltip over it would hide the entries.
+    window.hideFieldControlTooltip?.();
     input.setAttribute('aria-expanded', 'true');
     input.setAttribute('aria-controls', m.id);
     if (s.index >= 0) input.setAttribute('aria-activedescendant', `field-file-option-${s.index}`);

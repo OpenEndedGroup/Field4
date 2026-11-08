@@ -91,20 +91,38 @@ class FileMask(val pattern: String) {
  * @param chooseDirectory choose a directory rather than a file; files are then not listed
  * @param mustExist accept only a path that exists; turn off to name a file you are about to write
  * @param showHidden list dot-files without the person having to type the dot
+ * @param prefixes the `%name` directories a path may start with, as FileManager resolves them for
+ *   this document (`%document`, `%project`, and every registered name); asked afresh each time, so
+ *   a directory registered after the control was made is offered too
  */
 class FileChooserSpec(
     val root: Path,
     val mask: FileMask = FileMask(""),
     val chooseDirectory: Boolean = false,
     val mustExist: Boolean = true,
-    val showHidden: Boolean = false
+    val showHidden: Boolean = false,
+    val prefixes: () -> Map<String, Path> = { emptyMap() }
 ) {
     private val home: Path = Paths.get(System.getProperty("user.home")).toAbsolutePath().normalize()
 
-    /** [text] as the absolute path it names: `~/…` from home, absolute as is, otherwise from [root]. */
+    /** The `%name` of [text] (without the `%`) and the rest after its first `/`, or null for other text. */
+    internal fun splitPrefix(text: String): Pair<String, String>? {
+        val t = text.trim()
+        if (!t.startsWith("%")) return null
+        val slash = t.indexOf('/')
+        return if (slash < 0) t.substring(1) to "" else t.substring(1, slash) to t.substring(slash + 1)
+    }
+
+    /**
+     * [text] as the absolute path it names: `~/…` from home, `%name/…` from that FileManager
+     * directory, absolute as is, otherwise from [root]. An unknown `%name` names a path under
+     * [root] that will not exist, so it is never accepted.
+     */
     fun resolve(text: String): Path {
         val t = text.trim()
+        val prefixed = splitPrefix(t)?.let { (name, rest) -> prefixes()[name]?.let { if (rest.isEmpty()) it else it.resolve(rest) } }
         val path = when {
+            prefixed != null -> prefixed
             t.isEmpty() -> root
             t == "~" -> home
             t.startsWith("~/") -> home.resolve(t.removePrefix("~/"))
@@ -158,6 +176,10 @@ private const val maxCompletionScan = 20_000
  * then names containing it, then names holding its letters in order. Directories come before files
  * within each rank and always match the mask; files must match it. Dot-files appear only when the
  * typed segment starts with a dot, unless [FileChooserSpec.showHidden].
+ *
+ * `%` followed by no `/` completes the names of FileManager directories ([FileChooserSpec.prefixes])
+ * instead, and a blank field offers them too, after `..`; past the `/`, `%name/…` lists like any
+ * other directory.
  */
 internal fun completeFilePath(
     spec: FileChooserSpec,
@@ -166,6 +188,13 @@ internal fun completeFilePath(
     seq: Int = 0,
     limit: Int = 200
 ): FileCompletionReply {
+    if (text.startsWith("%") && !text.contains('/')) return completePrefixNames(spec, controlId, text, seq)
+    spec.splitPrefix(text)?.let { (name, _) ->
+        if (name !in spec.prefixes()) {
+            return FileCompletionReply(controlId, seq, text, directory = "%$name/", mask = spec.mask.pattern,
+                error = "no FileManager directory named %$name; known: ${spec.prefixes().keys.joinToString { "%$it" }}")
+        }
+    }
     val slash = text.lastIndexOf('/')
     val listsDirectory = text.isEmpty() || text.endsWith("/") || text == "~"
     val textDir = when {
@@ -214,6 +243,7 @@ internal fun completeFilePath(
     if (directory.parent != null && (prefix.isEmpty() || "..".startsWith(prefix))) {
         candidates += Candidate("..", true, 0, null)
     }
+    val named = if (text.isEmpty()) prefixEntries(spec, "") else emptyList()
     val scanned = try {
         Files.list(directory).use { stream ->
             var count = 0
@@ -240,7 +270,12 @@ internal fun completeFilePath(
             .thenBy { if (it.directory) 0 else 1 }
             .thenComparator { a, b -> naturalCompare(a.name, b.name) }
     )
-    val entries = sorted.take(limit).map { c ->
+    // A blank field's `%` names sit after `..`: the ways out of this folder, before what is in it.
+    val parentEntries = sorted.takeWhile { it.name == ".." }.size
+    val listed = sorted.take(parentEntries).map { it to null } + named.map { null to it } + sorted.drop(parentEntries).map { it to null }
+    val entries = listed.take(limit).map { (c, prefixEntry) ->
+        if (prefixEntry != null) return@map prefixEntry
+        c!!
         val attributes = c.path?.takeUnless { c.directory }?.let { p ->
             runCatching { Files.size(p) to Files.getLastModifiedTime(p).toMillis() }.getOrNull()
         }
@@ -252,7 +287,37 @@ internal fun completeFilePath(
             modified = attributes?.second ?: 0
         )
     }
-    return reply(entries, truncated = sorted.size > limit || scanned >= maxCompletionScan)
+    return reply(entries, truncated = listed.size > limit || scanned >= maxCompletionScan)
+}
+
+/** One entry per `%name` matching [typed] (the text after `%`), best first; `detail` is where it points. */
+private fun prefixEntries(spec: FileChooserSpec, typed: String): List<FileCompletionEntry> {
+    val lower = typed.lowercase()
+    return spec.prefixes().entries.mapIndexedNotNull { order, (name, path) ->
+        val rank = when {
+            typed.isEmpty() || name.startsWith(typed) -> 0
+            name.lowercase().startsWith(lower) -> 1
+            name.lowercase().contains(lower) -> 2
+            isSubsequence(lower, name.lowercase()) -> 3
+            else -> return@mapIndexedNotNull null
+        }
+        Triple(rank, order, FileCompletionEntry(name = "%$name", insert = "%$name/", directory = true, detail = spec.describe(path)))
+    }.sortedWith(compareBy({ it.first }, { it.second })).map { it.third }
+}
+
+private fun completePrefixNames(spec: FileChooserSpec, controlId: String, text: String, seq: Int): FileCompletionReply {
+    val entries = prefixEntries(spec, text.removePrefix("%"))
+    return FileCompletionReply(
+        controlId = controlId,
+        seq = seq,
+        text = text,
+        directory = "FileManager directories",
+        entries = entries,
+        exists = Files.exists(spec.resolve(text)),
+        choosable = spec.chooseDirectory && spec.splitPrefix(text)?.first in spec.prefixes(),
+        mask = spec.mask.pattern,
+        error = if (entries.isEmpty()) "no FileManager directory starts with $text" else null
+    )
 }
 
 private fun isSubsequence(needle: String, haystack: String): Boolean {
@@ -317,6 +382,16 @@ internal fun registerFileChooserHandler() {
         }
         Handled.yes
     })
+}
+
+/**
+ * The `%name` directories this box's document can resolve, asked of FileManager each time; empty
+ * outside a session.
+ */
+private fun Box.fileChooserPrefixes(): () -> Map<String, Path> {
+    val manager = runCatching { if (isInsideInitialized()) FileManager.forSession(inside) else FileManager.current() }.getOrNull()
+        ?: return { emptyMap() }
+    return { runCatching { manager.mappedRoots() }.getOrDefault(emptyMap()) }
 }
 
 /** The chooser's root: [directory] as a FileManager spec, read in [box]'s document. */
@@ -384,8 +459,10 @@ private fun chooserNoun(spec: FileChooserSpec) = when {
  * }
  * ```
  *
- * Type a path, relative to [directory] or as `~/…` or absolute, and a list of what it could
- * complete to drops down. The arrow keys move through it; Tab or Enter takes an entry (a directory
+ * Type a path — relative to [directory], `~/…`, absolute, or starting with one of FileManager's
+ * `%` names (`%document/…`, `%project/…`, `%textures/…` for a directory registered with
+ * `FileManager["textures"] = …`) — and a list of what it could complete to drops down. Typing `%`
+ * lists those names and where each points. The arrow keys move through it; Tab or Enter takes an entry (a directory
  * opens, a file is chosen); Escape closes it; the ▾ button, or Alt+↓, lists the current folder.
  * Enter on a typed path, or leaving the field, commits it. [onUpdate] receives an absolute [File],
  * and only for a path the chooser accepts — one matching [mask], existing unless [mustExist] is
@@ -418,7 +495,7 @@ fun ControlGroupBuilder.fileChooser(
     tooltip: String? = null,
     onUpdate: (File) -> Unit
 ): ControlValueHandle<String> {
-    val spec = FileChooserSpec(ownerBox.fileChooserRoot(directory), FileMask(mask), chooseDirectory, mustExist, showHidden)
+    val spec = FileChooserSpec(ownerBox.fileChooserRoot(directory), FileMask(mask), chooseDirectory, mustExist, showHidden, ownerBox.fileChooserPrefixes())
     val callback = fileChooserCallback(label, spec, onUpdate)
     return addControl(
         "file",
@@ -464,7 +541,7 @@ fun Box.fileChooser(
     onUpdate: (File) -> Unit
 ) {
     val controlId = "file-${UUID.randomUUID()}"
-    val spec = FileChooserSpec(fileChooserRoot(directory), FileMask(mask), chooseDirectory, mustExist)
+    val spec = FileChooserSpec(fileChooserRoot(directory), FileMask(mask), chooseDirectory, mustExist, prefixes = fileChooserPrefixes())
     val callback = fileChooserCallback(label, spec, onUpdate)
     registerFileChooserSpec(controlId, spec)
     registerStringCallback(controlId, callback)

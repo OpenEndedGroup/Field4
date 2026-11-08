@@ -2841,6 +2841,30 @@ body.field-pane-resizing-h * {
     color: var(--field-accent);
 }
 
+.field-file-item.mapped .field-file-name {
+    color: var(--field-accent);
+    font-style: italic;
+    flex: 0 0 auto;
+}
+
+.field-file-item.mapped .field-file-meta {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    direction: rtl;
+}
+
+.field-file-item.mapped .field-file-meta > bdi {
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.field-file-menu {
+    width: max-content;
+}
+
 .field-file-name {
     overflow: hidden;
     text-overflow: ellipsis;

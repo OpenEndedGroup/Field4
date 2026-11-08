@@ -111,6 +111,53 @@ class FileChooserTest {
         assertEquals(Path.of(System.getProperty("user.home")).resolve("x"), spec.resolve("~/x"))
     }
 
+    private fun mapped(root: Path) = FileChooserSpec(
+        root, FileMask("*.png"),
+        prefixes = { linkedMapOf("document" to root, "textures" to root.resolve("shots")) }
+    )
+
+    @Test
+    fun percentNamesResolveThroughTheFileManagerDirectories() {
+        val root = tree()
+        val spec = mapped(root)
+        assertEquals(root.resolve("shots/inner.png"), spec.resolve("%textures/inner.png"))
+        assertEquals(root.resolve("shots"), spec.resolve("%textures"))
+        assertTrue(spec.accepts(spec.resolve("%textures/inner.png")))
+        assertFalse(spec.accepts(spec.resolve("%nowhere/inner.png")), "an unknown name names nothing")
+        assertTrue(complete(spec, "%textures/inner.png").choosable)
+    }
+
+    @Test
+    fun aPercentCompletesTheNamesAndSaysWhereEachPoints() {
+        val root = tree()
+        val spec = mapped(root)
+        val all = complete(spec, "%")
+        assertEquals(listOf("%document/", "%textures/"), all.entries.map { it.insert })
+        assertEquals(spec.describe(root.resolve("shots")), all.entries[1].detail)
+        assertEquals(listOf("%textures/"), complete(spec, "%tex").entries.map { it.insert })
+        assertNotNull(complete(spec, "%zzz").error)
+    }
+
+    @Test
+    fun pastTheSlashAPercentPathListsLikeAnyDirectory() {
+        val root = tree()
+        val spec = mapped(root)
+        assertEquals(listOf("%textures/../", "%textures/inner.png"), complete(spec, "%textures/").entries.map { it.insert })
+        assertEquals(listOf("%textures/inner.png"), complete(spec, "%textures/in").entries.map { it.insert })
+        val unknown = complete(spec, "%nope/x")
+        assertNotNull(unknown.error)
+        assertTrue(unknown.error!!.contains("%textures"), "the error names the directories that do exist")
+    }
+
+    @Test
+    fun aBlankFieldOffersThePercentNamesAfterTheParent() {
+        val root = tree()
+        assertEquals(
+            listOf("../", "%document/", "%textures/", "empty/", "shots/", "a.png", "take2.png", "take10.png"),
+            complete(mapped(root), "").entries.map { it.insert }
+        )
+    }
+
     @Test
     fun naturalOrderComparesDigitRunsAsNumbers() {
         assertEquals(listOf("take1", "take2", "take10", "Take11"), listOf("take10", "Take11", "take2", "take1").sortedWith(::naturalCompare))

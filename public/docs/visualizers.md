@@ -2025,7 +2025,9 @@ controlGroup("input") {
 }
 ```
 
-Type a name and a list of matches drops down under the field: directories first, then files that match the mask, with sizes and dates. Names that start with what you typed come first, then names containing it, then names that hold its letters in order. Use the arrow keys to move through the list. Tab or Enter takes the highlighted entry; a directory opens and a file is chosen. Escape closes the list, and the ▾ button (or Alt+↓) lists the folder you are in. You can also type a path relative to `directory`, a `~/…` path, or an absolute one, and press Enter. The field turns red while it holds something the chooser would not accept.
+Type a name and a list of matches drops down under the field: directories first, then files that match the mask, with sizes and dates. Names that start with what you typed come first, then names containing it, then names that hold its letters in order. Use the arrow keys to move through the list. Tab or Enter takes the highlighted entry; a directory opens and a file is chosen. Escape closes the list, and the ▾ button (or Alt+↓) lists the folder you are in. You can also type a path relative to `directory`, a `~/…` path, or an absolute one, and press Enter. The field turns red when you commit something the chooser would not accept.
+
+A path can also start with any of the `%` names FileManager knows: `%document/…` for this document's `files/` folder, `%project/…` for its project's, and `%textures/…` for a folder registered with `FileManager["textures"] = "~/Pictures"`. Type `%` to list them, each with the folder it points to; a blank field lists them too, under `..`. The field keeps the spelling you chose, so `initialValue = "%textures/wall.png"` still finds the file after the folder is registered somewhere else.
 
 The callback receives an absolute `File`, and only for a path that matches the mask and exists. It runs on every run in which the control holds such a path, so `image` is set on the first run from `initialValue`. On later runs it holds the file chosen last, which the group remembers like any other control's value.
 

@@ -136,4 +136,5 @@ window.addEventListener('blur', hide);
 window.fieldControlTooltipState = () => (tipElement && tipElement.classList.contains('visible'))
     ? { text: tipElement.textContent, for: shownFor?.dataset?.controlId || shownFor?.querySelector?.('[id]')?.id || null }
     : null;
+window.hideFieldControlTooltip = hide;
 window.showFieldControlTooltip = (element) => { const host = hostOf(element); if (host) { quietNativeTitles(host); show(host); } };
