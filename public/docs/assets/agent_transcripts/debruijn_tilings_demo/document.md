@@ -184,7 +184,7 @@ From `code`
 The same construction at four symmetries, one with its grid lines jittered.
 
 ```edn [field-box id="debruijn_gallery" role="properties"]
-{"id" "debruijn_gallery" "index" 5 "name" "8, 7, 12-fold and disordered 6-fold" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8, 7, 12-fold and disordered 6-fold" "_tombstone" false "frame" #afield/rect [700.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "debruijn_gallery_code_.kt" "lines" 16 "characters" 740 "sha256" "e9801045302ca4c19d26c6abd1f4ad41613c2f9de8c5d64cbd5ae996abb57961"}]}
+{"id" "debruijn_gallery" "index" 5 "name" "8, 7, 12-fold and disordered 6-fold" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8, 7, 12-fold and disordered 6-fold" "_tombstone" false "frame" #afield/rect [700.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "debruijn_gallery_code_.kt" "lines" 16 "characters" 724 "sha256" "db9ed4aa0d1e6d1c815b1b5e111b487c2ba3fa3e5d80096539243941810d8634"}]}
 ```
 
 ```kotlin [field-property box="debruijn_gallery" name="code" path="debruijn_gallery_code_.kt"]
@@ -196,7 +196,7 @@ val panel = { title: String, t: DeBruijnTiling ->
 }
 
 showPlaneGrid(
-    panel("8-fold, Ammann–Beenker", deBruijnTiling(symmetry = 8, radius = 5.0, scale = 10.0)),
+    panel("8-fold", deBruijnTiling(symmetry = 8, radius = 5.0, scale = 10.0)),
     panel("7-fold", deBruijnTiling(symmetry = 7, radius = 5.0, scale = 10.0)),
     panel("12-fold", deBruijnTiling(symmetry = 12, radius = 4.0, scale = 8.0)),
     panel("6-fold, disorder 0.6", deBruijnTiling(symmetry = 6, radius = 6.0, scale = 10.0, disorder = 0.6)),

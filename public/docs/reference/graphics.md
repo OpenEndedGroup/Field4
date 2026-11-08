@@ -3347,7 +3347,7 @@ Which of Field's optional geometry libraries are installed.
 
 `src/jvmMain/kotlin/afield/geometry/path/DeBruijnTiling.kt` — [read the source](source/jvmMain/afield/geometry/path/DeBruijnTiling/)
 
-**Used in:** [Penrose and Other Quasiperiodic Tilings](../debruijn_tilings.md), [Hearing a Penrose Tiling](../penrose_spectra.md)
+**Used in:** [Penrose and Other Quasiperiodic Tilings](../debruijn_tilings.md)
 
 ### Top-level functions { #debruijntiling-kt-functions }
 
@@ -3420,7 +3420,7 @@ Thrown by [`deBruijnTiling`](graphics.md#debruijntiling-kt--debruijntiling) with
 
 `src/jvmMain/kotlin/afield/geometry/path/DeBruijnTiling3D.kt` — [read the source](source/jvmMain/afield/geometry/path/DeBruijnTiling3D/)
 
-**Used in:** [Penrose Tilings in Three Dimensions](../debruijn_tilings_3d.md)
+**Used in:** [Penrose and Other Quasiperiodic Tilings](../debruijn_tilings.md)
 
 ### Top-level functions { #debruijntiling3d-kt-functions }
 
@@ -5297,7 +5297,7 @@ Mutable updater that keeps a fixed tree topology and reusable buffers while refi
 
 `src/jvmMain/kotlin/afield/geometry/path/TilingSpectrum.kt` — [read the source](source/jvmMain/afield/geometry/path/TilingSpectrum/)
 
-**Used in:** [Hearing a Penrose Tiling](../penrose_spectra.md)
+**Used in:** [Penrose and Other Quasiperiodic Tilings](../debruijn_tilings.md)
 
 ### Top-level functions { #tilingspectrum-kt-functions }
 
@@ -21424,7 +21424,7 @@ This file only builds and measures the tree. Reading it is done elsewhere in the
 
 `src/jvmMain/kotlin/afield/lang/solidsl/SolidExpr.kt` — [read the source](source/jvmMain/afield/lang/solidsl/SolidExpr/)
 
-**Used in:** [A solid, written down: `afield.lang.solidsl`](../solid_notation.md), [Solids that cannot fail: Manifold in Field](../manifold.md), [Penrose and Other Quasiperiodic Tilings](../debruijn_tilings.md)
+**Used in:** [A solid, written down: `afield.lang.solidsl`](../solid_notation.md), [Penrose and Other Quasiperiodic Tilings](../debruijn_tilings.md), [Solids that cannot fail: Manifold in Field](../manifold.md)
 
 ### Top-level functions { #solidexpr-kt-functions }
 

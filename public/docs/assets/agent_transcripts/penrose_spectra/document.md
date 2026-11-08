@@ -51,11 +51,10 @@ markdown(
 <!-- field-box id="ps_strike" index="1" -->
 
 ```edn [field-box id="ps_strike" role="properties"]
-{"id" "ps_strike" "index" 1 "name" "5 - strike three vertices" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - strike three vertices" "_tombstone" false "frame" #afield/rect [60.0 1460.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_strike_code_.kt" "lines" 57 "characters" 2160 "sha256" "a61e78141d898c0d98f92191eb5bff2b47bb25d5e993925c6f4e1460161ffa8a"}]}
+{"id" "ps_strike" "index" 1 "name" "5 - strike three vertices" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - strike three vertices" "_tombstone" false "frame" #afield/rect [60.0 1460.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_strike_code_.kt" "lines" 49 "characters" 1920 "sha256" "0b0c2702c29e560b9c534bc3550e7e04ba2c47bc42d3424575f43479938bd158"}]}
 ```
 
 ```kotlin [field-property box="ps_strike" name="code" path="ps_strike_code_.kt"]
-import afield.audio.engine.WavFloatArrayWriter
 import afield.audio.modal.*
 
 // A Penrose patch and a square lattice as spring networks with equal stiffness, so E = 0 rings
@@ -72,7 +71,7 @@ val strikes = [
 val out = ArrayList<FLine>()
 val lo = 120.0
 val hi = 340.0
-strikes.forEachIndexed { row, (name, modes, v) ->
+strikes.forEachIndexed { row, (_, modes, v) ->
     val a = modes.strikeVertex(v)
     val f = modes.frequencies(220.0)
     val bins = DoubleArray(110)
@@ -99,13 +98,6 @@ strikes.forEachIndexed { row, (name, modes, v) ->
                 color = vec(1.0, 1.0, 1.0, 1.0)
                 thickness = 2.0
             }
-    display(
-        name,
-        WavFloatArrayWriter.encodeMono16(
-            modes.render(a, zeroHz = 220.0, seconds = 3.0, alpha = 1.0, beta = 0.2),
-            44100,
-        ),
-    )
 }
 lines(out, w = 600.0, h = 300.0, fitToSize = true)
 markdown(
