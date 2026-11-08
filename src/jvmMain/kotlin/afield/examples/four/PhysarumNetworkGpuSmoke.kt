@@ -44,7 +44,9 @@ expect:
  * First a placement check (a food source at a known pixel must brighten that pixel of the readback),
  * then one sweep: agent count, trail half-life, diffusion and sensor angle, each varied about one
  * baseline with the others held, plus the blind control. Every configuration is installed at once
- * and stepped in the same frames, so the sweep costs one run's frames.
+ * and stepped in the same frames, so the sweep costs one run's frames. Each network is extracted
+ * from the trail averaged over ten readbacks across the last 300 frames, as the CPU tests measure
+ * on [afield.simulation.agents.meanTrail].
  *
  * Writes `build/physarum-networks/`: one PNG per run (trail, extracted network, sources), the cost
  * against fault-tolerance plane, and `sweep.csv`.
@@ -57,7 +59,9 @@ object PhysarumNetworkGpuSmoke {
     private data class Arm(val group: String, val label: String, val value: Double, val configure: ShaderPhysarumSettings.() -> Unit)
 
     const val SIDE = 512
-    const val BASE_AGENTS = 4000
+    const val BASE_AGENTS = 6000
+    const val AVERAGE_READS = 10
+    const val AVERAGE_SPACING = 30
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -73,7 +77,7 @@ object PhysarumNetworkGpuSmoke {
         }
         try {
             Box.withBoxContextNow(hostBox("food-placement")) { check("food placement") { placement(renderer, window) } }
-            Box.withBoxContextNow(hostBox("network-sweep")) { check("sweep") { sweep(renderer, window, args.firstOrNull()?.toIntOrNull() ?: 4000) } }
+            Box.withBoxContextNow(hostBox("network-sweep")) { check("sweep") { sweep(renderer, window, args.firstOrNull()?.toIntOrNull() ?: 6000) } }
         } catch (t: Throwable) {
             println("FAIL: ${t.message}")
             t.printStackTrace()
@@ -115,8 +119,7 @@ object PhysarumNetworkGpuSmoke {
         // cell coordinates from the CPU helper, moved to pixel centres
         val food: List<Vec2> = PhysarumFood.scattered(SIDE, SIDE, 14, seed = 3L).points.map { vec(it.x + 0.5, it.y + 0.5) }
         val arms = ArrayList<Arm>()
-        for (k in listOf(0.5, 0.75, 1.0, 1.5, 2.0, 3.0)) {
-            val n = (BASE_AGENTS * k).toInt()
+        for (n in listOf(2000, 3000, 4000, BASE_AGENTS, 8000, 12000)) {
             arms += Arm("agents", "$n agents", n.toDouble()) { agentCount = n }
         }
         for (h in listOf(4.0, 16.0, 32.0)) arms += Arm("half-life", "half-life $h", h) { }
@@ -144,8 +147,20 @@ object PhysarumNetworkGpuSmoke {
             }
         }
         val t0 = System.nanoTime()
-        pump(renderer, window, frames)
-        val ms = (System.nanoTime() - t0) / 1e6 / frames
+        pump(renderer, window, frames - AVERAGE_READS * AVERAGE_SPACING)
+        val ms = (System.nanoTime() - t0) / 1e6 / (frames - AVERAGE_READS * AVERAGE_SPACING)
+        // measure on the trail averaged over the last frames, as the CPU measures on meanTrail
+        val means = systems.map { FloatArray(SIDE * SIDE) }
+        repeat(AVERAGE_READS) {
+            pump(renderer, window, AVERAGE_SPACING)
+            val pending = systems.map { it.trail.read() }
+            var guard = 0
+            while (pending.any { !it.isDone } && guard++ < 30) pump(renderer, window, 1)
+            pending.forEachIndexed { k, f ->
+                val img = f.get(20, TimeUnit.SECONDS)
+                for (i in 0 until SIDE * SIDE) means[k][i] += img.data[i * 4] / AVERAGE_READS
+            }
+        }
         println(" -- ${systems.size} systems on ${SIDE}x$SIDE, $frames frames, ${"%.2f".format(ms)} ms/frame for all of them")
 
         val sources = food
@@ -157,9 +172,8 @@ object PhysarumNetworkGpuSmoke {
         val scores = ArrayList<NetworkScore>()
         val csv = StringBuilder("group,label,value,length,relativeCost,stretch,faultTolerance,linkFaultTolerance,connectedPairs,loops\n")
         for ((i, s) in systems.withIndex()) {
-            val img = read(renderer, window, s)
             renderer.renderList.preTargets.remove("${s.settings.name}-simulation")
-            val trail = channel0(img)
+            val trail = Img(SIDE, SIDE, 1, means[i])
             val half = s.trail.settings.halfLifeFrames.x
             val net = TransportNetwork.extract(trail, sources, threshold = 0.25 * saturation(half))
             val score = net.score(arms[i].label)
@@ -176,12 +190,15 @@ object PhysarumNetworkGpuSmoke {
         val byLabel = arms.zip(scores).associate { (a, s) -> a.label to s }
         val base = byLabel["$BASE_AGENTS agents"]!!
         val blind = byLabel["blind"]!!
-        val fewest = byLabel["${BASE_AGENTS / 2} agents"]!!
-        val most = byLabel["${BASE_AGENTS * 3} agents"]!!
+        val fewest = byLabel["2000 agents"]!!
+        val most = byLabel["12000 agents"]!!
         expect("the baseline joins every food source (connected pairs ${"%.2f".format(base.connectedPairs)})", base.connectedPairs > 0.99)
         expect("the baseline costs more than the MST and less than the complete graph", base.relativeCost > 1.0 && base.length < controls[2].length)
         expect("the blind control joins few sources (${"%.2f".format(blind.connectedPairs)})", blind.connectedPairs < 0.3)
         expect("more agents build more road (${"%.0f".format(fewest.length)} -> ${"%.0f".format(most.length)})", most.length > fewest.length)
+        expect("12000 agents build a mesh with no bridge (fault tolerance ${"%.2f".format(most.faultTolerance)})", most.connectedPairs > 0.99 && most.faultTolerance > 0.95)
+        val spots = byLabel["sensor 90 deg"]!!
+        expect("90 degree sensors break the network into spots (${"%.2f".format(spots.connectedPairs)})", spots.connectedPairs < 0.3)
     }
 
     private fun read(renderer: Renderer, window: Window, system: ShaderPhysarumSystem): Img {
@@ -189,8 +206,6 @@ object PhysarumNetworkGpuSmoke {
         repeat(6) { if (!future.isDone) pump(renderer, window, 1) }
         return future.get(20, TimeUnit.SECONDS)
     }
-
-    private fun channel0(img: Img) = Img(img.width, img.height, 1, FloatArray(img.width * img.height) { img.data[it * 4] })
 
     private fun toneMapped(trail: Img, exposure: Double): Img {
         val out = FloatArray(trail.width * trail.height * 3)
