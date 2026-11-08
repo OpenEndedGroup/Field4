@@ -155,6 +155,40 @@ class LandQueueTest(unittest.TestCase):
         self.assertIn("built", self.land(self.primary, "status", doc_id).stdout)
         self.assertEqual(self.land(self.primary, "wait", doc_id).returncode, 0)
 
+    def test_back_to_back_doc_requests_join_one_build(self) -> None:
+        first = self.land(self.primary, "doc")
+        doc_id = first.stdout.split("queued docs build ", 1)[1].split(" ", 1)[0]
+        second = self.land(self.primary, "doc")
+        self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
+        self.assertIn(f"docs build {doc_id} ", second.stdout)
+        self.assertIn(f"wait {doc_id}", second.stdout)
+        self.assertEqual(len(list((self.queue() / "pending").glob("*.json"))), 1)
+        # A branch after it ends the run: a later request is a new build.
+        self.land(self.branch_with("alpha", "alpha.txt"), "enqueue")
+        third = self.land(self.primary, "doc")
+        self.assertIn("queued docs build ", third.stdout)
+        self.assertEqual(self.run_lander().returncode, 0)
+        self.assertEqual((Path(self._tmp.name) / "DOC_RUNS").read_text(), "seed:False:False\nseed:True:False\n")
+
+    def test_consecutive_doc_items_in_the_queue_run_one_build(self) -> None:
+        # Docs items next to each other, as a branch between them bouncing leaves them (or as they were
+        # queued before `doc` joined a waiting build).
+        self.land(self.primary, "doc")
+        pending = self.queue() / "pending"
+        ids = ["20000101-000000-doc", "20000101-000001-doc"]
+        for n, doc_id in enumerate(ids):
+            (pending / f"{doc_id}.json").write_text(json.dumps(
+                {"id": doc_id, "kind": "doc", "checkout": str(self.primary.resolve()), "by": "t", "seq": n}))
+        for path in pending.glob("*.json"):
+            if path.stem not in ids:
+                path.unlink()
+        self.assertEqual(self.run_lander().returncode, 0)
+        self.assertEqual((Path(self._tmp.name) / "DOC_RUNS").read_text(), "seed:False:False\n")
+        for doc_id in ids:
+            self.assertEqual(self.land(self.primary, "wait", doc_id).returncode, 0, doc_id)
+        joined = json.loads((self.queue() / "landed" / f"{ids[1]}.json").read_text())
+        self.assertEqual(joined["coalesced_into"], ids[0])
+
     def test_failed_doc_item_reports_failure_and_does_not_bounce_later_branch(self) -> None:
         (self.primary / "DOCS_BREAKS").write_text("yes\n")
         request = self.land(self.primary, "doc")

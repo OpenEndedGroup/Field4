@@ -49,7 +49,9 @@ bounce. Every attempt is in `field-land-queue/fixer.jsonl`. FIELD_LAND_FIXER=off
 checkout holding `main`; later landings wait until the build finishes. It reuses committed captures
 and reports its own failure without undoing a landing. It refuses to build while that checkout has
 uncommitted changes under src/ or public/docs, because the site would mix them with pages generated
-from HEAD. The running lander must be restarted after
+from HEAD. Docs builds back to back coalesce: `doc` joins one already waiting at the tail of the
+queue (printing its id), and the lander answers consecutive docs items with a single build. The
+running lander must be restarted after
 changes to this script are landed, because Python does not reload it while running.
 
 The queue is plain JSON files in the clone's common git dir (`field-land-queue/`), so every worktree
@@ -233,12 +235,25 @@ def cmd_doc(args: argparse.Namespace) -> int:
         print("land: doc needs a checkout with main checked out", file=sys.stderr)
         return 2
     queue = _queue_dir(here)
+    by = os.environ.get("FIELD_LAND_BY") or f"{_git(here, 'config', 'user.name', check=False) or 'unknown'} @ {here.name}"
+    # A docs build already waiting at the tail of the queue will build exactly what this one would:
+    # nothing can land between them. Join it rather than queue a second identical build.
+    pending = _items(queue, PENDING)
+    if (pending and _is_doc(pending[-1]) and not pending[-1].get("started")
+            and pending[-1]["checkout"] == str(holder.resolve())):
+        # Not rewritten: the lander may be moving it right now, and a stale write would resurrect it.
+        item = pending[-1]
+        print(f"land: docs build {item['id']} for {holder} is already queued with nothing after it; joined it "
+              f"({len(pending) - 1} ahead of it).")
+        print(f"Progress: uv run python tools/land.py status {item['id']}")
+        print(f"Outcome: uv run python tools/land.py wait {item['id']}")
+        return 0
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     item = {
         "id": f"{stamp}-doc",
         "kind": DOC,
         "checkout": str(holder.resolve()),
-        "by": os.environ.get("FIELD_LAND_BY") or f"{_git(here, 'config', 'user.name', check=False) or 'unknown'} @ {here.name}",
+        "by": by,
         "enqueued": _now(),
         "seq": time.time_ns(),
     }
@@ -1957,10 +1972,23 @@ def cmd_run(args: argparse.Namespace) -> int:
                 continue
             if doc_index == 0:
                 item = pending[0]
-                print(f"land: {_now()} building docs in {item['checkout']}", flush=True)
+                # Docs items back to back (queued before enqueue-time joining, or brought together by a
+                # branch between them bouncing) would build the same tree: one build answers them all.
+                joined = []
+                for other in pending[1:]:
+                    if not _is_doc(other) or other["checkout"] != item["checkout"]:
+                        break
+                    joined.append(other)
+                print(f"land: {_now()} building docs in {item['checkout']}"
+                      + (f" (also for {', '.join(o['id'] for o in joined)})" if joined else ""), flush=True)
                 _run_doc(item, primary, queue)
                 state, done = _find(queue, item["id"]) or ("?", item)
                 print(_describe(state, done, queue), flush=True)
+                if state in (LANDED, BOUNCED):
+                    for other in joined:
+                        other.update({k: done[k] for k in ("started", "finished", "log", "built_from", "reason") if k in done},
+                                     coalesced_into=item["id"])
+                        _move(queue, other, state)
                 continue
             if args.once and not _items(queue, PENDING):
                 return 0
