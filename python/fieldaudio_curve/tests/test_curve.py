@@ -129,6 +129,47 @@ class CurveTest(unittest.TestCase):
         expected = np.abs(cdf[:, None, :] - cdf[None, :, :]).sum(axis=2) / (c.mel_bands - 1)
         np.testing.assert_allclose(analyzer._distances, expected, atol=1e-14)
 
+    def test_stages_match_the_streamed_curve(self):
+        from fieldaudio_curve.stages import stages
+        c = CurveConfig(8000, fft_size=128, hop_size=32, mel_bands=12, history=8)
+        audio = np.random.default_rng(4).normal(size=2048)
+        streamed = CurveAnalyzer(c).push(audio)
+        time, coords = streamed[30]
+        dump = stages(audio, c, time)
+        self.assertAlmostEqual(dump["curves"][-1]["time"], time)
+        np.testing.assert_allclose(dump["curves"][-1]["aligned"], coords, atol=1e-12)
+        self.assertAlmostEqual(dump["curves"][0]["time"], streamed[29][0])
+        masses = np.asarray(dump["masses"])
+        np.testing.assert_allclose(masses.sum(axis=1), 1.0, atol=1e-12)
+        cdf = np.cumsum(masses, axis=1)[:, :-1]
+        expected = np.abs(cdf[:, None, :] - cdf[None, :, :]).sum(axis=2) / (c.mel_bands - 1)
+        np.testing.assert_allclose(dump["distances"], expected, atol=1e-12)
+        self.assertEqual(len(dump["melCentersHz"]), c.mel_bands)
+
+    def test_ema_curves_are_anchored_by_their_slow_end(self):
+        from fieldaudio_curve.ema import KIND_EMA, EmaCurveAnalyzer, write_ema_curves
+        c = CurveConfig(8000, fft_size=256, hop_size=64, mel_bands=16, history=12, dimensions=2)
+        rng = np.random.default_rng(3)
+        # Two alternating noises, so the fast timescales keep moving while the slow ones settle.
+        audio = np.concatenate([rng.normal(size=1600) * (1 if k % 2 else 0.2) for k in range(12)])
+        audio[::2] += np.sin(np.arange(len(audio))[::2] * 0.9)
+        analyzer = EmaCurveAnalyzer(c, longest_seconds=4.0)
+        self.assertTrue(np.all(np.diff(analyzer.taus) < 0))
+        curves = analyzer.push(audio)
+        late = np.array([coords for _, coords in curves[len(curves) // 2:]])
+        size = np.mean(np.linalg.norm(late - late.mean(axis=1, keepdims=True), axis=2))
+        slow = np.linalg.norm(late[:, 0] - late[:, 0].mean(axis=0), axis=1).mean() / size
+        fast = np.linalg.norm(late[:, -1] - late[:, -1].mean(axis=0), axis=1).mean() / size
+        self.assertLess(slow, fast)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'ema.f4curve'
+            write_ema_curves(path, audio, c, longest_seconds=4.0)
+            data = path.read_bytes()
+            frames = struct.unpack_from('<Q', data, 32)[0]
+            self.assertEqual(frames, len(curves))
+            self.assertEqual(struct.unpack_from('<Id', data, 40), (KIND_EMA, 4.0))
+            self.assertEqual(len(data), 64 + frames * (16 + 4 * c.history * c.dimensions))
+
     def test_silence_is_finite(self):
         c = CurveConfig(8000, fft_size=128, hop_size=64, mel_bands=12, history=4)
         for _, points in CurveAnalyzer(c).push(np.zeros(512)):

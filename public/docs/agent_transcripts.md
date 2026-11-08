@@ -2572,6 +2572,19 @@ Walkthrough: [Loris partial tracks and resynthesis](loris.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/loris_partial_explorer/metadata.edn)
 
+### audio_curve_explorer
+
+A film voice analysed into a rolling curve of its recent spectra (mel bands, earth mover's distances,
+MDS, alignment) and drawn as FLines in the Three.js viewer at whatever time Field's waveform player is
+playing or scrubbing. Further boxes draw a stereo recording as one curve per channel, the voice with a
+finer hop and a longer memory, and a curve of running averages from one hop to twenty seconds. Every
+box is compile-checked; the analysis runs the `fieldaudio_curve` Python package through `uv`.
+Walkthrough: [Audio curves: a sound as a few slow controls](audio_curves.md).
+
+![The voice's curve of running averages in the Three.js viewer: faint at its 20-second end, bright at the present](assets/audio_curves/ema-curve.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/audio_curve_explorer/metadata.edn)
+
 ### audio_ai_underfit_mancini
 
 Import a held-out excerpt, hash the completed Experiment in Terror
