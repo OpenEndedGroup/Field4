@@ -48,6 +48,46 @@ class PuppetBrowserVrInputTest {
             "A deliberate large movement must catch up within one frame")
     }
 
+    @Test fun `workspace smoothing reduces hover jitter and steadies dragging further`() {
+        fun jitter(hoverSeconds: Double, dragSeconds: Double?, dragging: Boolean): Double {
+            input.update(emptyList())
+            input.smoothingSeconds = hoverSeconds
+            input.dragSmoothingSeconds = dragSeconds
+            var now = 1_000_000_000L
+            input.clockNanos = { now }
+            input.update(listOf(ray("right", down = dragging)))
+            val positions = (0 until 150).map { i ->
+                now += 11_111_111L
+                input.update(listOf(ray("right", down = dragging, x = if (i % 2 == 0) 0.002f else -0.002f)))!!.u
+            }.takeLast(30)
+            return (positions.max() - positions.min()) * panel.uv.cssWidth
+        }
+        val oldHover = jitter(0.045, null, false)
+        val hover = jitter(FieldVrWorkspace.POINTER_SMOOTHING_SECONDS, FieldVrWorkspace.DRAG_SMOOTHING_SECONDS, false)
+        val drag = jitter(FieldVrWorkspace.POINTER_SMOOTHING_SECONDS, FieldVrWorkspace.DRAG_SMOOTHING_SECONDS, true)
+        assertTrue(hover < oldHover * 0.7, "Hover jitter should be reduced: $oldHover -> $hover px")
+        assertTrue(drag < hover * 0.7, "Dragging should be steadier than hover: $hover -> $drag px")
+    }
+
+    @Test fun `drag smoothing follows large moves and release uses the visible position`() {
+        input.smoothingSeconds = FieldVrWorkspace.POINTER_SMOOTHING_SECONDS
+        input.dragSmoothingSeconds = FieldVrWorkspace.DRAG_SMOOTHING_SECONDS
+        var now = 1_000_000_000L
+        input.clockNanos = { now }
+        input.update(listOf(ray("right", down = true)))
+        now += 11_111_111L
+        val moved = input.update(listOf(ray("right", down = true, x = 0.8f)))!!
+        assertTrue(kotlin.math.abs(moved.u - 0.9) * panel.uv.cssWidth < 50,
+            "A large drag should follow within 50 CSS pixels in one 90 Hz frame")
+        now += 11_111_111L
+        val released = input.update(listOf(ray("right", x = 0.8f)))!!
+        val up = events.last { it.type == BrowserPointerEventType.UP }
+        assertEquals(released.u * panel.uv.cssWidth, up.x, 1e-6)
+        assertEquals(released.v * panel.uv.cssHeight, up.y, 1e-6)
+        assertEquals(1, events.count { it.type == BrowserPointerEventType.DOWN })
+        assertEquals(1, events.count { it.type == BrowserPointerEventType.UP })
+    }
+
     @Test fun `press uses the stabilized visible target and loss of tracking resets smoothing`() {
         input.smoothingSeconds = 0.045
         var now = 1_000_000_000L

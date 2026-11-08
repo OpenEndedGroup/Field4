@@ -1735,12 +1735,15 @@ internal fun getButtonCallback(controlId: String): ((Boolean) -> Unit)? = button
  */
 internal fun buildButtonHtml(controlId: String, label: String, hit: String = "hold"): String {
     fun esc(t: String) = t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        .replace("\"", "&quot;")
     val escaped = esc(label)
-    val hitText = esc(hit)
+    val icon = hit == "hold"
+    val hitContent = if (icon) """<svg aria-hidden="true" focusable="false" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4" /></svg>""" else esc(hit)
+    val accessibleLabel = if (icon) " aria-label=\"${if (escaped.isEmpty()) "Hold" else "Hold $escaped"}\"" else ""
     return """
         <div class="field-control field-button" data-control-id="$controlId">
             ${if (escaped.isEmpty()) "" else "<span class=\"field-label\">$escaped</span>"}
-            <button type="button" class="field-button-hit" id="$controlId" aria-pressed="false">$hitText</button>
+            <button type="button" class="field-button-hit${if (icon) " field-button-icon" else ""}" id="$controlId" aria-pressed="false"$accessibleLabel>$hitContent</button>
         </div>
     """.trimIndent()
 }

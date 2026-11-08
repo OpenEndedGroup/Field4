@@ -28,6 +28,9 @@ class FieldVrWorkspace(
     withDepth: Boolean = true,
 ) : AutoCloseable {
     companion object {
+        internal const val POINTER_SMOOTHING_SECONDS = 0.075
+        internal const val DRAG_SMOOTHING_SECONDS = 0.12
+
         /** ALVR has no WiVRn HID devices; its launcher selects the desktop focus path. */
         internal fun defaultHeadsetInput(
             openXR: Boolean,
@@ -105,7 +108,10 @@ class FieldVrWorkspace(
         panel = PuppetBrowserVrPanel(renderer, stereo, browser, widthMeters, distanceMeters,
             name = "field-vr-ide", automaticInteraction = false)
         panel.build()
-        input = PuppetBrowserVrInput(panel.panel).apply { smoothingSeconds = 0.045 }
+        input = PuppetBrowserVrInput(panel.panel).apply {
+            smoothingSeconds = POINTER_SMOOTHING_SECONDS
+            dragSmoothingSeconds = DRAG_SMOOTHING_SECONDS
+        }
         grab = PuppetBrowserVrGrab(panel.panel)
         stereo.stereoCamera.base.lookAt(Vector3f(), Vector3f(0f, 0f, -1f))
         recenter()
