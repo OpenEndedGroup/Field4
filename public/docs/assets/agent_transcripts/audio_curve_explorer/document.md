@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="audio_curve_voice" index="0" -->
 
 ```edn [field-box id="audio_curve_voice" role="properties"]
-{"id" "audio_curve_voice" "index" 0 "name" "1 · a film voice as a moving 3D curve — play or scrub" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · a film voice as a moving 3D curve — play or scrub" "_tombstone" false "frame" #afield/rect [40.0 40.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "audio_curve_voice_code_.kt" "lines" 26 "characters" 1110 "sha256" "12e2101fbdc440576d75e2486b18b4d2c76bf68b4644b9b3e3d6940c04270701"}]}
+{"id" "audio_curve_voice" "index" 0 "name" "1 · a film voice as a moving 3D curve — play or scrub" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · a film voice as a moving 3D curve — play or scrub" "_tombstone" false "frame" #afield/rect [40.0 40.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "audio_curve_voice_code_.kt" "lines" 34 "characters" 1162 "sha256" "3ccbb4e52f392dc981872d1816aab3ca62efb6f4b650082cbf7e7f2067a4ac7b"}]}
 ```
 
 ```kotlin [field-property box="audio_curve_voice" name="code" path="audio_curve_voice_code_.kt"]
@@ -26,9 +26,16 @@ displayAudioBytes(wav.toFile().readBytes(), options = AudioVisualizerOptions(onT
 // A faint cube around where the curve lives, so the view holds still while you orbit.
 val room = fline {
     for (z in [-80, 80]) {
-        moveTo(-80, -80, z); lineTo(80, -80, z); lineTo(80, 80, z); lineTo(-80, 80, z); lineTo(-80, -80, z)
+        moveTo(-80, -80, z)
+        lineTo(80, -80, z)
+        lineTo(80, 80, z)
+        lineTo(-80, 80, z)
+        lineTo(-80, -80, z)
     }
-    for (x in [-80, 80]) for (y in [-80, 80]) { moveTo(x, y, -80); lineTo(x, y, 80) }
+    for (x in [-80, 80]) for (y in [-80, 80]) {
+        moveTo(x, y, -80)
+        lineTo(x, y, 80)
+    }
     color = vec(1, 1, 1, 0.12)
 }
 
@@ -40,7 +47,8 @@ loop {
         shown = frame.timeSeconds
         threeLines(frame.flines(scale, bands = 16, centered = true) + room, channel = "curve", height = 560)
     }
-}.end { curve.close() }
+}
+    .end { curve.close() }
 ```
 
 ## 2. 2 · stereo music, one curve per channel
@@ -48,7 +56,7 @@ loop {
 <!-- field-box id="audio_curve_music" index="1" -->
 
 ```edn [field-box id="audio_curve_music" role="properties"]
-{"id" "audio_curve_music" "index" 1 "name" "2 · stereo music, one curve per channel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · stereo music, one curve per channel" "_tombstone" false "frame" #afield/rect [1240.0 40.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "audio_curve_music_code_.kt" "lines" 24 "characters" 936 "sha256" "3791e95eeb424fb02753a43f7d9bfd9f2d952a959edc13db706de288d944e052"}]}
+{"id" "audio_curve_music" "index" 1 "name" "2 · stereo music, one curve per channel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · stereo music, one curve per channel" "_tombstone" false "frame" #afield/rect [1240.0 40.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "audio_curve_music_code_.kt" "lines" 25 "characters" 941 "sha256" "5369061964d9d8afd7be63eabd5fb04de7c25c36a7ab4cd2009584fe5a1f1335"}]}
 ```
 
 ```kotlin [field-property box="audio_curve_music" name="code" path="audio_curve_music_code_.kt"]
@@ -75,7 +83,8 @@ loop {
         }
         threeLines(lines, channel = "curves", height = 520)
     }
-}.end { curves.forEach { it.close() } }
+}
+    .end { curves.forEach { it.close() } }
 ```
 
 ## 3. 4 · averages from one hop to 20 s instead of a window
@@ -83,7 +92,7 @@ loop {
 <!-- field-box id="audio_curve_ema" index="2" -->
 
 ```edn [field-box id="audio_curve_ema" role="properties"]
-{"id" "audio_curve_ema" "index" 2 "name" "4 · averages from one hop to 20 s instead of a window" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · averages from one hop to 20 s instead of a window" "_tombstone" false "frame" #afield/rect [3640.0 40.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "audio_curve_ema_code_.kt" "lines" 17 "characters" 709 "sha256" "0dcc6a73201d2e621e2c4fdc2001861ef3d82a790c873b5ec73ae4d287f5bba0"}]}
+{"id" "audio_curve_ema" "index" 2 "name" "4 · averages from one hop to 20 s instead of a window" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · averages from one hop to 20 s instead of a window" "_tombstone" false "frame" #afield/rect [3640.0 40.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "audio_curve_ema_code_.kt" "lines" 18 "characters" 714 "sha256" "3203a3c54983db94da12adc763fde5b6b182c37b4479f060c5f56f88efe77c42"}]}
 ```
 
 ```kotlin [field-property box="audio_curve_ema" name="code" path="audio_curve_ema_code_.kt"]
@@ -103,7 +112,8 @@ loop {
         shown = frame.timeSeconds
         threeLines(frame.flines(scale, bands = 16), channel = "curve", height = 560)
     }
-}.end { curve.close() }
+}
+    .end { curve.close() }
 ```
 
 ## 4. 3 · finer hop, longer memory
@@ -111,7 +121,7 @@ loop {
 <!-- field-box id="audio_curve_dense" index="3" -->
 
 ```edn [field-box id="audio_curve_dense" role="properties"]
-{"id" "audio_curve_dense" "index" 3 "name" "3 · finer hop, longer memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · finer hop, longer memory" "_tombstone" false "frame" #afield/rect [2440.0 40.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "audio_curve_dense_code_.kt" "lines" 19 "characters" 709 "sha256" "adf11d72c73f313df0c38dc6c6b9f01ce322180565920de886a1ff02625c8556"}]}
+{"id" "audio_curve_dense" "index" 3 "name" "3 · finer hop, longer memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · finer hop, longer memory" "_tombstone" false "frame" #afield/rect [2440.0 40.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "audio_curve_dense_code_.kt" "lines" 20 "characters" 714 "sha256" "68ea008f087b7a5b2bbfc1054835f3b6190ff28151b1cf0a716703afc6d4233f"}]}
 ```
 
 ```kotlin [field-property box="audio_curve_dense" name="code" path="audio_curve_dense_code_.kt"]
@@ -133,6 +143,7 @@ loop {
         shown = frame.timeSeconds
         threeLines(frame.flines(scale, depth = 300.0, bands = 16), channel = "curve", height = 560)
     }
-}.end { curve.close() }
+}
+    .end { curve.close() }
 ```
 

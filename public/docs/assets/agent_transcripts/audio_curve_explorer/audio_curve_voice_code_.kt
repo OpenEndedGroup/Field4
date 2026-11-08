@@ -9,9 +9,16 @@ displayAudioBytes(wav.toFile().readBytes(), options = AudioVisualizerOptions(onT
 // A faint cube around where the curve lives, so the view holds still while you orbit.
 val room = fline {
     for (z in [-80, 80]) {
-        moveTo(-80, -80, z); lineTo(80, -80, z); lineTo(80, 80, z); lineTo(-80, 80, z); lineTo(-80, -80, z)
+        moveTo(-80, -80, z)
+        lineTo(80, -80, z)
+        lineTo(80, 80, z)
+        lineTo(-80, 80, z)
+        lineTo(-80, -80, z)
     }
-    for (x in [-80, 80]) for (y in [-80, 80]) { moveTo(x, y, -80); lineTo(x, y, 80) }
+    for (x in [-80, 80]) for (y in [-80, 80]) {
+        moveTo(x, y, -80)
+        lineTo(x, y, 80)
+    }
     color = vec(1, 1, 1, 0.12)
 }
 
@@ -23,4 +30,5 @@ loop {
         shown = frame.timeSeconds
         threeLines(frame.flines(scale, bands = 16, centered = true) + room, channel = "curve", height = 560)
     }
-}.end { curve.close() }
+}
+    .end { curve.close() }
