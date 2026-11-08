@@ -161,7 +161,7 @@ as dials and look.
 FLine drawing every tick, and matches it by shape. Pass the charset to `charGrid` with
 `glyphs = ascii.glyphs` so every character the matcher picks exists in the grid:
 
-```diffstatic_runner {data-lang=kotlin video="assets/ascii_shape/cube.mp4" alt="a char grid panel showing a wireframe cube turning, its twelve edges drawn in white characters: slashes and backslashes on the slanted edges, underscores and dashes on the near-horizontal ones, vertical bars and brackets on the upright ones" execution="launch" wait-output="true" duration="6" fps="20" timeout="240" capture="box" open-outputs="true" padding="20" name="ascii-shape-cube" embed=true}
+```diffstatic_runner {data-lang=kotlin video="assets/ascii_shape/cube.mp4" alt="a char grid panel showing a wireframe cube turning, its edges drawn in white characters that follow each edge's direction, such as y, f, i, L, T, Q and underscores" execution="launch" wait-output="true" duration="6" fps="20" timeout="240" capture="box" open-outputs="true" padding="20" name="ascii-shape-cube" embed=true}
 // A wireframe cube turning about two axes, drawn into an Img each tick and matched by shape.
 val ascii = ShapeAscii()
 // Corner i has x, y, z = ±1 from its three bits; an edge joins corners one bit apart.
@@ -193,7 +193,7 @@ charGrid(cols = 60, rows = 26, glyphs = ascii.glyphs) {
 
 `convert` remembers the character it chose for each cell pattern it has met (the six numbers
 rounded to 32 levels), so a moving scene costs a table lookup for most cells after the first few
-ticks. A 60 × 26 grid keeps up with `charGrid`'s 24 frames a second. Stop the box to stop the cube.
+ticks. Stop the box to stop the cube.
 
 ## Reference
 
