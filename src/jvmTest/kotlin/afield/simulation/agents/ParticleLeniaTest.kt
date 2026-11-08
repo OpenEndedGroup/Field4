@@ -24,10 +24,10 @@ class ParticleLeniaTest {
 
     @Test fun defaultRuleDescendsAndStaysBounded() {
         val pl = ParticleLenia.random(200, seed = 1L)
-        val e0 = pl.energyHistory.first()
+        val e0 = pl.currentEnergy()
         pl.stepTimes(3000)
         println("PL default: e0=$e0 $pl")
-        assertTrue(pl.energyHistory.last() < e0 - 0.1, "energy fell: $pl")
+        assertTrue(pl.currentEnergy() < e0 - 0.1, "energy fell: $pl")
         assertTrue(pl.spread() < 15.0, "bounded: $pl")
     }
 }

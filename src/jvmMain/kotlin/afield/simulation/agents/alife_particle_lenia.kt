@@ -245,25 +245,8 @@ class ParticleLenia(
     }
 
     /** White dots for the particles over an existing [size]-square RGB image [img] of the same framing. */
-    fun splat(img: Img, extent: Double, cx: Double, cy: Double, dotRadius: Double = 2.5): Img {
-        val size = img.width
-        val d = img.data.copyOf()
-        val scale = size / extent
-        val rr = dotRadius * dotRadius
-        val ri = dotRadius.toInt() + 1
-        for (i in 0 until count) {
-            val sx = (positions[2 * i] - cx + extent / 2) * scale
-            val sy = (cy - positions[2 * i + 1] + extent / 2) * scale
-            for (oy in -ri..ri) for (ox in -ri..ri) {
-                val x = (sx + ox).toInt(); val y = (sy + oy).toInt()
-                if (x !in 0 until size || y !in 0 until img.height) continue
-                val ddx = x + 0.5 - sx; val ddy = y + 0.5 - sy
-                if (ddx * ddx + ddy * ddy > rr) continue
-                for (c in 0 until img.channels) d[(y * size + x) * img.channels + c] = 1f
-            }
-        }
-        return Img(size, img.height, img.channels, d)
-    }
+    fun splat(img: Img, extent: Double, cx: Double, cy: Double, dotRadius: Double = 2.5): Img =
+        splatDots(img, List(count) { positions[2 * it] to positions[2 * it + 1] }, extent, cx, cy, dotRadius)
 
     /** An independent copy, history included. */
     fun copy(): ParticleLenia {
@@ -288,6 +271,31 @@ class ParticleLenia(
             return ParticleLenia(DoubleArray(2 * n) { (rnd.nextDouble() - 0.5) * side }, params)
         }
     }
+}
+
+/**
+ * White dots of radius [dotRadius] pixels at world [points] over a copy of the square image [img],
+ * which frames [extent] world units centred on ([cx], [cy]) with +y up — the framing
+ * [ParticleLenia.render] uses, so a path (a centroid track, say) can be drawn over a render.
+ */
+fun splatDots(img: Img, points: List<Pair<Double, Double>>, extent: Double, cx: Double, cy: Double, dotRadius: Double = 2.5): Img {
+    val size = img.width
+    val d = img.data.copyOf()
+    val scale = size / extent
+    val rr = dotRadius * dotRadius
+    val ri = dotRadius.toInt() + 1
+    for ((px, py) in points) {
+        val sx = (px - cx + extent / 2) * scale
+        val sy = (cy - py + extent / 2) * scale
+        for (oy in -ri..ri) for (ox in -ri..ri) {
+            val x = (sx + ox).toInt(); val y = (sy + oy).toInt()
+            if (x !in 0 until size || y !in 0 until img.height) continue
+            val ddx = x + 0.5 - sx; val ddy = y + 0.5 - sy
+            if (ddx * ddx + ddy * ddy > rr) continue
+            for (c in 0 until img.channels) d[(y * size + x) * img.channels + c] = 1f
+        }
+    }
+    return Img(size, img.height, img.channels, d)
 }
 
 /** A [width] × [height] line plot of [values] (white on dark), y range auto with a small margin. */

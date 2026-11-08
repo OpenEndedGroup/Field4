@@ -86,14 +86,94 @@ showImg(
 ![three dark panels: white dots arranged in a ring of petals over a bright orange energy field; a purple disc of the potential U with a bright centre and dark holes where the petals are; the control, a featureless square of evenly spaced dots; below, an energy curve that falls steeply and then in steps](assets/particle_lenia/particle-lenia.png)
 
 The printed rotation (mean angular velocity about the centroid) and drift (speed of the centroid) are
-both small after 3000 steps under this rule and seed: the flower is close to still. Across seeds 1
-and 2 with 50, 100, 200 and 400 particles, every run settled into a near-stationary shape. The
-article's moving creatures (rotators and gliders) come from other parameters and seeds, which
-this page has not reproduced yet.
+both small after 3000 steps: under the article's default rule this flower is close to still.
+
+## A creature that turns and travels
+
+A narrower kernel ring and weaker repulsion give a creature that moves. With `sigmaK = 0.6` and
+`cRep = 0.3` (the other numbers unchanged), 100 particles started in an 8.5-unit square settle by step 3000
+into a pinwheel: four loops of particles about 10 units across, with two small satellite clusters.
+The pinwheel then spins steadily, and its centre of mass slowly travels along a curve.
+Between steps 3000 and 12000 its mean energy stays at −0.634, its spread at 3.08 to 3.09, its
+rotation at 0.0024 to 0.0028 rad per unit time, and its centroid speed at 0.0052 to 0.0059. The
+video below follows it on a fixed frame, with the centroid's path drawn as it goes.
+
+```diffstatic_runner {data-lang=kotlin video="assets/particle_lenia/particle-lenia-rotator.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="600" w="600" embed=true name="particle-lenia-rotator-video" alt="100 white dots gather into a pinwheel of four loops with two small satellite clusters, which spins while its centre drifts, leaving a thin white trail of its centre's path"}
+// The rotator rule: a narrower kernel ring and weaker repulsion than the article's defaults.
+val rule = ParticleLeniaParams(sigmaK = 0.6, cRep = 0.3)
+val track = mutableListOf<Pair<Double, Double>>()
+
+animateEvolution(
+    ParticleLenia.random(100, side = 12.0 * Math.sqrt(0.5), seed = 1L, params = rule),
+    totalSteps = 12000,
+    seconds = 7.0,
+    cellSide = 400,
+    step = { pl ->
+        pl.step()
+        if (pl.steps % 50 == 0) track += pl.centroid()
+        pl
+    },
+    panels = { pl, n ->
+        val img = pl.render(extent = 24.0, size = 300, cx = 0.0, cy = 0.0)
+        // the centroid's path so far, as small dots
+        ["step %d".format(n) to splatDots(img, track, 24.0, 0.0, 0.0, dotRadius = 1.0)]
+    },
+)
+```
+
+To look for it, the same seed was run for 5000 to 10000 steps at each point of two grids, measuring
+the centroid's displacement and the population's rotation over two 2000-step windows 3000 steps
+apart. A creature counts as moving if both windows agree. The first grid varied `muG` (0.5, 0.6,
+0.7), `sigmaG` (0.1, 0.15, 0.2) and `wK` (0.015, 0.022, 0.03) at 200 particles, and found nothing
+that kept moving. The second varied the particle count (12, 25, 50, 100, 200), `muK` (3, 4, 5),
+`sigmaK` (0.4, 0.6) and `cRep` (0.3, 1). Three settings rotated steadily in both windows: 100
+particles at `muK = 4, sigmaK = 0.6, cRep = 0.3` (0.52 and 0.55 rad per window), 100 at
+`muK = 5, sigmaK = 0.6, cRep = 1` (0.32 and 0.32), and 200 at `muK = 5, sigmaK = 0.6, cRep = 0.3`
+(0.24 and 0.25). None travelled in a straight line. The article's glider was not found.
+
+## Thousands of particles on the GPU
+
+Each CPU step sums over every pair of particles, so it costs `O(n²)`.
+[`ShaderParticleLenia`](reference/simulation.md#shaderparticlelenia-kt) runs the same law as a Vulkan compute shader over a
+[`GpuNeighbourGrid`](reference/graphics.md#gpuneighbourgrid-kt), the grid the [GPU boids](neural_particles.md) use. Each
+particle sums only over the 3 × 3 block of cells around it, so the grid's cell has to be at least as
+wide as the kernel's cutoff, `muK + 3 sigmaK`. Each step is two passes: one computes every velocity
+from the old positions, and the other moves the particles. The GPU velocities agree with the CPU's to
+1.6 × 10⁻⁴ of the largest speed over 1600 particles.
+
+The box below goes beneath a renderer box. It seeds 64 clusters of 100 particles each under the
+rotator rule, 6400 particles in all, and runs 20 steps per frame in the native window. Clusters that
+drift into each other merge into larger creatures.
+
+```diffstatic {data-lang=kotlin}
+import afield.simulation.physics.ShaderParticleLenia
+
+prop<ShaderParticleLenia>(lenia)
+
+// 64 clusters of 100 particles under the rotator rule: 6400 particles, one creature per cluster.
+once.lenia {
+    val grid = GpuNeighbourGrid(
+        capacity = 6400,
+        cellsPerSide = 40,
+        domainMin = Vector2f(-120f, -120f),
+        domainSize = 240f,
+        renderer = renderer,
+        name = "leniaGrid",
+    )
+    ShaderParticleLenia(grid, 6400, renderer, ParticleLeniaParams(sigmaK = 0.6, cRep = 0.3), name = "lenia")
+        .also {
+            it.reset(creatures = 64, perCreature = 100, side = 8.5f, spacing = 26f, seed = 1)
+            it.install(renderer.renderList.others)
+            it.installDrawInto()
+        }
+}
+
+lenia.substeps = 20
+lenia.pointSize = 3f
+lenia.viewScale = 110f
+println("particles: " + lenia.count + ", cutoff " + lenia.cutoff + ", cell " + lenia.grid.cellSize)
+```
 
 ## Where to take it
 
-- **Thousands of particles.** Each step sums over every pair, so it costs `O(n²)`; 200 particles
-  step comfortably on the CPU. A GPU version with a neighbour grid would follow the
-  [million-agent Physarum](alife_examples.md#a-million-agents-on-the-gpu) pattern.
 - **Per-particle rules**, the article's 3-D variant, and gliders from its other parameter sets.

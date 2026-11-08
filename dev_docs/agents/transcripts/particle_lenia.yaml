@@ -1,10 +1,11 @@
 name: particle_lenia
 description: >
-  Particle Lenia (Mordvintsev, Niklasson and Randazzo, Google Research 2022), as two pure-CPU
+  Particle Lenia (Mordvintsev, Niklasson and Randazzo, Google Research 2022), as three pure-CPU
   boxes from public/docs/particle_lenia.md. Box 1 runs the article's default rule from 200
   particles in a 12-unit square to step 3000 and draws the particles over the energy field, the
   potential U and the mean particle energy, beside the control (wK = 0, repulsion only). Box 2 is
-  the same run animated. Neither opens a Window or a Renderer.
+  the same run animated. Box 3 is the rotator rule (sigmaK 0.6, cRep 0.3, 100 particles) with
+  its centroid track. Neither opens a Window or a Renderer.
 docs:
   - page: particle_lenia.md
     why: "The page these two boxes come from."
@@ -61,11 +62,42 @@ operations:
               step = { it.step() },
               panels = { pl, n -> ["step %d   mean E %.3f".format(n, pl.currentEnergy()) to pl.render(extent = 24.0, size = 300, cx = 0.0, cy = 0.0)] },
           )
+  - create:
+      box: particle_lenia_rotator
+      name: "3 — Particle Lenia: a creature that turns and travels"
+      frame:
+        x: 1060.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // The rotator rule: a narrower kernel ring and weaker repulsion than the article's defaults.
+          val rule = ParticleLeniaParams(sigmaK = 0.6, cRep = 0.3)
+          val track = mutableListOf<Pair<Double, Double>>()
+
+          animateEvolution(
+              ParticleLenia.random(100, side = 12.0 * Math.sqrt(0.5), seed = 1L, params = rule),
+              totalSteps = 12000,
+              seconds = 7.0,
+              cellSide = 400,
+              step = { pl ->
+                  pl.step()
+                  if (pl.steps % 50 == 0) track += pl.centroid()
+                  pl
+              },
+              panels = { pl, n ->
+                  val img = pl.render(extent = 24.0, size = 300, cx = 0.0, cy = 0.0)
+                  // the centroid's path so far, as small dots
+                  ["step %d".format(n) to splatDots(img, track, 24.0, 0.0, 0.0, dotRadius = 1.0)]
+              },
+          )
   - execute:
       box: particle_lenia_still
       property: code
       type: fragment
   - launch: { box: particle_lenia_movie, property: code }
+  - launch: { box: particle_lenia_rotator, property: code }
   - await:
       wait: pending
   - wait:
