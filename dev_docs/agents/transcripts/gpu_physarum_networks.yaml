@@ -52,8 +52,18 @@ operations:
           val top = 200.0
           val side = 400.0
           val dots = listOf(
-              0.22 to 0.30, 0.38 to 0.18, 0.62 to 0.22, 0.80 to 0.35, 0.30 to 0.52, 0.52 to 0.45,
-              0.72 to 0.58, 0.20 to 0.75, 0.45 to 0.70, 0.62 to 0.82, 0.84 to 0.78, 0.50 to 0.30,
+              0.22 to 0.30,
+              0.38 to 0.18,
+              0.62 to 0.22,
+              0.80 to 0.35,
+              0.30 to 0.52,
+              0.52 to 0.45,
+              0.72 to 0.58,
+              0.20 to 0.75,
+              0.45 to 0.70,
+              0.62 to 0.82,
+              0.84 to 0.78,
+              0.50 to 0.30,
           )
           notation {
               frame("network", left, top, side, side) {
@@ -114,7 +124,7 @@ operations:
           frames {
               while (frame()) {
                   val pending = physarum.trail.read()
-                  while (!pending.isDone && frame()) { }
+                  while (!pending.isDone && frame()) {}
                   if (!pending.isDone) break
                   val trail = pending.get().channel(0)
                   val food = physarum.settings.food
@@ -127,7 +137,11 @@ operations:
                   )
                   display("scores", "<pre>" + NetworkScore.table(scores) + "</pre>")
                   // flipped, so it reads the same way up as the drawing and the window
-                  showImg(network.drawOver(trail.colormap("magma", 0f, (1.0 / (1.0 - decay)).toFloat())).flipY(), channel = "network", maxSide = 512)
+                  showImg(
+                      network.drawOver(trail.colormap("magma", 0f, (1.0 / (1.0 - decay)).toFloat())).flipY(),
+                      channel = "network",
+                      maxSide = 512,
+                  )
                   repeat(120) { frame() }
               }
           }

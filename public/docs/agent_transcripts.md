@@ -3582,6 +3582,20 @@ slime and followers boxes.
 
 [Open →](offline.html?file=assets/agent_transcripts/gpu_stigmergy/metadata.edn)
 
+### gpu_physarum_networks
+
+**Physarum as a transport-network designer**, on the GPU, after Tero et al. (*Science*, 2010). A
+map box draws a frame named "network" on the drawing layer with twelve food sources as dots in it; a
+slime box reads the dots through `notation.space` as `ShaderPhysarumSettings.food` and follows hand
+edits with `notation.onChange`, so drawing or dragging a dot moves the food while 4000 agents
+contract into a network between the dots; a measure box reads the trail back every 120 frames,
+extracts the network with `TransportNetwork.extract` and prints its cost against the minimum
+spanning tree, stretch and fault tolerance beside the MST and Delaunay controls, with a slider for
+the trail's half-life; and a reset box.
+[Drawing the food](alife_examples.md#drawing-the-food) walks through the map and slime boxes.
+
+[Open →](offline.html?file=assets/agent_transcripts/gpu_physarum_networks/metadata.edn)
+
 ### fern_iterated_systems
 
 **Fern**, the classroom demo of iterated systems, on the GPU. Each system is tens or hundreds of

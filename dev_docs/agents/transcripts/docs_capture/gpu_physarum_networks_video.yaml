@@ -1,7 +1,8 @@
 name: gpu_physarum_networks_video
 description: >
   The video in alife_examples.md section 7's "Designing a network": the map and slime boxes of
-  gpu_physarum_networks on a 512 x 512 window. Twelve food sources are dots in a frame named
+  gpu_physarum_networks, the square field drawn in the middle of a 600 x 400 window (a
+  wide frame keeps the recording inside the docs video budget). Twelve food sources are dots in a frame named
   "network" on the drawing layer; 4000 agents scattered at random find them and contract into a
   network between them. Four seconds in, a "late" box draws a thirteenth dot through `notation` and
   reads the frame's dots back into `settings.food` (a dot drawn by hand reaches the agents through
@@ -24,7 +25,7 @@ operations:
           Options.enableHDR = false
           Options.profiling = false
           once.renderer {
-              window = Window("Physarum networks", initialDimensions = Rect(80.0, 80.0, 512.0, 512.0))
+              window = Window("Physarum networks", initialDimensions = Rect(80.0, 80.0, 600.0, 400.0))
               Renderer(window)
           }
           start(renderer::run)
@@ -39,8 +40,18 @@ operations:
           val top = 200.0
           val side = 400.0
           val dots = listOf(
-              0.22 to 0.30, 0.38 to 0.18, 0.62 to 0.22, 0.80 to 0.35, 0.30 to 0.52, 0.52 to 0.45,
-              0.72 to 0.58, 0.20 to 0.75, 0.45 to 0.70, 0.62 to 0.82, 0.84 to 0.78, 0.50 to 0.30,
+              0.22 to 0.30,
+              0.38 to 0.18,
+              0.62 to 0.22,
+              0.80 to 0.35,
+              0.30 to 0.52,
+              0.52 to 0.45,
+              0.72 to 0.58,
+              0.20 to 0.75,
+              0.45 to 0.70,
+              0.62 to 0.82,
+              0.84 to 0.78,
+              0.50 to 0.30,
           )
           notation {
               frame("network", left, top, side, side) {
@@ -69,7 +80,8 @@ operations:
               food = dots()
               exposure = 0.25f
           }
-          physarum.installInto()
+          // the square field in the middle of the window
+          physarum.installInto(previewViewport = Rect((window.width - window.height) / 2.0, 0.0, window.height.toDouble(), window.height.toDouble()))
 
           // every edit to the drawing moves the food
           notation.onChange { physarum.settings.food = dots() }
@@ -83,7 +95,7 @@ operations:
           val map = notation.space("network", x = 0.0..512.0, y = 512.0..0.0)
           frames {
               val start = System.nanoTime()
-              while (frame() && System.nanoTime() - start < 4_000_000_000L) { }
+              while (frame() && System.nanoTime() - start < 4_000_000_000L) {}
               notation("late") { ellipse(400.0 + 0.86 * 400 - 6, 200.0 + 0.13 * 400 - 6, 12, 12, fill = "#ffd8a8") }
               physarum.settings.food = map.marks.filter { it.kind == MarkType.ELLIPSE }.map { map.toSpace(it.center) }
           }
