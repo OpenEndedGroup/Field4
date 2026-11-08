@@ -283,7 +283,8 @@ operations:
           knot.aspect = { scene.parameters.width.toFloat() / scene.parameters.height }
 
           // A (2, 3) torus knot: a tube of radius 0.16 around a centre line, 240 steps along it and 16 around.
-          fun centre(a: Double) = vec(0.42 * (2 + cos(3 * a)) * cos(2 * a), 0.42 * (2 + cos(3 * a)) * sin(2 * a), -0.42 * sin(3 * a))
+          fun centre(a: Double) =
+              vec(0.42 * (2 + cos(3 * a)) * cos(2 * a), 0.42 * (2 + cos(3 * a)) * sin(2 * a), -0.42 * sin(3 * a))
           knot.set(240 * 16, 240 * 16 * 2) {
               for (i in 0 until 240) for (j in 0 until 16) {
                   val a = 2 * PI * i / 240
@@ -338,9 +339,9 @@ operations:
           // The six sampling circles, in cell units: two columns of three, the right one a little higher.
           // The glyph vectors were measured with these circles, so change them together.
           const vec2 CENTRES[6] = vec2[6](
-              vec2(0.28, 0.20), vec2(0.72, 0.13),
-              vec2(0.28, 0.53), vec2(0.72, 0.47),
-              vec2(0.28, 0.87), vec2(0.72, 0.80)
+          vec2(0.28, 0.20), vec2(0.72, 0.13),
+          vec2(0.28, 0.53), vec2(0.72, 0.47),
+          vec2(0.28, 0.87), vec2(0.72, 0.80)
           );
           // The circles' radius, as a share of the cell's width.
           const float RADIUS = 0.24;
@@ -540,7 +541,8 @@ operations:
                   while (!readback.isDone) frame()
                   val (picture, chars) = readback.get()
                   // the match box's contrast and directional
-                  val exact = ascii.convert(picture, chars.cols, contrast = 3.0, directional = 3.0, rows = chars.rows, exact = true)
+                  val exact =
+                      ascii.convert(picture, chars.cols, contrast = 3.0, directional = 3.0, rows = chars.rows, exact = true)
                   val cached = ascii.convert(picture, chars.cols, contrast = 3.0, directional = 3.0, rows = chars.rows)
                   display(
                       "agreement",
