@@ -45,7 +45,7 @@ loop {
     val now = System.nanoTime()
     if (now - reported > 500_000_000L) {
         reported = now
-        display("audio status", "<div style='padding:12px;width:430px'>${if(sound.playing) "Playing" else "Paused"} · ${"%.2f".format(sound.positionSeconds)} / ${"%.2f".format(sound.durationSeconds)} s<br>Output: ${sound.outputDevice} · ${sound.sampleRate} Hz<br>Source: ($x, $y, $z) m · ${sound.renderedBlocks} binaural blocks</div>")
+        display("audio status", "<div style='padding:12px;width:430px'>${if(sound.playing) "Playing" else "Paused"} · ${sound.positionSeconds.f2} / ${sound.durationSeconds.f2} s<br>Output: ${sound.outputDevice} · ${sound.sampleRate} Hz<br>Source: ($x, $y, $z) m · ${sound.renderedBlocks} binaural blocks</div>")
     }
     frame()
 }.end { sound.close() }
