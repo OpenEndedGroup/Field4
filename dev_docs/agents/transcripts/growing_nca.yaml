@@ -284,8 +284,7 @@ operations:
 
           /*
           Two steps a frame: `forward` reads grid 0 and writes grid 1, `back` reads grid 1 and writes grid 0,
-          with a barrier between them so the second sees what the first wrote. Each mesh keeps its own fixed
-          `parity` rather than one mesh flipping it between frames.
+          with a barrier between them so the second sees what the first wrote.
           */
           val sim = computeModuleHere {}
           fun stepMesh(parity: Int): ComputeMesh {

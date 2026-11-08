@@ -127,8 +127,7 @@ var autoCut = true
 
 /*
 Two steps a frame: `forward` reads grid 0 and writes grid 1, `back` reads grid 1 and writes grid 0,
-with a barrier between them so the second sees what the first wrote. Each mesh keeps its own fixed
-`parity` rather than one mesh flipping it between frames.
+with a barrier between them so the second sees what the first wrote.
 */
 val sim = computeModuleHere {}
 fun stepMesh(parity: Int): ComputeMesh {
@@ -197,13 +196,14 @@ the network that `MlpWeights.glsl` wrote, `ncaNet`, and the perception loop arou
 `stepsPerSecond` keeps the speed watchable, because the window can draw thousands of frames a
 second.
 
-??? aside "Why two meshes and not one flipping a parity flag"
-    The first version used one `ComputeMesh` whose `parity` push constant alternated every frame.
-    The lambda ran every frame (a counter in it advanced), but a readback showed the second grid
-    never changed: every dispatch read grid 1 and wrote grid 0, so the picture stayed one step
-    from the seed. Two meshes with a fixed `parity` each, separated by `computeBarrier()`, work.
-    Swapping two buffer-reference pointers per dispatch failed the same way. The cause in the push
-    path is not yet found. `dev_docs/GROWING_NCA.md` has the details.
+??? aside "The push constant that ran twice"
+    The first version used one `ComputeMesh` whose `parity` push constant flipped every frame, and
+    the grid froze one step from the seed. A counting shader showed why: every push binding was
+    invoked twice per dispatch, once by the fan-out check in `FanOutDispatch.kt` and once by the
+    write, and only the second value reached the GPU. A binding that advances a counter therefore
+    advanced it twice and pushed the same parity every frame. Bindings are now evaluated once per
+    dispatch (`PushBindingsOncePerDispatchTest`). The two meshes stay because they give two steps a
+    frame with a barrier between them.
 
 ## Training a rule
 

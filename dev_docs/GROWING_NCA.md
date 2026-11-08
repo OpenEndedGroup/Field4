@@ -26,14 +26,18 @@ User page: `public/docs/growing_nca.md`. Source: Mordvintsev et al., Distill 202
 - **Behaviour after a cut.** ~300 steps after the strip's cut, an edge cell grows into a bud and then a
   second complete flower (docs strip, step 600). Training horizon is 64–96 steps, so nothing held the
   rule beyond that. Marc (2026-11-08): this is fine; describe it neutrally, don't train it away.
-- **GPU ping-pong via push constants did not work.** One `ComputeMesh` with
-  `src/dst = { if (step%2==0) A else B }` (buffer-reference push constants), and later one buffer +
-  `parity = { step % 2 }` uint push constant: lambdas were invoked every dispatch (counters
-  advanced), but readback showed the second grid never written — every dispatch behaved as
-  parity 1 / the first-bound pointers. Root cause in `ComputeMesh`/`Structure.writeToBuffer` not
-  found (IteratedSystem binds a changing `frame` uint and appears to work — so suspect
-  something specific; worth a minimal repro). Workaround shipped: two meshes with constant
-  `parity`, `computeBarrier()` between, `computeBarrier(graphics = true)` after.
+- **Push bindings ran twice per dispatch (fixed 2026-11-08).** Symptom: one `ComputeMesh` with
+  `parity = { step % 2 }` and `seed = { step++ }` froze one step from the seed; readback showed grid 1
+  never written. Cause: `forEachFanOutDispatch` (`FanOutDispatch.kt`) invoked every binding to look for
+  `ParallelGeometryRef`s, then `Structure.writeToBuffer` invoked them again for the write. Side effects
+  ran twice (step += 2 per dispatch) and only the second evaluation was pushed, so parity was constant.
+  Minimal repro: a compute shader `pc.counts.c[pc.parity] += 1u` with `parity = { val p = step % 2;
+  step++; p }`. Before the fix, 120 frames gave 244 evaluations and GPU counts `0 122`; with
+  `(step / 2) % 2` they were `61 61`. After it, 122 evaluations and `61 61`. Fix: `withEvaluatedPush`
+  evaluates once and sets `Structure.dispatchSnapshot`, which the write reuses. Unit test
+  `PushBindingsOncePerDispatchTest` (negative control: fails at the step count with the snapshot
+  ignored). Applies to `Mesh`, `MeshMesh` and `ComputeMesh`, which all go through `forEachFanOutDispatch`.
+  The demo keeps two fixed-parity meshes with a barrier between them, for two steps a frame.
 - `ComputeMesh()` with no args inside a local `fun` picks the primary constructor and leaves
   `inside` uninitialised (`lateinit property inside`); pass `ComputeMesh(renderer, module)`.
 - A box with both `computeModuleHere` and `moduleHere` shares one preamble: shader struct names
