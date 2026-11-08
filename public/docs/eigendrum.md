@@ -21,10 +21,10 @@ the drum's spectrum. Three calls do the work:
 - `modes.strike(x, y)` says how strongly a mallet at (x, y) excites every mode, and
   `modes.render(amplitudes)` turns that into a sound, one decaying sine per mode.
 
-The second half of the page turns the question around. [Raman's harmonic drum](#ramans-harmonic-drum)
-loads the head the way a tabla is loaded, which makes its overtones harmonic, and
-[Designing a drum](#designing-a-drum) fits the load or the outline to the pitches you want. Its
-starting point is **harmonic drum**.
+Further down, [Raman's harmonic drum](#ramans-harmonic-drum) adds weight to the head like a tabla,
+bringing its overtones close to a harmonic series. Then we'll try
+[designing a drum](#designing-a-drum) for the pitches we want, by changing the load or the outline.
+Those examples have a starting point of their own: **harmonic drum**.
 [Browse it ↗](offline.html?file=assets/agent_transcripts/harmonic_drum/metadata.edn)
 
 ## Sixteen modes of a square
@@ -443,9 +443,8 @@ the moving, and the bare skin acts only as a spring.
 
 ## Designing a drum
 
-The map answers one question: given a load, how harmonic is it? Turned around, the question
-becomes: given the pitches you want, which drum plays them? Field's least-squares solver,
-`leastSquares`, can answer it with either of two knobs: the paste, or the outline.
+The map lets you try a load and hear what it does. Now let's choose the pitches first and ask Field
+to find a drum that plays them. The `leastSquares` solver can adjust the paste or the outline.
 
 ### Shape alone cannot reach the octave
 
