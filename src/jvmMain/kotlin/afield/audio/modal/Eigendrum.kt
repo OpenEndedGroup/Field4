@@ -5,7 +5,9 @@
  * generalized eigenpairs Kφ = λMφ are found by banded-Cholesky subspace iteration ([DrumMesh.modes]).
  * A strike projects a small Gaussian mallet onto the modes ([DrumModes.strike]) and [DrumModes.render]
  * sums one damped sinusoid per mode (modal synthesis). [DrumModes.nodalLines] and
- * [DrumModes.modeMesh] draw a mode back as FLines.
+ * [DrumModes.modeMesh] draw a mode back as FLines. A mesh may carry a per-triangle density
+ * ([DrumMesh.withDensity]), which enters M only: `HarmonicDrum.kt` uses it for Raman's loaded drums
+ * and `DrumDesign.kt` fits shapes and loadings to a target chord.
  *
  * The idea follows eigendrum.com; this is an independent textbook implementation (no code taken).
  */
@@ -47,7 +49,16 @@ class DrumMesh(
     val tris: IntArray,
     /** True for nodes on the clamped rim. */
     val boundary: BooleanArray,
+    /**
+     * Areal density of each triangle, relative to a bare membrane of density 1; null means uniform.
+     * A heavier patch lowers the modes that move it. See [withDensity].
+     */
+    val density: DoubleArray? = null,
 ) {
+    init {
+        require(density == null || density.size == tris.size / 3) { "density needs one value per triangle (${tris.size / 3}), got ${density?.size}" }
+    }
+
     /** Number of nodes. */
     val nodeCount: Int get() = x.size
 
@@ -520,6 +531,7 @@ internal fun solveDrumModes(mesh: DrumMesh, count: Int, mass: String, tol: Doubl
     for (t in 0 until mesh.triangleCount) {
         val id = IntArray(3) { mesh.tris[3 * t + it] }
         val ar = mesh.triArea(t)
+        val rho = mesh.density?.get(t) ?: 1.0
         val bx = DoubleArray(3) { mesh.y[id[(it + 1) % 3]] - mesh.y[id[(it + 2) % 3]] }
         val cy = DoubleArray(3) { mesh.x[id[(it + 2) % 3]] - mesh.x[id[(it + 1) % 3]] }
         for (i in 0..2) {
@@ -527,8 +539,8 @@ internal fun solveDrumModes(mesh: DrumMesh, count: Int, mass: String, tol: Doubl
             for (j in 0..2) {
                 val pj = pos[id[j]]; if (pj < 0 || pj > pi) continue
                 k.add(pi, pj, (bx[i] * bx[j] + cy[i] * cy[j]) / (4 * ar))
-                val consistent = ar / 12.0 * (if (i == j) 2.0 else 1.0)
-                val lumped = if (i == j) ar / 3.0 else 0.0
+                val consistent = rho * ar / 12.0 * (if (i == j) 2.0 else 1.0)
+                val lumped = if (i == j) rho * ar / 3.0 else 0.0
                 m.add(pi, pj, wc * consistent + (1 - wc) * lumped)
             }
         }
