@@ -123,6 +123,31 @@ three(name = "samples", channel = "samples") {
 
 See [FLine styling](fline_examples.md) for stroke, fill, point and callback properties.
 
+### Toolbar controls
+
+A view starts with no toolbar controls, so it is a picture you can orbit. Ask for the ones you
+want with `controls(...)`:
+
+```diffstatic {data-lang=kotlin}
+three {
+    mesh(boxMesh(120, 60, 40), wireframe = false)
+    controls(xray = true, export = true)
+}
+```
+
+`xray` is the **X-ray** button, `export` is **Export GLB**, `linkCamera` is **Link camera**,
+`review` is **Pick** with its notes, `parts` is the **Parts** list and `light` is the **Light**
+slider. `controls(ThreeControls.ALL)` asks for every one. `threeLines(...)` and
+`threeInspect(...)` take the same choice as a `controls = ThreeControls(...)` argument.
+
+Press **E** in any view to show all the controls it did not ask for; press it again to put them
+away. That way you can still pick a feature or export a file from a figure that was made only to
+look at. `hud(false)` hides every control, even from **E**.
+
+Some calls bring their own control: `linkCamera()` shows **Link camera**, and `inspect(...)`
+shows **Parts** along with measure, section and explode. **Parts** appears only when a scene has
+at least two parts.
+
 ### Measurements, parts and notes
 
 `inspect(units = "mm", decimals = 1)` adds the measurement, section and explode controls. Units
@@ -134,15 +159,16 @@ For a grouped assembly, pass `groups = listOf("base", "lid")` to `inspect` and a
 or `group = 1` to each mesh. The [FLine inspector examples](fline_examples.md#the-3d-output-area-as-an-instrument-threeinspect)
 show the measurement and section types.
 
-Every single-view scene also has **Pick** and **Save note**, including scenes without `inspect`.
-After a manual selection or saved note arrives, `view.reviews()` reads it from Field. From another
+Any single-view scene can have **Pick** and **Save note**, including scenes without `inspect`:
+ask for them with `controls(review = true)`, or press **E** in the view. After a manual selection or saved note arrives, `view.reviews()` reads it from Field. From another
 box or an agent, `threeGeometryReviews(viewId)` reads the same inbox by ID. Notes retain the
 geometry revision and camera; [selecting and annotating geometry](geometry_review.md) explains
 points, faces, edges, vertices and visible-only rectangles.
 
 ### Compare views with linked cameras
 
-Choose **Link camera** in each viewer you want to compare. The newly linked view adopts the
+Choose **Link camera** in each viewer you want to compare. It is on the toolbar of a view that
+asks for `controls(linkCamera = true)` or calls `linkCamera()`, and on any view after **E**. The newly linked view adopts the
 camera of an already linked view in the same Field document. Orbiting, panning and zooming either
 view then moves both, including when they are embedded in different boxes. Click **Camera linked**
 to return that view to independent movement.
@@ -220,7 +246,8 @@ link, because its panels already share one camera.
 
 ### See through surfaces
 
-Press **X-ray** in the viewer toolbar to reveal geometry behind filled surfaces. The
+Press **X-ray** in the viewer toolbar to reveal geometry behind filled surfaces. Put the button
+there with `controls(xray = true)`, or press **E**. The
 **Surface** slider sets their opacity. Edges draw after the translucent faces, with
 slightly stronger stroke opacity, so the structure stays legible. Points keep their original contrast.
 This works in ordinary `three { … }` scenes without `inspect`. Turn it off to restore
@@ -232,7 +259,8 @@ images retain the X-ray setting and opacity, so a reviewer sees the same context
 
 ### Export a GLB
 
-Press **Export GLB** to download the visible geometry as a binary glTF file. The export
+Press **Export GLB** to download the visible geometry as a binary glTF file. Put the button
+there with `controls(export = true)`, or press **E**. The export
 keeps colors, part names, hidden-part choices and the current exploded or insertion
 positions. With **X-ray** enabled, surfaces carry the selected opacity in their materials;
 strokes retain their stronger opacity. Turn X-ray off before exporting an opaque model.
@@ -714,7 +742,8 @@ for native solids. X-ray can be combined with either control.
 
 ## Show a part or a group
 
-Open **Parts** to browse the scene as a tree. A mesh and its outline share one checkbox
+Open **Parts** to browse the scene as a tree. It is on the toolbar of a scene with `inspect(...)`
+or `controls(parts = true)` that has at least two parts. A mesh and its outline share one checkbox
 when they have the same assembly group or drawable ID. Folder checkboxes show a dash when
 only some children are visible. **Select all** shows or hides the entire scene.
 

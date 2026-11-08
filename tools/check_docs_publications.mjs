@@ -65,6 +65,8 @@ try {
             await viewer.waitForFunction(()=>{const r=FieldViewer.renderStats();return !r.pending&&!r.dirty});
             const after=await viewer.evaluate(()=>FieldInspector.snapshot().camera);
             assert.ok(after.some((v,i)=>Math.abs(v-before[i])>.01),'Published geometry did not orbit');
+            // E shows the controls a box did not ask for; the drag above focused the canvas.
+            await page.keyboard.press('e');
             await viewer.locator('#xray-toggle').click();assert.equal(await viewer.evaluate(()=>FieldInspector.snapshot().xray),true);
         }
         console.log(`Capturing ${slug} evidence`);

@@ -178,7 +178,9 @@ Plots that depend on external image or map data are captured as still images and
 capture warning.
 
 Published Three.js views use the same renderer as Field. Drag to rotate, scroll to zoom, expand
-**Parts** to hide or restore geometry, or enable **X-ray** and adjust its opacity. Camera linking,
+**Parts** to hide or restore geometry, or enable **X-ray** and adjust its opacity. A published view
+shows the toolbar controls its box asked for with `controls(...)`; press **E** in it for the rest.
+Camera linking,
 review notes and editing controls are hidden because they need Field. A view with custom viewer
 tools or an animated shot falls back to a still image with its controls removed.
 

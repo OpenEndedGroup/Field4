@@ -17,6 +17,7 @@ for (index in 0..2) {
             cullBackFaces=false,flatShading=true)
         inspect(units=if(index==1)"m" else "mm",renderOrigin=origin,
             renderUpAxis=if(zUp)ThreeUpAxis.Z else ThreeUpAxis.Y)
+        controls(linkCamera = true)
         helpers(false);caption(if(index==2)"Independent camera" else "Linked comparison · different render origins and units")
     }
 }
