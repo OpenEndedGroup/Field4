@@ -111,9 +111,14 @@ class CurveTest(unittest.TestCase):
                 f.setframerate(8000)
                 f.writeframes(pcm.tobytes())
             out = Path(d) / "curves.f4curve"
-            subprocess.run([sys.executable, "-m", "fieldaudio_curve", str(wav), str(out),
-                            "--fft-size", "128", "--hop-size", "32", "--mel-bands", "12",
-                            "--history", "8"], check=True, capture_output=True)
+            run = subprocess.run([sys.executable, "-m", "fieldaudio_curve", str(wav), str(out),
+                                  "--fft-size", "128", "--hop-size", "32", "--mel-bands", "12",
+                                  "--history", "8", "--progress"], check=True, capture_output=True, text=True)
+            # Field's audioCurves draws its progress bar from these lines; the count spans both channels.
+            progress = [tuple(map(int, line.split()[1:])) for line in run.stdout.splitlines() if line.startswith("progress ")]
+            frames = 1 + (512 - 128) // 32
+            self.assertEqual(progress[-1], (2 * frames, 2 * frames))
+            self.assertTrue(all(b[0] > a[0] for a, b in zip(progress, progress[1:])), "the count only rises")
             left_file = out.with_name("curves.ch1.f4curve").read_bytes()
             right_file = out.with_name("curves.ch2.f4curve").read_bytes()
             self.assertFalse(out.exists())

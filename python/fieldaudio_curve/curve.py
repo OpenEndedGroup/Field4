@@ -180,8 +180,23 @@ def read_wav(path):
     return rate, channels.mean(axis=1)
 
 
-def write_curves(path, samples, config):
-    """Write a completed, fixed-record file for random access via memory mapping."""
+PROGRESS_HELP = "print 'progress <done> <total>' lines (records, counted across every channel) to stdout"
+
+
+def progress_printer(channel, channels):
+    """A ``progress(done, frames)`` callback for channel ``channel`` of ``channels`` that prints
+    ``progress <done> <total>`` with the count running across every channel, flushed so a parent
+    process sees it as it happens (Field's ``audioCurves`` draws its progress bar from these)."""
+    def report(done, frames):
+        print(f"progress {channel * frames + done} {channels * frames}", flush=True)
+    return report
+
+
+def write_curves(path, samples, config, progress=None):
+    """Write a completed, fixed-record file for random access via memory mapping.
+
+    ``progress``, if given, is called as ``progress(done, frames)`` after each chunk of records.
+    """
     samples = np.asarray(samples)
     if samples.ndim != 1 or not np.isfinite(samples).all():
         raise ValueError('samples must be finite mono audio')
@@ -191,11 +206,15 @@ def write_curves(path, samples, config):
     header = struct.pack('<8sIIIIIIQ24x', b'F4CURVE\0', 1, config.sample_rate,
                          config.fft_size, config.hop_size, config.history, config.dimensions, frames)
     analyzer = CurveAnalyzer(config)
+    done = 0
     with open(Path(path), 'wb') as out:
         out.write(header)
         for start in range(0, len(samples), config.hop_size * 16):
             for timestamp, coords in analyzer.push(samples[start:start + config.hop_size * 16]):
+                done += 1
                 padded = np.zeros((config.history, config.dimensions), dtype='<f4')
                 padded[:len(coords)] = coords
                 out.write(struct.pack('<dII', timestamp, len(coords), 0))
                 out.write(padded.tobytes())
+            if progress is not None:
+                progress(done, frames)
