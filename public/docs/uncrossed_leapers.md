@@ -69,10 +69,12 @@ seed, so this box runs four seeds on each board.
 import afield.geometry.leaper.*
 import kotlin.random.Random
 
-// Past 7×7 a proof takes minutes (35 on 8×8 needs 337 million search steps), so this box uses
-// ruin and recreate: cut a random tail off the best path so far and regrow it with a short
-// search, 1000 times. It is not a proof, and where it ends depends on the seed, so each board
-// gets four seeds; the best is drawn, against the known optimum, 35 and 47.
+/*
+Past 7×7 a proof takes minutes (35 on 8×8 needs 337 million search steps), so this box uses
+ruin and recreate: cut a random tail off the best path so far and regrow it with a short
+search, 1000 times. It is not a proof, and where it ends depends on the seed, so each board
+gets four seeds; the best is drawn, against the known optimum, 35 and 47.
+*/
 val seeds = 1..4
 val cell = 10.0
 var x = 0.0
@@ -85,7 +87,9 @@ for (n in [8, 9]) {
     tiles += best.best!!.uncrossedTile(cell, x, 0.0)
     tiles += leaperLabel("$n×$n  ${best.length} of $known", x, -4.0)
     x += n * cell + 16.0
-    println("$n×$n: seeds $seeds reach ${runs.map { it.length }} moves (known optimum $known), ${runs.sumOf { it.millis }} ms in all")
+    println(
+        "$n×$n: seeds $seeds reach ${runs.map { it.length }} moves (known optimum $known), ${runs.sumOf { it.millis }} ms in all",
+    )
 }
 lines(tiles, w = 700.0, h = 360.0, fitToSize = true)
 ```
@@ -106,9 +110,11 @@ boards it falls back to ruin and recreate.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/uncrossed_leapers/cycles.png" alt="Seven boards from 4×4 to 10×10, each with a closed gold loop of knight moves; the table below gives 4, 8, 12 and 24 proved, then 32, 40 and 52 found against 32, 42 and 54" timeout="300" embed=true name="uncrossed-ul-cycles"}
 import afield.geometry.leaper.*
 
-// Closed paths: the path must come back to its first square, and the closing move may not
-// cross anything either. Up to 7×7 the search is exhaustive; 8×8 to 10×10 use ruin and
-// recreate. The known maxima are OEIS A157416.
+/*
+Closed paths: the path must come back to its first square, and the closing move may not
+cross anything either. Up to 7×7 the search is exhaustive; 8×8 to 10×10 use ruin and
+recreate. The known maxima are OEIS A157416.
+*/
 val sizes = 4..10
 val cell = 10.0
 var x = 0.0
@@ -145,9 +151,11 @@ the joined ones.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/uncrossed_leapers/gallery.png" alt="A grid of fifteen 7×7 boards: five columns for knight, camel, zebra, giraffe and antelope, three rows for rectangle, cylinder and torus. On the rectangle the paths are open zigzags; on the cylinder they zigzag across the joined edges; on the torus four of the five fill the board with parallel strokes that wrap off one edge and back on the other" timeout="300" embed=true name="uncrossed-ul-gallery"}
 import afield.geometry.leaper.*
 
-// Five leapers on three surfaces, n×n. A cylinder joins the left and right edges; a torus also
-// joins top and bottom. A move may leave through a joined edge and come back through the
-// opposite one, and "uncrossed" is judged on that surface. Dashed blue edges are joined.
+/*
+Five leapers on three surfaces, n×n. A cylinder joins the left and right edges; a torus also
+joins top and bottom. A move may leave through a joined edge and come back through the
+opposite one, and "uncrossed" is judged on that surface. Dashed blue edges are joined.
+*/
 val n = 7
 val nodeBudget = 1_000_000L
 val leapers = [Leaper.KNIGHT, Leaper.CAMEL, Leaper.ZEBRA, Leaper.GIRAFFE, Leaper.ANTELOPE]
@@ -191,17 +199,31 @@ is the best found within the budget.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/uncrossed_leapers/sweep.png" alt="Three small line charts, rectangle, cylinder and torus, each with five coloured lines for the five leapers showing the share of squares visited as the board grows from 4 to 9" timeout="300" embed=true name="uncrossed-ul-sweep"}
 import afield.geometry.leaper.*
 
-// How much of the board each leaper can cover without crossing itself: the share of the n×n
-// squares its longest uncrossed path visits, for n = 4..9, on each surface. A hollow dot is a
-// best-found value (the search ran out of budget), a filled one is proved.
+/*
+How much of the board each leaper can cover without crossing itself: the share of the n×n
+squares its longest uncrossed path visits, for n = 4..9, on each surface. A hollow dot is a
+best-found value (the search ran out of budget), a filled one is proved.
+*/
 val sizes = 4..9
 val nodeBudget = 200_000L
 val leapers = [Leaper.KNIGHT, Leaper.CAMEL, Leaper.ZEBRA, Leaper.GIRAFFE, Leaper.ANTELOPE]
-val colours = [vec(0.98, 0.85, 0.3, 1.0), vec(0.45, 0.8, 1.0, 1.0), vec(0.95, 0.45, 0.45, 1.0), vec(0.6, 0.9, 0.5, 1.0), vec(0.8, 0.6, 1.0, 1.0)]
+val colours = [
+    vec(0.98, 0.85, 0.3, 1.0),
+    vec(0.45, 0.8, 1.0, 1.0),
+    vec(0.95, 0.45, 0.45, 1.0),
+    vec(0.6, 0.9, 0.5, 1.0),
+    vec(0.8, 0.6, 1.0, 1.0),
+]
 val panelW = 150.0
 val panelH = 100.0
 val out = ArrayList<FLine>()
-val table = StringBuilder("| surface | leaper | " + sizes.joinToString(" | ") { "$it×$it" } + " |\n|---|---|" + sizes.joinToString("") { "---|" } + "\n")
+val table = StringBuilder(
+    "| surface | leaper | " +
+        sizes.joinToString(" | ") { "$it×$it" } +
+        " |\n|---|---|" +
+        sizes.joinToString("") { "---|" } +
+        "\n",
+)
 BoardTopology.entries.forEachIndexed { p, t ->
     val ox = p * (panelW + 30.0)
     out += fline {
@@ -216,7 +238,9 @@ BoardTopology.entries.forEachIndexed { p, t ->
     out += leaperLabel("n = ${sizes.first}", ox, panelH + 9.0, 4.0)
     out += leaperLabel("${sizes.last}", ox + panelW - 4.0, panelH + 9.0, 4.0)
     leapers.forEachIndexed { k, leaper ->
-        val results = sizes.map { n -> LeaperBoard(n, n, leaper, t).bestUncrossedPath(nodeBudget = nodeBudget, rounds = 100, nodesPerRound = 4_000) }
+        val results = sizes.map { n ->
+            LeaperBoard(n, n, leaper, t).bestUncrossedPath(nodeBudget = nodeBudget, rounds = 100, nodesPerRound = 4_000)
+        }
         val pts = results.mapIndexed { i, r ->
             val share = (if (r.best == null) 0.0 else r.length + 1.0) / (r.board.cells)
             Triple(ox + i * panelW / (sizes.count() - 1), panelH * (1 - share), r)
@@ -234,12 +258,19 @@ BoardTopology.entries.forEachIndexed { p, t ->
                 thickness = 1.0
             }
         }
-        table.append("| ${t.name.lowercase()} | ${leaper.name} | " + results.joinToString(" | ") { "${it.length}${if (it.exhaustive) "" else "?"}" } + " |\n")
+        table.append(
+            "| ${t.name.lowercase()} | ${leaper.name} | " +
+                results.joinToString(" | ") { "${it.length}${if (it.exhaustive) "" else "?"}" } +
+                " |\n",
+        )
     }
 }
 leapers.forEachIndexed { k, leaper -> out += leaperLabel(leaper.name, k * 70.0, panelH + 24.0, 5.0, colours[k]) }
 lines(out, w = 900.0, h = 260.0, fitToSize = true)
-markdown(table.toString() + "\nMoves in the longest path found; ? = not proved (best of a $nodeBudget-step search and 100 rounds of ruin and recreate).")
+markdown(
+    table.toString() +
+        "\nMoves in the longest path found; ? = not proved (best of a $nodeBudget-step search and 100 rounds of ruin and recreate).",
+)
 ```
 
 On the rectangle each leaper's share stays in a narrow band as the board grows: the knight visits
@@ -321,20 +352,27 @@ its own, which crosses itself.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/uncrossed_leapers/draw.png" alt="The box's output: Not legal, the demonstration stroke visits a1 b3 c5 e4 c3 d5, c3 to d5 crosses move 3" timeout="300" embed=true name="uncrossed-ul-draw"}
 import afield.geometry.leaper.*
 
-// Draw a knight path on the board this box puts on the drawing layer (Alt+D, then the pen),
-// one stroke through the centres of the squares, and run the box again. It reads the newest
-// hand-drawn stroke over the board, snaps it to squares and says whether it is a legal
-// uncrossed path. Until you draw one it checks a demonstration stroke of its own.
+/*
+Draw a knight path on the board this box puts on the drawing layer (Alt+D, then the pen),
+one stroke through the centres of the squares, and run the box again. It reads the newest
+hand-drawn stroke over the board, snaps it to squares and says whether it is a legal
+uncrossed path. Until you draw one it checks a demonstration stroke of its own.
+*/
 val n = 6
 val cell = 40.0
 val left = frame.x + frame.w + 60.0
 val top = frame.y
 val board = LeaperBoard(n, n)
 // The newest hand-drawn stroke that lies over the board (with a square's slack all round).
-val drawn = notation.strokes.lastOrNull { m ->
-    val b = m.bounds
-    m.handDrawn && b.x >= left - cell && b.y >= top - cell && b.x + b.w <= left + (n + 1) * cell && b.y + b.h <= top + (n + 1) * cell
-}
+val drawn =
+    notation.strokes.lastOrNull { m ->
+        val b = m.bounds
+        m.handDrawn &&
+            b.x >= left - cell &&
+            b.y >= top - cell &&
+            b.x + b.w <= left + (n + 1) * cell &&
+            b.y + b.h <= top + (n + 1) * cell
+    }
 // The demonstration: a1 b3 c5 e4 c3 d5 — the last move crosses the third.
 val demoCells = intArrayOf(0, 13, 26, 22, 14, 27)
 notation("board") {
@@ -352,7 +390,11 @@ notation("board") {
             val t = k / 12.0
             val from = demoCells[i]
             val to = demoCells[i + 1]
-            samples += vec(centreX(from) + (centreX(to) - centreX(from)) * t, centreY(from) + (centreY(to) - centreY(from)) * t)
+            samples +=
+                vec(
+                    centreX(from) + (centreX(to) - centreX(from)) * t,
+                    centreY(from) + (centreY(to) - centreY(from)) * t,
+                )
         }
         samples += vec(centreX(demoCells.last()), centreY(demoCells.last()))
         stroke(samples, name = "demo path", stroke = "#e8590c")
@@ -360,13 +402,20 @@ notation("board") {
 }
 val mark = drawn ?: notation.named("demo path")!!
 val pts = mark.points
-val cells = board.readDrawnPath(pts.map { it.x.toDouble() }.toDoubleArray(), pts.map { it.y.toDouble() }.toDoubleArray(), cell, left, top)
+val cells = board.readDrawnPath(
+    pts.map { it.x.toDouble() }.toDoubleArray(),
+    pts.map { it.y.toDouble() }.toDoubleArray(),
+    cell,
+    left,
+    top,
+)
 val verdict = board.check(cells)
 val names = cells.joinToString(" ") { board.cellName(it) }
 val source = if (drawn == null) "the demonstration stroke" else "your stroke"
 markdown(
-    if (verdict == null) "**Legal.** $source visits $names: an uncrossed path of ${cells.size - 1} moves " +
-        "(the longest on $n×$n is ${UNCROSSED_KNIGHT_PATH_MAXIMA[n - 1]})."
+    if (verdict == null)
+        "**Legal.** $source visits $names: an uncrossed path of ${cells.size - 1} moves " +
+            "(the longest on $n×$n is ${UNCROSSED_KNIGHT_PATH_MAXIMA[n - 1]})."
     else "**Not legal.** $source visits $names: $verdict.",
 )
 ```

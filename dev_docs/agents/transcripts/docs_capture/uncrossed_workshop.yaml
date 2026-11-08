@@ -22,15 +22,18 @@ operations:
         val w = 7
         val cell = 10.0
         val board = LeaperBoard(w, w)
-        // Row 1: four 24-move paths (the proved maximum) of different shapes, not turns or reflections of
-        // one another: the first four distinct results from seeds 1, 2, 3, ..., each search stopping at its
-        // first 24-move path. Row 2: the 24-move closed path, with its first square repeated at the end
-        // so the closing move is drawn. Forty seeds find just one shape of it.
-        val paths = generateSequence(1) { it + 1 }
-            .map { seed -> board.longestUncrossedPath(random = Random(seed), atLeast = 23, stopAt = 24).best!! }
-            .distinctBy { it.shapeKey() }
-            .take(4)
-            .toList()
+        /*
+        Row 1: four 24-move paths (the proved maximum) of different shapes, not turns or reflections of
+        one another: the first four distinct results from seeds 1, 2, 3, ..., each search stopping at its
+        first 24-move path. Row 2: the 24-move closed path, with its first square repeated at the end
+        so the closing move is drawn. Forty seeds find just one shape of it.
+        */
+        val paths =
+            generateSequence(1) { it + 1 }
+                .map { seed -> board.longestUncrossedPath(random = Random(seed), atLeast = 23, stopAt = 24).best!! }
+                .distinctBy { it.shapeKey() }
+                .take(4)
+                .toList()
         val cycle = board.longestUncrossedPath(closed = true, random = Random(1), atLeast = 23, stopAt = 24).best!!
         val rows = [paths.map { it.cells }, [cycle.cells + cycle.cells[0]]]
 
@@ -89,9 +92,10 @@ operations:
         prop<Double>(knightCellSize) = cell
 
         val gap = 12.0
-        val tiles = [paths, [cycle]].flatMapIndexed { r, row ->
-            row.flatMapIndexed { c, path -> path.uncrossedTile(cell, c * (w * cell + gap), r * (w * cell + gap)) }
-        }
+        val tiles =
+            [paths, [cycle]].flatMapIndexed { r, row ->
+                row.flatMapIndexed { c, path -> path.uncrossedTile(cell, c * (w * cell + gap), r * (w * cell + gap)) }
+            }
         lines(tiles, fitToSize = true)
         println("Published ${paths.size} differently shaped 24-move paths and the 24-move closed path on 7×7.")
         children.forEach { it.begin() }
