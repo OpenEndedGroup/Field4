@@ -53,8 +53,9 @@ and fills a triacontahedron *m* times as wide with 20*m*³ cells.
 Drop `planes` and the grid runs on: every crossing within `radius` plane spacings of the origin
 becomes a cell. Here are the cells nearest the centre, prolate in yellow and oblate in blue,
 shrunk a little each so the stack can be read. `shapeCounts()` counts each kind. There are about
-φ ≈ 1.618 prolate cells for every oblate one, the same golden ratio as their volumes; the caption
-gives the count's ratio for patches of four sizes.
+φ ≈ 1.618 prolate cells for every oblate one, the same golden ratio as their volumes. The caption
+gives the count's ratio for patches of four sizes: 1.59 in the smallest, and within 0.003 of φ
+from radius 4 on.
 
 ```diffstatic_runner {data-lang=kotlin embed=true screenshot="assets/debruijn_tilings_3d/patch.png" wait="4" capture="box" open-outputs="true" padding="20" w="760" name="debruijn3d-patch"}
 // prolate / oblate against the radius of the patch, beside the golden ratio.
@@ -82,9 +83,9 @@ A plane through the tiling cuts each cell it meets in a triangle, quadrilateral,
 hexagon, and neighbouring cells' pieces share their edges, so every flat cut is itself a
 quasiperiodic tiling of the plane. `slice(normal, offset)` returns those polygons in the plane's
 own coordinates, and `lines()` draws them as FLines coloured by the cell they came from. Cut
-across a 5-fold, a 3-fold and a 2-fold axis of the icosahedron and the patterns show that axis's
-symmetry locally: ten-pointed stars across the 5-fold axis, three-armed ones across the 3-fold, and
-mirror rows across the 2-fold. Each caption counts the polygons by their number of sides.
+across a 5-fold, a 3-fold and a 2-fold axis of the icosahedron and the three patterns differ:
+rosettes of ten triangles across the 5-fold axis, mostly quadrilaterals across the 3-fold, and rows
+with a mirror line across the 2-fold. Each caption counts the polygons by their number of sides.
 
 ```diffstatic_runner {data-lang=kotlin embed=true screenshot="assets/debruijn_tilings_3d/slices.png" wait="3" capture="box" open-outputs="true" w="760" padding="14" name="debruijn3d-slices"}
 val t = deBruijnTiling3D(radius = 5.0, scale = 10.0)
