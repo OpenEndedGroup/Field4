@@ -139,6 +139,29 @@ point, weighted by its time constant, as a rigid motion (no scale). The slow end
 holds the frame still. Header `kind` is 1 and the longest time constant is stored at byte 44; the
 point-time formula of the rolling format does not apply.
 
+## A map instead of a window
+
+`python -m fieldaudio_curve.som input.wav output.f4curve --nodes 48 --learn 0.5` writes the same
+format from a one-dimensional self-organizing map: `--nodes` prototype spectra on a chain. Each hop
+the prototype nearest the new spectrum (by Wasserstein-1) and its chain neighbours (Gaussian,
+`--sigma` prototypes wide) move toward it at a constant rate set by `--learn` seconds. A conscience
+(`--conscience`) handicaps frequent winners so idle prototypes are recruited, but only among
+prototypes within `REACH` (1.5) times the best match's distance, so one long sound cannot overwrite
+the chain. Each record holds the prototypes in chain order plus the present spectrum (header
+`history` is `--nodes + 1`), aligned to the previous record by a rigid fit of the prototypes; the
+record's reserved field is the best match's index. Header `kind` is 2 and `--learn` is stored at
+byte 44.
+
+`--grid 12x12` or `--grid 6x6x6` puts the prototypes on a sheet or lattice instead of a chain: the
+neighbourhood is Gaussian in grid distance, so neighbours in every direction stay similar. Prototypes
+are listed in C order (last axis fastest), and the grid's three sizes are stored as uint32 at byte
+52 (1 for an unused axis; all zero in a file from before grids, which is a chain). The neighbourhood
+starts at half the grid's longest side and narrows to `--sigma` over the first two seconds, so the
+grid unfolds before it settles.
+
+`python -m fieldaudio_curve.compare a.wav [b.wav ...]` scores rolling, EMA and map curves of the same
+size on memory (how close recent spectra come to the points held), distinct points and movement.
+
 ## Stages, for figures
 
 `python -m fieldaudio_curve.stages input.wav out.json --time 2.0` runs the rolling analyzer up to one
