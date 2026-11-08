@@ -219,18 +219,203 @@ charGrid(cols = 60, rows = 26, glyphs = ascii.glyphs) {
 rounded to 32 levels), so a moving scene costs a table lookup for most cells after the first few
 ticks. Stop the box to stop the cube.
 
+## On the GPU, over a live scene
+
+The char grid above matches on the CPU, one drawn image per tick. `ShapeAsciiGpu` runs the same
+matcher as a GPU pass, so it keeps up with a Vulkan scene. Draw any module into its `scene` target
+and the characters come out in the window every frame, as in the real-time 3-D scenes of Harri's
+essay. Here it is a lit torus knot, turning, with the scene itself in the corner:
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="ascii_gpu_renderer" transcript="dev_docs/agents/transcripts/docs_capture/ascii_shape_gpu.yaml" video="assets/ascii_shape/gpu-knot.mp4" duration="8" wait="1" timeout="300" embed=true hidden=true name="ascii-shape-gpu-knot" alt="a native window of light gray characters on near-black: a torus knot turning about two axes, drawn in 128 columns and 48 rows of characters. The lit upper-left sides of the tube are runs of @, B and 8, the shaded sides Z, Q and S, and the rims are underscores, quotes, slashes and pipes that follow the curve. In the lower right corner a small inset shows the same knot as a smooth white shaded render"}
+// The transcript builds a renderer whose window is the grid's size, and the knot box below beneath it.
+```
+
+The knot box draws into `ascii.scene` rather than into the window; otherwise it is an ordinary
+module with a mesh. `installInto()` runs the scene and the matching pass every frame and draws the
+characters over the window:
+
+```diffstatic {data-lang=kotlin}
+// The knot is drawn into the ASCII pass's scene target, not into the window. Every frame the pass
+// matches the scene cell by cell and draws the characters over the window.
+var ascii = ShapeAsciiGpu(cols = 128, rows = 48) {
+    contrast = 3f
+    directional = 3f
+}
+var module = moduleHere { +ascii.scene }
+var knot = Mesh()
+module += "knot" to knot
+ascii.scene += "knot" to module
+
+// The vertex shader turns the knot by `time` and projects it at the scene's shape.
+var time = 0f
+knot.time = {
+    time += 1f / 60
+    time
+}
+knot.aspect = { ascii.sceneWidth.toFloat() / ascii.sceneHeight }
+
+// A (2, 3) torus knot: a tube of radius 0.16 around a centre line, 240 steps along it and 16 around.
+fun centre(a: Double) = vec(0.42 * (2 + cos(3 * a)) * cos(2 * a), 0.42 * (2 + cos(3 * a)) * sin(2 * a), -0.42 * sin(3 * a))
+knot.set(240 * 16, 240 * 16 * 2) {
+    for (i in 0 until 240) for (j in 0 until 16) {
+        val a = 2 * PI * i / 240
+        val along = (centre(a + 1e-4) - centre(a - 1e-4)).normalize()
+        val side = vec(along.y, -along.x, 0).normalize()
+        val up = vec(side.y * along.z, -side.x * along.z, side.x * along.y - side.y * along.x)
+        val w = 2 * PI * j / 16
+        val out = side * cos(w).toFloat() + up * sin(w).toFloat()
+        val p = centre(a) + out * 0.16f
+        pos.add(p.x, p.y, p.z)
+        normal.add(out.x, out.y, out.z)
+        val next = (i + 1) % 240
+        tri.add(i * 16 + j, next * 16 + j, next * 16 + (j + 1) % 16)
+        tri.add(i * 16 + j, next * 16 + (j + 1) % 16, i * 16 + (j + 1) % 16)
+    }
+}
+
+// Run the scene and the matching pass every frame and draw the characters over the window,
+// with the scene itself, as the matcher sees it, in the lower right corner.
+ascii.installInto()
+ascii.drawSceneInto(viewport = Rect(window.width * 0.76, window.height * 0.76, window.width * 0.22, window.height * 0.22))
+```
+
+Its vertex shader turns the knot by `time` and projects it, and its fragment shader lights it from
+the upper left:
+
+```diffstatic {data-lang=glsl}
+#version 450
+layout(location = 0) in vec3 pos;
+layout(location = 1) in vec3 normal;
+layout(location = 0) out vec3 fnormal;
+
+layout(push_constant) uniform Push {
+    float time;
+    float aspect;
+} pc;
+
+void main() {
+    // turn about y, then x
+    float a = pc.time * 0.7;
+    float b = pc.time * 0.45;
+    mat3 ry = mat3(cos(a), 0.0, -sin(a), 0.0, 1.0, 0.0, sin(a), 0.0, cos(a));
+    mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cos(b), sin(b), 0.0, -sin(b), cos(b));
+    vec3 p = rx * ry * pos;
+    fnormal = rx * ry * normal;
+    // a camera 4 units back looking along +z; +y is up, since Field flips its viewports;
+  // depth runs 0..1 from z = 1 to z = 8
+    float z = p.z + 4.0;
+    gl_Position = vec4(p.x * 2.6 / pc.aspect, p.y * 2.6, (z - 1.0) / 7.0 * z, z);
+}
+```
+
+```diffstatic {data-lang=glsl}
+#version 450
+layout(location = 0) in vec3 fnormal;
+layout(location = 0) out vec4 outColor;
+
+void main() {
+    // a light up and to the left of the camera
+    vec3 l = normalize(vec3(-0.5, 0.6, -0.65));
+    float d = max(dot(normalize(fnormal), l), 0.0);
+    outColor = vec4(vec3(0.04 + 0.96 * d), 1.0);
+}
+```
+
+`scene` is an offscreen target exactly `cols` by `rows` cells of the charset's font: 1280 x 912
+pixels here. A full-screen pass over a second target of 128 x 48 pixels, one fragment per cell,
+averages the same circle pixels `convert` does, applies both contrast steps, and compares the
+result with all 95 glyph vectors, writing the index of the nearest. A last pass draws those indices
+into the window through an atlas of the glyphs. The circle pixels and the glyph vectors are written
+into the matching shader as constants, from the same `ShapeAscii` the CPU uses. `contrast`,
+`directional` and `invert` are read every frame, so they can change while it runs, and
+`drawSceneInto(viewport = ...)` draws the scene as the matcher sees it.
+
+### The same characters as the CPU
+
+`ascii.read()` reads back one frame's scene together with the characters the GPU chose for it, so
+the CPU can convert the same pixels. This box, beneath the knot box, compares the two:
+
+```diffstatic {data-lang=kotlin}
+// The knot box's pass, found among its parent's variables.
+val gpu = fromContext<ShapeAsciiGpu>()
+
+// Twice a second: read back a frame's scene with the GPU's characters, convert the same pixels on
+// the CPU, exhaustively and through the cache, and count the cells that match.
+frames {
+    while (true) {
+        val readback = gpu.read()
+        while (!readback.isDone) frame()
+        val (scene, chars) = readback.get()
+        val c = gpu.contrast.toDouble()
+        val d = gpu.directional.toDouble()
+        val exact = gpu.ascii.convert(scene, gpu.cols, contrast = c, directional = d, rows = gpu.rows, exact = true)
+        val cached = gpu.ascii.convert(scene, gpu.cols, contrast = c, directional = d, rows = gpu.rows)
+        display(
+            "agreement",
+            "GPU = CPU exact on ${"%.2f".format(100 * chars.agreement(exact))}% of cells, " +
+                "= CPU cached on ${"%.2f".format(100 * chars.agreement(cached))}%",
+        )
+        repeat(30) { frame() }
+    }
+}
+```
+
+Over five frames of the turning knot, each at three settings (no contrast, `contrast = 3`, and
+`contrast = 3, directional = 3`), the GPU picked the same character as
+`convert(..., exact = true)` in every one of the 6,144 cells: 100.00 %. The default `convert` agrees
+with it on 98.9 to 99.0 % of cells. The difference is the cache, not the GPU. `convert` rounds each
+cell's six numbers to 32 levels and answers every vector that rounds the same way with the glyph
+nearest the first such vector it met, so about one cell in a hundred gets a near neighbour instead
+of the nearest glyph. `exact = true` searches all 95 glyphs for every cell, as the GPU does.
+
+That search is cheap on the GPU, and its cost grows slowly with the grid. GPU time is the matching
+pass alone, from timestamp queries, over 240 frames of the knot; CPU time is one `convert` of the
+same frame with `contrast = 3, directional = 3`, the median of five:
+
+| Grid | Scene pixels | GPU, median | GPU, 10th percentile | CPU, `exact = true` | CPU, cached |
+| --- | --- | --- | --- | --- | --- |
+| 64 x 24 | 640 x 456 | 1.8 ms | 1.2 ms | 2.1 ms | 2.0 ms |
+| 128 x 48 | 1280 x 912 | 2.5 ms | 1.7 ms | 8.0 ms | 7.9 ms |
+| 256 x 96 | 2560 x 1824 | 2.6 ms | 1.8 ms | 32 ms | 27 ms |
+| 512 x 192 | 5120 x 3648 | 4.3 ms | 3.2 ms | 121 ms | 107 ms |
+
+On the GPU about 1.2 ms is fixed cost, and 98,304 cells add only about 2 ms to it. The CPU's time
+grows with the number of pixels it averages, so a 128-column grid fits in a 60 Hz frame on either,
+but only the GPU keeps up at 256 columns and beyond. The cache saves the CPU little here because a
+turning scene keeps meeting new cell patterns.
+
+??? aside "Where the GPU numbers come from"
+    The smoke test `ascii.shape-gpu.smoke` (`ShapeAsciiGpuSmoke.kt`) draws this knot on a real
+    renderer, reads back five frames per setting with `read()`, and converts each on the CPU both
+    ways. It fails if any frame's exact agreement falls below 99.5 %; every run so far has given
+    100.00 %. It also checks that an empty scene reads back as spaces, and that a scene lit in its
+    top half has ink in the top rows. That check exists because Field flips its viewports so that
+    clip-space +y is up, so a full-screen pass sees the window's bottom row at `uv.y = 0`. The first
+    cut drew every row and glyph upside down. The timings are from an Apple-silicon Mac with other
+    Field sessions sharing the GPU, so the medians wander by about a millisecond between runs.
+    The 10th percentile is closer to an idle machine.
+
 ## Reference
 
 | Call | What it does |
 | --- | --- |
 | `ShapeAscii(glyphs, fontSize, fontName)` | Rasterise a charset (default printable ASCII, 16 pt monospaced). |
-| `convert(img, cols, shape, contrast, directional, invert, rows)` | Turn an `Img` into an `AsciiFrame`; `rows` defaults to the image's aspect at this font's cell shape. |
+| `convert(img, cols, shape, contrast, directional, invert, rows, exact)` | Turn an `Img` into an `AsciiFrame`; `rows` defaults to the image's aspect at this font's cell shape; `exact = true` searches every glyph instead of the cache. |
 | `frame.text()`, `frame.char(x, y)` | The result as lines, or one character. |
 | `frame.toImg()` | Draw the result in the matched font. |
 | `showAscii("label" to frame, ...)` | Show frames side by side, captioned. |
 | `drawAscii(frame)` | Inside `charGrid { }`: write the frame into the grid. |
-| `glyphVector(i)`, `glyphCoverage(i)`, `samplingCircles()`, `glyphImg(i)` | What the matcher compares. |
+| `frame.agreement(other)` | The share of cells holding the same character in two frames of one size. |
+| `glyphVector(i)`, `glyphCoverage(i)`, `samplingCircles()`, `circlePixels(k)`, `glyphImg(i)` | What the matcher compares. |
+| `ShapeAsciiGpu(cols, rows, ascii) { contrast = 3f }` | The matcher as a GPU pass beneath a renderer: `cols` x `rows` cells of `ascii`'s font. |
+| `gpu.scene` | The offscreen target to draw a scene into (`moduleHere { +gpu.scene }`, then `gpu.scene += "name" to module`). |
+| `gpu.contrast`, `gpu.directional`, `gpu.invert`, `gpu.ink`, `gpu.background` | Read every frame. |
+| `gpu.installInto()` | Run the scene and matching passes every frame and draw the characters over the window. |
+| `gpu.drawInto(target, viewport)`, `gpu.drawSceneInto(target, viewport)` | Draw the characters, or the scene, into part of a target. |
+| `gpu.read()` | A future of the next frame's `scene` and the characters chosen for it, read back together. |
+| `gpu.profile`, `gpu.matchMilliseconds` | GPU timestamps on the scene and matching passes. |
 
 The method, the staggered circles and both contrast steps are Alex Harri's; read
 [his essay](https://alexharri.com/blog/ascii-rendering) for interactive versions of every step and
-for the GPU implementation he uses for real-time 3-D scenes.
+for the GPU implementation he uses for real-time 3-D scenes. Field's own is in
+[the GPU section](#on-the-gpu-over-a-live-scene) above.

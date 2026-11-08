@@ -2,8 +2,10 @@ name: ascii_shape
 description: >-
   Shape-aware ASCII rendering (ShapeAscii): an Img turned into characters chosen by a six-circle
   shape vector per cell rather than brightness alone, after Alex Harri's essay. Brightness vs shape
-  on an FLine drawing, the sampling circles, a lit sphere, the two contrast steps, and a live
-  spinning cube in a charGrid. Companion to public/docs/ascii_shape.md.
+  on an FLine drawing, the sampling circles, a lit sphere, the two contrast steps, a live
+  spinning cube in a charGrid, and the same matcher as a GPU pass (ShapeAsciiGpu) over a lit torus
+  knot in a native Vulkan window, with a box that checks the GPU's characters against the CPU's.
+  Companion to public/docs/ascii_shape.md.
 operations:
   - create:
       box: ascii_shape_shapes
@@ -184,6 +186,148 @@ operations:
               val img = Img.zeros(480, 260, 3).drawFLines(lines, color = Vec4(1f, 1f, 1f, 1f))
               drawAscii(ascii.convert(img, COLS, contrast = 3.0, rows = ROWS))
           }
+  - create:
+      box: ascii_shape_renderer
+      name: renderer
+      frame: { x: 40.0, y: 460.0, w: 300.0, h: 100.0 }
+      properties:
+        notes: |
+          # Renderer
+
+          Opens a native window the size of the GPU section's 128 x 48 character grid (on a 2x display). Launch it before the knot box beneath it.
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Shape ASCII", initialDimensions = Rect(80.0, 80.0, 640.0, 456.0))
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: ascii_shape_gpu_knot
+      name: Knot in characters, on the GPU
+      frame: { x: 380.0, y: 460.0, w: 300.0, h: 100.0 }
+      properties:
+        notes: |
+          # On the GPU
+
+          ShapeAsciiGpu over a live Vulkan scene: a lit torus knot drawn into `ascii.scene`, matched per cell every frame by a GPU pass, and drawn as characters over the renderer's window, with the scene inset in the corner. Launch the renderer box first. Docs: ascii_shape.md#on-the-gpu-over-a-live-scene.
+        vertex: |
+          #version 450
+          layout(location = 0) in vec3 pos;
+          layout(location = 1) in vec3 normal;
+          layout(location = 0) out vec3 fnormal;
+
+          layout(push_constant) uniform Push {
+              float time;
+              float aspect;
+          } pc;
+
+          void main() {
+              // turn about y, then x
+              float a = pc.time * 0.7;
+              float b = pc.time * 0.45;
+              mat3 ry = mat3(cos(a), 0.0, -sin(a), 0.0, 1.0, 0.0, sin(a), 0.0, cos(a));
+              mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cos(b), sin(b), 0.0, -sin(b), cos(b));
+              vec3 p = rx * ry * pos;
+              fnormal = rx * ry * normal;
+              // a camera 4 units back looking along +z; +y is up, since Field flips its viewports;
+            // depth runs 0..1 from z = 1 to z = 8
+              float z = p.z + 4.0;
+              gl_Position = vec4(p.x * 2.6 / pc.aspect, p.y * 2.6, (z - 1.0) / 7.0 * z, z);
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) in vec3 fnormal;
+          layout(location = 0) out vec4 outColor;
+
+          void main() {
+              // a light up and to the left of the camera
+              vec3 l = normalize(vec3(-0.5, 0.6, -0.65));
+              float d = max(dot(normalize(fnormal), l), 0.0);
+              outColor = vec4(vec3(0.04 + 0.96 * d), 1.0);
+          }
+        code: |
+          // The knot is drawn into the ASCII pass's scene target, not into the window. Every frame the pass
+          // matches the scene cell by cell and draws the characters over the window.
+          var ascii = ShapeAsciiGpu(cols = 128, rows = 48) {
+              contrast = 3f
+              directional = 3f
+          }
+          var module = moduleHere { +ascii.scene }
+          var knot = Mesh()
+          module += "knot" to knot
+          ascii.scene += "knot" to module
+
+          // The vertex shader turns the knot by `time` and projects it at the scene's shape.
+          var time = 0f
+          knot.time = {
+              time += 1f / 60
+              time
+          }
+          knot.aspect = { ascii.sceneWidth.toFloat() / ascii.sceneHeight }
+
+          // A (2, 3) torus knot: a tube of radius 0.16 around a centre line, 240 steps along it and 16 around.
+          fun centre(a: Double) = vec(0.42 * (2 + cos(3 * a)) * cos(2 * a), 0.42 * (2 + cos(3 * a)) * sin(2 * a), -0.42 * sin(3 * a))
+          knot.set(240 * 16, 240 * 16 * 2) {
+              for (i in 0 until 240) for (j in 0 until 16) {
+                  val a = 2 * PI * i / 240
+                  val along = (centre(a + 1e-4) - centre(a - 1e-4)).normalize()
+                  val side = vec(along.y, -along.x, 0).normalize()
+                  val up = vec(side.y * along.z, -side.x * along.z, side.x * along.y - side.y * along.x)
+                  val w = 2 * PI * j / 16
+                  val out = side * cos(w).toFloat() + up * sin(w).toFloat()
+                  val p = centre(a) + out * 0.16f
+                  pos.add(p.x, p.y, p.z)
+                  normal.add(out.x, out.y, out.z)
+                  val next = (i + 1) % 240
+                  tri.add(i * 16 + j, next * 16 + j, next * 16 + (j + 1) % 16)
+                  tri.add(i * 16 + j, next * 16 + (j + 1) % 16, i * 16 + (j + 1) % 16)
+              }
+          }
+
+          // Run the scene and the matching pass every frame and draw the characters over the window,
+          // with the scene itself, as the matcher sees it, in the lower right corner.
+          ascii.installInto()
+          ascii.drawSceneInto(viewport = Rect(window.width * 0.76, window.height * 0.76, window.width * 0.22, window.height * 0.22))
+  - create:
+      box: ascii_shape_gpu_agreement
+      name: GPU against CPU
+      frame: { x: 720.0, y: 460.0, w: 300.0, h: 100.0 }
+      properties:
+        notes: |
+          # The same characters as the CPU
+
+          Reads back a frame's scene with the GPU's characters twice a second and converts the same pixels on the CPU, exhaustively and through the cache. Launch after the knot box.
+        code: |
+          // The knot box's pass, found among its parent's variables.
+          val gpu = fromContext<ShapeAsciiGpu>()
+
+          // Twice a second: read back a frame's scene with the GPU's characters, convert the same pixels on
+          // the CPU, exhaustively and through the cache, and count the cells that match.
+          frames {
+              while (true) {
+                  val readback = gpu.read()
+                  while (!readback.isDone) frame()
+                  val (scene, chars) = readback.get()
+                  val c = gpu.contrast.toDouble()
+                  val d = gpu.directional.toDouble()
+                  val exact = gpu.ascii.convert(scene, gpu.cols, contrast = c, directional = d, rows = gpu.rows, exact = true)
+                  val cached = gpu.ascii.convert(scene, gpu.cols, contrast = c, directional = d, rows = gpu.rows)
+                  display(
+                      "agreement",
+                      "GPU = CPU exact on ${"%.2f".format(100 * chars.agreement(exact))}% of cells, " +
+                          "= CPU cached on ${"%.2f".format(100 * chars.agreement(cached))}%",
+                  )
+                  repeat(30) { frame() }
+              }
+          }
+  - connect: { parent: ascii_shape_renderer, child: ascii_shape_gpu_knot }
+  - connect: { parent: ascii_shape_gpu_knot, child: ascii_shape_gpu_agreement }
   - launch:
       box: ascii_shape_shapes
       property: code
