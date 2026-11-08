@@ -96,7 +96,7 @@ erase cells. While `autoCut` is on, the box also cuts a random disc every 600 st
 // (the CPU strip, a renderer, and the GPU box beneath it).
 ```
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 /*
 A growing neural cellular automaton on the GPU. Run this box beneath the renderer (`window`) box.
 
@@ -222,7 +222,7 @@ steps, and the gradient is normalised per parameter before each Adam step. The l
 2 × 10⁻³, dropping tenfold at step 2,000. The flower is drawn by the script itself (discs for
 petals, centre and stem), 40 × 40 on a 64 × 64 grid:
 
-![The training target: a pink six-petalled flower with a yellow centre and a short green stem, 64 pixels square](assets/growing_nca/flower_target.png)
+![The training target: a pink six-petalled flower with a yellow centre and a short green stem, 64 pixels square](assets/growing_nca/flower_target.png){ width="320" style="image-rendering: pixelated" }
 
 5,000 steps took about 17 minutes on an M-series GPU (MPS). The loss reached 6 × 10⁻⁵ near the end.
 Copy the JSON to `src/jvmMain/resources/afield/alife/nca_<name>.json` for
