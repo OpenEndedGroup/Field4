@@ -97,6 +97,8 @@ object DemoTranscriptExecSmokeTest {
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
         "sentence_diagrams",
+        // dependency_length.md: measures five retained parsed texts against random reorderings; no parser.
+        "dependency_length",
         // visualizers.md's presets demo: a preset bar, record button and MIDI learn; the MIDI box feeds stand-in CCs.
         "controls_presets_morph_midi",
         // Loads a committed glTF fixture through Assimp and opens column()/tree() on it; no renderer.

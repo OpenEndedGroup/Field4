@@ -212,12 +212,14 @@ class DependencyTree(
     }
 
     /**
-     * The tree as arcs over a row of word marks, for small multiples: word k at x = k × [spacing],
-     * each arc a half-ellipse hanging [depth] × its span below the row, a dot per word, and a short
-     * stroke down from the root. Lines come back in y-down coordinates, like the rest of the package.
+     * The tree as arcs over a row of word marks, for small multiples: word k at x = k × [spacing]
+     * from [at], each arc a half-ellipse hanging [depth] × its width below the row, a dot per word,
+     * and a short stroke up from the root. Coordinates are y-down, like the rest of the package, so
+     * the arcs hang towards +y.
      */
     fun arcLines(
         order: IntArray = observed,
+        at: P = P(0.0, 0.0),
         spacing: Double = 8.0,
         depth: Double = 0.5,
         dotRadius: Double = 1.2,
@@ -226,23 +228,38 @@ class DependencyTree(
     ): List<FLine> {
         val p = positions(order)
         val out = mutableListOf<FLine>()
+        val y = at.y
+        fun x(word: Int) = at.x + p[word] * spacing
         for ((h, d) in arcs) {
-            val a = minOf(p[h], p[d]) * spacing
-            val b = maxOf(p[h], p[d]) * spacing
+            val a = minOf(x(h), x(d))
+            val b = maxOf(x(h), x(d))
             val dy = (b - a) * depth
             val k = 0.5522847498
             val mid = (a + b) / 2
             val r = (b - a) / 2
-            out += FLine().moveTo(a, 0.0)
-                .cubicTo(a, dy * k, mid - r * k, dy, mid, dy)
-                .cubicTo(mid + r * k, dy, b, dy * k, b, 0.0)
+            out += FLine().moveTo(a, y)
+                .cubicTo(a, y + dy * k, mid - r * k, y + dy, mid, y + dy)
+                .cubicTo(mid + r * k, y + dy, b, y + dy * k, b, y)
         }
-        out += segment(P(p[root] * spacing, 0.0), P(p[root] * spacing, -3 * dotRadius))
-        for (w in 0 until size) out += dot(P(p[w] * spacing, 0.0), dotRadius)
-        out.forEach { f -> ink?.let { f.color = it }; width?.let { f.thickness = it } }
+        out += segment(P(x(root), y), P(x(root), y - 3 * dotRadius))
+        for (w in 0 until size) out += dot(P(x(w), y), dotRadius)
+        out.forEach { f ->
+            ink?.let { f.color = it }
+            width?.let { f.thickness = it }
+        }
         return out
     }
+
+    /** How far [arcLines] hangs below its row for [order]: the widest arc's depth. */
+    fun arcDepth(order: IntArray = observed, spacing: Double = 8.0, depth: Double = 0.5): Double {
+        val p = positions(order)
+        return arcs.maxOfOrNull { (h, d) -> abs(p[h] - p[d]) * spacing * depth } ?: 0.0
+    }
 }
+
+/** [text] as filled glyph outlines, its baseline starting at [at]: a label for a figure drawn with `lines()`. */
+fun outlinedText(text: String, at: P, font: java.awt.Font): FLine =
+    TextItem(text, at, kind = TextKind.WORD).outlineFLine(font)
 
 /** Ways of putting a tree's words in a line, each projective by construction. */
 object Linearization {
