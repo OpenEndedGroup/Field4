@@ -398,8 +398,10 @@ data class WordBox(
     fun anchor(config: LayoutConfig): P = P(centre, baseline + config.underlineDrop)
 
     fun underline(config: LayoutConfig): Pair<P, P> =
-        P(left - config.underlinePad, baseline + config.underlineDrop) to
-            P(right + config.underlinePad, baseline + config.underlineDrop)
+        Pair(
+            P(left - config.underlinePad, baseline + config.underlineDrop),
+            P(right + config.underlinePad, baseline + config.underlineDrop),
+        )
 
     /** Top of the underline's left tick -- where the word's connector spline lands. */
     fun connectorEnd(config: LayoutConfig): P =
