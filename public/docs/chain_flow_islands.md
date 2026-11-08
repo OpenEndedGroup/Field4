@@ -1,9 +1,8 @@
 # A Generator, Graded by Datalog
 
-A flow-matching generator makes new points shaped like a cloud. To find out whether it kept the
-cloud's shape, you can hand its output to a Datalog program. Datalog doesn't need to know where
-the points came from: it reads them as facts, and its rules say which points are near each other,
-which ones have no target point nearby, and how many separate pieces there are.
+A flow-matching generator makes a new cloud of points. How close is it to the shape you asked
+for? Here we'll give its output to a Datalog program. The rules find points near each other, pick
+out those with no target point nearby, and count the separate pieces of the cloud.
 
 In this example the target is two interlocking half-moons, 200 points in two pieces that do not
 touch. The generator's 200 points are drawn below, coloured by the piece Datalog put them in. Grey
@@ -13,8 +12,8 @@ is the target. The red points are the ones Datalog calls strays.
 // Built and run from dev_docs/agents/transcripts/flow_islands.yaml.
 ```
 
-The example has three boxes, each a child of the one before. The first trains the generator, the
-second runs the Datalog program, and the third draws what the program found.
+Three connected boxes do the work: train the generator, run the Datalog program, then draw what
+it found. Each box passes its results to the one below it.
 
 ## The generator
 
@@ -79,9 +78,9 @@ islandModel = model("kept(A) :- pt(A, _, _), !stray(A).")
 
 Eleven of the 200 samples are strays. Counted with every point, the cloud has four islands: two
 big ones, and two small ones made only of strays. Eight strays are close enough to a moon to join
-its island, and the other three form islands of their own. Leave the strays out and two islands
-are left, one for each moon. So the generator kept the two pieces apart, and Datalog shows exactly
-which samples fall outside them.
+its island; the other three make up the two small islands. Leave the strays out and two islands
+are left, one for each moon. Datalog shows which samples fall outside the target and how they
+affect the count.
 
 The two radii are choices, and the counts depend on them: a smaller `support` radius calls more
 points strays, and a larger `near` radius lets more of them join a moon.

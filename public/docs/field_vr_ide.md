@@ -21,9 +21,9 @@ Launch **1 — VR IDE renderer**, then **2 — Live IDE in VR**. The starting po
 desktop companion. For the headset, connect your OpenXR runtime first, set `useHeadset = true`
 in box 1, restart Field and launch both boxes again. Eye targets use the runtime's actual dimensions.
 
-The browser opens this same document, including ephemeral session identity when needed. Select
-**Playground**, open its editor, change the message or colour and press **Run box** in the
-panel toolbar. The result appears as an ordinary Field output.
+The browser opens the same document. Select **Playground**, open its editor, change the message
+or colour and press **Run box** in the panel toolbar. The result appears under the box, just as it
+does on the desktop.
 
 ## Desktop headset preview
 
@@ -39,11 +39,12 @@ the scene preview is for viewing the headset image.
 
 ## Point, edit and run
 
-Either controller can hover over the panel. Pull the trigger to click or drag; **A** on the right controller or **X** on the left also clicks.
-The hand that starts a drag keeps control until release. The thumbstick or trackpad scrolls in both
-axes: a small deflection moves slowly, and a full deflection moves faster. Release it to stop. Losing tracking releases a
-held mouse button. Tracked hands do not point or click in the IDE, so moving your hands over the
-keyboard or mouse cannot reclaim its cursor through the hand-tracking fallback.
+Point either controller at the panel and pull the trigger to click or drag. **A** on the right
+controller or **X** on the left also clicks. The hand that starts a drag keeps control until you
+release it. Use the thumbstick or trackpad to scroll in either direction: a small deflection moves
+slowly, a full deflection faster. Losing tracking releases a held mouse button. Hand tracking does
+not point or click in the IDE, so you can move your hands over the keyboard without taking the
+cursor away from the mouse.
 
 Aim at any part of the panel and hold **grip** to pick it up. Moving and rotating that controller
 moves and rotates the whole panel, preserving the initial attachment offset. Release grip to leave
@@ -163,10 +164,9 @@ from a browser with access to the same tailnet. Set its `file` query parameter t
 shown in your VR panel; for example, `?file=Field-VR-IDE`. If Field runs on a different port, pass
 `--field-port` with that port to the helper when configuring the listener.
 
-Use the same document name in both clients. Each browser retains its own
-selection, caret, scroll and keyboard/mouse focus while edits flow through the shared Field
-server. Remote text updates preserve focus in another input or palette; they must not pull focus
-back into Monaco. This is shared document editing, not a streamed desktop or remote mouse.
+Use the same document name in both clients. Edits flow through the shared Field server, while
+each browser keeps its own selection, caret, scroll and keyboard/mouse focus. You can work in a
+palette or input in one browser while text changes in the other.
 
 Nobody needs to operate the PC display. Field still requires a working graphics/display session
 for Vulkan and Chromium, and WiVRn must be running and paired. This workflow does not remove the

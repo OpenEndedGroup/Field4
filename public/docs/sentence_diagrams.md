@@ -1,9 +1,8 @@
 # Sentence diagrams
 
 A sentence can be a row of words, a canopy of constituents, a set of dependency arcs or a
-piece of Reed–Kellogg furniture. `afield.graphics.text.sentences` keeps the parse separate
-from those layouts, and the layouts separate from drawing. Words, curves, labels and
-underlines come back as geometry that you can keep manipulating.
+piece of Reed–Kellogg furniture. Field lets you draw each from a parse, then keep working with
+the result: the words, curves, labels and underlines are all geometry.
 
 The examples below write out their choices, like the constructions in [Euclid's Elements](euclid_elements.md).
 They use retained Stanza parses. Loading and drawing these examples needs neither a
@@ -183,13 +182,14 @@ displayOpen("diagram")
 ## From geometry to a shallow-3D reading space
 
 [Open text_one](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn) for five
-related reading spaces: **Marked breath**, **Constituency canopy**, **Dependency undertow**
-**Sentence furniture**, and **A room for words**. Sentence furniture crossfades its structural drawing into a complete reading
-line; the typography playground combines inline styles, multiple faces and text-relative geometry. Select an example in **Scores / example selector**, then use **Restart entrances**,
-**Show complete diagram** or the score-time slider.
+related reading spaces: **Marked breath**, **Constituency canopy**, **Dependency undertow**,
+**Sentence furniture**, and **A room for words**. Sentence furniture crossfades its structural
+drawing into a complete reading line; the typography playground combines inline styles, multiple
+faces and text-relative geometry. Select an example in **Scores / example selector**, then use
+**Restart entrances**, **Show complete diagram** or the score-time slider.
 
 These are world-space graphs, with shallow depth layers and a small CPU SIMDVerlet system.
-Connections are rebuilt around moving anchors, rather than displaying an SVG on a plane.
+Connections are rebuilt around moving anchors as the words move.
 Full text runs use Slug analytic curve coverage. FLines supply centrelines; vertex/fragment
 shaders thicken them separately for the two current eye views and draw antialiased SDF dots.
 Physics advances in fixed steps; rendering uses the current eye views.

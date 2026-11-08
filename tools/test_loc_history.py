@@ -121,7 +121,7 @@ OURS = (
     "public/docs/assets/code-diff-player/code-diff-player.js",
     "tools/webosc/static/touch.js",
     "electron/main.js",
-    # Swift: the visionOS head and its encoder, both hand-written, no vendored Swift.
+    # Swift: the visionOS head and its encoder, both ours, no vendored Swift.
     "native/field-visionos/Field4Vision/RTT/RTTReceiver.swift",
     "native/field-encode/Sources/field-encode/Encoder.swift",
     # Python: Field4's own tooling. The submodule's Python is covered by

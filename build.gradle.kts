@@ -638,7 +638,10 @@ fun MutableList<String>.addOrReplaceSystemProperties(args: List<String>) {
 // -Dafield.jdwp.port) is set to a port — which the backdoor python launcher does
 // automatically (tools/field_backdoor.py sets AFIELD_JDWP_PORT), so agent probes
 // work against backdoor-launched Field without exposing a debug port on manual runs.
-// off/none/false/0 (or unset) keep it disabled.
+// off/none/false/0 (or unset) keep it disabled. `auto` (the backdoor's default) has the
+// JDWP agent bind an ephemeral port itself, which RuntimeDebugProbeService reads back from
+// the agent's `sun.jdwp.listenerAddress`. A port chosen before the build could be taken by
+// another launch before this JVM binds it, and a JDWP bind failure stops the JVM.
 fun jdwpPortSetting(): String? {
     val raw = (System.getProperty("afield.jdwp.port")
         ?: System.getenv("AFIELD_JDWP_PORT")
@@ -648,6 +651,8 @@ fun jdwpPortSetting(): String? {
     }
     return raw
 }
+
+val JDWP_LISTENER_EXPORT = "--add-exports=java.base/jdk.internal.vm=ALL-UNNAMED"
 
 fun jdwpHostSetting(): String =
     (System.getProperty("afield.jdwp.host")
@@ -659,8 +664,9 @@ fun configuredJdwpArg(): String? {
     val suspendFlag = (System.getProperty("afield.jdwp.suspend")
         ?: System.getenv("AFIELD_JDWP_SUSPEND")
         ?: "false").trim().lowercase() in setOf("1", "true", "yes", "on")
+    val bind = if (port.lowercase() == "auto") "0" else port
     // suspend=n is deliberate: never freeze Field's render/compute loop for a probe.
-    return "-agentlib:jdwp=transport=dt_socket,server=y,suspend=${if (suspendFlag) "y" else "n"},address=${jdwpHostSetting()}:$port"
+    return "-agentlib:jdwp=transport=dt_socket,server=y,suspend=${if (suspendFlag) "y" else "n"},address=${jdwpHostSetting()}:$bind"
 }
 
 plugins {
@@ -2697,6 +2703,9 @@ tasks.named<JavaExec>("runJvm").configure {
             if (merged.none { it.startsWith("-agentlib:jdwp=") }) {
                 merged += jdwpArg
             }
+            // Lets RuntimeDebugProbeService read the port an `auto` agent bound (VMSupport's
+            // agent properties); harmless for a fixed port.
+            if (JDWP_LISTENER_EXPORT !in merged) merged += JDWP_LISTENER_EXPORT
             // Tell the in-JVM RuntimeDebugProbeService which port/host to attach the
             // JDI helper to. Needed because the port may come from the default rather
             // than an env var the app JVM would otherwise inherit.

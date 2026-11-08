@@ -1300,6 +1300,18 @@ and counts shared edges; *slider* moves one family of lines; *offset sweep* anim
 
 [Open →](offline.html?file=assets/agent_transcripts/debruijn_tilings_demo/metadata.edn)
 
+### debruijn_tilings_3d_demo
+
+The same multigrid with planes, the companion to
+[Penrose tilings in three dimensions](debruijn_tilings_3d.md). *Triacontahedron* welds the twenty
+Ammann rhombohedra of one plane per family through Manifold beside their convex hull; *patch* draws
+the cells nearest the centre of a 3D Penrose tiling and prints the prolate/oblate ratio against
+radius; *slices* cuts the tiling across 5-, 3- and 2-fold axes into FLine polygons; *offset sweep*
+slides one family of planes and counts the cells that survive; *stars* cuts the five
+`DeBruijnStar` direction sets along one plane; *slab* welds a slab of cells into a printable solid.
+
+[Open →](offline.html?file=assets/agent_transcripts/debruijn_tilings_3d_demo/metadata.edn)
+
 ### lp_curves
 
 Linear-programming algorithms as curve generators, the companion to
@@ -2587,7 +2599,9 @@ Walkthrough: [Loris partial tracks and resynthesis](loris.md).
 A film voice analysed into a rolling curve of its recent spectra (mel bands, earth mover's distances,
 MDS, alignment) and drawn as FLines in the Three.js viewer at whatever time Field's waveform player is
 playing or scrubbing. Further boxes draw a stereo recording as one curve per channel, the voice with a
-finer hop and a longer memory, and a curve of running averages from one hop to twenty seconds. Every
+finer hop and a longer memory, a curve of running averages from one hop to twenty seconds, and a
+12 × 12 sheet and 6 × 6 × 6 lattice of prototype spectra (self-organizing maps) of the sounds heard
+so far. Every
 box is compile-checked; the analysis runs the `fieldaudio_curve` Python package through `uv`.
 Walkthrough: [Audio curves: a sound as a few slow controls](audio_curves.md).
 

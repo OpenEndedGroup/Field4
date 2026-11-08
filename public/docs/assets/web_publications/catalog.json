@@ -982,6 +982,38 @@
         "public/docs/assets/agent_transcripts/controls_surface/surface_code_.kt": "def660097b214a6a3937a20373cd226a8c7a6942a1a3d97ff2d0a8b105fcb72e"
       }
     },
+    "assets/agent_transcripts/debruijn_tilings_3d_demo/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-08T17:20:45.073Z",
+      "channels": 6,
+      "file": "assets/web_publications/debruijn_tilings_3d_demo/document/metadata.edn",
+      "files": {
+        "assets/web_publications/debruijn_tilings_3d_demo/document/metadata.edn": "e8d1caaa15f7ae504198f9d96ba59e67d87bdb7bf5f1c4872add5726c0466618",
+        "assets/web_publications/debruijn_tilings_3d_demo/document/outputs.json": "9f74f2c8a76962ed980c5e07661b76e8c20f3a59d5f2c1cd79d951d09a65856b",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/0.html": "c768131dce5d3930e09169a30b635c3738c9b3c26a9981021c3b044a5f6db4a1",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/1.html": "ddbeb96e0031637087c9839c73bc01041776ca1471e7fada552aa423d1f847e6",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/2.html": "9a2ea45bc054043fb8c66f6b174db64dcfc256c9696160123db74445310cc904",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/3.html": "f4ef65ca40094a73e72abe5f42650255f9d1a92d98630c7c3c26de9a2efafeea",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/4.html": "50d4f10b01eb5d6e7fb850373ca342ea678a69b0a17ef0a400f71b672caf70c4",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/5.html": "79a828eb7a6400698388b3f14136042dc2773407f95d6c8803070caad3a19a01"
+      },
+      "kinds": [
+        "svg",
+        "three"
+      ],
+      "outputs": "assets/web_publications/debruijn_tilings_3d_demo/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/debruijn_tilings_3d_demo.yaml": "b0fbc03eb8f683f25eda9e76c92be6921ac0e95b1a3b1a128dfeccbcbc8971dd",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/debruijn3d_offset_sweep_code_.kt": "7c35672c4ef95acf8acba4399ba8761a36b33fd38c96c4e5bd6d96c42c186e00",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/debruijn3d_patch_code_.kt": "a4296b2fd37a6c7cd17d1968ac43947cb098babb04856bcdb3103d11f104defb",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/debruijn3d_slab_code_.kt": "3ae5603ed4973e5e6b72eb82a5bc884330e772cb55d72052d3a149aa06ab6026",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/debruijn3d_slices_code_.kt": "972e02ee5ae3d8080d262b7d05fad219916d751cba44d6f493a0b001be5089cd",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/debruijn3d_stars_code_.kt": "97b03a3752a058504b85b6356f9527929da122fbffb2f2436d9adf208c8afb69",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/debruijn3d_triacontahedron_code_.kt": "4ffc5064b1e75333b060db5f97fe3c471c9b558bdb94c350345de0c53668b7af",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/guides/debruijn_tilings_3d.md": "04daa068ffc22ab9db2cef545fe803ebb9a2a60a59e1397132ae691fefe95489",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/metadata.edn": "ab3d15f779c93a48f3be0e26646aa0c1bf1b255a853790e2ab63660b3066f150"
+      }
+    },
     "assets/agent_transcripts/debruijn_tilings_demo/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
       "capturedAt": "2026-11-08T10:30:13.801Z",

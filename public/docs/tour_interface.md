@@ -1,11 +1,14 @@
 # A Tour of the Interface
 
-Field has one canvas of boxes, one code editor, and a handful of panels that open over them. This
-page shows each one: what it is for, how to open it, its shortcut, and how to close it. Every
-panel closes the same way, with the **×** in its top-right corner or with ++escape++ while it has
-the focus. The command palette and Open Anything have no ×; ++escape++ closes them.
+The canvas is where your boxes live; the editor is where you write in them. Around those two are
+panels for finding things, browsing history, drawing, recording macros and talking to AI. This tour
+shows where to find them and what each one is for.
 
-If you have not made a box yet, start with the [Survival Guide](survivalGuide.md). The other
+Close a panel with the **×** in its top-right corner or press ++escape++ while it has focus. The
+command palette and Open Anything have no ×; ++escape++ closes them.
+
+If you haven't run a box yet, try [Your first five minutes](first_steps.md). The
+[Survival Guide](survivalGuide.md) covers the moves you'll use every day. The other
 tours go further into one subject each: [Connecting Boxes](tour_connecting_boxes.md),
 [Graphics on the GPU](tour_gpu_graphics.md) and [Looking at Data](tour_data.md).
 

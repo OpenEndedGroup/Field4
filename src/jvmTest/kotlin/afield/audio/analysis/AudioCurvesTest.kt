@@ -85,4 +85,49 @@ class AudioCurvesTest {
             assertEquals(12, it.frame(0).pointCount)
         }
     }
+
+    @Test
+    fun theMapVariantHoldsItsPrototypesAndThePresent() {
+        audioCurves(wav, settings.copy(somLearnSeconds = 0.2), directory).single().use {
+            assertEquals(0.2, it.somLearnSeconds)
+            assertEquals(13, it.history, "12 prototypes and the present")
+            val frame = it.frame(it.frameCount - 1)
+            assertEquals(13, frame.pointCount)
+            assertTrue(frame.bestMatch!! in 0 until 12)
+            assertEquals(12, frame.flines(centered = true).size, "11 chain segments and the tether")
+        }
+    }
+
+    @Test
+    fun aSheetMapRecordsItsGrid() {
+        audioCurves(wav, settings.copy(dimensions = 3, somLearnSeconds = 0.2, somGrid = listOf(3, 4)), directory).single().use {
+            assertEquals(listOf(3, 4), it.somGrid)
+            assertEquals(13, it.history, "12 prototypes and the present")
+            val frame = it.frame(it.frameCount - 1)
+            assertTrue(frame.bestMatch!! in 0 until 12)
+            assertEquals(3 * 3 + 2 * 4 + 1, frame.flines(centered = true, stretch = true).size, "17 grid edges and the tether")
+            assertTrue(it.recentMatches(frame.timeSeconds, 0.1).isNotEmpty())
+        }
+    }
+
+    @Test
+    fun anInterruptedAnalysisLeavesNothingThatLooksCached() {
+        // A long enough recording that the analysis is still running when it is interrupted.
+        val long = directory.resolve("long.wav")
+        Files.write(long, WavFloatArrayWriter.encodeMono16(FloatArray(400_000) { i -> (0.4 * sin(i * 0.05 + 1e-6 * i * i)).toFloat() }, 8000))
+        val heavy = settings.copy(somLearnSeconds = 0.5, somGrid = listOf(6, 6, 6))
+        var failure: Throwable? = null
+        val worker = Thread { failure = runCatching { audioCurves(long, heavy, directory) }.exceptionOrNull() }
+        worker.start()
+        val deadline = System.nanoTime() + 60_000_000_000L
+        fun partials() = Files.list(directory).use { files -> files.filter { it.fileName.toString().startsWith(".partial-") }.count() }
+        while (partials() == 0L && worker.isAlive && System.nanoTime() < deadline) Thread.sleep(20)
+        assertTrue(worker.isAlive, "the analysis was still running when it was interrupted")
+        worker.interrupt()
+        worker.join(30_000)
+        assertTrue(failure != null, "the interrupted call failed")
+        val left = Files.list(directory).use { files -> files.filter { it.toString().endsWith(".f4curve") }.toList() }
+        assertTrue(left.none { it.fileName.toString().startsWith("long.") }, "no half-written file under the cached name: $left")
+        assertEquals(0L, partials(), "no partial file left behind")
+    }
 }
