@@ -189,6 +189,32 @@ class LandQueueTest(unittest.TestCase):
         joined = json.loads((self.queue() / "landed" / f"{ids[1]}.json").read_text())
         self.assertEqual(joined["coalesced_into"], ids[0])
 
+    def test_doc_item_queued_during_a_build_of_the_same_commit_is_answered_by_it(self) -> None:
+        head = self.git(self.primary, "rev-parse", "HEAD")
+        checkout = str(self.primary.resolve())
+        self.land(self.primary, "doc")  # creates the queue; replaced below
+        for path in (self.queue() / "pending").glob("*.json"):
+            path.unlink()
+        # The build that was running: 10:00 to 10:20, on HEAD.
+        (self.queue() / "landed" / "20261108-100000-doc.json").write_text(json.dumps(
+            {"id": "20261108-100000-doc", "kind": "doc", "checkout": checkout, "by": "t", "seq": 1,
+             "started": "2026-11-08T10:00:00+00:00", "finished": "2026-11-08T10:20:00+00:00", "built_from": head}))
+
+        def queue_doc(doc_id: str, enqueued: str) -> None:
+            (self.queue() / "pending" / f"{doc_id}.json").write_text(json.dumps(
+                {"id": doc_id, "kind": "doc", "checkout": checkout, "by": "t", "seq": 2, "enqueued": enqueued}))
+
+        queue_doc("20261108-100500-doc", "2026-11-08T10:05:00+00:00")  # asked for mid-build
+        self.assertEqual(self.run_lander().returncode, 0)
+        self.assertFalse((Path(self._tmp.name) / "DOC_RUNS").exists(), "rebuilt what the running build built")
+        covered = json.loads((self.queue() / "landed" / "20261108-100500-doc.json").read_text())
+        self.assertEqual(covered["coalesced_into"], "20261108-100000-doc")
+        self.assertIn("built by 20261108-100000-doc", self.land(self.primary, "status", "20261108-100500-doc").stdout)
+
+        queue_doc("20261108-103000-doc", "2026-11-08T10:30:00+00:00")  # asked for after it finished
+        self.assertEqual(self.run_lander().returncode, 0)
+        self.assertTrue((Path(self._tmp.name) / "DOC_RUNS").exists(), "a request after a build must be honoured")
+
     def test_failed_doc_item_reports_failure_and_does_not_bounce_later_branch(self) -> None:
         (self.primary / "DOCS_BREAKS").write_text("yes\n")
         request = self.land(self.primary, "doc")
