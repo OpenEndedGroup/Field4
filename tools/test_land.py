@@ -363,6 +363,39 @@ class LandQueueTest(unittest.TestCase):
         self.assertNotIn("replacing", self.land(wt, "enqueue").stdout)
         self.assertEqual(len(list(queue.glob("*.json"))), 2)
 
+    def test_retract_takes_a_waiting_branch_out_and_it_does_not_land(self) -> None:
+        alpha = self.branch_with("alpha", "alpha.txt")
+        enqueued = self.land(alpha, "enqueue")
+        alpha_id = enqueued.stdout.split("queued ", 1)[1].split(" ", 1)[0]
+        self.land(self.branch_with("beta", "beta.txt"), "enqueue")
+        retract = self.land(alpha, "retract")  # default: the current branch
+        self.assertEqual(retract.returncode, 0, retract.stdout + retract.stderr)
+        self.assertIn(f"retracted {alpha_id}", retract.stdout)
+        self.assertEqual(self.land(alpha, "retract").returncode, 2, "a second retract has nothing to take out")
+        self.assertEqual(self.run_lander().returncode, 0)
+        self.assertEqual(self.states(), {"alpha": "bounced", "beta": "landed"})
+        self.assertFalse((self.primary / "alpha.txt").exists())
+        self.assertEqual(self.land(self.primary, "wait", alpha_id).returncode, 1)
+        status = self.land(self.primary, "status", alpha_id).stdout
+        self.assertIn("resolved", status)
+        self.assertIn("retracted by test-agent", status)
+        self.assertIn("was retracted", self.land(alpha, "mine").stdout)
+        # Enqueued again, it lands.
+        self.land(alpha, "enqueue")
+        self.assertEqual(self.run_lander().returncode, 0)
+        self.assertTrue((self.primary / "alpha.txt").exists())
+
+    def test_retract_by_id_takes_out_a_doc_item_but_not_a_started_one(self) -> None:
+        doc_id = self.land(self.primary, "doc").stdout.split("queued docs build ", 1)[1].split(" ", 1)[0]
+        wt = self.branch_with("alpha", "alpha.txt")
+        alpha_id = self.land(wt, "enqueue").stdout.split("queued ", 1)[1].split(" ", 1)[0]
+        path = self.queue() / "pending" / f"{alpha_id}.json"
+        path.write_text(path.read_text().replace('"enqueued"', '"started": "2026-10-03T00:00:00+00:00", "enqueued"'))
+        self.assertEqual(self.land(wt, "retract", alpha_id).returncode, 1)
+        self.assertTrue(path.exists(), "a started item must stay queued")
+        self.assertEqual(self.land(self.primary, "retract", doc_id).returncode, 0)
+        self.assertTrue((self.queue() / "bounced" / f"{doc_id}.json").exists())
+
     # ------------------------------------------------------------------ batching
 
     def guard_calls(self) -> int:

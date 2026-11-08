@@ -6,6 +6,7 @@
     uv run python tools/land.py status [id] [--watch]             # what is queued, landed, bounced
     uv run python tools/land.py wait <id>                         # block until it lands or bounces
     uv run python tools/land.py mine [branch]                     # the mailbox: this branch's attempts
+    uv run python tools/land.py retract [branch|id]               # take a queued item back out
     uv run python tools/land.py sync [--push]                     # bring origin/main in via the queue
     uv run python tools/land.py doc                               # build the local docs when its turn arrives
     uv run python tools/land.py huh [--context]                   # ask the agent what the queue is doing
@@ -403,6 +404,8 @@ def _branch_gone(item: dict) -> bool:
 
 def _settled(item: dict) -> str | None:
     """Why a bounce with no later landing of its own branch still needs nobody, or None if it does."""
+    if item.get("retracted"):
+        return f"retracted by {item['retracted'].get('by', '?')}"
     if _content_on_main(item):
         return "its changes reached main another way"
     if _branch_gone(item):
@@ -1033,9 +1036,43 @@ def cmd_mine(args: argparse.Namespace) -> int:
     for state, item in attempts:
         print(_describe(state, item, queue))
     newest = attempts[0][0]
-    if newest == BOUNCED:
+    if newest == BOUNCED and attempts[0][1].get("retracted"):
+        print(f"\nThe latest attempt was retracted. Enqueue {branch} again when it is ready.")
+    elif newest == BOUNCED:
         print(f"\nThe latest attempt bounced. Fix it on {branch}, commit, and enqueue again.")
     return {PENDING: 3, LANDED: 0, BOUNCED: 1}[newest]
+
+
+def cmd_retract(args: argparse.Namespace) -> int:
+    """Take queued items back out: by id, or every waiting item of a branch (default: this one)."""
+    here = Path.cwd()
+    target = args.target or _git(here, "branch", "--show-current")
+    if not target:
+        print("land: not on a branch; name the branch or item id to retract", file=sys.stderr)
+        return 2
+    queue = _queue_dir(here)
+    by = args.by or os.environ.get("FIELD_LAND_BY") or f"{_git(here, 'config', 'user.name', check=False) or 'unknown'} @ {here.name}"
+    matches = [item for item in _items(queue, PENDING) if target in (item["id"], item.get("branch"))]
+    if not matches:
+        found = _find(queue, target)
+        print(f"land: {target} is already {found[0]}; nothing to retract" if found else f"land: nothing queued for {target}",
+              file=sys.stderr)
+        return 2
+    code = 0
+    for item in matches:
+        # Read again at the last moment: the lander may have just taken it. An item it has started
+        # stays, as with a re-enqueue: removing its file mid-landing hid it while it landed anyway.
+        current = _find(queue, item["id"])
+        if current is None or current[0] != PENDING or current[1].get("started"):
+            state = "being landed" if current and current[0] == PENDING else (current[0] if current else "gone")
+            print(f"land: {item['id']} is {state}; too late to retract it", file=sys.stderr)
+            code = 1
+            continue
+        item = current[1]
+        item.update(retracted={"by": by, "at": _now()}, reason=f"retracted by {by}", finished=_now())
+        _move(queue, item, BOUNCED)
+        print(f"land: retracted {item['id']}" + (f" ({item['sha'][:9]})" if item.get("sha") else ""))
+    return code
 
 
 def cmd_sync(args: argparse.Namespace) -> int:
@@ -2044,6 +2081,10 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("mine", help="every landing attempt for this branch, newest first (exit 1 if it bounced)")
     p.add_argument("branch", nargs="?", help="default: the current branch")
     p.set_defaults(func=cmd_mine)
+    p = sub.add_parser("retract", help="take a queued item back out before the lander starts it")
+    p.add_argument("target", nargs="?", help="an item id, or a branch (all its waiting items); default: the current branch")
+    p.add_argument("--by", help="who is asking (default: $FIELD_LAND_BY, else user @ worktree)")
+    p.set_defaults(func=cmd_retract)
     p = sub.add_parser("wait", help="block until an item lands (exit 0) or bounces (exit 1)")
     p.add_argument("id")
     p.set_defaults(func=cmd_wait)
