@@ -507,6 +507,9 @@ object DemoTranscriptExecSmokeTest {
         // eigendrum.md's starting point: FEM drum modes (afield.audio.modal) drawn through lines()
         // and played through WAV players; the drawing box falls back to a polar curve. CPU only.
         "eigendrum",
+        // penrose_spectra.md's companion: exact zero-state counts, dense EJML spectra and WAV
+        // players for a Penrose tiling's vertex graph; the live ModalDrum box is not executed. CPU only.
+        "penrose_spectra",
         "fline_hit_records",
         // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
         "fline_measure",

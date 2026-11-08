@@ -68,7 +68,7 @@ class DocsAudioProvenanceGuardTest {
             Origin.DOUGH_WASM to 2,
             Origin.STEAM_AUDIO_HRTF to 3,
             Origin.SONIC_PI to 1,
-            Origin.MODAL_SYNTHESIS to 5,
+            Origin.MODAL_SYNTHESIS to 8,
         )
         assertEquals(
             expected,
@@ -287,6 +287,6 @@ class DocsAudioProvenanceGuardTest {
          * clip, and `sonic_pi.md`'s `bikes.wav`, the first [Origin.SONIC_PI]: a take recorded from
          * a real Sonic Pi, which the audit skips rather than compares.
          */
-        const val EXPECTED_FENCE_COUNT = 92
+        const val EXPECTED_FENCE_COUNT = 95
     }
 }

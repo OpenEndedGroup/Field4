@@ -149,6 +149,18 @@ from your last stroke on the drawing layer. Pure CPU.
 
 [Open →](offline.html?file=assets/agent_transcripts/eigendrum/metadata.edn)
 
+### penrose_spectra
+
+**Strike a Penrose tiling.** The starting point of [Hearing a Penrose Tiling](penrose_spectra.md):
+exact counts of the tiling's zero-energy states against 81 − 50τ, beside a square lattice and a
+jittered tiling; the confined states drawn on the tiles; the density of states and its gap; a sweep
+over symmetry, disorder and offset sum; three strikes with players; two sliders that recount as you
+drag; and a live `ModalDrum` voice (launch it). Pure CPU.
+
+![Two grey Penrose tilings, one with orange discs on its three-edged vertices, one with a single ring of orange and blue discs](assets/penrose_spectra/states.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/penrose_spectra/metadata.edn)
+
 ### teaching_a_pen
 
 **Pens with other hands.** The starting point of [Teaching a pen](teaching_a_pen.md): Hershey plotter

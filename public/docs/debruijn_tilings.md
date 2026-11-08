@@ -203,6 +203,13 @@ animate {
 }
 ```
 
+## The tiling as a graph
+
+The tiles' corners and edges make a graph, and `vertexGraph()` returns it. A particle hopping along
+those edges has about one state in ten at exactly zero energy, each trapped on a small cluster of
+vertices. [Hearing a Penrose Tiling](penrose_spectra.md) counts those states, draws them on the
+tiles, and strikes the tiling as a network of springs.
+
 ## A relief, through Manifold
 
 Each tile's outline is a closed, counter-clockwise `FLine`, so it goes straight into a Manifold
