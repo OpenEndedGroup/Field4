@@ -2740,6 +2740,22 @@ under the grids shows what Kotlin heard and changed. Launch the box, then type i
 
 [Open →](offline.html?file=assets/agent_transcripts/orca_duet/metadata.edn)
 
+### ascii_shape
+
+**Characters chosen by shape, not only brightness.** `ShapeAscii` summarises each cell of an image
+by the light in six staggered circles and picks the character whose own six numbers are nearest,
+after Alex Harri's essay [ASCII characters are not pixels](https://alexharri.com/blog/ascii-rendering).
+The lead box draws a ring, a triangle and a disc as FLines and shows them by brightness and by
+shape side by side; the others show the sampling circles over five characters, a lit sphere, the
+two contrast steps, and a wireframe cube spinning live in a `charGrid`. The walkthrough is
+[Shape-aware ASCII](ascii_shape.md).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/ascii_shape_shapes.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="180" padding="12" name="gallery-ascii-shape-shapes" alt="a ring, a triangle and a disc drawn twice in white characters: by brightness on the left, by shape on the right, where the outlines run as underscores, slashes and quote marks" macro-file="../../dev_docs/agents/transcripts/ascii_shape.yaml" capture-box="ascii_shape_shapes"}
+// The transcript builds and runs every box; this is the lead, brightness vs shape.
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/ascii_shape/metadata.edn)
+
 ### madp_chargrid
 
 **A picture as a grid of glyph indices.** A box's program writes numbers into a 40 × 25 grid with

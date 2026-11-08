@@ -11,7 +11,7 @@ comes out as `_`, `/`, `'` and `[` running along the curve.
 This box draws a ring, a triangle and a disc as FLines into an `Img`, then turns the same image
 into 44 columns of characters twice, once by brightness and once by shape:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/ascii_shape/shapes.png" alt="two panels of white characters on dark gray. Left, brightness: the ring is a dotted outline of colons, semicolons and the letter c, the triangle a blur of C and 1, the disc a block of N. Right, shape: the ring's rim is drawn with underscores on top, quote marks and slashes on the curve, and the triangle's sloping sides with backslashes and the letter k" wait="3" timeout="240" capture="box" open-outputs="true" padding="20" name="ascii-shape-shapes" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/ascii_shape/shapes.png" alt="two panels of white characters on dark gray. Left, brightness: the ring is a dotted outline of colons, semicolons and the letter c, the triangle a blur of C and 1, the disc a block of N. Right, shape: the ring's rim is drawn with underscores on top, quote marks and slashes on the curve, and the triangle's sloping sides with p, y and Q in a diagonal run" wait="3" timeout="240" capture="box" open-outputs="true" padding="20" name="ascii-shape-shapes" embed=true}
 // Three outlines and a filled disc, drawn white on black.
 fun ring(cx: Double, cy: Double, r: Double, sides: Int, turn: Double = 0.0) = fline {
     for (i in 0..sides) {
@@ -126,7 +126,7 @@ inner circle is darkened, which stops a character from bleeding towards an edge 
 the next cell. Both are exponents, and 1 turns a step off. The three rows below are the same
 drawing with neither, contrast alone, and both:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/ascii_shape/contrast.png" alt="the ring, triangle and disc three times, one above another. In the first, the triangle's right side is a column of percent signs and letter Q; in the second, contrast 3, it is a clean run of backslashes and the ring's rim has fewer heavy letters; in the third, contrast 3 with directional 3, the disc's outline is trimmed and its top row starts with an underscore" wait="3" timeout="240" capture="box" open-outputs="true" padding="20" name="ascii-shape-contrast" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/ascii_shape/contrast.png" alt="the ring, triangle and disc three times, one above another. In the first, the triangle's right side is a diagonal of the letter Q; in the second, contrast 3, it is a clean run of backslashes and the ring's rim has fewer heavy letters; in the third, contrast 3 with directional 3, the disc's outline is trimmed and its top row starts with an underscore" wait="3" timeout="240" capture="box" open-outputs="true" padding="20" name="ascii-shape-contrast" embed=true}
 // Three outlines and a filled disc, drawn white on black.
 fun ring(cx: Double, cy: Double, r: Double, sides: Int, turn: Double = 0.0) = fline {
     for (i in 0..sides) {
@@ -149,7 +149,7 @@ showAscii(
 )
 ```
 
-Contrast does most of the work on lines: the triangle's sides turn into slashes. Directional
+Contrast does most of the work on lines: the triangle's right side turns into backslashes. Directional
 contrast matters most along the boundary of a filled shape, where it trims the disc's rim; on thin
 lines it can thin a stroke so far that a character drops out (the ring's left side), so treat both
 as dials and look.
@@ -161,7 +161,7 @@ as dials and look.
 FLine drawing every tick, and matches it by shape. Pass the charset to `charGrid` with
 `glyphs = ascii.glyphs` so every character the matcher picks exists in the grid:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/ascii_shape/cube.png" alt="a char grid panel showing a wireframe cube turned at an angle, its twelve edges drawn in white characters: slashes and backslashes on the slanted edges, underscores and dashes on the near-horizontal ones, vertical bars and brackets on the upright ones" wait="6" timeout="240" capture="box" open-outputs="true" padding="20" name="ascii-shape-cube" embed=true}
+```diffstatic_runner {data-lang=kotlin video="assets/ascii_shape/cube.mp4" alt="a char grid panel showing a wireframe cube turning, its twelve edges drawn in white characters: slashes and backslashes on the slanted edges, underscores and dashes on the near-horizontal ones, vertical bars and brackets on the upright ones" execution="launch" wait-output="true" duration="6" fps="20" timeout="240" capture="box" open-outputs="true" padding="20" name="ascii-shape-cube" embed=true}
 // A wireframe cube turning about two axes, drawn into an Img each tick and matched by shape.
 val ascii = ShapeAscii()
 // Corner i has x, y, z = ±1 from its three bits; an edge joins corners one bit apart.

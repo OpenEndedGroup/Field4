@@ -1,0 +1,165 @@
+name: ascii_shape
+description: >-
+  Shape-aware ASCII rendering (ShapeAscii): an Img turned into characters chosen by a six-circle
+  shape vector per cell rather than brightness alone, after Alex Harri's essay. Brightness vs shape
+  on an FLine drawing, the sampling circles, a lit sphere, the two contrast steps, and a live
+  spinning cube in a charGrid. Companion to public/docs/ascii_shape.md.
+operations:
+  - create:
+      box: ascii_shape_shapes
+      name: Brightness vs shape
+      frame: { x: 40.0, y: 60.0, w: 300.0, h: 100.0 }
+      properties:
+        notes: |
+          # Shape-aware ASCII
+
+          The same FLine drawing as characters twice: picked by brightness alone (left) and by where the light falls in each cell (right), after Alex Harri's essay https://alexharri.com/blog/ascii-rendering. Run it; try `contrast = 3.0` in the second `convert`. Docs: ascii_shape.md.
+        code: |
+          // Three outlines and a filled disc, drawn white on black.
+          fun ring(cx: Double, cy: Double, r: Double, sides: Int, turn: Double = 0.0) = fline {
+              for (i in 0..sides) {
+                  val a = turn + 2 * PI * i / sides
+                  if (i == 0) moveTo(cx + r * cos(a), cy + r * sin(a)) else lineTo(cx + r * cos(a), cy + r * sin(a))
+              }
+              thickness = 6.0
+          }
+          val disc = ring(360.0, 100.0, 55.0, 64).apply { filled = true }
+          val drawing = Img.zeros(440, 200, 3).drawFLines(
+              [ring(90.0, 100.0, 70.0, 64), ring(210.0, 105.0, 65.0, 3, -PI / 2), disc],
+              color = Vec4(1f, 1f, 1f, 1f),
+          )
+          val ascii = ShapeAscii()
+          showAscii(
+              "brightness" to ascii.convert(drawing, 44, shape = false),
+              "shape" to ascii.convert(drawing, 44),
+          )
+  - create:
+      box: ascii_shape_circles
+      name: Six circles per cell
+      frame: { x: 380.0, y: 60.0, w: 300.0, h: 100.0 }
+      properties:
+        notes: |
+          # Six circles per cell
+
+          Five characters as the matcher sees them: six inner sampling circles (orange) give each character its six numbers; the outer ones (blue) feed directional contrast.
+        code: |
+          // Five glyphs as the matcher sees them, 10x up: the cell in gray, its six circles in orange,
+          // and the six just outside it in blue.
+          val ascii = ShapeAscii()
+          val k = 10.0
+          fun circle(cx: Double, cy: Double, r: Double) = fline {
+              for (i in 0..48) {
+                  val a = 2 * PI * i / 48
+                  if (i == 0) moveTo(cx + r * cos(a), cy + r * sin(a)) else lineTo(cx + r * cos(a), cy + r * sin(a))
+              }
+          }
+          val circles = ascii.samplingCircles()
+          val panels = "TL/o@".map { ch ->
+              val i = ascii.glyphs.indexOf(ch)
+              // pad the cell so the outer circles fit, then draw the circles over it
+              val pad = ascii.cellWidth
+              val cell = ascii.glyphImg(i).pad(pad, Border.ZERO)
+              val inner = circles.take(6).map { (x, y, r) -> circle(x + pad, y + pad, r).apply { color = Vec4(1f, 0.55f, 0.1f, 1f) } }
+              val outer = circles.drop(6).map { (x, y, r) -> circle(x + pad, y + pad, r).apply { color = Vec4(0.3f, 0.6f, 1f, 1f) } }
+              val w = ascii.cellWidth.toDouble(); val h = ascii.cellHeight.toDouble()
+              val box = fline { moveTo(pad, pad); lineTo(pad + w, pad); lineTo(pad + w, pad + h); lineTo(pad, pad + h); lineTo(pad, pad) }
+              box.color = Vec4(0.5f, 0.5f, 0.5f, 1f)
+              "'$ch'" to cell.drawFLines(inner + outer + box, scale = k, thickness = 2.0)
+          }
+          showImgGrid(*panels.toTypedArray(), columns = 5, cellSide = 200)
+  - create:
+      box: ascii_shape_sphere
+      name: Lit sphere
+      frame: { x: 720.0, y: 60.0, w: 300.0, h: 100.0 }
+      properties:
+        notes: |
+          # A lit sphere
+
+          Shading by brightness ramp vs by shape. The method suits light marks on a dark ground.
+        code: |
+          // A lit sphere on black, shaded by hand: brightness is the cosine between the surface normal and a light.
+          val scene = Img.generate(300, 240) { x, y ->
+              val nx = (x - 150) / 100.0
+              val ny = (y - 120) / 100.0
+              val r2 = nx * nx + ny * ny
+              if (r2 < 1) {
+                  val nz = sqrt(1 - r2)
+                  (-0.5 * nx - 0.6 * ny + 0.62 * nz).coerceAtLeast(0.0).toFloat()
+              } else 0f
+          }
+          val ascii = ShapeAscii()
+          showAscii(
+              "brightness" to ascii.convert(scene, 40, shape = false),
+              "shape, contrast 2" to ascii.convert(scene, 40, contrast = 2.0),
+              cellSide = 420,
+          )
+  - create:
+      box: ascii_shape_contrast
+      name: Contrast and directional contrast
+      frame: { x: 40.0, y: 260.0, w: 300.0, h: 100.0 }
+      properties:
+        notes: |
+          # Sharpening edges
+
+          `contrast` and `directional` are exponents; 1 turns a step off. Compare the three rows.
+        code: |
+          // Three outlines and a filled disc, drawn white on black.
+          fun ring(cx: Double, cy: Double, r: Double, sides: Int, turn: Double = 0.0) = fline {
+              for (i in 0..sides) {
+                  val a = turn + 2 * PI * i / sides
+                  if (i == 0) moveTo(cx + r * cos(a), cy + r * sin(a)) else lineTo(cx + r * cos(a), cy + r * sin(a))
+              }
+              thickness = 6.0
+          }
+          val disc = ring(360.0, 100.0, 55.0, 64).apply { filled = true }
+          val drawing = Img.zeros(440, 200, 3).drawFLines(
+              [ring(90.0, 100.0, 70.0, 64), ring(210.0, 105.0, 65.0, 3, -PI / 2), disc],
+              color = Vec4(1f, 1f, 1f, 1f),
+          )
+          val ascii = ShapeAscii()
+          showAscii(
+              "contrast 1" to ascii.convert(drawing, 44),
+              "contrast 3" to ascii.convert(drawing, 44, contrast = 3.0),
+              "contrast 3, directional 3" to ascii.convert(drawing, 44, contrast = 3.0, directional = 3.0),
+              columns = 1, cellSide = 600,
+          )
+  - create:
+      box: ascii_shape_cube
+      name: Live cube in a charGrid
+      frame: { x: 380.0, y: 260.0, w: 300.0, h: 100.0 }
+      properties:
+        notes: |
+          # Live, in a char grid
+
+          A wireframe cube drawn into an Img every tick and matched by shape into a `charGrid` with `drawAscii`. Run to start, stop to stop.
+        code: |
+          // A wireframe cube turning about two axes, drawn into an Img each tick and matched by shape.
+          val ascii = ShapeAscii()
+          // Corner i has x, y, z = ±1 from its three bits; an edge joins corners one bit apart.
+          val corners = (0 until 8).map { i -> Triple(if (i and 1 == 0) -1.0 else 1.0, if (i and 2 == 0) -1.0 else 1.0, if (i and 4 == 0) -1.0 else 1.0) }
+          val edges = (0 until 8).flatMap { i -> [1, 2, 4].filter { i and it == 0 }.map { i to (i or it) } }
+
+          charGrid(cols = 60, rows = 26, glyphs = ascii.glyphs) {
+              val a = frame * 0.03
+              fun project(p: Triple<Double, Double, Double>): Pair<Double, Double> {
+                  val (px, py, pz) = p
+                  val x1 = px * cos(a) - pz * sin(a)
+                  val z1 = px * sin(a) + pz * cos(a)
+                  val y1 = py * cos(a * 0.7) - z1 * sin(a * 0.7)
+                  val z2 = py * sin(a * 0.7) + z1 * cos(a * 0.7)
+                  val s = 150.0 / (z2 + 4.0)
+                  return (240 + x1 * s) to (130 + y1 * s)
+              }
+              val lines = edges.map { (i, j) ->
+                  fline {
+                      moveTo(project(corners[i]).first, project(corners[i]).second)
+                      lineTo(project(corners[j]).first, project(corners[j]).second)
+                      thickness = 5.0
+                  }
+              }
+              val img = Img.zeros(480, 260, 3).drawFLines(lines, color = Vec4(1f, 1f, 1f, 1f))
+              drawAscii(ascii.convert(img, COLS, contrast = 3.0, rows = ROWS))
+          }
+  - launch:
+      box: ascii_shape_shapes
+      property: code
