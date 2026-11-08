@@ -125,7 +125,7 @@ hf download bartowski/Qwen3.8-27B-GGUF \
 ```
 
 Start a server accessible from your private network. It remains in this terminal
-until stopped with Ctrl+C:
+until stopped with ++ctrl+c++:
 
 ```diffstatic {data-lang=bash}
 llama-server \

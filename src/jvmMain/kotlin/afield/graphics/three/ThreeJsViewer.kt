@@ -379,6 +379,42 @@ internal fun registerThreeSurfaceClickCallback(callback: (ThreeSurfaceHit) -> Un
 internal fun getThreeSurfaceClickCallback(callbackId: String): ((ThreeSurfaceHit) -> Unit)? =
     surfaceClickCallbacks[callbackId]
 
+/**
+ * Which of the viewer's own controls a view shows on its toolbar. Every control is off unless the
+ * box asks for it, so a plain view is a picture you can orbit.
+ *
+ * Pressing **E** in the view shows all of them for the moment, so you can still pick a feature or
+ * export a GLB from a view that did not ask for those controls. [ThreeSceneBuilder.hud] `(false)`
+ * hides them even from **E**.
+ *
+ * A view also shows the controls it was set up for without asking here: **Link camera** when
+ * [ThreeSceneBuilder.linkCamera] is called, **Parts** when [ThreeSceneBuilder.inspect] is, and
+ * measure, section and explode with [ThreeSceneBuilder.inspect].
+ *
+ * @param xray the **X-ray** button and its surface-opacity slider.
+ * @param export **Export GLB**.
+ * @param linkCamera **Link camera**, for comparing views side by side.
+ * @param review **Pick**, **Load note** and **Notes**: select geometry and leave notes for an agent.
+ * See `geometry_review.md`.
+ * @param parts the **Parts** list, for showing, hiding and soloing parts. It appears only when the
+ * scene has at least two parts.
+ * @param light the **Light** slider, which swings a grazing key light around the figure.
+ */
+@Serializable
+data class ThreeControls(
+    val xray: Boolean = false,
+    val export: Boolean = false,
+    val linkCamera: Boolean = false,
+    val review: Boolean = false,
+    val parts: Boolean = false,
+    val light: Boolean = false,
+) {
+    companion object {
+        /** Every control on. */
+        val ALL = ThreeControls(xray = true, export = true, linkCamera = true, review = true, parts = true, light = true)
+    }
+}
+
 @Serializable
 @OptIn(ExperimentalSerializationApi::class)
 data class ThreeGeometryPayload(
@@ -514,6 +550,9 @@ data class ThreeGeometryPayload(
     /** Show the viewer's tool buttons and counts; `false` for a picture. See [ThreeSceneBuilder.hud]. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val hud: Boolean = true,
+    /** The toolbar controls this view asked for. See [ThreeControls]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val controls: ThreeControls = ThreeControls(),
     /** Wire only: where a description's arrays are. See `ThreeWire.kt`. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     internal val buffers: ThreeWireBuffers? = null,
@@ -1031,6 +1070,7 @@ fun installThreeJsHandler() {
  * enqueue expensive validation or remeshing on your own worker. No callback on camera movement.
  * @param autoFrame If true, the viewer auto-frames the bounds on update.
  * @param width Explicit iframe width in pixels, or null to fill the output area.
+ * @param controls The toolbar controls to show; none by default. See [ThreeControls].
  */
 fun Box.threeLines(
     lines: Collection<FLine>,
@@ -1041,7 +1081,8 @@ fun Box.threeLines(
     autoFrame: Boolean = true,
     editable: Boolean = false,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
-    width: Int? = null
+    width: Int? = null,
+    controls: ThreeControls = ThreeControls(),
 ): ThreeGeometryViewState {
     require(width == null || width > 0) { "Viewer width must be positive" }
     val uid = threeViewerUid(this, name)
@@ -1054,7 +1095,7 @@ fun Box.threeLines(
     val view = threeViewFor(uid)
     view.bindSource(this, "${this.id}_$name")
     val payload = buildThreeGeometryPayload(uid, lines, samplesPerCubic, autoFrame, editable, onEditCommitted = onEditCommitted)
-        .copy(frameWidth = width, frameHeight = height)
+        .copy(frameWidth = width, frameHeight = height, controls = controls)
 
     view.update(payload)
     return view
@@ -1091,7 +1132,8 @@ fun Box.threeLines(
     autoFrame: Boolean = true,
     editable: Boolean = false,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
-    width: Int? = null
+    width: Int? = null,
+    controls: ThreeControls = ThreeControls(),
 ): ThreeGeometryViewState = threeLines(
     lines = lines.toList(),
     channel = channel,
@@ -1101,7 +1143,8 @@ fun Box.threeLines(
     autoFrame = autoFrame,
     editable = editable,
     onEditCommitted = onEditCommitted,
-    width = width
+    width = width,
+    controls = controls,
 )
 
 /**
@@ -1116,7 +1159,8 @@ fun Box.threeLines(
     autoFrame: Boolean = true,
     editable: Boolean = false,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
-    width: Int? = null
+    width: Int? = null,
+    controls: ThreeControls = ThreeControls(),
 ): ThreeGeometryViewState = threeLines(
     lines = linesByChannel.values.flatten(),
     channel = channel,
@@ -1126,7 +1170,8 @@ fun Box.threeLines(
     autoFrame = autoFrame,
     editable = editable,
     onEditCommitted = onEditCommitted,
-    width = width
+    width = width,
+    controls = controls,
 )
 
 internal class BoundsTracker {

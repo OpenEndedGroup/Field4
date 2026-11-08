@@ -56,7 +56,7 @@ runs in a background worker and reports its progress on the page.
 
 ## Conversational code search is separate
 
-**Search Documentation & Code** (`ctrl/command-shift-D`) opens a generated-answer
+**Search Documentation & Code** (++cmd+shift+d++) opens a generated-answer
 surface in the documentation pane. It retrieves from the same local corpora as
 above, plus the GLSL include libraries for shader questions, writes its answer
 from what it found, and lists the paths it used. When nothing matches it says

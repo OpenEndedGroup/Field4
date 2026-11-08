@@ -105,12 +105,12 @@ desktop app (recommended) or [browser/server-only mode](#browser-or-server-only-
 optional features to prepare. Accepting the defaults and leaving every feature unchecked is a
 complete installation; Kotlin, JavaScript, Faust, ordinary audio and browser drawing need no extras.
 
-In the checkbox list, **Up/Down** moves, **Space** toggles a checkbox and **Enter** reviews your
+In the checkbox list, ++arrow-up++ and ++arrow-down++ move, ++space++ toggles a checkbox and ++enter++ reviews your
 choices. Each feature's prerequisites appear on the right. Features with missing tools are
 disabled (on Windows, unless setup can install them, below); install the prerequisites and rerun
 setup. Features your platform does not support, and NVIDIA-only features without a working
 `nvidia-smi`, are left out. Limited terminals use numbered checkboxes:
-type numbers or names to toggle them, then press Enter to review. Leave everything unchecked to skip extras.
+type numbers or names to toggle them, then press ++enter++ to review. Leave everything unchecked to skip extras.
 Setup then shows the exact package-manager commands and requires you to type `INSTALL`
 before running them. Administrator authentication belongs to your OS package manager; no API keys
 are requested. You can leave the commands for later and install them yourself.
@@ -147,7 +147,7 @@ The terminal shows startup progress and server URLs:
 
 ![A dark terminal filling the window with the word FIELD drawn very large in ASCII art, each letter built from slashes and dots. Beneath it three lines each tagged with a dim "welcome" marker read "welcome to Field, ß-023" and "http://localhost:9092/index.html?file=helloVideo". Below those, the server's own log: Ktor reporting "Application started in 0.206 seconds" and "Responding at http://0.0.0.0:9092", the filestore persisting its cache, "indexed 243 files, 3617 definitions", "found 54429 classes on classpath in 1.851s", and at the bottom a Gradle progress line reading "96% EXECUTING" against the still-running `:runJvm` task](assets/screenshot_22.png)
 
-The launcher then opens Field's desktop app. Press `?` for help, or consult the
+The launcher then opens Field's desktop app. Press ++question++ for help, or consult the
 [survival guide](survivalGuide.md).
 
 !!! note "Field in a browser"
@@ -261,7 +261,7 @@ as a bundled one, both are listed: yours gets `-checkout` (from `src/personal`) 
 (from your own directory) added to its name. Git ignores `src/personal`, so back up those templates
 yourself.
 
-The same templates are offered by `cmd+t` inside a document, which inserts a copy of their boxes
+The same templates are offered by ++cmd+t++ inside a document, which inserts a copy of their boxes
 there rather than making a new document; see [Templates](templates.md#insert-a-template), which
 also says what happens to two templates with the same name.
 
@@ -276,7 +276,7 @@ machine you reach over SSH:
 
 Windows: `.\field.bat --server-only`. This builds the server and browser code without installing
 Electron or compiling the desktop bridges. Open the printed welcome URL in your browser. The
-server keeps running in the terminal; press **Ctrl+C** to stop it. The development HTTPS
+server keeps running in the terminal; press ++ctrl+c++ to stop it. The development HTTPS
 certificate is self-signed, so a browser may require a local certificate exception. This mode
 also supports remote development when used with an SSH tunnel; it does not remove GPU/display
 requirements from native graphics examples.
@@ -293,7 +293,7 @@ mkdir -p ~/Documents/MyFieldWorkspace
 ```
 
 Field saves documents there, outside the checkout. Close Field before updating with `git pull`.
-**Ctrl+C**, closing the desktop app, or clicking **Shut down Field** on the Welcome page stops the server;
+++ctrl+c++, closing the desktop app, or clicking **Shut down Field** on the Welcome page stops the server;
 normal shutdown saves pending edits.
 
 By default, the server listens on **127.0.0.1** and refuses cross-site browser API requests.
@@ -340,7 +340,7 @@ git pull
 
 Then start Field again; it will rebuild whatever has changed.
 
-The command palette (`ctrl/command-shift-P`) includes **Check for updates**, which tells you whether updating is worth
+The command palette (++cmd+shift+p++) includes **Check for updates**, which tells you whether updating is worth
 doing. It reports how many commits you are behind `origin`, and any local commits that
 `origin` does not have.
 

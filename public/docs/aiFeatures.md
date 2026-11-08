@@ -4,14 +4,14 @@ Ask a question about the box you're working in, ask for an edit at the cursor, o
 what to write next. Field includes the selected box and cursor position with your request, so the
 conversation starts where your work already is.
 
-Start a conversation with `ctrl/command-4`, ask for an edit with `ctrl/command-3`, or press
-`ctrl-space` to mix AI suggestions into ordinary completion. You can also use `ai("...")` to fill
+Start a conversation with ++cmd+4++, ask for an edit with ++cmd+3++, or press
+++ctrl+space++ to mix AI suggestions into ordinary completion. You can also use `ai("...")` to fill
 in a function body from its signature. First, configure OpenAI, OpenRouter, Anthropic or a
 [local model server](local_ai.md) from [`/welcome`](history_overview.md) or from the environment.
 
 ## Chat about one box
 
-Select one box and press `ctrl/command-4`, or run **AI Chat (panel)** from the
+Select one box and press ++cmd+4++, or run **AI Chat (panel)** from the
 command palette. Field opens the `ai-chat` output area for that box. The chat
 receives the box's current code and can use the Field tools made available by
 the server to inspect or propose edits to box properties and related source.
@@ -35,7 +35,7 @@ whole turns); saved images remain visible but must be attached again for fresh i
 ### Suggestions as you type
 
 Pause while writing a message and AI4's fast model suggests how it goes on, in grey after the
-cursor. Press `Tab` to take the suggestion, `→` to take its next word, or `Esc` to drop it; typing
+cursor. Press ++tab++ to take the suggestion, ++arrow-right++ to take its next word, or ++escape++ to drop it; typing
 the same letters keeps the rest. A suggestion is one short request with the box's name, the start of
 its code, the last few turns and your draft. `/autocomplete off` turns suggestions off in this
 browser and `/autocomplete on` brings them back; `AFIELD_AI4_CHAT_AUTOCOMPLETE=off` turns them off
@@ -180,7 +180,7 @@ StackSL program drawn live in a window, with three recorded sessions, and
 
 ## Chat at an editor location
 
-Press `ctrl/command-3`, or run **AI Chat in editor**. With a selection, Field
+Press ++cmd+3++, or run **AI Chat in editor**. With a selection, Field
 marks that range as the requested rewrite; without a selection, it marks the
 cursor position. The request also identifies the current box property and line.
 
@@ -209,7 +209,7 @@ provisional-edit path, so it remains reviewable before acceptance.
 
 ## AI-assisted completion
 
-`ctrl-space` opens Field's completion panel. Kotlin completions come from
+++ctrl+space++ opens Field's completion panel. Kotlin completions come from
 Field's compiler-backed completion path; [Python](python.md) completion uses Jedi. Field can
 also request AI candidates in the background and add at most three of them to
 the same list when they arrive.
@@ -343,7 +343,7 @@ The second is `13.02`, and it arrived by way of a JSON string, through the same
 Jackson call the bridge makes, so a request class whose defaults or enums do not
 survive the trip fails here rather than in the middle of a conversation.
 
-Now select any box, press `ctrl/command-4`, and ask *"is a 4.2 by 3.1 metre room
+Now select any box, press ++cmd+4++, and ask *"is a 4.2 by 3.1 metre room
 big enough?"*
 
 ### Live coding

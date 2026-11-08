@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-31T13:34:26.602Z",
+  "capturedAt": "2026-11-08T10:10:23.598Z",
   "documentName": "contour_trees_explorer",
   "outputs": [
     {
@@ -11,8 +11,8 @@
       "kinds": [
         "svg"
       ],
-      "width": 469,
-      "height": 60,
+      "width": 473,
+      "height": 56,
       "path": "outputs/0.html"
     },
     {

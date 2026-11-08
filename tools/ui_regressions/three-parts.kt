@@ -2,6 +2,7 @@
 
 
 three(name="parts",channel="parts",width=900,height=560) {
+    controls(ThreeControls.ALL)
     camera(yaw=20.0,pitch=25.0,distance=3.0)
     helpers(false)
     // Two drawable buffers belonging to one logical part.

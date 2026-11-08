@@ -114,6 +114,9 @@ object DocsAudioProvenance {
          */
         SONIC_PI("a live recording of a real Sonic Pi — not sample-reproducible"),
 
+        /** A drawn drum's vibration modes, struck and summed: `EigendrumDocs`, deterministic. */
+        MODAL_SYNTHESIS("a drum's finite-element modes, struck and summed as damped sinusoids"),
+
         /** Present in the tree, no producing code found. Must be in [UNDERIVABLE]. */
         UNDERIVABLE("no producing code found in the repository"),
     }
@@ -174,6 +177,8 @@ object DocsAudioProvenance {
         // voices — no samples anywhere on the path. See orca.md.
         "afield.audio.synth.OrcaSoundDocs" to Origin.STAND_IN_SYNTH,
         "afield.examples.sonicpi.SonicPiSoundDocs" to Origin.SONIC_PI,
+        // One strike of a meshed drum, rendered by DrumModes.render. See eigendrum.md.
+        "afield.audio.modal.EigendrumDocs" to Origin.MODAL_SYNTHESIS,
     )
 
     /** The renderer a fence gets when it does not name one, matching `docs_hooks.py`. */

@@ -53,8 +53,8 @@ explicit `--port 9092`. `tools/field_mcp.py` keeps 9092 as its default because i
 ever attaches.
 
 `status` reports whether this invocation owns the server and gives the session
-and managed-server log paths. A backdoor-owned Field enables JDWP on port 5005
-unless `AFIELD_JDWP_PORT` overrides or disables it. A plain
+and managed-server log paths. A backdoor-owned Field enables JDWP on an ephemeral port the JVM binds itself
+(`AFIELD_JDWP_PORT=auto`) unless `AFIELD_JDWP_PORT` overrides or disables it. A plain
 `./gradlew runJvm` does not enable JDWP by default.
 
 When the backdoor starts Field, it always supplies an explicit checkout-local
@@ -760,7 +760,7 @@ event-thread breakpoint and samples a symbol at a `src/` file and line (source m
 running box (box mode), e.g. `{"file":"<File>.kt","line":<line>,"symbol":"<name>"}` — take the
 line from the source the running JVM was built from. Only the hitting thread is paused while JDI
 reads the value, and it is resumed immediately; a high-hit probe can still perturb that thread.
-Backdoor-launched Field enables JDWP (5005, or the first free port above it) automatically; a
+Backdoor-launched Field enables JDWP automatically, on an ephemeral port the JVM binds itself; a
 bare `./gradlew runJvm` does not, and the probe says so.
 
 ## Lifecycle census

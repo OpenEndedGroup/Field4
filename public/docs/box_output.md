@@ -113,9 +113,9 @@ With the mouse, on a panel's title bar:
 | gesture | what it does |
 |---|---|
 | click | opens or closes the panel |
-| Shift-click | opens this panel and closes all the others |
-| alt/option-click | removes this panel |
-| alt/option-Shift-click | removes every other panel |
+| ++shift++-click | opens this panel and closes all the others |
+| ++alt++-click | removes this panel |
+| ++alt+shift++-click | removes every other panel |
 
 Holding alt/option or alt/option-Shift while the pointer is over a title marks the panels that a click would
 remove. Removing a panel with the mouse is the same as `displayClear`: it comes back the next time
@@ -134,7 +134,7 @@ progressBar("done", 0.66)
 
 `progressBar("done", value)` is built on this: it displays into `*done`, and
 `progressBarClear("done")` removes it again. `displayClear("*status")` removes a one-line
-channel, and alt/option-click on it does too.
+channel, and ++alt++-click on it does too.
 
 ## How big a panel is
 
@@ -178,7 +178,9 @@ Plots that depend on external image or map data are captured as still images and
 capture warning.
 
 Published Three.js views use the same renderer as Field. Drag to rotate, scroll to zoom, expand
-**Parts** to hide or restore geometry, or enable **X-ray** and adjust its opacity. Camera linking,
+**Parts** to hide or restore geometry, or enable **X-ray** and adjust its opacity. A published view
+shows the toolbar controls its box asked for with `controls(...)`; press **E** in it for the rest.
+Camera linking,
 review notes and editing controls are hidden because they need Field. A view with custom viewer
 tools or an animated shot falls back to a still image with its controls removed.
 

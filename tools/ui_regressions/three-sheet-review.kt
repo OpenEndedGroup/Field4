@@ -2,6 +2,7 @@
 // panel under the pointer, its camera and its own geometry.
 three(name="sheet_review",width=760,height=360) {
     columns(2)
+    controls(review = true)
     helpers(false)
     val quad = TriMesh(floatArrayOf(-30f,-30f,0f,30f,-30f,0f,30f,30f,0f,-30f,30f,0f),intArrayOf(0,1,2,0,2,3))
     val bounds = quad.toThreeBounds()

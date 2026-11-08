@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-31T13:58:13.897Z",
+  "capturedAt": "2026-11-08T10:38:51.090Z",
   "documentName": "learned_pen",
   "outputs": [
     {
@@ -33,8 +33,8 @@
       "kinds": [
         "svg"
       ],
-      "width": 469,
-      "height": 60,
+      "width": 473,
+      "height": 56,
       "path": "outputs/2.html"
     },
     {
@@ -58,7 +58,7 @@
         "svg"
       ],
       "width": 536,
-      "height": 116,
+      "height": 108,
       "path": "outputs/4.html"
     },
     {
@@ -93,8 +93,8 @@
       "kinds": [
         "svg"
       ],
-      "width": 469,
-      "height": 60,
+      "width": 473,
+      "height": 56,
       "path": "outputs/7.html"
     }
   ]

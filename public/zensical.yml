@@ -278,6 +278,7 @@ nav:
       # Modal synthesis from geometry: the modes of a drawn drum head.
       - "Eigendrum: Hear the Shape of a Drum": eigendrum.md
       - Loris Partial Tracks and Resynthesis: loris.md
+      - "Audio Curves: Sound as a Few Controls": audio_curves.md
       - Sonic Pi: sonic_pi.md
       - Faust: faust.md
       - Pure Data: pure_data.md
@@ -588,6 +589,20 @@ markdown_extensions:
       use_pygments: true          # use pygments library    
       pygments_style: github-dark # use 'github-dark' style
   - pymdownx.inlinehilite         # style inline code
+  # Shortcuts you press are written `++cmd+shift+p++` and drawn as keycaps. `cmd` is Field's
+  # cmd (Command on macOS, Control elsewhere), so its cap carries both glyphs; `ctrl` is the
+  # Control key on every platform (the editor's ctrl+space). The legend is in keybindings.md.
+  # extra.css turns off the theme's own glyph prefixes and "+" separators.
+  - pymdownx.keys:
+      key_map:
+        command: "⌘/⌃"
+        control: "⌃"
+        alt: "⌥"
+        shift: "⇧"
+        arrow-up: "↑"
+        arrow-down: "↓"
+        arrow-left: "←"
+        arrow-right: "→"
   - md_in_html
   - def_list
   - attr_list

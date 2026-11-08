@@ -7,6 +7,7 @@ fun sheet(z: Float, half: Float, rgb: FloatArray) = TriMesh(
 three(name="xray",width=760,height=500) {
     camera(yaw=0.0,pitch=0.0,distance=3.2)
     helpers(false)
+    controls(xray = true, export = true)
     mesh(sheet(10f,65f,floatArrayOf(.6f,.6f,.6f)),id="front",wireframe=false)
     mesh(sheet(0f,30f,floatArrayOf(1f,.05f,.02f)),id="rear",wireframe=false)
     lines(listOf(

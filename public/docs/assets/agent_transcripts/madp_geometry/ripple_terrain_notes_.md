@@ -25,7 +25,7 @@ can do, from a single triangle to a recursive tree.
 3. **Run the other boxes**: each is one of the toolbox's presets, with a short note of its own.
    *breathing sheet* and *signal tear* animate: **launch** them (alt+up) to play, and stop them with
    alt+down. Running them (alt+0) draws one still frame.
-4. **Export GLB**, in the view's toolbar, saves the model. If gltfpack is installed
+4. **Export GLB** saves the model: click in the view and press E to show it on the toolbar. If gltfpack is installed
    (`./field.sh --setup`, or `./gradlew prepareGltfpack`), the file is compressed. From code,
    `geometryScene { … }.writeGlb(file)` saves a still and `writeGlbAnimation(file, frames = 90) { … }`
    saves an animation as morph targets.

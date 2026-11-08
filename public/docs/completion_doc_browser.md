@@ -1,6 +1,6 @@
 # Browsing code from the completion panel
 
-Press `ctrl-space` for autocomplete and, next to the list of suggestions, a panel shows a card
+Press ++ctrl+space++ for autocomplete and, next to the list of suggestions, a panel shows a card
 for the highlighted one: its signature, its documentation comment (the `/** … */` written above
 the declaration), and a `source …:line` link at the bottom. You can explore the documentation
 from that card without leaving the editor. Click a `[Symbol]` reference in the documentation, or
@@ -17,7 +17,7 @@ can promote its members.
 ## A worked example
 
 Start typing a value and ask for completions. Here we type `val axis = vec` and
-press `ctrl-space`. The best match is `vec`, the function that builds a 2D
+press ++ctrl+space++. The best match is `vec`, the function that builds a 2D
 vector, and its documentation reads *"Creates a mutable 2D `Vec2` from numeric
 coordinates."* Because Field can find `Vec2` — it is a real type alias in Field's
 standard library — the `[Vec2]` token in that sentence is rendered as a link:

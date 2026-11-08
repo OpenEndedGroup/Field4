@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-07T14:12:21.455Z",
+  "capturedAt": "2026-11-08T10:40:17.282Z",
   "documentName": "eigendrum",
   "outputs": [
     {
@@ -163,7 +163,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 308,
+      "width": 312,
       "height": 258,
       "path": "outputs/13.html"
     }

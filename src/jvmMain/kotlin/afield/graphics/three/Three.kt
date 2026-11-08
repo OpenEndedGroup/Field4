@@ -81,6 +81,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal var dimmed: Boolean = false
     internal var note: String? = null
     internal var hud: Boolean = true
+    internal var controls: ThreeControls = ThreeControls()
     private var helpersExplicit: Boolean? = null
 
     /**
@@ -325,12 +326,42 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     }
 
     /**
-     * Show or hide the viewer's own controls — X-ray, Export GLB, Pick, the parts list, the triangle
-     * count. Off for a view that is a picture to look at, whose corners are its own ([overlay], [note]).
-     * Orbiting, zooming and the [turntable] work either way.
+     * Show or hide the viewer's own controls and the triangle count. Off for a view that is a picture
+     * to look at, whose corners are its own ([overlay], [note]): the controls stay hidden even when
+     * **E** is pressed. Orbiting, zooming and the [turntable] work either way.
+     *
+     * Which controls a view shows is [controls]; this is the switch over all of them.
      */
     fun hud(on: Boolean) {
         hud = on
+    }
+
+    /**
+     * Put some of the viewer's own controls on the toolbar. None are there unless asked for; pressing
+     * **E** in the view shows them all for the moment. See [ThreeControls] for what each one does.
+     * Not [tools], which installs tools of your own.
+     *
+     * ```kotlin
+     * three {
+     *     mesh(part)
+     *     controls(xray = true, export = true)
+     * }
+     * ```
+     */
+    fun controls(
+        xray: Boolean = false,
+        export: Boolean = false,
+        linkCamera: Boolean = false,
+        review: Boolean = false,
+        parts: Boolean = false,
+        light: Boolean = false,
+    ) {
+        controls = ThreeControls(xray, export, linkCamera, review, parts, light)
+    }
+
+    /** Put the controls in [controls] on the toolbar; `controls(ThreeControls.ALL)` for every one. */
+    fun controls(controls: ThreeControls) {
+        this.controls = controls
     }
 
     /** Scene background as a CSS colour. */
@@ -558,6 +589,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             dimmed = dimmed,
             note = note,
             hud = hud,
+            controls = controls,
         )
     }
 
@@ -735,7 +767,8 @@ fun Box.three(
     name: String = "three",
     height: Int = 430,
     samplesPerCubic: Int = 48,
-): ThreeGeometryViewState = three(channel, name, height, samplesPerCubic) { lines(lines) }
+    controls: ThreeControls = ThreeControls(),
+): ThreeGeometryViewState = three(channel, name, height, samplesPerCubic) { lines(lines); this.controls(controls) }
 
 /**
  * One mesh from several angles, in one WebGL context.

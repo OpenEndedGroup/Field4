@@ -2,6 +2,7 @@
 
 
 three(name="idle-rendering", width=760, height=500) {
+    controls(light = true)
     camera(yaw=15.0, pitch=20.0, distance=3.0)
     helpers(false)
     mesh(TriMesh(floatArrayOf(-80f,-40f,0f,-10f,-40f,0f,-10f,40f,0f,-80f,40f,0f),

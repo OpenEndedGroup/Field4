@@ -43,8 +43,8 @@ eight seconds of it:
 [Open the ORCA starting point ↗](offline.html?file=assets/agent_transcripts/orca_hello/metadata.edn)
 to have this box in a document of your own.
 
-Click the grid to give ORCA the keyboard: arrows move, letters write, **Space** plays and pauses,
-**Escape** puts the cursor back, **ctrl/command-K** opens ORCA's command line, and **ctrl/command-G** shows its guide
+Click the grid to give ORCA the keyboard: arrows move, letters write, ++space++ plays and pauses,
+++escape++ puts the cursor back, ++cmd+k++ opens ORCA's command line, and ++cmd+g++ shows its guide
 to every operator. [ORCA's README](https://github.com/hundredrabbits/Orca#operators) lists the
 operators too.
 
@@ -275,7 +275,7 @@ o.exposeTools(about = "Channel 0 is a soft triangle lead, 1 a sine bass, 2 a noi
 
 The [jam starting point ↗](offline.html?file=assets/agent_transcripts/orca_jam/metadata.edn) is
 that: a four-note arpeggio, four voiced channels, and AI4 on the board. Run it, open its AI Chat
-with **ctrl/command-4**, and ask it to play. This is the request, and the first 45 seconds after it, with
+with ++cmd+4++, and ask it to play. This is the request, and the first 45 seconds after it, with
 `gpt-6.1-sol` as the model:
 
 > Jam with this. Add a bassline on channel 1, a hi-hat on channel 2 on the off-beats, and an

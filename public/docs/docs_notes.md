@@ -9,10 +9,10 @@ Let's start with leaving a note.
 
 ## Writing a note
 
-Open the documentation pane in Field (`Cmd+/`), or go to `https://localhost:9092/field-docs/` on
+Open the documentation pane in Field (++cmd+slash++), or go to `https://localhost:9092/field-docs/` on
 the machine Field is running on. A **DOC NOTES** panel sits beside the page.
 
-- Select some text and press `Ctrl+Shift+A`, type the note, and press `Enter`. With nothing
+- Select some text and press ++ctrl+shift+a++, type the note, and press ++enter++. With nothing
   selected, the note is pinned to the part of the page you are looking at.
 - Put `@tags` in a note to group it: `@voice`, `@accuracy`, `@example`. You can run the agents
   on a single tag.
@@ -26,7 +26,7 @@ resolutions and memories.
 | state | meaning |
 | --- | --- |
 | **open** | waiting for an agent |
-| **agent asks** | an agent needs a decision from you. Type an answer in the reply box and press `Enter`, and the note goes back in the queue. *Questions for you* at the top of `/docs-pass.html` lists every waiting question, on notes and handoffs alike, each with its own **reply…** |
+| **agent asks** | an agent needs a decision from you. Type an answer in the reply box and press ++enter++, and the note goes back in the queue. *Questions for you* at the top of `/docs-pass.html` lists every waiting question, on notes and handoffs alike, each with its own **reply…** |
 | **resolved** | an agent (or you) dealt with it; the thread says how, and **reopen** puts it back |
 | **memory** | something an agent wrote down for the next agent on this page. Shown when **show resolved notes and memories** is ticked |
 | **handoff** | a larger task an agent filed instead of editing; see [Handoffs](#handoffs) |

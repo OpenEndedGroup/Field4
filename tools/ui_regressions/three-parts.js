@@ -14,7 +14,12 @@ const click=(name,shift=false)=>{const input=cb(name);if(!input)throw new Error(
 const open=name=>d.querySelector(`[aria-label="Expand ${name}"]`)?.click();
 const hidden=()=>api.snapshot().hidden.slice().sort();
 try {
- expect(!ordinary.contentWindow.document.getElementById('part-inspector').classList.contains('hidden'),'Ordinary meshes have Parts without explicit inspect setup');
+ const plain=ordinary.contentWindow.document;
+ expect(plain.getElementById('part-inspector').classList.contains('hidden')&&plain.getElementById('xray-tools').classList.contains('hidden')&&plain.getElementById('feature-tools').classList.contains('hidden'),'A view that asks for no controls shows none');
+ plain.querySelector('canvas').dispatchEvent(new ordinary.contentWindow.KeyboardEvent('keydown',{key:'e',bubbles:true}));
+ expect(!plain.getElementById('xray-tools').classList.contains('hidden')&&!plain.getElementById('feature-tools').classList.contains('hidden')&&plain.getElementById('part-inspector').querySelector('details')===null,'E shows the other controls, but no Parts list for one part');
+ plain.querySelector('canvas').dispatchEvent(new ordinary.contentWindow.KeyboardEvent('keydown',{key:'e',bubbles:true}));
+ expect(plain.getElementById('xray-tools').classList.contains('hidden'),'E again puts them away');
  const initial=api.snapshot(),ids=initial.partIds;
  const tree=api.parts();
  expect(tree.leaves.length===4&&ids.length===5,'Two companion buffers share one logical part; saved feature IDs remain distinct');
