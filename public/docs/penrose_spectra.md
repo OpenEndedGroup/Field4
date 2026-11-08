@@ -117,8 +117,11 @@ val byDegree =
         .toSortedMap()
         .entries
         .joinToString(", ") { (d, vs) -> "%d-edge %.3f".format(d, vs.sumOf { weight[it] } / vs.size) }
-"${spectrum.zeroCount()} zero states on ${graph.vertexCount} vertices; mean weight by vertex: $byDegree\nthe state on the right: ${support.size} vertices, max |A·ψ| = %.1e"
-    .format(residual)
+markdown(
+    "measure",
+    "${spectrum.zeroCount()} zero states on ${graph.vertexCount} vertices. Mean weight by vertex: $byDegree. " +
+        "The state on the right: ${support.size} vertices, max |A·ψ| = %.1e.".format(residual),
+)
 ```
 
 The weight is concentrated on vertices with three edges. Four- and five-edged vertices carry
@@ -169,15 +172,18 @@ lines(
     fitToSize = true,
 )
 val gap = spectrum.gaps(2, weights = bulk, minWeight = 0.3 * inner.size / graph.vertexCount)
-"E from %.3f to %.3f; jump at 0 of %.4f; nearest bulk states at %.3f and %.3f; nearest of all at ±%.3f"
-    .format(
-        spectrum.energies.first(),
-        spectrum.energies.last(),
-        spectrum.zeroCount().toDouble() / graph.vertexCount,
-        gap.minOf { it.first },
-        gap.maxOf { it.second },
-        spectrum.energies.filter { abs(it) > 1e-8 }.minOf { abs(it) },
-    )
+markdown(
+    "measure",
+    "E from %.3f to %.3f; jump at 0 of %.4f; nearest bulk states at %.3f and %.3f; nearest of all at ±%.3f"
+        .format(
+            spectrum.energies.first(),
+            spectrum.energies.last(),
+            spectrum.zeroCount().toDouble() / graph.vertexCount,
+            gap.minOf { it.first },
+            gap.maxOf { it.second },
+            spectrum.energies.filter { abs(it) > 1e-8 }.minOf { abs(it) },
+        ),
+)
 ```
 
 The jump at E = 0 holds 9.3% of this patch's states. On either side, the nearest states that
@@ -309,7 +315,7 @@ centre of a square lattice of about the same size. All three are built with the 
 E = 0 pitch is 220 Hz in each. The bars show how the strike's energy spreads over pitch, and a
 white tick marks 220 Hz. The rows are in the order of the players.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/penrose_spectra/strike.png" embed=true alt="Three audio players above three rows of orange bars along a pitch axis, a white tick under each row at 220 Hz. In the first row one bar at the tick stands several times taller than the rest; in the second the bar at the tick is missing; in the third the bars spread fairly evenly, none much taller than the rest"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/penrose_spectra/strike.png" trim=true embed=true alt="Three audio players above three rows of orange bars along a pitch axis, a white tick under each row at 220 Hz. In the first row one bar at the tick stands several times taller than the rest; in the second the bar at the tick is missing; in the third the bars spread fairly evenly, none much taller than the rest. Below, the shares at 220 Hz: 31.5%, 0.0% and 7.2%"}
 import afield.audio.engine.WavFloatArrayWriter
 import afield.audio.modal.*
 
@@ -363,9 +369,10 @@ strikes.forEachIndexed { row, (name, modes, v) ->
     )
 }
 lines(out, w = 600.0, h = 300.0, fitToSize = true)
-strikes.joinToString("\n") { (name, modes, v) ->
-    "$name: %.1f%% of the strike at 220 Hz".format(100 * modes.zeroShare(v))
-}
+markdown(
+    "measure",
+    strikes.joinToString(" · ") { (name, modes, v) -> "$name: %.1f%% at 220 Hz".format(100 * modes.zeroShare(v)) },
+)
 ```
 
 The confined vertex puts almost a third of its strike energy into a single pitch, a steady

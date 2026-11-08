@@ -86,8 +86,11 @@ operations:
                   .toSortedMap()
                   .entries
                   .joinToString(", ") { (d, vs) -> "%d-edge %.3f".format(d, vs.sumOf { weight[it] } / vs.size) }
-          "${spectrum.zeroCount()} zero states on ${graph.vertexCount} vertices; mean weight by vertex: $byDegree\nthe state on the right: ${support.size} vertices, max |A·ψ| = %.1e"
-              .format(residual)
+          markdown(
+              "measure",
+              "${spectrum.zeroCount()} zero states on ${graph.vertexCount} vertices. Mean weight by vertex: $byDegree. " +
+                  "The state on the right: ${support.size} vertices, max |A·ψ| = %.1e.".format(residual),
+          )
   - create:
       box: ps_idos
       name: 3 - integrated density of states
@@ -129,15 +132,18 @@ operations:
               fitToSize = true,
           )
           val gap = spectrum.gaps(2, weights = bulk, minWeight = 0.3 * inner.size / graph.vertexCount)
-          "E from %.3f to %.3f; jump at 0 of %.4f; nearest bulk states at %.3f and %.3f; nearest of all at ±%.3f"
-              .format(
-                  spectrum.energies.first(),
-                  spectrum.energies.last(),
-                  spectrum.zeroCount().toDouble() / graph.vertexCount,
-                  gap.minOf { it.first },
-                  gap.maxOf { it.second },
-                  spectrum.energies.filter { abs(it) > 1e-8 }.minOf { abs(it) },
-              )
+          markdown(
+              "measure",
+              "E from %.3f to %.3f; jump at 0 of %.4f; nearest bulk states at %.3f and %.3f; nearest of all at ±%.3f"
+                  .format(
+                      spectrum.energies.first(),
+                      spectrum.energies.last(),
+                      spectrum.zeroCount().toDouble() / graph.vertexCount,
+                      gap.minOf { it.first },
+                      gap.maxOf { it.second },
+                      spectrum.energies.filter { abs(it) > 1e-8 }.minOf { abs(it) },
+                  ),
+          )
   - create:
       box: ps_sweep
       name: 4 - symmetry, disorder, offset sum
@@ -243,9 +249,10 @@ operations:
               )
           }
           lines(out, w = 600.0, h = 300.0, fitToSize = true)
-          strikes.joinToString("\n") { (name, modes, v) ->
-              "$name: %.1f%% of the strike at 220 Hz".format(100 * modes.zeroShare(v))
-          }
+          markdown(
+              "measure",
+              strikes.joinToString(" · ") { (name, modes, v) -> "$name: %.1f%% at 220 Hz".format(100 * modes.zeroShare(v)) },
+          )
   - create:
       box: ps_slider
       name: 6 - drag symmetry and disorder
