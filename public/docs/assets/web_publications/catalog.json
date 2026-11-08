@@ -1790,6 +1790,42 @@
         "public/docs/gpu_state.md#capture-box=gs_renderer"
       ]
     },
+    "assets/agent_transcripts/harmonic_drum/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-08T18:23:05.333Z",
+      "channels": 10,
+      "file": "assets/web_publications/harmonic_drum/document/metadata.edn",
+      "files": {
+        "assets/web_publications/harmonic_drum/document/metadata.edn": "1e84edbedc4eb9f377f8b34697b9afa23eb2e5d71aabed779b8d6b462fb06f06",
+        "assets/web_publications/harmonic_drum/document/outputs.json": "0d4758e6ac965ea846e765937a329e102ee4077dbdcded3d920b04f7a35f55d4",
+        "assets/web_publications/harmonic_drum/outputs/0.html": "a8163d269b1512fff70b792030515faf446b3510cb8ea93c7fec81de22c92a41",
+        "assets/web_publications/harmonic_drum/outputs/1.html": "9514ed909c12463fd505c8d17821c9f9f69e3c088d1ccfe6df12a9432583a447",
+        "assets/web_publications/harmonic_drum/outputs/2.html": "fab3d967e101dce76582ffac5baf73b7377129474768a26be94c5b5a6f3b4413",
+        "assets/web_publications/harmonic_drum/outputs/3.html": "73487ab927b67fbb8585b7c7d372115f0e2b8b7fb5796c2d205c39d627917606",
+        "assets/web_publications/harmonic_drum/outputs/4.html": "2e66039d39514e330f5fb0ae1ce7c2d4e666a393f56e9506d56a5fcc3ea88179",
+        "assets/web_publications/harmonic_drum/outputs/5.html": "92252015400f08154b5574689f62d299a40b586bfc934076c6bcc4744cc52ef9",
+        "assets/web_publications/harmonic_drum/outputs/6.html": "6be971e07b7389c927535289ac0378f69106d1cdd542a02402f752533d28d13c",
+        "assets/web_publications/harmonic_drum/outputs/7.html": "3536d7eea857d6d2874b36c4ec7d10c41842e23aa983d5e29818c775e1e97576",
+        "assets/web_publications/harmonic_drum/outputs/8.html": "3b05d5174a31e1849e383b8bbbfc70bc14f9ecbe2fb3d41eaefb7ad772a32d67",
+        "assets/web_publications/harmonic_drum/outputs/9.html": "17755e9d1503e3a2ac4d0233b7b0301c6e64a61b53c4be578b800572b9272604"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/harmonic_drum/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/harmonic_drum.yaml": "f1369368cf38401215b22ac37dd6be609ee7a6e3f289d7af6b95a5b3451a9a7e",
+        "public/docs/assets/agent_transcripts/harmonic_drum/guides/eigendrum.md": "197d47fd095922c501bc8be9c3fa83ea0dcb8bca86948220e8b36764a9093686",
+        "public/docs/assets/agent_transcripts/harmonic_drum/hd_families_code_.kt": "22550327cba4e1cc4776afed245bb2844e9bff5707dc8efeb8d1e20df28418ab",
+        "public/docs/assets/agent_transcripts/harmonic_drum/hd_map_code_.kt": "130d3352744de604743bd0aa26c5734c60ea8fd94aca55075e60db30768f65de",
+        "public/docs/assets/agent_transcripts/harmonic_drum/hd_morph_code_.kt": "75fe40b61dc625d7be45e5e723164a0060772c031e13f85efe4c4b5adeaa396c",
+        "public/docs/assets/agent_transcripts/harmonic_drum/hd_sand_code_.kt": "b6fe4770f7f75bc7af1a6a614a8588f2dcee633d42913125bb52ef78a87d0504",
+        "public/docs/assets/agent_transcripts/harmonic_drum/hd_shapes_code_.kt": "f6007bc24cbe8cb4d5c44f9a37e46afc1a62611d38b65c3395e1cbd0a4cbcf39",
+        "public/docs/assets/agent_transcripts/harmonic_drum/hd_syahi_code_.kt": "da83bbfa7a94717d9e344c49407db83e8f8c0f96eae7f8ce0dfce6d626dbbe10",
+        "public/docs/assets/agent_transcripts/harmonic_drum/hd_triad_code_.kt": "e481ea1eafea6791fb2255ce66e559065f8db946e2c5b83fbd22b9202350d6ab",
+        "public/docs/assets/agent_transcripts/harmonic_drum/metadata.edn": "d05df65028e4a24323f037ecda7e941f193961871a76cdbc8ab6b644137a4f99"
+      }
+    },
     "assets/agent_transcripts/hello_display/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
       "capturedAt": "2026-11-08T10:16:05.600Z",
