@@ -3,17 +3,27 @@ package afield.examples.four
 import afield.document.graph.Box
 import afield.graphics.render.Mesh
 import afield.graphics.render.Module
+import afield.graphics.render.ModulePointer
 import afield.graphics.render.fullscreenTriangle
 import afield.graphics.render.parameters
 import afield.graphics.render.pointer
+import afield.graphics.shader.fromViews
+import afield.graphics.texture.TextureSampler
 import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.targets.RenderToTexture
 import afield.graphics.vulkan.util.Options
 import afield.graphics.vulkan.util.Window
+import afield.math.linalg.vec
 import afield.media.image.Img
 import afield.media.image.toBufferedImage
 import afield.ui.output.ShapeAscii
-import afield.ui.output.ShapeAsciiGpu
 import afield.ui.output.ShapeAsciiReadback
+import afield.ui.output.after
+import afield.ui.output.glyphAtlasTexture
+import afield.ui.output.glyphVectorTexture
+import afield.ui.output.readCells
+import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_UNORM
+import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.imageio.ImageIO
@@ -37,18 +47,35 @@ expect:
     - "shape ascii gpu tests PASSED"
 */
 /**
- * Runs [ShapeAsciiGpu] on a real renderer over the lit torus knot `ascii_shape.md` draws, and checks
- * it against the CPU: each frame's scene and GPU characters are read back together, and the scene
- * is converted again by [ShapeAscii.convert], both exhaustively (`exact = true`, the same search the
- * GPU runs) and through the default quantised cache. Then times the matching pass with GPU timestamp
- * queries at four grid sizes, next to the CPU's time for the same frame. These are the numbers the
- * page quotes.
+ * Runs the GPU matcher of `ascii_shape.md` on a real renderer and checks it against the CPU.
  *
- * Writes each frame's scene and both renderings to `build/shape-ascii-gpu/`.
+ * The shaders are not copies: they are read from the scene, match and draw boxes of
+ * `dev_docs/agents/transcripts/ascii_shape.yaml`, the boxes a reader opens and edits, and wired the
+ * way those boxes wire them (a scene target a whole number of font cells in size, a cells target
+ * one texel per cell, [glyphVectorTexture] and [glyphAtlasTexture] bound by name). Each frame's
+ * scene and glyph indices are read back together with [readCells] and the scene is converted again by
+ * [ShapeAscii.convert], both exhaustively (`exact = true`, the search the shader runs) and through the
+ * default quantised cache. Then the match pass is timed with GPU timestamp queries at four grid sizes,
+ * next to the CPU's time for the same frame. These are the numbers the page quotes.
+ *
+ * Writes a frame's scene, the GPU's glyphs and the glyphs as text to `build/shape-ascii-gpu/`.
  */
 object ShapeAsciiGpuSmoke {
     private val outputDir = File(System.getProperty("afield.shapeascii.out") ?: "build/shape-ascii-gpu")
     private var failures = 0
+
+    /** The starting-point transcript whose GPU boxes hold the shaders under test. */
+    internal const val TRANSCRIPT = "dev_docs/agents/transcripts/ascii_shape.yaml"
+
+    /** The properties (`code`, `vertex`, `fragment`, ...) of the box [id] created in [TRANSCRIPT]. */
+    @Suppress("UNCHECKED_CAST")
+    internal fun boxProperties(id: String, transcript: File = File(TRANSCRIPT)): Map<String, String> {
+        val doc = Yaml().load<Map<String, Any?>>(transcript.readText())
+        val ops = doc["operations"] as List<Map<String, Any?>>
+        val create = ops.mapNotNull { it["create"] as? Map<String, Any?> }.firstOrNull { it["box"] == id }
+            ?: error("no box '$id' in $transcript")
+        return (create["properties"] as Map<String, Any?>).mapValues { it.value.toString() }
+    }
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -82,159 +109,123 @@ object ShapeAsciiGpuSmoke {
         exitProcess(if (failures == 0) 0 else 1)
     }
 
-    /** An empty scene is all spaces on both sides. */
-    private fun blank(renderer: Renderer, window: Window, ascii: ShapeAscii) {
-        val gpu = ShapeAsciiGpu(cols = 16, rows = 8, ascii = ascii, renderer = renderer, name = "ascii-blank")
-        gpu.installInto(draw = false)
-        pump(renderer, window, 3)
-        val r = read(renderer, window, gpu)
-        gpu.uninstallFrom()
-        expect("an empty scene reads back black", r.scene.data.all { it == 0f })
-        expect("an empty scene is all spaces on the GPU", r.frame.text().all { it == ' ' || it == '\n' })
-    }
-
     /**
-     * A module lighting the top half of the scene (clip-space y above 0, which is up in Field's
-     * flipped viewports) reads back with its light in the top rows, on both the scene and the
-     * characters: the readback is top row first, and the matcher sees the picture upright.
+     * The page's scene, match and draw boxes, built from their own shaders: [scene] is [cols] x [rows]
+     * font cells, [cells] one texel per cell. With knot, the scene box's torus knot is drawn into
+     * the scene; with draw, the draw box's pass is added to the window.
      */
-    private fun upright(renderer: Renderer, window: Window, ascii: ShapeAscii) {
-        val gpu = ShapeAsciiGpu(cols = 16, rows = 8, ascii = ascii, renderer = renderer, name = "ascii-upright")
-        val top = Module(
-            parameters(renderer) {
-                +gpu.scene
-                name = "ascii-upright-top"
-                blend = false
-                depthTest = false
-                vertex = """
-                    #version 450
-                    void main() {
-                        vec2 p = gl_VertexIndex == 0 ? vec2(-1.0, 0.0) : (gl_VertexIndex == 1 ? vec2(3.0, 0.0) : vec2(-1.0, 2.0));
-                        gl_Position = vec4(p, 0.0, 1.0);
-                    }
-                """.trimIndent()
-                fragment = """
-                    #version 450
-                    layout(location = 0) out vec4 outColor;
-                    void main() { outColor = vec4(1.0); }
-                """.trimIndent()
-            }
-        ).pointer()
-        top.current.meshes["quad"] = fullscreenTriangle(top)
-        gpu.scene += "top" to top
-        gpu.installInto(draw = false)
-        pump(renderer, window, 3)
-        val r = read(renderer, window, gpu)
-        gpu.uninstallFrom()
-        val space = ascii.glyphs.indexOf(' ')
-        val lines = r.frame.text().lines()
-        println(" -- upright: scene top-left ${r.scene.data[0]}, bottom-left ${r.scene.data[(r.scene.height - 1) * r.scene.width * 3]}; " +
-            "first row '${lines.first()}', last row '${lines.last()}'")
-        expect("the readback's top row is the lit top of the picture", r.scene.data[0] == 1f && r.scene.data[(r.scene.height - 1) * r.scene.width * 3] == 0f)
-        expect("the characters' top row is inked and their bottom row blank",
-            (0 until gpu.cols).all { r.frame.indices[it] != space } && (0 until gpu.cols).all { r.frame.indices[(gpu.rows - 1) * gpu.cols + it] == space })
-    }
-
-    /** GPU characters against the CPU's on the same frames, at three contrast settings. */
-    private fun agreement(renderer: Renderer, window: Window, ascii: ShapeAscii) {
-        val gpu = ShapeAsciiGpu(cols = 128, rows = 48, ascii = ascii, renderer = renderer, name = "ascii-agree")
-        val knot = TorusKnot(renderer, gpu)
-        gpu.installInto()
-        val settings = listOf(Triple("contrast 1", 1f, 1f), Triple("contrast 3", 3f, 1f), Triple("contrast 3, directional 3", 3f, 3f))
-        val times = listOf(0.3f, 1.1f, 2.0f, 2.9f, 3.7f)
-        for ((label, c, d) in settings) {
-            gpu.contrast = c
-            gpu.directional = d
-            var exact = 0.0
-            var cached = 0.0
-            var inked = 0.0
-            var worst = 1.0
-            for (t in times) {
-                knot.time = t
-                pump(renderer, window, 3)
-                val r = read(renderer, window, gpu)
-                val cpuExact = ascii.convert(r.scene, gpu.cols, contrast = c.toDouble(), directional = d.toDouble(), rows = gpu.rows, exact = true)
-                val cpuCached = ascii.convert(r.scene, gpu.cols, contrast = c.toDouble(), directional = d.toDouble(), rows = gpu.rows)
-                val a = r.frame.agreement(cpuExact)
-                exact += a / times.size
-                worst = minOf(worst, a)
-                cached += r.frame.agreement(cpuCached) / times.size
-                inked += r.frame.indices.count { it != ascii.glyphs.indexOf(' ') }.toDouble() / r.frame.indices.size / times.size
-                if (t == times[1]) {
-                    val tag = label.replace(", ", "-").replace(" ", "")
-                    write(r.scene, File(outputDir, "scene.png"))
-                    write(r.frame.toImg(), File(outputDir, "gpu-$tag.png"))
-                    write(cpuCached.toImg(), File(outputDir, "cpu-cached-$tag.png"))
-                    File(outputDir, "gpu-$tag.txt").writeText(r.frame.text())
-                }
-            }
-            println(" -- $label: GPU = CPU exact on ${pct(exact)} of cells (worst frame ${pct(worst)}), " +
-                "= CPU cached on ${pct(cached)}; ${pct(inked)} of cells hold ink")
-            expect("$label: the knot puts ink in at least 5% of cells", inked > 0.05)
-            expect("$label: the GPU picks the CPU's exact glyph in at least 99.5% of cells", worst >= 0.995)
-        }
-        gpu.uninstallFrom()
-        knot.remove()
-    }
-
-    /** GPU time of the matching pass at four grid sizes, and the CPU's time on the same frame. */
-    private fun timing(renderer: Renderer, window: Window, ascii: ShapeAscii) {
-        for ((cols, rows) in listOf(64 to 24, 128 to 48, 256 to 96, 512 to 192)) {
-            val gpu = ShapeAsciiGpu(cols = cols, rows = rows, ascii = ascii, renderer = renderer, name = "ascii-time-$cols") {
-                contrast = 3f
-                directional = 3f
-            }
-            gpu.profile = true
-            val knot = TorusKnot(renderer, gpu)
-            gpu.installInto()
-            val match = ArrayList<Double>()
-            val sceneMs = ArrayList<Double>()
-            repeat(270) {
-                knot.time = it / 60f
-                pump(renderer, window, 1)
-                if (it >= 30) {
-                    gpu.matchMilliseconds?.let(match::add)
-                    gpu.sceneMilliseconds?.let(sceneMs::add)
-                }
-            }
-            val r = read(renderer, window, gpu)
-            // median of five conversions, each with a fresh cache, after two to warm the JIT
-            fun cpu(exact: Boolean): Double = (0 until 7).map {
-                val fresh = ShapeAscii()
-                val t0 = System.nanoTime()
-                fresh.convert(r.scene, cols, contrast = 3.0, directional = 3.0, rows = rows, exact = exact)
-                (System.nanoTime() - t0) / 1e6
-            }.drop(2).let(::median)
-            val cpuExact = cpu(true)
-            val cpuCached = cpu(false)
-            gpu.uninstallFrom()
-            knot.remove()
-            println(" -- ${cols}x$rows cells (${gpu.sceneWidth}x${gpu.sceneHeight} px): GPU match median ${ms(median(match))} ms, " +
-                "10th percentile ${ms(percentile(match, 0.1))} ms (scene median ${ms(median(sceneMs))} ms, ${match.size} frames); " +
-                "CPU exact ${ms(cpuExact)} ms, CPU cached ${ms(cpuCached)} ms")
-            expect("${cols}x$rows: the matching pass was timed", match.isNotEmpty())
-        }
-    }
-
-    /**
-     * The page's scene: a (2, 3) torus knot, turning about two axes, lit from the upper left, drawn
-     * into [gpu]'s scene target with the same shaders `ascii_shape.md` gives its box.
-     */
-    private class TorusKnot(renderer: Renderer, private val gpu: ShapeAsciiGpu) {
+    private class Pipeline(
+        val renderer: Renderer,
+        val ascii: ShapeAscii,
+        val cols: Int,
+        val rows: Int,
+        val name: String,
+        knot: Boolean = true,
+        draw: Boolean = false,
+    ) {
+        var contrast = 3f
+        var directional = 3f
         var time = 0f
-        private val name = "${gpu.name}-knot"
-        private val module = Module(
-            parameters(renderer) {
-                +gpu.scene
-                this.name = this@TorusKnot.name
-                blend = false
-                depthTest = true
-                vertex = KNOT_VERTEX
-                fragment = KNOT_FRAGMENT
-            }
-        ).pointer()
+        private val sampler = TextureSampler(renderer, 1, false)
+        private val sceneBox = boxProperties("ascii_shape_gpu_scene")
+        private val matchBox = boxProperties("ascii_shape_gpu_match")
+        private val drawBox = boxProperties("ascii_shape_gpu_draw")
+
+        val scene = RenderToTexture(renderer) {
+            width = cols * ascii.cellWidth
+            height = rows * ascii.cellHeight
+            format = VK_FORMAT_R8G8B8A8_UNORM
+            colorFormats = listOf(VK_FORMAT_R8G8B8A8_UNORM)
+            useDepth = true
+            debugName = "$name-scene"
+        }
+        val cells = RenderToTexture(renderer) {
+            width = cols
+            height = rows
+            format = VK_FORMAT_R8G8B8A8_UNORM
+            colorFormats = listOf(VK_FORMAT_R8G8B8A8_UNORM)
+            useDepth = false
+            debugName = "$name-cells"
+        }
+        private var drawModule: ModulePointer? = null
 
         init {
+            if (knot) addKnot()
+            val match = Module(
+                parameters(renderer) {
+                    +cells
+                    this.name = "$name-match"
+                    blend = false
+                    depthTest = false
+                    vertex = matchBox.getValue("vertex")
+                    fragment = matchBox.getValue("fragment")
+                    textureResolver = { tex ->
+                        when (tex.name) {
+                            "sceneTex" -> fromViews(listOf(scene), tex.name, sampler)
+                            "glyphVectors" -> fromViews(listOf(ascii.glyphVectorTexture(renderer)), tex.name, sampler)
+                            else -> null
+                        }
+                    }
+                }
+            ).pointer()
+            match.current.meshes["match"] = triangle(match).apply {
+                push.bind("cell") { vec(ascii.cellWidth, ascii.cellHeight) }
+                push.bind("contrast") { contrast }
+                push.bind("directional") { directional }
+            }
+            cells += "match" to match
+            if (draw) {
+                val d = Module(
+                    parameters(renderer) {
+                        this.name = "$name-draw"
+                        blend = false
+                        depthTest = false
+                        vertex = drawBox.getValue("vertex")
+                        fragment = drawBox.getValue("fragment")
+                        textureResolver = { tex ->
+                            when (tex.name) {
+                                "cellsTex" -> fromViews(listOf(cells), tex.name, sampler)
+                                "atlasTex" -> fromViews(listOf(ascii.glyphAtlasTexture(renderer)), tex.name, sampler)
+                                "sceneTex" -> fromViews(listOf(scene), tex.name, sampler)
+                                else -> null
+                            }
+                        }
+                    }
+                ).pointer()
+                d.current.meshes["characters"] = triangle(d).apply {
+                    push.bind("cell") { vec(ascii.cellWidth, ascii.cellHeight) }
+                    push.bind("ink") { vec(0.79f, 0.79f, 0.79f, 1f) }
+                    push.bind("background") { vec(0.008f, 0.008f, 0.01f, 1f) }
+                }
+                drawModule = d
+            }
+        }
+
+        /** As the boxes do: the scene, then `cells.after(scene)`, and the draw pass into the window. */
+        fun install() {
+            renderer.renderList.others["$name-scene"] = scene
+            renderer.renderList.others["$name-cells"] = cells.after(scene)
+            drawModule?.let { renderer.renderList.modules["$name-draw"] = it }
+        }
+
+        fun remove() {
+            renderer.renderList.others.remove("$name-scene")
+            renderer.renderList.others.remove("$name-cells")
+            renderer.renderList.modules.remove("$name-draw")
+        }
+
+        /** The scene box's torus knot, with its own shaders. */
+        private fun addKnot() {
+            val module = Module(
+                parameters(renderer) {
+                    +scene
+                    this.name = "$name-knot"
+                    blend = false
+                    depthTest = true
+                    vertex = sceneBox.getValue("vertex")
+                    fragment = sceneBox.getValue("fragment")
+                }
+            ).pointer()
             val u = 240
             val v = 16
             val mesh = Mesh(renderer, module).resize(u * v, u * v * 2)
@@ -252,17 +243,148 @@ object ShapeAsciiGpuSmoke {
                 }
             }
             mesh.push.bind("time") { time }
-            mesh.push.bind("aspect") { gpu.sceneWidth.toFloat() / gpu.sceneHeight }
+            mesh.push.bind("aspect") { scene.parameters.width.toFloat() / scene.parameters.height }
             module.current.meshes["knot"] = mesh
-            gpu.scene += name to module
+            scene += "knot" to module
         }
 
-        fun remove() {
-            gpu.scene.modules.remove(name)
+        /** The boxes' one triangle covering the target, `pos` (-1, -1), (3, -1), (-1, 3). */
+        private fun triangle(module: ModulePointer): Mesh {
+            val mesh = Mesh(renderer, module).resize(3, 1)
+            mesh.write("pos") { put(-1f).put(-1f).put(0f).put(3f).put(-1f).put(0f).put(-1f).put(3f).put(0f) }
+            mesh.t!!.mapAndWrite_ints { put(0).put(1).put(2) }
+            return mesh
         }
     }
 
-    /** Point and outward normal at ([s], [t]) on a (2, 3) torus knot tube: s along the knot, t around the tube. */
+    /** An empty scene reads back black and comes out all spaces. */
+    private fun blank(renderer: Renderer, window: Window, ascii: ShapeAscii) {
+        val p = Pipeline(renderer, ascii, 16, 8, "ascii-blank", knot = false)
+        p.install()
+        pump(renderer, window, 3)
+        val r = read(renderer, window, ascii, p)
+        p.remove()
+        expect("an empty scene reads back black", r.scene.data.all { it == 0f })
+        expect("an empty scene is all spaces on the GPU", r.frame.text().all { it == ' ' || it == '\n' })
+    }
+
+    /**
+     * A module lighting the top half of the scene (clip-space y above 0, which is up in Field's
+     * flipped viewports) reads back with its light in the top rows, on both the scene and the
+     * characters: the readback is top row first, and the match shader sees the picture upright.
+     */
+    private fun upright(renderer: Renderer, window: Window, ascii: ShapeAscii) {
+        val p = Pipeline(renderer, ascii, 16, 8, "ascii-upright", knot = false)
+        val top = Module(
+            parameters(renderer) {
+                +p.scene
+                name = "ascii-upright-top"
+                blend = false
+                depthTest = false
+                vertex = """
+                    #version 450
+                    void main() {
+                        vec2 q = gl_VertexIndex == 0 ? vec2(-1.0, 0.0) : (gl_VertexIndex == 1 ? vec2(3.0, 0.0) : vec2(-1.0, 2.0));
+                        gl_Position = vec4(q, 0.0, 1.0);
+                    }
+                """.trimIndent()
+                fragment = """
+                    #version 450
+                    layout(location = 0) out vec4 outColor;
+                    void main() { outColor = vec4(1.0); }
+                """.trimIndent()
+            }
+        ).pointer()
+        top.current.meshes["quad"] = fullscreenTriangle(top)
+        p.scene += "top" to top
+        p.install()
+        pump(renderer, window, 3)
+        val r = read(renderer, window, ascii, p)
+        p.remove()
+        val space = ascii.glyphs.indexOf(' ')
+        val lines = r.frame.text().lines()
+        println(" -- upright: scene top-left ${r.scene.data[0]}, bottom-left ${r.scene.data[(r.scene.height - 1) * r.scene.width * 3]}; " +
+            "first row '${lines.first()}', last row '${lines.last()}'")
+        expect("the readback's top row is the lit top of the picture", r.scene.data[0] == 1f && r.scene.data[(r.scene.height - 1) * r.scene.width * 3] == 0f)
+        expect("the characters' top row is inked and their bottom row blank",
+            (0 until p.cols).all { r.frame.indices[it] != space } && (0 until p.cols).all { r.frame.indices[(p.rows - 1) * p.cols + it] == space })
+    }
+
+    /** The match shader's glyphs against the CPU's on the same frames, at three contrast settings. */
+    private fun agreement(renderer: Renderer, window: Window, ascii: ShapeAscii) {
+        val p = Pipeline(renderer, ascii, 128, 48, "ascii-agree", draw = true)
+        p.install()
+        val settings = listOf(Triple("contrast 1", 1f, 1f), Triple("contrast 3", 3f, 1f), Triple("contrast 3, directional 3", 3f, 3f))
+        val times = listOf(0.3f, 1.1f, 2.0f, 2.9f, 3.7f)
+        for ((label, c, d) in settings) {
+            p.contrast = c
+            p.directional = d
+            var exact = 0.0
+            var cached = 0.0
+            var inked = 0.0
+            var worst = 1.0
+            for (t in times) {
+                p.time = t
+                pump(renderer, window, 3)
+                val r = read(renderer, window, ascii, p)
+                val cpuExact = ascii.convert(r.scene, p.cols, contrast = c.toDouble(), directional = d.toDouble(), rows = p.rows, exact = true)
+                val cpuCached = ascii.convert(r.scene, p.cols, contrast = c.toDouble(), directional = d.toDouble(), rows = p.rows)
+                val a = r.frame.agreement(cpuExact)
+                exact += a / times.size
+                worst = minOf(worst, a)
+                cached += r.frame.agreement(cpuCached) / times.size
+                inked += r.frame.indices.count { it != ascii.glyphs.indexOf(' ') }.toDouble() / r.frame.indices.size / times.size
+                if (t == times[1]) {
+                    val tag = label.replace(", ", "-").replace(" ", "")
+                    write(r.scene, File(outputDir, "scene.png"))
+                    write(r.frame.toImg(), File(outputDir, "gpu-$tag.png"))
+                    File(outputDir, "gpu-$tag.txt").writeText(r.frame.text())
+                }
+            }
+            println(" -- $label: GPU = CPU exact on ${pct(exact)} of cells (worst frame ${pct(worst)}), " +
+                "= CPU cached on ${pct(cached)}; ${pct(inked)} of cells hold ink")
+            expect("$label: the knot puts ink in at least 5% of cells", inked > 0.05)
+            expect("$label: the GPU picks the CPU's exact glyph in at least 99.5% of cells", worst >= 0.995)
+        }
+        p.remove()
+    }
+
+    /** GPU time of the match pass at four grid sizes, and the CPU's time on the same frame. */
+    private fun timing(renderer: Renderer, window: Window, ascii: ShapeAscii) {
+        for ((cols, rows) in listOf(64 to 24, 128 to 48, 256 to 96, 512 to 192)) {
+            val p = Pipeline(renderer, ascii, cols, rows, "ascii-time-$cols")
+            p.cells.profileGpu = true
+            p.scene.profileGpu = true
+            p.install()
+            val match = ArrayList<Double>()
+            val sceneMs = ArrayList<Double>()
+            repeat(270) {
+                p.time = it / 60f
+                pump(renderer, window, 1)
+                if (it >= 30) {
+                    p.cells.gpuSample?.milliseconds?.let(match::add)
+                    p.scene.gpuSample?.milliseconds?.let(sceneMs::add)
+                }
+            }
+            val r = read(renderer, window, ascii, p)
+            // median of five conversions, each with a fresh cache, after two to warm the JIT
+            fun cpu(exact: Boolean): Double = (0 until 7).map {
+                val fresh = ShapeAscii()
+                val t0 = System.nanoTime()
+                fresh.convert(r.scene, cols, contrast = 3.0, directional = 3.0, rows = rows, exact = exact)
+                (System.nanoTime() - t0) / 1e6
+            }.drop(2).let(::median)
+            val cpuExact = cpu(true)
+            val cpuCached = cpu(false)
+            p.remove()
+            println(" -- ${cols}x$rows cells (${p.scene.parameters.width}x${p.scene.parameters.height} px): GPU match median ${ms(median(match))} ms, " +
+                "10th percentile ${ms(percentile(match, 0.1))} ms (scene median ${ms(median(sceneMs))} ms, ${match.size} frames); " +
+                "CPU exact ${ms(cpuExact)} ms, CPU cached ${ms(cpuCached)} ms")
+            expect("${cols}x$rows: the match pass was timed", match.isNotEmpty())
+        }
+    }
+
+    /** Point and outward normal at ([s], [t]) on the scene box's (2, 3) torus knot tube: s along the knot, t around the tube. */
     internal fun knotPoint(s: Double, t: Double): DoubleArray {
         fun centre(a: Double): DoubleArray {
             val r = 2 + cos(3 * a)
@@ -274,7 +396,7 @@ object ShapeAsciiGpuSmoke {
         val m = centre(a - 1e-4)
         val tan = norm(DoubleArray(3) { p[it] - m[it] })
         val n = norm(doubleArrayOf(tan[1], -tan[0], 0.0))
-        val b = doubleArrayOf(n[1] * tan[2] - n[2] * tan[1], n[2] * tan[0] - n[0] * tan[2], n[0] * tan[1] - n[1] * tan[0])
+        val b = doubleArrayOf(n[1] * tan[2], -n[0] * tan[2], n[0] * tan[1] - n[1] * tan[0])
         val w = 2 * PI * t
         val dir = DoubleArray(3) { cos(w) * n[it] + sin(w) * b[it] }
         return doubleArrayOf(c[0] + 0.16 * dir[0], c[1] + 0.16 * dir[1], c[2] + 0.16 * dir[2], dir[0], dir[1], dir[2])
@@ -285,47 +407,8 @@ object ShapeAsciiGpuSmoke {
         return DoubleArray(3) { v[it] / l }
     }
 
-    internal val KNOT_VERTEX = """
-        #version 450
-        layout(location = 0) in vec3 pos;
-        layout(location = 1) in vec3 normal;
-        layout(location = 0) out vec3 fnormal;
-
-        layout(push_constant) uniform Push {
-            float time;
-            float aspect;
-        } pc;
-
-        void main() {
-            // turn about y, then x
-            float a = pc.time * 0.7;
-            float b = pc.time * 0.45;
-            mat3 ry = mat3(cos(a), 0.0, -sin(a), 0.0, 1.0, 0.0, sin(a), 0.0, cos(a));
-            mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cos(b), sin(b), 0.0, -sin(b), cos(b));
-            vec3 p = rx * ry * pos;
-            fnormal = rx * ry * normal;
-            // a camera 5 units back looking along +z; +y is up, since Field flips its viewports;
-            // depth runs 0..1 from z = 1 to z = 8
-            float z = p.z + 5.0;
-            gl_Position = vec4(p.x * 2.4 / pc.aspect, p.y * 2.4, (z - 1.0) / 7.0 * z, z);
-        }
-    """.trimIndent()
-
-    internal val KNOT_FRAGMENT = """
-        #version 450
-        layout(location = 0) in vec3 fnormal;
-        layout(location = 0) out vec4 outColor;
-
-        void main() {
-            // a light up and to the left of the camera
-            vec3 l = normalize(vec3(-0.5, 0.6, -0.65));
-            float d = max(dot(normalize(fnormal), l), 0.0);
-            outColor = vec4(vec3(0.04 + 0.96 * d), 1.0);
-        }
-    """.trimIndent()
-
-    private fun read(renderer: Renderer, window: Window, gpu: ShapeAsciiGpu): ShapeAsciiReadback {
-        val future = gpu.read()
+    private fun read(renderer: Renderer, window: Window, ascii: ShapeAscii, p: Pipeline): ShapeAsciiReadback {
+        val future = ascii.readCells(p.scene, p.cells, renderer)
         repeat(6) { if (!future.isDone) pump(renderer, window, 1) }
         return future.get(20, TimeUnit.SECONDS)
     }

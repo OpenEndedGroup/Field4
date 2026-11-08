@@ -145,28 +145,30 @@ class ShapeAsciiTest {
     }
 
     /**
-     * The GPU pass's shaders compile, and declare the push constants and samplers [ShapeAsciiGpu]
-     * binds by name, and the smoke's torus knot declares the inputs it writes. A rename on either side
-     * would otherwise show only on a machine with a GPU.
+     * The GPU boxes' shaders in the starting-point transcript compile, and declare the push constants,
+     * samplers and inputs their box code binds by name. A rename on either side would otherwise show
+     * only on a machine with a GPU, and `ascii.shape-gpu.smoke` reads these same shaders.
      */
     @Test
-    fun gpuShadersCompileAndDeclareWhatTheKotlinBinds() {
-        fun introspect(name: String, source: String, kind: ShaderKind): Introspection {
-            val i = Introspection(source, kind, sourceName = name)
-            assertTrue(i.valid, "$name did not compile")
+    fun gpuBoxShadersCompileAndDeclareWhatTheirCodeBinds() {
+        fun introspect(box: String, property: String, kind: ShaderKind): Introspection {
+            val i = Introspection(ShapeAsciiGpuSmoke.boxProperties(box).getValue(property), kind, sourceName = "$box/$property")
+            assertTrue(i.valid, "$box/$property did not compile")
             return i
         }
         fun push(i: Introspection) = i.pushConstants.flatMap { b -> b.members.map { it.name } }.toSet()
-        val match = introspect("match", ShapeAsciiGpu.matchFragment(ascii), ShaderKind.FRAGMENT_SHADER)
-        assertEquals(setOf("contrast", "directional", "invert"), push(match))
-        assertEquals(listOf("sceneTex"), match.textures.map { it.name })
-        val draw = introspect("draw", ShapeAsciiGpu.drawFragment(ascii), ShaderKind.FRAGMENT_SHADER)
-        assertEquals(setOf("ink", "background"), push(draw))
-        assertEquals(setOf("cellsTex", "atlasTex"), draw.textures.map { it.name }.toSet())
-        val knot = introspect("knot", ShapeAsciiGpuSmoke.KNOT_VERTEX, ShaderKind.VERTEX_SHADER)
+        val knot = introspect("ascii_shape_gpu_scene", "vertex", ShaderKind.VERTEX_SHADER)
         assertEquals(setOf("pos", "normal"), knot.inputs.map { it.name }.toSet())
         assertEquals(setOf("time", "aspect"), push(knot))
-        introspect("knot fragment", ShapeAsciiGpuSmoke.KNOT_FRAGMENT, ShaderKind.FRAGMENT_SHADER)
+        introspect("ascii_shape_gpu_scene", "fragment", ShaderKind.FRAGMENT_SHADER)
+        for (box in listOf("ascii_shape_gpu_match", "ascii_shape_gpu_draw"))
+            assertEquals(listOf("pos"), introspect(box, "vertex", ShaderKind.VERTEX_SHADER).inputs.map { it.name })
+        val match = introspect("ascii_shape_gpu_match", "fragment", ShaderKind.FRAGMENT_SHADER)
+        assertEquals(setOf("cell", "contrast", "directional"), push(match))
+        assertEquals(setOf("sceneTex", "glyphVectors"), match.textures.map { it.name }.toSet())
+        val draw = introspect("ascii_shape_gpu_draw", "fragment", ShaderKind.FRAGMENT_SHADER)
+        assertEquals(setOf("cell", "ink", "background"), push(draw))
+        assertEquals(setOf("cellsTex", "atlasTex", "sceneTex"), draw.textures.map { it.name }.toSet())
     }
 
     /** showAscii puts every panel up as one display payload on the asked channel. */

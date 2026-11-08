@@ -136,7 +136,7 @@ class ShapeAscii(
      *
      * By default the shape search goes through a cache keyed on the vector rounded to 32 levels per
      * component, which is what makes a live loop cheap; [exact] searches every glyph for every cell
-     * instead ([bruteNearest]), as [ShapeAsciiGpu] does.
+     * instead ([bruteNearest]), as the GPU match shader on `ascii_shape.md` does.
      */
     fun convert(
         img: Img,
