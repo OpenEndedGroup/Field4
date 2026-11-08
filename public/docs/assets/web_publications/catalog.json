@@ -1730,29 +1730,29 @@
     },
     "assets/agent_transcripts/harmonic_drum/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
-      "capturedAt": "2026-11-08T13:47:03.732Z",
+      "capturedAt": "2026-11-08T17:16:35.998Z",
       "channels": 10,
       "file": "assets/web_publications/harmonic_drum/document/metadata.edn",
       "files": {
-        "assets/web_publications/harmonic_drum/document/metadata.edn": "a38fad0e270ea96a0bd5329317f9b3fd242da5917c86e552f84c323c14fc1593",
-        "assets/web_publications/harmonic_drum/document/outputs.json": "a7178bedf359ce76ab3a5574c59d40182d877625858044072753c1f79bb38ae0",
-        "assets/web_publications/harmonic_drum/outputs/0.html": "af396fa1767dbeb1b8e65dc39d21f52528e07cc42b32be0d3633ed5d7dc0d503",
-        "assets/web_publications/harmonic_drum/outputs/1.html": "e33ba9752fd378b008f1221b48e5f16db6cfcf80287b009de3fe8c8d3964ac5e",
-        "assets/web_publications/harmonic_drum/outputs/2.html": "f9c2cf12b3e373356c2886ca7e242b7152f911efce5944154c1e9d8fd2e0006a",
-        "assets/web_publications/harmonic_drum/outputs/3.html": "c0ddf300f8295f22786eb28cc601d830a087ae2afa8c0ec59ca05badcbf08a01",
-        "assets/web_publications/harmonic_drum/outputs/4.html": "b81f88d6dc320e092bef0274d597a60bd8e2d7bd0a756a60d930aa693d225177",
-        "assets/web_publications/harmonic_drum/outputs/5.html": "26e881afe8b0a58c9e3e474cdafc658a30d5328469324708258b69d3c2a0b376",
-        "assets/web_publications/harmonic_drum/outputs/6.html": "41f2dcf8edda730500111a6eb287228b36b1e440ab384bbc97b0721d21cd6627",
-        "assets/web_publications/harmonic_drum/outputs/7.html": "07c5f86f383d50332084269d7d02f2fb1bfc6c2758fb126335171d6e51e3d7d7",
-        "assets/web_publications/harmonic_drum/outputs/8.html": "1885ae70793c3d992dc858870481d034107e29406228e4fb3f75051c194c7149",
-        "assets/web_publications/harmonic_drum/outputs/9.html": "8c8c01f8f7f72b2a84f90e60a7326bf6692f1b74776a2fca7d1d0510f95169dc"
+        "assets/web_publications/harmonic_drum/document/metadata.edn": "1e84edbedc4eb9f377f8b34697b9afa23eb2e5d71aabed779b8d6b462fb06f06",
+        "assets/web_publications/harmonic_drum/document/outputs.json": "ef88067f168f70c2b4131593a9107644348771a1f953a110c07e247e3b813f13",
+        "assets/web_publications/harmonic_drum/outputs/0.html": "860863d8aace645618190ea51975c8c3fe3dc26c8aef73fee93eba23c5d5d936",
+        "assets/web_publications/harmonic_drum/outputs/1.html": "0cb0acbdba95f15b24564ef05eb61adc87331ee408222a2e8236421508c9d167",
+        "assets/web_publications/harmonic_drum/outputs/2.html": "069ec6509b6f0dacd1bd0dcfc723e69cc85a612e4911297b2727241c1d4081ae",
+        "assets/web_publications/harmonic_drum/outputs/3.html": "eec6ebc0a8c29176ab521e38612e712ebb266d55cbe9f9c52b4540a768592329",
+        "assets/web_publications/harmonic_drum/outputs/4.html": "b8c91c04f59236f505473fde18d6edd0f093757f637017d0fee2c8254e3500c5",
+        "assets/web_publications/harmonic_drum/outputs/5.html": "8641ae8c60395159d9f522b1689fc4de9565b769e6bff74343cd744eca11804c",
+        "assets/web_publications/harmonic_drum/outputs/6.html": "947458a7137df50dc8c03fa069e4a74f02571692302a0f54fd55afe8da6b5918",
+        "assets/web_publications/harmonic_drum/outputs/7.html": "0a66033f2efaa33064bba4f5d2d671dae4ed2428cd8d08ed8388ea094495a056",
+        "assets/web_publications/harmonic_drum/outputs/8.html": "d4b52b2b9a121e22842404a0f7ec8b0aafb1313fc1a1bc979580ebb03fe30016",
+        "assets/web_publications/harmonic_drum/outputs/9.html": "71b29a650142aa271ca976475abba925348d54d2b4af818d60406d183f70b246"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/harmonic_drum/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/harmonic_drum.yaml": "73214dbffdb9e03eedac240c71fcf97e889edb49ab49d23bdff0394de5c01e9c",
+        "dev_docs/agents/transcripts/harmonic_drum.yaml": "f1369368cf38401215b22ac37dd6be609ee7a6e3f289d7af6b95a5b3451a9a7e",
         "public/docs/assets/agent_transcripts/harmonic_drum/guides/eigendrum.md": "197d47fd095922c501bc8be9c3fa83ea0dcb8bca86948220e8b36764a9093686",
         "public/docs/assets/agent_transcripts/harmonic_drum/hd_families_code_.kt": "22550327cba4e1cc4776afed245bb2844e9bff5707dc8efeb8d1e20df28418ab",
         "public/docs/assets/agent_transcripts/harmonic_drum/hd_map_code_.kt": "ad4ef28b651854b5fc812431547b909befdd053cff26f0f7f5f096b521e241a1",
