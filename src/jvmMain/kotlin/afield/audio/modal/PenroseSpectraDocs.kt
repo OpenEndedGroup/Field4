@@ -1,5 +1,5 @@
 /**
- * Offline audio figures for `public/docs/penrose_spectra.md`: a Penrose patch and a square-lattice
+ * Offline audio figures for `public/docs/debruijn_tilings.md` (Striking the tiling): a Penrose patch and a square-lattice
  * control, each a mass-spring network ([GraphModes]), struck and heard at one vertex, through the
  * `renderWav(name, path)` contract the docs runner's `audio="…"` fences call.
  */

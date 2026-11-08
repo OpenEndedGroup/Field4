@@ -1,4 +1,3 @@
-import afield.audio.engine.WavFloatArrayWriter
 import afield.audio.modal.*
 
 // A Penrose patch and a square lattice as spring networks with equal stiffness, so E = 0 rings
@@ -15,7 +14,7 @@ val strikes = [
 val out = ArrayList<FLine>()
 val lo = 120.0
 val hi = 340.0
-strikes.forEachIndexed { row, (name, modes, v) ->
+strikes.forEachIndexed { row, (_, modes, v) ->
     val a = modes.strikeVertex(v)
     val f = modes.frequencies(220.0)
     val bins = DoubleArray(110)
@@ -42,13 +41,6 @@ strikes.forEachIndexed { row, (name, modes, v) ->
                 color = vec(1.0, 1.0, 1.0, 1.0)
                 thickness = 2.0
             }
-    display(
-        name,
-        WavFloatArrayWriter.encodeMono16(
-            modes.render(a, zeroHz = 220.0, seconds = 3.0, alpha = 1.0, beta = 0.2),
-            44100,
-        ),
-    )
 }
 lines(out, w = 600.0, h = 300.0, fitToSize = true)
 markdown(

@@ -419,7 +419,9 @@ summarize. It should be run synchronously (you need its output before finishing)
 > persisted property and docs page a branch adds, search `main` (`$REPO` at the base
 > commit: `git -C $REPO grep <name-or-synonym> <BASE> -- src public/docs`, plus
 > `grep -n '^#'` over `public/docs/*.md` headings) for an existing system that does the same
-> job under another name. A new page whose topic already has a section, or a new store/type
+> job under another name. A new page whose topic already has a section, a new page that
+> extends an existing one (its "where to go next", a GPU version, a sweep: those are new sections
+> of the original, `DOCS_WRITING_RULES.md` rule 16a), or a new store/type
 > beside an existing one (2026-10-23: `ControlPresets` beside `KeyframeScope`), is a
 > **continue: fold into the existing system**, never a merge, however well it is tested.
 >

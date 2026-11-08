@@ -183,7 +183,7 @@ object DocsAudioProvenance {
         // One strike of a meshed drum, rendered by DrumModes.render. See eigendrum.md.
         "afield.audio.modal.EigendrumDocs" to Origin.MODAL_SYNTHESIS,
         // A Penrose tiling's vertex graph as a spring network, struck at one vertex and rendered by
-        // GraphModes.render, the same damped-sinusoid sum. See penrose_spectra.md.
+        // GraphModes.render, the same damped-sinusoid sum. See debruijn_tilings.md#striking-the-tiling.
         "afield.audio.modal.PenroseSpectraDocs" to Origin.MODAL_SYNTHESIS,
     )
 

@@ -2,6 +2,10 @@ package afield.simulation.automata
 
 import afield.graphics.render.color
 import afield.graphics.render.filled
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import kotlin.random.Random
 import kotlin.test.Test
@@ -103,6 +107,31 @@ class GrowingNcaTest {
         assertTrue(kotlin.math.abs(t[inside + 3] - 0.5f) < 0.01f, "alpha ${t[inside + 3]}")
         assertTrue(kotlin.math.abs(t[inside] - 0.5f) < 0.01f && kotlin.math.abs(t[inside + 1] - 0.25f) < 0.01f, "rgb not premultiplied")
         assertTrue(t[(2 * 40 + 2) * 4 + 3] == 0f, "outside the square should be empty")
+    }
+
+    /**
+     * The page's other target helpers: [GrowingNca.targetArgb] shows a target on white,
+     * [GrowingNca.writeTarget] writes what `train_growing_nca.py --target-file` reads, and
+     * [GrowingNca.strayAlpha] is zero for a grown flower and positive once something grows away from it.
+     */
+    @Test
+    fun targetHelpersAndStrayAlpha() {
+        val target = GrowingNca.pretrainedTarget("flower")
+        val px = GrowingNca.targetArgb(target, 64, scale = 2)
+        assertTrue(px.size == 128 * 128 && px[0] == 0xffffffff.toInt(), "the corner of the target should be white")
+        val file = kotlin.io.path.createTempFile("nca_target", ".json").toFile()
+        try {
+            GrowingNca.writeTarget(file, target, size = 64, name = "flower")
+            val o = kotlinx.serialization.json.Json.parseToJsonElement(file.readText()).jsonObject
+            assertTrue(o["size"]!!.jsonPrimitive.int == 64 && o["rgba"]!!.jsonArray.size == 64 * 64 * 4, "written target has the wrong shape")
+        } finally {
+            file.delete()
+        }
+        val nca = GrowingNca.pretrained("flower", random = Random(1))
+        nca.step(300)
+        assertTrue(nca.strayAlpha(target) == 0.0, "a grown flower has no stray alpha: ${nca.strayAlpha(target)}")
+        for (i in 0 until 16) nca.state[(2 * 64 + 2) * GrowingNca.CHANNELS + i] = 1f
+        assertTrue(nca.strayAlpha(target) >= 1.0, "a live cell in the corner should count as stray")
     }
 
     @Test
