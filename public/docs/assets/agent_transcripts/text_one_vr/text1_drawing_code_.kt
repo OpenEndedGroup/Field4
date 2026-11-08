@@ -96,7 +96,7 @@ loop {
         lastStats = now
         display(
             "frame",
-            "<div style='padding:12px;width:440px'>Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.</div>",
+            "<div style='padding:12px;width:440px'>${if (drawing.textBlurNeedsRebuild) "Blur capacity changed: rebuild Drawing. " else ""}Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.</div>",
         )
     }
     frame()
