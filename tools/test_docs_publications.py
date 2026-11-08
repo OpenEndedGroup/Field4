@@ -55,6 +55,50 @@ class DocsPublicationsTest(unittest.TestCase):
                 image.write_bytes(b'refreshed real capture fixture')
                 self.assertNotEqual(publications.recipe_sources(recipe), before)
 
+    def test_native_capture_depends_on_its_fence_not_the_rest_of_the_page(self):
+        """A new starting point on the gallery page leaves every other native publication fresh;
+        changing the capture's own fence (its alt text, its box) still invalidates it."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root/'src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt'
+            source.parent.mkdir(parents=True)
+            source.write_text('internal val EXECUTE = setOf()\ninternal val COMPILE_ONLY = setOf("gpu")')
+            docs = root/'public/docs'
+            (docs/'assets/agent_transcripts/gpu').mkdir(parents=True)
+            (docs/'assets/agent_transcripts/gpu/metadata.edn').write_text('authored document')
+            (root/'dev_docs/agents/transcripts').mkdir(parents=True)
+            (root/'dev_docs/agents/transcripts/gpu.yaml').write_text('operations: []')
+            (docs/'assets/gpu.png').write_bytes(b'real runner image fixture')
+            fence = ('```diffstatic_runner {capture="native-window" screenshot="assets/gpu.png" alt="ALT" '
+                     'macro-file="../../dev_docs/agents/transcripts/gpu.yaml" capture-box="BOX"}\n'
+                     '// body\n```\n')
+            page = docs/'agent_transcripts.md'
+
+            def write(prose='', alt='A glowing sphere', box='renderer'):
+                page.write_text('### gpu\n\n' + fence.replace('ALT', alt).replace('BOX', box)
+                                + '\n### other\n\nAnother starting point.\n' + prose)
+
+            key = 'public/docs/agent_transcripts.md#capture-box=renderer'
+            with patch.multiple(publications, ROOT=root, DOCS=docs):
+                write()
+                recipe, = publications.recipes('gallery')
+                before = publications.recipe_sources(recipe)
+                self.assertIn(key, before)
+                self.assertNotIn('public/docs/agent_transcripts.md', before)
+
+                write(prose='\n### new_entry\n\nA brand new starting point.\n')
+                recipe, = publications.recipes('gallery')
+                self.assertEqual(publications.recipe_sources(recipe), before)
+
+                write(alt='A dim sphere')
+                recipe, = publications.recipes('gallery')
+                self.assertNotEqual(publications.recipe_sources(recipe)[key], before[key])
+
+                write(box='other_renderer')
+                self.assertIsNone(publications.source_digest(key))
+                recipe, = publications.recipes('gallery')
+                self.assertNotIn(key, publications.recipe_sources(recipe))
+
     def test_classification_accepts_multiple_names_on_a_line_and_ignores_comments(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
