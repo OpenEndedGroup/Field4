@@ -4669,6 +4669,50 @@
         "public/docs/assets/agent_transcripts/typography_worked_example/typo_winding_code_.kt": "04602ab4aca96bbee29fdb4f0db0f49fdf9b895db30ac93d9f60a93cf840f112"
       }
     },
+    "assets/agent_transcripts/uncrossed_leapers/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-08T15:17:15.216Z",
+      "channels": 14,
+      "file": "assets/web_publications/uncrossed_leapers/document/metadata.edn",
+      "files": {
+        "assets/web_publications/uncrossed_leapers/document/metadata.edn": "a1504f2994291b41a00576fd3ffe45508df1806a1d6b5d2ccae3e0c5b4145ac3",
+        "assets/web_publications/uncrossed_leapers/document/outputs.json": "4fa977a7cdf83610e3c89621daa6132b0d0038f13bc32a54db03058a5eabb9cd",
+        "assets/web_publications/uncrossed_leapers/outputs/0.html": "acfbd578b9a95eff5618586fc53e0e4b677543bf643400d941cca03ffc480678",
+        "assets/web_publications/uncrossed_leapers/outputs/1.html": "94f52a9237b9d860ba3e3d39687308b694b6020e963bf203aca5dfd96155d615",
+        "assets/web_publications/uncrossed_leapers/outputs/10.html": "bad8e587d73504198a718017aae427d8bf9c94017d261d312030b342fe7ed3bb",
+        "assets/web_publications/uncrossed_leapers/outputs/11.html": "e1dd64e7fd0763d2e451e8eb7a759604210dda08689ced69950751a89ff53c43",
+        "assets/web_publications/uncrossed_leapers/outputs/12.html": "38e71be1412c1990c40c6773a7f87c5666e68f4cb7261e0dbb633a0ccc867c6c",
+        "assets/web_publications/uncrossed_leapers/outputs/13.html": "2d632e805a22f7545216eae6e7c0f67d098cf77abdbcfa8ab3cbc301746b946b",
+        "assets/web_publications/uncrossed_leapers/outputs/2.html": "f20447d3bc3e624370500d87fd334bc3e237240d68770204bb3bcad6a0c1b4e4",
+        "assets/web_publications/uncrossed_leapers/outputs/3.html": "38946d2c3765fbb1e42d79bc3572796588ce92ebb0f4ae740a7736c8facd21df",
+        "assets/web_publications/uncrossed_leapers/outputs/4.html": "3005dbb6c784e23873f96834d4d332bf18a35005edbe2d448cabe9d20964f074",
+        "assets/web_publications/uncrossed_leapers/outputs/5.html": "bfdbe2edf980c19679ad4ede76c2a325381747ccf5a90312a10e2ecb73b71037",
+        "assets/web_publications/uncrossed_leapers/outputs/6.html": "05d7775290a9cbe74d8a56a3e1278612d48dddbb8ce1e00c3c4b176d3881dc6f",
+        "assets/web_publications/uncrossed_leapers/outputs/7.html": "25daeb6911196d9f53734ef8b6a9efc80bffe3ace3ff8838ce7dfa8f1842c9d8",
+        "assets/web_publications/uncrossed_leapers/outputs/8.html": "43e9b05b346554bcd7c1048495940fc7c1a7ae6817c4e3fca55ad7f55692cb3d",
+        "assets/web_publications/uncrossed_leapers/outputs/9.html": "f665648f1323fb3359ff0725b89c5cf03a0289dadb776f6d4cb9583fb10a9eda"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/uncrossed_leapers/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/uncrossed_leapers.yaml": "70ef6b6f99848bd08c1f3443555d4426e1d44e2569f377d762a6b257bf3253e6",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/guides/knight_tour_workshop.md": "9e88fcd5db09a3ae7c859f06195b1efa5b5ca5561d9dd1a2631fcbf66da7297e",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/guides/uncrossed_leapers.md": "4e8449bd1151c70313af33b68f49ebafcc589fefd55aa3b2f2e7ce49fe9f50d5",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/metadata.edn": "8717127244a2ac22a05df622f52717c4ec777c03a31771cd39aa110c2d6075e2",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_arcs_code_.kt": "06b47968ce2c0067a35b8eb1cc8b589db602996370148bef38fd43b56d734485",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_big_code_.kt": "d2eb1d77bf2237ad0cf8d02eb18d03ba9eb3ad73282a6edac0af645c9cb088b2",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_cycles_code_.kt": "e147541b05854c13232b37ac94f13bc70e70366f6089bf13b447c4586cbf5513",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_draw_code_.kt": "469dd7a682014d11ba364b3bd4c6d32b18ccc240e552df2e74625ecb2fa4e80e",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_gallery_code_.kt": "65b6b7550462efa115342230fae07783c76ef7f325b17edb0d73e04a60b079cf",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_knight_code_.kt": "8ea643ed7a2f53a277ac313c06c9370e0b9179495668cdc54c84bc3c9779c221",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_lines_code_.kt": "645ee0ef34f39da89fb585af98c43214844af98ab927fcc8f6e0edb95b6fe8f5",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_plotter_code_.kt": "a58b1c7a2c3080991dcb8cf20a552173a2c69c46dd0411676ab6715b953e3a29",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_sweep_code_.kt": "7b6f5e9db308ba26b7617312792ff77a496a340e20e83f8940f3fc28777ee2d3",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_tours_code_.kt": "9993e86fe66e5d8fc839ac4dd3296b28e218b1f9266706619857c3c8802a57d3"
+      }
+    },
     "assets/agent_transcripts/vector_field_explorer/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
       "capturedAt": "2026-11-08T10:10:28.214Z",

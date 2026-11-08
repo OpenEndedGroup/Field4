@@ -14,8 +14,8 @@ Start with [resistance and release](agent_transcripts.md#motion_resistance_repla
 starting point and run the box. White bones are the body as it actually moved; cyan bones are the
 pose it was trying to follow. A tether is a spring that ties one body part to a fixed point; red
 marks that point and the spring, and amber shows the force the spring pulls with, scaled for
-drawing. This recording
-attaches the foot at two seconds and releases it at four, while the walking prompt stays unchanged.
+drawing. In this recording the foot is attached at two seconds and released at four, while the
+walking prompt stays unchanged.
 
 <video controls preload="metadata" style="max-width:100%;height:auto" src="assets/motion_recordings/resistance-follow.mp4"></video>
 
@@ -61,8 +61,8 @@ stretch readout shows what reaches the simulator. A capped spring can stretch; i
 Change the prompt, move the anchor, make a tether break above a threshold, or apply a torso impulse.
 If the body falls, CLoSD may reset it: the figure starts over from its initial pose and every
 tether is released. The status line reports releases, breaks and resets separately. Stopping the
-box shuts CLoSD down. Each live
-scene saves a new recording under `motion-recordings` in the document workspace.
+box shuts CLoSD down. Each live scene saves a new recording under `motion-recordings` in the
+document workspace.
 
 ## Write a movement score
 
@@ -260,9 +260,9 @@ loop {
 }
 ```
 
-The prompt and the motion so far both shape what comes next. This session skips well; the route
-recordings further down walk badly, with the feet sliding over the ground instead of stepping. Use the live controls to explore a phrase and its transitions, then save the
-result you want.
+The prompt and the motion so far both shape what comes next. This session skips well; in the route
+recordings further down, the feet slide over the ground instead of stepping. Use the live controls
+to explore a phrase and its transitions, then save the result you want.
 
 ## Give ARDY a route
 
