@@ -49,23 +49,27 @@ operations:
     properties:
       code: |
         import afield.geometry.leaper.*
+        import kotlin.random.Random
 
-        // With a budget of node expansions the search stops early and reports the best path so far,
-        // here against the known optima, 35 and 47. Proving 35 on 8×8 takes about 340 million nodes.
-        val nodeBudget = 20_000_000L
+        // Past 7×7 a proof takes minutes (35 on 8×8 needs 337 million search steps), so this box uses
+        // ruin and recreate: cut a random tail off the best path so far and regrow it with a short
+        // search, 1000 times. It is not a proof, and where it ends depends on the seed, so each board
+        // gets four seeds; the best is drawn, against the known optimum, 35 and 47.
+        val seeds = 1..4
         val cell = 10.0
         var x = 0.0
-        val results = [8, 9].map { n -> LeaperBoard(n, n).longestUncrossedPath(nodeBudget = nodeBudget) }
-        val tiles = results.flatMap { r ->
-            val known = UNCROSSED_KNIGHT_PATH_MAXIMA[r.board.w - 1]
-            val tile = r.best!!.uncrossedTile(cell, x, 0.0) + leaperLabel("${r.board.w}×${r.board.w}  ${r.length} of $known", x, -4.0)
-            x += r.board.w * cell + 16.0
-            tile
+        val tiles = ArrayList<FLine>()
+        for (n in [8, 9]) {
+            val board = LeaperBoard(n, n)
+            val runs = seeds.map { s -> board.longUncrossedPath(random = Random(s)) }
+            val best = runs.maxBy { it.length }
+            val known = UNCROSSED_KNIGHT_PATH_MAXIMA[n - 1]
+            tiles += best.best!!.uncrossedTile(cell, x, 0.0)
+            tiles += leaperLabel("$n×$n  ${best.length} of $known", x, -4.0)
+            x += n * cell + 16.0
+            println("$n×$n: seeds $seeds reach ${runs.map { it.length }} moves (known optimum $known), ${runs.sumOf { it.millis }} ms in all")
         }
         lines(tiles, w = 700.0, h = 360.0, fitToSize = true)
-        results.forEach { r ->
-            println("${r.board}: ${r.length} moves after ${r.nodes} nodes (${r.millis} ms); known optimum ${UNCROSSED_KNIGHT_PATH_MAXIMA[r.board.w - 1]}")
-        }
 - create:
     box: ul_cycles
     name: 3 - longest uncrossed knight cycles
@@ -78,19 +82,25 @@ operations:
       code: |
         import afield.geometry.leaper.*
 
-        // Closed tours: the path must come back to its first square, and the closing move may not
-        // cross either. The known maxima are OEIS A157416.
-        val sizes = 4..7
+        // Closed paths: the path must come back to its first square, and the closing move may not
+        // cross anything either. Up to 7×7 the search is exhaustive; 8×8 to 10×10 use ruin and
+        // recreate. The known maxima are OEIS A157416.
+        val sizes = 4..10
         val cell = 10.0
         var x = 0.0
-        val results = sizes.map { n -> LeaperBoard(n, n).longestUncrossedPath(closed = true) }
+        val results = sizes.map { n -> LeaperBoard(n, n).bestUncrossedPath(closed = true, nodeBudget = 3_000_000) }
         val tiles = results.flatMap { r ->
             val tile = r.best!!.uncrossedTile(cell, x, 0.0) + leaperLabel("${r.board.w}×${r.board.w}  ${r.length}", x, -4.0)
             x += r.board.w * cell + 14.0
             tile
         }
-        lines(tiles, w = 900.0, h = 250.0, fitToSize = true)
-        println(results.joinToString("; ") { r -> "${r.board.w}×${r.board.w}: ${r.length} (A157416 ${UNCROSSED_KNIGHT_CYCLE_MAXIMA[r.board.w - 1]}, ${r.nodes} nodes)" })
+        lines(tiles, w = 900.0, h = 200.0, fitToSize = true)
+        markdown(
+            "| board | moves found | A157416 | proved |\n|---|---|---|---|\n" +
+                results.joinToString("\n") { r ->
+                    "| ${r.board.w}×${r.board.w} | ${r.length} | ${UNCROSSED_KNIGHT_CYCLE_MAXIMA[r.board.w - 1]} | ${if (r.exhaustive) "yes" else "no"} |"
+                },
+        )
 - create:
     box: ul_gallery
     name: 4 - five leapers on three surfaces
@@ -104,31 +114,34 @@ operations:
         import afield.geometry.leaper.*
 
         // Five leapers on three surfaces, n×n. A cylinder joins the left and right edges; a torus also
-        // joins top and bottom; a move may leave through a joined edge and come back through the other,
-        // and "uncrossed" is judged on that surface. Dashed blue edges are joined.
+        // joins top and bottom. A move may leave through a joined edge and come back through the
+        // opposite one, and "uncrossed" is judged on that surface. Dashed blue edges are joined.
         val n = 7
-        val nodeBudget = 2_000_000L
+        val nodeBudget = 1_000_000L
         val leapers = [Leaper.KNIGHT, Leaper.CAMEL, Leaper.ZEBRA, Leaper.GIRAFFE, Leaper.ANTELOPE]
         val topologies = BoardTopology.entries
         val cell = 10.0
         val step = n * cell + 16.0
         val out = ArrayList<FLine>()
-        val rows = ArrayList<String>()
-        topologies.forEachIndexed { c, t -> out += leaperLabel(t.name.lowercase(), 34.0 + c * step, -6.0, 6.0) }
-        leapers.forEachIndexed { r, leaper ->
-            out += leaperLabel(leaper.name, 0.0, r * step + n * cell / 2, 5.0)
-            val cellsText = topologies.mapIndexed { c, t ->
-                val result = LeaperBoard(n, n, leaper, t).longestUncrossedPath(nodeBudget = nodeBudget)
-                val x = 34.0 + c * step
+        val lengths = leapers.map { ArrayList<String>() }
+        leapers.forEachIndexed { c, leaper -> out += leaperLabel(leaper.name, 40.0 + c * step, -6.0, 6.0) }
+        topologies.forEachIndexed { r, t ->
+            out += leaperLabel(t.name.lowercase(), 0.0, r * step + n * cell / 2, 5.0)
+            leapers.forEachIndexed { c, leaper ->
+                val board = LeaperBoard(n, n, leaper, t)
+                val result = board.bestUncrossedPath(nodeBudget = nodeBudget, rounds = 300)
+                val x = 40.0 + c * step
                 val y = r * step
-                val path = result.best
-                if (path != null) out += path.uncrossedTile(cell, x, y) else out += LeaperBoard(n, n, leaper, t).boardLines(cell, x, y)
-                "${result.length}${if (result.exhaustive) "" else "?"}"
+                out += result.best?.uncrossedTile(cell, x, y) ?: board.boardLines(cell, x, y)
+                lengths[c] += "${result.length}${if (result.exhaustive) "" else "?"}"
             }
-            rows += "| ${leaper} | ${cellsText.joinToString(" | ")} |"
         }
-        lines(out, w = 640.0, h = 1000.0, fitToSize = true)
-        markdown("| $n×$n | rectangle | cylinder | torus |\n|---|---|---|---|\n" + rows.joinToString("\n") + "\n\n? = best found in $nodeBudget nodes, not proved")
+        lines(out, w = 900.0, h = 520.0, fitToSize = true)
+        markdown(
+            "| $n×$n | rectangle | cylinder | torus |\n|---|---|---|---|\n" +
+                leapers.indices.joinToString("\n") { k -> "| ${leapers[k]} | ${lengths[k].joinToString(" | ")} |" } +
+                "\n\n? = not proved: the best of a $nodeBudget-step search and 300 rounds of ruin and recreate",
+        )
 - create:
     box: ul_sweep
     name: 5 - how much of the board each leaper covers
@@ -145,7 +158,7 @@ operations:
         // squares its longest uncrossed path visits, for n = 4..9, on each surface. A hollow dot is a
         // best-found value (the search ran out of budget), a filled one is proved.
         val sizes = 4..9
-        val nodeBudget = 300_000L
+        val nodeBudget = 200_000L
         val leapers = [Leaper.KNIGHT, Leaper.CAMEL, Leaper.ZEBRA, Leaper.GIRAFFE, Leaper.ANTELOPE]
         val colours = [vec(0.98, 0.85, 0.3, 1.0), vec(0.45, 0.8, 1.0, 1.0), vec(0.95, 0.45, 0.45, 1.0), vec(0.6, 0.9, 0.5, 1.0), vec(0.8, 0.6, 1.0, 1.0)]
         val panelW = 150.0
@@ -166,7 +179,7 @@ operations:
             out += leaperLabel("n = ${sizes.first}", ox, panelH + 9.0, 4.0)
             out += leaperLabel("${sizes.last}", ox + panelW - 4.0, panelH + 9.0, 4.0)
             leapers.forEachIndexed { k, leaper ->
-                val results = sizes.map { n -> LeaperBoard(n, n, leaper, t).longestUncrossedPath(nodeBudget = nodeBudget) }
+                val results = sizes.map { n -> LeaperBoard(n, n, leaper, t).bestUncrossedPath(nodeBudget = nodeBudget, rounds = 100, nodesPerRound = 4_000) }
                 val pts = results.mapIndexed { i, r ->
                     val share = (if (r.best == null) 0.0 else r.length + 1.0) / (r.board.cells)
                     Triple(ox + i * panelW / (sizes.count() - 1), panelH * (1 - share), r)
@@ -189,7 +202,7 @@ operations:
         }
         leapers.forEachIndexed { k, leaper -> out += leaperLabel(leaper.name, k * 70.0, panelH + 24.0, 5.0, colours[k]) }
         lines(out, w = 900.0, h = 260.0, fitToSize = true)
-        markdown(table.toString() + "\nMoves in the longest path found; ? = not proved within $nodeBudget nodes.")
+        markdown(table.toString() + "\nMoves in the longest path found; ? = not proved (best of a $nodeBudget-step search and 100 rounds of ruin and recreate).")
 - create:
     box: ul_tours
     name: 6 - uncrossed paths into the workshop views
@@ -205,22 +218,22 @@ operations:
         import kotlin.math.*
         import kotlin.random.Random
 
-        // Longest uncrossed knight paths and cycles on 7×7, published under the knight-tour workshop's
+        // Longest uncrossed knight paths and the longest closed one on 7×7, published under the knight-tour workshop's
         // property names, so the workshop's line and arc views connected below draw them unchanged.
         val w = 7
         val cell = 10.0
         val board = LeaperBoard(w, w)
-        // The first four different results from seeds 1, 2, 3, ...: the search stops at the first path of `stopAt` moves.
-        fun longest(closed: Boolean) = generateSequence(1) { it + 1 }
-            .map { seed -> board.longestUncrossedPath(closed = closed, random = Random(seed), atLeast = 23, stopAt = 24).best!! }
-            .distinctBy { it.cells.toList() }
+        // Row 1: four 24-move paths (the proved maximum) of different shapes, not turns or reflections of
+        // one another: the first four distinct results from seeds 1, 2, 3, ..., each search stopping at its
+        // first 24-move path. Row 2: the 24-move closed path, with its first square repeated at the end
+        // so the closing move is drawn. Forty seeds find just one shape of it.
+        val paths = generateSequence(1) { it + 1 }
+            .map { seed -> board.longestUncrossedPath(random = Random(seed), atLeast = 23, stopAt = 24).best!! }
+            .distinctBy { it.shapeKey() }
             .take(4)
             .toList()
-        // Row 1: open paths of the proved maximum, 24 moves. Row 2: closed cycles of 24 moves, with the
-        // first square repeated at the end so the closing move is drawn.
-        val paths = longest(closed = false)
-        val cycles = longest(closed = true)
-        val rows = [paths.map { it.cells }, cycles.map { it.cells + it.cells[0] }]
+        val cycle = board.longestUncrossedPath(closed = true, random = Random(1), atLeast = 23, stopAt = 24).best!!
+        val rows = [paths.map { it.cells }, [cycle.cells + cycle.cells[0]]]
 
         // Sample the circumcircle A -> B -> C, choosing the sweep that passes through B.
         // Split at B so all three original points occur exactly in the sampled stroke.
@@ -277,11 +290,11 @@ operations:
         prop<Double>(knightCellSize) = cell
 
         val gap = 12.0
-        val tiles = [paths, cycles].flatMapIndexed { r, row ->
+        val tiles = [paths, [cycle]].flatMapIndexed { r, row ->
             row.flatMapIndexed { c, path -> path.uncrossedTile(cell, c * (w * cell + gap), r * (w * cell + gap)) }
         }
         lines(tiles, fitToSize = true)
-        println("Published ${paths.size} different 24-move paths and ${cycles.size} different 24-move cycles on 7×7.")
+        println("Published ${paths.size} differently shaped 24-move paths and the 24-move closed path on 7×7.")
         children.forEach { it.begin() }
       preamble: |-
         var Box.knightTourRows by Inheritance<List<List<IntArray>>>() /**/
@@ -647,7 +660,7 @@ operations:
         val sheet = ArrayList<FLine>()
         BoardTopology.entries.forEachIndexed { c, t ->
             val board = LeaperBoard(n, n, Leaper.KNIGHT, t)
-            val r = board.longestUncrossedPath(nodeBudget = 3_000_000)
+            val r = board.bestUncrossedPath(nodeBudget = 1_000_000)
             val x = c * (n * cell + 20.0)
             sheet += board.boardLines(cell, x, 0.0)
             sheet += r.best!!.pathLine(cell, x, 0.0)
@@ -693,8 +706,18 @@ operations:
             }
             rect(left, top, n * cell, n * cell, fill = "transparent")
             if (drawn == null) {
-                val pts = demoCells.map { c -> vec(left + (c % n + 0.5) * cell, top + (c / n + 0.5) * cell) }
-                stroke(pts.zipWithNext().flatMap { (a, b) -> (0 until 12).map { k -> a + (b - a) * (k / 12.0) } } + pts.last(), name = "demo path", stroke = "#e8590c")
+                // Twelve samples along each move, the way a pen stroke records points.
+                fun centreX(c: Int) = left + (c % n + 0.5) * cell
+                fun centreY(c: Int) = top + (c / n + 0.5) * cell
+                val samples = ArrayList<Vec2>()
+                for (i in 0 until demoCells.size - 1) for (k in 0 until 12) {
+                    val t = k / 12.0
+                    val from = demoCells[i]
+                    val to = demoCells[i + 1]
+                    samples += vec(centreX(from) + (centreX(to) - centreX(from)) * t, centreY(from) + (centreY(to) - centreY(from)) * t)
+                }
+                samples += vec(centreX(demoCells.last()), centreY(demoCells.last()))
+                stroke(samples, name = "demo path", stroke = "#e8590c")
             }
         }
         val mark = drawn ?: notation.named("demo path")!!

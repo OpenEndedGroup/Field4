@@ -162,7 +162,8 @@ fun plotterSvg(lines: List<FLine>, widthMm: Double = 210.0, heightMm: Double = 2
  * ([x], [y]) with y down, so it plots with one pass of the pen like the paths beside it.
  */
 fun leaperLabel(text: String, x: Double, y: Double, size: Double = 5.0, c: Vec4 = vec(0.85, 0.85, 0.85, 1.0)): FLine =
-    HersheyFont.load("futural").text(text, size, Vec3(x.toFloat(), y.toFloat(), 0f)).apply {
+    // The Hershey fonts have no ×, so "7×7" is drawn as "7x7".
+    HersheyFont.load("futural").text(text.replace('×', 'x'), size, Vec3(x.toFloat(), y.toFloat(), 0f)).apply {
         color = c
         thickness = 0.8
     }

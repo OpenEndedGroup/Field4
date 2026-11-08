@@ -54,11 +54,15 @@ class UncrossedLeapersTest {
 
     /** A wrapping move is drawn as two pieces that stay on the board. */
     @Test
-    fun wrappedMovesAreCutAtTheSeam() {
+    fun wrappedMovesAreCutAtTheGluedEdge() {
         val torus = LeaperBoard(6, 6, Leaper.KNIGHT, BoardTopology.TORUS)
         val pieces = torus.wrapSegment(5.0, 5.0, 6.0, 7.0)
         assertTrue(pieces.size >= 2, "a corner-wrapping move has at least two pieces: ${pieces.map { it.toList() }}")
         for (p in pieces) for (k in 0 until 4) assertTrue(p[k] in -0.5 - 1e-9..5.5 + 1e-9, "piece stays on the board: ${p.toList()}")
+        // Leaving through the left and top edges: the pieces outside must be shifted back too.
+        val backwards = torus.wrapSegment(0.0, 1.0, -1.0, -1.0)
+        assertTrue(backwards.size >= 2, "a move off the top-left corner is cut: ${backwards.map { it.toList() }}")
+        for (p in backwards) for (k in 0 until 4) assertTrue(p[k] in -0.5 - 1e-9..5.5 + 1e-9, "piece stays on the board: ${p.toList()}")
         assertEquals(1, LeaperBoard(6, 6).wrapSegment(0.0, 0.0, 1.0, 2.0).size, "rectangles never cut")
     }
 
@@ -124,5 +128,33 @@ class UncrossedLeapersTest {
                 assertFalse(crosses, "$board: moves ${ki + 1} and ${kj + 1} cross as drawn")
             }
         }
+    }
+
+    /**
+     * Ruin and recreate reaches the proved 8×8 optimum, 35, from seed 1 in a few seconds; the
+     * exhaustive proof of 35 takes 336,975,557 search steps and is not run here.
+     */
+    @Test
+    fun ruinAndRecreateReaches35OnEightByEight() {
+        val board = LeaperBoard(8, 8)
+        val r = board.longUncrossedPath(rounds = 1000, nodesPerRound = 4_000, random = kotlin.random.Random(1))
+        println(r)
+        assertEquals(UNCROSSED_KNIGHT_PATH_MAXIMA[7], r.length)
+        assertNull(board.check(r.best!!.cells, moveIds = r.best!!.moves))
+        assertFalse(r.exhaustive)
+    }
+
+    /** A path, its mirror image and its reverse share a shape key; a different path does not. */
+    @Test
+    fun shapeKeyIgnoresSymmetryAndDirection() {
+        val board = LeaperBoard(5, 5)
+        fun cell(x: Int, y: Int) = y * 5 + x
+        val path = board.checkPath(intArrayOf(cell(0, 0), cell(1, 2), cell(3, 3))).first!!
+        val mirrored = board.checkPath(intArrayOf(cell(4, 0), cell(3, 2), cell(1, 3))).first!!
+        val reversed = board.checkPath(intArrayOf(cell(3, 3), cell(1, 2), cell(0, 0))).first!!
+        val other = board.checkPath(intArrayOf(cell(0, 0), cell(1, 2), cell(2, 0))).first!!
+        assertEquals(path.shapeKey(), mirrored.shapeKey())
+        assertEquals(path.shapeKey(), reversed.shapeKey())
+        assertTrue(path.shapeKey() != other.shapeKey())
     }
 }

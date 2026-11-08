@@ -164,7 +164,7 @@ class LeaperBoard(val w: Int, val h: Int, val leaper: Leaper = Leaper.KNIGHT, va
             if (a == b) return
             val lo = min(a, b)
             val hi = max(a, b)
-            var k = Math.floorDiv((lo + 0.5).toLong().toInt() - 1, period) * period
+            var k = Math.floorDiv(kotlin.math.floor(lo + 0.5).toInt() - 1, period) * period
             while (k - 0.5 <= hi + period) {
                 val s = k - 0.5
                 if (s > lo && s < hi) ts += (s - a) / (b - a)
@@ -181,8 +181,9 @@ class LeaperBoard(val w: Int, val h: Int, val leaper: Leaper = Leaper.KNIGHT, va
             val by = y0 + (y1 - y0) * t[i + 1]
             val mx = (ax + bx) / 2
             val my = (ay + by) / 2
-            val sx = if (topology.wrapsX) Math.floorDiv((mx + 0.5).toLong(), w.toLong()) * w else 0L
-            val sy = if (topology.wrapsY) Math.floorDiv((my + 0.5).toLong(), h.toLong()) * h else 0L
+            // Which copy of the board the piece's midpoint lies in; floor, so pieces left of or above the board shift too.
+            val sx = if (topology.wrapsX) kotlin.math.floor((mx + 0.5) / w) * w else 0.0
+            val sy = if (topology.wrapsY) kotlin.math.floor((my + 0.5) / h) * h else 0.0
             doubleArrayOf(ax - sx, ay - sy, bx - sx, by - sy)
         }
     }
@@ -306,6 +307,32 @@ class UncrossedPath(val board: LeaperBoard, val cells: IntArray, val moves: IntA
     /** Total drawn length in cell units: length × √(a² + b²). */
     val drawnLength: Double get() = length * kotlin.math.sqrt((board.leaper.a * board.leaper.a + board.leaper.b * board.leaper.b).toDouble())
 
+    /**
+     * The same key for every path that is this one turned, reflected, (on a cylinder or torus)
+     * shifted round, or walked the other way, and for a cycle started at any of its squares: two
+     * paths have one shape exactly when their keys are equal.
+     */
+    fun shapeKey(): List<Int> {
+        var best: List<Int>? = null
+        for (sym in board.symmetries()) {
+            val mapped = cells.map { sym[it] }
+            val orders = listOf(mapped, mapped.reversed())
+            for (o in orders) {
+                val starts = if (closed) o.indices else 0..0
+                for (s in starts) {
+                    val candidate = List(o.size) { o[(it + s) % o.size] }
+                    if (best == null || compareLists(candidate, best) < 0) best = candidate
+                }
+            }
+        }
+        return best ?: emptyList()
+    }
+
+    private fun compareLists(a: List<Int>, b: List<Int>): Int {
+        for (i in 0 until minOf(a.size, b.size)) if (a[i] != b[i]) return a[i].compareTo(b[i])
+        return a.size.compareTo(b.size)
+    }
+
     override fun toString() = "${if (closed) "cycle" else "path"} of $length moves on $board: ${cellNames()}"
 }
 
@@ -347,6 +374,7 @@ fun LeaperBoard.longestUncrossedPath(
     random: Random? = null,
     atLeast: Int = 0,
     stopAt: Int = Int.MAX_VALUE,
+    from: UncrossedPath? = null,
 ): UncrossedSearchResult {
     val started = System.currentTimeMillis()
     val n = cells
@@ -451,6 +479,21 @@ fun LeaperBoard.longestUncrossedPath(
         }
     }
 
+    if (from != null) {
+        // Grow only paths that begin with `from`: lay its moves down, then search on from its end.
+        minCell = 0
+        from.cells.forEachIndexed { k, c ->
+            visited[c] = true
+            pathCells[k] = c
+        }
+        for (k in 0 until from.cells.size - 1) {
+            pathMoves[k] = from.moves[k]
+            use(from.moves[k])
+        }
+        extend(from.cells.size, from.cells[0])
+        val path = bestCells?.let { UncrossedPath(this, it, bestMoves!!, closed) }
+        return UncrossedSearchResult(this, path, !outOfBudget && !reachedTarget, nodes, System.currentTimeMillis() - started, closed)
+    }
     val starts = if (closed) (0 until n).toList().toIntArray() else startCells()
     val orderedStarts = if (random != null) starts.toList().shuffled(random).toIntArray() else starts
     for (s in orderedStarts) {
@@ -467,26 +510,69 @@ fun LeaperBoard.longestUncrossedPath(
 }
 
 /**
- * Many short randomised searches, keeping the longest: for boards where the exhaustive search
- * cannot finish. Each restart shuffles the start cells and move order and spends [nodesPerRestart]
- * expansions; with [random] fixed the result is reproducible. Never claims to be exhaustive.
+ * Ruin and recreate, for boards where the exhaustive search cannot finish. Start from a short
+ * bounded search, then for each of [rounds]: turn the best path round (or, for a cycle, start it
+ * at another square), cut a random tail off it, and let a search of [nodesPerRound] steps grow a
+ * new tail. A regrown path at least as long replaces the best, so the walk can drift across paths
+ * of equal length. Reproducible for a fixed [random]; never claims to be exhaustive.
  */
 fun LeaperBoard.longUncrossedPath(
     closed: Boolean = false,
-    restarts: Int = 200,
-    nodesPerRestart: Long = 200_000,
+    rounds: Int = 1000,
+    nodesPerRound: Long = 4_000,
     random: Random = Random(1),
 ): UncrossedSearchResult {
     val started = System.currentTimeMillis()
-    var best: UncrossedPath? = null
+    // A first path to work on: short randomised searches until one finds anything (or proves there is nothing).
     var nodes = 0L
-    repeat(restarts) {
-        val r = longestUncrossedPath(closed, nodesPerRestart, random, atLeast = best?.length ?: 0)
+    var start: UncrossedPath? = null
+    var round = 0
+    while (start == null && round < rounds) {
+        val first = longestUncrossedPath(closed, nodesPerRound, random)
+        nodes += first.nodes
+        round++
+        if (first.exhaustive) return UncrossedSearchResult(this, first.best, true, nodes, System.currentTimeMillis() - started, closed)
+        start = first.best
+    }
+    var best = start ?: return UncrossedSearchResult(this, null, false, nodes, System.currentTimeMillis() - started, closed)
+    repeat(rounds - round) {
+        val k = best.cells.size
+        val turned = if (closed) {
+            val r = random.nextInt(k)
+            val cells = IntArray(k) { best.cells[(it + r) % k] }
+            val moves = IntArray(k) { best.moves[(it + r) % k] }
+            UncrossedPath(this, cells, moves, true)
+        } else if (random.nextBoolean()) {
+            UncrossedPath(this, best.cells.reversedArray(), best.moves.reversedArray(), false)
+        } else best
+        val keep = 1 + random.nextInt(maxOf(1, k - 1))
+        val prefix = UncrossedPath(this, turned.cells.copyOf(keep), turned.moves.copyOf(keep - 1), false)
+        val r = longestUncrossedPath(closed, nodesPerRound, random, atLeast = best.length - 1, from = prefix)
         nodes += r.nodes
-        if (r.best != null && r.length > (best?.length ?: 0)) best = r.best
-        if (r.exhaustive && r.best == null && best != null) return UncrossedSearchResult(this, best, true, nodes, System.currentTimeMillis() - started, closed)
+        val found = r.best
+        if (found != null && found.length >= best.length) best = found
     }
     return UncrossedSearchResult(this, best, false, nodes, System.currentTimeMillis() - started, closed)
+}
+
+/**
+ * The longest path this board allows within a budget: first the exhaustive search with
+ * [nodeBudget] steps, which proves its answer when it finishes, and if it does not, [rounds] of
+ * [longUncrossedPath] from [random], keeping whichever path is longer. The result is
+ * [UncrossedSearchResult.exhaustive] only when the first search finished.
+ */
+fun LeaperBoard.bestUncrossedPath(
+    closed: Boolean = false,
+    nodeBudget: Long = 1_000_000,
+    rounds: Int = 1000,
+    nodesPerRound: Long = 4_000,
+    random: Random = Random(1),
+): UncrossedSearchResult {
+    val proof = longestUncrossedPath(closed, nodeBudget)
+    if (proof.exhaustive) return proof
+    val walk = longUncrossedPath(closed, rounds, nodesPerRound, random)
+    val best = if (walk.length > proof.length) walk.best else proof.best
+    return UncrossedSearchResult(this, best, false, proof.nodes + walk.nodes, proof.millis + walk.millis, closed)
 }
 
 /**

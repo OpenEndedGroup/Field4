@@ -17,22 +17,22 @@ operations:
         import kotlin.math.*
         import kotlin.random.Random
 
-        // Longest uncrossed knight paths and cycles on 7×7, published under the knight-tour workshop's
+        // Longest uncrossed knight paths and the longest closed one on 7×7, published under the knight-tour workshop's
         // property names, so the workshop's line and arc views connected below draw them unchanged.
         val w = 7
         val cell = 10.0
         val board = LeaperBoard(w, w)
-        // The first four different results from seeds 1, 2, 3, ...: the search stops at the first path of `stopAt` moves.
-        fun longest(closed: Boolean) = generateSequence(1) { it + 1 }
-            .map { seed -> board.longestUncrossedPath(closed = closed, random = Random(seed), atLeast = 23, stopAt = 24).best!! }
-            .distinctBy { it.cells.toList() }
+        // Row 1: four 24-move paths (the proved maximum) of different shapes, not turns or reflections of
+        // one another: the first four distinct results from seeds 1, 2, 3, ..., each search stopping at its
+        // first 24-move path. Row 2: the 24-move closed path, with its first square repeated at the end
+        // so the closing move is drawn. Forty seeds find just one shape of it.
+        val paths = generateSequence(1) { it + 1 }
+            .map { seed -> board.longestUncrossedPath(random = Random(seed), atLeast = 23, stopAt = 24).best!! }
+            .distinctBy { it.shapeKey() }
             .take(4)
             .toList()
-        // Row 1: open paths of the proved maximum, 24 moves. Row 2: closed cycles of 24 moves, with the
-        // first square repeated at the end so the closing move is drawn.
-        val paths = longest(closed = false)
-        val cycles = longest(closed = true)
-        val rows = [paths.map { it.cells }, cycles.map { it.cells + it.cells[0] }]
+        val cycle = board.longestUncrossedPath(closed = true, random = Random(1), atLeast = 23, stopAt = 24).best!!
+        val rows = [paths.map { it.cells }, [cycle.cells + cycle.cells[0]]]
 
         // Sample the circumcircle A -> B -> C, choosing the sweep that passes through B.
         // Split at B so all three original points occur exactly in the sampled stroke.
@@ -89,11 +89,11 @@ operations:
         prop<Double>(knightCellSize) = cell
 
         val gap = 12.0
-        val tiles = [paths, cycles].flatMapIndexed { r, row ->
+        val tiles = [paths, [cycle]].flatMapIndexed { r, row ->
             row.flatMapIndexed { c, path -> path.uncrossedTile(cell, c * (w * cell + gap), r * (w * cell + gap)) }
         }
         lines(tiles, fitToSize = true)
-        println("Published ${paths.size} different 24-move paths and ${cycles.size} different 24-move cycles on 7×7.")
+        println("Published ${paths.size} differently shaped 24-move paths and the 24-move closed path on 7×7.")
         children.forEach { it.begin() }
       preamble: |-
         var Box.knightTourRows by Inheritance<List<List<IntArray>>>() /**/
