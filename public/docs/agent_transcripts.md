@@ -706,7 +706,7 @@ renderer, including glyph outlines. No parser service, model download or GPU is 
 
 ### dependency_length
 
-[Dependency length in real texts](dependency_length.md): the Gettysburg Address, the first chapters
+[Dependency length in real texts](sentence_diagrams.md#dependency-length-in-real-texts): the Gettysburg Address, the first chapters
 of Pride and Prejudice and Moby-Dick, Shakespeare's first ten sonnets and Genesis 1, measured the way
 Futrell, Mahowald and Gibson measured 37 languages. One sentence is drawn beside random reorderings of
 its tree, the speech as small multiples with each sentence's ratio to chance, and every sentence's

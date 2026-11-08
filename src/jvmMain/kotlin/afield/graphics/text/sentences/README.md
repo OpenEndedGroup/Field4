@@ -161,8 +161,8 @@ The retained passages and their parses live in `src/jvmMain/resources/afield/sen
 a `.txt` passage and the `.json` that `tools/parse_sentence_texts.py` writes from it with the
 prepared parser. The JSON keeps words, tags and the UD tree only, about 1 kB a sentence.
 `tree.sentence(order)` turns any order back into a `Sentence` for `SentenceDiagram`
-(`d.scheme = Scheme.UD`); `tree.arcLines()` draws arcs alone for small multiples. The user page is
-`public/docs/dependency_length.md`.
+(`d.scheme = Scheme.UD`); `tree.arcLines()` draws arcs alone for small multiples. The user page is the
+"Dependency length in real texts" section of `public/docs/sentence_diagrams.md`.
 
 ## Seeing it
 
