@@ -211,7 +211,7 @@ The rule was trained in PyTorch, not in Kotlin: the article's method backpropaga
 96 steps of the whole grid, which Field's own learning code (`flowmatching.kt`, `afield.math.autodiff`)
 does not do.
 
-```text
+```diffstatic {data-lang=bash}
 uv run --project . --group pen python tools/nca/train_growing_nca.py --target flower \
     --steps 5000 --out flower.json
 ```
