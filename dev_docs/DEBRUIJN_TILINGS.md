@@ -34,7 +34,7 @@ dedupe for plotting.
 
 ## Three dimensions (`deBruijnTiling3D`)
 
-`src/jvmMain/kotlin/afield/geometry/path/DeBruijnTiling3D.kt`; page `public/docs/debruijn_tilings_3d.md`;
+`src/jvmMain/kotlin/afield/geometry/path/DeBruijnTiling3D.kt`; page `public/docs/debruijn_tilings.md` (Penrose tilings in three dimensions);
 demo `dev_docs/agents/transcripts/debruijn_tilings_3d_demo.yaml`; tests `DeBruijnTiling3DTest`.
 
 - References: Socolar & Steinhardt, PRB 32, 5547 (1985) introduced the "generalized dual method"

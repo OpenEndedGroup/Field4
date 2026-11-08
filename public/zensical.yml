@@ -265,8 +265,10 @@ nav:
       - Dependency Length in Real Texts: dependency_length.md
       - Euclid's Elements: euclid_elements.md
       - Voronoi, Contours & Clusters: spatial_geometry_examples.md
+      # One page for the multigrid: the flat tilings, the 3D tiling of rhombohedra, both printed
+      # through Manifold, and the flat tiling's graph spectrum struck as a drum (eigendrum.md links
+      # straight to that section, since Sound & Music has no entry for it).
       - Penrose and Other Quasiperiodic Tilings: debruijn_tilings.md
-      - Penrose Tilings in 3D: debruijn_tilings_3d.md
       # Combinatorial drawing: the longest knight paths whose moves never cross, on flat and
       # wrapped boards. Beside the tilings because both are about what a rule lets a drawing do.
       - Uncrossed Knight Paths: uncrossed_leapers.md
@@ -283,8 +285,6 @@ nav:
       - Subharmonic Synthesis: subharmonic_sound.md
       # Modal synthesis from geometry: the modes of a drawn drum head.
       - "Eigendrum: Hear the Shape of a Drum": eigendrum.md
-      # The same modal synthesis on a Penrose tiling's vertex graph: its confined states, struck.
-      - Hearing a Penrose Tiling: penrose_spectra.md
       - Loris Partial Tracks and Resynthesis: loris.md
       - "Audio Curves: Sound as a Few Controls": audio_curves.md
       - Sonic Pi: sonic_pi.md

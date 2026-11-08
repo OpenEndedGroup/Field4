@@ -3,7 +3,7 @@
 Code: `src/jvmMain/kotlin/afield/geometry/path/TilingSpectrum.kt` (TilingGraph, GraphSpectrum,
 ZeroModeFit), `src/jvmMain/kotlin/afield/audio/modal/GraphModes.kt` (ModeSet, GraphModes,
 springModes), `PenroseSpectraDocs.kt` (the page's three WAV scenes); test
-`src/jvmTest/kotlin/afield/geometry/path/TilingSpectrumTest.kt`; page `public/docs/penrose_spectra.md`;
+`src/jvmTest/kotlin/afield/geometry/path/TilingSpectrumTest.kt`; page `public/docs/debruijn_tilings.md` (The tiling as a graph);
 starting point `dev_docs/agents/transcripts/penrose_spectra.yaml`.
 
 ## The claim and where it comes from
