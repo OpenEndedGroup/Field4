@@ -57,8 +57,9 @@ class GrowingNcaTest {
         val src = GrowingNca.pretrained("flower").computeShader()
         val yaml = File("dev_docs/agents/transcripts/growing_nca.yaml")
         if (!yaml.exists()) return
-        val indented = src.lines().joinToString("\n") { if (it.isEmpty()) it else "          $it" }.trimEnd()
-        if (indented !in yaml.readText()) {
+        // formatBoxCode reflows the GLSL, so compare with all whitespace removed
+        fun squeeze(s: String) = s.filterNot { it.isWhitespace() }
+        if (squeeze(src) !in squeeze(yaml.readText())) {
             File("build").mkdirs()
             File("build/growing_nca_compute.glsl").writeText(src)
             error("growing_nca.yaml's compute shader differs from GrowingNca.computeShader(); see build/growing_nca_compute.glsl")

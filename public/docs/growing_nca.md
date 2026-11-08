@@ -31,17 +31,17 @@ val shots = mutableListOf<IntArray>()
 
 fun snap(label: String) {
     shots += nca.argb(scale)
-    println("$label: step ${nca.steps}, error ${"%.4f".format(nca.loss(target))}")
+    println("$label: step ${nca.steps}, error ${nca.loss(target).f4}")
 }
 
-for (s in listOf(30, 80, 300)) {
+for (s in [30, 80, 300]) {
     nca.step(s - nca.steps)
     snap("growing")
 }
 // erase a disc 24 cells across through the top of the flower
 nca.damage(32.0, 26.0, 12.0)
 snap("damaged")
-for (s in listOf(340, 400, 600)) {
+for (s in [340, 400, 600]) {
     nca.step(s - nca.steps)
     snap("regrowing")
 }
@@ -50,7 +50,12 @@ for (s in listOf(340, 400, 600)) {
 val gap = 4
 val stripW = shots.size * (w + gap) - gap
 val strip = IntArray(stripW * w) { 0xffdddddd.toInt() }
-for ((k, shot) in shots.withIndex()) for (y in 0 until w) System.arraycopy(shot, y * w, strip, y * stripW + k * (w + gap), w)
+for ((k, shot) in shots.withIndex()) {
+    for (y in 0 until w) {
+        val at = y * stripW + k * (w + gap)
+        System.arraycopy(shot, y * w, strip, at, w)
+    }
+}
 display("main", PngEncoder.encode(strip, stripW, w))
 ```
 
