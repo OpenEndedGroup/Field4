@@ -305,3 +305,12 @@ The companion book is in `templates/text_one/guides/`: start with `00-start-here
 read typography, measurements, shapes/anchors, motion/scores, and recipes/maintenance.
 Copy these Markdown files to the document's `guides/` alongside this README as
 `01-reading-space.md`; Field discovers them through its Guides catalogue.
+
+## Slow word blur
+
+Use `blurIn(word, at = 0.0, seconds = 8.0, radius = .9f)` and
+`blurOut(word, at = 18.0, seconds = 9.0, radius = 1.2f)` in a score.
+Radii are Gaussian standard deviations in ems. For a live slider, reserve
+`word.blurCapacity` before Drawing, then change `word.blur`. Opacity stays independent.
+The sixth example, **Words becoming weather**, demonstrates it;
+[the word-blur guide](guides/07-word-blur.md) covers reservations, quality and cost.

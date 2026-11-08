@@ -125,6 +125,8 @@ class DiagramCompositor(
     /** Last recorded frame and command buffer for each of the five inputs and final composite. */
     val stageFrames = LongArray(6) { -1L }
     val stageCommands = LongArray(6)
+    /** Called outside any render pass, before the current scene and its blur cascade. */
+    var beforeScene: Target? = null
     private var closed = false
 
     init {
@@ -154,6 +156,7 @@ class DiagramCompositor(
             grade.bind("supersampling") { supersampling }
         }
         module.current.before["reading-scene-and-blur"] = Target { command, index ->
+            beforeScene?.render(command, index)
             for ((i, target) in stages.withIndex()) {
                 target.render(command, index)
                 stageFrames[i] = renderer.frameCounter
@@ -179,6 +182,7 @@ class DiagramCompositor(
     override fun close() {
         if (closed) return
         closed = true
+        beforeScene = null
         module.current.before.remove("reading-scene-and-blur")
         module.current.after.remove("reading-composite-recorded")
         (blurModules + module).forEach { it.current.cleanup() }

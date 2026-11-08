@@ -32,6 +32,12 @@ internal constructor(id: String, owner: Any, val text: String, val at: DiagramAn
     var bold = false
     var italic = false
     var weight: Double? = null
+    /** Gaussian standard deviation in ems. Zero draws the original analytic Slug outline. */
+    var blur = 0f
+        set(value) { require(value.isFinite() && value >= 0f); field = value }
+    /** Reserve a larger animated range before constructing Drawing; zero infers it from the score. */
+    var blurCapacity = 0f
+        set(value) { require(value.isFinite() && value >= 0f); field = value }
     var tracking = 0.0 // font units between shaped glyphs
     internal val styles = ArrayList<Pair<DiagramTextSpan, DiagramTypography>>()
     var scale = 1f

@@ -32,10 +32,14 @@ data class ReadingLabel(
     val scale: Float,
     val color: Vector4f = Vector4f(1f),
     val rotation: Float = 0f,
+    val blur: Float = 0f, // Gaussian standard deviation in ems
+
 )
 
 /** A small CPU scene can share the same per-eye stroke, marker and analytic text renderer. */
 interface ReadingScene {
+    /** Maximum local blur per prepared shape, captured when the renderer is constructed. */
+    val blurRequests: Map<ReadingText, Float> get() = emptyMap()
     val shapes: Map<String, ReadingText>
     val geometry: DiagramGeometry
     val labels: List<ReadingLabel>

@@ -182,7 +182,7 @@ displayOpen("diagram")
 
 ## From geometry to a shallow-3D reading space
 
-[Open text_one](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn) for five
+[Open text_one](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn) for six
 related reading spaces: **Marked breath**, **Constituency canopy**, **Dependency undertow**
 **Sentence furniture**, and **A room for words**. Sentence furniture crossfades its structural drawing into a complete reading
 line; the typography playground combines inline styles, multiple faces and text-relative geometry. Select an example in **Scores / example selector**, then use **Restart entrances**,
@@ -339,3 +339,18 @@ The current typography layout is left-to-right and requires glyphs in the chosen
 Text outlines remain planar; the surrounding graph and its anchors can move in three dimensions.
 Models, inference and headset support are optional; the four retained-parse drawing demos
 remain available without them.
+
+## Words becoming weather
+
+Text can emerge from a broad Gaussian cloud and slowly dissolve again, independently
+for each text item. `blurIn(word, at = 0.0, seconds = 8.0, radius = .9f)` and
+`blurOut(word, at = 18.0, seconds = 9.0, radius = 1.2f)` add seekable score tracks;
+opacity remains a separate control. Radii are in ems. The sixth playground demonstrates
+this alongside the five diagram and typography examples.
+
+The renderer caches padded Slug coverage and Gaussian levels in text coordinates.
+Current eye poses draw those masks each frame, so the effect does not retain old headset
+images. Only text with a blur reservation allocates this cache. For live radius controls,
+set `blurCapacity` before preparing Drawing, then change `blur`; re-create Drawing after
+increasing its reserved range. Each default pair of cached text shapes uses approximately
+22.3 MiB of mask storage.
