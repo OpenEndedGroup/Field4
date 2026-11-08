@@ -131,18 +131,10 @@ fun stepMesh(parity: Int): ComputeMesh {
     m.nw = { weights }
     m.size = { n }
     m.parity = { parity }
-    // a fresh random update mask every step
-    m.seed = {
-        step++
-        step
-    }
-    m.brush = {
-        // with no mouse about, cut a disc out of the flower every 600 steps (5 s)
-        if (autoCut && parity == 0 && step % 600 == 401) brush = vec(n / 2 + (Math.random() - 0.5) * 16, n / 2 - 4 + (Math.random() - 0.5) * 16, 9.0, 1.0)
-        val b = brush
-        if (parity == 1) brush = vec(0, 0, 0, 0)
-        b
-    }
+    // `seed` gives a fresh random update mask every step. The bindings only read: the
+    // compute tasks below advance `step` and set and clear `brush`.
+    m.seed = { step }
+    m.brush = { brush }
     m.x = (n + 7) / 8
     m.y = (n + 7) / 8
     m.z = 1
@@ -158,12 +150,29 @@ val started = System.nanoTime()
 var due = false
 val forward = stepMesh(0)
 val back = stepMesh(1)
-sim += "forward" to computeTask { inside, cmd, push ->
-    due = step < (System.nanoTime() - started) / 1e9 * stepsPerSecond
-    if (due) forward.compute(inside, cmd, push)
-}
+sim +=
+    "forward" to
+        computeTask { inside, cmd, push ->
+            due = step < (System.nanoTime() - started) / 1e9 * stepsPerSecond
+            if (due) {
+                step++
+                // with no mouse about, cut a disc out of the flower every 600 steps (5 s)
+                if (autoCut && step % 600 == 401)
+                    brush = vec(n / 2 + (Math.random() - 0.5) * 16, n / 2 - 4 + (Math.random() - 0.5) * 16, 9.0, 1.0)
+                forward.compute(inside, cmd, push)
+            }
+        }
 sim += "between" to computeBarrier()
-sim += "back" to computeTask { inside, cmd, push -> if (due) back.compute(inside, cmd, push) }
+sim +=
+    "back" to
+        computeTask { inside, cmd, push ->
+            if (due) {
+                step++
+                back.compute(inside, cmd, push)
+                // the cut (or the mouse's disc) has been applied to both steps
+                brush = vec(0, 0, 0, 0)
+            }
+        }
 sim += "publish" to computeBarrier(graphics = true)
 renderer += "nca-sim" to sim
 
@@ -195,15 +204,6 @@ The compute shader is in the box's `compute` property. Open it with the property
 the network that `MlpWeights.glsl` wrote, `ncaNet`, and the perception loop around it.
 `stepsPerSecond` keeps the speed watchable, because the window can draw thousands of frames a
 second.
-
-??? aside "The push constant that ran twice"
-    The first version used one `ComputeMesh` whose `parity` push constant flipped every frame, and
-    the grid froze one step from the seed. A counting shader showed why: every push binding was
-    invoked twice per dispatch, once by the fan-out check in `FanOutDispatch.kt` and once by the
-    write, and only the second value reached the GPU. A binding that advances a counter therefore
-    advanced it twice and pushed the same parity every frame. Bindings are now evaluated once per
-    dispatch (`PushBindingsOncePerDispatchTest`). The two meshes stay because they give two steps a
-    frame with a barrier between them.
 
 ## Training a rule
 

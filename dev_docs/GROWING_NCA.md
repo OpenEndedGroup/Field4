@@ -26,17 +26,17 @@ User page: `public/docs/growing_nca.md`. Source: Mordvintsev et al., Distill 202
 - **Behaviour after a cut.** ~300 steps after the strip's cut, an edge cell grows into a bud and then a
   second complete flower (docs strip, step 600). Training horizon is 64–96 steps, so nothing held the
   rule beyond that. Marc (2026-11-08): this is fine; describe it neutrally, don't train it away.
-- **Push bindings ran twice per dispatch (fixed 2026-11-08).** Symptom: one `ComputeMesh` with
-  `parity = { step % 2 }` and `seed = { step++ }` froze one step from the seed; readback showed grid 1
-  never written. Cause: `forEachFanOutDispatch` (`FanOutDispatch.kt`) invoked every binding to look for
-  `ParallelGeometryRef`s, then `Structure.writeToBuffer` invoked them again for the write. Side effects
-  ran twice (step += 2 per dispatch) and only the second evaluation was pushed, so parity was constant.
-  Minimal repro: a compute shader `pc.counts.c[pc.parity] += 1u` with `parity = { val p = step % 2;
-  step++; p }`. Before the fix, 120 frames gave 244 evaluations and GPU counts `0 122`; with
-  `(step / 2) % 2` they were `61 61`. After it, 122 evaluations and `61 61`. Fix: `withEvaluatedPush`
-  evaluates once and sets `Structure.dispatchSnapshot`, which the write reuses. Unit test
-  `PushBindingsOncePerDispatchTest` (negative control: fails at the step count with the snapshot
-  ignored). Applies to `Mesh`, `MeshMesh` and `ComputeMesh`, which all go through `forEachFanOutDispatch`.
+- **Push bindings must only read state.** Symptom: one `ComputeMesh` with `parity = { step % 2 }`
+  and `seed = { step++ }` froze one step from the seed; readback showed grid 1 never written. A
+  binding runs each time its block is written, which can be more than once per dispatch:
+  `forEachFanOutDispatch` (`FanOutDispatch.kt`) reads every binding to look for
+  `ParallelGeometryRef`s before `Structure.writeToBuffer` reads them again for the write. So `step++`
+  inside a binding advanced by 2 per dispatch and parity never changed. Repro: a compute shader
+  `pc.counts.c[pc.parity] += 1u` with `parity = { val p = step % 2; step++; p }` gave 244 evaluations
+  and GPU counts `0 122` over 120 frames. The box now advances `step` and sets/clears `brush` in its
+  `computeTask` lambdas and binds pure reads (`seed = { step }`), as `ShaderBmlSystem.render` does;
+  `Structure.bind`'s KDoc states the rule. An engine change that cached binding results per dispatch
+  was tried on this branch (84654ce6e) and reverted: it guaranteed something the API never promised.
   The demo keeps two fixed-parity meshes with a barrier between them, for two steps a frame.
 - `ComputeMesh()` with no args inside a local `fun` picks the primary constructor and leaves
   `inside` uninitialised (`lateinit property inside`); pass `ComputeMesh(renderer, module)`.
