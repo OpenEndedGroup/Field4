@@ -7,7 +7,9 @@
  */
 package afield.geometry.leaper
 
+import afield.ai.learning.pen.HersheyFont
 import afield.geometry.path.FLine
+import afield.math.linalg.Vec3
 import afield.graphics.render.circle
 import afield.graphics.render.color
 import afield.graphics.render.filled
@@ -39,8 +41,8 @@ fun LeaperBoard.boardLines(
         color = c
     }
     val out = mutableListOf(squares(0, light), squares(1, dark))
-    // A wrapping edge is drawn as a dashed seam, so a cylinder or torus reads differently from a rectangle.
-    fun seam(x0: Double, y0: Double, x1: Double, y1: Double) = FLine().apply {
+    // A wrapping edge is drawn dashed, so a cylinder or torus reads differently from a rectangle.
+    fun glued(x0: Double, y0: Double, x1: Double, y1: Double) = FLine().apply {
         val n = 2 * (hypot(x1 - x0, y1 - y0) / cell).roundToInt().coerceAtLeast(1)
         for (k in 0 until n step 2) {
             moveTo(x0 + (x1 - x0) * (k + 0.25) / n, y0 + (y1 - y0) * (k + 0.25) / n)
@@ -50,12 +52,12 @@ fun LeaperBoard.boardLines(
         thickness = 1.0
     }
     if (topology.wrapsX) {
-        out += seam(x, y, x, y + h * cell)
-        out += seam(x + w * cell, y, x + w * cell, y + h * cell)
+        out += glued(x, y, x, y + h * cell)
+        out += glued(x + w * cell, y, x + w * cell, y + h * cell)
     }
     if (topology.wrapsY) {
-        out += seam(x, y, x + w * cell, y)
-        out += seam(x, y + h * cell, x + w * cell, y + h * cell)
+        out += glued(x, y, x + w * cell, y)
+        out += glued(x, y + h * cell, x + w * cell, y + h * cell)
     }
     return out
 }
@@ -87,7 +89,7 @@ fun UncrossedPath.points(cell: Double = 10.0, x: Double = 0.0, y: Double = 0.0):
     cells.map { c -> board.xy(c).let { (i, j) -> (x + (i + 0.5) * cell) to (y + (j + 0.5) * cell) } }
 
 /**
- * A board with [path] drawn on it: squares, seams, the path in gold, a white dot at the start and a
+ * A board with [path] drawn on it: squares, glued edges, the path in gold, a white dot at the start and a
  * cyan one at the end (cycles get one white dot). Offsets as for [pathLine].
  */
 fun UncrossedPath.uncrossedTile(cell: Double = 10.0, x: Double = 0.0, y: Double = 0.0): List<FLine> {
@@ -134,11 +136,11 @@ fun plotterSvg(lines: List<FLine>, widthMm: Double = 210.0, heightMm: Double = 2
     for (f in kept) {
         val d = StringBuilder()
         for (n in f.nodes) {
-            val p = n.storage[0]
             when (n) {
-                is FLine.MoveTo -> d.append("M${fx(p.x)} ${fy(p.y)}")
-                is FLine.LineTo -> d.append("L${fx(p.x)} ${fy(p.y)}")
-                is FLine.CubicTo -> d.append("C${fx(n.c1.x)} ${fy(n.c1.y)} ${fx(n.c2.x)} ${fy(n.c2.y)} ${fx(p.x)} ${fy(p.y)}")
+                is FLine.MoveTo -> d.append("M${fx(n.to.x)} ${fy(n.to.y)}")
+                is FLine.LineTo -> d.append("L${fx(n.to.x)} ${fy(n.to.y)}")
+                is FLine.CubicTo -> d.append("C${fx(n.c1.x)} ${fy(n.c1.y)} ${fx(n.c2.x)} ${fy(n.c2.y)} ${fx(n.to.x)} ${fy(n.to.y)}")
+                is FLine.Close -> d.append("Z")
             }
         }
         if (d.isEmpty()) continue
@@ -154,3 +156,13 @@ fun plotterSvg(lines: List<FLine>, widthMm: Double = 210.0, heightMm: Double = 2
     sb.append("</svg>\n")
     return sb.toString()
 }
+
+/**
+ * [text] in the single-stroke Hershey "futural" font, capitals [size] units tall, starting at
+ * ([x], [y]) with y down, so it plots with one pass of the pen like the paths beside it.
+ */
+fun leaperLabel(text: String, x: Double, y: Double, size: Double = 5.0, c: Vec4 = vec(0.85, 0.85, 0.85, 1.0)): FLine =
+    HersheyFont.load("futural").text(text, size, Vec3(x.toFloat(), y.toFloat(), 0f)).apply {
+        color = c
+        thickness = 0.8
+    }

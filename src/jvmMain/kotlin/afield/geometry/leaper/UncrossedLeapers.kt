@@ -157,7 +157,7 @@ class LeaperBoard(val w: Int, val h: Int, val leaper: Leaper = Leaper.KNIGHT, va
         wrapSegment(sx.toDouble(), sy.toDouble(), (sx + dx).toDouble(), (sy + dy).toDouble())
     }
 
-    /** Cut the cover segment (x0, y0)→(x1, y1) at the board's seams and fold each piece back onto the board. */
+    /** Cut the unwrapped segment (x0, y0)→(x1, y1) at the board's glued edges and fold each piece back onto the board. */
     fun wrapSegment(x0: Double, y0: Double, x1: Double, y1: Double): List<DoubleArray> {
         val ts = sortedSetOf(0.0, 1.0)
         fun cuts(a: Double, b: Double, period: Int) {
@@ -338,13 +338,15 @@ class UncrossedSearchResult(
  * can end at only one of them. With [nodeBudget] expansions spent before the search space is, the
  * result is the best path found and [UncrossedSearchResult.exhaustive] is false. [random] shuffles
  * move order (null keeps it deterministic); [atLeast] seeds the bound, so a search with
- * `atLeast = k` only looks for paths longer than k.
+ * `atLeast = k` only looks for paths longer than k. With [stopAt] the search ends at the first path
+ * of that many moves, and is reported as exhaustive only if it ended by running out of branches.
  */
 fun LeaperBoard.longestUncrossedPath(
     closed: Boolean = false,
     nodeBudget: Long = 2_000_000_000L,
     random: Random? = null,
     atLeast: Int = 0,
+    stopAt: Int = Int.MAX_VALUE,
 ): UncrossedSearchResult {
     val started = System.currentTimeMillis()
     val n = cells
@@ -357,6 +359,7 @@ fun LeaperBoard.longestUncrossedPath(
     var bestMoves: IntArray? = null
     var nodes = 0L
     var outOfBudget = false
+    var reachedTarget = false
     val queue = IntArray(n)
     val mark = IntArray(n)
     var stamp = 0
@@ -407,6 +410,10 @@ fun LeaperBoard.longestUncrossedPath(
             bestLength = total
             bestCells = pathCells.copyOf(len)
             bestMoves = (if (closingMove >= 0) pathMoves.copyOf(len - 1) + closingMove else pathMoves.copyOf(len - 1))
+            if (total >= stopAt) {
+                reachedTarget = true
+                outOfBudget = true
+            }
         }
     }
 
@@ -456,7 +463,7 @@ fun LeaperBoard.longestUncrossedPath(
         if (outOfBudget) break
     }
     val path = bestCells?.let { UncrossedPath(this, it, bestMoves!!, closed) }
-    return UncrossedSearchResult(this, path, !outOfBudget, nodes, System.currentTimeMillis() - started, closed)
+    return UncrossedSearchResult(this, path, !outOfBudget && !reachedTarget, nodes, System.currentTimeMillis() - started, closed)
 }
 
 /**

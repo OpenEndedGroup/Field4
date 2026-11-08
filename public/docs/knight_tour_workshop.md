@@ -37,6 +37,13 @@ Each layer is drawn over the same board. The default rotation list is `[PI/20, 0
 
 ![Three overlaid quadratic drawings per tour](assets/knight_tour_workshop/layers.png)
 
+## Uncrossed paths
+
+[Uncrossed knight paths](uncrossed_leapers.md) turns the drawing into the constraint: the longest
+knight paths whose straight moves never cross, on flat and wrapped boards and for other leapers.
+Its starting point publishes the longest 7×7 paths under this workshop's property names, so the line
+experiments and perpendicular arcs above draw them unchanged.
+
 ## The conversation that made it
 
 [Download/read the saved chat](assets/knight_tour_workshop/chat.txt), with its

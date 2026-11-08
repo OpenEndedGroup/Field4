@@ -35,7 +35,7 @@ class UncrossedLeapersTest {
         }
     }
 
-    /** Two knight moves that cross only across a cylinder's seam conflict there and not on the plain board. */
+    /** Two knight moves that cross only where a cylinder's edges are glued conflict there and not on the plain board. */
     @Test
     fun crossingIsMeasuredOnTheCylinder() {
         val cylinder = LeaperBoard(5, 5, Leaper.KNIGHT, BoardTopology.CYLINDER)
@@ -43,7 +43,7 @@ class UncrossedLeapersTest {
         // (4,0)→(0,2) leaves through the right edge; (0,0)→(4,2) through the left. They cross at x = 4.5.
         val a = cylinder.moves.first { it.from == cell(0, 2) && it.to == cell(4, 0) || it.from == cell(4, 0) && it.to == cell(0, 2) }
         val b = cylinder.moves.first { it.from == cell(0, 0) && it.to == cell(4, 2) || it.from == cell(4, 2) && it.to == cell(0, 0) }
-        assertTrue(cylinder.movesConflict(a, b), "seam-crossing moves conflict on the cylinder")
+        assertTrue(cylinder.movesConflict(a, b), "moves crossing at the glued edge conflict on the cylinder")
         assertTrue(b.id in cylinder.conflicts[a.id])
         // The same cells as a path: 0,2 → 4,0 is legal alone; adding the crossing move is not.
         assertNull(cylinder.check(intArrayOf(cell(0, 2), cell(4, 0))))
@@ -100,5 +100,29 @@ class UncrossedLeapersTest {
         val cells = board.readDrawnPath(xs.toDoubleArray(), ys.toDoubleArray(), cell = 10.0)
         assertEquals(centres.map { (x, y) -> y * 5 + x }, cells.toList())
         assertNull(board.check(cells))
+    }
+
+    /**
+     * An independent check of the wrapped crossing test: draw each result on the flat board as
+     * [LeaperBoard.drawnPieces] cuts it, and look for a proper crossing between any two pieces of
+     * different moves with floating-point geometry.
+     */
+    @Test
+    fun wrappedResultsHaveNoDrawnCrossings() {
+        fun orient(ax: Double, ay: Double, bx: Double, by: Double, cx: Double, cy: Double) =
+            Math.signum((bx - ax) * (cy - ay) - (by - ay) * (cx - ax))
+        for (topology in BoardTopology.entries) for (leaper in listOf(Leaper.KNIGHT, Leaper.ZEBRA)) for (n in 4..6) {
+            val board = LeaperBoard(n, n, leaper, topology)
+            val path = board.longestUncrossedPath(nodeBudget = 2_000_000).best ?: continue
+            val pieces = board.drawnPieces(path).flatMapIndexed { k, list -> list.map { k to it } }
+            for (i in pieces.indices) for (j in i + 1 until pieces.size) {
+                val (ki, s) = pieces[i]
+                val (kj, t) = pieces[j]
+                if (ki == kj) continue
+                val crosses = orient(s[0], s[1], s[2], s[3], t[0], t[1]) * orient(s[0], s[1], s[2], s[3], t[2], t[3]) < 0 &&
+                    orient(t[0], t[1], t[2], t[3], s[0], s[1]) * orient(t[0], t[1], t[2], t[3], s[2], s[3]) < 0
+                assertFalse(crosses, "$board: moves ${ki + 1} and ${kj + 1} cross as drawn")
+            }
+        }
     }
 }

@@ -217,6 +217,10 @@ object DemoTranscriptExecSmokeTest {
         "keyframe_code_blend",
         "linalg_thumbnails_demo",
         "knight_tour_workshop", // CPU FLine drawings; source shares results with four derived views.
+        // uncrossed_leapers.md's starting point: uncrossed leaper paths (afield.geometry.leaper) drawn as
+        // FLines, two knight-tour workshop views fed by them, a plotter SVG, and a box that reads the
+        // drawing layer through `notation` (it draws its own demonstration stroke). CPU only.
+        "uncrossed_leapers",
         "hello_display",
         "hello_display_capture",
         "ai4_iframe_hello",
