@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-223 source file(s), 703 public symbol(s), 312 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+224 source file(s), 709 public symbol(s), 313 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1914,6 +1914,24 @@ Runs [`ShaderPhysarumSystem`](alife.md#alife-physarum-gpu-kt-shaderphysarumsyste
 | Declaration | Summary |
 | --- | --- |
 | <a id="physarumgpusmoke-kt--physarumgpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/PhysarumGpuSmoke/#L50) |  |
+
+## PhysarumNetworkGpuSmoke.kt { #physarumnetworkgpusmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/PhysarumNetworkGpuSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/)
+
+### PhysarumNetworkGpuSmoke { #physarumnetworkgpusmoke-kt-physarumnetworkgpusmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PhysarumNetworkGpuSmoke</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L54)
+
+Runs [`ShaderPhysarumSystem`](alife.md#alife-physarum-gpu-kt-shaderphysarumsystem) with food sources ([`ShaderPhysarumSettings.food`](alife.md#alife-physarum-gpu-kt--shaderphysarumsettings--food)) on a real renderer, reads each trail back and measures the network it grew with `TransportNetwork.extract` and [`TransportNetwork.score`](alife.md#alife-networks-kt--transportnetwork--score): Tero's cost, stretch and fault tolerance, for the numbers in `alife_examples.md` §7 "Designing a network".
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--side"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SIDE</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L61) |  |
+| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--base-agents"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">BASE&#95;AGENTS</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L62) |  |
+| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--average-reads"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">AVERAGE&#95;READS</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L63) |  |
+| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--average-spacing"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">AVERAGE&#95;SPACING</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L64) |  |
+| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L67) |  |
 
 ## PingPongRestoreSmoke.kt { #pingpongrestoresmoke-kt }
 

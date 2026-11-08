@@ -1,9 +1,9 @@
 # Templates
 
-A template is a box, or a group of boxes, saved under a name so you can drop copies of it into any
-document. Select the boxes and run **Save selection as template** from the command palette; later,
-press ++cmd+t++ (**Insert template**) in any document and pick the name. Each insertion is a fresh,
-independent copy, placed where your mouse is.
+Make something in a box that you'd like to use again? Save it as a template, then drop a copy into
+any document. Select one box or a group and choose **Save selection as template** from
+the command palette. Later, press ++cmd+t++ (**Insert template**) and pick its name; Field places
+a fresh copy where your mouse is.
 
 Templates are for pieces of a document. For a whole document to start from, use a
 [starting point on the Welcome screen](installation.md#personal-templates); for reusable code,
@@ -34,8 +34,9 @@ Field writes the boxes to `templates/greeter.edn` inside your workspace and conf
 file name, so it cannot contain `/`, `\` or the characters Windows forbids in file names.
 Saving under a name that already exists replaces that template.
 
-The template is a snapshot. Editing the boxes you saved from changes nothing in the template, and
-saving again under the same name changes nothing in the copies already made.
+The template is a snapshot of the boxes when you save them. You can keep editing the originals;
+the template stays as it was. Save over it and future insertions use the new version, while copies
+you've already made stay as they are.
 
 ## Insert a template
 

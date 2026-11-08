@@ -1351,7 +1351,7 @@ loop. With fewer agents the network breaks before it thins to a tree.
 ### Drawing the food
 
 On the GPU the same food is `ShaderPhysarumSettings.food`, a list of points read every frame. That
-makes the drawing layer a map editor. Draw a frame named "network" (Alt+D), put dots in it, and the
+makes the drawing layer a map editor. Draw a frame named "network" (++alt+d++), put dots in it, and the
 box below reads them through [`notation`](drawing_and_notation.md) as food sources in trail pixels.
 `notation.onChange` hands every edit back to the agents, so dragging a dot moves the food while the
 network grows:

@@ -2577,7 +2577,9 @@ Walkthrough: [Loris partial tracks and resynthesis](loris.md).
 A film voice analysed into a rolling curve of its recent spectra (mel bands, earth mover's distances,
 MDS, alignment) and drawn as FLines in the Three.js viewer at whatever time Field's waveform player is
 playing or scrubbing. Further boxes draw a stereo recording as one curve per channel, the voice with a
-finer hop and a longer memory, and a curve of running averages from one hop to twenty seconds. Every
+finer hop and a longer memory, a curve of running averages from one hop to twenty seconds, and a
+12 × 12 sheet and 6 × 6 × 6 lattice of prototype spectra (self-organizing maps) of the sounds heard
+so far. Every
 box is compile-checked; the analysis runs the `fieldaudio_curve` Python package through `uv`.
 Walkthrough: [Audio curves: a sound as a few slow controls](audio_curves.md).
 

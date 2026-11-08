@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 1 · a film voice as a moving 3D curve — play or scrub
@@ -116,12 +116,84 @@ loop {
     .end { curve.close() }
 ```
 
-## 4. 3 · finer hop, longer memory
+## 4. 5 · the sounds heard so far, remembered on a sheet and a lattice
 
-<!-- field-box id="audio_curve_dense" index="3" -->
+<!-- field-box id="audio_curve_maps" index="3" -->
+
+```edn [field-box id="audio_curve_maps" role="properties"]
+{"id" "audio_curve_maps" "index" 3 "name" "5 · the sounds heard so far, remembered on a sheet and a lattice" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · the sounds heard so far, remembered on a sheet and a lattice" "_tombstone" false "frame" #afield/rect [4840.0 40.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "audio_curve_maps_code_.kt" "lines" 61 "characters" 2311 "sha256" "f0f7114143f0dc2b29b0016c6873ee75d57730c6da5a9552c4a3312e2d172144"}]}
+```
+
+```kotlin [field-property box="audio_curve_maps" name="code" path="audio_curve_maps_code_.kt"]
+val wav = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
+// A sheet of 12 × 12 prototypes and a lattice of 6 × 6 × 6, each learning with a 0.5 s time constant.
+val sheet = audioCurves(wav, AudioCurveSettings(dimensions = 3, somLearnSeconds = 0.5, somGrid = [12, 12])).first()
+val lattice = audioCurves(wav, AudioCurveSettings(dimensions = 3, somLearnSeconds = 0.5, somGrid = [6, 6, 6])).first()
+
+// Start six seconds in, so a learned map shows before you press play.
+var t = 6.0
+displayAudioBytes(
+    wav.toFile().readBytes(),
+    options = AudioVisualizerOptions(initialPositionSeconds = t, onTime = { t = it }),
+)
+
+// A faint room around each map, so the view holds still while the maps turn.
+fun room(cx: Double) = fline {
+    for (z in [-80.0, 80.0]) {
+        moveTo(cx - 80, -80.0, z)
+        lineTo(cx + 80, -80.0, z)
+        lineTo(cx + 80, 80.0, z)
+        lineTo(cx - 80, 80.0, z)
+        lineTo(cx - 80, -80.0, z)
+    }
+    for (x in [cx - 80, cx + 80]) for (y in [-80.0, 80.0]) {
+        moveTo(x, y, -80.0)
+        lineTo(x, y, 80.0)
+    }
+    color = vec(1, 1, 1, 0.1)
+}
+val rooms = [room(-100.0), room(100.0)]
+
+// Turn a map slowly about the vertical axis as the sound plays, then move it into its room.
+fun place(lines: List<FLine>, turn: Double, cx: Double) = lines.map { line ->
+    line.transform { p -> vec(p.x * cos(turn) + p.z * sin(turn) + cx, p.y, -p.x * sin(turn) + p.z * cos(turn)) }
+}
+
+var shown = Double.NaN
+var first = true
+loop {
+    val a = sheet.frameAt(t) ?: sheet.frame(0)
+    if (a.timeSeconds != shown) {
+        shown = a.timeSeconds
+        val b = lattice.frameAt(t) ?: lattice.frame(0)
+        val turn = 0.3 * t
+        val left = place(
+            a.flines(55 / a.spread(), centered = true, stretch = true, trail = sheet.recentMatches(t, 0.5)),
+            turn,
+            -100.0,
+        )
+        val right = place(
+            b.flines(55 / b.spread(), centered = true, stretch = true, trail = lattice.recentMatches(t, 0.5)),
+            turn,
+            100.0,
+        )
+        // Frame the view once; after that the rooms hold it still while the maps turn.
+        threeLines(left + right + rooms, channel = "maps", height = 560, autoFrame = first)
+        first = false
+    }
+}
+    .end {
+        sheet.close()
+        lattice.close()
+    }
+```
+
+## 5. 3 · finer hop, longer memory
+
+<!-- field-box id="audio_curve_dense" index="4" -->
 
 ```edn [field-box id="audio_curve_dense" role="properties"]
-{"id" "audio_curve_dense" "index" 3 "name" "3 · finer hop, longer memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · finer hop, longer memory" "_tombstone" false "frame" #afield/rect [2440.0 40.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "audio_curve_dense_code_.kt" "lines" 20 "characters" 714 "sha256" "68ea008f087b7a5b2bbfc1054835f3b6190ff28151b1cf0a716703afc6d4233f"}]}
+{"id" "audio_curve_dense" "index" 4 "name" "3 · finer hop, longer memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · finer hop, longer memory" "_tombstone" false "frame" #afield/rect [2440.0 40.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "audio_curve_dense_code_.kt" "lines" 20 "characters" 714 "sha256" "68ea008f087b7a5b2bbfc1054835f3b6190ff28151b1cf0a716703afc6d4233f"}]}
 ```
 
 ```kotlin [field-property box="audio_curve_dense" name="code" path="audio_curve_dense_code_.kt"]

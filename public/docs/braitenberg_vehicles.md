@@ -7,8 +7,9 @@ slows down as it faces a light and parks in front of it. Braitenberg called thos
 and the *lover*, and Aatish Bhatia's [Let's build a brain](https://aatishb.com/myriad/lets-build-a-brain/)
 is a good playable introduction to them.
 
-Those vehicles have no memory: the wheel speeds depend only on what the sensors read right now. On this
-page each motor neuron is a small dynamical system instead of a wire, with state on three timescales:
+Those vehicles respond only to what their sensors read right now. Give each motor neuron some
+memory and other behaviours appear: a vehicle can keep driving through a brief dip in the light,
+get bored with a lamp, or learn a new wiring. We'll build these up in four stages:
 
 | Level | Timescale | Mechanism | Switched off by |
 | --- | --- | --- | --- |
@@ -17,9 +18,8 @@ page each motor neuron is a small dynamical system instead of a wire, with state
 | homeostasis | hundreds of steps | the threshold integrates `rate − targetRate` | `adaptationRate = 0.0` |
 | plasticity | thousands of steps | reward-modulated eligibility traces rewire the sensors | `learningRate = 0.0` |
 
-Each section turns one of these on, runs it beside the same seed with it turned off, and prints the
-number that differs. The code is `alife_vehicles.kt`, next to the [boids and Physarum](alife_examples.md)
-it is modelled on, and like them it runs on the CPU.
+The examples compare each mechanism with a run from the same seed without it, so you can see what
+changed. The vehicles run on the CPU, alongside Field's other [artificial life examples](alife_examples.md).
 
 ## 1. One neuron, swept up and back
 
@@ -386,8 +386,8 @@ the stopping for them.
 
 ## 8. Moving lights
 
-A `Light` takes a velocity, `vx` and `vy` in units per step, and `VehicleWorld.step` moves it across the
-torus, and `withLights` moves a population onto a different set of lamps. The box below trains the
+A `Light` takes a velocity, `vx` and `vy` in units per step; `VehicleWorld.step` moves it across the
+torus. Use `withLights` to move a population onto a different set of lamps. The box below trains the
 section 4 population on still lamps for 15 000 steps, freezes its
 weights, then sets every lamp drifting at 0.1 units per step in a different direction. Beside it are
 Braitenberg's lovers on the same moving lamps.
@@ -555,14 +555,13 @@ brackets is how many of the twelve seeds beat random sampling at the same seed):
 | track | 4 (44) | 0.44 | 0.31 (3/12) | 0.35 (5/12) | 0.61 (11/12) |
 | track | 16 (344) | 0.57 | 0.27 (3/12) | 0.30 (2/12) | 0.75 (8/12) |
 
-The answer does not depend on genome size the way §9 guessed it would. The population with immigrants
+In these runs the answer depends less on genome size than on the search. The population with immigrants
 beats random sampling on the median at every size and on every task, at 8 genes as well as at 344.
 The small elitist population loses to it in eight of these nine rows, and the hill climber in seven;
 the exceptions (orbit at 8 genes for the climber, track at 8 genes for both, and the §9 setting on
 orbit at 112 genes, in the dev notes) do not line up with size either. Both losing searches are
 bimodal: their best seeds match or beat anything random sampling finds, and their other seeds stay on
-the plateau where they started. What decides the comparison is whether the search can leave that
-plateau, not how many numbers it is searching over. Random sampling's own
+the plateau where they started. The search needs a way off that plateau. Random sampling's own
 median creeps up with size (0.48 to 0.67 on orbit), because a larger brain has more ways to be
 roughly right.
 
