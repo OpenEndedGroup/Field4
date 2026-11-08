@@ -33,7 +33,7 @@ display(
 <!-- field-box id="dl_gettysburg" index="1" -->
 
 ```edn [field-box id="dl_gettysburg" role="properties"]
-{"id" "dl_gettysburg" "index" 1 "name" "2 · Gettysburg, sentence by sentence" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Gettysburg, sentence by sentence" "_tombstone" false "frame" #afield/rect [900.0 0.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dl_gettysburg_code_.kt" "lines" 15 "characters" 645 "sha256" "f7351c6cb409e482705a0564c9499ac37d63ac5160fe5f72b09c28428a6e7ce5"}]}
+{"id" "dl_gettysburg" "index" 1 "name" "2 · Gettysburg, sentence by sentence" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Gettysburg, sentence by sentence" "_tombstone" false "frame" #afield/rect [900.0 0.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dl_gettysburg_code_.kt" "lines" 17 "characters" 697 "sha256" "88ea5ef8d0a26061c6036bd5b35dcc7eb301543ffeecd186ef3608d37fe004a7"}]}
 ```
 
 ```kotlin [field-property box="dl_gettysburg" name="code" path="dl_gettysburg_code_.kt"]
@@ -43,14 +43,16 @@ val text = SentenceTexts.load("gettysburg")
 val ratioFont = font("Serif", 18.0)
 val openingFont = font("Serif", 13.0)
 var y = 0.0
-val figure = text.measure().flatMap { m ->
-    // The arcs start at x = 270, leaving a column for the ratio and the opening words.
-    val row = m.tree.arcLines(at = P(270.0, y), spacing = 8.0, depth = 0.3) +
-        outlinedText(m.ratio.f2, P(0.0, y + 6), ratioFont) +
-        outlinedText(m.tree.words.take(4).joinToString(" ") + " …", P(50.0, y + 5), openingFont)
-    y += m.tree.arcDepth(spacing = 8.0, depth = 0.3) + 30.0
-    row
-}
+val figure =
+    text.measure().flatMap { m ->
+        // The arcs start at x = 270, leaving a column for the ratio and the opening words.
+        val row =
+            m.tree.arcLines(at = P(270.0, y), spacing = 8.0, depth = 0.3) +
+                outlinedText(m.ratio.f2, P(0.0, y + 6), ratioFont) +
+                outlinedText(m.tree.words.take(4).joinToString(" ") + " …", P(50.0, y + 5), openingFont)
+        y += m.tree.arcDepth(spacing = 8.0, depth = 0.3) + 30.0
+        row
+    }
 display("figure", figureSvg(figure))
 ```
 
@@ -59,29 +61,32 @@ display("figure", figureSvg(figure))
 <!-- field-box id="dl_table" index="2" -->
 
 ```edn [field-box id="dl_table" role="properties"]
-{"id" "dl_table" "index" 2 "name" "4 · Five texts side by side" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Five texts side by side" "_tombstone" false "frame" #afield/rect [900.0 700.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dl_table_code_.kt" "lines" 20 "characters" 771 "sha256" "d853c8db2997c420f9e07ed7bd36148e5e84893081965dcf9ab20a4c1a39ab75"}]}
+{"id" "dl_table" "index" 2 "name" "4 · Five texts side by side" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Five texts side by side" "_tombstone" false "frame" #afield/rect [900.0 700.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dl_table_code_.kt" "lines" 23 "characters" 861 "sha256" "4ef7df13adf14a26ee921c8026ff22fa556e64ccbf76bd2f165ddf04530c9282"}]}
 ```
 
 ```kotlin [field-property box="dl_table" name="code" path="dl_table_code_.kt"]
 import afield.graphics.text.sentences.*
 
-val rows = SentenceTexts.all().map { t ->
-    val m = t.measure()
-    val observed = m.sumOf { it.lengths.observed }.toDouble()
-    "| ${t.title} | ${m.size} | %.1f | %.2f | %.2f | %.2f | %.0f%% |".format(
-        m.map { it.length }.average(),
-        observed / m.sumOf { it.lengths.freeMean },
-        observed / m.sumOf { it.lengths.fixedOrderMean },
-        observed / m.sumOf { it.lengths.optimal },
-        100.0 * m.count { it.lengths.observed < it.lengths.freeMean } / m.size,
-    )
-}
+val rows =
+    SentenceTexts.all().map { t ->
+        val m = t.measure()
+        val observed = m.sumOf { it.lengths.observed }.toDouble()
+        "| ${t.title} | ${m.size} | %.1f | %.2f | %.2f | %.2f | %.0f%% |"
+            .format(
+                m.map { it.length }.average(),
+                observed / m.sumOf { it.lengths.freeMean },
+                observed / m.sumOf { it.lengths.fixedOrderMean },
+                observed / m.sumOf { it.lengths.optimal },
+                100.0 * m.count { it.lengths.observed < it.lengths.freeMean } / m.size,
+            )
+    }
 markdown(
     """
     | text | sentences | mean words | ÷ free random | ÷ fixed order | ÷ shortest | shorter than chance |
     | --- | ---: | ---: | ---: | ---: | ---: | ---: |
     ${rows.joinToString("\n    ")}
-    """.trimIndent(),
+    """
+        .trimIndent(),
 )
 ```
 
@@ -90,7 +95,7 @@ markdown(
 <!-- field-box id="dl_growth" index="3" -->
 
 ```edn [field-box id="dl_growth" role="properties"]
-{"id" "dl_growth" "index" 3 "name" "3 · Length against sentence length" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · Length against sentence length" "_tombstone" false "frame" #afield/rect [0.0 700.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dl_growth_code_.kt" "lines" 31 "characters" 1181 "sha256" "4a28b3f079fc7e67fdfcbf7a7f5de9a915ef7c3a5b88e7c71c67eb6472ada07c"}]}
+{"id" "dl_growth" "index" 3 "name" "3 · Length against sentence length" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · Length against sentence length" "_tombstone" false "frame" #afield/rect [0.0 700.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dl_growth_code_.kt" "lines" 37 "characters" 1209 "sha256" "d4a1bfe616b83176d40365b74217ba13c65094cc1ccfc774c3875b4de3bc1735"}]}
 ```
 
 ```kotlin [field-property box="dl_growth" name="code" path="dl_growth_code_.kt"]
@@ -121,9 +126,15 @@ val plot = Plotly.plot {
         xaxis { title = "words in the sentence" }
         yaxis { title = "total dependency length" }
     }
-}.darkMode()
+}
+plot.darkMode()
 // darkMode() places the legend beside the plot; put it inside, over the empty upper left.
-plot.layout { legend { x = 0.02; y = 0.98 } }
+plot.layout {
+    legend {
+        x = 0.02
+        y = 0.98
+    }
+}
 display(plot)
 ```
 
@@ -132,7 +143,7 @@ display(plot)
 <!-- field-box id="dl_reorderings" index="4" -->
 
 ```edn [field-box id="dl_reorderings" role="properties"]
-{"id" "dl_reorderings" "index" 4 "name" "1 · One sentence and its reorderings" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · One sentence and its reorderings" "_tombstone" false "frame" #afield/rect [0.0 0.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dl_reorderings_code_.kt" "lines" 27 "characters" 1137 "sha256" "89b008453614409aa1c8f1530c4329c7a0fe16f7d20a701e8e23eaf60012b434"}]}
+{"id" "dl_reorderings" "index" 4 "name" "1 · One sentence and its reorderings" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · One sentence and its reorderings" "_tombstone" false "frame" #afield/rect [0.0 0.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dl_reorderings_code_.kt" "lines" 29 "characters" 1157 "sha256" "3b90d87cf09f0f43a2a7364385083e61150d5cf52d91c5ddc81014f92bc67e71"}]}
 ```
 
 ```kotlin [field-property box="dl_reorderings" name="code" path="dl_reorderings_code_.kt"]
@@ -141,9 +152,10 @@ import afield.graphics.text.sentences.*
 // "It is altogether fitting and proper that we should do this", without its full stop.
 val tree = SentenceTexts.load("gettysburg").sentences[4].tree()!!
 val rng = java.util.Random(5)
-val rows = listOf("as spoken" to tree.observed) +
-    (1..3).map { "shuffled" to Linearization.freeRandom(tree, rng) } +
-    listOf("shortest" to Linearization.optimal(tree))
+val rows =
+    listOf("as spoken" to tree.observed) +
+        (1..3).map { "shuffled" to Linearization.freeRandom(tree, rng) } +
+        listOf("shortest" to Linearization.optimal(tree))
 
 val caption = font("Serif", 30.0)
 var y = 0.0
@@ -157,7 +169,8 @@ val figure = rows.flatMap { (name, order) ->
     d.x0 = 250.0
     val f = d.flines()
     // Keep the words and the arcs; the constituency tree is a stand-in for a reordered sentence.
-    val arcs = f.copy(treeEdges = emptyList(), wordEdges = emptyList(), texts = f.texts.filter { it.kind == TextKind.WORD })
+    val arcs =
+        f.copy(treeEdges = emptyList(), wordEdges = emptyList(), texts = f.texts.filter { it.kind == TextKind.WORD })
     val label = outlinedText("$name  ${tree.length(order)}", P(0.0, y), caption)
     y = d.diagram().bounds.y1 + 60.0
     arcs.everything() + label

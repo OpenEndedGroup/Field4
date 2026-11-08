@@ -33,9 +33,10 @@ import afield.graphics.text.sentences.*
 // "It is altogether fitting and proper that we should do this", without its full stop.
 val tree = SentenceTexts.load("gettysburg").sentences[4].tree()!!
 val rng = java.util.Random(5)
-val rows = listOf("as spoken" to tree.observed) +
-    (1..3).map { "shuffled" to Linearization.freeRandom(tree, rng) } +
-    listOf("shortest" to Linearization.optimal(tree))
+val rows =
+    listOf("as spoken" to tree.observed) +
+        (1..3).map { "shuffled" to Linearization.freeRandom(tree, rng) } +
+        listOf("shortest" to Linearization.optimal(tree))
 
 val caption = font("Serif", 30.0)
 var y = 0.0
@@ -49,7 +50,8 @@ val figure = rows.flatMap { (name, order) ->
     d.x0 = 250.0
     val f = d.flines()
     // Keep the words and the arcs; the constituency tree is a stand-in for a reordered sentence.
-    val arcs = f.copy(treeEdges = emptyList(), wordEdges = emptyList(), texts = f.texts.filter { it.kind == TextKind.WORD })
+    val arcs =
+        f.copy(treeEdges = emptyList(), wordEdges = emptyList(), texts = f.texts.filter { it.kind == TextKind.WORD })
     val label = outlinedText("$name  ${tree.length(order)}", P(0.0, y), caption)
     y = d.diagram().bounds.y1 + 60.0
     arcs.everything() + label
@@ -78,14 +80,16 @@ val text = SentenceTexts.load("gettysburg")
 val ratioFont = font("Serif", 18.0)
 val openingFont = font("Serif", 13.0)
 var y = 0.0
-val figure = text.measure().flatMap { m ->
-    // The arcs start at x = 270, leaving a column for the ratio and the opening words.
-    val row = m.tree.arcLines(at = P(270.0, y), spacing = 8.0, depth = 0.3) +
-        outlinedText(m.ratio.f2, P(0.0, y + 6), ratioFont) +
-        outlinedText(m.tree.words.take(4).joinToString(" ") + " …", P(50.0, y + 5), openingFont)
-    y += m.tree.arcDepth(spacing = 8.0, depth = 0.3) + 30.0
-    row
-}
+val figure =
+    text.measure().flatMap { m ->
+        // The arcs start at x = 270, leaving a column for the ratio and the opening words.
+        val row =
+            m.tree.arcLines(at = P(270.0, y), spacing = 8.0, depth = 0.3) +
+                outlinedText(m.ratio.f2, P(0.0, y + 6), ratioFont) +
+                outlinedText(m.tree.words.take(4).joinToString(" ") + " …", P(50.0, y + 5), openingFont)
+        y += m.tree.arcDepth(spacing = 8.0, depth = 0.3) + 30.0
+        row
+    }
 display("figure", figureSvg(figure))
 ```
 
@@ -126,9 +130,15 @@ val plot = Plotly.plot {
         xaxis { title = "words in the sentence" }
         yaxis { title = "total dependency length" }
     }
-}.darkMode()
+}
+plot.darkMode()
 // darkMode() places the legend beside the plot; put it inside, over the empty upper left.
-plot.layout { legend { x = 0.02; y = 0.98 } }
+plot.layout {
+    legend {
+        x = 0.02
+        y = 0.98
+    }
+}
 display(plot)
 ```
 
@@ -144,23 +154,26 @@ counts sentences whose own total is below the mean of their own reorderings.
 ```diffstatic_runner {data-lang=kotlin trim=true screenshot="assets/dependency_length/table.png" embed=true name="dependency-table" alt="A table with one row per text: as written, the totals are 0.44 to 0.62 of the free random totals, 0.52 to 0.70 of the fixed order totals and 1.34 to 1.49 times the shortest; between 83 and 100 percent of each text's sentences are shorter than chance"}
 import afield.graphics.text.sentences.*
 
-val rows = SentenceTexts.all().map { t ->
-    val m = t.measure()
-    val observed = m.sumOf { it.lengths.observed }.toDouble()
-    "| ${t.title} | ${m.size} | %.1f | %.2f | %.2f | %.2f | %.0f%% |".format(
-        m.map { it.length }.average(),
-        observed / m.sumOf { it.lengths.freeMean },
-        observed / m.sumOf { it.lengths.fixedOrderMean },
-        observed / m.sumOf { it.lengths.optimal },
-        100.0 * m.count { it.lengths.observed < it.lengths.freeMean } / m.size,
-    )
-}
+val rows =
+    SentenceTexts.all().map { t ->
+        val m = t.measure()
+        val observed = m.sumOf { it.lengths.observed }.toDouble()
+        "| ${t.title} | ${m.size} | %.1f | %.2f | %.2f | %.2f | %.0f%% |"
+            .format(
+                m.map { it.length }.average(),
+                observed / m.sumOf { it.lengths.freeMean },
+                observed / m.sumOf { it.lengths.fixedOrderMean },
+                observed / m.sumOf { it.lengths.optimal },
+                100.0 * m.count { it.lengths.observed < it.lengths.freeMean } / m.size,
+            )
+    }
 markdown(
     """
     | text | sentences | mean words | ÷ free random | ÷ fixed order | ÷ shortest | shorter than chance |
     | --- | ---: | ---: | ---: | ---: | ---: | ---: |
     ${rows.joinToString("\n    ")}
-    """.trimIndent(),
+    """
+        .trimIndent(),
 )
 ```
 

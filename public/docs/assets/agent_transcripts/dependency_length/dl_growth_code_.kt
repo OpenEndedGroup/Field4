@@ -25,7 +25,13 @@ val plot = Plotly.plot {
         xaxis { title = "words in the sentence" }
         yaxis { title = "total dependency length" }
     }
-}.darkMode()
+}
+plot.darkMode()
 // darkMode() places the legend beside the plot; put it inside, over the empty upper left.
-plot.layout { legend { x = 0.02; y = 0.98 } }
+plot.layout {
+    legend {
+        x = 0.02
+        y = 0.98
+    }
+}
 display(plot)
