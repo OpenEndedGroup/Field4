@@ -221,13 +221,13 @@ showMesh(
 
 - [Penrose and Other Quasiperiodic Tilings](debruijn_tilings.md) has the flat construction with
   its grid drawn beside the tiles, ribbons, plotter outlines and a live offset slider.
-- [Solids & Booleans](manifold.md) covers `Solid.union`, `trimByPlane`, `slice` and `saveStl`.
-  `Solid.slice(z)` on the slab gives the same cross sections as `slice(...)` here, as Manifold
-  `Section`s ready to offset into toolpaths.
-- [Field 4 graphics](afield_four_graphics.md): `toTriMesh()` is an ordinary `TriMesh`, so a patch
-  can go to a live Vulkan view and be turned in the hand.
-- The demo document [debruijn_tilings_3d_demo](agent_transcripts.md#debruijn_tilings_3d_demo)
-  holds every box on this page.
+- [Solids that cannot fail: Manifold in Field](manifold.md) covers `Solid.union`, `trimByPlane`,
+  `slice` and `saveStl`. `Solid.slice(z)` cuts the welded slab into a `Section` outline, ready to
+  offset into toolpaths.
+- [Polytopes: topology first, coordinates later](polytope_examples.md) builds other polyhedra; the
+  triacontahedron above is the zonohedron of the six 5-fold axes.
+- Open the [3D tiling starting point](agent_transcripts.md#debruijn_tilings_3d_demo) to try these
+  boxes in your own document.
 - Source: [`DeBruijnTiling3D.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/path/DeBruijnTiling3D.kt).
 
 ??? aside "What the tests check"
@@ -239,5 +239,9 @@ showMesh(
     prolate/oblate count within 0.01 of φ at radius 7, and that the cells fill eight times the
     volume of the crossing ball (by Cauchy–Binet, 8 = det of the sum of e eᵀ over the six axes).
     One plane per family must give ten and ten cells of total volume 4√(5 + 2√5), the
-    triacontahedron's, with thirty boundary faces. A slice must cover a disk once at every sample
-    point.
+    triacontahedron's, with thirty boundary faces, and `toSolid()` must weld them into a genus-0
+    solid of 32 vertices and 60 triangles. Shape numbers must be congruence classes (equal volume
+    is not enough: the cube's face diagonals give two rhombohedra of one volume). Every boundary
+    edge of a `between(...)` slab must have exactly two faces, and a slice must cover a disk once at
+    every sample point. An earlier cut picked slab cells by their centres; Manifold welded them,
+    but cells meeting only along an edge left a non-manifold mesh, which is why `between` exists.
