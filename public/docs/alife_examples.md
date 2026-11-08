@@ -745,6 +745,10 @@ showImg(
 
 ![three rows of five dark panels: the top row's creature swells into a ring and by step 250 has become about 25 bright loops covering the field, the middle row's creature keeps its shape while moving, and the bottom row's creature shrinks over the first twenty steps and is gone by step 250](assets/alife_examples/lenia.png)
 
+Lenia without the grid is [Particle Lenia](particle_lenia.md): a fixed set of particles carries the
+same kernel and growth curve, and each particle slides downhill on an energy field, so the mass never
+changes.
+
 ### Checking the implementation against Life
 
 Lenia has a limit in which it becomes an ordinary on/off automaton, and that gives a check on the

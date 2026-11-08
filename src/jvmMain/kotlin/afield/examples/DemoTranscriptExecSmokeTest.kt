@@ -341,6 +341,8 @@ object DemoTranscriptExecSmokeTest {
         // Ten independent pure-CPU spatial-ALife boxes; nothing opens a Window or a Renderer.
         "alife_evolution",
         "alife_worked_example",
+        // Three pure-CPU Particle Lenia boxes; the two animated ones are animateEvolution clips and are launched.
+        "particle_lenia",
         // Five pure-CPU Braitenberg-vehicle boxes (braitenberg_vehicles.md sections 5-9); the
         // moving-lights box is an animateEvolution clip and is launched. No Window, no Renderer.
         "braitenberg_where_next",
@@ -735,6 +737,8 @@ object DemoTranscriptExecSmokeTest {
         "afield_four_traditional_triangle",
         // Two ShaderBoids flocks on their own native Window + Renderer; captured by neural_particles.md.
         "shader_boids_separation",
+        // ShaderParticleLenia on its own native Window + Renderer; captured by particle_lenia.md.
+        "particle_lenia_gpu",
         // Needs a live Vulkan renderer; the column it opens is captured by visualizers.md (graphics context).
         "renderer_browsing",
         // Streams a splat sequence into a native window, and wants a directory of .compressed.ply
