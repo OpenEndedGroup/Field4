@@ -143,8 +143,8 @@ from the old positions, and the other moves the particles. The GPU velocities ag
 
 The box below goes beneath a renderer box. It seeds 64 clusters of 100 particles each under the
 rotator rule, 6400 particles in all, and runs 20 steps per frame in the native window. Clusters that
-drift into each other merge into larger creatures. The picture is the native window about forty
-seconds after launch.
+drift into each other merge into larger creatures. The video after the code is the native window
+for the first 15 seconds after launch.
 
 ```diffstatic {data-lang=kotlin}
 import afield.simulation.physics.ShaderParticleLenia
@@ -175,9 +175,9 @@ lenia.viewScale = 110f
 println("particles: " + lenia.count + ", cutoff " + lenia.cutoff + ", cell " + lenia.grid.cellSize)
 ```
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/particle_lenia/gpu.png" capture="native-window" wait="40" native-wait-frames="30" embed=true hidden=true timeout="900" duration="0" name="particle-lenia-gpu" alt="Dozens of Particle Lenia creatures on black, each a ring of dotted petals or a pinwheel of loops drawn in gold points, some merged into larger elongated colonies" macro-file="../../dev_docs/agents/transcripts/particle_lenia_gpu.yaml" capture-box="plg_renderer"}
-// Built and launched from dev_docs/agents/transcripts/particle_lenia_gpu.yaml
-// (a renderer box and the box below beneath it).
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="plv_renderer" transcript="dev_docs/agents/transcripts/docs_capture/gpu_particle_lenia_video.yaml" video="assets/particle_lenia/gpu.mp4" duration="15" wait="0.2" timeout="300" embed=true hidden=true name="particle-lenia-gpu" alt="64 square clusters of gold points on black each pull themselves into a creature, rings of dotted petals and small three-lobed pinwheels, which slowly turn; neighbours that touch merge into larger elongated colonies"}
+// Built and launched from dev_docs/agents/transcripts/docs_capture/gpu_particle_lenia_video.yaml
+// (a renderer box on a smaller window and the box above beneath it).
 ```
 
 ## Where to take it
