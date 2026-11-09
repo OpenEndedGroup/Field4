@@ -789,7 +789,7 @@ electron_launcher_available() {
 }
 
 run_first_run_setup() {
-    # A separate Kotlin/JVM 17 application: it builds without the Field compiler fork or GPU code.
+    # A separate Kotlin/JVM application on the wrapper's JDK: it builds without the Field compiler fork or GPU code.
     check_platform || return 1
     ensure_gradle_jvm || return 1
     echo "field: preparing the small welcome tool (separate from the Field build)…" >&2
