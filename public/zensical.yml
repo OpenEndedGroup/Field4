@@ -159,6 +159,9 @@ nav:
     # First in the section: where print and display go, channels, and how panels open, close and
     # are removed. Everything else in Seeing Values is something you put in one of those panels.
     - Box Output: box_output.md
+    # Directly after Box Output, which links it: the same output panels, with the page inside one
+    # calling back into the box's Kotlin. It is about the panel, not about a kind of value.
+    - Output Pages that Call the Box: output_requests.md
     - Visualizers & Controls: visualizers.md
     - A Terminal in a Box: terminal.md
     - Patchy from Kotlin: patchy.md
@@ -457,6 +460,9 @@ nav:
       - Stereo video: stereo_video.md
       - Field inside VR: field_vr_ide.md
       - ImGui as a VR Panel: imgui_vr_panel.md
+      # Last, after the two in-headset pages: an OpenXR starting point that needs a headset with
+      # eye tracking (HTC's extension for the intersection), the narrowest hardware in the section.
+      - Eye-Tracked Gaze Marker: openxr_eye_intersection.md
   - AI & Agents:
     # First, ahead of the explanations: a showcase of whole documents agents built from a blank
     # canvas, which says what this section is for faster than any of the pages below. It used to
