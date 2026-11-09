@@ -187,8 +187,9 @@ object BoxLayout {
     /**
      * Arrange Boxes by Presentation, on this client's measurements: the boxes in the request's order,
      * in one row from where the first one is. Each box goes [ArrangeBoxesRequest.gap] after the
-     * previous one's footprint (its frame and every open panel); every frame keeps the first one's
-     * y. Boxes this client does not show are skipped. Nothing moves here: the server applies the frames.
+     * previous one's footprint (its frame and every open panel), and the second box
+     * [ArrangeBoxesRequest.leadGap] after the first, leaving the presenter's notes room; every frame
+     * keeps the first one's y. Boxes this client does not show are skipped. Nothing moves here: the server applies the frames.
      */
     fun arrange(request: ArrangeBoxesRequest): ArrangeBoxesResult {
         val byUid = topLevelBoxes().associateBy { it.asDynamic().uid as String }
@@ -196,9 +197,9 @@ object BoxLayout {
         val first = items.firstOrNull() ?: return ArrangeBoxesResult(request.id, emptyList())
         val y = first.frame.y
         var x = first.frame.x + first.minX
-        val frames = items.map { item ->
+        val frames = items.mapIndexed { i, item ->
             val frame = Rect(x - item.minX, y, item.frame.w, item.frame.h)
-            x += item.maxX - item.minX + request.gap
+            x += item.maxX - item.minX + if (i == 0) request.leadGap else request.gap
             Set_rect(item.uid, "frame", frame)
         }
         return ArrangeBoxesResult(request.id, frames)

@@ -55,7 +55,8 @@ object PresentationArrangement {
      * Arranges [show]'s document and returns how many boxes moved, or -1 when no client answered.
      *
      * @param runFigures run figure boxes that have no output yet, so that their panels can be measured.
-     * @param timeoutMs how long to wait for a figure's output, and then for a client's answer.
+     * @param timeoutMs how long to wait for the figures' output (at least five seconds a figure), and
+     * then for a client's answer.
      */
     suspend fun arrange(show: SlideShowInstance, runFigures: Boolean = true, timeoutMs: Long = 20_000): Int {
         val host = show.hostBox
@@ -101,7 +102,8 @@ object PresentationArrangement {
             .filter { it.output.retainedAreas.channels().isEmpty() && !FieldFigureRunner.isRunning(it) }
         if (quiet.isEmpty()) return
         launchBoxesInOrder(quiet)
-        val deadline = System.currentTimeMillis() + timeoutMs
+        // The boxes compile one after another, so allow each its own few seconds.
+        val deadline = System.currentTimeMillis() + maxOf(timeoutMs, 5_000L * quiet.size)
         while (System.currentTimeMillis() < deadline && quiet.any { it.output.retainedAreas.channels().isEmpty() }) delay(100)
         // Let late panels (a second channel, a control group) arrive before anything is measured.
         delay(600)

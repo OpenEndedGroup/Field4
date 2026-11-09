@@ -555,6 +555,30 @@ The four-slide deck this section comes from is the `explainer_sine_pitch` transc
     Field's Electron app only. Fades and reveals apply to the prose around it; the figure itself
     stays live.
 
+### Arrange the document in slide order
+
+A talk with many figures puts many large output panels on one canvas. **Arrange Boxes by
+Presentation** in the command palette lays the document out the way the talk runs: the
+Presentation box first, then every figure box in the order the slides first use it, in one row.
+Each box goes after the previous one's footprint, its frame and every open output panel, with a
+gap, so no panel covers another. Boxes the slides never use go at the end. One undo puts
+everything back, and the new positions are saved with the document.
+
+To have a deck arrange itself whenever its Presentation box runs, call `arrangeBoxes()` before
+`present()`:
+
+```diffstatic {data-lang=kotlin}
+presentation(title = "Lights and Shadows") {
+        step("Opening", id = "opening") { audience { figureBeside("opening_scene") { +"# Lights and Shadows".md } } }
+    }
+    .arrangeBoxes()
+    .present()
+```
+
+A figure has panels only once it has run, so arranging first runs each figure box that has shown
+nothing yet, waits for its output, and stops it again. Only a canvas knows how large each panel is
+drawn, so the document has to be open in Field for the arrangement to happen.
+
 ## Reuse the starter as a kit
 
 The [Presentations package](kits.md#add-a-self-contained-kit-in-welcome) is declared by `field-kit.json`. It supplies the starting point, its guide and the order of the boxes to run. Documents created through Kits belong to the **kit-presentation** Project and record their package and runtime revisions in `.field-kit-instance.json`.
