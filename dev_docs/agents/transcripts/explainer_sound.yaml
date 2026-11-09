@@ -1065,7 +1065,7 @@ operations:
               }.joinToString("")
               display("level", """
                   <div style='width:640px;height:150px;position:relative;color:#e6f6ff'>
-                    <div style='font-size:34px'>${"%.3g".format(pa)} Pa &rarr; ${"%.1f".format(db)} dB</div>
+                    <div style='font-size:34px'>${"%.3g".format(pa)} Pa &rarr; ${db.f1} dB</div>
                     <div style='position:absolute;left:0;right:0;top:56px;height:6px;background:#fff2'></div>
                     <div style='position:absolute;left:0;top:56px;height:6px;width:${(db / 140 * 100).coerceIn(0.0, 100.0)}%;background:#66e6ff'></div>
                     $ticks
