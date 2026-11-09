@@ -661,20 +661,20 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**37147 public symbols across 1689 source files**, 21682 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**37180 public symbols across 1692 source files**, 21697 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 226 | 709 | 315 (44%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 227 | 711 | 316 (44%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 21 | 158 | 56 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 206 | 206 (100%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2162 | 1623 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1061 | 502 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 365 | 8983 | 5648 (62%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 367 | 9014 | 5662 (62%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 427 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 514 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -831,6 +831,9 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [BinocularGazeIntersection.kt](graphics.md#binoculargazeintersection-kt) | Graphics | 21 | 18 | Estimates where the two eyes converge from a pair of per-eye gaze rays. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [BitmapBrowserSurface.kt](imaging.md#bitmapbrowsersurface-kt) | Imaging | 4 | 1 | A browser-frame receiver that uploads CPU pixels to the GPU, as a fallback where Chromium's shared-texture export delivers an empty frame. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>body/<wbr></small> [BodyGeometry.kt](graphics.md#bodygeometry-kt) | Graphics | 17 | 10 |  | [Body and hand tracking](../body_tracking.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>body/<wbr></small> [BodySegmentField.kt](graphics.md#bodysegmentfield-kt) | Graphics | 15 | 5 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [BodySegmentFieldGpuSmoke.kt](examples.md#bodysegmentfieldgpusmoke-kt) | Examples · internal | 2 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>body/<wbr></small> [BodySegments.kt](graphics.md#bodysegments-kt) | Graphics | 15 | 8 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>particles/<wbr></small> [BoidSketch.kt](simulation.md#boidsketch-kt) | Simulation | 92 | 71 | Boids as a declarative spec: kinds of boid, each with a count, speed limits, a field of view, a look and a list of Reynolds steering rules, all stepped together on the GPU over a neighbour grid and drawn with tapered trails. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [BoidSketchSmoke.kt](examples.md#boidsketchsmoke-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BooleanNetworkExplorer.kt](examples.md#booleannetworkexplorer-kt) | Examples | 8 | 1 |  |  |
@@ -1887,7 +1890,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>properties/<wbr></small> [reactiveProps.kt](workspace.md#reactiveprops-kt) | Workspace | 12 | 12 | `propUp`, `propDown` and `propUpDown`: `prop` with re-execution attached. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [ReactivePropsSmoke.kt](examples.md#reactivepropssmoke-kt) | Examples | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [ReactiveRuns.kt](workspace.md#reactiveruns-kt) | Workspace | 28 | 19 | Reactive properties: the runs that `propUp` pulls from upstream and `propDown` pushes downstream. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [ReadingDiagramPlayer.kt](graphics.md#readingdiagramplayer-kt) | Graphics | 36 | 9 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [ReadingDiagramPlayer.kt](graphics.md#readingdiagramplayer-kt) | Graphics | 37 | 10 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [ReadingGallery.kt](graphics.md#readinggallery-kt) | Graphics | 14 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [ReadingScene.kt](graphics.md#readingscene-kt) | Graphics | 24 | 4 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [ReadingTextBlur.kt](graphics.md#readingtextblur-kt) | Graphics | 4 | 1 |  |  |

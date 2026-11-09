@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-226 source file(s), 709 public symbol(s), 315 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+227 source file(s), 711 public symbol(s), 316 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1413,6 +1413,20 @@ Runs `ShaderLatticeBoltzmannSystem` and `ShaderForestFireSystem` on a real rende
 | Declaration | Summary |
 | --- | --- |
 | <a id="alifeshadersystemssmoke-kt--alifeshadersystemssmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/AlifeShaderSystemsSmoke/#L57) |  |
+
+## BodySegmentFieldGpuSmoke.kt { #bodysegmentfieldgpusmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/BodySegmentFieldGpuSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/BodySegmentFieldGpuSmoke/)
+
+### BodySegmentFieldGpuSmoke { #bodysegmentfieldgpusmoke-kt-bodysegmentfieldgpusmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">BodySegmentFieldGpuSmoke</span></code>](source/jvmMain/afield/examples/four/BodySegmentFieldGpuSmoke/#L32)
+
+Real GPU address/layout, current-pose search, force sign and world/local transform checks.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="bodysegmentfieldgpusmoke-kt--bodysegmentfieldgpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/BodySegmentFieldGpuSmoke/#L33) |  |
 
 ## BoidSketchSmoke.kt { #boidsketchsmoke-kt }
 

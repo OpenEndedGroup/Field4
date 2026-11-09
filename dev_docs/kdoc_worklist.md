@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 21682 of 37147 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 21697 of 37180 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2036 undocumented entry points** (types, top-level functions and values) and 12764 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2036 undocumented entry points** (types, top-level functions and values) and 12782 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -577,7 +577,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PuppetBrowserInteraction.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowserInteraction.kt) | Imaging | — | 0 | 30 | 18% |
 | [DiagramCompositor.kt](../src/jvmMain/kotlin/afield/graphics/scene/reading/DiagramCompositor.kt) | Graphics | — | 0 | 28 | 15% |
 | [FieldUiBrowserTexture.kt](../src/jvmMain/kotlin/afield/media/browser/FieldUiBrowserTexture.kt) | Imaging | — | 0 | 28 | 3% |
-| [ReadingDiagramPlayer.kt](../src/jvmMain/kotlin/afield/graphics/scene/reading/ReadingDiagramPlayer.kt) | Graphics | — | 0 | 27 | 25% |
+| [ReadingDiagramPlayer.kt](../src/jvmMain/kotlin/afield/graphics/scene/reading/ReadingDiagramPlayer.kt) | Graphics | — | 0 | 27 | 27% |
 | [TrackedPhase.kt](../src/jvmMain/kotlin/afield/audio/synth/TrackedPhase.kt) | Synthesis | — | 0 | 26 | 18% |
 | [DualQuaternionf.kt](../src/jvmMain/kotlin/afield/math/linalg/DualQuaternionf.kt) | Math | — | 0 | 26 | 3% |
 | [Dyn4jScene.kt](../src/jvmMain/kotlin/afield/simulation/physics/Dyn4jScene.kt) | Simulation | — | 0 | 26 | 39% |
@@ -659,6 +659,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AiSessionTree.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiSessionTree.kt) | AI4 | — | 0 | 10 | 62% |
 | [Geometry2D.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Geometry2D.kt) | Audio | — | 0 | 10 | 74% |
 | [EvolveWorkedExample.kt](../src/jvmMain/kotlin/afield/examples/functions/EvolveWorkedExample.kt) | Examples | — | 0 | 10 | 23% |
+| [BodySegmentField.kt](../src/jvmMain/kotlin/afield/graphics/scene/body/BodySegmentField.kt) | Graphics | — | 0 | 10 | 33% |
 | [MegaTextureCatalog.kt](../src/jvmMain/kotlin/afield/graphics/texture/mega/MegaTextureCatalog.kt) | Graphics | — | 0 | 10 | 58% |
 | [MegaTextureLayout.kt](../src/jvmMain/kotlin/afield/graphics/texture/mega/MegaTextureLayout.kt) | Graphics | — | 0 | 10 | 63% |
 | [ForecastJudge.kt](../src/jvmMain/kotlin/afield/math/temporal/ForecastJudge.kt) | Math | — | 0 | 10 | 28% |
@@ -706,6 +707,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PropertyDependencies.kt](../src/jvmMain/kotlin/afield/document/properties/PropertyDependencies.kt) | Workspace | — | 0 | 7 | 69% |
 | [FLineInstructionTrajectories.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineInstructionTrajectories.kt) | Graphics | — | 0 | 7 | 56% |
 | [FLineThickening.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineThickening.kt) | Graphics | — | 0 | 7 | 60% |
+| [BodySegments.kt](../src/jvmMain/kotlin/afield/graphics/scene/body/BodySegments.kt) | Graphics | — | 0 | 7 | 53% |
 | [PathTraceFrameOutput.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceFrameOutput.kt) | Renderers | — | 0 | 7 | 22% |
 | [GpuShaderTraining.kt](../src/jvmMain/kotlin/afield/graphics/shader/learning/GpuShaderTraining.kt) | Graphics | — | 0 | 7 | 41% |
 | [WebcamTexture.kt](../src/jvmMain/kotlin/afield/graphics/texture/video/WebcamTexture.kt) | Graphics | — | 0 | 7 | 50% |
@@ -995,6 +997,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RectslBoxToolsSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/ai/RectslBoxToolsSmokeTest.kt) | Examples | — | 0 | 1 | 50% |
 | [PhotoToSolidChain.kt](../src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt) | Examples | — | 0 | 1 | 88% |
 | [AlifeShaderSystemsSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/AlifeShaderSystemsSmoke.kt) | Examples | — | 0 | 1 | 50% |
+| [BodySegmentFieldGpuSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/BodySegmentFieldGpuSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [BoidSketchSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/BoidSketchSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [FabricatePassChainDemo.kt](../src/jvmMain/kotlin/afield/examples/four/FabricatePassChainDemo.kt) | Examples | — | 0 | 1 | 50% |
 | [FabricateQuadtreeChainDemo.kt](../src/jvmMain/kotlin/afield/examples/four/FabricateQuadtreeChainDemo.kt) | Examples | — | 0 | 1 | 50% |
