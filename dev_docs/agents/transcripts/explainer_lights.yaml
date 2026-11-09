@@ -29,6 +29,12 @@ operations:
               val lamp = RectLight(vec(across, 1.3, 0.0), width = size, height = size, power = 30.0)
               three(channel = "scene", width = 640, height = 420) {
                   mesh((floor + block).lit(lamp, exposure = 0.5), unlit = true, wireframe = false)
+                  // An invisible diagonal fixes the scene's bounds, so the view does not zoom as the lamp moves.
+                  lines(fline {
+                      moveTo(-2.0, 0.0, -2.0)
+                      lineTo(2.0, 1.6, 2.0)
+                      color = vec(0.0, 0.0, 0.0, 0.0)
+                  })
                   mesh(lamp.mesh(), unlit = true, wireframe = false, cullBackFaces = false)
                   camera(yaw = 35.0, pitch = 30.0, distance = 2.6)
                   background("#000000")
@@ -40,6 +46,210 @@ operations:
           controlGroup {
               slider("position", -1.2, 1.2, initialValue = across) { across = it; draw() }
               slider("size", 0.05, 1.5, initialValue = size) { size = it; draw() }
+          }
+  - create:
+      box: el_light_angle
+      name: light_angle
+      frame: { x: 1020.0, y: 140.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          // Parallel rays falling on an orange patch of floor, seen from the side.
+          // Tilt them away from straight down and fewer of them land on the patch.
+          val rays = 12
+
+          fun draw(degrees: Double) {
+              val a = degrees * PI / 180
+              val across = sin(a)
+              val down = cos(a)
+              var landed = 0
+              val drawn = mutableListOf<FLine>()
+              for (i in 0 until rays) {
+                  // Rays sit evenly across a beam 200 pixels wide; this is where each one meets the floor.
+                  val x = 320 + ((i + 0.5) / rays - 0.5) * 200 / down
+                  val hit = abs(x - 320) <= 100
+                  if (hit) landed++
+                  // Each ray is drawn back from the floor to the top or side of the frame.
+                  val back = min(230 / down, if (across > 0) x / across else 1e9)
+                  drawn += fline {
+                      moveTo(x - across * back, 250 - down * back)
+                      lineTo(x, 250.0)
+                      thickness = 1.5
+                      color = if (hit) vec(0.4, 0.9, 1.0, 1.0) else vec(1.0, 1.0, 1.0, 0.35)
+                  }
+              }
+              drawn += fline {
+                  moveTo(0.0, 250.0)
+                  lineTo(640.0, 250.0)
+                  color = vec(1.0, 1.0, 1.0, 0.35)
+              }
+              // An invisible frame keeps the drawing the same size at every angle.
+              drawn += fline {
+                  moveTo(0.0, 0.0)
+                  lineTo(640.0, 0.0)
+                  lineTo(640.0, 280.0)
+                  lineTo(0.0, 280.0)
+                  color = vec(0.0, 0.0, 0.0, 0.0)
+              }
+              drawn += fline {
+                  moveTo(220.0, 250.0)
+                  lineTo(420.0, 250.0)
+                  thickness = 6.0
+                  color = vec(1.0, 0.6, 0.2, 1.0)
+              }
+              lines(drawn, channel = "side", w = 640.0, h = 280.0)
+
+              // The cosine of the angle, with this angle marked.
+              val curve = fline {
+                  moveTo(40.0, 20.0)
+                  for (d in 1..90) lineTo(40.0 + d * 6.4, 20.0 + 120 * (1 - cos(d * PI / 180)))
+                  thickness = 2.0
+                  color = vec(0.4, 0.9, 1.0, 1.0)
+              }
+              val axes = fline {
+                  moveTo(40.0, 10.0)
+                  lineTo(40.0, 140.0)
+                  lineTo(620.0, 140.0)
+                  color = vec(1.0, 1.0, 1.0, 0.35)
+              }
+              val here = fline {
+                  moveTo(40.0 + degrees * 6.4, 140.0)
+                  lineTo(40.0 + degrees * 6.4, 20.0 + 120 * (1 - down))
+                  thickness = 2.0
+                  color = vec(1.0, 0.6, 0.2, 1.0)
+              }
+              lines(axes, curve, here, channel = "cosine", w = 640.0, h = 150.0)
+              display(
+                  "readout",
+                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>" +
+                      "$landed of $rays rays land on the patch &nbsp;·&nbsp; cos ${degrees.roundToInt()}° = ${"%.2f".format(down)}</div>",
+              )
+          }
+
+          draw(0.0)
+          controlGroup {
+              slider("angle", 0.0, 85.0, step = 1.0, initialValue = 0.0) { draw(it) }
+          }
+  - create:
+      box: el_lit_sphere
+      name: lit_sphere
+      frame: { x: 300.0, y: 210.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.graphics.lighting.*
+
+          // A ball under one far-away light. Its shading is the cosine factor and nothing else.
+          val ball = icosphereMesh(4, 0.5)
+
+          fun draw(toward: Vec2) {
+              // The control picks where the light is, seen from the camera; it sits 100 m away in that direction.
+              val z = sqrt(max(0.0, 1.0 - toward.x * toward.x - toward.y * toward.y))
+              val far = 100.0
+              // Φ = 4π·100² W makes the irradiance one watt per square metre where the light hits head on.
+              val sun = PointLight(vec(toward.x * far, toward.y * far, z * far), power = 4 * PI * far * far)
+              three(channel = "scene", width = 640, height = 420) {
+                  mesh(ball.lit(sun, exposure = 2.0), unlit = true, wireframe = false)
+                  camera(yaw = 0.0, pitch = 0.0, distance = 2.4)
+                  background("#000000")
+                  hud(false)
+              }
+          }
+
+          draw(vec(0.7, 0.4))
+          controlGroup {
+              vec2Control("light", initialValue = vec(0.7, 0.4)) { draw(it) }
+          }
+  - create:
+      box: el_distance_rays
+      name: distance_rays
+      frame: { x: 480.0, y: 210.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          // A point light sends 600 rays into a cone. Move the square patch away and count how many reach it.
+          val count = 600
+          val golden = PI * (3 - sqrt(5.0))
+          // Directions spread evenly over a cone 30° around +x.
+          val directions = count { i ->
+              val c = 1 - (1 - cos(PI / 6)) * (i + 0.5) / count
+              val s = sqrt(1 - c * c)
+              vec(c, s * cos(golden * i), s * sin(golden * i))
+          }
+
+          fun draw(distance: Double) {
+              var reached = 0
+              val rays = directions.map { d ->
+                  // Where the ray crosses the patch's plane, x = distance.
+                  val t = distance / d.x
+                  val hit = abs(t * d.y) <= 0.25 && abs(t * d.z) <= 0.25
+                  if (hit) reached++
+                  val end = if (hit) t else 4.5 / d.x
+                  fline {
+                      moveTo(0.0, 0.0, 0.0)
+                      lineTo(end * d.x, end * d.y, end * d.z)
+                      color = if (hit) vec(0.4, 0.9, 1.0, 1.0) else vec(1.0, 1.0, 1.0, 0.12)
+                  }
+              }
+              val patch = planeMesh(1, 1, 0.5, 0.5)
+                  .rotated(Quat().rotateY((-PI / 2).toFloat()))
+                  .translated(distance, 0.0, 0.0)
+                  .withColor(1.0, 0.6, 0.2)
+              three(channel = "scene", width = 640, height = 380) {
+                  lines(rays)
+                  mesh(patch, unlit = true, wireframe = false, cullBackFaces = false)
+                  mesh(icosphereMesh(2, 0.05).withColor(1.0, 1.0, 1.0), unlit = true, wireframe = false)
+                  camera(yaw = 30.0, pitch = 25.0, distance = 2.2)
+                  background("#000000")
+                  hud(false)
+                  helpers(false)
+              }
+              display(
+                  "readout",
+                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>" +
+                      "${"%.1f".format(distance)} m away: $reached of $count rays reach the patch</div>",
+              )
+          }
+
+          draw(1.0)
+          controlGroup {
+              slider("distance", 1.0, 4.0, step = 0.1, initialValue = 1.0) { draw(it) }
+          }
+  - create:
+      box: el_soft_shadow
+      name: soft_shadow
+      frame: { x: 300.0, y: 350.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.graphics.lighting.*
+
+          // A black wall on a white floor, lit by a ball of light. The ball always gives out 40 W;
+          // make it bigger and the edge of the shadow softens.
+          // The wall's faces sit on the floor's grid lines, so no floor vertex is half under it.
+          val floor = floorMesh(4.0, 3.2, divisions = 80).withColor(0.8, 0.8, 0.8)
+          val wall = panelBoxMesh(0.05, 0.6, 1.2, divisions = 4).translated(0.025, 0.3, 0.0).withColor(0.03, 0.03, 0.03)
+          var size = 0.05
+          var altitude = 50.0
+
+          fun draw() {
+              val a = altitude * PI / 180
+              val lamp = SphereLight(vec(-1.4 * cos(a), 1.4 * sin(a), 0.0), radius = size, power = 40.0)
+              three(channel = "scene", width = 640, height = 420) {
+                  mesh((floor + wall).lit(lamp, exposure = 0.6), unlit = true, wireframe = false)
+                  // An invisible diagonal fixes the scene's bounds, so the view does not zoom as the lamp moves.
+                  lines(fline {
+                      moveTo(-2.0, 0.0, -1.6)
+                      lineTo(2.0, 1.6, 1.6)
+                      color = vec(0.0, 0.0, 0.0, 0.0)
+                  })
+                  mesh(lamp.mesh(), unlit = true, wireframe = false)
+                  camera(yaw = 20.0, pitch = 35.0, distance = 2.4)
+                  background("#000000")
+                  hud(false)
+              }
+          }
+
+          draw()
+          controlGroup {
+              slider("size", 0.02, 0.5, step = 0.01, initialValue = size) { size = it; draw() }
+              slider("altitude", 15.0, 85.0, step = 1.0, initialValue = altitude) { altitude = it; draw() }
           }
   - create:
       box: el_deck
@@ -121,41 +331,51 @@ operations:
                   section("Position") {
                       step("Light at a slant", id = "slant") {
                           audience {
-                              +"""
-                              ## Light at a slant
+                              figureBeside("light_angle") {
+                                  +"""
+                                  ## Light at a slant
 
-                              Tilt a beam away from straight down and the same rays spread over more
-                              floor. The light per square metre falls as the cosine of the angle from
-                              the surface's normal: half at 60°, nothing at 90°.
-                          """
-                                  .md
+                                  Tilt a beam away from straight down and the same rays spread over more
+                                  floor. The light per square metre falls as the cosine of the angle from
+                                  the surface's normal: half at 60°, nothing at 90°.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `light_angle`, parallel rays on a patch (side view) and the cosine curve. [[back]] [[next]]")
+                          control("light_angle", "angle", 0.0)
+                          cue("Tilt to 60°") { control("light_angle", "angle", 60.0, glideMs = 1800) }
+                          markdownNote("Next tilts the rays to 60°: six of twelve land, and cos 60° is one half. [[back]] [[next]]")
                       }
                       step("Shape from the cosine", id = "lit-sphere") {
                           audience {
-                              +"""
-                              ## Shape from the cosine
+                              figureBeside("lit_sphere") {
+                                  +"""
+                                  ## Shape from the cosine
 
-                              Every point on a ball faces the lamp at a different angle. The cosine
-                              alone draws the shading that tells us the ball is round.
-                          """
-                                  .md
+                                  Every point on a ball faces the lamp at a different angle. The cosine
+                                  alone draws the shading that tells us the ball is round.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `lit_sphere`, a ball shaded by the cosine factor with a light-direction control. [[back]] [[next]]")
+                          markdownNote("Drag the light control round the ball; the dark side always faces away from it. [[back]] [[next]]")
                       }
                       step("Farther away", id = "distance") {
                           audience {
-                              +"""
-                              ## Farther away
+                              figureBeside("distance_rays") {
+                                  +"""
+                                  ## Farther away
 
-                              Light leaving a point spreads over a sphere, and a sphere's area grows with
-                              the square of its radius. Twice as far, a quarter of the light: the
-                              inverse-square law.
-                          """
-                                  .md
+                                  Light leaving a point spreads over a sphere, and a sphere's area grows with
+                                  the square of its radius. Twice as far, a quarter of the light: the
+                                  inverse-square law.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `distance_rays`, a point light whose rays thin out with distance. [[back]] [[next]]")
+                          control("distance_rays", "distance", 1.0)
+                          cue("Twice as far") { control("distance_rays", "distance", 2.0, glideMs = 1800) }
+                          markdownNote("Next moves the patch from 1 m to 2 m: about a quarter as many rays reach it. [[back]] [[next]]")
                       }
                       step("A light with a size", id = "rect-light") {
                           audience {
@@ -281,16 +501,21 @@ operations:
                   section("Shadow") {
                       step("Soft and hard shadows", id = "soft-shadow") {
                           audience {
-                              +"""
-                              ## Soft and hard shadows
+                              figureBeside("soft_shadow") {
+                                  +"""
+                                  ## Soft and hard shadows
 
-                              Keep the lamp's power fixed and make it bigger. Points near the edge of the
-                              shadow can now see part of the lamp, and the hard edge softens into a
-                              penumbra.
-                          """
-                                  .md
+                                  Keep the lamp's power fixed and make it bigger. Points near the edge of the
+                                  shadow can now see part of the lamp, and the hard edge softens into a
+                                  penumbra.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `soft_shadow`, a lamp of fixed power whose size and height you change. [[back]] [[next]]")
+                          control("soft_shadow", "size", 0.05)
+                          control("soft_shadow", "altitude", 50.0)
+                          cue("A bigger lamp") { control("soft_shadow", "size", 0.4, glideMs = 2000) }
+                          markdownNote("Next grows the lamp from 5 cm to 40 cm at the same 40 W: the shadow edge widens into a penumbra. [[back]] [[next]]")
                       }
                   }
 
