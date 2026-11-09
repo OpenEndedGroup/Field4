@@ -82,6 +82,22 @@ private fun clampTo(v: Double, a: Double, b: Double) = v.coerceIn(minOf(a, b), m
 internal fun controlKeyForLabel(box: Box, channel: String, label: String): String? =
     controlGroupControlsWithKeys(box, channel).firstOrNull { it.second.label == label && it.second.type in valueControlTypes }?.first
 
+/**
+ * The callback registered now for the control labelled [label] in [box]'s [channel], or null. Each run
+ * of a box registers its controls' callbacks afresh, so a changed value means a new run has drawn them.
+ */
+internal fun controlRegistration(box: Box, channel: String, label: String): Any? {
+    val control = controlGroupControlsWithKeys(box, channel)
+        .firstOrNull { it.second.label == label && it.second.type in valueControlTypes }?.second ?: return null
+    return when (control.type) {
+        "slider" -> getSliderCallback(control.id)
+        "checkbox" -> getCheckboxCallback(control.id)
+        "vec2" -> getVec2Callback(control.id)
+        "color" -> getColorCallback(control.id)
+        else -> null
+    }
+}
+
 // ------------------------------------------------------------------------
 // Gesture listeners: every change a person makes, from the browser or the tablet
 
