@@ -675,6 +675,49 @@ object Refraction {
         return doubleArrayOf(dx - k * nx, dy - k * ny)
     }
 
+    /**
+     * The crests of a plane wave crossing from air into glass, for a side-view drawing.
+     *
+     * The picture is [width] × [height] with y downwards; the glass fills it below [surfaceY]. The wave
+     * travels down and to the right at [angle] radians from the perpendicular, its crests [wavelength]
+     * apart in air, and has gone [travelled] since it started (so crests move as it grows). In the glass
+     * the crests are `wavelength / index` apart and turned to Snell's angle, and each crest's two parts
+     * meet on the surface: the phase along the surface is the same on both sides, which is what makes the
+     * wave turn. Each [WaveCrest] holds one crest's segment in air and in glass, either `null` where it is
+     * outside the picture, as `[x0, y0, x1, y1]` clipped to the picture.
+     */
+    fun crossingCrests(angle: Double, index: Double, wavelength: Double, travelled: Double,
+                       width: Double, height: Double, surfaceY: Double): List<WaveCrest> {
+        val turned = snellAngle(angle, 1.0, index)
+        val ox = width / 2
+        val phase = travelled - wavelength * floor(travelled / wavelength)
+        // Phase distance along the wave's direction, at each corner of the picture.
+        val corners = listOf(0.0 to 0.0, width to 0.0, 0.0 to height, width to height)
+        val reach = corners.map { (x, y) -> abs((x - ox) * sin(angle) + (y - surfaceY) * cos(angle)) + abs((x - ox) * sin(turned) + (y - surfaceY) * cos(turned)) * index }.max()
+        val m = (reach / wavelength).toInt() + 2
+        return (-m..m).mapNotNull { k ->
+            val s = k * wavelength + phase
+            val air = clipCrest(ox, surfaceY, s, angle, width, 0.0, surfaceY)
+            val glass = clipCrest(ox, surfaceY, s / index, turned, width, surfaceY, height)
+            if (air == null && glass == null) null else WaveCrest(air, glass)
+        }
+    }
+
+    // The line of points p with (p - o)·(sin θ, cos θ) = s, clipped to 0 ≤ x ≤ width, top ≤ y ≤ bottom.
+    private fun clipCrest(ox: Double, oy: Double, s: Double, theta: Double, width: Double, top: Double, bottom: Double): DoubleArray? {
+        val px = ox + s * sin(theta); val py = oy + s * cos(theta)
+        val dx = cos(theta); val dy = -sin(theta)
+        var t0 = Double.NEGATIVE_INFINITY; var t1 = Double.POSITIVE_INFINITY
+        fun slab(p: Double, d: Double, lo: Double, hi: Double): Boolean {
+            if (abs(d) < 1e-12) return p in lo..hi
+            val a = (lo - p) / d; val b = (hi - p) / d
+            t0 = max(t0, min(a, b)); t1 = min(t1, max(a, b))
+            return true
+        }
+        if (!slab(px, dx, 0.0, width) || !slab(py, dy, top, bottom) || t1 - t0 < 1e-9) return null
+        return doubleArrayOf(px + t0 * dx, py + t0 * dy, px + t1 * dx, py + t1 * dy)
+    }
+
     /** A glass's refractive index at [wavelengthNm] from Cauchy's equation `a + b / λ²`; the defaults are close to crown glass. */
     fun cauchyIndex(wavelengthNm: Double, a: Double = 1.5046, b: Double = 4200.0): Double = a + b / (wavelengthNm * wavelengthNm)
 
@@ -693,6 +736,9 @@ object Refraction {
         return doubleArrayOf(min(1.0, max(0.0, r * edge)), min(1.0, max(0.0, g * edge)), min(1.0, max(0.0, b * edge)))
     }
 }
+
+/** One crest from [Refraction.crossingCrests]: its segment in air and in glass, `[x0, y0, x1, y1]` or `null`. */
+class WaveCrest(val air: DoubleArray?, val glass: DoubleArray?)
 
 /**
  * Where a ray leaves a [width] × [height] picture: from ([x], [y]) inside it along ([dx], [dy]), the point

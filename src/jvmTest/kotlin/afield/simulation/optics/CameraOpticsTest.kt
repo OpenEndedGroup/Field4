@@ -3,6 +3,7 @@ package afield.simulation.optics
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.test.Test
@@ -175,5 +176,54 @@ class CameraOpticsTest {
         val bare = SensorCamera(z = -4.0).renderBare(scene, 24, 16, samples = 256)
         val pinhole = SensorCamera(z = -4.0, apertureDiameter = 0.03).render(scene, 24, 16, samples = 16)
         assertTrue(contrast(bare) < 0.25 * contrast(pinhole), "bare ${contrast(bare)}, pinhole ${contrast(pinhole)}")
+    }
+
+    /** A crest's air and glass parts meet on the surface; in glass they are λ/n apart and turned to Snell's angle. */
+    @Test
+    fun waveCrestsStayJoinedAcrossTheSurface() {
+        val w = 640.0; val h = 360.0; val surface = 180.0; val lambda = 44.0; val n = 1.5
+        for (degrees in listOf(0.0, 15.0, 40.0, 70.0)) {
+            val angle = degrees * PI / 180
+            val crests = Refraction.crossingCrests(angle, n, lambda, 123.4, w, h, surface)
+            val turned = Refraction.snellAngle(angle, 1.0, n)
+            if (degrees > 0) {
+                val both = crests.filter { it.air != null && it.glass != null }
+                assertTrue(both.size >= 3, "at $degrees° only ${both.size} crests cross the surface")
+                for (c in both) {
+                    // The end of each part that lies on the surface.
+                    fun onSurface(seg: DoubleArray) = if (abs(seg[1] - surface) < abs(seg[3] - surface)) seg[0] to seg[1] else seg[2] to seg[3]
+                    val (ax, ay) = onSurface(c.air!!); val (gx, gy) = onSurface(c.glass!!)
+                    assertEquals(surface, ay, 1e-9); assertEquals(surface, gy, 1e-9)
+                    assertEquals(ax, gx, 1e-9, "at $degrees° a crest breaks at the surface")
+                }
+            }
+            // Glass crests: parallel lines at Snell's angle, λ/n apart.
+            val glass = crests.mapNotNull { it.glass }.filter { hypot(it[2] - it[0], it[3] - it[1]) > 1 }
+            for (seg in glass) {
+                val len = hypot(seg[2] - seg[0], seg[3] - seg[1])
+                assertEquals(abs(cos(turned)), abs(seg[2] - seg[0]) / len, 1e-9)
+            }
+            val offsets = glass.map { (it[0] - w / 2) * sin(turned) + (it[1] - surface) * cos(turned) }.sorted()
+            for (k in 1 until offsets.size) assertEquals(lambda / n, offsets[k] - offsets[k - 1], 1e-9)
+            val air = crests.mapNotNull { it.air }.filter { hypot(it[2] - it[0], it[3] - it[1]) > 1 }
+            val airOffsets = air.map { (it[0] - w / 2) * sin(angle) + (it[1] - surface) * cos(angle) }.sorted()
+            for (k in 1 until airOffsets.size) assertEquals(lambda, airOffsets[k] - airOffsets[k - 1], 1e-9)
+        }
+    }
+
+    /** As the wave travels on past a whole wavelength nothing jumps: each crest is where one was a moment before, moved on a little. */
+    @Test
+    fun waveCrestsMoveSmoothlyThroughTheWrap() {
+        val angle = 0.5
+        val turned = Refraction.snellAngle(angle, 1.0, 1.5)
+        // Each crest's distance along the wave, in air and in glass.
+        fun offsets(t: Double) = Refraction.crossingCrests(angle, 1.5, 44.0, t, 640.0, 360.0, 180.0).let { crests ->
+            crests.mapNotNull { it.air }.map { (it[0] - 320) * sin(angle) + (it[1] - 180) * cos(angle) } to
+                crests.mapNotNull { it.glass }.map { (it[0] - 320) * sin(turned) + (it[1] - 180) * cos(turned) }
+        }
+        val (airBefore, glassBefore) = offsets(44.0 - 0.2)
+        val (airAfter, glassAfter) = offsets(44.0 + 0.2)
+        for (a in airAfter.filter { it in -150.0..-20.0 }) assertEquals(0.4, a - airBefore.filter { it < a }.max(), 1e-9)
+        for (g in glassAfter.filter { it in 20.0..150.0 }) assertEquals(0.4 / 1.5, g - glassBefore.filter { it < g }.max(), 1e-9)
     }
 }
