@@ -2834,8 +2834,9 @@ by the light in six staggered circles and picks the character whose own six numb
 after Alex Harri's essay [ASCII characters are not pixels](https://alexharri.com/blog/ascii-rendering).
 The lead box draws a ring, a triangle and a disc as FLines and shows them by brightness and by
 shape side by side; the others show the sampling circles over five characters, a lit sphere, the
-two contrast steps, and a wireframe cube spinning live in a `charGrid`. The walkthrough is
-[Shape-aware ASCII](ascii_shape.md).
+two contrast steps, and a wireframe cube spinning live in a `charGrid`. Three more boxes run the
+matcher on the GPU, as scene, match and draw boxes whose shaders you can edit, over a lit torus knot in a native window, and check the GPU's
+characters against the CPU's. The walkthrough is [Shape-aware ASCII](ascii_shape.md).
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/ascii_shape_shapes.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="180" padding="12" name="gallery-ascii-shape-shapes" alt="a ring, a triangle and a disc drawn twice in white characters: by brightness on the left, by shape on the right, where the outlines run as underscores, slashes and quote marks" macro-file="../../dev_docs/agents/transcripts/ascii_shape.yaml" capture-box="ascii_shape_shapes"}
 // The transcript builds and runs every box; this is the lead, brightness vs shape.
