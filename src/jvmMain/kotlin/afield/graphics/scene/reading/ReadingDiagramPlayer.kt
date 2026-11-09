@@ -163,6 +163,16 @@ class ReadingDiagramPlayer(
     var strokeWidthScale = 1f
     var dotRadiusScale = 1f
     var showDots = true
+    /**
+     * Named CPU acceleration contributors, evaluated once per unpinned particle per fixed step.
+     * The callback receives its index, current diagram-local position and a zeroed output vector.
+     * Write acceleration in local units/second squared; it is added to layout, wind and gravity.
+     * Arguments are borrowed scratch vectors: do not retain them. Nonfinite outputs are ignored.
+     * Named entries allow an interaction box to remove only its own contribution on reload.
+     */
+    val externalAccelerations = linkedMapOf<String, (Int, Vector3f, Vector3f) -> Unit>()
+    private val accelerationPosition = Vector3f()
+    private val accelerationOutput = Vector3f()
     var physicsSteps = 0L
         private set
 
@@ -300,6 +310,16 @@ class ReadingDiagramPlayer(
                     s.az[i] +=
                         (p.rest.z - s.z[i]) * spring +
                             wind * .35f * cos(physicsTime * .43 + i * .51).toFloat()
+                    for (contribute in externalAccelerations.values) {
+                        accelerationPosition.set(s.x[i], s.y[i], s.z[i])
+                        accelerationOutput.set(0f, 0f, 0f)
+                        contribute(i, accelerationPosition, accelerationOutput)
+                        if (accelerationOutput.isFinite()) {
+                            s.ax[i] += accelerationOutput.x
+                            s.ay[i] += accelerationOutput.y
+                            s.az[i] += accelerationOutput.z
+                        }
+                    }
                 }
             }
             accumulator -= fixedStep
