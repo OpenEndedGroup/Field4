@@ -30,6 +30,12 @@ class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
             require(value.isFinite() && value >= 0.0)
             field = value
         }
+    /** Smoothing while a press is captured, including its release; null uses [smoothingSeconds]. */
+    var dragSmoothingSeconds: Double? = null
+        set(value) {
+            require(value == null || (value.isFinite() && value >= 0.0))
+            field = value
+        }
     internal var clockNanos: () -> Long = System::nanoTime
     private var filteredHit: PuppetBrowserPanel.Hit? = null
     private var filteredAt = 0L
@@ -70,7 +76,7 @@ class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
         val hit = selected?.let {
             // Moving onto the panel with a button already held must not synthesize a new click.
             val down = it.pressed && (it.id == capturedPointer || it.id !in previousPressed)
-            val target = hits[it.id]?.let(::smoothTarget)
+            val target = hits[it.id]?.let { hit -> smoothTarget(hit, down || it.id == capturedPointer) }
             if (target == null) filteredHit = null
             panel.interactHit(target, down, it.scrollY, scrollX = it.scrollX)
         }
@@ -83,16 +89,17 @@ class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
         return hit
     }
 
-    private fun smoothTarget(hit: PuppetBrowserPanel.Hit): PuppetBrowserPanel.Hit {
+    private fun smoothTarget(hit: PuppetBrowserPanel.Hit, dragging: Boolean): PuppetBrowserPanel.Hit {
         val now = clockNanos()
         val previous = filteredHit
         val seconds = (now - filteredAt) / 1e9
         filteredAt = now
-        val next = if (smoothingSeconds == 0.0 || previous == null || seconds <= 0.0 || seconds > 0.25) hit else {
+        val smoothing = if (dragging) dragSmoothingSeconds ?: smoothingSeconds else smoothingSeconds
+        val next = if (smoothing == 0.0 || previous == null || seconds <= 0.0 || seconds > 0.25) hit else {
             val du = hit.u - previous.u
             val dv = hit.v - previous.v
             val pixels = kotlin.math.hypot(du * panel.uv.cssWidth, dv * panel.uv.cssHeight)
-            val tau = smoothingSeconds / (1.0 + pixels / 24.0)
+            val tau = smoothing / (1.0 + pixels / 24.0)
             val alpha = -kotlin.math.expm1(-seconds / tau)
             val u = previous.u + du * alpha
             val v = previous.v + dv * alpha

@@ -1013,7 +1013,9 @@ class Introspection private constructor(
 
             for (e in ti.keySet()) {
                 val to = ti.getJSONObject(e)
-                types[e]!!.addAll(to.getJSONArray("members").mapNotNull { m ->
+                // SPIRV-Cross also emits physical-pointer aliases without a members array.
+                // Their referenced block is reflected separately.
+                types[e]!!.addAll((to.optJSONArray("members") ?: org.json.JSONArray()).mapNotNull { m ->
                     m as JSONObject
                     lprintln("debug,graphics", m.toString())
                     if (!m.has("offset")) return@mapNotNull null

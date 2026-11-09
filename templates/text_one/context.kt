@@ -3,9 +3,11 @@ import afield.graphics.vulkan.targets.*
 import afield.graphics.vulkan.util.Options
 import afield.media.browser.*
 
-// Set this code switch BEFORE the first Vulkan renderer is created.
-// Moving between desktop-only and OpenXR mode requires a fresh Field JVM.
-// The browser texture size below is independent of the headset render resolution.
+/*
+Set this code switch BEFORE the first Vulkan renderer is created.
+Moving between desktop-only and OpenXR mode requires a fresh Field JVM.
+The browser texture size below is independent of the headset render resolution.
+*/
 val headsetMode = false // true for WiVRn / OpenXR; false for desktop preview
 Options.enableVR = headsetMode
 Options.enableHDR = false
@@ -38,7 +40,10 @@ if (!headsetMode) {
     stereo.stereoCamera.base.target = vec(0f, 0f, 0f)
 }
 stereo.layered.parameters.clearColor = vec(.003f, .005f, .010f, 1f)
-display("resolution", "<div style='padding:12px'>${if (headsetMode) "OpenXR runtime" else "Desktop fallback"}: ${stereo.eyeWidth} × ${stereo.eyeHeight} per eye. Browser: 2560 × 1600. Restart Field after changing WiVRn resolution.</div>")
+display(
+    "resolution",
+    "<div style='padding:12px'>${if (headsetMode) "OpenXR runtime" else "Desktop fallback"}: ${stereo.eyeWidth} × ${stereo.eyeHeight} per eye. Browser: 2560 × 1600. Restart Field after changing WiVRn resolution.</div>",
+)
 prop<Boolean>(showStereoPair) = false
 val mirror = stereo.mirrorToScreen(name = "reading-preview", stereoPair = { showStereoPair })
 controlGroup("reading space") {

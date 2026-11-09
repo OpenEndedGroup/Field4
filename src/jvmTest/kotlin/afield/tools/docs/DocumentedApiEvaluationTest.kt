@@ -191,6 +191,17 @@ class DocumentedApiEvaluationTest {
         // defines for itself, building one fixed-parity ComputeMesh; growing_nca is COMPILE_ONLY because
         // that box needs a renderer. GrowingNcaTest runs the same rule on the CPU.
         "stepMesh" to "growing_nca.md; a helper the page's renderer-only GPU box defines for itself; GrowingNcaTest runs the rule on the CPU",
+        // stereo_video.md prints the actual video_one box sources. The lexical census also
+        // sees these document-local helper names as APIs; the native document is COMPILE_ONLY
+        // in CI. Real control and playback captures run through the docs runner on Linux/NVIDIA.
+        "eyeFormatName" to "stereo_video.md; local box helper for the setup report, not a library API; video_one_vr compiles in CI, native captures exercise the setup box outside CI",
+        "openMovie" to "stereo_video.md; local transport helper opens the live Vulkan movie and controls; video_one_vr is COMPILE_ONLY, docs captures open the bundled movie",
+        "poseSlider" to "stereo_video.md; local UI builder connected to a live movie placement; video_one_vr compiles in CI, screen-controls capture runs the builder on the GPU docs host",
+        "recenterScreen" to "stereo_video.md; local placement helper reads a runtime head pose or the desktop fallback; the native starting place is COMPILE_ONLY, real docs captures exercise the fallback",
+        "showTransport" to "stereo_video.md; local transport/output builder over a loaded native movie; COMPILE_ONLY transcript, real transport-controls capture outside CI",
+        "clearEyeSource" to "stereo_video.md; cleanup of a connected OpenXR session's submitted eye source requires a headset runtime, absent in CI; live precision work recorded in dev_docs/vr/STEREO_VIDEO_PRECISION.md",
+        "sideBySideRTTParameters" to "stereo_video.md; reads connected OpenXR eye swapchain dimensions and format; CI compiles the headset branch but has no connected runtime",
+        "prepareSampledImagesFor" to "stereo_video.md; Field browser's external Vulkan image synchronization requires the native browser producer and graphics context; video_one_vr is COMPILE_ONLY, checked live with FieldVrWorkspace",
         // webrtc.md (2026-10-21): the sink publishes from an ElectronRTTView in the Field Electron
         // app's output area, and the source is a hidden Electron page sampled as a Vulkan texture;
         // CI has neither. WebRTCSignalingTest runs the relay, the aaaframe bridge and webrtcPublishers

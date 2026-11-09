@@ -164,8 +164,14 @@ class OpenXRHmdTarget(
      * default. The `XrInstance` itself is older than any device and comes from the bootstrap
      * [afield.graphics.vulkan.device.Instance] made at startup, which construction claims here.
      */
-    val renderer: Renderer = fromContext()
+    val renderer: Renderer = fromContext(),
+    /** Prefer floating-point or ten-bit runtime swapchains; legacy runtimes can still fall back. */
+    val preferHighPrecision: Boolean = true,
 ) {
+    /** Runtime-selected Vulkan format, null until the initial OpenXR frame creates swapchains. */
+    val swapchainColorFormat: Int? get() = swapchains.firstOrNull()?.format
+    val highPrecisionSwapchain: Boolean get() = swapchainColorFormat?.let(OpenXRColorFormats::highPrecision) == true
+
 
     @Volatile
     private var sideBySideSource: HasImageView? = null
@@ -1047,7 +1053,7 @@ class OpenXRHmdTarget(
                 htcEyeTracker = HtcEyeTracker.create(session, xrSystemId)
             }
 
-            // Swapchain format selection (prefer SRGB)
+            // Preserve the scene's precision into the runtime; do not prefer eight-bit sRGB by default.
             val formatCountBuf = stack.callocInt(1)
             xrEnumerateSwapchainFormats(session, formatCountBuf, null)
             val formatCount = formatCountBuf[0]
@@ -1057,13 +1063,10 @@ class OpenXRHmdTarget(
             xrEnumerateSwapchainFormats(session, formatCountBuf, formats)
             val formatList = IntArray(formatCount) { formats[it].toInt() }
 
-            val preferred = intArrayOf(
-                VK_FORMAT_B8G8R8A8_SRGB,
-                VK_FORMAT_R8G8B8A8_SRGB,
-                VK_FORMAT_B8G8R8A8_UNORM,
-                VK_FORMAT_R8G8B8A8_UNORM
-            )
-            val selectedFormat = preferred.firstOrNull { pf -> formatList.any { it == pf } } ?: formatList[0]
+            val selectedFormat = OpenXRColorFormats.select(formatList, preferHighPrecision)
+            lprintln("info,openxr", "Swapchain color format $selectedFormat; high precision=${OpenXRColorFormats.highPrecision(selectedFormat)}; runtime formats=${formatList.toList()}")
+            if(preferHighPrecision && !OpenXRColorFormats.highPrecision(selectedFormat))
+                lprintln("warning,openxr", "Runtime offers no preferred high-precision eye format; eight-bit fallback may quantize the scene")
 
             // Create per-eye swapchains
             swapchains.clear()
@@ -2490,29 +2493,45 @@ class OpenXRHmdTarget(
                     )
 
                     val sourceEye = StereoEyeCopy.source(eye, eyeW, sourceIsLayered)
-                    val region = VkImageCopy.calloc(1, stack)
-                    region[0].srcSubresource()
-                        .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                        .mipLevel(0)
-                        .baseArrayLayer(sourceEye.layer)
-                        .layerCount(1)
-                    region[0].dstSubresource()
-                        .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                        .mipLevel(0)
-                        .baseArrayLayer(0)
-                        .layerCount(1)
-                    region[0].srcOffset().set(sourceEye.x, 0, 0)
-                    region[0].dstOffset().set(0, 0, 0)
-                    region[0].extent().set(eyeW, eyeH, 1)
+                    if(srcView.imageViewData.format == sc.format) {
+                        val region = VkImageCopy.calloc(1, stack)
+                        region[0].srcSubresource()
+                            .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                            .mipLevel(0)
+                            .baseArrayLayer(sourceEye.layer)
+                            .layerCount(1)
+                        region[0].dstSubresource()
+                            .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                            .mipLevel(0)
+                            .baseArrayLayer(0)
+                            .layerCount(1)
+                        region[0].srcOffset().set(sourceEye.x, 0, 0)
+                        region[0].dstOffset().set(0, 0, 0)
+                        region[0].extent().set(eyeW, eyeH, 1)
 
-                    vkCmdCopyImage(
-                        cmd.vkCommandBuffer,
-                        srcImage,
-                        vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
-                        dstImage,
-                        vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-                        region
-                    )
+                        vkCmdCopyImage(
+                            cmd.vkCommandBuffer,
+                            srcImage,
+                            vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+                            dstImage,
+                            vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+                            region
+                        )
+                    } else {
+                        // CopyImage cannot reinterpret float as eight-bit (nor RGB as BGR).
+                        // Blit performs the format conversion, including sRGB encoding when needed.
+                        val blit=VkImageBlit.calloc(1,stack)
+                        blit[0].srcSubresource().aspectMask(VK_IMAGE_ASPECT_COLOR_BIT).mipLevel(0)
+                            .baseArrayLayer(sourceEye.layer).layerCount(1)
+                        blit[0].dstSubresource().aspectMask(VK_IMAGE_ASPECT_COLOR_BIT).mipLevel(0)
+                            .baseArrayLayer(0).layerCount(1)
+                        blit[0].srcOffsets(0).set(sourceEye.x,0,0)
+                        blit[0].srcOffsets(1).set(sourceEye.x+eyeW,eyeH,1)
+                        blit[0].dstOffsets(0).set(0,0,0)
+                        blit[0].dstOffsets(1).set(eyeW,eyeH,1)
+                        vkCmdBlitImage(cmd.vkCommandBuffer,srcImage,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                            dstImage,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,blit,VK_FILTER_NEAREST)
+                    }
 
                     image_layout_transition(
                         cmd.vkCommandBuffer,

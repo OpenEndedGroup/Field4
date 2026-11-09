@@ -11,7 +11,6 @@ import afield.graphics.shader.fromViews
 import afield.math.linalg.Matrix4f
 import afield.math.linalg.Vector3f
 import afield.math.linalg.Vector4f
-import org.lwjgl.vulkan.VK10.VK_FORMAT_B8G8R8A8_SRGB
 import kotlin.math.abs
 
 /**
@@ -84,7 +83,7 @@ class PuppetBrowserVrPanel(
                 depth = if (stereo.layered.parameters.useDepth) 1 else 0
                 depthTest = stereo.layered.parameters.useDepth
                 depthWrite = stereo.layered.parameters.useDepth
-                colorFormats = listOf(VK_FORMAT_B8G8R8A8_SRGB)
+                // stereo.configure supplies the actual eye format, including float swapchains.
                 vertex = vertexShader
                 fragment = fragmentShader
                 textureResolver = { texture ->

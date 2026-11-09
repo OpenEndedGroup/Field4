@@ -139,6 +139,16 @@ class ReadingDiagramPlayer(
     private val solver =
         SimdVerlet(state).apply { constraints4 = this@ReadingDiagramPlayer.constraints }
     internal val particleIndex = diagram.particles.withIndex().associate { it.value to it.index }
+    override val blurRequests: Map<ReadingText, Float>
+        get() {
+            val requests = LinkedHashMap<ReadingText, Float>()
+            for (run in diagram.texts) {
+                val amount = maxOf(run.blurCapacity, run.blur + (playback.score.blurCapacities[run] ?: 0f))
+                if (amount > 0f) requests.merge(shape(run), amount, ::maxOf)
+            }
+            return requests
+        }
+
     override val maximumLabels
         get() = diagram.texts.size
 
@@ -310,6 +320,7 @@ class ReadingDiagramPlayer(
                         frame.textScale(text),
                         Vector4f(text.color),
                         text.rotation,
+                        text.blur + p.blur,
                     ),
                 )
         }

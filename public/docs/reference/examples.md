@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-227 source file(s), 715 public symbol(s), 316 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+229 source file(s), 719 public symbol(s), 318 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -323,7 +323,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1026) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1027) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -2128,6 +2128,34 @@ Checks the first packed-image sampling, eye draw count, and eye aspect on a non-
 | Declaration | Summary |
 | --- | --- |
 | <a id="stereopackingsmoketest-kt--stereopackingsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoPackingSmokeTest/#L35) |  |
+
+## StereoVideoDecodeProbe.kt { #stereovideodecodeprobe-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/StereoVideoDecodeProbe.kt` — [read the source](source/jvmMain/afield/examples/four/StereoVideoDecodeProbe/)
+
+### StereoVideoDecodeProbe { #stereovideodecodeprobe-kt-stereovideodecodeprobe }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StereoVideoDecodeProbe</span></code>](source/jvmMain/afield/examples/four/StereoVideoDecodeProbe/#L6)
+
+Optional local-file throughput probe: the actual P010 conversion/copy path, without a Vulkan device.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="stereovideodecodeprobe-kt--stereovideodecodeprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoVideoDecodeProbe/#L7) |  |
+
+## StereoVideoPrecisionSmoke.kt { #stereovideoprecisionsmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/StereoVideoPrecisionSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/StereoVideoPrecisionSmoke/)
+
+### StereoVideoPrecisionSmoke { #stereovideoprecisionsmoke-kt-stereovideoprecisionsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StereoVideoPrecisionSmoke</span></code>](source/jvmMain/afield/examples/four/StereoVideoPrecisionSmoke/#L36)
+
+A real lossless ten-bit video through P010 uploads, the movie shader and the shared eye target.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="stereovideoprecisionsmoke-kt--stereovideoprecisionsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoVideoPrecisionSmoke/#L38) |  |
 
 ## StigmergySweep.kt { #stigmergysweep-kt }
 

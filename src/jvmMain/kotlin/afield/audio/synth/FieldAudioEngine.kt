@@ -266,9 +266,24 @@ class FieldAudioEngine private constructor(
     val sampleRate: Int = 48_000,
     val bufferSize: Int = 512,
     private val queuedBufferCount: Int = 12,
-    private val inputChannels: Int = 2
+    private val inputChannels: Int = 2,
+    private val outputDeviceName: String? = null,
+    private val preSpatialized: Boolean = false,
+    private val captureEnabled: Boolean = true
 ) : AutoCloseable {
     companion object {
+        /** Named, independent stereo output. No capture or second HRTF for binaural material. */
+        fun openBinauralOutput(deviceName: String, sampleRate: Int = 48_000, bufferSize: Int = 256): FieldAudioEngine {
+            require(deviceName.isNotBlank() && sampleRate > 0 && bufferSize > 0)
+            val engine = FieldAudioEngine(sampleRate, bufferSize, 3, 2, deviceName, true, false)
+            engine.start()
+            if (!engine.outputActive) {
+                engine.close()
+                error("Could not open binaural output device: $deviceName")
+            }
+            return engine
+        }
+
         private const val NON_FINITE_LOG_INTERVAL_NS = 2_000_000_000L
 
         @Volatile
@@ -548,7 +563,7 @@ class FieldAudioEngine private constructor(
     private fun runLoop() {
         try {
             initializeOutput()
-            initializeCapture()
+            if (captureEnabled) initializeCapture()
             startLatch.countDown()
 
             if (!outputActive) return
@@ -580,16 +595,23 @@ class FieldAudioEngine private constructor(
         }
     }
 
+    private var usesThreadContext = false
+
     private fun initializeOutput() {
         try {
-            device = alcOpenDevice(null as ByteBuffer?)
+            device = if (outputDeviceName == null) alcOpenDevice(null as ByteBuffer?) else alcOpenDevice(outputDeviceName)
             if (device == 0L) {
                 println("FieldAudioEngine: failed to open OpenAL output device")
                 return
             }
 
-            context = alcCreateContext(device, null as IntArray?)
-            if (context == 0L || !alcMakeContextCurrent(context)) {
+            context = alcCreateContext(device, if (preSpatialized && alcIsExtensionPresent(device, "ALC_SOFT_HRTF"))
+                intArrayOf(org.lwjgl.openal.SOFTHRTF.ALC_HRTF_SOFT, ALC_FALSE, 0) else null as IntArray?)
+            // Multiple engine threads must never replace each other's process-global context.
+            val activated = context != 0L && if (alcIsExtensionPresent(device, "ALC_EXT_thread_local_context")) {
+                org.lwjgl.openal.EXTThreadLocalContext.alcSetThreadContext(context).also { usesThreadContext = it }
+            } else if (preSpatialized) false else alcMakeContextCurrent(context)
+            if (!activated) {
                 println("FieldAudioEngine: failed to create OpenAL context")
                 return
             }
@@ -687,8 +709,9 @@ class FieldAudioEngine private constructor(
 
         alBufferData(bufferId, AL_FORMAT_STEREO16, pcmBuffer, sampleRate)
         alSourceQueueBuffers(source, bufferId)
-        if (alGetError() != AL_NO_ERROR) {
-            freeBuffers += bufferId
+        val error = alGetError()
+        check(error == AL_NO_ERROR) {
+            "OpenAL queue failed (0x${error.toString(16)}); stopping output instead of rendering unpaced blocks"
         }
     }
 
@@ -775,7 +798,8 @@ class FieldAudioEngine private constructor(
             source = 0
         }
         if (context != 0L) {
-            alcMakeContextCurrent(0L)
+            if (usesThreadContext) org.lwjgl.openal.EXTThreadLocalContext.alcSetThreadContext(0L)
+            else alcMakeContextCurrent(0L)
             alcDestroyContext(context)
             context = 0L
         }

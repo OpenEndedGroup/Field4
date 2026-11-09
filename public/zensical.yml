@@ -454,6 +454,7 @@ nav:
       - Apple Vision Pro (WiP): vision.md
       - Geometry in the Headset: vision_geometry.md
       - Stereo RTT composite: stereo_rtt_composite.md
+      - Stereo video: stereo_video.md
       - Field inside VR: field_vr_ide.md
       - ImGui as a VR Panel: imgui_vr_panel.md
   - AI & Agents:

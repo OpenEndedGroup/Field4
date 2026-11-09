@@ -130,6 +130,36 @@ class VideoTexture(
     // Internal clock used when no external clock is provided
     private val internalClock = SystemClock()
 
+    /** Positive playback multiplier for the internal clock; externally clocked movies own their rate. */
+    var playbackRate: Double
+        get() = internalClock.rate
+        set(value) {
+            require(clock == null) { "Change the external clock's rate instead" }
+            internalClock.rate = value
+        }
+
+    /** Keep one source frame in every N before colour conversion/upload. Exact seeks ignore this. */
+    @Volatile
+    var conversionStride: Int = 1
+        set(value) { require(value in 1..32); field = value }
+
+    /** Let FFmpeg skip disposable pictures during fast playback, never required reference pictures. */
+    @Volatile
+    var discardNonReference: Boolean = false
+
+    /** Retain short decode bursts for one-upload-per-render accumulation instead of latest-frame wins. */
+    @Volatile
+    var queueDecodedFrames: Boolean = false
+    /** A capped material consumes the newest available sample, discarding intermediate queued ones. */
+    @Volatile
+    var preferLatestDecodedFrame = false
+    var supersededDecodedFrames: Long = 0
+        private set
+    private val decodedQueue = ArrayDeque<DecodedFrame>()
+    var droppedDecodedFrames: Long = 0
+        private set
+
+
     // Active clock (external if provided, internal otherwise)
     private val activeClock: PlaybackClock
         get() = clock ?: internalClock
@@ -153,8 +183,8 @@ class VideoTexture(
     // When true, allow a one-off update while paused to reflect a scrubbed position
     private var pendingFrameRefresh = false
 
-    private data class DecodeRequest(val generation: Long, val timestamp: Double, val exactFrame: Long? = null)
-    private data class DecodedFrame(val serial: Long, val frame: VideoFrame)
+    private data class DecodeRequest(val generation: Long, val timestamp: Double, val exactFrame: Long? = null, val seek: Boolean = false)
+    private data class DecodedFrame(val serial: Long, val frame: VideoFrame, val seekGeneration: Long? = null)
 
     private val decodeGeneration = AtomicLong()
     private val decodeSerial = AtomicLong()
@@ -174,6 +204,7 @@ class VideoTexture(
     @Volatile
     var backgroundDecodeMicros: Long = 0
         private set
+    @Volatile private var explicitSeekRequest: DecodeRequest? = null
     private var lastRequestedFrame = Long.MIN_VALUE
     private var seenDecodedSerial = -1L
 
@@ -204,6 +235,7 @@ class VideoTexture(
         val newLoopDecoder = if (backgroundDecode) VideoDecoder(videoPath, pixelFormat).also {
             if (!it.open()) {
                 newDecoder.close()
+                it.close()
                 lprintln("error,video", "Failed to open loop-ahead decoder: $videoPath")
                 return false
             }
@@ -269,6 +301,7 @@ class VideoTexture(
             }
         }
 
+        explicitSeekRequest = null
         currentTimestamp = 0.0
         lastFrameTimestamp = 0.0
         uploadedFrame = false
@@ -327,7 +360,14 @@ class VideoTexture(
                 lastRequestedFrame = Long.MIN_VALUE
                 pendingFrameRefresh = true
                 if (clock == null) internalClock.seek(timestampSeconds)
-                requestBackgroundDecode(timestampSeconds)
+                // A seek is a timestamp operation (also for VFR), not a strict CFR frame request.
+                // Only a frame published for this seek may satisfy a paused refresh.
+                val request = DecodeRequest(decodeGeneration.incrementAndGet(), timestampSeconds.coerceAtLeast(0.0), seek = true)
+                explicitSeekRequest = request
+                clearDecodedFrame()
+                requestedDecode.set(request)
+                pendingDecode.set(request)
+                LockSupport.unpark(decodeWorker)
                 return true
             }
             if (dec.seek(timestampSeconds)) {
@@ -350,26 +390,37 @@ class VideoTexture(
 
     /**
      * Update the video texture. Call this every frame to decode and upload new frames when playing.
-     * Returns true if a new frame was uploaded.
+     * Returns true if a new frame was uploaded. With uploadFrame=false, background decode keeps
+     * tracking the clock but the displayed image is held; synchronous decode does no work.
      *
      * When using an external clock (e.g., AudioClock), this method will sync video frames to the clock's time.
      * When using internal clock, it advances based on wall-clock time (may drift over long durations).
      */
-    fun update(commandBuffer: CommandBuffer): Boolean {
+    fun update(commandBuffer: CommandBuffer, uploadFrame: Boolean = true): Boolean {
         val activeDecoder = decoder ?: return false
         val allowWhilePaused = pendingFrameRefresh
-        val shouldUpdate = isPlaying || allowWhilePaused
+        val shouldUpdate = isPlaying || allowWhilePaused || explicitSeekRequest != null ||
+            (queueDecodedFrames && synchronized(decodedFrameLock) { decodedQueue.isNotEmpty() })
 
         if (!shouldUpdate) {
             return false
         }
 
         // Get target timestamp from the active clock
-        val targetTimestamp = activeClock.getCurrentTime()
+        var targetTimestamp = activeClock.getCurrentTime()
 
         if (backgroundDecode) {
-            return updateFromBackground(commandBuffer, activeDecoder, targetTimestamp)
+            val end = activeDecoder.duration
+            if (isPlaying && end.isFinite() && end > 0.0 && targetTimestamp >= end) {
+                targetTimestamp %= end
+                // Reset the internal clock once at wrap, through the same asynchronous seek path.
+                // External clocks keep ownership of time; only their sampled video position wraps.
+                if (clock == null) seek(targetTimestamp)
+            }
+            return updateFromBackground(commandBuffer, activeDecoder, targetTimestamp, uploadFrame)
         }
+
+        if (!uploadFrame) return false
 
         // Check if we need to decode a new frame
         // We decode if:
@@ -530,6 +581,11 @@ class VideoTexture(
      * off the end of the video loops back to the start rather than clearing this.
      */
     val playing: Boolean get() = isPlaying
+    /** FFmpeg matrix/range/transfer tags of the loaded stream; unspecified before load. */
+    val colorSpace: Int get() = decoder?.colorSpace ?: 2
+    val colorRange: Int get() = decoder?.colorRange ?: 0
+    val colorTransfer: Int get() = decoder?.colorTransfer ?: 2
+
     /** True after at least one decoded frame has reached its Vulkan image. */
     val hasFrame: Boolean get() = uploadedFrame
 
@@ -610,20 +666,42 @@ class VideoTexture(
     private fun updateFromBackground(
         commandBuffer: CommandBuffer,
         activeDecoder: VideoDecoder,
-        targetTimestamp: Double
+        targetTimestamp: Double,
+        uploadFrame: Boolean
     ): Boolean {
         decodeFailure?.let { throw IllegalStateException("background video decode failed", it) }
         val frameDuration = if (activeDecoder.fps > 0) 1.0 / activeDecoder.fps else 0.033
-        val targetFrame = VideoFrameIndex.requested(targetTimestamp, 1.0 / frameDuration)
-        if (targetFrame != lastRequestedFrame) {
-            lastRequestedFrame = targetFrame
-            requestBackgroundDecode(targetFrame * frameDuration)
+        val seek = explicitSeekRequest
+        if (seek == null) {
+            val targetFrame = VideoFrameIndex.requested(targetTimestamp, 1.0 / frameDuration)
+            if (targetFrame != lastRequestedFrame) {
+                lastRequestedFrame = targetFrame
+                requestBackgroundDecode(targetFrame * frameDuration)
+            }
         }
 
+        // Keep requesting current decode time even while material publication is held. Thus the
+        // next permitted tick samples now, rather than playing a delayed backlog at the capped rate.
+        if (!uploadFrame) return false
         return synchronized(decodedFrameLock) {
-            val ready = decodedFrame.get() ?: return@synchronized false
-            if (ready.serial == seenDecodedSerial) return@synchronized false
-            uploadDecodedFrame(commandBuffer, ready)
+            val queued = queueDecodedFrames
+            if (queued && preferLatestDecodedFrame) {
+                while (decodedQueue.size > 1) {
+                    decodedQueue.removeFirst().frame.close()
+                    supersededDecodedFrames++
+                }
+            }
+            val ready = if (queued) decodedQueue.removeFirstOrNull() else decodedFrame.get()
+            if (ready == null) return@synchronized false
+            try {
+                if (ready.serial == seenDecodedSerial) return@synchronized false
+                if (seek != null && ready.seekGeneration != seek.generation) return@synchronized false
+                val uploaded = uploadDecodedFrame(commandBuffer, ready)
+                if (uploaded && explicitSeekRequest === seek) explicitSeekRequest = null
+                uploaded
+            } finally {
+                if (queued) ready.frame.close()
+            }
         }
     }
 
@@ -676,6 +754,7 @@ class VideoTexture(
         val standbyReady = AtomicBoolean(false)
         rewindLoopDecoder(initialLoopDecoder, standbyReady, warmUp = true)
         var decoderTimestamp = Double.NaN
+        var lastSeekGeneration = Long.MIN_VALUE
         try {
             while (decodeWorkerRunning) {
                 val request = pendingDecode.getAndSet(null)
@@ -700,23 +779,32 @@ class VideoTexture(
                 if (request.exactFrame != null && already != null &&
                     VideoFrameIndex.decoded(already.frame.timestamp, activeDecoder.fps) == request.exactFrame) continue
                 val delta = request.timestamp - decoderTimestamp
+                // A strided decode can already have supplied the next target's picture. Do not
+                // decode another future picture or seek backwards just to answer that target again.
+                if (queueDecodedFrames && !request.seek && request.exactFrame == null && decoderTimestamp.isFinite() &&
+                    delta >= -frameDuration * conversionStride && delta <= frameDuration * .5) continue
                 // Forward playback is deliberately sequential. A long-GOP movie may seek back to
                 // frame zero anyway, and repeatedly restarting that decode is both slower and prone
                 // to starving. Backward motion (including loop wrap) still seeks immediately.
-                if (!decoderTimestamp.isFinite() || delta < -frameDuration * 0.5 ||
-                    (request.exactFrame != null && delta <= frameDuration * 0.5)) {
+                if ((request.seek && lastSeekGeneration != request.generation) || !decoderTimestamp.isFinite() || delta < -frameDuration * 0.5 ||
+                    (request.exactFrame != null && (delta <= frameDuration * 0.5 || delta > frameDuration * 12.0))) {
                     check(activeDecoder.seek(request.timestamp)) { "could not seek video to ${request.timestamp}s" }
                     decoderTimestamp = request.timestamp - frameDuration
+                    if (request.seek) lastSeekGeneration = request.generation
                 }
 
                 var attempts = 0
                 var reached = false
                 while (decodeWorkerRunning && attempts < 48) {
-                    if (request.exactFrame != null && requestedDecode.get()?.generation != request.generation) break
+                    if ((request.exactFrame != null || request.seek) && requestedDecode.get()?.generation != request.generation) break
                     val latestTarget = requestedDecode.get()?.timestamp ?: request.timestamp
                     if (decoderTimestamp.isFinite() && latestTarget < decoderTimestamp - frameDuration * 0.5) break
                     val frameStarted = System.nanoTime()
-                    val frame = activeDecoder.decodeNextFrame()
+                    val precise = request.seek || request.exactFrame != null
+                    val frame = activeDecoder.decodeNextFrame(
+                        conversionStride = if (precise) 1 else conversionStride,
+                        discardNonReference = !precise && discardNonReference,
+                    )
                     if (frame == null) {
                         check(request.exactFrame == null) { "video ended before requested source frame ${request.exactFrame}" }
                         break
@@ -726,7 +814,15 @@ class VideoTexture(
                     backgroundDecodeMicros = (System.nanoTime() - frameStarted) / 1_000L
                     var published = false
                     try {
-                        if (request.exactFrame != null) {
+                        if (request.seek) {
+                            if (requestedDecode.get()?.generation == request.generation &&
+                                frame.timestamp + frameDuration * 0.5 >= request.timestamp) {
+                                publishDecodedFrame(frame, request.generation)
+                                published = true
+                                reached = true
+                                break
+                            }
+                        } else if (request.exactFrame != null) {
                             val frameIndex = VideoFrameIndex.decoded(frame.timestamp, activeDecoder.fps)
                             check(frameIndex <= request.exactFrame) { "video skipped requested frame ${request.exactFrame}, got $frameIndex" }
                             if (frameIndex == request.exactFrame) {
@@ -746,7 +842,7 @@ class VideoTexture(
                 }
                 // Long-GOP seeks can need more than one bounded decode pass. Keep the exact request
                 // alive, but never overwrite a newer seek/loop request.
-                if (request.exactFrame != null && !reached && requestedDecode.get()?.generation == request.generation) {
+                if ((request.exactFrame != null || request.seek) && !reached && requestedDecode.get()?.generation == request.generation) {
                     pendingDecode.compareAndSet(null, request)
                 }
                 // The decoder stopped being active as soon as we swapped it out. Rewind it even if
@@ -790,15 +886,27 @@ class VideoTexture(
         clearDecodedFrame()
     }
 
-    private fun publishDecodedFrame(frame: VideoFrame) {
+    private fun publishDecodedFrame(frame: VideoFrame, seekGeneration: Long? = null) {
         synchronized(decodedFrameLock) {
-            decodedFrame.getAndSet(DecodedFrame(decodeSerial.incrementAndGet(), frame))?.frame?.close()
+            val ready = DecodedFrame(decodeSerial.incrementAndGet(), frame, seekGeneration)
+            if (queueDecodedFrames) {
+                // Bounded burst buffer: no unbounded latency or memory growth if decoding outruns VR.
+                if (decodedQueue.size >= 8) {
+                    decodedQueue.removeFirst().frame.close()
+                    droppedDecodedFrames++
+                }
+                decodedQueue.addLast(ready)
+            } else {
+                decodedFrame.getAndSet(ready)?.frame?.close()
+            }
         }
     }
 
     private fun clearDecodedFrame() {
         synchronized(decodedFrameLock) {
             decodedFrame.getAndSet(null)?.frame?.close()
+            decodedQueue.forEach { it.frame.close() }
+            decodedQueue.clear()
         }
     }
 }

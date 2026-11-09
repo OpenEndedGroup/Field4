@@ -18,6 +18,14 @@ class ReadingGallery(val examples: List<ReadingExample>) : ReadingScene {
     val current
         get() = examples[selected].player
 
+    override val blurRequests: Map<ReadingText, Float>
+        get() {
+            val result = LinkedHashMap<ReadingText, Float>()
+            for (example in examples) for ((shape, radius) in example.player.blurRequests)
+                result.merge(shape, radius, ::maxOf)
+            return result
+        }
+
     override val maximumLabels = examples.maxOf { it.player.maximumLabels }
     override val shapes =
         examples

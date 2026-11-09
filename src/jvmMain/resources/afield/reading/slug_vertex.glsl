@@ -4,7 +4,7 @@
 // VIEWS
 // Adapted Slug core: Copyright (c) 2026 AlphaPixel LLC. See LICENSE-slughorn.
 layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer SlugData {
-    uint words[];
+    uint words[]; // immutable Slug header, curve and band atlas in 32-bit words
 };
 layout(push_constant) uniform SlugPC {
     mat4 model; // local glyph plane to world; eye VP is applied in this vertex shader

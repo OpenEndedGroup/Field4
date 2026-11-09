@@ -2,17 +2,17 @@
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_multiview : require
 struct Segment {
-    vec4 previous;
-    vec4 a;
-    vec4 b;
-    vec4 next;
-    vec4 colorA;
-    vec4 colorB;
-    vec4 ink;
-    vec4 trim;
+    vec4 previous; // previous centreline XYZ, half-width at A in metres
+    vec4 a; // segment start XYZ, cumulative path distance
+    vec4 b; // segment end XYZ, cumulative path distance
+    vec4 next; // next centreline XYZ, half-width at B in metres
+    vec4 colorA; // linear RGBA at segment start
+    vec4 colorB; // linear RGBA at segment end
+    vec4 ink; // dash period, duty, phase and first/last flags
+    vec4 trim; // visible path-distance interval, two reserved values
 };
 layout(std430,buffer_reference) readonly buffer DiagramSegments {
-    Segment item[];
+    Segment item[]; // CPU-uploaded 128-byte records, shared by both eyes
 };
 layout(push_constant) uniform DiagramPush {
     mat4 model; // diagram-local to world, shared by both eyes

@@ -26,23 +26,32 @@ interface PlaybackClock {
  *
  * [VideoTexture] creates this implementation internally when no external [PlaybackClock] is given.
  */
-class SystemClock : PlaybackClock {
+class SystemClock(private val nanoTime: () -> Long = System::nanoTime) : PlaybackClock {
     private var startTime: Long = 0
     private var pausedTime: Double = 0.0
     private var isActive: Boolean = false
     
+    /** Continuous rate changes re-anchor the clock; they never jump the media position. */
+    var rate: Double = 1.0
+        set(value) {
+            require(value.isFinite() && value > 0.0)
+            pausedTime = getCurrentTime()
+            startTime = nanoTime()
+            field = value
+        }
+
     override fun getCurrentTime(): Double {
         if (!isActive) return pausedTime
         
-        val elapsed = (System.nanoTime() - startTime) / 1_000_000_000.0
-        return pausedTime + elapsed
+        val elapsed = (nanoTime() - startTime) / 1_000_000_000.0
+        return pausedTime + elapsed * rate
     }
     
     override fun isPlaying(): Boolean = isActive
     
     fun play() {
         if (!isActive) {
-            startTime = System.nanoTime()
+            startTime = nanoTime()
             isActive = true
         }
     }
@@ -57,12 +66,12 @@ class SystemClock : PlaybackClock {
     fun seek(timestamp: Double) {
         pausedTime = timestamp
         if (isActive) {
-            startTime = System.nanoTime()
+            startTime = nanoTime()
         }
     }
     
     fun reset() {
-        startTime = System.nanoTime()
+        startTime = nanoTime()
         pausedTime = 0.0
         isActive = false
     }

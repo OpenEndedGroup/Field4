@@ -1,6 +1,14 @@
 import afield.graphics.scene.reading.StereoDiagramRenderer
 import afield.graphics.scene.reading.ReadingExample
 import afield.graphics.scene.reading.ReadingGallery
+import afield.graphics.vulkan.buffers.*
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
+import java.nio.*
 import afield.graphics.vulkan.util.Window
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.targets.MultiviewStereoTarget
@@ -13,21 +21,30 @@ val Why.exampleOne by Whying() /*from:text1_poem*/ /**/
 var Box.poem by Inheritance<ReadingGallery>() /*from:text1_score*/ /**/
 val Once.poem by Onceing<ReadingGallery>() /*from:text1_score*/ /**/
 val Why.poem by Whying() /*from:text1_score*/ /**/
-var Box.strokeSource by Inheritance<Box>() /*from:text1_stroke*/ /**/
-val Once.strokeSource by Onceing<Box>() /*from:text1_stroke*/ /**/
-val Why.strokeSource by Whying() /*from:text1_stroke*/ /**/
-var Box.pointSource by Inheritance<Box>() /*from:text1_point*/ /**/
-val Once.pointSource by Onceing<Box>() /*from:text1_point*/ /**/
-val Why.pointSource by Whying() /*from:text1_point*/ /**/
-var Box.textSource by Inheritance<Box>() /*from:text1_text*/ /**/
-val Once.textSource by Onceing<Box>() /*from:text1_text*/ /**/
-val Why.textSource by Whying() /*from:text1_text*/ /**/
-var Box.blurSource by Inheritance<Box>() /*from:text1_blur*/ /**/
-val Once.blurSource by Onceing<Box>() /*from:text1_blur*/ /**/
-val Why.blurSource by Whying() /*from:text1_blur*/ /**/
-var Box.compositeSource by Inheritance<Box>() /*from:text1_composite*/ /**/
-val Once.compositeSource by Onceing<Box>() /*from:text1_composite*/ /**/
-val Why.compositeSource by Whying() /*from:text1_composite*/ /**/
+var Box.strokeModuleFactory by Inheritance<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_stroke*/ /**/
+val Once.strokeModuleFactory by Onceing<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_stroke*/ /**/
+val Why.strokeModuleFactory by Whying() /*from:text1_stroke*/ /**/
+var Box.pointModuleFactory by Inheritance<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_point*/ /**/
+val Once.pointModuleFactory by Onceing<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_point*/ /**/
+val Why.pointModuleFactory by Whying() /*from:text1_point*/ /**/
+var Box.textModuleFactory by Inheritance<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_text*/ /**/
+val Once.textModuleFactory by Onceing<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_text*/ /**/
+val Why.textModuleFactory by Whying() /*from:text1_text*/ /**/
+var Box.mediumHorizontalFactory by Inheritance<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_blur*/ /**/
+val Once.mediumHorizontalFactory by Onceing<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_blur*/ /**/
+val Why.mediumHorizontalFactory by Whying() /*from:text1_blur*/ /**/
+var Box.mediumVerticalFactory by Inheritance<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_blur_medium_v*/ /**/
+val Once.mediumVerticalFactory by Onceing<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_blur_medium_v*/ /**/
+val Why.mediumVerticalFactory by Whying() /*from:text1_blur_medium_v*/ /**/
+var Box.broadHorizontalFactory by Inheritance<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_blur_broad_h*/ /**/
+val Once.broadHorizontalFactory by Onceing<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_blur_broad_h*/ /**/
+val Why.broadHorizontalFactory by Whying() /*from:text1_blur_broad_h*/ /**/
+var Box.broadVerticalFactory by Inheritance<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_blur_broad_v*/ /**/
+val Once.broadVerticalFactory by Onceing<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_blur_broad_v*/ /**/
+val Why.broadVerticalFactory by Whying() /*from:text1_blur_broad_v*/ /**/
+var Box.compositeModuleFactory by Inheritance<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_composite*/ /**/
+val Once.compositeModuleFactory by Onceing<afield.graphics.scene.reading.DiagramModuleFactory>() /*from:text1_composite*/ /**/
+val Why.compositeModuleFactory by Whying() /*from:text1_composite*/ /**/
 var Box.window by Inheritance<Window>() /*from:text1_context*/ /**/
 val Once.window by Onceing<Window>() /*from:text1_context*/ /**/
 val Why.window by Whying() /*from:text1_context*/ /**/
@@ -52,3 +69,6 @@ val Why.exampleFour by Whying() /*from:text1_example4*/ /**/
 var Box.exampleFive by Inheritance<ReadingExample>() /*from:text1_typography*/ /**/
 val Once.exampleFive by Onceing<ReadingExample>() /*from:text1_typography*/ /**/
 val Why.exampleFive by Whying() /*from:text1_typography*/ /**/
+var Box.exampleSix by Inheritance<ReadingExample>() /*from:text1_word_blur*/ /**/
+val Once.exampleSix by Onceing<ReadingExample>() /*from:text1_word_blur*/ /**/
+val Why.exampleSix by Whying() /*from:text1_word_blur*/ /**/
