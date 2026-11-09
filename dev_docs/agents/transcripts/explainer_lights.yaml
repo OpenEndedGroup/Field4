@@ -300,6 +300,432 @@ operations:
               slider("distance", 1.0, 4.0, step = 0.1, initialValue = 1.0) { draw(it) }
           }
   - create:
+      box: el_car_angle
+      name: car_angle
+      frame: { x: 840.0, y: 210.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          // A car 1.8 m wide driving away from you, from above and through your eye. How wide it looks is
+          // the angle it spans, and that angle shrinks about as one over the distance.
+          fun draw(distance: Double) {
+              val half = atan(0.9 / distance)
+              val scale = 9.0
+              val x = 30 + distance * scale
+              val top = mutableListOf<FLine>()
+              top += fline {
+                  moveTo(x, 100 - 0.9 * scale)
+                  lineTo(x + 4.5 * scale, 100 - 0.9 * scale)
+                  lineTo(x + 4.5 * scale, 100 + 0.9 * scale)
+                  lineTo(x, 100 + 0.9 * scale)
+                  lineTo(x, 100 - 0.9 * scale)
+                  filled = true
+                  color = vec(1.0, 0.6, 0.2, 1.0)
+              }
+              top += fline {
+                  moveTo(x, 100 - 0.9 * scale)
+                  lineTo(30.0, 100.0)
+                  lineTo(x, 100 + 0.9 * scale)
+                  color = vec(0.4, 0.9, 1.0, 1.0)
+              }
+              top += fline {
+                  moveTo(0.0, 0.0)
+                  lineTo(640.0, 0.0)
+                  lineTo(640.0, 200.0)
+                  lineTo(0.0, 200.0)
+                  color = vec(0.0, 0.0, 0.0, 0.0)
+              }
+              lines(top, channel = "above", w = 640.0, h = 200.0)
+              // The eye's view: 40° across 640 pixels. The car is 1.8 m wide and 1.5 m tall.
+              val perDegree = 640.0 / 40
+              val w = 2 * half * 180 / PI * perDegree
+              val h = 2 * atan(0.75 / distance) * 180 / PI * perDegree
+              val eye = fline {
+                  moveTo(320 - w / 2, 140 - h)
+                  lineTo(320 + w / 2, 140 - h)
+                  lineTo(320 + w / 2, 140.0)
+                  lineTo(320 - w / 2, 140.0)
+                  lineTo(320 - w / 2, 140 - h)
+                  filled = true
+                  color = vec(1.0, 0.6, 0.2, 1.0)
+              }
+              val ground = fline {
+                  moveTo(0.0, 140.0)
+                  lineTo(640.0, 140.0)
+                  color = vec(1.0, 1.0, 1.0, 0.35)
+              }
+              val frame = fline {
+                  moveTo(0.0, 0.0)
+                  lineTo(640.0, 0.0)
+                  lineTo(640.0, 160.0)
+                  lineTo(0.0, 160.0)
+                  color = vec(0.0, 0.0, 0.0, 0.0)
+              }
+              lines(ground, eye, frame, channel = "view", w = 640.0, h = 160.0)
+              display(
+                  "readout",
+                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${distance.roundToInt()} m away, the car spans " +
+                      "${"%.1f".format(2 * half * 180 / PI)}°</div>",
+              )
+          }
+
+          draw(10.0)
+          controlGroup {
+              slider("distance", 3.0, 60.0, step = 1.0, initialValue = 10.0) { draw(it) }
+          }
+  - create:
+      box: el_radians
+      name: radians
+      frame: { x: 1020.0, y: 210.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          // An angle measured by the arc it cuts from a circle. Unrolled on the right, the arc is so many
+          // radii long: that count is the angle in radians.
+          var radius = 90.0
+          var degrees = 60.0
+
+          fun draw() {
+              val a = degrees * PI / 180
+              val cx = 160.0
+              val cy = 150.0
+              val drawn = mutableListOf<FLine>()
+              drawn += fline {
+                  moveTo(cx + radius, cy)
+                  for (k in 1..120) lineTo(cx + radius * cos(2 * PI * k / 120), cy - radius * sin(2 * PI * k / 120))
+                  color = vec(1.0, 1.0, 1.0, 0.35)
+              }
+              drawn += fline {
+                  moveTo(cx + radius, cy)
+                  lineTo(cx, cy)
+                  lineTo(cx + radius * cos(a), cy - radius * sin(a))
+                  color = vec(1.0, 1.0, 1.0, 0.8)
+              }
+              drawn += fline {
+                  moveTo(cx + radius, cy)
+                  for (k in 1..90) lineTo(cx + radius * cos(a * k / 90), cy - radius * sin(a * k / 90))
+                  thickness = 4.0
+                  color = vec(0.4, 0.9, 1.0, 1.0)
+              }
+              // The arc laid straight, drawn at 0.4 of its length, with a tick at every radius.
+              val x0 = 330.0
+              drawn += fline {
+                  moveTo(x0, 270.0)
+                  lineTo(x0 + radius * a * 0.4, 270.0)
+                  thickness = 4.0
+                  color = vec(0.4, 0.9, 1.0, 1.0)
+              }
+              var k = 0
+              while (k * radius <= radius * a + 1e-9) {
+                  drawn += fline {
+                      moveTo(x0 + k * radius * 0.4, 258.0)
+                      lineTo(x0 + k * radius * 0.4, 282.0)
+                      thickness = 2.0
+                      color = vec(1.0, 0.6, 0.2, 1.0)
+                  }
+                  k++
+              }
+              drawn += fline {
+                  moveTo(0.0, 0.0)
+                  lineTo(640.0, 0.0)
+                  lineTo(640.0, 300.0)
+                  lineTo(0.0, 300.0)
+                  color = vec(0.0, 0.0, 0.0, 0.0)
+              }
+              lines(drawn, channel = "circle", w = 640.0, h = 300.0)
+              display(
+                  "readout",
+                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${degrees.roundToInt()}° = arc ÷ radius = " +
+                      "${"%.2f".format(a)} radians; the ticks on the unrolled arc are one radius apart</div>",
+              )
+          }
+
+          draw()
+          controlGroup {
+              slider("angle", 0.0, 360.0, step = 1.0, initialValue = degrees) { degrees = it; draw() }
+              slider("radius", 40.0, 120.0, step = 1.0, initialValue = radius) { radius = it; draw() }
+          }
+  - create:
+      box: el_projected_rect
+      name: projected_rect
+      frame: { x: 300.0, y: 280.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          // A square panel 0.6 m across and its shadow on a sphere of radius one around the eye. The area of
+          // that shadow is the panel's solid angle; move the panel away and it shrinks as the square.
+          val sphere = icosphereMesh(3, 1.0)
+
+          fun draw(distance: Double) {
+              val panel = planeMesh(12, 12, 0.6, 0.6).translated(0.0, 0.0, -distance)
+              // Every point of the panel pushed onto the unit sphere, along its line to the eye.
+              val shadow = panel.transformed { p -> p.normalize() }
+              var omega = 0.0
+              for (t in 0 until shadow.triangleCount) omega += shadow.triangleArea(t)
+              three(channel = "scene", width = 640, height = 420) {
+                  mesh(sphere, opacity = 0.12, wireframe = true)
+                  mesh(panel.withColor(0.4, 0.9, 1.0), unlit = true, wireframe = false, cullBackFaces = false)
+                  mesh(shadow.withColor(1.0, 0.6, 0.2), unlit = true, wireframe = false, cullBackFaces = false)
+                  mesh(icosphereMesh(1, 0.03).withColor(1.0, 1.0, 1.0), unlit = true, wireframe = false)
+                  fitTo(vec(-1.0, -1.0, -4.0), vec(1.0, 1.0, 1.0))
+                  camera(yaw = 60.0, pitch = 20.0)
+                  background("#000000")
+                  hud(false)
+              }
+              display(
+                  "readout",
+                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${"%.1f".format(distance)} m: " +
+                      "${"%.3f".format(omega)} steradians; × distance² = ${"%.2f".format(omega * distance * distance)}</div>",
+              )
+          }
+
+          draw(1.5)
+          controlGroup {
+              slider("distance", 1.2, 4.0, step = 0.1, initialValue = 1.5) { draw(it) }
+          }
+  - create:
+      box: el_hemisphere
+      name: hemisphere
+      frame: { x: 480.0, y: 280.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.graphics.lighting.*
+
+          // What one point on the floor sees: a hemisphere of directions. The lamp, pushed onto that
+          // hemisphere (orange) and then flattened straight down onto the disc beneath (cyan). The share of
+          // the disc the flattened lamp covers is the share of the lamp's radiance that reaches the point.
+          val dome = icosphereMesh(3, 1.0).filterTriangles { t -> icosphereMesh(3, 1.0).triangle(t).let { (a, b, c) -> a.y + b.y + c.y > 0 } }
+          val floor = floorMesh(3.0, 3.0, divisions = 48)
+
+          fun draw(across: Double) {
+              val lamp = RectLight(vec(across, 1.4, 0.0), width = 0.8, height = 0.8, power = 20.0)
+              val outline = planeMesh(12, 12, 0.8, 0.8).transformed { p -> vec(p.x + across, 1.4, p.y) }
+              val onDome = outline.transformed { p -> p.normalize() }
+              val flat = onDome.transformed { p -> vec(p.x, 0.002, p.z) }
+              var covered = 0.0
+              for (t in 0 until flat.triangleCount) covered += flat.triangleArea(t)
+              // Irradiance two ways: summed over the lamp by afield.graphics.lighting, and the lamp's
+              // radiance times the flattened area it covers.
+              val radiance = lamp.power / (PI * 0.8 * 0.8)
+              val e = irradianceAt(vec(0.0, 0.0, 0.0), vec(0.0, 1.0, 0.0), lamp).x
+              three(channel = "scene", width = 640, height = 420) {
+                  mesh(floor.lit(lamp, exposure = 0.5), unlit = true, wireframe = false)
+                  mesh(dome, opacity = 0.15, wireframe = true)
+                  mesh(lamp.mesh(), unlit = true, wireframe = false, cullBackFaces = false)
+                  mesh(onDome.withColor(1.0, 0.6, 0.2), unlit = true, wireframe = false, cullBackFaces = false)
+                  mesh(flat.withColor(0.4, 0.9, 1.0), unlit = true, wireframe = false, cullBackFaces = false)
+                  fitTo(vec(-1.6, 0.0, -1.6), vec(1.6, 1.5, 1.6))
+                  camera(yaw = 20.0, pitch = 35.0)
+                  background("#000000")
+                  hud(false)
+              }
+              display(
+                  "readout",
+                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>the lamp covers ${"%.1f".format(100 * covered / PI)} % of the disc. " +
+                      "Radiance × area = ${"%.2f".format(radiance * covered)} W/m²; summed over the lamp: ${"%.2f".format(e)} W/m²</div>",
+              )
+          }
+
+          draw(0.0)
+          controlGroup {
+              slider("lamp position", -2.0, 2.0, step = 0.05, initialValue = 0.0) { draw(it) }
+          }
+  - create:
+      box: el_constant_radiance
+      name: constant_radiance
+      frame: { x: 660.0, y: 280.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          // An eye looking at a wide lamp, from the side. One cell of the eye takes in a fixed cone of
+          // directions; move the lamp away and the cone covers more of it.
+          fun draw(distance: Double) {
+              val half = 5 * PI / 180
+              val x = 60 + distance * 130
+              val reach = (x - 60) * tan(half)
+              val drawn = mutableListOf<FLine>()
+              drawn += fline {
+                  moveTo(x, 20.0)
+                  lineTo(x, 260.0)
+                  thickness = 4.0
+                  color = vec(1.0, 1.0, 1.0, 0.5)
+              }
+              drawn += fline {
+                  moveTo(x, 140 - reach)
+                  lineTo(x, 140 + reach)
+                  thickness = 8.0
+                  color = vec(1.0, 0.6, 0.2, 1.0)
+              }
+              drawn += fline {
+                  moveTo(x, 140 - reach)
+                  lineTo(60.0, 140.0)
+                  lineTo(x, 140 + reach)
+                  color = vec(0.4, 0.9, 1.0, 1.0)
+              }
+              drawn += fline {
+                  moveTo(40.0, 125.0)
+                  lineTo(60.0, 140.0)
+                  lineTo(40.0, 155.0)
+                  thickness = 3.0
+                  color = vec(1.0, 1.0, 1.0, 0.8)
+              }
+              drawn += fline {
+                  moveTo(0.0, 0.0)
+                  lineTo(640.0, 0.0)
+                  lineTo(640.0, 280.0)
+                  lineTo(0.0, 280.0)
+                  color = vec(0.0, 0.0, 0.0, 0.0)
+              }
+              lines(drawn, channel = "side", w = 640.0, h = 280.0)
+              val d2 = distance * distance
+              display(
+                  "readout",
+                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${"%.1f".format(distance)} m: the cone takes in " +
+                      "${"%.1f".format(d2)}× the lamp's area, each piece arriving ${"%.1f".format(d2)}× fainter: the same brightness</div>",
+              )
+          }
+
+          draw(1.0)
+          controlGroup {
+              slider("distance", 1.0, 4.0, step = 0.1, initialValue = 1.0) { draw(it) }
+          }
+  - create:
+      box: el_lambert_lobe
+      name: lambert_lobe
+      frame: { x: 840.0, y: 280.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          // A small matte patch giving off light, seen from the side. It sends less light off to the side,
+          // as the cosine of the angle, and it also looks narrower from there by the same cosine.
+          val rays = 41
+
+          fun draw(degrees: Double) {
+              val v = degrees * PI / 180
+              val drawn = mutableListOf<FLine>()
+              // Rays whose sines are evenly spaced: their density falls off as the cosine.
+              for (i in 0 until rays) {
+                  val s = 2.0 * (i + 0.5) / rays - 1
+                  val c = sqrt(1 - s * s)
+                  drawn += fline {
+                      moveTo(320.0, 250.0)
+                      lineTo(320 + 210 * s, 250 - 210 * c)
+                      color = vec(1.0, 1.0, 1.0, 0.3)
+                  }
+              }
+              // The lobe: in each direction, the power sent that way. A circle resting on the patch.
+              drawn += fline {
+                  moveTo(320.0, 250.0)
+                  for (k in 1..180) {
+                      val p = -PI / 2 + PI * k / 180
+                      lineTo(320 + 200 * cos(p) * sin(p), 250 - 200 * cos(p) * cos(p))
+                  }
+                  thickness = 2.0
+                  color = vec(0.4, 0.9, 1.0, 1.0)
+              }
+              drawn += fline {
+                  moveTo(270.0, 250.0)
+                  lineTo(370.0, 250.0)
+                  thickness = 6.0
+                  color = vec(1.0, 0.6, 0.2, 1.0)
+              }
+              // The viewing direction, and how wide the patch looks from there.
+              drawn += fline {
+                  moveTo(320.0, 250.0)
+                  lineTo(320 + 240 * sin(v), 250 - 240 * cos(v))
+                  thickness = 2.0
+                  color = vec(1.0, 0.6, 0.2, 1.0)
+              }
+              val w = 50 * cos(v)
+              drawn += fline {
+                  moveTo(320 + 240 * sin(v) - w * cos(v), 250 - 240 * cos(v) - w * sin(v))
+                  lineTo(320 + 240 * sin(v) + w * cos(v), 250 - 240 * cos(v) + w * sin(v))
+                  thickness = 5.0
+                  color = vec(1.0, 0.6, 0.2, 1.0)
+              }
+              drawn += fline {
+                  moveTo(0.0, 0.0)
+                  lineTo(640.0, 0.0)
+                  lineTo(640.0, 280.0)
+                  lineTo(0.0, 280.0)
+                  color = vec(0.0, 0.0, 0.0, 0.0)
+              }
+              lines(drawn, channel = "side", w = 640.0, h = 280.0)
+              val c = cos(v)
+              display(
+                  "readout",
+                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>at ${degrees.roundToInt()}°: " +
+                      "${(c * 100).roundToInt()} % of the power, from ${(c * 100).roundToInt()} % of the width: the same brightness</div>",
+              )
+          }
+
+          draw(0.0)
+          controlGroup {
+              slider("viewing angle", -80.0, 80.0, step = 1.0, initialValue = 0.0) { draw(it) }
+          }
+  - create:
+      box: el_rough_mirror
+      name: rough_mirror
+      frame: { x: 1020.0, y: 280.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          // Parallel rays striking a surface, seen from the side. Each ray meets a tiny facet of the
+          // surface and leaves as from a mirror; roughness tilts the facets, so the rays fan out.
+          val rays = 25
+          var roughness = 0.0
+          var angle = 40.0
+
+          fun draw() {
+              val a = angle * PI / 180
+              val drawn = mutableListOf<FLine>()
+              drawn += fline {
+                  moveTo(20.0, 240.0)
+                  lineTo(620.0, 240.0)
+                  color = vec(1.0, 1.0, 1.0, 0.35)
+              }
+              for (i in 0 until rays) {
+                  val x = 220 + 200.0 * i / (rays - 1)
+                  // Each facet's tilt, spread evenly (golden-ratio steps) over ± roughness × 50°.
+                  val tilt = roughness * 50 * PI / 180 * (2 * ((i * 0.618034) % 1.0) - 1)
+                  // Travelling down and to the right; y grows downward in this drawing.
+                  val dx = sin(a)
+                  val dy = cos(a)
+                  // The facet's normal points up, tilted; the ray reflects about it.
+                  val nx = sin(tilt)
+                  val ny = -cos(tilt)
+                  val dot = dx * nx + dy * ny
+                  var rx = dx - 2 * dot * nx
+                  var ry = dy - 2 * dot * ny
+                  if (ry > 0) ry = -ry
+                  drawn += fline {
+                      moveTo(x - dx * 230, 240 - dy * 230)
+                      lineTo(x, 240.0)
+                      color = vec(1.0, 0.6, 0.2, 0.6)
+                  }
+                  drawn += fline {
+                      moveTo(x, 240.0)
+                      lineTo(x + rx * 200, 240 + ry * 200)
+                      color = vec(0.4, 0.9, 1.0, 0.9)
+                  }
+                  drawn += fline {
+                      moveTo(x - 6 * cos(tilt), 240 - 6 * sin(tilt))
+                      lineTo(x + 6 * cos(tilt), 240 + 6 * sin(tilt))
+                      thickness = 2.0
+                      color = vec(1.0, 1.0, 1.0, 0.8)
+                  }
+              }
+              // A fixed frame, so the drawing keeps its scale.
+              drawn += fline {
+                  moveTo(0.0, 0.0)
+                  lineTo(640.0, 0.0)
+                  lineTo(640.0, 280.0)
+                  lineTo(0.0, 280.0)
+                  color = vec(0.0, 0.0, 0.0, 0.0)
+              }
+              lines(drawn, channel = "side", w = 640.0, h = 280.0)
+          }
+
+          draw()
+          controlGroup {
+              slider("roughness", 0.0, 1.0, step = 0.01, initialValue = roughness) { roughness = it; draw() }
+              slider("light angle", 0.0, 70.0, step = 1.0, initialValue = angle) { angle = it; draw() }
+          }
+  - create:
       box: el_soft_shadow
       name: soft_shadow
       frame: { x: 300.0, y: 350.0, w: 160.0, h: 50.0 }
@@ -497,8 +923,7 @@ operations:
         code: |
           import kotlinx.html.*
 
-          // The talk. Every figure is a box beside this one, named as in figure(...).
-          // A presenter note that starts "Figure not built yet" marks a slide still waiting for its figure.
+          // The talk. Every figure is a box beside this one, named as in figureBeside(...).
           presentation(title = "Lights and Shadows") {
                   step("Lights and Shadows", id = "opening") {
                       audience {
@@ -649,107 +1074,137 @@ operations:
                   section("Angles") {
                       step("How big things look", id = "angles") {
                           audience {
-                              +"""
-                              ## How big things look
+                              figureBeside("car_angle") {
+                                  +"""
+                                  ## How big things look
 
-                              How large something looks is the angle it takes up in front of you. Walk
-                              away from a car and that angle shrinks, close to one over the distance.
-                          """
-                                  .md
+                                  How large something looks is the angle it takes up in front of you. Walk
+                                  away from a car and that angle shrinks, close to one over the distance.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `car_angle`, a top view and an eye view of a car moving away. [[back]] [[next]]")
+                          control("car_angle", "distance", 10.0)
+                          cue("Twice as far") { control("car_angle", "distance", 20.0, glideMs = 1800) }
+                          markdownNote("Next drives the car from 10 m to 20 m: the angle it spans halves, near enough. [[back]] [[next]]")
                       }
                       step("Angles as lengths", id = "radians") {
                           audience {
-                              +"""
-                              ## Angles as lengths
+                              figureBeside("radians") {
+                                  +"""
+                                  ## Angles as lengths
 
-                              Measure an angle by the arc it cuts from a circle: arc length over radius
-                              is the angle in radians, and a whole turn is 2π. For a small angle the arc
-                              is nearly straight, so size ≈ angle × distance.
-                          """
-                                  .md
+                                  Measure an angle by the arc it cuts from a circle: arc length over radius
+                                  is the angle in radians, and a whole turn is 2π. For a small angle the arc
+                                  is nearly straight, so size ≈ angle × distance.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `radians`, an arc whose length is read off against its radius. [[back]] [[next]]")
+                          control("radians", "angle", 60.0)
+                          control("radians", "radius", 90.0)
+                          cue("A whole turn") { control("radians", "angle", 360.0, glideMs = 2500) }
+                          markdownNote("Next sweeps the angle to a whole turn: 6.28 radii of arc, 2π radians. [[back]] [[next]]")
                       }
                   }
 
                   section("Solid angles") {
                       step("Angles in three dimensions", id = "solid-angle") {
                           audience {
-                              +"""
-                              ## Angles in three dimensions
+                              figureBeside("projected_rect") {
+                                  +"""
+                                  ## Angles in three dimensions
 
-                              Project a shape onto a sphere of radius one around your eye. The patch it
-                              covers is its solid angle, in steradians; the whole sphere is 4π. Move a
-                              panel twice as far and its solid angle drops to a quarter.
-                          """
-                                  .md
+                                  Project a shape onto a sphere of radius one around your eye. The patch it
+                                  covers is its solid angle, in steradians; the whole sphere is 4π. Move a
+                                  panel twice as far and its solid angle drops to a quarter.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `projected_rect`, a panel projected onto a unit sphere, with a distance slider. [[back]] [[next]]")
+                          control("projected_rect", "distance", 1.5)
+                          cue("Twice as far") { control("projected_rect", "distance", 3.0, glideMs = 1800) }
+                          markdownNote("Next moves the panel from 1.5 m to 3 m: a quarter of the solid angle, while solid angle × distance² stays near the panel's area. [[back]] [[next]]")
                       }
                   }
 
                   section("Surface vision") {
                       step("What the floor sees", id = "hemisphere") {
                           audience {
-                              +"""
-                              ## What the floor sees
+                              figureBeside("hemisphere") {
+                                  +"""
+                                  ## What the floor sees
 
-                              A point on a floor looks out on a hemisphere of directions. Project the lamp
-                              onto that hemisphere, then flatten it straight down onto the disc beneath:
-                              the share of the disc it covers is the share of light the point gets.
-                              The flattening is the cosine factor again.
-                          """
-                                  .md
+                                  A point on a floor looks out on a hemisphere of directions. Project the lamp
+                                  onto that hemisphere, then flatten it straight down onto the disc beneath:
+                                  the share of the disc it covers is the share of light the point gets.
+                                  The flattening is the cosine factor again.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `hemisphere`, a lamp projected onto a floor point's hemisphere and its base disc. [[back]] [[next]]")
+                          control("hemisphere", "lamp position", 0.0)
+                          cue("Lamp to one side") { control("hemisphere", "lamp position", 1.5, glideMs = 2000) }
+                          markdownNote("Next slides the lamp off to the side: its patch on the dome moves down and flattens to a smaller share of the disc. The readout checks the share against the lighting library. [[back]] [[next]]")
                       }
                   }
 
                   section("Radiance") {
                       step("Brightness that does not fade", id = "radiance") {
                           audience {
-                              +"""
-                              ## Brightness that does not fade
+                              figureBeside("constant_radiance") {
+                                  +"""
+                                  ## Brightness that does not fade
 
-                              Step back from a lamp and it looks just as bright, only smaller. Each cell in
-                              the eye takes in a fixed cone of directions; farther away, that cone covers
-                              more of the lamp, and the extra area makes up for the inverse-square law
-                              exactly. What stays the same is called radiance.
-                          """
-                                  .md
+                                  Step back from a lamp and it looks just as bright, only smaller. Each cell in
+                                  the eye takes in a fixed cone of directions; farther away, that cone covers
+                                  more of the lamp, and the extra area makes up for the inverse-square law
+                                  exactly. What stays the same is called radiance.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `constant_radiance`, a receptor cone on a lamp at a distance slider. [[back]] [[next]]")
+                          control("constant_radiance", "distance", 1.0)
+                          cue("Step back") { control("constant_radiance", "distance", 3.0, glideMs = 2000) }
+                          markdownNote("Next steps back to 3 m: the cone takes in nine times the lamp, each piece nine times fainter. [[back]] [[next]]")
                       }
                       step("Equally bright from every side", id = "lambert") {
                           audience {
-                              +"""
-                              ## Equally bright from every side
+                              figureBeside("lambert_lobe") {
+                                  +"""
+                                  ## Equally bright from every side
 
-                              A matte emitter sends less power off to the side, in proportion to the cosine
-                              of the angle. Seen from that side its surface is foreshortened by the same
-                              cosine, so it looks equally bright from any direction.
-                          """
-                                  .md
+                                  A matte emitter sends less power off to the side, in proportion to the cosine
+                                  of the angle. Seen from that side its surface is foreshortened by the same
+                                  cosine, so it looks equally bright from any direction.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `lambert_lobe`, the emission lobe of a matte surface, side view. [[back]] [[next]]")
+                          control("lambert_lobe", "viewing angle", 0.0)
+                          cue("From the side") { control("lambert_lobe", "viewing angle", 60.0, glideMs = 1800) }
+                          markdownNote("Next swings the view to 60°: half the power, through half the width. [[back]] [[next]]")
                       }
                   }
 
                   section("Reflections") {
                       step("Mirror to matte", id = "reflections") {
                           audience {
-                              +"""
-                              ## Mirror to matte
+                              figureBeside("rough_mirror") {
+                                  +"""
+                                  ## Mirror to matte
 
-                              A mirror sends each ray back at the angle it arrived. Roughen it and the
-                              returning rays fan out; rough enough, and they leave in every direction
-                              alike. That is a matte surface.
-                          """
-                                  .md
+                                  A mirror sends each ray back at the angle it arrived. Roughen it and every
+                                  ray meets a facet tilted its own way, so the returning rays fan out. A surface
+                                  rough enough at every scale sends light back in all directions alike: matte.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `rough_mirror`, rays reflected from a surface of adjustable roughness. [[back]] [[next]]")
+                          control("rough_mirror", "roughness", 0.0)
+                          control("rough_mirror", "light angle", 40.0)
+                          cue("Roughen it") { control("rough_mirror", "roughness", 1.0, glideMs = 2500) }
+                          markdownNote("A mirror first; Next roughens the surface until the reflected rays leave in all directions. [[back]] [[next]]")
                       }
                   }
 
