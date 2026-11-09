@@ -260,10 +260,6 @@ class DocumentedApiEvaluationTest {
             "learned_shader.md; ShaderTraining.trainAsync starts a 12000-step training run against " +
                 "a GPU and returns a handle. Minutes of device work, so no headless evaluator " +
                 "invokes it; the page's transcript compiles the call.",
-        "fromViews" to
-            "reconstruction_plumbing.md; builds a mip-aware TextureSampler over live image views, " +
-                "and its own KDoc says that case 'needs a live graphics context on this thread'. " +
-                "The reconstruction transcripts are COMPILE_ONLY for exactly that reason.",
         "evaluateUniform" to
             "keyframe_autosweep.md, reconstruction_plumbing.md, ray_reconstruction.md; an " +
                 "Interpolant override sampled by the reconstruction jitter path. The documents that " +

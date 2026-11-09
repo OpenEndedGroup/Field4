@@ -86,6 +86,14 @@ This file is about what goes on a page and how it reads.
 
 16. **One topic, one page.** Merge duplicates, and fold thin pages into a neighbour. File a
    `navigation` handoff for it; do not improvise a merge inside a page edit.
+16a. **Work that extends a page goes on that page.** When you take an example further (its "where
+   to go next", a follow-up paper, a GPU version, a sweep), add new sections to the original page
+   and update its "where to go next". Do not start a sibling page that links back to it. On
+   2026-11-08 Marc had four such pages folded back into their originals the day they landed:
+   uncrossed knight paths into `knight_tour_workshop.md`, Penrose in 3D and the Penrose spectra
+   into `debruijn_tilings.md`, and dependency length into `sentence_diagrams.md`. A long page is
+   fine. A reader who finds the original should find what came after it. While you are there,
+   check that the original is in the `nav:` (`knight_tour_workshop.md` was not).
 17. **Place a page by its reader.** Internals stay out of *Start Here* and off the top of a
    section. A page that is really a graphics demo belongs with the graphics chains, not under
    *Working in a document*.
@@ -151,6 +159,7 @@ cheapest first checks, none of them written yet:
 | 7 | inside a runner fence: `fromContext<Renderer>()`, `import afield.stdlib.`, `_print(` |
 | 13 | a capture whose bottom rows are a uniform background colour over some height |
 | 16 | `chains.md` has a card for every page in its nav section (two were missing, 2026-10-11) |
+| 16a | every `public/docs/*.md` outside `reference/` and `assets/` is in `nav:` or on a named exclusion list; and a page a branch adds whose opening paragraph links an existing example page is flagged in `tools/land.py precheck` |
 | 19 | a `**[...](...)**` link; a GitHub link not spelled `OpenEndedGroup/Field4` |
 | 20 | a page stating how many transcripts the welcome screen withholds agrees with `AgentTranscriptMaterializer.EXCLUDE` (stale twice) |
 

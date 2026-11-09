@@ -518,8 +518,8 @@ object DemoTranscriptExecSmokeTest {
         // eigendrum.md's Raman and design sections: loaded drums, the harmonicity sweep, syahi and
         // outline fits with leastSquares, and a live ModalDrum morph. CPU only.
         "harmonic_drum",
-        // penrose_spectra.md's companion: exact zero-state counts, dense EJML spectra and WAV
-        // players for a Penrose tiling's vertex graph; the live ModalDrum box is not executed. CPU only.
+        // debruijn_tilings.md's graph-spectrum section: exact zero-state counts, dense EJML spectra
+        // and strikes for a Penrose tiling's vertex graph; the live ModalDrum box is not executed. CPU only.
         "penrose_spectra",
         "fline_hit_records",
         // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.

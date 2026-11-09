@@ -6,6 +6,46 @@ fixes and wording changes, open **Changelog** on the Welcome screen.
 
 ## November 2026
 
+<!-- changelog: e6cae5992d..5bc84b8f69 -->
+### Hearing a Penrose tiling, and pages gathered in one place
+
+*8 November 2026*
+
+- **Penrose spectra**: treat a tiling as a graph, count its zero states, see where the confined
+  states live, and strike the tiling to hear it. [The tiling as a graph](debruijn_tilings.md#the-tiling-as-a-graph).
+- **Uncrossed knight paths** now sit on the knight-tour page: the longest non-crossing paths,
+  other leapers and surfaces, and checking a path you draw. [Uncrossed paths](knight_tour_workshop.md#uncrossed-paths).
+- **Dependency length** joins the sentence diagrams page: how far apart related words sit in real
+  texts, against random reorderings. [Dependency length in real texts](sentence_diagrams.md#dependency-length-in-real-texts).
+
+<!-- changelog: 6b865fbba4..1398bd1029 -->
+### Particle Lenia, growing cellular automata and shape-aware ASCII
+
+*8 November 2026*
+
+- **Particle Lenia**: a CPU reference, a rotating creature found by a sweep, and thousands of
+  particles on the GPU. [Particle Lenia](particle_lenia.md).
+- **Growing neural cellular automata**: grow a pattern, cut it and watch it heal, on the GPU, with
+  a trainer for your own rule. [Growing NCA](growing_nca.md).
+- **Shape-aware ASCII**: render pictures and a live cube as characters chosen by shape.
+  [Shape-aware ASCII](ascii_shape.md).
+- **Designing a Physarum network**: food sources, Tero scores, a sweep and food you draw.
+  [Designing a network](alife_examples.md#designing-a-network).
+- Every control takes a [tooltip](visualizers.md#saying-what-a-control-is-for-tooltips), and
+  `fileChooser` [completes paths as you type](visualizers.md#choosing-a-file).
+
+<!-- changelog: ce55478873..16a8d45ae8 -->
+### A sound remembered on a self-organizing map, and Penrose tilings in 3D
+
+*8 November 2026*
+
+- **Self-organizing maps for audio curves**: remember what was heard on a chain, a sheet or a
+  lattice, and watch a progress bar while a recording is analysed.
+  [A self-organizing map of what was heard](audio_curves.md#a-self-organizing-map-of-what-was-heard).
+- **Three-dimensional Penrose tilings**: de Bruijn multigrids of planes fill space with Ammann
+  rhombohedra, sliced, slid and welded into printable solids through Manifold.
+  [Penrose tilings in three dimensions](debruijn_tilings.md#penrose-tilings-in-three-dimensions).
+
 <!-- changelog: 29cb7e43af..96b9003473 -->
 ### Audio curves: a sound as a few slow controls
 

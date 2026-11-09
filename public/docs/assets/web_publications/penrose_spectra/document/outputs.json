@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T18:04:26.071Z",
+  "capturedAt": "2026-11-08T19:43:40.372Z",
   "documentName": "penrose_spectra",
   "outputs": [
     {
@@ -25,42 +25,6 @@
     },
     {
       "uid": "ps_strike",
-      "channel": "Penrose, most confined weight",
-      "open": true,
-      "warnings": [
-        "Live media omitted"
-      ],
-      "kinds": [],
-      "width": 428,
-      "height": 62,
-      "path": "outputs/2.html"
-    },
-    {
-      "uid": "ps_strike",
-      "channel": "Penrose, seven-edged vertex",
-      "open": true,
-      "warnings": [
-        "Live media omitted"
-      ],
-      "kinds": [],
-      "width": 428,
-      "height": 62,
-      "path": "outputs/3.html"
-    },
-    {
-      "uid": "ps_strike",
-      "channel": "square lattice, centre",
-      "open": true,
-      "warnings": [
-        "Live media omitted"
-      ],
-      "kinds": [],
-      "width": 428,
-      "height": 62,
-      "path": "outputs/4.html"
-    },
-    {
-      "uid": "ps_strike",
       "channel": "lines",
       "open": true,
       "warnings": [],
@@ -69,7 +33,7 @@
       ],
       "width": 480,
       "height": 150,
-      "path": "outputs/5.html"
+      "path": "outputs/2.html"
     },
     {
       "uid": "ps_strike",
@@ -79,7 +43,7 @@
       "kinds": [],
       "width": 474,
       "height": 45,
-      "path": "outputs/6.html"
+      "path": "outputs/3.html"
     },
     {
       "uid": "ps_slider",
@@ -91,7 +55,7 @@
       ],
       "width": 473,
       "height": 56,
-      "path": "outputs/7.html"
+      "path": "outputs/4.html"
     },
     {
       "uid": "ps_slider",
@@ -103,7 +67,7 @@
       ],
       "width": 473,
       "height": 56,
-      "path": "outputs/8.html"
+      "path": "outputs/5.html"
     },
     {
       "uid": "ps_slider",
@@ -115,7 +79,7 @@
       ],
       "width": 480,
       "height": 150,
-      "path": "outputs/9.html"
+      "path": "outputs/6.html"
     },
     {
       "uid": "ps_slider",
@@ -125,7 +89,7 @@
       "kinds": [],
       "width": 479,
       "height": 45,
-      "path": "outputs/10.html"
+      "path": "outputs/7.html"
     },
     {
       "uid": "ps_idos",
@@ -137,7 +101,7 @@
       ],
       "width": 480,
       "height": 150,
-      "path": "outputs/11.html"
+      "path": "outputs/8.html"
     },
     {
       "uid": "ps_idos",
@@ -147,7 +111,7 @@
       "kinds": [],
       "width": 474,
       "height": 45,
-      "path": "outputs/12.html"
+      "path": "outputs/9.html"
     },
     {
       "uid": "ps_sweep",
@@ -157,7 +121,7 @@
       "kinds": [],
       "width": 302,
       "height": 236,
-      "path": "outputs/13.html"
+      "path": "outputs/10.html"
     },
     {
       "uid": "ps_sweep",
@@ -167,7 +131,7 @@
       "kinds": [],
       "width": 200,
       "height": 191,
-      "path": "outputs/14.html"
+      "path": "outputs/11.html"
     },
     {
       "uid": "ps_sweep",
@@ -177,7 +141,7 @@
       "kinds": [],
       "width": 200,
       "height": 168,
-      "path": "outputs/15.html"
+      "path": "outputs/12.html"
     },
     {
       "uid": "ps_states",
@@ -189,7 +153,7 @@
       ],
       "width": 480,
       "height": 150,
-      "path": "outputs/16.html"
+      "path": "outputs/13.html"
     },
     {
       "uid": "ps_states",
@@ -199,7 +163,7 @@
       "kinds": [],
       "width": 474,
       "height": 64,
-      "path": "outputs/17.html"
+      "path": "outputs/14.html"
     }
   ]
 }
