@@ -11,6 +11,9 @@ worst-off pool samples with a random disc each batch.
     uv run --project . --group pen python tools/nca/train_growing_nca.py --target flower \
         --steps 4000 --out public/docs/assets/growing_nca/flower.json
 
+A target drawn in Field (`GrowingNca.targetFromFLines` + `GrowingNca.writeTarget`) trains with
+`--target-file fish_target.json` in place of `--target`.
+
 The JSON written is what `afield.simulation.automata.GrowingNca` loads: `w1` (128x48,
 row-major, input order identity[16], sobelX[16], sobelY[16]), `b1` (128), `w2` (16x128),
 plus `size`, `target` name and the training loss history.
@@ -68,6 +71,16 @@ def make_target(name, size=40):
         raise SystemExit(f"unknown target {name}")
     img[..., :3] *= img[..., 3:4]
     return img
+
+
+def load_target(path):
+    """A target written by Field's `GrowingNca.writeTarget`: {"name", "size", "rgba": [y][x][rgba]
+    premultiplied, flattened}."""
+    with open(path) as f:
+        o = json.load(f)
+    n = int(o["size"])
+    img = np.array(o["rgba"], np.float32).reshape(n, n, 4)
+    return o.get("name") or os.path.splitext(os.path.basename(path))[0], img
 
 
 def write_png(path, rgba01):
@@ -139,7 +152,9 @@ def damage_mask(n, size, device):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--target", default="flower")
+    ap.add_argument("--target-file", help="a target JSON from GrowingNca.writeTarget (overrides --target)")
     ap.add_argument("--steps", type=int, default=4000)
+    ap.add_argument("--lr-drop", type=int, default=2000, help="step at which the learning rate drops tenfold")
     ap.add_argument("--pad", type=int, default=12)
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--pool", type=int, default=1024)
@@ -152,7 +167,10 @@ def main():
     np.random.seed(a.seed)
     dev = torch.device(a.device)
 
-    tgt_np = make_target(a.target)
+    if a.target_file:
+        a.target, tgt_np = load_target(a.target_file)
+    else:
+        tgt_np = make_target(a.target)
     tgt_np = np.pad(tgt_np, ((a.pad, a.pad), (a.pad, a.pad), (0, 0)))
     size = tgt_np.shape[0]
     tgt = torch.tensor(tgt_np, device=dev).permute(2, 0, 1)[None]
@@ -162,7 +180,7 @@ def main():
 
     ca = CA().to(dev)
     opt = torch.optim.Adam(ca.parameters(), lr=2e-3)
-    sched = torch.optim.lr_scheduler.MultiStepLR(opt, [2000], 0.1)
+    sched = torch.optim.lr_scheduler.MultiStepLR(opt, [a.lr_drop], 0.1)
     pool = seed(a.pool, size, dev)
     losses = []
     t0 = time.time()
@@ -198,7 +216,7 @@ def main():
     w2 = ca.w2.weight.detach().cpu().numpy().reshape(CH, HIDDEN)
     json.dump({"source": "Mordvintsev et al., Growing Neural Cellular Automata, Distill 2020",
                "target": a.target, "size": size, "channels": CH, "hidden": HIDDEN,
-               "fireRate": 0.5, "steps": a.steps, "damage": a.damage,
+               "fireRate": 0.5, "steps": a.steps, "damage": a.damage, "lrDrop": a.lr_drop,
                "loss": [round(v, 6) for v in losses[::50]],
                "w1": w1.round(6).ravel().tolist(), "b1": b1.round(6).tolist(),
                "w2": w2.round(6).ravel().tolist(),

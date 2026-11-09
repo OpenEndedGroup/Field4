@@ -107,6 +107,12 @@ class ShapeAscii(
         }
     }
 
+    /**
+     * The pixels of sampling circle [k] as flat (x, y) pairs in cell pixels, the exact set [convert]
+     * averages: `0..5` the inner circles, `6..11` the outer ones, in [samplingCircles] order.
+     */
+    fun circlePixels(k: Int): IntArray = (if (k < 6) inner[k] else outer[k - 6]).copyOf()
+
     /** Glyph [index] rasterised into one cell, as a gray [Img] (white ink on black): what its vector was read from. */
     fun glyphImg(index: Int): Img = Img(cellWidth, cellHeight, 1, raster(glyphs[index]))
 
@@ -127,6 +133,10 @@ class ShapeAscii(
      * [directional] contrast (exponent per inner circle against the circle outside it) and then
      * [contrast] (exponent on each component relative to the cell's largest). 1 leaves a step off;
      * 2 to 4 sharpens edges.
+     *
+     * By default the shape search goes through a cache keyed on the vector rounded to 32 levels per
+     * component, which is what makes a live loop cheap; [exact] searches every glyph for every cell
+     * instead ([bruteNearest]), as the GPU match shader on `ascii_shape.md` does.
      */
     fun convert(
         img: Img,
@@ -136,6 +146,7 @@ class ShapeAscii(
         directional: Double = 1.0,
         invert: Boolean = false,
         rows: Int = rowsFor(img, cols),
+        exact: Boolean = false,
     ): AsciiFrame {
         require(cols >= 1 && rows >= 1) { "need at least one cell, got ${cols}x$rows" }
         val w = cols * cellWidth
@@ -165,7 +176,7 @@ class ShapeAscii(
                     e[k] = if (directional != 1.0) sample(lum, w, h, x0, y0, outer[k]) else 0.0
                 }
                 enhance(v, e, contrast, directional)
-                nearestShape(v)
+                if (exact) bruteNearest(v) else nearestShape(v)
             }
         }
         return AsciiFrame(this, cols, rows, out)
@@ -321,6 +332,16 @@ class AsciiFrame internal constructor(
     /** Draw the characters as an image in [ascii]'s font, [ink] on [background]. */
     fun toImg(ink: Color = Color(0xE8, 0xE8, 0xE8), background: Color = Color(0x16, 0x16, 0x1A)): Img =
         ascii.draw(this, ink, background)
+
+    /**
+     * The share of cells holding the same character as [other], from 0 to 1. Both frames must have
+     * the same size and charset.
+     */
+    fun agreement(other: AsciiFrame): Double {
+        require(cols == other.cols && rows == other.rows) { "frames differ in size: ${cols}x$rows vs ${other.cols}x${other.rows}" }
+        require(ascii.glyphs == other.ascii.glyphs) { "frames use different charsets" }
+        return indices.indices.count { indices[it] == other.indices[it] }.toDouble() / indices.size
+    }
 
     override fun toString(): String = text()
 }

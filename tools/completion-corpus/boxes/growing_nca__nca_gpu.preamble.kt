@@ -68,6 +68,9 @@ fun BufferParameters.asNcaState(): NcaState =
 /*compute-pc-structure:brush*/ var Structure.brush by Structure.FromStructure<Any>()
 /*compute-pc-binding:brush*/ var ComputeMesh.brush by ComputeMesh.BoundFromStructure<afield.math.linalg.Vector4f>()
 /*compute-pc-binding-group:brush*/ var ComputeMeshGroup.brush by ComputeMeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
+/*compute-pc-structure:angle*/ var Structure.angle by Structure.FromStructure<Any>()
+/*compute-pc-binding:angle*/ var ComputeMesh.angle by ComputeMesh.BoundFromStructure<Number>()
+/*compute-pc-binding-group:angle*/ var ComputeMeshGroup.angle by ComputeMeshGroup.BoundFromStructure<Number>()
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*start*/
 /*graphics-structure-type:NcaCells:NcaCells*/

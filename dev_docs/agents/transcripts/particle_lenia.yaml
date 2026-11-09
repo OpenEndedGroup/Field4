@@ -1,14 +1,18 @@
 name: particle_lenia
 description: >
-  Particle Lenia (Mordvintsev, Niklasson and Randazzo, Google Research 2022), as three pure-CPU
+  Particle Lenia (Mordvintsev, Niklasson and Randazzo, Google Research 2022), as seven pure-CPU
   boxes from public/docs/particle_lenia.md. Box 1 runs the article's default rule from 200
   particles in a 12-unit square to step 3000 and draws the particles over the energy field, the
   potential U and the mean particle energy, beside the control (wK = 0, repulsion only). Box 2 is
   the same run animated. Box 3 is the rotator rule (sigmaK 0.6, cRep 0.3, 100 particles) with
-  its centroid track. Neither opens a Window or a Renderer.
+  its centroid track. Box 4 measures and classifies nine creatures from the article demo's zoo.
+  Box 5 maps the growth curve (muG x sigmaG) for the rotator's kernel by what each cell's creature
+  does. Box 6 searches for a 40-particle glider with PopulationSearch against a random-sampling
+  control and checks both winners on held-out seeds (a few minutes, off the main loop). Box 7
+  animates the evolved glider. Boxes 4 to 7 are created but not run. None opens a Window or a Renderer.
 docs:
   - page: particle_lenia.md
-    why: "The page these two boxes come from."
+    why: "The page these boxes come from."
 operations:
   - create:
       box: particle_lenia_still
@@ -96,6 +100,207 @@ operations:
                   val img = pl.render(extent = 24.0, size = 300, cx = 0.0, cy = 0.0)
                   // the centroid's path so far, as small dots
                   ["step %d".format(n) to splatDots(img, track, 24.0, 0.0, 0.0, dotRadius = 1.0)]
+              },
+          )
+  - create:
+      box: particle_lenia_zoo
+      name: "4 — Particle Lenia: the demo's zoo, measured and classified"
+      frame:
+        x: 60.0
+        y: 260.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // Nine creatures from the demo's zoo, each from the demo's starting positions under its own rule:
+          // 2000 steps to settle, then a measured window of 4000.
+          val tiles = mutableListOf<Pair<String, Img>>()
+          for (c in ParticleLeniaZoo.creatures) {
+              val pl = c.lenia().stepTimes(2000)
+              val w = pl.measure(4000)
+              println("%-14s %3d  %s".format(c.name, c.count, w))
+              tiles +=
+                  "%s: %s".format(c.name, w.motion.name.lowercase()) to
+                      LeniaMapCell(0.0, 0.0, pl, w).tile(extent = 16.0, size = 240)
+          }
+
+          // The gliders again under the demo's integrator, which carries half of each step into the next.
+          for (name in ["Iguanmousauru", "Agilienster", "Tarbosaurolop", "Coelopasaurop", "Sauropeltad"]) {
+              val euler = ParticleLeniaZoo[name].lenia().stepTimes(2000).measure(4000)
+              val demo = ParticleLeniaZoo[name].lenia().also { it.inertia = 0.5 }.stepTimes(2000).measure(4000)
+              println("%-14s speed %.4f (Euler)  %.4f (demo's integrator)".format(name, euler.speed, demo.speed))
+          }
+
+          showImg(montage(tiles, columns = 3, cellSide = 240))
+  - create:
+      box: particle_lenia_growth_map
+      name: "5 — Particle Lenia: a map of the growth curve"
+      frame:
+        x: 560.0
+        y: 260.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // The rotator's kernel (muK 4, sigmaK 0.6, wK 0.022) and repulsion (cRep 0.3) at 100 particles, seed 1,
+          // with the growth curve's centre muG across and its width sigmaG up: 3000 steps to settle, 4000 measured.
+          val muGs = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+          val sigmaGs = [0.06, 0.1, 0.15, 0.2]
+          val cells =
+              leniaMotionMap(muGs, sigmaGs, settle = 3000, window = 4000) { muG, sigmaG ->
+                  ParticleLenia.random(
+                      100,
+                      side = 12.0 * Math.sqrt(0.5),
+                      seed = 1L,
+                      params = ParticleLeniaParams(sigmaK = 0.6, cRep = 0.3, muG = muG, sigmaG = sigmaG),
+                  )
+              }
+          for (c in cells) println("muG %.2f  sigmaG %.2f  %s".format(c.x, c.y, c.window))
+          println(cells.groupingBy { it.motion }.eachCount())
+
+          showImg(
+              montage(cells.map { "%.2f, %.2f".format(it.x, it.y) to it.tile(size = 160) }, columns = muGs.size, cellSide = 160),
+          )
+  - create:
+      box: particle_lenia_glider_search
+      name: "6 — Particle Lenia: searching for a glider at 40 particles"
+      frame:
+        x: 1060.0
+        y: 260.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          import kotlinx.coroutines.Dispatchers
+          import kotlinx.coroutines.withContext
+
+          /*
+          A rule whose 40 particles pull themselves into a glider from a random square. The genome is five numbers
+          (muK, sigmaK, muG, sigmaG, cRep) with wK normalised. A rule scores speed times straightness over two windows
+          of 1500 steps after 3000 to settle, the worse of seeds 1 and 2, and zero if its creature splits or its spread
+          changes by more than 2%. Random sampling at the same budget and seed is the control.
+          */
+          val genome = ParticleLeniaRuleGenome()
+          val objective = particleLeniaGlideObjective(genome, count = 40, seeds = [1L, 2L])
+
+          go {
+              // three or four minutes of simulation, so it runs off the main loop
+              val (runs, checks) = withContext(Dispatchers.Default) {
+                  val runs = [
+                      PopulationSearch.random(genome, objective, 300, seed = 5L, label = "random sampling"),
+                      PopulationSearch.evolve(
+                          genome,
+                          objective,
+                          300,
+                          seed = 5L,
+                          mu = 6,
+                          lambda = 12,
+                          crossoverRate = 0.3,
+                          immigrantRate = 0.2,
+                          label = "evolution",
+                      ),
+                  ]
+                  // each arm's best rule from five seeds the search never saw: two windows of 4000 after 2000 to settle
+                  val checks = runs.map { run ->
+                      (3L..7L)
+                          .toList()
+                          .parallelStream()
+                          .map { seed ->
+                              val pl = ParticleLenia.random(
+                                  40,
+                                  side = 12.0 * Math.sqrt(0.2),
+                                  seed = seed,
+                                  params = genome.params(run.best!!.genome),
+                              )
+                              pl.stepTimes(2000)
+                              seed to [pl.measure(4000), pl.measure(4000)]
+                          }
+                          .toList()
+                  }
+                  runs to checks
+              }
+              val table = StringBuilder(
+                  "| | best fitness | muK | sigmaK | muG | sigmaG | cRep |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: |\n",
+              )
+              for (run in runs) {
+                  val p = genome.params(run.best!!.genome)
+                  table.append(
+                      "| %s | %.4f | %.3f | %.3f | %.3f | %.3f | %.3f |\n"
+                          .format(run.label, run.bestFitness, p.muK, p.sigmaK, p.muG, p.sigmaG, p.cRep),
+                  )
+              }
+              table.append("\n| best of | seed | steps 2000–6000 | steps 6000–10000 | heading drift | spread |\n")
+              table.append("| --- | ---: | --- | --- | ---: | ---: |\n")
+              for ((run, rows) in runs.zip(checks)) for ((seed, w) in rows) {
+                  table.append(
+                      "| %s | %d | %s %.4f | %s %.4f | %.3f | %.2f |\n"
+                          .format(
+                              run.label,
+                              seed,
+                              w[0].motion.name.lowercase(),
+                              w[0].speed,
+                              w[1].motion.name.lowercase(),
+                              w[1].speed,
+                              w[1].headingDrift,
+                              w[1].spreadEnd,
+                          ),
+                  )
+              }
+              markdown(table.toString())
+              for (run in runs) {
+                  println(run.summary())
+                  println("  " + genome.params(run.best!!.genome))
+              }
+          }
+  - create:
+      box: particle_lenia_glider
+      name: "7 — Particle Lenia: the evolved glider"
+      frame:
+        x: 1560.0
+        y: 260.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // Evolution's best rule, in full as the search box prints it, from two of the held-out seeds. Each panel is
+          // framed on its own creature, with the path its centre has travelled.
+          val rule = ParticleLeniaParams(
+              muK = 4.366173229773033,
+              sigmaK = 0.6772483357354411,
+              wK = 0.030367731514477567,
+              muG = 0.17729432366437387,
+              sigmaG = 0.1030105021620745,
+              cRep = 1.1856752478847217,
+          )
+          val tracks = [mutableListOf<Pair<Double, Double>>(), mutableListOf<Pair<Double, Double>>()]
+
+          animateEvolution(
+              [3L, 4L].map { ParticleLenia.random(40, side = 12.0 * Math.sqrt(0.2), seed = it, params = rule) },
+              totalSteps = 8000,
+              seconds = 7.0,
+              columns = 2,
+              cellSide = 360,
+              step = { pls ->
+                  pls.forEachIndexed { i, pl ->
+                      pl.step()
+                      if (pl.steps % 40 == 0) tracks[i] += pl.centroid()
+                  }
+                  pls
+              },
+              panels = { pls, n ->
+                  pls.mapIndexed { i, pl ->
+                      val (cx, cy) = pl.centroid()
+                      val (x0, y0) = tracks[i].firstOrNull() ?: (cx to cy)
+                      "seed %d, step %d, moved %.0f".format(i + 3, n, Math.hypot(cx - x0, cy - y0)) to
+                          splatDots(
+                              pl.render(extent = 30.0, size = 360, dotRadius = 2.0),
+                              tracks[i],
+                              30.0,
+                              cx,
+                              cy,
+                              dotRadius = 1.0,
+                          )
+                  }
               },
           )
   - execute:

@@ -1,6 +1,9 @@
 package afield.ui.output
 
 import afield.document.graph.Box
+import afield.examples.four.ShapeAsciiGpuSmoke
+import afield.graphics.shader.Introspection
+import afield.graphics.shader.ShaderKind
 import afield.media.image.Img
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -95,6 +98,77 @@ class ShapeAsciiTest {
         for (y in 0 until frame.rows) for (x in 0 until frame.cols)
             assertEquals(grid.glyphIndex(frame.char(x, y).toString()), grid.get(x, y), "cell ($x, $y)")
         assertEquals(' ', frame.char(3, 0), "the black half stays blank")
+    }
+
+    /**
+     * `exact` is the exhaustive search: on every glyph's own raster as a one-cell image it agrees with
+     * a fresh converter, whose empty cache has to search too, and over a whole picture it can differ
+     * from the cached default.
+     */
+    @Test
+    fun exactConvertIsTheExhaustiveSearch() {
+        for (i in ascii.glyphs.indices) {
+            val cell = ascii.glyphImg(i)
+            val fresh = ShapeAscii().convert(cell, 1, rows = 1, contrast = 2.0)
+            val exact = ascii.convert(cell, 1, rows = 1, contrast = 2.0, exact = true)
+            assertEquals(fresh.char(0, 0), exact.char(0, 0), "'${ascii.glyphs[i]}'")
+        }
+        val r = java.util.Random(3)
+        val noise = Img.generate(40 * ascii.cellWidth, 20 * ascii.cellHeight) { _, _ -> r.nextFloat() }
+        val exact = ascii.convert(noise, 40, rows = 20, exact = true)
+        val cached = ascii.convert(noise, 40, rows = 20)
+        assertEquals(1.0, exact.agreement(exact))
+        assertTrue(exact.agreement(cached) > 0.8, "cache and exhaustive search agree on ${exact.agreement(cached)} of noise cells")
+    }
+
+    /** Each circle's pixel list is what samplingCircles describes: centres inside its radius, about pi r^2 of them. */
+    @Test
+    fun circlePixelsFillTheirCircles() {
+        val circles = ascii.samplingCircles()
+        for (k in 0 until 12) {
+            val (cx, cy, r) = circles[k]
+            val px = ascii.circlePixels(k)
+            val count = px.size / 2
+            for (i in px.indices step 2)
+                assertTrue(Math.hypot(px[i] + 0.5 - cx, px[i + 1] + 0.5 - cy) <= r + 1e-9, "circle $k pixel (${px[i]}, ${px[i + 1]})")
+            assertTrue(count > 0.6 * Math.PI * r * r && count < 1.6 * Math.PI * r * r, "circle $k has $count pixels for r = $r")
+        }
+    }
+
+    /** agreement is the share of identical cells. */
+    @Test
+    fun agreementCountsIdenticalCells() {
+        val left = Img.generate(4 * ascii.cellWidth, ascii.cellHeight) { x, _ -> if (x < 2 * ascii.cellWidth) 1f else 0f }
+        val dark = Img.zeros(4 * ascii.cellWidth, ascii.cellHeight)
+        val a = ascii.convert(left, 4, rows = 1)
+        assertEquals(0.5, a.agreement(ascii.convert(dark, 4, rows = 1)), 1e-12)
+    }
+
+    /**
+     * The GPU boxes' shaders in the starting-point transcript compile, and declare the push constants,
+     * samplers and inputs their box code binds by name. A rename on either side would otherwise show
+     * only on a machine with a GPU, and `ascii.shape-gpu.smoke` reads these same shaders.
+     */
+    @Test
+    fun gpuBoxShadersCompileAndDeclareWhatTheirCodeBinds() {
+        fun introspect(box: String, property: String, kind: ShaderKind): Introspection {
+            val i = Introspection(ShapeAsciiGpuSmoke.boxProperties(box).getValue(property), kind, sourceName = "$box/$property")
+            assertTrue(i.valid, "$box/$property did not compile")
+            return i
+        }
+        fun push(i: Introspection) = i.pushConstants.flatMap { b -> b.members.map { it.name } }.toSet()
+        val knot = introspect("ascii_shape_gpu_scene", "vertex", ShaderKind.VERTEX_SHADER)
+        assertEquals(setOf("pos", "normal"), knot.inputs.map { it.name }.toSet())
+        assertEquals(setOf("time", "aspect"), push(knot))
+        introspect("ascii_shape_gpu_scene", "fragment", ShaderKind.FRAGMENT_SHADER)
+        for (box in listOf("ascii_shape_gpu_match", "ascii_shape_gpu_draw"))
+            assertEquals(listOf("pos"), introspect(box, "vertex", ShaderKind.VERTEX_SHADER).inputs.map { it.name })
+        val match = introspect("ascii_shape_gpu_match", "fragment", ShaderKind.FRAGMENT_SHADER)
+        assertEquals(setOf("cell", "contrast", "directional"), push(match))
+        assertEquals(setOf("sceneTex", "glyphVectors"), match.textures.map { it.name }.toSet())
+        val draw = introspect("ascii_shape_gpu_draw", "fragment", ShaderKind.FRAGMENT_SHADER)
+        assertEquals(setOf("cell", "ink", "background"), push(draw))
+        assertEquals(setOf("cellsTex", "atlasTex", "sceneTex"), draw.textures.map { it.name }.toSet())
     }
 
     /** showAscii puts every panel up as one display payload on the asked channel. */

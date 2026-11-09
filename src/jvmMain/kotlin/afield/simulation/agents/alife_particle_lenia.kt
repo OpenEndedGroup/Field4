@@ -46,6 +46,29 @@ data class ParticleLeniaParams(
 
     /** The growth curve at potential [u]. */
     fun growth(u: Double): Double { val t = (u - muG) / sigmaG; return exp(-t * t) }
+
+    companion object {
+        /**
+         * The [wK] that makes the kernel integrate to one over the plane, for a ring of radius [muK] and
+         * width [sigmaK]: the article's normalisation, computed the way the demo computes it (trapezoid
+         * rule over `muK ± 3 sigmaK` in steps of `sigmaK / 10`). It gives 0.0225 for the defaults,
+         * against the article's rounded 0.022.
+         */
+        fun normalisedWK(muK: Double, sigmaK: Double): Double {
+            val dr = 0.1 * sigmaK
+            var acc = 0.0
+            var prev = Double.NaN
+            var r = max(muK - 3 * sigmaK, 0.0)
+            while (r < muK + 3 * sigmaK) {
+                val y = (r - muK) / sigmaK
+                val v = r * exp(-y * y)
+                if (!prev.isNaN()) acc += (prev + v) * 0.5
+                prev = v
+                r += dr
+            }
+            return 1.0 / (acc * dr * 2.0 * Math.PI)
+        }
+    }
 }
 
 /**
@@ -102,6 +125,16 @@ class ParticleLenia(
     /** The last step's velocities, interleaved like [positions]. */
     val velocities: DoubleArray = DoubleArray(positions.size)
 
+    /**
+     * Fraction of the last step's displacement carried into the next. `0`, the default, is the
+     * article's Euler step `p += dt · v`. `0.5` is the integrator of the article's live demo,
+     * `p += 0.5 (p − p_prev) + 0.5 dt · v`, which reaches the same velocity `dt · v` once the motion is
+     * steady, so a steady glider has the same speed under both.
+     */
+    var inertia: Double = 0.0
+
+    private val lastMove = DoubleArray(positions.size)
+
     /** The fields at `(x, y)`, summed over every particle. */
     fun sample(x: Double, y: Double): ParticleLeniaSample {
         val p = params
@@ -137,19 +170,34 @@ class ParticleLenia(
         return s / count
     }
 
-    /** One Euler step of `dp/dt = −∇E`, all particles from the same old positions. */
+    private val energies = DoubleArray(count)
+
+    /**
+     * One Euler step of `dp/dt = −∇E`, all particles from the same old positions. From
+     * [PARALLEL_FROM] particles up the velocities are computed on all cores; each particle's sum is the
+     * same either way, and the mean energy is summed in particle order, so the result does not depend
+     * on how many cores ran it.
+     */
     fun step(): ParticleLenia {
+        if (count >= PARALLEL_FROM) java.util.stream.IntStream.range(0, count).parallel().forEach { velocityOf(it) }
+        else for (i in 0 until count) velocityOf(i)
         var e = 0.0
-        for (i in 0 until count) {
-            val s = sample(positions[2 * i], positions[2 * i + 1])
-            e += s.e
-            velocities[2 * i] = -s.gx
-            velocities[2 * i + 1] = -s.gy
+        for (i in 0 until count) e += energies[i]
+        for (k in positions.indices) {
+            val move = inertia * lastMove[k] + (1.0 - inertia) * params.dt * velocities[k]
+            positions[k] += move
+            lastMove[k] = move
         }
-        for (k in positions.indices) positions[k] += params.dt * velocities[k]
         steps++
         energyHistory += e / count
         return this
+    }
+
+    private fun velocityOf(i: Int) {
+        val s = sample(positions[2 * i], positions[2 * i + 1])
+        energies[i] = s.e
+        velocities[2 * i] = -s.gx
+        velocities[2 * i + 1] = -s.gy
     }
 
     /** Mean energy of the current arrangement, measured now (the entry the next [step] will record). */
@@ -253,6 +301,8 @@ class ParticleLenia(
         val c = ParticleLenia(positions.copyOf(), params)
         c.energyHistory.clear(); c.energyHistory += energyHistory; c.steps = steps
         velocities.copyInto(c.velocities)
+        lastMove.copyInto(c.lastMove)
+        c.inertia = inertia
         return c
     }
 
@@ -262,6 +312,9 @@ class ParticleLenia(
         )
 
     companion object {
+        /** Population size from which [step] runs on all cores. */
+        const val PARALLEL_FROM: Int = 64
+
         /**
          * [n] particles uniform in a square of side [side] centred on the origin; the article's seed is
          * 200 particles in a 12-unit square.

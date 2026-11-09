@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 22018 of 37470 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 22084 of 37542 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2012 undocumented entry points** (types, top-level functions and values) and 12768 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2012 undocumented entry points** (types, top-level functions and values) and 12772 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -243,6 +243,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Syphon.kt](../src/jvmMain/kotlin/afield/io/syphon/Syphon.kt) | Graphics | syphon | 0 | 3 | 82% |
 | [MorphoSearchFLines.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoSearchFLines.kt) | Languages | morpho_search | 0 | 3 | 72% |
 | [RunScope.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/RunScope.kt) | Workspace | audio_ai_analysis, audio_ai_corpus_microscope, audio_ai_spectral_embeddings | 0 | 3 | 85% |
+| [alife_particle_lenia_motion.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_particle_lenia_motion.kt) | ALife | particle_lenia | 0 | 3 | 90% |
 | [alife_physarum_gpu.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_physarum_gpu.kt) | ALife | agent_transcripts, alife_examples | 0 | 3 | 93% |
 | [PatchyWeb.kt](../src/jvmMain/kotlin/afield/app/server/PatchyWeb.kt) | Graphics | patchy | 0 | 2 | 81% |
 | [DoughDspSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughDspSoundDocs.kt) | Synthesis | dough_dsp_sound | 0 | 2 | 87% |
@@ -1024,6 +1025,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ShaderBoidsSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/ShaderBoidsSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [ShaderReloadTransactionSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/ShaderReloadTransactionSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [ShaderReloadTransitionSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/ShaderReloadTransitionSmoke.kt) | Examples | — | 0 | 1 | 50% |
+| [ShapeAsciiGpuSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/ShapeAsciiGpuSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [SlugRenderSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/SlugRenderSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [StereoPackingSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/four/StereoPackingSmokeTest.kt) | Examples | — | 0 | 1 | 50% |
 | [StigmergySweep.kt](../src/jvmMain/kotlin/afield/examples/four/StigmergySweep.kt) | Examples | — | 0 | 1 | 50% |
