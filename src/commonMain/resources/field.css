@@ -6347,8 +6347,9 @@ body.mode-editor-only .field-toast {
 
 /* ------------------------------------------------------------------------ */
 /* Presentation figure (?figure=<uid>, figureMode.kt): one box's output area  */
-/* fills the window above everything else, scaled to fit; its box chrome and */
-/* channel headers are hidden.                                                */
+/* fills the window above everything else. It reads as one picture with its */
+/* controls under it: no box chrome, channel headers, panel borders, resize */
+/* grips or gaps, and every piece of text in Field's own Iosevka.            */
 /* ------------------------------------------------------------------------ */
 #field-figure-host {
     position: fixed;
@@ -6360,10 +6361,14 @@ body.mode-editor-only .field-toast {
     align-items: center;
     justify-content: center;
 }
+/* CSS zoom, not a transform: zoom lays the figure out again at its new size, so text and SVG are
+   drawn at full resolution, a three.js iframe sees the zoom as a higher devicePixelRatio and
+   renders its canvas sharp, and pointer coordinates stay consistent for sliders, editable
+   points and orbit drags. A transform only magnifies what was drawn at the smaller size. */
 #field-figure-host > .box.field-figure-box {
     position: relative !important;
-    transform: scale(var(--field-figure-zoom, 1)) !important;
-    transform-origin: center center;
+    transform: none !important;
+    zoom: var(--field-figure-zoom, 1);
     width: auto !important;
     height: auto !important;
     flex: none;
@@ -6385,9 +6390,59 @@ body.mode-editor-only .field-toast {
     width: auto !important;
     height: auto !important;
     max-width: none !important;
+    overflow: visible !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
 }
+/* Every shown channel is as wide as the widest, stacked with one even gap. */
+#field-figure-host .field-figure-box .disclosure-group {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    width: max-content !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+}
+#field-figure-host .field-figure-box .disclosure {
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    border: none !important;
+    align-items: stretch !important;
+}
 #field-figure-host .field-figure-box .disclosure-header { display: none !important; }
 #field-figure-host .field-figure-box .disclosure.field-figure-hidden { display: none !important; }
-#field-figure-host .field-figure-box .disclosure { border-left: none !important; }
+#field-figure-host .field-figure-box .disclosure-content {
+    resize: none !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    min-width: 100% !important;
+    max-width: none !important;
+    font-size: 15px;
+    line-height: 1.45;
+}
+/* Text panels grow to their text; drawings and iframes keep the size their panel was given. */
+#field-figure-host .field-figure-box .disclosure-content:not(:has(.afield-lines-output-shell)):not(:has(iframe)) {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+#field-figure-host .field-figure-box .afield-lines-output-viewport {
+    border: none !important;
+    background: transparent !important;
+}
+#field-figure-host .field-figure-box .field-md { font-size: 15px; color: var(--field-fg-body); }
+/* One family, Field's Iosevka, with no fallback: a family a box names in an inline `font`
+   declaration is overridden here (author !important beats an inline declaration) rather than stripped, because
+   stripping would mean rewriting every output's HTML as it arrives, and an override also covers
+   SVG text, controls and anything a later output inserts. Size, weight, colour and opacity stay
+   the box's. */
+#field-figure-host .field-figure-box .outputArea,
+#field-figure-host .field-figure-box .outputArea * {
+    font-family: "Iosevka Web", Iosevka !important;
+}

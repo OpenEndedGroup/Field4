@@ -15,8 +15,11 @@ import org.w3c.dom.url.URLSearchParams
  *
  * The page is an ordinary Field client of the document, so the output is the real one: its scripts
  * run, its sliders send their updates, and output replay fills it on attach. The box element is moved
- * into a fixed host above the canvas (Field reparents boxes between panes in the same way), its chrome
- * and channel headers are hidden, and a CSS scale fits its natural size to the window. Nothing else
+ * into a fixed host above the canvas (Field reparents boxes between panes in the same way), its chrome,
+ * channel headers, panel borders and resize grips are hidden (`field.css`), and CSS zoom fits its
+ * natural size to the window. Zoom rather than a transform: the figure is laid out again at the
+ * larger size, so it stays sharp, and an iframe inside it (a three.js scene) renders at the zoomed
+ * pixel ratio once told to resize. Nothing else
  * of the document is visible or reachable, and this client never sends its viewport, so a figure
  * cannot change what `Box.viewport` reports to box code.
  */
@@ -53,13 +56,21 @@ internal fun installFigureMode(params: URLSearchParams) {
             if (shown && inter != null && inter.isOpen(id) != true) inter.open(id)
         }
         val area = box.querySelector(".outputArea") as? HTMLElement ?: return
-        val width = area.offsetWidth.toDouble()
-        val height = area.offsetHeight.toDouble()
+        // The box is laid out under CSS zoom, so its on-screen size divided by the zoom in force is
+        // its natural size; the zoom that fills the window follows from that, aspect kept.
+        val applied = host.style.getPropertyValue("--field-figure-zoom").toDoubleOrNull() ?: 1.0
+        val rect = area.getBoundingClientRect()
+        val width = rect.width / applied
+        val height = rect.height / applied
         if (width < 1 || height < 1) return
-        val zoom = minOf(window.innerWidth / width, window.innerHeight / height).times(0.96).coerceIn(0.2, 4.0)
-        val current = host.style.getPropertyValue("--field-figure-zoom").toDoubleOrNull()
-        if (current == null || kotlin.math.abs(current - zoom) > 0.002) {
+        val zoom = minOf(window.innerWidth / width, window.innerHeight / height).times(0.98).coerceIn(0.2, 8.0)
+        if (kotlin.math.abs(applied - zoom) > 0.002 * zoom) {
             host.style.setProperty("--field-figure-zoom", zoom.asDynamic().toFixed(4) as String)
+            // A zoomed iframe sees the zoom as a higher devicePixelRatio, but a page sizes its canvas
+            // only on resize: tell it, so a three.js figure re-renders sharp at the new size.
+            box.querySelectorAll("iframe").asList().forEach { frame ->
+                runCatching { (frame as org.w3c.dom.HTMLIFrameElement).contentWindow?.dispatchEvent(org.w3c.dom.events.Event("resize")) }
+            }
         }
     }
 
