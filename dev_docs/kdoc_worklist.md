@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 21669 of 37098 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 21682 of 37119 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2017 undocumented entry points** (types, top-level functions and values) and 12747 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2017 undocumented entry points** (types, top-level functions and values) and 12755 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -14,7 +14,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | --- | --- | --- | --- | --- | --- |
 | [RectSL.kt](../src/jvmMain/kotlin/afield/lang/rectsl/RectSL.kt) | Languages | rectsl_inverse_animation, rectsl_examples, rectsl_cheatsheet | 104 | 409 | 8% |
 | [spreadsheet.kt](../src/jvmMain/kotlin/afield/data/table/spreadsheet.kt) | Data | spreadsheets | 62 | 91 | 8% |
-| [FLineGeometry.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt) | Graphics | fline_examples, polyvector, euclid_elements | 58 | 41 | 43% |
+| [FLineGeometry.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt) | Graphics | fline_examples, polyvector, body_tracking | 58 | 41 | 43% |
 | [synth.kt](../src/jvmMain/kotlin/afield/audio/synth/synth.kt) | Synthesis | pure_data, sound_paths | 52 | 0 | 25% |
 | [Tools.kt](../src/jvmMain/kotlin/afield/ai/tools/Tools.kt) | AI4 | ai4_tools | 51 | 204 | 32% |
 | [TidalPatterns.kt](../src/jvmMain/kotlin/afield/audio/synth/TidalPatterns.kt) | Patterns | pattern_language, marf, petri_nets | 43 | 78 | 21% |
@@ -75,7 +75,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Mechanics.kt](../src/jvmMain/kotlin/afield/simulation/physics/pressure/Mechanics.kt) | Simulation | pressure_membranes | 3 | 7 | 23% |
 | [PlanarContact.kt](../src/jvmMain/kotlin/afield/geometry/solid/manifold/PlanarContact.kt) | Graphics | manifold | 3 | 5 | 38% |
 | [NgxSupport.kt](../src/jvmMain/kotlin/afield/media/reconstruction/NgxSupport.kt) | Imaging | neural_reconstruction, reconstruction_plumbing | 3 | 4 | 22% |
-| [Renderer.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/Renderer.kt) | Graphics | open_dlss_nr, profiling_timeline, stereo_video | 2 | 64 | 17% |
+| [Renderer.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/Renderer.kt) | Graphics | body_tracking, open_dlss_nr, profiling_timeline | 2 | 64 | 19% |
 | [GeometryAgentTools.kt](../src/jvmMain/kotlin/afield/graphics/render/GeometryAgentTools.kt) | Graphics | geometry_from_disk | 2 | 33 | 27% |
 | [DiagramTextGeometry.kt](../src/jvmMain/kotlin/afield/graphics/scene/reading/DiagramTextGeometry.kt) | Graphics | sentence_diagrams | 2 | 28 | 18% |
 | [MotionAuthoring.kt](../src/jvmMain/kotlin/afield/animation/mocap/MotionAuthoring.kt) | Animation | motion_recordings | 2 | 22 | 41% |
@@ -196,6 +196,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Solid.kt](../src/jvmMain/kotlin/afield/geometry/solid/manifold/Solid.kt) | Graphics | manifold | 0 | 7 | 85% |
 | [Mapper.kt](../src/jvmMain/kotlin/afield/geometry/topology/mapper/Mapper.kt) | Graphics | mapper | 0 | 7 | 60% |
 | [ClusterGeometry.kt](../src/jvmMain/kotlin/afield/graphics/render/ClusterGeometry.kt) | Graphics | computed_ray_geometry | 0 | 7 | 41% |
+| [BodyGeometry.kt](../src/jvmMain/kotlin/afield/graphics/scene/body/BodyGeometry.kt) | Graphics | body_tracking | 0 | 7 | 58% |
 | [WebRTC.kt](../src/jvmMain/kotlin/afield/media/webrtc/WebRTC.kt) | Imaging | webrtc | 0 | 7 | 79% |
 | [booleannetworks.kt](../src/jvmMain/kotlin/afield/simulation/automata/booleannetworks.kt) | Data | boolean_networks_examples, boolean_network_music_examples | 0 | 7 | 78% |
 | [wfc_field.kt](../src/jvmMain/kotlin/afield/simulation/automata/wfc_field.kt) | Data | wfc_examples | 0 | 7 | 78% |
@@ -1016,6 +1017,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PhysarumGpuSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/PhysarumGpuSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [PingPongRestoreSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/PingPongRestoreSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [RendererCleanupSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/RendererCleanupSmoke.kt) | Examples | — | 0 | 1 | 50% |
+| [RendererRecordingRecoverySmoke.kt](../src/jvmMain/kotlin/afield/examples/four/RendererRecordingRecoverySmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [RttGpuTelemetrySmoke.kt](../src/jvmMain/kotlin/afield/examples/four/RttGpuTelemetrySmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [ShaderBoidsSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/ShaderBoidsSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [ShaderReloadTransactionSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/ShaderReloadTransactionSmoke.kt) | Examples | — | 0 | 1 | 50% |
