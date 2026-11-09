@@ -54,6 +54,10 @@ internal fun installFigureMode(params: URLSearchParams) {
             if (shown && inter != null && inter.isOpen(id) != true) inter.open(id)
         }
         val area = box.querySelector(".outputArea") as? HTMLElement ?: return
+        // Content wider than the area (an editable drawing) overflows to the right; widening the box
+        // to it keeps the whole figure centred. Measured afresh each time, so it can shrink again.
+        box.style.removeProperty("min-width")
+        if (area.scrollWidth > area.offsetWidth) box.style.setProperty("min-width", "${area.scrollWidth}px", "important")
         val zoom = afield.app.protocol.figureFitZoom(
             area.offsetWidth.toDouble(), area.offsetHeight.toDouble(),
             area.scrollWidth.toDouble(), area.scrollHeight.toDouble(),
