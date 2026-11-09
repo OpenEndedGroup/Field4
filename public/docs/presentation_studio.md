@@ -1,6 +1,6 @@
 # Presenting with Field
 
-With a few lines of Kotlin, Field can produce presentations that combine HTML slides, real webpages, YouTube video and live Field documents ([show a live document](#bring-the-working-material-on-screen)). A presentation is itself a document you can teach from. The audience gets a separate window; your Field document keeps the source and guide notes. Saved macros and interactive guides work inside the live document on the audience display.
+With a few lines of Kotlin, Field can produce presentations that combine HTML slides, real webpages, YouTube video, live Field documents ([show a live document](#bring-the-working-material-on-screen)) and live figures placed beside the prose ([live figures](#live-figures-beside-prose)). A presentation is itself a document you can teach from. The audience gets a separate window; your Field document keeps the source and guide notes. Saved macros and interactive guides work inside the live document on the audience display.
 
 ## Start a presentation
 
@@ -444,6 +444,97 @@ and the document-guide controls above the outline.
 Each live surface fills the audience window by default. Pass `rect = listOf(0.04, 0.16, 0.92, 0.80)` to place it within a fraction of the window: `[x, y, width, height]`.
 
 Webpages use top-level, isolated Electron views, allowing sites with iframe restrictions to load normally. A site's login, network, DRM and playback rules still apply. YouTube uses its embed player and needs a video that permits embedding. Navigation failures appear in the presenter controls.
+
+## Live figures beside prose
+
+A slide can hold a live figure: the output of a box in the talk's own document, with its sliders,
+drawing and sound, placed beside the text that explains it. The audience can drag the figure's
+controls, and each step can set them. This is how an explainer is built in Field: the figures are
+boxes, and the slides are the words between them.
+
+The figure here is an ordinary box called `sine`. It draws twenty milliseconds of a sine wave,
+shows a frequency slider and a sound checkbox, and plays the tone:
+
+```diffstatic {data-lang=kotlin}
+val pitch = Param(220f)
+val loudness = Param(0f)
+
+fun draw(hz: Double) = lines(fline {
+    moveTo(0.0, 120.0)
+    for (x in 1..640) lineTo(x.toDouble(), 120.0 - 90.0 * sin(2 * PI * hz * 0.02 * x / 640))
+    thickness = 2.0
+    color = vec(0.4, 0.9, 1.0, 1.0)
+}, channel = "wave", w = 640.0, h = 240.0)
+
+draw(220.0)
+controlGroup {
+    slider("frequency", 110.0, 880.0, step = 1.0, initialValue = 220.0, law = ControlLaw.LOGARITHMIC) {
+        pitch.base = it.toFloat()
+        draw(it)
+    }
+    checkbox("sound") { loudness.base = if (it) 0.15f else 0f }
+}
+
+audio(SineOsc(pitch), gain = loudness)
+```
+
+In the Presentation box, `figureBeside("sine") { ... }` puts that box's output on the right of the
+prose. `control("sine", "frequency", 220.0)` says what the slider reads when the step comes up, and
+a cue can move it, here gliding up an octave over a second and a half:
+
+```diffstatic {data-lang=kotlin}
+presentation(title = "A sine wave and its pitch") {
+        step("Twice as often", id = "octave") {
+            audience {
+                figureBeside("sine") {
+                    +"""
+                        ## Twice as often
+
+                        220 Hz is the A below middle C. Doubling the frequency fits
+                        twice as many swings in, and we hear the same note an octave up.
+                    """.md
+                }
+            }
+            control("sine", "frequency", 220.0)
+            control("sine", "sound", false)
+            cue("Up an octave") { control("sine", "frequency", 440.0, glideMs = 1500) }
+        }
+    }
+    .present()
+```
+
+![The audience window at "How often it repeats": prose on the left, and on the right the live sine figure with its frequency slider at 220 Hz and an unticked sound checkbox.](assets/presentation_studio/figure-slide.png)
+
+![The same figure after the "Up an octave" cue: the slider has glided to 440 Hz and the wave shows twice as many swings.](assets/presentation_studio/figure-glide.png)
+
+`figure("sine")` places a figure without the two-column layout, for instance two figures side by
+side in `div(classes = "columns") { ... }`. Name output channels to show only part of a box:
+`figure("sine", "wave")` shows the drawing without its controls, so two slots can show two views of
+one box, and a slider in one moves the other. A figure is found by its box name when the
+Presentation box runs, so a name that matches no box, or several, stops the talk with an error.
+
+Next, Previous and a jump in the outline all set the controls a step and its cues declare, in
+order, so going back to a slide puts its figure back as the slide describes it. **Refresh slide**
+leaves the controls where the audience put them. `control(figure, label, true)` ticks a checkbox.
+Inside a box, `setControl("frequency", 330.0)` moves one of its own controls the same way, its
+callback running as if someone had dragged it.
+
+The talk runs its figures. When a slide comes up, its figure boxes start if they are not running;
+when the talk moves to a slide that does not show them, it stops those it started. Sound and
+animation therefore play only while their slide is on screen, and stopping the talk silences them.
+A box you started yourself keeps running.
+
+A slide with figures has a **Reset: figures** button in the presenter controls. It forgets every
+control change the audience made, runs the figures again from their initial values, and returns to
+the slide's first cue. A slide with its own `checkpoint` shows that instead.
+
+The four-slide deck this section comes from is the `explainer_sine_pitch` transcript in
+[Agent transcripts](agent_transcripts.md); it ends with the figure you can hear.
+
+!!! note "Figures need the Electron app"
+    A figure is a separate live view laid over its slot on the audience display, so it appears in
+    Field's Electron app only. Fades and reveals apply to the prose around it; the figure itself
+    stays live.
 
 ## Reuse the starter as a kit
 

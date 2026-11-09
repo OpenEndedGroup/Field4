@@ -92,6 +92,21 @@ and the guest document's boxes, and captures `live-document-audience.png` and
 1.5 s after the boxes draw; by about 3.5 s the canvas has dimmed, so do not lengthen that pause to
 lose the loading toasts.
 
+## Live figures
+
+A live figure is a native view laid over its slot, so a CDP screenshot of the audience page shows
+the slide with an empty slot. `tools/presentation/capture-figures.mjs` captures the composited
+audience window instead, with macOS `screencapture -l` and a window id from
+`CGWindowListCopyWindowInfo` (it compiles a ten-line Swift lister into the temp directory once).
+Replay `dev_docs/agents/transcripts/explainer_sine_pitch.yaml` into a disposable workspace
+document, open it in this checkout's Electron, run its `deck` box so the talk opens, then run
+`node tools/presentation/capture-figures.mjs <CDP URL> <workspace>/explainer_sine_pitch public/docs/assets/presentation_studio`.
+It visits the prose slide first so the figure view opens fresh, waits until the figure page shows
+the expected slider value (220 Hz, then 440 Hz after the glide cue), brings the audience forward
+before each capture (macOS does not composite views of a covered window), and writes
+`figure-slide.png`, `figure-glide.png` and `figures.json` with the transcript and image hashes.
+`dev_docs/EXPLAINER_PRESENTATIONS.md` has the full recipe, from starting Field to stopping it.
+
 None of these drivers launches or quits Electron. Close the Electron you started (`kill -INT` its
 PID) and stop its Field server when the capture is done, whether or not it passed; Electron
 renames its process to `Field4`, so record the PID when you launch it rather than searching for it
