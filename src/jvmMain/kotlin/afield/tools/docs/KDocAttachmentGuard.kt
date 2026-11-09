@@ -204,7 +204,7 @@ object KDocAttachmentGuard {
             |block's prose is published under whatever symbol parses next. Fix by either
             |  - moving the block so the very next line is a declaration
             |    (KDocExtractor.parseDeclaration reads: class / interface / object / fun / val / var /
-            |    typealias, after modifiers and after annotations *on their own line*), or
+            |    typealias, after modifiers and annotations), or
             |  - teaching KDocExtractor.parseDeclaration the form it cannot see, or
             |  - deleting the block if it documents nothing.
             |See dev_docs/kdoc_reference_contract.md.
@@ -273,17 +273,20 @@ object KDocAttachmentGuard {
                 return Verdict.Benign("enum constant (StdlibReferenceGenerator reads these itself)", i + 1)
             }
 
-            // The extractor skips any line beginning with `@`, so an annotation alone on its line is
-            // transparent. An annotation with the declaration behind it on the same line takes that
-            // declaration with it, and the block slides.
+            // An annotation line with a declaration behind it (`@Volatile var x`) attaches, exactly as
+            // in the extractor. One alone on its line is transparent. What is left is an annotation the
+            // extractor cannot strip with a declaration behind it that this guard's looser reading
+            // can see — kept as a finding so the two parsers cannot quietly disagree.
             if (trimmed.startsWith("@")) {
+                if (KDocExtractor.parseDeclaration(trimmed) != null) return null
                 if (declarationPart.isNotEmpty() && KDocExtractor.parseDeclaration(declarationPart) != null) {
                     return Verdict.Hit(
                         Finding(
                             path, block.startLine, Kind.DROPPED,
-                            "line ${i + 1} puts an annotation and the declaration together " +
-                                "(`${excerpt(trimmed)}`); the extractor skips the whole line. Break the " +
-                                "annotation onto its own line"
+                            "line ${i + 1} puts an annotation the extractor cannot strip in front of the " +
+                                "declaration (`${excerpt(trimmed)}`), so it skips the whole line. Teach " +
+                                "KDocExtractor.stripLeadingAnnotations that form, or break the annotation " +
+                                "onto its own line"
                         )
                     )
                 }

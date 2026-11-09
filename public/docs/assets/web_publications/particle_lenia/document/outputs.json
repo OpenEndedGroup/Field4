@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-08T22:19:07.621Z",
+  "documentName": "particle_lenia",
+  "outputs": [
+    {
+      "uid": "particle_lenia_still",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 762,
+      "height": 410,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "particle_lenia_still",
+      "channel": "energy",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 732,
+      "height": 192,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "particle_lenia_rotator",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 328,
+      "height": 350,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "particle_lenia_movie",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 328,
+      "height": 350,
+      "path": "outputs/3.html"
+    }
+  ]
+}

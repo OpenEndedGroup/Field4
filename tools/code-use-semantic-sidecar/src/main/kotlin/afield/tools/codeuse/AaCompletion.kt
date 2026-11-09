@@ -140,6 +140,7 @@ object CompletionImports {
         "afield.graphics.vulkan.util.*",
         "afield.io.osc.*",
         "afield.io.process.*",
+        "afield.io.resolve.*",
         "afield.lang.lambda.*",
         "afield.lang.nano.*",
         "afield.lang.python.*",

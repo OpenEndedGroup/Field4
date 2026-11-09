@@ -44,7 +44,9 @@ class KeyframeControl<T> internal constructor(
     private val controlType: String,
     private val restore: (ControllerControl) -> T?,
     private val register: KeyframeScope.(name: String, get: () -> T, set: (T) -> Unit) -> Unit,
-    private val build: ControlGroupBuilder.(control: KeyframeControl<T>) -> ((T) -> Unit)
+    private val build: ControlGroupBuilder.(control: KeyframeControl<T>) -> ((T) -> Unit),
+    /** Shown on hover over the control; see `ControlGroupBuilder.tooltip`. */
+    val hoverText: String? = null
 ) : ReadWriteProperty<Any?, T> {
     /** The key name — the delegated property's name, once declared. */
     var name: String = ""
@@ -94,7 +96,7 @@ class KeyframeControl<T> internal constructor(
     }
 
     internal fun buildInto(builder: ControlGroupBuilder) {
-        mirror = builder.build(this)
+        mirror = builder.withTooltip(hoverText) { builder.build(this) }
         // The keyframe* helper re-registered the key with the control's own callback; a key applying
         // is not a gesture, so point the key back at this delegate.
         scope.register(name, { value }) { fromKeyOrGesture(it) }
@@ -104,6 +106,7 @@ class KeyframeControl<T> internal constructor(
 /**
  * A keyframed `Double` slider as a delegated local: `var size by keys.slider(0.4, 0.1..1.0)`. The
  * range, [step] and [law] are the ones [keyframeSlider] takes; [label] defaults to the property name.
+ * Every `keys.*` control takes `hoverText`, shown on hover, as the `controlGroup` controls do.
  */
 fun KeyframeScope.slider(
     initial: Double,
@@ -125,7 +128,8 @@ fun KeyframeScope.slider(
         )
         val mirror: (Double) -> Unit = { handle.set(it) }
         mirror
-    }
+    },
+    hoverText = hoverText
 )
 
 /** [slider] for a `Float` local, through [keyframeFloatSlider]: `var gain by keys.slider(0.35f, 0.0..4.0)`. */
@@ -149,7 +153,8 @@ fun KeyframeScope.slider(
         )
         val mirror: (Float) -> Unit = { handle.set(it.toDouble()) }
         mirror
-    }
+    },
+    hoverText = hoverText
 )
 
 /** A keyframed checkbox as a delegated `Boolean` local, through [keyframeCheckbox]. */
@@ -160,7 +165,8 @@ fun KeyframeScope.checkbox(initial: Boolean, label: String? = null, hoverText: S
         val handle = keyframeCheckbox(this@checkbox, c.name, c.label, hoverText = hoverText, get = { c.value }, set = { c.fromControl(it) })
         val mirror: (Boolean) -> Unit = { handle.set(it) }
         mirror
-    }
+    },
+    hoverText = hoverText
 )
 
 /** A keyframed XY pad as a delegated `Vector2f` local, through [keyframeVec2Control]. */
@@ -182,7 +188,8 @@ fun KeyframeScope.vec2(
         )
         val mirror: (Vector2f) -> Unit = { handle.set(it) }
         mirror
-    }
+    },
+    hoverText = hoverText
 )
 
 /** A keyframed RGBA colour picker as a delegated `Vector4f` local, through [keyframeColorPicker]. */
@@ -200,7 +207,8 @@ fun KeyframeScope.color(initial: Vector4f, label: String? = null, hoverText: Str
         val handle = keyframeColorPicker(this@color, c.name, c.label, hoverText = hoverText, get = { c.value }, set = { c.fromControl(it) })
         val mirror: (Vector4f) -> Unit = { handle.set(it) }
         mirror
-    }
+    },
+    hoverText = hoverText
 )
 
 /** A keyframed text field as a delegated `String` local, through [keyframeText]. Keys step between strings. */
@@ -211,7 +219,8 @@ fun KeyframeScope.text(initial: String, label: String? = null, hoverText: String
         val handle = keyframeText(this@text, c.name, c.label, hoverText = hoverText, get = { c.value }, set = { c.fromControl(it) })
         val mirror: (String) -> Unit = { handle.set(it) }
         mirror
-    }
+    },
+    hoverText = hoverText
 )
 
 /** What `keys.controls()` inside a `controlGroup { }` does: build every declared control, in order. */

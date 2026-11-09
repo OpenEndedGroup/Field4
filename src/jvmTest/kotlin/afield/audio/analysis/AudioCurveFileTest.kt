@@ -53,4 +53,55 @@ class AudioCurveFileTest {
             Files.deleteIfExists(path)
         }
     }
+
+    @Test
+    fun readsAMapFileAndEachFramesBestMatch() {
+        val path = Files.createTempFile("audio-curve-som", ".bin")
+        try {
+            // Three prototypes plus the present: 4 points of 2 floats per record.
+            val b = ByteBuffer.allocate(64 + 16 + 4 * 4 * 2).order(ByteOrder.LITTLE_ENDIAN)
+            b.put(byteArrayOf(70, 52, 67, 85, 82, 86, 69, 0))
+            b.putInt(1).putInt(8000).putInt(128).putInt(32).putInt(4).putInt(2).putLong(1)
+            b.putInt(2).putDouble(0.5).put(ByteArray(12))
+            b.putDouble(0.008).putInt(4).putInt(1)
+            repeat(8) { b.putFloat(it.toFloat()) }
+            Files.write(path, b.array())
+            AudioCurveFile(path).use {
+                assertEquals(0.5, it.somLearnSeconds)
+                assertEquals(null, it.emaLongestSeconds)
+                val frame = it.frame(0)
+                assertEquals(1, frame.bestMatch)
+                assertEquals(4, frame.pointCount)
+                assertEquals(3, frame.flines().size, "two chain segments and the tether")
+            }
+        } finally {
+            Files.deleteIfExists(path)
+        }
+    }
+
+    @Test
+    fun readsASheetsGridAndDrawsItsEdges() {
+        val path = Files.createTempFile("audio-curve-sheet", ".bin")
+        try {
+            // A 2 × 2 sheet plus the present: 5 points of 3 floats.
+            val b = ByteBuffer.allocate(64 + 16 + 5 * 3 * 4).order(ByteOrder.LITTLE_ENDIAN)
+            b.put(byteArrayOf(70, 52, 67, 85, 82, 86, 69, 0))
+            b.putInt(1).putInt(8000).putInt(128).putInt(32).putInt(5).putInt(3).putLong(1)
+            b.putInt(2).putDouble(0.5).putInt(2).putInt(2).putInt(1)
+            b.putDouble(0.008).putInt(5).putInt(3)
+            repeat(15) { b.putFloat(it.toFloat()) }
+            Files.write(path, b.array())
+            AudioCurveFile(path).use {
+                assertEquals(listOf(2, 2), it.somGrid)
+                val frame = it.frame(0)
+                assertEquals(listOf(2, 2), frame.somGrid)
+                assertEquals(3, frame.bestMatch)
+                assertEquals(5, frame.flines().size, "four sheet edges and the tether")
+                assertEquals(7, frame.flines(trail = listOf(0, 1, 3)).size, "and two trail segments")
+                assertEquals(5, frame.flines(stretch = true).size)
+            }
+        } finally {
+            Files.deleteIfExists(path)
+        }
+    }
 }

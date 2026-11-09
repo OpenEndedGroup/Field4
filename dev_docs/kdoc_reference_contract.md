@@ -33,7 +33,9 @@ network:
 closing marker and asks `parseDeclaration(line)` about each line in turn:
 
 - blank lines are skipped;
-- a line beginning with `@` is skipped **whole** (this is how annotations are tolerated);
+- a line beginning with `@` is read past its annotations (nested arguments and use-site targets
+  like `@get:JvmName("x")` included): if a declaration follows on the same line it wins, otherwise
+  the line is skipped (this is how annotations on their own line are tolerated);
 - a line it cannot read is **skipped, not stopped at**;
 - the first line that parses wins, and the block is attached to it;
 - a second `/**` ends the walk, and the block is dropped.
@@ -62,7 +64,6 @@ clause cut before the type annotation (`var FLine.color by Delegation<Vector4f> 
 | --- | --- |
 | a property accessor — `get() = …` / `set(v) { … }` | slides onto the next declaration. Put the block above the property. |
 | an `init { }` block | slides. `init` documents nothing; use a line comment, or document the function it calls. |
-| an annotation *and* a declaration on the same line — `@SerialName("x") val y = 1` | the whole line is skipped, so it slides. Break the annotation onto its own line. |
 | a statement inside a function body | slides onto the next declaration. Use `//`. |
 | a line inside a block comment that happens to look like a declaration | attaches to the comment. (`playlist_example.kt` had a whole example's `val box1 = …` captured this way.) |
 | another `/** … */` block | this block is dropped entirely. See "stacked blocks" below. |
@@ -138,7 +139,8 @@ will not reach the page. The guard treats them as benign, annotated or not.
 
 ## Writing a block that lands
 
-1. Put it **immediately above the declaration**, with nothing between except whole-line annotations.
+1. Put it **immediately above the declaration**, with nothing between except annotations
+   (on their own lines or on the declaration's line — `@Volatile var x` attaches).
 2. First sentence first: only the first paragraph becomes the summary on the reference page and the
    completion card. Write it as a claim about behaviour, not a restatement of the name.
 3. Never write `/**` or `*/` inside a KDoc. Kotlin block comments **nest**, so an inner `/**` needs a

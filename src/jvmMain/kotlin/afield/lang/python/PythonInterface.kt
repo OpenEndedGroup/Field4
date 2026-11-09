@@ -1055,16 +1055,19 @@ def _field_control(spec, on_change):
         return fn
     return install if on_change is None else install(on_change)
 
-def slider(label, on_change=None, min=0.0, max=1.0, step=0.01, value=None, channel="controls"):
-    ""${'"'}A slider in the box's output; `on_change(value)` runs on every move. Also a decorator.""${'"'}
+def slider(label, on_change=None, min=0.0, max=1.0, step=0.01, value=None, channel="controls", hoverText=None):
+    ""${'"'}A slider in the box's output; `on_change(value)` runs on every move. Also a decorator.
+    `hoverText` is shown on hover: say what the slider is for.""${'"'}
     start = (min + max) / 2 if value is None else value
     return _field_control({"kind": "slider", "label": str(label), "min": float(min), "max": float(max),
-                           "step": float(step), "value": float(start), "channel": str(channel)}, on_change)
+                           "step": float(step), "value": float(start), "channel": str(channel),
+                           "hoverText": None if hoverText is None else str(hoverText)}, on_change)
 
-def checkbox(label, on_change=None, value=False, channel="controls"):
-    ""${'"'}A checkbox in the box's output; `on_change(checked)` runs on every toggle. Also a decorator.""${'"'}
+def checkbox(label, on_change=None, value=False, channel="controls", hoverText=None):
+    ""${'"'}A checkbox in the box's output; `on_change(checked)` runs on every toggle. Also a decorator.
+    `hoverText` is shown on hover: say what the checkbox does.""${'"'}
     return _field_control({"kind": "checkbox", "label": str(label), "value": bool(value),
-                           "channel": str(channel)}, on_change)
+                           "channel": str(channel), "hoverText": None if hoverText is None else str(hoverText)}, on_change)
 
 # ---------------------------
 # FileUpload widget
@@ -1781,17 +1784,21 @@ class PythonInterface {
             if (specs.isEmpty()) return
             fun kotlinx.serialization.json.JsonElement.field(name: String) =
                 ((this as kotlinx.serialization.json.JsonObject)[name] as kotlinx.serialization.json.JsonPrimitive).content
+            fun kotlinx.serialization.json.JsonElement.optionalField(name: String): String? =
+                ((this as kotlinx.serialization.json.JsonObject)[name] as? kotlinx.serialization.json.JsonPrimitive)
+                    ?.takeUnless { it is kotlinx.serialization.json.JsonNull }?.content
             specs.groupBy { it.field("channel") }.forEach { (channel, group) ->
                 box.controlGroup(channel) {
                     for (spec in group) {
                         val id = spec.field("id")
                         val label = spec.field("label")
+                        val hoverText = spec.optionalField("hoverText")
                         when (spec.field("kind")) {
                             "slider" -> slider(
                                 label, spec.field("min").toDouble(), spec.field("max").toDouble(),
-                                spec.field("step").toDouble(), spec.field("value").toDouble(),
+                                spec.field("step").toDouble(), spec.field("value").toDouble(), hoverText = hoverText,
                             ) { v -> invokePythonControl(box, id, v) }
-                            "checkbox" -> checkbox(label, spec.field("value").toBoolean()) { v -> invokePythonControl(box, id, v) }
+                            "checkbox" -> checkbox(label, spec.field("value").toBoolean(), hoverText) { v -> invokePythonControl(box, id, v) }
                         }
                     }
                 }

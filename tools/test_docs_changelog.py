@@ -232,6 +232,17 @@ class ImportedHistory(unittest.TestCase):
         rendered = dc.render(text, docs_root=self.docs, published=set(self.spine))
         self.assertIn(dc.COMMIT_URL + self.spine[3], rendered)
 
+    def test_a_pending_merge_parent_is_part_of_the_candidate(self):
+        self.git("checkout", "-q", "-b", "pending", self.spine[0])
+        pending = self.commit("pending timeline")
+        self.git("checkout", "-q", "main")
+        self.git("merge", "-q", "--no-ff", "--no-commit", "pending")
+        text = "## November 2026\n\n" + self.page(self.spine[0], pending)
+        self.assertEqual(dc.check_published(text, docs_root=self.docs), [])
+        self.assertTrue(dc.check_published(text, ref="main", docs_root=self.docs))
+        self.git("merge", "--abort")
+        self.assertTrue(dc.check_published(text, docs_root=self.docs))
+
     def test_an_unmerged_timeline_is_refused(self):
         self.git("checkout", "-q", "-b", "unmerged", self.spine[0])
         detached = self.commit("not on main")

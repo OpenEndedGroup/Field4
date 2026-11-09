@@ -21,9 +21,9 @@ Launch **1 — VR IDE renderer**, then **2 — Live IDE in VR**. The starting po
 desktop companion. For the headset, connect your OpenXR runtime first, set `useHeadset = true`
 in box 1, restart Field and launch both boxes again. Eye targets use the runtime's actual dimensions.
 
-The browser opens this same document, including ephemeral session identity when needed. Select
-**Playground**, open its editor, change the message or colour and press **Run box** in the
-panel toolbar. The result appears as an ordinary Field output.
+The browser opens the same document. Select **Playground**, open its editor, change the message
+or colour and press **Run box** in the panel toolbar. The result appears under the box, just as it
+does on the desktop.
 
 ## Desktop headset preview
 
@@ -39,11 +39,12 @@ the scene preview is for viewing the headset image.
 
 ## Point, edit and run
 
-Either controller can hover over the panel. Pull the trigger to click or drag; **A** on the right controller or **X** on the left also clicks.
-The hand that starts a drag keeps control until release. The thumbstick or trackpad scrolls in both
-axes: a small deflection moves slowly, and a full deflection moves faster. Release it to stop. Losing tracking releases a
-held mouse button. Tracked hands do not point or click in the IDE, so moving your hands over the
-keyboard or mouse cannot reclaim its cursor through the hand-tracking fallback.
+Point either controller at the panel and pull the trigger to click or drag. **A** on the right
+controller or **X** on the left also clicks. The hand that starts a drag keeps control until you
+release it. Use the thumbstick or trackpad to scroll in either direction: a small deflection moves
+slowly, a full deflection faster. Losing tracking releases a held mouse button. Hand tracking does
+not point or click in the IDE, so you can move your hands over the keyboard without taking the
+cursor away from the mouse.
 
 Aim at any part of the panel and hold **grip** to pick it up. Moving and rotating that controller
 moves and rotates the whole panel, preserving the initial attachment offset. Release grip to leave
@@ -163,10 +164,9 @@ from a browser with access to the same tailnet. Set its `file` query parameter t
 shown in your VR panel; for example, `?file=Field-VR-IDE`. If Field runs on a different port, pass
 `--field-port` with that port to the helper when configuring the listener.
 
-Use the same document name in both clients. Each browser retains its own
-selection, caret, scroll and keyboard/mouse focus while edits flow through the shared Field
-server. Remote text updates preserve focus in another input or palette; they must not pull focus
-back into Monaco. This is shared document editing, not a streamed desktop or remote mouse.
+Use the same document name in both clients. Edits flow through the shared Field server, while
+each browser keeps its own selection, caret, scroll and keyboard/mouse focus. You can work in a
+palette or input in one browser while text changes in the other.
 
 Nobody needs to operate the PC display. Field still requires a working graphics/display session
 for Vulkan and Chromium, and WiVRn must be running and paired. This workflow does not remove the
@@ -276,10 +276,9 @@ see [stereo video precision](stereo_video.md#colour-precision) for the stages to
 
 ## World-space audio through WiVRn
 
-`SpatialWavPlayer` places a mono WAV in the same OpenXR world as the graphics and renders
-Steam Audio binaural stereo from the published headset pose. It opens a dedicated named
-WiVRn output, leaving the desktop default alone. Steam Audio's native library is installed
-with `./gradlew fetchSteamAudioNatives`.
+Place a mono WAV in the OpenXR scene with `SpatialWavPlayer`. Steam Audio renders it as binaural
+stereo using the headset pose, through a named WiVRn output; your desktop's default output stays
+as it was. Install Steam Audio's native library first with `./gradlew fetchSteamAudioNatives`.
 
 ```diffstatic {data-lang=kotlin}
 val sound = SpatialWavPlayer(
@@ -293,16 +292,15 @@ sound.play()
 loop { frame() }.end { sound.close() }
 ```
 
-`pause()` retains the cursor, `seek(seconds)` scrubs, and `restart()` starts from zero.
-The audio example under `templates/text_one/audio/` adds controls and a bundled mono
-percussion WAV. Stereo WAVs currently use their left channel as the mono emitter. This
-player supplies HRTF direction and distance attenuation; it does not yet simulate room
-geometry, occlusion or reverberation. OpenAL's second HRTF is disabled on the dedicated output.
+`pause()` keeps your place, `seek(seconds)` scrubs, and `restart()` starts from zero. The audio
+example under `templates/text_one/audio/` adds controls and a bundled mono percussion WAV. For
+stereo WAVs, the player uses the left channel as its mono source. You get HRTF direction and
+distance attenuation; room geometry, occlusion and reverberation are not simulated yet. OpenAL
+disables its own HRTF on the dedicated output.
 
-Connect headset audio before opening the output. After a WiVRn device reconnect, stop and
-relaunch the audio box. The player closes on box stop, replacement or deletion. Audio uses
-its own device-paced thread; the graphics Runloop only reads or changes control state.
-
+Connect headset audio before opening the output. If the WiVRn device reconnects, stop and relaunch
+the audio box. The player closes when you stop, replace or delete the box. Audio runs on its own
+device-paced thread; the graphics Runloop reads and changes its controls.
 
 To inspect the tracking data behind headset interactions, open [body_one](body_tracking.md).
 It draws available hands, sparse body joints and controllers, with bounds and closest-point helpers.

@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-08T21:41:22.104Z",
+  "documentName": "dependency_length",
+  "outputs": [
+    {
+      "uid": "dl_ratios",
+      "channel": "ratios",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "dl_gettysburg",
+      "channel": "figure",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 927,
+      "height": 563,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "dl_table",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 480,
+      "height": 328,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "dl_growth",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "dl_reorderings",
+      "channel": "figure",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1071,
+      "height": 1493,
+      "path": "outputs/4.html"
+    }
+  ]
+}

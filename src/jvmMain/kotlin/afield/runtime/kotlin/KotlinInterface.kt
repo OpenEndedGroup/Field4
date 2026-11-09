@@ -420,12 +420,22 @@ class KotlinInterface(
         val code = SourceCodeImpl(id++, s)
 
         return try {
-            val cc = usingCompilationState(onDisposed = { return CompletionResult.Empty(s, cursor) }) {
-                compiler.complete(code, cursor.toSourceCodePositionWithNewAbsolute(code, code)!!, compilerConfig)
+            // On the single K1 thread, as [compile] is: K1 is not thread-safe, and its first
+            // completion reads the classpath's class files, which on the runloop froze every frame
+            // for two seconds (the editor and the "did you mean" search both complete from there).
+            val position = cursor.toSourceCodePositionWithNewAbsolute(code, code)!!
+            // The variants are a lazy sequence that K1 computes as it is walked, so it is walked there too.
+            suspend fun completeHere() = usingCompilationState(onDisposed = { null }) {
+                compiler.complete(code, position, compilerConfig).valueOrNull()?.toList()
             }
-            cc.valueOrNull()?.toList()?.let { completionList ->
-                getResult(s, cursor, completionList)
-            } ?: CompletionResult.Empty(s, cursor)
+            val completionList = (if (KotlinEngineConfig.offloadCompilation) {
+                withContext(compilationDispatcher) { completeHere() }
+            } else {
+                completeHere()
+            }) ?: return CompletionResult.Empty(s, cursor)
+            getResult(s, cursor, completionList)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             val sw = StringWriter()
             e.printStackTrace(PrintWriter(sw))

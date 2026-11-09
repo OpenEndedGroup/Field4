@@ -5,9 +5,9 @@ summary: Collects links from HN, lobste.rs, feeds and topic queries, reads every
 kind: agent
 schedule: 15 19 * * *
 runtime-hours: 1.5
-disk-gib: 1
+disk-gib: 5
 quiet: no
-needs: network access; the agent's usage allowance for one session that reads about 40 pages
+needs: network access; yt-dlp on PATH for video links; the agent's usage allowance for one session that reads about 40 pages
 cost: one agent for up to an hour and a half; a few MB a day of page text in the journal (not committed)
 journal: nightly/scout-journal
 reports: git:nightly/scout-journal:reports

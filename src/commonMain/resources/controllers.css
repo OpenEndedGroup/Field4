@@ -715,3 +715,27 @@ button {
   opacity: 0.85;
   transition: width 90ms linear;
 }
+
+/* A control's tooltip (ControllerControl.hoverText): a quiet line under its label, two lines until tapped. */
+.phone-control-tooltip {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.phone-control-tooltip.open {
+  display: block;
+  -webkit-line-clamp: unset;
+}
+
+@media (min-width: 561px) {
+  .phone-control-inline > .phone-control-tooltip {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

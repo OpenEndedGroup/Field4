@@ -244,7 +244,15 @@ def recorded_history(text: str, ref: str = "HEAD") -> list[Landing]:
     newest = entries[0]
     try:
         sha = git("rev-parse", "--verify", f"{newest.last}^{{commit}}").strip()
-        git("merge-base", "--is-ancestor", sha, ref)
+        try:
+            git("merge-base", "--is-ancestor", sha, ref)
+        except subprocess.CalledProcessError:
+            # merge_regen checks the staged candidate before the merge commit exists. Only HEAD's
+            # pending parent is part of that candidate; explicit refs keep their normal meaning.
+            if ref != "HEAD":
+                raise
+            parent = git("rev-parse", "--verify", "MERGE_HEAD^{commit}").strip()
+            git("merge-base", "--is-ancestor", sha, parent)
     except subprocess.CalledProcessError as error:
         raise ValueError(f"line {newest.line}: recorded tip {newest.last} is not reachable from {ref}") from error
     return landings(sha)

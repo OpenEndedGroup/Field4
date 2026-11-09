@@ -198,6 +198,10 @@ class DocumentedApiEvaluationTest {
         "recenterInspection" to "body_tracking.md; document-local helper reads the live headset heading and updates its inspection offset; body_one is COMPILE_ONLY, live tracking controls exercise it",
         "reportSection" to "body_tracking.md; document-local status formatter closes over live tracking observations; body_one is COMPILE_ONLY and live inspector panels exercise its output",
         "updateBodyQueries" to "body_tracking.md; document-local overlay update reads current head/hand/controller tracking and publishes Vulkan marker uniforms; live query capture exercises it, pure geometry has JVM tests",
+        // growing_nca.md (2026-11-08): stepMesh is not a library API but a helper the page's GPU box
+        // defines for itself, building one fixed-parity ComputeMesh; growing_nca is COMPILE_ONLY because
+        // that box needs a renderer. GrowingNcaTest runs the same rule on the CPU.
+        "stepMesh" to "growing_nca.md; a helper the page's renderer-only GPU box defines for itself; GrowingNcaTest runs the rule on the CPU",
         // stereo_video.md prints the actual video_one box sources. The lexical census also
         // sees these document-local helper names as APIs; the native document is COMPILE_ONLY
         // in CI. Real control and playback captures run through the docs runner on Linux/NVIDIA.
@@ -278,10 +282,6 @@ class DocumentedApiEvaluationTest {
             "learned_shader.md; ShaderTraining.trainAsync starts a 12000-step training run against " +
                 "a GPU and returns a handle. Minutes of device work, so no headless evaluator " +
                 "invokes it; the page's transcript compiles the call.",
-        "fromViews" to
-            "reconstruction_plumbing.md; builds a mip-aware TextureSampler over live image views, " +
-                "and its own KDoc says that case 'needs a live graphics context on this thread'. " +
-                "The reconstruction transcripts are COMPILE_ONLY for exactly that reason.",
         "evaluateUniform" to
             "keyframe_autosweep.md, reconstruction_plumbing.md, ray_reconstruction.md; an " +
                 "Interpolant override sampled by the reconstruction jitter path. The documents that " +

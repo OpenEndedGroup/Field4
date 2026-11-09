@@ -1,6 +1,6 @@
 {
-  "_about": "Where the scout looks. hn: the front page above a points floor. hn_topics: HN title/url queries for work Field already has, with almost no floor, because news in Field's own lineage is often small (the 2026 Strudel and Gray-Scott posts had 2 points). Add a topic when Field gains a subsystem. Feeds were checked live on 2026-11-06; lobste.rs `music` and `gamedev` returned 500 then and are left out.",
-  "hn": {"min_points": 50, "lookback_days": 2},
+  "_about": "Where the scout looks. hn: every HN story above a points floor, 15 since 2026-11-09 (about 120 stories in two days, against 70 at 50), so a small Show HN such as RenderBear/haci at 19 points reaches the title pass. hn_topics: HN title/url queries for work Field already has, with almost no floor, because news in Field's own lineage is often small (the 2026 Strudel and Gray-Scott posts had 2 points). Add a topic when Field gains a subsystem. Feeds were checked live on 2026-11-06; lobste.rs `music` and `gamedev` returned 500 then and are left out.",
+  "hn": {"min_points": 15, "lookback_days": 2},
   "hn_topics": {
     "min_points": 1,
     "lookback_days": 2,
