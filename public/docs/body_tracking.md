@@ -47,20 +47,6 @@ Hand tracking can change as controllers are put down or picked up. The panel rep
 activity, per-joint position/orientation validity, radii and pinch strength. Controller input
 includes trigger, grip, thumbstick, A/B and menu values.
 
-## Inspect a copy or stand inside the skeleton
-
-The default **Inspection copy ahead of me** translates the drawing about 1.6 metres ahead.
-It makes the body easier to inspect without looking down through your own headset. It does not
-change the raw coordinates, body-query inputs or distances. **Recenter inspection copy** sets
-the offset from the current horizontal headset heading.
-
-Turn the copy off to draw at the actual tracked positions. Joint radius, line half-width,
-orientation-axis length, hands, body, controllers, axes and connections have independent controls.
-
-The optional [Field browser pane](field_vr_ide.md) shares the document with the desktop editor.
-It can be hidden or brought back in front. The native preview samples the same rendered eye image;
-**Both eyes side by side** changes its layout. Disabling desktop preview keeps the headset path running.
-
 ## Bounds and closest points
 
 `BodyGeometry` copies valid, finite body positions and an optional head pose. The snapshot stays
@@ -116,7 +102,8 @@ translated into the inspection copy while those numbers remain in raw world coor
 
 ### Headset preview
 
-**Both eyes side by side** shows the two eye images together in the desktop mirror; leave it
+The native preview samples the same rendered eye image as the headset. **Both eyes side by side**
+shows the two eye images together in the desktop mirror; leave it
 off for a larger single-eye view. **Desktop preview enabled** controls the native mirror window's
 presentation. Turn it off when working entirely in the headset; tracking and VR rendering continue.
 
@@ -153,7 +140,8 @@ ui.pause(800)
 
 ### Field browser pane
 
-**Show Field pane in headset** toggles the browser surface used to edit the document in VR.
+The optional [Field browser pane](field_vr_ide.md) shares the document with the desktop editor.
+**Show Field pane in headset** toggles that browser surface in VR.
 **Bring Field pane in front** places it back in front of your current head pose, useful after
 moving around or leaving the pane behind. These controls affect the editor surface, not the skeleton.
 
@@ -228,9 +216,13 @@ ui.pause(800)
 
 ### Tracking view
 
-Use **Inspection copy ahead of me** to examine a translated copy of the skeleton, and **Recenter
-inspection copy** to place it ahead of your current horizontal heading. Turn the copy off to see
-tracking at its physical location. Hands, body, controllers, orientation axes and connections can
+The default **Inspection copy ahead of me** translates the drawing about 1.6 metres ahead.
+It makes the body easier to inspect without looking down through your own headset. It does not
+change the raw coordinates, body-query inputs or distances. **Recenter inspection copy** sets
+the offset from the current horizontal headset heading.
+
+Turn the copy off to draw at the actual tracked positions. Hands, body, controllers, orientation
+axes and connections can
 be shown independently, making it easier to distinguish missing tracking from overlapping marks.
 
 The three size sliders are in metres. **Joint radius** changes the circular markers, **Line
