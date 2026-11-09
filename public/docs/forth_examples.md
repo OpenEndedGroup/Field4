@@ -402,7 +402,7 @@ literals, so `c4` pushes 60 and `eb3` pushes 51, and `note` sounds one on the cu
 second pass the second, and so on, wrapping. This grid has four steps. The first alternates through C,
 E flat and G, and the third between G and C:
 
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_alternation.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-alternation" alt="A steps panel lists the six notes the twelve steps played, one per line with its step, cell and MIDI number: step 0 c4, step 2 g3, step 4 d#3, step 6 c4, step 8 g3, step 10 g3, all sine. Below it an audio panel holds a two-second player."}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_alternation.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-alternation" alt="A steps panel lists the six notes the twelve steps played, one per line with its step, cell and MIDI number: step 0 c4, step 2 g3, step 4 d#3, step 6 c4, step 8 g3, step 10 g3, all sine. Below it an audio panel shows the waveform over a player."}
 120 bpm
 seq: line  < c4 eb3 g3 > note | | < g3 c4 > note | ;seq
 line 12 run-steps
@@ -428,7 +428,7 @@ oscillator, `lpf` sets a lowpass corner in Hz, `dur` how many seconds the note h
 and `gain` its level. Every step starts from a plain sine, so a sound you want on several steps is a
 word. Cagire writes `{ 110 saw 800 lpf out } synth`; in ForthField the same idea is a colon definition:
 
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_synth_word.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-synth-word" alt="SYNTHALT"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_synth_word.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-synth-word" alt="A steps panel lists six saw notes, each with lpf 900: c2 and c3 on steps 0 and 1, d#2 on step 3, c2 and c3 on steps 4 and 5, g2 on step 7. Below it an audio panel shows the three-second waveform, a cluster of decaying notes every half second, over a player."}
 : acid  saw 900 lpf 0.08 dur ;
 130 bpm
 seq: bass  acid c2 note | acid c3 note | | acid < eb2 g2 bb2 > note ;seq
@@ -453,7 +453,7 @@ to this step, and `index` takes that item of the list, wrapping, so `[ c5 e5 g5 
 climbs the chord one pass at a time. `wchoose` takes a list of values and a list of weights and picks
 one value, here C three times out of five:
 
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_chime.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-chime" alt="CHIMEALT"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_chime.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-chime" alt="A steps panel lists four notes: step 0 c5 tri, step 2 g3 sine, step 4 e5 tri, step 6 g3 sine. Below it an audio panel shows six seconds of waveform: a steady bass under eight louder triangle notes that rise and fall, over a player."}
 : chime  tri 0.5 dur 0.5 gain ;
 90 bpm
 seq: bells  chime [ c5 e5 g5 b5 ] iter index note | | 0.2 dur [ c3 g3 eb3 ] [ 6 3 1 ] wchoose note | ;seq
@@ -476,7 +476,7 @@ number for programs that want to do their own arithmetic.
 pattern and plays it from the [Dirt-Samples](pattern_language.md) library, so `bd`, `hh`, `sn` and
 `cp` are the drum samples:
 
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_dirt.png" capture="box" open-outputs="true" wait="1.0" requires="dirt-samples" embed=true name="forth-steps-dirt" alt="DIRTALT"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_dirt.png" capture="box" open-outputs="true" wait="1.0" requires="dirt-samples" embed=true name="forth-steps-dirt" alt="A steps panel lists eight steps: bd, hh, sn, hh, bd, hh, hh, hh. Below it an audio panel shows under three seconds of waveform, a sharp sample hit on every step, over a player."}
 130 bpm
 seq: kit  s" bd" sound | s" hh" sound | < s" sn" s" hh" s" cp" > sound | s" hh" sound ;seq
 kit 8 run-steps
