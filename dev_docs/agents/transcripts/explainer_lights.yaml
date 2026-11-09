@@ -208,7 +208,7 @@ operations:
               display(
                   "readout",
                   "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>" +
-                      "$landed of $rays rays land on the patch &nbsp;·&nbsp; cos ${degrees.roundToInt()}° = ${"%.2f".format(down)}</div>",
+                      "$landed of $rays rays land on the patch &nbsp;·&nbsp; cos ${degrees.roundToInt()}° = ${down.f2}</div>",
               )
           }
 
@@ -291,7 +291,7 @@ operations:
               display(
                   "readout",
                   "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>" +
-                      "${"%.1f".format(distance)} m away: $reached of $count rays reach the patch</div>",
+                      "${distance.f1} m away: $reached of $count rays reach the patch</div>",
               )
           }
 
@@ -364,7 +364,7 @@ operations:
               display(
                   "readout",
                   "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${distance.roundToInt()} m away, the car spans " +
-                      "${"%.1f".format(2 * half * 180 / PI)}°</div>",
+                      "${(2 * half * 180 / PI).f1}°</div>",
               )
           }
 
@@ -434,7 +434,7 @@ operations:
               display(
                   "readout",
                   "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${degrees.roundToInt()}° = arc ÷ radius = " +
-                      "${"%.2f".format(a)} radians; the ticks on the unrolled arc are one radius apart</div>",
+                      "${a.f2} radians; the ticks on the unrolled arc are one radius apart</div>",
               )
           }
 
@@ -471,8 +471,8 @@ operations:
               }
               display(
                   "readout",
-                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${"%.1f".format(distance)} m: " +
-                      "${"%.3f".format(omega)} steradians; × distance² = ${"%.2f".format(omega * distance * distance)}</div>",
+                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${distance.f1} m: " +
+                      "${omega.f3} steradians; × distance² = ${(omega * distance * distance).f2}</div>",
               )
           }
 
@@ -518,8 +518,8 @@ operations:
               }
               display(
                   "readout",
-                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>the lamp covers ${"%.1f".format(100 * covered / PI)} % of the disc. " +
-                      "Radiance × area = ${"%.2f".format(radiance * covered)} W/m²; summed over the lamp: ${"%.2f".format(e)} W/m²</div>",
+                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>the lamp covers ${(100 * covered / PI).f1} % of the disc. " +
+                      "Radiance × area = ${(radiance * covered).f2} W/m²; summed over the lamp: ${e.f2} W/m²</div>",
               )
           }
 
@@ -576,8 +576,8 @@ operations:
               val d2 = distance * distance
               display(
                   "readout",
-                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${"%.1f".format(distance)} m: the cone takes in " +
-                      "${"%.1f".format(d2)}× the lamp's area, each piece arriving ${"%.1f".format(d2)}× fainter: the same brightness</div>",
+                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${distance.f1} m: the cone takes in " +
+                      "${d2.f1}× the lamp's area, each piece arriving ${d2.f1}× fainter: the same brightness</div>",
               )
           }
 
