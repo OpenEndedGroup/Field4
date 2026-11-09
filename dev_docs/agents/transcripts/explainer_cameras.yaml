@@ -17,20 +17,25 @@ operations:
       frame: { x: 300.0, y: 140.0, w: 170.0, h: 50.0 }
       properties:
         code: |
-          import afield.simulation.optics.*
           import afield.media.image.util.PngEncoder
+          import afield.simulation.optics.*
 
           // A 48 × 32 sensor collecting photons from the test scene. Light arrives at random, so a short
           // exposure is grainy; each detector holds at most 400, so a long one turns bright parts flat white.
           val full = 400.0
-          val light = SensorCamera(z = -5.0, sensorDistance = 1.0, apertureDiameter = 0.03).render(OpticsScene.testScene(), 48, 32, samples = 32)
-          val perSecond = 4000.0 / light.reference      // photons per second from the bright sky at the middle
+          val light =
+              SensorCamera(z = -5.0, sensorDistance = 1.0, apertureDiameter = 0.03)
+                  .render(OpticsScene.testScene(), 48, 32, samples = 32)
+          val perSecond = 4000.0 / light.reference // photons per second from the bright sky at the middle
 
           fun draw(time: Double) {
               val counts = light.photons(perSecond * time, seed = 3)
               display("sensor", PngEncoder.encode(counts.toArgb(exposure = 1 / full, scale = 10), 480, 320))
               val sky = 4000.0 * time
-              display("readout", "<p style='opacity:.8'>open ${"%.3f".format(time)} s: about ${"%.0f".format(sky)} photons on a detector facing the sky, which holds ${full.toInt()}</p>")
+              display(
+                  "readout",
+                  "<p style='opacity:.8'>open ${"%.3f".format(time)} s: about ${"%.0f".format(sky)} photons on a detector facing the sky, which holds ${full.toInt()}</p>",
+              )
           }
 
           draw(0.05)
@@ -43,19 +48,28 @@ operations:
       frame: { x: 490.0, y: 140.0, w: 170.0, h: 50.0 }
       properties:
         code: |
-          import afield.simulation.optics.*
           import afield.media.image.util.PngEncoder
+          import afield.simulation.optics.*
 
           // A sensor of 32 × 32 detectors, a kilopixel. Bare, each detector counts all light the same.
           // With filters each counts only red, green or blue; filling in guesses the other two from neighbours.
-          val light = SensorCamera(z = -5.0, sensorWidth = 1.2, sensorHeight = 1.2, sensorDistance = 1.0, apertureDiameter = 0.03)
-              .render(OpticsScene.testScene(), 32, 32, samples = 32)
+          val light =
+              SensorCamera(z = -5.0, sensorWidth = 1.2, sensorHeight = 1.2, sensorDistance = 1.0, apertureDiameter = 0.03)
+                  .render(OpticsScene.testScene(), 32, 32, samples = 32)
           var filters = false
           var fillIn = false
 
           fun draw() {
               val shown = when {
-                  !filters -> SensorImage(32, 32, FloatArray(32 * 32 * 3) { (light.rgb[it / 3 * 3] + light.rgb[it / 3 * 3 + 1] + light.rgb[it / 3 * 3 + 2]) / 3 }, light.reference)
+                  !filters ->
+                      SensorImage(
+                          32,
+                          32,
+                          FloatArray(32 * 32 * 3) {
+                              (light.rgb[it / 3 * 3] + light.rgb[it / 3 * 3 + 1] + light.rgb[it / 3 * 3 + 2]) / 3
+                          },
+                          light.reference,
+                      )
                   !fillIn -> light.mosaic()
                   else -> light.mosaic().demosaic()
               }
@@ -64,8 +78,14 @@ operations:
 
           draw()
           controlGroup {
-              checkbox("colour filters") { filters = it; draw() }
-              checkbox("fill in colours") { fillIn = it; draw() }
+              checkbox("colour filters") {
+                  filters = it
+                  draw()
+              }
+              checkbox("fill in colours") {
+                  fillIn = it
+                  draw()
+              }
           }
   - create:
       box: ec_test_scene
@@ -86,8 +106,8 @@ operations:
       frame: { x: 870.0, y: 140.0, w: 170.0, h: 50.0 }
       properties:
         code: |
-          import afield.simulation.optics.*
           import afield.media.image.util.PngEncoder
+          import afield.simulation.optics.*
 
           // A sensor held up to the scene with nothing in front of it. One point on each ball sends light to
           // every detector, and so does every other point: each detector gets the same blend.
@@ -96,7 +116,12 @@ operations:
           val image = bare.renderBare(scene, 48, 32, samples = 256)
           val corners = 5 { i -> 4 { j -> bare.toWorld(-0.6 + 0.3 * i, -0.36 + 0.24 * j, 0.0) } }.flatten()
           fun fan(x: Double, y: Double, z: Double, c: Vec4) = corners.map { p ->
-              fline { moveTo(x, y, z); lineTo(p[0], p[1], p[2]); color = c; thickness = 1.0 }
+              fline {
+                  moveTo(x, y, z)
+                  lineTo(p[0], p[1], p[2])
+                  color = c
+                  thickness = 1.0
+              }
           }
 
           three(channel = "rays", height = 320, width = 640) {
@@ -113,8 +138,8 @@ operations:
       frame: { x: 300.0, y: 220.0, w: 170.0, h: 50.0 }
       properties:
         code: |
-          import afield.simulation.optics.*
           import afield.media.image.util.PngEncoder
+          import afield.simulation.optics.*
 
           // A closed box with a small hole, looking at the test scene. The picture forms on the back wall.
           val scene = OpticsScene.testScene()
@@ -140,9 +165,18 @@ operations:
 
           draw()
           controlGroup {
-              slider("hole diameter", 0.005, 0.3, step = 0.005, initialValue = 0.04) { hole = it; draw() }
-              slider("sensor distance", 0.4, 2.5, step = 0.05, initialValue = 1.0) { distance = it; draw() }
-              checkbox("fixed exposure") { fixedExposure = it; draw() }
+              slider("hole diameter", 0.005, 0.3, step = 0.005, initialValue = 0.04) {
+                  hole = it
+                  draw()
+              }
+              slider("sensor distance", 0.4, 2.5, step = 0.05, initialValue = 1.0) {
+                  distance = it
+                  draw()
+              }
+              checkbox("fixed exposure") {
+                  fixedExposure = it
+                  draw()
+              }
           }
   - create:
       box: ec_field_of_view
@@ -179,7 +213,10 @@ operations:
               val view = fline {
                   moveTo(holeX, axis)
                   lineTo(low[0], low[1])
-                  if (low[1] >= 300.0 || high[1] <= 0.0) { lineTo(0.0, 300.0); lineTo(0.0, 0.0) }
+                  if (low[1] >= 300.0 || high[1] <= 0.0) {
+                      lineTo(0.0, 300.0)
+                      lineTo(0.0, 0.0)
+                  }
                   lineTo(high[0], high[1])
                   close()
                   filled = true
@@ -191,22 +228,39 @@ operations:
               val imageY = axis + 90.0 * distance * unit / (holeX - tipX)
               val parts = listOf(
                   view,
-                  segment(sensorX, axis + half, holeX, axis + half, guide), segment(sensorX, axis - half, holeX, axis - half, guide),
-                  segment(holeX, axis - half, holeX, axis - 6, guide, 2.0), segment(holeX, axis + 6, holeX, axis + half, guide, 2.0),
+                  segment(sensorX, axis + half, holeX, axis + half, guide),
+                  segment(sensorX, axis - half, holeX, axis - half, guide),
+                  segment(holeX, axis - half, holeX, axis - 6, guide, 2.0),
+                  segment(holeX, axis + 6, holeX, axis + half, guide, 2.0),
                   segment(sensorX, axis - half, sensorX, axis + half, cyan, 3.0),
-                  segment(sensorX, axis - half, low[0], low[1], cyan, 1.0), segment(sensorX, axis + half, high[0], high[1], cyan, 1.0),
+                  segment(sensorX, axis - half, low[0], low[1], cyan, 1.0),
+                  segment(sensorX, axis + half, high[0], high[1], cyan, 1.0),
                   segment(tipX, axis + 40, tipX, tipY, orange, 4.0),
                   segment(tipX, tipY, sensorX, imageY, orange, 1.0),
                   segment(sensorX, axis - 40.0 * distance * unit / (holeX - tipX), sensorX, imageY, orange, 4.0),
               )
-              showPlane(parts, channel = "side", width = 600, height = 281, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 300.0), interactive = false)
+              showPlane(
+                  parts,
+                  channel = "side",
+                  width = 600,
+                  height = 281,
+                  padding = 0.0,
+                  window = Rect(0.0, 0.0, 640.0, 300.0),
+                  interactive = false,
+              )
               val degrees = 2 * atan(0.5 / distance) * 180 / PI
-              display("readout", "<p style='opacity:.8'>sensor ${"%.2f".format(distance)} behind the hole: a view ${"%.0f".format(degrees)}° wide</p>")
+              display(
+                  "readout",
+                  "<p style='opacity:.8'>sensor ${"%.2f".format(distance)} behind the hole: a view ${"%.0f".format(degrees)}° wide</p>",
+              )
           }
 
           draw()
           controlGroup {
-              slider("sensor distance", 0.3, 2.4, step = 0.02, initialValue = 1.0) { distance = it; draw() }
+              slider("sensor distance", 0.3, 2.4, step = 0.02, initialValue = 1.0) {
+                  distance = it
+                  draw()
+              }
           }
   - create:
       box: ec_off_axis
@@ -214,8 +268,8 @@ operations:
       frame: { x: 680.0, y: 220.0, w: 170.0, h: 50.0 }
       properties:
         code: |
-          import afield.simulation.optics.*
           import afield.media.image.util.PngEncoder
+          import afield.simulation.optics.*
 
           // A pinhole camera looking at an even sky. Its picture is darker towards the edges: the curve is
           // the brightness across the sensor, the faint line cos⁴ of the angle each point looks out at.
@@ -224,8 +278,16 @@ operations:
           var distance = 0.8
 
           fun draw() {
-              val camera = SensorCamera(y = 0.0, z = 0.0, lookY = 0.0, lookZ = 1.0, sensorWidth = 2.0, sensorHeight = 0.25,
-                  sensorDistance = distance, apertureDiameter = 0.01)
+              val camera = SensorCamera(
+                  y = 0.0,
+                  z = 0.0,
+                  lookY = 0.0,
+                  lookZ = 1.0,
+                  sensorWidth = 2.0,
+                  sensorHeight = 0.25,
+                  sensorDistance = distance,
+                  apertureDiameter = 0.01,
+              )
               val image = camera.render(OpticsScene.uniformSky(), 160, 20, samples = 8)
               display("sensor", PngEncoder.encode(image.toArgb(scale = 4), 640, 80))
               val measured = fline {
@@ -245,14 +307,37 @@ operations:
                   color = guide
                   thickness = 1.0
               }
-              showPlane(listOf(fline { moveTo(0, 230); lineTo(640, 230); color = guide; thickness = 1.0 }, measured, predicted), channel = "brightness", width = 600, height = 225, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 240.0), interactive = false)
+              showPlane(
+                  listOf(
+                      fline {
+                          moveTo(0, 230)
+                          lineTo(640, 230)
+                          color = guide
+                          thickness = 1.0
+                      },
+                      measured,
+                      predicted,
+                  ),
+                  channel = "brightness",
+                  width = 600,
+                  height = 225,
+                  padding = 0.0,
+                  window = Rect(0.0, 0.0, 640.0, 240.0),
+                  interactive = false,
+              )
               val edge = image[0, 10, 0] / image.reference
-              display("readout", "<p style='opacity:.8'>the edge of the sensor gets ${"%.0f".format(100 * edge)}% of the light the middle gets</p>")
+              display(
+                  "readout",
+                  "<p style='opacity:.8'>the edge of the sensor gets ${"%.0f".format(100 * edge)}% of the light the middle gets</p>",
+              )
           }
 
           draw()
           controlGroup {
-              slider("sensor distance", 0.3, 2.0, step = 0.01, initialValue = 0.8) { distance = it; draw() }
+              slider("sensor distance", 0.3, 2.0, step = 0.01, initialValue = 0.8) {
+                  distance = it
+                  draw()
+              }
           }
   - create:
       box: ec_slab_ray
@@ -282,8 +367,18 @@ operations:
               val start = frameExit(entryX, top, -sin(theta), -cos(theta), 640.0, endY)
               val guideEnd = frameExit(entryX, top, sin(theta), cos(theta), 640.0, endY)
               val parts = listOf(
-                  fline { rect(0, top, 640, slab * unit); filled = true; stroked = false; color = vec(0.4, 0.9, 1.0, 0.12) },
-                  fline { moveTo(entryX, top); lineTo(guideEnd[0], guideEnd[1]); color = guide; thickness = 1.0 },
+                  fline {
+                      rect(0, top, 640, slab * unit)
+                      filled = true
+                      stroked = false
+                      color = vec(0.4, 0.9, 1.0, 0.12)
+                  },
+                  fline {
+                      moveTo(entryX, top)
+                      lineTo(guideEnd[0], guideEnd[1])
+                      color = guide
+                      thickness = 1.0
+                  },
                   fline {
                       moveTo(start[0], start[1])
                       lineTo(entryX, top)
@@ -293,16 +388,33 @@ operations:
                       thickness = 2.5
                   },
               )
-              showPlane(parts, channel = "side", width = 600, height = 338, padding = 0.0, window = Rect(0.0, 0.0, 640.0, endY), interactive = false)
+              showPlane(
+                  parts,
+                  channel = "side",
+                  width = 600,
+                  height = 338,
+                  padding = 0.0,
+                  window = Rect(0.0, 0.0, 640.0, endY),
+                  interactive = false,
+              )
               // How far apart the two parallel paths are, measured square to them.
               val shift = slab * sin(theta - inside) / cos(inside)
-              display("readout", "<p style='opacity:.8'>slab ${"%.2f".format(slab)} thick: the ray comes out shifted ${"%.2f".format(shift)} sideways</p>")
+              display(
+                  "readout",
+                  "<p style='opacity:.8'>slab ${"%.2f".format(slab)} thick: the ray comes out shifted ${"%.2f".format(shift)} sideways</p>",
+              )
           }
 
           draw()
           controlGroup {
-              slider("thickness", 0.0, 2.2, step = 0.02, initialValue = 1.0) { slab = it; draw() }
-              slider("angle", 0.0, 75.0, step = 0.5, initialValue = 45.0) { angle = it; draw() }
+              slider("thickness", 0.0, 2.2, step = 0.02, initialValue = 1.0) {
+                  slab = it
+                  draw()
+              }
+              slider("angle", 0.0, 75.0, step = 0.5, initialValue = 45.0) {
+                  angle = it
+                  draw()
+              }
           }
   - create:
       box: ec_into_glass
@@ -327,7 +439,12 @@ operations:
               val theta = angle * PI / 180
               val turned = Refraction.snellAngle(theta, 1.0, index)
               val parts = mutableListOf(
-                  fline { rect(0, axis, 640, 180); filled = true; stroked = false; color = vec(0.4, 0.9, 1.0, 0.12) },
+                  fline {
+                      rect(0, axis, 640, 180)
+                      filled = true
+                      stroked = false
+                      color = vec(0.4, 0.9, 1.0, 0.12)
+                  },
               )
               for (crest in Refraction.crossingCrests(theta, index, wavelength, travelled, 640.0, 360.0, axis)) {
                   for (segment in listOfNotNull(crest.air, crest.glass)) parts += fline {
@@ -345,14 +462,28 @@ operations:
                   color = orange
                   thickness = 2.0
               }
-              showPlane(parts, channel = "wave", width = 600, height = 338, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
+              showPlane(
+                  parts,
+                  channel = "wave",
+                  width = 600,
+                  height = 338,
+                  padding = 0.0,
+                  window = Rect(0.0, 0.0, 640.0, 360.0),
+                  interactive = false,
+              )
           }
 
           draw()
           controlGroup {
               checkbox("playing", initialValue = true) { playing = it }
-              slider("angle", 0.0, 70.0, step = 0.5, initialValue = 0.0) { angle = it; draw() }
-              slider("glass index", 1.0, 2.4, step = 0.01, initialValue = 1.5) { index = it; draw() }
+              slider("angle", 0.0, 70.0, step = 0.5, initialValue = 0.0) {
+                  angle = it
+                  draw()
+              }
+              slider("glass index", 1.0, 2.4, step = 0.01, initialValue = 1.5) {
+                  index = it
+                  draw()
+              }
           }
 
           // Paced by the clock, not by the loop, which runs far faster than the display: the wave moves
@@ -394,25 +525,59 @@ operations:
           fun draw() {
               val theta = angle * PI / 180
               val (n1, n2) = if (inside) glass to 1.0 else 1.0 to glass
-              val side = if (inside) 1.0 else -1.0      // the incoming ray's side of the surface: -1 above, +1 below
+              val side = if (inside) 1.0 else -1.0 // the incoming ray's side of the surface: -1 above, +1 below
               val turned = Refraction.snellAngle(theta, n1, n2)
               val reflected = Refraction.reflectance(theta, n1, n2)
               val parts = mutableListOf(
-                  fline { rect(0, 180, 640, 180); filled = true; stroked = false; color = vec(0.4, 0.9, 1.0, 0.12) },
-                  fline { moveTo(320, 10); lineTo(320, 350); color = vec(1.0, 1.0, 1.0, 0.35); thickness = 1.0 },
-                  fline { moveTo(320 - 200 * sin(theta), 180 + side * 200 * cos(theta)); lineTo(320, 180); color = cyan; thickness = 5.8 },
+                  fline {
+                      rect(0, 180, 640, 180)
+                      filled = true
+                      stroked = false
+                      color = vec(0.4, 0.9, 1.0, 0.12)
+                  },
+                  fline {
+                      moveTo(320, 10)
+                      lineTo(320, 350)
+                      color = vec(1.0, 1.0, 1.0, 0.35)
+                      thickness = 1.0
+                  },
+                  fline {
+                      moveTo(320 - 200 * sin(theta), 180 + side * 200 * cos(theta))
+                      lineTo(320, 180)
+                      color = cyan
+                      thickness = 5.8
+                  },
                   ray(320 + 200 * sin(theta), 180 + side * 200 * cos(theta), reflected, orange),
               )
               if (!turned.isNaN()) parts += ray(320 + 200 * sin(turned), 180 - side * 200 * cos(turned), 1 - reflected, cyan)
-              showPlane(parts, channel = "rays", width = 600, height = 338, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
-              val crossing = if (turned.isNaN()) "none crosses: total internal reflection" else "crosses at ${"%.1f".format(turned * 180 / PI)}°"
-              display("readout", "<p style='opacity:.8'>arrives at ${"%.1f".format(angle)}°, ${"%.0f".format(100 * reflected)}% reflects, $crossing</p>")
+              showPlane(
+                  parts,
+                  channel = "rays",
+                  width = 600,
+                  height = 338,
+                  padding = 0.0,
+                  window = Rect(0.0, 0.0, 640.0, 360.0),
+                  interactive = false,
+              )
+              val crossing =
+                  if (turned.isNaN()) "none crosses: total internal reflection"
+                  else "crosses at ${"%.1f".format(turned * 180 / PI)}°"
+              display(
+                  "readout",
+                  "<p style='opacity:.8'>arrives at ${"%.1f".format(angle)}°, ${"%.0f".format(100 * reflected)}% reflects, $crossing</p>",
+              )
           }
 
           draw()
           controlGroup {
-              slider("angle", 0.0, 89.0, step = 0.5, initialValue = 40.0) { angle = it; draw() }
-              checkbox("from inside the glass") { inside = it; draw() }
+              slider("angle", 0.0, 89.0, step = 0.5, initialValue = 40.0) {
+                  angle = it
+                  draw()
+              }
+              checkbox("from inside the glass") {
+                  inside = it
+                  draw()
+              }
           }
   - create:
       box: ec_prism_segments
@@ -439,7 +604,11 @@ operations:
           fun draw() {
               val n = segments
               // The facets' corners from the rim at the top to the rim at the bottom.
-              val corners = (0..2 * n).map { k -> val h = -rim + rim * k / n; h to surfaceX(h) }
+              val corners =
+                  (0..2 * n).map { k ->
+                      val h = -rim + rim * k / n
+                      h to surfaceX(h)
+                  }
               val outline = fline {
                   moveTo(flatX, axis - rim)
                   for ((h, x) in corners) lineTo(x, axis + h)
@@ -448,7 +617,15 @@ operations:
                   filled = true
                   color = vec(0.4, 0.9, 1.0, 0.18)
               }
-              val parts = mutableListOf(outline, fline { moveTo(0, axis); lineTo(640, axis); color = guide; thickness = 1.0 })
+              val parts = mutableListOf(
+                  outline,
+                  fline {
+                      moveTo(0, axis)
+                      lineTo(640, axis)
+                      color = guide
+                      thickness = 1.0
+                  },
+              )
               for (k in -6..6) {
                   val h = 20.0 * k + if (k == 0) 0.0 else -0.5 * sign(k.toDouble()) // keep rays off the facet corners
                   val facet = ((h + rim) / rim * n).toInt().coerceIn(0, 2 * n - 1)
@@ -467,12 +644,23 @@ operations:
                       thickness = 1.5
                   }
               }
-              showPlane(parts, channel = "side", width = 600, height = 338, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
+              showPlane(
+                  parts,
+                  channel = "side",
+                  width = 600,
+                  height = 338,
+                  padding = 0.0,
+                  window = Rect(0.0, 0.0, 640.0, 360.0),
+                  interactive = false,
+              )
           }
 
           draw()
           controlGroup {
-              slider("segments", 1.0, 24.0, step = 1.0, initialValue = 1.0) { segments = it.toInt(); draw() }
+              slider("segments", 1.0, 24.0, step = 1.0, initialValue = 1.0) {
+                  segments = it.toInt()
+                  draw()
+              }
           }
   - create:
       box: ec_thin_lens
@@ -511,15 +699,26 @@ operations:
           fun draw() {
               val lens = fline {
                   moveTo(lensX, axis - 110)
-                  for (k in 0..40) { val t = -1 + k / 20.0; lineTo(lensX + 9 * (1 - t * t), axis + 110 * t) }
-                  for (k in 0..40) { val t = 1 - k / 20.0; lineTo(lensX - 9 * (1 - t * t), axis + 110 * t) }
+                  for (k in 0..40) {
+                      val t = -1 + k / 20.0
+                      lineTo(lensX + 9 * (1 - t * t), axis + 110 * t)
+                  }
+                  for (k in 0..40) {
+                      val t = 1 - k / 20.0
+                      lineTo(lensX - 9 * (1 - t * t), axis + 110 * t)
+                  }
                   filled = true
                   color = vec(0.4, 0.9, 1.0, 0.25)
               }
               val sx = lensX - source * unit
               val sy = axis - 40.0
-              val parts = mutableListOf(segment(0.0, axis, 640.0, axis, guide, 1.0), lens,
-                  dot(lensX - focal * unit, axis, guide), dot(lensX + focal * unit, axis, guide), dot(sx, sy, orange))
+              val parts = mutableListOf(
+                  segment(0.0, axis, 640.0, axis, guide, 1.0),
+                  lens,
+                  dot(lensX - focal * unit, axis, guide),
+                  dot(lensX + focal * unit, axis, guide),
+                  dot(sx, sy, orange),
+              )
               for (k in -4..4) {
                   val h = 24.0 * k
                   val slope = (axis + h - sy) / (lensX - sx) - h / (focal * unit)
@@ -529,15 +728,33 @@ operations:
               }
               val image = ThinLens.imageDistance(focal, source)
               if (image > 0 && image * unit < 320) parts += dot(lensX + image * unit, axis + 40.0 * image / source, orange)
-              showPlane(parts, channel = "rays", width = 600, height = 338, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
-              val where = if (image > 0) "a sharp image ${"%.2f".format(image)} behind the lens" else "no image: the rays spread apart"
-              display("readout", "<p style='opacity:.8'>focal length ${"%.1f".format(focal)}, source ${"%.1f".format(source)} in front: $where</p>")
+              showPlane(
+                  parts,
+                  channel = "rays",
+                  width = 600,
+                  height = 338,
+                  padding = 0.0,
+                  window = Rect(0.0, 0.0, 640.0, 360.0),
+                  interactive = false,
+              )
+              val where =
+                  if (image > 0) "a sharp image ${"%.2f".format(image)} behind the lens" else "no image: the rays spread apart"
+              display(
+                  "readout",
+                  "<p style='opacity:.8'>focal length ${"%.1f".format(focal)}, source ${"%.1f".format(source)} in front: $where</p>",
+              )
           }
 
           draw()
           controlGroup {
-              slider("source distance", 1.0, 7.5, step = 0.05, initialValue = 5.0) { source = it; draw() }
-              slider("focal length", 1.0, 3.0, step = 0.05, initialValue = 2.0) { focal = it; draw() }
+              slider("source distance", 1.0, 7.5, step = 0.05, initialValue = 5.0) {
+                  source = it
+                  draw()
+              }
+              slider("focal length", 1.0, 3.0, step = 0.05, initialValue = 2.0) {
+                  focal = it
+                  draw()
+              }
           }
   - create:
       box: ec_lens_camera
@@ -545,8 +762,8 @@ operations:
       frame: { x: 300.0, y: 380.0, w: 170.0, h: 50.0 }
       properties:
         code: |
-          import afield.simulation.optics.*
           import afield.media.image.util.PngEncoder
+          import afield.simulation.optics.*
 
           // The test scene through a lens. Choose the distance to focus at and the lens puts its sensor
           // where that distance comes out sharp; nearer and further things blur.
@@ -560,14 +777,26 @@ operations:
               val camera = SensorCamera(z = -4.5, sensorDistance = sensor, apertureDiameter = aperture, focalLength = focal)
               val image = camera.render(scene, 120, 80, samples = 96)
               display("sensor", PngEncoder.encode(image.toArgb(scale = 5), 600, 400))
-              display("readout", "<p style='opacity:.8'>f/${"%.1f".format(focal / aperture)}, sensor ${"%.3f".format(sensor)} behind the lens, sharp at ${"%.1f".format(focus)} in front</p>")
+              display(
+                  "readout",
+                  "<p style='opacity:.8'>f/${"%.1f".format(focal / aperture)}, sensor ${"%.3f".format(sensor)} behind the lens, sharp at ${"%.1f".format(focus)} in front</p>",
+              )
           }
 
           draw()
           controlGroup {
-              slider("focus distance", 2.0, 12.0, step = 0.05, initialValue = 4.0, law = ControlLaw.LOGARITHMIC) { focus = it; draw() }
-              slider("aperture", 0.02, 0.8, step = 0.01, initialValue = 0.5) { aperture = it; draw() }
-              slider("focal length", 0.7, 1.6, step = 0.01, initialValue = 1.0) { focal = it; draw() }
+              slider("focus distance", 2.0, 12.0, step = 0.05, initialValue = 4.0, law = ControlLaw.LOGARITHMIC) {
+                  focus = it
+                  draw()
+              }
+              slider("aperture", 0.02, 0.8, step = 0.01, initialValue = 0.5) {
+                  aperture = it
+                  draw()
+              }
+              slider("focal length", 0.7, 1.6, step = 0.01, initialValue = 1.0) {
+                  focal = it
+                  draw()
+              }
           }
   - create:
       box: ec_bokeh
@@ -575,32 +804,58 @@ operations:
       frame: { x: 490.0, y: 380.0, w: 170.0, h: 50.0 }
       properties:
         code: |
-          import afield.simulation.optics.*
           import afield.media.image.util.PngEncoder
+          import afield.simulation.optics.*
 
           // Small lights far behind the point the lens is focused on. Each one spreads into a copy of the
           // opening: a disc for a round one, a polygon for an iris of blades.
           val lights = OpticsScene(
               12 { k ->
                   val hue = Refraction.wavelengthColor(450.0 + 20.0 * k)
-                  OpticsSphere(-3.6 + 0.65 * k, 0.6 + 1.5 * sin(k * 2.4), 7.0 + 1.5 * cos(k * 1.7), 0.12, hue[0], hue[1], hue[2], emission = 12.0)
+                  OpticsSphere(
+                      -3.6 + 0.65 * k,
+                      0.6 + 1.5 * sin(k * 2.4),
+                      7.0 + 1.5 * cos(k * 1.7),
+                      0.12,
+                      hue[0],
+                      hue[1],
+                      hue[2],
+                      emission = 12.0,
+                  )
               },
-              floorY = null, sky = doubleArrayOf(0.0, 0.0, 0.0), sun = 0.0,
+              floorY = null,
+              sky = doubleArrayOf(0.0, 0.0, 0.0),
+              sun = 0.0,
           )
           var aperture = 0.5
           var blades = 0
 
           fun draw() {
-              val camera = SensorCamera(y = 0.6, z = -2.0, lookY = 0.6, lookZ = 6.0, sensorDistance = ThinLens.imageDistance(1.0, 3.0),
-                  apertureDiameter = aperture, focalLength = 1.0, blades = blades, bladeRotation = 0.3)
+              val camera = SensorCamera(
+                  y = 0.6,
+                  z = -2.0,
+                  lookY = 0.6,
+                  lookZ = 6.0,
+                  sensorDistance = ThinLens.imageDistance(1.0, 3.0),
+                  apertureDiameter = aperture,
+                  focalLength = 1.0,
+                  blades = blades,
+                  bladeRotation = 0.3,
+              )
               val image = camera.render(lights, 150, 100, samples = 400)
               display("sensor", PngEncoder.encode(image.toArgb(exposure = 1.0 / camera.reference, scale = 4), 600, 400))
           }
 
           draw()
           controlGroup {
-              slider("aperture", 0.05, 0.8, step = 0.01, initialValue = 0.5) { aperture = it; draw() }
-              slider("blades", 0.0, 9.0, step = 1.0, initialValue = 0.0) { blades = if (it < 3) 0 else it.toInt(); draw() }
+              slider("aperture", 0.05, 0.8, step = 0.01, initialValue = 0.5) {
+                  aperture = it
+                  draw()
+              }
+              slider("blades", 0.0, 9.0, step = 1.0, initialValue = 0.0) {
+                  blades = if (it < 3) 0 else it.toInt()
+                  draw()
+              }
           }
   - create:
       box: ec_depth_of_field
@@ -623,18 +878,19 @@ operations:
           var focal = 1.0
           var focus = 3.0
 
-          fun cone(objectDistance: Double, sensorX: Double, c: Vec4, width: Double) = listOf(-1.0, 1.0).map { side ->
-              val image = ThinLens.imageDistance(focal, objectDistance)
-              val edge = side * aperture / 2 * unit
-              fline {
-                  moveTo(lensX - objectDistance * unit, axis)
-                  lineTo(lensX, axis + edge)
-                  // Towards the image point, stopping at the sensor.
-                  lineTo(sensorX, axis + edge * (1 - (sensorX - lensX) / (image * unit)))
-                  color = c
-                  thickness = width
+          fun cone(objectDistance: Double, sensorX: Double, c: Vec4, width: Double) =
+              listOf(-1.0, 1.0).map { side ->
+                  val image = ThinLens.imageDistance(focal, objectDistance)
+                  val edge = side * aperture / 2 * unit
+                  fline {
+                      moveTo(lensX - objectDistance * unit, axis)
+                      lineTo(lensX, axis + edge)
+                      // Towards the image point, stopping at the sensor.
+                      lineTo(sensorX, axis + edge * (1 - (sensorX - lensX) / (image * unit)))
+                      color = c
+                      thickness = width
+                  }
               }
-          }
 
           fun draw() {
               val sensor = ThinLens.imageDistance(focal, focus)
@@ -642,24 +898,64 @@ operations:
               val (near, far) = ThinLens.depthOfField(focal, aperture, focus, pixel).let { it[0] to it[1] }
               val farX = if (far.isInfinite()) 0.0 else max(0.0, lensX - far * unit)
               val parts = mutableListOf(
-                  fline { rect(farX, axis - 70, lensX - near * unit - farX, 140); filled = true; stroked = false; color = vec(0.4, 0.9, 1.0, 0.12) },
-                  fline { moveTo(0, axis); lineTo(640, axis); color = guide; thickness = 1.0 },
-                  fline { moveTo(lensX, axis - aperture / 2 * unit); lineTo(lensX, axis + aperture / 2 * unit); color = cyan; thickness = 6.0 },
-                  fline { moveTo(sensorX, axis - 60); lineTo(sensorX, axis + 60); color = guide; thickness = 3.0 },
+                  fline {
+                      rect(farX, axis - 70, lensX - near * unit - farX, 140)
+                      filled = true
+                      stroked = false
+                      color = vec(0.4, 0.9, 1.0, 0.12)
+                  },
+                  fline {
+                      moveTo(0, axis)
+                      lineTo(640, axis)
+                      color = guide
+                      thickness = 1.0
+                  },
+                  fline {
+                      moveTo(lensX, axis - aperture / 2 * unit)
+                      lineTo(lensX, axis + aperture / 2 * unit)
+                      color = cyan
+                      thickness = 6.0
+                  },
+                  fline {
+                      moveTo(sensorX, axis - 60)
+                      lineTo(sensorX, axis + 60)
+                      color = guide
+                      thickness = 3.0
+                  },
               )
               parts += cone(focus, sensorX, cyan, 1.5)
               parts += cone(near, sensorX, orange, 1.0)
               if (!far.isInfinite() && far * unit < lensX) parts += cone(far, sensorX, orange, 1.0)
-              showPlane(parts, channel = "side", width = 600, height = 281, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 300.0), interactive = false)
+              showPlane(
+                  parts,
+                  channel = "side",
+                  width = 600,
+                  height = 281,
+                  padding = 0.0,
+                  window = Rect(0.0, 0.0, 640.0, 300.0),
+                  interactive = false,
+              )
               val farText = if (far.isInfinite()) "to infinity" else "to ${"%.2f".format(far)}"
-              display("readout", "<p style='opacity:.8'>f/${"%.1f".format(focal / aperture)}, focused at ${"%.2f".format(focus)}: sharp from ${"%.2f".format(near)} $farText</p>")
+              display(
+                  "readout",
+                  "<p style='opacity:.8'>f/${"%.1f".format(focal / aperture)}, focused at ${"%.2f".format(focus)}: sharp from ${"%.2f".format(near)} $farText</p>",
+              )
           }
 
           draw()
           controlGroup {
-              slider("aperture", 0.05, 2.0, step = 0.01, initialValue = 1.0) { aperture = it; draw() }
-              slider("focal length", 0.6, 1.6, step = 0.01, initialValue = 1.0) { focal = it; draw() }
-              slider("focus distance", 1.8, 6.0, step = 0.01, initialValue = 3.0) { focus = it; draw() }
+              slider("aperture", 0.05, 2.0, step = 0.01, initialValue = 1.0) {
+                  aperture = it
+                  draw()
+              }
+              slider("focal length", 0.6, 1.6, step = 0.01, initialValue = 1.0) {
+                  focal = it
+                  draw()
+              }
+              slider("focus distance", 1.8, 6.0, step = 0.01, initialValue = 3.0) {
+                  focus = it
+                  draw()
+              }
           }
   - create:
       box: ec_f_stops
@@ -675,23 +971,43 @@ operations:
           var chosen = 2
 
           fun draw() {
-              val parts = stops.indices.map { k ->
-                  val r = 38.0 / sqrt(2.0).pow(k)
-                  fline {
-                      for (s in 0..48) { val t = 2 * PI * s / 48; if (s == 0) moveTo(40 + 80 * k + r, 60 + 0.0) else lineTo(40 + 80 * k + r * cos(t), 60 + r * sin(t)) }
-                      filled = true
-                      color = if (k == chosen) orange else cyan
+              val parts =
+                  stops.indices.map { k ->
+                      val r = 38.0 / sqrt(2.0).pow(k)
+                      fline {
+                          for (s in 0..48) {
+                              val t = 2 * PI * s / 48
+                              if (s == 0) moveTo(40 + 80 * k + r, 60 + 0.0) else lineTo(40 + 80 * k + r * cos(t), 60 + r * sin(t))
+                          }
+                          filled = true
+                          color = if (k == chosen) orange else cyan
+                      }
                   }
+              showPlane(
+                  parts,
+                  channel = "openings",
+                  width = 600,
+                  height = 112,
+                  padding = 0.0,
+                  window = Rect(0.0, 0.0, 640.0, 120.0),
+                  interactive = false,
+              )
+              val labels = stops.mapIndexed { k, s ->
+                  "<span style='display:inline-block;width:75px;text-align:center;${if (k == chosen) "color:#ff9933" else ""}'>f/$s</span>"
               }
-              showPlane(parts, channel = "openings", width = 600, height = 112, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 120.0), interactive = false)
-              val labels = stops.mapIndexed { k, s -> "<span style='display:inline-block;width:75px;text-align:center;${if (k == chosen) "color:#ff9933" else ""}'>f/$s</span>" }
               val share = "1/${1 shl chosen}"
-              display("readout", "<div style='width:600px'>${labels.joinToString("")}<p style='opacity:.8'>f/${stops[chosen]} lets in $share of the light of f/1.4</p></div>")
+              display(
+                  "readout",
+                  "<div style='width:600px'>${labels.joinToString("")}<p style='opacity:.8'>f/${stops[chosen]} lets in $share of the light of f/1.4</p></div>",
+              )
           }
 
           draw()
           controlGroup {
-              slider("stop", 0.0, 7.0, step = 1.0, initialValue = 2.0) { chosen = it.toInt(); draw() }
+              slider("stop", 0.0, 7.0, step = 1.0, initialValue = 2.0) {
+                  chosen = it.toInt()
+                  draw()
+              }
           }
   - create:
       box: ec_spherical_aberration
@@ -713,20 +1029,35 @@ operations:
 
           fun draw() {
               val sag = radius - sqrt(radius * radius - 90.0 * 90.0)
-              val centreX = flatX + sag + 6 - radius            // centre of the spherical face
+              val centreX = flatX + sag + 6 - radius // centre of the spherical face
               val edge = opening + 6
               val outline = fline {
                   moveTo(flatX, axis - edge)
-                  for (k in 0..60) { val h = -edge + 2 * edge * k / 60; lineTo(centreX + sqrt(radius * radius - h * h), axis + h) }
+                  for (k in 0..60) {
+                      val h = -edge + 2 * edge * k / 60
+                      lineTo(centreX + sqrt(radius * radius - h * h), axis + h)
+                  }
                   lineTo(flatX, axis + edge)
                   close()
                   filled = true
                   color = vec(0.4, 0.9, 1.0, 0.18)
               }
               val paraxial = centreX + radius + radius / (glass - 1)
-              val parts = mutableListOf(outline,
-                  fline { moveTo(0, axis); lineTo(640, axis); color = guide; thickness = 1.0 },
-                  fline { moveTo(paraxial, axis - 8); lineTo(paraxial, axis + 8); color = guide; thickness = 2.0 })
+              val parts = mutableListOf(
+                  outline,
+                  fline {
+                      moveTo(0, axis)
+                      lineTo(640, axis)
+                      color = guide
+                      thickness = 1.0
+                  },
+                  fline {
+                      moveTo(paraxial, axis - 8)
+                      lineTo(paraxial, axis + 8)
+                      color = guide
+                      thickness = 2.0
+                  },
+              )
               for (k in -8..8) {
                   if (k == 0) continue
                   val h = opening * k / 8
@@ -742,12 +1073,23 @@ operations:
                       thickness = 1.3
                   }
               }
-              showPlane(parts, channel = "side", width = 600, height = 338, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
+              showPlane(
+                  parts,
+                  channel = "side",
+                  width = 600,
+                  height = 338,
+                  padding = 0.0,
+                  window = Rect(0.0, 0.0, 640.0, 360.0),
+                  interactive = false,
+              )
           }
 
           draw()
           controlGroup {
-              slider("lens radius", 5.0, 85.0, step = 1.0, initialValue = 40.0) { opening = it; draw() }
+              slider("lens radius", 5.0, 85.0, step = 1.0, initialValue = 40.0) {
+                  opening = it
+                  draw()
+              }
           }
   - create:
       box: ec_dispersion
@@ -769,7 +1111,8 @@ operations:
 
           // Distance along the ray (px, py) + t (dx, dy) to the segment a-b, or null.
           fun hit(px: Double, py: Double, dx: Double, dy: Double, a: DoubleArray, b: DoubleArray): Double? {
-              val ex = b[0] - a[0]; val ey = b[1] - a[1]
+              val ex = b[0] - a[0]
+              val ey = b[1] - a[1]
               val det = dx * -ey + ex * dy
               if (abs(det) < 1e-12) return null
               val t = ((a[0] - px) * -ey + ex * (a[1] - py)) / det
@@ -778,20 +1121,43 @@ operations:
           }
 
           fun prism() {
-              val a = doubleArrayOf(320.0, 50.0); val b = doubleArrayOf(190.0, 275.0); val c = doubleArrayOf(450.0, 275.0)
-              val parts = mutableListOf(fline { moveTo(a[0], a[1]); lineTo(b[0], b[1]); lineTo(c[0], c[1]); close(); filled = true; color = vec(0.4, 0.9, 1.0, 0.15) })
+              val a = doubleArrayOf(320.0, 50.0)
+              val b = doubleArrayOf(190.0, 275.0)
+              val c = doubleArrayOf(450.0, 275.0)
+              val parts = mutableListOf(
+                  fline {
+                      moveTo(a[0], a[1])
+                      lineTo(b[0], b[1])
+                      lineTo(c[0], c[1])
+                      close()
+                      filled = true
+                      color = vec(0.4, 0.9, 1.0, 0.15)
+                  },
+              )
               val phi = (30.0 - angle) * PI / 180
-              val dx = cos(phi); val dy = sin(phi)
-              val px = (a[0] + b[0]) / 2; val py = (a[1] + b[1]) / 2
+              val dx = cos(phi)
+              val dy = sin(phi)
+              val px = (a[0] + b[0]) / 2
+              val py = (a[1] + b[1]) / 2
               val from = frameExit(px, py, -dx, -dy, 640.0, 320.0)
-              parts += fline { moveTo(from[0], from[1]); lineTo(px, py); color = vec(1.0, 1.0, 1.0, 1.0); thickness = 3.0 }
+              parts += fline {
+                  moveTo(from[0], from[1])
+                  lineTo(px, py)
+                  color = vec(1.0, 1.0, 1.0, 1.0)
+                  thickness = 3.0
+              }
               for (nm in waves) {
                   val n = index(nm)
                   val inside = Refraction.refract(dx, dy, 0.866, 0.5, 1.0, n) ?: continue
                   val faces = listOf(a to c, b to c)
-                  val (t, face) = faces.mapNotNull { (p, q) -> hit(px, py, inside[0], inside[1], p, q)?.let { it to (p to q) } }.minByOrNull { it.first } ?: continue
-                  val qx = px + t * inside[0]; val qy = py + t * inside[1]
-                  val ex = face.second[0] - face.first[0]; val ey = face.second[1] - face.first[1]
+                  val (t, face) =
+                      faces
+                          .mapNotNull { (p, q) -> hit(px, py, inside[0], inside[1], p, q)?.let { it to (p to q) } }
+                          .minByOrNull { it.first } ?: continue
+                  val qx = px + t * inside[0]
+                  val qy = py + t * inside[1]
+                  val ex = face.second[0] - face.first[0]
+                  val ey = face.second[1] - face.first[1]
                   val len = sqrt(ex * ex + ey * ey)
                   val out = Refraction.refract(inside[0], inside[1], ey / len, -ex / len, n, 1.0)
                   parts += fline {
@@ -802,12 +1168,32 @@ operations:
                       thickness = 1.5
                   }
               }
-              showPlane(parts, channel = "prism", width = 600, height = 300, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 320.0), interactive = false)
+              showPlane(
+                  parts,
+                  channel = "prism",
+                  width = 600,
+                  height = 300,
+                  padding = 0.0,
+                  window = Rect(0.0, 0.0, 640.0, 320.0),
+                  interactive = false,
+              )
           }
 
           fun lens() {
-              val parts = mutableListOf(fline { moveTo(160, 20); lineTo(160, 220); color = vec(0.4, 0.9, 1.0, 0.5); thickness = 6.0 },
-                  fline { moveTo(0, 120); lineTo(640, 120); color = vec(1.0, 1.0, 1.0, 0.35); thickness = 1.0 })
+              val parts = mutableListOf(
+                  fline {
+                      moveTo(160, 20)
+                      lineTo(160, 220)
+                      color = vec(0.4, 0.9, 1.0, 0.5)
+                      thickness = 6.0
+                  },
+                  fline {
+                      moveTo(0, 120)
+                      lineTo(640, 120)
+                      color = vec(1.0, 1.0, 1.0, 0.35)
+                      thickness = 1.0
+                  },
+              )
               val green = index(550.0)
               for (nm in listOf(650.0, 550.0, 450.0)) {
                   val focal = 300.0 * (green - 1) / (index(nm) - 1)
@@ -819,15 +1205,32 @@ operations:
                       thickness = 1.3
                   }
               }
-              showPlane(parts, channel = "lens", width = 600, height = 225, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 240.0), interactive = false)
+              showPlane(
+                  parts,
+                  channel = "lens",
+                  width = 600,
+                  height = 225,
+                  padding = 0.0,
+                  window = Rect(0.0, 0.0, 640.0, 240.0),
+                  interactive = false,
+              )
           }
 
-          fun draw() { prism(); lens() }
+          fun draw() {
+              prism()
+              lens()
+          }
 
           draw()
           controlGroup {
-              slider("dispersion", 0.0, 4.0, step = 0.05, initialValue = 2.0) { spread = it; draw() }
-              slider("angle", 20.0, 80.0, step = 0.5, initialValue = 50.0) { angle = it; draw() }
+              slider("dispersion", 0.0, 4.0, step = 0.05, initialValue = 2.0) {
+                  spread = it
+                  draw()
+              }
+              slider("angle", 20.0, 80.0, step = 0.5, initialValue = 50.0) {
+                  angle = it
+                  draw()
+              }
           }
   - create:
       box: ec_deck
@@ -839,10 +1242,10 @@ operations:
 
           // Cameras and lenses, in six sections. Each figure is a box of the same name to the right.
           presentation(title = "Cameras and lenses") {
-              section("Recording light") {
-                  step("Cameras and lenses", id = "opening") {
-                      audience {
-                          +"""
+                  section("Recording light") {
+                      step("Cameras and lenses", id = "opening") {
+                          audience {
+                              +"""
                           # Cameras and lenses
 
                           A photograph is a count of light. This talk builds a camera up from that
@@ -851,394 +1254,414 @@ operations:
 
                           Every picture you will see is computed live, ray by ray.
                       """
-                              .md
-                          p(classes = "muted") {
-                              +"After “Cameras and Lenses” by Bartosz Ciechanowski, ciechanow.ski/cameras-and-lenses. Words and figures made in Field."
+                                  .md
+                              p(classes = "muted") {
+                                  +"After “Cameras and Lenses” by Bartosz Ciechanowski, ciechanow.ski/cameras-and-lenses. Words and figures made in Field."
+                              }
                           }
+                          markdownNote("The question to hold: what does each part of a camera do to the light? [[next]]")
                       }
-                      markdownNote("The question to hold: what does each part of a camera do to the light? [[next]]")
-                  }
-                  step("Counting light", id = "photons") {
-                      audience {
-                          figureBeside("photon_grid") {
-                              +"""
+                      step("Counting light", id = "photons") {
+                          audience {
+                              figureBeside("photon_grid") {
+                                  +"""
                               ## Counting light
 
                               Each detector counts the light that reaches it while the shutter is
                               open. Too little and the count is grain; too much and it fills to
                               white.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("photon_grid", "collection time", 0.05)
+                          cue("Too short") { control("photon_grid", "collection time", 0.003, glideMs = 1500) }
+                          cue("Too long") { control("photon_grid", "collection time", 0.4, glideMs = 2000) }
+                          markdownNote(
+                              "Next shortens the exposure until the grain shows, then lengthens it until the sky burns out. [[back]] [[next]]",
+                          )
                       }
-                      control("photon_grid", "collection time", 0.05)
-                      cue("Too short") { control("photon_grid", "collection time", 0.003, glideMs = 1500) }
-                      cue("Too long") { control("photon_grid", "collection time", 0.4, glideMs = 2000) }
-                      markdownNote("Next shortens the exposure until the grain shows, then lengthens it until the sky burns out. [[back]] [[next]]")
-                  }
-                  step("Colour from filters", id = "colour") {
-                      audience {
-                          figureBeside("kilopixel") {
-                              +"""
+                      step("Colour from filters", id = "colour") {
+                          audience {
+                              figureBeside("kilopixel") {
+                                  +"""
                               ## Colour from filters
 
                               A filter over each detector lets it count only red, green or blue. The
                               two colours a pixel missed are guessed from its neighbours.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("kilopixel", "colour filters", false)
+                          control("kilopixel", "fill in colours", false)
+                          cue("Filters") { control("kilopixel", "colour filters", true) }
+                          cue("Fill in") { control("kilopixel", "fill in colours", true) }
+                          markdownNote(
+                              "Next puts the filters on (a mosaic), then fills in the missing colours. [[back]] [[next]]",
+                          )
                       }
-                      control("kilopixel", "colour filters", false)
-                      control("kilopixel", "fill in colours", false)
-                      cue("Filters") { control("kilopixel", "colour filters", true) }
-                      cue("Fill in") { control("kilopixel", "fill in colours", true) }
-                      markdownNote("Next puts the filters on (a mosaic), then fills in the missing colours. [[back]] [[next]]")
-                  }
-                  step("A scene to photograph", id = "scene") {
-                      audience {
-                          figureBeside("test_scene") {
-                              +"""
+                      step("A scene to photograph", id = "scene") {
+                          audience {
+                              figureBeside("test_scene") {
+                                  +"""
                               ## A scene to photograph
 
                               Every camera in this talk looks at this. Drag to look around it.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          markdownNote("Invite someone to drag the scene round. [[back]] [[next]]")
                       }
-                      markdownNote("Invite someone to drag the scene round. [[back]] [[next]]")
-                  }
-                  step("A bare sensor", id = "bare-sensor") {
-                      audience {
-                          figureBeside("bare_sensor") {
-                              +"""
+                      step("A bare sensor", id = "bare-sensor") {
+                          audience {
+                              figureBeside("bare_sensor") {
+                                  +"""
                               ## A bare sensor sees nothing
 
                               Every detector gets light from every point of the scene, so every
                               count is the same blend.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          markdownNote(
+                              "The lines run from one point on each ball to every detector. Drag to look. [[back]] [[next]]",
+                          )
                       }
-                      markdownNote("The lines run from one point on each ball to every detector. Drag to look. [[back]] [[next]]")
-                  }
-                  step("A box with a hole", id = "pinhole") {
-                      audience {
-                          figureBeside("pinhole_box") {
-                              +"""
+                      step("A box with a hole", id = "pinhole") {
+                          audience {
+                              figureBeside("pinhole_box") {
+                                  +"""
                               ## A box with a hole
 
                               Through a small hole each detector sees one patch of the scene. A
                               picture forms on the back wall, upside down.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("pinhole_box", "hole diameter", 0.04)
+                          control("pinhole_box", "sensor distance", 1.0)
+                          control("pinhole_box", "fixed exposure", false)
+                          markdownNote(
+                              "Top: the box and the picture on its back wall. Bottom: that picture turned upright. [[back]] [[next]]",
+                          )
                       }
-                      control("pinhole_box", "hole diameter", 0.04)
-                      control("pinhole_box", "sensor distance", 1.0)
-                      control("pinhole_box", "fixed exposure", false)
-                      markdownNote("Top: the box and the picture on its back wall. Bottom: that picture turned upright. [[back]] [[next]]")
-                  }
-                  step("How much it sees", id = "field-of-view") {
-                      audience {
-                          figureBeside("field_of_view") {
-                              +"""
+                      step("How much it sees", id = "field-of-view") {
+                          audience {
+                              figureBeside("field_of_view") {
+                                  +"""
                               ## How much it sees
 
                               Rays cross at the hole. A sensor further back takes a narrower view,
                               drawn larger.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("field_of_view", "sensor distance", 1.0)
+                          cue("Further back") { control("field_of_view", "sensor distance", 2.2, glideMs = 2000) }
+                          markdownNote("Next moves the sensor back: the view narrows and the image grows. [[back]] [[next]]")
                       }
-                      control("field_of_view", "sensor distance", 1.0)
-                      cue("Further back") { control("field_of_view", "sensor distance", 2.2, glideMs = 2000) }
-                      markdownNote("Next moves the sensor back: the view narrows and the image grows. [[back]] [[next]]")
-                  }
-                  step("Darker at the edges", id = "falloff") {
-                      audience {
-                          figureBeside("off_axis") {
-                              +"""
+                      step("Darker at the edges", id = "falloff") {
+                          audience {
+                              figureBeside("off_axis") {
+                                  +"""
                               ## Darker at the edges
 
                               From the edge of the sensor the hole is further away and seen at a
                               slant: the light falls as cos⁴ of the angle.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("off_axis", "sensor distance", 0.8)
+                          cue("Closer") { control("off_axis", "sensor distance", 0.35, glideMs = 1500) }
+                          markdownNote(
+                              "Next brings the sensor close to the hole, so the edges look out at steeper angles. [[back]] [[next]]",
+                          )
                       }
-                      control("off_axis", "sensor distance", 0.8)
-                      cue("Closer") { control("off_axis", "sensor distance", 0.35, glideMs = 1500) }
-                      markdownNote("Next brings the sensor close to the hole, so the edges look out at steeper angles. [[back]] [[next]]")
-                  }
-                  step("Sharp or bright", id = "hole-size") {
-                      audience {
-                          figureBeside("pinhole_box") {
-                              +"""
+                      step("Sharp or bright", id = "hole-size") {
+                          audience {
+                              figureBeside("pinhole_box") {
+                                  +"""
                               ## Sharp or bright, not both
 
                               Each point lights a patch the size of the hole. A smaller hole is
                               sharper, and darker.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("pinhole_box", "hole diameter", 0.12)
+                          control("pinhole_box", "sensor distance", 1.0)
+                          control("pinhole_box", "fixed exposure", true)
+                          cue("A smaller hole") { control("pinhole_box", "hole diameter", 0.015, glideMs = 2000) }
+                          markdownNote(
+                              "Exposure is now fixed. Next shrinks the hole: sharper, and much darker. [[back]] [[next]]",
+                          )
                       }
-                      control("pinhole_box", "hole diameter", 0.12)
-                      control("pinhole_box", "sensor distance", 1.0)
-                      control("pinhole_box", "fixed exposure", true)
-                      cue("A smaller hole") { control("pinhole_box", "hole diameter", 0.015, glideMs = 2000) }
-                      markdownNote("Exposure is now fixed. Next shrinks the hole: sharper, and much darker. [[back]] [[next]]")
                   }
-              }
-              section("Glass") {
-                  step("Glass moves things", id = "glass") {
-                      audience {
-                          figureBeside("slab_ray") {
-                              +"""
+                  section("Glass") {
+                      step("Glass moves things", id = "glass") {
+                          audience {
+                              figureBeside("slab_ray") {
+                                  +"""
                               ## Glass moves what you see
 
                               A ray bends going into glass and bends back coming out: it leaves
                               parallel, but shifted.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("slab_ray", "thickness", 1.0)
+                          control("slab_ray", "angle", 45.0)
+                          cue("Thicker") { control("slab_ray", "thickness", 2.0, glideMs = 1500) }
+                          markdownNote("Next doubles the thickness, and the shift doubles. [[back]] [[next]]")
                       }
-                      control("slab_ray", "thickness", 1.0)
-                      control("slab_ray", "angle", 45.0)
-                      cue("Thicker") { control("slab_ray", "thickness", 2.0, glideMs = 1500) }
-                      markdownNote("Next doubles the thickness, and the shift doubles. [[back]] [[next]]")
                   }
-              }
-              section("Waves") {
-                  step("Light is a wave", id = "wave") {
-                      audience {
-                          figureBeside("into_glass") {
-                              +"""
+                  section("Waves") {
+                      step("Light is a wave", id = "wave") {
+                          audience {
+                              figureBeside("into_glass") {
+                                  +"""
                               ## Light is a wave
 
                               In glass the wave travels more slowly, so its crests crowd together.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("into_glass", "playing", true)
+                          control("into_glass", "angle", 0.0)
+                          control("into_glass", "glass index", 1.5)
+                          markdownNote("The orange line is the way the wave travels. [[back]] [[next]]")
                       }
-                      control("into_glass", "playing", true)
-                      control("into_glass", "angle", 0.0)
-                      control("into_glass", "glass index", 1.5)
-                      markdownNote("The orange line is the way the wave travels. [[back]] [[next]]")
-                  }
-                  step("Why it turns", id = "turning") {
-                      audience {
-                          figureBeside("into_glass") {
-                              +"""
+                      step("Why it turns", id = "turning") {
+                          audience {
+                              figureBeside("into_glass") {
+                                  +"""
                               ## Why it turns
 
                               Arriving at a slant, each crest slows on one side first, and the wave
                               turns.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("into_glass", "playing", true)
+                          control("into_glass", "angle", 0.0)
+                          control("into_glass", "glass index", 1.5)
+                          cue("At a slant") { control("into_glass", "angle", 40.0, glideMs = 2000) }
+                          markdownNote("Next tilts the wave so it meets the glass at 40°. [[back]] [[next]]")
                       }
-                      control("into_glass", "playing", true)
-                      control("into_glass", "angle", 0.0)
-                      control("into_glass", "glass index", 1.5)
-                      cue("At a slant") { control("into_glass", "angle", 40.0, glideMs = 2000) }
-                      markdownNote("Next tilts the wave so it meets the glass at 40°. [[back]] [[next]]")
-                  }
-                  step("Snell's law", id = "snell") {
-                      audience {
-                          figureBeside("snell") {
-                              +"""
+                      step("Snell's law", id = "snell") {
+                          audience {
+                              figureBeside("snell") {
+                                  +"""
                               ## How far it turns
 
                               Snell's law: n₁ sin θ₁ = n₂ sin θ₂. Some light always reflects, more
                               of it at grazing angles.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("snell", "angle", 30.0)
+                          control("snell", "from inside the glass", false)
+                          cue("More grazing") { control("snell", "angle", 82.0, glideMs = 2000) }
+                          markdownNote("Next swings the ray towards grazing: watch the reflection thicken. [[back]] [[next]]")
                       }
-                      control("snell", "angle", 30.0)
-                      control("snell", "from inside the glass", false)
-                      cue("More grazing") { control("snell", "angle", 82.0, glideMs = 2000) }
-                      markdownNote("Next swings the ray towards grazing: watch the reflection thicken. [[back]] [[next]]")
-                  }
-                  step("Trapped light", id = "total-reflection") {
-                      audience {
-                          figureBeside("snell") {
-                              +"""
+                      step("Trapped light", id = "total-reflection") {
+                          audience {
+                              figureBeside("snell") {
+                                  +"""
                               ## Trapped light
 
                               Leaving glass past about 42°, the light has no angle to take in air,
                               and all of it reflects.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("snell", "angle", 30.0)
+                          control("snell", "from inside the glass", true)
+                          cue("Past the critical angle") { control("snell", "angle", 50.0, glideMs = 2000) }
+                          markdownNote("Now the light starts inside the glass. Next tilts it past 42°. [[back]] [[next]]")
                       }
-                      control("snell", "angle", 30.0)
-                      control("snell", "from inside the glass", true)
-                      cue("Past the critical angle") { control("snell", "angle", 50.0, glideMs = 2000) }
-                      markdownNote("Now the light starts inside the glass. Next tilts it past 42°. [[back]] [[next]]")
                   }
-              }
-              section("Lenses") {
-                  step("Tilted faces", id = "wedge") {
-                      audience {
-                          figureBeside("prism_segments") {
-                              +"""
+                  section("Lenses") {
+                      step("Tilted faces", id = "wedge") {
+                          audience {
+                              figureBeside("prism_segments") {
+                                  +"""
                               ## Tilted faces steer light
 
                               A tilted face turns a ray. Steeper tilts further out, and the rays can
                               be made to meet.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("prism_segments", "segments", 1.0)
+                          cue("More segments") { control("prism_segments", "segments", 24.0, glideMs = 2500) }
+                          markdownNote(
+                              "One segment each side is two prisms. Next adds segments until the face is nearly a curve. [[back]] [[next]]",
+                          )
                       }
-                      control("prism_segments", "segments", 1.0)
-                      cue("More segments") { control("prism_segments", "segments", 24.0, glideMs = 2500) }
-                      markdownNote("One segment each side is two prisms. Next adds segments until the face is nearly a curve. [[back]] [[next]]")
-                  }
-                  step("A thin lens", id = "thin-lens") {
-                      audience {
-                          figureBeside("thin_lens") {
-                              +"""
+                      step("A thin lens", id = "thin-lens") {
+                          audience {
+                              figureBeside("thin_lens") {
+                                  +"""
                               ## A lens brings rays together
 
                               A smooth curve is the limit of the steps. A point at o comes to focus
                               at i, where 1/o + 1/i = 1/f.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("thin_lens", "source distance", 5.0)
+                          control("thin_lens", "focal length", 2.0)
+                          cue("Closer") { control("thin_lens", "source distance", 2.6, glideMs = 2000) }
+                          cue("Inside the focal length") { control("thin_lens", "source distance", 1.5, glideMs = 1500) }
+                          markdownNote(
+                              "Next brings the source closer: the image moves away. Then inside f, where no image forms. [[back]] [[next]]",
+                          )
                       }
-                      control("thin_lens", "source distance", 5.0)
-                      control("thin_lens", "focal length", 2.0)
-                      cue("Closer") { control("thin_lens", "source distance", 2.6, glideMs = 2000) }
-                      cue("Inside the focal length") { control("thin_lens", "source distance", 1.5, glideMs = 1500) }
-                      markdownNote("Next brings the source closer: the image moves away. Then inside f, where no image forms. [[back]] [[next]]")
-                  }
-                  step("A camera with a lens", id = "lens-camera") {
-                      audience {
-                          figureBeside("lens_camera") {
-                              +"""
+                      step("A camera with a lens", id = "lens-camera") {
+                          audience {
+                              figureBeside("lens_camera") {
+                                  +"""
                               ## A camera with a lens
 
                               A lens bends every ray from a point to one place on the sensor: a wide
                               hole, and still sharp.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("lens_camera", "focus distance", 4.0)
+                          control("lens_camera", "aperture", 0.5)
+                          control("lens_camera", "focal length", 1.0)
+                          markdownNote("A wide opening, f/2, and still sharp where it is focused. [[back]] [[next]]")
                       }
-                      control("lens_camera", "focus distance", 4.0)
-                      control("lens_camera", "aperture", 0.5)
-                      control("lens_camera", "focal length", 1.0)
-                      markdownNote("A wide opening, f/2, and still sharp where it is focused. [[back]] [[next]]")
-                  }
-                  step("Out of focus", id = "focus") {
-                      audience {
-                          figureBeside("lens_camera") {
-                              +"""
+                      step("Out of focus", id = "focus") {
+                          audience {
+                              figureBeside("lens_camera") {
+                                  +"""
                               ## Out of focus
 
                               Nearer or further, a point meets in front of the sensor or behind it,
                               and lands as a disc.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("lens_camera", "focus distance", 4.0)
+                          control("lens_camera", "aperture", 0.5)
+                          control("lens_camera", "focal length", 1.0)
+                          cue("Focus further") { control("lens_camera", "focus distance", 9.0, glideMs = 2000) }
+                          markdownNote("Next refocuses from the red ball to the far end of the floor. [[back]] [[next]]")
                       }
-                      control("lens_camera", "focus distance", 4.0)
-                      control("lens_camera", "aperture", 0.5)
-                      control("lens_camera", "focal length", 1.0)
-                      cue("Focus further") { control("lens_camera", "focus distance", 9.0, glideMs = 2000) }
-                      markdownNote("Next refocuses from the red ball to the far end of the floor. [[back]] [[next]]")
-                  }
-                  step("The shape of blur", id = "aperture") {
-                      audience {
-                          figureBeside("bokeh") {
-                              +"""
+                      step("The shape of blur", id = "aperture") {
+                          audience {
+                              figureBeside("bokeh") {
+                                  +"""
                               ## The shape of blur
 
                               An out-of-focus light is a picture of the opening. Iris blades make it
                               a polygon.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("bokeh", "aperture", 0.5)
+                          control("bokeh", "blades", 0.0)
+                          cue("Six blades") { control("bokeh", "blades", 6.0) }
+                          cue("Narrower") { control("bokeh", "aperture", 0.2, glideMs = 1500) }
+                          markdownNote("Next swaps the round opening for six blades, then closes them down. [[back]] [[next]]")
                       }
-                      control("bokeh", "aperture", 0.5)
-                      control("bokeh", "blades", 0.0)
-                      cue("Six blades") { control("bokeh", "blades", 6.0) }
-                      cue("Narrower") { control("bokeh", "aperture", 0.2, glideMs = 1500) }
-                      markdownNote("Next swaps the round opening for six blades, then closes them down. [[back]] [[next]]")
-                  }
-                  step("How deep is sharp", id = "depth-of-field") {
-                      audience {
-                          figureBeside("depth_of_field") {
-                              +"""
+                      step("How deep is sharp", id = "depth-of-field") {
+                          audience {
+                              figureBeside("depth_of_field") {
+                                  +"""
                               ## How deep is sharp
 
                               Blur smaller than a pixel looks sharp. A smaller opening widens that
                               band, and costs light.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("depth_of_field", "aperture", 1.0)
+                          control("depth_of_field", "focal length", 1.0)
+                          control("depth_of_field", "focus distance", 3.0)
+                          cue("Stop down") { control("depth_of_field", "aperture", 0.25, glideMs = 2000) }
+                          markdownNote(
+                              "The shaded band is what looks sharp. Next narrows the opening and the band widens. [[back]] [[next]]",
+                          )
                       }
-                      control("depth_of_field", "aperture", 1.0)
-                      control("depth_of_field", "focal length", 1.0)
-                      control("depth_of_field", "focus distance", 3.0)
-                      cue("Stop down") { control("depth_of_field", "aperture", 0.25, glideMs = 2000) }
-                      markdownNote("The shaded band is what looks sharp. Next narrows the opening and the band widens. [[back]] [[next]]")
-                  }
-                  step("f-numbers", id = "f-number") {
-                      audience {
-                          figureBeside("f_stops") {
-                              +"""
+                      step("f-numbers", id = "f-number") {
+                          audience {
+                              figureBeside("f_stops") {
+                                  +"""
                               ## f-numbers
 
                               Focal length over opening. Each stop is √2 narrower and lets in half
                               the light.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("f_stops", "stop", 0.0)
+                          cue("Stop by stop") { control("f_stops", "stop", 7.0, glideMs = 3000) }
+                          markdownNote("Next walks from f/1.4 to f/16, halving the light each step. [[back]] [[next]]")
                       }
-                      control("f_stops", "stop", 0.0)
-                      cue("Stop by stop") { control("f_stops", "stop", 7.0, glideMs = 3000) }
-                      markdownNote("Next walks from f/1.4 to f/16, halving the light each step. [[back]] [[next]]")
                   }
-              }
-              section("Aberrations") {
-                  step("Spheres miss", id = "spherical") {
-                      audience {
-                          figureBeside("spherical_aberration") {
-                              +"""
+                  section("Aberrations") {
+                      step("Spheres miss", id = "spherical") {
+                          audience {
+                              figureBeside("spherical_aberration") {
+                                  +"""
                               ## Spherical lenses miss
 
                               A spherical face bends rim rays too much: no one place is sharp for
                               all of them.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("spherical_aberration", "lens radius", 20.0)
+                          cue("The whole lens") { control("spherical_aberration", "lens radius", 85.0, glideMs = 2000) }
+                          markdownNote(
+                              "Near the middle the rays meet at one point. Next uses the lens out to its rim. [[back]] [[next]]",
+                          )
                       }
-                      control("spherical_aberration", "lens radius", 20.0)
-                      cue("The whole lens") { control("spherical_aberration", "lens radius", 85.0, glideMs = 2000) }
-                      markdownNote("Near the middle the rays meet at one point. Next uses the lens out to its rim. [[back]] [[next]]")
-                  }
-                  step("Colours split", id = "chromatic") {
-                      audience {
-                          figureBeside("dispersion") {
-                              +"""
+                      step("Colours split", id = "chromatic") {
+                          audience {
+                              figureBeside("dispersion") {
+                                  +"""
                               ## Colours split
 
                               Glass bends blue more than red, so each colour has its own focus.
                           """
-                                  .md
+                                      .md
+                              }
                           }
+                          control("dispersion", "dispersion", 1.0)
+                          control("dispersion", "angle", 50.0)
+                          cue("More dispersion") { control("dispersion", "dispersion", 4.0, glideMs = 2000) }
+                          markdownNote("1 is ordinary crown glass. Next exaggerates the spread four times. [[back]] [[next]]")
                       }
-                      control("dispersion", "dispersion", 1.0)
-                      control("dispersion", "angle", 50.0)
-                      cue("More dispersion") { control("dispersion", "dispersion", 4.0, glideMs = 2000) }
-                      markdownNote("1 is ordinary crown glass. Next exaggerates the spread four times. [[back]] [[next]]")
                   }
-              }
-              section("Further reading") {
-                  step("Further reading", id = "further-reading") {
-                      audience {
-                          +"""
+                  section("Further reading") {
+                      step("Further reading", id = "further-reading") {
+                          audience {
+                              +"""
                           # Further reading
 
                           - Eugene Hecht, *Optics*: refraction, lenses and aberrations, worked properly.
@@ -1248,15 +1671,15 @@ operations:
                             the chapter on cameras: pinholes, thin lenses and real lens systems in code.
                           - Rudolf Kingslake, *A History of the Photographic Lens*.
                       """
-                              .md
-                          p(classes = "muted") {
-                              +"After “Cameras and Lenses” by Bartosz Ciechanowski, https://ciechanow.ski/cameras-and-lenses/. Words and figures made in Field."
+                                  .md
+                              p(classes = "muted") {
+                                  +"After “Cameras and Lenses” by Bartosz Ciechanowski, https://ciechanow.ski/cameras-and-lenses/. Words and figures made in Field."
+                              }
                           }
+                          markdownNote("The end. [[back]] [[finish]]")
                       }
-                      markdownNote("The end. [[back]] [[finish]]")
                   }
               }
-          }
               .present()
   - execute:
       box: ec_deck
