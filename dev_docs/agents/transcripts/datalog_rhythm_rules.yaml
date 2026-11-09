@@ -1,0 +1,45 @@
+name: datalog_rhythm_rules
+description: >
+  Rules that decide when notes play — Dogalog's idea (github.com/danja/dogalog, MIT), on Field's own
+  Datalog and Pat engine. Two boxes. "rules" writes `event(Instrument, Note, Velocity, T)` rules over a
+  16-step bar with the time predicates euc, every, within, scale and chord, prints the grid the rules
+  derive for bars 0–3, and plays four bars through Pat (`showPatAudio`). The snare only enters in bar 1
+  and the hats in bar 2, because `within` says so. "why" asks why the kick at step 20 played and why
+  the snare at step 4 did not. Open/replay into a fresh Field4 and run the boxes top to bottom.
+docs:
+  - page: datalog.md#rules-that-decide-when-notes-play
+    why: "The loadable version of the rhythm-rules section."
+operations:
+  - create:
+      box: datalog_rhythm_rules
+      name: 1 · rules
+      frame: { x: 60.0, y: 60.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          val song = datalog(
+              """
+              event(kick, 36, 100, T)  :- euc(T, 4, 16, 0).
+              event(snare, 38, 90, T)  :- within(T, 16, 64), every(T, 8, 4).
+              event(hh, 42, 45, T)     :- within(T, 32, 64), every(T, 2, 1).
+              event(lead, N, 80, T)    :- euc(T, 5, 16, 2), D = (T div 3) mod 5, scale(48, minor_pent, D, 1, N).
+              """
+          )
+          val r = song.rhythm()
+          val text = (0L until 4L).joinToString("\n\n") { "bar $it\n" + r.grid(it) }
+          println(text)
+          display("grid", "<pre>$text</pre>")
+          showPatAudio(r.pattern(), cycles = 4, cps = 0.5)
+  - create:
+      box: datalog_rhythm_why
+      name: 2 · why
+      frame: { x: 60.0, y: 390.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          val r = datalog(
+              """
+              event(kick, 36, 100, T)  :- euc(T, 4, 16, 0).
+              event(snare, 38, 90, T)  :- within(T, 16, 64), every(T, 8, 4).
+              """
+          ).rhythm()
+          println(r.why("event(kick, 36, 100, 20)")?.render() ?: "no kick at 20")
+          println("snare at step 4: " + (r.why("event(snare, 38, 90, 4)")?.render() ?: "did not play — within(T, 16, 64) starts at bar 1"))
