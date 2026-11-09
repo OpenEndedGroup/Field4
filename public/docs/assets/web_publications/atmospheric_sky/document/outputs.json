@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-09T00:20:20.112Z",
+  "documentName": "atmospheric_sky",
+  "outputs": [
+    {
+      "uid": "atmospheric_sky",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 1600,
+      "height": 982,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

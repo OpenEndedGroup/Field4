@@ -16,19 +16,19 @@ The box draws one triangle that covers the window, beneath a renderer parent (se
 [Field 4 Graphics](afield_four_graphics.md) for that arrangement). Its code makes the module, hands
 the shader its settings as push constants, and puts sliders in its output:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/atmospheric_sky/noon.png" alt="A noon sky seen from 3.5 km: deep blue overhead fading to pale blue and white at the horizon, the small white sun about 30 degrees up, and pale hazy ground below" timeout="120" capture="native-window" native-wait-frames="30" embed=true name="atmospheric-sky-noon" macro-file="../../dev_docs/agents/transcripts/atmospheric_sky.yaml" capture-box="atmospheric_sky"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/atmospheric_sky/noon.png" alt="A noon sky seen from 3.5 km: deep blue overhead fading to pale blue and white at the horizon, the small white sun about 30 degrees up, and pale hazy ground below" timeout="120" capture="native-window" native-wait-frames="30" max-width="1600" embed=true name="atmospheric-sky-noon" macro-file="../../dev_docs/agents/transcripts/atmospheric_sky.yaml" capture-box="atmospheric_sky"}
 /*
 A sky you can live-code: single scattering through Earth's atmosphere (Nishita 1993, with Hillaire 2020's
 coefficients), one fullscreen triangle beneath the renderer. The physics is `#include "sky/atmosphere.glsl"`;
 the camera and the tone mapping are in this box's fragment property. Drag the sliders, or edit the numbers
 below and re-run.
 */
-var sunElevation = 30.0   // degrees above the horizon
-var sunAzimuth = 0.0      // degrees, 0 is straight ahead
-var altitude = 3.5        // km above the ground
-var pitch = 10.0          // degrees the camera looks up (-90 looks straight down)
+var sunElevation = 30.0 // degrees above the horizon
+var sunAzimuth = 0.0 // degrees, 0 is straight ahead
+var altitude = 3.5 // km above the ground
+var pitch = 10.0 // degrees the camera looks up (-90 looks straight down)
 var exposure = 2.0
-var fieldOfView = 90.0    // degrees, vertical
+var fieldOfView = 90.0 // degrees, vertical
 
 val sky = moduleHere {
     depthTest = false
@@ -45,7 +45,9 @@ quad.view = { vec(Math.toRadians(sunAzimuth), Math.toRadians(pitch), exposure, M
 controlGroup("Sky") {
     slider("Sun elevation (degrees)", min = -12.0, max = 90.0, initialValue = sunElevation) { sunElevation = it }
     slider("Sun azimuth (degrees)", min = -180.0, max = 180.0, initialValue = sunAzimuth) { sunAzimuth = it }
-    slider("Altitude (log10 km)", min = -3.0, max = 4.5, initialValue = Math.log10(altitude)) { altitude = Math.pow(10.0, it) }
+    slider("Altitude (log10 km)", min = -3.0, max = 4.5, initialValue = Math.log10(altitude)) {
+        altitude = Math.pow(10.0, it)
+    }
     slider("Camera pitch (degrees)", min = -90.0, max = 90.0, initialValue = pitch) { pitch = it }
     slider("Exposure", min = 0.5, max = 40.0, initialValue = exposure) { exposure = it }
 }
@@ -101,7 +103,7 @@ Lower the sun and the light reaching you has crossed far more air. Blue is scatt
 first, so what is left is yellow and red, and the haze near the ground glows orange. These captures
 start the same box with different values:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/atmospheric_sky/sunset.png" alt="A sunset from 3.5 km: the sun is a bright yellow glow on the horizon, the sky fades from grey-blue overhead to yellow, and the ground below is lit orange-brown" timeout="120" capture="native-window" native-wait-frames="30" embed=true name="atmospheric-sky-sunset" macro-file="../../dev_docs/agents/transcripts/docs_capture/atmospheric_sky_sunset.yaml" capture-box="atmospheric_sky"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/atmospheric_sky/sunset.png" alt="A sunset from 3.5 km: the sun is a bright yellow glow on the horizon, the sky fades from grey-blue overhead to yellow, and the ground below is lit orange-brown" timeout="120" capture="native-window" native-wait-frames="30" max-width="1600" embed=true name="atmospheric-sky-sunset" macro-file="../../dev_docs/agents/transcripts/docs_capture/atmospheric_sky_sunset.yaml" capture-box="atmospheric_sky"}
 var sunElevation = 2.0
 var pitch = 5.0
 var exposure = 4.0
@@ -111,7 +113,7 @@ With the sun four degrees below the horizon the ground is in the planet's shadow
 is still lit: a band of orange along the horizon under a violet sky. The exposure is ten times
 higher, as your eye would adapt.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/atmospheric_sky/twilight.png" alt="Twilight: a black ground below a curved horizon, a thin band of orange and yellow along it, then pink and violet sky above" timeout="120" capture="native-window" native-wait-frames="30" embed=true name="atmospheric-sky-twilight" macro-file="../../dev_docs/agents/transcripts/docs_capture/atmospheric_sky_twilight.yaml" capture-box="atmospheric_sky"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/atmospheric_sky/twilight.png" alt="Twilight: a black ground below a curved horizon, a thin band of orange and yellow along it, then pink and violet sky above" timeout="120" capture="native-window" native-wait-frames="30" max-width="1600" embed=true name="atmospheric-sky-twilight" macro-file="../../dev_docs/agents/transcripts/docs_capture/atmospheric_sky_twilight.yaml" capture-box="atmospheric_sky"}
 var sunElevation = -4.0
 var pitch = 5.0
 var exposure = 40.0
@@ -124,7 +126,7 @@ miss the shell see black space, rays that graze it pick up a thin blue rim, and 
 ground return its sunlit colour through the air. Day fades into night gradually, because the
 sunlight reaching the edge of day has itself crossed a long path of air.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/atmospheric_sky/space.png" alt="The planet from 20,000 km against black space: a grey-white disc lit from the top, with a faint blue rim at its edge and the lower part fading through purple into night" timeout="120" capture="native-window" native-wait-frames="30" embed=true name="atmospheric-sky-space" macro-file="../../dev_docs/agents/transcripts/docs_capture/atmospheric_sky_space.yaml" capture-box="atmospheric_sky"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/atmospheric_sky/space.png" alt="The planet from 20,000 km against black space: a grey-white disc lit from the top, with a faint blue rim at its edge and the lower part fading through purple into night" timeout="120" capture="native-window" native-wait-frames="30" max-width="1600" embed=true name="atmospheric-sky-space" macro-file="../../dev_docs/agents/transcripts/docs_capture/atmospheric_sky_space.yaml" capture-box="atmospheric_sky"}
 var sunElevation = 20.0
 var altitude = 20000.0
 var pitch = -90.0

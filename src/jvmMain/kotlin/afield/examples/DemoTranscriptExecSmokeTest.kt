@@ -916,6 +916,9 @@ object DemoTranscriptExecSmokeTest {
         // Opens a Vulkan window for the GPU compute-shader NCA; the CPU rule it shares is graded
         // by GrowingNcaTest (grows from a seed, regrows after damage).
         "growing_nca",
+        // Opens a Vulkan window for the fullscreen sky shader; the scattering it includes is graded on
+        // the CPU twin by AtmosphereTest (closed-form transmittance, blue noon, red sunset).
+        "atmospheric_sky",
         // The same deal again, one tier up: both open a native Vulkan renderer to draw a trained
         // field, and both are graded far more sharply than a replay could manage — the
         // interpolation they demonstrate is measured in `WeightInterpolationTest`, endpoint

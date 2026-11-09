@@ -382,6 +382,36 @@
         "public/docs/assets/agent_transcripts/assimp_browsing/metadata.edn": "84382b8b31487d1fe309058109691520027547b6f1e7d9854ea0dabf441fcf8e"
       }
     },
+    "assets/agent_transcripts/atmospheric_sky/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-09T00:20:20.112Z",
+      "channels": 1,
+      "file": "assets/web_publications/atmospheric_sky/document/metadata.edn",
+      "files": {
+        "assets/web_publications/atmospheric_sky/document/metadata.edn": "20c932349037d870eddb3e17a5c5146fe4bc5db460a892de3b4cb819356db893",
+        "assets/web_publications/atmospheric_sky/document/outputs.json": "21b45bd0286921f8b454644926ce6ba9aa430ce11cdc3780074f5414ee5664e1",
+        "assets/web_publications/atmospheric_sky/outputs/0.html": "e447fb72f6782b58887c62465fef792ac3944aa26110ed62b25f74519da16e36"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/atmospheric_sky/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/atmospheric_sky.yaml": "1d75ca5a52074a9d1c600e0c01907fb55693a19d954049456ff554a809475928",
+        "public/docs/assets/agent_transcripts/atmospheric_sky/agent_graphics_context_code_.kt": "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2",
+        "public/docs/assets/agent_transcripts/atmospheric_sky/atmospheric_sky_code_.kt": "ef9e14acf85b6e4108c0a5a251847ed5185ea4dc60b7fec21dffd77cf67662c7",
+        "public/docs/assets/agent_transcripts/atmospheric_sky/atmospheric_sky_fragment_.glsl": "4199d44357e6911d8dc0ce582557ebbfcd5385edb86285176144091a9bbae88a",
+        "public/docs/assets/agent_transcripts/atmospheric_sky/atmospheric_sky_vertex_.glsl": "8f3504d8801a4398f2518ca9de09a3f9f4b72e4eb43044567049caf473214b5a",
+        "public/docs/assets/agent_transcripts/atmospheric_sky/guides/atmospheric_sky.md": "3001c2234ed3fa0646ff0df3272cc75af342650f69c0d8d2c75a7067e95bc0cb",
+        "public/docs/assets/agent_transcripts/atmospheric_sky/metadata.edn": "d103bba3e211cdaa853350af5ade53a2ca08054dd6c486732dd789b99e13c1dd",
+        "public/docs/assets/atmospheric_sky/noon.png": "b4b0dd89878f26df19f37836f230dc2a5d2d6a67bcf8e43a9e7b2f43b5ded81b",
+        "public/docs/atmospheric_sky.md#capture-box=atmospheric_sky": "9aa339b134bee5aa4fcfa52878e4f093f40034603f9d5a84bc21f41b1f74492b"
+      },
+      "supplementalSources": [
+        "public/docs/assets/atmospheric_sky/noon.png",
+        "public/docs/atmospheric_sky.md#capture-box=atmospheric_sky"
+      ]
+    },
     "assets/agent_transcripts/audio_ai_analysis/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
       "capturedAt": "2026-11-08T10:23:45.533Z",

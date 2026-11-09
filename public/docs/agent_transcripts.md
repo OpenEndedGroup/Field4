@@ -4295,6 +4295,21 @@ macro run growing_nca
 
 [Open →](offline.html?file=assets/agent_transcripts/growing_nca/metadata.edn)
 
+### atmospheric_sky
+
+**A sky from the physics of air, with the sun on a slider.** Beneath a renderer, one fullscreen box
+includes `sky/atmosphere.glsl` and draws single scattering through Earth's atmosphere (Rayleigh, Mie,
+ozone): blue at noon, orange at sunset, a violet twilight, and the planet with its blue rim from
+space. Sun elevation and azimuth, altitude, camera pitch and exposure are sliders. See
+[Atmospheric sky](atmospheric_sky.md).
+
+```diffstatic {data-lang=text}
+macro write atmospheric_sky --file dev_docs/agents/transcripts/atmospheric_sky.yaml
+macro run atmospheric_sky
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/atmospheric_sky/metadata.edn)
+
 ### learned_boids
 
 **Two flocks side by side: one running Reynolds boids, one running a network that learned it.** Four
