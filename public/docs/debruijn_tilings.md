@@ -11,13 +11,12 @@ non-periodic tilings of the plane", 1981). This implementation follows Aatish Bh
 ([source](https://github.com/aatishb/patterncollider), MIT licence), an interactive explorer of
 these tilings that is worth playing with.
 
-The page goes on in three parts. The same construction with planes instead of lines fills space
-with rhombohedra, the [3D Penrose tiling](#penrose-tilings-in-three-dimensions). Both tilings
-print through Manifold, as a [relief](#a-relief-through-manifold) and a
-[slab](#a-printable-slab-through-manifold). Last, the tiling's corners and edges make a graph whose
-[spectrum](#the-tiling-as-a-graph) puts about one state in ten at exactly zero energy. Make the
-graph a network of springs and you can [strike it like a drum](#striking-the-tiling) and hear those
-states.
+After drawing a flat tiling, we'll build a [3D Penrose tiling](#penrose-tilings-in-three-dimensions)
+out of rhombohedra. You can print either one through Manifold: as a
+[relief](#a-relief-through-manifold) or a [slab](#a-printable-slab-through-manifold). Then we'll
+connect the flat tiling's corners into a graph. Its [spectrum](#the-tiling-as-a-graph) puts about
+one state in ten at zero energy. Give the graph springs and you can
+[strike it like a drum](#striking-the-tiling) and hear those states.
 
 ## A Penrose tiling
 
@@ -332,10 +331,9 @@ showPlaneGrid(
 ### Sliding a family of planes
 
 As in [Sliding the grid](#sliding-the-grid), moving one family's offset slides its planes through the others. Most cells
-stay exactly where they were; the ones a moving plane passes a crossing of flip into a new
-arrangement. With `recenter = false` an unchanged cell keeps its position, so each panel below can
-count how many of the central cells survive from the unshifted tiling, which is the control at
-offset +0.
+stay exactly where they were. When a moving plane passes a crossing of other planes, the cells
+there flip into a new arrangement. With `recenter = false` an unchanged cell keeps its position,
+so each panel can count how many central cells survive from the unshifted tiling at offset +0.
 
 ```diffstatic_runner {data-lang=kotlin embed=true screenshot="assets/debruijn_tilings_3d/offset_sweep.png" wait="3" capture="box" open-outputs="true" w="760" padding="14" name="debruijn3d-offset-sweep"}
 val base = defaultDeBruijnOffsets(6)
@@ -495,7 +493,7 @@ exact fraction. Flicker, Simon and Parameswaran (*Phys. Rev. X* 10, 011005, 2020
 same number as the share of vertices that any maximum dimer covering of the Penrose tiling leaves
 uncovered.
 
-Below, we count those states exactly and draw them on the tiles. Then we treat the tiling as a
+Below, we count those states and draw them on the tiles. Then we treat the tiling as a
 network of masses and springs, strike it like the [eigendrum](eigendrum.md), and listen to them.
 The boxes in this part make up the [spectra starting point](agent_transcripts.md#penrose_spectra).
 
@@ -503,9 +501,9 @@ Four calls do the work. All of them are in `afield.geometry.path` beside `deBrui
 
 - `tiling.vertexGraph()` turns a tiling into a `TilingGraph`, with one vertex per corner and one
   edge per tile edge.
-- `graph.zeroModeCount()` counts the E = 0 states exactly. It works out the rank of A by integer
-  elimination modulo a large prime, so no rounding is involved, and it handles thirty thousand
-  vertices in a fraction of a second.
+- `graph.zeroModeCount()` counts the E = 0 states using integer elimination modulo two large
+  primes, avoiding floating-point rounding. It handles thirty thousand vertices in a fraction of
+  a second; [below](#how-the-spectrum-is-computed) we look at the remaining qualification.
 - `graph.spectrum()` returns every energy and state, solved densely, for a patch of up to a couple
   of thousand vertices.
 - `graph.confinedState(v)` finds a strictly localised state through vertex `v`, if there is one.
@@ -735,8 +733,8 @@ Penrose zero states, and stronger disorder levels off near 0.03. Moving the offs
 
 ### Drag it yourself
 
-Two sliders rebuild the tiling at any symmetry and disorder, count its E = 0 states exactly, and
-draw their weight on the vertices. The patch radius shrinks as the symmetry grows, so the vertex
+Two sliders rebuild the tiling at any symmetry and disorder, count its E = 0 states, and draw
+their weight on the vertices. The patch radius shrinks as the symmetry grows, so the vertex
 count stays near 650 and each update takes under a second. Run this box and drag the
 sliders.
 

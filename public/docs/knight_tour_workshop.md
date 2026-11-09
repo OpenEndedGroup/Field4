@@ -1,9 +1,10 @@
 # Knight tours and uncrossed paths
 
 A knight can visit every square of a chessboard once and leave behind a surprisingly intricate
-line. The first half of this page finds tours, then gives you four ways to bend, layer and join their
-moves. The second half makes the drawing the constraint: the longest knight paths whose straight
-moves never cross, for other leapers and on wrapped boards, drawn back through the same views.
+line. Find some tours, then bend, layer and join their moves in four different views. Further down,
+try a different challenge: draw the longest path whose moves never cross. You can give other pieces
+the same problem, wrap the board around a cylinder or torus, and bring the paths back into the
+drawing views.
 
 [Open the editable starting point](offline.html?file=assets/agent_transcripts/knight_tour_workshop/metadata.edn)
 
@@ -57,8 +58,8 @@ for **uncrossed**.
 L. D. Yarbrough asked for the longest uncrossed knight's path on an n×n board in the *Journal of
 Recreational Mathematics* in 1969. The answers are OEIS
 [A003192](https://oeis.org/A003192): 0, 0, 2, 5, 10, 17, 24, 35, 47 for n = 1 to 9, counting moves.
-Here the drawing is the constraint. Each move you add rules out every move it would cross, so the
-problem is about the picture, not about which squares you have used.
+Each move rules out every move it would cross. As the path grows, the picture itself starts to
+decide where the knight can go.
 
 `afield.geometry.leaper` has the search. `LeaperBoard(w, h, leaper, topology)` is the board's
 move graph, with every pair of moves that cross worked out in advance.
@@ -106,8 +107,8 @@ square in each set of squares that are the same under the board's rotations and 
 Left to finish, the same call proves 35 on 8×8, but it takes 336,975,557 search steps, about ten
 minutes on a laptop. For a long path quickly, `board.longUncrossedPath()` uses ruin and recreate.
 It cuts a random tail off the best path so far and lets a short search grow a new one, 1000 times,
-keeping any path at least as long. That is not a proof, and where it ends depends on the random
-seed, so this box runs four seeds on each board.
+keeping any path at least as long. The result depends on the random seed and does not prove the
+path is longest, so this box tries four seeds on each board.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/uncrossed_leapers/big.png" alt="An 8×8 and a 9×9 board, each with a long gold uncrossed knight path, labelled with the length found against the known optimum" timeout="300" embed=true name="uncrossed-ul-big"}
 import afield.geometry.leaper.*
