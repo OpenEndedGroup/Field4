@@ -494,9 +494,13 @@ class FieldAudioEngine private constructor(
             id,
             live = { patches.containsKey(id) },
             release = { unregister(id) },
+            describe = { patches[id]?.let { patchLevel(it) } },
         )
         return AudioPatchHandle(this, id, ownership)
     }
+
+    /** [spec]'s level over its last rendered samples, after gain and pan; see [AudioSnapshot.levelJson]. */
+    private fun patchLevel(spec: AudioPatchSpec): kotlinx.serialization.json.JsonObject = spec.snapshot().levelJson()
 
     internal fun unregister(id: String) {
         patches.remove(id)
@@ -865,5 +869,37 @@ private class CaptureSignal(
 ) : Signal() {
     override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
         state.copy(channel, output, numFrames)
+    }
+}
+
+/**
+ * What this audio sounded like: `rms` and `peak` of the louder channel, and `hz`, the rate of upward
+ * zero crossings, which is the frequency of anything close to a single tone and 0 for silence (or
+ * for less than two cycles). `seconds` is how much audio that covers. The lifecycle census reports it for every live patch (its
+ * trace, after gain and pan), so a check can tell a patch that plays from one that is in the mix but
+ * silent, without anyone listening.
+ */
+internal fun AudioSnapshot.levelJson(): kotlinx.serialization.json.JsonObject {
+    val channels = listOfNotNull(left, right)
+    val n = frameCount
+    fun rms(x: FloatArray) = if (n == 0) 0.0 else kotlin.math.sqrt((0 until n).sumOf { x[it].toDouble() * x[it] } / n)
+    val loud = channels.maxByOrNull { rms(it) } ?: FloatArray(0)
+    val level = rms(loud)
+    val peak = (0 until n).maxOfOrNull { kotlin.math.abs(loud[it]) }?.toDouble() ?: 0.0
+    // Cycles counted between the first and last upward crossing, so a part cycle at either end
+    // does not bias the estimate.
+    val crossings = (1 until n).filter { loud[it - 1] <= 0f && loud[it] > 0f }
+    val seconds = n.toDouble() / sampleRate
+    val span = if (crossings.size < 2) 0 else crossings.last() - crossings.first()
+    val hz = if (level < 1e-5 || span == 0) 0.0 else (crossings.size - 1) * sampleRate.toDouble() / span
+    fun round(v: Double, places: Int): Double {
+        val scale = Math.pow(10.0, places.toDouble())
+        return kotlin.math.round(v * scale) / scale
+    }
+    return kotlinx.serialization.json.buildJsonObject {
+        put("rms", kotlinx.serialization.json.JsonPrimitive(round(level, 5)))
+        put("peak", kotlinx.serialization.json.JsonPrimitive(round(peak, 5)))
+        put("hz", kotlinx.serialization.json.JsonPrimitive(round(hz, 1)))
+        put("seconds", kotlinx.serialization.json.JsonPrimitive(round(seconds, 4)))
     }
 }
