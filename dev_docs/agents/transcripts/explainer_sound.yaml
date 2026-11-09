@@ -239,11 +239,12 @@ operations:
       properties:
         code: |
           // A plate that jumps. Hold "jump" to move it forward by "distance"; tick "repeat" and it jumps back
-          // and forth by itself, "rate" times a second. What you hear is the air the plate pushes.
+          // and forth by itself, "rate" times a second. With "sound" on you hear the air the plate pushes.
           var distance = 0.5
           var rate = 4.0
           var held = false
           var repeat = false
+          val level = Param(0f)
           val swing = Param(0f)      // how far the repeated motion goes
           val offset = Param(0f)     // where "jump" holds the plate
           val pace = Param(4f)
@@ -277,13 +278,14 @@ operations:
               keys("jump") { _, down -> held = down; update() }
               slider("distance", 0.0, 1.0, step = 0.01, initialValue = 0.5) { distance = it; update() }
               checkbox("repeat") { repeat = it; update() }
+              checkbox("sound") { level.base = if (it) 0.15f else 0f }
               slider("rate", 1.0, 440.0, step = 1.0, initialValue = 4.0, law = ControlLaw.LOGARITHMIC) { rate = it; update() }
           }
 
           val start = System.nanoTime()
           // A held offset makes no sound, only its changes do, so a high-pass filter takes the offset out.
           loop { draw((System.nanoTime() - start) / 1e9) } +
-              audio((SquareOsc(pace) * swing + offset) / hpf(15, 0.1), gain = 0.15f)
+              audio((SquareOsc(pace) * swing + offset) / hpf(15, 0.1), gain = level)
   - create:
       box: es_wave_synth
       name: wave_synth
@@ -1446,7 +1448,8 @@ operations:
                           }
                           control("repeated_jumps", "repeat", false)
                           control("repeated_jumps", "distance", 0.5)
-                          markdownNote("Hold **jump**; drag **distance** to change how far it moves. [[back]] [[next]]")
+                          control("repeated_jumps", "sound", false)
+                          markdownNote("Tick **sound**, then hold **jump**; drag **distance** to change how far it moves. [[back]] [[next]]")
                       }
                       step("Repeat it and it becomes a note", id = "sounds-repeat") {
                           audience {
@@ -1466,9 +1469,10 @@ operations:
                           }
                           control("repeated_jumps", "rate", 4.0)
                           control("repeated_jumps", "repeat", false)
+                          control("repeated_jumps", "sound", false)
                           cue("Repeat") { control("repeated_jumps", "repeat", true) }
                           cue("Faster") { control("repeated_jumps", "rate", 220.0, glideMs = 4000) }
-                          markdownNote("Next starts the repeats at 4 per second, then Next glides to 220. [[back]] [[next]]")
+                          markdownNote("Tick **sound** to hear it. Next starts the repeats at 4 per second, then Next glides to 220. [[back]] [[next]]")
                       }
                       step("Sounds add", id = "sounds-add") {
                           audience {

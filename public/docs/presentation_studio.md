@@ -530,6 +530,12 @@ when the talk moves to a slide that does not show them, it stops those it starte
 animation therefore play only while their slide is on screen, and stopping the talk silences them.
 A box you started yourself keeps running.
 
+A figure that is played rather than set uses keys. `keys("low", "middle", "high", letters = "wer") { key, down -> ... }`
+in a `controlGroup` lays out a row of hold buttons and says which one moved; on a slide the
+letters play them too, once someone has clicked into the figure, and a key let go anywhere, or a
+window that loses focus, releases it. A figure that both moves and sounds is one box: return
+`loop { ... } + audio(...)`, and the talk starts and stops the two together.
+
 A slide with figures has a **Reset: figures** button in the presenter controls. It forgets every
 control change the audience made, runs the figures again from their initial values, and returns to
 the slide's first cue. A slide with its own `checkpoint` shows that instead.

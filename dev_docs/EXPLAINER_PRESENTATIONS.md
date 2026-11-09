@@ -121,7 +121,7 @@ Building blocks, by the name the tables use:
 | **audio** | `audio(SineOsc(pitch), gain = loudness)` returned from the box; `Param` for live values; a `checkbox` or hold `button` gating a gain | anything heard; `FieldAudioEngine` plays it while the box runs |
 | **raster** | an ARGB `IntArray` → `display("main", PngEncoder.encode(px, w, h))` (`import afield.util.PngEncoder`) | per-pixel images computed on the CPU: sensor grids, falloff maps, pressure fields |
 | **three** | `three { mesh(...); lines(...); camera(...) }` in a box output, orbitable by drag | 3D scenes whose geometry and per-vertex colours we compute |
-| **loop** | return `loop { ... }` for an animation | anything that moves in time. A box returns one value, so a figure that both moves and sounds is two boxes sharing a property |
+| **loop** | return `loop { ... }` for an animation | anything that moves in time. A figure that both moves and sounds is still one box: return `loop { ... } + audio(...)` (a `LaunchBundle`), and stopping the box stops both |
 | **vulkan** | a box under the renderer, shown through the Electron RTT view | only where per-pixel GPU work is unavoidable; **not yet verified inside a figure view** |
 | **still** | `imageBeside(...)` / `fullScreenImage(...)` with an SVG or PNG we drew | a diagram nobody needs to change |
 
@@ -175,6 +175,17 @@ in order as we read them; several small figures are merged into one row.
 | 49 | `reverb`: room size and reverberation | room slider; press keys | lines + audio (a feedback delay network) + controls |
 
 Rows 43–49 came from a summary of the essay's last part; read that part yourself before building them.
+
+**As built** (`dev_docs/agents/transcripts/explainer_sound.yaml`, 22 figure boxes): rows 2–7 are one
+flat 2D box, `pressure_box` (molecules, wall flashes, a hits-per-wall plot, a `length` slider, and
+`follow one` for row 7; row 6 is left out). Rows 8–9 are `tube_plate` (with a `colour` checkbox);
+rows 10–11 are `repeated_jumps`; 12–13 are `wave_synth`; 14–16 are `triangle_params`; 19 and 25 are
+`draw_wave`, whose `partials` channel is the Fourier slide; 21–22 are `sine_sweep`; 26 is
+`square_partials` and stands in for 24; 28–31 are `normal_modes`; 32–35 are `pluck` (`mode`,
+`length`, `thickness`); 36–39 are `pulsing_sphere`; 42 is `speaker_ear` (a `vec2Control` listener
+and two meters); 43 is left out; 44 is `decibels` (a slider, not a text field); 45–46 are `doppler`.
+Not built: 17 (`triangle_sum`) and 40–41 (`wall_plate`, `pressure_side`). The keyboard figures use
+`keys(...)`, and every sounding figure was checked through `lifecycle-census` levels (below).
 
 ### Cameras and Lenses (document `explainer_cameras`)
 
