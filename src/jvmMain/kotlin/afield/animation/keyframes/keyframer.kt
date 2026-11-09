@@ -1602,6 +1602,7 @@ fun ControlGroupBuilder.keyframeSlider(
     lawExponent: Double = 2.0,
     lawCenter: Double = (min + max) / 2,
     significantDigits: Int = defaultSignificantDigits(law),
+    hoverText: String? = null,
     get: () -> Double,
     set: (Double) -> Unit
 ): ControlValueHandle<Double> {
@@ -1615,6 +1616,7 @@ fun ControlGroupBuilder.keyframeSlider(
         lawExponent = lawExponent,
         lawCenter = lawCenter,
         significantDigits = significantDigits,
+        hoverText = hoverText,
         onUpdate = set
     )
     scope.doubleTarget(name, get) { value ->
@@ -1636,6 +1638,7 @@ fun ControlGroupBuilder.keyframeFloatSlider(
     lawExponent: Double = 2.0,
     lawCenter: Double = (min + max) / 2,
     significantDigits: Int = defaultSignificantDigits(law),
+    hoverText: String? = null,
     get: () -> Float,
     set: (Float) -> Unit
 ): ControlValueHandle<Double> {
@@ -1649,6 +1652,7 @@ fun ControlGroupBuilder.keyframeFloatSlider(
         lawExponent = lawExponent,
         lawCenter = lawCenter,
         significantDigits = significantDigits,
+        hoverText = hoverText,
         onUpdate = { set(it.toFloat()) }
     )
     scope.floatTarget(name, get) { value ->
@@ -1663,10 +1667,11 @@ fun ControlGroupBuilder.keyframeCheckbox(
     scope: KeyframeScope,
     name: String,
     label: String,
+    hoverText: String? = null,
     get: () -> Boolean,
     set: (Boolean) -> Unit
 ): ControlValueHandle<Boolean> {
-    val handle = checkbox(label, initialValue = get(), onUpdate = set)
+    val handle = checkbox(label, initialValue = get(), hoverText = hoverText, onUpdate = set)
     scope.booleanTarget(name, get) { value ->
         set(value)
         handle.set(value)
@@ -1682,10 +1687,11 @@ fun ControlGroupBuilder.keyframeVec2Control(
     xRange: Pair<Double, Double> = -1.0 to 1.0,
     yRange: Pair<Double, Double> = -1.0 to 1.0,
     step: Double = 0.01,
+    hoverText: String? = null,
     get: () -> Vector2fc,
     set: (Vector2f) -> Unit
 ): ControlValueHandle<Vector2f> {
-    val handle = vec2Control(label, Vector2f(get()), xRange, yRange, step, onUpdate = set)
+    val handle = vec2Control(label, Vector2f(get()), xRange, yRange, step, hoverText = hoverText, onUpdate = set)
     scope.vector2Target(name, get) { value ->
         set(Vector2f(value))
         handle.set(value)
@@ -1698,10 +1704,11 @@ fun ControlGroupBuilder.keyframeColorPicker(
     scope: KeyframeScope,
     name: String,
     label: String,
+    hoverText: String? = null,
     get: () -> Vector4fc,
     set: (Vector4f) -> Unit
 ): ControlValueHandle<Vector4f> {
-    val handle = colorPicker(label, Vector4f(get()), onUpdate = set)
+    val handle = colorPicker(label, Vector4f(get()), hoverText = hoverText, onUpdate = set)
     scope.vector4Target(name, get) { value ->
         set(Vector4f(value))
         handle.set(value)
@@ -1714,16 +1721,44 @@ fun ControlGroupBuilder.keyframeText(
     scope: KeyframeScope,
     name: String,
     label: String,
+    hoverText: String? = null,
     get: () -> String,
     set: (String) -> Unit
 ): ControlValueHandle<String> {
-    val handle = text(label, initialValue = get(), onUpdate = set)
+    val handle = text(label, initialValue = get(), hoverText = hoverText, onUpdate = set)
     scope.stringTarget(name, get) { value ->
         set(value)
         handle.set(value)
     }
     return handle
 }
+
+// Preserve the original positional get/set forms when no hover text is supplied.
+fun ControlGroupBuilder.keyframeSlider(scope: KeyframeScope, name: String, label: String,
+    min: Double = 0.0, max: Double = 1.0, step: Double = 0.01, law: ControlLaw = ControlLaw.LINEAR,
+    lawExponent: Double = 2.0, lawCenter: Double = (min + max) / 2,
+    significantDigits: Int = defaultSignificantDigits(law), getter: () -> Double, setter: (Double) -> Unit) =
+    keyframeSlider(scope, name, label, min, max, step, law, lawExponent, lawCenter, significantDigits,
+        hoverText = null, get = getter, set = setter)
+fun ControlGroupBuilder.keyframeFloatSlider(scope: KeyframeScope, name: String, label: String,
+    min: Double = 0.0, max: Double = 1.0, step: Double = 0.01, law: ControlLaw = ControlLaw.LINEAR,
+    lawExponent: Double = 2.0, lawCenter: Double = (min + max) / 2,
+    significantDigits: Int = defaultSignificantDigits(law), getter: () -> Float, setter: (Float) -> Unit) =
+    keyframeFloatSlider(scope, name, label, min, max, step, law, lawExponent, lawCenter, significantDigits,
+        hoverText = null, get = getter, set = setter)
+fun ControlGroupBuilder.keyframeCheckbox(scope: KeyframeScope, name: String, label: String,
+    getter: () -> Boolean, setter: (Boolean) -> Unit) =
+    keyframeCheckbox(scope, name, label, hoverText = null, get = getter, set = setter)
+fun ControlGroupBuilder.keyframeVec2Control(scope: KeyframeScope, name: String, label: String,
+    xRange: Pair<Double, Double> = -1.0 to 1.0, yRange: Pair<Double, Double> = -1.0 to 1.0,
+    step: Double = 0.01, getter: () -> Vector2fc, setter: (Vector2f) -> Unit) =
+    keyframeVec2Control(scope, name, label, xRange, yRange, step, hoverText = null, get = getter, set = setter)
+fun ControlGroupBuilder.keyframeColorPicker(scope: KeyframeScope, name: String, label: String,
+    getter: () -> Vector4fc, setter: (Vector4f) -> Unit) =
+    keyframeColorPicker(scope, name, label, hoverText = null, get = getter, set = setter)
+fun ControlGroupBuilder.keyframeText(scope: KeyframeScope, name: String, label: String,
+    getter: () -> String, setter: (String) -> Unit) =
+    keyframeText(scope, name, label, hoverText = null, get = getter, set = setter)
 
 /**
  * The [KeyVersionInfo.note] of a history row rebuilt from a numbered file that no manifest row

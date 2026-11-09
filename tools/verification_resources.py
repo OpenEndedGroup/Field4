@@ -98,6 +98,13 @@ class SharedDiskClaim:
                 self.handle = None
                 self.path.unlink(missing_ok=True)
 
+    def abandon(self):
+        """Release the OS lock without taking admission; a later admission reaps the stale record."""
+        if self.handle:
+            self.handle.close()
+            self.handle = None
+            self.path = None
+
 
 class KeepAwake:
     def __init__(self):

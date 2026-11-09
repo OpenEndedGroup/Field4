@@ -2671,7 +2671,7 @@ function prepareControlLabel(label) {
     const ending = document.createElement('span');
     ending.textContent = characters.slice(middle).join('');
     end.appendChild(ending);
-    label.title = label.title || text;
+    if (!label.dataset.hoverText) label.title = label.title || text;
     label.replaceChildren(start, end);
     label.classList.add('field-label-middle');
 }

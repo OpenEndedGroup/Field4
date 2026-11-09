@@ -654,20 +654,8 @@ class RayTracingModule(val parameters: Parameters) : Renderable {
         }
     }
 
-    private fun createShaderModule(code: ByteBuffer): Long {
-        MemoryStack.stackPush().use { stack ->
-            val pCode = stack.malloc(code.limit()).put(code).flip()
-            val ci = VkShaderModuleCreateInfo.calloc(stack)
-                .sType(VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)
-                .pCode(pCode)
-            val out = stack.mallocLong(1)
-            vkCheck(
-                vkCreateShaderModule(parameters.renderer.device.vkDevice, ci, null, out),
-                "Failed to create ray tracing shader module"
-            )
-            return out[0]
-        }
-    }
+    private fun createShaderModule(code: ByteBuffer): Long =
+        createVulkanShaderModule(parameters.renderer.device.vkDevice, code)
 
     private fun indexOf(stage: RayTracingShaderStage): Int =
         stageRecords.indexOfFirst { it.stage === stage }.takeIf { it >= 0 }

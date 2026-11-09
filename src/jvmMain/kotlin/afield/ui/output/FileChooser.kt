@@ -481,7 +481,7 @@ private fun chooserNoun(spec: FileChooserSpec) = when {
  * @param chooseDirectory choose a directory instead of a file
  * @param mustExist accept only existing paths; turn off to name a file you are about to write
  * @param showHidden list dot-files without typing the dot
- * @param tooltip what the file is for, shown on hover
+ * @param hoverText what the file is for, shown on hover
  * @param onUpdate called with the chosen file
  */
 fun ControlGroupBuilder.fileChooser(
@@ -492,7 +492,7 @@ fun ControlGroupBuilder.fileChooser(
     chooseDirectory: Boolean = false,
     mustExist: Boolean = true,
     showHidden: Boolean = false,
-    tooltip: String? = null,
+    hoverText: String? = null,
     onUpdate: (File) -> Unit
 ): ControlValueHandle<String> {
     val spec = FileChooserSpec(ownerBox.fileChooserRoot(directory), FileMask(mask), chooseDirectory, mustExist, showHidden, ownerBox.fileChooserPrefixes())
@@ -511,7 +511,7 @@ fun ControlGroupBuilder.fileChooser(
         },
         read = { it.text },
         write = { old, next -> old.copy(text = next) },
-        tooltip = tooltip
+        hoverText = hoverText
     )
 }
 
@@ -526,7 +526,7 @@ fun ControlGroupBuilder.fileChooser(
  * @param chooseDirectory choose a directory instead of a file
  * @param mustExist accept only existing paths
  * @param channel output disclosure that receives the control
- * @param tooltip what the file is for, shown on hover
+ * @param hoverText what the file is for, shown on hover
  * @param onUpdate called with the chosen file
  */
 fun Box.fileChooser(
@@ -537,7 +537,7 @@ fun Box.fileChooser(
     chooseDirectory: Boolean = false,
     mustExist: Boolean = true,
     channel: String = "controls",
-    tooltip: String? = null,
+    hoverText: String? = null,
     onUpdate: (File) -> Unit
 ) {
     val controlId = "file-${UUID.randomUUID()}"
@@ -546,5 +546,5 @@ fun Box.fileChooser(
     registerFileChooserSpec(controlId, spec)
     registerStringCallback(controlId, callback)
     callback(initialValue)
-    display(channel, withControlTooltip(buildFileChooserHtml(controlId, label, initialValue, spec), tooltip))
+    display(channel, withControlHover(buildFileChooserHtml(controlId, label, initialValue, spec), hoverText))
 }

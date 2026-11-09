@@ -458,6 +458,7 @@ nav:
       - Geometry in the Headset: vision_geometry.md
       - Stereo RTT composite: stereo_rtt_composite.md
       - Stereo video: stereo_video.md
+      - Body and hand tracking: body_tracking.md
       - Field inside VR: field_vr_ide.md
       - ImGui as a VR Panel: imgui_vr_panel.md
       # Last, after the two in-headset pages: an OpenXR starting point that needs a headset with

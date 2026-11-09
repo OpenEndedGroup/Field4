@@ -891,6 +891,8 @@ class RunnerOptions:
 # that needs a macOS-only native library (Syphon).
 CAPTURE_PROFILE_PLATFORMS = {
     "linux-nvidia": "linux",
+    "linux-wivrn-live": "linux",  # connected headset and an already-running body_one document
+
     "macos-electron": "darwin",
     # Output that needs a macOS-only native library and nothing else: Syphon's shared surfaces.
     "macos-native": "darwin",
@@ -1885,9 +1887,10 @@ class RunnerState:
             return f"{where} does not report its identity"
         try:
             same_checkout = Path(str(info.get("repoRoot"))).resolve() == self.repo_root.resolve()
-            expected_workspace = Path(
-                os.environ.get(RUNNER_WORKSPACE_ENV) or str(automation_workspace(self.repo_root))
-            ).resolve()
+            # A workspace override selects a capture source, not permission to take
+            # ownership of somebody's interactive Field. Only the fixed automation
+            # workspace is adoptable; runner-started custom workspaces are already owned.
+            expected_workspace = automation_workspace(self.repo_root).resolve()
             same_workspace = Path(str(info.get("workspace"))).resolve() == expected_workspace
         except (OSError, TypeError, ValueError):
             return f"{where} reported an unreadable identity"
@@ -2362,6 +2365,15 @@ class RunnerState:
     def _stage_capture_output(self, destination: Path) -> Path:
         return self._active_capture_transaction.stage(destination)
 
+    def _prepare_capture_server(self, options) -> None:
+        if getattr(options, "capture_profile", None) == "linux-wivrn-live":
+            if not self._http_health_ok(self.backdoor_port):
+                raise RuntimeError("The linux-wivrn-live profile requires an already-running Field and connected headset; launch body_one first")
+            # Validate checkout/source identity, but never start, adopt or restart the live server.
+            self._ensure_shared_field_server()
+        else:
+            self._ensure_runner_owned_field_server(reason="environment-checked docs capture")
+
     def capture_with_environment(self, method, **kwargs):
         if self.environment is None:
             self.environment = VerificationEnvironment(disk_path=self.repo_root).start()
@@ -2374,7 +2386,7 @@ class RunnerState:
             started = True
             with self._capture_transaction():
                 try:
-                    self._ensure_runner_owned_field_server(reason="environment-checked docs capture")
+                    self._prepare_capture_server(options)
                     method(**kwargs)
                 except Exception:
                     self.environment.check(token, require_display=needs_display, force=True)
@@ -6088,6 +6100,7 @@ def build_backdoor_command(
         command.extend(["--command", command_line])
     session_eligible = (
         not options.graphics_context and not is_video and not options.source_image and not options.fresh_document
+        and options.capture_profile != "linux-wivrn-live"
     )
     return BackdoorInvocation(
         process_command=command,

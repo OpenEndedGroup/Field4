@@ -301,3 +301,6 @@ disables its own HRTF on the dedicated output.
 Connect headset audio before opening the output. If the WiVRn device reconnects, stop and relaunch
 the audio box. The player closes when you stop, replace or delete the box. Audio runs on its own
 device-paced thread; the graphics Runloop reads and changes its controls.
+
+To inspect the tracking data behind headset interactions, open [body_one](body_tracking.md).
+It draws available hands, sparse body joints and controllers, with bounds and closest-point helpers.

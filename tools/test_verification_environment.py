@@ -363,6 +363,32 @@ class RunnerPortOwnershipTests(unittest.TestCase):
         state._request_shared_field_shutdown.assert_called_once()
         state._ensure_shared_field_server.assert_called_once()
 
+    def test_workspace_override_does_not_authorize_replacing_interactive_field(self):
+        state = self.state()
+        workspace = str(state.repo_root / "user-workspace")
+        info = {"repoRoot": str(state.repo_root), "workspace": workspace}
+        with patch.dict("os.environ", {docs_hooks.RUNNER_WORKSPACE_ENV: workspace}), patch.object(docs_hooks, "field_instance_info", return_value=info):
+            with self.assertRaisesRegex(RuntimeError, "serves workspace"):
+                state._ensure_runner_owned_field_server(reason="a capture")
+        state._request_shared_field_shutdown.assert_not_called()
+
+    def test_live_wivrn_profile_validates_without_taking_ownership(self):
+        state = self.state()
+        state._ensure_runner_owned_field_server = Mock()
+        state._prepare_capture_server(SimpleNamespace(capture_profile="linux-wivrn-live"))
+        state._ensure_shared_field_server.assert_called_once()
+        state._ensure_runner_owned_field_server.assert_not_called()
+        state._request_shared_field_shutdown.assert_not_called()
+        self.assertFalse(state._shared_field_started_by_runner)
+
+    def test_live_wivrn_profile_does_not_start_a_missing_server(self):
+        state = self.state()
+        state._http_health_ok = Mock(return_value=False)
+        with self.assertRaisesRegex(RuntimeError, "already-running"):
+            state._prepare_capture_server(SimpleNamespace(capture_profile="linux-wivrn-live"))
+        state._ensure_shared_field_server.assert_not_called()
+        state._request_shared_field_shutdown.assert_not_called()
+
 
 class DiskBudgetTests(unittest.TestCase):
     def budget(self, free=20, **kwargs):
@@ -531,6 +557,33 @@ os._exit(0)
             self.assertEqual(len(list(self.root.glob('*/*.json'))), 1)
             monitor.close()
             self.assertEqual(len(list(self.root.glob('*/*.json'))), 0)
+
+    def test_collected_budget_does_not_reenter_admission_lock(self):
+        # A finalizer may run during another claim's admission. The child timeout makes a lock
+        # regression fail instead of hanging the entire test suite and the lander.
+        tools = str(Path(__file__).resolve().parent)
+        script = f'''import gc, os, sys
+from pathlib import Path
+from types import SimpleNamespace
+sys.path.insert(0, {tools!r})
+from verification_environment import DiskBudget, GIB
+from verification_resources import SharedDiskClaim
+root = Path({str(self.root)!r})
+os.environ['FIELD_VERIFY_BUDGET_DIR'] = str(root)
+budget = DiskBudget(root, probe=lambda _: SimpleNamespace(free=20 * GIB),
+                    floor_gib=8, reserve_gib=0, planned_gib=0)
+budget.admit(budget.sample())
+other = SharedDiskClaim(root)
+with other.admission():
+    del budget
+    gc.collect()
+assert len(list(root.glob('*/*.json'))) == 1
+other.acquire(free=20 * GIB, floor=8 * GIB, reserve=0, planned=0)
+assert len(list(root.glob('*/*.json'))) == 1
+other.close()
+assert not list(root.glob('*/*.json'))
+'''
+        subprocess.run([sys.executable, '-c', script], check=True, timeout=10)
 
 
 if __name__ == "__main__":

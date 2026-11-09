@@ -1,0 +1,13 @@
+name: body_one_restore
+description: Restore the user's inspection view immediately after the native documentation capture.
+operations:
+  - execute-fragment:
+      box: body1_tracking
+      type: fragment
+      code: |
+        val previous = thisBox.getPropertyRaw("docsCaptureView") as? Pair<Boolean, Vector3f>
+        if (previous != null) {
+            inspectionCopy = previous.first
+            inspectionOffset.set(previous.second)
+            thisBox.removePropertyRaw("docsCaptureView")
+        }

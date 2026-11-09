@@ -2706,57 +2706,6 @@ body.field-pane-resizing-h * {
     box-shadow: 0 0 0 1px var(--field-accent-border-medium);
 }
 
-/* Control tooltips (`tooltip = "..."` on any control; controlTooltips.js). The dotted label says
-   "hover me"; the tip itself is one fixed element on the body, so no output area clips it. */
-[data-tooltip] .field-label {
-    text-decoration: underline dotted rgba(var(--field-accent-rgb), 0.55);
-    text-underline-offset: 3px;
-    cursor: help;
-}
-
-/* A long slider label is split into clipped halves (sliders.js prepareControlLabel); the underline
-   does not reach into them, so they carry their own. */
-[data-tooltip] .field-label-middle > .field-label-start,
-[data-tooltip] .field-label-end > span {
-    text-decoration: underline dotted rgba(var(--field-accent-rgb), 0.55);
-    text-underline-offset: 2px;
-}
-
-.field-tooltip {
-    position: fixed;
-    z-index: 10050;
-    max-width: min(360px, calc(100vw - 16px));
-    padding: 7px 9px;
-    background: var(--field-overlay);
-    border: 1px solid var(--field-accent-border-medium);
-    border-radius: 6px;
-    box-shadow: 0 6px 18px rgba(var(--field-black-rgb), 0.55);
-    color: var(--field-fg-body);
-    font-family: var(--field-font);
-    font-size: 12px;
-    line-height: 1.4;
-    white-space: pre-line;
-    overflow-wrap: anywhere;
-    pointer-events: none;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 90ms ease;
-}
-
-.field-tooltip.visible {
-    opacity: 1;
-    visibility: visible;
-}
-
-.field-tooltip-label {
-    color: var(--field-accent);
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    margin-bottom: 3px;
-    white-space: normal;
-}
-
 /* File chooser (`fileChooser(...)`; fileChooser.js). */
 .field-file-field {
     display: flex;
