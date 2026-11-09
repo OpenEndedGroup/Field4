@@ -2205,6 +2205,15 @@ private fun Box.updateCachedControlGroupValueInMemory(control: ControllerControl
     notePersistentChange(controlGroupValuesProperty)
 }
 
+/**
+ * Forget every control value [controlGroup] remembers for this box, in memory and in the document,
+ * so its next run starts each control at its `initialValue`. A presentation's "Reset: figures" uses it.
+ */
+internal fun Box.forgetControlValues() {
+    properties.remove(controlGroupCacheProperty)
+    if (properties.remove(controlGroupValuesProperty) != null) notePersistentChange(controlGroupValuesProperty)
+}
+
 internal fun registerControllerControlGroup(box: Box, channel: String, controls: List<ControllerControl>) {
     val key = controllerControlGroupKey(box.id, channel)
     controllerControlGroups[key] = controls

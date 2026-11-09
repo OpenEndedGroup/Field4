@@ -80,7 +80,9 @@ fun SlideStepBuilder.audience(block: AudienceBuilder.() -> Unit): AudienceConten
 /** Reusable slide content. Keep one copy of the markup and shared image paths across slides. */
 fun audienceFragment(block: AudienceBuilder.() -> Unit): AudienceContent {
     val consumer = createHTML()
-    return AudienceContent(html = AudienceBuilder(consumer).visitAndFinalize(consumer, block))
+    val builder = AudienceBuilder(consumer)
+    val html = builder.visitAndFinalize(consumer, block)
+    return AudienceContent(html = html, figures = builder.figures.toList())
 }
 
 /** Show a reusable HTML fragment without changing its content. */
@@ -97,7 +99,7 @@ fun SlideStepBuilder.reveal(title: String, dimPrevious: Double = 0.25, block: Au
     val previous = previousCue?.audienceProvider ?: previousCue?.audience?.let { { it } }
         ?: audienceProvider ?: audienceContent?.let { { it } }
         ?: error("A reveal needs an HTML audience view first")
-    val addition = audienceFragment(block)
+    val addition = resolveFigures(hostBox, audienceFragment(block))
     // Validate the surface now; providers are read again when Refresh reloads the slide.
     layerAudience(previous(), addition, dimPrevious)
     cue(title) { audienceProvider = { layerAudience(previous(), addition, dimPrevious) } }
@@ -107,7 +109,9 @@ internal fun layerAudience(previous: AudienceContent, addition: AudienceContent,
     require(previous.type == "html" && addition.type == "html") { "Build layers need HTML slides; use a normal cue for webpages or Field documents" }
     require(opacity.isFinite() && opacity in 0.0..1.0) { "dimPrevious must be between 0 and 1" }
     require(previous.html.length + addition.html.length <= 2_000_000) { "Layered slide exceeds 2 MB" }
-    return AudienceContent(html = """<div class="field-slide-stack"><div class="field-slide-layer field-retained" inert aria-hidden="true" style="opacity:$opacity"><div class="field-slide-content">${previous.html}</div></div><div class="field-slide-layer"><div class="field-slide-content">${addition.html}</div></div></div>""")
+    // Figures in the retained layer stay live and undimmed: a build adds prose around a figure.
+    return AudienceContent(html = """<div class="field-slide-stack"><div class="field-slide-layer field-retained" inert aria-hidden="true" style="opacity:$opacity"><div class="field-slide-content">${previous.html}</div></div><div class="field-slide-layer"><div class="field-slide-content">${addition.html}</div></div></div>""",
+        figures = previous.figures + addition.figures)
 }
 
 /** Set an HTML fragment for the audience. Use [audience] for type-safe, escaped HTML construction. */

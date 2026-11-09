@@ -19,6 +19,11 @@ import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.sound.midi.ShortMessage
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.io.path.exists
 
 /*
@@ -263,6 +268,58 @@ fun Box.playControl(label: String, curve: KeyframeEvaluator, time: Double, chann
         }
     }
     return applyControlChanges(this, channel, mapOf(key to change)).isNotEmpty()
+}
+
+/**
+ * Moves the slider labelled [label] in [channel] to [value] (clamped to its range): the control moves
+ * on every screen showing it and its callback runs, as if a person had dragged it. Returns false when
+ * the box shows no such slider, because it has not run yet or the label is different.
+ *
+ * ```kotlin
+ * tone.setControl("frequency", 880.0)
+ * ```
+ */
+fun Box.setControl(label: String, value: Double, channel: String = "controls"): Boolean {
+    val key = controlKeyForLabel(this, channel, label) ?: return false
+    applyControlChanges(this, channel, mapOf(key to { c: ControllerControl ->
+        if (c.type == "slider") c.copy(value = clampTo(value, c.min, c.max)) else null
+    }))
+    return true
+}
+
+/** Ticks or clears the checkbox labelled [label] in [channel], running its callback. False if there is none. */
+fun Box.setControl(label: String, value: Boolean, channel: String = "controls"): Boolean {
+    val key = controlKeyForLabel(this, channel, label) ?: return false
+    applyControlChanges(this, channel, mapOf(key to { c: ControllerControl -> if (c.type == "checkbox") c.copy(checked = value) else null }))
+    return true
+}
+
+/**
+ * Slides the slider labelled [label] to [target] over [durationMs], eased, along the control's own
+ * travel (a logarithmic slider glides evenly in pitch, not in hertz). Each step moves the control and
+ * runs its callback. Returns the running glide, or null when there is no such slider.
+ */
+@OptIn(DelicateCoroutinesApi::class)
+internal fun Box.glideControl(label: String, target: Double, durationMs: Int, channel: String = "controls"): Job? {
+    val key = controlKeyForLabel(this, channel, label) ?: return null
+    val start = controlGroupControlsWithKeys(this, channel).firstOrNull { it.first == key }?.second ?: return null
+    if (start.type != "slider" || durationMs <= 0) { setControl(label, target, channel); return Job().apply { complete() } }
+    val end = clampTo(target, start.min, start.max)
+    val spec = ControlLawSpec(ControlLaw.fromWireName(start.law), start.min, start.max, start.lawExponent, start.lawCenter)
+    val from = spec.normalizedFor(start.value ?: end)
+    val to = spec.normalizedFor(end)
+    val box = this
+    return GlobalScope.launch {
+        val began = System.nanoTime()
+        while (true) {
+            val t = ((System.nanoTime() - began) / 1e6 / durationMs).coerceIn(0.0, 1.0)
+            val eased = t * t * (3 - 2 * t)
+            val value = if (t >= 1.0) end else clampTo(spec.valueAt(from + (to - from) * eased), start.min, start.max)
+            applyControlChanges(box, channel, mapOf(key to { c: ControllerControl -> c.copy(value = value) }))
+            if (t >= 1.0) break
+            delay(16)
+        }
+    }
 }
 
 /**

@@ -1,5 +1,6 @@
 package afield.ui.slides
 
+import afield.app.protocol.AudienceFigure
 import afield.ui.output.FieldMarkdown
 import kotlinx.html.*
 
@@ -20,6 +21,10 @@ import kotlinx.html.*
  * [AudienceBuilder.fullScreenImage] and [AudienceBuilder.imageBeside] are the picture layouts. Both
  * want alt text and take an optional visible credit, and [AudienceImageFit] chooses between
  * containing the whole picture and cropping it to fill.
+ *
+ * `figure` and `figureBeside` (PresentationFigures.kt) are the live counterparts: a slot that a
+ * box's output, controls and all, fills in the audience window. The slots a slide writes are
+ * collected in [figures] across nested builders, and leave with the HTML in the slide's content.
  */
 
 /** A rendered Markdown fragment, inserted with unary plus inside [AudienceBuilder]. */
@@ -30,7 +35,9 @@ enum class AudienceImageFit(internal val css: String) { Contain("contain"), Cove
 
 /** Standard HTML slide content, with scoped Markdown, stylesheets and image layouts. */
 class AudienceBuilder internal constructor(
-    consumer: TagConsumer<*>, classes: String = "field-slide"
+    consumer: TagConsumer<*>, classes: String = "field-slide",
+    /** The live figure slots written so far, shared by every nested builder of one slide. */
+    internal val figures: MutableList<AudienceFigure> = mutableListOf()
 ) : DIV(attributesMapOf("class", classes), consumer) {
     /** Render an indented Markdown block; ordinary `+String` still escapes text as HTML. */
     val String.md: AudienceMarkdown get() = AudienceMarkdown(FieldMarkdown.render(this))
@@ -40,7 +47,7 @@ class AudienceBuilder internal constructor(
 
     /** A nested HTML container that keeps the slide's scoped Markdown syntax available. */
     fun div(classes: String? = null, block: AudienceBuilder.() -> Unit = {}) {
-        AudienceBuilder(consumer, classes.orEmpty()).visit(block)
+        AudienceBuilder(consumer, classes.orEmpty(), figures).visit(block)
     }
 
     /** Load a stylesheet relative to this document's files/ directory; Refresh slide reloads it. */
@@ -78,7 +85,7 @@ class AudienceBuilder internal constructor(
     ) {
         div(classes = "field-image-beside") {
             fun pictureColumn() { figure { picture(source, alt, citation, fit) } }
-            fun textColumn() { AudienceBuilder(consumer, "field-image-text").visit(block) }
+            fun textColumn() { AudienceBuilder(consumer, "field-image-text", figures).visit(block) }
             if (imageOnLeft) { pictureColumn(); textColumn() }
             else { textColumn(); pictureColumn() }
         }

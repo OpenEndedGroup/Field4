@@ -12,7 +12,25 @@ data class AudienceContent(
     val document: String = "",
     val rect: List<Double>? = null,
     val macro: AudienceMacro? = null,
-    val interactiveGuide: Boolean = false
+    val interactiveGuide: Boolean = false,
+    /** Live box outputs placed in this HTML slide's figure slots; see [AudienceFigure]. */
+    val figures: List<AudienceFigure> = emptyList()
+)
+
+/**
+ * One live figure on an HTML slide: the output area of the box [box] (a uid in the presentation's own
+ * document), shown in its own native view over the slot whose `data-field-figure` attribute is [id].
+ * [channels] limits it to those output channels; empty shows every channel the box displays. [rect],
+ * a fraction of the audience window, places it explicitly instead of measuring the slot. [name] is the
+ * box name the deck used, kept for search and for exporting the slide later.
+ */
+@Serializable
+data class AudienceFigure(
+    val id: String,
+    val box: String,
+    val name: String,
+    val channels: List<String> = emptyList(),
+    val rect: List<Double>? = null
 )
 
 @Serializable
