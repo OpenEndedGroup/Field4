@@ -661,13 +661,13 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**37531 public symbols across 1690 source files**, 22074 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**37542 public symbols across 1692 source files**, 22084 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 225 | 711 | 314 (44%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 226 | 713 | 315 (44%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 21 | 158 | 56 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 206 | 206 (100%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
@@ -683,7 +683,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ALife](alife.md) | 22 | 1127 | 1030 (91%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 10 | 464 | 464 (100%) | Optimisation over a space you can only sample. |
-| [Visualization](visualization.md) | 64 | 1777 | 1280 (72%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 65 | 1786 | 1289 (72%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 43 | 1534 | 763 (49%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1317 | 721 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 89 | 2332 | 1214 (52%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
@@ -2038,7 +2038,9 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [ShaderTypedStructurePreambleSmokeTest.kt](examples.md#shadertypedstructurepreamblesmoketest-kt) | Examples · internal | 1 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [ShadowedSnippetNameChecker.kt](workspace.md#shadowedsnippetnamechecker-kt) | Workspace · internal | 8 | 3 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [ShadowedSnippetNameSmokeTest.kt](workspace.md#shadowedsnippetnamesmoketest-kt) | Workspace · internal | 2 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [ShapeAscii.kt](visualization.md#shapeascii-kt) | Visualization | 28 | 27 | Shape-aware ASCII rendering: an `Img` turned into a grid of characters chosen for the *shape* of what falls in each cell, not only its brightness, after Alex Harri's essay ASCII characters are not pixels. | [Shape-aware ASCII](../ascii_shape.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [ShapeAscii.kt](visualization.md#shapeascii-kt) | Visualization | 30 | 29 | Shape-aware ASCII rendering: an `Img` turned into a grid of characters chosen for the *shape* of what falls in each cell, not only its brightness, after Alex Harri's essay ASCII characters are not pixels. | [Shape-aware ASCII](../ascii_shape.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [ShapeAsciiGpu.kt](visualization.md#shapeasciigpu-kt) | Visualization | 7 | 7 | What a GPU version of `ShapeAscii` needs from the CPU side, for shaders that live in boxes. | [Shape-aware ASCII](../ascii_shape.md) |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [ShapeAsciiGpuSmoke.kt](examples.md#shapeasciigpusmoke-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr>pressure/<wbr></small> [ShapeAudit.kt](simulation.md#shapeaudit-kt) | Simulation | 5 | 2 | Geometric checks on a deformed pressure envelope: `ShapeAudits` finds triangle self-intersections, sharp folds between neighbouring triangles, panel seams and multi-panel junction angles. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr>diffusion/<wbr></small> [SharedGpuSlot.kt](video.md#sharedgpuslot-kt) | Video | 0 | 0 | One slot of the GPU memory a diffusion session shares with its worker: a device-local buffer and a timeline semaphore, both exported to the worker as file descriptors. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [SharedTypes.kt](workspace.md#sharedtypes-kt) | Workspace · internal | 7 | 7 | Lets several boxes in one document use the same Kotlin class, with its real type. |  |
