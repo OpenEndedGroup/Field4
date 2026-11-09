@@ -111,6 +111,33 @@ class ReadingDiagramTest {
     }
 
     @Test
+    fun namedAccelerationsAddAtFixedStepAndRespectPinnedParticles() {
+        val p = model().apply { spring = 0f; constraintStrength = 0f }
+        val called = mutableListOf<Int>()
+        p.externalAccelerations["first"] = { index, position, output ->
+            called += index
+            assertEquals(p.state.x[index], position.x)
+            assertEquals(0f, output.length())
+            output.z = 2f
+        }
+        p.externalAccelerations["second"] = { _, _, output ->
+            assertEquals(0f, output.length())
+            output.z = 1f
+        }
+        p.externalAccelerations["invalid"] = { _, _, output -> output.x = Float.NaN }
+        p.update(1.0 / 120.0)
+        assertEquals(listOf(1), called)
+        assertEquals(0f, p.state.z[0])
+        assertEquals(3f / (120f * 120f), p.state.z[1], 1e-7f)
+        assertTrue(p.state.x[1].isFinite())
+        p.externalAccelerations.remove("first")
+        p.externalAccelerations.remove("second")
+        p.resetPositions()
+        p.update(1.0 / 120.0)
+        assertEquals(0f, p.state.z[1])
+    }
+
+    @Test
     fun spanAnchorsFollowTheShapedRunAndDotUsesFullLineArclength() {
         val p = model()
         p.playback.seek(3.0)
