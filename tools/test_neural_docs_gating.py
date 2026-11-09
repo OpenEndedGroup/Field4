@@ -51,6 +51,27 @@ class HardwareDocsGatingTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'Unknown docs capture profile'):
                 docs_hooks.capture_profile_enabled('misspelled-profile')
 
+    def test_live_wivrn_profile_is_separate_from_ordinary_gpu_recaptures(self):
+        with patch.object(docs_hooks.sys, 'platform', 'linux'):
+            with patch.dict(os.environ, {'FIELD_DOCS_CAPTURE_PROFILES': 'linux-nvidia'}):
+                self.assertFalse(docs_hooks.capture_profile_enabled('linux-wivrn-live'))
+            with patch.dict(os.environ, {'FIELD_DOCS_CAPTURE_PROFILES': 'linux-wivrn-live'}):
+                self.assertTrue(docs_hooks.capture_profile_enabled('linux-wivrn-live'))
+        with patch.object(docs_hooks.sys, 'platform', 'darwin'), patch.dict(os.environ, {'FIELD_DOCS_CAPTURE_PROFILES': 'linux-wivrn-live'}):
+            self.assertFalse(docs_hooks.capture_profile_enabled('linux-wivrn-live'))
+
+    def test_live_native_capture_never_uses_a_resettable_warm_session(self):
+        page = ROOT / 'public/docs/body_tracking.md'
+        options = docs_hooks.parse_runner_options(
+            runner_name='diffstatic_runner',
+            open_line='```diffstatic_runner {capture="native-window" document="body_one" capture-box="body1_preview_capture" macro-file="../../dev_docs/agents/transcripts/docs_capture/body_one_live.yaml" capture-profile="linux-wivrn-live" screenshot="assets/body_tracking/headset.png"}',
+            page_path=page, line_number=1, block_index=1,
+        )
+        invocation = docs_hooks.build_backdoor_command(repo_root=ROOT, page_path=page,
+            block_index=1, screenshot_path=ROOT/'build/body-test.png', options=options, code='// live capture')
+        self.assertFalse(invocation.session_eligible)
+        self.assertEqual(invocation.document, 'body_one')
+
     def test_macos_electron_profile_needs_darwin_and_the_request(self):
         with patch.dict(os.environ,{'FIELD_DOCS_CAPTURE_PROFILES':'macos-electron'}):
             with patch.object(docs_hooks.sys,'platform','darwin'):

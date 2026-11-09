@@ -41,3 +41,12 @@ finish that frame in its original presentation mode and apply the toggle to the 
 offscreen modes, recovers, and repeatedly toggles presentation under Vulkan validation.
 SPIR-V module creation is shared across every shader stage; shader-sized bytecode never belongs
 on LWJGL's scratch stack (`ShaderModuleCodeTest`). Increasing the stack is not the repair.
+
+## Live tracking documentation
+
+`linux-wivrn-live` is an opt-in docs capture profile, separate from `linux-nvidia`. It requires
+an already-running Field and active headset tracking. It validates the live server but never
+takes ownership or restarts it. A workspace override chooses the capture source; it does not
+turn an interactive workspace into an automation workspace the runner may replace.
+Ordinary builds retain these committed captures without headset access. See
+`templates/body_one/README.md` for the recapture command.

@@ -591,6 +591,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // Requires a connected OpenXR runtime and real tracking; geometry math is covered by BodyGeometryTest.
+        "body_one",
         "text_one_vr",
         "video_one_vr",
         // Audio curves: every box is a playback loop under a waveform player that waits for the

@@ -1279,10 +1279,12 @@ class Renderer(
     private val unavailableWindows=mutableMapOf<Int,Long>()
 
     /** Successful primary scene submissions; unlike frameCounter this excludes empty XR ticks. */
-    @Volatile var submittedSceneFrames = 0L
+    @Volatile
+    var submittedSceneFrames = 0L
         private set
     /** Most recent recording/submission failure, retained until a scene submits successfully. */
-    @Volatile var lastRenderFailure: String? = null
+    @Volatile
+    var lastRenderFailure: String? = null
         private set
     private val pendingDesktopImages = mutableMapOf<Int, Int>()
 

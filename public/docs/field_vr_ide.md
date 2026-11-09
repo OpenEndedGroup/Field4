@@ -302,3 +302,7 @@ geometry, occlusion or reverberation. OpenAL's second HRTF is disabled on the de
 Connect headset audio before opening the output. After a WiVRn device reconnect, stop and
 relaunch the audio box. The player closes on box stop, replacement or deletion. Audio uses
 its own device-paced thread; the graphics Runloop only reads or changes control state.
+
+
+To inspect the tracking data behind headset interactions, open [body_one](body_tracking.md).
+It draws available hands, sparse body joints and controllers, with bounds and closest-point helpers.
