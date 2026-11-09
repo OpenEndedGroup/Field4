@@ -778,7 +778,7 @@ private class PinnedConsoleSink(initialChannels: List<PinnedChannel>) : LogSink 
     /** Render one pinned entry as row string(s): a single line, or a block header + indented body. */
     private fun renderEntryRows(tag: String, e: PinnedEntry, w: Int): List<String> {
         val head = if (e.dim) DIM else colorFor(levelOf(e.channel))
-        val label = tag.take(LABEL_WIDTH).padEnd(LABEL_WIDTH)
+        val label = if (tag == "net") "frontend ↔ backend" else tag.take(LABEL_WIDTH).padEnd(LABEL_WIDTH)
         val time = timeFmt.format(e.at)
         val block = e.block
         val out = ArrayList<String>()
