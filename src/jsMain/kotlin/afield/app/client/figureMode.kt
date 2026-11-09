@@ -56,6 +56,10 @@ internal fun installFigureMode(params: URLSearchParams) {
             if (shown && inter != null && inter.isOpen(id) != true) inter.open(id)
         }
         val area = box.querySelector(".outputArea") as? HTMLElement ?: return
+        // Content wider than the area (an editable drawing) overflows to the right; widening the box
+        // to it keeps the whole figure centred. Measured afresh each time, so it can shrink again.
+        box.style.removeProperty("min-width")
+        if (area.scrollWidth > area.offsetWidth) box.style.setProperty("min-width", "${area.scrollWidth}px", "important")
         // The box is laid out under CSS zoom, so its on-screen size divided by the zoom in force is
         // its natural size. scroll/offset is a ratio, so it scales that to the content an overflowing
         // output (an editable drawing) really draws.
