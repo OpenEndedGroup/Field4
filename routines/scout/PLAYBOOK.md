@@ -23,7 +23,7 @@ missed something; a `yes: with the drawing layer` tells you what kind of "What F
 
 `python3 $REPO/tools/scout.py harvest`
 
-It collects from `routines/scout/sources.json`: the HN front page above 50 points; HN title and URL
+It collects from `routines/scout/sources.json`: every HN story above 15 points (the `hn.min_points` floor); HN title and URL
 queries for topics Field already works on, with a one-point floor; lobste.rs tags; and a list of
 feeds. Graphics Programming Weekly is expanded into the links each issue lists. Links are
 deduplicated by normalized URL, and a repost adds a sighting to the existing link. A source that
@@ -49,7 +49,7 @@ marked `[saved by Marc <date>]`: he bookmarked that page himself (`$JOURNAL/save
 from his Raindrop export with `scout.py import-saves <csv>`). A saved link that resurfaces is not a
 find, since he has seen it; card it only when the new sighting brings something the saved page
 lacked (a release, code, a part two), and say so on the card. The digest marks it. Expect to drop about
-two thirds of the HN front page and almost nothing from the feeds.
+two thirds of the HN stories and almost nothing from the feeds.
 
 ## 4. Fetch
 
