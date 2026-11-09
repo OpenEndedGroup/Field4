@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 22165 of 37649 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 22200 of 37698 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2012 undocumented entry points** (types, top-level functions and values) and 12797 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2012 undocumented entry points** (types, top-level functions and values) and 12810 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -268,6 +268,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RtxdiSettings.kt](../src/jvmMain/kotlin/afield/graphics/render/lighting/RtxdiSettings.kt) | Graphics | direct_lighting | 0 | 1 | 93% |
 | [KeyCamera.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/KeyCamera.kt) | Graphics | afield_four_graphics | 0 | 1 | 91% |
 | [Mtc.kt](../src/jvmMain/kotlin/afield/io/timecode/Mtc.kt) | Networking | smpte_timecode | 0 | 1 | 93% |
+| [ForthStepsDocs.kt](../src/jvmMain/kotlin/afield/lang/forth/ForthStepsDocs.kt) | Languages | forth_examples | 0 | 1 | 85% |
 | [MorphoFLines.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoFLines.kt) | Languages | morpho_examples, morpho_search | 0 | 1 | 91% |
 | [SolidGlsl.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidGlsl.kt) | Graphics | solid_notation | 0 | 1 | 80% |
 | [FieldRTTStreamer.kt](../src/jvmMain/kotlin/afield/media/stream/FieldRTTStreamer.kt) | Imaging | vision | 0 | 1 | 91% |
@@ -317,7 +318,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [LinalgSerialization.kt](../src/jvmMain/kotlin/afield/document/persistence/LinalgSerialization.kt) | Workspace | — | 6 | 15 | 4% |
 | [LlmBridge.kt](../src/jvmMain/kotlin/afield/ai/models/LlmBridge.kt) | AI4 | — | 6 | 6 | 29% |
 | [SimpleSpatialAudio.kt](../src/jvmMain/kotlin/afield/audio/engine/SimpleSpatialAudio.kt) | Audio | — | 5 | 78 | 23% |
-| [ForthInterpreter.kt](../src/jvmMain/kotlin/afield/lang/forth/ForthInterpreter.kt) | Languages | — | 5 | 38 | 15% |
+| [ForthInterpreter.kt](../src/jvmMain/kotlin/afield/lang/forth/ForthInterpreter.kt) | Languages | — | 5 | 38 | 17% |
 | [Spectral.kt](../src/jvmMain/kotlin/afield/audio/synth/Spectral.kt) | Synthesis | — | 5 | 32 | 33% |
 | [VisionMetal.kt](../src/jvmMain/kotlin/afield/graphics/visionos/VisionMetal.kt) | Graphics | — | 5 | 30 | 50% |
 | [execution.kt](../src/jvmMain/kotlin/afield/runtime/execution/execution.kt) | Workspace | — | 5 | 28 | 5% |
@@ -642,6 +643,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [OscQueryRemote.kt](../src/jvmMain/kotlin/afield/io/osc/query/OscQueryRemote.kt) | Networking | — | 0 | 12 | 29% |
 | [SyphonTexture.kt](../src/jvmMain/kotlin/afield/io/syphon/SyphonTexture.kt) | Graphics | — | 0 | 12 | 31% |
 | [HostTypes.kt](../src/jvmMain/kotlin/afield/lang/fieldml/type/HostTypes.kt) | Languages | — | 0 | 12 | 61% |
+| [ForthSteps.kt](../src/jvmMain/kotlin/afield/lang/forth/ForthSteps.kt) | Languages | — | 0 | 12 | 68% |
 | [RectSLSource.kt](../src/jvmMain/kotlin/afield/lang/rectsl/RectSLSource.kt) | Languages | — | 0 | 12 | 55% |
 | [StackSLCpuGallery.kt](../src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLCpuGallery.kt) | Languages | — | 0 | 12 | 56% |
 | [PuppetBrowserVrPanel.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowserVrPanel.kt) | Imaging | — | 0 | 12 | 20% |

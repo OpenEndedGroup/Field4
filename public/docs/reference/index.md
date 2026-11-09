@@ -663,7 +663,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**37649 public symbols across 1698 source files**, 22165 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**37698 public symbols across 1700 source files**, 22200 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -690,7 +690,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 40 | 1317 | 721 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 89 | 2332 | 1214 (52%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 586 | 586 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 126 | 3125 | 1540 (49%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 128 | 3174 | 1575 (49%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 239 | 3212 | 1294 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 95 | 2120 | 799 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 687 | 410 (59%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
@@ -1231,8 +1231,10 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [formatter.kt](workspace.md#formatter-kt) | Workspace · internal | 8 | 3 | Reformats a box's Kotlin or GLSL code. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [ForthDocsSupport.kt](workspace.md#forthdocssupport-kt) | Workspace · internal | 1 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>forth/<wbr></small> [ForthInterface.kt](languages.md#forthinterface-kt) | Languages | 14 | 14 | Makes ForthField a language a box can be written in. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>forth/<wbr></small> [ForthInterpreter.kt](languages.md#forthinterpreter-kt) | Languages | 51 | 8 | ForthField — a compact, extensible Forth used by Field4 for live coding. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>forth/<wbr></small> [ForthInterpreter.kt](languages.md#forthinterpreter-kt) | Languages | 52 | 9 | ForthField — a compact, extensible Forth used by Field4 for live coding. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>forth/<wbr></small> [ForthInterpreterSmokeTest.kt](examples.md#forthinterpretersmoketest-kt) | Examples · internal | 3 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>forth/<wbr></small> [ForthSteps.kt](languages.md#forthsteps-kt) | Languages | 41 | 28 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>forth/<wbr></small> [ForthStepsDocs.kt](languages.md#forthstepsdocs-kt) | Languages | 7 | 6 |  | [ForthField examples](../forth_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [FourVisualizers.kt](graphics.md#fourvisualizers-kt) | Graphics | 6 | 3 | Inline value printers for the Vulkan graphics types, so a renderer, buffer or texture shows as a readable table when a box prints it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>linalg/<wbr>arena/<wbr></small> [FrameArena.kt](math.md#framearena-kt) | Math | 18 | 3 | Per-thread scratch memory for temporary vectors, reclaimed all at once when a scope ends. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>buffers/<wbr></small> [FrameBufferGroup.kt](graphics.md#framebuffergroup-kt) | Graphics | 30 | 29 | FrameBufferGroup holds one Vulkan buffer per swapchain image, so data written for the current frame never overwrites a buffer an in-flight frame is still reading. |  |
