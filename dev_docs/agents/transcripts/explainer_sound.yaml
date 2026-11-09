@@ -877,9 +877,8 @@ operations:
       frame: { x: 700.0, y: 380.0, w: 150.0, h: 50.0 }
       properties:
         code: |
-          // A string held at both ends. Drag the orange point away from the string and let go to pluck it
-          // there; how far you pull is how hard. What follows is a sum of the string's modes, each a whole
-          // number of half waves, ringing at whole multiples of the lowest frequency, the high ones dying
+          // A string held at both ends. "pluck" pulls it aside at "pluck at" (the orange dot) and lets go.
+          // What follows is a sum of the string's modes, each a whole number of half waves, ringing at whole multiples of the lowest frequency, the high ones dying
           // away faster. "mode" shows one mode alone (0 shows the pluck); "length" stops the string short,
           // as a finger on a fret does.
           val n = 30
@@ -889,7 +888,6 @@ operations:
           var mode = 0
           var plucked = -10.0         // when the pluck happened, in seconds since launch
           var time = 0.0
-          var editing = false
 
           fun weight(k: Int) = depth * 2 / (k * k * PI * PI * at * (1 - at)) * sin(k * PI * at)
           fun decay(k: Int) = 2.5 / k.toDouble().pow(0.7)
@@ -939,33 +937,22 @@ operations:
                   if (mode > 0) sin(mode * PI * x) * cos(PI * mode * time)
                   else (1..n).sumOf { k -> weight(k) * sin(k * PI * x) * cos(PI * k * since) * exp(-since / decay(k)) }
               }
-              lines(scenery() + string(y), channel = "string", w = 640.0, h = 300.0)
+              val mark = fline { circle(left + (end() - left) * at, middle + 24, 6.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
+              lines(scenery() + string(y) + mark, channel = "string", w = 640.0, h = 300.0)
           }
 
-          // At rest the picture is a drawing you can edit: the string is scenery, the orange point is yours.
-          fun restingEditor() {
-              val handle = fline { moveTo(left + (end() - left) * at, middle); pointed = true; pointSize = 3.0; color = vec(1.0, 0.6, 0.2, 1.0) }
-              val still = (scenery() + string { 0.0 }).onEach { it.fixed = true }
-              lines(still + handle, channel = "string", w = 640.0, h = 300.0, editable = true) { edited ->
-                  val p = edited.last().nodes.first().to
-                  pluck(p.x.toDouble(), p.y.toDouble())
-              }
-          }
-
-          restingEditor()
-          editing = true
+          animate()
           controlGroup {
               keys("pluck", letters = "p") { _, down -> if (down) pluck(left + (end() - left) * at, middle - 130 * 0.8) }
+              slider("pluck at", 0.05, 0.5, step = 0.01, initialValue = 0.25) { at = it }
               slider("mode", 0.0, 6.0, step = 1.0, initialValue = 0.0) { mode = it.toInt() }
-              slider("length", 0.5, 1.0, step = 0.01, initialValue = 1.0) { length = it; if (editing) restingEditor() }
+              slider("length", 0.5, 1.0, step = 0.01, initialValue = 1.0) { length = it }
           }
 
           val start = AnimationClock.nowSeconds()
           loop {
               time = AnimationClock.nowSeconds() - start
-              val ringing = mode > 0 || time - plucked < 5
-              if (ringing) { animate(); editing = false }
-              else if (!editing) { restingEditor(); editing = true }
+              animate()
           } + audio(partials.reduce { a, b -> a + b }, gain = 0.15f)
   - create:
       box: es_pulsing_sphere
@@ -1934,7 +1921,9 @@ operations:
                           }
                           control("pluck", "mode", 0.0)
                           control("pluck", "length", 1.0)
-                          markdownNote("Drag the orange point off the string and let go: that is a pluck. Near an end sounds brighter. [[back]] [[next]]")
+                          control("pluck", "pluck at", 0.25)
+                          cue("Near the end") { control("pluck", "pluck at", 0.06, glideMs = 800) }
+                          markdownNote("Press **pluck** (or P); Next moves the pluck near the end, then pluck again: brighter. [[back]] [[next]]")
                       }
                       step("Shorter, tighter, lighter", id = "springs-fret") {
                           audience {
