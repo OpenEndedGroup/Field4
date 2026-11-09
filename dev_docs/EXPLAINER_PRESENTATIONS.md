@@ -284,6 +284,12 @@ a cue moves a control). Nothing here changes the deck format.
   orange `vec(1.0, 0.6, 0.2, 1.0)` for a second, white at 35 % alpha for guides. Sliders are named
   for the quantity in plain words (`frequency`, not `f`). Put controls in the `controls` channel and
   the picture in a named channel (`wave`, `scene`, `side`).
+- **Readouts** are `markdown("readout", "text with **numbers**")`, never HTML with inline styles:
+  the figure view sets readouts in Iosevka at its own size. Figure views force Iosevka on
+  everything anyway (`tools/test_presentation_fonts.py` keeps sans-serif out of the path).
+- **Animations** that redraw `lines(...)` in `loop { }` keep the first frame's framing by default
+  (`LinesFraming.Auto`); give `LinesFraming.fixed(x, y, w, h)` when the extent is known. No
+  invisible framing lines.
 - **Sound** never starts by itself. A figure that sounds has a `sound` checkbox (or hold buttons)
   and gain 0 until the reader or a cue (`control("x", "sound", true)`) turns it on. Every step that
   shows a sounding figure and should be silent declares `control("x", "sound", false)`, so Back is
