@@ -1,18 +1,21 @@
 # Place a world-space marker from binocular gaze
 
-The `openxr_eye_intersection` starting point draws a small white wire cube where the two
-HTC eye rays come closest. It follows the editable `Mesh` and shader pattern in
+The `openxr_eye_intersection` starting point draws a small white wire cube where the gaze
+rays of your two eyes come closest. It runs on any eye-tracking headset whose OpenXR runtime
+reports each eye separately. It follows the editable `Mesh` and shader pattern in
 `canonicalGraphics`, with direct OpenXR eye rendering as in `helloXR`. The renderer box
 is the scene box's parent. Launch the renderer first, wait for its window/headset views,
 then launch the scene. On macOS it shows a desktop reference scene without simulated eyes.
 
 [Open the starting point](offline.html?file=assets/agent_transcripts/openxr_eye_intersection/metadata.edn)
 
-Both extensions remain optional. `XR_HTC_eye_tracker` supplies the two origins and
-orientations needed for binocular depth. `XR_EXT_eye_gaze_interaction` supplies a single
-combined gaze pose, drawn as a dashed grey ray; it cannot by itself supply an intersection
-depth. Enable eye tracking and calibration in the headset runtime. The status panel shows
-which interfaces exist, per-eye validity, the HTC sample time, and why a marker is hidden.
+Field reads eye tracking through two OpenXR extensions, and the starter uses whichever ones the
+runtime offers. `XR_HTC_eye_tracker` gives each eye's origin and direction, which is what
+binocular depth needs. The `HTC` in its name says which vendor proposed it, not which headset
+you need: `xr.htcEyeState()` reads it from any runtime that implements it. `XR_EXT_eye_gaze_interaction` gives a
+single combined gaze pose, drawn as a dashed grey ray. A single ray cannot give an intersection
+depth. Enable eye tracking and calibration in the headset runtime. The status panel shows which
+extensions exist, per-eye validity, the per-eye sample time, and why a marker is hidden.
 
 ## Coordinate contract
 
@@ -42,7 +45,7 @@ sample before drawing the left eye and uses that same result for both rendered e
 ## Headset check
 
 1. Look at the grey reference cubes, whose world centres are `(0, 0, -1)`, `(0, 0, -2)`
-   and `(0, 0, -4)` metres. Cyan and orange are the HTC left and right rays; the white
+   and `(0, 0, -4)` metres. Cyan and orange are the left and right eye rays; the white
    marker should approach the fixation point. A magenta segment shows the accepted gap.
 2. Check **Hold the last valid marker in world space**, then translate and rotate your
    head while looking elsewhere. The reported WORLD position must stay constant and the
@@ -67,7 +70,7 @@ combined gaze. What you can check is the floor grid and the three grey reference
 // and the scene drawing its reference cubes and desktop ray
 ```
 
-**Nobody has run the four-step check above on an HTC-capable headset.** Tests cover the
+**Nobody has run the four-step check above on a headset with per-eye tracking.** Tests cover the
 coordinate conversion and the native bindings, and `dev_docs/OPENXR_EYE_INTERSECTION_AGREEMENT.md`
 says which; a real eye tracker's calibration is not among them.
 
