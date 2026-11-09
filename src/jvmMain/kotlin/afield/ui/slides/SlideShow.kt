@@ -541,8 +541,9 @@ class SlideShowInstance(
 
     /**
      * Run the figures the view on screen shows (stopping those the deck launched that it no longer
-     * shows), then apply its control values. A control whose box is still starting is tried again for
-     * a few seconds, unless the view changes first.
+     * shows), then apply its control values. A control whose box is still starting (compiling, or
+     * still showing the controls of its previous run) is tried again for up to fifteen seconds, unless
+     * the view changes first.
      */
     private fun syncFigures(cancelGlides: Boolean = true) {
         val figures = viewContent()?.figures.orEmpty()
@@ -553,7 +554,7 @@ class SlideShowInstance(
         if (missing.isEmpty()) return
         @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
         kotlinx.coroutines.GlobalScope.launch {
-            repeat(50) {
+            repeat(150) {
                 kotlinx.coroutines.delay(100)
                 if (generation != figureGeneration) return@launch
                 missing = figureStage.apply(missing, cancelGlides = false)
