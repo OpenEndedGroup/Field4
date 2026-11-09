@@ -1903,7 +1903,9 @@ data class ControllerControl(
     val columns: Int = 0,
     val states: Int = 0,
     val polar: Boolean = false,
-    val options: List<String> = emptyList()
+    val options: List<String> = emptyList(),
+    val hoverText: String? = null,
+    val hoverHtml: String? = null
 )
 
 /** A momentary button going down or coming back up. See `ControlGroupBuilder.button`. */

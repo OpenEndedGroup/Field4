@@ -20,6 +20,7 @@ import afield.ui.notation.with
 import afield.ui.output.button
 import afield.ui.output.column
 import afield.ui.output.controlGroup
+import afield.ui.output.controlHoverAttribute
 import afield.ui.output.slider
 import afield.ui.output.sliders
 import afield.ui.output.templates.filter
@@ -208,6 +209,7 @@ private fun <T> ControlGroupBuilder.arrayControl(
     fromValue: (T) -> List<Double>,
     html: (id: String, values: List<Double>) -> String,
     onUpdate: (T) -> Unit,
+    hoverText: String? = null,
     shape: (ControllerControl) -> ControllerControl = { it }
 ): ControlValueHandle<T> = addControl(
     type,
@@ -217,7 +219,7 @@ private fun <T> ControlGroupBuilder.arrayControl(
         val values = restored ?: sanitize(fromValue(initial))
         arrayCallbacks.register(id, { values: List<Double> -> onUpdate(toValue(sanitize(values))) })
         if (restored != null) onUpdate(toValue(restored))
-        html(id, values) to shape(ControllerControl(id = id, type = type, label = label, text = encodeValues(values)))
+        html(id, values) to shape(ControllerControl(id = id, type = type, label = label, text = encodeValues(values), hoverText = hoverText))
     },
     read = { control -> decodeValues(control.text, size)?.let(toValue) },
     write = { old, next -> old.copy(text = encodeValues(sanitize(fromValue(next)))) }
@@ -229,12 +231,37 @@ private fun polarSurface(classes: String, size: Int) =
 
 private fun polarAttribute(polar: Boolean) = if (polar) """ data-polar="true"""" else ""
 
-private fun controlShell(kind: String, id: String, label: String, attributes: String, body: String) = """
+private fun controlShell(kind: String, id: String, label: String, attributes: String, body: String, hoverText: String? = null) = """
     <div class="field-control field-array field-$kind" data-kind="$kind" data-control-id="$id" $attributes>
-        <div class="field-header"><span class="field-label">${escapeHtml(label)}</span><span class="field-value array-readout"></span></div>
+        <div class="field-header"><span class="field-label"${controlHoverAttribute(hoverText)}>${escapeHtml(label)}</span><span class="field-value array-readout"></span></div>
         $body
     </div>
 """.trimIndent()
+
+// Preserve calls that passed their callbacks positionally before hoverText was added.
+fun ControlGroupBuilder.multiSlider(label: String, count: Int = 16, min: Double = 0.0, max: Double = 1.0,
+    step: Double = 0.0, initialValues: List<Double> = List(count) { min }, height: Int = 96,
+    polar: Boolean = false, size: Int = 240, callback: (List<Double>) -> Unit) =
+    multiSlider(label, count, min, max, step, initialValues, height, polar, size, hoverText = null, onUpdate = callback)
+fun ControlGroupBuilder.matrix(label: String, rows: Int = 4, columns: Int = 8,
+    initialValue: List<List<Boolean>> = emptyList(), polar: Boolean = false, size: Int = 240,
+    callback: (List<List<Boolean>>) -> Unit) =
+    matrix(label, rows, columns, initialValue, polar, size, hoverText = null, onUpdate = callback)
+fun ControlGroupBuilder.matrix(label: String, rows: Int = 4, columns: Int = 8, states: Int,
+    initialValue: List<List<Int>> = emptyList(), polar: Boolean = false, size: Int = 240,
+    callback: (List<List<Int>>) -> Unit) =
+    matrix(label, rows, columns, states, initialValue, polar, size, hoverText = null, onUpdate = callback)
+fun ControlGroupBuilder.rangeSlider(label: String, min: Double = 0.0, max: Double = 1.0, step: Double = 0.0,
+    initialValue: ClosedFloatingPointRange<Double> = min..max, polar: Boolean = false, size: Int = 240,
+    callback: (ClosedFloatingPointRange<Double>) -> Unit) =
+    rangeSlider(label, min, max, step, initialValue, polar, size, hoverText = null, onUpdate = callback)
+fun ControlGroupBuilder.menu(label: String, options: List<String>, initialIndex: Int = 0,
+    callback: (Int, String) -> Unit) = menu(label, options, initialIndex, hoverText = null, onUpdate = callback)
+fun ControlGroupBuilder.gesture(label: String, xRange: Pair<Double, Double> = -1.0 to 1.0,
+    yRange: Pair<Double, Double> = -1.0 to 1.0, initialValue: Vector2f = Vector2f(0f, 0f),
+    initialTake: List<Pair<Double, Vector2f>> = emptyList(), size: Int = 240, pen: Boolean = false,
+    callback: (Vector2f) -> Unit) =
+    gesture(label, xRange, yRange, initialValue, initialTake, size, pen, hoverText = null, onUpdate = callback)
 
 /**
  * Adds a bank of [count] vertical sliders, edited by sweeping across them — Max's `multislider`.
@@ -259,6 +286,7 @@ private fun controlShell(kind: String, id: String, label: String, attributes: St
  * @param polar draw the bars as wedges around a circle — angle picks the bar, distance from the
  *   centre sets its value — for a step sequence that reads as a loop
  * @param size width and height of the polar dial in pixels
+ * @param hoverText optional Markdown help shown at the label
  * @param onUpdate called with every bar's value, left to right, as the bars change
  */
 fun ControlGroupBuilder.multiSlider(
@@ -271,6 +299,7 @@ fun ControlGroupBuilder.multiSlider(
     height: Int = 96,
     polar: Boolean = false,
     size: Int = 240,
+    hoverText: String? = null,
     onUpdate: (List<Double>) -> Unit
 ): ArrayControlHandle<List<Double>> {
     require(count in 1..512) { "multiSlider count must be between 1 and 512" }
@@ -282,9 +311,10 @@ fun ControlGroupBuilder.multiSlider(
             "multislider", id, label,
             """data-min="$min" data-max="$max" data-step="$step" data-count="$count" data-values="${encodeValues(values)}"${polarAttribute(polar)}""",
             if (polar) polarSurface("multislider-visual", size)
-            else """<svg class="array-visual multislider-visual" viewBox="0 0 $count 1" preserveAspectRatio="none" style="height:${height}px"></svg>"""
+            else """<svg class="array-visual multislider-visual" viewBox="0 0 $count 1" preserveAspectRatio="none" style="height:${height}px"></svg>""",
+            hoverText
         )
-    }, onUpdate) { it.copy(min = min, max = max, step = step, columns = count, polar = polar) })
+    }, onUpdate, hoverText) { it.copy(min = min, max = max, step = step, columns = count, polar = polar) })
 }
 
 /**
@@ -307,6 +337,7 @@ fun ControlGroupBuilder.multiSlider(
  * @param initialValue cells used when no cached value exists; missing cells are off
  * @param polar draw rows as rings (row 0 outermost) and columns as sectors, clockwise from the top
  * @param size width and height of the polar dial in pixels
+ * @param hoverText optional Markdown help shown at the label
  * @param onUpdate called with the whole grid whenever a cell changes
  */
 fun ControlGroupBuilder.matrix(
@@ -316,11 +347,12 @@ fun ControlGroupBuilder.matrix(
     initialValue: List<List<Boolean>> = emptyList(),
     polar: Boolean = false,
     size: Int = 240,
+    hoverText: String? = null,
     onUpdate: (List<List<Boolean>>) -> Unit
 ): ArrayControlHandle<List<List<Boolean>>> = matrixControl(
     label, rows, columns, 2,
     toCell = { it != 0 }, fromCell = { if (it == true) 1 else 0 },
-    initialValue, polar, size, onUpdate
+    initialValue, polar, size, hoverText, onUpdate
 )
 
 /**
@@ -344,6 +376,7 @@ fun ControlGroupBuilder.matrix(
  * @param initialValue cells used when no cached value exists; missing cells are 0, others are clamped
  * @param polar draw rows as rings (row 0 outermost) and columns as sectors, clockwise from the top
  * @param size width and height of the polar dial in pixels
+ * @param hoverText optional Markdown help shown at the label
  * @param onUpdate called with the whole grid whenever a cell changes
  */
 fun ControlGroupBuilder.matrix(
@@ -354,11 +387,12 @@ fun ControlGroupBuilder.matrix(
     initialValue: List<List<Int>> = emptyList(),
     polar: Boolean = false,
     size: Int = 240,
+    hoverText: String? = null,
     onUpdate: (List<List<Int>>) -> Unit
 ): ArrayControlHandle<List<List<Int>>> = matrixControl(
     label, rows, columns, states,
     toCell = { it }, fromCell = { it ?: 0 },
-    initialValue, polar, size, onUpdate
+    initialValue, polar, size, hoverText, onUpdate
 )
 
 private fun <C> ControlGroupBuilder.matrixControl(
@@ -371,6 +405,7 @@ private fun <C> ControlGroupBuilder.matrixControl(
     initialValue: List<List<C>>,
     polar: Boolean,
     size: Int,
+    hoverText: String?,
     onUpdate: (List<List<C>>) -> Unit
 ): ArrayControlHandle<List<List<C>>> {
     require(rows in 1..64 && columns in 1..64) { "matrix rows and columns must be between 1 and 64" }
@@ -388,9 +423,10 @@ private fun <C> ControlGroupBuilder.matrixControl(
             "matrix", id, label,
             """data-rows="$rows" data-columns="$columns" data-states="$states" data-values="${encodeValues(values)}"${polarAttribute(polar)}""",
             if (polar) polarSurface("matrix-visual matrix-polar", size)
-            else """<div class="array-visual matrix-visual" style="grid-template-columns:repeat($columns,1fr)"></div>"""
+            else """<div class="array-visual matrix-visual" style="grid-template-columns:repeat($columns,1fr)"></div>""",
+            hoverText
         )
-    }, onUpdate) { it.copy(rows = rows, columns = columns, states = states, polar = polar) })
+    }, onUpdate, hoverText) { it.copy(rows = rows, columns = columns, states = states, polar = polar) })
 }
 
 /**
@@ -418,6 +454,7 @@ private fun <C> ControlGroupBuilder.matrixControl(
  * @param initialValue interval used when no cached value exists
  * @param polar draw the track as a full circle on which the interval may wrap through `max` to `min`
  * @param size width and height of the polar dial in pixels
+ * @param hoverText optional Markdown help shown at the label
  * @param onUpdate called with the interval as either end moves
  */
 fun ControlGroupBuilder.rangeSlider(
@@ -428,6 +465,7 @@ fun ControlGroupBuilder.rangeSlider(
     initialValue: ClosedFloatingPointRange<Double> = min..max,
     polar: Boolean = false,
     size: Int = 240,
+    hoverText: String? = null,
     onUpdate: (ClosedFloatingPointRange<Double>) -> Unit
 ): ArrayControlHandle<ClosedFloatingPointRange<Double>> {
     val sanitize = { values: List<Double> ->
@@ -443,9 +481,10 @@ fun ControlGroupBuilder.rangeSlider(
                 "range", id, label,
                 """data-min="$min" data-max="$max" data-step="$step" data-values="${encodeValues(values)}"${polarAttribute(polar)}""",
                 if (polar) polarSurface("range-visual range-polar", size)
-                else """<div class="array-visual range-visual"><div class="range-track"></div><div class="range-fill"></div><div class="range-thumb" data-end="0"></div><div class="range-thumb" data-end="1"></div><div class="range-playhead"></div></div>"""
+                else """<div class="array-visual range-visual"><div class="range-track"></div><div class="range-fill"></div><div class="range-thumb" data-end="0"></div><div class="range-thumb" data-end="1"></div><div class="range-playhead"></div></div>""",
+                hoverText
             )
-        }, onUpdate
+        }, onUpdate, hoverText
     ) { it.copy(min = min, max = max, step = step, polar = polar) })
 }
 
@@ -461,12 +500,14 @@ fun ControlGroupBuilder.rangeSlider(
  * @param label text shown beside the menu
  * @param options the choices, in order
  * @param initialIndex choice used when no cached value exists
+ * @param hoverText optional Markdown help shown at the label
  * @param onUpdate called with the chosen index and its text
  */
 fun ControlGroupBuilder.menu(
     label: String,
     options: List<String>,
     initialIndex: Int = 0,
+    hoverText: String? = null,
     onUpdate: (index: Int, option: String) -> Unit
 ): ControlValueHandle<Int> {
     require(options.isNotEmpty()) { "menu needs at least one option" }
@@ -480,11 +521,11 @@ fun ControlGroupBuilder.menu(
         }.joinToString("")
         """
             <div class="field-control field-array field-menu" data-kind="menu" data-control-id="$id" data-values="$chosen">
-                <label class="field-label" for="$id">${escapeHtml(label)}</label>
+                <label class="field-label" for="$id"${controlHoverAttribute(hoverText)}>${escapeHtml(label)}</label>
                 <select class="field-menu-select" id="$id">$items</select>
             </div>
         """.trimIndent()
-    }, { onUpdate(it, options[it]) }) { it.copy(options = options) }
+    }, { onUpdate(it, options[it]) }, hoverText) { it.copy(options = options) }
 }
 
 /**
@@ -711,6 +752,7 @@ data class PenSample(
  * @param size width and height of the pad in pixels
  * @param pen record what the pointer reports besides its position — pressure, tilt and twist, as a
  *   pen or stylus gives them ([GestureHandle.penSamples]) — with each sample of a take
+ * @param hoverText optional Markdown help shown at the label
  * @param onUpdate called with the position as you drag
  */
 fun ControlGroupBuilder.gesture(
@@ -721,6 +763,7 @@ fun ControlGroupBuilder.gesture(
     initialTake: List<Pair<Double, Vector2f>> = emptyList(),
     size: Int = 240,
     pen: Boolean = false,
+    hoverText: String? = null,
     onUpdate: (Vector2f) -> Unit
 ): GestureHandle {
     val (x0, x1) = xRange
@@ -765,12 +808,12 @@ fun ControlGroupBuilder.gesture(
             val html = controlShell(
                 "gesture", id, label,
                 """data-x-min="$x0" data-x-max="$x1" data-y-min="$y0" data-y-max="$y1" data-x="$x" data-y="$y"${if (pen) " data-stride=\"7\"" else ""} data-values="${encodeValues(restoredTake)}"""",
-                polarSurface("gesture-visual", size)
+                polarSurface("gesture-visual", size), hoverText
             )
             html to ControllerControl(
                 id = id, type = "gesture", label = label, text = encodeValues(restoredTake),
                 xMin = x0, xMax = x1, yMin = y0, yMax = y1, x = x, y = y,
-                columns = if (pen) GestureHandle.PEN_STRIDE else 0
+                columns = if (pen) GestureHandle.PEN_STRIDE else 0, hoverText = hoverText
             )
         },
         read = { c -> c.text?.split(',')?.mapNotNull { it.trim().toDoubleOrNull() } },

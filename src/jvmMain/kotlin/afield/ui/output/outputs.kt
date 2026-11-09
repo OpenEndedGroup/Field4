@@ -1134,6 +1134,7 @@ fun Box.transcript(channel: String = "transcript") {
  * @param max largest selectable value
  * @param step increment used for interaction and displayed precision
  * @param initialValue value shown when the control is created
+ * @param hoverText optional Markdown help shown at the label
  * @param onUpdate callback invoked with the selected value
  */
 data class SliderConfig(
@@ -1142,8 +1143,21 @@ data class SliderConfig(
     val max: Double = 1.0,
     val step: Double = 100.0,
     val initialValue: Double = 0.0,
+    val hoverText: String? = null,
     val onUpdate: (Double) -> Unit
-)
+) {
+    constructor(label: String, min: Double = 0.0, max: Double = 1.0, step: Double = 100.0,
+                initialValue: Double = 0.0, callback: (Double) -> Unit) :
+        this(label, min, max, step, initialValue, null, callback)
+}
+
+/** Markdown source and rendered fragment, escaped for HTML attributes. */
+internal fun controlHoverAttribute(text: String?): String {
+    if (text.isNullOrBlank()) return ""
+    fun attribute(value: String) = value.replace("&", "&amp;").replace("\"", "&quot;")
+        .replace("<", "&lt;").replace(">", "&gt;").replace("\n", "&#10;").replace("\r", "&#13;")
+    return " data-hover-text=\"${attribute(text)}\" data-hover-html=\"${attribute(FieldMarkdown.render(text))}\""
+}
 
 // Global registry for slider callbacks
 private val sliderCallbacks = OwnedCallbackRegistry<(Double) -> Unit>("slider")
@@ -1244,6 +1258,7 @@ internal fun FLineClick.toIntersection(): FLineIntersection = FLineIntersection(
  * @param lawExponent taper strength for [ControlLaw.EXPONENTIAL] and [ControlLaw.BIPOLAR]
  * @param lawCenter the value at mid-travel for [ControlLaw.BIPOLAR]; defaults to the range's midpoint
  * @param significantDigits digits shown, or `0` to derive the decimal count from [step] as before
+ * @param hoverText optional Markdown help shown at the label
  * @param onUpdate callback invoked with the selected value
  */
 fun Box.slider(
@@ -1257,13 +1272,14 @@ fun Box.slider(
     lawExponent: Double = 2.0,
     lawCenter: Double = (min + max) / 2,
     significantDigits: Int = defaultSignificantDigits(law),
+    hoverText: String? = null,
     onUpdate: (Double) -> Unit
 ) {
     val sliderId = "slider-${UUID.randomUUID()}"
     registerSliderCallback(sliderId, onUpdate)
 
     val spec = ControlLawSpec(law, min, max, lawExponent, lawCenter).also { it.validate(label) }
-    val html = buildSliderHtml(sliderId, label, min, max, step, initialValue, spec, significantDigits)
+    val html = buildSliderHtml(sliderId, label, min, max, step, initialValue, spec, significantDigits, hoverText = hoverText)
     display(channel, html)
 }
 
@@ -1287,7 +1303,7 @@ fun Box.sliders(
         configs.forEach { (id, config) ->
             val sliderId = "slider-$id-${UUID.randomUUID()}"
             registerSliderCallback(sliderId, config.onUpdate)
-            append(buildSliderHtml(sliderId, config.label, config.min, config.max, config.step, config.initialValue))
+            append(buildSliderHtml(sliderId, config.label, config.min, config.max, config.step, config.initialValue, hoverText = config.hoverText))
         }
         append("</div>")
     }
@@ -1319,6 +1335,7 @@ internal fun buildSliderHtml(
     // What a double-click on the track (or Backspace on a focused slider) returns to.
     defaultValue: Double = value,
     ariaLabel: String = label,
+    hoverText: String? = null,
 ): String {
     val stepDecimals = calculateDecimalPlaces(step)
     val clampedValue = value.coerceIn(minOf(min, max), maxOf(min, max))
@@ -1366,7 +1383,7 @@ internal fun buildSliderHtml(
              data-padding="$padding"
              tabindex="0" role="slider" aria-label="${ariaLabel.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")}"
              aria-valuemin="${minOf(min, max)}" aria-valuemax="${maxOf(min, max)}" aria-valuenow="$clampedValue"$ownAttributes>
-            <span class="field-label" title="${label.replace("\"", "&quot;")}">$label</span>
+            <span class="field-label"${if (hoverText.isNullOrBlank()) " title=\"${label.replace("\"", "&quot;")}\"" else controlHoverAttribute(hoverText)}>$label</span>
             <svg class="field-slider-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMinYMid meet">
                 <rect x="0" y="0" width="$viewWidth" height="$viewHeight" class="slider-hitbox"></rect>
                 $ticks$zeroMark$defaultNotch
@@ -1415,7 +1432,8 @@ private fun buildVec2Html(
     step: Double,
     decimalPlaces: Int,
     initialValue: Vector2f,
-    defaultValue: Vector2f = initialValue
+    defaultValue: Vector2f = initialValue,
+    hoverText: String? = null
 ): String {
     val viewSize = 150
     val padding = 10
@@ -1474,7 +1492,7 @@ private fun buildVec2Html(
              data-view-size="$viewSize"
              data-padding="$padding">
             <div class="vec2-shell">
-                <span class="field-label vec2-tl">$label</span>
+                <span class="field-label vec2-tl"${controlHoverAttribute(hoverText)}>$label</span>
                 <span class="field-value vec2-tr" id="${controlId}-value">(${formattedX}, ${formattedY})</span>
                 <span class="field-value vec2-angle" id="${controlId}-angle">${String.format("θ %.0f°", angleDeg)}</span>
                 <svg class="vec2-visual vec2-center" viewBox="0 0 $viewSize $viewSize" preserveAspectRatio="xMidYMid meet"
@@ -1505,6 +1523,7 @@ fun Box.vec2Control(
     yRange: Pair<Double, Double> = -1.0 to 1.0,
     step: Double = 0.01,
     channel: String = "controls",
+    hoverText: String? = null,
     onUpdate: (Vector2f) -> Unit
 ) {
     val controlId = "vec2-${UUID.randomUUID()}"
@@ -1518,7 +1537,8 @@ fun Box.vec2Control(
         yRange = yRange,
         step = step,
         decimalPlaces = decimalPlaces,
-        initialValue = initialValue
+        initialValue = initialValue,
+        hoverText = hoverText
     )
     display(channel, html)
 }
@@ -1534,11 +1554,11 @@ internal fun getCheckboxCallback(controlId: String): ((Boolean) -> Unit)? {
     return checkboxCallbacks[controlId]
 }
 
-private fun buildCheckboxHtml(controlId: String, label: String, initialValue: Boolean): String {
+private fun buildCheckboxHtml(controlId: String, label: String, initialValue: Boolean, hoverText: String? = null): String {
     val checkedAttr = if (initialValue) "checked" else ""
     return """
         <div class="field-control field-checkbox">
-            <label class="field-label" for="$controlId" style="flex:0 0 auto;">$label</label>
+            <label class="field-label" for="$controlId" style="flex:0 0 auto;"${controlHoverAttribute(hoverText)}>$label</label>
             <input type="checkbox" class="checkbox-toggle" id="$controlId" $checkedAttr onchange="handleCheckboxInput(this)" />
         </div>
     """.trimIndent()
@@ -1548,11 +1568,12 @@ fun Box.checkbox(
     label: String,
     initialValue: Boolean = false,
     channel: String = "controls",
+    hoverText: String? = null,
     onUpdate: (Boolean) -> Unit
 ) {
     val controlId = "checkbox-${UUID.randomUUID()}"
     registerCheckboxCallback(controlId, onUpdate)
-    val html = buildCheckboxHtml(controlId, label, initialValue)
+    val html = buildCheckboxHtml(controlId, label, initialValue, hoverText)
     display(channel, html)
 }
 
@@ -1575,11 +1596,11 @@ internal fun getStringCallback(controlId: String): ((String) -> Unit)? {
     return stringCallbacks[controlId]
 }
 
-private fun buildStringInputHtml(controlId: String, label: String, initialValue: String): String {
+private fun buildStringInputHtml(controlId: String, label: String, initialValue: String, hoverText: String? = null): String {
     val escapedValue = initialValue.replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
     return """
         <div class="field-control field-text">
-            <label class="field-label" for="$controlId" style="flex:0 0 auto;">$label</label>
+            <label class="field-label" for="$controlId" style="flex:0 0 auto;"${controlHoverAttribute(hoverText)}>$label</label>
             <input type="text" class="field-text-input" id="$controlId" value="$escapedValue" onchange="handleStringInput(this)" />
         </div>
     """.trimIndent()
@@ -1589,12 +1610,13 @@ fun Box.stringInput(
     label: String,
     initialValue: String = "",
     channel: String = "controls",
+    hoverText: String? = null,
     onUpdate: (String) -> Unit
 ) {
     val controlId = "string-${UUID.randomUUID()}"
     registerStringCallback(controlId, onUpdate)
 
-    val html = buildStringInputHtml(controlId, label, initialValue)
+    val html = buildStringInputHtml(controlId, label, initialValue, hoverText)
     display(channel, html)
 }
 
@@ -1618,12 +1640,12 @@ fun storeFileUploadData(controlId: String, files: List<FileUploadEntry>) {
 
 fun getFileUploadData(controlId: String): List<FileUploadEntry>? = fileUploadData[controlId]
 
-private fun buildFileUploadHtml(controlId: String, label: String, accept: String, multiple: Boolean): String {
+private fun buildFileUploadHtml(controlId: String, label: String, accept: String, multiple: Boolean, hoverText: String? = null): String {
     val multipleAttr = if (multiple) "multiple" else ""
     val acceptAttr = if (accept.isNotEmpty()) "accept=\"$accept\"" else ""
     return """
         <div class="field-control field-file-upload">
-            <label class="field-label" style="flex:0 0 auto;">$label</label>
+            <label class="field-label" style="flex:0 0 auto;"${controlHoverAttribute(hoverText)}>$label</label>
             <input type="file" id="$controlId" $acceptAttr $multipleAttr onchange="handleFileUploadInput(this)" style="flex:1 1 auto;" />
             <span class="field-value" id="${controlId}-status"></span>
         </div>
@@ -1635,11 +1657,12 @@ fun Box.fileUpload(
     accept: String = "",
     multiple: Boolean = false,
     channel: String = "controls",
+    hoverText: String? = null,
     onUpload: (List<FileUploadEntry>) -> Unit
 ) {
     val controlId = "file-upload-${UUID.randomUUID()}"
     registerFileUploadCallback(controlId, onUpload)
-    val html = buildFileUploadHtml(controlId, label, accept, multiple)
+    val html = buildFileUploadHtml(controlId, label, accept, multiple, hoverText)
     display(channel, html)
 }
 
@@ -1657,7 +1680,8 @@ internal fun getColorCallback(controlId: String): ((Vector4f) -> Unit)? {
 private fun buildColorPickerHtml(
     controlId: String,
     label: String,
-    initialValue: Vector4f
+    initialValue: Vector4f,
+    hoverText: String? = null
 ): String {
     val r = (initialValue.x * 255).toInt().coerceIn(0, 255)
     val g = (initialValue.y * 255).toInt().coerceIn(0, 255)
@@ -1674,7 +1698,7 @@ private fun buildColorPickerHtml(
     return """
         <div class="field-control field-color">
             <div class="field-header">
-                <span class="field-label">$label</span>
+                <span class="field-label"${controlHoverAttribute(hoverText)}>$label</span>
                 <span class="field-value" id="${controlId}-value">${String.format(java.util.Locale.ROOT, "rgba(<span class=\"rgba-r\">%.2f</span>, <span class=\"rgba-g\">%.2f</span>, <span class=\"rgba-b\">%.2f</span>, <span class=\"rgba-a\">%.2f</span>)", initialValue.x, initialValue.y, initialValue.z, initialValue.w)}</span>
             </div>
             <div class="color-row">
@@ -1707,11 +1731,12 @@ fun Box.colorPicker(
     label: String,
     initialValue: Vector4f = Vector4f(1.0f, 1.0f, 1.0f, 1.0f),
     channel: String = "controls",
+    hoverText: String? = null,
     onUpdate: (Vector4f) -> Unit
 ) {
     val controlId = "color-${UUID.randomUUID()}"
     registerColorCallback(controlId, onUpdate)
-    val html = buildColorPickerHtml(controlId, label, initialValue)
+    val html = buildColorPickerHtml(controlId, label, initialValue, hoverText)
     display(channel, html)
 }
 
@@ -1733,7 +1758,7 @@ internal fun getButtonCallback(controlId: String): ((Boolean) -> Unit)? = button
  * one event and this control has two, so `sliders.js` wires `pointerdown`/`pointerup` — plus the window
  * listeners that stop a pointer released elsewhere from leaving the button held down.
  */
-internal fun buildButtonHtml(controlId: String, label: String, hit: String = "hold"): String {
+internal fun buildButtonHtml(controlId: String, label: String, hit: String = "hold", hoverText: String? = null): String {
     fun esc(t: String) = t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         .replace("\"", "&quot;")
     val escaped = esc(label)
@@ -1742,7 +1767,7 @@ internal fun buildButtonHtml(controlId: String, label: String, hit: String = "ho
     val accessibleLabel = if (icon) " aria-label=\"${if (escaped.isEmpty()) "Hold" else "Hold $escaped"}\"" else ""
     return """
         <div class="field-control field-button" data-control-id="$controlId">
-            ${if (escaped.isEmpty()) "" else "<span class=\"field-label\">$escaped</span>"}
+            ${if (escaped.isEmpty()) "" else "<span class=\"field-label\"${controlHoverAttribute(hoverText)}>$escaped</span>"}
             <button type="button" class="field-button-hit${if (icon) " field-button-icon" else ""}" id="$controlId" aria-pressed="false"$accessibleLabel>$hitContent</button>
         </div>
     """.trimIndent()
@@ -1763,17 +1788,43 @@ internal fun buildButtonHtml(controlId: String, label: String, hit: String = "ho
  *
  * @param label text shown beside the button
  * @param channel output disclosure that receives the control
+ * @param hoverText optional Markdown help shown at the label
  * @param onUpdate called with `true` on the way down and `false` on the way up
  */
 fun Box.button(
     label: String,
     channel: String = "controls",
+    hoverText: String? = null,
     onUpdate: (Boolean) -> Unit
 ) {
     val controlId = "button-${UUID.randomUUID()}"
     registerButtonCallback(controlId, onUpdate)
-    display(channel, buildButtonHtml(controlId, label))
+    display(channel, buildButtonHtml(controlId, label, hoverText = hoverText))
 }
+
+// Keep the pre-hover-text positional callback forms source and binary compatible.
+fun Box.slider(label: String, min: Double = 0.0, max: Double = 1.0, step: Double = 0.01,
+               initialValue: Double = (min + max) / 2, channel: String = "controls",
+               law: ControlLaw = ControlLaw.LINEAR, lawExponent: Double = 2.0,
+               lawCenter: Double = (min + max) / 2, significantDigits: Int = defaultSignificantDigits(law),
+               callback: (Double) -> Unit) =
+    slider(label, min, max, step, initialValue, channel, law, lawExponent, lawCenter, significantDigits,
+        hoverText = null, onUpdate = callback)
+fun Box.checkbox(label: String, initialValue: Boolean = false, channel: String = "controls", callback: (Boolean) -> Unit) =
+    checkbox(label, initialValue, channel, hoverText = null, onUpdate = callback)
+fun Box.button(label: String, channel: String = "controls", callback: (Boolean) -> Unit) =
+    button(label, channel, hoverText = null, onUpdate = callback)
+fun Box.stringInput(label: String, initialValue: String = "", channel: String = "controls", callback: (String) -> Unit) =
+    stringInput(label, initialValue, channel, hoverText = null, onUpdate = callback)
+fun Box.colorPicker(label: String, initialValue: Vector4f = Vector4f(1f, 1f, 1f, 1f), channel: String = "controls",
+                    callback: (Vector4f) -> Unit) = colorPicker(label, initialValue, channel, hoverText = null, onUpdate = callback)
+fun Box.vec2Control(label: String, initialValue: Vector2f = Vector2f(0f, 0f),
+                    xRange: Pair<Double, Double> = -1.0 to 1.0, yRange: Pair<Double, Double> = -1.0 to 1.0,
+                    step: Double = 0.01, channel: String = "controls", callback: (Vector2f) -> Unit) =
+    vec2Control(label, initialValue, xRange, yRange, step, channel, hoverText = null, onUpdate = callback)
+fun Box.fileUpload(label: String = "Upload", accept: String = "", multiple: Boolean = false,
+                   channel: String = "controls", callback: (List<FileUploadEntry>) -> Unit) =
+    fileUpload(label, accept, multiple, channel, hoverText = null, onUpload = callback)
 
 // Read-only meter control -------------------------------------------------
 
@@ -1790,7 +1841,8 @@ private fun buildMeterHtml(
     value: Double,
     spec: ControlLawSpec,
     significantDigits: Int,
-    decimalPlaces: Int
+    decimalPlaces: Int,
+    hoverText: String? = null
 ): String {
     val escaped = label.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     val viewWidth = 320
@@ -1815,7 +1867,7 @@ private fun buildMeterHtml(
              data-value="$clamped"
              data-view-width="$viewWidth"
              data-padding="$padding">
-            <span class="field-label">$escaped</span>
+            <span class="field-label"${controlHoverAttribute(hoverText)}>$escaped</span>
             <svg class="field-meter-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMinYMid meet">
                 <line x1="$padding" y1="$centerY" x2="${viewWidth - padding}" y2="$centerY" class="meter-track"></line>
                 <rect x="$padding" y="${centerY - 4}" width="$width" height="8" class="meter-fill"></rect>
@@ -2005,6 +2057,7 @@ private fun controlGroupStoredValue(control: ControllerControl): LinkedHashMap<S
         this["lawExponent"] = control.lawExponent
         this["lawCenter"] = control.lawCenter
         this["significantDigits"] = control.significantDigits
+        this["hoverText"] = control.hoverText
         entries.removeIf { it.value == null }
     }
 
@@ -2056,7 +2109,8 @@ private fun controlGroupControlFromStored(cacheKey: String, id: String, stored: 
         law = stored["law"]?.toString() ?: "linear",
         lawExponent = controlGroupNumber(stored["lawExponent"]) ?: 2.0,
         lawCenter = controlGroupNumber(stored["lawCenter"]) ?: 0.0,
-        significantDigits = controlGroupNumber(stored["significantDigits"])?.toInt() ?: 0
+        significantDigits = controlGroupNumber(stored["significantDigits"])?.toInt() ?: 0,
+        hoverText = stored["hoverText"]?.toString()
     )
 }
 
@@ -2124,7 +2178,9 @@ private fun Box.updateCachedControlGroupValueInMemory(control: ControllerControl
 
 internal fun registerControllerControlGroup(box: Box, channel: String, controls: List<ControllerControl>) {
     val key = controllerControlGroupKey(box.id, channel)
-    controllerControlGroups[key] = controls
+    controllerControlGroups[key] = controls.map { control ->
+        control.copy(hoverHtml = control.hoverText?.takeUnless { it.isBlank() }?.let(FieldMarkdown::render))
+    }
     controllerControlGroupBoxes[key] = box
     // A rebuild is the only reliable signal that a meter is gone: the box just said what it has, so
     // anything sampled for this group and no longer declared has nobody looking at it.
@@ -2256,6 +2312,32 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
     /** The output channel this group is shown in. */
     internal val ownerChannel: String get() = channel
 
+    // Retain calls which pass the callback positionally inside parentheses, as well as trailing lambdas.
+    fun slider(label: String, min: Double = 0.0, max: Double = 1.0, step: Double = 0.01,
+               initialValue: Double = (min + max) / 2, law: ControlLaw = ControlLaw.LINEAR,
+               lawExponent: Double = 2.0, lawCenter: Double = (min + max) / 2,
+               significantDigits: Int = defaultSignificantDigits(law), callback: (Double) -> Unit) =
+        slider(label, min, max, step, initialValue, law, lawExponent, lawCenter, significantDigits,
+            hoverText = null, onUpdate = callback)
+    fun checkbox(label: String, initialValue: Boolean = false, callback: (Boolean) -> Unit) =
+        checkbox(label, initialValue, hoverText = null, onUpdate = callback)
+    fun button(label: String, callback: (Boolean) -> Unit) = button(label, hoverText = null, onUpdate = callback)
+    fun text(label: String, initialValue: String = "", callback: (String) -> Unit) =
+        text(label, initialValue, hoverText = null, onUpdate = callback)
+    fun stringInput(label: String, initialValue: String = "", callback: (String) -> Unit) =
+        stringInput(label, initialValue, hoverText = null, onUpdate = callback)
+    fun colorPicker(label: String, initialValue: Vector4f = Vector4f(1f, 1f, 1f, 1f), callback: (Vector4f) -> Unit) =
+        colorPicker(label, initialValue, hoverText = null, onUpdate = callback)
+    fun vec2Control(label: String, initialValue: Vector2f = Vector2f(0f, 0f),
+                    xRange: Pair<Double, Double> = -1.0 to 1.0, yRange: Pair<Double, Double> = -1.0 to 1.0,
+                    step: Double = 0.01, callback: (Vector2f) -> Unit) =
+        vec2Control(label, initialValue, xRange, yRange, step, hoverText = null, onUpdate = callback)
+    fun meter(label: String, min: Double = 0.0, max: Double = 1.0, initialValue: Double = min,
+              law: ControlLaw = ControlLaw.LINEAR, lawExponent: Double = 2.0,
+              lawCenter: Double = (min + max) / 2, significantDigits: Int = defaultSignificantDigits(law),
+              source: (() -> Double)? = null) =
+        meter(label, min, max, initialValue, law, lawExponent, lawCenter, significantDigits, hoverText = null, source = source)
+
     /**
      * Add every control declared on this scope with `var size by keys.slider(...)` (and `vec2`,
      * `color`, `checkbox`, `text`), in declaration order — see `KeyframeControl`.
@@ -2337,6 +2419,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      * @param lawCenter the value at mid-travel for [ControlLaw.BIPOLAR]; defaults to the midpoint
      * @param significantDigits digits shown, or `0` to derive the decimal count from [step] as before;
      *   nonlinear laws default to 4, so one control can read `20.00` and `20000`
+     * @param hoverText optional Markdown help shown at the label
      * @param onUpdate callback invoked with the current value
      */
     fun slider(
@@ -2349,6 +2432,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         lawExponent: Double = 2.0,
         lawCenter: Double = (min + max) / 2,
         significantDigits: Int = defaultSignificantDigits(law),
+        hoverText: String? = null,
         onUpdate: (Double) -> Unit
     ): ControlValueHandle<Double> {
         val cached = cachedControl("slider", "slider", label)
@@ -2359,7 +2443,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         if (cached.previous?.value != null) {
             onUpdate(value)
         }
-        htmlParts += buildSliderHtml(sliderId, label, min, max, step, value, spec, significantDigits, defaultValue = initialValue)
+        htmlParts += buildSliderHtml(sliderId, label, min, max, step, value, spec, significantDigits, defaultValue = initialValue, hoverText = hoverText)
         val control = ControllerControl(
             id = sliderId,
             type = "slider",
@@ -2373,7 +2457,8 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             law = law.wireName,
             lawExponent = spec.exponent,
             lawCenter = spec.center,
-            significantDigits = significantDigits
+            significantDigits = significantDigits,
+            hoverText = hoverText
         )
         controls += control
         box.storeControlGroupValue(cached.cacheKey, control)
@@ -2394,11 +2479,13 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      *
      * @param label text shown beside the picker
      * @param initialValue color used when no cached value exists
+     * @param hoverText optional Markdown help shown at the label
      * @param onUpdate callback invoked with the selected RGBA color
      */
     fun colorPicker(
         label: String,
         initialValue: Vector4f = Vector4f(1.0f, 1.0f, 1.0f, 1.0f),
+        hoverText: String? = null,
         onUpdate: (Vector4f) -> Unit
     ): ControlValueHandle<Vector4f> {
         val cached = cachedControl("color", "color", label)
@@ -2413,7 +2500,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         if (cached.previous?.r != null || cached.previous?.g != null || cached.previous?.b != null || cached.previous?.a != null) {
             onUpdate(Vector4f(value))
         }
-        htmlParts += buildColorPickerHtml(controlId, label, value)
+        htmlParts += buildColorPickerHtml(controlId, label, value, hoverText)
         val control = ControllerControl(
             id = controlId,
             type = "color",
@@ -2424,7 +2511,8 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             b = value.z.toDouble(),
             a = value.w.toDouble(),
             value = value.w.toDouble(),
-            decimalPlaces = 2
+            decimalPlaces = 2,
+            hoverText = hoverText
         )
         controls += control
         box.storeControlGroupValue(cached.cacheKey, control)
@@ -2467,6 +2555,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      * @param xRange selectable range for the x component
      * @param yRange selectable range for the y component
      * @param step increment used for interaction and displayed precision
+     * @param hoverText optional Markdown help shown at the label
      * @param onUpdate callback invoked with the selected vector
      */
     fun vec2Control(
@@ -2475,6 +2564,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         xRange: Pair<Double, Double> = -1.0 to 1.0,
         yRange: Pair<Double, Double> = -1.0 to 1.0,
         step: Double = 0.01,
+        hoverText: String? = null,
         onUpdate: (Vector2f) -> Unit
     ): ControlValueHandle<Vector2f> {
         val cached = cachedControl("vec2", "vec2", label)
@@ -2488,7 +2578,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             onUpdate(Vector2f(value))
         }
         val decimalPlaces = calculateDecimalPlaces(step)
-        htmlParts += buildVec2Html(controlId, label, xRange, yRange, step, decimalPlaces, value, defaultValue = initialValue)
+        htmlParts += buildVec2Html(controlId, label, xRange, yRange, step, decimalPlaces, value, defaultValue = initialValue, hoverText = hoverText)
         val control = ControllerControl(
             id = controlId,
             type = "vec2",
@@ -2501,7 +2591,8 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             yMax = yRange.second,
             x = value.x.toDouble(),
             y = value.y.toDouble(),
-            decimalPlaces = decimalPlaces
+            decimalPlaces = decimalPlaces,
+            hoverText = hoverText
         )
         controls += control
         box.storeControlGroupValue(cached.cacheKey, control)
@@ -2535,23 +2626,26 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      * and the note retriggers. So [onUpdate] is not called on a rerun, and the button always renders up.
      *
      * @param label text shown beside the button
+     * @param hoverText optional Markdown help shown at the label
      * @param onUpdate called with `true` on the way down and `false` on the way up
      */
-    fun button(label: String, onUpdate: (Boolean) -> Unit) = button(label, "hold", onUpdate)
+    fun button(label: String, hoverText: String? = null, onUpdate: (Boolean) -> Unit) =
+        compactButton(label, "hold", hoverText, onUpdate)
 
     /** [button] whose hit area reads [hit]; for compact strips, where the hit text is the label. */
-    internal fun button(label: String, hit: String, onUpdate: (Boolean) -> Unit) {
+    internal fun compactButton(label: String, hit: String, hoverText: String? = null, onUpdate: (Boolean) -> Unit) {
         // The id is still derived from the label and ordinal, so both control surfaces name the same
         // button and a rerun does not orphan the one on a tablet — only the *value* is uncached.
         val identity = controlIdentity("button", "button", label)
         registerButtonCallback(identity.id, onUpdate)
-        htmlParts += buildButtonHtml(identity.id, if (hit == "hold") label else "", hit)
+        htmlParts += buildButtonHtml(identity.id, if (hit == "hold") label else "", hit, hoverText)
         controls += ControllerControl(
             id = identity.id,
             type = "button",
             label = label,
             channel = channel,
-            checked = false
+            checked = false,
+            hoverText = hoverText
         )
     }
 
@@ -2584,6 +2678,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      * @param lawExponent taper strength for [ControlLaw.EXPONENTIAL] and [ControlLaw.BIPOLAR]
      * @param lawCenter the level at the middle of the bar for [ControlLaw.BIPOLAR]
      * @param significantDigits digits shown; nonlinear laws default to 4
+     * @param hoverText optional Markdown help shown at the label
      * @param source sampled at [meterUpdateHz] on a shared daemon thread when given
      */
     fun meter(
@@ -2595,13 +2690,14 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         lawExponent: Double = 2.0,
         lawCenter: Double = (min + max) / 2,
         significantDigits: Int = defaultSignificantDigits(law),
+        hoverText: String? = null,
         source: (() -> Double)? = null
     ): MeterHandle {
         val identity = controlIdentity("meter", "meter", label)
         val spec = ControlLawSpec(law, min, max, lawExponent, lawCenter).also { it.validate(label) }
         val decimalPlaces = if (significantDigits > 0) 0 else 2
         val value = initialValue.coerceIn(minOf(min, max), maxOf(min, max))
-        htmlParts += buildMeterHtml(identity.id, label, value, spec, significantDigits, decimalPlaces)
+        htmlParts += buildMeterHtml(identity.id, label, value, spec, significantDigits, decimalPlaces, hoverText)
         controls += ControllerControl(
             id = identity.id,
             type = "meter",
@@ -2615,7 +2711,8 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             law = law.wireName,
             lawExponent = spec.exponent,
             lawCenter = spec.center,
-            significantDigits = significantDigits
+            significantDigits = significantDigits,
+            hoverText = hoverText
         )
         val targetDocument = box.takeIf { it.isInsideInitialized() }?.inside?.filename
         val handle = MeterHandle(identity.id, targetDocument)
@@ -2630,11 +2727,13 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      *
      * @param label text shown beside the checkbox
      * @param initialValue value used when no cached value exists
+     * @param hoverText optional Markdown help shown at the label
      * @param onUpdate callback invoked with the selected state
      */
     fun checkbox(
         label: String,
         initialValue: Boolean = false,
+        hoverText: String? = null,
         onUpdate: (Boolean) -> Unit
     ): ControlValueHandle<Boolean> {
         val cached = cachedControl("checkbox", "checkbox", label)
@@ -2644,13 +2743,14 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         if (cached.previous?.checked != null) {
             onUpdate(value)
         }
-        htmlParts += buildCheckboxHtml(controlId, label, value)
+        htmlParts += buildCheckboxHtml(controlId, label, value, hoverText)
         val control = ControllerControl(
             id = controlId,
             type = "checkbox",
             label = label,
             channel = channel,
-            checked = value
+            checked = value,
+            hoverText = hoverText
         )
         controls += control
         box.storeControlGroupValue(cached.cacheKey, control)
@@ -2665,11 +2765,13 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      *
      * @param label text shown beside the input
      * @param initialValue text used when no cached value exists
+     * @param hoverText optional Markdown help shown at the label
      * @param onUpdate callback invoked with the edited text
      */
     fun text(
         label: String,
         initialValue: String = "",
+        hoverText: String? = null,
         onUpdate: (String) -> Unit
     ): ControlValueHandle<String> {
         val cached = cachedControl("string", "string", label)
@@ -2679,13 +2781,14 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         if (cached.previous?.text != null) {
             onUpdate(value)
         }
-        htmlParts += buildStringInputHtml(controlId, label, value)
+        htmlParts += buildStringInputHtml(controlId, label, value, hoverText)
         val control = ControllerControl(
             id = controlId,
             type = "string",
             label = label,
             channel = channel,
-            text = value
+            text = value,
+            hoverText = hoverText
         )
         controls += control
         box.storeControlGroupValue(cached.cacheKey, control)
@@ -2698,8 +2801,9 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
     fun stringInput(
         label: String,
         initialValue: String = "",
+        hoverText: String? = null,
         onUpdate: (String) -> Unit
-    ) = text(label, initialValue, onUpdate)
+    ) = text(label, initialValue, hoverText, onUpdate)
 
     /**
      * Runs [action] once the group is registered and its markup sent — for anything a control's
@@ -2810,19 +2914,19 @@ fun Box.controlGroup(channel: String = "controls", columns: Int, block: ControlG
  * A property this box declares with `propDown` / `propUpDown` reruns the boxes that read it whenever
  * the control changes it, as an assignment in code would.
  */
-fun Box.syncToProperty(propertyName: String, initialValue: Any, channel: String = "controls", label: String = propertyName) {
+fun Box.syncToProperty(propertyName: String, initialValue: Any, channel: String = "controls", label: String = propertyName, hoverText: String? = null) {
     val stored = getPropertyRaw(propertyName)
     val start = if (stored != null && initialValue::class.isInstance(stored)) stored else initialValue
     val write: (Any) -> Unit = { writeSyncedProperty(propertyName, it) }
     when (start) {
         is Double -> {
-            syncToProperty(propertyName, initialValue as Double, 0.0, 1.0, 0.01, channel, label)
+            syncToProperty(propertyName, initialValue as Double, 0.0, 1.0, 0.01, channel, label, hoverText = hoverText)
             return
         }
-        is Boolean -> checkbox(label, start, channel) { write(it) }
-        is String -> stringInput(label, start, channel) { write(it) }
-        is Vector2f -> vec2Control(label, start, channel = channel) { write(it) }
-        is Vector4f -> colorPicker(label, start, channel) { write(it) }
+        is Boolean -> checkbox(label, start, channel, hoverText) { write(it) }
+        is String -> stringInput(label, start, channel, hoverText) { write(it) }
+        is Vector2f -> vec2Control(label, start, channel = channel, hoverText = hoverText) { write(it) }
+        is Vector4f -> colorPicker(label, start, channel, hoverText) { write(it) }
         else -> {
             lprintln("warning,controls", "syncToProperty: unsupported type for property '$propertyName': ${initialValue::class}")
             return
@@ -2850,12 +2954,13 @@ fun Box.syncToProperty(
     channel: String = "controls",
     label: String = propertyName,
     law: ControlLaw = ControlLaw.LINEAR,
+    hoverText: String? = null,
 ) {
     val start = (getPropertyRaw(propertyName) as? Double) ?: initialValue
     val sliderId = "slider-${UUID.randomUUID()}"
     registerSliderCallback(sliderId) { writeSyncedProperty(propertyName, it) }
     val spec = ControlLawSpec(law, min, max).also { it.validate(label) }
-    display(channel, buildSliderHtml(sliderId, label, min, max, step, start, spec, defaultValue = initialValue))
+    display(channel, buildSliderHtml(sliderId, label, min, max, step, start, spec, defaultValue = initialValue, hoverText = hoverText))
     if (getPropertyRaw(propertyName) == null) setPropertyRaw(propertyName, start, doResync = true)
     markPersistent(propertyName)
 }

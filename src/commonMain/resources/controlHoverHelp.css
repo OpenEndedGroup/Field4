@@ -1,0 +1,31 @@
+.field-label[data-hover-text], .phone-control-label[data-hover-text] {
+    text-decoration: underline dotted var(--field-accent-muted, #48c9ff);
+    text-underline-offset: 3px;
+}
+
+.field-control-tooltip {
+    position: fixed;
+    z-index: 2147483647;
+    max-width: min(360px, calc(100vw - 16px));
+    box-sizing: border-box;
+    padding: 9px 11px;
+    border: 1px solid var(--field-accent-border-strong, #48c9ff);
+    border-radius: 6px;
+    background: var(--field-surface, #111);
+    color: var(--field-accent-text, #d1edf8);
+    font: 13px/1.4 var(--field-font, sans-serif);
+    overflow-wrap: anywhere;
+    max-height: min(70vh, 500px);
+    overflow-y: auto;
+    box-shadow: 0 3px 14px rgba(0, 0, 0, 0.5);
+}
+
+.field-control-tooltip[hidden] { display: none; }
+.field-control-tooltip-label { color: var(--field-accent, #48c9ff); margin-bottom: 4px; }
+.field-control-tooltip-markdown > :first-child { margin-top: 0; }
+.field-control-tooltip-markdown > :last-child { margin-bottom: 0; }
+.field-control-tooltip-markdown p { margin: 0 0 0.5em; }
+.field-control-tooltip-markdown ul, .field-control-tooltip-markdown ol { padding-left: 1.5em; margin: 0.4em 0; }
+.field-control-tooltip-markdown code { color: var(--field-accent, #48c9ff); }
+.field-control-tooltip-markdown pre { white-space: pre-wrap; }
+.field-control-tooltip-markdown a { color: var(--field-accent, #48c9ff); }
