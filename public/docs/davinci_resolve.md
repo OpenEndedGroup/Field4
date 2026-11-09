@@ -9,8 +9,7 @@ Everything is in `Resolve`, which box code can use without an import. This box l
 the timeline open in Resolve:
 
 ```diffstatic {data-lang=kotlin}
-for (m in Resolve.markers())
-    print("${m.timecode}  frame ${m.frame}  ${m.color}  ${m.name}: ${m.note}")
+for (m in Resolve.markers()) print("${m.timecode}  frame ${m.frame}  ${m.color}  ${m.name}: ${m.note}")
 ```
 
 !!! note "Setting up Resolve"
@@ -52,7 +51,8 @@ This box puts the red markers of a timeline called "Edit 2" in a table:
 
 ```diffstatic {data-lang=kotlin}
 val edit = Resolve.timeline("Edit 2")
-val rows = edit.markersColored("Red").joinToString("\n") { "| ${it.timecode} | ${it.frame} | ${it.name} | ${it.note} |" }
+val rows =
+    edit.markersColored("Red").joinToString("\n") { "| ${it.timecode} | ${it.frame} | ${it.name} | ${it.note} |" }
 markdown("${edit.name} at ${edit.fps} fps\n\n| timecode | frame | name | note |\n| --- | --- | --- | --- |\n$rows")
 ```
 

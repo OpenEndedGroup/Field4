@@ -198,7 +198,8 @@ object Resolve : ResolveConnection(null) {
     fun on(host: String): ResolveConnection = ResolveConnection(host.trim().ifEmpty { null })
 
     /** How long one call waits for Resolve before giving up. */
-    @Volatile var timeoutSeconds: Long = 15
+    @Volatile
+    var timeoutSeconds: Long = 15
 
     /** Stop the worker; the next call starts another. */
     fun close() = synchronized(this) { worker?.stop(); worker = null }
