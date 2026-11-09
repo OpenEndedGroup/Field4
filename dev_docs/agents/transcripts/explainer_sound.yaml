@@ -140,7 +140,7 @@ operations:
 
               if (speed > 0) {
                   hitsPerFrame += hits / speed
-                  if (hitsPerFrame.size > 90) hitsPerFrame.removeAt(0)
+                  if (hitsPerFrame.size > 240) hitsPerFrame.removeAt(0)
               }
               if (follow) { trail += x[0] to y[0]; if (trail.size > 1500) trail.removeAt(0) }
 
@@ -169,56 +169,392 @@ operations:
       frame: { x: 700.0, y: 140.0, w: 150.0, h: 50.0 }
       properties:
         code: |
-          // Figure not built yet: slices of air in a tube pushed by a plate, coloured by pressure.
-          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: tube_plate</div>")
+          // Slices of air in a tube. Each line is one slice; the plate at the left end pushes on the first,
+          // each slice pushes on the next, and the far end lets the disturbance out instead of echoing it.
+          val n = 80
+          val gap = 7.0               // pixels between slices at rest
+          val u = DoubleArray(n)      // how far each slice has moved from rest, in pixels
+          val v = DoubleArray(n)
+          var target = 0.0
+          var plate = 0.0
+          var colour = false
+
+          fun draw() {
+              val slices = (1 until n - 1).map { i ->
+                  val x = 50 + i * gap + u[i]
+                  // Squeezed where neighbours are closer than usual, stretched where they are further apart.
+                  val strain = (u[i + 1] - u[i - 1]) / (2 * gap)
+                  val k = (abs(strain) * 4).coerceAtMost(1.0)
+                  fline {
+                      moveTo(x, 60.0)
+                      lineTo(x, 200.0)
+                      thickness = 2.0
+                      color = when {
+                          !colour -> vec(1.0, 1.0, 1.0, 0.6)
+                          strain < 0 -> vec(0.55 + 0.45 * k, 0.55 - 0.35 * k, 0.55 - 0.4 * k, 1.0)
+                          else -> vec(0.55 - 0.4 * k, 0.55 - 0.1 * k, 0.55 + 0.45 * k, 1.0)
+                      }
+                  }
+              }
+              val walls = fline {
+                  moveTo(30.0, 50.0); lineTo(630.0, 50.0)
+                  moveTo(30.0, 210.0); lineTo(630.0, 210.0)
+                  thickness = 1.5
+                  color = vec(1.0, 1.0, 1.0, 0.35)
+              }
+              val face = fline {
+                  rect(36 + plate, 52.0, 10.0, 156.0)
+                  filled = true
+                  stroked = false
+                  color = vec(1.0, 0.6, 0.2, 1.0)
+              }
+              lines(slices + walls + face, channel = "tube", w = 640.0, h = 260.0)
+          }
+
+          draw()
+          controlGroup {
+              slider("plate", -12.0, 12.0, step = 0.1, initialValue = 0.0) { target = it }
+              checkbox("colour") { colour = it }
+          }
+
+          loop {
+              repeat(1) {
+                  // The plate follows the slider at no more than a slice's comfortable pace.
+                  plate += (target - plate).coerceIn(-1.5, 1.5)
+                  u[0] = plate
+                  for (i in 1 until n - 1) {
+                      v[i] += 0.25 * (u[i - 1] - 2 * u[i] + u[i + 1])
+                      // The last twenty slices soak the wave up, as if the tube went on.
+                      if (i > n - 22) v[i] *= 1 - 0.012 * (i - (n - 22))
+                  }
+                  for (i in 1 until n - 1) u[i] += v[i]
+                  u[n - 1] = u[n - 2]
+              }
+              draw()
+          }
   - create:
       box: es_repeated_jumps
       name: repeated_jumps
       frame: { x: 900.0, y: 140.0, w: 150.0, h: 50.0 }
       properties:
         code: |
-          // Figure not built yet: a plate that jumps, alone or repeated, and its sound.
-          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: repeated_jumps</div>")
+          // A plate that jumps. Hold "jump" to move it forward by "distance"; tick "repeat" and it jumps back
+          // and forth by itself, "rate" times a second. What you hear is the air the plate pushes.
+          var distance = 0.5
+          var rate = 4.0
+          var held = false
+          var repeat = false
+          val swing = Param(0f)      // how far the repeated motion goes
+          val offset = Param(0f)     // where "jump" holds the plate
+          val pace = Param(4f)
+
+          fun position(t: Double) = (if (held) distance else 0.0) +
+              (if (repeat) distance * (if ((t * rate) % 1.0 < 0.5) 1.0 else -1.0) else 0.0)
+
+          fun update() {
+              swing.base = if (repeat) distance.toFloat() else 0f
+              offset.base = if (held) distance.toFloat() else 0f
+              pace.base = rate.toFloat()
+          }
+
+          // The plate, seen from the side, and a quarter of a second of its position below it.
+          fun draw(now: Double) {
+              val x = 120 + 60 * position(now)
+              val plate = fline { rect(x, 20.0, 12.0, 120.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
+              val rest = fline { moveTo(126.0, 14.0); lineTo(126.0, 146.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
+              val trace = fline {
+                  moveTo(0.0, 230.0 - 60 * position(now - 0.25))
+                  for (i in 1..640) lineTo(i.toDouble(), 230.0 - 60 * position(now - 0.25 + 0.25 * i / 640))
+                  thickness = 2.0
+                  color = vec(0.4, 0.9, 1.0, 1.0)
+              }
+              val axis = fline { moveTo(0.0, 230.0); lineTo(640.0, 230.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
+              lines(plate, rest, axis, trace, channel = "plate", w = 640.0, h = 300.0)
+          }
+
+          draw(0.0)
+          controlGroup {
+              keys("jump") { _, down -> held = down; update() }
+              slider("distance", 0.0, 1.0, step = 0.01, initialValue = 0.5) { distance = it; update() }
+              checkbox("repeat") { repeat = it; update() }
+              slider("rate", 1.0, 440.0, step = 1.0, initialValue = 4.0, law = ControlLaw.LOGARITHMIC) { rate = it; update() }
+          }
+
+          val start = System.nanoTime()
+          // A held offset makes no sound, only its changes do, so a high-pass filter takes the offset out.
+          loop { draw((System.nanoTime() - start) / 1e9) } +
+              audio((SquareOsc(pace) * swing + offset) / hpf(15, 0.1), gain = 0.15f)
   - create:
       box: es_wave_synth
       name: wave_synth
       frame: { x: 300.0, y: 220.0, w: 150.0, h: 50.0 }
       properties:
         code: |
-          // Figure not built yet: keys with repeating patterns, their plots and their sum.
-          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: wave_synth</div>")
+          // Three keys, each a repeating pattern of the plate, and a fourth that plays the sum of the first two
+          // as one pattern of its own. Each row is twenty milliseconds of a key;
+          // the bottom row, below the line, is what you hear.
+          fun square(t: Double) = if (t - floor(t) < 0.5) 1.0 else -1.0
+          fun triangle(t: Double) = 1 - 4 * abs(t - floor(t + 0.5))
+          fun saw(t: Double) = 2 * (t - floor(t + 0.5))
+
+          val patterns = listOf<(Double) -> Double>(
+              { t -> 0.5 * square(220 * t) },
+              { t -> 0.5 * triangle(330 * t) },
+              { t -> 0.5 * saw(275 * t) },
+              { t -> 0.5 * square(220 * t) + 0.5 * triangle(330 * t) },
+          )
+          val names = ["A", "B", "C", "A + B"]
+
+          // The fourth key reads one cycle of A + B from a table: 220 and 330 Hz repeat together 110 times a second.
+          val table = FloatArray(2048) { patterns[3](it / 2048.0 / 110).toFloat() }
+          val voices = listOf<Signal>(
+              SquareOsc(Param(220f)) * 0.5, TriOsc(Param(330f)) * 0.5, SawOsc(Param(275f)) * 0.5, WavetableOsc(table, Param(110f)),
+          )
+          val gates = 4 { Gate() }
+          val held = BooleanArray(4)
+
+          fun row(y: Double, f: (Double) -> Double, c: Vec4, scale: Double = 40.0) = fline {
+              moveTo(0.0, y - scale * f(0.0))
+              for (x in 1..640) lineTo(x.toDouble(), y - scale * f(0.02 * x / 640))
+              thickness = 1.5
+              color = c
+          }
+
+          fun draw() {
+              val dim = vec(1.0, 1.0, 1.0, 0.25)
+              val rows = 4 { i -> row(30.0 + 52 * i, patterns[i], if (held[i]) vec(0.4, 0.9, 1.0, 1.0) else dim, if (i == 3) 20.0 else 40.0) }
+              val sum = row(290.0, { t -> (0..3).sumOf { if (held[it]) patterns[it](t) else 0.0 } }, vec(1.0, 0.6, 0.2, 1.0), scale = 25.0)
+              val rule = fline { moveTo(0.0, 238.0); lineTo(640.0, 238.0); thickness = 1.0; color = dim }
+              lines(rows + rule + sum, channel = "patterns", w = 640.0, h = 340.0)
+          }
+
+          draw()
+          controlGroup {
+              keys(*names.toTypedArray(), letters = "asdf") { key, down ->
+                  held[key] = down
+                  if (down) gates[key].open() else gates[key].close()
+                  draw()
+              }
+          }
+
+          audio(4 { i -> voices[i] * adsr(0.01, 0.05, 1.0, 0.2, gates[i]) }.reduce { a, b -> a + b } / 2.0, gain = 0.15f)
   - create:
       box: es_triangle_params
       name: triangle_params
       frame: { x: 500.0, y: 220.0, w: 150.0, h: 50.0 }
       properties:
         code: |
-          // Figure not built yet: a triangle wave's amplitude, frequency and phase.
-          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: triangle_params</div>")
+          // One repeating triangle and the three numbers that place it. The faint line is the same triangle
+          // with no shift, for comparison; the sound follows amplitude and frequency.
+          var amplitude = 0.6
+          var hz = 220.0
+          var phase = 0.0
+          var on = false
+          val pitch = Param(220f)
+          val level = Param(0f)
+
+          fun triangle(t: Double) = 1 - 4 * abs(t - floor(t + 0.5))
+
+          fun wave(shift: Double, c: Vec4) = fline {
+              moveTo(0.0, 120.0 - 100 * amplitude * triangle(-shift))
+              for (x in 1..640) lineTo(x.toDouble(), 120.0 - 100 * amplitude * triangle(hz * 0.02 * x / 640 - shift))
+              thickness = 2.0
+              color = c
+          }
+
+          fun update() {
+              pitch.base = hz.toFloat()
+              level.base = if (on) (0.15 * amplitude).toFloat() else 0f
+              lines(wave(0.0, vec(1.0, 1.0, 1.0, 0.35)), wave(phase, vec(0.4, 0.9, 1.0, 1.0)), channel = "wave", w = 640.0, h = 240.0)
+          }
+
+          update()
+          controlGroup {
+              slider("amplitude", 0.0, 1.0, step = 0.01, initialValue = 0.6) { amplitude = it; update() }
+              slider("frequency", 55.0, 880.0, step = 1.0, initialValue = 220.0, law = ControlLaw.LOGARITHMIC) { hz = it; update() }
+              slider("phase", 0.0, 1.0, step = 0.01, initialValue = 0.0) { phase = it; update() }
+              checkbox("sound") { on = it; update() }
+          }
+
+          audio(TriOsc(pitch), gain = level)
   - create:
       box: es_phase_cancel
       name: phase_cancel
       frame: { x: 700.0, y: 220.0, w: 150.0, h: 50.0 }
       properties:
         code: |
-          // Figure not built yet: two equal tones, one shifted, and their sum.
-          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: phase_cancel</div>")
+          // Two identical tones, the second slid along by "shift" (a fraction of a cycle), and their sum.
+          var shift = 0.0
+          var on = false
+          val offset = Param(0f)     // the second tone's shift, in radians
+          val level = Param(0f)
+
+          fun row(y: Double, scale: Double, f: (Double) -> Double, c: Vec4) = fline {
+              moveTo(0.0, y - scale * f(0.0))
+              for (x in 1..640) lineTo(x.toDouble(), y - scale * f(0.02 * x / 640))
+              thickness = 2.0
+              color = c
+          }
+
+          fun update() {
+              offset.base = (2 * PI * shift).toFloat()
+              level.base = if (on) 0.15f else 0f
+              val first = { t: Double -> sin(2 * PI * 220 * t) }
+              val second = { t: Double -> sin(2 * PI * 220 * t + 2 * PI * shift) }
+              lines(
+                  row(45.0, 30.0, first, vec(0.4, 0.9, 1.0, 1.0)),
+                  row(125.0, 30.0, second, vec(1.0, 0.6, 0.2, 1.0)),
+                  fline { moveTo(0.0, 172.0); lineTo(640.0, 172.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) },
+                  row(250.0, 30.0, { t -> first(t) + second(t) }, vec(1.0, 1.0, 1.0, 0.9)),
+                  channel = "wave", w = 640.0, h = 320.0,
+              )
+          }
+
+          update()
+          controlGroup {
+              slider("shift", 0.0, 1.0, step = 0.01, initialValue = 0.0) { shift = it; update() }
+              checkbox("sound") { on = it; update() }
+          }
+
+          audio((SineOsc(Param(220f)) + SineOsc(Param(220f), phaseMod = offset)) / 2.0, gain = level)
   - create:
       box: es_draw_wave
       name: draw_wave
       frame: { x: 900.0, y: 220.0, w: 150.0, h: 50.0 }
       properties:
         code: |
-          // Figure not built yet: draw one cycle and hear it repeated.
-          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: draw_wave</div>")
+          // Draw one cycle and hear it repeated. Drag the points of the curve, or draw a new stroke across the
+          // box; the keys play whatever is drawn at three pitches. The bars are how much of each multiple of
+          // the key's frequency the shape holds.
+          val table = FloatArray(2048)
+          val gates = 3 { Gate() }
+          val voices = [196f, 247f, 294f].map { WavetableOsc(table, Param(it)) }
+
+          // A starting shape: a lopsided hump, as 25 draggable points across one cycle.
+          fun starter() = fline {
+              moveTo(0.0, 140.0)
+              for (i in 1..24) {
+                  val p = i / 24.0
+                  lineTo(640 * p, 140.0 - 90 * sin(2 * PI * p) - 30 * sin(4 * PI * p))
+              }
+              thickness = 2.5
+              color = vec(0.4, 0.9, 1.0, 1.0)
+          }
+
+          // One cycle, read left to right, as samples between -1 and 1 with no offset.
+          fun samples(shape: FLine): FloatArray {
+              val points = shape.nodes.map { it.to.x.toDouble() to it.to.y.toDouble() }.sortedBy { it.first }
+              val raw = DoubleArray(table.size) { i ->
+                  val x = 640.0 * i / table.size
+                  val j = points.indexOfFirst { it.first >= x }
+                  when {
+                      j < 0 -> (140 - points.last().second) / 100
+                      j == 0 -> (140 - points.first().second) / 100
+                      else -> {
+                          val (ax, ay) = points[j - 1]
+                          val (bx, by) = points[j]
+                          val t = if (bx > ax) (x - ax) / (bx - ax) else 0.0
+                          (140 - (ay + (by - ay) * t)) / 100
+                      }
+                  }
+              }
+              val mean = raw.average()
+              val peak = raw.maxOf { abs(it - mean) }.coerceAtLeast(1e-6)
+              return FloatArray(raw.size) { ((raw[it] - mean) / peak).toFloat() }
+          }
+
+          // How much of each of the first 24 multiples of the base frequency is in the cycle.
+          fun partials() {
+              val n = table.size
+              val amps = (1..24).map { k ->
+                  var re = 0.0
+                  var im = 0.0
+                  for (i in 0 until n) { re += table[i] * cos(2 * PI * k * i / n); im -= table[i] * sin(2 * PI * k * i / n) }
+                  2 * sqrt(re * re + im * im) / n
+              }
+              val bars = amps.mapIndexed { i, a ->
+                  fline { rect(10.0 + i * 26.0, 150 - 140 * a.coerceAtMost(1.0), 18.0, 140 * a.coerceAtMost(1.0)); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
+              }
+              val axis = fline { moveTo(0.0, 150.0); lineTo(640.0, 150.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
+              lines(bars + axis, channel = "partials", w = 640.0, h = 160.0)
+          }
+
+          fun use(shape: FLine) {
+              samples(shape).copyInto(table)
+              partials()
+          }
+
+          fun show(shape: FLine) {
+              val axis = fline { moveTo(0.0, 140.0); lineTo(640.0, 140.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
+              lines(axis, shape, channel = "wave", w = 640.0, h = 280.0, editable = true, drawing = true) { edited ->
+                  // A new stroke replaces the shape; a dragged point reshapes it.
+                  val latest = edited.last()
+                  use(latest)
+                  if (edited.size > 2) show(latest.copy().apply { thickness = 2.5; color = vec(0.4, 0.9, 1.0, 1.0) })
+              }
+          }
+
+          val first = starter()
+          show(first)
+          use(first)
+          controlGroup {
+              keys("low", "middle", "high", letters = "wer") { key, down -> if (down) gates[key].open() else gates[key].close() }
+          }
+
+          audio(3 { i -> voices[i] * adsr(0.01, 0.05, 1.0, 0.25, gates[i]) }.reduce { a, b -> a + b } / 3.0, gain = 0.15f)
   - create:
       box: es_circle_sine
       name: circle_sine
       frame: { x: 300.0, y: 300.0, w: 150.0, h: 50.0 }
       properties:
         code: |
-          // Figure not built yet: a point on a turning circle tracing a sine.
-          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: circle_sine</div>")
+          // A point going round a circle, and its height over time. The trace scrolls left, newest at the circle.
+          var radius = 0.8
+          var speed = 0.5      // turns per second
+          var start = 0.0      // where the point starts, as a fraction of a turn
+          var angle = 0.0
+          val heights = mutableListOf<Double>()
+
+          fun draw() {
+              val cx = 110.0
+              val cy = 140.0
+              val r = 100 * radius
+              val turn = 2 * PI * (angle + start)
+              val px = cx + r * cos(turn)
+              val py = cy - r * sin(turn)
+              val guide = vec(1.0, 1.0, 1.0, 0.35)
+              val circle = fline { circle(cx, cy, r); thickness = 1.5; color = guide }
+              val spoke = fline { moveTo(cx, cy); lineTo(px, py); thickness = 1.5; color = guide }
+              val level = fline { moveTo(px, py); lineTo(240.0, py); thickness = 1.0; color = guide }
+              val dot = fline { circle(px, py, 6.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
+              val axis = fline { moveTo(240.0, cy); lineTo(640.0, cy); thickness = 1.0; color = guide }
+              val trace = fline {
+                  heights.reversed().forEachIndexed { i, h -> if (i == 0) moveTo(240.0, cy - h) else lineTo(240.0 + i, cy - h) }
+                  thickness = 2.0
+                  color = vec(0.4, 0.9, 1.0, 1.0)
+              }
+              lines(axis, circle, spoke, level, trace, dot, channel = "circle", w = 640.0, h = 280.0)
+          }
+
+          draw()
+          controlGroup {
+              slider("radius", 0.1, 1.2, step = 0.01, initialValue = 0.8) { radius = it }
+              slider("turns per second", 0.1, 2.0, step = 0.01, initialValue = 0.5) { speed = it }
+              slider("start", 0.0, 1.0, step = 0.01, initialValue = 0.0) { start = it }
+          }
+
+          // The trace takes one sample every sixtieth of a second, however unevenly frames arrive.
+          var clock = System.nanoTime() / 1e9
+          loop {
+              val now = System.nanoTime() / 1e9
+              while (clock < now) {
+                  clock += 1 / 60.0
+                  angle += speed / 60
+                  heights += 100 * radius * sin(2 * PI * (angle + start))
+              }
+              while (heights.size > 400) heights.removeAt(0)
+              draw()
+          }
   - create:
       box: es_sine_sweep
       name: sine_sweep
@@ -265,16 +601,86 @@ operations:
       frame: { x: 700.0, y: 300.0, w: 150.0, h: 50.0 }
       properties:
         code: |
-          // Figure not built yet: two close tones and the pulsing sum.
-          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: beats</div>")
+          // Two sine tones a few hertz apart. Hold one key, then both: the sum swells and fades as the two
+          // drift in and out of step. The picture is one second of what you hear; each column spans the
+          // wave's highest and lowest points in a 640th of a second, so the outline is the loudness.
+          var difference = 3.0
+          val held = BooleanArray(2)
+          val gates = 2 { Gate() }
+          val second = Param(223f)
+
+          fun draw() {
+              val f = [220.0, 220.0 + difference]
+              val columns = (0 until 640).map { x ->
+                  val values = (0 until 24).map { k ->
+                      val t = (x + k / 24.0) / 640
+                      (0..1).sumOf { i -> if (held[i]) sin(2 * PI * f[i] * t) else 0.0 }
+                  }
+                  fline {
+                      moveTo(x.toDouble(), 120 - 50 * values.max())
+                      lineTo(x.toDouble(), 120 - 50 * values.min() + 0.5)
+                      thickness = 1.0
+                      color = vec(0.4, 0.9, 1.0, 1.0)
+                  }
+              }
+              val axis = fline { moveTo(0.0, 120.0); lineTo(640.0, 120.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
+              lines([axis] + columns, channel = "sum", w = 640.0, h = 240.0)
+          }
+
+          draw()
+          controlGroup {
+              keys("220 Hz", "220 Hz + difference", letters = "we") { key, down ->
+                  held[key] = down
+                  if (down) gates[key].open() else gates[key].close()
+                  draw()
+              }
+              slider("difference", 0.5, 20.0, step = 0.1, initialValue = 3.0) {
+                  difference = it
+                  second.base = (220 + it).toFloat()
+                  draw()
+              }
+          }
+
+          val tones = listOf(SineOsc(Param(220f)), SineOsc(second))
+          audio(2 { i -> tones[i] * adsr(0.01, 0.05, 1.0, 0.25, gates[i]) }.reduce { a, b -> a + b } / 2.0, gain = 0.15f)
   - create:
       box: es_square_partials
       name: square_partials
       frame: { x: 900.0, y: 300.0, w: 150.0, h: 50.0 }
       properties:
         code: |
-          // Figure not built yet: sines adding up to a square wave.
-          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: square_partials</div>")
+          // Sines at 1, 3, 5, 7… times a base frequency, each 1/n as tall, add up to a square wave. "sines" is
+          // how many are in the sum; the faint line is the square they are approaching.
+          var count = 1
+          var on = false
+          val level = Param(0f)
+          val weights = 50 { Param(0f) }
+
+          fun partial(i: Int) = 2 * i + 1                      // 1, 3, 5, …
+          fun sum(t: Double) = (0 until count).sumOf { i -> 4 / PI / partial(i) * sin(2 * PI * partial(i) * t) }
+          fun square(t: Double) = if (t - floor(t) < 0.5) 1.0 else -1.0
+
+          fun update() {
+              weights.forEachIndexed { i, w -> w.base = if (i < count) (4 / PI / partial(i)).toFloat() else 0f }
+              level.base = if (on) 0.12f else 0f
+              // Two cycles across the figure.
+              fun wave(f: (Double) -> Double, c: Vec4, width: Double) = fline {
+                  moveTo(0.0, 130 - 90 * f(0.0))
+                  for (x in 1..640) lineTo(x.toDouble(), 130 - 90 * f(2.0 * x / 640))
+                  thickness = width
+                  color = c
+              }
+              lines(wave(::square, vec(1.0, 1.0, 1.0, 0.35), 1.5), wave(::sum, vec(0.4, 0.9, 1.0, 1.0), 2.0), channel = "wave", w = 640.0, h = 260.0)
+          }
+
+          update()
+          controlGroup {
+              slider("sines", 1.0, 50.0, step = 1.0, initialValue = 1.0) { count = it.toInt(); update() }
+              checkbox("sound") { on = it; update() }
+          }
+
+          // One oscillator per odd multiple of 110 Hz, each at the weight the sum gives it.
+          audio(50 { i -> SineOsc(Param(110f * partial(i))) * weights[i] }.reduce { a, b -> a + b } / 1.25, gain = level)
   - create:
       box: es_microphone
       name: microphone
@@ -592,7 +998,7 @@ operations:
                                   The last key plays a single pattern: the sum of the first two, worked
                                   out in advance.
 
-                                  It sounds exactly like holding both. The ear cannot tell two sources
+                                  It sounds the same as holding both. The ear cannot tell two sources
                                   from one that makes the same motion.
                               """
                                       .md
@@ -681,7 +1087,7 @@ operations:
                           control("circle_sine", "radius", 0.8)
                           control("circle_sine", "turns per second", 0.5)
                           control("circle_sine", "start", 0.0)
-                          markdownNote("Drag the sliders; the trace scrolls left. [[back]] [[next]]")
+                          markdownNote("Drag the sliders; the newest part of the trace is beside the circle. [[back]] [[next]]")
                       }
                       step("The range of hearing", id = "tones-sweep") {
                           audience {
