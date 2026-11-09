@@ -185,7 +185,11 @@ rows 10–11 are `repeated_jumps`; 12–13 are `wave_synth`; 14–16 are `triang
 `square_partials` and stands in for 24; 28–31 are `normal_modes`; 32–35 are `pluck` (`mode`,
 `length`, `thickness`); 36–39 are `pulsing_sphere`; 42 is `speaker_ear` (a `vec2Control` listener
 and two meters); 43 is left out; 44 is `decibels` (a slider, not a text field); 45–46 are `doppler`.
-Not built: 17 (`triangle_sum`) and 40–41 (`wall_plate`, `pressure_side`). The keyboard figures use
+Rows 40–41 are one box, `wall_plate`, with the axis pressure as a strip under the field. Left out,
+because another figure already teaches the idea: 6 (`scale`; `follow one` in `pressure_box` shows a
+molecule barely leaving home), 17 (`triangle_sum`; `wave_synth` adds shapes and `square_partials`
+builds one from parts) and 43 (`listen_position`; `speaker_ear` gives the delay and level of a dragged
+listener, and `two_speakers` plays the tone at the listener's level). The keyboard figures use
 `keys(...)`, and every sounding figure was checked through `lifecycle-census` levels (below).
 
 ### Cameras and Lenses (document `explainer_cameras`)
