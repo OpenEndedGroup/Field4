@@ -101,11 +101,15 @@ operations:
           }
 
           var frameCount = 0
-          loop {
-              val left = 20.0
-              val right = left + 600 * length
-              val top = 10.0
-              val bottom = 290.0
+          // The simulation steps sixty times a second of animation time, however often frames arrive.
+          var clock = AnimationClock.nowSeconds()
+          val left = 20.0
+          val top = 10.0
+          val bottom = 290.0
+          fun right() = left + 600 * length
+
+          fun step() {
+              val right = right()
               var hits = 0
               val steps = 2
               repeat(steps) {
@@ -113,7 +117,13 @@ operations:
                       x[i] += vx[i] * speed / steps
                       y[i] += vy[i] * speed / steps
                       if (x[i] < left + r) { x[i] = left + r; vx[i] = abs(vx[i]); flashes += doubleArrayOf(left, y[i], 0.0) }
-                      if (x[i] > right - r) { x[i] = right - r; vx[i] = -abs(vx[i]); hits++; flashes += doubleArrayOf(right, y[i], 0.0) }
+                      if (x[i] > right - r) {
+                          // A molecule the moving wall swept up is pushed back in, but that is not a hit.
+                          val swept = x[i] - vx[i] * speed / steps > right - r
+                          x[i] = right - r
+                          vx[i] = -abs(vx[i])
+                          if (!swept) { hits++; flashes += doubleArrayOf(right, y[i], 0.0) }
+                      }
                       if (y[i] < top + r) { y[i] = top + r; vy[i] = abs(vy[i]); flashes += doubleArrayOf(x[i], top, 0.0) }
                       if (y[i] > bottom - r) { y[i] = bottom - r; vy[i] = -abs(vy[i]); flashes += doubleArrayOf(x[i], bottom, 0.0) }
                   }
@@ -144,6 +154,14 @@ operations:
               }
               if (follow) { trail += x[0] to y[0]; if (trail.size > 1500) trail.removeAt(0) }
 
+          }
+
+          loop {
+              val now = AnimationClock.nowSeconds()
+              var caught = 0
+              while (clock < now && caught < 6) { clock += 1 / 60.0; step(); caught++ }
+              if (clock < now) clock = now
+              val right = right()
               px.fill(0xff050505.toInt())
               for (j in top.toInt()..bottom.toInt()) for (i in left.toInt()..right.toInt()) px[j * imageW + i] = 0xff101418.toInt()
               trail.forEach { (tx, ty) -> dot(tx, ty, 0.8, 0xffff9933.toInt()) }
@@ -217,8 +235,14 @@ operations:
               checkbox("colour") { colour = it }
           }
 
+          // One step of the air each sixtieth of a second of animation time, however often frames arrive.
+          var clock = AnimationClock.nowSeconds()
           loop {
-              repeat(1) {
+              val now = AnimationClock.nowSeconds()
+              var caught = 0
+              while (clock < now && caught < 6) {
+                  clock += 1 / 60.0
+                  caught++
                   // The plate follows the slider at no more than a slice's comfortable pace.
                   plate += (target - plate).coerceIn(-1.5, 1.5)
                   u[0] = plate
@@ -230,6 +254,7 @@ operations:
                   for (i in 1 until n - 1) u[i] += v[i]
                   u[n - 1] = u[n - 2]
               }
+              if (clock < now) clock = now
               draw()
           }
   - create:
@@ -260,8 +285,16 @@ operations:
 
           // The plate, seen from the side, and a quarter of a second of its position below it.
           fun draw(now: Double) {
-              val x = 120 + 60 * position(now)
-              val plate = fline { rect(x, 20.0, 12.0, 120.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
+              // Faster than a few jumps a second the eye cannot follow it, so the plate is drawn as a blur
+              // across the whole of its travel, the way a fast-moving thing looks.
+              val blur = repeat && rate > 6
+              val x = if (blur) 120 - 60 * distance + (if (held) 60 * distance else 0.0) else 120 + 60 * position(now)
+              val plate = fline {
+                  rect(x, 20.0, if (blur) 12 + 120 * distance else 12.0, 120.0)
+                  filled = true
+                  stroked = false
+                  color = vec(1.0, 0.6, 0.2, if (blur) 0.45 else 1.0)
+              }
               val rest = fline { moveTo(126.0, 14.0); lineTo(126.0, 146.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
               val trace = fline {
                   moveTo(0.0, 230.0 - 60 * position(now - 0.25))
@@ -282,9 +315,9 @@ operations:
               slider("rate", 1.0, 440.0, step = 1.0, initialValue = 4.0, law = ControlLaw.LOGARITHMIC) { rate = it; update() }
           }
 
-          val start = System.nanoTime()
+          val start = AnimationClock.nowSeconds()
           // A held offset makes no sound, only its changes do, so a high-pass filter takes the offset out.
-          loop { draw((System.nanoTime() - start) / 1e9) } +
+          loop { draw(AnimationClock.nowSeconds() - start) } +
               audio((SquareOsc(pace) * swing + offset) / hpf(15, 0.1), gain = level)
   - create:
       box: es_wave_synth
@@ -546,9 +579,9 @@ operations:
           }
 
           // The trace takes one sample every sixtieth of a second, however unevenly frames arrive.
-          var clock = System.nanoTime() / 1e9
+          var clock = AnimationClock.nowSeconds()
           loop {
-              val now = System.nanoTime() / 1e9
+              val now = AnimationClock.nowSeconds()
               while (clock < now) {
                   clock += 1 / 60.0
                   angle += speed / 60
@@ -778,9 +811,9 @@ operations:
               5 { k -> slider("mode ${k + 1}", 0.0, 1.0, step = 0.01, initialValue = if (k == 0) 0.8 else 0.0) { amount[k] = it } }
           }
 
-          var clock = System.nanoTime() / 1e9
+          var clock = AnimationClock.nowSeconds()
           loop {
-              val now = System.nanoTime() / 1e9
+              val now = AnimationClock.nowSeconds()
               time += now - clock
               clock = now
               draw()
@@ -848,9 +881,9 @@ operations:
               slider("thickness", 1.0, 2.0, step = 0.01, initialValue = 1.0) { gauge = it }
           }
 
-          val start = System.nanoTime()
+          val start = AnimationClock.nowSeconds()
           loop {
-              time = (System.nanoTime() - start) / 1e9
+              time = AnimationClock.nowSeconds() - start
               draw()
           } + audio(partials.reduce { a, b -> a + b }, gain = 0.15f)
   - create:
@@ -894,9 +927,9 @@ operations:
               slider("frequency", 86.0, 1372.0, step = 1.0, initialValue = 343.0, law = ControlLaw.LOGARITHMIC) { hz = it }
           }
 
-          var clock = System.nanoTime() / 1e9
+          var clock = AnimationClock.nowSeconds()
           loop {
-              val now = System.nanoTime() / 1e9
+              val now = AnimationClock.nowSeconds()
               phase += 0.5 * (now - clock)
               clock = now
               frame()
@@ -966,9 +999,9 @@ operations:
           }
           measure()
 
-          var clock = System.nanoTime() / 1e9
+          var clock = AnimationClock.nowSeconds()
           loop {
-              val now = System.nanoTime() / 1e9
+              val now = AnimationClock.nowSeconds()
               time += now - clock
               clock = now
               draw()
@@ -1071,9 +1104,9 @@ operations:
               checkbox("sound") { on = it }
           }
 
-          var clock = System.nanoTime() / 1e9
+          var clock = AnimationClock.nowSeconds()
           loop {
-              val now = System.nanoTime() / 1e9
+              val now = AnimationClock.nowSeconds()
               step(now - clock)
               clock = now
               draw()
@@ -1197,11 +1230,11 @@ operations:
               }
           }
 
-          val start = System.nanoTime()
+          val start = AnimationClock.nowSeconds()
           // A clap is a short burst of noise; its echo is the same burst, later and quieter.
           val burst = WhiteNoise() * perc(0.06, 0.001, gate)
           loop {
-              time = (System.nanoTime() - start) / 1e9
+              time = AnimationClock.nowSeconds() - start
               draw()
           } + audio(burst + burst / Delay(lag, Param(0f), Param(1f), maxDelaySec = 1f) * echoLevel, gain = 0.15f)
   - create:
@@ -1407,7 +1440,8 @@ operations:
                           }
                           control("tube_plate", "plate", 0.0)
                           control("tube_plate", "colour", false)
-                          markdownNote("Drag **plate** quickly one way, then back. [[back]] [[next]]")
+                          cue("Push") { control("tube_plate", "plate", 12.0, glideMs = 300) }
+                          markdownNote("Next pushes the plate; or drag **plate** quickly one way, then back. [[back]] [[next]]")
                       }
                       step("Squeezed and stretched", id = "air-compression") {
                           audience {
@@ -1427,7 +1461,9 @@ operations:
                           }
                           control("tube_plate", "plate", 0.0)
                           control("tube_plate", "colour", true)
-                          markdownNote("Colour is pressure: red above, blue below. [[back]] [[next]]")
+                          cue("Push") { control("tube_plate", "plate", 12.0, glideMs = 300) }
+                          cue("Pull back") { control("tube_plate", "plate", -12.0, glideMs = 600) }
+                          markdownNote("Colour is pressure: red above, blue below. Next pushes the plate, then Next pulls it back. [[back]] [[next]]")
                       }
                   }
                   section("Making sounds") {
@@ -1448,6 +1484,7 @@ operations:
                           }
                           control("repeated_jumps", "repeat", false)
                           control("repeated_jumps", "distance", 0.5)
+                          control("repeated_jumps", "rate", 4.0)
                           control("repeated_jumps", "sound", false)
                           markdownNote("Tick **sound**, then hold **jump**; drag **distance** to change how far it moves. [[back]] [[next]]")
                       }
