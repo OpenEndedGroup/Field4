@@ -293,6 +293,9 @@ object DemoTranscriptExecSmokeTest {
         // Three pure-compute boxes over the `pat` Fn graph op: one prints the node, two run a real
         // fitGradient over a rhythm's numeric leaves and plot the result. No Window, no Renderer.
         "pat_fn_graph_fit",
+        // Two pure-compute Datalog rhythm boxes: grids as text and an offline Pat render to a
+        // <audio> data URL (showPatAudio), plus a why() proof. No Window, no audio device.
+        "datalog_rhythm_rules",
         // Eight pure-compute pattern boxes; showPatRoll is drawToSVG -> display, so no Window, no
         // Renderer, no GPU and no audio device.
         "pattern_language_composition",

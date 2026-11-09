@@ -743,6 +743,19 @@ replaces the first.
 
 [Open →](offline.html?file=assets/agent_transcripts/kolakoski_euclid/metadata.edn)
 
+### datalog_rhythm_rules
+
+[Rules that decide when notes play](datalog.md#rules-that-decide-when-notes-play): Datalog
+`event(Instrument, Note, Velocity, T)` rules over a sixteen-step bar, after
+[Dogalog](https://github.com/danja/dogalog). Box 1 writes a Euclidean kick, a snare that `within`
+brings in at bar 1, hats from bar 2 and a lead picked from `scale(48, minor_pent, ...)`, prints the
+grid each bar derives and plays four bars with `showPatAudio`. Box 2 asks `why` the kick at step 20
+played (the proof ends in the fact `euc(20, 4, 16, 0)`) and shows that the snare at step 4 did not.
+
+![Four bars of a step grid: kick on every fourth step, a lead on five steps, the snare from bar 1 and hats from bar 2](assets/datalog/rhythm.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/datalog_rhythm_rules/metadata.edn)
+
 ### frames_lifecycle
 
 **A frame loop, from start to cleanup.** The companion to
