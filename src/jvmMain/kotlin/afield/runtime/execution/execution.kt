@@ -7,8 +7,9 @@ package afield.runtime.execution
  * [BoxExecution] is the contract a language engine implements: run a fragment or the whole box,
  * launch it on a strand, continue, stop, and answer completion and hover requests.
  * [KotlinExecution] is the Kotlin implementation. [configureOutputProxies] connects a box's
- * `print`, error and `display(...)` output to the client that ran it. [improveMessage] and
- * [suggestionsFor] turn compiler diagnostics into the inline hints shown under an error.
+ * `print`, error and `display(...)` output to the client that ran it. [improveMessage],
+ * [immediateSuggestionsFor] and [symbolSuggestionsFor] turn compiler diagnostics into the inline
+ * hints shown under an error; [reportFirstCompileError] sends the error before the slow ones.
  */
 
 
@@ -198,10 +199,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.yield
 import java.io.File
 import java.nio.file.Files
@@ -1286,9 +1289,15 @@ internal fun dispatchExecutionOutput(
 ) {
     var normalized = if (output.uid.isBlank()) output.copy(uid = box.id) else output
     when (normalized.kind) {
-        "error", "err" -> boxesWithRunErrors.add(box.id)
-        "ok" -> if (boxesWithRunErrors.remove(box.id)) {
-            normalized = normalized.copy(preserveErrors = true)
+        "error", "err" -> {
+            boxesWithRunErrors.add(box.id)
+            noteRunVerdictOutput(box.id)
+        }
+        "ok" -> {
+            noteRunVerdictOutput(box.id)
+            if (boxesWithRunErrors.remove(box.id)) {
+                normalized = normalized.copy(preserveErrors = true)
+            }
         }
     }
     logErrorOutputToTerminal(box, normalized)
@@ -2023,34 +2032,9 @@ class KotlinExecution : BoxExecution {
                 }
                 if (first && it.severity.ordinal > ScriptDiagnostic.Severity.WARNING.ordinal) {
                     first = false
-                    val message = improveMessage(box, it.message, code, it)
-                    val fixes = suggestionsFor(box, it.message, code, it)
-                    val location = it.location
-                    val output = if (location != null) {
-                        Output(
-                            uid = box.id,
-                            line = location.start.line,
-                            startColumn = location.start.col,
-                            endLine = location.end?.line ?: -1,
-                            endColumn = location.end?.col ?: -1,
-                            kind = "error",
-                            property = property,
-                            html = message,
-                            frame = Runloop.runLoop.frame.toInt(),
-                            suggestions = fixes
-                        )
-                    } else {
-                        Output(
-                            uid = box.id,
-                            line = fallbackLine,
-                            kind = "error",
-                            property = property,
-                            html = message,
-                            frame = Runloop.runLoop.frame.toInt(),
-                            suggestions = fixes
-                        )
+                    reportFirstCompileError(box, code, it, property, fallbackLine) { output ->
+                        dispatchExecutionOutput(box, reply, output, originSession = originSession)
                     }
-                    dispatchExecutionOutput(box, reply, output, originSession = originSession)
                 }
             }
         }
@@ -2790,43 +2774,9 @@ class KotlinExecution : BoxExecution {
                                 }
                             }
                             if (first && it.severity.ordinal > ScriptDiagnostic.Severity.WARNING.ordinal) {
-                                var message = it.message
-                                val fixes = suggestionsFor(box, message, code, it)
-                                message = improveMessage(box, message, code, it)
                                 first = false
-                                if (it.location != null) {
-                                    dispatchExecutionOutput(
-                                        box,
-                                        trace.reply,
-                                        Output(
-                                            uid = box.id,
-                                            line = it.location!!.start.line,
-                                            startColumn = it.location!!.start.col,
-                                            endLine = it.location!!.end?.line ?: -1,
-                                            endColumn = it.location!!.end?.col ?: -1,
-                                            kind = "error",
-                                            property = property,
-                                            html = message,
-                                            frame = Runloop.runLoop.frame.toInt(),
-                                            suggestions = fixes
-                                        ),
-                                        originSession = originSession
-                                    )
-                                } else {
-                                    dispatchExecutionOutput(
-                                        box,
-                                        trace.reply,
-                                        Output(
-                                            uid = box.id,
-                                            line = ln + dur,
-                                            kind = "error",
-                                            property = property,
-                                            html = message,
-                                            frame = Runloop.runLoop.frame.toInt(),
-                                            suggestions = fixes
-                                        ),
-                                        originSession = originSession
-                                    )
+                                reportFirstCompileError(box, code, it, property, ln + dur) { output ->
+                                    dispatchExecutionOutput(box, trace.reply, output, originSession = originSession)
                                 }
                             }
                         }
@@ -3969,8 +3919,8 @@ fun improveMessage(
     val hints = mutableListOf<String>()
 
     // Note: "Did you mean" / "add import" suggestions are no longer appended here as inert text.
-    // They are surfaced as structured, actionable rows via suggestionsFor() (Apply / Ask AI4
-    // buttons in the error output area). The numeric-mismatch hint stays as explanatory context.
+    // They are surfaced as structured, actionable rows via immediateSuggestionsFor() and
+    // symbolSuggestionsFor() (Apply / Ask AI4 buttons in the error output area). The numeric-mismatch hint stays as explanatory context.
     numericMismatchHint(errorMessage)?.let { hints += escapeNotifyHtml(it) }
     languageRootHint(b)?.let { hints += escapeNotifyHtml(it) }
     stackAutoSlotOnMeshHint(errorMessage, runCatching { afield.lang.stacksl.study.EmbeddedStackSL.slots(b) }.getOrDefault(emptySet()))?.let { hints += escapeNotifyHtml(it) }
@@ -3981,62 +3931,103 @@ fun improveMessage(
 }
 
 /**
- * Structured, actionable fixes for an error message — the data behind the Apply / Ask AI4
- * buttons in the error output area. Reuses the same ranking engine as [improveMessage]
- * ([suggestResolvableSymbols], [numericMismatchHint]) but returns [OutputSuggestion]s instead of
- * baked HTML. Position ([OutputSuggestion.line]/[OutputSuggestion.column]) comes from the
- * diagnostic so the client can locate and replace the offending token.
+ * How long the "did you mean" search for an unresolved name may run before its rows are dropped.
+ * A cold search is the K1 completion delegate's first bootstrap, one to three seconds; this is far
+ * past that, so it only cuts off a completion that has stopped making progress.
  */
-fun suggestionsFor(
-    b: Box,
+internal const val SYMBOL_SUGGESTION_TIMEOUT_MS = 20_000L
+
+/**
+ * How many run verdicts (`error` or `ok` outputs) each box has dispatched. [reportFirstCompileError]
+ * sends its late rows only while this count is unchanged, so rows for a run the box has since
+ * replaced are dropped.
+ */
+private val runVerdictOutputs = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
+/** Count one more run verdict for [boxId]; [dispatchExecutionOutput] calls this. */
+internal fun noteRunVerdictOutput(boxId: String) {
+    runVerdictOutputs.merge(boxId, 1, Int::plus)
+}
+
+private fun runVerdictOutputCount(boxId: String): Int = runVerdictOutputs[boxId] ?: 0
+
+/**
+ * Report a failed compile's first error to [dispatch], then send its "did you mean" rows for an
+ * unresolved name later, as a `"suggestions"` output.
+ *
+ * The error is sent at once, with whatever fixes can be read off the message itself
+ * ([immediateSuggestionsFor]). Rows for an unresolved name come from completing in the gap the name
+ * leaves ([symbolSuggestionsFor]). That needs the box engine's completion. On a fresh engine this
+ * means bootstrapping the K1 completion delegate, which compiles the whole intro and takes seconds,
+ * behind a mutex the edit-time warm-up ([KotlinScriptEngine.warmCompletionAsync]) may already hold.
+ * The search used to run inline under `runBlocking` on the runloop thread that delivers the compile
+ * error. The first error in a fresh engine then froze every frame for the length of the bootstrap.
+ * When the warm-up held the mutex, the box hung for good, because the warm-up resumes on the
+ * runloop that was blocked waiting for it (`CompileErrorSuggestionsOffRunloopTest`).
+ *
+ * The search now runs as a coroutine on the runloop's dispatcher. It suspends instead of blocking,
+ * so frames keep running while it waits on the delegate, and its K1 calls stay on the thread editor
+ * completion uses (K1 is not thread-safe). The rows are dropped if they take longer than
+ * [SYMBOL_SUGGESTION_TIMEOUT_MS], if the search finds nothing, or if the box has dispatched another
+ * run verdict in the meantime. Returns the search's job, or null when there is nothing to search.
+ */
+internal fun reportFirstCompileError(
+    box: Box,
+    code: String,
+    diagnostic: ScriptDiagnostic,
+    property: String,
+    fallbackLine: Int,
+    dispatch: (Output) -> Unit,
+): Job? {
+    val location = diagnostic.location
+    val error = Output(
+        uid = box.id,
+        line = location?.start?.line ?: fallbackLine,
+        startColumn = location?.start?.col ?: -1,
+        endLine = location?.end?.line ?: -1,
+        endColumn = location?.end?.col ?: -1,
+        kind = "error",
+        property = property,
+        html = improveMessage(box, diagnostic.message, code, diagnostic),
+        frame = Runloop.runLoop.frame.toInt(),
+        suggestions = immediateSuggestionsFor(diagnostic.message, diagnostic)
+    )
+    dispatch(error)
+    if (unresolvedReferenceName(diagnostic.message) == null) return null
+
+    val verdicts = runVerdictOutputCount(box.id)
+    return inMain {
+        val rows = try {
+            withTimeoutOrNull(SYMBOL_SUGGESTION_TIMEOUT_MS) {
+                symbolSuggestionsFor(box, diagnostic.message, code, diagnostic)
+            }
+        } catch (c: CancellationException) {
+            throw c
+        } catch (t: Throwable) {
+            lprintln("warning,execution", "did-you-mean search for ${box.id} failed: ${t.javaClass.simpleName}: ${t.message}")
+            return@inMain
+        }
+        when {
+            rows == null -> lprintln("warning,execution", "did-you-mean rows for ${box.id} dropped: the search took over ${SYMBOL_SUGGESTION_TIMEOUT_MS} ms")
+            rows.isEmpty() -> {}
+            runVerdictOutputCount(box.id) != verdicts -> lprintln("info,execution", "did-you-mean rows for ${box.id} dropped: the box has reported another run since")
+            else -> dispatch(error.copy(kind = "suggestions", html = "", suggestions = rows))
+        }
+    }
+}
+
+/**
+ * The fixes for an error message that need nothing but the message: Field's numeric helpers for a
+ * numeric argument mismatch, and an AI4 hand-off for an ambiguous overload. Cheap, so they go out
+ * with the error itself. See [symbolSuggestionsFor] for the rest.
+ */
+fun immediateSuggestionsFor(
     errorMessage: String,
-    code: String? = null,
     diagnostic: ScriptDiagnostic? = null
 ): List<OutputSuggestion> {
     val out = mutableListOf<OutputSuggestion>()
     val line = diagnostic?.location?.start?.line ?: -1
     val column = diagnostic?.location?.start?.col ?: -1
-
-    unresolvedReferenceName(errorMessage)?.let { missing ->
-        suggestResolvableSymbols(b, missing, code, diagnostic).forEach { s ->
-            val importFqn = s.detail
-                .takeIf { it.startsWith("add import ") }
-                ?.removePrefix("add import ")
-                ?.trim()
-                .orEmpty()
-            if (importFqn.isNotEmpty()) {
-                // Import (optionally also a rename when the class name differs from the token).
-                val rename = if (!s.name.equals(missing, ignoreCase = true)) s.name else ""
-                out += OutputSuggestion(
-                    kind = "import",
-                    label = importFqn,
-                    detail = if (rename.isNotEmpty()) "import + rename to ${s.name}" else "add import",
-                    token = missing,
-                    replacement = rename,
-                    importFqn = importFqn,
-                    line = line,
-                    column = column,
-                    aiInstruction = buildString {
-                        append("Add the missing import `import $importFqn`")
-                        if (rename.isNotEmpty()) append(" and replace `$missing` with `${s.name}`")
-                        append(" to resolve the unresolved reference `$missing`.")
-                    }
-                )
-            } else {
-                // Rename to an existing symbol.
-                out += OutputSuggestion(
-                    kind = "rename",
-                    label = s.name,
-                    detail = s.detail,
-                    token = missing,
-                    replacement = s.name,
-                    line = line,
-                    column = column,
-                    aiInstruction = "Replace the unresolved reference `$missing` with `${s.name}`."
-                )
-            }
-        }
-    }
 
     numericWrapHelper(errorMessage)?.let { helper ->
         val typeName = when (helper) {
@@ -4071,6 +4062,64 @@ fun suggestionsFor(
     }
 
     return out
+}
+
+/**
+ * The rename and add-import fixes for an unresolved reference: the data behind the Apply / Ask AI4
+ * rows under the error. Ranked by [suggestResolvableSymbols], which asks the box's engine for
+ * completion, so this suspends, possibly for seconds on a fresh engine. Call it from the runloop's
+ * dispatcher and never under `runBlocking` there; [reportFirstCompileError] explains why. Position
+ * ([OutputSuggestion.line]/[OutputSuggestion.column]) comes from the diagnostic so the client can
+ * locate and replace the offending token. Empty for any other message.
+ */
+suspend fun symbolSuggestionsFor(
+    b: Box,
+    errorMessage: String,
+    code: String? = null,
+    diagnostic: ScriptDiagnostic? = null
+): List<OutputSuggestion> {
+    val missing = unresolvedReferenceName(errorMessage) ?: return emptyList()
+    val line = diagnostic?.location?.start?.line ?: -1
+    val column = diagnostic?.location?.start?.col ?: -1
+
+    return suggestResolvableSymbols(b, missing, code, diagnostic).map { s ->
+        val importFqn = s.detail
+            .takeIf { it.startsWith("add import ") }
+            ?.removePrefix("add import ")
+            ?.trim()
+            .orEmpty()
+        if (importFqn.isNotEmpty()) {
+            // Import (optionally also a rename when the class name differs from the token).
+            val rename = if (!s.name.equals(missing, ignoreCase = true)) s.name else ""
+            OutputSuggestion(
+                kind = "import",
+                label = importFqn,
+                detail = if (rename.isNotEmpty()) "import + rename to ${s.name}" else "add import",
+                token = missing,
+                replacement = rename,
+                importFqn = importFqn,
+                line = line,
+                column = column,
+                aiInstruction = buildString {
+                    append("Add the missing import `import $importFqn`")
+                    if (rename.isNotEmpty()) append(" and replace `$missing` with `${s.name}`")
+                    append(" to resolve the unresolved reference `$missing`.")
+                }
+            )
+        } else {
+            // Rename to an existing symbol.
+            OutputSuggestion(
+                kind = "rename",
+                label = s.name,
+                detail = s.detail,
+                token = missing,
+                replacement = s.name,
+                line = line,
+                column = column,
+                aiInstruction = "Replace the unresolved reference `$missing` with `${s.name}`."
+            )
+        }
+    }
 }
 
 /** The Field numeric helper (`.d`/`.f`/`.i`/`.l`) that resolves a numeric argument-type mismatch, or null. */
@@ -4200,7 +4249,7 @@ private fun numericMismatchHint(errorMessage: String): String? {
     return "Kotlin does not widen numeric types automatically. $primary Field also provides `.d` -> Double, `.f` -> Float, `.i` -> Int, and `.l` -> Long."
 }
 
-private fun suggestResolvableSymbols(
+private suspend fun suggestResolvableSymbols(
     box: Box,
     missing: String,
     code: String?,
@@ -4228,11 +4277,12 @@ private fun suggestResolvableSymbols(
 
     val defined = collectDefinedSymbols(box)
     val local = collectLocalCodeSymbols(missing, code, diagnostic)
-    // Overlap the two dominant cost centres: the K1-backed ambient completion (kept on this thread,
-    // its two probes sequential because they share one K1 analysis session) runs concurrently with
-    // the CPU-bound classpath/index Levenshtein scans on Dispatchers.Default. Results are added in
-    // the original collector order below, so dedup precedence and final output are unchanged.
-    val (ambient, importHelp, indexed) = runBlocking {
+    // Overlap the two dominant cost centres: the K1-backed ambient completion (kept on the caller's
+    // dispatcher, its two probes sequential because they share one K1 analysis session) runs
+    // concurrently with the CPU-bound classpath/index Levenshtein scans on Dispatchers.Default.
+    // Results are added in the original collector order below, so dedup precedence and final output
+    // are unchanged. Suspending, never `runBlocking`: see [reportFirstCompileError].
+    val (ambient, importHelp, indexed) = coroutineScope {
         val importDeferred = async(Dispatchers.Default) { collectImportHelpSymbols(missing) }
         val indexedDeferred = async(Dispatchers.Default) { collectIndexedSymbols(missing) }
         val ambient = collectAmbientCompletionSymbols(box, missing, code, diagnostic)
@@ -4296,7 +4346,7 @@ private fun collectDefinedSymbols(box: Box): List<ErrorMessageSymbol> {
     return symbols
 }
 
-private fun collectAmbientCompletionSymbols(
+private suspend fun collectAmbientCompletionSymbols(
     box: Box,
     missing: String,
     code: String?,
@@ -4310,9 +4360,13 @@ private fun collectAmbientCompletionSymbols(
     }
 
     return probes.flatMap { (probeCode, cursor) ->
-        val completion = runCatching {
-            box.ki.completeAndWait(probeCode, cursor.coerceIn(0, probeCode.length))
-        }.getOrNull()
+        val completion = try {
+            box.ki.complete(probeCode, cursor.coerceIn(0, probeCode.length))
+        } catch (c: CancellationException) {
+            throw c
+        } catch (t: Throwable) {
+            null
+        }
         (completion as? CompletionResult.Success)?.metadata.orEmpty().mapNotNull { variant ->
             val name = completionCandidateName(variant).takeIf { it.isNotBlank() } ?: return@mapNotNull null
             ErrorMessageSymbol(name, shortenCompletionInfo(variant), sourceRank = 1)
