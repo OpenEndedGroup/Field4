@@ -19,7 +19,7 @@ internal class WindowCaptureRequest(
 )
 
 /** Capture queue and per-window progress, independent of Vulkan so cancellation is testable. */
-internal class WindowCaptureQueue {
+internal class WindowCaptureQueue(private val diagnostics: () -> String = { "" }) {
     private val lock = Any()
     private val pending = mutableMapOf<Int, ArrayDeque<WindowCaptureRequest>>()
     private val frames = mutableMapOf<Int, Long>()
@@ -59,7 +59,7 @@ internal class WindowCaptureQueue {
                                 request.completion.completeExceptionally(NativeWindowCaptureStalledException(
                                     "Native window capture stalled: windowIndex=${request.windowIndex} " +
                                         "frame=$current unchanged for ${noFrameTimeoutMs}ms; " +
-                                        "the renderer did not reach this window's capture point"
+                                        "the renderer did not reach this window's capture point. ${diagnostics()}"
                                 ))
                             }
                         }

@@ -807,18 +807,8 @@ class MeshModule(val parameters: Parameters) : Renderable {
         ownedDescriptorLayouts.clear()
     }
 
-    private fun createShaderModule(code: ByteBuffer): Long {
-        MemoryStack.stackPush().use { stack ->
-            val pCode = stack.malloc(code.limit()).put(code).flip()
-            val ci = VkShaderModuleCreateInfo.calloc(stack)
-                .sType(VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)
-                .pCode(pCode)
-            val lp = stack.mallocLong(1)
-            vkCheck(vkCreateShaderModule(parameters.renderer.device.vkDevice, ci, null, lp),
-                "Failed to create shader module")
-            return lp[0]
-        }
-    }
+    private fun createShaderModule(code: ByteBuffer): Long =
+        createVulkanShaderModule(parameters.renderer.device.vkDevice, code)
 
     operator fun plusAssign(m: Pair<String, MeshMesh>) {
         meshes[m.first] = m.second

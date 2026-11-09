@@ -4514,6 +4514,16 @@ Vulkan is required; the public guide includes real native playback captures.
 
 [Open →](offline.html?file=assets/agent_transcripts/video_one_vr/metadata.edn)
 
+
+### body_one
+
+[Body and hand tracking](body_tracking.md): inspect WiVRn's sparse body joints, both hands and
+controllers in OpenXR. Validity-aware drawing, orientation axes, an optional inspection copy,
+world bounds and closest-point queries. Three editable boxes, a headset mirror and a Field browser pane.
+
+[Open →](offline.html?file=assets/agent_transcripts/body_one/metadata.edn)
+
+
 ### field_vr_ide
 
 [Field inside VR](field_vr_ide.md): the live canvas, editor and command palette in a world-locked

@@ -57,7 +57,6 @@ import afield.math.linalg.Vec4
 import afield.math.linalg.f
 import afield.math.linalg.Rectanglef
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRPushDescriptor.vkCmdPushDescriptorSetKHR
 import org.lwjgl.vulkan.VK13.*
@@ -1396,32 +1395,8 @@ class Module(val parameters: Parameters) : Renderable {
         }
     }
 
-    /**
-     * Hands SPIR-V to Vulkan without staging it on LWJGL's 64 KiB [MemoryStack].
-     *
-     * Generated shaders routinely cross that boundary. Shaderc already returns a
-     * native, word-aligned buffer, so the common path can point Vulkan at it
-     * directly. A non-direct caller is copied into explicitly managed native
-     * memory; only the two small Vulkan structs remain on the stack.
-     */
-    private fun createShaderModule(code: ByteBuffer): Long {
-        val direct = if (code.isDirect) null else MemoryUtil.memAlloc(code.remaining()).put(code.duplicate()).flip()
-        try {
-            MemoryStack.stackPush().use { stack ->
-                val ci = VkShaderModuleCreateInfo.calloc(stack)
-                    .sType(VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)
-                    .pCode(direct ?: code)
-                val lp = stack.mallocLong(1)
-                vkCheck(
-                    vkCreateShaderModule(parameters.renderer.device.vkDevice, ci, null, lp),
-                    "Failed to create shader module"
-                )
-                return lp[0]
-            }
-        } finally {
-            if (direct != null) MemoryUtil.memFree(direct)
-        }
-    }
+    private fun createShaderModule(code: ByteBuffer): Long =
+        createVulkanShaderModule(parameters.renderer.device.vkDevice, code)
 
     operator fun plusAssign(m: Pair<String, Mesh>) {
         meshes[m.first] = m.second
