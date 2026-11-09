@@ -2578,9 +2578,32 @@ function releaseAllButtons() {
     Array.from(buttonState.held).forEach(releaseButton);
 }
 
-/** Space and enter on a focused button, so the control is reachable without a pointer. */
+/**
+ * The `keys(..., letters = "wer")` key a letter plays, or null.
+ *
+ * Only on a page that shows one output alone (`body.mode-figure`, a presentation figure), where the
+ * keyboard has nothing else to do; on the canvas the same letters are Field's shortcuts. Never while
+ * typing in a field, and never with a modifier, so copy and the menus keep their keys.
+ */
+function letterKeyFor(event) {
+    if (!document.body?.classList?.contains('mode-figure')) return null;
+    if (event.metaKey || event.ctrlKey || event.altKey) return null;
+    const target = event.target;
+    if (target && (target.isContentEditable || /^(input|textarea|select)$/i.test(target.tagName || ''))) return null;
+    const letter = String(event.key || '').toLowerCase();
+    if (letter.length !== 1 || !/[a-z0-9]/.test(letter)) return null;
+    return document.querySelector(`.field-key[data-key-letter="${cssEscape(letter)}"]`);
+}
+
+/** Space and enter on a focused button, so the control is reachable without a pointer; and key letters. */
 function buttonKeyDown(event) {
-    if (event.key !== ' ' && event.key !== 'Enter' && event.code !== 'Space') return;
+    if (event.key !== ' ' && event.key !== 'Enter' && event.code !== 'Space') {
+        const key = letterKeyFor(event);
+        if (!key) return;
+        if (event.preventDefault) event.preventDefault();
+        pressButton(key);
+        return;
+    }
     const container = event.target?.closest?.('.field-button');
     if (!container) return;
     if (event.preventDefault) event.preventDefault();
@@ -2588,7 +2611,11 @@ function buttonKeyDown(event) {
 }
 
 function buttonKeyUp(event) {
-    if (event.key !== ' ' && event.key !== 'Enter' && event.code !== 'Space') return;
+    if (event.key !== ' ' && event.key !== 'Enter' && event.code !== 'Space') {
+        const key = letterKeyFor(event);
+        if (key?.dataset?.controlId) releaseButton(key.dataset.controlId);
+        return;
+    }
     const container = event.target?.closest?.('.field-button');
     if (container?.dataset?.controlId) releaseButton(container.dataset.controlId);
 }

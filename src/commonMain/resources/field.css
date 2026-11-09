@@ -2601,6 +2601,25 @@ body.field-pane-resizing-h * {
     outline-offset: 2px;
 }
 
+/* Keys (ControlGroupBuilder.keys): momentary buttons side by side, the label on the key and its
+   computer letter, if any, beneath it. */
+.field-key .field-button-hit.field-key-hit {
+    min-width: 88px;
+    min-height: 72px;
+    padding: 8px 14px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 13px;
+}
+
+.field-key .field-key-letter {
+    font-size: 10px;
+    opacity: 0.6;
+}
+
 /* Meter — a level you can see. No hitbox and no thumb: it reports, and cannot be dragged. */
 .field-meter {
     display: flex;
