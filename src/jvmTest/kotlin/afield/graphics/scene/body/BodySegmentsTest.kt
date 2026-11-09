@@ -44,6 +44,13 @@ class BodySegmentsTest {
         assertEquals(.1f,inside.force(10f,20f,.2f,maximum=.1f).length(),1e-6f)
     }
 
+    @Test fun interiorInfluenceCanBeConfinedToABand() {
+        val hit=segment().sample(Vector3f(.05f,.5f,0f))
+        assertEquals(0f,hit.force(10f,20f,.2f,insideReach=.025f).length(),1e-6f)
+        assertEquals(.5f,hit.force(10f,20f,.2f,insideReach=.1f).x,1e-6f)
+        assertEquals(1f,hit.force(10f,20f,.2f,insideReach=0f).x,1e-6f)
+    }
+
     @Test fun snapshotsCopyTrackingAndNeverKeepLostHandSegments() {
         val hand=HandTrackingState().apply { isActive=true }
         for(j in HandJoint.entries) hand.joints[j.ordinal]=pose(j.ordinal*.01f,0f,0f)

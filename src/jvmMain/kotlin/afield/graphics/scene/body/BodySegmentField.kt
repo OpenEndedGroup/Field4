@@ -22,6 +22,7 @@ class BodySegmentField(renderer: Renderer, val particleCount: Int) : AutoCloseab
     var pull = 1f
     var push = 4f
     var reach = .25f
+    var insideReach = 0f // zero keeps repulsion throughout the interior
     var falloff = 1f
     var gap = .03f
     var maximumForce = 2f
@@ -74,14 +75,14 @@ class BodySegmentField(renderer: Renderer, val particleCount: Int) : AutoCloseab
     /** Supply the live upload and controls whenever the consumer records its existing dispatch. */
     fun bind(structures: Map<String, Structure>) {
         val target = structures["BodyField"] ?: return
-        require(listOf(pull, push, reach, falloff, maximumForce).all { it.isFinite() && it >= 0f } && gap.isFinite())
+        require(listOf(pull, push, reach, falloff, maximumForce, insideReach).all { it.isFinite() && it >= 0f } && gap.isFinite())
         target["worldFromLocal"] = worldFromLocal
         target["localFromWorld"] = localFromWorld
         target["geometry"] = upload
         target["choices"] = choices
         target["state"] = Vector4f(particleCount.toFloat(), if (enabled && !closed) 1f else 0f, snapshot.active.size.toFloat(), 0f)
         target["gains"] = Vector4f(pull, push, reach, falloff)
-        target["options"] = Vector4f(gap, maximumForce, 0f, 0f)
+        target["options"] = Vector4f(gap, maximumForce, insideReach, 0f)
     }
 
     fun attach(module: ComputeModulePointer) {

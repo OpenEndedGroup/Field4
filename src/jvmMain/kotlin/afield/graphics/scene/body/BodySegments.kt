@@ -143,13 +143,16 @@ fun OpenXRHmdTarget.bodySegments(
 /**
  * Spring towards a capsule's standoff surface. Independent positive gains pull from outside and
  * push from inside. [reach] is the outside influence band in metres; inside remains repulsive.
+ * [insideReach] optionally limits penetration influence too; zero covers the entire interior.
  * The result is world acceleration; a physics adapter converts it to its integration convention.
  */
-fun BodySegmentHit.force(pull: Float, push: Float, reach: Float, falloff: Float = 1f, maximum: Float = 0f): Vector3f {
-    require(listOf(pull, push, reach, falloff, maximum).all { it.isFinite() && it >= 0f })
-    val outside = max(distance, 0f)
-    val weight = if (outside == 0f) 1f else if (reach <= 0f || outside >= reach) 0f
-        else Math.pow((1f - outside / reach).toDouble(), falloff.toDouble()).toFloat()
+fun BodySegmentHit.force(pull: Float, push: Float, reach: Float, falloff: Float = 1f, maximum: Float = 0f, insideReach: Float = 0f): Vector3f {
+    require(listOf(pull, push, reach, falloff, maximum, insideReach).all { it.isFinite() && it >= 0f })
+    val depth = kotlin.math.abs(distance)
+    val band = if (distance >= 0f) reach else insideReach
+    val weight = if (depth == 0f || (distance < 0f && insideReach == 0f)) 1f
+        else if (band <= 0f || depth >= band) 0f
+        else Math.pow((1f - depth / band).toDouble(), falloff.toDouble()).toFloat()
     var magnitude = -distance * (if (distance > 0f) pull else push) * weight
     if (maximum > 0f) magnitude = magnitude.coerceIn(-maximum, maximum)
     return Vector3f(normal).mul(magnitude)

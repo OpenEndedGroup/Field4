@@ -17,7 +17,7 @@ layout(std140, set=0, binding=20) uniform BodyField {
     BodyChoiceData choices; // persistent four-byte choice per particle
     vec4 state; // particle count, enabled, active segment count, reserved
     vec4 gains; // outside pull, inside push, outside reach metres, falloff exponent
-    vec4 options; // extra standoff metres, body-force magnitude cap, reserved
+    vec4 options; // extra standoff metres, force cap, inside reach (0 = full interior), reserved
 } bodyField;
 
 vec4 gBodyForce; // resulting local force XYZ, zero when disabled/untracked
@@ -70,9 +70,10 @@ vec3 bodySegmentForce(uint particle, uint activeTick, vec3 local) {
     float radius=max(bodyField.geometry.segment[winner].a.w+bodyField.options.x,0.0);
     gBodySegment=float(winner);gBodyDistance=best.w;
     gBodyNormal=vec4(best.xyz,0);gBodyPoint=vec4(centre+best.xyz*radius,1);
-    float outside=max(best.w,0.0);
-    float weight=outside==0.0?1.0:(bodyField.gains.z<=0.0||outside>=bodyField.gains.z?0.0:
-        pow(max(1.0-outside/bodyField.gains.z,0.0),max(bodyField.gains.w,0.0)));
+    float depth=abs(best.w);
+    float band=best.w>=0.0?bodyField.gains.z:bodyField.options.z;
+    float weight=(depth==0.0||(best.w<0.0&&bodyField.options.z==0.0))?1.0:
+        (band<=0.0||depth>=band?0.0:pow(max(1.0-depth/band,0.0),max(bodyField.gains.w,0.0)));
     float magnitude=-best.w*(best.w>0.0?bodyField.gains.x:bodyField.gains.y)*weight;
     if(bodyField.options.y>0.0)magnitude=clamp(magnitude,-bodyField.options.y,bodyField.options.y);
     vec3 result=(bodyField.localFromWorld*vec4(best.xyz*magnitude,0)).xyz;

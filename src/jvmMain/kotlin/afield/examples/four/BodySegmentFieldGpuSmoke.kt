@@ -71,11 +71,13 @@ object BodySegmentFieldGpuSmoke {
                 for ((label, model, observations, enabled) in listOf(
                     Case("identity",Matrix4f(),snapshot,true),
                     Case("transformed",Matrix4f().translation(2f,1f,-3f).rotateY(.4f).scale(1.7f),snapshot,true),
+                    Case("bounded interior",Matrix4f(),snapshot,true),
                     Case("lost tracking",Matrix4f(),BodySegments.from(null),true),
                     Case("disabled",Matrix4f(),snapshot,false),
                     Case("reacquired",Matrix4f(),snapshot,true),
                 )) {
                     field.enabled=enabled
+                    field.insideReach=if(label=="bounded interior") .02f else 0f
                     field.update(observations,model)
                     val inverse=Matrix4f(model).invert()
                     val local=world.map { inverse.transformPosition(Vector3f(it)) }
@@ -84,7 +86,7 @@ object BodySegmentFieldGpuSmoke {
                     val got=probe.read(output)
                     for(i in world.indices) {
                         val hit=if(enabled) observations.closest(world[i],field.gap) else null
-                        val expected=hit?.force(field.pull,field.push,field.reach,field.falloff,field.maximumForce) ?: Vector3f()
+                        val expected=hit?.force(field.pull,field.push,field.reach,field.falloff,field.maximumForce,field.insideReach) ?: Vector3f()
                         inverse.transformDirection(expected)
                         val values=floatArrayOf(expected.x,expected.y,expected.z,hit?.distance ?: 0f,
                             hit?.normal?.x ?: 0f,hit?.normal?.y ?: 0f,hit?.normal?.z ?: 0f,hit?.segment?.toFloat() ?: -1f)
