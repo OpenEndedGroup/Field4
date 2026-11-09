@@ -77,7 +77,7 @@ operations:
                   hud(false)
                   helpers(false)
               }
-              display("readout", "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${watts.roundToInt()} W: $n rays</div>")
+              display("readout", "<div style='font-size:20px;color:#ddd;padding:4px 8px'>${watts.roundToInt()} W: $n rays</div>")
           }
 
           draw(10.0)
@@ -126,7 +126,7 @@ operations:
               lines(axes, curve, here, swatch, channel = "curve", w = 640.0, h = 280.0)
               display(
                   "readout",
-                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${watts.roundToInt()} W: the screen sends ${(v * 100).roundToInt()} % of its white</div>",
+                  "<div style='font-size:20px;color:#ddd;padding:4px 8px'>${watts.roundToInt()} W: the screen sends ${(v * 100).roundToInt()} % of its white</div>",
               )
           }
 
@@ -207,7 +207,7 @@ operations:
               lines(axes, curve, here, channel = "cosine", w = 640.0, h = 150.0)
               display(
                   "readout",
-                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>" +
+                  "<div style='font-size:20px;color:#ddd;padding:4px 8px'>" +
                       "$landed of $rays rays land on the patch &nbsp;·&nbsp; cos ${degrees.roundToInt()}° = ${down.f2}</div>",
               )
           }
@@ -290,7 +290,7 @@ operations:
               }
               display(
                   "readout",
-                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>" +
+                  "<div style='font-size:20px;color:#ddd;padding:4px 8px'>" +
                       "${distance.f1} m away: $reached of $count rays reach the patch</div>",
               )
           }
@@ -363,7 +363,7 @@ operations:
               lines(ground, eye, frame, channel = "view", w = 640.0, h = 160.0)
               display(
                   "readout",
-                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${distance.roundToInt()} m away, the car spans " +
+                  "<div style='font-size:20px;color:#ddd;padding:4px 8px'>${distance.roundToInt()} m away, the car spans " +
                       "${(2 * half * 180 / PI).f1}°</div>",
               )
           }
@@ -433,7 +433,7 @@ operations:
               lines(drawn, channel = "circle", w = 640.0, h = 300.0)
               display(
                   "readout",
-                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${degrees.roundToInt()}° = arc ÷ radius = " +
+                  "<div style='font-size:20px;color:#ddd;padding:4px 8px'>${degrees.roundToInt()}° = arc ÷ radius = " +
                       "${a.f2} radians; the ticks on the unrolled arc are one radius apart</div>",
               )
           }
@@ -471,7 +471,7 @@ operations:
               }
               display(
                   "readout",
-                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${distance.f1} m: " +
+                  "<div style='font-size:20px;color:#ddd;padding:4px 8px'>${distance.f1} m: " +
                       "${omega.f3} steradians; × distance² = ${(omega * distance * distance).f2}</div>",
               )
           }
@@ -518,7 +518,7 @@ operations:
               }
               display(
                   "readout",
-                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>the lamp covers ${(100 * covered / PI).f1} % of the disc. " +
+                  "<div style='font-size:20px;color:#ddd;padding:4px 8px'>the lamp covers ${(100 * covered / PI).f1} % of the disc. " +
                       "Radiance × area = ${(radiance * covered).f2} W/m²; summed over the lamp: ${e.f2} W/m²</div>",
               )
           }
@@ -576,7 +576,7 @@ operations:
               val d2 = distance * distance
               display(
                   "readout",
-                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${distance.f1} m: the cone takes in " +
+                  "<div style='font-size:20px;color:#ddd;padding:4px 8px'>${distance.f1} m: the cone takes in " +
                       "${d2.f1}× the lamp's area, each piece arriving ${d2.f1}× fainter: the same brightness</div>",
               )
           }
@@ -649,7 +649,7 @@ operations:
               val c = cos(v)
               display(
                   "readout",
-                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>at ${degrees.roundToInt()}°: " +
+                  "<div style='font-size:20px;color:#ddd;padding:4px 8px'>at ${degrees.roundToInt()}°: " +
                       "${(c * 100).roundToInt()} % of the power, from ${(c * 100).roundToInt()} % of the width: the same brightness</div>",
               )
           }
@@ -1324,6 +1324,7 @@ operations:
                       markdownNote("The end. [[back]] [[finish]]")
                   }
               }
+              .arrangeBoxes()
               .present()
   - execute:
       box: el_deck
