@@ -1,0 +1,376 @@
+name: explainer_lights
+description: >
+  The "Lights and Shadows" explainer deck, after Bartosz Ciechanowski's essay
+  (https://ciechanow.ski/lights-and-shadows/), with our own words and figures. One deck box holds
+  the presentation; every figure is its own box beside it, in slide order. The three-dimensional
+  figures are lit on the CPU by afield.graphics.lighting (irradiance from point, sphere and
+  rectangle lights, soft-shadow visibility, a coarse radiosity solve) and drawn unlit in a three
+  view, so what you see is the computed light. Run deck in Field's Electron app; the deck starts
+  each figure when its slide comes up and stops it when the talk moves on.
+docs:
+  - page: presentation_studio.md
+    why: "Live figures beside prose: the template the explainer decks are built from."
+operations:
+  - create:
+      box: el_opening_scene
+      name: opening_scene
+      frame: { x: 300.0, y: 140.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.graphics.lighting.*
+
+          // A lamp over a floor with a block on it. The light at every vertex is computed here.
+          val floor = floorMesh(4.0, 4.0, divisions = 64)
+          val block = panelBoxMesh(0.5, 0.5, 0.5, divisions = 10).translated(0.0, 0.25, 0.0)
+          var across = 0.6
+          var size = 0.5
+
+          fun draw() {
+              val lamp = RectLight(vec(across, 1.3, 0.0), width = size, height = size, power = 30.0)
+              three(channel = "scene", width = 640, height = 420) {
+                  mesh((floor + block).lit(lamp, exposure = 0.5), unlit = true, wireframe = false)
+                  mesh(lamp.mesh(), unlit = true, wireframe = false, cullBackFaces = false)
+                  camera(yaw = 35.0, pitch = 30.0, distance = 2.6)
+                  background("#000000")
+                  hud(false)
+              }
+          }
+
+          draw()
+          controlGroup {
+              slider("position", -1.2, 1.2, initialValue = across) { across = it; draw() }
+              slider("size", 0.05, 1.5, initialValue = size) { size = it; draw() }
+          }
+  - create:
+      box: el_deck
+      name: deck
+      frame: { x: 60.0, y: 140.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          import kotlinx.html.*
+
+          // The talk. Every figure is a box beside this one, named as in figure(...).
+          // A presenter note that starts "Figure not built yet" marks a slide still waiting for its figure.
+          presentation(title = "Lights and Shadows") {
+                  step("Lights and Shadows", id = "opening") {
+                      audience {
+                          figureBeside("opening_scene") {
+                              +"""
+                              # Lights and Shadows
+
+                              Everything we see is light that left a source, struck something, and
+                              reached an eye. This talk builds up how much light lands on a surface,
+                              and why one shadow is crisp while another is soft.
+
+                              Slide the lamp across, or change its size. Drag the picture to look around.
+                          """
+                                  .md
+                              p(classes = "muted") {
+                                  +"After “Lights and Shadows” by Bartosz Ciechanowski, ciechanow.ski/lights-and-shadows. Words and figures made in Field."
+                              }
+                          }
+                      }
+                      control("opening_scene", "position", 0.6)
+                      control("opening_scene", "size", 0.5)
+                      markdownNote("A lamp, a floor and a block. Every colour on the floor is computed from the physics in this talk. [[next]]")
+                  }
+
+                  section("Power") {
+                      step("Power", id = "power") {
+                          audience {
+                              +"""
+                              ## Power
+
+                              A lamp turns electrical power into light, and we measure the light the same way:
+                              in watts, the energy leaving the source each second.
+
+                              Think of it as rays streaming outward. A stronger lamp sends more of them.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `sphere_light`, a glowing ball with a power slider and its rays. [[back]] [[next]]")
+                      }
+                      step("Brightness is not power", id = "perceived") {
+                          audience {
+                              +"""
+                              ## Brightness is not power
+
+                              Twice the power does not look twice as bright. Our eyes compress what they
+                              receive, and a screen can only show so much: once a channel is full, every
+                              brighter value looks the same white.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `perceived`, a brightness curve and swatch against a power slider. [[back]] [[next]]")
+                      }
+                      step("Surfaces pass light on", id = "matte") {
+                          audience {
+                              +"""
+                              ## Surfaces pass light on
+
+                              Most things do not glow. We see them because they send back part of the light
+                              that reaches them. A matte surface scatters what it returns evenly in every
+                              direction, so it looks the same from wherever you stand.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `matte_surface`, a lit matte floor to orbit around. [[back]] [[next]]")
+                      }
+                  }
+
+                  section("Position") {
+                      step("Light at a slant", id = "slant") {
+                          audience {
+                              +"""
+                              ## Light at a slant
+
+                              Tilt a beam away from straight down and the same rays spread over more
+                              floor. The light per square metre falls as the cosine of the angle from
+                              the surface's normal: half at 60°, nothing at 90°.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `light_angle`, parallel rays on a patch (side view) and the cosine curve. [[back]] [[next]]")
+                      }
+                      step("Shape from the cosine", id = "lit-sphere") {
+                          audience {
+                              +"""
+                              ## Shape from the cosine
+
+                              Every point on a ball faces the lamp at a different angle. The cosine
+                              alone draws the shading that tells us the ball is round.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `lit_sphere`, a ball shaded by the cosine factor with a light-direction control. [[back]] [[next]]")
+                      }
+                      step("Farther away", id = "distance") {
+                          audience {
+                              +"""
+                              ## Farther away
+
+                              Light leaving a point spreads over a sphere, and a sphere's area grows with
+                              the square of its radius. Twice as far, a quarter of the light: the
+                              inverse-square law.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `distance_rays`, a point light whose rays thin out with distance. [[back]] [[next]]")
+                      }
+                      step("A light with a size", id = "rect-light") {
+                          audience {
+                              +"""
+                              ## A light with a size
+
+                              A real lamp is not a point. Each small piece of its surface behaves like a
+                              point light of its own, and the floor adds all of them up.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `rect_light`, a panel light over a floor. [[back]] [[next]]")
+                      }
+                  }
+
+                  section("Angles") {
+                      step("How big things look", id = "angles") {
+                          audience {
+                              +"""
+                              ## How big things look
+
+                              How large something looks is the angle it takes up in front of you. Walk
+                              away from a car and that angle shrinks, close to one over the distance.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `car_angle`, a top view and an eye view of a car moving away. [[back]] [[next]]")
+                      }
+                      step("Angles as lengths", id = "radians") {
+                          audience {
+                              +"""
+                              ## Angles as lengths
+
+                              Measure an angle by the arc it cuts from a circle: arc length over radius
+                              is the angle in radians, and a whole turn is 2π. For a small angle the arc
+                              is nearly straight, so size ≈ angle × distance.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `radians`, an arc whose length is read off against its radius. [[back]] [[next]]")
+                      }
+                  }
+
+                  section("Solid angles") {
+                      step("Angles in three dimensions", id = "solid-angle") {
+                          audience {
+                              +"""
+                              ## Angles in three dimensions
+
+                              Project a shape onto a sphere of radius one around your eye. The patch it
+                              covers is its solid angle, in steradians; the whole sphere is 4π. Move a
+                              panel twice as far and its solid angle drops to a quarter.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `projected_rect`, a panel projected onto a unit sphere, with a distance slider. [[back]] [[next]]")
+                      }
+                  }
+
+                  section("Surface vision") {
+                      step("What the floor sees", id = "hemisphere") {
+                          audience {
+                              +"""
+                              ## What the floor sees
+
+                              A point on a floor looks out on a hemisphere of directions. Project the lamp
+                              onto that hemisphere, then flatten it straight down onto the disc beneath:
+                              the share of the disc it covers is the share of light the point gets.
+                              The flattening is the cosine factor again.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `hemisphere`, a lamp projected onto a floor point's hemisphere and its base disc. [[back]] [[next]]")
+                      }
+                  }
+
+                  section("Radiance") {
+                      step("Brightness that does not fade", id = "radiance") {
+                          audience {
+                              +"""
+                              ## Brightness that does not fade
+
+                              Step back from a lamp and it looks just as bright, only smaller. Each cell in
+                              the eye takes in a fixed cone of directions; farther away, that cone covers
+                              more of the lamp, and the extra area makes up for the inverse-square law
+                              exactly. What stays the same is called radiance.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `constant_radiance`, a receptor cone on a lamp at a distance slider. [[back]] [[next]]")
+                      }
+                      step("Equally bright from every side", id = "lambert") {
+                          audience {
+                              +"""
+                              ## Equally bright from every side
+
+                              A matte emitter sends less power off to the side, in proportion to the cosine
+                              of the angle. Seen from that side its surface is foreshortened by the same
+                              cosine, so it looks equally bright from any direction.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `lambert_lobe`, the emission lobe of a matte surface, side view. [[back]] [[next]]")
+                      }
+                  }
+
+                  section("Reflections") {
+                      step("Mirror to matte", id = "reflections") {
+                          audience {
+                              +"""
+                              ## Mirror to matte
+
+                              A mirror sends each ray back at the angle it arrived. Roughen it and the
+                              returning rays fan out; rough enough, and they leave in every direction
+                              alike. That is a matte surface.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `rough_mirror`, rays reflected from a surface of adjustable roughness. [[back]] [[next]]")
+                      }
+                  }
+
+                  section("Shadow") {
+                      step("Soft and hard shadows", id = "soft-shadow") {
+                          audience {
+                              +"""
+                              ## Soft and hard shadows
+
+                              Keep the lamp's power fixed and make it bigger. Points near the edge of the
+                              shadow can now see part of the lamp, and the hard edge softens into a
+                              penumbra.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `soft_shadow`, a lamp of fixed power whose size and height you change. [[back]] [[next]]")
+                      }
+                  }
+
+                  section("Colour") {
+                      step("Coloured light", id = "colour") {
+                          audience {
+                              +"""
+                              ## Coloured light
+
+                              We stand in for the many wavelengths of light with three: red, green and blue
+                              power. A surface's colour is how much of each it sends back.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `light_colour`, nine coloured tiles under a light whose colour you pick. [[back]] [[next]]")
+                      }
+                      step("Lights add up", id = "additive") {
+                          audience {
+                              +"""
+                              ## Lights add up
+
+                              Two lamps on one floor simply add. Where a red and a green pool of light
+                              overlap, the floor turns yellow.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `additive`, red, green and blue lamps over a white floor. [[back]] [[next]]")
+                      }
+                  }
+
+                  section("Bounces") {
+                      step("Light keeps going", id = "bounces") {
+                          audience {
+                              +"""
+                              ## Light keeps going
+
+                              The light a surface sends back lands on other surfaces. A red wall beside a
+                              white floor tints the floor red. Each bounce is weaker than the last, and
+                              their sum is the scene's indirect light.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `red_wall`, a radiosity solve with power and bounce-count sliders. [[back]] [[next]]")
+                      }
+                  }
+
+                  section("Sphere of light") {
+                      step("A sky of light", id = "sky") {
+                          audience {
+                              +"""
+                              ## A sky of light
+
+                              Surround the scene with light from every direction, like an overcast sky.
+                              Nothing casts a hard shadow, yet a tile still darkens the ground just
+                              beneath it.
+                          """
+                                  .md
+                          }
+                          markdownNote("Figure not built yet: `sky_sphere`, a scene under a sphere of small lights, with a movable tile. [[back]] [[next]]")
+                      }
+                  }
+
+                  step("Further reading", id = "further-reading") {
+                      audience {
+                          +"""
+                          ## Further reading
+
+                          - Matt Pharr, Wenzel Jakob and Greg Humphreys, *Physically Based Rendering*, free at pbr-book.org.
+                          - Romain Guy and Mathias Agopian, *Physically Based Rendering in Filament*, google.github.io/filament.
+                          - Michael F. Cohen and John R. Wallace, *Radiosity and Realistic Image Synthesis* (1993).
+                      """
+                              .md
+                          p(classes = "muted") {
+                              +"After “Lights and Shadows” by Bartosz Ciechanowski, https://ciechanow.ski/lights-and-shadows/. Words and figures made in Field."
+                          }
+                      }
+                      markdownNote("The end. [[back]] [[finish]]")
+                  }
+              }
+              .present()
+  - execute:
+      box: el_deck
+      property: code
