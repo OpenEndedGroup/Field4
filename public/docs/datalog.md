@@ -479,10 +479,10 @@ about a fact that is not there points you at `#whynot`, which is where you wante
 ## Rules that decide when notes play
 
 A program can also be a score. Write `event(Instrument, Note, Velocity, T)` rules, where `T` is a
-step on a grid of sixteen steps to the bar, and `rhythm()` turns the program into a Pat pattern that
-the [pattern language](pattern_language.md)'s player, renderers and piano roll all accept. The idea
-comes from [Dogalog](https://github.com/danja/dogalog) (MIT), which asks a Prolog engine the same
-question on the same grid.
+step on a sixteen-step bar, and `rhythm()` turns the program into a Pat pattern. You can play or
+render it with the [pattern language](pattern_language.md), or show it on a piano roll. The idea
+comes from [Dogalog](https://github.com/danja/dogalog) (MIT), which asks a Prolog engine what
+plays at each step.
 
 The rules below play a Euclidean kick, bring the snare in at bar 1 and the hats at bar 2, and pick
 a lead line out of a pentatonic scale:
@@ -517,8 +517,8 @@ display("main", "<pre>$grids</pre>")
 ```
 
 To hear it, add `showPatAudio(r.pattern(), cycles = 4, cps = 0.5)`, which renders four bars and
-puts a player in the box. These are those four bars, eight seconds, through Pat's built-in synth
-voice: the snare enters at two seconds and the hats at four.
+puts a player in the box. Here are the four bars through Pat's built-in synth voice: the snare
+enters at two seconds and the hats at four.
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/datalog/rhythm-song.wav" audio-spec="song" audio-renderer="afield.data.query.datalog.DatalogRhythmSoundDocs" embed=true hidden=true name="datalog-rhythm-song-audio"}
 // Offline-rendered by DatalogRhythmSoundDocs.renderWav("song"): the rules above, through patRenderStereo.
@@ -530,9 +530,9 @@ The same rules with Dirt sample names (`bd`, `sn`, `hh`, and `arpy` for the lead
 ```diffstatic_runner {data-lang=kotlin audio="assets/datalog/rhythm-song-dirt.wav" audio-spec="song-dirt" audio-renderer="afield.data.query.datalog.DatalogRhythmDirtDocs" requires="dirt-samples" embed=true hidden=true name="datalog-rhythm-song-dirt-audio"}
 // Offline-rendered by DatalogRhythmDirtDocs.renderWav("song-dirt"): the rules through real Dirt-Samples.
 ```
- `r.pattern()` is an ordinary `PatPattern<String>`: each note's value is
-its instrument, a drum name (`kick`, `bd`, `sd`, `hh`, ...) keeps its drum voice, any other name
-is pitched by its `Note`, and the velocity becomes `gain` (100 is 1.0).
+`r.pattern()` is an ordinary `PatPattern<String>`. Each note's value is its instrument: a drum
+name (`kick`, `bd`, `sd`, `hh`, ...) keeps its drum voice, and any other name is pitched by its
+`Note`. Velocity becomes `gain` (100 is 1.0).
 
 The time predicates are facts that Field fills in for each bar:
 
@@ -563,8 +563,8 @@ event(crash, 49, 100, T) :- pos(T, 0), P = T - 1, event(snare, _, _, P).
 Nothing further back than one bar is visible. Because the pattern rereads the program for each bar
 it has not played yet, adding a rule to a playing `Datalog` changes the next bar without restarting
 anything. `r.why("event(kick, 36, 100, 20)")` explains a note the way `#why` explains a fact, with
-`euc(20, 4, 16, 0)` as the fact underneath it. The loadable version of this section is the
-`datalog_rhythm_rules` transcript.
+`euc(20, 4, 16, 0)` as the fact underneath it. Open the
+[starting point](agent_transcripts.md#datalog_rhythm_rules) to try the rules in a document.
 
 ??? aside "Why each bar is solved bottom-up"
     Dogalog asks Prolog, top-down, whether anything sounds at step `T`, one step at a time. A

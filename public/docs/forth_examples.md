@@ -389,10 +389,9 @@ turn shows as a changing slope, and the `debug` panel counts the ticks.
 
 ## Each step is a program
 
-A step sequencer is usually a row of cells, each holding a note. In
-[Cagire](https://cagire.raphaelforment.fr), Raphaël Forment's Forth sequencer, each cell holds a
-short Forth program instead, and the program decides what the step plays each time the sequencer
-comes round to it. ForthField borrows that design and a handful of Cagire's words. Cagire's source is
+Put a short Forth program in each cell of a step sequencer, and it can decide what to play each
+time the sequence comes round. ForthField borrows that idea and a handful of words from
+[Cagire](https://cagire.raphaelforment.fr), Raphaël Forment's Forth sequencer. Cagire's source is
 at [git.raphaelforment.fr/BuboBubo/cagire](https://git.raphaelforment.fr/BuboBubo/cagire); like
 Field, it is AGPL-3.0-or-later.
 
@@ -409,9 +408,9 @@ line 12 run-steps
 line 12 render-steps
 ```
 
-`line 12 run-steps` runs the first twelve steps and lists the notes they played in a `steps` panel; `render-steps`
-renders the same steps to a player in the box's `audio` panel. A step is a sixteenth note at the tempo
-`bpm` sets. The log spells E flat as `d#3`, which is the same MIDI note:
+`line 12 run-steps` runs the first twelve steps and lists the notes they played in a `steps` panel.
+`render-steps` renders them to a player in the box's `audio` panel. A step is a sixteenth note at
+the tempo `bpm` sets. The log spells E flat as `d#3`, which is the same MIDI note:
 
 ```diffstatic_runner {data-lang=forth audio="assets/forth_examples/steps_alternation.wav" audio-spec="forth-steps-alternation" audio-renderer="afield.lang.forth.ForthStepsDocs" embed=true hidden=true name="forth-steps-alternation-audio"}
 \ Offline-rendered by ForthStepsDocs.renderWav("forth-steps-alternation").
@@ -425,8 +424,9 @@ definition between them, so `x 0 < if … then` in a step is still a comparison.
 
 The voice words set up the note that `note` will play: `sine`, `saw`, `square` and `tri` choose the
 oscillator, `lpf` sets a lowpass corner in Hz, `dur` how many seconds the note holds before it fades,
-and `gain` its level. Every step starts from a plain sine, so a sound you want on several steps is a
-word. Cagire writes `{ 110 saw 800 lpf out } synth`; in ForthField the same idea is a colon definition:
+and `gain` its level. Every step starts with a plain sine; define a word to reuse another sound
+across steps. Cagire writes `{ 110 saw 800 lpf out } synth`; in ForthField the same idea is a colon
+definition:
 
 ```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_synth_word.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-synth-word" alt="A steps panel lists six saw notes, each with lpf 900: c2 and c3 on steps 0 and 1, d#2 on step 3, c2 and c3 on steps 4 and 5, g2 on step 7. Below it an audio panel shows the three-second waveform, a cluster of decaying notes every half second, over a player."}
 : acid  saw 900 lpf 0.08 dur ;
@@ -443,8 +443,8 @@ Six passes of the grid, with the last step walking E flat, G, B flat:
 ```
 
 The notes play through the same voice as Field's [pattern language](pattern_language.md): one
-oscillator, a lowpass and a decay. That voice has no FM, so where Cagire's example is an FM bell, the
-`chime` below is a triangle held for half a second.
+oscillator, a lowpass and a decay, without FM. Cagire's example makes an FM bell; here the `chime` is a
+triangle held for half a second.
 
 ### Lists, `iter` and weighted choice
 
@@ -467,8 +467,8 @@ seq: bells  chime [ c5 e5 g5 b5 ] iter index note | | 0.2 dur [ c3 g3 eb3 ] [ 6 
 \ Offline-rendered by ForthStepsDocs.renderWav("forth-steps-chime").
 ```
 
-`choose ( list -- x )` picks without weights, `pass` and `step` push the pass count and the step
-number for programs that want to do their own arithmetic.
+`choose ( list -- x )` picks without weights. For your own arithmetic, `pass` and `step` push the
+pass count and the step number.
 
 ### Samples, and the other synths
 

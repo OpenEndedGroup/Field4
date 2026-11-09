@@ -1876,12 +1876,11 @@ The box's `fragment` tab holds the spreading rule, and editing it re-runs the fi
 
 ## An atmospheric sky { #atmospheric-sky }
 
-A sky that comes out of the physics of air: sunlight scattered by molecules and haze on its way
-through a spherical atmosphere. Blue overhead at noon, orange along the horizon at sunset, a band of
-colour after the sun has gone, and a blue rim around the planet seen from space all come from the
-same few lines of shader, with nothing painted in. The scattering lives in a shader include,
-`sky/atmosphere.glsl`, which any shader can pull in with `#include "sky/atmosphere.glsl"`; no setup
-is needed. Its Kotlin twin, `afield.graphics.sky.Atmosphere`, computes the same numbers on the CPU.
+Make a sky from sunlight scattered by molecules and haze through a spherical atmosphere. The same
+shader gives you blue overhead at noon, orange at sunset, colour after the sun has gone and a blue
+rim around the planet seen from space. The scattering lives in `sky/atmosphere.glsl`: include it
+with `#include "sky/atmosphere.glsl"` in any shader. Its Kotlin twin,
+`afield.graphics.sky.Atmosphere`, computes the same numbers on the CPU.
 
 The box draws one fullscreen triangle beneath the renderer, as the forest fire above does. It keeps
 the sun and camera in a `SkyView`, hands them to the shader as push constants every frame, and puts
@@ -1972,9 +1971,9 @@ void main() {
 ### Sunset, twilight and the planet from space
 
 The box also has three small properties, `sunset`, `twilight` and `space`, that move its `SkyView`.
-Run one (pick it in the property switcher, then run) and the sky changes on the next frame; the
-sliders keep where they were. The box publishes its `SkyView` as its `skyView` property, which is
-how `fromContext` in another property of the same box finds it.
+Pick one in the property switcher and run it; the sky changes on the next frame. The sliders stay
+where they were. The box publishes its `SkyView` as its `skyView` property, so `fromContext` in
+another property of the same box can find it.
 
 Lower the sun and the light reaching you has crossed far more air. Blue is scattered out of it
 first, so what is left is yellow and red, and the haze near the ground glows orange:
@@ -2052,8 +2051,8 @@ Cornette-Shanks phase function, which brightens the sky around the sun. Ozone on
 Light that scatters more than once is left out, so deep twilight comes out darker than a real one
 and the sky close to the horizon slightly too dark.
 
-The sky is drawn after Maxime Heckel's walkthrough,
-["On rendering the sky, sunsets and planets"](https://blog.maximeheckel.com/posts/on-rendering-the-sky-sunsets-and-planets),
+The sky follows Maxime Heckel's walkthrough
+["On rendering the sky, sunsets and planets"](https://blog.maximeheckel.com/posts/on-rendering-the-sky-sunsets-and-planets)
 and these papers:
 
 - Tomoyuki Nishita, Takao Sirai, Katsumi Tadamura, Eihachiro Nakamae, "Display of the Earth Taking
@@ -2063,8 +2062,7 @@ and these papers:
   Computer Graphics Forum (EGSR) 2020, for the Earth coefficients and the ozone profile.
   [Paper](https://sebh.github.io/publications/egsr2020.pdf)
 
-The demo is `dev_docs/agents/transcripts/atmospheric_sky.yaml`
-([starting point](agent_transcripts.md#atmospheric_sky)).
+Open the [starting point](agent_transcripts.md#atmospheric_sky) to try the sky and its presets.
 
 ## Stopping the renderer
 
