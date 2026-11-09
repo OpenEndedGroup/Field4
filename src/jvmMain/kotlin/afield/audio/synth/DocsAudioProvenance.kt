@@ -184,6 +184,10 @@ object DocsAudioProvenance {
         "afield.data.query.datalog.DatalogRhythmSoundDocs" to Origin.STAND_IN_SYNTH,
         // The same rules on Dirt folder names, through patRenderStereoDirt with strict = true.
         "afield.data.query.datalog.DatalogRhythmDirtDocs" to Origin.DIRT_SAMPLES,
+        // forth_examples.md's step grids: every ForthField note is a PatSynthNote on a PatSynthBank of
+        // patVoice voices. The Dirt scene is the same grid as a pattern through patRenderStereoDirt, strict.
+        "afield.lang.forth.ForthStepsDocs" to Origin.STAND_IN_SYNTH,
+        "afield.lang.forth.ForthStepsDirtDocs" to Origin.DIRT_SAMPLES,
         "afield.examples.sonicpi.SonicPiSoundDocs" to Origin.SONIC_PI,
         // One strike of a meshed drum, rendered by DrumModes.render. See eigendrum.md.
         "afield.audio.modal.EigendrumDocs" to Origin.MODAL_SYNTHESIS,

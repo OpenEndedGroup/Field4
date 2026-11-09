@@ -569,6 +569,7 @@ object SoundPathMap {
             declaredIn = mapOf(
                 "src/jvmMain/kotlin/afield/audio/synth/PatSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/audio/synth/PatMiniNotation.kt" to "dirt-samples",
+                "src/jvmMain/kotlin/afield/lang/forth/ForthStepsDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/audio/synth/CaSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/audio/synth/LambdaSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/audio/synth/PatSynthDocs.kt" to "pat-stand-in",

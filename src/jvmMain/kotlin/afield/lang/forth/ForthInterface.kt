@@ -330,6 +330,8 @@ class ForthExecution(val inside: Box) : BoxExecution {
         strandJobs.forEach { (_, job) -> job.cancel() }
         strandJobs.clear()
         forth.strands.clear()
+        // A grid played with `tick-steps` holds a bank on the audio engine; stopping the box releases it.
+        forth.steps.close()
         inside.runGeneration.keys.toList().forEach { strand ->
             inside.runGeneration[strand] = (inside.runGeneration[strand] ?: 0) + 1
         }

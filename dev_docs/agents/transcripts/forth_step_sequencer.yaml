@@ -1,0 +1,73 @@
+name: forth_step_sequencer
+description: >
+  Each step is a program: Cagire's step-sequencer design (https://cagire.raphaelforment.fr,
+  AGPL-3.0-or-later) in ForthField, the companion to the "Each step is a program" sections of
+  forth_examples.md. A ForthField root and five children: a grid whose steps alternate with < >,
+  a bass line played through a synth word, a chime walking a chord with iter/index over a
+  bass line drawn by wchoose, a drum grid from the pinned Dirt-Samples, and a launched grid that
+  plays each step through the audio engine as it comes due. Run the others; launch the live one and stop it.
+operations:
+  - create:
+      box: forth_steps_root
+      name: forth steps
+      frame: { x: 80, y: 40, w: 160, h: 70 }
+      properties: { mainLanguage: forth }
+  - create:
+      box: forth_steps_alternation
+      name: alternation
+      frame: { x: 80, y: 160, w: 560, h: 110 }
+      properties:
+        code: |
+          120 bpm
+          seq: line  < c4 eb3 g3 > note | | < g3 c4 > note | ;seq
+          line 12 run-steps
+          line 12 render-steps
+  - create:
+      box: forth_steps_synth_word
+      name: synth word
+      frame: { x: 80, y: 300, w: 560, h: 120 }
+      properties:
+        code: |
+          : acid  saw 900 lpf 0.08 dur ;
+          130 bpm
+          seq: bass  acid c2 note | acid c3 note | | acid < eb2 g2 bb2 > note ;seq
+          bass 8 run-steps
+          bass 24 render-steps
+  - create:
+      box: forth_steps_chime
+      name: chime
+      frame: { x: 80, y: 450, w: 760, h: 120 }
+      properties:
+        code: |
+          : chime  tri 0.5 dur 0.5 gain ;
+          90 bpm
+          seq: bells  chime [ c5 e5 g5 b5 ] iter index note | | 0.2 dur [ c3 g3 eb3 ] [ 6 3 1 ] wchoose note | ;seq
+          7 seed bells 8 run-steps
+          7 seed bells 32 render-steps
+  - create:
+      box: forth_steps_dirt
+      name: dirt samples
+      frame: { x: 880, y: 160, w: 640, h: 110 }
+      properties:
+        code: |
+          130 bpm
+          seq: kit  s" bd" sound | s" hh" sound | < s" sn" s" hh" s" cp" > sound | s" hh" sound ;seq
+          kit 8 run-steps
+          kit 24 render-dirt
+  - create:
+      box: forth_steps_live
+      name: live (launch me)
+      frame: { x: 80, y: 600, w: 560, h: 100 }
+      properties:
+        code: |
+          120 bpm
+          seq: line  < c4 eb3 g3 > note | | < g3 c4 > note | ;seq
+          : play  line tick-steps frame ;
+          play
+  - connect: { parent: forth_steps_root, child: forth_steps_alternation }
+  - connect: { parent: forth_steps_root, child: forth_steps_synth_word }
+  - connect: { parent: forth_steps_root, child: forth_steps_chime }
+  - connect: { parent: forth_steps_root, child: forth_steps_dirt }
+  - connect: { parent: forth_steps_root, child: forth_steps_live }
+  - wait:
+      millis: 500
