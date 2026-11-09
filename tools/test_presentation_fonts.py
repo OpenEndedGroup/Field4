@@ -35,7 +35,9 @@ FIGURE_BLOCK = ("/* Presentation figure (?figure=<uid>", "#field-figure-host .fi
 def figure_css() -> str:
     css = (REPO / "src/commonMain/resources/field.css").read_text(encoding="utf-8")
     start = css.index(FIGURE_BLOCK[0])
-    return css[start:css.index("}", css.index(FIGURE_BLOCK[1], start)) + 1]
+    # The figure block runs to the end of field.css: its controls rules follow the font rule.
+    css[css.index("}", css.index(FIGURE_BLOCK[1], start))]
+    return css[start:]
 
 
 class PresentationFontsTest(unittest.TestCase):

@@ -6448,3 +6448,36 @@ body.mode-editor-only .field-toast {
 #field-figure-host .field-figure-box .outputArea * {
     font-family: "Iosevka Web", Iosevka !important;
 }
+/* Compact controls: subordinate to the picture. No row boxes, rows only as tall as the slider
+   track, smaller labels and values, and two columns once there are more than three controls. */
+#field-figure-host .field-figure-box .control-group {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 28px;
+    row-gap: 0;
+    width: auto !important;
+    max-width: none !important;
+}
+#field-figure-host .field-figure-box .control-group:has(> .field-control:nth-of-type(4)) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+#field-figure-host .field-figure-box .field-control {
+    padding: 0 2px !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    min-height: 0 !important;
+}
+#field-figure-host .field-figure-box .control-group { --field-slider-label-width: 72px; }
+#field-figure-host .field-figure-box .field-slider .field-label {
+    flex-basis: var(--field-slider-label-width);
+    width: var(--field-slider-label-width);
+    font-size: 10px;
+    opacity: 0.75;
+}
+#field-figure-host .field-figure-box .field-label { font-size: 10px; }
+#field-figure-host .field-figure-box .field-value { font-size: 10px; min-width: 34px; opacity: 0.85; }
+#field-figure-host .field-figure-box .field-slider-visual { height: 28px; }
+#field-figure-host .field-figure-box .field-checkbox { display: flex; align-items: center; gap: 10px; min-height: 28px; }
+#field-figure-host .field-figure-box .checkbox-toggle { zoom: 0.65; }
