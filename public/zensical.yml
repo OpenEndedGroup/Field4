@@ -428,6 +428,7 @@ nav:
       - A Learned Shader Function: learned_shader.md
       - GPU Shader Learning: gpu_shader_learning.md
       - Progressive Path Tracing: path_tracing.md
+      - Atmospheric Sky: atmospheric_sky.md
       - Ray Tracing Examples: ray_tracing_examples.md
       - Streaming Diffusion: streaming_diffusion.md
       - Particles, Cloth & Constraints: physics.md
