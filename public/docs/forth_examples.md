@@ -402,7 +402,7 @@ literals, so `c4` pushes 60 and `eb3` pushes 51, and `note` sounds one on the cu
 second pass the second, and so on, wrapping. This grid has four steps. The first alternates through C,
 E flat and G, and the third between G and C:
 
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_alternation.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-alternation" alt="The box's stdout panel lists twelve steps, one note per line: step 0 c4, step 2 g3, step 4 d#3, step 6 c4, step 8 g3, step 10 g3, each with its cell and MIDI number. Below it an audio panel holds a player for the rendered steps."}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_alternation.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-alternation" alt="A steps panel lists the six notes the twelve steps played, one per line with its step, cell and MIDI number: step 0 c4, step 2 g3, step 4 d#3, step 6 c4, step 8 g3, step 10 g3, all sine. Below it an audio panel holds a two-second player."}
 120 bpm
 seq: line  < c4 eb3 g3 > note | | < g3 c4 > note | ;seq
 line 12 run-steps
@@ -428,7 +428,7 @@ oscillator, `lpf` sets a lowpass corner in Hz, `decay` the time in seconds for t
 and `gain` its level. Every step starts from a plain sine, so a sound you want on several steps is a
 word. Cagire writes `{ 110 saw 800 lpf out } synth`; in ForthField the same idea is a colon definition:
 
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_synth_word.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-synth-word" alt="The stdout panel lists eight steps of a bass line: c2 and c3 sawtooth notes with lpf 900, a rest on every third step, and the fourth step moving from d#2 to g2. Below it an audio panel holds a player."}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_synth_word.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-synth-word" alt="A steps panel lists six saw notes, each with lpf 900: c2 and c3 on steps 0 and 1, d#2 on step 3, c2 and c3 again on steps 4 and 5, g2 on step 7. Below it an audio panel holds a three-second player."}
 : acid  saw 900 lpf 0.12 decay ;
 130 bpm
 seq: bass  acid c2 note | acid c3 note | | acid < eb2 g2 bb2 > note ;seq
@@ -450,7 +450,7 @@ climbs the chord one pass at a time. `wchoose` takes a list of values and a list
 one value, here C three times out of five. `fm ( ratio index -- )` makes a two-operator FM voice whose
 brightness falls away with the note, which is a bell:
 
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_bell.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-bell" alt="The stdout panel lists eight steps: step 0 c5 fm 3.50:4, step 2 a sine c3, step 4 e5 fm, step 6 a sine bass note chosen by wchoose. Below it an audio panel holds a player."}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_bell.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-bell" alt="A steps panel lists four notes: step 0 c5 fm 3.50:4, step 2 g3 sine, step 4 e5 fm 3.50:4, step 6 g3 sine. Below it an audio panel holds a twelve-second player."}
 : bell  3.5 4 fm 1.4 decay 0.5 gain ;
 90 bpm
 seq: chime  bell [ c5 e5 g5 b5 ] iter index note | | sine 0.3 decay [ c3 g3 eb3 ] [ 6 3 1 ] wchoose note | ;seq
