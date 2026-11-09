@@ -61,7 +61,7 @@
       <base href="${state.baseUrl}"><link rel="stylesheet" href="${location.origin}/iosevka.css">
       <style>
       *{box-sizing:border-box}html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:var(--field-slide-bg,#000);color:var(--field-slide-fg,#eee)}
-      body{font-family:'Iosevka Web',Iosevka,monospace;font-size:40px;line-height:1.45;padding:120px 140px;display:flex;align-items:center}
+      body{font-family:'Iosevka Web',Iosevka;font-size:40px;line-height:1.45;padding:120px 140px;display:flex;align-items:center}
       main{width:100%}h1{font-size:112px;line-height:1.08;font-weight:400;margin:0 0 48px;letter-spacing:-.03em}
       h2{font-size:72px;font-weight:400;line-height:1.15}p{margin:24px 0}li{margin:16px 0}a{color:inherit}code,pre{font-family:inherit}img,video,svg{max-width:100%}
       hr{border:0;border-top:2px solid var(--field-slide-muted,#999);margin:48px 0}.muted{color:var(--field-slide-muted,#999)}.columns{display:flex;gap:80px}.columns>*{flex:1}
@@ -80,12 +80,18 @@
       [data-field-builds="waiting"] .field-fade-in{opacity:0}
       [data-field-builds="active"] .field-fade-in{animation:field-fade-in var(--field-fade-duration,350ms) ease-out var(--field-fade-delay,0ms) both}
       .field-retained .field-fade-in{animation:none!important;opacity:1!important}
-      .field-live-figure{margin:0;display:flex;flex-direction:column;width:100%}
+      .field-live-figure{margin:0;display:flex;flex-direction:column;width:100%;height:100%;min-height:0}
       .field-live-figure-slot{flex:1;min-height:0;background:var(--field-figure-bg,var(--field-slide-bg,#000))}
-      .field-live-figure>figcaption{font-size:24px;color:var(--field-slide-muted,#aaa);margin-top:16px}
-      .field-figure-beside{display:flex;align-items:center;gap:80px;width:100%}
-      .field-figure-text{flex:1;min-width:0}.field-figure-column{flex:1.25;min-width:0}
-      .field-figure-text h1{font-size:88px}.field-figure-text h2{font-size:64px}
+      .field-live-figure>figcaption{font-size:22px;color:var(--field-slide-muted,#aaa);margin-top:12px}
+      body:has(.field-live-figure){padding:56px 64px}
+      body:has(.field-live-figure) main{height:100%}
+      .field-slide:has(.field-live-figure){height:100%;display:flex;flex-direction:column}
+      .field-slide:has(.field-live-figure)>*{flex:none}
+      .field-slide>.field-live-figure,.field-slide>.field-figure-beside,.field-slide>.columns:has(.field-live-figure){flex:1 1 auto;min-height:0}
+      .field-figure-beside{display:flex;align-items:stretch;gap:64px;width:100%;height:100%}
+      .field-figure-text{flex:0 0 34%;min-width:0;align-self:center;font-size:30px;line-height:1.45}
+      .field-figure-column{flex:1 1 0;min-width:0;display:flex}
+      .field-figure-text h1{font-size:64px;margin-bottom:32px}.field-figure-text h2{font-size:48px;margin:0 0 28px}.field-figure-text p{margin:18px 0}
       @keyframes field-fade-in{from{opacity:0}to{opacity:1}}
       @media(prefers-reduced-motion:reduce){.field-fade-in{animation:none!important;opacity:1!important}}
       </style></head><body><main>${html}</main></body></html>`;

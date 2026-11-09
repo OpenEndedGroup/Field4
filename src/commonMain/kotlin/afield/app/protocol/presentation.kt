@@ -33,6 +33,25 @@ data class AudienceFigure(
     val rect: List<Double>? = null
 )
 
+/**
+ * The scale a figure page (`index.html?figure=`) gives a box's output area so all of it fits a
+ * [viewWidth] × [viewHeight] view, with a small margin, between 0.2× and 4×.
+ *
+ * The area's size is the larger of its laid-out size and its content size ([scrollWidth],
+ * [scrollHeight]): an output wider than the area (an editable drawing, a wide plot) overflows it, and
+ * fitting the laid-out size alone would crop the overflow off the slide. Null while the area has no
+ * size yet.
+ */
+fun figureFitZoom(
+    offsetWidth: Double, offsetHeight: Double, scrollWidth: Double, scrollHeight: Double,
+    viewWidth: Double, viewHeight: Double
+): Double? {
+    val width = maxOf(offsetWidth, scrollWidth)
+    val height = maxOf(offsetHeight, scrollHeight)
+    if (width < 1 || height < 1) return null
+    return (minOf(viewWidth / width, viewHeight / height) * 0.96).coerceIn(0.2, 4.0)
+}
+
 @Serializable
 data class AudienceMacro(val name: String, val scope: String = "document", val project: String = "")
 

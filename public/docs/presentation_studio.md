@@ -534,6 +534,19 @@ A slide with figures has a **Reset: figures** button in the presenter controls. 
 control change the audience made, runs the figures again from their initial values, and returns to
 the slide's first cue. A slide with its own `checkpoint` shows that instead.
 
+On the audience display a figure is drawn as one picture with its controls beneath it: the box's
+output channels without their panel headers, borders or resize handles, scaled up to fill the slot
+with its proportions kept, and with compact controls (two columns once there are more than three).
+All of its text is in Field's Iosevka. For a line of text beside the picture, such as a measured
+value, use `markdown("readout", "10 of 12 rays land · cos 30° = **0.87**")` rather than HTML with
+its own styles; the figure sets its size and colour to match the talk.
+
+An animated drawing keeps its framing. When a `loop { }` redraws `lines(...)` every frame, the first
+frame decides the scale and position and later frames keep them, so something moving near the edge
+does not rescale the whole picture; relaunching the box, or **Reset: figures**, frames it afresh.
+Pass `framing = LinesFraming.fixed(0.0, 0.0, 640.0, 300.0)` to choose the frame yourself, or
+`framing = LinesFraming.Fit` to refit every frame.
+
 The four-slide deck this section comes from is the `explainer_sine_pitch` transcript in
 [Agent transcripts](agent_transcripts.md); it ends with the figure you can hear.
 

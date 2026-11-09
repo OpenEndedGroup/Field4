@@ -5,7 +5,7 @@
 // `screencapture -l <window id>`, after bringing the audience forward: a covered window's figure
 // views are not composited. It never builds substitute HTML or composites views itself.
 //
-//   node tools/presentation/capture-figures.mjs http://127.0.0.1:29771 <document dir> [output]
+//   FIELD_ELECTRON_PID=<pid> node tools/presentation/capture-figures.mjs http://127.0.0.1:29771 <document dir> [output]
 //
 // <document dir> is a disposable copy of dev_docs/agents/transcripts/explainer_sine_pitch.yaml
 // replayed into a workspace, with its deck presented in this checkout's Electron
@@ -42,9 +42,11 @@ for w in list {
 `);
   execFileSync('swiftc', ['-O', source, '-o', lister]);
 }
+// Several Electrons may be open (other decks); FIELD_ELECTRON_PID names the one being captured.
+const electronPid = process.env.FIELD_ELECTRON_PID;
 const windowId = title => {
   const rows = execFileSync(lister, {encoding: 'utf8'}).split('\n').map(line => line.split('\t'));
-  const row = rows.find(([, , name]) => name === title);
+  const row = rows.find(([, pid, name]) => name === title && (!electronPid || pid === electronPid));
   assert.ok(row, `No on-screen window titled ${title}`);
   return row[0];
 };
