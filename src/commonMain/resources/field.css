@@ -2120,7 +2120,9 @@ body.field-pane-resizing-h * {
 
 /* Two shrinking text runs put the ellipsis in the middle without measuring fonts in JS. */
 .field-slider .field-label.field-label-middle { display: flex; text-overflow: clip; }
-.field-label-middle > span { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
+/* `pre`, not `nowrap`: a space at the split ends one run, and a flex item drops trailing white space,
+   so "focal length" read "focallength". */
+.field-label-middle > span { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: pre; }
 .field-label-middle > .field-label-start { text-overflow: ellipsis; }
 .field-label-middle > .field-label-end { display: flex; justify-content: flex-end; text-overflow: clip; }
 .field-label-end > span { flex: none; }
