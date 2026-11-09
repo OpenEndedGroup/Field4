@@ -199,7 +199,7 @@ operations:
                   segment(tipX, tipY, sensorX, imageY, orange, 1.0),
                   segment(sensorX, axis - 40.0 * distance * unit / (holeX - tipX), sensorX, imageY, orange, 4.0),
               )
-              showPlane(parts, channel = "side", width = 640, height = 300, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 300.0), interactive = false)
+              showPlane(parts, channel = "side", width = 600, height = 281, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 300.0), interactive = false)
               val degrees = 2 * atan(0.5 / distance) * 180 / PI
               display("readout", "<p style='opacity:.8'>sensor ${"%.2f".format(distance)} behind the hole: a view ${"%.0f".format(degrees)}° wide</p>")
           }
@@ -245,7 +245,7 @@ operations:
                   color = guide
                   thickness = 1.0
               }
-              showPlane(listOf(fline { moveTo(0, 230); lineTo(640, 230); color = guide; thickness = 1.0 }, measured, predicted), channel = "brightness", width = 640, height = 240, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 240.0), interactive = false)
+              showPlane(listOf(fline { moveTo(0, 230); lineTo(640, 230); color = guide; thickness = 1.0 }, measured, predicted), channel = "brightness", width = 600, height = 225, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 240.0), interactive = false)
               val edge = image[0, 10, 0] / image.reference
               display("readout", "<p style='opacity:.8'>the edge of the sensor gets ${"%.0f".format(100 * edge)}% of the light the middle gets</p>")
           }
@@ -293,7 +293,7 @@ operations:
                       thickness = 2.5
                   },
               )
-              showPlane(parts, channel = "side", width = 640, height = 360, padding = 0.0, window = Rect(0.0, 0.0, 640.0, endY), interactive = false)
+              showPlane(parts, channel = "side", width = 600, height = 338, padding = 0.0, window = Rect(0.0, 0.0, 640.0, endY), interactive = false)
               // How far apart the two parallel paths are, measured square to them.
               val shift = slab * sin(theta - inside) / cos(inside)
               display("readout", "<p style='opacity:.8'>slab ${"%.2f".format(slab)} thick: the ray comes out shifted ${"%.2f".format(shift)} sideways</p>")
@@ -345,7 +345,7 @@ operations:
                   color = orange
                   thickness = 2.0
               }
-              showPlane(parts, channel = "wave", width = 640, height = 360, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
+              showPlane(parts, channel = "wave", width = 600, height = 338, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
           }
 
           draw()
@@ -404,7 +404,7 @@ operations:
                   ray(320 + 200 * sin(theta), 180 + side * 200 * cos(theta), reflected, orange),
               )
               if (!turned.isNaN()) parts += ray(320 + 200 * sin(turned), 180 - side * 200 * cos(turned), 1 - reflected, cyan)
-              showPlane(parts, channel = "rays", width = 640, height = 360, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
+              showPlane(parts, channel = "rays", width = 600, height = 338, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
               val crossing = if (turned.isNaN()) "none crosses: total internal reflection" else "crosses at ${"%.1f".format(turned * 180 / PI)}°"
               display("readout", "<p style='opacity:.8'>arrives at ${"%.1f".format(angle)}°, ${"%.0f".format(100 * reflected)}% reflects, $crossing</p>")
           }
@@ -467,7 +467,7 @@ operations:
                       thickness = 1.5
                   }
               }
-              showPlane(parts, channel = "side", width = 640, height = 360, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
+              showPlane(parts, channel = "side", width = 600, height = 338, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
           }
 
           draw()
@@ -529,7 +529,7 @@ operations:
               }
               val image = ThinLens.imageDistance(focal, source)
               if (image > 0 && image * unit < 320) parts += dot(lensX + image * unit, axis + 40.0 * image / source, orange)
-              showPlane(parts, channel = "rays", width = 640, height = 360, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
+              showPlane(parts, channel = "rays", width = 600, height = 338, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
               val where = if (image > 0) "a sharp image ${"%.2f".format(image)} behind the lens" else "no image: the rays spread apart"
               display("readout", "<p style='opacity:.8'>focal length ${"%.1f".format(focal)}, source ${"%.1f".format(source)} in front: $where</p>")
           }
@@ -650,7 +650,7 @@ operations:
               parts += cone(focus, sensorX, cyan, 1.5)
               parts += cone(near, sensorX, orange, 1.0)
               if (!far.isInfinite() && far * unit < lensX) parts += cone(far, sensorX, orange, 1.0)
-              showPlane(parts, channel = "side", width = 640, height = 300, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 300.0), interactive = false)
+              showPlane(parts, channel = "side", width = 600, height = 281, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 300.0), interactive = false)
               val farText = if (far.isInfinite()) "to infinity" else "to ${"%.2f".format(far)}"
               display("readout", "<p style='opacity:.8'>f/${"%.1f".format(focal / aperture)}, focused at ${"%.2f".format(focus)}: sharp from ${"%.2f".format(near)} $farText</p>")
           }
@@ -683,10 +683,10 @@ operations:
                       color = if (k == chosen) orange else cyan
                   }
               }
-              showPlane(parts, channel = "openings", width = 640, height = 120, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 120.0), interactive = false)
-              val labels = stops.mapIndexed { k, s -> "<span style='display:inline-block;width:80px;text-align:center;${if (k == chosen) "color:#ff9933" else ""}'>f/$s</span>" }
+              showPlane(parts, channel = "openings", width = 600, height = 112, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 120.0), interactive = false)
+              val labels = stops.mapIndexed { k, s -> "<span style='display:inline-block;width:75px;text-align:center;${if (k == chosen) "color:#ff9933" else ""}'>f/$s</span>" }
               val share = "1/${1 shl chosen}"
-              display("readout", "<div style='width:640px'>${labels.joinToString("")}<p style='opacity:.8'>f/${stops[chosen]} lets in $share of the light of f/1.4</p></div>")
+              display("readout", "<div style='width:600px'>${labels.joinToString("")}<p style='opacity:.8'>f/${stops[chosen]} lets in $share of the light of f/1.4</p></div>")
           }
 
           draw()
@@ -742,7 +742,7 @@ operations:
                       thickness = 1.3
                   }
               }
-              showPlane(parts, channel = "side", width = 640, height = 360, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
+              showPlane(parts, channel = "side", width = 600, height = 338, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
           }
 
           draw()
@@ -802,7 +802,7 @@ operations:
                       thickness = 1.5
                   }
               }
-              showPlane(parts, channel = "prism", width = 640, height = 320, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 320.0), interactive = false)
+              showPlane(parts, channel = "prism", width = 600, height = 300, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 320.0), interactive = false)
           }
 
           fun lens() {
@@ -819,7 +819,7 @@ operations:
                       thickness = 1.3
                   }
               }
-              showPlane(parts, channel = "lens", width = 640, height = 240, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 240.0), interactive = false)
+              showPlane(parts, channel = "lens", width = 600, height = 225, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 240.0), interactive = false)
           }
 
           fun draw() { prism(); lens() }
