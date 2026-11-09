@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-225 source file(s), 711 public symbol(s), 314 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+227 source file(s), 715 public symbol(s), 316 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -323,7 +323,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1019) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1026) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -1414,6 +1414,20 @@ Runs `ShaderLatticeBoltzmannSystem` and `ShaderForestFireSystem` on a real rende
 | --- | --- |
 | <a id="alifeshadersystemssmoke-kt--alifeshadersystemssmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/AlifeShaderSystemsSmoke/#L57) |  |
 
+## AtmosphereGpuParitySmoke.kt { #atmospheregpuparitysmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/AtmosphereGpuParitySmoke.kt` — [read the source](source/jvmMain/afield/examples/four/AtmosphereGpuParitySmoke/)
+
+### AtmosphereGpuParitySmoke { #atmospheregpuparitysmoke-kt-atmospheregpuparitysmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">AtmosphereGpuParitySmoke</span></code>](source/jvmMain/afield/examples/four/AtmosphereGpuParitySmoke/#L38)
+
+`sky/atmosphere.glsl` on the GPU against its CPU twin [`Atmosphere`](graphics.md#atmosphere-kt-atmosphere): `skyRadiance` evaluated by a compute shader for a handful of views (noon, sunset, twilight, the planet from space, its limb and its night side) must match [`Atmosphere.radiance`](graphics.md#atmosphere-kt--atmosphere--radiance) within 0.2% per channel, relative to the brightest channel of that view. Both march 32 view steps and 8 light steps, so the only difference left is fp32 against fp64.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="atmospheregpuparitysmoke-kt--atmospheregpuparitysmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/AtmosphereGpuParitySmoke/#L64) |  |
+
 ## BoidSketchSmoke.kt { #boidsketchsmoke-kt }
 
 `src/jvmMain/kotlin/afield/examples/four/BoidSketchSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/BoidSketchSmoke/)
@@ -2072,6 +2086,20 @@ The reload-transition matrix, on a real device: one box, one graphics module, an
 ### ShaderTypedStructurePreambleSmokeTest { #shadertypedstructurepreamblesmoketest-kt-shadertypedstructurepreamblesmoketest }
 
 [<code class="highlight"><span class="k">class</span> <span class="nc">ShaderTypedStructurePreambleSmokeTest</span></code>](source/jvmMain/afield/examples/four/ShaderTypedStructurePreambleSmokeTest/#L12)
+
+## ShapeAsciiGpuSmoke.kt { #shapeasciigpusmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/ShapeAsciiGpuSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/ShapeAsciiGpuSmoke/)
+
+### ShapeAsciiGpuSmoke { #shapeasciigpusmoke-kt-shapeasciigpusmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">ShapeAsciiGpuSmoke</span></code>](source/jvmMain/afield/examples/four/ShapeAsciiGpuSmoke/#L63)
+
+Runs the GPU matcher of `ascii_shape.md` on a real renderer and checks it against the CPU.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="shapeasciigpusmoke-kt--shapeasciigpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ShapeAsciiGpuSmoke/#L81) |  |
 
 ## SlugRenderSmoke.kt { #slugrendersmoke-kt }
 

@@ -2040,7 +2040,7 @@ Type a name and a list of matches drops down under the field: directories first,
 
 A path can also start with any of the `%` names FileManager knows: `%document/…` for this document's `files/` folder, `%project/…` for its project's, and `%textures/…` for a folder registered with `FileManager["textures"] = "~/Pictures"`. Type `%` to list them, each with the folder it points to; a blank field lists them too, under `..`. The field keeps the spelling you chose, so `initialValue = "%textures/wall.png"` still finds the file after the folder is registered somewhere else.
 
-The callback receives an absolute `File`, and only for a path that matches the mask and exists. It runs on every run in which the control holds such a path, so `image` is set on the first run from `initialValue`. On later runs it holds the file chosen last, which the group remembers like any other control's value.
+The callback receives an absolute `File` when the chooser accepts a path. By default, a file must exist and match the mask; `mustExist = false` also accepts a new name in an existing directory. The callback runs on every run in which the control holds an accepted path, so `image` is set on the first run from `initialValue`. On later runs it holds the file chosen last, which the group remembers like any other control's value.
 
 - `directory` is read the way file names are everywhere else in Field: blank for this document's `files/` folder, `"%document/…"`, `"%name/…"` for a folder registered with `FileManager`, `"~/…"`, or an absolute path.
 - `mask` takes one glob or several: `"*.wav, *.aif"`, `"*.{csv,tsv}"`, or just `"csv"`. Matching ignores case.

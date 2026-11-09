@@ -293,6 +293,9 @@ object DemoTranscriptExecSmokeTest {
         // Three pure-compute boxes over the `pat` Fn graph op: one prints the node, two run a real
         // fitGradient over a rhythm's numeric leaves and plot the result. No Window, no Renderer.
         "pat_fn_graph_fit",
+        // Two pure-compute Datalog rhythm boxes: grids as text and an offline Pat render to a
+        // <audio> data URL (showPatAudio), plus a why() proof. No Window, no audio device.
+        "datalog_rhythm_rules",
         // Eight pure-compute pattern boxes; showPatRoll is drawToSVG -> display, so no Window, no
         // Renderer, no GPU and no audio device.
         "pattern_language_composition",
@@ -650,8 +653,9 @@ object DemoTranscriptExecSmokeTest {
         // through the audio device. CharGridTest checks the cells, the panel's diffs and the sound
         // grouping headless.
         "madp_chargrid",
-        // Shape-aware ASCII: the cube box is a charGrid that runs until stopped. ShapeAsciiTest pins
-        // the matcher headless.
+        // Shape-aware ASCII: the cube box is a charGrid that runs until stopped, and the GPU boxes
+        // open a native Window + Renderer. ShapeAsciiTest pins the matcher and compiles the GPU
+        // pass's shaders headless; ascii.shape-gpu.smoke runs the pass against the CPU.
         "ascii_shape",
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
@@ -919,6 +923,9 @@ object DemoTranscriptExecSmokeTest {
         // Opens a Vulkan window for the GPU compute-shader NCA; the CPU rule it shares is graded
         // by GrowingNcaTest (grows from a seed, regrows after damage).
         "growing_nca",
+        // Opens a Vulkan window for the fullscreen sky shader; the scattering it includes is graded on
+        // the CPU twin by AtmosphereTest (closed-form transmittance, blue noon, red sunset).
+        "atmospheric_sky",
         // The same deal again, one tier up: both open a native Vulkan renderer to draw a trained
         // field, and both are graded far more sharply than a replay could manage — the
         // interpolation they demonstrate is measured in `WeightInterpolationTest`, endpoint

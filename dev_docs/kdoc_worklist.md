@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 22109 of 37580 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 22154 of 37636 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2012 undocumented entry points** (types, top-level functions and values) and 12784 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2012 undocumented entry points** (types, top-level functions and values) and 12795 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -14,7 +14,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | --- | --- | --- | --- | --- | --- |
 | [RectSL.kt](../src/jvmMain/kotlin/afield/lang/rectsl/RectSL.kt) | Languages | rectsl_inverse_animation, rectsl_examples, rectsl_cheatsheet | 104 | 409 | 8% |
 | [spreadsheet.kt](../src/jvmMain/kotlin/afield/data/table/spreadsheet.kt) | Data | spreadsheets | 62 | 91 | 8% |
-| [FLineGeometry.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt) | Graphics | fline_examples, polyvector, euclid_elements | 58 | 41 | 44% |
+| [FLineGeometry.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt) | Graphics | fline_examples, polyvector, afield_four_graphics | 58 | 41 | 44% |
 | [synth.kt](../src/jvmMain/kotlin/afield/audio/synth/synth.kt) | Synthesis | pure_data, sound_paths | 52 | 0 | 25% |
 | [Tools.kt](../src/jvmMain/kotlin/afield/ai/tools/Tools.kt) | AI4 | ai4_tools | 51 | 204 | 32% |
 | [TidalPatterns.kt](../src/jvmMain/kotlin/afield/audio/synth/TidalPatterns.kt) | Patterns | pattern_language, marf, petri_nets | 43 | 78 | 21% |
@@ -781,6 +781,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FieldAudioEngine.kt](../src/jvmMain/kotlin/afield/audio/synth/FieldAudioEngine.kt) | Synthesis | — | 0 | 4 | 68% |
 | [PatTranscriptionGallery.kt](../src/jvmMain/kotlin/afield/audio/synth/PatTranscriptionGallery.kt) | Patterns | — | 0 | 4 | 66% |
 | [SonicPiSmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/SonicPiSmokeTest.kt) | Audio | — | 0 | 4 | 33% |
+| [DatalogRhythmSoundDocs.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogRhythmSoundDocs.kt) | Languages | — | 0 | 4 | 33% |
 | [ContextWhyTools.kt](../src/jvmMain/kotlin/afield/document/context/ContextWhyTools.kt) | Workspace | — | 0 | 4 | 50% |
 | [Kits.kt](../src/jvmMain/kotlin/afield/document/workspace/Kits.kt) | Workspace | — | 0 | 4 | 84% |
 | [FLineSampling.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineSampling.kt) | Graphics | — | 0 | 4 | 71% |
@@ -809,6 +810,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [LiveProbeClient.kt](../src/jvmMain/kotlin/afield/app/diagnostics/debug/LiveProbeClient.kt) | Workspace | — | 0 | 3 | 25% |
 | [MarfGallery.kt](../src/jvmMain/kotlin/afield/audio/synth/MarfGallery.kt) | Patterns | — | 0 | 3 | 72% |
 | [PatSynthDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/PatSynthDocs.kt) | Patterns | — | 0 | 3 | 62% |
+| [DatalogRhythmDirtDocs.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogRhythmDirtDocs.kt) | Languages | — | 0 | 3 | 25% |
 | [PersistedFingerprint.kt](../src/jvmMain/kotlin/afield/document/persistence/PersistedFingerprint.kt) | Workspace | — | 0 | 3 | 62% |
 | [GpuSchemaSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/four/GpuSchemaSmokeTest.kt) | Examples | — | 0 | 3 | 25% |
 | [FunctionsPlotGallery.kt](../src/jvmMain/kotlin/afield/examples/functions/FunctionsPlotGallery.kt) | Examples | — | 0 | 3 | 66% |
@@ -860,6 +862,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PetriSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/PetriSoundDocs.kt) | Audio | — | 0 | 2 | 71% |
 | [PetriSparksDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/PetriSparksDocs.kt) | Audio | — | 0 | 2 | 77% |
 | [DatalogParser.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogParser.kt) | Languages | — | 0 | 2 | 71% |
+| [DatalogRhythm.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogRhythm.kt) | Languages | — | 0 | 2 | 83% |
 | [DatalogSmokeTest.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogSmokeTest.kt) | Languages | — | 0 | 2 | 33% |
 | [GraphQuerySmokeTest.kt](../src/jvmMain/kotlin/afield/data/query/graph/GraphQuerySmokeTest.kt) | Data | — | 0 | 2 | 33% |
 | [DocumentShutdownFlush.kt](../src/jvmMain/kotlin/afield/document/persistence/DocumentShutdownFlush.kt) | Workspace | — | 0 | 2 | 75% |
@@ -1000,6 +1003,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RectslBoxToolsSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/ai/RectslBoxToolsSmokeTest.kt) | Examples | — | 0 | 1 | 50% |
 | [PhotoToSolidChain.kt](../src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt) | Examples | — | 0 | 1 | 88% |
 | [AlifeShaderSystemsSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/AlifeShaderSystemsSmoke.kt) | Examples | — | 0 | 1 | 50% |
+| [AtmosphereGpuParitySmoke.kt](../src/jvmMain/kotlin/afield/examples/four/AtmosphereGpuParitySmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [BoidSketchSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/BoidSketchSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [FabricatePassChainDemo.kt](../src/jvmMain/kotlin/afield/examples/four/FabricatePassChainDemo.kt) | Examples | — | 0 | 1 | 50% |
 | [FabricateQuadtreeChainDemo.kt](../src/jvmMain/kotlin/afield/examples/four/FabricateQuadtreeChainDemo.kt) | Examples | — | 0 | 1 | 50% |
@@ -1027,6 +1031,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ShaderBoidsSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/ShaderBoidsSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [ShaderReloadTransactionSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/ShaderReloadTransactionSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [ShaderReloadTransitionSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/ShaderReloadTransitionSmoke.kt) | Examples | — | 0 | 1 | 50% |
+| [ShapeAsciiGpuSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/ShapeAsciiGpuSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [SlugRenderSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/SlugRenderSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [StereoPackingSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/four/StereoPackingSmokeTest.kt) | Examples | — | 0 | 1 | 50% |
 | [StigmergySweep.kt](../src/jvmMain/kotlin/afield/examples/four/StigmergySweep.kt) | Examples | — | 0 | 1 | 50% |

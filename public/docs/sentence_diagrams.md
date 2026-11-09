@@ -2,8 +2,8 @@
 
 A sentence can be a row of words, a canopy of constituents, a set of dependency arcs or a
 piece of Reed–Kellogg furniture. Field lets you draw each from a parse, then keep working with
-the result: the words, curves, labels and underlines are all geometry. The last sections measure
-whole texts instead, by how far each word sits from its head.
+the result: the words, curves, labels and underlines are all geometry. Further down, we'll use
+those diagrams to measure how far words sit from their heads across a whole text.
 
 The examples below write out their choices, like the constructions in [Euclid's Elements](euclid_elements.md).
 They use retained Stanza parses. Loading and drawing these examples needs neither a
@@ -343,17 +343,16 @@ remain available without them.
 
 ## Dependency length in real texts
 
-In a dependency parse every word hangs from one other word, its head, and each of the arcs drawn
-above joins a word to its head. The length of an arc is how far apart the two words sit:
-next-door neighbours are 1 apart, and a word with three words between it and its head is 4 apart.
-Add up every arc in a sentence and you get its total dependency length.
+In a dependency parse, a word hangs from another word called its *head*. The arcs above join each
+word to its head. How long are those arcs? Next-door neighbours are 1 apart; a word with three
+words between it and its head is 4 apart. Add the lengths in a sentence and you have its total
+dependency length.
 
 Futrell, Mahowald and Gibson measured this over parsed corpora of 37 languages and found the same
 thing in every one: real sentences have shorter totals than random reorderings of the same trees,
 and the gap widens as sentences get longer ([PNAS 112, 10336–10341, 2015](https://doi.org/10.1073/pnas.1502134112)).
-The rest of this page repeats their measurement on five public-domain English texts. It draws a
-sentence beside its reorderings, then a whole speech one sentence at a time, then all five texts
-at once.
+Let's try the measurement on five public-domain English texts. We'll draw a sentence beside its
+reorderings, look through a whole speech one sentence at a time, and compare the five texts.
 
 These parses are retained too: Stanza parsed each passage once, and the trees ship with Field, so
 nothing here needs the parser. [Open the five examples](offline.html?file=assets/agent_transcripts/dependency_length/metadata.edn)

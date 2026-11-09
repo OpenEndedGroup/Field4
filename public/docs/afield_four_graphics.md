@@ -1874,6 +1874,198 @@ These are the `11. forest fire` and `11b. fire starter` lessons of `canonical_gr
 
 The box's `fragment` tab holds the spreading rule, and editing it re-runs the fire.
 
+## An atmospheric sky { #atmospheric-sky }
+
+A sky that comes out of the physics of air: sunlight scattered by molecules and haze on its way
+through a spherical atmosphere. Blue overhead at noon, orange along the horizon at sunset, a band of
+colour after the sun has gone, and a blue rim around the planet seen from space all come from the
+same few lines of shader, with nothing painted in. The scattering lives in a shader include,
+`sky/atmosphere.glsl`, which any shader can pull in with `#include "sky/atmosphere.glsl"`; no setup
+is needed. Its Kotlin twin, `afield.graphics.sky.Atmosphere`, computes the same numbers on the CPU.
+
+The box draws one fullscreen triangle beneath the renderer, as the forest fire above does. It keeps
+the sun and camera in a `SkyView`, hands them to the shader as push constants every frame, and puts
+sliders for them in its output:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/atmospheric-sky-noon.png" alt="A noon sky seen from 3.5 km: deep blue overhead fading to pale blue and white at the horizon, the small white sun about 30 degrees up, and pale hazy ground below" timeout="120" capture="native-window" native-wait-frames="30" max-width="1600" embed=true name="atmospheric-sky-noon" macro-file="../../dev_docs/agents/transcripts/atmospheric_sky.yaml" capture-box="atmospheric_sky"}
+/*
+A sky you can live-code: single scattering through Earth's atmosphere (Nishita 1993, with Hillaire 2020's
+coefficients), one fullscreen triangle beneath the renderer. The physics is `#include "sky/atmosphere.glsl"`;
+the camera and the tone mapping are in this box's fragment property. Drag the sliders, or run one of the
+box's preset properties (`sunset`, `twilight`, `space`) to jump there.
+*/
+import afield.graphics.sky.SkyView
+
+// Published as this box's `skyView` property, so the preset properties can reach it.
+prop<SkyView>(skyView)
+val view = SkyView(sunElevation = 30.0, altitude = 3.5, pitch = 10.0, exposure = 2.0)
+skyView = view
+
+val sky = moduleHere {
+    depthTest = false
+    depthWrite = false
+    blend = false
+}
+val quad = fullscreenTriangle(sky)
+sky += "quad" to quad
+renderer += "atmospheric-sky" to sky
+
+quad.viewport = {
+    vec(window.width.toFloat(), window.height.toFloat(), view.altitude, Math.toRadians(view.sunElevation))
+}
+quad.view = {
+    vec(Math.toRadians(view.sunAzimuth), Math.toRadians(view.pitch), view.exposure, Math.toRadians(view.fieldOfView))
+}
+
+controlGroup("Sky") {
+    slider("Sun elevation (degrees)", min = -12.0, max = 90.0, initialValue = view.sunElevation) {
+        view.sunElevation = it
+    }
+    slider("Sun azimuth (degrees)", min = -180.0, max = 180.0, initialValue = view.sunAzimuth) { view.sunAzimuth = it }
+    slider("Altitude (log10 km)", min = -3.0, max = 4.5, initialValue = Math.log10(view.altitude)) {
+        view.altitude = Math.pow(10.0, it)
+    }
+    slider("Camera pitch (degrees)", min = -90.0, max = 90.0, initialValue = view.pitch) { view.pitch = it }
+    slider("Exposure", min = 0.1, max = 40.0, initialValue = view.exposure) { view.exposure = it }
+}
+displayOpen("Sky")
+println("atmospheric sky: sun ${view.sunElevation}°, altitude ${view.altitude} km")
+```
+
+The fragment shader turns each pixel into a view ray from a camera `altitude` km above the ground,
+and asks the include what light arrives along it:
+
+```diffstatic {data-lang=glsl}
+#version 450
+#include "sky/atmosphere.glsl"
+
+layout(location = 0) out vec4 color;
+
+layout(push_constant) uniform pcs {
+    vec4 viewport; // width, height, altitude (km), sun elevation (radians)
+    vec4 view; // sun azimuth, camera pitch, exposure, vertical field of view (radians)
+} pc;
+
+void main() {
+    Atmosphere a = earthAtmosphere();
+
+    // A pinhole camera at the given altitude, looking along -z and pitched up by view.y.
+    vec2 uv = (gl_FragCoord.xy - 0.5 * pc.viewport.xy) / pc.viewport.y;
+    uv.y = -uv.y;
+    float pitch = pc.view.y;
+    vec3 forward = vec3(0.0, sin(pitch), -cos(pitch));
+    vec3 right = vec3(1.0, 0.0, 0.0);
+    vec3 up = cross(right, forward);
+    vec3 rd = normalize(forward + (uv.x * right + uv.y * up) * 2.0 * tan(0.5 * pc.view.w));
+    vec3 ro = vec3(0.0, a.planetRadius + pc.viewport.z, 0.0);
+
+    float e = pc.viewport.w, az = pc.view.x;
+    vec3 sun = vec3(cos(e) * sin(az), sin(e), -cos(e) * cos(az));
+
+    vec3 L = skyRadiance(a, ro, rd, sun, vec3(20.0), 0.00465, 32, 8);
+
+    // Exposure, then a soft shoulder so the sun's disc saturates instead of clipping hue.
+    color = vec4(1.0 - exp(-L * pc.view.z), 1.0);
+}
+```
+
+### Sunset, twilight and the planet from space
+
+The box also has three small properties, `sunset`, `twilight` and `space`, that move its `SkyView`.
+Run one (pick it in the property switcher, then run) and the sky changes on the next frame; the
+sliders keep where they were. The box publishes its `SkyView` as its `skyView` property, which is
+how `fromContext` in another property of the same box finds it.
+
+Lower the sun and the light reaching you has crossed far more air. Blue is scattered out of it
+first, so what is left is yellow and red, and the haze near the ground glows orange:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/atmospheric-sky-sunset.png" alt="A sunset from 3.5 km: the sun is a bright yellow glow on the horizon, the sky fades from grey-blue overhead to yellow, and the ground below is lit orange-brown" timeout="120" capture="native-window" native-wait-frames="30" max-width="1600" embed=true name="atmospheric-sky-sunset" macro-file="../../dev_docs/agents/transcripts/atmospheric_sky.yaml" capture-box="atmospheric_sky" run-box="atmospheric_sky" property="sunset"}
+// Run this property to move the sky box (its `code`) to sunset.
+import afield.graphics.sky.SkyView
+
+fromContext<SkyView>().set(SkyView(sunElevation = 2.0, altitude = 3.5, pitch = 5.0, exposure = 4.0))
+println("sky preset: sunset")
+```
+
+With the sun four degrees below the horizon the ground is in the planet's shadow, but the upper air
+is still lit: a band of orange along the horizon under a violet sky, at ten times the exposure.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/atmospheric-sky-twilight.png" alt="Twilight: a black ground below a curved horizon, a thin band of orange and yellow along it, then pink and violet sky above" timeout="120" capture="native-window" native-wait-frames="30" max-width="1600" embed=true name="atmospheric-sky-twilight" macro-file="../../dev_docs/agents/transcripts/atmospheric_sky.yaml" capture-box="atmospheric_sky" run-box="atmospheric_sky" property="twilight"}
+// Run this property to move the sky box (its `code`) to twilight.
+import afield.graphics.sky.SkyView
+
+fromContext<SkyView>().set(SkyView(sunElevation = -4.0, altitude = 3.5, pitch = 5.0, exposure = 40.0))
+println("sky preset: twilight")
+```
+
+From 20,000 km, looking straight down, rays that miss the shell see black space, rays that graze it
+pick up a thin blue rim, and rays that meet the ground return its sunlit colour through the air. The
+planet has no continents or clouds: what you see is a smooth sphere of ocean-dark ground under a
+blue haze, fading into night where the sunlight has crossed a long path of air.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/atmospheric-sky-space.png" alt="The planet from 20,000 km against black space: a smooth, featureless blue-grey sphere lit from the top, with a brighter blue rim at its edge and the lower part fading through purple into night" timeout="120" capture="native-window" native-wait-frames="30" max-width="1600" embed=true name="atmospheric-sky-space" macro-file="../../dev_docs/agents/transcripts/atmospheric_sky.yaml" capture-box="atmospheric_sky" run-box="atmospheric_sky" property="space"}
+// Run this property to move the sky box (its `code`) to space.
+import afield.graphics.sky.SkyView
+
+fromContext<SkyView>()
+    .set(SkyView(sunElevation = 20.0, altitude = 20000.0, pitch = -90.0, exposure = 0.4, fieldOfView = 40.0))
+println("sky preset: space")
+```
+
+### What the include computes
+
+Distances are in kilometres and the planet's centre is the origin. `earthAtmosphere()` returns an
+`Atmosphere` struct with Earth's values; change any field before you call the functions below, for
+an alien sky or a thicker haze:
+
+| Field | Earth | Meaning |
+| --- | --- | --- |
+| `planetRadius`, `atmosphereRadius` | 6360, 6460 km | the ground and the top of the air |
+| `rayleighScattering`, `rayleighHeight` | (5.8, 13.6, 33.1)×10⁻³ /km, 8 km | molecules: scatter blue most, thin out with height |
+| `mieScattering`, `mieAbsorption`, `mieHeight`, `mieG` | 4.0×10⁻³, 4.4×10⁻³ /km, 1.2 km, 0.8 | haze: grey, low, scatters forward |
+| `ozoneAbsorption`, `ozoneCenter`, `ozoneHalfWidth` | (0.65, 1.88, 0.085)×10⁻³ /km, 25 km, 15 km | absorbs orange, which keeps twilight blue-violet |
+| `groundAlbedo` | (0.10, 0.12, 0.15) | how much light the ground reflects; dark and bluish, like ocean |
+
+- `skyRadiance(a, ro, rd, sunDir, sunColor, sunAngularRadius, steps, lightSteps)`: everything a camera
+  at `ro` sees along `rd`, meaning scattered light, the lit ground, the sun's disc and black space.
+- `skyInScatter(...)`: the scattered light along one segment of a ray, and the transmittance across it.
+- `skyTransmittanceToTop(a, p, dir, steps)`: the fraction of light that gets from `p` out of the
+  atmosphere along `dir`; zero in the planet's shadow.
+- `skyRayleighPhase(mu)`, `skyMiePhase(mu, g)`: how much light turns through an angle whose cosine
+  is `mu`.
+
+`steps` and `lightSteps` (32 and 8 in the box) trade speed for smoothness: the view ray is cut into
+`steps` pieces, and from each a second ray toward the sun is cut into `lightSteps`.
+
+On the CPU, `Atmosphere.radiance(Atmosphere.Params(), ro, rd, sunDir)` returns the value
+`skyRadiance` would, which is useful for colouring a light by the sun's elevation.
+
+### How it works
+
+The method is single scattering, after Nishita and colleagues. At each sample along the view ray, air
+scatters sunlight toward the camera in proportion to its density and the phase function, and that
+light is dimmed twice: by the air between the sample and the sun (the second march), and by the air
+between the sample and the camera. Rayleigh scattering by molecules goes as the inverse fourth power
+of wavelength, which is why the sky is blue and the low sun red. Mie scattering by haze uses the
+Cornette-Shanks phase function, which brightens the sky around the sun. Ozone only absorbs.
+
+Light that scatters more than once is left out, so deep twilight comes out darker than a real one
+and the sky close to the horizon slightly too dark.
+
+The sky is drawn after Maxime Heckel's walkthrough,
+["On rendering the sky, sunsets and planets"](https://blog.maximeheckel.com/posts/on-rendering-the-sky-sunsets-and-planets),
+and these papers:
+
+- Tomoyuki Nishita, Takao Sirai, Katsumi Tadamura, Eihachiro Nakamae, "Display of the Earth Taking
+  into Account Atmospheric Scattering", SIGGRAPH 1993.
+  [doi:10.1145/166117.166140](https://doi.org/10.1145/166117.166140)
+- Sébastien Hillaire, "A Scalable and Production Ready Sky and Atmosphere Rendering Technique",
+  Computer Graphics Forum (EGSR) 2020, for the Earth coefficients and the ozone profile.
+  [Paper](https://sebh.github.io/publications/egsr2020.pdf)
+
+The demo is `dev_docs/agents/transcripts/atmospheric_sky.yaml`
+([starting point](agent_transcripts.md#atmospheric_sky)).
+
 ## Stopping the renderer
 
 Stopping the box that owns `renderer` also stops every running box connected beneath it, then

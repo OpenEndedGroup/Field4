@@ -60,8 +60,8 @@ class DocsAudioProvenanceGuardTest {
 
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
-            Origin.STAND_IN_SYNTH to 21,
-            Origin.DIRT_SAMPLES to 39,
+            Origin.STAND_IN_SYNTH to 22,
+            Origin.DIRT_SAMPLES to 40,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 18,
             Origin.FAUST to 6,
@@ -287,11 +287,14 @@ class DocsAudioProvenanceGuardTest {
          * clip, and `sonic_pi.md`'s `bikes.wav`, the first [Origin.SONIC_PI]: a take recorded from
          * a real Sonic Pi, which the audit skips rather than compares.
          *
-         * On 2026-11-09 main already published 99 (four more [Origin.MODAL_SYNTHESIS] clips than the
-         * 95 / 8 recorded here), and `forth_examples.md` added four: three ForthField step grids voiced by a
+         * `eigendrum.md` added four (2026-11-08), [Origin.MODAL_SYNTHESIS]: [afield.audio.modal.EigendrumDocs]
+         * strikes the bare, Ramakrishna–Sondhi-loaded and syahi-fitted disks and the 4:5:6 triad drum.
+         * They landed uncounted because the lander's guard does not run this test.
+                  *
+         * `forth_examples.md` added four (2026-11-09): three ForthField step grids voiced by a
          * PatSynthBank ([Origin.STAND_IN_SYNTH], `ForthStepsDocs`) and one grid as a pattern through
          * the pinned Dirt-Samples ([Origin.DIRT_SAMPLES], `ForthStepsDirtDocs`).
          */
-        const val EXPECTED_FENCE_COUNT = 103
+        const val EXPECTED_FENCE_COUNT = 105
     }
 }

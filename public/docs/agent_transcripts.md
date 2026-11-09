@@ -177,7 +177,7 @@ morphing from the bare drum to the harmonic one. Pure CPU.
 ### penrose_spectra
 
 **Strike a Penrose tiling.** The starting point of [The tiling as a graph](debruijn_tilings.md#the-tiling-as-a-graph):
-exact counts of the tiling's zero-energy states against 81 − 50τ, beside a square lattice and a
+counts of the tiling's zero-energy states against 81 − 50τ, beside a square lattice and a
 jittered tiling; the confined states drawn on the tiles; the density of states and its gap; a sweep
 over symmetry, disorder and offset sum; three strikes drawn as energy against pitch; two sliders that recount as you
 drag; and a live `ModalDrum` voice (launch it). Pure CPU.
@@ -742,6 +742,19 @@ replaces the first.
 ![Piano roll of the hybrid above euclid(12,24) and kolakoski(24) at the same density: the hybrid bunches its onsets into pairs where the Euclidean lane alternates evenly](assets/pattern_language/kolakoski-euclid.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/kolakoski_euclid/metadata.edn)
+
+### datalog_rhythm_rules
+
+[Rules that decide when notes play](datalog.md#rules-that-decide-when-notes-play): Datalog
+`event(Instrument, Note, Velocity, T)` rules over a sixteen-step bar, after
+[Dogalog](https://github.com/danja/dogalog). Box 1 writes a Euclidean kick, a snare that `within`
+brings in at bar 1, hats from bar 2 and a lead picked from `scale(48, minor_pent, ...)`, prints the
+grid each bar derives and plays four bars with `showPatAudio`. Box 2 asks `why` the kick at step 20
+played (the proof ends in the fact `euc(20, 4, 16, 0)`) and shows that the snare at step 4 did not.
+
+![Four bars of a step grid: kick on every fourth step, a lead on five steps, the snare from bar 1 and hats from bar 2](assets/datalog/rhythm.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/datalog_rhythm_rules/metadata.edn)
 
 ### frames_lifecycle
 
@@ -2844,13 +2857,14 @@ under the grids shows what Kotlin heard and changed. Launch the box, then type i
 
 ### ascii_shape
 
-**Characters chosen by shape, not only brightness.** `ShapeAscii` summarises each cell of an image
+**Characters chosen by shape.** `ShapeAscii` summarises each cell of an image
 by the light in six staggered circles and picks the character whose own six numbers are nearest,
 after Alex Harri's essay [ASCII characters are not pixels](https://alexharri.com/blog/ascii-rendering).
 The lead box draws a ring, a triangle and a disc as FLines and shows them by brightness and by
 shape side by side; the others show the sampling circles over five characters, a lit sphere, the
-two contrast steps, and a wireframe cube spinning live in a `charGrid`. The walkthrough is
-[Shape-aware ASCII](ascii_shape.md).
+two contrast steps, and a wireframe cube spinning live in a `charGrid`. Three more boxes run the
+matcher over a lit torus knot on the GPU: scene, match and draw boxes with shaders you can edit.
+A fourth checks the GPU's characters against the CPU's. The walkthrough is [Shape-aware ASCII](ascii_shape.md).
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/ascii_shape_shapes.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="180" padding="12" name="gallery-ascii-shape-shapes" alt="a ring, a triangle and a disc drawn twice in white characters: by brightness on the left, by shape on the right, where the outlines run as underscores, slashes and quote marks" macro-file="../../dev_docs/agents/transcripts/ascii_shape.yaml" capture-box="ascii_shape_shapes"}
 // The transcript builds and runs every box; this is the lead, brightness vs shape.
@@ -4299,9 +4313,9 @@ CPU integrator per particle.
 **A flower that grows from one cell and grows back when you cut it.** A growing neural cellular
 automaton (Mordvintsev et al., Distill 2020): every cell holds 16 numbers and runs the same trained
 48 → 128 → 16 network. One box grows, damages and regrows it on the CPU and shows seven snapshots;
-one runs it live on the CPU (launch it); and beneath a renderer, one runs the same rule as a compute
-shader at 96 × 96, erasing cells under the left mouse button. See [Growing Neural Cellular
-Automata](growing_nca.md).
+one runs it live on the CPU (launch it); others turn the rule, vary it across the grid, sweep over
+cuts and grow a fish. Beneath two renderers, GPU versions grow the flower and fish; erase cells
+with the left mouse button. See [Growing Neural Cellular Automata](growing_nca.md).
 
 ```diffstatic {data-lang=text}
 macro write growing_nca --file dev_docs/agents/transcripts/growing_nca.yaml
@@ -4309,6 +4323,21 @@ macro run growing_nca
 ```
 
 [Open →](offline.html?file=assets/agent_transcripts/growing_nca/metadata.edn)
+
+### atmospheric_sky
+
+**A sky from the physics of air, with the sun on a slider.** Beneath a renderer, one fullscreen box
+includes `sky/atmosphere.glsl` and draws single scattering through Earth's atmosphere (Rayleigh, Mie,
+ozone): blue at noon, orange at sunset, a violet twilight, and the planet with its blue rim from
+space. Sun elevation and azimuth, altitude, camera pitch and exposure are sliders. See
+[An atmospheric sky](afield_four_graphics.md#atmospheric-sky).
+
+```diffstatic {data-lang=text}
+macro write atmospheric_sky --file dev_docs/agents/transcripts/atmospheric_sky.yaml
+macro run atmospheric_sky
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/atmospheric_sky/metadata.edn)
 
 ### learned_boids
 
