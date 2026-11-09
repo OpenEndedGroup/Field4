@@ -1830,6 +1830,23 @@ internal fun buildButtonHtml(controlId: String, label: String, hit: String = "ho
 }
 
 /**
+ * The markup for one key of [ControlGroupBuilder.keys]: a momentary button whose label is on the key,
+ * with its computer [letter], if any, in `data-key-letter` for `sliders.js` and under the label.
+ */
+internal fun buildKeyHtml(controlId: String, label: String, letter: Char?): String {
+    val escaped = escapeHtml(label)
+    val key = letter?.lowercaseChar()?.toString()
+    val letterAttribute = if (key == null) "" else " data-key-letter=\"$key\""
+    val shortcut = if (key == null) "" else " aria-keyshortcuts=\"${key.uppercase()}\""
+    val hint = if (key == null) "" else "<span class=\"field-key-letter\">${key.uppercase()}</span>"
+    return """
+        <div class="field-control field-button field-key" data-control-id="$controlId"$letterAttribute>
+            <button type="button" class="field-button-hit field-key-hit" id="$controlId" aria-pressed="false"$shortcut><span class="field-key-label">$escaped</span>$hint</button>
+        </div>
+    """.trimIndent()
+}
+
+/**
  * Displays a momentary button in an output disclosure — down while it is held, up when it is let go.
  *
  * ```kotlin
@@ -2682,6 +2699,52 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      * @param onUpdate called with `true` on the way down and `false` on the way up
      */
     fun button(label: String, tooltip: String? = null, onUpdate: (Boolean) -> Unit) = hitButton(label, "hold", tooltip, onUpdate)
+
+    /**
+     * Adds a row of momentary keys, like a small keyboard: each is a [button], down while it is held.
+     *
+     * ```kotlin
+     * val gates = 3 { Gate() }
+     * controlGroup {
+     *     keys("low", "middle", "high", letters = "wer") { key, down ->
+     *         if (down) gates[key].open() else gates[key].close()
+     *     }
+     * }
+     * ```
+     *
+     * The keys sit side by side with their labels on them, and [onUpdate] says which key moved, by its
+     * index in [labels]. Releases are as safe as a [button]'s: a pointer that comes up anywhere, a
+     * cancelled touch or the window losing focus lets the key go, so a gate cannot be left open.
+     *
+     * [letters] gives each key a computer key, in order (`"wer"` puts W, E and R on three keys); a key
+     * held there plays until it is released, and auto-repeat is not a new press. The letters are
+     * honoured where the output is shown alone, as a figure on a presentation slide (`?figure=`), where
+     * the keyboard has no other use; on the canvas the same letters are Field's own shortcuts, so there
+     * the keys answer to the pointer, and to space or enter when focused.
+     *
+     * @param labels the text on each key, left to right
+     * @param letters one letter per key, or empty for none
+     * @param tooltip what the keys play, shown on hover
+     * @param onUpdate called with the key's index and `true` on the way down, `false` on the way up
+     */
+    fun keys(vararg labels: String, letters: String = "", tooltip: String? = null, onUpdate: (key: Int, down: Boolean) -> Unit) {
+        require(labels.isNotEmpty()) { "keys needs at least one label" }
+        require(letters.isEmpty() || letters.length == labels.size) {
+            "keys takes one letter per key or none: ${labels.size} keys, letters \"$letters\""
+        }
+        require(letters.all { it.isLetterOrDigit() }) { "key letters are letters or digits: \"$letters\"" }
+        inlineRow {
+            labels.forEachIndexed { index, label ->
+                val identity = controlIdentity("button", "button", label)
+                registerButtonCallback(identity.id) { down -> onUpdate(index, down) }
+                emit(
+                    buildKeyHtml(identity.id, label, letters.getOrNull(index)),
+                    ControllerControl(id = identity.id, type = "button", label = label, channel = channel, checked = false),
+                    tooltip
+                )
+            }
+        }
+    }
 
     /** [button] whose hit area reads [hit]; for compact strips, where the hit text is the label. */
     internal fun hitButton(label: String, hit: String, tooltip: String? = null, onUpdate: (Boolean) -> Unit) {

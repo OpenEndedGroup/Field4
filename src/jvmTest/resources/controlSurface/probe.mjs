@@ -374,7 +374,7 @@ function dragTo(element, fraction) {
     });
 }
 
-const observed = { laws: [], buttons: [], meters: [], decimals: [] };
+const observed = { laws: [], buttons: [], keys: [], meters: [], decimals: [] };
 const failures = [];
 
 function check(condition, message) {
@@ -529,6 +529,52 @@ for (const testCase of CASES.buttons || []) {
     document.body.children = [];
 }
 
+// ---------------------------------------------------------------- 3b. keys, and their letters
+
+for (const testCase of CASES.keys || []) {
+    mount(testCase.html);
+    const keys = testCase.ids.map((id) => document.querySelector(`.field-key[data-control-id="${id}"]`));
+    if (keys.some((k) => !k)) { failures.push(`${testCase.name}: the emitted HTML lacks a .field-key per id`); continue; }
+
+    const sequence = [];
+    const record = async (label) => {
+        await flush();
+        const sent = posted.filter((m) => m.type === 'button-update')
+            .map((m) => `${testCase.ids.indexOf(m.payload.controlId)}:${m.payload.pressed}`);
+        sequence.push({ step: label, sent });
+        posted.length = 0;
+    };
+    const body = document.body;
+
+    posted.length = 0;
+    pressAt(keys[1], 0.5);
+    await record('pointer on the second key');
+
+    keyPress(body, 'e');
+    await record('its letter on the canvas');
+
+    body.classList.add('mode-figure');
+    keyPress(body, 'e', { repeats: 4, release: false });
+    await record('its letter held in a figure, 5 keydowns');
+    body.dispatchEvent({ type: 'keyup', target: body, key: 'e', code: 'KeyE', preventDefault() {}, stopPropagation() {} });
+    await record('its letter up');
+
+    body.dispatchEvent({ type: 'keydown', target: body, key: 'e', code: 'KeyE', metaKey: true, preventDefault() {}, stopPropagation() {} });
+    await record('its letter with command');
+
+    keyPress(body, 'x');
+    await record('a letter no key has');
+
+    keyPress(body, 'W', { release: false });
+    await record('the first letter, shifted, held');
+    window.dispatch('blur', {});
+    await record('then focus lost');
+
+    body.classList.remove('mode-figure');
+    observed.keys.push({ name: testCase.name, sequence });
+    document.body.children = [];
+}
+
 // ---------------------------------------------------------------- 4. the meter
 
 for (const testCase of CASES.meters || []) {
@@ -581,6 +627,9 @@ observed.laws.forEach((law) => {
 });
 observed.buttons.forEach((b) => {
     console.log(`probe: ${b.name} ` + b.sequence.map((s) => `${s.step}=[${s.sent}]`).join(' '));
+});
+observed.keys.forEach((k) => {
+    console.log(`probe: ${k.name} ` + k.sequence.map((s) => `${s.step}=[${s.sent}]`).join(' '));
 });
 observed.meters.forEach((m) => {
     console.log(`probe: ${m.name} ` + m.readings.map((r) => `${r.value}→${r.width}px "${r.shown}"`).join(' '));
