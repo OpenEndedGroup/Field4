@@ -23,6 +23,7 @@ import afield.graphics.vulkan.targets.RenderTarget
 import afield.graphics.vulkan.targets.releaseOwnedModulesOf
 import afield.graphics.vulkan.util.AutoDisposer
 import afield.graphics.vulkan.util.MapOfSequences
+import afield.graphics.vulkan.util.vkCheck
 import afield.graphics.vulkan.util.Options
 import afield.graphics.vulkan.util.Window
 import afield.graphics.vulkan.util.drainDeferredCleanup
@@ -302,7 +303,10 @@ class Renderer(
         return index
     }
     fun renderTargetFor(window: Window): RenderTarget = renderTargetFor(windowIndex(window))
-    private val windowCaptures = WindowCaptureQueue()
+    private val windowCaptures = WindowCaptureQueue {
+        "XR ticks=${openXRHmdTarget?.xrFrameCounter ?: 0}, scene submissions=$submittedSceneFrames, " +
+            "desktop=$desktopPresentationEnabled, last failure=${lastRenderFailure ?: "none"}"
+    }
     /** False records the primary pre-target scene using frame slots, without acquiring/presenting desktop images. */
     @Volatile
     var desktopPresentationEnabled = true
@@ -593,6 +597,7 @@ class Renderer(
     }
 
     private fun acquireFrameImage(windowIndex: Int): Int {
+        pendingDesktopImages[windowIndex]?.let { return it }
         val ctx = windowContexts[windowIndex]
         val w = ctx.window
 
@@ -628,6 +633,7 @@ class Renderer(
         }
         ctx.currentImage = imageIndex
         if (windowIndex == 0) currentImage = imageIndex
+        pendingDesktopImages[windowIndex] = imageIndex
         return imageIndex
     }
 
@@ -669,7 +675,7 @@ class Renderer(
                 throw IllegalStateException("Geometry writes already prepared for frame $frameId")
             }
 
-            val present = desktopPresentationEnabled
+            val present = pendingDesktopImages.containsKey(windowIndex) || desktopPresentationEnabled
             val imageIndex = if (present) acquireFrameImage(windowIndex) else acquireSceneSlot(frameId)
             val token = GeometryFrameToken(
                 frameId = frameId,
@@ -1272,6 +1278,14 @@ class Renderer(
     var presentationRevision=0L; private set
     private val unavailableWindows=mutableMapOf<Int,Long>()
 
+    /** Successful primary scene submissions; unlike frameCounter this excludes empty XR ticks. */
+    @Volatile var submittedSceneFrames = 0L
+        private set
+    /** Most recent recording/submission failure, retained until a scene submits successfully. */
+    @Volatile var lastRenderFailure: String? = null
+        private set
+    private val pendingDesktopImages = mutableMapOf<Int, Int>()
+
     private var previousRenderStartNs = 0L
     private var previousRenderEndNs = 0L
 
@@ -1282,6 +1296,10 @@ class Renderer(
         previousRenderStartNs = start
         try {
             renderFrameInternal()
+        } catch (failure: Throwable) {
+            lastRenderFailure = "frame=$frameCounter sceneSubmissions=$submittedSceneFrames: ${failure.javaClass.simpleName}: ${failure.message}"
+            lprintln("error,graphics,frame", lastRenderFailure!!)
+            throw failure
         } finally {
             val end = System.nanoTime()
             previousRenderEndNs = end
@@ -1347,7 +1365,8 @@ class Renderer(
             // A geometry producer may already own an acquired image. Finish that frame in its
             // original mode; apply a UI toggle on the next one instead of abandoning acquisition.
             val offscreen = synchronized(geometryPhaseStateLock) {
-                !(preAcquiredPrimaryImage?.takeIf { it.frameId == frameId }?.desktopPresentation ?: desktopPresentationEnabled)
+                if (pendingDesktopImages.containsKey(0)) false
+                else !(preAcquiredPrimaryImage?.takeIf { it.frameId == frameId }?.desktopPresentation ?: desktopPresentationEnabled)
             }
             windowContexts.forEachIndexed { ctxIndex, ctx ->
                 val w = ctx.window
@@ -1358,7 +1377,11 @@ class Renderer(
                 val preAcquiredImage = if (ctxIndex == 0) peekPreAcquiredPrimaryImageForFrame(frameId) else null
 
                 try {
-                    imageIndex = preAcquiredImage ?: if (offscreen) acquireSceneSlot(frameId) else acquireFrameImage(ctxIndex)
+                    imageIndex = preAcquiredImage ?: if (offscreen) acquireSceneSlot(frameId)
+                    else pendingDesktopImages[ctxIndex] ?: acquireFrameImage(ctxIndex)
+                    // Preserve a successful acquire across a recording failure. Its semaphore is
+                    // still signalled and must be consumed before acquiring another image.
+                    if (!offscreen) pendingDesktopImages[ctxIndex] = imageIndex
 
                     ctx.currentImage = imageIndex
                     if (ctxIndex == 0) {
@@ -1392,7 +1415,10 @@ class Renderer(
                                 recordGraphicsPass(ctx, ctxIndex, imageIndex, frameId, offscreen)
                             }
 
+                            // Recording can fail (for example an unbound shader reference). Do not
+                            // submit compute or reset either fence until BOTH recordings succeeded.
                             computeRecording?.await()
+                            val recordedWindowCaptures = graphicsRecording.await()
                             if (runComputeForWindow) {
                                 CPUSpan.time("submit_cs[$ctxIndex]") {
                                     submitCompute(
@@ -1407,7 +1433,6 @@ class Renderer(
                                 computeSubmittedThisFrame = true
                             }
 
-                            val recordedWindowCaptures = graphicsRecording.await()
                             CPUSpan.time("submit_gfx[$ctxIndex]") {
                                 submit(
                                     ctx,
@@ -1417,6 +1442,10 @@ class Renderer(
                                     ctx.computeFinishedSemaphores[imageIndex].takeIf { runComputeForWindow },
                                     desktopPresentation = !offscreen,
                                 )
+                            }
+                            if (ctxIndex == 0) {
+                                submittedSceneFrames++
+                                lastRenderFailure = null
                             }
                             if (recordedWindowCaptures.isNotEmpty()) {
                                 ctx.fences[imageIndex].fenceWait()
@@ -1433,6 +1462,7 @@ class Renderer(
                         }
                     }
 
+                    pendingDesktopImages.remove(ctxIndex)
                     ctx.profilerState?.pending?.addLast(Pending(imageIndex))
                 } catch (e: ImageNotAvailable) {
                     unavailableWindows.putIfAbsent(ctxIndex,System.nanoTime())
@@ -1494,7 +1524,6 @@ class Renderer(
         CPUSpan.time("record_cs[$ctxIndex]") {
             ctx.computeFences[imageIndex].fenceWait()
             awaitComputePostSubmitTasks(ctxIndex, imageIndex)
-            ctx.computeFences[imageIndex].reset()
 
             val computeElements = mutableListOf<Pair<String, (CommandBuffer) -> Unit>>()
             computeList.modules.forEach { (name, ptr) ->
@@ -1601,7 +1630,6 @@ class Renderer(
         CPUSpan.time("record_gfx[$ctxIndex]") {
             // Keep GPU backpressure visible separately from CPU command recording work.
             CPUSpan.time("wait_gfx[$ctxIndex]") { ctx.fences[imageIndex].fenceWait() }
-            ctx.fences[imageIndex].reset()
 
             val cmd = ctx.commandBuffers[imageIndex]
             cmd.reset(); cmd.beginRecording()
@@ -1811,7 +1839,8 @@ class Renderer(
                     .pCommandBufferInfos(cbInfo)
 
                 synchronized(queueLock) {
-                    vkQueueSubmit2(queue.vkQueue, submit2, currentFence.vkFence)
+                    currentFence.reset()
+                    vkCheck(vkQueueSubmit2(queue.vkQueue, submit2, currentFence.vkFence), "Failed to submit graphics frame")
                 }
             }
         }
@@ -1848,7 +1877,8 @@ class Renderer(
                     .pSignalSemaphoreInfos(signals)
 
                 synchronized(queueLock) {
-                    vkQueueSubmit2(queue.vkQueue, submit2, currentComputeFence.vkFence)
+                    currentComputeFence.reset()
+                    vkCheck(vkQueueSubmit2(queue.vkQueue, submit2, currentComputeFence.vkFence), "Failed to submit compute frame")
                 }
             }
         }
