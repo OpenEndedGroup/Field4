@@ -6,7 +6,7 @@
  * `skyTransmittanceToTop(...)` and the phase functions; the resolver in `shaders.kt` serves it with no
  * setup. This object holds the same functions in Kotlin, for tests and for reading a sky colour on the
  * CPU (a light's colour at a given sun elevation, say). Method: Nishita et al. 1993; Earth's
- * coefficients from Hillaire 2020. See `public/docs/atmospheric_sky.md`.
+ * coefficients from Hillaire 2020. See "An atmospheric sky" in `public/docs/afield_four_graphics.md`.
  */
 package afield.graphics.sky
 

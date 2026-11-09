@@ -4301,7 +4301,7 @@ macro run growing_nca
 includes `sky/atmosphere.glsl` and draws single scattering through Earth's atmosphere (Rayleigh, Mie,
 ozone): blue at noon, orange at sunset, a violet twilight, and the planet with its blue rim from
 space. Sun elevation and azimuth, altitude, camera pitch and exposure are sliders. See
-[Atmospheric sky](atmospheric_sky.md).
+[An atmospheric sky](afield_four_graphics.md#atmospheric-sky).
 
 ```diffstatic {data-lang=text}
 macro write atmospheric_sky --file dev_docs/agents/transcripts/atmospheric_sky.yaml

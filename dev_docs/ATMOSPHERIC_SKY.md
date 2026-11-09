@@ -1,6 +1,6 @@
 # Atmospheric sky — notes
 
-User page: `public/docs/atmospheric_sky.md`. Code: `src/jvmMain/resources/afield/four/sky/atmosphere.glsl`
+User page: `public/docs/afield_four_graphics.md#atmospheric-sky`. Code: `src/jvmMain/resources/afield/four/sky/atmosphere.glsl`
 (served as `#include "sky/atmosphere.glsl"` by `builtInShaderInclude` in `shaders.kt`), CPU twin
 `afield.graphics.sky.Atmosphere`, test `AtmosphereTest`. Demo transcript
 `dev_docs/agents/transcripts/atmospheric_sky.yaml`; capture variants in `docs_capture/atmospheric_sky_*.yaml`.

@@ -6,7 +6,7 @@ description: >-
   (sunset, twilight, space) that move it. Method after Nishita et
   al. 1993 and Hillaire 2020; walkthrough by Maxime Heckel, "On rendering the sky, sunsets and planets".
 docs:
-  - page: atmospheric_sky.md
+  - page: afield_four_graphics.md
     why: "The page's captures replay this transcript."
 operations:
   - create:
@@ -97,7 +97,9 @@ operations:
           }
 
           controlGroup("Sky") {
-              slider("Sun elevation (degrees)", min = -12.0, max = 90.0, initialValue = view.sunElevation) { view.sunElevation = it }
+              slider("Sun elevation (degrees)", min = -12.0, max = 90.0, initialValue = view.sunElevation) {
+                  view.sunElevation = it
+              }
               slider("Sun azimuth (degrees)", min = -180.0, max = 180.0, initialValue = view.sunAzimuth) { view.sunAzimuth = it }
               slider("Altitude (log10 km)", min = -3.0, max = 4.5, initialValue = Math.log10(view.altitude)) {
                   view.altitude = Math.pow(10.0, it)

@@ -42,26 +42,26 @@ From `code` tags: `#include`
 
 A sky you can live-code: single scattering through Earth's atmosphere (Nishita 1993, with Hillaire 2020's
 coefficients), one fullscreen triangle beneath the renderer. The physics is `#include "sky/atmosphere.glsl"`;
-the camera and the tone mapping are in this box's fragment property. Drag the sliders, or edit the numbers
-below and re-run.
+the camera and the tone mapping are in this box's fragment property. Drag the sliders, or run one of the
+box's preset properties (`sunset`, `twilight`, `space`) to jump there.
 
 ```edn [field-box id="atmospheric_sky" role="properties"]
-{"id" "atmospheric_sky" "index" 1 "name" "atmospheric sky" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "atmospheric sky" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "atmospheric_sky_code_.kt" "lines" 36 "characters" 1709 "sha256" "ef9e14acf85b6e4108c0a5a251847ed5185ea4dc60b7fec21dffd77cf67662c7"} {"name" "vertex" "language" "glsl" "path" "atmospheric_sky_vertex_.glsl" "lines" 6 "characters" 227 "sha256" "8f3504d8801a4398f2518ca9de09a3f9f4b72e4eb43044567049caf473214b5a"} {"name" "fragment" "language" "glsl" "path" "atmospheric_sky_fragment_.glsl" "lines" 31 "characters" 1163 "sha256" "4199d44357e6911d8dc0ce582557ebbfcd5385edb86285176144091a9bbae88a"}]}
+{"id" "atmospheric_sky" "index" 1 "name" "atmospheric sky" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "atmospheric sky" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "atmospheric_sky_code_.kt" "lines" 42 "characters" 1831 "sha256" "56bfd6ff5b3494ed0fd2970e351c09b7049845c87b6197017a303628b1840755"} {"name" "vertex" "language" "glsl" "path" "atmospheric_sky_vertex_.glsl" "lines" 6 "characters" 227 "sha256" "8f3504d8801a4398f2518ca9de09a3f9f4b72e4eb43044567049caf473214b5a"} {"name" "fragment" "language" "glsl" "path" "atmospheric_sky_fragment_.glsl" "lines" 31 "characters" 1163 "sha256" "4199d44357e6911d8dc0ce582557ebbfcd5385edb86285176144091a9bbae88a"}]}
 ```
 
 ```kotlin [field-property box="atmospheric_sky" name="code" path="atmospheric_sky_code_.kt"]
 /*
 A sky you can live-code: single scattering through Earth's atmosphere (Nishita 1993, with Hillaire 2020's
 coefficients), one fullscreen triangle beneath the renderer. The physics is `#include "sky/atmosphere.glsl"`;
-the camera and the tone mapping are in this box's fragment property. Drag the sliders, or edit the numbers
-below and re-run.
+the camera and the tone mapping are in this box's fragment property. Drag the sliders, or run one of the
+box's preset properties (`sunset`, `twilight`, `space`) to jump there.
 */
-var sunElevation = 30.0 // degrees above the horizon
-var sunAzimuth = 0.0 // degrees, 0 is straight ahead
-var altitude = 3.5 // km above the ground
-var pitch = 10.0 // degrees the camera looks up (-90 looks straight down)
-var exposure = 2.0
-var fieldOfView = 90.0 // degrees, vertical
+import afield.graphics.sky.SkyView
+
+// Published as this box's `skyView` property, so the preset properties can reach it.
+prop<SkyView>(skyView)
+val view = SkyView(sunElevation = 30.0, altitude = 3.5, pitch = 10.0, exposure = 2.0)
+skyView = view
 
 val sky = moduleHere {
     depthTest = false
@@ -72,20 +72,26 @@ val quad = fullscreenTriangle(sky)
 sky += "quad" to quad
 renderer += "atmospheric-sky" to sky
 
-quad.viewport = { vec(window.width.toFloat(), window.height.toFloat(), altitude, Math.toRadians(sunElevation)) }
-quad.view = { vec(Math.toRadians(sunAzimuth), Math.toRadians(pitch), exposure, Math.toRadians(fieldOfView)) }
+quad.viewport = {
+    vec(window.width.toFloat(), window.height.toFloat(), view.altitude, Math.toRadians(view.sunElevation))
+}
+quad.view = {
+    vec(Math.toRadians(view.sunAzimuth), Math.toRadians(view.pitch), view.exposure, Math.toRadians(view.fieldOfView))
+}
 
 controlGroup("Sky") {
-    slider("Sun elevation (degrees)", min = -12.0, max = 90.0, initialValue = sunElevation) { sunElevation = it }
-    slider("Sun azimuth (degrees)", min = -180.0, max = 180.0, initialValue = sunAzimuth) { sunAzimuth = it }
-    slider("Altitude (log10 km)", min = -3.0, max = 4.5, initialValue = Math.log10(altitude)) {
-        altitude = Math.pow(10.0, it)
+    slider("Sun elevation (degrees)", min = -12.0, max = 90.0, initialValue = view.sunElevation) {
+        view.sunElevation = it
     }
-    slider("Camera pitch (degrees)", min = -90.0, max = 90.0, initialValue = pitch) { pitch = it }
-    slider("Exposure", min = 0.5, max = 40.0, initialValue = exposure) { exposure = it }
+    slider("Sun azimuth (degrees)", min = -180.0, max = 180.0, initialValue = view.sunAzimuth) { view.sunAzimuth = it }
+    slider("Altitude (log10 km)", min = -3.0, max = 4.5, initialValue = Math.log10(view.altitude)) {
+        view.altitude = Math.pow(10.0, it)
+    }
+    slider("Camera pitch (degrees)", min = -90.0, max = 90.0, initialValue = view.pitch) { view.pitch = it }
+    slider("Exposure", min = 0.1, max = 40.0, initialValue = view.exposure) { view.exposure = it }
 }
 displayOpen("Sky")
-println("atmospheric sky: sun ${sunElevation}°, altitude ${altitude} km")
+println("atmospheric sky: sun ${view.sunElevation}°, altitude ${view.altitude} km")
 ```
 
 ```glsl [field-property box="atmospheric_sky" name="vertex" path="atmospheric_sky_vertex_.glsl"]
