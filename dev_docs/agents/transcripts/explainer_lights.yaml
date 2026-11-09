@@ -29,12 +29,8 @@ operations:
               val lamp = RectLight(vec(across, 1.3, 0.0), width = size, height = size, power = 30.0)
               three(channel = "scene", width = 640, height = 420) {
                   mesh((floor + block).lit(lamp, exposure = 0.5), unlit = true, wireframe = false)
-                  // An invisible diagonal fixes the scene's bounds, so the view does not zoom as the lamp moves.
-                  lines(fline {
-                      moveTo(-2.0, 0.0, -2.0)
-                      lineTo(2.0, 1.6, 2.0)
-                      color = vec(0.0, 0.0, 0.0, 0.0)
-                  })
+                  // Frame the view on the whole set, so it holds still as the lamp changes.
+                  fitTo(vec(-2.0, 0.0, -2.0), vec(2.0, 1.6, 2.0))
                   mesh(lamp.mesh(), unlit = true, wireframe = false, cullBackFaces = false)
                   camera(yaw = 35.0, pitch = 30.0, distance = 2.6)
                   background("#000000")
@@ -46,6 +42,97 @@ operations:
           controlGroup {
               slider("position", -1.2, 1.2, initialValue = across) { across = it; draw() }
               slider("size", 0.05, 1.5, initialValue = size) { size = it; draw() }
+          }
+  - create:
+      box: el_sphere_light
+      name: sphere_light
+      frame: { x: 480.0, y: 140.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          // A glowing ball and the light leaving it, drawn as rays: one ray for every quarter watt.
+          val golden = PI * (3 - sqrt(5.0))
+
+          fun draw(watts: Double) {
+              val n = (watts * 4).roundToInt()
+              val rays = n { i ->
+                  // Directions spread evenly over the sphere, each ray starting on the ball's surface.
+                  val y = 1 - 2 * (i + 0.5) / n
+                  val r = sqrt(1 - y * y)
+                  val d = vec(r * cos(golden * i), y, r * sin(golden * i))
+                  fline {
+                      moveTo(d.x * 0.2, d.y * 0.2, d.z * 0.2)
+                      lineTo(d.x * 1.4, d.y * 1.4, d.z * 1.4)
+                      color = vec(1.0, 0.9, 0.6, 0.5)
+                  }
+              }
+              // How bright the ball looks: its glow fills up and then stays white.
+              val glow = min(1.0, watts / 60)
+              three(channel = "scene", width = 640, height = 420) {
+                  lines(rays)
+                  // Frame the view on the rays' reach, not on the ball.
+                  fitTo(vec(-1.0, -1.0, -1.0), vec(1.0, 1.0, 1.0))
+                  mesh(icosphereMesh(3, 0.2).withColor(glow, glow * 0.95, glow * 0.8), unlit = true, wireframe = false)
+                  camera(yaw = 20.0, pitch = 15.0, distance = 2.2)
+                  background("#000000")
+                  hud(false)
+                  helpers(false)
+              }
+              display("readout", "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${watts.roundToInt()} W: $n rays</div>")
+          }
+
+          draw(10.0)
+          controlGroup {
+              slider("power", 1.0, 100.0, step = 1.0, initialValue = 10.0) { draw(it) }
+          }
+  - create:
+      box: el_perceived
+      name: perceived
+      frame: { x: 660.0, y: 140.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          // The light a patch gives off, against what a screen can show of it. The swatch is the patch;
+          // the curve is the brightness the screen sends, which runs out at its brightest white.
+          fun draw(watts: Double) {
+              // A screen channel holds 0..1 of linear light, here reached at 50 W, and encodes it as sRGB.
+              fun shown(w: Double) = min(1.0, w / 50).pow(1 / 2.2)
+              val curve = fline {
+                  moveTo(40.0, 260.0)
+                  for (w in 1..100) lineTo(40.0 + w * 3.6, 260.0 - 220 * shown(w.toDouble()))
+                  thickness = 2.0
+                  color = vec(0.4, 0.9, 1.0, 1.0)
+              }
+              val axes = fline {
+                  moveTo(40.0, 30.0)
+                  lineTo(40.0, 260.0)
+                  lineTo(400.0, 260.0)
+                  color = vec(1.0, 1.0, 1.0, 0.35)
+              }
+              val here = fline {
+                  moveTo(40.0 + watts * 3.6, 260.0)
+                  lineTo(40.0 + watts * 3.6, 260.0 - 220 * shown(watts))
+                  thickness = 2.0
+                  color = vec(1.0, 0.6, 0.2, 1.0)
+              }
+              val v = shown(watts)
+              val swatch = fline {
+                  moveTo(450.0, 60.0)
+                  lineTo(610.0, 60.0)
+                  lineTo(610.0, 220.0)
+                  lineTo(450.0, 220.0)
+                  lineTo(450.0, 60.0)
+                  filled = true
+                  color = vec(v, v, v, 1.0)
+              }
+              lines(axes, curve, here, swatch, channel = "curve", w = 640.0, h = 280.0)
+              display(
+                  "readout",
+                  "<div style='font:20px sans-serif;color:#ddd;padding:4px 8px'>${watts.roundToInt()} W: the screen sends ${(v * 100).roundToInt()} % of its white</div>",
+              )
+          }
+
+          draw(10.0)
+          controlGroup {
+              slider("power", 0.0, 100.0, step = 1.0, initialValue = 10.0) { draw(it) }
           }
   - create:
       box: el_light_angle
@@ -233,12 +320,8 @@ operations:
               val lamp = SphereLight(vec(-1.4 * cos(a), 1.4 * sin(a), 0.0), radius = size, power = 40.0)
               three(channel = "scene", width = 640, height = 420) {
                   mesh((floor + wall).lit(lamp, exposure = 0.6), unlit = true, wireframe = false)
-                  // An invisible diagonal fixes the scene's bounds, so the view does not zoom as the lamp moves.
-                  lines(fline {
-                      moveTo(-2.0, 0.0, -1.6)
-                      lineTo(2.0, 1.6, 1.6)
-                      color = vec(0.0, 0.0, 0.0, 0.0)
-                  })
+                  // Frame the view on the whole set, so it holds still as the lamp changes.
+                  fitTo(vec(-2.0, 0.0, -1.6), vec(2.0, 1.6, 1.6))
                   mesh(lamp.mesh(), unlit = true, wireframe = false)
                   camera(yaw = 20.0, pitch = 35.0, distance = 2.4)
                   background("#000000")
@@ -250,6 +333,161 @@ operations:
           controlGroup {
               slider("size", 0.02, 0.5, step = 0.01, initialValue = size) { size = it; draw() }
               slider("altitude", 15.0, 85.0, step = 1.0, initialValue = altitude) { altitude = it; draw() }
+          }
+  - create:
+      box: el_light_colour
+      name: light_colour
+      frame: { x: 480.0, y: 350.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.graphics.lighting.*
+
+          // Nine tiles of different colours under one lamp whose colour you pick. A tile can only send
+          // back the colours the lamp gives it.
+          val colours = listOf(
+              vec(0.8, 0.8, 0.8), vec(0.8, 0.1, 0.1), vec(0.1, 0.7, 0.1),
+              vec(0.1, 0.2, 0.8), vec(0.8, 0.7, 0.1), vec(0.1, 0.7, 0.7),
+              vec(0.7, 0.1, 0.7), vec(0.8, 0.4, 0.1), vec(0.3, 0.3, 0.3),
+          )
+          val tiles = colours.withIndex().map { (i, c) ->
+              floorMesh(0.5, 0.5, divisions = 8).translated((i % 3 - 1) * 0.6, 0.0, (i / 3 - 1) * 0.6).withColor(c.x, c.y, c.z)
+          }.reduce { a, b -> a + b }
+
+          fun draw(light: Vec4) {
+              val lamp = RectLight(vec(0.0, 1.6, 0.0), width = 1.2, height = 1.2, power = 60.0, color = vec(light.x, light.y, light.z))
+              three(channel = "scene", width = 640, height = 420) {
+                  mesh(tiles.lit(lamp, exposure = 0.6), unlit = true, wireframe = false)
+                  camera(yaw = 0.0, pitch = 60.0, distance = 2.0)
+                  background("#000000")
+                  hud(false)
+              }
+          }
+
+          draw(vec(1.0, 1.0, 1.0, 1.0))
+          controlGroup {
+              colorPicker("light colour", initialValue = vec(1.0, 1.0, 1.0, 1.0)) { draw(it) }
+          }
+  - create:
+      box: el_additive
+      name: additive
+      frame: { x: 660.0, y: 350.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.graphics.lighting.*
+
+          // Red, green and blue lamps over a white floor with a white block. Where two pools overlap
+          // their light adds; the block's shadows take the colours of the lamps it hides.
+          val floor = floorMesh(2.4, 2.4, divisions = 72).withColor(0.8, 0.8, 0.8)
+          val block = panelBoxMesh(0.3, 0.5, 0.3, divisions = 6).translated(0.0, 0.25, 0.0).withColor(0.8, 0.8, 0.8)
+          val scene = floor + block
+          var red = true
+          var green = true
+          var blue = true
+          var spread = 0.6
+
+          fun draw() {
+              val lamps = listOf(
+                  Triple(red, 90.0, vec(1.0, 0.0, 0.0)),
+                  Triple(green, 210.0, vec(0.0, 1.0, 0.0)),
+                  Triple(blue, 330.0, vec(0.0, 0.0, 1.0)),
+              ).filter { it.first }.map { (_, degrees, colour) ->
+                  val a = degrees * PI / 180
+                  SphereLight(vec(spread * cos(a), 1.2, spread * sin(a)), radius = 0.04, power = 25.0, color = colour, samples = 128)
+              }
+              three(channel = "scene", width = 640, height = 420) {
+                  mesh(scene.lit(lamps, exposure = 1.2), unlit = true, wireframe = false)
+                  lamps.forEach { mesh(it.mesh(), unlit = true, wireframe = false) }
+                  camera(yaw = 20.0, pitch = 45.0, distance = 2.0)
+                  background("#000000")
+                  hud(false)
+              }
+          }
+
+          draw()
+          controlGroup {
+              checkbox("red", initialValue = true) { red = it; draw() }
+              checkbox("green", initialValue = true) { green = it; draw() }
+              checkbox("blue", initialValue = true) { blue = it; draw() }
+              slider("spread", 0.0, 1.2, step = 0.01, initialValue = spread) { spread = it; draw() }
+          }
+  - create:
+      box: el_red_wall
+      name: red_wall
+      frame: { x: 840.0, y: 350.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.graphics.lighting.*
+
+          // A white floor beside a red wall, lit by one small lamp. The solve follows the light through
+          // three bounces once, when the box runs; the sliders only choose what to show.
+          val floor = floorMesh(2.4, 2.4, divisions = 24).withColor(0.8, 0.8, 0.8)
+          val wall = panelBoxMesh(2.4, 1.2, 0.05, divisions = 16).translated(0.0, 0.6, -1.225).withColor(0.8, 0.08, 0.05)
+          val lamp = SphereLight(vec(0.3, 0.9, -0.5), radius = 0.08, power = 1.0)
+          val solve = Radiosity(floor + wall, listOf(lamp), bounces = 3)
+
+          var power = 20.0
+          var bounces = 3.0
+          var bounceOnly = false
+
+          fun draw() {
+              val shown = solve.lit(upTo = bounces.toInt(), from = if (bounceOnly) 1 else 0,
+                  exposure = if (bounceOnly) 4.0 else 1.0, scale = power)
+              three(channel = "scene", width = 640, height = 420) {
+                  mesh(shown, unlit = true, wireframe = false)
+                  mesh(lamp.mesh(), unlit = true, wireframe = false)
+                  camera(yaw = 25.0, pitch = 28.0, distance = 2.2)
+                  background("#000000")
+                  hud(false)
+              }
+          }
+
+          draw()
+          controlGroup {
+              slider("power", 5.0, 60.0, step = 1.0, initialValue = power) { power = it; draw() }
+              slider("bounces", 0.0, 3.0, step = 1.0, initialValue = bounces) { bounces = it; draw() }
+              checkbox("bounced light only") { bounceOnly = it; draw() }
+          }
+  - create:
+      box: el_sky_sphere
+      name: sky_sphere
+      frame: { x: 1020.0, y: 350.0, w: 160.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.graphics.lighting.*
+
+          // A floor under a dome of small lamps, all of them together giving out 400 W, and a black tile
+          // held above the floor. With one lamp the tile casts a hard shadow; with hundreds the light comes
+          // from the whole sky and only the ground right under the tile stays dark.
+          val floor = floorMesh(3.0, 3.0, divisions = 60).withColor(0.8, 0.8, 0.8)
+          val golden = PI * (3 - sqrt(5.0))
+          var count = 1.0
+          var height = 0.3
+
+          fun draw() {
+              val n = count.toInt()
+              // Lamps spread evenly over the upper half of a sphere of radius 2; the first sits overhead.
+              val lamps = n { i ->
+                  val y = if (n == 1) 1.0 else 1 - (i + 0.5) / n
+                  val r = sqrt(1 - y * y)
+                  PointLight(vec(2 * r * cos(golden * i), 2 * y, 2 * r * sin(golden * i)), power = 400.0 / n)
+              }
+              val tile = panelBoxMesh(0.6, 0.02, 0.6, divisions = 4).translated(0.0, height, 0.0).withColor(0.02, 0.02, 0.02)
+              val dots = lamps.map { icosphereMesh(1, 0.03).translated(it.position).withColor(1.0, 1.0, 1.0) }.reduce { a, b -> a + b }
+              three(channel = "scene", width = 640, height = 420) {
+                  mesh((floor + tile).lit(lamps, exposure = 0.4), unlit = true, wireframe = false)
+                  mesh(dots, unlit = true, wireframe = false)
+                  // Frame the view on the whole set, so it holds still as the lamp changes.
+                  fitTo(vec(-2.0, 0.0, -2.0), vec(2.0, 2.0, 2.0))
+                  camera(yaw = 25.0, pitch = 30.0, distance = 2.3)
+                  background("#000000")
+                  hud(false)
+              }
+          }
+
+          draw()
+          controlGroup {
+              slider("lamps", 1.0, 300.0, step = 1.0, initialValue = count, law = ControlLaw.LOGARITHMIC) { count = it; draw() }
+              slider("tile height", 0.05, 0.8, step = 0.01, initialValue = height) { height = it; draw() }
           }
   - create:
       box: el_deck
@@ -288,43 +526,55 @@ operations:
                   section("Power") {
                       step("Power", id = "power") {
                           audience {
-                              +"""
-                              ## Power
+                              figureBeside("sphere_light") {
+                                  +"""
+                                  ## Power
 
-                              A lamp turns electrical power into light, and we measure the light the same way:
-                              in watts, the energy leaving the source each second.
+                                  A lamp turns electrical power into light, and we measure the light the same way:
+                                  in watts, the energy leaving the source each second.
 
-                              Think of it as rays streaming outward. A stronger lamp sends more of them.
-                          """
-                                  .md
+                                  Think of it as rays streaming outward. A stronger lamp sends more of them.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `sphere_light`, a glowing ball with a power slider and its rays. [[back]] [[next]]")
+                          control("sphere_light", "power", 10.0)
+                          cue("More power") { control("sphere_light", "power", 80.0, glideMs = 2000) }
+                          markdownNote("Next raises the lamp from 10 W to 80 W: eight times the rays. [[back]] [[next]]")
                       }
                       step("Brightness is not power", id = "perceived") {
                           audience {
-                              +"""
-                              ## Brightness is not power
+                              figureBeside("perceived") {
+                                  +"""
+                                  ## Brightness is not power
 
-                              Twice the power does not look twice as bright. Our eyes compress what they
-                              receive, and a screen can only show so much: once a channel is full, every
-                              brighter value looks the same white.
-                          """
-                                  .md
+                                  Twice the power does not look twice as bright. Our eyes compress what they
+                                  receive, and a screen can only show so much: once a channel is full, every
+                                  brighter value looks the same white.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `perceived`, a brightness curve and swatch against a power slider. [[back]] [[next]]")
+                          control("perceived", "power", 10.0)
+                          cue("Past white") { control("perceived", "power", 90.0, glideMs = 2000) }
+                          markdownNote("Next pushes the power to 90 W: past 50 W the screen has nothing brighter to show. [[back]] [[next]]")
                       }
                       step("Surfaces pass light on", id = "matte") {
                           audience {
-                              +"""
-                              ## Surfaces pass light on
+                              figureBeside("opening_scene") {
+                                  +"""
+                                  ## Surfaces pass light on
 
-                              Most things do not glow. We see them because they send back part of the light
-                              that reaches them. A matte surface scatters what it returns evenly in every
-                              direction, so it looks the same from wherever you stand.
-                          """
-                                  .md
+                                  Most things do not glow. We see them because they send back part of the light
+                                  that reaches them. A matte surface scatters what it returns evenly in every
+                                  direction, so it looks the same from wherever you stand.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `matte_surface`, a lit matte floor to orbit around. [[back]] [[next]]")
+                          control("opening_scene", "position", 0.6)
+                          control("opening_scene", "size", 0.5)
+                          markdownNote("The opening scene again: drag it round; the floor looks the same from every side. [[back]] [[next]]")
                       }
                   }
 
@@ -379,15 +629,20 @@ operations:
                       }
                       step("A light with a size", id = "rect-light") {
                           audience {
-                              +"""
-                              ## A light with a size
+                              figureBeside("opening_scene") {
+                                  +"""
+                                  ## A light with a size
 
-                              A real lamp is not a point. Each small piece of its surface behaves like a
-                              point light of its own, and the floor adds all of them up.
-                          """
-                                  .md
+                                  A real lamp is not a point. Each small piece of its surface behaves like a
+                                  point light of its own, and the floor adds all of them up.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `rect_light`, a panel light over a floor. [[back]] [[next]]")
+                          control("opening_scene", "position", 0.6)
+                          control("opening_scene", "size", 0.1)
+                          cue("A wider lamp") { control("opening_scene", "size", 1.2, glideMs = 2000) }
+                          markdownNote("Next widens the lamp from 10 cm to 1.2 m at the same power: the pool spreads and the shadow softens. [[back]] [[next]]")
                       }
                   }
 
@@ -522,59 +777,78 @@ operations:
                   section("Colour") {
                       step("Coloured light", id = "colour") {
                           audience {
-                              +"""
-                              ## Coloured light
+                              figureBeside("light_colour") {
+                                  +"""
+                                  ## Coloured light
 
-                              We stand in for the many wavelengths of light with three: red, green and blue
-                              power. A surface's colour is how much of each it sends back.
-                          """
-                                  .md
+                                  We stand in for the many wavelengths of light with three: red, green and blue
+                                  power. A surface's colour is how much of each it sends back.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `light_colour`, nine coloured tiles under a light whose colour you pick. [[back]] [[next]]")
+                          markdownNote("Pick a lamp colour: under pure red, the green and blue tiles go dark. [[back]] [[next]]")
                       }
                       step("Lights add up", id = "additive") {
                           audience {
-                              +"""
-                              ## Lights add up
+                              figureBeside("additive") {
+                                  +"""
+                                  ## Lights add up
 
-                              Two lamps on one floor simply add. Where a red and a green pool of light
-                              overlap, the floor turns yellow.
-                          """
-                                  .md
+                                  Two lamps on one floor simply add. Where a red and a green pool of light
+                                  overlap, the floor turns yellow.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `additive`, red, green and blue lamps over a white floor. [[back]] [[next]]")
+                          control("additive", "red", true)
+                          control("additive", "green", true)
+                          control("additive", "blue", false)
+                          cue("Add blue") { control("additive", "blue", true) }
+                          markdownNote("Red and green first; Next turns on the blue lamp. Look at the block's coloured shadows. [[back]] [[next]]")
                       }
                   }
 
                   section("Bounces") {
                       step("Light keeps going", id = "bounces") {
                           audience {
-                              +"""
-                              ## Light keeps going
+                              figureBeside("red_wall") {
+                                  +"""
+                                  ## Light keeps going
 
-                              The light a surface sends back lands on other surfaces. A red wall beside a
-                              white floor tints the floor red. Each bounce is weaker than the last, and
-                              their sum is the scene's indirect light.
-                          """
-                                  .md
+                                  The light a surface sends back lands on other surfaces. A red wall beside a
+                                  white floor tints the floor red. Each bounce is weaker than the last, and
+                                  their sum is the scene's indirect light.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `red_wall`, a radiosity solve with power and bounce-count sliders. [[back]] [[next]]")
+                          control("red_wall", "bounces", 0.0)
+                          control("red_wall", "bounced light only", false)
+                          cue("Three bounces") { control("red_wall", "bounces", 3.0, glideMs = 1500) }
+                          cue("Only the bounced light") { control("red_wall", "bounced light only", true) }
+                          markdownNote("Starts with direct light only. Next adds bounces up to three; the next shows only the bounced light, four times brighter. [[back]] [[next]]")
                       }
                   }
 
                   section("Sphere of light") {
                       step("A sky of light", id = "sky") {
                           audience {
-                              +"""
-                              ## A sky of light
+                              figureBeside("sky_sphere") {
+                                  +"""
+                                  ## A sky of light
 
-                              Surround the scene with light from every direction, like an overcast sky.
-                              Nothing casts a hard shadow, yet a tile still darkens the ground just
-                              beneath it.
-                          """
-                                  .md
+                                  Surround the scene with light from every direction, like an overcast sky.
+                                  Nothing casts a hard shadow, yet a tile still darkens the ground just
+                                  beneath it.
+                              """
+                                      .md
+                              }
                           }
-                          markdownNote("Figure not built yet: `sky_sphere`, a scene under a sphere of small lights, with a movable tile. [[back]] [[next]]")
+                          control("sky_sphere", "lamps", 1.0)
+                          control("sky_sphere", "tile height", 0.3)
+                          cue("A sky of lamps") { control("sky_sphere", "lamps", 300.0, glideMs = 3000) }
+                          markdownNote("One lamp overhead; Next spreads the same 400 W over 300 lamps. Then try the tile height. [[back]] [[next]]")
                       }
                   }
 
