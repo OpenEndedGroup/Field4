@@ -230,7 +230,7 @@ class OpticsScene(
  * turned by [bladeRotation] radians. Out-of-focus points take this shape.
  */
 class SensorCamera(
-    val x: Double = 0.0, val y: Double = 0.0, val z: Double = -6.0,
+    val x: Double = 0.0, val y: Double = 1.2, val z: Double = -6.0,
     val lookX: Double = 0.0, val lookY: Double = 0.5, val lookZ: Double = 0.0,
     val sensorWidth: Double = 1.5,
     val sensorHeight: Double = 1.0,
@@ -403,6 +403,40 @@ class SensorCamera(
             }
         }
         return SensorImage(width, height, out, reference)
+    }
+
+    /**
+     * What the sensor records with nothing in front of it: each detector, lying where the aperture is,
+     * takes light from its whole half of the sky, sampled in [samples] cosine-weighted directions. The
+     * image's [SensorImage.reference] is `π`, the irradiance of an even sky of radiance 1, so the default
+     * exposure shows each detector's average view.
+     */
+    fun renderBare(scene: OpticsScene, width: Int, height: Int, samples: Int = 128): SensorImage {
+        val out = FloatArray(width * height * 3)
+        val l = DoubleArray(3)
+        val golden = PI * (3 - sqrt(5.0))
+        for (j in 0 until height) for (i in 0 until width) {
+            val sx = ((i + 0.5) / width - 0.5) * sensorWidth
+            val sy = (0.5 - (j + 0.5) / height) * sensorHeight
+            val o = toWorld(sx, sy, 0.0)
+            val turn = hash(i, j) * 2 * PI
+            var er = 0.0; var eg = 0.0; var eb = 0.0
+            for (k in 0 until samples) {
+                // A point on the unit disc lifted onto the hemisphere is a cosine-weighted direction.
+                val rho = sqrt((k + 0.5) / samples)
+                val a = k * golden + turn
+                val cx = rho * cos(a); val cy = rho * sin(a); val cz = sqrt(max(0.0, 1 - rho * rho))
+                val dx = cx * right[0] + cy * up[0] + cz * forward[0]
+                val dy = cx * right[1] + cy * up[1] + cz * forward[1]
+                val dz = cx * right[2] + cy * up[2] + cz * forward[2]
+                scene.radiance(OpticsRay(o[0], o[1], o[2], dx, dy, dz), l)
+                er += l[0]; eg += l[1]; eb += l[2]
+            }
+            val p = (j * width + i) * 3
+            val k = PI / samples
+            out[p] = (er * k).toFloat(); out[p + 1] = (eg * k).toFloat(); out[p + 2] = (eb * k).toFloat()
+        }
+        return SensorImage(width, height, out, PI)
     }
 
     private fun hash(i: Int, j: Int): Double {
@@ -658,6 +692,19 @@ object Refraction {
         val edge = when { w < 420 -> 0.3 + 0.7 * (w - 380) / 40; w > 700 -> 0.3 + 0.7 * (780 - w) / 80; else -> 1.0 }
         return doubleArrayOf(min(1.0, max(0.0, r * edge)), min(1.0, max(0.0, g * edge)), min(1.0, max(0.0, b * edge)))
     }
+}
+
+/**
+ * Where a ray leaves a [width] × [height] picture: from ([x], [y]) inside it along ([dx], [dy]), the point
+ * `[x, y]` on the picture's edge. A side-view diagram ends its rays here, so a steep ray does not reach
+ * far outside the frame and make `lines(...)` zoom out to fit it.
+ */
+fun frameExit(x: Double, y: Double, dx: Double, dy: Double, width: Double, height: Double): DoubleArray {
+    var t = Double.MAX_VALUE
+    if (dx > 1e-12) t = min(t, (width - x) / dx) else if (dx < -1e-12) t = min(t, -x / dx)
+    if (dy > 1e-12) t = min(t, (height - y) / dy) else if (dy < -1e-12) t = min(t, -y / dy)
+    if (t == Double.MAX_VALUE) t = 0.0
+    return doubleArrayOf(x + max(0.0, t) * dx, y + max(0.0, t) * dy)
 }
 
 private fun normalize(x: Double, y: Double, z: Double): DoubleArray {

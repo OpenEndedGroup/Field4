@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
 
 class CameraOpticsTest {
     private fun pinhole(diameter: Double, sensor: Double = 0.4) = SensorCamera(
-        z = -6.0, lookY = 0.0, sensorWidth = sensor, sensorHeight = sensor, sensorDistance = 1.0, apertureDiameter = diameter,
+        y = 0.0, z = -6.0, lookY = 0.0, sensorWidth = sensor, sensorHeight = sensor, sensorDistance = 1.0, apertureDiameter = diameter,
     )
 
     /** A smaller hole lets light through a smaller patch, so a point blurs less, and the image is dimmer in proportion to the hole's area. */
@@ -46,7 +46,7 @@ class CameraOpticsTest {
         val o = ThinLens.objectDistance(f, i)
         assertEquals(1.0 / f, 1.0 / o + 1.0 / i, 1e-12)
         assertEquals(i, ThinLens.imageDistance(f, o), 1e-12)
-        val camera = SensorCamera(z = 0.0, lookY = 0.0, lookZ = 1.0, sensorDistance = i, apertureDiameter = 0.4, focalLength = f)
+        val camera = SensorCamera(y = 0.0, z = 0.0, lookY = 0.0, lookZ = 1.0, sensorDistance = i, apertureDiameter = 0.4, focalLength = f)
         val sx = 0.07; val sy = -0.03
         val meets = (0 until 12).map { k ->
             val a = 0.2 * sqrt(k / 12.0)
@@ -68,7 +68,7 @@ class CameraOpticsTest {
         val o = 6.0
         val i = ThinLens.imageDistance(f, o)
         val point = OpticsScene.pointLight(radius = 0.01)
-        fun spot(d: Double) = SensorCamera(z = -o, lookY = 0.0, sensorWidth = 0.3, sensorHeight = 0.3, sensorDistance = d, apertureDiameter = 0.3, focalLength = f)
+        fun spot(d: Double) = SensorCamera(y = 0.0, z = -o, lookY = 0.0, sensorWidth = 0.3, sensorHeight = 0.3, sensorDistance = d, apertureDiameter = 0.3, focalLength = f)
             .render(point, 72, 72, samples = 2048).spotRadius()
         val focused = spot(i)
         val near = spot(0.9 * i)
@@ -82,7 +82,7 @@ class CameraOpticsTest {
     /** Under an even sky a pinhole image falls off as cos⁴ of the angle off the axis. */
     @Test
     fun offAxisFalloffIsCosineToTheFourth() {
-        val camera = SensorCamera(z = 0.0, lookY = 0.0, lookZ = 1.0, sensorWidth = 2.0, sensorHeight = 0.02, sensorDistance = 1.0, apertureDiameter = 0.002)
+        val camera = SensorCamera(y = 0.0, z = 0.0, lookY = 0.0, lookZ = 1.0, sensorWidth = 2.0, sensorHeight = 0.02, sensorDistance = 1.0, apertureDiameter = 0.002)
         val image = camera.render(OpticsScene.uniformSky(), 41, 1, samples = 16)
         val centre = image[20, 0, 0]
         assertEquals(image.reference, centre.toDouble(), 1e-3 * image.reference)
@@ -150,5 +150,30 @@ class CameraOpticsTest {
         assertTrue(camera.insideAperture(0.99, 0.0))
         assertTrue(camera.insideAperture(0.85 * cos(PI / 6), 0.85 * sin(PI / 6)))
         assertTrue(!camera.insideAperture(0.9 * cos(PI / 6), 0.9 * sin(PI / 6)))
+    }
+
+    @Test
+    fun raysEndAtTheFrameEdge() {
+        val right = frameExit(100.0, 100.0, 1.0, 0.1, 640.0, 360.0)
+        assertEquals(640.0, right[0], 1e-9); assertEquals(154.0, right[1], 1e-9)
+        val bottom = frameExit(100.0, 100.0, 1.0, 2.0, 640.0, 360.0)
+        assertEquals(230.0, bottom[0], 1e-9); assertEquals(360.0, bottom[1], 1e-9)
+        val left = frameExit(100.0, 100.0, -1.0, 0.0, 640.0, 360.0)
+        assertEquals(0.0, left[0], 1e-9); assertEquals(100.0, left[1], 1e-9)
+    }
+
+    /** With nothing in front of it every detector sees the same half of the world, so the picture is nearly flat. */
+    @Test
+    fun aBareSensorSeesAnEvenBlend() {
+        val sky = SensorCamera().renderBare(OpticsScene.uniformSky(), 8, 6, samples = 64)
+        assertEquals(PI, sky.mean(), 1e-5)
+        fun contrast(image: SensorImage): Double {
+            val m = image.mean()
+            return sqrt(image.rgb.sumOf { (it - m) * (it - m) } / image.rgb.size) / m
+        }
+        val scene = OpticsScene.testScene()
+        val bare = SensorCamera(z = -4.0).renderBare(scene, 24, 16, samples = 256)
+        val pinhole = SensorCamera(z = -4.0, apertureDiameter = 0.03).render(scene, 24, 16, samples = 16)
+        assertTrue(contrast(bare) < 0.25 * contrast(pinhole), "bare ${contrast(bare)}, pinhole ${contrast(pinhole)}")
     }
 }
