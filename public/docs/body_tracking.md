@@ -1,9 +1,9 @@
 # Body and hand tracking
 
-`body_one` is a small OpenXR tracking inspector. It draws the body joints, hand joints and
-controller poses exposed by WiVRn, together with joint orientation axes and a desktop mirror
-of the headset image. It also provides world-space bounds and closest-point helpers for
-using that tracking in other graphics or interactions.
+See what your headset is tracking with `body_one`. It draws the body joints, hand joints and
+controller poses exposed by WiVRn, with orientation axes and a desktop mirror of the headset image.
+You can also use world-space bounds and closest-point queries to bring that tracking into your own
+graphics and interactions.
 
 [Open body_one →](offline.html?file=assets/agent_transcripts/body_one/metadata.edn)
 
@@ -18,8 +18,8 @@ document has already created a Vulkan renderer with different OpenXR settings.
 ```
 
 These captures come from a live Quest 3 / WiVRn session. The native preview follows the wearer's
-head pose; the control panels show the same running document in a browser. Their recorded values
-are observations from that session, not fixed example data.
+head pose; the control panels show the same running document in a browser. The values shown are
+observations from that session.
 
 ## What is being drawn?
 
@@ -40,8 +40,8 @@ grip when hand tracking is inactive.
 
 The named body slots are **hips, chest, left/right lower arm, left/right lower leg and left/right
 foot**. A runtime or WiVRn configuration can expose a subset. The status disclosure lists the
-actual mapping and raw tracker count. These observations include the runtime's body estimates;
-they are not independent physical measurements of every joint. Quest 3 has no eye tracking.
+actual mapping and raw tracker count. The runtime estimates body positions; it does not independently
+measure every joint. Quest 3 has no eye tracking.
 
 Hand tracking can change as controllers are put down or picked up. The panel reports hand
 activity, per-joint position/orientation validity, radii and pinch strength. Controller input
@@ -81,9 +81,9 @@ finite cylinder, including its flat end caps. An isolated joint or zero-length l
 of that radius. Head radius is independent; `includeHead = false` removes it from both queries and
 bounds. The bounds enclose the same primitives, with optional extra padding.
 
-These shapes are independent surfaces, **not a watertight Boolean union**. Cylinder end caps remain
-queryable where shapes overlap. This is useful for proximity, attraction and other creative forces;
-it is not a reconstructed body mesh. Missing joints are never inferred to complete the shape.
+Each shape is an independent surface: cylinder end caps remain queryable where shapes overlap.
+Use them for proximity, attraction and other creative forces. They do not form a watertight union
+or reconstruct a body mesh, and missing joints are never inferred to complete the shape.
 
 ### Try the query overlay
 
@@ -99,6 +99,7 @@ translated into the inspection copy while those numbers remain in raw world coor
 
 ## Controls and Markdown panels
 
+These panels let you adjust the tracking display and try a body query while the headset runs.
 
 ### Headset preview
 
@@ -143,7 +144,8 @@ ui.pause(800)
 The optional [Field browser pane](field_vr_ide.md) shares the document with the desktop editor.
 **Show Field pane in headset** toggles that browser surface in VR.
 **Bring Field pane in front** places it back in front of your current head pose, useful after
-moving around or leaving the pane behind. These controls affect the editor surface, not the skeleton.
+moving around or leaving the pane behind. These controls move or hide the editor surface and leave
+the tracking drawing in place.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" document="body_one" region="window" viewport="1600x1200" clip-selector="#docs-body-panel" capture-box="body1_context" screenshot="assets/body_tracking/browser-controls.png" capture-profile="linux-wivrn-live" timeout="120" padding="12" embed=true hidden=true name="body-one-browser-controls" alt="Visibility and recenter controls for the browser pane in VR."}
 ui.waitForSelector(".disclosure", 15000.0)
@@ -305,14 +307,14 @@ ui.pause(800)
 
 ### Closest-point readout
 
-The readout explains the pink-to-green query overlay numerically. **World point** is the raw
+The readout puts numbers to the pink-to-green query overlay. **World point** is the raw
 query position; **Nearest reported joint** searches the available body joints, while **Body
 segment** or **Head selected** identifies the primitive chosen by the surface query. The nearest
 joint and nearest surface need not belong to the same part of the body.
 
 **Skeleton/surface distance** is nonnegative. **Signed primitive distance** becomes negative
-inside the selected cylinder or sphere. An unavailable joint or absent segment can occur when
-only head tracking is available, as in this capture; it is not a fabricated body estimate.
+inside the selected cylinder or sphere. A joint or segment can be unavailable when only head
+tracking is active, as in this capture.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" document="body_one" region="window" viewport="1600x1200" clip-selector="#docs-body-panel" capture-box="body1_tracking" screenshot="assets/body_tracking/query-result.png" capture-profile="linux-wivrn-live" timeout="120" padding="12" embed=true hidden=true name="body-one-query-result" alt="Live Markdown result table with query position, nearest joint, distances and selected body segment."}
 ui.waitForSelector(".disclosure", 15000.0)
@@ -347,7 +349,7 @@ ui.pause(800)
 
 ## How the three boxes fit together
 
-The scene is CPU-driven and small. The drawing box allocates a fixed pool of marker meshes;
+The drawing box allocates a fixed pool of marker meshes;
 world positions, sizes, shape choice and colors reach the vertex shader through push constants.
 The shader expands each marker into an eye-facing circle or thick strip, then the fragment shader
 uses `fwidth` coverage for antialiasing. There is one shared multiview stereo target.

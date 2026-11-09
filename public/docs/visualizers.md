@@ -1482,15 +1482,16 @@ controlGroup("controls") {
 println("controls ready")
 ```
 
-Available pieces include:
+The reference has the full signatures for each control. Where a control can also go inside a
+group, the second link takes you to that version:
 
-- `slider(...)`
-- `sliders(...)`
-- `vec2Control(...)`
-- `checkbox(...)`
-- `stringInput(...)`
-- `colorPicker(...)`
-- `controlGroup(...) { ... }`
+- [`slider(...)`](reference/visualization.md#outputs-kt--slider) · [in a group](reference/visualization.md#outputs-kt--controlgroupbuilder--slider)
+- [`sliders(...)`](reference/visualization.md#outputs-kt--sliders)
+- [`vec2Control(...)`](reference/visualization.md#outputs-kt--vec2control) · [in a group](reference/visualization.md#outputs-kt--controlgroupbuilder--vec2control)
+- [`checkbox(...)`](reference/visualization.md#outputs-kt--checkbox) · [in a group](reference/visualization.md#outputs-kt--controlgroupbuilder--checkbox)
+- [`stringInput(...)`](reference/visualization.md#outputs-kt--stringinput) · [in a group](reference/visualization.md#outputs-kt--controlgroupbuilder--stringinput)
+- [`colorPicker(...)`](reference/visualization.md#outputs-kt--colorpicker) · [in a group](reference/visualization.md#outputs-kt--controlgroupbuilder--colorpicker)
+- [`controlGroup(...) { ... }`](reference/visualization.md#outputs-kt--controlgroup)
 
 `vec2Control(...)` gives you an XY pad with a vector line and readouts for its length and angle.
 
