@@ -13,6 +13,11 @@
  *   way, and boxes it pushed come back up, never above where they were left, when it shrinks.
  *   The mode is remembered in `localStorage` across loads.
  *
+ * - **Arrange Boxes by Presentation** ([BoxLayout.arrange]) puts boxes in one row in the order a
+ *   presentation uses them. The server sends the order (`arrange-boxes`, from
+ *   `afield.ui.slides.PresentationArrangement`); this client measures each box with its panels and
+ *   answers with frames, which the server applies, records for undo and saves.
+ *
  * Only top-level boxes are moved; boxes nested in another box's output area move with it. Boxes
  * that are hidden (layers) or have no frame are left alone and are not obstacles.
  */
@@ -25,14 +30,21 @@ import afield.app.client.canvasGestures
 import afield.app.client.hasRenderableFrame
 import afield.app.client.isBoxVisible
 import afield.app.notifications.notify
+import afield.app.client.figureModeActive
+import afield.app.protocol.ArrangeBoxesRequest
+import afield.app.protocol.ArrangeBoxesResult
+import afield.app.protocol.Handled
 import afield.app.protocol.Message
 import afield.app.protocol.Rect
+import afield.app.protocol.handlers
+import afield.app.protocol.put
 import afield.app.protocol.Set_rect
 import afield.app.protocol.Set_rects
 import afield.app.protocol.payload
 import afield.app.protocol.send
 import kotlinx.browser.document
 import kotlinx.browser.window
+import kotlinx.serialization.json.Json
 import org.w3c.dom.Element
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.asList
@@ -173,6 +185,45 @@ object BoxLayout {
     }
 
     /**
+     * Arrange Boxes by Presentation, on this client's measurements: the boxes in the request's order,
+     * in one row from where the first one is. Each box goes [ArrangeBoxesRequest.gap] after the
+     * previous one's footprint (its frame and every open panel); every frame keeps the first one's
+     * y. Boxes this client does not show are skipped. Nothing moves here: the server applies the frames.
+     */
+    fun arrange(request: ArrangeBoxesRequest): ArrangeBoxesResult {
+        val byUid = topLevelBoxes().associateBy { it.asDynamic().uid as String }
+        val items = request.boxes.mapNotNull { byUid[it] }.map { measure(it) }
+        val first = items.firstOrNull() ?: return ArrangeBoxesResult(request.id, emptyList())
+        val y = first.frame.y
+        var x = first.frame.x + first.minX
+        val frames = items.map { item ->
+            val frame = Rect(x - item.minX, y, item.frame.w, item.frame.h)
+            x += item.maxX - item.minX + request.gap
+            Set_rect(item.uid, "frame", frame)
+        }
+        return ArrangeBoxesResult(request.id, frames)
+    }
+
+    /** What [arrange] would measure, so it can wait for panels that are still opening. */
+    private fun panelSignature(uids: Collection<String>): String =
+        topLevelBoxes().filter { (it.asDynamic().uid as String) in uids }.joinToString("|") { box ->
+            measure(box).let { item -> item.uid + item.parts.joinToString { "${it.x.toInt()},${it.y.toInt()},${it.w.toInt()},${it.h.toInt()}" } }
+        }
+
+    /** Answers [request] once two measurements 250 ms apart agree (or after three seconds). */
+    fun arrangeWhenSettled(request: ArrangeBoxesRequest, answer: (ArrangeBoxesResult) -> Unit) {
+        val uids = request.boxes.toSet()
+        var last = ""
+        var tries = 0
+        fun step() {
+            val now = panelSignature(uids)
+            if (now == last || tries++ >= 12) answer(arrange(request))
+            else { last = now; window.setTimeout({ step() }, 250) }
+        }
+        step()
+    }
+
+    /**
      * One Make Room for Outputs pass. Boxes are taken in the order of where they were left; each
      * starts there and moves down past any output panel of an earlier box it would overlap, and
      * past any earlier box that has itself been pushed. A box is never moved above where it was
@@ -296,6 +347,20 @@ fun registerBoxLayoutActions(builtin: dynamic) {
         notify("Make Room for Outputs is ${if (on) "on" else "off"}", "command")
     }
     builtin.push(room)
+    val byTalk: dynamic = js("({})")
+    byTalk.id = "arrange-by-presentation"
+    byTalk.label = "Arrange Boxes by Presentation"
+    byTalk.detail = "Put the Presentation box and its figures in one row in slide order, each clear of the last one's output panels"
+    byTalk.run = { send(Message("arrange-by-presentation")) }
+    builtin.push(byTalk)
+    // A figure page shows one box alone; only a canvas can measure and answer.
+    handlers.put("arrange-boxes") { message, _ ->
+        if (!figureModeActive) {
+            val request = Json.decodeFromJsonElement(ArrangeBoxesRequest.serializer(), message.payload!!)
+            BoxLayout.arrangeWhenSettled(request) { send(Message("arrange-boxes-result").payload(it)) }
+        }
+        Handled.yes
+    }
     window.asDynamic().packBoxes = { BoxLayout.pack() }
     window.asDynamic().toggleMakeRoomForOutputs = { BoxLayout.toggleMakeRoom() }
     window.asDynamic().boxLayoutState = { BoxLayout.state() }
