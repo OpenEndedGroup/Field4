@@ -615,6 +615,9 @@ object DemoTranscriptExecSmokeTest {
         // its figure box returns an audio patch for the audio device. PresentationFiguresTest
         // covers the figure engine without either.
         "explainer_sine_pitch",
+        // The cameras explainer deck: its deck box opens Electron audience windows. Its figures
+        // are CPU ray tracing (CameraOpticsTest) and three/lines outputs.
+        "explainer_cameras",
         "text_one_vr",
         "video_one_vr",
         // Audio curves: every box is a playback loop under a waveform player that waits for the

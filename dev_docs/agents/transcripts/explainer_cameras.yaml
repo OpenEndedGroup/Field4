@@ -1,0 +1,406 @@
+name: explainer_cameras
+description: >
+  An explainer deck about cameras and lenses, after Bartosz Ciechanowski's "Cameras and Lenses"
+  (https://ciechanow.ski/cameras-and-lenses/), in our own words and with figures made in Field. It
+  follows the essay's order: a sensor counting light, a box with a hole, glass, light as a wave,
+  lenses, aperture and focus, and the faults of real lenses. The deck box holds the presentation;
+  each figure is its own box, laid out to the right of the deck in slide order. Run deck in Field's
+  Electron app: the talk starts each figure when its slide comes up and stops it when the talk
+  moves on. The sensor images are ray-traced on the CPU by afield.simulation.optics.
+docs:
+  - page: presentation_studio.md
+    why: "Live figures beside prose: the deck is built from figureBeside and control(...)."
+operations:
+  - create:
+      box: ec_deck
+      name: deck
+      frame: { x: 60.0, y: 140.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          import kotlinx.html.*
+
+          // Cameras and lenses, in six sections. Each figure is a box of the same name to the right.
+          presentation(title = "Cameras and lenses") {
+              section("Recording light") {
+                  step("Cameras and lenses", id = "opening") {
+                      audience {
+                          +"""
+                          # Cameras and lenses
+
+                          A photograph is a count of light. This talk builds a camera up from that
+                          count: a grid of detectors, a box with a hole in it, then glass, shaped and
+                          stacked until the picture is sharp, bright and in focus where we choose.
+
+                          Every picture you will see is computed live, ray by ray.
+                      """
+                              .md
+                          p(classes = "muted") {
+                              +"After “Cameras and Lenses” by Bartosz Ciechanowski, ciechanow.ski/cameras-and-lenses. Words and figures made in Field."
+                          }
+                      }
+                      markdownNote("The question to hold: what does each part of a camera do to the light? [[next]]")
+                  }
+                  step("Counting light", id = "photons") {
+                      audience {
+                          +"""
+                          ## Counting light
+
+                          A sensor is a grid of tiny detectors. Each one counts the light that lands
+                          on it while the shutter is open, and that count becomes the brightness of
+                          one pixel.
+
+                          Too short an exposure and every count is small and grainy. Too long and the
+                          brightest detectors fill up: everything past full reads as the same white.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `photon_grid` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("Colour from filters", id = "colour") {
+                      audience {
+                          +"""
+                          ## Colour from filters
+
+                          A detector counts light, not colour. Put a red, green or blue filter over
+                          each one and it counts only that part of the light.
+
+                          The usual pattern repeats every two by two: one red, two green, one blue.
+                          Each pixel's two missing colours are then guessed from its neighbours.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `kilopixel` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("A scene to photograph", id = "scene") {
+                      audience {
+                          +"""
+                          ## A scene to photograph
+
+                          Every camera in this talk looks at the same things: a red ball, a green ball
+                          further back, and a checkerboard floor, under a bright sky.
+
+                          Drag to look around it.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `test_scene` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("A bare sensor", id = "bare-sensor") {
+                      audience {
+                          +"""
+                          ## A bare sensor sees nothing
+
+                          Hold a sensor up to the scene with nothing in front of it. Every point of
+                          the ball sends light in every direction, so every detector receives light
+                          from every point of the scene.
+
+                          Each count is the same blend, and the picture is an even grey.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `bare_sensor` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("A box with a hole", id = "pinhole") {
+                      audience {
+                          +"""
+                          ## A box with a hole
+
+                          Put the sensor in a closed box and make one small hole. Now each detector
+                          can only see out through the hole, along one narrow cone, so it receives
+                          light from one small patch of the scene.
+
+                          A picture appears on the back wall, upside down.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `pinhole_box` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("How much it sees", id = "field-of-view") {
+                      audience {
+                          +"""
+                          ## How much it sees
+
+                          Rays from the scene cross at the hole, which is why the picture is
+                          inverted. The sensor's edges and the hole fix the widest angle that reaches
+                          it.
+
+                          Move the sensor further back and that angle narrows: less of the scene, drawn
+                          larger.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `field_of_view` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("Darker at the edges", id = "falloff") {
+                      audience {
+                          +"""
+                          ## Darker at the edges
+
+                          A detector near the edge of the sensor sees the hole at a slant, so the hole
+                          looks smaller from there, and it is also further away.
+
+                          Together the slant and the distance dim the corners by the fourth power of
+                          the cosine of the angle.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `off_axis` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("Sharp or bright", id = "hole-size") {
+                      audience {
+                          +"""
+                          ## Sharp or bright, not both
+
+                          Each point of the scene lights a small patch of sensor the shape of the
+                          hole. A wide hole makes wide patches that overlap into blur; a narrow one
+                          makes small sharp patches.
+
+                          But a narrow hole also lets in little light. A pinhole camera must choose.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `pinhole_box` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+              }
+              section("Glass") {
+                  step("Glass moves things", id = "glass") {
+                      audience {
+                          +"""
+                          ## Glass moves what you see
+
+                          Look at a stick through a thick block of glass at an angle, and the part
+                          behind the glass seems shifted to one side.
+
+                          The light has not travelled straight. It bent going in and bent back coming
+                          out, and the thicker the block the bigger the shift.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `slab_ray` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+              }
+              section("Waves") {
+                  step("Light is a wave", id = "wave") {
+                      audience {
+                          +"""
+                          ## Light is a wave
+
+                          Light is a ripple in the electric and magnetic field. Its crests pass at a
+                          fixed rate, the frequency, which we see as colour.
+
+                          In glass the wave travels more slowly. The crests still arrive just as often,
+                          so they crowd closer together: the wavelength shrinks.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `into_glass` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("Why it turns", id = "turning") {
+                      audience {
+                          +"""
+                          ## Why it turns
+
+                          When a wave meets glass at a slant, one end of each crest enters the glass
+                          first and slows down while the other end is still in air.
+
+                          The crest pivots, and the direction the wave travels turns towards the
+                          perpendicular.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `into_glass` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("Snell's law", id = "snell") {
+                      audience {
+                          +"""
+                          ## How far it turns
+
+                          The refractive index n says how many times slower light travels in a
+                          material: about 1.5 for glass. The turn obeys Snell's law,
+                          n₁ sin θ₁ = n₂ sin θ₂.
+
+                          Some light is always reflected too, and more of it the more grazing the angle.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `snell` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("Trapped light", id = "total-reflection") {
+                      audience {
+                          +"""
+                          ## Trapped light
+
+                          Going from glass out into air the ray turns away from the perpendicular.
+                          Past about 42° there is no angle in air for it to take, and all of the light
+                          reflects back into the glass.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `snell` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+              }
+              section("Lenses") {
+                  step("Tilted faces", id = "wedge") {
+                      audience {
+                          +"""
+                          ## Tilted faces steer light
+
+                          A block with parallel faces only shifts a ray. Tilt one face against the
+                          other and the ray leaves in a new direction: a prism.
+
+                          Stack prisms with steeper tilts further from the middle, and rays from one
+                          point can be steered to meet again.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `prism_segments` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("A thin lens", id = "thin-lens") {
+                      audience {
+                          +"""
+                          ## A lens brings rays together
+
+                          Make the steps infinitely fine and the stack of prisms becomes a smooth
+                          curved lens. Parallel rays meet at its focal point, one focal length f behind
+                          it.
+
+                          A point at distance o comes to a sharp image at distance i, where
+                          1/o + 1/i = 1/f.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `thin_lens` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("A camera with a lens", id = "lens-camera") {
+                      audience {
+                          +"""
+                          ## A camera with a lens
+
+                          Replace the pinhole with a lens and the hole can be wide: every ray from a
+                          point that enters the lens is bent to meet at one point on the sensor.
+
+                          The picture is bright and sharp, but only for the distance the lens is
+                          focused at.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `lens_camera` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("Out of focus", id = "focus") {
+                      audience {
+                          +"""
+                          ## Out of focus
+
+                          A point nearer or further than the focused distance comes together in front
+                          of the sensor or behind it. On the sensor it is a disc: the circle of
+                          confusion.
+
+                          Moving the sensor, or the lens, chooses which distance is sharp.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `lens_camera` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("The shape of blur", id = "aperture") {
+                      audience {
+                          +"""
+                          ## The opening shapes the blur
+
+                          Every out-of-focus point is a small picture of the opening it came through.
+                          A camera's iris is made of blades, and its opening is a polygon.
+
+                          So bright points in a blurred background become little polygons.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `bokeh` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("How deep is sharp", id = "depth-of-field") {
+                      audience {
+                          +"""
+                          ## How deep is sharp
+
+                          A blur smaller than a pixel still looks sharp, so a whole range of distances
+                          is in focus: the depth of field.
+
+                          A smaller opening narrows every cone of light and widens that range, at the
+                          cost of light.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `depth_of_field` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("f-numbers", id = "f-number") {
+                      audience {
+                          +"""
+                          ## f-numbers
+
+                          Photographers name the opening by the focal length divided by its diameter:
+                          f/2, f/2.8, f/4, f/5.6.
+
+                          Each step multiplies the number by √2, halves the opening's area, and halves
+                          the light. The same f-number gives the same brightness on any lens.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `f_stops` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+              }
+              section("Aberrations") {
+                  step("Spheres miss", id = "spherical") {
+                      audience {
+                          +"""
+                          ## Spherical lenses miss
+
+                          Lenses are ground with spherical faces because spheres are easy to make. But
+                          a sphere bends the rays near its rim a little too much, and they cross before
+                          the focal point.
+
+                          No single sensor position is sharp for every ray.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `spherical_aberration` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+                  step("Colours split", id = "chromatic") {
+                      audience {
+                          +"""
+                          ## Colours split
+
+                          Glass slows blue light a little more than red, so it bends blue a little more.
+                          White light through a prism fans into a spectrum.
+
+                          In a lens the same thing gives each colour its own focal point, and edges in
+                          the picture gain coloured fringes. Real lenses pair glasses that cancel it.
+                      """
+                              .md
+                      }
+                      markdownNote("Figure `dispersion` is not built yet; this slide is prose only. [[back]] [[next]]")
+                  }
+              }
+              section("Further reading") {
+                  step("Further reading", id = "further-reading") {
+                      audience {
+                          +"""
+                          # Further reading
+
+                          - Eugene Hecht, *Optics*: refraction, lenses and aberrations, worked properly.
+                          - Richard Feynman, *QED: The Strange Theory of Light and Matter*: why light
+                            seems to take the quickest path.
+                          - Matt Pharr, Wenzel Jakob and Greg Humphreys, *Physically Based Rendering*,
+                            the chapter on cameras: pinholes, thin lenses and real lens systems in code.
+                          - Rudolf Kingslake, *A History of the Photographic Lens*.
+                      """
+                              .md
+                          p(classes = "muted") {
+                              +"After “Cameras and Lenses” by Bartosz Ciechanowski, https://ciechanow.ski/cameras-and-lenses/. Words and figures made in Field."
+                          }
+                      }
+                      markdownNote("The end. [[back]] [[finish]]")
+                  }
+              }
+          }
+              .present()
+  - execute:
+      box: ec_deck
+      property: code
