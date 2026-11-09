@@ -47,12 +47,19 @@ private val valueControlTypes = setOf("slider", "vec2", "color", "checkbox", "st
  * shows them, and calls each changed control's callback as if a person had moved it. Only the
  * in-memory rerun cache moves: a knob or a replay makes many changes a second. Returns the keys changed.
  */
-internal fun applyControlChanges(box: Box, channel: String, changes: Map<String, (ControllerControl) -> ControllerControl?>): List<String> {
+internal fun applyControlChanges(
+    box: Box, channel: String, changes: Map<String, (ControllerControl) -> ControllerControl?>,
+    /** Run the callback even when the control already shows the value; see [Box.setControl]. */
+    always: Boolean = false,
+): List<String> {
     val changed = mutableListOf<String>()
     val document = box.takeIf { it.isInsideInitialized() }?.inside?.filename
     controlGroupControlsWithKeys(box, channel).forEach { (key, control) ->
         val next = changes[key]?.invoke(control) ?: return@forEach
-        if (next == control) return@forEach
+        if (next == control) {
+            if (always) invokeControlCallback(next)
+            return@forEach
+        }
         val updated = updateControllerControlValueProgrammatically(control.id) { next }
         if (updated.isEmpty()) return@forEach
         document?.let { broadcastControllerControlUpdates(updated, it) }
@@ -297,16 +304,21 @@ fun Box.playControl(label: String, curve: KeyframeEvaluator, time: Double, chann
  */
 fun Box.setControl(label: String, value: Double, channel: String = "controls"): Boolean {
     val key = controlKeyForLabel(this, channel, label) ?: return false
+    // The callback runs even when the slider already reads [value]: a run that has just started
+    // holds its own variables at their initial values, whatever the control remembers showing.
     applyControlChanges(this, channel, mapOf(key to { c: ControllerControl ->
         if (c.type == "slider") c.copy(value = clampTo(value, c.min, c.max)) else null
-    }))
+    }), always = true)
     return true
 }
 
-/** Ticks or clears the checkbox labelled [label] in [channel], running its callback. False if there is none. */
+/**
+ * Ticks or clears the checkbox labelled [label] in [channel], running its callback (even when it
+ * already shows [value], as for a slider). False if there is none.
+ */
 fun Box.setControl(label: String, value: Boolean, channel: String = "controls"): Boolean {
     val key = controlKeyForLabel(this, channel, label) ?: return false
-    applyControlChanges(this, channel, mapOf(key to { c: ControllerControl -> if (c.type == "checkbox") c.copy(checked = value) else null }))
+    applyControlChanges(this, channel, mapOf(key to { c: ControllerControl -> if (c.type == "checkbox") c.copy(checked = value) else null }), always = true)
     return true
 }
 

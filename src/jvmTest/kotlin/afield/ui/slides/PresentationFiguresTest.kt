@@ -98,6 +98,27 @@ class PresentationFiguresTest {
         assertFalse(tone.setControl("missing", 1.0))
     }
 
+    /**
+     * A step that sets a checkbox the control already shows ticked must still reach the box: a new run
+     * holds its variable at its initial value however the control remembers being. Seen in the cameras
+     * deck, where a "fixed exposure" checkbox read ticked over a picture drawn without it.
+     */
+    @Test fun setControlRunsTheCallbackEvenWhenTheValueIsUnchanged() {
+        val (_, figures) = deck("camera")
+        val camera = figures[0]
+        val ticks = mutableListOf<Boolean>()
+        val moves = mutableListOf<Double>()
+        camera.controlGroup("controls") {
+            checkbox("fixed exposure") { ticks += it }
+            slider("hole", 0.0, 1.0, initialValue = 0.5) { moves += it }
+        }
+        assertTrue(camera.setControl("fixed exposure", true))
+        assertTrue(camera.setControl("fixed exposure", true))
+        assertEquals(listOf(true, true), ticks, "the second, unchanged, setting still runs the callback")
+        assertTrue(camera.setControl("hole", 0.5))
+        assertEquals(listOf(0.5), moves, "a slider set to the value it shows runs its callback too")
+    }
+
     @Test fun aControlOnAFigureTheDeckLaunchesWaitsForTheNewRunsControls() = runBlocking {
         // The box ran once before (its controls are still registered), and launching it again is
         // asynchronous. The step's value must reach the new run, not the old run's control that the
