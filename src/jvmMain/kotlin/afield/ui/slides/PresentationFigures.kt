@@ -140,6 +140,8 @@ internal interface FigureRunner {
     fun isRunning(box: Box): Boolean
     fun launch(boxes: List<Box>)
     fun stop(box: Box)
+    /** What identifies the run that registered [box]'s control [label]: see [controlRegistration]. */
+    fun controlRegistration(box: Box, channel: String, label: String): Any? = null
 }
 
 internal object FieldFigureRunner : FigureRunner {
@@ -148,6 +150,8 @@ internal object FieldFigureRunner : FigureRunner {
     override fun isRunning(box: Box): Boolean = box.jobs.any { it.isActive && !it.isCancelled }
     override fun launch(boxes: List<Box>) = launchBoxesInOrder(boxes)
     override fun stop(box: Box) = Server.stop(box, "presentation-figure")
+    override fun controlRegistration(box: Box, channel: String, label: String): Any? =
+        afield.ui.output.controlRegistration(box, channel, label)
 }
 
 /**
@@ -161,6 +165,31 @@ internal class FigureStage(private val host: Box, var runner: FigureRunner = Fie
     /** Every box this talk has launched; one that finished by itself is not launched again. */
     private val seen = LinkedHashSet<String>()
     private val glides = mutableListOf<Job>()
+    /**
+     * Controls on a box this stage has just launched, with the registration its previous run left
+     * behind. Launching is asynchronous: until the new run draws its controls, setting one would move
+     * the old run's control, and the new run would then start from its own initial value.
+     */
+    private val previousRun = HashMap<Triple<String, String, String>, Any>()
+
+    private fun key(c: FigureControl) = Triple(c.box.id, c.channel, c.label)
+
+    private fun launching(boxes: List<Box>, controls: List<FigureControl>) {
+        val ids = boxes.map { it.id }.toSet()
+        controls.filter { it.box.id in ids }.forEach { c ->
+            val old = runner.controlRegistration(c.box, c.channel, c.label)
+            if (old != null) previousRun[key(c)] = old else previousRun.remove(key(c))
+        }
+        runner.launch(boxes)
+    }
+
+    /** True while [c]'s box is still showing the controls of the run before the one this stage launched. */
+    private fun waitingForNewRun(c: FigureControl): Boolean {
+        val old = previousRun[key(c)] ?: return false
+        if (runner.controlRegistration(c.box, c.channel, c.label) === old) return true
+        previousRun.remove(key(c))
+        return false
+    }
 
     private fun boxes(figures: List<AudienceFigure>, known: List<FigureControl>): List<Box> =
         figures.map { it.box }.distinct().mapNotNull { uid ->
@@ -181,7 +210,7 @@ internal class FigureStage(private val host: Box, var runner: FigureRunner = Fie
         }
         if (needed.isNotEmpty()) {
             needed.forEach { stopped -= it.id; launched += it.id; seen += it.id }
-            runner.launch(needed)
+            launching(needed, controls)
         }
     }
 
@@ -196,6 +225,7 @@ internal class FigureStage(private val host: Box, var runner: FigureRunner = Fie
         controls.forEach { latest.remove(Triple(it.box.id, it.channel, it.label)); latest[Triple(it.box.id, it.channel, it.label)] = it }
         return latest.values.filterNot { setting ->
             when {
+                waitingForNewRun(setting) -> false
                 setting.flag != null -> setting.box.setControl(setting.label, setting.flag, setting.channel)
                 setting.glideMs > 0 -> setting.box.glideControl(setting.label, setting.number!!, setting.glideMs, setting.channel)
                     ?.also { glides += it } != null
@@ -214,7 +244,7 @@ internal class FigureStage(private val host: Box, var runner: FigureRunner = Fie
             launched += box.id
             stopped -= box.id
         }
-        if (boxes.isNotEmpty()) runner.launch(boxes)
+        if (boxes.isNotEmpty()) launching(boxes, controls)
     }
 
     /** The slideshow stopped: stop every figure it launched that is still running. */
@@ -229,6 +259,7 @@ internal class FigureStage(private val host: Box, var runner: FigureRunner = Fie
         launched.clear()
         stopped.clear()
         seen.clear()
+        previousRun.clear()
     }
 
     internal fun log(missing: List<FigureControl>) {

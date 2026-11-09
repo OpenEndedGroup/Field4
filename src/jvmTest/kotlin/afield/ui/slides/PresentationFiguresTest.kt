@@ -98,6 +98,34 @@ class PresentationFiguresTest {
         assertFalse(tone.setControl("missing", 1.0))
     }
 
+    @Test fun aControlOnAFigureTheDeckLaunchesWaitsForTheNewRunsControls() = runBlocking {
+        // The box ran once before (its controls are still registered), and launching it again is
+        // asynchronous. The step's value must reach the new run, not the old run's control that the
+        // new run is about to replace with its own initial value.
+        val (host, figures) = deck("tone")
+        val tone = figures[0]
+        val oldRun = mutableListOf<Double>()
+        val newRun = mutableListOf<Double>()
+        tone.toneControls(oldRun)
+        val runner = object : FigureRunner by FakeRunner(figures) {
+            override fun launch(boxes: List<Box>) {}
+            override fun controlRegistration(box: Box, channel: String, label: String): Any? =
+                afield.ui.output.controlRegistration(box, channel, label)
+        }
+        val show = host.presentation {
+            step("Low") { audience { figure("tone") }; control("tone", "frequency", 440.0) }
+        }
+        show.figureStage.runner = runner
+        show.command("start")
+        assertFalse(440.0 in oldRun, "the old run's control is left alone")
+        tone.toneControls(newRun)
+        val deadline = System.currentTimeMillis() + 5_000
+        while (440.0 !in newRun && System.currentTimeMillis() < deadline) kotlinx.coroutines.delay(50)
+        assertEquals(440.0, newRun.last(), "the new run gets the step's value once it has drawn its slider")
+        assertFalse(440.0 in oldRun)
+        show.command("stop")
+    }
+
     @Test fun figuresRunWhileTheirSlideIsUpAndAHandLaunchedBoxIsLeftAlone() = runBlocking {
         val (host, figures) = deck("tone", "wave", "clock")
         val runner = FakeRunner(figures)
