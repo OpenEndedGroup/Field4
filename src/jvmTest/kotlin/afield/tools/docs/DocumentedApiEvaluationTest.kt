@@ -187,6 +187,17 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        // body_one requires an active Vulkan/OpenXR session and real tracking. Its live
+        // linux-wivrn-live captures exercise these paths; BodyGeometryTest covers pure queries.
+        "bodyGeometry" to "body_tracking.md; snapshots body/head state from a live OpenXRHmdTarget, unavailable in headless CI; the resulting geometry queries have JVM tests",
+        "bodyState" to "body_tracking.md; reads named body estimates from a connected OpenXR runtime; body_one is COMPILE_ONLY and the live headset capture exercises tracking",
+        "bodyTrackerCount" to "body_tracking.md; runtime-dependent raw tracker count needs a connected OpenXR session; checked in the live body_one status panel",
+        "bodyTrackerPose" to "body_tracking.md; reads a raw tracker pose from the live OpenXR session; exercised by the real headset inspector capture",
+        "controllerState" to "body_tracking.md; runtime controller pose/input snapshot needs a connected OpenXR session; body_one compiles in CI and runs in the live capture profile",
+        "handState" to "body_tracking.md; hand joint observations require runtime tracking in an active OpenXR session; exercised by body_one on the connected Quest",
+        "recenterInspection" to "body_tracking.md; document-local helper reads the live headset heading and updates its inspection offset; body_one is COMPILE_ONLY, live tracking controls exercise it",
+        "reportSection" to "body_tracking.md; document-local status formatter closes over live tracking observations; body_one is COMPILE_ONLY and live inspector panels exercise its output",
+        "updateBodyQueries" to "body_tracking.md; document-local overlay update reads current head/hand/controller tracking and publishes Vulkan marker uniforms; live query capture exercises it, pure geometry has JVM tests",
         // stereo_video.md prints the actual video_one box sources. The lexical census also
         // sees these document-local helper names as APIs; the native document is COMPILE_ONLY
         // in CI. Real control and playback captures run through the docs runner on Linux/NVIDIA.
