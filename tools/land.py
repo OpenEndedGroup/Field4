@@ -6,6 +6,7 @@
     uv run python tools/land.py status [id] [--watch]             # what is queued, landed, bounced
     uv run python tools/land.py wait <id>                         # block until it lands or bounces
     uv run python tools/land.py mine [branch]                     # the mailbox: this branch's attempts
+    uv run python tools/land.py retract [branch|id]               # take a queued item back out
     uv run python tools/land.py sync [--push]                     # bring origin/main in via the queue
     uv run python tools/land.py doc                               # build the local docs when its turn arrives
     uv run python tools/land.py huh [--context]                   # ask the agent what the queue is doing
@@ -49,7 +50,10 @@ bounce. Every attempt is in `field-land-queue/fixer.jsonl`. FIELD_LAND_FIXER=off
 checkout holding `main`; later landings wait until the build finishes. It reuses committed captures
 and reports its own failure without undoing a landing. It refuses to build while that checkout has
 uncommitted changes under src/ or public/docs, because the site would mix them with pages generated
-from HEAD. The running lander must be restarted after
+from HEAD. Docs builds back to back coalesce: `doc` joins one already waiting at the tail of the
+queue (printing its id), and the lander answers consecutive docs items with a single build. A docs item
+queued while a build was running is answered by that build if it succeeds and main has not moved. The
+running lander must be restarted after
 changes to this script are landed, because Python does not reload it while running.
 
 The queue is plain JSON files in the clone's common git dir (`field-land-queue/`), so every worktree
@@ -233,12 +237,25 @@ def cmd_doc(args: argparse.Namespace) -> int:
         print("land: doc needs a checkout with main checked out", file=sys.stderr)
         return 2
     queue = _queue_dir(here)
+    by = os.environ.get("FIELD_LAND_BY") or f"{_git(here, 'config', 'user.name', check=False) or 'unknown'} @ {here.name}"
+    # A docs build already waiting at the tail of the queue will build exactly what this one would:
+    # nothing can land between them. Join it rather than queue a second identical build.
+    pending = _items(queue, PENDING)
+    if (pending and _is_doc(pending[-1]) and not pending[-1].get("started")
+            and pending[-1]["checkout"] == str(holder.resolve())):
+        # Not rewritten: the lander may be moving it right now, and a stale write would resurrect it.
+        item = pending[-1]
+        print(f"land: docs build {item['id']} for {holder} is already queued with nothing after it; joined it "
+              f"({len(pending) - 1} ahead of it).")
+        print(f"Progress: uv run python tools/land.py status {item['id']}")
+        print(f"Outcome: uv run python tools/land.py wait {item['id']}")
+        return 0
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     item = {
         "id": f"{stamp}-doc",
         "kind": DOC,
         "checkout": str(holder.resolve()),
-        "by": os.environ.get("FIELD_LAND_BY") or f"{_git(here, 'config', 'user.name', check=False) or 'unknown'} @ {here.name}",
+        "by": by,
         "enqueued": _now(),
         "seq": time.time_ns(),
     }
@@ -388,6 +405,8 @@ def _branch_gone(item: dict) -> bool:
 
 def _settled(item: dict) -> str | None:
     """Why a bounce with no later landing of its own branch still needs nobody, or None if it does."""
+    if item.get("retracted"):
+        return f"retracted by {item['retracted'].get('by', '?')}"
     if _content_on_main(item):
         return "its changes reached main another way"
     if _branch_gone(item):
@@ -402,7 +421,8 @@ def _describe(state: str, item: dict, queue: Path | None = None) -> str:
         if state == PENDING and item.get("started"):
             lines.append(f"         building for {_span(_since(item['started']))}; log: {item.get('log', '')}")
         elif state == LANDED:
-            lines.append(f"         main {item.get('built_from', '')[:9]}, {_span(_since(item.get('finished')))} ago")
+            lines.append(f"         main {item.get('built_from', '')[:9]}, {_span(_since(item.get('finished')))} ago"
+                         + (f"; built by {item['coalesced_into']}" if item.get("coalesced_into") else ""))
         elif state == BOUNCED:
             lines.append(f"         {_span(_since(item.get('finished')))} ago: {item.get('reason', '?')}")
             lines.append(f"         log: {item.get('log', '')}")
@@ -1018,9 +1038,43 @@ def cmd_mine(args: argparse.Namespace) -> int:
     for state, item in attempts:
         print(_describe(state, item, queue))
     newest = attempts[0][0]
-    if newest == BOUNCED:
+    if newest == BOUNCED and attempts[0][1].get("retracted"):
+        print(f"\nThe latest attempt was retracted. Enqueue {branch} again when it is ready.")
+    elif newest == BOUNCED:
         print(f"\nThe latest attempt bounced. Fix it on {branch}, commit, and enqueue again.")
     return {PENDING: 3, LANDED: 0, BOUNCED: 1}[newest]
+
+
+def cmd_retract(args: argparse.Namespace) -> int:
+    """Take queued items back out: by id, or every waiting item of a branch (default: this one)."""
+    here = Path.cwd()
+    target = args.target or _git(here, "branch", "--show-current")
+    if not target:
+        print("land: not on a branch; name the branch or item id to retract", file=sys.stderr)
+        return 2
+    queue = _queue_dir(here)
+    by = args.by or os.environ.get("FIELD_LAND_BY") or f"{_git(here, 'config', 'user.name', check=False) or 'unknown'} @ {here.name}"
+    matches = [item for item in _items(queue, PENDING) if target in (item["id"], item.get("branch"))]
+    if not matches:
+        found = _find(queue, target)
+        print(f"land: {target} is already {found[0]}; nothing to retract" if found else f"land: nothing queued for {target}",
+              file=sys.stderr)
+        return 2
+    code = 0
+    for item in matches:
+        # Read again at the last moment: the lander may have just taken it. An item it has started
+        # stays, as with a re-enqueue: removing its file mid-landing hid it while it landed anyway.
+        current = _find(queue, item["id"])
+        if current is None or current[0] != PENDING or current[1].get("started"):
+            state = "being landed" if current and current[0] == PENDING else (current[0] if current else "gone")
+            print(f"land: {item['id']} is {state}; too late to retract it", file=sys.stderr)
+            code = 1
+            continue
+        item = current[1]
+        item.update(retracted={"by": by, "at": _now()}, reason=f"retracted by {by}", finished=_now())
+        _move(queue, item, BOUNCED)
+        print(f"land: retracted {item['id']}" + (f" ({item['sha'][:9]})" if item.get("sha") else ""))
+    return code
 
 
 def cmd_sync(args: argparse.Namespace) -> int:
@@ -1837,6 +1891,20 @@ def _dirty_doc_reason(checkout: Path, dirty: list[str]) -> str:
             f"build would read ({shown}); commit or set them aside, then queue `land.py doc` again")
 
 
+def _covering_doc(queue: Path, item: dict, head: str) -> dict | None:
+    """A docs build of this checkout that was already running when [item] was queued, built [head],
+    and succeeded. Nothing lands between two docs items, so [item] would build the same site again."""
+    queued = _when(item.get("enqueued"))
+    if queued is None:
+        return None
+    for done in _items(queue, LANDED):
+        start, end = _when(done.get("started")), _when(done.get("finished"))
+        if (_is_doc(done) and done["checkout"] == item["checkout"] and done.get("built_from") == head
+                and start is not None and end is not None and start <= queued <= end):
+            return done
+    return None
+
+
 def _run_doc(item: dict, primary: Path, queue: Path) -> None:
     """Build the served checkout after earlier queue items, without changing Git history."""
     checkout = Path(item["checkout"])
@@ -1847,6 +1915,13 @@ def _run_doc(item: dict, primary: Path, queue: Path) -> None:
     if holder is None or holder.resolve() != checkout.resolve():
         item.update(reason="the checkout holding main changed; queue a new doc item for the current checkout", finished=_now())
         _move(queue, item, BOUNCED)
+        return
+    # Asked for while the previous build was running, with main unchanged since: that build answers it.
+    # A request made after a build finished is honoured, even for the same commit.
+    head = _git(checkout, "rev-parse", "HEAD")
+    if covering := _covering_doc(queue, item, head):
+        item.update(built_from=head, log=covering.get("log", str(log)), coalesced_into=covering["id"], finished=_now())
+        _move(queue, item, LANDED)
         return
     script = checkout / "tools" / "build_zensical_docs.py"
     if not script.is_file():
@@ -1957,10 +2032,23 @@ def cmd_run(args: argparse.Namespace) -> int:
                 continue
             if doc_index == 0:
                 item = pending[0]
-                print(f"land: {_now()} building docs in {item['checkout']}", flush=True)
+                # Docs items back to back (queued before enqueue-time joining, or brought together by a
+                # branch between them bouncing) would build the same tree: one build answers them all.
+                joined = []
+                for other in pending[1:]:
+                    if not _is_doc(other) or other["checkout"] != item["checkout"]:
+                        break
+                    joined.append(other)
+                print(f"land: {_now()} building docs in {item['checkout']}"
+                      + (f" (also for {', '.join(o['id'] for o in joined)})" if joined else ""), flush=True)
                 _run_doc(item, primary, queue)
                 state, done = _find(queue, item["id"]) or ("?", item)
                 print(_describe(state, done, queue), flush=True)
+                if state in (LANDED, BOUNCED):
+                    for other in joined:
+                        other.update({k: done[k] for k in ("started", "finished", "log", "built_from", "reason") if k in done},
+                                     coalesced_into=item["id"])
+                        _move(queue, other, state)
                 continue
             if args.once and not _items(queue, PENDING):
                 return 0
@@ -2016,6 +2104,10 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("mine", help="every landing attempt for this branch, newest first (exit 1 if it bounced)")
     p.add_argument("branch", nargs="?", help="default: the current branch")
     p.set_defaults(func=cmd_mine)
+    p = sub.add_parser("retract", help="take a queued item back out before the lander starts it")
+    p.add_argument("target", nargs="?", help="an item id, or a branch (all its waiting items); default: the current branch")
+    p.add_argument("--by", help="who is asking (default: $FIELD_LAND_BY, else user @ worktree)")
+    p.set_defaults(func=cmd_retract)
     p = sub.add_parser("wait", help="block until an item lands (exit 0) or bounces (exit 1)")
     p.add_argument("id")
     p.set_defaults(func=cmd_wait)

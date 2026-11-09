@@ -1995,6 +1995,7 @@ import afield.graphics.vulkan.targets.*
 import afield.graphics.vulkan.util.*
 import afield.io.osc.*
 import afield.io.process.*
+import afield.io.resolve.*
 import afield.lang.lambda.*
 import afield.lang.nano.*
 import afield.lang.python.*

@@ -1,6 +1,7 @@
 package afield.tools.docs
 
 import afield.runtime.completion.KotlinSourceIndex
+import afield.tools.docs.index.KDocExtractor
 import java.io.File
 import kotlin.system.exitProcess
 
@@ -1158,7 +1159,8 @@ object StdlibReferenceGenerator {
         var sawGap = false
         while (probe < lines.size) {
             val trimmed = lines[probe].trim()
-            if (trimmed.isEmpty() || trimmed.startsWith("//") || trimmed.startsWith("@")) {
+            val annotationOnly = trimmed.startsWith("@") && KDocExtractor.parseDeclaration(trimmed) == null
+            if (trimmed.isEmpty() || trimmed.startsWith("//") || annotationOnly) {
                 if (trimmed.isEmpty() || trimmed.startsWith("//")) sawGap = true
                 probe++
                 continue

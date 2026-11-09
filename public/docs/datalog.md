@@ -476,6 +476,106 @@ The session commands are `#help`, `#boxes` (load the live document into the base
 `#relations`, `#facts <relation>`, `#program`, `#why <goal>`, `#whynot <goal>` and `#reset`. A `#why`
 about a fact that is not there points you at `#whynot`, which is where you wanted to be.
 
+## Rules that decide when notes play
+
+A program can also be a score. Write `event(Instrument, Note, Velocity, T)` rules, where `T` is a
+step on a sixteen-step bar, and `rhythm()` turns the program into a Pat pattern. You can play or
+render it with the [pattern language](pattern_language.md), or show it on a piano roll. The idea
+comes from [Dogalog](https://github.com/danja/dogalog) (MIT), which asks a Prolog engine what
+plays at each step.
+
+The rules below play a Euclidean kick, bring the snare in at bar 1 and the hats at bar 2, and pick
+a lead line out of a pentatonic scale:
+
+<!--
+FIELD_TEST
+id: docs.datalog.rhythm
+runner: backdoor-box
+tags: [docs, datalog, audio]
+timeoutSec: 90
+waitSec: 2.0
+expect:
+  outputContains:
+    - "kick   x...x...x...x..."
+    - "snare  ....x.......x..."
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/rhythm.png" alt="the box output: four bars of a step grid as monospace text. Every bar has a kick at steps 0, 4, 8 and 12 and a lead on five evenly spread steps; from bar 1 a snare sits on steps 4 and 12, and from bar 2 a hat fills every odd step" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-rhythm" w="760" h="520"}
+:::static
+val song = datalog(
+    """
+    event(kick, 36, 100, T)  :- euc(T, 4, 16, 0).
+    event(snare, 38, 90, T)  :- within(T, 16, 64), every(T, 8, 4).
+    event(hh, 42, 45, T)     :- within(T, 32, 64), every(T, 2, 1).
+    event(lead, N, 80, T)    :- euc(T, 5, 16, 2), D = (T div 3) mod 5,
+                                scale(48, minor_pent, D, 1, N).
+""",
+)
+val r = song.rhythm()
+val grids = (0L until 4L).joinToString("\n\n") { "bar $it\n" + r.grid(it) }
+println(grids)
+display("main", "<pre>$grids</pre>")
+```
+
+To hear it, add `showPatAudio(r.pattern(), cycles = 4, cps = 0.5)`, which renders four bars and
+puts a player in the box. Here are the four bars through Pat's built-in synth voice: the snare
+enters at two seconds and the hats at four.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/datalog/rhythm-song.wav" audio-spec="song" audio-renderer="afield.data.query.datalog.DatalogRhythmSoundDocs" embed=true hidden=true name="datalog-rhythm-song-audio"}
+// Offline-rendered by DatalogRhythmSoundDocs.renderWav("song"): the rules above, through patRenderStereo.
+```
+
+The same rules with Dirt sample names (`bd`, `sn`, `hh`, and `arpy` for the lead, pitched by
+`speed`) play through the Dirt-Samples instead:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/datalog/rhythm-song-dirt.wav" audio-spec="song-dirt" audio-renderer="afield.data.query.datalog.DatalogRhythmDirtDocs" requires="dirt-samples" embed=true hidden=true name="datalog-rhythm-song-dirt-audio"}
+// Offline-rendered by DatalogRhythmDirtDocs.renderWav("song-dirt"): the rules through real Dirt-Samples.
+```
+`r.pattern()` is an ordinary `PatPattern<String>`. Each note's value is its instrument: a drum
+name (`kick`, `bd`, `sd`, `hh`, ...) keeps its drum voice, and any other name is pitched by its
+`Note`. Velocity becomes `gain` (100 is 1.0).
+
+The time predicates are facts that Field fills in for each bar:
+
+| predicate | true when |
+| --- | --- |
+| `step(T)` | `T` is a step of the bar being played |
+| `bar(T, B)`, `pos(T, P)` | `B` is `T`'s bar and `P` its step within the bar |
+| `euc(T, K, N, R)` | `T mod N` is an onset of `K` pulses spread over `N` steps, rotated right by `R` (the same figure as `euclid(K, N, R)`) |
+| `every(T, N, O)` | `T mod N = O` |
+| `within(T, A, B)` | `A <= T < B`, for sections: `within(T, 64, 128)` is bars 4 to 7 |
+| `scale(Root, Name, D, Oct, Note)` | `Note` is degree `D` of the scale, `Oct` octaves up; degrees past the top carry into the next octave |
+| `chord(Root, Quality, I, Note)` | `Note` is the `I`th note of the chord |
+
+Scales are `major`, `minor`, `dorian`, `major_pent`, `minor_pent`, `blues` and `chromatic`; chord
+qualities are `major`, `minor`, `dim`, `aug`, `sus4`, `maj7`, `min7` and `dom7`. A chord is one
+row per note rather than a list, so leaving the index blank strikes them all:
+`event(pad, N, 70, T) :- every(T, 16, 0), chord(57, min7, _, N).` Write the numbers in `euc`,
+`every`, `within`, `scale` and `chord` as constants: the rows are made for the values the program
+names, and a variable there is an error rather than a guess.
+
+Each bar is solved on its own, along with the bar before it, so a rule can look back across the
+barline. This one crashes on the downbeat after a bar that ended on a snare:
+
+```diffstatic {data-lang=text}
+event(crash, 49, 100, T) :- pos(T, 0), P = T - 1, event(snare, _, _, P).
+```
+
+Nothing further back than one bar is visible. Because the pattern rereads the program for each bar
+it has not played yet, adding a rule to a playing `Datalog` changes the next bar without restarting
+anything. `r.why("event(kick, 36, 100, 20)")` explains a note the way `#why` explains a fact, with
+`euc(20, 4, 16, 0)` as the fact underneath it. Open the
+[starting point](agent_transcripts.md#datalog_rhythm_rules) to try the rules in a document.
+
+??? aside "Why each bar is solved bottom-up"
+    Dogalog asks Prolog, top-down, whether anything sounds at step `T`, one step at a time. A
+    Datalog fixpoint needs a finite domain instead, and one bar plus a bar of lookbehind is 32 steps,
+    so each bar is solved whole and memoised. That is also the question the scheduler asks: Pat
+    queries a cycle ahead of the audio, in any order and any number of times, and must get the same
+    answer every time. The cost is recursion through time: a rule sees one bar back and no further.
+    `DatalogRhythmTest` pins the exact grids for the Euclidean kick, the pentatonic line, an
+    arpeggio, a `within` section and the cross-bar fill, and renders a bar to check that sound lands
+    on the derived steps.
+
 ## The editor knows the language
 
 A Kotlin string whose first line is `#datalog` is an embedded region, in the same way `#stacksl`

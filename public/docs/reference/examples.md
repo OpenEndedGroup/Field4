@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-227 source file(s), 711 public symbol(s), 316 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+231 source file(s), 723 public symbol(s), 320 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -323,7 +323,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L990) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1029) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -1414,6 +1414,20 @@ Runs `ShaderLatticeBoltzmannSystem` and `ShaderForestFireSystem` on a real rende
 | --- | --- |
 | <a id="alifeshadersystemssmoke-kt--alifeshadersystemssmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/AlifeShaderSystemsSmoke/#L57) |  |
 
+## AtmosphereGpuParitySmoke.kt { #atmospheregpuparitysmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/AtmosphereGpuParitySmoke.kt` — [read the source](source/jvmMain/afield/examples/four/AtmosphereGpuParitySmoke/)
+
+### AtmosphereGpuParitySmoke { #atmospheregpuparitysmoke-kt-atmospheregpuparitysmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">AtmosphereGpuParitySmoke</span></code>](source/jvmMain/afield/examples/four/AtmosphereGpuParitySmoke/#L38)
+
+`sky/atmosphere.glsl` on the GPU against its CPU twin [`Atmosphere`](graphics.md#atmosphere-kt-atmosphere): `skyRadiance` evaluated by a compute shader for a handful of views (noon, sunset, twilight, the planet from space, its limb and its night side) must match [`Atmosphere.radiance`](graphics.md#atmosphere-kt--atmosphere--radiance) within 0.2% per channel, relative to the brightest channel of that view. Both march 32 view steps and 8 light steps, so the only difference left is fp32 against fp64.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="atmospheregpuparitysmoke-kt--atmospheregpuparitysmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/AtmosphereGpuParitySmoke/#L64) |  |
+
 ## BodySegmentFieldGpuSmoke.kt { #bodysegmentfieldgpusmoke-kt }
 
 `src/jvmMain/kotlin/afield/examples/four/BodySegmentFieldGpuSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/BodySegmentFieldGpuSmoke/)
@@ -1901,6 +1915,20 @@ The renderer goes away while an [`OpenDlssNrStudy`](graphics.md#opendlssnrstudy-
 | --- | --- |
 | <a id="opendlssnrteardownsmoke-kt--opendlssnrteardownsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrTeardownSmoke/#L43) |  |
 
+## ParticleLeniaSmoke.kt { #particleleniasmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/ParticleLeniaSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/ParticleLeniaSmoke/)
+
+### ParticleLeniaSmoke { #particleleniasmoke-kt-particleleniasmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">ParticleLeniaSmoke</span></code>](source/jvmMain/afield/examples/four/ParticleLeniaSmoke/#L40)
+
+Grades [`ShaderParticleLenia`](simulation.md#shaderparticlelenia-kt-shaderparticlelenia) against the CPU reference [`ParticleLenia`](alife.md#alife-particle-lenia-kt-particlelenia).
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="particleleniasmoke-kt--particleleniasmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ParticleLeniaSmoke/#L44) |  |
+
 ## ParticleSketchSmoke.kt { #particlesketchsmoke-kt }
 
 `src/jvmMain/kotlin/afield/examples/four/ParticleSketchSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/ParticleSketchSmoke/)
@@ -1928,6 +1956,24 @@ Runs [`ShaderPhysarumSystem`](alife.md#alife-physarum-gpu-kt-shaderphysarumsyste
 | Declaration | Summary |
 | --- | --- |
 | <a id="physarumgpusmoke-kt--physarumgpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/PhysarumGpuSmoke/#L50) |  |
+
+## PhysarumNetworkGpuSmoke.kt { #physarumnetworkgpusmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/PhysarumNetworkGpuSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/)
+
+### PhysarumNetworkGpuSmoke { #physarumnetworkgpusmoke-kt-physarumnetworkgpusmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PhysarumNetworkGpuSmoke</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L54)
+
+Runs [`ShaderPhysarumSystem`](alife.md#alife-physarum-gpu-kt-shaderphysarumsystem) with food sources ([`ShaderPhysarumSettings.food`](alife.md#alife-physarum-gpu-kt--shaderphysarumsettings--food)) on a real renderer, reads each trail back and measures the network it grew with `TransportNetwork.extract` and [`TransportNetwork.score`](alife.md#alife-networks-kt--transportnetwork--score): Tero's cost, stretch and fault tolerance, for the numbers in `alife_examples.md` §7 "Designing a network".
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--side"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SIDE</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L61) |  |
+| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--base-agents"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">BASE&#95;AGENTS</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L62) |  |
+| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--average-reads"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">AVERAGE&#95;READS</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L63) |  |
+| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--average-spacing"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">AVERAGE&#95;SPACING</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L64) |  |
+| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L67) |  |
 
 ## PingPongRestoreSmoke.kt { #pingpongrestoresmoke-kt }
 
@@ -2068,6 +2114,20 @@ The reload-transition matrix, on a real device: one box, one graphics module, an
 ### ShaderTypedStructurePreambleSmokeTest { #shadertypedstructurepreamblesmoketest-kt-shadertypedstructurepreamblesmoketest }
 
 [<code class="highlight"><span class="k">class</span> <span class="nc">ShaderTypedStructurePreambleSmokeTest</span></code>](source/jvmMain/afield/examples/four/ShaderTypedStructurePreambleSmokeTest/#L12)
+
+## ShapeAsciiGpuSmoke.kt { #shapeasciigpusmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/ShapeAsciiGpuSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/ShapeAsciiGpuSmoke/)
+
+### ShapeAsciiGpuSmoke { #shapeasciigpusmoke-kt-shapeasciigpusmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">ShapeAsciiGpuSmoke</span></code>](source/jvmMain/afield/examples/four/ShapeAsciiGpuSmoke/#L63)
+
+Runs the GPU matcher of `ascii_shape.md` on a real renderer and checks it against the CPU.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="shapeasciigpusmoke-kt--shapeasciigpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ShapeAsciiGpuSmoke/#L81) |  |
 
 ## SlugRenderSmoke.kt { #slugrendersmoke-kt }
 

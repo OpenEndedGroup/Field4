@@ -13,6 +13,7 @@ Everything this writes lives in the scout journal, a worktree of the orphan bran
 
     ledger.jsonl        one record per link (status, sightings, watch schedule, verdict)
     pages/<key>.txt     fetched page text, untrusted, kept out of git by .gitignore
+    pages/<key>.mp4     a video link's video, saved by yt-dlp, deleted after 14 days
     cards/<key>.md      the agent's card for a page (front matter, then the card)
     digests/<date>.md   the cards since the last digest, with a `verdict:` line for each, which Marc fills in
     approved.md         cards Marc said yes to: the self-improve loop's scout backlog
@@ -45,7 +46,9 @@ import html.parser
 import json
 import os
 import re
+import shutil
 import subprocess
+import tempfile
 import sys
 import time
 import urllib.error
@@ -675,6 +678,128 @@ def hn_discussion(fetcher: Fetcher, hn_id: str, comments: int = 6, each: int = 7
     return "\n\n".join(parts)
 
 
+VIDEO_HOSTS = ("youtube.com", "youtu.be", "m.youtube.com", "vimeo.com")
+VIDEO_KEEP_DAYS = 14  # downloaded videos are large; older ones are deleted at the start of a fetch
+VIDEO_MAX_FILESIZE = "400M"
+VIDEO_FORMAT = "bv*[height<=480]+ba/b[height<=480]/b"
+
+
+def is_video(url: str | None) -> bool:
+    return bool(url) and any(domain_of(url) == h or domain_of(url).endswith("." + h) for h in VIDEO_HOSTS)
+
+
+def lobsters_discussion(fetcher: Fetcher, url: str, comments: int = 6, each: int = 700) -> str:
+    """Top comments of a lobste.rs story, from its JSON. As untrusted as the page."""
+    data = fetcher.json(url.rstrip("/") + ".json")
+    parts = [html_to_text(data["description"])[1]] if data.get("description") else []
+    for c in [c for c in data.get("comments", []) if c.get("comment")][:comments]:
+        who = c.get("commenting_user") or "?"
+        who = who.get("username", "?") if isinstance(who, dict) else who
+        parts.append(f"[{who}] " + html_to_text(c["comment"])[1][:each])
+    return "\n\n".join(parts)
+
+
+def discussion(fetcher: Fetcher, item: Item) -> tuple[str, str]:
+    """(label, text) of the link's discussion: HN when it has one, otherwise lobste.rs."""
+    if item.hn_ids:
+        try:
+            return "HN", hn_discussion(fetcher, item.hn_ids[0])
+        except (OSError, ValueError):
+            pass
+    for s in item.sightings:
+        if "lobste.rs" in (s.get("discussion") or ""):
+            try:
+                return "lobste.rs", lobsters_discussion(fetcher, s["discussion"])
+            except (OSError, ValueError):
+                pass
+    return "", ""
+
+
+def vtt_to_text(vtt: str) -> str:
+    """Caption text without cue timings or tags; auto-captions repeat each line as it scrolls,
+    so consecutive duplicates collapse."""
+    out: list[str] = []
+    for line in vtt.splitlines():
+        line = line.strip()
+        if not line or line == "WEBVTT" or "-->" in line or line.isdigit() or line.startswith(("Kind:", "Language:", "NOTE")):
+            continue
+        line = html.unescape(re.sub(r"<[^>]+>", "", line)).strip()
+        if line and (not out or out[-1] != line):
+            out.append(line)
+    return " ".join(out)
+
+
+def run_ytdlp(args: list[str], timeout: float) -> None:
+    """Runs with -i, so a caption that fails (YouTube answers 429 on captions to clients without
+    impersonation) does not lose the metadata; the caller judges success by the files written."""
+    r = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+    if r.returncode != 0:
+        tail = [l for l in (r.stderr or "").splitlines() if l.startswith("ERROR")][-1:] or [f"exit {r.returncode}"]
+        raise OSError(f"yt-dlp: {tail[0][:200]}")
+
+
+def video_page(item: Item, journal: Path, download: bool = True, runner: Callable[[list[str], float], None] = run_ytdlp,
+               ytdlp: str | None = None) -> tuple[str, dict]:
+    """A video link read through yt-dlp: title, channel, description, chapters and the English
+    captions as text, with the video itself saved beside the page (pages/<key>.<ext>, not
+    committed) when `download`. A video page's HTML is a consent or script shell, so this is
+    what there is to read."""
+    ytdlp = ytdlp or shutil.which("yt-dlp")
+    if not ytdlp:
+        raise OSError("yt-dlp not found on PATH")
+    pages = journal / "pages"
+    pages.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=pages, prefix=f".{item.key}-") as tmp:
+        base = [ytdlp, "--no-playlist", "--no-progress", "--no-warnings", "-i", "--sleep-subtitles", "2",
+                "--write-info-json", "--write-subs", "--write-auto-subs", "--sub-langs", "en.*,en",
+                "--sub-format", "vtt", "-o", str(Path(tmp) / "v.%(ext)s")]
+        try:
+            runner([*base, "--skip-download", item.url], 180)
+        except OSError:
+            if not list(Path(tmp).glob("*.info.json")):
+                raise
+        info_files = list(Path(tmp).glob("*.info.json"))
+        if not info_files:
+            raise OSError("yt-dlp wrote no metadata")
+        info = json.loads(info_files[0].read_text(encoding="utf-8"))
+        subs = sorted(Path(tmp).glob("*.vtt"), key=lambda f: (".en." not in f.name, f.name))
+        captions = vtt_to_text(subs[0].read_text(encoding="utf-8", errors="replace")) if subs else ""
+        meta: dict = {"kind": "video", "page_title": info.get("title") or "",
+                      "license": info.get("license") or "unstated"}
+        if download:
+            try:
+                runner([ytdlp, "--no-playlist", "--no-progress", "--quiet", "--no-warnings", "-f", VIDEO_FORMAT,
+                        "--max-filesize", VIDEO_MAX_FILESIZE, "--no-part", "--merge-output-format", "mp4",
+                        "-o", str(Path(tmp) / "v.%(ext)s"), item.url], 900)
+                for f in Path(tmp).iterdir():
+                    if f.suffix in (".mp4", ".webm", ".mkv") and not f.name.endswith(".part"):
+                        dest = pages / f"{item.key}{f.suffix}"
+                        shutil.move(str(f), dest)
+                        meta["video"] = str(dest.relative_to(journal))
+            except (OSError, subprocess.SubprocessError) as error:
+                meta["video_error"] = str(error)[:200]
+    lines = [f"# {info.get('title') or item.title}",
+             f"channel: {info.get('channel') or info.get('uploader') or '?'}",
+             f"uploaded: {info.get('upload_date') or '?'}  duration: {info.get('duration_string') or info.get('duration') or '?'}"]
+    if meta.get("video"):
+        lines.append(f"video saved: {meta['video']}")
+    if info.get("chapters"):
+        lines.append("chapters: " + "; ".join(f"{int(c.get('start_time', 0))//60}:{int(c.get('start_time', 0))%60:02d} {c.get('title', '')}" for c in info["chapters"]))
+    lines += ["", "## Description", "", info.get("description") or "(none)", "",
+              "## Captions", "", captions or "(no English captions could be fetched)"]
+    return "\n".join(lines), meta
+
+
+def prune_videos(journal: Path, keep_days: int = VIDEO_KEEP_DAYS) -> int:
+    cutoff = now() - keep_days * 86400
+    gone = 0
+    for f in (journal / "pages").glob("*.*"):
+        if f.suffix in (".mp4", ".webm", ".mkv") and f.stat().st_mtime < cutoff:
+            f.unlink()
+            gone += 1
+    return gone
+
+
 def write_page(journal: Path, item: Item, text: str, meta: dict, save: dict | None = None) -> str:
     pages = journal / "pages"
     pages.mkdir(exist_ok=True)
@@ -704,13 +829,30 @@ def _page_body(journal: Path, item: Item) -> str:
 
 
 def fetch(ledger: Ledger, fetcher: Fetcher, limit: int = 40, watch_cfg: dict | None = None,
-          log: Callable[[str], None] = print) -> dict:
+          log: Callable[[str], None] = print, video: Callable[[Item], tuple[str, dict]] | None = None) -> dict:
     """Fetch queued pages (highest points first, topic hits first among equals) and run any watch
     checks that are due."""
     cfg = {**WATCH_DEFAULTS, **(watch_cfg or {})}
     done = {"fetched": 0, "failed": 0, "watch-checked": 0, "watch-news": 0, "watch-dropped": 0}
     queue = sorted(ledger.with_status("queued"), key=lambda i: (not i.topics, -i.points))
+    video = video or (lambda item: video_page(item, ledger.journal))
+    if (ledger.journal / "pages").is_dir():
+        prune_videos(ledger.journal)
     for item in queue[:limit]:
+        if is_video(item.url):
+            try:
+                text, meta = video(item)
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
+                log(f"yt-dlp failed {item.key} {item.url}: {error}")
+                text, meta = f"# yt-dlp could not read this video ({str(error)[:200]}).", {"kind": "video"}
+            label, talk = discussion(fetcher, item)
+            if talk:
+                text += f"\n\n# {label} discussion follows.\n\n" + talk
+            item.meta.update({k: v for k, v in meta.items() if k != "links"})
+            item.page = write_page(ledger.journal, item, text, meta, ledger.saved(item))
+            item.move("fetched", "video read through yt-dlp")
+            done["fetched"] += 1
+            continue
         try:
             text, meta = fetch_page(fetcher, item)
             if len(text) < THIN_PAGE and item.hn_ids and item.url:
@@ -1091,6 +1233,7 @@ def main(argv: list[str] | None = None) -> int:
     t = sub.add_parser("triage")
     t.add_argument("--drop", type=Path, required=True, help="file of keys to drop, one per line (first column)")
     f = sub.add_parser("fetch")
+    f.add_argument("--no-video-download", action="store_true", help="read videos (captions, description) without saving the video file")
     f.add_argument("--limit", type=int, default=40)
     sub.add_parser("reading-list")
     sub.add_parser("ingest-cards")
@@ -1132,7 +1275,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"triage: {dropped} dropped, {queued} queued for reading")
         return 0
     if args.command == "fetch":
-        done = fetch(ledger, Fetcher(), args.limit, sources.get("watch"))
+        dl = not args.no_video_download
+        done = fetch(ledger, Fetcher(), args.limit, sources.get("watch"),
+                     video=lambda item: video_page(item, ledger.journal, download=dl))
         print("fetch: " + ", ".join(f"{v} {k}" for k, v in done.items()))
         return 0
     if args.command == "reading-list":

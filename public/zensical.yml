@@ -159,12 +159,16 @@ nav:
     # First in the section: where print and display go, channels, and how panels open, close and
     # are removed. Everything else in Seeing Values is something you put in one of those panels.
     - Box Output: box_output.md
+    # Directly after Box Output, which links it: the same output panels, with the page inside one
+    # calling back into the box's Kotlin. It is about the panel, not about a kind of value.
+    - Output Pages that Call the Box: output_requests.md
     - Visualizers & Controls: visualizers.md
     - A Terminal in a Box: terminal.md
     - Patchy from Kotlin: patchy.md
     - Field's 3D Output: three_output.md
     - Point to geometry and leave notes: geometry_review.md
     - Charts as FLines: chart.md
+    - Shape-aware ASCII: ascii_shape.md
     - DataFrames in a Box: dataframe.md
     # Beside DataFrames: the other table a box can hold, this one typed into and computed by Kotlin
     # formulas. Expands the funFeatures "Spreadsheets!" blurb.
@@ -260,10 +264,19 @@ nav:
       - Geometry From Disk (OBJ, STL, PLY, glTF): geometry_from_disk.md
       - Polytopes & the Conway Algebra: polytope_examples.md
       - Typography as Geometry: typography_examples.md
+      # Drawing one parsed sentence, then measuring whole texts by dependency length against random
+      # reorderings of their trees (formerly its own page, dependency_length.md).
       - Sentence diagrams: sentence_diagrams.md
       - Euclid's Elements: euclid_elements.md
       - Voronoi, Contours & Clusters: spatial_geometry_examples.md
+      # One page for the multigrid: the flat tilings, the 3D tiling of rhombohedra, both printed
+      # through Manifold, and the flat tiling's graph spectrum struck as a drum (eigendrum.md links
+      # straight to that section, since Sound & Music has no entry for it).
       - Penrose and Other Quasiperiodic Tilings: debruijn_tilings.md
+      # Knight tours drawn four ways, then the longest knight paths whose moves never cross, on
+      # flat and wrapped boards: one page. Beside the tilings because both are about what a rule
+      # lets a drawing do.
+      - Knight Tours & Uncrossed Paths: knight_tour_workshop.md
       - Linear Programs as Curves: lp_curves.md
     # sound.md is the Tour's sound stop, so this group starts at the pattern language that feeds
     # it and continues into the paths that page only introduces. Deliberately not an ordinal —
@@ -296,6 +309,8 @@ nav:
       - "Network MIDI: RTP-MIDI sessions": rtp_midi.md
       # Next to the other show-control protocols: the clock desks, video servers and DAWs share.
       - "SMPTE Timecode: LTC and MTC": smpte_timecode.md
+      # After timecode: reading an edit's timeline, markers and playhead from a running Resolve.
+      - "DaVinci Resolve: Timelines and Markers": davinci_resolve.md
     - Audio AI:
       - Field Audio AI: field_audio_ai.md
       - Field Audio Service Reference: field_audio_service_reference.md
@@ -317,6 +332,8 @@ nav:
     - Boolean Network Music Examples: boolean_network_music_examples.md
     - Wave Function Collapse Examples: wfc_examples.md
     - Spatial Artificial Life: alife_examples.md
+    - Growing Neural Cellular Automata: growing_nca.md
+    - Particle Lenia: particle_lenia.md
     - Braitenberg Vehicles with Memory: braitenberg_vehicles.md
     - Evolving Creatures: evolving_creatures.md
     - Neighbors & Graphs Examples: graph_connectivity_examples.md
@@ -444,6 +461,9 @@ nav:
       - Body and hand tracking: body_tracking.md
       - Field inside VR: field_vr_ide.md
       - ImGui as a VR Panel: imgui_vr_panel.md
+      # Last, after the two in-headset pages: an OpenXR starting point that needs a headset with
+      # per-eye eye tracking, the narrowest hardware requirement in the section.
+      - Eye-Tracked Gaze Marker: openxr_eye_intersection.md
   - AI & Agents:
     # First, ahead of the explanations: a showcase of whole documents agents built from a blank
     # canvas, which says what this section is for faster than any of the pages below. It used to

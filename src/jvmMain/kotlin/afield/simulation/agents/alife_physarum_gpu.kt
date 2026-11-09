@@ -10,6 +10,7 @@ import afield.graphics.render.Mesh
 import afield.graphics.render.Module
 import afield.graphics.render.ModulePointer
 import afield.graphics.render.before
+import afield.graphics.render.fullscreenTriangle
 import afield.graphics.render.pointer
 import afield.graphics.shader.attachShader
 import afield.graphics.texture.HasImageView
@@ -23,6 +24,7 @@ import afield.graphics.vulkan.buffers.defaultBuffer
 import afield.graphics.vulkan.device.CommandBuffer
 import afield.graphics.vulkan.targets.RenderTarget
 import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vec2
 import afield.math.linalg.Vec4
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK13
@@ -127,7 +129,26 @@ data class ShaderPhysarumSettings(
     /** Exposure of the default preview tone map; see [TrailField.previewInto]. */
     var exposure: Float = 0.08f,
     /** Seed for the initial placement, handed to [ShaderPhysarumSystem.resetAgents] at construction. */
-    var randomSeed: Long = 1L
+    var randomSeed: Long = 1L,
+    /**
+     * Food sources, in trail pixels: each adds [foodDeposit] to the trail every frame, spread as a
+     * Gaussian of radius [foodRadiusPx], into the channels [foodChannels] weights. Read every frame,
+     * so sources can be moved, added and removed while it runs (up to
+     * [ShaderPhysarumSystem.MAX_FOOD]). See [PhysarumFood] for the CPU equivalent.
+     */
+    var food: List<Vec2> = emptyList(),
+    /** Trail a food source adds at its centre per frame. */
+    var foodDeposit: Float = 10f,
+    /** The Gaussian radius (standard deviation) of a food source's deposit, pixels. */
+    var foodRadiusPx: Float = 1.5f,
+    /** How a food source's deposit is split over the four channels; by default all into channel 0. */
+    var foodChannels: Vec4 = Vec4(1f, 0f, 0f, 0f),
+    /**
+     * Give the field an edge: an agent that would step within a pixel of it re-enters at a random
+     * food source instead (and nothing happens while there is no food). With food this makes the
+     * agent count a budget of road, as [PhysarumFood.recycle] does on the CPU.
+     */
+    var recycle: Boolean = false
 )
 
 /**
@@ -168,6 +189,15 @@ class ShaderPhysarumSystem(
     /** One `uint` per pixel: the frame stamp of the last agent to hold it, used when [ShaderPhysarumSettings.exclusive] is on. */
     val occupancyBuffer: FrameBufferGroup
 
+    /** The food sources as the shaders read them: up to [MAX_FOOD] `vec2`s, rewritten when [ShaderPhysarumSettings.food] changes. */
+    val foodBuffer: FrameBufferGroup
+
+    /** The full-screen pass that adds every food source's deposit to the trail, after the agents'. */
+    val foodModule: ModulePointer
+
+    private var writtenFood: List<Vec2>? = null
+    private var foodCount = 0
+
     private var lastSeed = settings.randomSeed
     private var frameStamp = 0
 
@@ -185,6 +215,9 @@ class ShaderPhysarumSystem(
         occupancyBuffer = defaultBuffer(name = "${settings.name}OccupancyBuffer") {
             size = settings.width.toLong() * settings.height * 4L
         }.buffer
+        foodBuffer = defaultBuffer(name = "${settings.name}FoodBuffer") {
+            size = MAX_FOOD * 8L
+        }.buffer
 
         agentModule = Module(
             trail.depositParameters("${settings.name}-agents") {
@@ -200,6 +233,9 @@ class ShaderPhysarumSystem(
             resize(settings.agentCount, 0, agentModule)
             push.bind("agentBuffer") { agentBuffer }
             push.bind("occupancy") { occupancyBuffer }
+            push.bind("food") { syncFood(); foodBuffer }
+            push.bind("foodCount") { foodCount.toFloat() }
+            push.bind("recycle") { if (settings.recycle) 1f else 0f }
             push.bind("attraction") { attractionMatrix() }
             push.bind("depositInto") { depositMatrix() }
             push.bind("exclusive") { if (settings.exclusive) 1f else 0f }
@@ -218,6 +254,21 @@ class ShaderPhysarumSystem(
         agentModule.current.meshes["${settings.name}-agents"] = agentMesh
         trail.addDeposit("agents", agentModule)
 
+        foodModule = Module(
+            trail.depositParameters("${settings.name}-food") {
+                vertex = TrailField.FULLSCREEN_TRIANGLE_VERTEX
+                fragment = FOOD_FRAGMENT
+            }
+        ).pointer()
+        foodModule.current.meshes["${settings.name}-food-quad"] = fullscreenTriangle(foodModule).apply {
+            push.bind("food") { syncFood(); foodBuffer }
+            push.bind("foodCount") { foodCount.toFloat() }
+            push.bind("foodDeposit") { settings.foodDeposit }
+            push.bind("foodRadius") { settings.foodRadiusPx }
+            push.bind("channels") { settings.foodChannels }
+        }
+        trail.addDeposit("food", foodModule)
+
         zeroOccupancy()
         resetAgents(settings.randomSeed)
         // one box drives one adopted shader: keep a vertex tab that holds some other system's rule
@@ -225,6 +276,21 @@ class ShaderPhysarumSystem(
             val own = box.getPropertyRaw("vertex", null) as? String
             if (own.isNullOrBlank() || "struct Agent" in own) box.attachShader(agentModule)
         }
+    }
+
+    /** Write [ShaderPhysarumSettings.food] into [foodBuffer] when it has changed since the last write. */
+    private fun syncFood() {
+        val food = settings.food
+        if (food == writtenFood) return
+        val n = minOf(food.size, MAX_FOOD)
+        for (b in foodBuffer.buffers) b.mapAndWrite_bytes {
+            order(ByteOrder.LITTLE_ENDIAN)
+            clear()
+            for (i in 0 until n) { putFloat(food[i].x); putFloat(food[i].y) }
+            rewind()
+        }
+        foodCount = n
+        writtenFood = food.toList()
     }
 
     private fun zeroOccupancy() {
@@ -316,6 +382,9 @@ class ShaderPhysarumSystem(
     companion object {
         private const val AGENT_STRIDE_BYTES = 16
 
+        /** The most food sources [ShaderPhysarumSettings.food] can hold; any beyond are ignored. */
+        const val MAX_FOOD = 256
+
         /** The agent rule, as installed into a host box's `vertex` tab. */
         val AGENT_VERTEX: String = """
             #version 450
@@ -337,12 +406,18 @@ class ShaderPhysarumSystem(
                 uint cells[];
             };
 
+            // food sources, trail pixels
+            layout(std430, buffer_reference, scalar) buffer FoodBuffer {
+                vec2 sources[];
+            };
+
             // the trail as it was at the end of the previous frame
             layout(set = 0, binding = 0) uniform sampler2D trailTex;
 
             layout(push_constant) uniform Push {
                 AgentBuffer agentBuffer;
                 OccupancyBuffer occupancy;
+                FoodBuffer food;
                 // column s: how species s weights the four channels when sensing
                 mat4 attraction;
                 // column s: what one agent of species s adds to each channel
@@ -359,6 +434,8 @@ class ShaderPhysarumSystem(
                 float sensing;
                 float pointSize;
                 float speciesCount;
+                float foodCount;
+                float recycle;
             } push;
 
             layout(location = 0) out vec4 vColor;
@@ -407,7 +484,18 @@ class ShaderPhysarumSystem(
                 a += (random01(rng) * 2.0 - 1.0) * push.jitter;
 
                 vec2 p = mod(agent.positionPx + push.stepPx * vec2(cos(a), sin(a)), vec2(dims));
-                if (push.exclusive > 0.5) {
+                bool recycled = false;
+                if (push.recycle > 0.5 && push.foodCount > 0.5) {
+                    vec2 q = agent.positionPx + push.stepPx * vec2(cos(a), sin(a));
+                    if (q.x < 1.0 || q.y < 1.0 || q.x >= float(dims.x) - 2.0 || q.y >= float(dims.y) - 2.0) {
+                        // off the edge: re-enter at a random food source, facing anywhere
+                        int k = min(int(random01(rng) * push.foodCount), int(push.foodCount) - 1);
+                        p = push.food.sources[k] + vec2(random01(rng), random01(rng)) * 2.0 - 1.0;
+                        a = random01(rng) * 6.28318530718;
+                        recycled = true;
+                    }
+                }
+                if (push.exclusive > 0.5 && !recycled) {
                     // hold our own pixel for this frame, then try to claim the one we step into
                     uint stamp = uint(push.frameStamp);
                     ivec2 here = ivec2(agent.positionPx) % dims;
@@ -430,6 +518,39 @@ class ShaderPhysarumSystem(
                 gl_Position = trailClip(p, dims);
                 gl_PointSize = push.pointSize;
                 vColor = push.depositInto[species];
+            }
+        """.trimIndent()
+
+        /** Adds every food source's Gaussian deposit to the pixel; additive blending accumulates it. */
+        val FOOD_FRAGMENT: String = """
+            #version 450
+            #extension GL_EXT_buffer_reference : require
+            #extension GL_EXT_scalar_block_layout : require
+
+            layout(std430, buffer_reference, scalar) buffer FoodBuffer {
+                vec2 sources[];
+            };
+
+            layout(push_constant) uniform Push {
+                FoodBuffer food;
+                vec4 channels;
+                float foodCount;
+                float foodDeposit;
+                float foodRadius;
+            } push;
+
+            layout(location = 0) out vec4 outColor;
+
+            void main() {
+                float r = max(push.foodRadius, 0.25);
+                float sum = 0.0;
+                int n = int(push.foodCount);
+                for (int i = 0; i < n; i++) {
+                    vec2 d = gl_FragCoord.xy - push.food.sources[i];
+                    float q = dot(d, d) / (2.0 * r * r);
+                    if (q < 12.0) sum += exp(-q);
+                }
+                outColor = push.channels * (push.foodDeposit * sum);
             }
         """.trimIndent()
 

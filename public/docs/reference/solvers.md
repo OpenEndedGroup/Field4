@@ -626,7 +626,7 @@ The verbs: what you can say about the points, lines, planes and panels a [`Geome
 
 [<code class="highlight"><span class="k">class</span> <span class="nc">GeometrySolveSession</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="nc">GeometryModel</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">CeresSolverBackend</span><span class="p">,</span> <span class="k">val</span> <span class="n">policy</span><span class="p">:</span> <span class="nc">InteractionPolicy</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/math/optimization/ceres/ArchitecturalGeometry/#L1011)
 
-A compiled model plus the mutable state a gesture needs: the live `points`, the per-point [`priors`](solvers.md#architecturalgeometry-kt--geometrysolvesession--priors), the reusable `report`, and the pins.
+A compiled model plus the mutable state a gesture needs: the live [`points`](graphics.md#uncrossedleaperdrawing-kt--points), the per-point [`priors`](solvers.md#architecturalgeometry-kt--geometrysolvesession--priors), the reusable `report`, and the pins.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1031,7 +1031,7 @@ One geometric condition, as a thing that can validate itself, name the backend f
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Planar</span><span class="p">(</span><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>](source/jvmMain/afield/math/optimization/ceres/CeresGeometry/#L226)
 
-All of `points` on one common plane, which the solver introduces as free variables: an origin `O` and a unit normal `n` on a sphere manifold, seeded from a PCA fit of the seed cloud. One residual per point, `(P - O) . n`, in length units.
+All of [`points`](graphics.md#uncrossedleaperdrawing-kt--points) on one common plane, which the solver introduces as free variables: an origin `O` and a unit normal `n` on a sphere manifold, seeded from a PCA fit of the seed cloud. One residual per point, `(P - O) . n`, in length units.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1043,7 +1043,7 @@ All of `points` on one common plane, which the solver introduces as free variabl
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Colinear</span><span class="p">(</span><span class="k">val</span> <span class="n">lineA</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">lineB</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>](source/jvmMain/afield/math/optimization/ceres/CeresGeometry/#L252)
 
-Every point in `points` on the infinite line through [`lineA`](solvers.md#ceresgeometry-kt--colinear--linea) and [`lineB`](solvers.md#ceresgeometry-kt--colinear--lineb) — three residuals each, `cross(unit(B - A), P - A)`, so the magnitude is the perpendicular distance from the line and does not grow with the line's length.
+Every point in [`points`](graphics.md#uncrossedleaperdrawing-kt--points) on the infinite line through [`lineA`](solvers.md#ceresgeometry-kt--colinear--linea) and [`lineB`](solvers.md#ceresgeometry-kt--colinear--lineb) — three residuals each, `cross(unit(B - A), P - A)`, so the magnitude is the perpendicular distance from the line and does not grow with the line's length.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1408,7 +1408,7 @@ The mean, over [`edges`](solvers.md#ceresgeometry-kt--tangencycentroid--edges), 
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Centroid</span><span class="p">(</span><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Vec3</span> <span class="o">=</span> <span class="nc">Vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>](source/jvmMain/afield/math/optimization/ceres/CeresGeometry/#L1097)
 
-The mean of `points` driven to `target`; three residuals. Pass `PointId.ALL_POINTS` alone for the whole cloud.
+The mean of [`points`](graphics.md#uncrossedleaperdrawing-kt--points) driven to `target`; three residuals. Pass `PointId.ALL_POINTS` alone for the whole cloud.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1421,7 +1421,7 @@ The mean of `points` driven to `target`; three residuals. Pass `PointId.ALL_POIN
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RadiusAboutCentroid</span><span class="p">(</span><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>](source/jvmMain/afield/math/optimization/ceres/CeresGeometry/#L1127)
 
-Every point in `points` the same distance `radius` from the running mean of that same set — a circumsphere whose centre is not a free variable. One residual per point, all in one block.
+Every point in [`points`](graphics.md#uncrossedleaperdrawing-kt--points) the same distance `radius` from the running mean of that same set — a circumsphere whose centre is not a free variable. One residual per point, all in one block.
 
 | Declaration | Summary |
 | --- | --- |

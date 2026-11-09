@@ -13,11 +13,11 @@ NAME = "stanza"
 
 
 @functools.lru_cache(maxsize=4)
-def _pipeline(lang, package, device="cpu"):
+def _pipeline(lang, package, device="cpu", split_sentences=True):
     import stanza
 
     kwargs = dict(lang=lang, processors=_PROCESSORS, verbose=False,
-                  tokenize_no_ssplit=False, use_gpu=device == "cuda")
+                  tokenize_no_ssplit=not split_sentences, use_gpu=device == "cuda")
     if package:
         kwargs["package"] = package
     return stanza.Pipeline(**kwargs)
@@ -62,9 +62,14 @@ def _tree_to_dict(node, counter, token_ids):
     }
 
 
-def parse(text, lang="en", package=None, device="cpu"):
-    """Parse *text*, yielding one raw analysis dict per sentence."""
-    doc = _pipeline(lang, package, device)(text)
+def parse(text, lang="en", package=None, device="cpu", split_sentences=True):
+    """Parse *text*, yielding one raw analysis dict per sentence.
+
+    With ``split_sentences=False`` Stanza does not find sentence boundaries itself: each block
+    separated by a blank line is one sentence. Verse needs this, because the splitter takes a
+    capital at the start of a line for the start of a new sentence.
+    """
+    doc = _pipeline(lang, package, device, split_sentences)(text)
     out = []
     for sent in doc.sentences:
         tokens = []

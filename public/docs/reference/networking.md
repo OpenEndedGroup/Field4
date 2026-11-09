@@ -4,7 +4,7 @@
 
 OSC messages, discovery and query interfaces for connecting Field to other applications and devices.
 
-16 source file(s), 366 public symbol(s), 213 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+17 source file(s), 428 public symbol(s), 259 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -636,6 +636,144 @@ An OSCQuery service: the namespace of `params`, served as JSON over HTTP at `htt
 | <a id="oscqueryserver-kt--oscqueryserver--node"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">node</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="o">?</span></code>](source/jvmMain/afield/io/osc/query/OscQueryServer/#L278) | The JSON for `path`: a leaf parameter, or a container whose CONTENTS are built from paths below it. |
 | <a id="oscqueryserver-kt--oscqueryserver--isclosed"></a>[<code class="highlight"><span class="k">var</span> <span class="n">isClosed</span></code>](source/jvmMain/afield/io/osc/query/OscQueryServer/#L357) |  |
 | <a id="oscqueryserver-kt--oscqueryserver--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/io/osc/query/OscQueryServer/#L360) |  |
+
+## Resolve.kt { #resolve-kt }
+
+Reads timelines, markers and the playhead from a running DaVinci Resolve, through Resolve's own
+Python scripting API.
+
+[`Resolve`](networking.md#resolve-kt-resolve) is the whole surface: `Resolve.markers` for the current timeline or one by name,
+`Resolve.timelines` for every timeline in the open project, `Resolve.clipMarkers` for markers
+that sit on clips rather than on the timeline, and `Resolve.playhead`. Every marker comes back as
+a [`ResolveMarker`](networking.md#resolve-kt-resolvemarker) with its frame counted from the start of its timeline, the same position as a
+record frame and timecode on the timeline's own clock, its time in seconds, its color, name, note
+and the script-only custom data.
+
+Resolve's scripting module is a CPython extension, so the calls run in a Python worker process,
+`python -m fieldresolve` from this checkout's `python/` directory, which Field starts on first use
+and keeps for the rest of the session. Resolve must be running with a project open, and
+Preferences > System > General > External scripting using must be Local; otherwise each call
+fails with [`ResolveUnavailable`](networking.md#resolve-kt-resolveunavailable) saying so. `Resolve.on("macbook-pro-2")` asks a Resolve Studio on
+another machine instead, which must have that setting at Network.
+
+`src/jvmMain/kotlin/afield/io/resolve/Resolve.kt` — [read the source](source/jvmMain/afield/io/resolve/Resolve/)
+
+**Used in:** [DaVinci Resolve: Timelines and Markers](../davinci_resolve.md)
+
+### ResolveMarker { #resolve-kt-resolvemarker }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ResolveMarker</span><span class="p">(</span><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">recordFrame</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">timecode</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">customData</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">clip</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">trackType</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">track</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipFrame</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L52)
+
+One marker on a Resolve timeline (or, from `Resolve.clipMarkers`, on a clip, placed on its timeline).
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="resolve-kt--resolvemarker--frame"></a><code class="highlight"><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">Int</span></code> | Frames from the start of the timeline. |
+| <a id="resolve-kt--resolvemarker--recordframe"></a><code class="highlight"><span class="k">val</span> <span class="n">recordFrame</span><span class="p">:</span> <span class="nc">Int</span></code> | The same position counted on the timeline's clock, as Resolve numbers record frames. |
+| <a id="resolve-kt--resolvemarker--timecode"></a><code class="highlight"><span class="k">val</span> <span class="n">timecode</span><span class="p">:</span> <span class="nc">String</span></code> | The record timecode, `HH:MM:SS:FF` (`;` before the frames for drop-frame timelines). |
+| <a id="resolve-kt--resolvemarker--seconds"></a><code class="highlight"><span class="k">val</span> <span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span></code> | Seconds from the start of the timeline. |
+| <a id="resolve-kt--resolvemarker--duration"></a><code class="highlight"><span class="k">val</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Int</span></code> | Length in frames; 1 for a marker on a single frame. |
+| <a id="resolve-kt--resolvemarker--color"></a><code class="highlight"><span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">String</span></code> | Resolve's color name: Blue, Cyan, Green, Yellow, Red, Pink, Purple, Fuchsia, Rose, Lavender, Sky, Mint, Lemon, Sand, Cocoa or Cream. |
+| <a id="resolve-kt--resolvemarker--name"></a><code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> | The marker's name, as shown in the marker dialog. |
+| <a id="resolve-kt--resolvemarker--note"></a><code class="highlight"><span class="k">val</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span></code> | The marker's note: its text annotation. |
+| <a id="resolve-kt--resolvemarker--customdata"></a><code class="highlight"><span class="k">val</span> <span class="n">customData</span><span class="p">:</span> <span class="nc">String</span></code> | Data a script attached to the marker; Resolve's UI never shows it. |
+| <a id="resolve-kt--resolvemarker--clip"></a><code class="highlight"><span class="k">val</span> <span class="n">clip</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | For a clip marker, the clip's name; null for a timeline marker. |
+| <a id="resolve-kt--resolvemarker--tracktype"></a><code class="highlight"><span class="k">val</span> <span class="n">trackType</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | For a clip marker, `"video"` or `"audio"`. |
+| <a id="resolve-kt--resolvemarker--track"></a><code class="highlight"><span class="k">val</span> <span class="n">track</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> | For a clip marker, its track number, from 1. |
+| <a id="resolve-kt--resolvemarker--clipframe"></a><code class="highlight"><span class="k">val</span> <span class="n">clipFrame</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> | For a clip marker, its frame in the clip's source media. |
+| <a id="resolve-kt--resolvemarker--covers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">covers</span><span class="p">(</span><span class="n">atFrame</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L81) | True when `atFrame` (from the timeline start) falls within this marker's duration. |
+
+### ResolveTimeline { #resolve-kt-resolvetimeline }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ResolveTimeline</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">uniqueId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">current</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">startFrame</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">endFrame</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">startTimecode</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">fps</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">dropFrame</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">markers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ResolveMarker</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L86)
+
+A timeline in the open Resolve project, with its markers in frame order.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="resolve-kt--resolvetimeline--name"></a><code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="resolve-kt--resolvetimeline--index"></a><code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> | Position in the project's timeline list, from 1. |
+| <a id="resolve-kt--resolvetimeline--uniqueid"></a><code class="highlight"><span class="k">val</span> <span class="n">uniqueId</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="resolve-kt--resolvetimeline--current"></a><code class="highlight"><span class="k">val</span> <span class="n">current</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True for the timeline open in Resolve's viewer. |
+| <a id="resolve-kt--resolvetimeline--startframe"></a><code class="highlight"><span class="k">val</span> <span class="n">startFrame</span><span class="p">:</span> <span class="nc">Int</span></code> | Record frame of the first frame. |
+| <a id="resolve-kt--resolvetimeline--endframe"></a><code class="highlight"><span class="k">val</span> <span class="n">endFrame</span><span class="p">:</span> <span class="nc">Int</span></code> | Record frame just past the last frame. |
+| <a id="resolve-kt--resolvetimeline--starttimecode"></a><code class="highlight"><span class="k">val</span> <span class="n">startTimecode</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="resolve-kt--resolvetimeline--fps"></a><code class="highlight"><span class="k">val</span> <span class="n">fps</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="resolve-kt--resolvetimeline--dropframe"></a><code class="highlight"><span class="k">val</span> <span class="n">dropFrame</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <a id="resolve-kt--resolvetimeline--markers"></a><code class="highlight"><span class="k">val</span> <span class="n">markers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ResolveMarker</span><span class="p">&gt;</span></code> |  |
+| <a id="resolve-kt--resolvetimeline--length"></a>[<code class="highlight"><span class="k">val</span> <span class="n">length</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L103) | Frames in the timeline. |
+| <a id="resolve-kt--resolvetimeline--markersat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">markersAt</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L106) | Markers whose span includes `frame` (from the timeline start). |
+| <a id="resolve-kt--resolvetimeline--markerscolored"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">markersColored</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L109) | Markers of one color, compared without regard to case. |
+
+### ResolvePlayhead { #resolve-kt-resolveplayhead }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ResolvePlayhead</span><span class="p">(</span><span class="k">val</span> <span class="n">timeline</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">timecode</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">recordFrame</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">fps</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L114)
+
+Where the playhead of Resolve's current timeline is.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="resolve-kt--resolveplayhead--timeline"></a><code class="highlight"><span class="k">val</span> <span class="n">timeline</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="resolve-kt--resolveplayhead--timecode"></a><code class="highlight"><span class="k">val</span> <span class="n">timecode</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="resolve-kt--resolveplayhead--recordframe"></a><code class="highlight"><span class="k">val</span> <span class="n">recordFrame</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <a id="resolve-kt--resolveplayhead--frame"></a><code class="highlight"><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">Int</span></code> | Frames from the start of the timeline, comparable with [`ResolveMarker.frame`](networking.md#resolve-kt--resolvemarker--frame). |
+| <a id="resolve-kt--resolveplayhead--seconds"></a><code class="highlight"><span class="k">val</span> <span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="resolve-kt--resolveplayhead--fps"></a><code class="highlight"><span class="k">val</span> <span class="n">fps</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+
+### ResolveStatus { #resolve-kt-resolvestatus }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ResolveStatus</span><span class="p">(</span><span class="k">val</span> <span class="n">product</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">version</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">page</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">project</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">timelineCount</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">timeline</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L126)
+
+What the running Resolve reports about itself.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="resolve-kt--resolvestatus--product"></a><code class="highlight"><span class="k">val</span> <span class="n">product</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="resolve-kt--resolvestatus--version"></a><code class="highlight"><span class="k">val</span> <span class="n">version</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="resolve-kt--resolvestatus--page"></a><code class="highlight"><span class="k">val</span> <span class="n">page</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | The open page: media, cut, edit, fusion, color, fairlight or deliver. |
+| <a id="resolve-kt--resolvestatus--project"></a><code class="highlight"><span class="k">val</span> <span class="n">project</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <a id="resolve-kt--resolvestatus--timelinecount"></a><code class="highlight"><span class="k">val</span> <span class="n">timelineCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <a id="resolve-kt--resolvestatus--timeline"></a><code class="highlight"><span class="k">val</span> <span class="n">timeline</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | Name of the current timeline. |
+| <a id="resolve-kt--resolvestatus--host"></a><code class="highlight"><span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | The machine asked, as given to [`Resolve.on`](networking.md#resolve-kt--resolve--on); null for this machine. |
+
+### ResolveUnavailable { #resolve-kt-resolveunavailable }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">ResolveUnavailable</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">IllegalStateException</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L140)
+
+Resolve is not running, has no project open, refuses external scripts, or its scripting module is missing.
+
+### ResolveConnection { #resolve-kt-resolveconnection }
+
+[<code class="highlight"><span class="k">open</span> <span class="k">class</span> <span class="nc">ResolveConnection</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L148)
+
+One DaVinci Resolve: its timelines, their markers, and the playhead. [`Resolve`](networking.md#resolve-kt-resolve) is the one on this machine; [`Resolve.on`](networking.md#resolve-kt--resolve--on) gives the one on another machine.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="resolve-kt--resolveconnection--host"></a><code class="highlight"><span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | The machine this Resolve runs on, a host name or address; null for this machine. |
+| <a id="resolve-kt--resolveconnection--available"></a>[<code class="highlight"><span class="k">val</span> <span class="n">available</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L153) | True when this Resolve answers [`status`](networking.md#resolve-kt--resolveconnection--status) right now. |
+| <a id="resolve-kt--resolveconnection--status"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">status</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ResolveStatus</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L156) | Product, version, open page, project and current timeline. |
+| <a id="resolve-kt--resolveconnection--timelines"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">timelines</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ResolveTimeline</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L159) | Every timeline in the open project, in the project's order, each with its markers. |
+| <a id="resolve-kt--resolveconnection--timeline"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">timeline</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">ResolveTimeline</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L162) | The current timeline (null `name`) or the one called `name`, with its markers. |
+| <a id="resolve-kt--resolveconnection--markers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">markers</span><span class="p">(</span><span class="n">timeline</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ResolveMarker</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L165) | The timeline markers of the current timeline (null `timeline`) or the one so named, earliest first. |
+| <a id="resolve-kt--resolveconnection--clipmarkers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">clipMarkers</span><span class="p">(</span><span class="n">timeline</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ResolveMarker</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L171) | Markers attached to the clips on a timeline's video and audio tracks, placed on that timeline. A marker on a frame that the edit has trimmed away is left out. |
+| <a id="resolve-kt--resolveconnection--playhead"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">playhead</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ResolvePlayhead</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L174) | The playhead of the current timeline; Resolve reports none for other timelines. |
+| <a id="resolve-kt--resolveconnection--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L176) |  |
+
+### Resolve { #resolve-kt-resolve }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">Resolve</span> <span class="p">:</span> <span class="nf">ResolveConnection</span><span class="p">(</span><span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L192)
+
+The DaVinci Resolve running on this machine, and [`on`](networking.md#resolve-kt--resolve--on) for one running on another.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="resolve-kt--resolve--on"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">on</span><span class="p">(</span><span class="n">host</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">ResolveConnection</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L198) | The Resolve on `host`, a host name or address (a Tailscale name works). That machine's Resolve Studio must allow it: Preferences > System > General > External scripting using > Network. It listens on port 1144, and answers on a port from 49152 to 65535. |
+| <a id="resolve-kt--resolve--timeoutseconds"></a>[<code class="highlight"><span class="k">var</span> <span class="n">timeoutSeconds</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L202) | How long one call waits for Resolve before giving up. |
+| <a id="resolve-kt--resolve--close"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L205) | Stop the worker; the next call starts another. |
+| <a id="resolve-kt--resolve--pythondir"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">pythonDir</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L285) | The `python/` directory holding `fieldresolve`, found above the working directory. |
+| <a id="resolve-kt--resolve--python"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">python</span><span class="p">(</span><span class="n">checkout</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L294) | The interpreter the worker runs on: `AFIELD_RESOLVE_PYTHON`, else the checkout's `.venv`, else the first `python3` on `PATH` or in the usual install places. Resolve's module needs only Python 3.6 or later and nothing from the venv. |
+| <a id="resolve-kt--resolve--logfile"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">logFile</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/io/resolve/Resolve/#L306) | Where the worker's stderr goes. |
 
 ## Ltc.kt { #ltc-kt }
 

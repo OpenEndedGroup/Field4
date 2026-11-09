@@ -31,3 +31,27 @@ dedupe for plotting.
 - `Section.ofFLines(sampleDistance = 1.0)` resamples straight edges (45k tris for 295 tiles); 10.0
   gives 5.4k with the same volume; 50.0 returned an empty solid.
 - `recenter = false` for animation, so unchanged tiles do not drift with the mean centre.
+
+## Three dimensions (`deBruijnTiling3D`)
+
+`src/jvmMain/kotlin/afield/geometry/path/DeBruijnTiling3D.kt`; page `public/docs/debruijn_tilings.md` (Penrose tilings in three dimensions);
+demo `dev_docs/agents/transcripts/debruijn_tilings_3d_demo.yaml`; tests `DeBruijnTiling3DTest`.
+
+- References: Socolar & Steinhardt, PRB 32, 5547 (1985) introduced the "generalized dual method"
+  (the 3D grid construction used here). Kramer & Neri, Acta Cryst. A40, 580 (1984) got the 3D
+  Penrose tiling by projection from a 6D cubic lattice (their paper calls it a 12-grid). Socolar &
+  Steinhardt, PRB 34, 617 (1986) is the unit-cell configurations follow-up, not the method paper.
+- Corners are computed from the integer lift (one integer per family) summed in family order, so a
+  shared vertex has identical bits in every cell. The tests rely on it, and so does Manifold's weld.
+- Shape classes are congruence classes: (volume, sorted |cos| of the three edge pairs, sign of
+  their product). Volume alone merged the cube face-diagonal star's two rhombohedra.
+- `planes = 0..0` gives the zonotope tiling of the rhombic triacontahedron (20 cells); `0 until m`
+  gives the m-times-larger one with 20m³ cells. Volume check: Σ|det|² over triples = det(Σ e eᵀ) =
+  8 for the six icosahedral axes (Cauchy–Binet), so the cells fill 8× the crossing ball.
+- Manifold's batch union of face-sharing hulls leaves zero-volume 4-vertex shells where many coplanar
+  faces meet; `simplified(tol)` at any tolerance does not remove them in a slab. `toSolid()` drops
+  every component with volume under 1e-6 of the smallest cell. Selecting cells by centre in a slab
+  gives edge-only contacts (non-manifold TriMesh, χ = −15); `between(family, from, to)` selects by
+  plane instead and its boundary is manifold (dual of the 2D line arrangement in a plane).
+- Not done: a live Vulkan view of a patch; animated slice sweeps; matching rules / decorations on
+  the rhombohedra; disorder (jitter) as in the 2D version.

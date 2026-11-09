@@ -137,7 +137,8 @@ artifacts, runs the full guard once and fast-forwards `main`, one branch at a ti
 back as a bounce with its reason; fix the branch and enqueue again. When you need the outcome, run
 the `tools/land.py wait <id>` that `enqueue` prints as a background command (exit 0 landed, 1
 bounced) instead of polling; when you come back to a branch, `tools/land.py mine` lists what
-happened to every attempt to land it. To push, `enqueue --push` (pushes `main` once that item lands);
+happened to every attempt to land it. `tools/land.py retract [branch|id]` takes a queued item back out
+before the lander starts it. To push, `enqueue --push` (pushes `main` once that item lands);
 to bring in work from `origin`, `tools/land.py sync [--push]` lands `origin/main` through the queue.
 `uv run python tools/land.py doc` adds a documentation build at that point in the queue: earlier
 landings finish first, then the lander refreshes `public/field4/` in the checkout holding `main`
@@ -541,8 +542,9 @@ code, and a landing runs it on what it changed.
   distilled from the human's notes on the published site. In short: write for the user (how a
   page was made and internal mechanism go in an aside or `dev_docs/`). No lab-notebook voice or
   invented vocabulary. Lead with the common case. Introduce code before showing it, and write it
-  the way a box is written. Look at every capture at column width. Use one page per topic, and
-  link whatever a reader can open. These are prose until checks enforce them; the file lists the
+  the way a box is written. Look at every capture at column width. Use one page per topic: work
+  that extends an existing page goes onto that page as new sections, never onto a sibling page.
+  Link whatever a reader can open. These are prose until checks enforce them; the file lists the
   first five checks that would retire them.
 - `exportToDocumentation(...)` (`afield/docs/doc.kt`) turns boxes with metadata into docs-ready
   Markdown plus captured assets.

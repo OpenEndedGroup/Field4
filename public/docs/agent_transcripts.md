@@ -103,6 +103,18 @@ The glued view reports join lengths; its nearest-neighbour/2-opt route is not a 
 [Walkthrough and parameters](knight_tour_workshop.md) ·
 [Saved chat](assets/knight_tour_workshop/chat.txt)
 
+### uncrossed_leapers
+
+**Knight paths that never cross.** The starting point for [uncrossed paths](knight_tour_workshop.md#uncrossed-paths):
+the longest uncrossed knight paths and closed paths, checked against OEIS A003192 and A157416; the
+best found on 8×8 and 9×9; five leapers on a rectangle, a cylinder and a torus, as a gallery and as a
+sweep over board sizes; the longest 7×7 paths drawn by the knight-tour workshop's line and arc views;
+a pen-plotter SVG sheet; and a box that checks a path you draw on the drawing layer. Pure CPU.
+
+![Fifteen 7×7 boards, five leapers by three surfaces, each crossed by its longest uncrossed path in gold](assets/uncrossed_leapers/gallery.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/uncrossed_leapers/metadata.edn)
+
 ### staged_project
 
 **A level built in stages.** The starting place of [Start a staged project](staged_projects.md): a
@@ -148,6 +160,31 @@ from your last stroke on the drawing layer. Pure CPU.
 ![Two different seven-piece polygons outlined in yellow, each coloured orange and blue by its third mode](assets/eigendrum/kac.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/eigendrum/metadata.edn)
+
+### harmonic_drum
+
+**Design the drum that plays what you want.** The starting point of the second half of
+[Eigendrum](eigendrum.md#ramans-harmonic-drum): a drum loaded like a tabla, whose nine lowest modes
+fall into Raman's five harmonic tones; the sand figures of two modes at one pitch; a sweep of loading
+radius and mass that finds the tabla; uniform shapes that cannot reach the octave; a layered syahi
+fitted to 1:2:3:4:5; your drawn stroke bent into a drum that plays a major triad; and a live voice
+morphing from the bare drum to the harmonic one. Pure CPU.
+
+![Nine discs in five columns, each coloured orange and blue by one mode of a loaded drum, with white nodal lines](assets/eigendrum/raman.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/harmonic_drum/metadata.edn)
+
+### penrose_spectra
+
+**Strike a Penrose tiling.** The starting point of [The tiling as a graph](debruijn_tilings.md#the-tiling-as-a-graph):
+counts of the tiling's zero-energy states against 81 − 50τ, beside a square lattice and a
+jittered tiling; the confined states drawn on the tiles; the density of states and its gap; a sweep
+over symmetry, disorder and offset sum; three strikes drawn as energy against pitch; two sliders that recount as you
+drag; and a live `ModalDrum` voice (launch it). Pure CPU.
+
+![Two grey Penrose tilings, one with orange discs on its three-edged vertices, one with a single ring of orange and blue discs](assets/penrose_spectra/states.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/penrose_spectra/metadata.edn)
 
 ### teaching_a_pen
 
@@ -667,6 +704,16 @@ renderer, including glyph outlines. No parser service, model download or GPU is 
 
 [Open →](offline.html?file=assets/agent_transcripts/sentence_diagrams/metadata.edn)
 
+### dependency_length
+
+[Dependency length in real texts](sentence_diagrams.md#dependency-length-in-real-texts): the Gettysburg Address, the first chapters
+of Pride and Prejudice and Moby-Dick, Shakespeare's first ten sonnets and Genesis 1, measured the way
+Futrell, Mahowald and Gibson measured 37 languages. One sentence is drawn beside random reorderings of
+its tree, the speech as small multiples with each sentence's ratio to chance, and every sentence's
+total against its length. The parses are retained, so no parser is needed.
+
+[Open →](offline.html?file=assets/agent_transcripts/dependency_length/metadata.edn)
+
 ### kolakoski_euclid
 
 **Kolakoski counts, Euclid places.** A Euclidean rhythm spreads a density you chose in advance as
@@ -695,6 +742,19 @@ replaces the first.
 ![Piano roll of the hybrid above euclid(12,24) and kolakoski(24) at the same density: the hybrid bunches its onsets into pairs where the Euclidean lane alternates evenly](assets/pattern_language/kolakoski-euclid.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/kolakoski_euclid/metadata.edn)
+
+### datalog_rhythm_rules
+
+[Rules that decide when notes play](datalog.md#rules-that-decide-when-notes-play): Datalog
+`event(Instrument, Note, Velocity, T)` rules over a sixteen-step bar, after
+[Dogalog](https://github.com/danja/dogalog). Box 1 writes a Euclidean kick, brings in a snare and
+hats with `within`, and picks a lead from `scale(48, minor_pent, ...)`. It prints each bar's grid
+and plays four bars with `showPatAudio`. Box 2 asks `why` the kick at step 20
+played (the proof ends in the fact `euc(20, 4, 16, 0)`) and shows that the snare at step 4 did not.
+
+![Four bars of a step grid: kick on every fourth step, a lead on five steps, the snare from bar 1 and hats from bar 2](assets/datalog/rhythm.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/datalog_rhythm_rules/metadata.edn)
 
 ### frames_lifecycle
 
@@ -1048,6 +1108,19 @@ counterfactual is its own `initialLoss`, measured in the same run. None of the f
 
 [Open →](offline.html?file=assets/agent_transcripts/alife_evolution/metadata.edn)
 
+### particle_lenia
+
+[Particle Lenia](particle_lenia.md) as seven boxes. Box 1 runs the article's default rule from 200
+particles in a random square to step 3000, prints mean energy, spread, rotation and drift at four
+moments, and draws the particles over the energy field, the potential `U` and the energy curve beside
+a control with the kernel switched off. Box 2 animates the same run. Box 3 animates a rule that makes a spinning, drifting creature.
+Box 4 measures nine creatures from the article demo's zoo and names what each does (gliding, rotating,
+static). Box 5 maps 24 growth curves by what their creature does. Box 6 searches for a 40-particle
+glider with `PopulationSearch` beside a random-sampling control and checks both winners on five
+held-out seeds; it takes a few minutes. Box 7 animates the evolved glider. All seven are pure CPU.
+
+[Open →](offline.html?file=assets/agent_transcripts/particle_lenia/metadata.edn)
+
 ### alife_search_comparison
 
 The "Does search beat random?" part of [spatial artificial life](alife_examples.md#does-search-beat-random)
@@ -1289,6 +1362,18 @@ and counts shared edges; *slider* moves one family of lines; *offset sweep* anim
 (launch it); *relief* extrudes every tile through Manifold into one closed solid.
 
 [Open →](offline.html?file=assets/agent_transcripts/debruijn_tilings_demo/metadata.edn)
+
+### debruijn_tilings_3d_demo
+
+The same multigrid with planes, the companion to
+[Penrose tilings in three dimensions](debruijn_tilings.md#penrose-tilings-in-three-dimensions). *Triacontahedron* welds the twenty
+Ammann rhombohedra of one plane per family through Manifold beside their convex hull; *patch* draws
+the cells nearest the centre of a 3D Penrose tiling and prints the prolate/oblate ratio against
+radius; *slices* cuts the tiling across 5-, 3- and 2-fold axes into FLine polygons; *offset sweep*
+slides one family of planes and counts the cells that survive; *stars* cuts the five
+`DeBruijnStar` direction sets along one plane; *slab* welds a slab of cells into a printable solid.
+
+[Open →](offline.html?file=assets/agent_transcripts/debruijn_tilings_3d_demo/metadata.edn)
 
 ### lp_curves
 
@@ -2577,7 +2662,9 @@ Walkthrough: [Loris partial tracks and resynthesis](loris.md).
 A film voice analysed into a rolling curve of its recent spectra (mel bands, earth mover's distances,
 MDS, alignment) and drawn as FLines in the Three.js viewer at whatever time Field's waveform player is
 playing or scrubbing. Further boxes draw a stereo recording as one curve per channel, the voice with a
-finer hop and a longer memory, and a curve of running averages from one hop to twenty seconds. Every
+finer hop and a longer memory, a curve of running averages from one hop to twenty seconds, and a
+12 × 12 sheet and 6 × 6 × 6 lattice of prototype spectra (self-organizing maps) of the sounds heard
+so far. Every
 box is compile-checked; the analysis runs the `fieldaudio_curve` Python package through `uv`.
 Walkthrough: [Audio curves: a sound as a few slow controls](audio_curves.md).
 
@@ -2629,6 +2716,18 @@ reach `java.lang.System` from Python. The last cell's `fig.show()` needs a brows
 `--with-playwright` it opens this box's `browser` channel, and headless it emits no output at all.
 
 [Open →](offline.html?file=assets/agent_transcripts/python_cells/metadata.edn)
+
+### forth_step_sequencer
+
+**Each step is a program.** The companion to the step-sequencer sections of
+[ForthField examples](forth_examples.md#each-step-is-a-program), after Raphaël Forment's
+[Cagire](https://cagire.raphaelforment.fr). A ForthField root and five children: a grid whose steps
+alternate between notes with `< … >`, a bass line played through a synth word, a chime climbing a
+chord with `iter index` over a bass note drawn by `wchoose`, a drum grid played from the Dirt-Samples,
+and a grid to launch, which plays each step through the audio engine as it comes due. Each of the
+others lists its notes and puts an audio player in its `audio` panel.
+
+[Open →](offline.html?file=assets/agent_transcripts/forth_step_sequencer/metadata.edn)
 
 ### python_box_parity
 
@@ -2752,6 +2851,23 @@ under the grids shows what Kotlin heard and changed. Launch the box, then type i
 [ORCA](orca.md#two-orcas-and-kotlin-between-them) has the video and a recording.
 
 [Open →](offline.html?file=assets/agent_transcripts/orca_duet/metadata.edn)
+
+### ascii_shape
+
+**Characters chosen by shape.** `ShapeAscii` summarises each cell of an image
+by the light in six staggered circles and picks the character whose own six numbers are nearest,
+after Alex Harri's essay [ASCII characters are not pixels](https://alexharri.com/blog/ascii-rendering).
+The lead box draws a ring, a triangle and a disc as FLines and shows them by brightness and by
+shape side by side; the others show the sampling circles over five characters, a lit sphere, the
+two contrast steps, and a wireframe cube spinning live in a `charGrid`. Three more boxes run the
+matcher over a lit torus knot on the GPU: scene, match and draw boxes with shaders you can edit.
+A fourth checks the GPU's characters against the CPU's. The walkthrough is [Shape-aware ASCII](ascii_shape.md).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/ascii_shape_shapes.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="180" padding="12" name="gallery-ascii-shape-shapes" alt="a ring, a triangle and a disc drawn twice in white characters: by brightness on the left, by shape on the right, where the outlines run as underscores, slashes and quote marks" macro-file="../../dev_docs/agents/transcripts/ascii_shape.yaml" capture-box="ascii_shape_shapes"}
+// The transcript builds and runs every box; this is the lead, brightness vs shape.
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/ascii_shape/metadata.edn)
 
 ### madp_chargrid
 
@@ -3235,11 +3351,11 @@ repeatable camera path in the existing CPU/allocation timeline. See
 ### openxr_eye_intersection
 
 A white wire cube at the closest-approach midpoint of the two real
-HTC eye rays, with a 3 cm maximum gap and explicit LOCAL-to-world conversion. A translated,
+per-eye gaze rays, with a 3 cm maximum gap and explicit LOCAL-to-world conversion. A translated,
 30-degree-yaw world origin and a hold control make coordinate mistakes visible when you move your
 head. The EXT combined ray is drawn separately because one ray cannot determine depth. macOS
 renders the reference grid and cubes without simulating eye data; hardware validation needs an
-HTC-capable OpenXR runtime. See [the coordinate walkthrough](openxr_eye_intersection.md).
+eye-tracking headset whose OpenXR runtime reports each eye. See [the coordinate walkthrough](openxr_eye_intersection.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/openxr_eye_intersection/metadata.edn)
 
@@ -3581,6 +3697,20 @@ slime and followers boxes.
 ![Amber, cyan and pink roads packed into a labyrinth whose colours never cross, the amber ones beaded with small white particles](assets/alife_examples/stigmergy-species.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/gpu_stigmergy/metadata.edn)
+
+### gpu_physarum_networks
+
+**Physarum as a transport-network designer**, on the GPU, after Tero et al. (*Science*, 2010). A
+map box draws a frame named "network" on the drawing layer with twelve food sources as dots in it; a
+slime box reads the dots through `notation.space` as `ShaderPhysarumSettings.food` and follows hand
+edits with `notation.onChange`, so drawing or dragging a dot moves the food while 4000 agents
+contract into a network between the dots; a measure box reads the trail back every 120 frames,
+extracts the network with `TransportNetwork.extract` and prints its cost against the minimum
+spanning tree, stretch and fault tolerance beside the MST and Delaunay controls, with a slider for
+the trail's half-life; and a reset box.
+[Drawing the food](alife_examples.md#drawing-the-food) walks through the map and slime boxes.
+
+[Open →](offline.html?file=assets/agent_transcripts/gpu_physarum_networks/metadata.edn)
 
 ### fern_iterated_systems
 
@@ -4175,6 +4305,37 @@ CPU integrator per particle.
 
 [Open →](offline.html?file=assets/agent_transcripts/neural_particles/metadata.edn)
 
+### growing_nca
+
+**A flower that grows from one cell and grows back when you cut it.** A growing neural cellular
+automaton (Mordvintsev et al., Distill 2020): every cell holds 16 numbers and runs the same trained
+48 → 128 → 16 network. One box grows, damages and regrows it on the CPU and shows seven snapshots;
+one runs it live on the CPU (launch it); others turn the rule, vary it across the grid, sweep over
+cuts and grow a fish. Beneath two renderers, GPU versions grow the flower and fish; erase cells
+with the left mouse button. See [Growing Neural Cellular Automata](growing_nca.md).
+
+```diffstatic {data-lang=text}
+macro write growing_nca --file dev_docs/agents/transcripts/growing_nca.yaml
+macro run growing_nca
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/growing_nca/metadata.edn)
+
+### atmospheric_sky
+
+**A sky made from sunlight and air, with the sun on a slider.** Beneath a renderer, one fullscreen box
+includes `sky/atmosphere.glsl` and draws single scattering through Earth's atmosphere (Rayleigh, Mie,
+ozone): blue at noon, orange at sunset, a violet twilight, and the planet with its blue rim from
+space. Sun elevation and azimuth, altitude, camera pitch and exposure are sliders. See
+[An atmospheric sky](afield_four_graphics.md#atmospheric-sky).
+
+```diffstatic {data-lang=text}
+macro write atmospheric_sky --file dev_docs/agents/transcripts/atmospheric_sky.yaml
+macro run atmospheric_sky
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/atmospheric_sky/metadata.edn)
+
 ### learned_boids
 
 **Two flocks side by side: one running Reynolds boids, one running a network that learned it.** Four
@@ -4363,6 +4524,14 @@ who else is publishing, and hands the stream you pick to its program as a second
 
 [Open →](offline.html?file=assets/agent_transcripts/stacktrinket_feedback/metadata.edn)
 
+### particle_lenia_gpu
+
+The GPU half of [Particle Lenia](particle_lenia.md#thousands-of-particles-on-the-gpu): a renderer box
+and, beneath it, `ShaderParticleLenia` running 6400 particles in 64 clusters under the rotator rule,
+20 steps per frame, in the native window. Clusters that drift into each other merge.
+
+[Open →](offline.html?file=assets/agent_transcripts/particle_lenia_gpu/metadata.edn)
+
 ## Graphics building blocks
 
 <!-- transcript-index: verified-by = compile -->
@@ -4504,13 +4673,11 @@ the browser stays sharp. Vulkan and the Slug helper are required.
 
 ### video_one_vr
 
-[A stereo movie in a room](stereo_video.md): full-resolution side-by-side video on a movable
-flat or cylindrical screen, with native per-eye aspect, an explicit aspect override, a scrubber,
-background P010 decoding and an optional live Field browser. The desktop preview samples the
-same eye images used by OpenXR. A bundled original ten-bit stereo demo loads immediately;
-choose a local movie to replace it. Variable speed, video-local temporal exposure and independent
-12/24 fps material cadence are editable controls. No audio or scene compositor is involved.
-Vulkan is required; the public guide includes real native playback captures.
+[A stereo movie in a room](stereo_video.md): play the bundled ten-bit demo, or choose a local
+side-by-side movie, on a flat or curved screen you can move through the room. Scrub, change the
+speed, add motion exposure to the movie and hold frames at 12 or 24 fps while the headset keeps
+rendering. A desktop preview shows the same eye images, and you can bring Field's live browser
+into the room. The player has no audio; it needs Vulkan.
 
 [Open →](offline.html?file=assets/agent_transcripts/video_one_vr/metadata.edn)
 

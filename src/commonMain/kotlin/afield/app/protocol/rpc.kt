@@ -119,6 +119,12 @@ data class Output(
     val endLine: Int = -1,
     val endColumn: Int = -1,
     val stack: List<OutputStackLocation> = emptyList(),
+    /**
+     * Fix rows for an error. An `"error"` output carries the ones that cost nothing to find. The
+     * rows for an unresolved name take a completion and arrive later, as an output of kind
+     * `"suggestions"` with an empty [html] and the error's [line]; the client adds them under the
+     * error already shown on that line and drops them when there is none.
+     */
     val suggestions: List<OutputSuggestion> = emptyList(),
     /**
      * Set on an end-of-run `"ok"` when this run also reported an error, so the client keeps the
@@ -138,7 +144,8 @@ data class Output(
 /**
  * A single actionable fix for a compile/runtime error, rendered in the error output area as a
  * row with two buttons: "Apply" (does the edit directly via Monaco executeEdits) and "Ask AI4"
- * (hands the fix to the assistant with a shaped prompt). See suggestionsFor() on the JVM side.
+ * (hands the fix to the assistant with a shaped prompt). See immediateSuggestionsFor() and
+ * symbolSuggestionsFor() on the JVM side.
  *
  * [kind] discriminates how "Apply" behaves client-side:
  *   - "rename"   replace the offending token at [line]/[column] with [replacement]
@@ -1906,6 +1913,47 @@ data class ControllerControl(
     val options: List<String> = emptyList(),
     val hoverText: String? = null,
     val hoverHtml: String? = null
+)
+
+/**
+ * A file chooser asking what [text] could complete to (`afield/ui/output/FileChooser.kt`).
+ * [seq] is echoed so the page can drop a reply that a later keystroke has overtaken.
+ */
+@Serializable
+data class FileCompletionRequest(val controlId: String, val text: String, val seq: Int = 0)
+
+/**
+ * One candidate in a [FileCompletionReply]: [insert] is the whole new input text, which keeps the
+ * person's own spelling of the path so far (relative, `~/`, `%name/`, or absolute).
+ */
+@Serializable
+data class FileCompletionEntry(
+    val name: String,
+    val insert: String,
+    val directory: Boolean,
+    val size: Long = 0,
+    val modified: Long = 0,
+    /** A note shown beside the name instead of size and date: where a `%name` directory points. */
+    val detail: String = ""
+)
+
+/**
+ * What a file chooser's [FileCompletionRequest] can complete to, and whether [text] already names
+ * something the chooser accepts ([choosable]). [directory] is the folder being listed, spelled for
+ * display; [error] says why there is nothing to list.
+ */
+@Serializable
+data class FileCompletionReply(
+    val controlId: String,
+    val seq: Int = 0,
+    val text: String = "",
+    val directory: String = "",
+    val entries: List<FileCompletionEntry> = emptyList(),
+    val truncated: Boolean = false,
+    val exists: Boolean = false,
+    val choosable: Boolean = false,
+    val mask: String = "",
+    val error: String? = null
 )
 
 /** A momentary button going down or coming back up. See `ControlGroupBuilder.button`. */

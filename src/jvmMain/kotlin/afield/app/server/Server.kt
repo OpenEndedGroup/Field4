@@ -265,6 +265,7 @@ import afield.ui.slides.slideShow
 import afield.ui.visualization.DataFrameVisualizer
 import afield.ui.visualization.ValueVisualizer
 import afield.ui.visualization.registerArrayControlUpdateHandler
+import afield.ui.output.registerFileChooserHandler
 
 import afield.ai.compat.Ai4CompletionDoc
 import afield.ai.completion.AI4_AUTO_NAME_PROPERTY
@@ -3739,6 +3740,7 @@ class Server {
 
             registerButtonUpdateHandler() // afield/ButtonControlHandler.kt — see its KDoc
             registerArrayControlUpdateHandler() // afield/visualizers.kt
+            registerFileChooserHandler() // afield/ui/output/FileChooser.kt
             handlers["fline-click"] = mutableSetOf({ message, reply ->
                 val click = Json.decodeFromJsonElement<FLineClick>(message.payload!!)
                 lprintln("debug,fline", "Received FLine click: ${click.callbackId}")

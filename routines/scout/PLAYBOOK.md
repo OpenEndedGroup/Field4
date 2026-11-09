@@ -23,7 +23,7 @@ missed something; a `yes: with the drawing layer` tells you what kind of "What F
 
 `python3 $REPO/tools/scout.py harvest`
 
-It collects from `routines/scout/sources.json`: the HN front page above 50 points; HN title and URL
+It collects from `routines/scout/sources.json`: every HN story above 15 points (the `hn.min_points` floor); HN title and URL
 queries for topics Field already works on, with a one-point floor; lobste.rs tags; and a list of
 feeds. Graphics Programming Weekly is expanded into the links each issue lists. Links are
 deduplicated by normalized URL, and a repost adds a sighting to the existing link. A source that
@@ -49,14 +49,14 @@ marked `[saved by Marc <date>]`: he bookmarked that page himself (`$JOURNAL/save
 from his Raindrop export with `scout.py import-saves <csv>`). A saved link that resurfaces is not a
 find, since he has seen it; card it only when the new sighting brings something the saved page
 lacked (a release, code, a part two), and say so on the card. The digest marks it. Expect to drop about
-two thirds of the HN front page and almost nothing from the feeds.
+two thirds of the HN stories and almost nothing from the feeds.
 
 ## 4. Fetch
 
 `python3 $REPO/tools/scout.py fetch`
 
 It fetches up to 40 queued pages (topic hits first, then by points) to `$JOURNAL/pages/<key>.txt`,
-and runs any watch checks that are due. GitHub repos arrive as their README plus license, stars,
+and runs any watch checks that are due. A YouTube or Vimeo link is read through `yt-dlp` (on `PATH`): the page holds its title, channel, chapters, description and English captions as text, then its HN or lobste.rs discussion, and the video itself is saved as `pages/<key>.mp4` (480p, at most 400 MB, deleted after 14 days; `fetch --no-video-download` skips it). Judge a talk from its captions. When yt-dlp fails the page says so and keeps the discussion. GitHub repos arrive as their README plus license, stars,
 language and latest release from the API. A page that renders little text has its HN discussion
 appended. A site that refuses scripted readers (HTTP 401, 403 or 451, as Patreon and some journals
 do) is kept as its HN discussion alone, printed as `fetch refused`, and the page file says so: judge

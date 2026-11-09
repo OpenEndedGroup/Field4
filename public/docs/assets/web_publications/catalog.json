@@ -382,6 +382,45 @@
         "public/docs/assets/agent_transcripts/assimp_browsing/metadata.edn": "84382b8b31487d1fe309058109691520027547b6f1e7d9854ea0dabf441fcf8e"
       }
     },
+    "assets/agent_transcripts/atmospheric_sky/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-09T08:17:16.925Z",
+      "channels": 4,
+      "file": "assets/web_publications/atmospheric_sky/document/metadata.edn",
+      "files": {
+        "assets/web_publications/atmospheric_sky/document/metadata.edn": "4ccf3e9284f467253196f487d0b90bab036a0accf904d4b0fc959ba440a95295",
+        "assets/web_publications/atmospheric_sky/document/outputs.json": "7f1ec1dc189bc0de0102bb3669e807e5621e2f78b6eccc28982efe1f9ec21dca",
+        "assets/web_publications/atmospheric_sky/outputs/0.html": "2271408560c2a7432665590ec2c95379efaa83ab0ed0257202149a08beb0b427",
+        "assets/web_publications/atmospheric_sky/outputs/1.html": "25cb4a5a74e4f8c75272c5977ff1240eac6fafd47bbe72b19d76e2e6442cf7bc",
+        "assets/web_publications/atmospheric_sky/outputs/2.html": "c26de0844cc4e22a84887b1146a66438c1d80d6de8c8eac55bd16bf706f8da18",
+        "assets/web_publications/atmospheric_sky/outputs/3.html": "7e5623e7edc0244d08e1ab473e25c02339fa0d69770a974a29dcb5660dcfca14"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/atmospheric_sky/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/atmospheric_sky.yaml": "de200fca4287e6078ade81a439ae20317a7b17957669eb235432a6f4936aaa0f",
+        "public/docs/afield_four_graphics.md#capture-box=atmospheric_sky": "fe13d4a7f8572006d8685ff0d4f448b732f89972692f539b835eee946539b2e5",
+        "public/docs/assets/afield_four_graphics/atmospheric-sky-noon.png": "238d525aa09166862ae28122fad1d02ba7617a67e20fea0fa9a34e0a4411469c",
+        "public/docs/assets/afield_four_graphics/atmospheric-sky-space.png": "d5a329e7d04ff6a7f9d9a2efe7e7a2c6b3abbb356190af511cfb145063372626",
+        "public/docs/assets/afield_four_graphics/atmospheric-sky-sunset.png": "6fc4fe48dda0296cc978ee1c06387f0563b5a97f8cd13731b9a04bb438d134c4",
+        "public/docs/assets/afield_four_graphics/atmospheric-sky-twilight.png": "b7555f51ad5323156f2fe274b1eb44370383ebde2580ea105b02bb5cb1c80110",
+        "public/docs/assets/agent_transcripts/atmospheric_sky/agent_graphics_context_code_.kt": "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2",
+        "public/docs/assets/agent_transcripts/atmospheric_sky/atmospheric_sky_code_.kt": "56bfd6ff5b3494ed0fd2970e351c09b7049845c87b6197017a303628b1840755",
+        "public/docs/assets/agent_transcripts/atmospheric_sky/atmospheric_sky_fragment_.glsl": "4199d44357e6911d8dc0ce582557ebbfcd5385edb86285176144091a9bbae88a",
+        "public/docs/assets/agent_transcripts/atmospheric_sky/atmospheric_sky_vertex_.glsl": "8f3504d8801a4398f2518ca9de09a3f9f4b72e4eb43044567049caf473214b5a",
+        "public/docs/assets/agent_transcripts/atmospheric_sky/guides/afield_four_graphics.md": "36b7775f4396796ddbd225b6c9b776584a03a8a00527116cd8240df5735acd5f",
+        "public/docs/assets/agent_transcripts/atmospheric_sky/metadata.edn": "a8eb374b200c95f987eabefc8473851d9452fef55f05ad43599d1bf95144a9db"
+      },
+      "supplementalSources": [
+        "public/docs/afield_four_graphics.md#capture-box=atmospheric_sky",
+        "public/docs/assets/afield_four_graphics/atmospheric-sky-noon.png",
+        "public/docs/assets/afield_four_graphics/atmospheric-sky-space.png",
+        "public/docs/assets/afield_four_graphics/atmospheric-sky-sunset.png",
+        "public/docs/assets/afield_four_graphics/atmospheric-sky-twilight.png"
+      ]
+    },
     "assets/agent_transcripts/audio_ai_analysis/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
       "capturedAt": "2026-11-08T10:23:45.533Z",
@@ -982,22 +1021,75 @@
         "public/docs/assets/agent_transcripts/controls_surface/surface_code_.kt": "def660097b214a6a3937a20373cd226a8c7a6942a1a3d97ff2d0a8b105fcb72e"
       }
     },
+    "assets/agent_transcripts/datalog_rhythm_rules/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-09T07:01:07.965Z",
+      "channels": 2,
+      "file": "assets/web_publications/datalog_rhythm_rules/document/metadata.edn",
+      "files": {
+        "assets/web_publications/datalog_rhythm_rules/document/metadata.edn": "171bd4259f1903aa35fa980aea8efffa0ab11d8361c2e068d40e7bb0389173ec",
+        "assets/web_publications/datalog_rhythm_rules/document/outputs.json": "400ccda89ad19b109bd628a818641bff1d62cf7f16e9306aeb7336f8a44ca96c",
+        "assets/web_publications/datalog_rhythm_rules/outputs/0.html": "0696924a660ca62cba07125cb5fe313a0fcb2176bfbdbb68ad6fb3efd691781f",
+        "assets/web_publications/datalog_rhythm_rules/outputs/1.html": "e63ffbd6f22d7f10d78d28e892d9018ce17053cc391a72c0613f97befe0008d5"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/datalog_rhythm_rules/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/datalog_rhythm_rules.yaml": "592a57a3c203f64e439dc75da018fdc318a7005f25f40d860cf6da0c3c6243c1",
+        "public/docs/assets/agent_transcripts/datalog_rhythm_rules/datalog_rhythm_rules_code_.kt": "802db30b7863ad4c12755c374993807579c9e4275ea4816266bc13bca33ddd00",
+        "public/docs/assets/agent_transcripts/datalog_rhythm_rules/datalog_rhythm_why_code_.kt": "648021bf79c5f3ba323459b6159cbd98b21e561950dac9c846b93d5594ea6bde",
+        "public/docs/assets/agent_transcripts/datalog_rhythm_rules/guides/datalog-rules-that-decide-when-notes-play.md": "22f30b86c2e809d3dd762334878d2e00a1ace4232ffa41162be83a3762879722",
+        "public/docs/assets/agent_transcripts/datalog_rhythm_rules/metadata.edn": "5834b6f6d94d49562e5218828d5689abe0bcbe78d78ed689d8b081e580821d3d"
+      }
+    },
+    "assets/agent_transcripts/debruijn_tilings_3d_demo/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-08T21:43:08.359Z",
+      "channels": 6,
+      "file": "assets/web_publications/debruijn_tilings_3d_demo/document/metadata.edn",
+      "files": {
+        "assets/web_publications/debruijn_tilings_3d_demo/document/metadata.edn": "e8d1caaa15f7ae504198f9d96ba59e67d87bdb7bf5f1c4872add5726c0466618",
+        "assets/web_publications/debruijn_tilings_3d_demo/document/outputs.json": "ad2aea7166de83003261194d5f33722707b0695ab069ad45977877c1628a9dab",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/0.html": "538f92875ff0092c927dac25fd805883d7bf7aeb0275cd9936cec476aa95d1cf",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/1.html": "0818e4cbffb32414b7ee47e168067af20167f8cde812452d95ee4f1eb7e370ef",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/2.html": "11c01878e78b2304d28b81c0e5b586994128628658c671f045d925d96f7aa5c5",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/3.html": "4aabc315929a3e7a43a9a62a8c09570c9be15962e9fbe9cbace0bd477cd219a5",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/4.html": "20d680e6cd610c6b630916c8f2ea229b41f202f3c1c5b407adae11cc7e49b70b",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/5.html": "417b99770b1e4ee92be88bbb0770f3dfba8e7470023967d34fd97dd9fcd0d935"
+      },
+      "kinds": [
+        "svg",
+        "three"
+      ],
+      "outputs": "assets/web_publications/debruijn_tilings_3d_demo/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/debruijn_tilings_3d_demo.yaml": "720caf427376207f6088c324e44e6d8f31a0c22c7951424e1071ce8d63a4b329",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/debruijn3d_offset_sweep_code_.kt": "7c35672c4ef95acf8acba4399ba8761a36b33fd38c96c4e5bd6d96c42c186e00",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/debruijn3d_patch_code_.kt": "a4296b2fd37a6c7cd17d1968ac43947cb098babb04856bcdb3103d11f104defb",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/debruijn3d_slab_code_.kt": "3ae5603ed4973e5e6b72eb82a5bc884330e772cb55d72052d3a149aa06ab6026",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/debruijn3d_slices_code_.kt": "972e02ee5ae3d8080d262b7d05fad219916d751cba44d6f493a0b001be5089cd",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/debruijn3d_stars_code_.kt": "97b03a3752a058504b85b6356f9527929da122fbffb2f2436d9adf208c8afb69",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/debruijn3d_triacontahedron_code_.kt": "4ffc5064b1e75333b060db5f97fe3c471c9b558bdb94c350345de0c53668b7af",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/guides/debruijn_tilings.md": "aba34ded21a13343beb9d15e5a197236b1ee36a0fd00a5413009091b5ac36b8e",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_3d_demo/metadata.edn": "ab3d15f779c93a48f3be0e26646aa0c1bf1b255a853790e2ab63660b3066f150"
+      }
+    },
     "assets/agent_transcripts/debruijn_tilings_demo/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
-      "capturedAt": "2026-11-08T10:30:13.801Z",
+      "capturedAt": "2026-11-08T21:43:02.181Z",
       "channels": 8,
       "file": "assets/web_publications/debruijn_tilings_demo/document/metadata.edn",
       "files": {
-        "assets/web_publications/debruijn_tilings_demo/document/metadata.edn": "ca6fd75ba4ecf1f5138ab1a3c8ac1bdebe5a7dd6267a9a2d8221ce2892b01082",
-        "assets/web_publications/debruijn_tilings_demo/document/outputs.json": "a9fa0208bafa8ecdaf6229b5447412dfec772cf2d051c902b878c1f3197acef6",
-        "assets/web_publications/debruijn_tilings_demo/outputs/0.html": "c0d31d32a7369720c370513672c25622af940803a1cb31709c0d9eeabf4438bd",
-        "assets/web_publications/debruijn_tilings_demo/outputs/1.html": "d126d6b0fabaae0dd82972530a93896095bb51c5553e822121e0f7b6c7ce587c",
-        "assets/web_publications/debruijn_tilings_demo/outputs/2.html": "6534ddf60a025525096489d6799a4a583e8f68ca105db7842cbe60c0938720bc",
-        "assets/web_publications/debruijn_tilings_demo/outputs/3.html": "6419207853257345450919bf11ec4f0489644ef35bf40de22ad588bb510977d7",
-        "assets/web_publications/debruijn_tilings_demo/outputs/4.html": "64f88ee0bb12347761d6e0d092c44c479fd7becbe326070b78dd7e9f976a2b4e",
-        "assets/web_publications/debruijn_tilings_demo/outputs/5.html": "502c92d226629d28732a54ae7320a80ea0a20cfecf47693e756fc9883a03f1d2",
-        "assets/web_publications/debruijn_tilings_demo/outputs/6.html": "8164e59aa6d91002c0231b3123ced6985dbb84df1d5da49e4b2192158750dc0b",
-        "assets/web_publications/debruijn_tilings_demo/outputs/7.html": "89e5f4f544f47111c1c621b4bd7584373ad43d4a83bd604187c0b3842dd4b26f"
+        "assets/web_publications/debruijn_tilings_demo/document/metadata.edn": "91985e46f4cba1a5f6e6b615d25ede51a9b999878575a3dcbffc69a2faeb40db",
+        "assets/web_publications/debruijn_tilings_demo/document/outputs.json": "d4c6cc3072f3ef57cd5c0446b3aa01da70586a6b0bab318fb0ac33a4f3af1703",
+        "assets/web_publications/debruijn_tilings_demo/outputs/0.html": "5187df2b13f2b38baa9db499ffd6fa22f4ecc6b4718a7262fd152ee50cd8b0ae",
+        "assets/web_publications/debruijn_tilings_demo/outputs/1.html": "0038996366498a19933b3790057d723ec098ffc0e6b09229c9e0276c113c63a8",
+        "assets/web_publications/debruijn_tilings_demo/outputs/2.html": "2150b2724ce1a56a7bed3abcc676f10c55eb47dcb6b0550e7260b95364edbae1",
+        "assets/web_publications/debruijn_tilings_demo/outputs/3.html": "7df258ef7ceeda6279cd788871b55658b8065061d9cf45951b113a3037215ed1",
+        "assets/web_publications/debruijn_tilings_demo/outputs/4.html": "93216ade4579894f109321294642292af0a16b6c719ecf0dcdda32f7845dbebc",
+        "assets/web_publications/debruijn_tilings_demo/outputs/5.html": "7119e6655874eb855f4dd6a423868dc357e98d75523d36a28b93b4285837cada",
+        "assets/web_publications/debruijn_tilings_demo/outputs/6.html": "5c226af9dd6106e3e63f3190350fb5d145f7e911776745705ba7948a64d5bfa9",
+        "assets/web_publications/debruijn_tilings_demo/outputs/7.html": "b7b82fb7cf39a0bf49376053c021d03055e5ed2f39e821a3debbc2b1d2bcf7fc"
       },
       "kinds": [
         "svg",
@@ -1005,8 +1097,8 @@
       ],
       "outputs": "assets/web_publications/debruijn_tilings_demo/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/debruijn_tilings_demo.yaml": "dd8431abc53e74ce7050cb76f3ef81e73116361c5e88a143c6d638677f5b788c",
-        "public/docs/assets/agent_transcripts/debruijn_tilings_demo/debruijn_gallery_code_.kt": "e9801045302ca4c19d26c6abd1f4ad41613c2f9de8c5d64cbd5ae996abb57961",
+        "dev_docs/agents/transcripts/debruijn_tilings_demo.yaml": "a8538f8229d96fa1d71c2f4ec977303571cf07a6761d49912ad7313a21e561fe",
+        "public/docs/assets/agent_transcripts/debruijn_tilings_demo/debruijn_gallery_code_.kt": "db9ed4aa0d1e6d1c815b1b5e111b487c2ba3fa3e5d80096539243941810d8634",
         "public/docs/assets/agent_transcripts/debruijn_tilings_demo/debruijn_offset_sweep_code_.kt": "928b487a95b6908a0d892fcb28aec1c0fcad725bb137d846e5d43ac37a86e932",
         "public/docs/assets/agent_transcripts/debruijn_tilings_demo/debruijn_penrose_code_.kt": "2f71f01e082009c0d328aff7ba1b7bec33d45f1910ca7d0e2c915bc593d12a7a",
         "public/docs/assets/agent_transcripts/debruijn_tilings_demo/debruijn_plotter_code_.kt": "476bb5c27536f4da394c25dcdd60e280b38af44eeca1cb4db73598983f6494ab",
@@ -1014,7 +1106,37 @@
         "public/docs/assets/agent_transcripts/debruijn_tilings_demo/debruijn_ribbon_code_.kt": "278541d16d503b98e5027b0c1225f5e24e2dda79c6d58fdf5c7977edb457880f",
         "public/docs/assets/agent_transcripts/debruijn_tilings_demo/debruijn_slider_code_.kt": "189db3b1d1b57a314c4fc7a05c662bcd3fa0edd0ba0e7bd09fce60c128f7638a",
         "public/docs/assets/agent_transcripts/debruijn_tilings_demo/guides/debruijn_tilings.md": "818a498a3583adf0c4411298a0b780bcfd3f2e62cd2d99f8f377d0ee22a831dc",
-        "public/docs/assets/agent_transcripts/debruijn_tilings_demo/metadata.edn": "bfe49d2b99ccf5872745687280bb511949612538edcf8d750fc34ce2d4483fdc"
+        "public/docs/assets/agent_transcripts/debruijn_tilings_demo/metadata.edn": "221c46203c30e6914a63c1ca7a47c79b2ec83423317d64345e2bdd9e3e03bac7"
+      }
+    },
+    "assets/agent_transcripts/dependency_length/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-08T21:41:22.104Z",
+      "channels": 5,
+      "file": "assets/web_publications/dependency_length/document/metadata.edn",
+      "files": {
+        "assets/web_publications/dependency_length/document/metadata.edn": "d0af5d8809a09ccca8385e3f5789dca618f043631da450d99f5523037699edc5",
+        "assets/web_publications/dependency_length/document/outputs.json": "17594d532aa56a22f2bb9828a52bea58bc1a8fcadc4c0bc8e0a08d574e21aba4",
+        "assets/web_publications/dependency_length/outputs/0.html": "3b5b150fe059c7fed64279282e78bf13aedafce06daf26a00c03d1ffeeeb0ac0",
+        "assets/web_publications/dependency_length/outputs/1.html": "f94613356a2ab6ce7be3e3935ad06ff39d42dd6de0903ed801107dcbffb5df55",
+        "assets/web_publications/dependency_length/outputs/2.html": "a32705edd9ecc10bd53a835267d54ed67940c11c6e3ef46e0327aa63ae4da44f",
+        "assets/web_publications/dependency_length/outputs/3.html": "eca4f7b828cf3f2c487fe6850b481513b88a481c35803fa48c488d1cb2f982b8",
+        "assets/web_publications/dependency_length/outputs/4.html": "4eec86a7c3c510815da0b1a625966d6dff1bf05e1306c4326ad960b0f4b415e3"
+      },
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "outputs": "assets/web_publications/dependency_length/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/dependency_length.yaml": "b555e4bed0472cd42f82a48090f8007dd5ae5e47dd3ed2a0b2849845c21ddd4e",
+        "public/docs/assets/agent_transcripts/dependency_length/dl_gettysburg_code_.kt": "88ea5ef8d0a26061c6036bd5b35dcc7eb301543ffeecd186ef3608d37fe004a7",
+        "public/docs/assets/agent_transcripts/dependency_length/dl_growth_code_.kt": "d4a1bfe616b83176d40365b74217ba13c65094cc1ccfc774c3875b4de3bc1735",
+        "public/docs/assets/agent_transcripts/dependency_length/dl_ratios_code_.kt": "d80fbe16956a0da64cb7c62bed68ac757749aa0f6dafbf6f9737f0f1245b2148",
+        "public/docs/assets/agent_transcripts/dependency_length/dl_reorderings_code_.kt": "3b90d87cf09f0f43a2a7364385083e61150d5cf52d91c5ddc81014f92bc67e71",
+        "public/docs/assets/agent_transcripts/dependency_length/dl_table_code_.kt": "4ef7df13adf14a26ee921c8026ff22fa556e64ccbf76bd2f165ddf04530c9282",
+        "public/docs/assets/agent_transcripts/dependency_length/guides/sentence_diagrams.md": "a2be49324399fa491cedff1fd13fda539aa7863c945613ec11ca92bdfec78fce",
+        "public/docs/assets/agent_transcripts/dependency_length/metadata.edn": "d66a6ee210ad3ad5af945d7e1accdf08844ed62e6f98fca1ac43090d8bce0ffd"
       }
     },
     "assets/agent_transcripts/drawn_morph/metadata.edn": {
@@ -1728,6 +1850,91 @@
         "public/docs/gpu_state.md#capture-box=gs_renderer"
       ]
     },
+    "assets/agent_transcripts/growing_nca/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-08T21:43:34.431Z",
+      "channels": 2,
+      "file": "assets/web_publications/growing_nca/document/metadata.edn",
+      "files": {
+        "assets/web_publications/growing_nca/document/metadata.edn": "fdbd8d4d24fb64ed9be7e35483b364f5936c14e02798b1609610ebf79ad13ae7",
+        "assets/web_publications/growing_nca/document/outputs.json": "3f23edc76b1102edc6d64a2041e2c9fe594fede07b7db0cd4aecfa578c836aa2",
+        "assets/web_publications/growing_nca/outputs/0.html": "ee86232e3f7913b307ebc03c1145883f8acd977592545c53d2bf550b6fa505cc",
+        "assets/web_publications/growing_nca/outputs/1.html": "faa853c343b9793176577a65615788724a839eda73a7b69873cea8d4ac6237a3"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/growing_nca/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/growing_nca.yaml": "44ae6e53acda65752e0277d7bdaf022c495d1d2b772c04ac3ec9c01c30495d3d",
+        "public/docs/assets/agent_transcripts/growing_nca/guides/growing_nca.md": "8e833cf6081e51e91e02487facf568a48ec290e058ac4e59add89119a5436ff8",
+        "public/docs/assets/agent_transcripts/growing_nca/metadata.edn": "3155b548f922160c9a8667f7b724b5fdd092b06c8ee73f8d40265af84d02df35",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_damage_code_.kt": "5d3a7e15895c5de65fe0600570a8d7179ca26f756b3dba99755acd1361116942",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_fields_code_.kt": "ba6d6cb07eae0d3b5819eb9f911a09ae04aab8e7728bb8a6ed6d59824ffa6668",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_fish_strip_code_.kt": "7a8ddc916ed57c7e8391e5ca89edc7ed71d2283230592b38eab8fd3f6af216a2",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_fish_target_code_.kt": "c3fbfae788535a2099b13356792c5b2832a3d29847115966a8b2813de31a6add",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_code_.kt": "98985dbd461aebecd2f2d1313c86aaa43728794af3c5a4736a15b39c5156b8c6",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_compute_.glsl": "4757e0ca4d6b016ae44d3d19ff1a24387a0620b10f20ba76c9fea674299c8d75",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_fish_code_.kt": "dacdf3aee7267fa4cc53c3426111c401c3f5cc7102fccf8ecbecba9aefedae93",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_fish_compute_.glsl": "4757e0ca4d6b016ae44d3d19ff1a24387a0620b10f20ba76c9fea674299c8d75",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_fish_fragment_.glsl": "d30ac0135056781a0bd0945a066ceb50998316ee79395725ac8cbc3c397a78f2",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_fish_vertex_.glsl": "c55d55eab8d8b7e6dd2cf26f915903dfb3364de1defda77b9dc14489a101cf01",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_fragment_.glsl": "d30ac0135056781a0bd0945a066ceb50998316ee79395725ac8cbc3c397a78f2",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_vertex_.glsl": "c55d55eab8d8b7e6dd2cf26f915903dfb3364de1defda77b9dc14489a101cf01",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_live_code_.kt": "6206b17dbbed8aa2b80029ba69597230636edfa5f0a957aede6a4f60a9596929",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_renderer_code_.kt": "c3f4dfacb4a318c3cbc01337c0a4b3817a2cb5b980459192209dd36da8d1f0de",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_renderer_fish_code_.kt": "baf4bcc3331faa1e40875763e9988cebb9f8985f7754ca83247f251d7caf64b4",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_rotate_code_.kt": "6a0303f391f9f5277cb0726e59301820d9939163436192582c10477743bff06f",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_strip_code_.kt": "2f7638380c2e4ef983ecbd66079c01da235f194ecb23fce8174db6ddd4deb1da",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_turn_code_.kt": "b2fded6dc0396d0fa02960a76ea5f825f5c60d666a5f38e80a64575799203033",
+        "public/docs/assets/growing_nca/gpu_fish.png": "c9079e313d8b7147eb8f67243060f6dcabca72fe2696ae50bc04fdc0268ab9f1",
+        "public/docs/assets/growing_nca/gpu_window.png": "aa5df6953053642079105dd39022bfee04509e70467ab15446d8233cf1713d47",
+        "public/docs/growing_nca.md#capture-box=nca_renderer": "70cdf67239cfc7edd67a640e5620cbc2e73cd00b3a7c40f53cd987eeef8034c8",
+        "public/docs/growing_nca.md#capture-box=nca_renderer_fish": "aec163ab8c9c1bf11bad98abbcded1a692df3c205ba7ffdbb28179fd87d168fd"
+      },
+      "supplementalSources": [
+        "public/docs/assets/growing_nca/gpu_fish.png",
+        "public/docs/assets/growing_nca/gpu_window.png",
+        "public/docs/growing_nca.md#capture-box=nca_renderer",
+        "public/docs/growing_nca.md#capture-box=nca_renderer_fish"
+      ]
+    },
+    "assets/agent_transcripts/harmonic_drum/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-08T18:23:05.333Z",
+      "channels": 10,
+      "file": "assets/web_publications/harmonic_drum/document/metadata.edn",
+      "files": {
+        "assets/web_publications/harmonic_drum/document/metadata.edn": "1e84edbedc4eb9f377f8b34697b9afa23eb2e5d71aabed779b8d6b462fb06f06",
+        "assets/web_publications/harmonic_drum/document/outputs.json": "0d4758e6ac965ea846e765937a329e102ee4077dbdcded3d920b04f7a35f55d4",
+        "assets/web_publications/harmonic_drum/outputs/0.html": "a8163d269b1512fff70b792030515faf446b3510cb8ea93c7fec81de22c92a41",
+        "assets/web_publications/harmonic_drum/outputs/1.html": "9514ed909c12463fd505c8d17821c9f9f69e3c088d1ccfe6df12a9432583a447",
+        "assets/web_publications/harmonic_drum/outputs/2.html": "fab3d967e101dce76582ffac5baf73b7377129474768a26be94c5b5a6f3b4413",
+        "assets/web_publications/harmonic_drum/outputs/3.html": "73487ab927b67fbb8585b7c7d372115f0e2b8b7fb5796c2d205c39d627917606",
+        "assets/web_publications/harmonic_drum/outputs/4.html": "2e66039d39514e330f5fb0ae1ce7c2d4e666a393f56e9506d56a5fcc3ea88179",
+        "assets/web_publications/harmonic_drum/outputs/5.html": "92252015400f08154b5574689f62d299a40b586bfc934076c6bcc4744cc52ef9",
+        "assets/web_publications/harmonic_drum/outputs/6.html": "6be971e07b7389c927535289ac0378f69106d1cdd542a02402f752533d28d13c",
+        "assets/web_publications/harmonic_drum/outputs/7.html": "3536d7eea857d6d2874b36c4ec7d10c41842e23aa983d5e29818c775e1e97576",
+        "assets/web_publications/harmonic_drum/outputs/8.html": "3b05d5174a31e1849e383b8bbbfc70bc14f9ecbe2fb3d41eaefb7ad772a32d67",
+        "assets/web_publications/harmonic_drum/outputs/9.html": "17755e9d1503e3a2ac4d0233b7b0301c6e64a61b53c4be578b800572b9272604"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/harmonic_drum/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/harmonic_drum.yaml": "f1369368cf38401215b22ac37dd6be609ee7a6e3f289d7af6b95a5b3451a9a7e",
+        "public/docs/assets/agent_transcripts/harmonic_drum/guides/eigendrum.md": "197d47fd095922c501bc8be9c3fa83ea0dcb8bca86948220e8b36764a9093686",
+        "public/docs/assets/agent_transcripts/harmonic_drum/hd_families_code_.kt": "22550327cba4e1cc4776afed245bb2844e9bff5707dc8efeb8d1e20df28418ab",
+        "public/docs/assets/agent_transcripts/harmonic_drum/hd_map_code_.kt": "130d3352744de604743bd0aa26c5734c60ea8fd94aca55075e60db30768f65de",
+        "public/docs/assets/agent_transcripts/harmonic_drum/hd_morph_code_.kt": "75fe40b61dc625d7be45e5e723164a0060772c031e13f85efe4c4b5adeaa396c",
+        "public/docs/assets/agent_transcripts/harmonic_drum/hd_sand_code_.kt": "b6fe4770f7f75bc7af1a6a614a8588f2dcee633d42913125bb52ef78a87d0504",
+        "public/docs/assets/agent_transcripts/harmonic_drum/hd_shapes_code_.kt": "f6007bc24cbe8cb4d5c44f9a37e46afc1a62611d38b65c3395e1cbd0a4cbcf39",
+        "public/docs/assets/agent_transcripts/harmonic_drum/hd_syahi_code_.kt": "da83bbfa7a94717d9e344c49407db83e8f8c0f96eae7f8ce0dfce6d626dbbe10",
+        "public/docs/assets/agent_transcripts/harmonic_drum/hd_triad_code_.kt": "e481ea1eafea6791fb2255ce66e559065f8db946e2c5b83fbd22b9202350d6ab",
+        "public/docs/assets/agent_transcripts/harmonic_drum/metadata.edn": "d05df65028e4a24323f037ecda7e941f193961871a76cdbc8ab6b644137a4f99"
+      }
+    },
     "assets/agent_transcripts/hello_display/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
       "capturedAt": "2026-11-08T10:16:05.600Z",
@@ -1985,17 +2192,17 @@
     },
     "assets/agent_transcripts/knight_tour_workshop/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
-      "capturedAt": "2026-11-08T10:16:01.033Z",
+      "capturedAt": "2026-11-08T21:41:59.913Z",
       "channels": 5,
       "file": "assets/web_publications/knight_tour_workshop/document/metadata.edn",
       "files": {
         "assets/web_publications/knight_tour_workshop/document/metadata.edn": "57ca9fef5a5def89a02e6f74c22651a2af5fe129b21d721d4aef642dd98811af",
-        "assets/web_publications/knight_tour_workshop/document/outputs.json": "0e3aa344cd528bccedd777fc558f47e2eb3eb61073e4e4b6b52d5775f1abeb4a",
-        "assets/web_publications/knight_tour_workshop/outputs/0.html": "782ad3cfe7299c515ad134ec3b32a6caa97d0da88a3df20951ae636d23e0a24d",
-        "assets/web_publications/knight_tour_workshop/outputs/1.html": "14587a7e04b5005c7ac59cd5b708a4d8405ad101ea03b06095857b514c5d18fb",
-        "assets/web_publications/knight_tour_workshop/outputs/2.html": "4d37ebb426475745fa78bedaec4cdbf6783c1d6142d2acc344c73d5d7fdcf8ff",
-        "assets/web_publications/knight_tour_workshop/outputs/3.html": "feedf86e97d53d1ae54ea2dc87818b13aa02063e3d7eb3ef13c67facdfb70dc6",
-        "assets/web_publications/knight_tour_workshop/outputs/4.html": "dff3dae229bbd179ad6aa58fb790ed74d7a52da9774e638173cb6caa6d2c1eaa"
+        "assets/web_publications/knight_tour_workshop/document/outputs.json": "feec01499398e20ca923629a5732e19acd721e400280aad6acbe3f2e046ab9b2",
+        "assets/web_publications/knight_tour_workshop/outputs/0.html": "59c8935e627007347d5da29f0e908178291f20f7c6e3c3e9921acedaf3a121d9",
+        "assets/web_publications/knight_tour_workshop/outputs/1.html": "178bf9a3b87a700e6842ea29130b4b0d8111c03eeb466b5de22f0ed269fedebc",
+        "assets/web_publications/knight_tour_workshop/outputs/2.html": "34609b0bda333de0842687f76350b8e519c9b534cb02cd79bf158f19a2e5419a",
+        "assets/web_publications/knight_tour_workshop/outputs/3.html": "70370808b341caa66b2e26b45a1c7ce927558f4687ad684b3eea74d9eb6e3fef",
+        "assets/web_publications/knight_tour_workshop/outputs/4.html": "f72f5df077e94a7e59106f555f2db862ef9ebd8f5ea134873f1504a4390f4da9"
       },
       "kinds": [
         "svg"
@@ -2008,7 +2215,7 @@
         "public/docs/assets/agent_transcripts/knight_tour_workshop/73b2ad1a-50a9-40ed-bef3-9456d8cf0d91_code_.kt": "bd5f64c6a732a532ac06fc351bd26ed6cd48f6bb548b79c4c8dabcaa3159d034",
         "public/docs/assets/agent_transcripts/knight_tour_workshop/756af284-5020-45dd-baf4-7b3bc777e681_code_.kt": "06b47968ce2c0067a35b8eb1cc8b589db602996370148bef38fd43b56d734485",
         "public/docs/assets/agent_transcripts/knight_tour_workshop/cc20e577-5142-4a8b-8083-3c737fc5b084_code_.kt": "7855c47bb6c6db94a168e060dbfe4cb94fce87c416fb0a0f0dd5d18d19463fae",
-        "public/docs/assets/agent_transcripts/knight_tour_workshop/guides/knight_tour_workshop.md": "c71a2d08f4d674ab8c75a57dfe66db3bcac5f1d545060a79f9b80e545b03b125",
+        "public/docs/assets/agent_transcripts/knight_tour_workshop/guides/knight_tour_workshop.md": "53247b64f73adafb3c9cbfd74a492e52d94daba829fbcbb6e2b3c2376f358f37",
         "public/docs/assets/agent_transcripts/knight_tour_workshop/metadata.edn": "4d8a2e44a7e5b19869d05e582a7b2a04a77372c3553e03a96a6ef1a83b21b78f"
       }
     },
@@ -2725,12 +2932,12 @@
     },
     "assets/agent_transcripts/openxr_eye_intersection/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
-      "capturedAt": "2026-11-08T10:43:34.335Z",
+      "capturedAt": "2026-11-09T10:42:18.075Z",
       "channels": 1,
       "file": "assets/web_publications/openxr_eye_intersection/document/metadata.edn",
       "files": {
-        "assets/web_publications/openxr_eye_intersection/document/metadata.edn": "fbbc8c052361e3af4c12ca232dcd0c29f8c43c41830be6130db77d5037f4517c",
-        "assets/web_publications/openxr_eye_intersection/document/outputs.json": "91475aac2f9e5bac0d1f2cc3c2912cf588b6e1138196456eb4e807ceb5187b5e",
+        "assets/web_publications/openxr_eye_intersection/document/metadata.edn": "6e7062bce809da41d740b1c2e35634951e01b7a41f4ea7faad7f67af340aec8c",
+        "assets/web_publications/openxr_eye_intersection/document/outputs.json": "1f5dd0dbfcd5eeb21687eeba963a45f381250088fc405fa784508e638453fee0",
         "assets/web_publications/openxr_eye_intersection/outputs/0.html": "526c64e396541d183ffd4cb9fadc180ad28eb4170b78e1f047d4f6924b44ecdd"
       },
       "kinds": [
@@ -2738,13 +2945,13 @@
       ],
       "outputs": "assets/web_publications/openxr_eye_intersection/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/openxr_eye_intersection.yaml": "f1c569cc2caab3feec04b020c408cfc1e902a369f89ba16a0adfde1d7d312d91",
+        "dev_docs/agents/transcripts/openxr_eye_intersection.yaml": "5e82abac759fd9d53675b26904fbaf3e8cf808c8057767fc85e61fc8b158dcaa",
         "public/docs/assets/agent_transcripts/openxr_eye_intersection/eye_ray_renderer_code_.kt": "e6623728ad396dcd1716c8df39fc4866e1cbd603b2ce6849e38031384891704b",
-        "public/docs/assets/agent_transcripts/openxr_eye_intersection/eye_ray_scene_code_.kt": "6d90755cdbe370769df4ba45d8d22b32bef7baef707aef3d3dd986f5cfaab2b1",
+        "public/docs/assets/agent_transcripts/openxr_eye_intersection/eye_ray_scene_code_.kt": "8fb9483b0a1ede27eadbed68cbe5e00cb4bfaebe55405b153aa198c065d0cb76",
         "public/docs/assets/agent_transcripts/openxr_eye_intersection/eye_ray_scene_fragment_.glsl": "09f2d517b9f20511becdbad44a079ab2444e197c15df7f90141a8a45c10d42de",
         "public/docs/assets/agent_transcripts/openxr_eye_intersection/eye_ray_scene_vertex_.glsl": "3ed65e56090d366813d8ebf73081fd80067692f4086282c4263593eee1af03c6",
         "public/docs/assets/agent_transcripts/openxr_eye_intersection/guides/openxr_eye_intersection.md": "0e8f541f4bac93f196ec458c16f0ba7f4311739dc7872d4c1b568c0ab9b5a82b",
-        "public/docs/assets/agent_transcripts/openxr_eye_intersection/metadata.edn": "4780b2187b419f6cf37d34564804a3d54896ce181a497d02373aaa505710cc85",
+        "public/docs/assets/agent_transcripts/openxr_eye_intersection/metadata.edn": "d242754c30ab12755ddc4ff33d8f384f3d0a8a4c1a835bb954a97f364eb83c75",
         "public/docs/assets/openxr_eye_intersection/desktop.png": "b71007f4148edad06b4b37b0a97f52e43fde68924f380e4b1f757cbcb4cf4598",
         "public/docs/openxr_eye_intersection.md#capture-box=eye_ray_renderer": "c253d973ae07f1f5e9893a6b168405bc83d714a9db55343212222b714a8607b4"
       },
@@ -2774,6 +2981,34 @@
         "public/docs/assets/agent_transcripts/paint_canvas/paint_first_strokes_code_.kt": "d1dfe006567557060748647a08af3b69f51699d3d894d18b9f7323d5f508ffdf",
         "public/docs/assets/agent_transcripts/paint_canvas/paint_flow_field_code_.kt": "715ed16506635d2189d9961718a1ea5ef5a37efbb38265bf4de66e6b25f5ec5d",
         "public/docs/assets/agent_transcripts/paint_canvas/paint_pencil_drawing_code_.kt": "ef6f9147c20f264348d7d62427e9745f019481bb2cac3886783cc01133f826f9"
+      }
+    },
+    "assets/agent_transcripts/particle_lenia/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-08T22:19:07.621Z",
+      "channels": 4,
+      "file": "assets/web_publications/particle_lenia/document/metadata.edn",
+      "files": {
+        "assets/web_publications/particle_lenia/document/metadata.edn": "d98ed484f83f8348115c3f786f6611f6150e64fb8200500f74fb6a5a7ead3266",
+        "assets/web_publications/particle_lenia/document/outputs.json": "7043ee7d8a258a1b1a1c3a9ff550f1323ae71d1a7cbb1072ef3d1743e9798eb3",
+        "assets/web_publications/particle_lenia/outputs/0.html": "4b3a997e461c52ce5391e4905de580357800b980641e67c2e095eae8f6bb7e87",
+        "assets/web_publications/particle_lenia/outputs/1.html": "84b1c3e0dcb7fd3a5dcc883e21c57bc3fbdcd42f8d07aed78ea6a6371680fc8e",
+        "assets/web_publications/particle_lenia/outputs/2.html": "e8b7ad20d6e8c52af43ab365c55f1361f25589421af38967680ddc4eca3bd936",
+        "assets/web_publications/particle_lenia/outputs/3.html": "67ba41842b04d79d955ef0a1d37d26e6c765e10430bd7de6524c21658ee7c147"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/particle_lenia/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/particle_lenia.yaml": "48cac4e50be446fe9c17d85e6ba03237c69f4fecbed46e5ed3c247cb3ec218c2",
+        "public/docs/assets/agent_transcripts/particle_lenia/guides/particle_lenia.md": "2f937ebbe05df9b4019c9b05b7cdad097e2631dc8748704b89e9f2232e184025",
+        "public/docs/assets/agent_transcripts/particle_lenia/metadata.edn": "1f99d22d39125971486e13a6ad5ce2dd5bd8403af29de1adc818e9d3cb6cc919",
+        "public/docs/assets/agent_transcripts/particle_lenia/particle_lenia_glider_code_.kt": "7c90c43bc5caa39b259aa08d2ba57acda5c7ca1435104ce6cc48aed0518ae9e0",
+        "public/docs/assets/agent_transcripts/particle_lenia/particle_lenia_glider_search_code_.kt": "375f6d570bc3e78a111e97c7d43612bf92b16821d3e63d01af47a74e996bc09d",
+        "public/docs/assets/agent_transcripts/particle_lenia/particle_lenia_growth_map_code_.kt": "b9eefd629d84ccbad3962b7d191eb3356b51da4d5cf07b454349191e61271b6c",
+        "public/docs/assets/agent_transcripts/particle_lenia/particle_lenia_movie_code_.kt": "dc67ee1402da637d70ed016841dcac75a89ed470229b0500af31846350f72dbf",
+        "public/docs/assets/agent_transcripts/particle_lenia/particle_lenia_rotator_code_.kt": "8ed99118d6326ceb5b85bd503dc31e6d2618da13d9d6748930c312ac8a15911a",
+        "public/docs/assets/agent_transcripts/particle_lenia/particle_lenia_still_code_.kt": "9376101fa1b53636ad08adafb1a0be39625bb6c4e72fa15df6b07930041f996b",
+        "public/docs/assets/agent_transcripts/particle_lenia/particle_lenia_zoo_code_.kt": "26d9eae0f1bc2554166d1c7ff9bce2ceec20093f1575e99123696c37f8109372"
       }
     },
     "assets/agent_transcripts/particle_video_reader/metadata.edn": {
@@ -3118,6 +3353,48 @@
         "public/docs/assets/chain_pattern_particles/rings.png",
         "public/docs/chain_pattern_particles.md#capture-box=pp_draw"
       ]
+    },
+    "assets/agent_transcripts/penrose_spectra/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-08T21:43:31.388Z",
+      "channels": 15,
+      "file": "assets/web_publications/penrose_spectra/document/metadata.edn",
+      "files": {
+        "assets/web_publications/penrose_spectra/document/metadata.edn": "8176a32cfe47cf0cec2a1425d09de85234dde3ccfbb7ac0212d737def79a7132",
+        "assets/web_publications/penrose_spectra/document/outputs.json": "ba0106c8e0d332d4aacb969a9d3226cdf8fa7b41cfef52ad55c0153d861cfe98",
+        "assets/web_publications/penrose_spectra/outputs/0.html": "2fecb9731d35ee41cda4279e161a7329766e2e7f37380336094467ff69d935d2",
+        "assets/web_publications/penrose_spectra/outputs/1.html": "20a61313bc37477b00f76ecb8fb6be31112fa6edd642835ac5decfa0e2f1d1b6",
+        "assets/web_publications/penrose_spectra/outputs/10.html": "b58da52f72c0a1aabf92cdfd50c898b851f792fcac7c25a004d3dbd0a7487d4d",
+        "assets/web_publications/penrose_spectra/outputs/11.html": "cf36d9789344be113c22ca832a5d2e38dfa3b5f68d753c2edc524b3884f467ca",
+        "assets/web_publications/penrose_spectra/outputs/12.html": "1579bc8dde57e74edf0a79ccf6dd412d73757c032d85944abadd15a2e20c099e",
+        "assets/web_publications/penrose_spectra/outputs/13.html": "301d152a0b971971b6bd4e5913a10ca10a149f466ba723a5dca034dec0f42354",
+        "assets/web_publications/penrose_spectra/outputs/14.html": "a7bf942228bddbb966a960df923268857c60e35a1a4f8190118e4c681d030135",
+        "assets/web_publications/penrose_spectra/outputs/2.html": "87dd9a776621cc06f06b0b2af22c82f59b18989aeaca791397be251ec0771dc9",
+        "assets/web_publications/penrose_spectra/outputs/3.html": "1a2749a500a569954aae88fed6cc37ecd0780f70043b1fea482b999df9e0997a",
+        "assets/web_publications/penrose_spectra/outputs/4.html": "98fd863eaeae8a44bade4bc81a84113b53b708959011a7b640b8f85fbff4eb45",
+        "assets/web_publications/penrose_spectra/outputs/5.html": "57bf87189b300e406ec8fb6c4293c1dbb6c6c3846de281ecc1a4d52419a61c48",
+        "assets/web_publications/penrose_spectra/outputs/6.html": "a0540713c2b893d1314ec5795322c4b7cd177767825cfc42d140131c5f8f87c5",
+        "assets/web_publications/penrose_spectra/outputs/7.html": "729be34971ce3d7121173b9b64975d008f70a7e06c145d8808ffd202493eccc7",
+        "assets/web_publications/penrose_spectra/outputs/8.html": "4757b11eebc3c42021fb6ddc513fb2541431df6e16e521ad12a690281547411a",
+        "assets/web_publications/penrose_spectra/outputs/9.html": "0c6242042e706780784819fcb50d683320d92b0b78fa80c03c937e3682096c01"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/penrose_spectra/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/penrose_spectra.yaml": "1cdd4b6d60b06a4005e7282a6d05aeb4617d69abcf27f1aba7e47f10d42d36ba",
+        "public/docs/assets/agent_transcripts/penrose_spectra/guides/debruijn_tilings.md": "93039e0890c2312f30d33d174ac12c2d029324cd8352aa4a90d5ab8da82f21ae",
+        "public/docs/assets/agent_transcripts/penrose_spectra/guides/eigendrum.md": "7c6e488d45b0632f7d062f8833a382cf0cd9b2faadd511272f4e22643d33e8c0",
+        "public/docs/assets/agent_transcripts/penrose_spectra/metadata.edn": "1b77ef4e0c84a14472ac3a3d7742ec6348386bfdcb463d79f3726ab640dadf59",
+        "public/docs/assets/agent_transcripts/penrose_spectra/ps_count_code_.kt": "d8aa59cb2d343409f998e62510bc7ec745a783fc986d8438fe52a90ed0b7dca1",
+        "public/docs/assets/agent_transcripts/penrose_spectra/ps_idos_code_.kt": "0073ed6f1d0bfc9826634886f3d163be726adce39f8c8673947f5b25b9cba023",
+        "public/docs/assets/agent_transcripts/penrose_spectra/ps_live_code_.kt": "42ba4477b6b8324a67f479d138b6e786744597f305d0948712fba074b6b67440",
+        "public/docs/assets/agent_transcripts/penrose_spectra/ps_slider_code_.kt": "2a8b614900ae352809b47665b6b6bffe3edb53ba83a095928d0bde82ee434ece",
+        "public/docs/assets/agent_transcripts/penrose_spectra/ps_states_code_.kt": "543551416b8f93ead36f6136147fc58dcb549d2f8a386072c3b81ef5584fc780",
+        "public/docs/assets/agent_transcripts/penrose_spectra/ps_strike_code_.kt": "0b0c2702c29e560b9c534bc3550e7e04ba2c47bc42d3424575f43479938bd158",
+        "public/docs/assets/agent_transcripts/penrose_spectra/ps_sweep_code_.kt": "e72e0214fd78061b41c5acbb270b2b3f382e441b5c8e67804e85a7f966f0d118"
+      }
     },
     "assets/agent_transcripts/petri_sound/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
@@ -4667,6 +4944,49 @@
         "public/docs/assets/agent_transcripts/typography_worked_example/typo_sdf_code_.kt": "6de993e8e3f8157dfff399311fd22af1dfcfcc81d81fb9413f670df9f4cca755",
         "public/docs/assets/agent_transcripts/typography_worked_example/typo_values_code_.kt": "3492cc0eb4b4acf6fedbb6d3d3c058f2c0505258c90ac6869556483a765a21ab",
         "public/docs/assets/agent_transcripts/typography_worked_example/typo_winding_code_.kt": "04602ab4aca96bbee29fdb4f0db0f49fdf9b895db30ac93d9f60a93cf840f112"
+      }
+    },
+    "assets/agent_transcripts/uncrossed_leapers/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-08T21:42:55.542Z",
+      "channels": 14,
+      "file": "assets/web_publications/uncrossed_leapers/document/metadata.edn",
+      "files": {
+        "assets/web_publications/uncrossed_leapers/document/metadata.edn": "b495bf488ccc04012964112f34d7922c79c8284c217ebfcd0c29c88894c39b75",
+        "assets/web_publications/uncrossed_leapers/document/outputs.json": "b5649d9a6c2628c3910a62a7cf085f3b6de06fd0a0fb6b62d3a9c8808f6a80e6",
+        "assets/web_publications/uncrossed_leapers/outputs/0.html": "e3a41dbbadc78850f6d8bf0754c564b700249c7542753addbe4d23289407a4c9",
+        "assets/web_publications/uncrossed_leapers/outputs/1.html": "a9fe433f65d97c9e50db144cfbb7d60a5e9917a7841489193424b3b951fb222f",
+        "assets/web_publications/uncrossed_leapers/outputs/10.html": "5e019260c55c96b9387a3329e884f5adc71f80714e8af0f95315f60155049587",
+        "assets/web_publications/uncrossed_leapers/outputs/11.html": "b20e99a88f4c1a02698506d2b8f77686cf9be83a9d66fec5411933357443971c",
+        "assets/web_publications/uncrossed_leapers/outputs/12.html": "f6170334a59df799993bff46ca9375e54821ce25c88a175657469b8459c0ab2c",
+        "assets/web_publications/uncrossed_leapers/outputs/13.html": "8cde970416f0f25464a43ec0f364264b6bbf507169105982c94bbcc1d6d76acd",
+        "assets/web_publications/uncrossed_leapers/outputs/2.html": "3586fdd0bf21ffd0efb4067c8c20e18563185d937ed19b63b61c9a7c8912e187",
+        "assets/web_publications/uncrossed_leapers/outputs/3.html": "1e76bc21184722b51f8d26bd4b170aa3938a4c29ee5509c99fbdbac5a8ef1500",
+        "assets/web_publications/uncrossed_leapers/outputs/4.html": "a8e6f273ab49a15e4e21a28129e5a55f55848251d2b025c26ca04c834527f090",
+        "assets/web_publications/uncrossed_leapers/outputs/5.html": "8f0250dc05f51999248be3885da2894f0c5f70e859c375e57549558d1615d1db",
+        "assets/web_publications/uncrossed_leapers/outputs/6.html": "aaf400f0fb029467fd1625412b7bf7894dea1de2c8c8a7f3b6a0ca9519c289fc",
+        "assets/web_publications/uncrossed_leapers/outputs/7.html": "93332aed746114bef4b54877126bde9e349bf0ecca0100fbc730b462d4865073",
+        "assets/web_publications/uncrossed_leapers/outputs/8.html": "5516d9f74e52ed1de121b63744615dac1ff7f008ef3682f6fef32ca0ca68f180",
+        "assets/web_publications/uncrossed_leapers/outputs/9.html": "b1580d9c244e088cdab8cb0e7ee4c91391f82d2f18f05d49c269509d1f5d00bc"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/uncrossed_leapers/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/uncrossed_leapers.yaml": "0968ebc42351959e5b5518917115316b89ec5ae0a830c1b859bc516261c7c8dd",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/guides/knight_tour_workshop.md": "ca65752592099d69fcb9b57fb91330ee42fd3d46fb25ba98e6adbd784f6f4dd1",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/metadata.edn": "8717127244a2ac22a05df622f52717c4ec777c03a31771cd39aa110c2d6075e2",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_arcs_code_.kt": "06b47968ce2c0067a35b8eb1cc8b589db602996370148bef38fd43b56d734485",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_big_code_.kt": "d2eb1d77bf2237ad0cf8d02eb18d03ba9eb3ad73282a6edac0af645c9cb088b2",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_cycles_code_.kt": "e147541b05854c13232b37ac94f13bc70e70366f6089bf13b447c4586cbf5513",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_draw_code_.kt": "469dd7a682014d11ba364b3bd4c6d32b18ccc240e552df2e74625ecb2fa4e80e",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_gallery_code_.kt": "65b6b7550462efa115342230fae07783c76ef7f325b17edb0d73e04a60b079cf",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_knight_code_.kt": "8ea643ed7a2f53a277ac313c06c9370e0b9179495668cdc54c84bc3c9779c221",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_lines_code_.kt": "645ee0ef34f39da89fb585af98c43214844af98ab927fcc8f6e0edb95b6fe8f5",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_plotter_code_.kt": "a58b1c7a2c3080991dcb8cf20a552173a2c69c46dd0411676ab6715b953e3a29",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_sweep_code_.kt": "7b6f5e9db308ba26b7617312792ff77a496a340e20e83f8940f3fc28777ee2d3",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_tours_code_.kt": "9993e86fe66e5d8fc839ac4dd3296b28e218b1f9266706619857c3c8802a57d3"
       }
     },
     "assets/agent_transcripts/vector_field_explorer/metadata.edn": {

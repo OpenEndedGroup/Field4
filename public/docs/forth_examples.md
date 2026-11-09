@@ -387,6 +387,125 @@ turn shows as a changing slope, and the `debug` panel counts the ticks.
 
 `frame` hands control back to Field, and the word starts again on the next tick, so keep anything that must last between ticks in variables, not on the stack.
 
+## Each step is a program
+
+Put a short Forth program in each cell of a step sequencer, and it can decide what to play each
+time the sequence comes round. ForthField borrows that idea and a handful of words from
+[Cagire](https://cagire.raphaelforment.fr), Raphaël Forment's Forth sequencer. Cagire's source is
+at [git.raphaelforment.fr/BuboBubo/cagire](https://git.raphaelforment.fr/BuboBubo/cagire); like
+Field, it is AGPL-3.0-or-later.
+
+`seq: name … ;seq` defines a grid. Each `|` ends a step and an empty step is a rest. Note names are
+literals, so `c4` pushes 60 and `eb3` pushes 51, and `note` sounds one on the current step. Between
+`<` and `>`, a step takes one item each time it comes round: the first pass plays the first item, the
+second pass the second, and so on, wrapping. This grid has four steps. The first alternates through C,
+E flat and G, and the third between G and C:
+
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_alternation.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-alternation" alt="A steps panel lists the six notes the twelve steps played, one per line with its step, cell and MIDI number: step 0 c4, step 2 g3, step 4 d#3, step 6 c4, step 8 g3, step 10 g3, all sine. Below it an audio panel shows the waveform over a player."}
+120 bpm
+seq: line  < c4 eb3 g3 > note | | < g3 c4 > note | ;seq
+line 12 run-steps
+line 12 render-steps
+```
+
+`line 12 run-steps` runs the first twelve steps and lists the notes they played in a `steps` panel.
+`render-steps` renders them to a player in the box's `audio` panel. A step is a sixteenth note at
+the tempo `bpm` sets. The log spells E flat as `d#3`, which is the same MIDI note:
+
+```diffstatic_runner {data-lang=forth audio="assets/forth_examples/steps_alternation.wav" audio-spec="forth-steps-alternation" audio-renderer="afield.lang.forth.ForthStepsDocs" embed=true hidden=true name="forth-steps-alternation-audio"}
+\ Offline-rendered by ForthStepsDocs.renderWav("forth-steps-alternation").
+```
+
+Inside a step, `<` opens an alternation only when its `>` is on the same line with no `if`, `do` or
+definition between them, so `x 0 < if … then` in a step is still a comparison. Outside a step, `<` and
+`>` are always the comparisons.
+
+### A synth is a word
+
+The voice words set up the note that `note` will play: `sine`, `saw`, `square` and `tri` choose the
+oscillator, `lpf` sets a lowpass corner in Hz, `dur` how many seconds the note holds before it fades,
+and `gain` its level. Every step starts with a plain sine; define a word to reuse another sound
+across steps. Cagire writes `{ 110 saw 800 lpf out } synth`; in ForthField the same idea is a colon
+definition:
+
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_synth_word.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-synth-word" alt="A steps panel lists six saw notes, each with lpf 900: c2 and c3 on steps 0 and 1, d#2 on step 3, c2 and c3 on steps 4 and 5, g2 on step 7. Below it an audio panel shows the three-second waveform, a cluster of decaying notes every half second, over a player."}
+: acid  saw 900 lpf 0.08 dur ;
+130 bpm
+seq: bass  acid c2 note | acid c3 note | | acid < eb2 g2 bb2 > note ;seq
+bass 8 run-steps
+bass 24 render-steps
+```
+
+Six passes of the grid, with the last step walking E flat, G, B flat:
+
+```diffstatic_runner {data-lang=forth audio="assets/forth_examples/steps_synth_word.wav" audio-spec="forth-steps-synth-word" audio-renderer="afield.lang.forth.ForthStepsDocs" embed=true hidden=true name="forth-steps-synth-word-audio"}
+\ Offline-rendered by ForthStepsDocs.renderWav("forth-steps-synth-word").
+```
+
+The notes play through the same voice as Field's [pattern language](pattern_language.md): one
+oscillator, a lowpass and a decay, without FM. Cagire's example makes an FM bell; here the `chime` is a
+triangle held for half a second.
+
+### Lists, `iter` and weighted choice
+
+`[ … ]` gathers what its words push into a list. `iter` pushes how many times the grid has come round
+to this step, and `index` takes that item of the list, wrapping, so `[ c5 e5 g5 b5 ] iter index note`
+climbs the chord one pass at a time. `wchoose` takes a list of values and a list of weights and picks
+one value, here C three times out of five:
+
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_chime.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-chime" alt="A steps panel lists four notes: step 0 c5 tri, step 2 g3 sine, step 4 e5 tri, step 6 g3 sine. Below it an audio panel shows six seconds of waveform: a steady bass under eight louder triangle notes that rise and fall, over a player."}
+: chime  tri 0.5 dur 0.5 gain ;
+90 bpm
+seq: bells  chime [ c5 e5 g5 b5 ] iter index note | | 0.2 dur [ c3 g3 eb3 ] [ 6 3 1 ] wchoose note | ;seq
+7 seed bells 8 run-steps
+7 seed bells 32 render-steps
+```
+
+`seed` fixes the random draws, so the log and the player choose the same bass notes. Eight passes:
+
+```diffstatic_runner {data-lang=forth audio="assets/forth_examples/steps_chime.wav" audio-spec="forth-steps-chime" audio-renderer="afield.lang.forth.ForthStepsDocs" embed=true hidden=true name="forth-steps-chime-audio"}
+\ Offline-rendered by ForthStepsDocs.renderWav("forth-steps-chime").
+```
+
+`choose ( list -- x )` picks without weights. For your own arithmetic, `pass` and `step` push the
+pass count and the step number.
+
+### Samples, and the other synths
+
+`sound ( name -- )` plays a named sound instead of a note. `render-dirt` turns the grid into a
+pattern and plays it from the [Dirt-Samples](pattern_language.md) library, so `bd`, `hh`, `sn` and
+`cp` are the drum samples:
+
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_dirt.png" capture="box" open-outputs="true" wait="1.0" requires="dirt-samples" embed=true name="forth-steps-dirt" alt="A steps panel lists eight steps: bd, hh, sn, hh, bd, hh, hh, hh. Below it an audio panel shows under three seconds of waveform, a sharp sample hit on every step, over a player."}
+130 bpm
+seq: kit  s" bd" sound | s" hh" sound | < s" sn" s" hh" s" cp" > sound | s" hh" sound ;seq
+kit 8 run-steps
+kit 24 render-dirt
+```
+
+Six passes, the third step going snare, hat, clap:
+
+```diffstatic_runner {data-lang=forth audio="assets/forth_examples/steps_dirt.wav" audio-spec="forth-steps-dirt" audio-renderer="afield.lang.forth.ForthStepsDirtDocs" requires="dirt-samples" embed=true hidden=true name="forth-steps-dirt-audio"}
+\ Offline-rendered by ForthStepsDirtDocs.renderWav("forth-steps-dirt").
+```
+
+`name n steps->pat` leaves that pattern on the stack: the first n steps as one cycle, repeating, with
+each note's `note`, `gain` and `cutoff` written as the pattern language writes them. Whatever plays a
+`pat` pattern plays it. Field's Pure Data boxes take no patterns, so a step grid cannot drive Pd yet.
+
+### Running a grid live
+
+In a launched box, `tick-steps` plays every step whose time has come, through Field's audio engine,
+and lists its notes; `frame` hands control back to Field until the next tick:
+
+```diffstatic {data-lang=forth}
+seq: line  < c4 eb3 g3 > note | | < g3 c4 > note | ;seq
+: play  line tick-steps frame ;
+play
+```
+
+Redefine `line` while it runs and the next step plays the new program. Stopping the box stops the sound.
+
 ## When a definition misbehaves
 
 Use `see name` to check that the word running is the definition you think it is, and read the error before adding prints: it already names the failing token, the stack and the chain of word calls.

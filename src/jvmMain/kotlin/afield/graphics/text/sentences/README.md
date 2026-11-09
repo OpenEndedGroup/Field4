@@ -140,6 +140,30 @@ second model load:
 optional/sentence-parser/.venv/bin/python python/fieldsentences --serve 9500
 ```
 
+## Measuring whole texts
+
+`DependencyLength.kt` measures dependency length minimisation the way Futrell, Mahowald and
+Gibson did (PNAS 112, 2015): the total of |head − dependent| over a sentence, punctuation and root
+arc excluded, against random projective reorderings of the same tree.
+
+```kotlin
+val text = SentenceTexts.load("gettysburg")       // retained parse; no parser needed
+for (m in text.measure()) println("${m.length} words  ratio ${m.ratio}")
+
+val tree = text.sentences[4].tree()!!             // punctuation removed
+tree.length()                                     // as written
+tree.length(Linearization.freeRandom(tree, java.util.Random(1)))
+tree.length(Linearization.optimal(tree))
+tree.lengths(samples = 100)                       // all baselines at once
+```
+
+The retained passages and their parses live in `src/jvmMain/resources/afield/sentences/texts/`:
+a `.txt` passage and the `.json` that `tools/parse_sentence_texts.py` writes from it with the
+prepared parser. The JSON keeps words, tags and the UD tree only, about 1 kB a sentence.
+`tree.sentence(order)` turns any order back into a `Sentence` for `SentenceDiagram`
+(`d.scheme = Scheme.UD`); `tree.arcLines()` draws arcs alone for small multiples. The user page is the
+"Dependency length in real texts" section of `public/docs/sentence_diagrams.md`.
+
 ## Seeing it
 
 `Main.kt` dumps SVG, which is the fastest way to judge a config change:
@@ -466,6 +490,7 @@ means "leave it alone".
 | `Layout.kt` | placements, lane assignment, the layout itself |
 | `Flines.kt` | `FLine`/`Vec2` bridge and `d.flines()`; `flipY = true` if your surface is y-up |
 | `Main.kt` | CLI preview, a thin wrapper over `SentenceDiagram` |
+| `DependencyLength.kt` | retained texts, dependency length and its random baselines |
 
 `SentenceDiagram` deliberately has no dependency on the graphics stack — `flines()` lives in
 `Flines.kt` as an extension — so the layout side stays runnable and testable without it.

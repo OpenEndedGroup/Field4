@@ -5,7 +5,9 @@
  * generalized eigenpairs Kφ = λMφ are found by banded-Cholesky subspace iteration ([DrumMesh.modes]).
  * A strike projects a small Gaussian mallet onto the modes ([DrumModes.strike]) and [DrumModes.render]
  * sums one damped sinusoid per mode (modal synthesis). [DrumModes.nodalLines] and
- * [DrumModes.modeMesh] draw a mode back as FLines.
+ * [DrumModes.modeMesh] draw a mode back as FLines. A mesh may carry a per-triangle density
+ * (`withDensity` in `HarmonicDrum.kt`), which enters M only: `HarmonicDrum.kt` uses it for Raman's loaded drums
+ * and `DrumDesign.kt` fits shapes and loadings to a target chord.
  *
  * The idea follows eigendrum.com; this is an independent textbook implementation (no code taken).
  */
@@ -47,7 +49,16 @@ class DrumMesh(
     val tris: IntArray,
     /** True for nodes on the clamped rim. */
     val boundary: BooleanArray,
+    /**
+     * Areal density of each triangle, relative to a bare membrane of density 1; null means uniform.
+     * A heavier patch lowers the modes that move it. See `withDensity`.
+     */
+    val density: DoubleArray? = null,
 ) {
+    init {
+        require(density == null || density.size == tris.size / 3) { "density needs one value per triangle (${tris.size / 3}), got ${density?.size}" }
+    }
+
     /** Number of nodes. */
     val nodeCount: Int get() = x.size
 
@@ -83,10 +94,12 @@ class DrumMesh(
      * @param mass `"blend"` (default) averages consistent and lumped mass, which cancels most of the
      *   O(h²) error of linear elements; `"consistent"` gives upper bounds; `"lumped"` lower ones.
      * @param tolerance relative change in every wanted eigenvalue at which iteration stops.
+     * @param warm modes of a drum with the same nodes (the previous step of a fit, say) to start
+     *   the iteration from instead of random vectors; a small change then converges in a few steps.
      */
     @JvmOverloads
-    fun modes(count: Int = 16, mass: String = "blend", tolerance: Double = 1e-10, maxIterations: Int = 400): DrumModes =
-        solveDrumModes(this, count, mass, tolerance, maxIterations)
+    fun modes(count: Int = 16, mass: String = "blend", tolerance: Double = 1e-10, maxIterations: Int = 400, warm: DrumModes? = null): DrumModes =
+        solveDrumModes(this, count, mass, tolerance, maxIterations, warm)
 }
 
 /**
@@ -97,12 +110,15 @@ class DrumModes(
     /** The mesh the modes live on. */
     val mesh: DrumMesh,
     /** Eigenvalues λ of −∇²u = λu, ascending. */
-    val lambda: DoubleArray,
+    override val lambda: DoubleArray,
     /** Mode shapes, `shapes[i][node]`, normalised so φᵀMφ = 1. */
     val shapes: Array<DoubleArray>,
     /** Subspace iterations the solve took. */
     val iterations: Int,
-) {
+) : ModeSet {
+    /** The solver's whole subspace (free nodes only, in its own order), kept to warm-start a nearby solve. */
+    internal var subspace: Array<DoubleArray>? = null
+
     /** Number of modes. */
     val count: Int get() = lambda.size
 
@@ -112,7 +128,14 @@ class DrumModes(
         DoubleArray(count) { fundamental * sqrt(lambda[it] / lambda[0]) }
 
     /** Each mode's frequency as a ratio to the fundamental. */
-    fun ratios(): DoubleArray = DoubleArray(count) { sqrt(lambda[it] / lambda[0]) }
+    override fun ratios(): DoubleArray = DoubleArray(count) { sqrt(lambda[it] / lambda[0]) }
+
+    /** [strike] divided by the mallet's own mass (∫g = 2πr²), so aᵢ ≈ φᵢ(px, py) whatever the radius. */
+    override fun strikeShape(px: Double, py: Double, radius: Double): DoubleArray {
+        val a = strike(px, py, radius)
+        for (i in a.indices) a[i] /= 2 * PI * radius * radius
+        return a
+    }
 
     /** Interpolated value of mode [mode] at (px, py), 0 outside the mesh. */
     fun valueAt(mode: Int, px: Double, py: Double): Double {
@@ -503,7 +526,7 @@ internal fun jacobiEigen(a0: Array<DoubleArray>, vecs: Array<DoubleArray>): Doub
     return DoubleArray(n) { a[it][it] }
 }
 
-internal fun solveDrumModes(mesh: DrumMesh, count: Int, mass: String, tol: Double, maxIt: Int): DrumModes {
+internal fun solveDrumModes(mesh: DrumMesh, count: Int, mass: String, tol: Double, maxIt: Int, warm: DrumModes? = null): DrumModes {
     // free nodes, ordered by x then y to keep the band narrow
     val free = (0 until mesh.nodeCount).filter { !mesh.boundary[it] }.sortedWith(compareBy({ mesh.x[it] }, { mesh.y[it] }))
     val n = free.size
@@ -520,6 +543,7 @@ internal fun solveDrumModes(mesh: DrumMesh, count: Int, mass: String, tol: Doubl
     for (t in 0 until mesh.triangleCount) {
         val id = IntArray(3) { mesh.tris[3 * t + it] }
         val ar = mesh.triArea(t)
+        val rho = mesh.density?.get(t) ?: 1.0
         val bx = DoubleArray(3) { mesh.y[id[(it + 1) % 3]] - mesh.y[id[(it + 2) % 3]] }
         val cy = DoubleArray(3) { mesh.x[id[(it + 2) % 3]] - mesh.x[id[(it + 1) % 3]] }
         for (i in 0..2) {
@@ -527,8 +551,8 @@ internal fun solveDrumModes(mesh: DrumMesh, count: Int, mass: String, tol: Doubl
             for (j in 0..2) {
                 val pj = pos[id[j]]; if (pj < 0 || pj > pi) continue
                 k.add(pi, pj, (bx[i] * bx[j] + cy[i] * cy[j]) / (4 * ar))
-                val consistent = ar / 12.0 * (if (i == j) 2.0 else 1.0)
-                val lumped = if (i == j) ar / 3.0 else 0.0
+                val consistent = rho * ar / 12.0 * (if (i == j) 2.0 else 1.0)
+                val lumped = if (i == j) rho * ar / 3.0 else 0.0
                 m.add(pi, pj, wc * consistent + (1 - wc) * lumped)
             }
         }
@@ -536,7 +560,8 @@ internal fun solveDrumModes(mesh: DrumMesh, count: Int, mass: String, tol: Doubl
     val kc = Band(n, bw); k.v.copyInto(kc.v); kc.cholesky()
     val p = min(n, max(count + 8, 2 * count))
     val rnd = java.util.Random(1)
-    var x = Array(p) { DoubleArray(n) { rnd.nextDouble() - 0.5 } }
+    val previous = warm?.subspace?.takeIf { warm.mesh.nodeCount == mesh.nodeCount && it.size == p && it[0].size == n }
+    var x = previous?.let { v -> Array(p) { v[it].copyOf() } } ?: Array(p) { DoubleArray(n) { rnd.nextDouble() - 0.5 } }
     var lam = DoubleArray(p) { Double.MAX_VALUE }
     val tmp = DoubleArray(n)
     var iterations = 0
@@ -589,7 +614,7 @@ internal fun solveDrumModes(mesh: DrumMesh, count: Int, mass: String, tol: Doubl
         if (big < 0) for (i in full.indices) full[i] = -full[i]
         full
     }
-    return DrumModes(mesh, lam.copyOf(count), shapes, iterations)
+    return DrumModes(mesh, lam.copyOf(count), shapes, iterations).also { it.subspace = x }
 }
 
 private fun dot(a: DoubleArray, b: DoubleArray): Double { var s = 0.0; for (i in a.indices) s += a[i] * b[i]; return s }

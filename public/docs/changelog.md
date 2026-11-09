@@ -1,20 +1,59 @@
 # What's new
 
-What has changed in Field·4 and on this site, newest first. Each entry covers a few days of work:
-the features that arrived, linked to the page that describes them, and the pages that are new or
-were rewritten. Small fixes and wording changes are left out; the **Changelog** panel on Field's
-Welcome screen lists every commit in your own checkout.
+What's new in Field·4? Here are the features and documentation we've added, newest first, with
+links to the pages where you can try them. For every commit in your own checkout, including small
+fixes and wording changes, open **Changelog** on the Welcome screen.
 
 ## November 2026
+
+<!-- changelog: e6cae5992d..5bc84b8f69 -->
+### Hearing a Penrose tiling, and pages gathered in one place
+
+*8 November 2026*
+
+- **Penrose spectra**: treat a tiling as a graph, count its zero states, see where the confined
+  states live, and strike the tiling to hear it. [The tiling as a graph](debruijn_tilings.md#the-tiling-as-a-graph).
+- **Uncrossed knight paths** now sit on the knight-tour page: the longest non-crossing paths,
+  other leapers and surfaces, and checking a path you draw. [Uncrossed paths](knight_tour_workshop.md#uncrossed-paths).
+- **Dependency length** joins the sentence diagrams page: how far apart related words sit in real
+  texts, against random reorderings. [Dependency length in real texts](sentence_diagrams.md#dependency-length-in-real-texts).
+
+<!-- changelog: 6b865fbba4..1398bd1029 -->
+### Particle Lenia, growing cellular automata and shape-aware ASCII
+
+*8 November 2026*
+
+- **Particle Lenia**: a CPU reference, a rotating creature found by a sweep, and thousands of
+  particles on the GPU. [Particle Lenia](particle_lenia.md).
+- **Growing neural cellular automata**: grow a pattern, cut it and watch it heal, on the GPU, with
+  a trainer for your own rule. [Growing NCA](growing_nca.md).
+- **Shape-aware ASCII**: render pictures and a live cube as characters chosen by shape.
+  [Shape-aware ASCII](ascii_shape.md).
+- **Designing a Physarum network**: food sources, Tero scores, a sweep and food you draw.
+  [Designing a network](alife_examples.md#designing-a-network).
+- Every control takes a [tooltip](visualizers.md#saying-what-a-control-is-for-tooltips), and
+  `fileChooser` [completes paths as you type](visualizers.md#choosing-a-file).
+
+<!-- changelog: ce55478873..16a8d45ae8 -->
+### A sound remembered on a self-organizing map, and Penrose tilings in 3D
+
+*8 November 2026*
+
+- **Self-organizing maps for audio curves**: remember what was heard on a chain, a sheet or a
+  lattice, and watch a progress bar while a recording is analysed.
+  [A self-organizing map of what was heard](audio_curves.md#a-self-organizing-map-of-what-was-heard).
+- **Three-dimensional Penrose tilings**: de Bruijn multigrids of planes fill space with Ammann
+  rhombohedra, sliced, slid and welded into printable solids through Manifold.
+  [Penrose tilings in three dimensions](debruijn_tilings.md#penrose-tilings-in-three-dimensions).
 
 <!-- changelog: 29cb7e43af..96b9003473 -->
 ### Audio curves: a sound as a few slow controls
 
 *8 November 2026*
 
-- **Audio curves**: a new page turns a recording into a handful of slow curves, step by step from
-  overlapping windows and ear-weighted spectra to a map that holds still, drawn as FLines under the
-  waveform player. [Audio curves](audio_curves.md).
+- **Audio curves**: turn a recording into curves you can use to control other things. Follow the
+  analysis from overlapping windows and ear-weighted spectra to a locally steady map, drawn as
+  FLines under the waveform player. [Audio curves](audio_curves.md).
 - **Three.js toolbar controls are opt-in**: a view starts as a picture you can orbit, and
   `controls(...)` asks for the tools you want. [Toolbar controls](three_output.md#toolbar-controls).
 - Keyboard shortcuts in the docs are drawn as keycaps in one spelling.
@@ -113,8 +152,9 @@ generator's points to a Datalog program, which checks whether they kept the targ
 *2 November 2026*
 
 - **Field inside VR**: edit Kotlin, run boxes and move around the canvas with the headset on, in a
-  browser panel inside Field's OpenXR scene. Controllers point, scroll and resize it, and a real
-  keyboard and mouse work on Quest 3 with WiVRn and on Vision Pro through ALVR.
+  browser panel inside Field's OpenXR scene. Controllers point, scroll and resize it; a keyboard
+  and mouse connected to Quest 3 work through WiVRn. The Vision Pro path through ALVR is prepared
+  but has not yet been tested with Field.
   [Field inside VR](field_vr_ide.md).
 - **Keyframe sweeps** can render chosen blends, including blends past the saved keys.
   [Blending past the saved keys](keyframe_autosweep.md#blending-past-the-saved-keys).

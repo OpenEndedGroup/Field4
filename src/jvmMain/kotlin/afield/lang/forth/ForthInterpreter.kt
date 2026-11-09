@@ -397,8 +397,15 @@ class ForthInterpreter {
      */
     var onTopLevelStep: ((firstLine: Int, lastLine: Int, defined: String?, endsLine: Boolean) -> Unit)? = null
 
+    /**
+     * The step-sequencer state the music words read and write (`note`, `< … >`, `iter`, `wchoose`,
+     * `seq: … ;seq`). See [installStepWords].
+     */
+    val steps = ForthStepState()
+
     init {
         installBuiltins()
+        installStepWords(this)
     }
 
     // -------------------------------------------------------------------------
@@ -714,6 +721,30 @@ class ForthInterpreter {
                     push(ls.index.toDouble()); i + 1
                 }
 
+                // -------- step sequencer: a grid of step programs --------
+                lw == "seq:" -> parseSeq(this, tokens, i, end)
+
+                // -------- list literal: [ a b c ] --------
+                lw == "[" -> {
+                    val close = matchingBracket(tokens, i, end)
+                    val depth = stack.size
+                    execTokens(tokens, i + 1, close)
+                    if (stack.size < depth) throw ForthError("'[ … ]' consumed values from outside the list", line)
+                    val items = ArrayList<Any>()
+                    while (stack.size > depth) items.add(0, stack.removeLast())
+                    push(items)
+                    close + 1
+                }
+
+                // -------- alternation: < a b c > picks one item per pass --------
+                lw == "<" && steps.inStep && alternationEnd(tokens, i, end) >= 0 -> {
+                    val close = alternationEnd(tokens, i, end)
+                    val n = close - i - 1
+                    val pick = i + 1 + Math.floorMod(steps.pass, n.toLong()).toInt()
+                    execTokens(tokens, pick, pick + 1)
+                    close + 1
+                }
+
                 // -------- string literals --------
                 word.startsWith(".\"") -> {
                     onOutput(word.removePrefix(".\"").removeSuffix("\""))
@@ -729,8 +760,9 @@ class ForthInterpreter {
 
                 // -------- dictionary lookup --------
                 else -> {
-                    val fw = dictionary[lw] ?: throw ForthError("Unknown word: '$word'", line)
-                    execWord(fw)
+                    val fw = dictionary[lw]
+                    if (fw != null) execWord(fw)
+                    else push(forthNoteNumber(lw) ?: throw ForthError("Unknown word: '$word'", line))
                     i + 1
                 }
             }

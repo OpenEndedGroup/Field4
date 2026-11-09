@@ -1,0 +1,165 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-08T21:42:55.542Z",
+  "documentName": "uncrossed_leapers",
+  "outputs": [
+    {
+      "uid": "ul_gallery",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "ul_gallery",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 474,
+      "height": 174,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "ul_draw",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 468,
+      "height": 40,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "ul_arcs",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "ul_sweep",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "ul_sweep",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 474,
+      "height": 429,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "ul_cycles",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "ul_cycles",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 216,
+      "height": 195,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "ul_big",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "ul_lines",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/9.html"
+    },
+    {
+      "uid": "ul_knight",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/10.html"
+    },
+    {
+      "uid": "ul_knight",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 336,
+      "height": 148,
+      "path": "outputs/11.html"
+    },
+    {
+      "uid": "ul_tours",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/12.html"
+    },
+    {
+      "uid": "ul_plotter",
+      "channel": "plotter sheet",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1139,
+      "height": 465,
+      "path": "outputs/13.html"
+    }
+  ]
+}

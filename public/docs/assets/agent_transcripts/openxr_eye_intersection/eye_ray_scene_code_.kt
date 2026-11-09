@@ -106,8 +106,8 @@ val rightModel = Matrix4f()
 val combinedModel = Matrix4f()
 val gapModel = Matrix4f()
 val unitRay = [Vec3(), Vec3(0f, 0f, -1f)]
-val leftRay = lineMesh("HTC left ray", unitRay, vec(0.3, 0.85, 1, 1)) { leftModel }
-val rightRay = lineMesh("HTC right ray", unitRay, vec(1, 0.55, 0.2, 1)) { rightModel }
+val leftRay = lineMesh("left eye ray", unitRay, vec(0.3, 0.85, 1, 1)) { leftModel }
+val rightRay = lineMesh("right eye ray", unitRay, vec(1, 0.55, 0.2, 1)) { rightModel }
 val dashes = (0..19).flatMap { i -> [Vec3(0f, 0f, -i / 20f), Vec3(0f, 0f, -(i + 0.5f) / 20f)] }
 val combinedRay = lineMesh("EXT combined ray (no depth)", dashes, vec(0.6, 0.6, 0.6, 1)) { combinedModel }
 val gap = lineMesh("closest-point gap", [Vec3(), Vec3(1f, 1f, 1f)], vec(1, 0.2, 0.5, 1)) { gapModel }
@@ -173,12 +173,12 @@ module +=
                         """
                 <div style="font-family:Iosevka,monospace;background:#080808;color:#ddd;padding:20px;min-width:520px">
                 <b>$mode</b><p>$state</p>
-                <pre>HTC stereo: ${eyes != null}    EXT combined: ${combined != null}
-                HTC gaze valid: L=${eyes?.left?.gazeValid} R=${eyes?.right?.gazeValid}
+                <pre>Per-eye gaze: ${eyes != null}    EXT combined: ${combined != null}
+                per-eye valid: L=${eyes?.left?.gazeValid} R=${eyes?.right?.gazeValid}
                 LOCAL midpoint: ${if (solve.valid) point(solve.position) else "unavailable"}
                 WORLD marker:   ${if (marker.instanceCount > 0) point(markerWorld) else "hidden"}
                 closest gap: %.4f m    angle: %.3f degrees
-                HTC sample time: ${eyes?.gazeTime ?: 0L} ns</pre>
+                per-eye sample time: ${eyes?.gazeTime ?: 0L} ns</pre>
                 <p>Cyan = left · orange = right · dashed grey = EXT combined<br>
                 White cube = binocular midpoint · grey cubes = world Z -1, -2, -4 m</p>
                 <p>world = worldFromLocal * LOCAL<br>clip = eyeProjection * eyeViewLocal * inverse(worldFromLocal) * world</p>

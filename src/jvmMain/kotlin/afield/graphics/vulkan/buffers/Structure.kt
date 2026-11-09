@@ -356,6 +356,11 @@ open class Structure(
         return dropped
     }
 
+    /**
+     * Binds [property] to [value], which is called each time the block is written. A binding may run
+     * more than once per dispatch (the fan-out check reads every binding before the write does), so it
+     * must only read state, never change it: advance counters in the code that records the dispatch.
+     */
     fun bind(property: String, value: Function0<*>) {
         markDirty()
         val key = storageKey(property)

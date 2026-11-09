@@ -938,7 +938,8 @@
       case "checkbox": return renderCheckboxControl(control);
       case "button": return renderButtonControl(control);
       case "meter": return renderMeterControl(control);
-      case "string": return renderStringControl(control);
+      case "string":
+      case "file": return renderStringControl(control);
       case "color": return renderColorControl(control);
       case "multislider":
       case "matrix":
@@ -1188,6 +1189,16 @@
 
     header.append(label, value);
     shell.appendChild(header);
+    // No hover on a touch surface, so a control's tooltip is a line under its label: clamped to two
+    // lines, a tap opens the rest.
+    if (control.hoverText) {
+      const tip = document.createElement("div");
+      tip.className = "phone-control-tooltip";
+      tip.appendChild(safeControlHoverMarkdown(control.hoverHtml));
+      tip.addEventListener("click", () => tip.classList.toggle("open"));
+      shell.appendChild(tip);
+      shell.title = control.hoverText;
+    }
     return { shell, value };
   }
 

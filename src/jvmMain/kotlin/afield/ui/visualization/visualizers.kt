@@ -222,7 +222,8 @@ private fun <T> ControlGroupBuilder.arrayControl(
         html(id, values) to shape(ControllerControl(id = id, type = type, label = label, text = encodeValues(values), hoverText = hoverText))
     },
     read = { control -> decodeValues(control.text, size)?.let(toValue) },
-    write = { old, next -> old.copy(text = encodeValues(sanitize(fromValue(next)))) }
+    write = { old, next -> old.copy(text = encodeValues(sanitize(fromValue(next)))) },
+    hoverText = hoverText
 )
 
 /** The square drawing surface a polar control draws into; `arrayControls.js` fills it in. */
@@ -817,7 +818,8 @@ fun ControlGroupBuilder.gesture(
             )
         },
         read = { c -> c.text?.split(',')?.mapNotNull { it.trim().toDoubleOrNull() } },
-        write = { old, next -> old.copy(text = encodeValues(sanitize(next))) }
+        write = { old, next -> old.copy(text = encodeValues(sanitize(next))) },
+        hoverText = hoverText
     )
     handle = GestureHandle(withPlayhead(value), restoredTake, sanitize, pen, xRange, yRange)
     return handle
