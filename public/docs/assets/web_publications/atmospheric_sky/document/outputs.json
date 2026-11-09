@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-09T06:28:33.543Z",
+  "documentName": "atmospheric_sky",
+  "outputs": [
+    {
+      "uid": "atmospheric_sky",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 1600,
+      "height": 982,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    },
+    {
+      "uid": "atmospheric_sky",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/1.html",
+      "width": 1600,
+      "height": 982,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    },
+    {
+      "uid": "atmospheric_sky",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/2.html",
+      "width": 1600,
+      "height": 982,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    },
+    {
+      "uid": "atmospheric_sky",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/3.html",
+      "width": 1600,
+      "height": 982,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

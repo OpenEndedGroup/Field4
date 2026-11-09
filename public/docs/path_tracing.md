@@ -302,6 +302,10 @@ still illuminates objects and remains visible in reflections and through refract
 surfaces. Changing either background control resets accumulation. This is a useful
 art-direction/compositing control; it does not change the environment's radiance.
 
+For a sky computed from the sun's position rather than a photographed one, see
+[An atmospheric sky](afield_four_graphics.md#atmospheric-sky). That sky is a fullscreen pass of its
+own and does not light the path tracer.
+
 ## Depth fog
 
 Blend distant surfaces toward a colour, with a clear region around the camera. This is a
