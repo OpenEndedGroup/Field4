@@ -2,7 +2,8 @@ name: atmospheric_sky
 description: >-
   A physically based sky beneath the Field 4 renderer: single scattering through a spherical atmosphere
   (Rayleigh, Mie with the Cornette-Shanks phase, ozone absorption, a nested march toward the sun) from
-  sky/atmosphere.glsl, with sun elevation, altitude and camera as live sliders. Method after Nishita et
+  sky/atmosphere.glsl, with sun elevation, altitude and camera as live sliders, and three preset properties
+  (sunset, twilight, space) that move it. Method after Nishita et
   al. 1993 and Hillaire 2020; walkthrough by Maxime Heckel, "On rendering the sky, sunsets and planets".
 docs:
   - page: atmospheric_sky.md
@@ -69,15 +70,15 @@ operations:
           /*
           A sky you can live-code: single scattering through Earth's atmosphere (Nishita 1993, with Hillaire 2020's
           coefficients), one fullscreen triangle beneath the renderer. The physics is `#include "sky/atmosphere.glsl"`;
-          the camera and the tone mapping are in this box's fragment property. Drag the sliders, or edit the numbers
-          below and re-run.
+          the camera and the tone mapping are in this box's fragment property. Drag the sliders, or run one of the
+          box's preset properties (`sunset`, `twilight`, `space`) to jump there.
           */
-          var sunElevation = 30.0 // degrees above the horizon
-          var sunAzimuth = 0.0 // degrees, 0 is straight ahead
-          var altitude = 3.5 // km above the ground
-          var pitch = 10.0 // degrees the camera looks up (-90 looks straight down)
-          var exposure = 2.0
-          var fieldOfView = 90.0 // degrees, vertical
+          import afield.graphics.sky.SkyView
+
+          // Published as this box's `skyView` property, so the preset properties can reach it.
+          prop<SkyView>(skyView)
+          val view = SkyView(sunElevation = 30.0, altitude = 3.5, pitch = 10.0, exposure = 2.0)
+          skyView = view
 
           val sky = moduleHere {
               depthTest = false
@@ -88,20 +89,42 @@ operations:
           sky += "quad" to quad
           renderer += "atmospheric-sky" to sky
 
-          quad.viewport = { vec(window.width.toFloat(), window.height.toFloat(), altitude, Math.toRadians(sunElevation)) }
-          quad.view = { vec(Math.toRadians(sunAzimuth), Math.toRadians(pitch), exposure, Math.toRadians(fieldOfView)) }
+          quad.viewport = {
+              vec(window.width.toFloat(), window.height.toFloat(), view.altitude, Math.toRadians(view.sunElevation))
+          }
+          quad.view = {
+              vec(Math.toRadians(view.sunAzimuth), Math.toRadians(view.pitch), view.exposure, Math.toRadians(view.fieldOfView))
+          }
 
           controlGroup("Sky") {
-              slider("Sun elevation (degrees)", min = -12.0, max = 90.0, initialValue = sunElevation) { sunElevation = it }
-              slider("Sun azimuth (degrees)", min = -180.0, max = 180.0, initialValue = sunAzimuth) { sunAzimuth = it }
-              slider("Altitude (log10 km)", min = -3.0, max = 4.5, initialValue = Math.log10(altitude)) {
-                  altitude = Math.pow(10.0, it)
+              slider("Sun elevation (degrees)", min = -12.0, max = 90.0, initialValue = view.sunElevation) { view.sunElevation = it }
+              slider("Sun azimuth (degrees)", min = -180.0, max = 180.0, initialValue = view.sunAzimuth) { view.sunAzimuth = it }
+              slider("Altitude (log10 km)", min = -3.0, max = 4.5, initialValue = Math.log10(view.altitude)) {
+                  view.altitude = Math.pow(10.0, it)
               }
-              slider("Camera pitch (degrees)", min = -90.0, max = 90.0, initialValue = pitch) { pitch = it }
-              slider("Exposure", min = 0.5, max = 40.0, initialValue = exposure) { exposure = it }
+              slider("Camera pitch (degrees)", min = -90.0, max = 90.0, initialValue = view.pitch) { view.pitch = it }
+              slider("Exposure", min = 0.1, max = 40.0, initialValue = view.exposure) { view.exposure = it }
           }
           displayOpen("Sky")
-          println("atmospheric sky: sun ${sunElevation}°, altitude ${altitude} km")
+          println("atmospheric sky: sun ${view.sunElevation}°, altitude ${view.altitude} km")
+        sunset: |
+          // Run this property to move the sky box (its `code`) to sunset.
+          import afield.graphics.sky.SkyView
+
+          fromContext<SkyView>().set(SkyView(sunElevation = 2.0, altitude = 3.5, pitch = 5.0, exposure = 4.0))
+          println("sky preset: sunset")
+        twilight: |
+          // Run this property to move the sky box (its `code`) to twilight.
+          import afield.graphics.sky.SkyView
+
+          fromContext<SkyView>().set(SkyView(sunElevation = -4.0, altitude = 3.5, pitch = 5.0, exposure = 40.0))
+          println("sky preset: twilight")
+        space: |
+          // Run this property to move the sky box (its `code`) to space.
+          import afield.graphics.sky.SkyView
+
+          fromContext<SkyView>().set(SkyView(sunElevation = 20.0, altitude = 20000.0, pitch = -90.0, exposure = 0.4, fieldOfView = 40.0))
+          println("sky preset: space")
         vertex: |
           #version 450
           // one triangle that covers the whole window; positions come from the vertex index

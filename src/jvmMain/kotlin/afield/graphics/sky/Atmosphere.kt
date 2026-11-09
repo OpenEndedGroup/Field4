@@ -57,7 +57,7 @@ object Atmosphere {
         val ozoneAbsorption: V3 = V3(0.650e-3, 1.881e-3, 0.085e-3),
         val ozoneCenter: Double = 25.0,
         val ozoneHalfWidth: Double = 15.0,
-        val groundAlbedo: V3 = V3(0.3, 0.3, 0.3),
+        val groundAlbedo: V3 = V3(0.10, 0.12, 0.15),
     )
 
     /** Crossings of the sphere |p| = r by ro + t rd, or (-1, -1). */
@@ -148,4 +148,31 @@ object Atmosphere {
     /** Unit direction at [elevation] above the horizon (radians) and [azimuth] about +y, for a camera whose up is +y. */
     fun direction(elevation: Double, azimuth: Double = 0.0) =
         V3(cos(elevation) * kotlin.math.sin(azimuth), kotlin.math.sin(elevation), -cos(elevation) * cos(azimuth))
+}
+
+/**
+ * Where a sky box's camera is and where its sun is, in the units its sliders show: degrees, km.
+ * A sky box reads one every frame and publishes it as its `skyView` property
+ * (`prop<SkyView>(skyView)`), so anything that reaches it (a slider, or a preset property of the
+ * same box calling `fromContext<SkyView>().set(...)`) moves the sky on the next frame.
+ */
+class SkyView(
+    /** Degrees above the horizon; negative is below it. */
+    var sunElevation: Double = 30.0,
+    /** Degrees about the vertical; 0 is straight ahead of the camera. */
+    var sunAzimuth: Double = 0.0,
+    /** Kilometres above the ground. */
+    var altitude: Double = 3.5,
+    /** Degrees the camera looks up; -90 looks straight down. */
+    var pitch: Double = 10.0,
+    /** Multiplies radiance before tone mapping. */
+    var exposure: Double = 2.0,
+    /** Vertical field of view in degrees. */
+    var fieldOfView: Double = 90.0,
+) {
+    /** Copy every setting from [other]. */
+    fun set(other: SkyView) {
+        sunElevation = other.sunElevation; sunAzimuth = other.sunAzimuth; altitude = other.altitude
+        pitch = other.pitch; exposure = other.exposure; fieldOfView = other.fieldOfView
+    }
 }

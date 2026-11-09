@@ -40,7 +40,7 @@ Atmosphere earthAtmosphere() {
     a.ozoneAbsorption = vec3(0.650e-3, 1.881e-3, 0.085e-3);
     a.ozoneCenter = 25.0;
     a.ozoneHalfWidth = 15.0;
-    a.groundAlbedo = vec3(0.3);
+    a.groundAlbedo = vec3(0.10, 0.12, 0.15); // mostly ocean
     return a;
 }
 
