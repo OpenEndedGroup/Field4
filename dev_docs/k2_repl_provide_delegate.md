@@ -319,9 +319,9 @@ fails with
 
 ### The box-level reproducer, and the catalog test for it
 
-The production-path reproducer below is not a `FIELD_TEST`. On 2026-08-25 this section said a green
-box-level test for a box that is *supposed* to fail **cannot be expressed**. That is withdrawn: it
-can, through `expect.allowExecutionErrors`.
+The production-path reproducer below is not a `FIELD_TEST`. On 2026-08-25 this section doubted that a green
+box-level test for a box that is *supposed* to fail was expressible. That doubt is withdrawn: it
+is, through `expect.allowExecutionErrors`.
 
 The 2026-08-25 attempt (`runner: backdoor-box`,
 `expect.outputContains: ["IrPropertySymbolImpl is unbound"]`, no flag) reported
