@@ -116,6 +116,10 @@ translated into the inspection copy while those numbers remain in raw world coor
 
 ### Headset preview
 
+**Both eyes side by side** shows the two eye images together in the desktop mirror; leave it
+off for a larger single-eye view. **Desktop preview enabled** controls the native mirror window's
+presentation. Turn it off when working entirely in the headset; tracking and VR rendering continue.
+
 ```diffstatic_runner {data-lang=kotlin capture="ui" macro-file="../../dev_docs/agents/transcripts/docs_capture/body_one_restore.yaml" document="body_one" region="window" viewport="1600x1200" clip-selector="#docs-body-panel" capture-box="body1_context" screenshot="assets/body_tracking/preview-controls.png" capture-profile="linux-wivrn-live" timeout="120" padding="12" embed=true hidden=true name="body-one-preview-controls" alt="Both-eye layout and desktop preview controls."}
 ui.waitForSelector(".disclosure", 15000.0)
 ui.eval(
@@ -148,6 +152,10 @@ ui.pause(800)
 ```
 
 ### Field browser pane
+
+**Show Field pane in headset** toggles the browser surface used to edit the document in VR.
+**Bring Field pane in front** places it back in front of your current head pose, useful after
+moving around or leaving the pane behind. These controls affect the editor surface, not the skeleton.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" document="body_one" region="window" viewport="1600x1200" clip-selector="#docs-body-panel" capture-box="body1_context" screenshot="assets/body_tracking/browser-controls.png" capture-profile="linux-wivrn-live" timeout="120" padding="12" embed=true hidden=true name="body-one-browser-controls" alt="Visibility and recenter controls for the browser pane in VR."}
 ui.waitForSelector(".disclosure", 15000.0)
@@ -182,6 +190,11 @@ ui.pause(800)
 
 ### Eye-image precision
 
+This read-only panel reports the actual per-eye dimensions selected by the OpenXR runtime and
+the formats of the scene target and headset swapchain. Use it to check the rendering setup after
+changing WiVRn settings. The 16-bit float entries describe Field's images; WiVRn's encoded stream
+has its own codec and bit-depth settings in the headset.
+
 ```diffstatic_runner {data-lang=kotlin capture="ui" document="body_one" region="window" viewport="1600x1200" clip-selector="#docs-body-panel" capture-box="body1_context" screenshot="assets/body_tracking/eye-precision.png" capture-profile="linux-wivrn-live" timeout="120" padding="12" embed=true hidden=true name="body-one-eye-precision" alt="Markdown table showing the actual scene and OpenXR image formats."}
 ui.waitForSelector(".disclosure", 15000.0)
 ui.eval(
@@ -214,6 +227,15 @@ ui.pause(800)
 ```
 
 ### Tracking view
+
+Use **Inspection copy ahead of me** to examine a translated copy of the skeleton, and **Recenter
+inspection copy** to place it ahead of your current horizontal heading. Turn the copy off to see
+tracking at its physical location. Hands, body, controllers, orientation axes and connections can
+be shown independently, making it easier to distinguish missing tracking from overlapping marks.
+
+The three size sliders are in metres. **Joint radius** changes the circular markers, **Line
+half-width** changes the connecting strips, and **Axis length** changes the orientation guides.
+They change the drawing only; the query shapes below have separate radii.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" document="body_one" region="window" viewport="1600x1200" clip-selector="#docs-body-panel" capture-box="body1_tracking" screenshot="assets/body_tracking/tracking-controls.png" capture-profile="linux-wivrn-live" timeout="120" padding="12" embed=true hidden=true name="body-one-tracking-controls" alt="Controls for the inspection copy, tracked observations, joint axes, connections and drawing sizes."}
 ui.waitForSelector(".disclosure", 15000.0)
@@ -248,6 +270,16 @@ ui.pause(800)
 
 ### Body-query shapes
 
+**Show body bounds** and **Show closest point** enable the corresponding overlays. **Head sphere /
+limb cylinders** gives the query a surface with thickness; switch it off to query joint centres
+and connected segments. The independent **Include head** toggle adds or removes the head from
+both bounds and closest-point queries.
+
+Adjust **Head sphere radius** and **Limb cylinder radius** in metres to choose the interaction
+envelope. These values do not resize the tracked skeleton markers. Try moving your right hand
+towards your chest while switching between bare segments and cylinders: the green hit moves
+from the skeleton to the chosen surface.
+
 ```diffstatic_runner {data-lang=kotlin capture="ui" document="body_one" region="window" viewport="1600x1200" clip-selector="#docs-body-panel" capture-box="body1_tracking" screenshot="assets/body_tracking/query-controls.png" capture-profile="linux-wivrn-live" timeout="120" padding="12" embed=true hidden=true name="body-one-query-controls" alt="Bounds and closest-point toggles, sphere and cylinder selection, and independent head and limb radii."}
 ui.waitForSelector(".disclosure", 15000.0)
 ui.eval(
@@ -280,6 +312,15 @@ ui.pause(800)
 ```
 
 ### Closest-point readout
+
+The readout explains the pink-to-green query overlay numerically. **World point** is the raw
+query position; **Nearest reported joint** searches the available body joints, while **Body
+segment** or **Head selected** identifies the primitive chosen by the surface query. The nearest
+joint and nearest surface need not belong to the same part of the body.
+
+**Skeleton/surface distance** is nonnegative. **Signed primitive distance** becomes negative
+inside the selected cylinder or sphere. An unavailable joint or absent segment can occur when
+only head tracking is available, as in this capture; it is not a fabricated body estimate.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" document="body_one" region="window" viewport="1600x1200" clip-selector="#docs-body-panel" capture-box="body1_tracking" screenshot="assets/body_tracking/query-result.png" capture-profile="linux-wivrn-live" timeout="120" padding="12" embed=true hidden=true name="body-one-query-result" alt="Live Markdown result table with query position, nearest joint, distances and selected body segment."}
 ui.waitForSelector(".disclosure", 15000.0)
@@ -329,9 +370,8 @@ and create/launch/stop operations without hand-editing a document's persistence 
 
 ## Editable source
 
-:::fold Headset, browser and preview
-
 ```diffstatic {data-lang=kotlin}
+:::fold Headset, browser and preview
 import afield.graphics.vulkan.targets.*
 import afield.graphics.vulkan.util.Options
 import afield.media.browser.*
@@ -449,13 +489,11 @@ loop { frame() }
         ownedRenderer.openXRHmdTarget?.clearEyeSource(ownedStereo.layered)
         ownedRenderer.cleanup()
     }
+:::endfold
 ```
 
-:::end
-
-:::fold Marker pool and draw attachment
-
 ```diffstatic {data-lang=kotlin}
+:::fold Marker pool and draw attachment
 import org.lwjgl.vulkan.VK10.*
 
 // Pipeline linkage. StereoViews supplies this frame's predicted view/projection for each eye.
@@ -495,13 +533,11 @@ loop { frame() }
         trackingModule.disable()
         stereo.layered.modules.remove("body-tracking", trackingModule)
     }
+:::endfold
 ```
 
-:::end
-
-:::fold Tracking, controls and geometric queries
-
 ```diffstatic {data-lang=kotlin}
+:::fold Tracking, controls and geometric queries
 import afield.graphics.scene.body.*
 import afield.graphics.vulkan.Target
 import afield.graphics.vulkan.targets.OpenXRHmdTarget.*
@@ -790,13 +826,11 @@ loop {
     frame()
 }
     .end { stereo.beforeScene.remove("body-one-tracking", updateTracking) }
+:::endfold
 ```
 
-:::end
-
-:::fold GPU thickening
-
 ```diffstatic {data-lang=glsl}
+:::fold GPU thickening
 #version 460
 #extension GL_EXT_multiview : require
 
@@ -848,13 +882,11 @@ void main() {
         ? (gl_ViewIndex == 0 ? stereoVpL : stereoVpR) * vec4(p, 1)
         : vec4(0, 0, -1, 1);
 }
+:::endfold
 ```
 
-:::end
-
-:::fold Analytic coverage
-
 ```diffstatic {data-lang=glsl}
+:::fold Analytic coverage
 #version 460
 
 layout(location = 0) in vec2 uv; // local square coordinates
@@ -868,6 +900,5 @@ void main() {
     float coverage = 1.0 - smoothstep(1.0 - aa, 1.0, d);
     outColor = vec4(ink.rgb, ink.a * coverage);
 }
+:::endfold
 ```
-
-:::end

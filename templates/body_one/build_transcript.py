@@ -43,7 +43,7 @@ def main():
         text = args.docs.read_text().split("\n## Editable source", 1)[0].rstrip() + "\n\n## Editable source\n"
         for title, file in [("Headset, browser and preview", "context.kt"), ("Marker pool and draw attachment", "drawing.kt"), ("Tracking, controls and geometric queries", "tracking.kt"), ("GPU thickening", "vertex.glsl"), ("Analytic coverage", "fragment.glsl")]:
             language = "kotlin" if file.endswith(".kt") else "glsl"
-            text += f"\n:::fold {title}\n\n```diffstatic {{data-lang={language}}}\n" + (here / file).read_text() + "```\n\n:::end\n"
+            text += f"\n```diffstatic {{data-lang={language}}}\n:::fold {title}\n" + (here / file).read_text() + ":::endfold\n```\n"
         args.docs.write_text(text)
     if args.transcript:
         class Dumper(yaml.SafeDumper):
