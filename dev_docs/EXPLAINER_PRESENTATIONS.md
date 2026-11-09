@@ -84,7 +84,8 @@ What each piece does:
 - **`control(...)`** declares a value for the view. Next, Back and jumps apply the view's values in
   source order (the step's, then each cue's up to the current one; the last value per control wins).
   Refresh does not, so the audience's own changes survive it. A control whose box is still starting
-  is retried for five seconds. `glideMs` eases a slider there along its own travel, so a log slider
+  is retried for fifteen seconds, and on a box the deck has just launched a control waits for the new
+  run to draw it rather than moving the previous run's. `glideMs` eases a slider there along its own travel, so a log slider
   glides evenly in pitch.
 - **Lifecycle.** Entering a view launches each figure box (and each box a `control` names) that is
   not running, unless this talk already launched it and it finished by itself. Leaving a slide stops
