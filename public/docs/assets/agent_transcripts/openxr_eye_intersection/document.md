@@ -40,7 +40,7 @@ start(renderer::run)
 <!-- field-box id="eye_ray_scene" index="1" -->
 
 ```edn [field-box id="eye_ray_scene" role="properties"]
-{"id" "eye_ray_scene" "index" 1 "name" "2 · eye rays + world marker" "parents" ["root" "eye_ray_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "eye_ray_renderer"} "name" "2 · eye rays + world marker" "_tombstone" false "frame" #afield/rect [340.0 150.0 390.0 120.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "eye_ray_scene_vertex_.glsl" "lines" 13 "characters" 316 "sha256" "3ed65e56090d366813d8ebf73081fd80067692f4086282c4263593eee1af03c6"} {"name" "fragment" "language" "glsl" "path" "eye_ray_scene_fragment_.glsl" "lines" 6 "characters" 121 "sha256" "09f2d517b9f20511becdbad44a079ab2444e197c15df7f90141a8a45c10d42de"} {"name" "code" "language" "kotlin" "path" "eye_ray_scene_code_.kt" "lines" 206 "characters" 8897 "sha256" "6d90755cdbe370769df4ba45d8d22b32bef7baef707aef3d3dd986f5cfaab2b1"}]}
+{"id" "eye_ray_scene" "index" 1 "name" "2 · eye rays + world marker" "parents" ["root" "eye_ray_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "eye_ray_renderer"} "name" "2 · eye rays + world marker" "_tombstone" false "frame" #afield/rect [340.0 150.0 390.0 120.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "eye_ray_scene_vertex_.glsl" "lines" 13 "characters" 316 "sha256" "3ed65e56090d366813d8ebf73081fd80067692f4086282c4263593eee1af03c6"} {"name" "fragment" "language" "glsl" "path" "eye_ray_scene_fragment_.glsl" "lines" 6 "characters" 121 "sha256" "09f2d517b9f20511becdbad44a079ab2444e197c15df7f90141a8a45c10d42de"} {"name" "code" "language" "kotlin" "path" "eye_ray_scene_code_.kt" "lines" 206 "characters" 8902 "sha256" "8fb9483b0a1ede27eadbed68cbe5e00cb4bfaebe55405b153aa198c065d0cb76"}]}
 ```
 
 ```glsl [field-property box="eye_ray_scene" name="vertex" path="eye_ray_scene_vertex_.glsl"]
@@ -177,8 +177,8 @@ val rightModel = Matrix4f()
 val combinedModel = Matrix4f()
 val gapModel = Matrix4f()
 val unitRay = [Vec3(), Vec3(0f, 0f, -1f)]
-val leftRay = lineMesh("HTC left ray", unitRay, vec(0.3, 0.85, 1, 1)) { leftModel }
-val rightRay = lineMesh("HTC right ray", unitRay, vec(1, 0.55, 0.2, 1)) { rightModel }
+val leftRay = lineMesh("left eye ray", unitRay, vec(0.3, 0.85, 1, 1)) { leftModel }
+val rightRay = lineMesh("right eye ray", unitRay, vec(1, 0.55, 0.2, 1)) { rightModel }
 val dashes = (0..19).flatMap { i -> [Vec3(0f, 0f, -i / 20f), Vec3(0f, 0f, -(i + 0.5f) / 20f)] }
 val combinedRay = lineMesh("EXT combined ray (no depth)", dashes, vec(0.6, 0.6, 0.6, 1)) { combinedModel }
 val gap = lineMesh("closest-point gap", [Vec3(), Vec3(1f, 1f, 1f)], vec(1, 0.2, 0.5, 1)) { gapModel }
@@ -244,12 +244,12 @@ module +=
                         """
                 <div style="font-family:Iosevka,monospace;background:#080808;color:#ddd;padding:20px;min-width:520px">
                 <b>$mode</b><p>$state</p>
-                <pre>HTC stereo: ${eyes != null}    EXT combined: ${combined != null}
-                HTC gaze valid: L=${eyes?.left?.gazeValid} R=${eyes?.right?.gazeValid}
+                <pre>Per-eye gaze: ${eyes != null}    EXT combined: ${combined != null}
+                per-eye valid: L=${eyes?.left?.gazeValid} R=${eyes?.right?.gazeValid}
                 LOCAL midpoint: ${if (solve.valid) point(solve.position) else "unavailable"}
                 WORLD marker:   ${if (marker.instanceCount > 0) point(markerWorld) else "hidden"}
                 closest gap: %.4f m    angle: %.3f degrees
-                HTC sample time: ${eyes?.gazeTime ?: 0L} ns</pre>
+                per-eye sample time: ${eyes?.gazeTime ?: 0L} ns</pre>
                 <p>Cyan = left · orange = right · dashed grey = EXT combined<br>
                 White cube = binocular midpoint · grey cubes = world Z -1, -2, -4 m</p>
                 <p>world = worldFromLocal * LOCAL<br>clip = eyeProjection * eyeViewLocal * inverse(worldFromLocal) * world</p>

@@ -2932,12 +2932,12 @@
     },
     "assets/agent_transcripts/openxr_eye_intersection/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
-      "capturedAt": "2026-11-08T10:43:34.335Z",
+      "capturedAt": "2026-11-09T10:42:18.075Z",
       "channels": 1,
       "file": "assets/web_publications/openxr_eye_intersection/document/metadata.edn",
       "files": {
-        "assets/web_publications/openxr_eye_intersection/document/metadata.edn": "fbbc8c052361e3af4c12ca232dcd0c29f8c43c41830be6130db77d5037f4517c",
-        "assets/web_publications/openxr_eye_intersection/document/outputs.json": "91475aac2f9e5bac0d1f2cc3c2912cf588b6e1138196456eb4e807ceb5187b5e",
+        "assets/web_publications/openxr_eye_intersection/document/metadata.edn": "6e7062bce809da41d740b1c2e35634951e01b7a41f4ea7faad7f67af340aec8c",
+        "assets/web_publications/openxr_eye_intersection/document/outputs.json": "1f5dd0dbfcd5eeb21687eeba963a45f381250088fc405fa784508e638453fee0",
         "assets/web_publications/openxr_eye_intersection/outputs/0.html": "526c64e396541d183ffd4cb9fadc180ad28eb4170b78e1f047d4f6924b44ecdd"
       },
       "kinds": [
@@ -2945,13 +2945,13 @@
       ],
       "outputs": "assets/web_publications/openxr_eye_intersection/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/openxr_eye_intersection.yaml": "f1c569cc2caab3feec04b020c408cfc1e902a369f89ba16a0adfde1d7d312d91",
+        "dev_docs/agents/transcripts/openxr_eye_intersection.yaml": "5e82abac759fd9d53675b26904fbaf3e8cf808c8057767fc85e61fc8b158dcaa",
         "public/docs/assets/agent_transcripts/openxr_eye_intersection/eye_ray_renderer_code_.kt": "e6623728ad396dcd1716c8df39fc4866e1cbd603b2ce6849e38031384891704b",
-        "public/docs/assets/agent_transcripts/openxr_eye_intersection/eye_ray_scene_code_.kt": "6d90755cdbe370769df4ba45d8d22b32bef7baef707aef3d3dd986f5cfaab2b1",
+        "public/docs/assets/agent_transcripts/openxr_eye_intersection/eye_ray_scene_code_.kt": "8fb9483b0a1ede27eadbed68cbe5e00cb4bfaebe55405b153aa198c065d0cb76",
         "public/docs/assets/agent_transcripts/openxr_eye_intersection/eye_ray_scene_fragment_.glsl": "09f2d517b9f20511becdbad44a079ab2444e197c15df7f90141a8a45c10d42de",
         "public/docs/assets/agent_transcripts/openxr_eye_intersection/eye_ray_scene_vertex_.glsl": "3ed65e56090d366813d8ebf73081fd80067692f4086282c4263593eee1af03c6",
         "public/docs/assets/agent_transcripts/openxr_eye_intersection/guides/openxr_eye_intersection.md": "0e8f541f4bac93f196ec458c16f0ba7f4311739dc7872d4c1b568c0ab9b5a82b",
-        "public/docs/assets/agent_transcripts/openxr_eye_intersection/metadata.edn": "4780b2187b419f6cf37d34564804a3d54896ce181a497d02373aaa505710cc85",
+        "public/docs/assets/agent_transcripts/openxr_eye_intersection/metadata.edn": "d242754c30ab12755ddc4ff33d8f384f3d0a8a4c1a835bb954a97f364eb83c75",
         "public/docs/assets/openxr_eye_intersection/desktop.png": "b71007f4148edad06b4b37b0a97f52e43fde68924f380e4b1f757cbcb4cf4598",
         "public/docs/openxr_eye_intersection.md#capture-box=eye_ray_renderer": "c253d973ae07f1f5e9893a6b168405bc83d714a9db55343212222b714a8607b4"
       },
