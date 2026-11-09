@@ -1,6 +1,6 @@
 # First-run welcome tool
 
-A standalone Kotlin/JVM 17 application, built independently of Field with its wrapper JVM.
+A standalone Kotlin/JVM application, built and run on the JDK the Gradle wrapper provisions, independently of Field.
 It uses the standard Kotlin plugin, JDK classes and bundled JLine/Jansi terminal libraries: no compiler fork, LFS JAR, native bridge,
 GPU, Python, JSON library, or GUI toolkit is required to build it.
 
