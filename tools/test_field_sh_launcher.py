@@ -97,6 +97,9 @@ SAVING_KT = REPO_ROOT / "src" / "jvmMain" / "kotlin" / "afield" / "document" / "
 # decays into "runs on whichever two this laptop has".
 DECLARED_SHELLS = ("sh", "bash", "zsh", "dash", "ksh")
 
+# The bootstrap-JDK URL the sandbox's stub gradlew names, and so the one a provisioned .flag holds.
+STUB_JVM_URL = "https://example.invalid/stub-bootstrap-jdk.tar.gz"
+
 # The option patterns `field.sh`'s own parser spells out, keyed by the ledger name used below. The
 # two catch-alls are the fall-through arms, not flags, and are covered by the passthrough cases.
 COVERED_OPTIONS = {
@@ -191,7 +194,9 @@ class FieldShSandbox:
         ):
             directory.mkdir(parents=True, exist_ok=True)
         (self.home / ".field4" / "gradle-jvm" / "provisioned").mkdir(parents=True, exist_ok=True)
-        (self.home / ".field4" / "gradle-jvm" / "provisioned" / ".flag").write_text("")
+        # ensure_gradle_jvm counts a flag only when it holds a JVM_URL the checkout's gradlew names;
+        # the stub gradlew below names this one.
+        (self.home / ".field4" / "gradle-jvm" / "provisioned" / ".flag").write_text(STUB_JVM_URL + "\n")
         (self.document / "metadata.edn").write_text("{:version 2 :boxes []}\n")
         (self.json_document / "metadata.json").write_text('{"version": 2, "boxes": []}\n')
 
@@ -207,7 +212,7 @@ class FieldShSandbox:
             'val graalvmVersion = "25.4.4.1.1"\nval graalvmJdkBuild = "25i4-25.0.4.1.1"\n'
         )
         gradlew = self.checkout / "gradlew"
-        gradlew.write_text("#!/bin/sh\necho \"stub gradlew $*\"\n")
+        gradlew.write_text(f"#!/bin/sh\n    JVM_URL={STUB_JVM_URL}\necho \"stub gradlew $*\"\n")
         gradlew.chmod(0o755)
 
         launch = self.checkout / "build" / "field-launch"
@@ -902,6 +907,25 @@ class FieldShLauncherTests(unittest.TestCase):
                     self.assertEqual(sandbox.backend_argv(), ["--workspace", workspace], result.stderr)
                     self.assertIn("stub gradlew --offline jvmJar dumpFieldLaunch", result.stdout)
                     self.assertIn("field: offline", result.stderr)
+
+    def test_a_flag_from_an_earlier_bootstrap_jdk_does_not_count_as_provisioned(self) -> None:
+        """After the bootstrap JDK changes (Corretto 17 to 25) the old JDK's .flag is still on
+        disk. It must not satisfy ensure_gradle_jvm, or the sidecar and build gradlew race to
+        download the new one; offline, that shows up as the not-cached refusal."""
+        sandbox = self.sandbox
+        flag = sandbox.home / ".field4" / "gradle-jvm" / "provisioned" / ".flag"
+        current = flag.read_text()
+        flag.write_text("https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-macos-jdk.tar.gz\n")
+        try:
+            for shell_name, shell in _resolved_shells().items():
+                with self.subTest(shell=shell_name):
+                    result = sandbox.run(
+                        shell, "--offline", str(sandbox.workspace), extra_env={"AFIELD_SKIP_BUILD": "0"}
+                    )
+                    self.assertIn("build JVM is not cached", result.stderr)
+                    self.assertNotIn("stub gradlew", result.stdout)
+        finally:
+            flag.write_text(current)
 
     def test_without_the_flag_gradle_is_not_offline(self) -> None:
         """Offline is opt-in only: no flag, no --offline, and nothing said about it."""

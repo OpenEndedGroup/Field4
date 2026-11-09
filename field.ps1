@@ -160,7 +160,11 @@ function Test-FieldInstall {
 function Ensure-FieldBootstrap {
     # Serial provisioning avoids the sidecar and main build deleting one another's fresh JDK.
     $wrapperRoot = Join-Path $env:LOCALAPPDATA "gradle-jvm"
-    $flags = @(Get-ChildItem $wrapperRoot -Filter .flag -Recurse -File -ErrorAction SilentlyContinue)
+    # Only a flag naming the JVM_URL gradlew.bat asks for counts: a JDK left by an earlier pin
+    # (Corretto 17 before 25) must not skip the serial provisioning.
+    $wanted = @(Select-String -Path .\gradlew.bat -Pattern '^set JVM_URL=(.+)$' | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    $flags = @(Get-ChildItem $wrapperRoot -Filter .flag -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $wanted -contains ([string](Get-Content $_.FullName -Raw)).Trim() })
     if ($flags.Count -eq 0) {
         if ($env:AFIELD_OFFLINE -eq "1") { throw "field: offline but the build JVM is not cached; launch once online first" }
         & .\gradlew.bat --version
