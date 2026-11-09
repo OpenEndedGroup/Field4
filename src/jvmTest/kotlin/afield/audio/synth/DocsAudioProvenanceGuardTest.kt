@@ -60,8 +60,8 @@ class DocsAudioProvenanceGuardTest {
 
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
-            Origin.STAND_IN_SYNTH to 18,
-            Origin.DIRT_SAMPLES to 38,
+            Origin.STAND_IN_SYNTH to 21,
+            Origin.DIRT_SAMPLES to 39,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 18,
             Origin.FAUST to 6,
@@ -286,7 +286,11 @@ class DocsAudioProvenanceGuardTest {
          * ([Origin.STEAM_AUDIO_HRTF]), two [Origin.STAND_IN_SYNTH] and one [Origin.DIRT_SAMPLES]
          * clip, and `sonic_pi.md`'s `bikes.wav`, the first [Origin.SONIC_PI]: a take recorded from
          * a real Sonic Pi, which the audit skips rather than compares.
+         *
+         * `forth_examples.md` added four (2026-11-09): three ForthField step grids voiced by a
+         * PatSynthBank ([Origin.STAND_IN_SYNTH], `ForthStepsDocs`) and one grid as a pattern through
+         * the pinned Dirt-Samples ([Origin.DIRT_SAMPLES], `ForthStepsDirtDocs`).
          */
-        const val EXPECTED_FENCE_COUNT = 95
+        const val EXPECTED_FENCE_COUNT = 99
     }
 }

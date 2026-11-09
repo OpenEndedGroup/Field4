@@ -424,12 +424,12 @@ definition between them, so `x 0 < if … then` in a step is still a comparison.
 ### A synth is a word
 
 The voice words set up the note that `note` will play: `sine`, `saw`, `square` and `tri` choose the
-oscillator, `lpf` sets a lowpass corner in Hz, `decay` the time in seconds for the note to fall away,
+oscillator, `lpf` sets a lowpass corner in Hz, `dur` how many seconds the note holds before it fades,
 and `gain` its level. Every step starts from a plain sine, so a sound you want on several steps is a
 word. Cagire writes `{ 110 saw 800 lpf out } synth`; in ForthField the same idea is a colon definition:
 
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_synth_word.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-synth-word" alt="A steps panel lists six saw notes, each with lpf 900: c2 and c3 on steps 0 and 1, d#2 on step 3, c2 and c3 again on steps 4 and 5, g2 on step 7. Below it an audio panel holds a three-second player."}
-: acid  saw 900 lpf 0.12 decay ;
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_synth_word.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-synth-word" alt="SYNTHALT"}
+: acid  saw 900 lpf 0.08 dur ;
 130 bpm
 seq: bass  acid c2 note | acid c3 note | | acid < eb2 g2 bb2 > note ;seq
 bass 8 run-steps
@@ -442,35 +442,61 @@ Six passes of the grid, with the last step walking E flat, G, B flat:
 \ Offline-rendered by ForthStepsDocs.renderWav("forth-steps-synth-word").
 ```
 
+The notes play through the same voice as Field's [pattern language](pattern_language.md): one
+oscillator, a lowpass and a decay. That voice has no FM, so where Cagire's example is an FM bell, the
+`chime` below is a triangle held for half a second.
+
 ### Lists, `iter` and weighted choice
 
 `[ … ]` gathers what its words push into a list. `iter` pushes how many times the grid has come round
 to this step, and `index` takes that item of the list, wrapping, so `[ c5 e5 g5 b5 ] iter index note`
 climbs the chord one pass at a time. `wchoose` takes a list of values and a list of weights and picks
-one value, here C three times out of five. `fm ( ratio index -- )` makes a two-operator FM voice whose
-brightness falls away with the note, which is a bell:
+one value, here C three times out of five:
 
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_bell.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-bell" alt="A steps panel lists four notes: step 0 c5 fm 3.50:4, step 2 g3 sine, step 4 e5 fm 3.50:4, step 6 g3 sine. Below it an audio panel holds a twelve-second player."}
-: bell  3.5 4 fm 1.4 decay 0.5 gain ;
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_chime.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-chime" alt="CHIMEALT"}
+: chime  tri 0.5 dur 0.5 gain ;
 90 bpm
-seq: chime  bell [ c5 e5 g5 b5 ] iter index note | | sine 0.3 decay [ c3 g3 eb3 ] [ 6 3 1 ] wchoose note | ;seq
-7 seed chime 8 run-steps
-7 seed chime 32 render-steps
+seq: bells  chime [ c5 e5 g5 b5 ] iter index note | | 0.2 dur [ c3 g3 eb3 ] [ 6 3 1 ] wchoose note | ;seq
+7 seed bells 8 run-steps
+7 seed bells 32 render-steps
 ```
 
 `seed` fixes the random draws, so the log and the player choose the same bass notes. Eight passes:
 
-```diffstatic_runner {data-lang=forth audio="assets/forth_examples/steps_bell.wav" audio-spec="forth-steps-bell" audio-renderer="afield.lang.forth.ForthStepsDocs" embed=true hidden=true name="forth-steps-bell-audio"}
-\ Offline-rendered by ForthStepsDocs.renderWav("forth-steps-bell").
+```diffstatic_runner {data-lang=forth audio="assets/forth_examples/steps_chime.wav" audio-spec="forth-steps-chime" audio-renderer="afield.lang.forth.ForthStepsDocs" embed=true hidden=true name="forth-steps-chime-audio"}
+\ Offline-rendered by ForthStepsDocs.renderWav("forth-steps-chime").
 ```
 
 `choose ( list -- x )` picks without weights, `pass` and `step` push the pass count and the step
 number for programs that want to do their own arithmetic.
 
+### Samples, and the other synths
+
+`sound ( name -- )` plays a named sound instead of a note. `render-dirt` turns the grid into a
+pattern and plays it from the [Dirt-Samples](pattern_language.md) library, so `bd`, `hh`, `sn` and
+`cp` are the drum samples:
+
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_dirt.png" capture="box" open-outputs="true" wait="1.0" requires="dirt-samples" embed=true name="forth-steps-dirt" alt="DIRTALT"}
+130 bpm
+seq: kit  s" bd" sound | s" hh" sound | < s" sn" s" hh" s" cp" > sound | s" hh" sound ;seq
+kit 8 run-steps
+kit 24 render-dirt
+```
+
+Six passes, the third step going snare, hat, clap:
+
+```diffstatic_runner {data-lang=forth audio="assets/forth_examples/steps_dirt.wav" audio-spec="forth-steps-dirt" audio-renderer="afield.lang.forth.ForthStepsDirtDocs" requires="dirt-samples" embed=true hidden=true name="forth-steps-dirt-audio"}
+\ Offline-rendered by ForthStepsDirtDocs.renderWav("forth-steps-dirt").
+```
+
+`name n steps->pat` leaves that pattern on the stack: the first n steps as one cycle, repeating, with
+each note's `note`, `gain` and `cutoff` written as the pattern language writes them. Whatever plays a
+`pat` pattern plays it. Field's Pure Data boxes take no patterns, so a step grid cannot drive Pd yet.
+
 ### Running a grid live
 
-In a launched box, `tick-steps` runs every step whose time has come on the wall clock and prints the
-notes, and `frame` hands control back to Field until the next tick:
+In a launched box, `tick-steps` plays every step whose time has come, through Field's audio engine,
+and lists its notes; `frame` hands control back to Field until the next tick:
 
 ```diffstatic {data-lang=forth}
 seq: line  < c4 eb3 g3 > note | | < g3 c4 > note | ;seq
@@ -478,8 +504,7 @@ seq: line  < c4 eb3 g3 > note | | < g3 c4 > note | ;seq
 play
 ```
 
-Redefine `line` while it runs and the next step plays the new program. `tick-steps` prints rather than
-sounds; for sound, use `render-steps`.
+Redefine `line` while it runs and the next step plays the new program. Stopping the box stops the sound.
 
 ## When a definition misbehaves
 

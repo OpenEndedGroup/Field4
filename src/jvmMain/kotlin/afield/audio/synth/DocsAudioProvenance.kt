@@ -179,6 +179,10 @@ object DocsAudioProvenance {
         // ORCA's own operators run in OrcaHeadless, each note voiced by a PatSynthBank of patVoice
         // voices — no samples anywhere on the path. See orca.md.
         "afield.audio.synth.OrcaSoundDocs" to Origin.STAND_IN_SYNTH,
+        // forth_examples.md's step grids: every ForthField note is a PatSynthNote on a PatSynthBank of
+        // patVoice voices. The Dirt scene is the same grid as a pattern through patRenderStereoDirt, strict.
+        "afield.lang.forth.ForthStepsDocs" to Origin.STAND_IN_SYNTH,
+        "afield.lang.forth.ForthStepsDirtDocs" to Origin.DIRT_SAMPLES,
         "afield.examples.sonicpi.SonicPiSoundDocs" to Origin.SONIC_PI,
         // One strike of a meshed drum, rendered by DrumModes.render. See eigendrum.md.
         "afield.audio.modal.EigendrumDocs" to Origin.MODAL_SYNTHESIS,

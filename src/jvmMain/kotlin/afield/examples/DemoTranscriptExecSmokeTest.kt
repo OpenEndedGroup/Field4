@@ -803,7 +803,7 @@ object DemoTranscriptExecSmokeTest {
         "remotejs_box_parity",
         "python_box_parity",
         "python_cells",
-        // ForthField step sequencer: the root holds no code; the four Forth boxes are a guest language and
+        // ForthField step sequencer: the root holds no code; the five Forth boxes are a guest language and
         // skipped. ForthStepsTest runs the words, and ForthStepsDocsTest the page's three scenes.
         "forth_step_sequencer",
         // fieldcv: the Python cells need JEP plus the optional cv group, and a camera; the Kotlin

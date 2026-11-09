@@ -2708,13 +2708,13 @@ reach `java.lang.System` from Python. The last cell's `fig.show()` needs a brows
 
 **Each step is a program.** The companion to the step-sequencer sections of
 [ForthField examples](forth_examples.md#each-step-is-a-program), after Raphaël Forment's
-[Cagire](https://cagire.raphaelforment.fr). A ForthField root and four children: a grid whose steps
-alternate between notes with `< … >`, a bass line played through a synth word, an FM bell climbing a
-chord with `iter index` over a bass note drawn by `wchoose`, and a grid to launch, which prints each
-step as it comes due. Each of the first three prints its notes and puts an audio player in its
-`audio` panel.
+[Cagire](https://cagire.raphaelforment.fr). A ForthField root and five children: a grid whose steps
+alternate between notes with `< … >`, a bass line played through a synth word, a chime climbing a
+chord with `iter index` over a bass note drawn by `wchoose`, a drum grid played from the Dirt-Samples,
+and a grid to launch, which plays each step through the audio engine as it comes due. Each of the
+others lists its notes and puts an audio player in its `audio` panel.
 
-`DemoTranscriptExecSmokeTest` has no Kotlin to compile here: the root holds no code and it skips the four ForthField boxes, which are
+`DemoTranscriptExecSmokeTest` has no Kotlin to compile here: the root holds no code and it skips the five ForthField boxes, which are
 not Kotlin; `ForthStepsTest` runs the words and the page's three grids.
 
 [Open →](offline.html?file=assets/agent_transcripts/forth_step_sequencer/metadata.edn)

@@ -84,13 +84,25 @@ class ForthStepsTest {
     @Test
     fun voiceWordsShapeTheNoteAndResetEachStep() {
         val f = forth()
-        f.eval(": bell 3.5 4 fm 0.6 decay ; seq: v saw 800 lpf c3 note | | bell g5 note ;seq")
-        val e = f.runSteps(seq(f, "v"), 3)
-        assertEquals(2, e.size, "the empty middle step is a rest")
+        f.eval(": chime tri 0.6 dur ; seq: v saw 800 lpf c3 note | | chime g5 note | s\" bd\" sound ;seq")
+        val e = f.runSteps(seq(f, "v"), 4)
+        assertEquals(3, e.size, "the empty second step is a rest")
         assertEquals("saw", e[0].wave); assertEquals(800.0, e[0].cutoff)
-        assertEquals("fm", e[1].wave); assertEquals(null, e[1].cutoff); assertEquals(2L, e[1].time)
-        val (left, _) = renderForthSteps(e, 3, f.steps.stepSeconds)
-        assertTrue(left.any { kotlin.math.abs(it) > 0.01f }, "renders sound")
+        assertEquals("tri", e[1].wave); assertEquals(null, e[1].cutoff); assertEquals(2L, e[1].time); assertEquals(0.6, e[1].dur)
+        assertEquals("bd", e[2].sound)
+        val audio = renderForthSteps(e, 4, f.steps.stepSeconds)
+        assertTrue(audio.left.any { kotlin.math.abs(it) > 0.01f }, "renders sound through PatSynthBank")
+    }
+
+    @Test
+    fun aGridIsAPatternOneCycleLong() {
+        val f = forth()
+        f.eval("seq: kit s\" bd\" sound | < c4 g4 > note ;seq")
+        val pat = f.forthStepsPattern(seq(f, "kit"), 4)
+        val ev = pat.events(afield.audio.synth.PatArc(afield.audio.synth.PatQ.of(1), afield.audio.synth.PatQ.of(2)))
+        assertEquals(listOf("bd", "60", "bd", "67"), ev.map { it.value })
+        assertEquals(afield.audio.synth.PatQ.of(5, 4), ev[1].arc.start)
+        assertEquals("67", ev[3].annotations["note"])
     }
 
     @Test
@@ -108,10 +120,11 @@ class ForthStepsDocsTest {
     @Test
     fun everySceneIsOnThePageAndRendersSound() {
         val page = java.io.File("public/docs/forth_examples.md").readText()
-        for ((name, source) in ForthStepsDocs.SCENES) {
+        for ((name, source) in ForthStepsDocs.SCENES + ForthStepsDocs.DIRT_SCENES) {
             assertTrue(source in page, "forth_examples.md no longer shows scene '$name' as ForthStepsDocs renders it")
             assertTrue("name=\"$name\"" in page, "no fence named $name")
-            assertTrue(ForthStepsDocs.render(name).size > 48_000, "scene $name rendered under a quarter second")
+            if (name in ForthStepsDocs.DIRT_SCENES && afield.audio.synth.DirtRender.libraryOrNull() == null) continue
+            assertTrue(ForthStepsDocs.render(name).frames > 12_000, "scene $name rendered under a quarter second")
         }
     }
 }
