@@ -1064,6 +1064,74 @@ escape text from outside sources. By default, a table shows at most 64 rows. See
 [table API](reference/visualization.md#tables-kt) and the
 [Eigendrum example](eigendrum.md) for more.
 
+### Plots and charts
+
+For named series with axes, a legend and hover, `showSignals` makes and displays a Plotly plot:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val samples = (0..100).map { it / 10.0 }
+showSignals(
+    "sine" to samples.map { sin(it) },
+    "cosine" to samples.map { cos(it) },
+    x = samples,
+    title = "two signals",
+    xTitle = "time",
+    channel = "plot",
+)
+```
+
+It displays the plot itself. `linePlot`, `scatter` and `violin` instead return a plot to pass to
+`display`; `showSpectrogram` plots audio with time and frequency axes. See
+[Looking at Data](tour_data.md#plot-it) and the [Plotly helpers](reference/visualization.md#plotly-kt).
+
+For plots made from FLine geometry, use `Chart` or `showChart`: add lines, points,
+bars and bands, pick a mark, or show which values fall outside an expected range. The
+[Charts as FLines](chart.md) guide compares the two plotters. For a function's *proven* bounds and
+the search that found them, see [`showIntervals`](fn_intervals.md#seeing-the-proof).
+
+### A matrix as an image
+
+`showHeatmap` draws a rectangular matrix as pixels. This is different from `Table.heat`, which
+keeps the numbers and labels visible in cells:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val grid = Array(24) { row ->
+    DoubleArray(32) { col -> sin(col * 0.25) * cos(row * 0.3) }
+}
+showHeatmap(grid, channel = "field", colormap = "coolwarm", width = 480, smooth = false)
+```
+
+By default the colour range follows the data and row zero is at the bottom. Set `vmin` and `vmax`
+to give several images the same scale, `flipY = false` to put row zero at the top, or
+`transpose = true` for data stored column first. `smooth = false` preserves the individual cells.
+`showHeatmap` displays and returns PNG bytes; `heatmapImage` returns the raster without displaying
+it. See the [heatmap API](reference/visualization.md#heatmap-kt) and a
+[Gaussian-process example](gaussian_processes.md).
+
+### Drawings and character grids
+
+Use `lines` for an FLine drawing in an output, with optional point editing. `threeLines` and
+`three { … }` add an orbitable 3D view for lines and meshes. Start with
+[seeing an FLine](fline_examples.md#seeing-an-fline-static-and-editable-viewers) or
+[Three.js scenes](three_output.md).
+
+`charGrid` runs a drawing block each tick on a grid of characters. Leave it as the box's last
+expression so stopping the box stops the animation:
+
+```diffstatic {data-lang=kotlin}
+:::static
+charGrid(cols = 32, rows = 8, glyphs = "░▒▓█") {
+    clearGrid()
+    SET(frame % COLS, ROWS / 2, 3, "#dddddd")
+}
+```
+
+For a program that writes one character per tick, use `charStream`. See the
+[character-grid examples](agent_transcripts.md#madp_chargrid) and
+[shape-aware ASCII](ascii_shape.md#live-in-a-char-grid).
+
 ### Markdown for captions and tables
 
 For a heading, a table and some text, Markdown is often easier to write than a string of HTML.
@@ -1130,6 +1198,18 @@ Three rules matter once a figure mixes computed values into the prose:
 Beyond GitHub-flavoured markdown there are two additions: `:::row … :::end`, splitting columns on a `---` line, for the before/after shape markdown cannot spell; and `{role:text}` spans — `accent`, `muted`, `dim`, `ok`, `warn`, `bad` — so a callout never needs a hex literal. Neither applies inside code, so a `:::row` or a `{warn:…}` shown *as* an example stays as written. The figure above uses both: the before/after row, and the `ok`, `warn` and `muted` spans on its status line.
 
 You do not need `trimIndent()`; the text is dedented for you, and unlike `trimIndent` it survives having a multi-line value interpolated into it. `width` pins the card's width; without it the card is as wide as its widest unbreakable line.
+
+To add entries to a running report instead of replacing it each time, use `markdownAppend`:
+
+```diffstatic {data-lang=kotlin}
+:::static
+markdown("report", "### Run")
+markdownAppend("report", "First pass complete.")
+markdownAppend("report", "Second pass complete.")
+```
+
+It keeps the newest 200 entries and 32,768 characters by default; `maxEntries` and `maxChars`
+change those limits. Calling `markdown` on that channel replaces the report and its history.
 
 ### Trees and columns
 
@@ -1354,6 +1434,12 @@ displayClearAll()
 This is useful for demos, guided tutorials, and boxes that are meant to be rerun frequently.
 `displayClear` removes the panel rather than emptying it; [Box Output](box_output.md) covers all
 four calls and the mouse gestures that do the same.
+
+For a compact status, `progressBar("work", 0.5)` writes a one-line channel; the
+[one-line channels guide](box_output.md#one-line-channels) explains how to remove it. For a real
+interactive shell or program in an output, see [A Terminal in a Box](terminal.md). A box can also
+[inspect and control a live output iframe](reference/visualization.md#liveoutputiframe-kt) in the
+Field Electron app; [this example](ai4_live_iframe.md) exposes a page to AI4.
 
 ## Controls: sliders, toggles, colors, text, and XY pads
 
@@ -2104,6 +2190,28 @@ The callback receives an absolute `File` when the chooser accepts a path. By def
 - `chooseDirectory = true` picks a folder instead of a file. `mustExist = false` accepts a name that does not exist yet, for something you are about to write. `showHidden = true` lists dot-files without having to type the dot.
 
 `fileUpload(...)` is the other way round: it copies a file *into* Field through the browser, which is what you want on the touch controller or when Field runs on another machine.
+
+### Picture and text slots
+
+`mediaSlots` makes a row of inputs for a box that works with pictures and text. This starts with an
+empty picture and a text description; click the picture slot or drop a file on it:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val inputs = mediaSlots {
+    image()
+    text("a reference image")
+}
+inputs.onChange { slots ->
+    markdown("chosen", "Image: ${slots[0].label.md}\n\nText: ${slots[1].text.md}")
+}
+```
+
+`onChange` runs once all slots are filled, then again when an input changes, on its own worker
+thread. `image(path)` provides an initial picture, and `tray(folder)` offers a set of pictures to
+drag onto slots. Edits survive a box re-run but not a Field restart. See the
+[media slots API](reference/output.md#mediaslots-kt) and the
+[picture-and-text comparison example](agent_transcripts.md#madp_tetra).
 
 ### Choosing the right control
 
