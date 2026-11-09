@@ -264,6 +264,62 @@ class Pages(Journal):
         path = scout.digest(ledger, force=True)
         self.assertIn("**saved by Marc 2024-03-23**", path.read_text())
 
+    def fake_ytdlp(self, calls: list):
+        def runner(args, timeout):
+            calls.append(args)
+            out = Path(args[args.index("-o") + 1]).parent
+            if "--skip-download" in args:
+                (out / "v.info.json").write_text(json.dumps({
+                    "title": "How a membrane drum sings", "channel": "Ann", "upload_date": "20261101",
+                    "duration_string": "12:00", "description": "Eigenmodes, drawn live.",
+                    "chapters": [{"start_time": 65, "title": "Modes"}]}))
+                (out / "v.en.vtt").write_text("WEBVTT\nKind: captions\n\n00:00.000 --> 00:02.000\nthe <c>first</c> mode\n\n"
+                                               "00:02.000 --> 00:04.000\nthe first mode\nis a dome\n")
+            else:
+                (out / "v.mp4").write_bytes(b"video")
+        return runner
+
+    def test_vtt_to_text_drops_timings_tags_and_scroll_repeats(self) -> None:
+        self.assertEqual(scout.vtt_to_text("WEBVTT\n\n1\n00:00.000 --> 00:01.000\na <b>b</b>\n\n00:01.000 --> 00:02.000\na b\nc &amp; d\n"), "a b c & d")
+
+    def test_a_video_is_read_through_ytdlp_saved_and_given_its_lobsters_discussion(self) -> None:
+        item, _ = self.ledger.add("A talk", "https://www.youtube.com/watch?v=abc",
+                                  {"src": "lobsters:graphics", "points": 3, "discussion": "https://lobste.rs/s/x1/a_talk"})
+        item.move("queued")
+        calls: list = []
+        fetcher = FakeFetcher({"https://lobste.rs/s/x1/a_talk.json": (200, "application/json", {
+            "comments": [{"commenting_user": "bo", "comment": "<p>The code is on GitHub.</p>"}]})})
+        done = scout.fetch(self.ledger, fetcher, log=lambda _: None,
+                           video=lambda i: scout.video_page(i, self.dir, runner=self.fake_ytdlp(calls), ytdlp="yt-dlp"))
+        self.assertEqual((done["fetched"], item.status, len(calls)), (1, "fetched", 2))
+        text = (self.dir / item.page).read_text()
+        self.assertTrue(text.startswith(scout.UNTRUSTED))
+        for want in ("channel: Ann", "1:05 Modes", "Eigenmodes, drawn live.", "the first mode is a dome",
+                     "lobste.rs discussion follows", "[bo] The code is on GitHub.", f"video saved: pages/{item.key}.mp4"):
+            self.assertIn(want, text)
+        self.assertEqual((self.dir / "pages" / f"{item.key}.mp4").read_bytes(), b"video")
+        self.assertEqual([p.name for p in (self.dir / "pages").iterdir() if p.name.startswith(".")], [])
+
+    def test_a_video_ytdlp_cannot_read_still_keeps_its_hn_discussion(self) -> None:
+        item = self.add("A talk", "https://youtu.be/abc", hn="99")
+        item.move("queued")
+        fetcher = FakeFetcher({"https://hn.algolia.com/api/v1/items/99": (200, "application/json", {
+            "text": None, "children": [{"author": "cy", "text": "<p>Slides are linked below.</p>"}]})})
+        def broken(_item):
+            raise OSError("yt-dlp not found on PATH")
+        scout.fetch(self.ledger, fetcher, log=lambda _: None, video=broken)
+        text = (self.dir / item.page).read_text()
+        self.assertIn("yt-dlp could not read this video", text)
+        self.assertIn("[cy] Slides are linked below.", text)
+
+    def test_old_videos_are_pruned(self) -> None:
+        pages = self.dir / "pages"; pages.mkdir()
+        old, new = pages / "a.mp4", pages / "b.mp4"
+        old.write_bytes(b"x"); new.write_bytes(b"x")
+        os.utime(old, (T0 - 30 * 86400, T0 - 30 * 86400)); os.utime(new, (T0, T0))
+        self.assertEqual(scout.prune_videos(self.dir), 1)
+        self.assertEqual(sorted(p.name for p in pages.iterdir()), ["b.mp4"])
+
     def test_three_failures_give_up(self) -> None:
         item = self.add(url="https://down.example/x")
         item.move("queued")

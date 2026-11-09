@@ -56,7 +56,7 @@ two thirds of the HN front page and almost nothing from the feeds.
 `python3 $REPO/tools/scout.py fetch`
 
 It fetches up to 40 queued pages (topic hits first, then by points) to `$JOURNAL/pages/<key>.txt`,
-and runs any watch checks that are due. GitHub repos arrive as their README plus license, stars,
+and runs any watch checks that are due. A YouTube or Vimeo link is read through `yt-dlp` (on `PATH`): the page holds its title, channel, chapters, description and English captions as text, then its HN or lobste.rs discussion, and the video itself is saved as `pages/<key>.mp4` (480p, at most 400 MB, deleted after 14 days; `fetch --no-video-download` skips it). Judge a talk from its captions. When yt-dlp fails the page says so and keeps the discussion. GitHub repos arrive as their README plus license, stars,
 language and latest release from the API. A page that renders little text has its HN discussion
 appended. A site that refuses scripted readers (HTTP 401, 403 or 451, as Patreon and some journals
 do) is kept as its HN discussion alone, printed as `fetch refused`, and the page file says so: judge
