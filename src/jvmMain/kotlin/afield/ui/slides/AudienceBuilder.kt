@@ -21,10 +21,6 @@ import kotlinx.html.*
  * [AudienceBuilder.fullScreenImage] and [AudienceBuilder.imageBeside] are the picture layouts. Both
  * want alt text and take an optional visible credit, and [AudienceImageFit] chooses between
  * containing the whole picture and cropping it to fill.
- *
- * `figure` and `figureBeside` (PresentationFigures.kt) are the live counterparts: a slot that a
- * box's output, controls and all, fills in the audience window. The slots a slide writes are
- * collected in [figures] across nested builders, and leave with the HTML in the slide's content.
  */
 
 /** A rendered Markdown fragment, inserted with unary plus inside [AudienceBuilder]. */
