@@ -515,6 +515,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - *osc* — [Audio](audio.md#osc-kt) · [Data](data.md#tuio-kt) · [Networking](networking.md#mdns-kt)
     - [query](networking.md#mdns-kt)
 - [process](data.md#jsonlineserver-kt)
+- [resolve](networking.md#resolve-kt)
 - *syphon* — [Graphics](graphics.md#syphon-kt) · [Internal](internal.md#syphonnative-kt)
 - [timecode](networking.md#ltc-kt)
 
@@ -662,7 +663,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**37587 public symbols across 1697 source files**, 22119 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**37649 public symbols across 1698 source files**, 22165 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -671,7 +672,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Examples](examples.md) | 227 | 715 | 316 (44%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 21 | 158 | 56 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 206 | 206 (100%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
-| [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
+| [Networking](networking.md) | 17 | 428 | 259 (60%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2162 | 1623 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1061 | 502 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
@@ -1971,6 +1972,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [RepoCommandTools.kt](ai4.md#repocommandtools-kt) | AI4 | 35 | 9 | Bounded commands for a headless AI4 job |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [RepoFileTools.kt](ai4.md#repofiletools-kt) | AI4 | 33 | 5 | The `repo` tools read, list, search, patch and create files in one checkout, for a job that hands AI4 work a coding agent would otherwise do (a docs-notes revision, a landing question). | [AI4's built-in tools](../ai4_tools.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [RerunCompileCache.kt](workspace.md#reruncompilecache-kt) | Workspace · internal | 0 | 0 | Compile once, re-evaluate on rerun: one K2 engine's record of the snippets it has compiled. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>resolve/<wbr></small> [Resolve.kt](networking.md#resolve-kt) | Networking | 62 | 46 | Reads timelines, markers and the playhead from a running DaVinci Resolve, through Resolve's own Python scripting API. | [DaVinci Resolve: Timelines and Markers](../davinci_resolve.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>engine/<wbr></small> [ResonatorBank.kt](audio.md#resonatorbank-kt) | Audio | 48 | 5 | Vectorized resonator banks for spectral analysis without an FFT: `ResonatorBank` is a fixed-frequency EMA resonator bank, and `TrackingResonatorBank` retunes each resonator toward the frequency it hears. | [Signal examples: time and frequency](../spectral_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>retrieval/<wbr></small> [RetrievalEval.kt](machine-learning.md#retrievaleval-kt) | Machine learning | 12 | 7 | How well documentation search answers the questions the repository already asks of it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>execution/<wbr></small> [ReturnValueRegistry.kt](workspace.md#returnvalueregistry-kt) | Workspace | 11 | 1 | What happens to the value a box's code returns: `ReturnValueRegistry` offers it to each registered `ReturnValueHandler` in turn, and the first one that accepts it keeps it running. |  |
