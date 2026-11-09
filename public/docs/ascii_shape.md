@@ -221,7 +221,7 @@ ticks. Stop the box to stop the cube.
 
 ## On the GPU, over a live scene
 
-The same matcher can run as fragment shaders over a scene the GPU draws, one shader invocation per
+You can run the same matcher over a live scene on the GPU, with one shader invocation per
 character cell. It takes three boxes beneath a renderer box: one draws the scene, one picks a glyph
 for each cell, and one draws those glyphs into the window. A fourth, optional box checks the GPU's
 choices against `convert`. Each shader is its box's `fragment` property, so you can edit it and run
@@ -611,8 +611,9 @@ levels and answers every vector that rounds the same way with the glyph nearest 
 vector it met, so a few cells in a thousand get a near neighbour instead of the nearest glyph.
 `exact = true` searches all 95 glyphs for every cell, as the shader does.
 
-The match pass's time, from GPU timestamp queries, against one `convert` of the same frame on the
-CPU, both with `contrast = 3, directional = 3`. Each figure is the median of three runs:
+Here is the match pass's time, from GPU timestamp queries, beside one CPU `convert` of the same
+frame. Both use `contrast = 3, directional = 3`; each figure is the median of three runs on an
+Apple-silicon Mac:
 
 | Grid | Scene pixels | GPU match pass | CPU, `exact = true` | CPU, cached |
 | --- | --- | --- | --- | --- |

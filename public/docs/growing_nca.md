@@ -6,8 +6,8 @@ seed cell the grid grows a picture, keeps it, and grows it back when part of it 
 
 This is the model from Mordvintsev, Randazzo, Niklasson and Levin,
 [*Growing Neural Cellular Automata*](https://distill.pub/2020/growing-ca) (Distill, 2020, CC-BY 4.0).
-Field ships one trained rule, `GrowingNca.pretrained("flower")`, which runs on the CPU in any box
-and on the GPU as a compute shader.
+Field ships two trained rules, `GrowingNca.pretrained("flower")` and
+`GrowingNca.pretrained("fish")`. Both run on the CPU in a box and on the GPU as a compute shader.
 
 ## Grow it, cut it, watch it heal
 
@@ -73,7 +73,7 @@ becomes a bud, and the bud grows a second, complete flower beside the first.
 - **Perception.** Each channel is seen through three fixed 3 × 3 filters: identity, Sobel-x and
   Sobel-y, each Sobel divided by 8. That gives 48 numbers per cell.
 - **Update.** A network 48 → 128 (ReLU) → 16 proposes a change, which is *added* to the state, and
-  only in a random half of the cells each step. With no global clock, a cell cannot count steps.
+  only in a random half of the cells each step.
 - **Alive masking.** A cell is cleared unless it or a neighbour has alpha above 0.1, both before
   and after the update. Empty space stays empty, so the picture can only grow outward from cells
   that already exist.
@@ -210,9 +210,9 @@ second.
 
 ## Training a rule
 
-The rule was trained in PyTorch, not in Kotlin: the article's method backpropagates through 64 to
-96 steps of the whole grid, which Field's own learning code (`flowmatching.kt`, `afield.math.autodiff`)
-does not do.
+The training script uses PyTorch to backpropagate through 64 to 96 steps of the whole grid, as in
+the article. Field's own learning code (`flowmatching.kt`, `afield.math.autodiff`) does not yet
+train through the whole grid.
 
 ```diffstatic {data-lang=bash}
 uv run --project . --group pen python tools/nca/train_growing_nca.py --target flower \
@@ -695,7 +695,7 @@ grows back a little less exactly: 5.2 × 10⁻⁴ at step 999, then 1.1 × 10⁻
 - **The sweep on the GPU.** Every damage run is independent, so the 52 runs could be 52 grids side
   by side in one compute dispatch.
 
-The demo is `dev_docs/agents/transcripts/growing_nca.yaml`. It has the boxes on this page: the
+Open the [Growing NCA starting point](agent_transcripts.md#growing_nca) to try these boxes: the
 strip at the top, a live CPU version (launch it), the turning, angle-field, damage and fish boxes,
-and two renderers, each with a GPU box beneath it, one for the flower and one for the fish. See [Spatial artificial
-life](alife_examples.md) for cellular automata whose rules are written by hand.
+and two renderers, each with a GPU box beneath it. See [Spatial artificial life](alife_examples.md)
+for cellular automata whose rules are written by hand.

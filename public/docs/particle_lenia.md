@@ -19,8 +19,8 @@ dp_i/dt = −∇E(p_i)
 
 A particle is rewarded (its energy drops) where `U` is close to `muG` and it is not crowded. Every
 particle slides downhill on `E`, so the population as a whole looks for an arrangement in which each
-member has the right amount of neighbourhood. The gradient is computed analytically, not by
-differencing. [`ParticleLenia`](reference/alife.md#alife-particle-lenia-kt) holds the particles and
+member has the right amount of neighbourhood. The gradient is computed analytically.
+[`ParticleLenia`](reference/alife.md#alife-particle-lenia-kt) holds the particles and
 [`ParticleLeniaParams`](reference/alife.md#alife-particle-lenia-kt) the rule; the defaults are the
 article's (`muK = 4`, `sigmaK = 1`, `wK = 0.022`, `muG = 0.6`, `sigmaG = 0.15`, `cRep = 1`, `dt = 0.1`).
 
@@ -126,10 +126,10 @@ animateEvolution(
 )
 ```
 
-To look for it, the same seed was run for 5000 to 10000 steps at each point of two grids, measuring
-the centroid's displacement and the population's rotation over two 2000-step windows 3000 steps
-apart. A creature counts as moving if both windows agree. The first grid varied `muG` (0.5, 0.6,
-0.7), `sigmaG` (0.1, 0.15, 0.2) and `wK` (0.015, 0.022, 0.03) at 200 particles, and found nothing
+To find moving rules, we ran the same seed for 5000 to 10000 steps at each point of two grids.
+For each run, we measured the centroid's displacement and the population's rotation over two
+2000-step windows 3000 steps apart. A creature counts as moving if both windows agree. The first grid
+varied `muG` (0.5, 0.6, 0.7), `sigmaG` (0.1, 0.15, 0.2) and `wK` (0.015, 0.022, 0.03) at 200 particles, and found nothing
 that kept moving. The second varied the particle count (12, 25, 50, 100, 200), `muK` (3, 4, 5),
 `sigmaK` (0.4, 0.6) and `cRep` (0.3, 1). Three settings rotated steadily in both windows: 100
 particles at `muK = 4, sigmaK = 0.6, cRep = 0.3` (0.52 and 0.55 rad per window), 100 at
@@ -337,9 +337,9 @@ settle it measures two consecutive windows of 1500 steps, and takes the window w
 times straightness. A creature that splits, or whose spread changes by more than 2 % in either
 window, scores zero. The score is the worse of two seeds.
 
-The two windows and the spread test are what tell a glider from a population that is still settling.
-A cloud that is still spreading out also moves its centre, and over one window it can score as well
-as a glider. A glider holds its shape, so its spread stays put.
+The spread test and the two windows help distinguish a glider from a population that is still
+settling. A cloud that is spreading can move its centre and score as well as a glider over one
+window. A glider holds its shape, so its spread stays put.
 
 The box below runs evolution and, as the control, random sampling from the same distribution, both
 at 300 evaluations and the same seed. Then it runs each arm's best rule from five seeds the search
@@ -442,7 +442,7 @@ heading that turns by 0.2 rad or less in 4000 steps. Random sampling's gliders a
 of its four seeds, between 0.023 and 0.057. For comparison, the zoo's 39-particle Tarbosaurolop,
 started from the demo's own positions, glides at 0.125.
 
-Which creature a seed assembles is sensitive to the rule itself. Rounding the evolved rule to the
+The creature a seed assembles is sensitive to the rule itself. Rounding the evolved rule to the
 three places shown in the table changes which creature some of the seeds settle into, so the
 video below takes the rule in full, as the box prints it. It runs seeds 3 and 4 for 8000 steps, each
 panel framed on its own creature with the path its centre has travelled.
