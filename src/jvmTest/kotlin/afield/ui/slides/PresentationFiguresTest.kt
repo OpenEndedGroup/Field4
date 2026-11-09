@@ -163,4 +163,14 @@ class PresentationFiguresTest {
         assertEquals(1, content.figures.size)
         assertTrue("field-figure-beside" in content.html && "how often" in content.html)
     }
+
+    /** A figure whose output overflows its area (an editable drawing) is fitted whole, not cropped. */
+    @Test fun aFigureFitsItsOverflowNotJustItsArea() {
+        val fitted = afield.app.protocol.figureFitZoom(520.0, 382.0, 520.0, 382.0, 552.0, 510.0)!!
+        assertEquals(552.0 / 520 * 0.96, fitted, 1e-9)
+        val wide = afield.app.protocol.figureFitZoom(520.0, 382.0, 699.0, 382.0, 552.0, 510.0)!!
+        assertEquals(552.0 / 699 * 0.96, wide, 1e-9, "the zoom must fit the 699 px drawing that overflows a 520 px area")
+        assertNull(afield.app.protocol.figureFitZoom(0.0, 0.0, 0.0, 0.0, 552.0, 510.0), "an area with no size yet has no zoom")
+        assertEquals(4.0, afield.app.protocol.figureFitZoom(10.0, 10.0, 10.0, 10.0, 1000.0, 1000.0))
+    }
 }

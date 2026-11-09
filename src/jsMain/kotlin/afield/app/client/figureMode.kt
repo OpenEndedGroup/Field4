@@ -16,7 +16,8 @@ import org.w3c.dom.url.URLSearchParams
  * The page is an ordinary Field client of the document, so the output is the real one: its scripts
  * run, its sliders send their updates, and output replay fills it on attach. The box element is moved
  * into a fixed host above the canvas (Field reparents boxes between panes in the same way), its chrome
- * and channel headers are hidden, and a CSS scale fits its natural size to the window. Nothing else
+ * and channel headers are hidden, and a CSS scale fits its natural size to the window, overflow included
+ * (`figureFitZoom`). Nothing else
  * of the document is visible or reachable, and this client never sends its viewport, so a figure
  * cannot change what `Box.viewport` reports to box code.
  */
@@ -53,10 +54,11 @@ internal fun installFigureMode(params: URLSearchParams) {
             if (shown && inter != null && inter.isOpen(id) != true) inter.open(id)
         }
         val area = box.querySelector(".outputArea") as? HTMLElement ?: return
-        val width = area.offsetWidth.toDouble()
-        val height = area.offsetHeight.toDouble()
-        if (width < 1 || height < 1) return
-        val zoom = minOf(window.innerWidth / width, window.innerHeight / height).times(0.96).coerceIn(0.2, 4.0)
+        val zoom = afield.app.protocol.figureFitZoom(
+            area.offsetWidth.toDouble(), area.offsetHeight.toDouble(),
+            area.scrollWidth.toDouble(), area.scrollHeight.toDouble(),
+            window.innerWidth.toDouble(), window.innerHeight.toDouble()
+        ) ?: return
         val current = host.style.getPropertyValue("--field-figure-zoom").toDoubleOrNull()
         if (current == null || kotlin.math.abs(current - zoom) > 0.002) {
             host.style.setProperty("--field-figure-zoom", zoom.asDynamic().toFixed(4) as String)
