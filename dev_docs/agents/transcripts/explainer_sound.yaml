@@ -29,7 +29,11 @@ operations:
           val held = BooleanArray(3)
 
           // Twenty milliseconds of whatever is held, summed.
+          // A faint frame the size of the figure, so its bounds, and so its scale, never change.
+          val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.06) }
+
           fun draw() = lines(
+              frame,
               fline {
                   moveTo(0.0, 120.0)
                   for (x in 1..640) {
@@ -197,6 +201,9 @@ operations:
           var plate = 0.0
           var colour = false
 
+          // A faint frame the size of the figure, so its bounds, and so its scale, never change.
+          val frame = fline { rect(0.0, 0.0, 640.0, 260.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.06) }
+
           fun draw() {
               val slices = (1 until n - 1).map { i ->
                   val x = 50 + i * gap + u[i]
@@ -226,7 +233,7 @@ operations:
                   stroked = false
                   color = vec(1.0, 0.6, 0.2, 1.0)
               }
-              lines(slices + walls + face, channel = "tube", w = 640.0, h = 260.0)
+              lines([frame] + slices + walls + face, channel = "tube", w = 640.0, h = 260.0)
           }
 
           draw()
@@ -274,6 +281,9 @@ operations:
           val offset = Param(0f)     // where "jump" holds the plate
           val pace = Param(4f)
 
+          // A faint frame the size of the figure, so its bounds, and so its scale, never change.
+          val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.06) }
+
           fun position(t: Double) = (if (held) distance else 0.0) +
               (if (repeat) distance * (if ((t * rate) % 1.0 < 0.5) 1.0 else -1.0) else 0.0)
 
@@ -303,7 +313,7 @@ operations:
                   color = vec(0.4, 0.9, 1.0, 1.0)
               }
               val axis = fline { moveTo(0.0, 230.0); lineTo(640.0, 230.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
-              lines(plate, rest, axis, trace, channel = "plate", w = 640.0, h = 300.0)
+              lines(frame, plate, rest, axis, trace, channel = "plate", w = 640.0, h = 300.0)
           }
 
           draw(0.0)
@@ -328,6 +338,9 @@ operations:
           // Three keys, each a repeating pattern of the plate, and a fourth that plays the sum of the first two
           // as one pattern of its own. Each row is twenty milliseconds of a key;
           // the bottom row, below the line, is what you hear.
+          // A faint frame the size of the figure, so its bounds, and so its scale, never change.
+          val frame = fline { rect(0.0, 0.0, 640.0, 340.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.06) }
+
           fun square(t: Double) = if (t - floor(t) < 0.5) 1.0 else -1.0
           fun triangle(t: Double) = 1 - 4 * abs(t - floor(t + 0.5))
           fun saw(t: Double) = 2 * (t - floor(t + 0.5))
@@ -360,7 +373,7 @@ operations:
               val rows = 4 { i -> row(30.0 + 52 * i, patterns[i], if (held[i]) vec(0.4, 0.9, 1.0, 1.0) else dim, if (i == 3) 20.0 else 40.0) }
               val sum = row(290.0, { t -> (0..3).sumOf { if (held[it]) patterns[it](t) else 0.0 } }, vec(1.0, 0.6, 0.2, 1.0), scale = 25.0)
               val rule = fline { moveTo(0.0, 238.0); lineTo(640.0, 238.0); thickness = 1.0; color = dim }
-              lines(rows + rule + sum, channel = "patterns", w = 640.0, h = 340.0)
+              lines([frame] + rows + rule + sum, channel = "patterns", w = 640.0, h = 340.0)
           }
 
           draw()
@@ -388,6 +401,9 @@ operations:
           val pitch = Param(220f)
           val level = Param(0f)
 
+          // A faint frame the size of the figure, so its bounds, and so its scale, never change.
+          val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.06) }
+
           fun triangle(t: Double) = 1 - 4 * abs(t - floor(t + 0.5))
 
           fun wave(shift: Double, c: Vec4) = fline {
@@ -400,7 +416,7 @@ operations:
           fun update() {
               pitch.base = hz.toFloat()
               level.base = if (on) (0.15 * amplitude).toFloat() else 0f
-              lines(wave(0.0, vec(1.0, 1.0, 1.0, 0.35)), wave(phase, vec(0.4, 0.9, 1.0, 1.0)), channel = "wave", w = 640.0, h = 240.0)
+              lines(frame, wave(0.0, vec(1.0, 1.0, 1.0, 0.35)), wave(phase, vec(0.4, 0.9, 1.0, 1.0)), channel = "wave", w = 640.0, h = 240.0)
           }
 
           update()
@@ -424,6 +440,9 @@ operations:
           val offset = Param(0f)     // the second tone's shift, in radians
           val level = Param(0f)
 
+          // A faint frame the size of the figure, so its bounds, and so its scale, never change.
+          val frame = fline { rect(0.0, 0.0, 640.0, 320.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.06) }
+
           fun row(y: Double, scale: Double, f: (Double) -> Double, c: Vec4) = fline {
               moveTo(0.0, y - scale * f(0.0))
               for (x in 1..640) lineTo(x.toDouble(), y - scale * f(0.02 * x / 640))
@@ -437,6 +456,7 @@ operations:
               val first = { t: Double -> sin(2 * PI * 220 * t) }
               val second = { t: Double -> sin(2 * PI * 220 * t + 2 * PI * shift) }
               lines(
+                  frame,
                   row(45.0, 30.0, first, vec(0.4, 0.9, 1.0, 1.0)),
                   row(125.0, 30.0, second, vec(1.0, 0.6, 0.2, 1.0)),
                   fline { moveTo(0.0, 172.0); lineTo(640.0, 172.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) },
@@ -550,6 +570,9 @@ operations:
           var angle = 0.0
           val heights = mutableListOf<Double>()
 
+          // A faint frame the size of the figure, so its bounds, and so its scale, never change.
+          val frame = fline { rect(0.0, 0.0, 640.0, 280.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.06) }
+
           fun draw() {
               val cx = 110.0
               val cy = 140.0
@@ -568,7 +591,7 @@ operations:
                   thickness = 2.0
                   color = vec(0.4, 0.9, 1.0, 1.0)
               }
-              lines(axis, circle, spoke, level, trace, dot, channel = "circle", w = 640.0, h = 280.0)
+              lines(frame, axis, circle, spoke, level, trace, dot, channel = "circle", w = 640.0, h = 280.0)
           }
 
           draw()
@@ -604,7 +627,11 @@ operations:
           var on = false
 
           // Twenty milliseconds of the wave, 640 pixels wide.
+          // A faint frame the size of the figure, so its bounds, and so its scale, never change.
+          val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.06) }
+
           fun draw() = lines(
+              frame,
               fline {
                   moveTo(0.0, 120.0)
                   for (x in 1..640) lineTo(x.toDouble(), 120.0 - 100.0 * amplitude * sin(2 * PI * hz * 0.02 * x / 640))
@@ -644,6 +671,9 @@ operations:
           val gates = 2 { Gate() }
           val second = Param(223f)
 
+          // A faint frame the size of the figure, so its bounds, and so its scale, never change.
+          val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.06) }
+
           fun draw() {
               val f = [220.0, 220.0 + difference]
               val columns = (0 until 640).map { x ->
@@ -659,7 +689,7 @@ operations:
                   }
               }
               val axis = fline { moveTo(0.0, 120.0); lineTo(640.0, 120.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
-              lines([axis] + columns, channel = "sum", w = 640.0, h = 240.0)
+              lines([frame, axis] + columns, channel = "sum", w = 640.0, h = 240.0)
           }
 
           draw()
@@ -691,6 +721,9 @@ operations:
           val level = Param(0f)
           val weights = 50 { Param(0f) }
 
+          // A faint frame the size of the figure, so its bounds, and so its scale, never change.
+          val frame = fline { rect(0.0, 0.0, 640.0, 260.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.06) }
+
           fun partial(i: Int) = 2 * i + 1                      // 1, 3, 5, …
           fun sum(t: Double) = (0 until count).sumOf { i -> 4 / PI / partial(i) * sin(2 * PI * partial(i) * t) }
           fun square(t: Double) = if (t - floor(t) < 0.5) 1.0 else -1.0
@@ -705,7 +738,7 @@ operations:
                   thickness = width
                   color = c
               }
-              lines(wave(::square, vec(1.0, 1.0, 1.0, 0.35), 1.5), wave(::sum, vec(0.4, 0.9, 1.0, 1.0), 2.0), channel = "wave", w = 640.0, h = 260.0)
+              lines(frame, wave(::square, vec(1.0, 1.0, 1.0, 0.35), 1.5), wave(::sum, vec(0.4, 0.9, 1.0, 1.0), 2.0), channel = "wave", w = 640.0, h = 260.0)
           }
 
           update()
@@ -778,6 +811,9 @@ operations:
           var time = 0.0
 
           // Mode k of n masses: mass j moves as sin(k π j / (n + 1)), at a frequency that rises with k.
+          // A faint frame the size of the figure, so its bounds, and so its scale, never change.
+          val frame = fline { rect(0.0, 0.0, 640.0, 280.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.06) }
+
           fun shape(k: Int, j: Int) = sin(k * PI * j / (masses + 1))
           fun rate(k: Int) = 2 * sin(k * PI / (2 * (masses + 1)))
 
@@ -802,7 +838,7 @@ operations:
               val walls = fline { moveTo(20.0, 40.0); lineTo(20.0, 240.0); moveTo(620.0, 40.0); lineTo(620.0, 240.0); thickness = 3.0; color = vec(1.0, 1.0, 1.0, 0.35) }
               val springs = (0..masses).map { spring(xs[it], ys[it], xs[it + 1], ys[it + 1]) }
               val balls = (1..masses).map { j -> fline { circle(xs[j], ys[j], 14.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) } }
-              lines([walls] + springs + balls, channel = "springs", w = 640.0, h = 280.0)
+              lines([frame, walls] + springs + balls, channel = "springs", w = 640.0, h = 280.0)
           }
 
           draw()
@@ -836,6 +872,9 @@ operations:
           var plucked = -1.0         // when the pluck happened, in seconds since launch
           var time = 0.0
 
+          // A faint frame the size of the figure, so its bounds, and so its scale, never change.
+          val frame = fline { rect(0.0, 0.0, 640.0, 260.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.06) }
+
           fun weight(k: Int) = 2 / (k * k * PI * PI * at * (1 - at)) * sin(k * PI * at)   // a triangle pulled to height 1
           fun decay(k: Int) = 2.5 / k.toDouble().pow(0.7)
           fun base() = 110 / length / gauge
@@ -867,7 +906,7 @@ operations:
               val rest = fline { moveTo(end, 140.0); lineTo(620.0, 140.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
               val pegs = fline { circle(20.0, 140.0, 5.0); circle(end, 140.0, 5.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
               val mark = fline { moveTo(20 + (end - 20) * at, 210.0); lineTo(20 + (end - 20) * at, 230.0); thickness = 2.0; color = vec(1.0, 0.6, 0.2, 1.0) }
-              lines(rest, string, pegs, mark, channel = "string", w = 640.0, h = 260.0)
+              lines(frame, rest, string, pegs, mark, channel = "string", w = 640.0, h = 260.0)
           }
 
           draw()
@@ -1025,7 +1064,7 @@ operations:
                   "<div style='position:absolute;left:${d / 140 * 100}%;top:${66 + 26 * i}px;$anchor:1px solid #fff6;padding:0 6px;font-size:15px;color:#fffa;white-space:nowrap'>${d.toInt()} dB: $label</div>"
               }.joinToString("")
               display("level", """
-                  <div style='width:640px;height:150px;position:relative;font-family:var(--field-font, monospace);color:#e6f6ff'>
+                  <div style='width:640px;height:150px;position:relative;color:#e6f6ff'>
                     <div style='font-size:34px'>${"%.3g".format(pa)} Pa &rarr; ${"%.1f".format(db)} dB</div>
                     <div style='position:absolute;left:0;right:0;top:56px;height:6px;background:#fff2'></div>
                     <div style='position:absolute;left:0;top:56px;height:6px;width:${(db / 140 * 100).coerceIn(0.0, 100.0)}%;background:#66e6ff'></div>
@@ -1045,10 +1084,13 @@ operations:
       properties:
         code: |
           // A source moving left to right past a listener (orange), sending out rings that spread at the
-          // speed of sound. Time is slowed thirty times. Ahead of the source the rings crowd together, behind
+          // speed of sound. Time is slowed a hundred times, so a ring grows by a fraction of the gap between
+          // rings in each painted frame even at fifteen frames a second. Ahead of the source the rings crowd together, behind
           // it they spread out. With "sound" on you hear a 440 Hz tone at the pitch the listener receives.
           val metre = 64.0
           val c = 343.0
+          val slow = 100.0          // picture time runs this many times slower than real time
+          val every = 0.27          // seconds of picture time between rings
           var speed = 150.0          // metres per second
           var on = false
           var time = 0.0
@@ -1061,8 +1103,8 @@ operations:
 
           fun ring(cx: Double, cy: Double, r: Double) = fline {
               var drawing = false
-              for (i in 0..240) {
-                  val a = 2 * PI * i / 240
+              for (i in 0..72) {
+                  val a = 2 * PI * i / 72
                   val px = cx + r * cos(a)
                   val py = cy + r * sin(a)
                   val inside = px in 0.0..640.0 && py in 0.0..300.0
@@ -1073,14 +1115,14 @@ operations:
 
           fun step(dt: Double) {
               time += dt
-              x += speed / 30 * dt
+              x += speed / slow * dt
               if (x > 10.5) { x = -0.5; emitted.clear(); nextRing = time }
-              // A ring every 0.08 s of picture time, placed where the source was when it left.
+              // A ring every few tenths of a second of picture time, placed where the source was when it left.
               while (nextRing <= time) {
-                  emitted += nextRing to x - speed / 30 * (time - nextRing)
-                  nextRing += 0.08
+                  emitted += nextRing to x - speed / slow * (time - nextRing)
+                  nextRing += every
               }
-              emitted.removeAll { (t0, _) -> c / 30 * (time - t0) * metre > 800 }
+              emitted.removeAll { (t0, _) -> c / slow * (time - t0) * metre > 800 }
               // The pitch heard now, from the source's motion towards the listener.
               val dx = listener.first - x
               val dy = listener.second
@@ -1091,7 +1133,7 @@ operations:
 
           fun draw() {
               val y = 130.0
-              val rings = emitted.map { (t0, x0) -> ring(metre * x0, y, c / 30 * (time - t0) * metre).apply { thickness = 1.5; color = vec(0.4, 0.9, 1.0, 0.8) } }
+              val rings = emitted.map { (t0, x0) -> ring(metre * x0, y, c / slow * (time - t0) * metre).apply { thickness = 1.5; color = vec(0.4, 0.9, 1.0, 0.8) } }
               val source = fline { circle(metre * x, y, 8.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.9) }
               val ear = fline { circle(metre * listener.first, y - metre * listener.second, 9.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
               val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.08) }
@@ -1333,11 +1375,7 @@ operations:
                                   +"""
                                   ## Three keys
 
-                                  Hold a key to hear it. Each one moves the air in a different
-                                  repeating pattern, drawn above the keys.
-
-                                  By the end of the talk we will know why the three sound different,
-                                  even when they play the same note.
+                                  Hold a key. Each moves the air in its own repeating pattern.
                               """
                                       .md
                               }
@@ -1352,11 +1390,9 @@ operations:
                                   +"""
                                   ## Air is a crowd
 
-                                  Air is molecules, mostly nitrogen and oxygen, flying in straight lines
-                                  at around 500 metres a second until they hit something.
-
-                                  The figure is a flat cartoon of a few hundred of them. The real thing
-                                  has about 25 billion billion in every cubic centimetre.
+                                  Air is molecules flying at about 500 m/s until they
+                                  hit something. This is a flat cartoon of a few
+                                  hundred.
                               """
                                       .md
                               }
@@ -1371,11 +1407,8 @@ operations:
                                   +"""
                                   ## Pressure is hits on a wall
 
-                                  Every molecule that bounces off a wall gives it a tiny push. The
-                                  walls flash where they are hit.
-
-                                  Pressure is the total push per area of wall: how often molecules
-                                  arrive, and how hard. The plot counts the hits.
+                                  Each bounce pushes the wall. Pressure is how much
+                                  push each piece of wall gets: the plot.
                               """
                                       .md
                               }
@@ -1390,10 +1423,7 @@ operations:
                                   +"""
                                   ## Squeeze it
 
-                                  Make the box shorter and the same molecules cross it more often,
-                                  so each piece of wall is hit more often.
-
-                                  Half the length, twice the hits: the pressure doubles.
+                                  Half the length, twice the hits: twice the pressure.
                               """
                                       .md
                               }
@@ -1409,11 +1439,8 @@ operations:
                                   +"""
                                   ## Nobody goes far
 
-                                  Follow one molecule. It is knocked off course again and again, and
-                                  after many collisions it has hardly left home.
-
-                                  So when air carries a push, it is not the molecules that travel. The
-                                  push is handed from neighbour to neighbour.
+                                  One molecule, knocked about, barely leaves home. A
+                                  push travels by being handed on.
                               """
                                       .md
                               }
@@ -1428,12 +1455,9 @@ operations:
                                   +"""
                                   ## A plate in a tube
 
-                                  Fill a tube with air and put a plate at one end. Each line is a thin
-                                  slice of air.
-
-                                  Push the plate and the nearest slices crowd together. They push on
-                                  the next ones, and the crowding runs down the tube, while each slice
-                                  only shuffles a little way and back.
+                                  Each line is a slice of air. Push the plate: the
+                                  crowding runs down the tube; the slices only
+                                  shuffle.
                               """
                                       .md
                               }
@@ -1449,12 +1473,8 @@ operations:
                                   +"""
                                   ## Squeezed and stretched
 
-                                  Red slices are squeezed, above the usual pressure; blue ones are
-                                  stretched, below it.
-
-                                  Pulling the plate back sends a stretch down the tube just as pushing
-                                  sends a squeeze. Either way, the disturbance moves at the speed of
-                                  sound: about 343 metres a second in room-temperature air.
+                                  Red is squeezed, blue stretched. Either travels at
+                                  the speed of sound, about 343 m/s.
                               """
                                       .md
                               }
@@ -1473,11 +1493,7 @@ operations:
                                   +"""
                                   ## A jump is a pop
 
-                                  Hold **jump** and the plate leaps forward; let go and it leaps back.
-                                  Each leap sends one squeeze or one stretch towards your ear, and you
-                                  hear a pop.
-
-                                  A bigger leap is a bigger pressure change, and a louder pop.
+                                  A sudden move of the plate is a pop. A bigger move, a louder pop.
                               """
                                       .md
                               }
@@ -1494,12 +1510,8 @@ operations:
                                   +"""
                                   ## Repeat it and it becomes a note
 
-                                  Make the plate jump back and forth by itself. A few times a second
-                                  we hear separate pops. Past about twenty a second they blur into one
-                                  buzzing tone.
-
-                                  The faster it repeats, the higher the tone. How many times it repeats
-                                  each second is its frequency, in hertz.
+                                  Past about twenty a second the pops blur into a
+                                  tone. Its frequency, in hertz, is its pitch.
                               """
                                       .md
                               }
@@ -1517,11 +1529,8 @@ operations:
                                   +"""
                                   ## Sounds add
 
-                                  Each key moves the plate in its own repeating pattern, plotted beside
-                                  it. Hold two at once and the plate makes both motions at the same
-                                  time: the two patterns add.
-
-                                  The bottom line is the sum, which is what reaches your ear.
+                                  Two keys at once: the plate makes both motions, and
+                                  they add. The bottom line is what you hear.
                               """
                                       .md
                               }
@@ -1534,11 +1543,7 @@ operations:
                                   +"""
                                   ## One key, two sounds
 
-                                  The last key plays a single pattern: the sum of the first two, worked
-                                  out in advance.
-
-                                  It sounds the same as holding both. The ear cannot tell two sources
-                                  from one that makes the same motion.
+                                  The last key plays A + B as one pattern. It sounds the same as holding both.
                               """
                                       .md
                               }
@@ -1551,11 +1556,9 @@ operations:
                                   +"""
                                   ## Three numbers for a repeating shape
 
-                                  Take one shape, a triangle, and repeat it. Three numbers say how:
-
-                                  - **amplitude**: how far it swings, which we hear as loudness;
-                                  - **frequency**: how often it repeats, which we hear as pitch;
-                                  - **phase**: where in its cycle it starts, which on its own we cannot hear.
+                                  **Amplitude** is loudness, **frequency** is pitch,
+                                  **phase** is where it starts, which alone you cannot
+                                  hear.
                               """
                                       .md
                               }
@@ -1575,11 +1578,8 @@ operations:
                                   +"""
                                   ## Half a cycle apart, they cancel
 
-                                  Phase matters when two sounds meet. Two identical tones that start
-                                  together add to one twice as tall.
-
-                                  Shift one by half a cycle and every push meets an equal pull. The
-                                  sum is flat, and there is nothing to hear.
+                                  Two equal tones add. Shift one by half a cycle and
+                                  every push meets a pull: silence.
                               """
                                       .md
                               }
@@ -1595,11 +1595,7 @@ operations:
                                   +"""
                                   ## Draw a shape, hear it
 
-                                  Any shape can be repeated. Drag the points to draw one cycle, then
-                                  hold a key to hear it repeated at that key's pitch.
-
-                                  Smooth shapes sound soft; sharp corners and jumps sound bright and
-                                  buzzy.
+                                  Drag the points, then hold a key. Corners and jumps sound brighter.
                               """
                                       .md
                               }
@@ -1614,11 +1610,7 @@ operations:
                                   +"""
                                   ## A sine wave is a turning circle
 
-                                  A point going round a circle at a steady speed, watched only for its
-                                  height, traces a sine wave.
-
-                                  The circle's radius is the amplitude, how fast it turns is the
-                                  frequency, and where it starts is the phase.
+                                  Radius is amplitude, speed of turning is frequency, starting point is phase.
                               """
                                       .md
                               }
@@ -1634,11 +1626,8 @@ operations:
                                   +"""
                                   ## The range of hearing
 
-                                  A sine wave is the purest tone there is. Young ears hear from about
-                                  20 Hz to 20,000 Hz; the top falls with age.
-
-                                  Near either end a tone fades out even at the same amplitude: our
-                                  hearing is most sensitive between about 1,000 and 5,000 Hz.
+                                  The purest tone. We hear about 20 Hz to 20,000 Hz,
+                                  best between 1,000 and 5,000.
                               """
                                       .md
                               }
@@ -1654,11 +1643,8 @@ operations:
                                   +"""
                                   ## Two close tones beat
 
-                                  Two sines a few hertz apart drift in and out of step. In step they
-                                  add; out of step they cancel.
-
-                                  We hear one tone that swells and fades, as often per second as the
-                                  two frequencies differ.
+                                  A few hertz apart, two sines drift in and out of
+                                  step: one tone, swelling and fading.
                               """
                                       .md
                               }
@@ -1671,12 +1657,8 @@ operations:
                                   +"""
                                   ## Every shape is a sum of sines
 
-                                  Add sines at 1, 3, 5, 7… times a base frequency, each smaller than
-                                  the last, and a square wave appears.
-
-                                  Fourier showed that any repeating shape is a sum like this. The
-                                  ripples by the corners shrink in width but never in height: they
-                                  are the Gibbs phenomenon.
+                                  Odd multiples, each smaller, build a square. The
+                                  ripples at the corners never shrink in height.
                               """
                                       .md
                               }
@@ -1692,10 +1674,7 @@ operations:
                                   +"""
                                   ## Taking a drawing apart
 
-                                  The shape you drew is also a sum of sines. The bars are how much of
-                                  each multiple of the base frequency it holds.
-
-                                  Smooth shapes need only the first few; corners need many.
+                                  Your drawing is a sum of sines too. The bars say how much of each multiple.
                               """
                                       .md
                               }
@@ -1708,9 +1687,7 @@ operations:
                                   +"""
                                   ## Listening back
 
-                                  The same analysis works on sound from a microphone. Whistle and one
-                                  bar stands up; sing a vowel and a row of them appears, at whole
-                                  multiples of the note you sing.
+                                  Whistle: one bar. Sing a vowel: a row of them, at multiples of your note.
                               """
                                       .md
                               }
@@ -1726,9 +1703,8 @@ operations:
                                   +"""
                                   ## A mass between springs
 
-                                  Pull a mass held between two springs and let go. It swings back and
-                                  forth in a sine wave, at a frequency set by the stiffness of the
-                                  springs and the weight of the mass, however far it was pulled.
+                                  It swings as a sine, at a pitch set by stiffness and
+                                  mass, however far it was pulled.
                               """
                                       .md
                               }
@@ -1744,10 +1720,8 @@ operations:
                                   +"""
                                   ## Two masses, two ways to move
 
-                                  With two masses there are two special motions, the normal modes: both
-                                  swinging together, or swinging against each other, a little faster.
-
-                                  Any motion of the pair is a mix of the two.
+                                  Together, or against each other and a little faster.
+                                  Any motion mixes the two.
                               """
                                       .md
                               }
@@ -1768,8 +1742,7 @@ operations:
                                   +"""
                                   ## More masses, more modes
 
-                                  Five masses have five modes. Each has a frequency of its own, and
-                                  the higher modes wiggle more.
+                                  Five masses, five modes. Higher modes wiggle more.
                               """
                                       .md
                               }
@@ -1786,9 +1759,8 @@ operations:
                                   +"""
                                   ## A string is many masses
 
-                                  A string is the limit of very many tiny masses. Its modes are whole
-                                  numbers of half waves along its length, at whole multiples of the
-                                  lowest frequency: the harmonics.
+                                  A string's modes are whole numbers of half waves, at
+                                  whole multiples of the lowest pitch: the harmonics.
                               """
                                       .md
                               }
@@ -1805,9 +1777,8 @@ operations:
                                   +"""
                                   ## Pluck it
 
-                                  A pluck is a mix of every mode at once. Plucked near the middle, the
-                                  low harmonics dominate and the note is round; near the end, the high
-                                  ones join in and it turns bright.
+                                  A pluck rings every mode at once. Near the middle it
+                                  is round; near the end, bright.
                               """
                                       .md
                               }
@@ -1823,8 +1794,7 @@ operations:
                                   +"""
                                   ## Shorter, tighter, lighter: higher
 
-                                  Halve the string and every mode doubles in frequency: an octave up.
-                                  Tightening it raises the pitch too; a heavier, thicker string lowers it.
+                                  Half the length, an octave up. Tighter is higher; heavier is lower.
                               """
                                       .md
                               }
@@ -1843,11 +1813,8 @@ operations:
                                   +"""
                                   ## A pulsing sphere
 
-                                  The simplest source swells and shrinks evenly. Rings of high and low
-                                  pressure spread out from it.
-
-                                  The distance between rings is the wavelength: the speed of sound
-                                  divided by the frequency. At 343 Hz it is a metre.
+                                  Rings of high and low pressure. Their spacing is the
+                                  wavelength: 343 Hz makes one metre.
                               """
                                       .md
                               }
@@ -1861,9 +1828,7 @@ operations:
                                   +"""
                                   ## Further away: later and quieter
 
-                                  Sound takes about three milliseconds to cross a metre. As each ring
-                                  spreads its push is shared over a larger sphere, so the pressure swing
-                                  falls as one over the distance: twice as far, half as big.
+                                  About 3 ms a metre. Twice as far, half the pressure swing.
                               """
                                       .md
                               }
@@ -1876,11 +1841,8 @@ operations:
                                   +"""
                                   ## Decibels
 
-                                  The loudest sound we can bear has a million times the pressure swing
-                                  of the quietest we can hear. Decibels compress that range: every ten
-                                  times the pressure adds 20 dB.
-
-                                  Twice the distance from a source takes off about 6 dB.
+                                  Every ten times the pressure adds 20 dB. Twice the
+                                  distance costs about 6 dB.
                               """
                                       .md
                               }
@@ -1895,9 +1857,9 @@ operations:
                                   +"""
                                   ## A moving source
 
-                                  A source moving towards you squeezes its own rings together, so they
-                                  arrive more often and the pitch is higher. Moving away, they spread
-                                  and the pitch falls. This is the Doppler effect.
+                                  Ahead of the source the rings crowd, and the pitch
+                                  is higher; behind, lower. Time is slowed a hundred
+                                  times.
                               """
                                       .md
                               }
@@ -1912,11 +1874,7 @@ operations:
                                   +"""
                                   ## Two speakers
 
-                                  Two speakers play the same tone. Where their rings arrive in step the
-                                  sound is louder; where one's peak meets the other's trough it nearly
-                                  vanishes.
-
-                                  Move the listener through the pattern.
+                                  Where peaks meet troughs the tone nearly vanishes. Move the listener.
                               """
                                       .md
                               }
@@ -1930,9 +1888,8 @@ operations:
                                   +"""
                                   ## Echo
 
-                                  A wall sends sound back. Far from the wall the reflection arrives
-                                  late enough to hear as a second clap. Closer than about eight metres,
-                                  it returns within fifty milliseconds and merges with the first.
+                                  Far from a wall, a second clap. Within about 50 ms,
+                                  closer than 8 m, one sound.
                               """
                                       .md
                               }
@@ -1945,12 +1902,8 @@ operations:
                                   +"""
                                   ## A room
 
-                                  In a room, sound bounces off every wall, again and again, losing a
-                                  little each time. The reflections pile up into a tail that lingers
-                                  after the sound stops: reverberation.
-
-                                  Bigger, harder rooms ring longer; curtains, carpets and people soak
-                                  it up.
+                                  Bounces pile up into a tail: reverberation. Bigger,
+                                  harder rooms ring longer.
                               """
                                       .md
                               }
