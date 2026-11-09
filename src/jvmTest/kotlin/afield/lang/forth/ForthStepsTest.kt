@@ -97,9 +97,9 @@ class ForthStepsTest {
     fun runStepsPrintsAnEventLog() {
         val f = ForthInterpreter()
         val out = StringBuilder()
-        f.onOutput = { out.append(it) }
+        f.onDisplay = { ch, v -> if (ch == "steps") out.append(v) }
         f.eval("seq: alt < c4 eb3 g3 > note ;seq alt 3 run-steps")
-        assertEquals("step 0  cell 0  c4 (60)  sine\nstep 1  cell 0  d#3 (51)  sine\nstep 2  cell 0  g3 (55)  sine\n", out.toString())
+        assertEquals("<pre style='margin:0'>step 0  cell 0  c4 (60)  sine\nstep 1  cell 0  d#3 (51)  sine\nstep 2  cell 0  g3 (55)  sine</pre>", out.toString())
     }
 }
 

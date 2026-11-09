@@ -1,6 +1,7 @@
 package afield.lang.forth
 
 import afield.audio.engine.WavFloatArrayWriter
+import afield.ui.visualization.h
 import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.floor
@@ -23,7 +24,7 @@ import kotlin.math.sin
  * - `choose ( list -- x )` and `wchoose ( values weights -- x )` pick at random from a seeded generator.
  *
  * A grid is written `seq: name  program | program | … ;seq`. Each `|` ends a step; an empty step is
- * a rest. `name n run-steps` prints what the first n steps played, `name n render-steps` renders them
+ * a rest. `name n run-steps` lists what the first n steps played in a `steps` panel, `name n render-steps` renders them
  * to an audio player in the box's output, and in launch mode `name tick-steps frame` steps through the grid
  * against the wall clock, printing each step as it comes due.
  */
@@ -76,6 +77,8 @@ class ForthStepState {
     var bpm: Double = 120.0
     var random = java.util.Random(1)
     var voice = ForthVoice()
+    /** The WAV the last `render-steps` displayed. */
+    var lastWav: ByteArray? = null
     /** Notes sounded since the last [take]. */
     val events = ArrayList<ForthStepEvent>()
 
@@ -286,15 +289,20 @@ internal fun installStepWords(forth: ForthInterpreter) = with(forth) {
         for (k in weights.indices) { r -= weights[k]; if (r < 0) { pick = k; break } }
         push(values[pick])
     }
-    defineWord("run-steps", "( seq n -- ) Run the first n steps and print the notes they played") {
+    defineWord("run-steps", "( seq n -- ) Run the first n steps and list the notes they played in the steps channel") {
         val n = popInt(); val seq = popSeq()
         val events = runSteps(seq, n)
-        onOutput(events.joinToString("\n", postfix = "\n") { forthStepLogLine(it) })
+        // A panel of its own rather than inline print output, so the log sits beside the player.
+        val log = events.joinToString("\n") { forthStepLogLine(it) }
+        onDisplay("steps", "<pre style='margin:0'>" + log.replace("&", "&amp;").replace("<", "&lt;") + "</pre>")
     }
     defineWord("render-steps", "( seq n -- ) Render the first n steps to an audio player in the audio channel") {
         val n = popInt(); val seq = popSeq()
         val events = runSteps(seq, n)
-        onDisplay("audio", forthStepsWav(events, n, s.stepSeconds))
+        val wav = forthStepsWav(events, n, s.stepSeconds)
+        s.lastWav = wav
+        // `.h` turns WAV bytes into the output's audio player, as `display-channel` does for any value.
+        onDisplay("audio", wav.h)
     }
     defineWord("tick-steps", "( seq -- ) Launch mode: run every step now due on the wall clock, printing each note (no sound)") {
         val seq = popSeq()

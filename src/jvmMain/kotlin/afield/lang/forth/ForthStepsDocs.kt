@@ -7,7 +7,7 @@ import java.io.File
  *
  * Each [SCENES] entry is the ForthField source of one box on the page, character for character
  * (`ForthStepsTest` checks the page still contains it). [renderWav] evaluates that source in a fresh
- * [ForthInterpreter] and writes what its `render-steps` put in the `audio` channel, so the player on
+ * [ForthInterpreter] and writes the WAV its `render-steps` put in the `audio` channel, so the player on
  * the page is the box's own output.
  */
 object ForthStepsDocs {
@@ -41,11 +41,9 @@ object ForthStepsDocs {
         val source = SCENES[name] ?: error("unknown forth steps scene '$name'; known: ${SCENES.keys}")
         val forth = ForthInterpreter()
         forth.onOutput = {}
-        var wav: ByteArray? = null
-        forth.onDisplay = { channel, value -> if (channel == "audio" && value is ByteArray) wav = value }
         val errors = forth.eval(source)
         check(errors.isEmpty()) { "scene '$name' failed: $errors" }
-        return wav ?: error("scene '$name' displayed no audio")
+        return forth.steps.lastWav ?: error("scene '$name' displayed no audio")
     }
 
     /** Offline-render scene [name] to a WAV at [outPath] — the docs fence's entry point. */

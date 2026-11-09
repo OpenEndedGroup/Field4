@@ -409,7 +409,7 @@ line 12 run-steps
 line 12 render-steps
 ```
 
-`line 12 run-steps` runs the first twelve steps and prints the notes they played; `render-steps`
+`line 12 run-steps` runs the first twelve steps and lists the notes they played in a `steps` panel; `render-steps`
 renders the same steps to a player in the box's `audio` panel. A step is a sixteenth note at the tempo
 `bpm` sets. The log spells E flat as `d#3`, which is the same MIDI note:
 
