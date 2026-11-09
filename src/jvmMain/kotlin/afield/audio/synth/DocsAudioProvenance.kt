@@ -179,6 +179,11 @@ object DocsAudioProvenance {
         // ORCA's own operators run in OrcaHeadless, each note voiced by a PatSynthBank of patVoice
         // voices — no samples anywhere on the path. See orca.md.
         "afield.audio.synth.OrcaSoundDocs" to Origin.STAND_IN_SYNTH,
+        // Datalog event(...) rules (DlRhythm) as a Pat pattern through patRenderStereo/patVoice.
+        // See datalog.md#rules-that-decide-when-notes-play.
+        "afield.data.query.datalog.DatalogRhythmSoundDocs" to Origin.STAND_IN_SYNTH,
+        // The same rules on Dirt folder names, through patRenderStereoDirt with strict = true.
+        "afield.data.query.datalog.DatalogRhythmDirtDocs" to Origin.DIRT_SAMPLES,
         "afield.examples.sonicpi.SonicPiSoundDocs" to Origin.SONIC_PI,
         // One strike of a meshed drum, rendered by DrumModes.render. See eigendrum.md.
         "afield.audio.modal.EigendrumDocs" to Origin.MODAL_SYNTHESIS,

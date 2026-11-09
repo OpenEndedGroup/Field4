@@ -517,7 +517,20 @@ display("main", "<pre>$grids</pre>")
 ```
 
 To hear it, add `showPatAudio(r.pattern(), cycles = 4, cps = 0.5)`, which renders four bars and
-puts a player in the box. `r.pattern()` is an ordinary `PatPattern<String>`: each note's value is
+puts a player in the box. These are those four bars, eight seconds, through Pat's built-in synth
+voice: the snare enters at two seconds and the hats at four.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/datalog/rhythm-song.wav" audio-spec="song" audio-renderer="afield.data.query.datalog.DatalogRhythmSoundDocs" embed=true hidden=true name="datalog-rhythm-song-audio"}
+// Offline-rendered by DatalogRhythmSoundDocs.renderWav("song"): the rules above, through patRenderStereo.
+```
+
+The same rules with Dirt sample names (`bd`, `sn`, `hh`, and `arpy` for the lead, pitched by
+`speed`) play through the Dirt-Samples instead:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/datalog/rhythm-song-dirt.wav" audio-spec="song-dirt" audio-renderer="afield.data.query.datalog.DatalogRhythmDirtDocs" requires="dirt-samples" embed=true hidden=true name="datalog-rhythm-song-dirt-audio"}
+// Offline-rendered by DatalogRhythmDirtDocs.renderWav("song-dirt"): the rules through real Dirt-Samples.
+```
+ `r.pattern()` is an ordinary `PatPattern<String>`: each note's value is
 its instrument, a drum name (`kick`, `bd`, `sd`, `hh`, ...) keeps its drum voice, any other name
 is pitched by its `Note`, and the velocity becomes `gain` (100 is 1.0).
 

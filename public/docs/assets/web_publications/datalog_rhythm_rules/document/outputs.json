@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-09T07:01:07.965Z",
+  "documentName": "datalog_rhythm_rules",
+  "outputs": [
+    {
+      "uid": "datalog_rhythm_rules",
+      "channel": "grid",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 288,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "datalog_rhythm_rules",
+      "channel": "main",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/1.html"
+    }
+  ]
+}
