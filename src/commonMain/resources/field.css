@@ -4229,10 +4229,6 @@ body.field-pane-resizing-h * {
     pointer-events: auto;
 }
 
-.closeBox + .hoverable {
-    margin-left: 4.8px;
-}
-
 body::-webkit-scrollbar {
     width: 0.75rem;
 }
@@ -4661,8 +4657,34 @@ body::-webkit-scrollbar {
     font-size: 10.5px;
 }
 
-.outputArea .monaco-editor .closeBox + .hoverable {
-    margin-left: 5.8px;
+/* The × and ↕ in an inline output's gutter (`updateOutputControlVisibility` in Outputs.kt) share one
+   fixed-width cell and are centred in it. The two glyphs differ in width, so matching left margins
+   leaves them misaligned; each margin hand-tuned against the other broke when the × became a
+   padded button. The ↕ takes the ×'s colours and hover (`button.closeBox` in fieldPanelTokens.css). */
+.output-zone-control > .closeBox,
+.output-zone-control > .toggleBox {
+    display: block;
+    box-sizing: border-box;
+    width: 15px;
+    margin-left: 6.875px;
+    padding: 0;
+    text-align: center;
+}
+.output-zone-control > .closeBox {
+    margin-top: 3px;
+}
+.output-zone-control > .toggleBox {
+    margin-top: 1.5px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    line-height: 1;
+    color: var(--fp-muted);
+    cursor: pointer;
+}
+.output-zone-control > .toggleBox:hover {
+    color: var(--fp-control-hover-fg);
+    background: var(--fp-control-hover-bg);
+    border-color: var(--fp-control-hover-border);
 }
 
 /* Remove Monaco focus outline inside embedded editors */

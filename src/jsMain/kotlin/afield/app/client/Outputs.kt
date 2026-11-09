@@ -1827,6 +1827,7 @@ fun addOutput(
 
             domNodeControl.style.asDynamic().pointerEvents = "auto"
             domNodeControl.classList.add("notselectable")
+            domNodeControl.classList.add("output-zone-control")
 
             domNode.onwheel = { wheel: dynamic ->
                 domNode.scrollBy(js("{ top: wheel.deltaY }"))
