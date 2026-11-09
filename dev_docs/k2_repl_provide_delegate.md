@@ -317,23 +317,48 @@ Its teeth were verified by counterfactual: with `build.gradle.kts:943` commented
 fails with
 `rung 'local-provideDelegate' now EVALUATES (got res0: kotlin.Int = 42)` — so it is not inert.
 
-### The box-level reproducer, and why it is not a catalog test
+### The box-level reproducer, and the catalog test for it
 
-The production-path reproducer below is **deliberately not** a `FIELD_TEST`. I tried making it one
-(`runner: backdoor-box`, `expect.outputContains: ["IrPropertySymbolImpl is unbound"]`) and it
-**cannot be expressed**: `tools/run_field_tests.py:1114#peer-output` fails any `backdoor-box` test whose box emits an
-`output kind=error` event, *before* `outputContains` is consulted. The run reported
+The production-path reproducer below is not a `FIELD_TEST`. On 2026-08-25 this section doubted that a green
+box-level test for a box that is *supposed* to fail was expressible. That doubt is withdrawn: it
+is, through `expect.allowExecutionErrors`.
+
+The 2026-08-25 attempt (`runner: backdoor-box`,
+`expect.outputContains: ["IrPropertySymbolImpl is unbound"]`, no flag) reported
 
 ```
 [1/2] FAIL dev-docs.provide-delegate.box-repro (4102 ms)
   run @last … line 16: Kotlin compiler exception: … IrPropertySymbolImpl is unbound. Signature: null
 ```
 
-— i.e. it reproduced perfectly and failed anyway. There is an expected-failure register at
-`dev_docs/testing/expected_test_failures.json`, but `tools/check_expected_test_failures.py` reads
-**Gradle JUnit XML**, not the FIELD_TEST catalog, so it does not cover this. So there is currently
-no way to commit a green box-level test for a box that is *supposed* to fail. Noted as a tooling
-gap; the jvm-main smoke carries the executable coverage instead.
+It reproduced the defect and failed anyway, because
+`tools/run_field_tests.py:1731#def collect_execution_problems` turns any `output` / `peer-output` event
+with `kind=error` into a test failure. `evaluate_expectations` now calls it only when
+`allowExecutionErrors` is absent, and the flag also appends `--no-fail-on-error` to the generated
+`run` (`tools/verification_runtime.py:57#def waive_execution_verdict`), because a box that fails to
+compile makes `run` itself not-ok and `field_backdoor.py` stops at the first not-ok command. The
+flag is documented in `dev_docs/agents/FIELD_BACKDOOR.md`. Waiving the verdict keeps the evidence:
+`data.errors` is still filled in. On 2026-09-18 a scratch `backdoor-box` annotation over the snippet
+below, with `allowExecutionErrors: true` and `outputContains: ["has no callableId"]` (Defect B's
+signature at the time), passed. Both defects are fixed now, so the snippet runs and there is no
+failure left for such a test to pin.
+
+Two details of the old account were also wrong:
+
+- **The ordering.** `outputContains` and the execution problems are both appended to one `failures`
+  list in `evaluate_expectations`, so neither is consulted "before" the other. An un-waived error
+  event fails the test whatever `outputContains` says.
+- **`outputContains` / `outputNotContains` match a rendering of *every* event, not just printed
+  output.** A `run` command's events include the `set-string` that carries the box's own `code`. A
+  version of the scratch test with `outputNotContains: ["REACHED-RUNTIME"]` failed with
+  `output unexpectedly contained: REACHED-RUNTIME` against a box that had not run a line: the string
+  was in its source. To assert that a box printed nothing, use a check that separates printed output
+  from source.
+
+What still holds: `dev_docs/testing/expected_test_failures.json` does not cover catalog tests,
+because `tools/check_expected_test_failures.py` reads **Gradle JUnit XML**. The catalog's register,
+`dev_docs/testing/expected_smoke_failures.json`, is for a FIELD_TEST expected to fail *as a test*,
+which a test that passes because its box failed is not.
 
 Run it by hand (this is the exact invocation I used, and its output is quoted under Defect A):
 
