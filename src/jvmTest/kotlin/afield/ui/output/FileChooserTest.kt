@@ -146,7 +146,7 @@ class FileChooserTest {
         assertEquals(listOf("%textures/inner.png"), complete(spec, "%textures/in").entries.map { it.insert })
         val unknown = complete(spec, "%nope/x")
         assertNotNull(unknown.error)
-        assertTrue(unknown.error!!.contains("%textures"), "the error names the directories that do exist")
+        assertTrue(unknown.error.contains("%textures"), "the error names the directories that do exist")
     }
 
     @Test
