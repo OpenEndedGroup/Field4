@@ -575,6 +575,7 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/synth/DrawnScoreDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/audio/synth/DrawnMorphDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/audio/synth/OrcaSoundDocs.kt" to "pat-stand-in",
+                "src/jvmMain/kotlin/afield/data/query/datalog/DatalogRhythmSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/audio/synth/DoughDspSoundDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/audio/synth/FnSoundDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/audio/synth/SubharmonicSoundDocs.kt" to "signal-graph",
@@ -582,6 +583,7 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/synth/BooleanNetworkSoundDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/audio/synth/PetriSparksDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/audio/synth/PetriSoundDocs.kt" to "dirt-samples",
+                "src/jvmMain/kotlin/afield/data/query/datalog/DatalogRhythmDirtDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/audio/synth/FaustPolySoundDocs.kt" to "faust-poly",
                 "src/jvmMain/kotlin/afield/audio/synth/FaustSoundDocs.kt" to "faust",
                 // A take recorded from a real Sonic Pi; not sample-reproducible, so the audit skips it.

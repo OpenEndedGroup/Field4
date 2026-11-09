@@ -60,8 +60,8 @@ class DocsAudioProvenanceGuardTest {
 
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
-            Origin.STAND_IN_SYNTH to 18,
-            Origin.DIRT_SAMPLES to 38,
+            Origin.STAND_IN_SYNTH to 19,
+            Origin.DIRT_SAMPLES to 39,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 18,
             Origin.FAUST to 6,
@@ -291,6 +291,6 @@ class DocsAudioProvenanceGuardTest {
          * strikes the bare, Ramakrishna–Sondhi-loaded and syahi-fitted disks and the 4:5:6 triad drum.
          * They landed uncounted because the lander's guard does not run this test.
          */
-        const val EXPECTED_FENCE_COUNT = 99
+        const val EXPECTED_FENCE_COUNT = 101
     }
 }

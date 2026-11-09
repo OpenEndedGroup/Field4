@@ -181,6 +181,8 @@
   {"doc": "dataframe_typed_columns", "box": "dataframe_live", "codeSha256": "2df4decae9aa3603", "codeLines": 25, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "dataframe_typed_columns", "box": "dataframe_one_pass", "codeSha256": "c83bdd8ad17c8d5e", "codeLines": 15, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "dataframe_typed_columns", "box": "dataframe_typed", "codeSha256": "72345b4d00d03744", "codeLines": 16, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "datalog_rhythm_rules", "box": "datalog_rhythm_rules", "codeSha256": "9f46991533da659d", "codeLines": 13, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "datalog_rhythm_rules", "box": "datalog_rhythm_why", "codeSha256": "b14b490194849df8", "codeLines": 11, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "debruijn_tilings_3d_demo", "box": "debruijn3d_offset_sweep", "codeSha256": "d5006cfa91027add", "codeLines": 25, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "debruijn_tilings_3d_demo", "box": "debruijn3d_patch", "codeSha256": "b573dcaea681b45d", "codeLines": 17, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "debruijn_tilings_3d_demo", "box": "debruijn3d_slab", "codeSha256": "c249b9e3ceb962dd", "codeLines": 25, "receivers": ["afield.document.graph.Box"], "preamble": ""},

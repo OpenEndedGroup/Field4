@@ -661,7 +661,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**37542 public symbols across 1692 source files**, 22084 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**37564 public symbols across 1695 source files**, 22097 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -688,7 +688,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 40 | 1317 | 721 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 89 | 2332 | 1214 (52%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 586 | 586 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 123 | 3103 | 1527 (49%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 126 | 3125 | 1540 (49%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 239 | 3212 | 1294 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 95 | 2120 | 799 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 687 | 410 (59%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
@@ -1002,6 +1002,9 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogLineNotes.kt](languages.md#dataloglinenotes-kt) | Languages | 3 | 3 | Line notes for a Datalog box (`LineNotes`): what a line's statement means in the model the box's runs have built. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogObjects.kt](languages.md#datalogobjects-kt) | Languages | 4 | 4 | Any live object graph as Datalog base relations, by way of `afield.data.query.graph`. | [Datalog in a box](../datalog.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogParser.kt](languages.md#datalogparser-kt) | Languages | 7 | 5 | Source text to abstract syntax: the lexer and recursive-descent parser every Datalog program in Field goes through, and the two word lists that decide what the notation reserves. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogRhythm.kt](languages.md#datalogrhythm-kt) | Languages | 12 | 10 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogRhythmDirtDocs.kt](languages.md#datalogrhythmdirtdocs-kt) | Languages | 4 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogRhythmSoundDocs.kt](languages.md#datalogrhythmsounddocs-kt) | Languages | 6 | 2 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogSmokeTest.kt](languages.md#datalogsmoketest-kt) | Languages · internal | 3 | 1 | Smoke test for the Datalog deductive-database language in `afield.data.query.datalog`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogWhyNot.kt](languages.md#datalogwhynot-kt) | Languages | 16 | 10 | The why-not layer: `Datalog.whyNot` walks a failing conjunction literal by literal and names the one that took the answer count to zero. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [DeBruijnTiling.kt](graphics.md#debruijntiling-kt) | Graphics | 29 | 20 |  | [Penrose and Other Quasiperiodic Tilings](../debruijn_tilings.md) |

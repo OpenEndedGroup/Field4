@@ -982,6 +982,27 @@
         "public/docs/assets/agent_transcripts/controls_surface/surface_code_.kt": "def660097b214a6a3937a20373cd226a8c7a6942a1a3d97ff2d0a8b105fcb72e"
       }
     },
+    "assets/agent_transcripts/datalog_rhythm_rules/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-09T07:01:07.965Z",
+      "channels": 2,
+      "file": "assets/web_publications/datalog_rhythm_rules/document/metadata.edn",
+      "files": {
+        "assets/web_publications/datalog_rhythm_rules/document/metadata.edn": "171bd4259f1903aa35fa980aea8efffa0ab11d8361c2e068d40e7bb0389173ec",
+        "assets/web_publications/datalog_rhythm_rules/document/outputs.json": "400ccda89ad19b109bd628a818641bff1d62cf7f16e9306aeb7336f8a44ca96c",
+        "assets/web_publications/datalog_rhythm_rules/outputs/0.html": "0696924a660ca62cba07125cb5fe313a0fcb2176bfbdbb68ad6fb3efd691781f",
+        "assets/web_publications/datalog_rhythm_rules/outputs/1.html": "e63ffbd6f22d7f10d78d28e892d9018ce17053cc391a72c0613f97befe0008d5"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/datalog_rhythm_rules/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/datalog_rhythm_rules.yaml": "592a57a3c203f64e439dc75da018fdc318a7005f25f40d860cf6da0c3c6243c1",
+        "public/docs/assets/agent_transcripts/datalog_rhythm_rules/datalog_rhythm_rules_code_.kt": "802db30b7863ad4c12755c374993807579c9e4275ea4816266bc13bca33ddd00",
+        "public/docs/assets/agent_transcripts/datalog_rhythm_rules/datalog_rhythm_why_code_.kt": "648021bf79c5f3ba323459b6159cbd98b21e561950dac9c846b93d5594ea6bde",
+        "public/docs/assets/agent_transcripts/datalog_rhythm_rules/guides/datalog-rules-that-decide-when-notes-play.md": "22f30b86c2e809d3dd762334878d2e00a1ace4232ffa41162be83a3762879722",
+        "public/docs/assets/agent_transcripts/datalog_rhythm_rules/metadata.edn": "5834b6f6d94d49562e5218828d5689abe0bcbe78d78ed689d8b081e580821d3d"
+      }
+    },
     "assets/agent_transcripts/debruijn_tilings_3d_demo/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
       "capturedAt": "2026-11-08T21:43:08.359Z",
