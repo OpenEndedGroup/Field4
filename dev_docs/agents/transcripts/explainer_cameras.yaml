@@ -598,8 +598,8 @@ operations:
           fun draw() {
               val camera = SensorCamera(y = 0.6, z = -2.0, lookY = 0.6, lookZ = 6.0, sensorDistance = ThinLens.imageDistance(1.0, 3.0),
                   apertureDiameter = aperture, focalLength = 1.0, blades = blades, bladeRotation = 0.3)
-              val image = camera.render(lights, 160, 106, samples = 400)
-              display("sensor", PngEncoder.encode(image.toArgb(exposure = 1.0 / camera.reference, scale = 4), 640, 424))
+              val image = camera.render(lights, 150, 100, samples = 400)
+              display("sensor", PngEncoder.encode(image.toArgb(exposure = 1.0 / camera.reference, scale = 4), 600, 400))
           }
 
           draw()
