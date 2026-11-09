@@ -1032,6 +1032,38 @@ Some values `.h2` hands straight back to `.h`, because the compact rendering alr
 
 To see all of it at once, insert the **h2 Explorer Examples** template and run its boxes top to bottom.
 
+### Tables and heat maps
+
+Build a `Table` from named columns and pass it straight to `display`. `heat` colours numeric
+cells while keeping their values visible:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val readings = table(
+    "site" to listOf("north", "south", "west"),
+    "morning" to listOf(0.2, 0.8, 0.5),
+    "evening" to listOf(0.7, 0.3, 0.4),
+).heat("morning", "evening", by = HeatScope.TABLE)
+
+display("readings", readings)
+```
+
+`HeatScope.TABLE` uses one range across the heated cells, so equal values have equal colours.
+`HeatScope.COLUMN` (the default) gives each column its own range, useful for different units;
+`HeatScope.ROW` compares the heated values within each row. Omit the column names to heat every
+numeric column. Text, nulls and non-finite numbers remain unfilled.
+
+The default colormap is `"viridis"`; choose another with `colormap = "magma"`, for example.
+For signed values, `colormap = "cyanorange", center = 0.0` makes the range symmetric around
+zero. Heat can be applied more than once to give different columns different maps or scopes.
+
+Tables can also be assembled row by row with `Table(listOf("site", "reading")).row("north", 0.2)`.
+Use `.format` to change a column's displayed text, `.color`, `.role` or `.roleBy` for text colours,
+and `.expect` to highlight values that fail a check. Formatting functions return trusted HTML;
+escape text from outside sources. By default, a table shows at most 64 rows. See the
+[table API](reference/visualization.md#tables-kt) and the
+[Eigendrum example](eigendrum.md) for more.
+
 ### Markdown for captions and tables
 
 For a heading, a table and some text, Markdown is often easier to write than a string of HTML.
