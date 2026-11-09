@@ -2685,6 +2685,20 @@ template for the explainer decks, described in
 
 [Open →](offline.html?file=assets/agent_transcripts/explainer_sine_pitch/metadata.edn)
 
+### explainer_sound
+
+**The Sound explainer as a Field presentation.** A `deck` box follows Bartosz Ciechanowski's
+[Sound](https://ciechanow.ski/sound/) section by section, in our own words: air as a crowd of
+molecules, a plate pushing slices of air down a tube, pops that repeat into notes, sums of shapes
+and of sines, masses, springs and plucked strings, and pressure waves spreading through the open
+and through rooms. Each figure is its own box, named for what it shows and laid out to the right of
+`deck` in slide order, so the canvas reads as a table of contents. Run `deck` in Field's Electron
+app; the talk starts each figure when its slide comes up and stops it when the talk moves on, and
+nothing sounds until someone holds a key or ticks **sound**. Built on
+[Live figures beside prose](presentation_studio.md#live-figures-beside-prose).
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_sound/metadata.edn)
+
 ### audio_ai_underfit_mancini
 
 Import a held-out excerpt, hash the completed Experiment in Terror

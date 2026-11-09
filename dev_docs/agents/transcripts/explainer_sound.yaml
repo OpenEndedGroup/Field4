@@ -1,0 +1,1018 @@
+name: explainer_sound
+description: >
+  The Sound explainer as a Field presentation, after Bartosz Ciechanowski's "Sound"
+  (https://ciechanow.ski/sound/), in our own words and figures. The deck box, deck, walks the
+  essay's sections in order: air as a crowd of molecules, plates that push it, repeated pushes
+  as notes, sums of shapes and of sines, masses, springs and strings, and pressure waves in the
+  open and in rooms. Every figure is a box named for it, laid out to the right of deck in slide
+  order. Run deck in Field's Electron app: the talk starts each figure when its slide comes up
+  and stops it when the talk moves on. Nothing sounds until someone holds a key or ticks sound.
+docs:
+  - page: presentation_studio.md
+    why: "Live figures beside prose: the engine this deck is built on."
+operations:
+  - create:
+      box: es_keyboard
+      name: keyboard
+      frame: { x: 300.0, y: 140.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Three keys. Hold one to hear it; the line is the shape of the air pressure it makes.
+          val shapes = listOf<(Double) -> Double>(
+              { t -> sin(2 * PI * t) },
+              { t -> 2 * abs(2 * (t - floor(t + 0.5))) - 1 },
+              { t -> 2 * (t - floor(t + 0.5)) },
+          )
+          val pitches = [196.0, 247.0, 294.0]
+          val voices = listOf<Signal>(SineOsc(Param(196f)), TriOsc(Param(247f)), SawOsc(Param(294f)) / lpf(2400))
+          val gates = 3 { Gate() }
+          val held = BooleanArray(3)
+
+          // Twenty milliseconds of whatever is held, summed.
+          fun draw() = lines(
+              fline {
+                  moveTo(0.0, 120.0)
+                  for (x in 1..640) {
+                      val t = 0.02 * x / 640
+                      val y = (0..2).sumOf { i -> if (held[i]) shapes[i](pitches[i] * t) / 3 else 0.0 }
+                      lineTo(x.toDouble(), 120.0 - 200.0 * y)
+                  }
+                  thickness = 2.0
+                  color = vec(0.4, 0.9, 1.0, 1.0)
+              },
+              channel = "wave",
+              w = 640.0,
+              h = 240.0,
+          )
+
+          draw()
+          controlGroup {
+              keys("low", "middle", "high", letters = "wer") { key, down ->
+                  held[key] = down
+                  if (down) gates[key].open() else gates[key].close()
+                  draw()
+              }
+          }
+
+          audio(3 { i -> voices[i] * adsr(0.01, 0.05, 1.0, 0.25, gates[i]) }.reduce { a, b -> a + b } / 3.0, gain = 0.15f)
+  - create:
+      box: es_pressure_box
+      name: pressure_box
+      frame: { x: 500.0, y: 140.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.media.image.util.PngEncoder
+
+          // A flat box of molecules. They fly straight, bounce off one another and off the walls.
+          // "length" moves the right wall; the plot counts hits on it per unit of wall per second.
+          val imageW = 640
+          val imageH = 300
+          val n = 240
+          val r = 3.0
+          val x = DoubleArray(n) { 30 + Math.random() * 580 }
+          val y = DoubleArray(n) { 20 + Math.random() * 260 }
+          val vx = DoubleArray(n)
+          val vy = DoubleArray(n)
+          n { i -> val a = Math.random() * 2 * PI; vx[i] = 2 * cos(a); vy[i] = 2 * sin(a) }
+
+          var speed = 1.0
+          var length = 1.0
+          var follow = false
+          val trail = mutableListOf<Pair<Double, Double>>()
+          val flashes = mutableListOf<DoubleArray>()   // x, y, age
+          val hitsPerFrame = mutableListOf<Double>()
+          val rate = mutableListOf<Double>()
+
+          val px = IntArray(imageW * imageH)
+          fun dot(cx: Double, cy: Double, radius: Double, argb: Int) {
+              for (j in (cy - radius).toInt()..(cy + radius).toInt()) for (i in (cx - radius).toInt()..(cx + radius).toInt()) {
+                  if (i in 0 until imageW && j in 0 until imageH && (i - cx) * (i - cx) + (j - cy) * (j - cy) <= radius * radius) px[j * imageW + i] = argb
+              }
+          }
+
+          // The picture, then the plot, then the controls, in that order down the output.
+          display("box", PngEncoder.encode(px, imageW, imageH))
+          fun plot() = showSignals("hits on the right wall" to rate.takeLast(120), channel = "rate", width = 640, height = 200, yTitle = "pressure")
+          plot()
+          controlGroup {
+              slider("speed", 0.0, 2.0, step = 0.01, initialValue = 1.0) { speed = it }
+              slider("length", 0.3, 1.0, step = 0.01, initialValue = 1.0) { length = it }
+              checkbox("follow one") { follow = it; trail.clear() }
+          }
+
+          var frameCount = 0
+          loop {
+              val left = 20.0
+              val right = left + 600 * length
+              val top = 10.0
+              val bottom = 290.0
+              var hits = 0
+              val steps = 2
+              repeat(steps) {
+                  n { i ->
+                      x[i] += vx[i] * speed / steps
+                      y[i] += vy[i] * speed / steps
+                      if (x[i] < left + r) { x[i] = left + r; vx[i] = abs(vx[i]); flashes += doubleArrayOf(left, y[i], 0.0) }
+                      if (x[i] > right - r) { x[i] = right - r; vx[i] = -abs(vx[i]); hits++; flashes += doubleArrayOf(right, y[i], 0.0) }
+                      if (y[i] < top + r) { y[i] = top + r; vy[i] = abs(vy[i]); flashes += doubleArrayOf(x[i], top, 0.0) }
+                      if (y[i] > bottom - r) { y[i] = bottom - r; vy[i] = -abs(vy[i]); flashes += doubleArrayOf(x[i], bottom, 0.0) }
+                  }
+                  // Equal masses colliding head on swap the part of their velocities along the line between them.
+                  for (i in 0 until n) for (j in i + 1 until n) {
+                      val dx = x[j] - x[i]
+                      val dy = y[j] - y[i]
+                      val d2 = dx * dx + dy * dy
+                      if (d2 < 4 * r * r && d2 > 1e-9) {
+                          val d = sqrt(d2)
+                          val nx = dx / d
+                          val ny = dy / d
+                          val approach = (vx[i] - vx[j]) * nx + (vy[i] - vy[j]) * ny
+                          if (approach > 0) {
+                              vx[i] -= approach * nx; vy[i] -= approach * ny
+                              vx[j] += approach * nx; vy[j] += approach * ny
+                          }
+                      }
+                  }
+              }
+              // A moving wall heats or cools the gas; hold the average speed steady so only the squeeze shows.
+              val mean = (0 until n).sumOf { sqrt(vx[it] * vx[it] + vy[it] * vy[it]) } / n
+              n { i -> vx[i] *= 2 / mean; vy[i] *= 2 / mean }
+
+              if (speed > 0) {
+                  hitsPerFrame += hits / speed
+                  if (hitsPerFrame.size > 90) hitsPerFrame.removeAt(0)
+              }
+              if (follow) { trail += x[0] to y[0]; if (trail.size > 1500) trail.removeAt(0) }
+
+              px.fill(0xff050505.toInt())
+              for (j in top.toInt()..bottom.toInt()) for (i in left.toInt()..right.toInt()) px[j * imageW + i] = 0xff101418.toInt()
+              trail.forEach { (tx, ty) -> dot(tx, ty, 0.8, 0xffff9933.toInt()) }
+              n { i -> dot(x[i], y[i], r, if (follow && i == 0) 0xffff9933.toInt() else 0xff66e6ff.toInt()) }
+              flashes.forEach { f ->
+                  val glow = (255 * (1 - f[2] / 8)).toInt().coerceIn(0, 255)
+                  dot(f[0], f[1], 4.0, (0xff shl 24) or (glow shl 16) or (glow shl 8) or glow)
+                  f[2] += 1.0
+              }
+              flashes.removeAll { it[2] > 8 }
+              display("box", PngEncoder.encode(px, imageW, imageH))
+
+              frameCount++
+              if (frameCount % 15 == 0 && hitsPerFrame.isNotEmpty()) {
+                  // Hits per frame of time on the right wall, divided by the wall's height: pressure, in our units.
+                  rate += 1000 * hitsPerFrame.average() / (bottom - top)
+                  plot()
+              }
+          }
+  - create:
+      box: es_tube_plate
+      name: tube_plate
+      frame: { x: 700.0, y: 140.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: slices of air in a tube pushed by a plate, coloured by pressure.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: tube_plate</div>")
+  - create:
+      box: es_repeated_jumps
+      name: repeated_jumps
+      frame: { x: 900.0, y: 140.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: a plate that jumps, alone or repeated, and its sound.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: repeated_jumps</div>")
+  - create:
+      box: es_wave_synth
+      name: wave_synth
+      frame: { x: 300.0, y: 220.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: keys with repeating patterns, their plots and their sum.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: wave_synth</div>")
+  - create:
+      box: es_triangle_params
+      name: triangle_params
+      frame: { x: 500.0, y: 220.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: a triangle wave's amplitude, frequency and phase.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: triangle_params</div>")
+  - create:
+      box: es_phase_cancel
+      name: phase_cancel
+      frame: { x: 700.0, y: 220.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: two equal tones, one shifted, and their sum.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: phase_cancel</div>")
+  - create:
+      box: es_draw_wave
+      name: draw_wave
+      frame: { x: 900.0, y: 220.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: draw one cycle and hear it repeated.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: draw_wave</div>")
+  - create:
+      box: es_circle_sine
+      name: circle_sine
+      frame: { x: 300.0, y: 300.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: a point on a turning circle tracing a sine.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: circle_sine</div>")
+  - create:
+      box: es_sine_sweep
+      name: sine_sweep
+      frame: { x: 500.0, y: 300.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // One sine wave, drawn and heard. How often it repeats is its pitch; how far it swings, its loudness.
+          val pitch = Param(220f)
+          val level = Param(0f)
+          var hz = 220.0
+          var amplitude = 0.8
+          var on = false
+
+          // Twenty milliseconds of the wave, 640 pixels wide.
+          fun draw() = lines(
+              fline {
+                  moveTo(0.0, 120.0)
+                  for (x in 1..640) lineTo(x.toDouble(), 120.0 - 100.0 * amplitude * sin(2 * PI * hz * 0.02 * x / 640))
+                  thickness = 2.0
+                  color = vec(0.4, 0.9, 1.0, 1.0)
+              },
+              channel = "wave",
+              w = 640.0,
+              h = 240.0,
+          )
+
+          fun update() {
+              pitch.base = hz.toFloat()
+              level.base = if (on) (0.15 * amplitude).toFloat() else 0f
+              draw()
+          }
+
+          update()
+          controlGroup {
+              slider("frequency", 20.0, 20000.0, step = 1.0, initialValue = 220.0, law = ControlLaw.LOGARITHMIC) { hz = it; update() }
+              slider("amplitude", 0.0, 1.0, step = 0.01, initialValue = 0.8) { amplitude = it; update() }
+              checkbox("sound") { on = it; update() }
+          }
+
+          audio(SineOsc(pitch), gain = level)
+  - create:
+      box: es_beats
+      name: beats
+      frame: { x: 700.0, y: 300.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: two close tones and the pulsing sum.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: beats</div>")
+  - create:
+      box: es_square_partials
+      name: square_partials
+      frame: { x: 900.0, y: 300.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: sines adding up to a square wave.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: square_partials</div>")
+  - create:
+      box: es_microphone
+      name: microphone
+      frame: { x: 300.0, y: 380.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: a live spectrum of the microphone.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: microphone</div>")
+  - create:
+      box: es_normal_modes
+      name: normal_modes
+      frame: { x: 500.0, y: 380.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: masses on springs and their normal modes.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: normal_modes</div>")
+  - create:
+      box: es_pluck
+      name: pluck
+      frame: { x: 700.0, y: 380.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: a plucked string's modes and sound.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: pluck</div>")
+  - create:
+      box: es_pulsing_sphere
+      name: pulsing_sphere
+      frame: { x: 900.0, y: 380.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: pressure rings from a pulsing source.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: pulsing_sphere</div>")
+  - create:
+      box: es_speaker_ear
+      name: speaker_ear
+      frame: { x: 300.0, y: 460.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: a speaker and a draggable ear: delay and level.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: speaker_ear</div>")
+  - create:
+      box: es_decibels
+      name: decibels
+      frame: { x: 500.0, y: 460.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: pressure in pascals to decibels.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: decibels</div>")
+  - create:
+      box: es_doppler
+      name: doppler
+      frame: { x: 700.0, y: 460.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: a moving source and its squeezed rings.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: doppler</div>")
+  - create:
+      box: es_two_speakers
+      name: two_speakers
+      frame: { x: 900.0, y: 460.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: interference between two speakers.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: two_speakers</div>")
+  - create:
+      box: es_echo
+      name: echo
+      frame: { x: 300.0, y: 540.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: a clap and its echo from a wall.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: echo</div>")
+  - create:
+      box: es_reverb
+      name: reverb
+      frame: { x: 500.0, y: 540.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Figure not built yet: a room's reverberation.
+          display("main", "<div style='width:640px;height:240px;display:grid;place-items:center;color:#9aa;font:22px sans-serif;border:1px dashed #456'>Figure not built yet: reverb</div>")
+  - create:
+      box: es_deck
+      name: deck
+      frame: { x: 60.0, y: 140.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          import kotlinx.html.*
+
+          // The talk. Each figure is a box of the same name in this document; the deck starts a figure
+          // when its slide comes up and stops it when the talk moves on. Nothing sounds until someone
+          // holds a key or ticks "sound".
+
+          presentation(title = "Sound") {
+                  section("Sound") {
+                      step("Sound", id = "opening") {
+                          audience {
+                              +"""
+                              # Sound
+
+                              Everything we hear is air pressing on our ears a little harder, then a little
+                              softer, many times a second.
+
+                              This talk builds that idea up from molecules: how air carries a push, how a
+                              repeated push becomes a note, how notes combine, how strings make them, and how
+                              sound spreads through a room.
+                          """
+                                  .md
+                              p(classes = "muted") {
+                                  +"After “Sound” by Bartosz Ciechanowski, ciechanow.ski/sound. Words and figures made in Field."
+                              }
+                          }
+                          markdownNote("Every figure in this talk is a live box. Sound starts only when someone holds a key or ticks **sound**. [[next]]")
+                      }
+                      step("Three keys", id = "keyboard") {
+                          audience {
+                              figureBeside("keyboard") {
+                                  +"""
+                                  ## Three keys
+
+                                  Hold a key to hear it. Each one moves the air in a different
+                                  repeating pattern, drawn above the keys.
+
+                                  By the end of the talk we will know why the three sound different,
+                                  even when they play the same note.
+                              """
+                                      .md
+                              }
+                          }
+                          markdownNote("Hold a key with the mouse, or click the figure and use W, E and R. [[back]] [[next]]")
+                      }
+                  }
+                  section("Air") {
+                      step("Air is a crowd", id = "air-crowd") {
+                          audience {
+                              figureBeside("pressure_box") {
+                                  +"""
+                                  ## Air is a crowd
+
+                                  Air is molecules, mostly nitrogen and oxygen, flying in straight lines
+                                  at around 500 metres a second until they hit something.
+
+                                  The figure is a flat cartoon of a few hundred of them. The real thing
+                                  has about 25 billion billion in every cubic centimetre.
+                              """
+                                      .md
+                              }
+                          }
+                          control("pressure_box", "length", 1.0)
+                          control("pressure_box", "follow one", false)
+                          markdownNote("Drag **speed** to slow time down. [[back]] [[next]]")
+                      }
+                      step("Pressure is hits on a wall", id = "air-pressure") {
+                          audience {
+                              figureBeside("pressure_box") {
+                                  +"""
+                                  ## Pressure is hits on a wall
+
+                                  Every molecule that bounces off a wall gives it a tiny push. The
+                                  walls flash where they are hit.
+
+                                  Pressure is the total push per area of wall: how often molecules
+                                  arrive, and how hard. The plot counts the hits.
+                              """
+                                      .md
+                              }
+                          }
+                          control("pressure_box", "length", 1.0)
+                          control("pressure_box", "follow one", false)
+                          markdownNote("The plot is hits per unit of wall per unit of time. [[back]] [[next]]")
+                      }
+                      step("Squeeze it", id = "air-squeeze") {
+                          audience {
+                              figureBeside("pressure_box") {
+                                  +"""
+                                  ## Squeeze it
+
+                                  Make the box shorter and the same molecules cross it more often,
+                                  so each piece of wall is hit more often.
+
+                                  Half the length, twice the hits: the pressure doubles.
+                              """
+                                      .md
+                              }
+                          }
+                          control("pressure_box", "length", 1.0)
+                          control("pressure_box", "follow one", false)
+                          cue("Halve the box") { control("pressure_box", "length", 0.5, glideMs = 2000) }
+                          markdownNote("Next squeezes the box to half its length over two seconds. [[back]] [[next]]")
+                      }
+                      step("Nobody goes far", id = "air-one-molecule") {
+                          audience {
+                              figureBeside("pressure_box") {
+                                  +"""
+                                  ## Nobody goes far
+
+                                  Follow one molecule. It is knocked off course again and again, and
+                                  after many collisions it has hardly left home.
+
+                                  So when air carries a push, it is not the molecules that travel. The
+                                  push is handed from neighbour to neighbour.
+                              """
+                                      .md
+                              }
+                          }
+                          control("pressure_box", "length", 1.0)
+                          control("pressure_box", "follow one", true)
+                          markdownNote("The orange trail is one molecule's path. [[back]] [[next]]")
+                      }
+                      step("A plate in a tube", id = "air-tube") {
+                          audience {
+                              figureBeside("tube_plate") {
+                                  +"""
+                                  ## A plate in a tube
+
+                                  Fill a tube with air and put a plate at one end. Each line is a thin
+                                  slice of air.
+
+                                  Push the plate and the nearest slices crowd together. They push on
+                                  the next ones, and the crowding runs down the tube, while each slice
+                                  only shuffles a little way and back.
+                              """
+                                      .md
+                              }
+                          }
+                          control("tube_plate", "plate", 0.0)
+                          control("tube_plate", "colour", false)
+                          markdownNote("Drag **plate** quickly one way, then back. [[back]] [[next]]")
+                      }
+                      step("Squeezed and stretched", id = "air-compression") {
+                          audience {
+                              figureBeside("tube_plate") {
+                                  +"""
+                                  ## Squeezed and stretched
+
+                                  Red slices are squeezed, above the usual pressure; blue ones are
+                                  stretched, below it.
+
+                                  Pulling the plate back sends a stretch down the tube just as pushing
+                                  sends a squeeze. Either way, the disturbance moves at the speed of
+                                  sound: about 343 metres a second in room-temperature air.
+                              """
+                                      .md
+                              }
+                          }
+                          control("tube_plate", "plate", 0.0)
+                          control("tube_plate", "colour", true)
+                          markdownNote("Colour is pressure: red above, blue below. [[back]] [[next]]")
+                      }
+                  }
+                  section("Making sounds") {
+                      step("A jump is a pop", id = "sounds-pop") {
+                          audience {
+                              figureBeside("repeated_jumps") {
+                                  +"""
+                                  ## A jump is a pop
+
+                                  Hold **jump** and the plate leaps forward; let go and it leaps back.
+                                  Each leap sends one squeeze or one stretch towards your ear, and you
+                                  hear a pop.
+
+                                  A bigger leap is a bigger pressure change, and a louder pop.
+                              """
+                                      .md
+                              }
+                          }
+                          control("repeated_jumps", "repeat", false)
+                          control("repeated_jumps", "distance", 0.5)
+                          markdownNote("Hold **jump**; drag **distance** to change how far it moves. [[back]] [[next]]")
+                      }
+                      step("Repeat it and it becomes a note", id = "sounds-repeat") {
+                          audience {
+                              figureBeside("repeated_jumps") {
+                                  +"""
+                                  ## Repeat it and it becomes a note
+
+                                  Make the plate jump back and forth by itself. A few times a second
+                                  we hear separate pops. Past about twenty a second they blur into one
+                                  buzzing tone.
+
+                                  The faster it repeats, the higher the tone. How many times it repeats
+                                  each second is its frequency, in hertz.
+                              """
+                                      .md
+                              }
+                          }
+                          control("repeated_jumps", "rate", 4.0)
+                          control("repeated_jumps", "repeat", false)
+                          cue("Repeat") { control("repeated_jumps", "repeat", true) }
+                          cue("Faster") { control("repeated_jumps", "rate", 220.0, glideMs = 4000) }
+                          markdownNote("Next starts the repeats at 4 per second, then Next glides to 220. [[back]] [[next]]")
+                      }
+                      step("Sounds add", id = "sounds-add") {
+                          audience {
+                              figureBeside("wave_synth") {
+                                  +"""
+                                  ## Sounds add
+
+                                  Each key moves the plate in its own repeating pattern, plotted beside
+                                  it. Hold two at once and the plate makes both motions at the same
+                                  time: the two patterns add.
+
+                                  The bottom line is the sum, which is what reaches your ear.
+                              """
+                                      .md
+                              }
+                          }
+                          markdownNote("Hold one key, then two. [[back]] [[next]]")
+                      }
+                      step("One key, two sounds", id = "sounds-sum-key") {
+                          audience {
+                              figureBeside("wave_synth") {
+                                  +"""
+                                  ## One key, two sounds
+
+                                  The last key plays a single pattern: the sum of the first two, worked
+                                  out in advance.
+
+                                  It sounds exactly like holding both. The ear cannot tell two sources
+                                  from one that makes the same motion.
+                              """
+                                      .md
+                              }
+                          }
+                          markdownNote("Hold the first two keys together, then the fourth alone. [[back]] [[next]]")
+                      }
+                      step("Three numbers for a shape", id = "sounds-triangle") {
+                          audience {
+                              figureBeside("triangle_params") {
+                                  +"""
+                                  ## Three numbers for a repeating shape
+
+                                  Take one shape, a triangle, and repeat it. Three numbers say how:
+
+                                  - **amplitude**: how far it swings, which we hear as loudness;
+                                  - **frequency**: how often it repeats, which we hear as pitch;
+                                  - **phase**: where in its cycle it starts, which on its own we cannot hear.
+                              """
+                                      .md
+                              }
+                          }
+                          control("triangle_params", "amplitude", 0.6)
+                          control("triangle_params", "frequency", 220.0)
+                          control("triangle_params", "phase", 0.0)
+                          control("triangle_params", "sound", false)
+                          cue("Louder") { control("triangle_params", "amplitude", 1.0, glideMs = 1500) }
+                          cue("Higher") { control("triangle_params", "frequency", 440.0, glideMs = 1500) }
+                          cue("Shift") { control("triangle_params", "phase", 0.5, glideMs = 1500) }
+                          markdownNote("Tick **sound** first if you want it heard. Next: amplitude up, then frequency up, then phase shifted. [[back]] [[next]]")
+                      }
+                      step("Half a cycle apart, they cancel", id = "sounds-cancel") {
+                          audience {
+                              figureBeside("phase_cancel") {
+                                  +"""
+                                  ## Half a cycle apart, they cancel
+
+                                  Phase matters when two sounds meet. Two identical tones that start
+                                  together add to one twice as tall.
+
+                                  Shift one by half a cycle and every push meets an equal pull. The
+                                  sum is flat, and there is nothing to hear.
+                              """
+                                      .md
+                              }
+                          }
+                          control("phase_cancel", "shift", 0.0)
+                          control("phase_cancel", "sound", false)
+                          cue("Shift half a cycle") { control("phase_cancel", "shift", 0.5, glideMs = 2500) }
+                          markdownNote("Tick **sound**, then Next slides the second tone half a cycle along. [[back]] [[next]]")
+                      }
+                      step("Draw a shape, hear it", id = "sounds-draw") {
+                          audience {
+                              figureBeside("draw_wave") {
+                                  +"""
+                                  ## Draw a shape, hear it
+
+                                  Any shape can be repeated. Drag the points to draw one cycle, then
+                                  hold a key to hear it repeated at that key's pitch.
+
+                                  Smooth shapes sound soft; sharp corners and jumps sound bright and
+                                  buzzy.
+                              """
+                                      .md
+                              }
+                          }
+                          markdownNote("Drag points on the curve, then hold a key. [[back]] [[next]]")
+                      }
+                  }
+                  section("Pure tones") {
+                      step("A turning circle", id = "tones-circle") {
+                          audience {
+                              figureBeside("circle_sine") {
+                                  +"""
+                                  ## A sine wave is a turning circle
+
+                                  A point going round a circle at a steady speed, watched only for its
+                                  height, traces a sine wave.
+
+                                  The circle's radius is the amplitude, how fast it turns is the
+                                  frequency, and where it starts is the phase.
+                              """
+                                      .md
+                              }
+                          }
+                          control("circle_sine", "radius", 0.8)
+                          control("circle_sine", "turns per second", 0.5)
+                          control("circle_sine", "start", 0.0)
+                          markdownNote("Drag the sliders; the trace scrolls left. [[back]] [[next]]")
+                      }
+                      step("The range of hearing", id = "tones-sweep") {
+                          audience {
+                              figureBeside("sine_sweep") {
+                                  +"""
+                                  ## The range of hearing
+
+                                  A sine wave is the purest tone there is. Young ears hear from about
+                                  20 Hz to 20,000 Hz; the top falls with age.
+
+                                  Near either end a tone fades out even at the same amplitude: our
+                                  hearing is most sensitive between about 1,000 and 5,000 Hz.
+                              """
+                                      .md
+                              }
+                          }
+                          control("sine_sweep", "frequency", 220.0)
+                          control("sine_sweep", "sound", false)
+                          cue("Up an octave") { control("sine_sweep", "frequency", 440.0, glideMs = 1500) }
+                          markdownNote("Tick **sound**, then Next glides up an octave. Keep the room's volume low. [[back]] [[next]]")
+                      }
+                      step("Close tones beat", id = "tones-beats") {
+                          audience {
+                              figureBeside("beats") {
+                                  +"""
+                                  ## Two close tones beat
+
+                                  Two sines a few hertz apart drift in and out of step. In step they
+                                  add; out of step they cancel.
+
+                                  We hear one tone that swells and fades, as often per second as the
+                                  two frequencies differ.
+                              """
+                                      .md
+                              }
+                          }
+                          markdownNote("Hold both keys; drag **difference**. [[back]] [[next]]")
+                      }
+                      step("Every shape is a sum of sines", id = "tones-square") {
+                          audience {
+                              figureBeside("square_partials") {
+                                  +"""
+                                  ## Every shape is a sum of sines
+
+                                  Add sines at 1, 3, 5, 7… times a base frequency, each smaller than
+                                  the last, and a square wave appears.
+
+                                  Fourier showed that any repeating shape is a sum like this. The
+                                  ripples by the corners shrink in width but never in height: they
+                                  are the Gibbs phenomenon.
+                              """
+                                      .md
+                              }
+                          }
+                          control("square_partials", "sines", 1.0)
+                          control("square_partials", "sound", false)
+                          cue("Add sines") { control("square_partials", "sines", 25.0, glideMs = 4000) }
+                          markdownNote("Next adds sines one by one up to 25. [[back]] [[next]]")
+                      }
+                      step("Taking a drawing apart", id = "tones-fourier") {
+                          audience {
+                              figureBeside("draw_wave", "wave", "partials", "controls") {
+                                  +"""
+                                  ## Taking a drawing apart
+
+                                  The shape you drew is also a sum of sines. The bars are how much of
+                                  each multiple of the base frequency it holds.
+
+                                  Smooth shapes need only the first few; corners need many.
+                              """
+                                      .md
+                              }
+                          }
+                          markdownNote("Redraw the shape and watch the bars. [[back]] [[next]]")
+                      }
+                      step("Listening back", id = "tones-microphone") {
+                          audience {
+                              figureBeside("microphone") {
+                                  +"""
+                                  ## Listening back
+
+                                  The same analysis works on sound from a microphone. Whistle and one
+                                  bar stands up; sing a vowel and a row of them appears, at whole
+                                  multiples of the note you sing.
+                              """
+                                      .md
+                              }
+                          }
+                          control("microphone", "listen", false)
+                          markdownNote("Tick **listen** to open the microphone. [[back]] [[next]]")
+                      }
+                  }
+                  section("Masses and springs") {
+                      step("A mass between springs", id = "springs-one") {
+                          audience {
+                              figureBeside("normal_modes") {
+                                  +"""
+                                  ## A mass between springs
+
+                                  Pull a mass held between two springs and let go. It swings back and
+                                  forth in a sine wave, at a frequency set by the stiffness of the
+                                  springs and the weight of the mass.
+                              """
+                                      .md
+                              }
+                          }
+                          control("normal_modes", "masses", 1.0)
+                          markdownNote("Drag **pull** and release it. [[back]] [[next]]")
+                      }
+                      step("Two masses, two ways to move", id = "springs-modes") {
+                          audience {
+                              figureBeside("normal_modes") {
+                                  +"""
+                                  ## Two masses, two ways to move
+
+                                  With two masses there are two special motions, the normal modes: both
+                                  swinging together, or swinging against each other, a little faster.
+
+                                  Any motion of the pair is a mix of the two.
+                              """
+                                      .md
+                              }
+                          }
+                          control("normal_modes", "masses", 2.0)
+                          markdownNote("Each mode has its own slider. [[back]] [[next]]")
+                      }
+                      step("More masses, more modes", id = "springs-five") {
+                          audience {
+                              figureBeside("normal_modes") {
+                                  +"""
+                                  ## More masses, more modes
+
+                                  Five masses have five modes. Each has a frequency of its own, and
+                                  the higher modes wiggle more.
+                              """
+                                      .md
+                              }
+                          }
+                          control("normal_modes", "masses", 5.0)
+                          markdownNote("Try one mode at a time. [[back]] [[next]]")
+                      }
+                      step("A string is many masses", id = "springs-string") {
+                          audience {
+                              figureBeside("pluck") {
+                                  +"""
+                                  ## A string is many masses
+
+                                  A string is the limit of very many tiny masses. Its modes are whole
+                                  numbers of half waves along its length, at whole multiples of the
+                                  lowest frequency: the harmonics.
+                              """
+                                      .md
+                              }
+                          }
+                          control("pluck", "sound", false)
+                          markdownNote("Choose a mode to see it. [[back]] [[next]]")
+                      }
+                      step("Pluck it", id = "springs-pluck") {
+                          audience {
+                              figureBeside("pluck") {
+                                  +"""
+                                  ## Pluck it
+
+                                  A pluck is a mix of every mode at once. Plucked near the middle, the
+                                  low harmonics dominate and the note is round; near the end, the high
+                                  ones join in and it turns bright.
+                              """
+                                      .md
+                              }
+                          }
+                          control("pluck", "sound", false)
+                          markdownNote("Tick **sound**, then pluck at different places. [[back]] [[next]]")
+                      }
+                      step("Shorter, tighter, lighter", id = "springs-fret") {
+                          audience {
+                              figureBeside("pluck") {
+                                  +"""
+                                  ## Shorter, tighter, lighter: higher
+
+                                  Halve the string and every mode doubles in frequency: an octave up.
+                                  Tightening it raises the pitch too; a heavier string lowers it.
+                              """
+                                      .md
+                              }
+                          }
+                          control("pluck", "sound", false)
+                          markdownNote("Drag **length**, then pluck. [[back]] [[next]]")
+                      }
+                  }
+                  section("Pressure waves") {
+                      step("A pulsing sphere", id = "waves-sphere") {
+                          audience {
+                              figureBeside("pulsing_sphere") {
+                                  +"""
+                                  ## A pulsing sphere
+
+                                  The simplest source swells and shrinks evenly. Rings of high and low
+                                  pressure spread out from it.
+
+                                  The distance between rings is the wavelength: the speed of sound
+                                  divided by the frequency. At 343 Hz it is a metre.
+                              """
+                                      .md
+                              }
+                          }
+                          control("pulsing_sphere", "frequency", 343.0)
+                          markdownNote("Drag **frequency**; the rings crowd closer. [[back]] [[next]]")
+                      }
+                      step("Later and quieter", id = "waves-distance") {
+                          audience {
+                              figureBeside("speaker_ear") {
+                                  +"""
+                                  ## Further away: later and quieter
+
+                                  Sound takes about three milliseconds to cross a metre. As each ring
+                                  spreads its push is shared over a larger sphere, so the pressure swing
+                                  falls as one over the distance: twice as far, half as big.
+                              """
+                                      .md
+                              }
+                          }
+                          markdownNote("Drag the ear. [[back]] [[next]]")
+                      }
+                      step("Decibels", id = "waves-decibels") {
+                          audience {
+                              figureBeside("decibels") {
+                                  +"""
+                                  ## Decibels
+
+                                  The loudest sound we can bear has a million times the pressure swing
+                                  of the quietest we can hear. Decibels compress that range: every ten
+                                  times the pressure adds 20 dB.
+
+                                  Twice the distance from a source takes off about 6 dB.
+                              """
+                                      .md
+                              }
+                          }
+                          markdownNote("Type a pressure in pascals. [[back]] [[next]]")
+                      }
+                      step("A moving source", id = "waves-doppler") {
+                          audience {
+                              figureBeside("doppler") {
+                                  +"""
+                                  ## A moving source
+
+                                  A source moving towards you squeezes its own rings together, so they
+                                  arrive more often and the pitch is higher. Moving away, they spread
+                                  and the pitch falls. This is the Doppler effect.
+                              """
+                                      .md
+                              }
+                          }
+                          control("doppler", "sound", false)
+                          markdownNote("Drag **speed**. Tick **sound** to hear it pass. [[back]] [[next]]")
+                      }
+                      step("Two speakers", id = "waves-two-speakers") {
+                          audience {
+                              figureBeside("two_speakers") {
+                                  +"""
+                                  ## Two speakers
+
+                                  Two speakers play the same tone. Where their rings arrive in step the
+                                  sound is louder; where one's peak meets the other's trough it nearly
+                                  vanishes.
+
+                                  Move the listener through the pattern.
+                              """
+                                      .md
+                              }
+                          }
+                          control("two_speakers", "sound", false)
+                          markdownNote("Drag the listener. Tick **sound** to hear the level change. [[back]] [[next]]")
+                      }
+                      step("Echo", id = "waves-echo") {
+                          audience {
+                              figureBeside("echo") {
+                                  +"""
+                                  ## Echo
+
+                                  A wall sends sound back. Far from the wall the reflection arrives
+                                  late enough to hear as a second clap. Closer than about eight metres,
+                                  it returns within fifty milliseconds and merges with the first.
+                              """
+                                      .md
+                              }
+                          }
+                          markdownNote("Drag **distance to the wall**, then **clap**. [[back]] [[next]]")
+                      }
+                      step("A room", id = "waves-reverb") {
+                          audience {
+                              figureBeside("reverb") {
+                                  +"""
+                                  ## A room
+
+                                  In a room, sound bounces off every wall, again and again, losing a
+                                  little each time. The reflections pile up into a tail that lingers
+                                  after the sound stops: reverberation.
+
+                                  Bigger, harder rooms ring longer; curtains, carpets and people soak
+                                  it up.
+                              """
+                                      .md
+                              }
+                          }
+                          markdownNote("Drag **room size**, then hold a key. [[back]] [[next]]")
+                      }
+                  }
+                  section("Further reading") {
+                      step("Further reading", id = "further-reading") {
+                          audience {
+                              +"""
+                              # Further reading
+
+                              - Eric J. Heller, *Why You Hear What You Hear* (Princeton, 2013): the physics
+                                of sound and its perception, with experiments to try.
+                              - Neville H. Fletcher and Thomas D. Rossing, *The Physics of Musical
+                                Instruments* (Springer, 1998): strings, plates, pipes and rooms in depth.
+                              - Julius O. Smith III, *Physical Audio Signal Processing*, free at
+                                ccrma.stanford.edu/~jos/pasp: from waves on strings to digital models of them.
+                          """
+                                  .md
+                              p(classes = "muted") {
+                                  +"After “Sound” by Bartosz Ciechanowski, https://ciechanow.ski/sound/. Words and figures made in Field."
+                              }
+                          }
+                          markdownNote("The end. [[back]] [[finish]]")
+                      }
+                  }
+              }
+              .present()
+  - execute:
+      box: es_deck
+      property: code

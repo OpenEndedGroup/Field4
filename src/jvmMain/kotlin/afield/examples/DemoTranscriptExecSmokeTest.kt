@@ -615,6 +615,9 @@ object DemoTranscriptExecSmokeTest {
         // its figure box returns an audio patch for the audio device. PresentationFiguresTest
         // covers the figure engine without either.
         "explainer_sine_pitch",
+        // The Sound explainer deck: the same shape at full length. The deck opens Electron audience
+        // windows, its figures return audio patches and run animation loops.
+        "explainer_sound",
         "text_one_vr",
         "video_one_vr",
         // Audio curves: every box is a playback loop under a waveform player that waits for the
