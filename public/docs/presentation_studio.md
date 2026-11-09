@@ -459,12 +459,17 @@ shows a frequency slider and a sound checkbox, and plays the tone:
 val pitch = Param(220f)
 val loudness = Param(0f)
 
-fun draw(hz: Double) = lines(fline {
-    moveTo(0.0, 120.0)
-    for (x in 1..640) lineTo(x.toDouble(), 120.0 - 90.0 * sin(2 * PI * hz * 0.02 * x / 640))
-    thickness = 2.0
-    color = vec(0.4, 0.9, 1.0, 1.0)
-}, channel = "wave", w = 640.0, h = 240.0)
+fun draw(hz: Double) = lines(
+    fline {
+        moveTo(0.0, 120.0)
+        for (x in 1..640) lineTo(x.toDouble(), 120.0 - 90.0 * sin(2 * PI * hz * 0.02 * x / 640))
+        thickness = 2.0
+        color = vec(0.4, 0.9, 1.0, 1.0)
+    },
+    channel = "wave",
+    w = 640.0,
+    h = 240.0,
+)
 
 draw(220.0)
 controlGroup {
@@ -492,7 +497,8 @@ presentation(title = "A sine wave and its pitch") {
 
                         220 Hz is the A below middle C. Doubling the frequency fits
                         twice as many swings in, and we hear the same note an octave up.
-                    """.md
+                    """
+                        .md
                 }
             }
             control("sine", "frequency", 220.0)

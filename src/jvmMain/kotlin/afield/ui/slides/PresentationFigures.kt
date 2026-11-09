@@ -150,7 +150,8 @@ internal object FieldFigureRunner : FigureRunner {
 
 /**
  * The figure side of a running slideshow: which boxes it launched, which it stopped, and the glides
- * in flight. One per [SlideShowInstance].
+ * in flight. One per [SlideShowInstance]; navigation and the retry of a control whose box is still
+ * starting reach it from different coroutines, so its entry points are synchronized.
  */
 internal class FigureStage(private val host: Box, var runner: FigureRunner = FieldFigureRunner) {
     private val launched = LinkedHashSet<String>()
@@ -165,6 +166,7 @@ internal class FigureStage(private val host: Box, var runner: FigureRunner = Fie
         }
 
     /** Stop what the deck launched and the incoming view does not show; launch what it needs. */
+    @Synchronized
     fun enter(figures: List<AudienceFigure>, controls: List<FigureControl>) {
         val showing = figures.map { it.box }.toSet() + controls.map { it.box.id }
         launched.filter { it !in showing }.forEach { uid ->
@@ -182,6 +184,7 @@ internal class FigureStage(private val host: Box, var runner: FigureRunner = Fie
     }
 
     /** Apply [controls] in order, last value per control winning; returns the labels that could not be set yet. */
+    @Synchronized
     fun apply(controls: List<FigureControl>, cancelGlides: Boolean = true): List<FigureControl> {
         if (cancelGlides) {
             glides.forEach { it.cancel() }
@@ -200,6 +203,7 @@ internal class FigureStage(private val host: Box, var runner: FigureRunner = Fie
     }
 
     /** Forget remembered control values, run the figures again, and leave applying controls to the caller. */
+    @Synchronized
     fun reset(figures: List<AudienceFigure>, controls: List<FigureControl>) {
         val boxes = (boxes(figures, controls) + controls.map { it.box }).distinct()
         boxes.forEach { box ->
@@ -212,6 +216,7 @@ internal class FigureStage(private val host: Box, var runner: FigureRunner = Fie
     }
 
     /** The slideshow stopped: stop every figure it launched that is still running. */
+    @Synchronized
     fun leave() {
         glides.forEach { it.cancel() }
         glides.clear()
