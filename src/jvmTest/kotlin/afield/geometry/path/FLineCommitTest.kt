@@ -8,6 +8,7 @@ import afield.app.protocol.FLineEditSpace
 import afield.app.protocol.FLineHandleKind
 import afield.app.protocol.FLinePointRef
 import afield.app.protocol.FLineTranslatePoints
+import afield.graphics.render.fixed
 import kotlin.test.*
 
 class FLineCommitTest {
@@ -51,5 +52,16 @@ class FLineCommitTest {
         session.translate(FLineTranslatePoints(session.sessionId,listOf(FLinePointRef(0,1,FLineHandleKind.TO)),0.0,2.0,0.0,FLineEditSpace.MODEL))
         session.commit()
         assertEquals(2f,(commits.single().single().nodes[1] as FLine.LineTo).to.y)
+    }
+
+    /** A fixed line reaches the editor marked as scenery, so sliders.js offers nothing on it to drag. */
+    @Test fun aFixedLineIsSceneryInTheSvgEditor() {
+        val wall=FLine().moveTo(0.0,0.0,0.0).lineTo(10.0,0.0,0.0)
+        wall.fixed=true
+        val ear=FLine().moveTo(5.0,5.0,0.0)
+        val widget=afield.ui.visualization.buildEditableSVGWidget(listOf(wall to wall.copy(),ear to ear.copy()),null,200.0,200.0)
+        val scene=Regex("\"lines\":\\[.*").find(widget.html)!!.value
+        assertTrue("\"lineIndex\":0" in scene && "\"fixed\":true" in scene, scene)
+        assertTrue("\"fixed\":false" in scene, "the draggable point is not marked fixed: $scene")
     }
 }
