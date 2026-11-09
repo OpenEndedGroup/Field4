@@ -123,7 +123,13 @@ object KDocExtractor {
                             declLine++
                             continue
                         }
+                        // An annotation line is stepped over only when nothing declarable follows it on
+                        // the same line. `@Volatile var x` and `@Test fun t()` are declarations; skipping
+                        // them as annotations slid their KDoc onto the next symbol, and the attachment
+                        // guard bounced roughly one branch a day for writing them that way.
                         if (declLineText.startsWith("@")) {
+                            declaration = parseDeclaration(declLineText)
+                            if (declaration != null) break
                             declLine++
                             continue
                         }
@@ -185,17 +191,8 @@ object KDocExtractor {
         if (s.startsWith("package ") || s.startsWith("import ")) return null
         if (s.startsWith("//")) return null
         
-        // Skip annotations
-        val annotationRegex = Regex("^@\\w[\\w\\.]*\\s*(\\([^)]*\\))?\\s*")
-        while (true) {
-            val match = annotationRegex.find(s)
-            if (match != null && match.range.first == 0) {
-                s = s.substring(match.range.last + 1).trimStart()
-            } else {
-                break
-            }
-        }
-        
+        s = stripLeadingAnnotations(s) ?: return null
+
         // Skip modifiers
         val tokens = s.split(Regex("\\s+"))
         var idx = 0
@@ -250,6 +247,46 @@ object KDocExtractor {
         }
     }
     
+    /**
+     * [text] with its leading annotations removed, or null if one of them is left open at the end of
+     * the line (a multi-line `@Target(` list), so there is no declaration on this line to read.
+     *
+     * Scanned rather than matched with a regex, for the two shapes a `\([^)]*\)` pattern got wrong:
+     * use-site targets (`@get:JvmName("x")`, `@field:Volatile`), whose `:` ended the name early, and
+     * nested or quoted arguments (`@Deprecated("…", ReplaceWith("a.b()"))`), whose first `)` ended the
+     * argument list early. Either left residue in front of the declaration, which then did not parse.
+     */
+    internal fun stripLeadingAnnotations(text: String): String? {
+        var rest = text.trimStart()
+        while (rest.startsWith("@")) {
+            var at = 1
+            while (at < rest.length && (rest[at].isLetterOrDigit() || rest[at] == '_' || rest[at] == '.' || rest[at] == ':')) {
+                at++
+            }
+            if (at == 1) return rest
+            if (at < rest.length && rest[at] == '(') {
+                var depth = 0
+                var quote: Char? = null
+                while (at < rest.length) {
+                    val ch = rest[at]
+                    when {
+                        quote != null && ch == '\\' -> at++
+                        quote != null && ch == quote -> quote = null
+                        quote != null -> Unit
+                        ch == '"' || ch == '\'' -> quote = ch
+                        ch == '(' -> depth++
+                        ch == ')' -> depth--
+                    }
+                    at++
+                    if (depth == 0 && quote == null) break
+                }
+                if (depth != 0) return null
+            }
+            rest = rest.substring(at.coerceAtMost(rest.length)).trimStart()
+        }
+        return rest
+    }
+
     /** `fun` followed by the `interface` keyword — a SAM declaration, not a function. */
     private val FUN_INTERFACE = Regex("""^interface\b""")
 
