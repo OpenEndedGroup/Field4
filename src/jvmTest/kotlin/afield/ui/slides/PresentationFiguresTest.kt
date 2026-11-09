@@ -14,7 +14,6 @@ class PresentationFiguresTest {
         val stops = mutableListOf<String>()
         override fun box(host: Box, uid: String) = boxes.firstOrNull { it.id == uid }
         override fun isRunning(box: Box) = box.id in running
-        override fun hasOutput(box: Box) = box.id in launches
         override fun launch(boxes: List<Box>) { boxes.forEach { running += it.id; launches += it.name } }
         override fun stop(box: Box) { running -= box.id; stops += box.name }
     }

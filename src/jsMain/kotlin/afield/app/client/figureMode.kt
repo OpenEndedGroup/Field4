@@ -43,7 +43,8 @@ internal fun installFigureMode(params: URLSearchParams) {
         if (box.parentElement !== host) host.appendChild(box)
         box.classList.add("field-figure-box")
         val group = box.querySelector(".outputArea .disclosure-group") ?: return
-        val inter = window.asDynamic().disclosureInterface?.invoke(group)
+        val disclosures = window.asDynamic().disclosureInterface
+        val inter = if (disclosures != null) disclosures(group) else null
         group.querySelectorAll(".disclosure").asList().forEach { node ->
             val disclosure = node as HTMLElement
             val id = disclosure.asDynamic().__disclosureId as? String ?: return@forEach

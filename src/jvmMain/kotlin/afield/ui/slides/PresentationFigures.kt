@@ -33,8 +33,9 @@ import java.util.concurrent.atomic.AtomicLong
  * Refresh leaves the controls where the audience put them.
  *
  * The deck runs its figures. Entering a view launches every figure box on it that is not already
- * running and has not shown any output, or that the deck itself stopped; leaving a slide stops the
- * figures the deck launched that are still running and that the next slide does not show. An
+ * running, unless this talk has launched it before and it finished by itself (a static drawing need
+ * not be drawn twice); leaving a slide stops the figures the deck launched that are still running
+ * and that the next slide does not show, and those run again when a slide shows them. An
  * animated or sounding figure is therefore live only while its slide is up, and a box launched by
  * hand is never stopped by the deck. A slide with figures and no checkpoint of its own offers
  * **Reset: figures**, which forgets every remembered control value of its figures, runs them again
@@ -135,7 +136,6 @@ internal fun resolveFigures(host: Box, content: AudienceContent): AudienceConten
 internal interface FigureRunner {
     fun box(host: Box, uid: String): Box?
     fun isRunning(box: Box): Boolean
-    fun hasOutput(box: Box): Boolean
     fun launch(boxes: List<Box>)
     fun stop(box: Box)
 }
@@ -144,7 +144,6 @@ internal object FieldFigureRunner : FigureRunner {
     override fun box(host: Box, uid: String): Box? =
         if (host.isInsideInitialized()) host.inside.boxes[uid] else null
     override fun isRunning(box: Box): Boolean = box.jobs.any { it.isActive && !it.isCancelled }
-    override fun hasOutput(box: Box): Boolean = box.output.retainedAreas.channels().isNotEmpty()
     override fun launch(boxes: List<Box>) = launchBoxesInOrder(boxes)
     override fun stop(box: Box) = Server.stop(box, "presentation-figure")
 }
@@ -156,6 +155,8 @@ internal object FieldFigureRunner : FigureRunner {
 internal class FigureStage(private val host: Box, var runner: FigureRunner = FieldFigureRunner) {
     private val launched = LinkedHashSet<String>()
     private val stopped = LinkedHashSet<String>()
+    /** Every box this talk has launched; one that finished by itself is not launched again. */
+    private val seen = LinkedHashSet<String>()
     private val glides = mutableListOf<Job>()
 
     private fun boxes(figures: List<AudienceFigure>, known: List<FigureControl>): List<Box> =
@@ -172,10 +173,10 @@ internal class FigureStage(private val host: Box, var runner: FigureRunner = Fie
             launched -= uid
         }
         val needed = (boxes(figures, controls) + controls.map { it.box }).distinct().filter { box ->
-            !runner.isRunning(box) && (box.id in stopped || !runner.hasOutput(box))
+            !runner.isRunning(box) && (box.id in stopped || box.id !in seen)
         }
         if (needed.isNotEmpty()) {
-            needed.forEach { stopped -= it.id; launched += it.id }
+            needed.forEach { stopped -= it.id; launched += it.id; seen += it.id }
             runner.launch(needed)
         }
     }
@@ -216,9 +217,11 @@ internal class FigureStage(private val host: Box, var runner: FigureRunner = Fie
         glides.clear()
         launched.forEach { uid ->
             val box = runner.box(host, uid) ?: return@forEach
-            if (runner.isRunning(box)) { runner.stop(box); stopped += uid }
+            if (runner.isRunning(box)) runner.stop(box)
         }
         launched.clear()
+        stopped.clear()
+        seen.clear()
     }
 
     internal fun log(missing: List<FigureControl>) {
