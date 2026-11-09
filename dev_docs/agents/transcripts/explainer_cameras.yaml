@@ -30,7 +30,7 @@ operations:
               val counts = light.photons(perSecond * time, seed = 3)
               display("sensor", PngEncoder.encode(counts.toArgb(exposure = 1 / full, scale = 10), 480, 320))
               val sky = 4000.0 * time
-              display("readout", "<p style='font-size:15px;opacity:.8'>open ${"%.3f".format(time)} s: about ${"%.0f".format(sky)} photons on a detector facing the sky, which holds ${full.toInt()}</p>")
+              display("readout", "<p style='opacity:.8'>open ${"%.3f".format(time)} s: about ${"%.0f".format(sky)} photons on a detector facing the sky, which holds ${full.toInt()}</p>")
           }
 
           draw(0.05)
@@ -199,9 +199,9 @@ operations:
                   segment(tipX, tipY, sensorX, imageY, orange, 1.0),
                   segment(sensorX, axis - 40.0 * distance * unit / (holeX - tipX), sensorX, imageY, orange, 4.0),
               )
-              lines(parts, channel = "side", w = 640.0, h = 300.0)
+              showPlane(parts, channel = "side", width = 640, height = 300, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 300.0), interactive = false)
               val degrees = 2 * atan(0.5 / distance) * 180 / PI
-              display("readout", "<p style='font-size:15px;opacity:.8'>sensor ${"%.2f".format(distance)} behind the hole: a view ${"%.0f".format(degrees)}° wide</p>")
+              display("readout", "<p style='opacity:.8'>sensor ${"%.2f".format(distance)} behind the hole: a view ${"%.0f".format(degrees)}° wide</p>")
           }
 
           draw()
@@ -245,9 +245,9 @@ operations:
                   color = guide
                   thickness = 1.0
               }
-              lines(listOf(fline { moveTo(0, 230); lineTo(640, 230); color = guide; thickness = 1.0 }, measured, predicted), channel = "brightness", w = 640.0, h = 240.0)
+              showPlane(listOf(fline { moveTo(0, 230); lineTo(640, 230); color = guide; thickness = 1.0 }, measured, predicted), channel = "brightness", width = 640, height = 240, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 240.0), interactive = false)
               val edge = image[0, 10, 0] / image.reference
-              display("readout", "<p style='font-size:15px;opacity:.8'>the edge of the sensor gets ${"%.0f".format(100 * edge)}% of the light the middle gets</p>")
+              display("readout", "<p style='opacity:.8'>the edge of the sensor gets ${"%.0f".format(100 * edge)}% of the light the middle gets</p>")
           }
 
           draw()
@@ -293,10 +293,10 @@ operations:
                       thickness = 2.5
                   },
               )
-              lines(parts, channel = "side", w = 640.0, h = endY)
+              showPlane(parts, channel = "side", width = 640, height = 400, padding = 0.0, window = Rect(0.0, 0.0, 640.0, endY), interactive = false)
               // How far apart the two parallel paths are, measured square to them.
               val shift = slab * sin(theta - inside) / cos(inside)
-              display("readout", "<p style='font-size:15px;opacity:.8'>slab ${"%.2f".format(slab)} thick: the ray comes out shifted ${"%.2f".format(shift)} sideways</p>")
+              display("readout", "<p style='opacity:.8'>slab ${"%.2f".format(slab)} thick: the ray comes out shifted ${"%.2f".format(shift)} sideways</p>")
           }
 
           draw()
@@ -312,8 +312,8 @@ operations:
         code: |
           import afield.simulation.optics.*
 
-          // The crests of a light wave arriving at glass, drawn as lines. In glass the wave is slower, so the
-          // crests bunch up; when it arrives at a slant, each crest bends where it crosses.
+          // The crests of a light wave arriving at glass. In glass the wave is slower, so the crests bunch up;
+          // arriving at a slant, each crest bends where it crosses, and the wave turns.
           val axis = 180.0
           val wavelength = 44.0
           val cyan = vec(0.4, 0.9, 1.0, 1.0)
@@ -323,34 +323,19 @@ operations:
           var playing = true
           var travelled = 0.0
 
-          // The crest u·sinθ + v·cosθ = s, measured from the point where the wave meets the glass, clipped to
-          // the band of depth v from vTop to vBottom.
-          fun crest(s: Double, theta: Double, vTop: Double, vBottom: Double): FLine? {
-              val sn = sin(theta); val cs = cos(theta)
-              // Keep inside the picture's width, 320 either side of that point...
-              var t0 = (-320 - s * sn) / cs; var t1 = (320 - s * sn) / cs
-              // ...and inside the band. A point on the crest is s·(sinθ, cosθ) + t·(cosθ, −sinθ).
-              if (sn < 1e-9) { if (s * cs !in vTop..vBottom) return null } else {
-                  val a = (s * cs - vBottom) / sn; val b = (s * cs - vTop) / sn
-                  t0 = max(t0, min(a, b)); t1 = min(t1, max(a, b))
-              }
-              if (t0 >= t1) return null
-              return fline {
-                  moveTo(320 + s * sn + t0 * cs, axis + s * cs - t0 * sn)
-                  lineTo(320 + s * sn + t1 * cs, axis + s * cs - t1 * sn)
-                  color = cyan
-                  thickness = 2.0
-              }
-          }
-
           fun draw() {
               val theta = angle * PI / 180
               val turned = Refraction.snellAngle(theta, 1.0, index)
-              val phase = travelled % wavelength
-              val parts = mutableListOf(fline { rect(0, axis, 640, 180); filled = true; stroked = false; color = vec(0.4, 0.9, 1.0, 0.12) })
-              for (m in -20..20) {
-                  val s = m * wavelength + phase
-                  if (s < 0) crest(s, theta, -axis, 0.0)?.let { parts += it } else crest(s / index, turned, 0.0, 180.0)?.let { parts += it }
+              val parts = mutableListOf(
+                  fline { rect(0, axis, 640, 180); filled = true; stroked = false; color = vec(0.4, 0.9, 1.0, 0.12) },
+              )
+              for (crest in Refraction.crossingCrests(theta, index, wavelength, travelled, 640.0, 360.0, axis)) {
+                  for (segment in listOfNotNull(crest.air, crest.glass)) parts += fline {
+                      moveTo(segment[0], segment[1])
+                      lineTo(segment[2], segment[3])
+                      color = cyan
+                      thickness = 2.0
+                  }
               }
               // Which way the wave is going, in air and in glass.
               parts += fline {
@@ -360,9 +345,10 @@ operations:
                   color = orange
                   thickness = 2.0
               }
-              lines(parts, channel = "wave", w = 640.0, h = 360.0)
+              showPlane(parts, channel = "wave", width = 640, height = 360, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
           }
 
+          draw()
           controlGroup {
               checkbox("playing", initialValue = true) { playing = it }
               slider("angle", 0.0, 70.0, step = 0.5, initialValue = 0.0) { angle = it; draw() }
@@ -418,9 +404,9 @@ operations:
                   ray(320 + 200 * sin(theta), 180 + side * 200 * cos(theta), reflected, orange),
               )
               if (!turned.isNaN()) parts += ray(320 + 200 * sin(turned), 180 - side * 200 * cos(turned), 1 - reflected, cyan)
-              lines(parts, channel = "rays", w = 640.0, h = 360.0)
+              showPlane(parts, channel = "rays", width = 640, height = 360, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
               val crossing = if (turned.isNaN()) "none crosses: total internal reflection" else "crosses at ${"%.1f".format(turned * 180 / PI)}°"
-              display("readout", "<p style='font-size:15px;opacity:.8'>arrives at ${"%.1f".format(angle)}°, ${"%.0f".format(100 * reflected)}% reflects, $crossing</p>")
+              display("readout", "<p style='opacity:.8'>arrives at ${"%.1f".format(angle)}°, ${"%.0f".format(100 * reflected)}% reflects, $crossing</p>")
           }
 
           draw()
@@ -481,7 +467,7 @@ operations:
                       thickness = 1.5
                   }
               }
-              lines(parts, channel = "side", w = 640.0, h = 360.0)
+              showPlane(parts, channel = "side", width = 640, height = 360, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
           }
 
           draw()
@@ -543,9 +529,9 @@ operations:
               }
               val image = ThinLens.imageDistance(focal, source)
               if (image > 0 && image * unit < 320) parts += dot(lensX + image * unit, axis + 40.0 * image / source, orange)
-              lines(parts, channel = "rays", w = 640.0, h = 360.0)
+              showPlane(parts, channel = "rays", width = 640, height = 360, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
               val where = if (image > 0) "a sharp image ${"%.2f".format(image)} behind the lens" else "no image: the rays spread apart"
-              display("readout", "<p style='font-size:15px;opacity:.8'>focal length ${"%.1f".format(focal)}, source ${"%.1f".format(source)} in front: $where</p>")
+              display("readout", "<p style='opacity:.8'>focal length ${"%.1f".format(focal)}, source ${"%.1f".format(source)} in front: $where</p>")
           }
 
           draw()
@@ -574,7 +560,7 @@ operations:
               val camera = SensorCamera(z = -4.5, sensorDistance = sensor, apertureDiameter = aperture, focalLength = focal)
               val image = camera.render(scene, 120, 80, samples = 96)
               display("sensor", PngEncoder.encode(image.toArgb(scale = 5), 600, 400))
-              display("readout", "<p style='font-size:15px;opacity:.8'>f/${"%.1f".format(focal / aperture)}, sensor ${"%.3f".format(sensor)} behind the lens, sharp at ${"%.1f".format(focus)} in front</p>")
+              display("readout", "<p style='opacity:.8'>f/${"%.1f".format(focal / aperture)}, sensor ${"%.3f".format(sensor)} behind the lens, sharp at ${"%.1f".format(focus)} in front</p>")
           }
 
           draw()
@@ -664,9 +650,9 @@ operations:
               parts += cone(focus, sensorX, cyan, 1.5)
               parts += cone(near, sensorX, orange, 1.0)
               if (!far.isInfinite() && far * unit < lensX) parts += cone(far, sensorX, orange, 1.0)
-              lines(parts, channel = "side", w = 640.0, h = 300.0)
+              showPlane(parts, channel = "side", width = 640, height = 300, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 300.0), interactive = false)
               val farText = if (far.isInfinite()) "to infinity" else "to ${"%.2f".format(far)}"
-              display("readout", "<p style='font-size:15px;opacity:.8'>f/${"%.1f".format(focal / aperture)}, focused at ${"%.2f".format(focus)}: sharp from ${"%.2f".format(near)} $farText</p>")
+              display("readout", "<p style='opacity:.8'>f/${"%.1f".format(focal / aperture)}, focused at ${"%.2f".format(focus)}: sharp from ${"%.2f".format(near)} $farText</p>")
           }
 
           draw()
@@ -697,10 +683,10 @@ operations:
                       color = if (k == chosen) orange else cyan
                   }
               }
-              lines(parts, channel = "openings", w = 640.0, h = 120.0)
+              showPlane(parts, channel = "openings", width = 640, height = 120, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 120.0), interactive = false)
               val labels = stops.mapIndexed { k, s -> "<span style='display:inline-block;width:80px;text-align:center;${if (k == chosen) "color:#ff9933" else ""}'>f/$s</span>" }
               val share = "1/${1 shl chosen}"
-              display("readout", "<div style='font-size:15px;width:640px'>${labels.joinToString("")}<p style='opacity:.8'>f/${stops[chosen]} lets in $share of the light of f/1.4</p></div>")
+              display("readout", "<div style='width:640px'>${labels.joinToString("")}<p style='opacity:.8'>f/${stops[chosen]} lets in $share of the light of f/1.4</p></div>")
           }
 
           draw()
@@ -756,7 +742,7 @@ operations:
                       thickness = 1.3
                   }
               }
-              lines(parts, channel = "side", w = 640.0, h = 360.0)
+              showPlane(parts, channel = "side", width = 640, height = 360, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 360.0), interactive = false)
           }
 
           draw()
@@ -816,7 +802,7 @@ operations:
                       thickness = 1.5
                   }
               }
-              lines(parts, channel = "prism", w = 640.0, h = 320.0)
+              showPlane(parts, channel = "prism", width = 640, height = 320, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 320.0), interactive = false)
           }
 
           fun lens() {
@@ -833,7 +819,7 @@ operations:
                       thickness = 1.3
                   }
               }
-              lines(parts, channel = "lens", w = 640.0, h = 240.0)
+              showPlane(parts, channel = "lens", width = 640, height = 240, padding = 0.0, window = Rect(0.0, 0.0, 640.0, 240.0), interactive = false)
           }
 
           fun draw() { prism(); lens() }
@@ -878,12 +864,9 @@ operations:
                               +"""
                               ## Counting light
 
-                              A sensor is a grid of tiny detectors. Each one counts the light that lands
-                              on it while the shutter is open, and that count becomes the brightness of
-                              one pixel.
-
-                              Too short an exposure and every count is small and grainy. Too long and the
-                              brightest detectors fill up: everything past full reads as the same white.
+                              Each detector counts the light that reaches it while the shutter is
+                              open. Too little and the count is grain; too much and it fills to
+                              white.
                           """
                                   .md
                           }
@@ -899,11 +882,8 @@ operations:
                               +"""
                               ## Colour from filters
 
-                              A detector counts light, not colour. Put a red, green or blue filter over
-                              each one and it counts only that part of the light.
-
-                              The usual pattern repeats every two by two: one red, two green, one blue.
-                              Each pixel's two missing colours are then guessed from its neighbours.
+                              A filter over each detector lets it count only red, green or blue. The
+                              two colours a pixel missed are guessed from its neighbours.
                           """
                                   .md
                           }
@@ -920,10 +900,7 @@ operations:
                               +"""
                               ## A scene to photograph
 
-                              Every camera in this talk looks at the same things: a red ball, a green ball
-                              further back, and a checkerboard floor, under a bright sky.
-
-                              Drag to look around it.
+                              Every camera in this talk looks at this. Drag to look around it.
                           """
                                   .md
                           }
@@ -936,11 +913,8 @@ operations:
                               +"""
                               ## A bare sensor sees nothing
 
-                              Hold a sensor up to the scene with nothing in front of it. Every point of
-                              the ball sends light in every direction, so every detector receives light
-                              from every point of the scene.
-
-                              Each count is the same blend, and the picture is an even, pale blank.
+                              Every detector gets light from every point of the scene, so every
+                              count is the same blend.
                           """
                                   .md
                           }
@@ -953,11 +927,8 @@ operations:
                               +"""
                               ## A box with a hole
 
-                              Put the sensor in a closed box and make one small hole. Now each detector
-                              can only see out through the hole, along one narrow cone, so it receives
-                              light from one small patch of the scene.
-
-                              A picture appears on the back wall, upside down.
+                              Through a small hole each detector sees one patch of the scene. A
+                              picture forms on the back wall, upside down.
                           """
                                   .md
                           }
@@ -973,12 +944,8 @@ operations:
                               +"""
                               ## How much it sees
 
-                              Rays from the scene cross at the hole, which is why the picture is
-                              inverted. The sensor's edges and the hole fix the widest angle that reaches
-                              it.
-
-                              Move the sensor further back and that angle narrows: less of the scene, drawn
-                              larger.
+                              Rays cross at the hole. A sensor further back takes a narrower view,
+                              drawn larger.
                           """
                                   .md
                           }
@@ -993,11 +960,8 @@ operations:
                               +"""
                               ## Darker at the edges
 
-                              A detector near the edge of the sensor sees the hole at a slant, so the hole
-                              looks smaller from there, and it is also further away.
-
-                              Together the slant and the distance dim the corners by the fourth power of
-                              the cosine of the angle.
+                              From the edge of the sensor the hole is further away and seen at a
+                              slant: the light falls as cos⁴ of the angle.
                           """
                                   .md
                           }
@@ -1012,11 +976,8 @@ operations:
                               +"""
                               ## Sharp or bright, not both
 
-                              Each point of the scene lights a small patch of sensor the shape of the
-                              hole. A wide hole makes wide patches that overlap into blur; a narrow one
-                              makes small sharp patches.
-
-                              But a narrow hole also lets in little light. A pinhole camera must choose.
+                              Each point lights a patch the size of the hole. A smaller hole is
+                              sharper, and darker.
                           """
                                   .md
                           }
@@ -1035,11 +996,8 @@ operations:
                               +"""
                               ## Glass moves what you see
 
-                              Look at a stick through a thick block of glass at an angle, and the part
-                              behind the glass seems shifted to one side.
-
-                              The light has not travelled straight. It bent going in and bent back coming
-                              out, and the thicker the block the bigger the shift.
+                              A ray bends going into glass and bends back coming out: it leaves
+                              parallel, but shifted.
                           """
                                   .md
                           }
@@ -1057,11 +1015,7 @@ operations:
                               +"""
                               ## Light is a wave
 
-                              Light is a ripple in the electric and magnetic field. Its crests pass at a
-                              fixed rate, the frequency, which we see as colour.
-
-                              In glass the wave travels more slowly. The crests still arrive just as often,
-                              so they crowd closer together: the wavelength shrinks.
+                              In glass the wave travels more slowly, so its crests crowd together.
                           """
                                   .md
                           }
@@ -1077,11 +1031,8 @@ operations:
                               +"""
                               ## Why it turns
 
-                              When a wave meets glass at a slant, one end of each crest enters the glass
-                              first and slows down while the other end is still in air.
-
-                              The crest pivots, and the direction the wave travels turns towards the
-                              perpendicular.
+                              Arriving at a slant, each crest slows on one side first, and the wave
+                              turns.
                           """
                                   .md
                           }
@@ -1098,11 +1049,8 @@ operations:
                               +"""
                               ## How far it turns
 
-                              The refractive index n says how many times slower light travels in a
-                              material: about 1.5 for glass. The turn obeys Snell's law,
-                              n₁ sin θ₁ = n₂ sin θ₂.
-
-                              Some light is always reflected too, and more of it the more grazing the angle.
+                              Snell's law: n₁ sin θ₁ = n₂ sin θ₂. Some light always reflects, more
+                              of it at grazing angles.
                           """
                                   .md
                           }
@@ -1118,9 +1066,8 @@ operations:
                               +"""
                               ## Trapped light
 
-                              Going from glass out into air the ray turns away from the perpendicular.
-                              Past about 42° there is no angle in air for it to take, and all of the light
-                              reflects back into the glass.
+                              Leaving glass past about 42°, the light has no angle to take in air,
+                              and all of it reflects.
                           """
                                   .md
                           }
@@ -1138,11 +1085,8 @@ operations:
                               +"""
                               ## Tilted faces steer light
 
-                              A block with parallel faces only shifts a ray. Tilt one face against the
-                              other and the ray leaves in a new direction: a prism.
-
-                              Stack prisms with steeper tilts further from the middle, and rays from one
-                              point can be steered to meet again.
+                              A tilted face turns a ray. Steeper tilts further out, and the rays can
+                              be made to meet.
                           """
                                   .md
                           }
@@ -1157,12 +1101,8 @@ operations:
                               +"""
                               ## A lens brings rays together
 
-                              Make the steps infinitely fine and the stack of prisms becomes a smooth
-                              curved lens. Parallel rays meet at its focal point, one focal length f behind
-                              it.
-
-                              A point at distance o comes to a sharp image at distance i, where
-                              1/o + 1/i = 1/f.
+                              A smooth curve is the limit of the steps. A point at o comes to focus
+                              at i, where 1/o + 1/i = 1/f.
                           """
                                   .md
                           }
@@ -1179,11 +1119,8 @@ operations:
                               +"""
                               ## A camera with a lens
 
-                              Replace the pinhole with a lens and the hole can be wide: every ray from a
-                              point that enters the lens is bent to meet at one point on the sensor.
-
-                              The picture is bright and sharp, but only for the distance the lens is
-                              focused at.
+                              A lens bends every ray from a point to one place on the sensor: a wide
+                              hole, and still sharp.
                           """
                                   .md
                           }
@@ -1199,11 +1136,8 @@ operations:
                               +"""
                               ## Out of focus
 
-                              A point nearer or further than the focused distance comes together in front
-                              of the sensor or behind it. On the sensor it is a disc: the circle of
-                              confusion.
-
-                              Moving the sensor, or the lens, chooses which distance is sharp.
+                              Nearer or further, a point meets in front of the sensor or behind it,
+                              and lands as a disc.
                           """
                                   .md
                           }
@@ -1218,12 +1152,10 @@ operations:
                       audience {
                           figureBeside("bokeh") {
                               +"""
-                              ## The opening shapes the blur
+                              ## The shape of blur
 
-                              Every out-of-focus point is a small picture of the opening it came through.
-                              A camera's iris is made of blades, and its opening is a polygon.
-
-                              So bright points in a blurred background become little polygons.
+                              An out-of-focus light is a picture of the opening. Iris blades make it
+                              a polygon.
                           """
                                   .md
                           }
@@ -1240,11 +1172,8 @@ operations:
                               +"""
                               ## How deep is sharp
 
-                              A blur smaller than a pixel still looks sharp, so a whole range of distances
-                              is in focus: the depth of field.
-
-                              A smaller opening narrows every cone of light and widens that range, at the
-                              cost of light.
+                              Blur smaller than a pixel looks sharp. A smaller opening widens that
+                              band, and costs light.
                           """
                                   .md
                           }
@@ -1261,11 +1190,8 @@ operations:
                               +"""
                               ## f-numbers
 
-                              Photographers name the opening by the focal length divided by its diameter:
-                              f/2, f/2.8, f/4, f/5.6.
-
-                              Each step multiplies the number by √2, halves the opening's area, and halves
-                              the light. The same f-number gives the same brightness on any lens.
+                              Focal length over opening. Each stop is √2 narrower and lets in half
+                              the light.
                           """
                                   .md
                           }
@@ -1282,11 +1208,8 @@ operations:
                               +"""
                               ## Spherical lenses miss
 
-                              Lenses are ground with spherical faces because spheres are easy to make. But
-                              a sphere bends the rays near its rim a little too much, and they cross before
-                              the focal point.
-
-                              No single sensor position is sharp for every ray.
+                              A spherical face bends rim rays too much: no one place is sharp for
+                              all of them.
                           """
                                   .md
                           }
@@ -1301,11 +1224,7 @@ operations:
                               +"""
                               ## Colours split
 
-                              Glass slows blue light a little more than red, so it bends blue a little more.
-                              White light through a prism fans into a spectrum.
-
-                              In a lens the same thing gives each colour its own focal point, and edges in
-                              the picture gain coloured fringes. Real lenses pair glasses that cancel it.
+                              Glass bends blue more than red, so each colour has its own focus.
                           """
                                   .md
                           }
