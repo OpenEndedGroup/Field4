@@ -44,9 +44,13 @@ class StereoDiagramRenderer(
     val maxSegments: Int = 8192,
     val maxPoints: Int = 1024,
     sceneScale: Float = 1f,
+    textBlurConfig: ReadingTextBlurConfig = ReadingTextBlurConfig(),
+    private val moduleFactories: Map<String, DiagramModuleFactory> = emptyMap(),
 ) : AutoCloseable {
     private val ownedTarget = stereo.layered
-    val compositor = DiagramCompositor(renderer, stereo, shaders, sceneScale)
+    val compositor = DiagramCompositor(renderer, stereo, shaders, sceneScale, moduleFactories)
+    // Eight vec4 records (128 bytes) per CPU centreline segment, read by stroke_vertex.
+    // One addressable upload per frame serves both eyes; geometry writes own this buffer.
     private val segments =
         defaultBuffer(name = "reading-segments") {
                 size = maxSegments.toLong() * 128
@@ -55,6 +59,7 @@ class StereoDiagramRenderer(
                 addressable()
             }
             .toBuffer(renderer)
+    // Three vec4 records (48 bytes) per marker, expanded into an SDF quad on the GPU.
     private val points =
         defaultBuffer(name = "reading-points") {
                 size = maxPoints.toLong() * 48
@@ -64,25 +69,21 @@ class StereoDiagramRenderer(
             }
             .toBuffer(renderer)
 
-    private fun module(name: String, vertex: String, fragment: String): ModulePointer =
-        Module(
-                parameters(renderer) {
-                    this.name = name
-                    stereo.configure(this)
-                    +compositor.sharp
-                    this.vertex = vertex
-                    this.fragment = fragment
-                    primitiveType = triangles
-                    depthTest = false
-                    depthWrite = false
-                    blend = true
-                    srcColor = VK_BLEND_FACTOR_SRC_ALPHA
-                    dstColor = VK_BLEND_FACTOR_ONE
-                    srcAlpha = VK_BLEND_FACTOR_ONE
-                    dstAlpha = VK_BLEND_FACTOR_ONE
-                },
-            )
-            .pointer()
+    private fun module(name: String, vertex: String, fragment: String): ModulePointer = readingModule(
+        parameters(renderer) {
+            this.name = name
+            stereo.configure(this)
+            +compositor.sharp
+            primitiveType = triangles
+            depthTest = false
+            depthWrite = false
+            blend = true
+            srcColor = VK_BLEND_FACTOR_SRC_ALPHA
+            dstColor = VK_BLEND_FACTOR_ONE
+            srcAlpha = VK_BLEND_FACTOR_ONE
+            dstAlpha = VK_BLEND_FACTOR_ONE
+        }, vertex, fragment, moduleFactories,
+    )
 
     val strokeModule = module("reading-strokes", shaders.strokeVertex, shaders.strokeFragment)
     val pointModule = module("reading-markers", shaders.pointVertex, shaders.pointFragment)
@@ -91,6 +92,14 @@ class StereoDiagramRenderer(
     private val pointMesh = Mesh(renderer, pointModule)
     private val slugData =
         scene.shapes.values.distinct().associateWith { SlugBuffer(renderer, it.slug) }
+    internal val localBlurCaches = scene.blurRequests.entries.map { it.key to it.value }.chunked(2).map {
+        ReadingTextBlurCache(renderer, stereo, compositor.sharp, it, slugData, scene.maximumLabels, textBlurConfig)
+    }
+    /** Rebuild Drawing after adding blur to an unreserved word or exceeding its cached radius. */
+    var textBlurNeedsRebuild: Boolean = false
+        private set
+    val textBlurPreparationCount get() = localBlurCaches.sumOf { it.preparationCount }
+    val textBlurCacheBytes get() = localBlurCaches.sumOf { it.bytes }
     private val wordMeshes = List(scene.maximumLabels) { Mesh(renderer, textModule) }
     val model = Matrix4f()
     val origin = Vector3f()
@@ -131,6 +140,8 @@ class StereoDiagramRenderer(
         compositor.sharp += "reading-strokes" to strokeModule
         compositor.sharp += "reading-markers" to pointModule
         compositor.sharp += "reading-slug" to textModule
+        localBlurCaches.forEachIndexed { i, cache -> compositor.sharp += "reading-local-blur-$i" to cache.drawModule }
+        compositor.beforeScene = Target { command, index -> localBlurCaches.forEach { it.prepare(command, index) } }
         ownedTarget += "reading-composite" to compositor.module
         ownedTarget.modules.putAll(overlays) // Field's browser stays sharp and above the scene.
         strokeModule.current.before["reading-frame"] = Target { _, _ -> updateFrame() }
@@ -213,20 +224,25 @@ class StereoDiagramRenderer(
         }
         strokeMesh.resize(scene.geometry.segments.size * 6, 0)
         pointMesh.resize(scene.geometry.points.size * 6, 0)
+        textBlurNeedsRebuild = false
         for ((i, mesh) in wordMeshes.withIndex()) {
             val word = scene.labels.getOrNull(i)
             if (word == null) {
                 mesh.resize(0, 0)
                 continue
             }
-            mesh.resize(6, 0)
+            val cache = localBlurCaches.firstOrNull { it.mix(word.shape, 0f) != null }
+            if (word.blur > 0f && (cache == null || !cache.supports(word.shape, word.blur))) textBlurNeedsRebuild = true
+            val cached = if (word.blur > 0f) cache?.mix(word.shape, word.blur)?.cached ?: 0f else 0f
+            mesh.resize(if (cached >= 1f) 0 else 6, 0)
             mesh.push["model"] =
                 Matrix4f(model).translate(word.position).rotateZ(word.rotation).scale(word.scale)
             mesh.push["slugData"] = slugData.getValue(word.shape)
             mesh.push["viewport"] =
                 Vector2f(compositor.sharp.width.toFloat(), compositor.sharp.height.toFloat())
-            mesh.push["tint"] = Vector4f(labelColor).mul(word.color).apply { w *= word.opacity }
+            mesh.push["tint"] = Vector4f(labelColor).mul(word.color).apply { w *= word.opacity * (1f - cached) }
         }
+        localBlurCaches.forEach { it.update(scene.labels, model, labelColor) }
         frameCount++
     }
 
@@ -253,6 +269,7 @@ class StereoDiagramRenderer(
         closed = true
         ownedTarget.modules.remove("reading-composite", compositor.module)
         compositor.sharp.modules.clear()
+        localBlurCaches.forEach { it.close() }
         compositor.close()
         strokeModule.current.before.remove("reading-frame")
         slugData.values.forEach { it.close() }

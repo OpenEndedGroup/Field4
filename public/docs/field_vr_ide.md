@@ -265,3 +265,40 @@ two layers directly to its eye swapchains. `workspace.stereo.mirrorToScreen(wind
 adds an aspect-correct left-eye preview to an existing second renderer window; pass
 `stereoPair = { true }` to show both eyes. Controller, grip-resize and keyboard/mouse focus
 behavior use the same input path.
+
+## Eye-image precision
+
+The shared multiview renderer uses floating-point eye images, and the OpenXR handoff prefers
+a floating-point or ten-bit runtime swapchain. The browser texture can remain eight-bit
+without forcing the scene to that precision. Restart Field to pick up a new swapchain format.
+Runtime format support and WiVRn's negotiated stream bit depth still determine the handoff;
+see [stereo video precision](stereo_video.md#colour-precision) for the stages to check.
+
+## World-space audio through WiVRn
+
+`SpatialWavPlayer` places a mono WAV in the same OpenXR world as the graphics and renders
+Steam Audio binaural stereo from the published headset pose. It opens a dedicated named
+WiVRn output, leaving the desktop default alone. Steam Audio's native library is installed
+with `./gradlew fetchSteamAudioNatives`.
+
+```diffstatic {data-lang=kotlin}
+val sound = SpatialWavPlayer(
+    "voice.wav".file,
+    renderer.openXRHmdTarget!!.asHeadPoseSource(),
+)
+sound.openWiVRn()
+sound.place(-.6, 1.5, -1.5) // world metres: X right, Y up, -Z forward
+sound.gain = .2f
+sound.play()
+loop { frame() }.end { sound.close() }
+```
+
+`pause()` retains the cursor, `seek(seconds)` scrubs, and `restart()` starts from zero.
+The audio example under `templates/text_one/audio/` adds controls and a bundled mono
+percussion WAV. Stereo WAVs currently use their left channel as the mono emitter. This
+player supplies HRTF direction and distance attenuation; it does not yet simulate room
+geometry, occlusion or reverberation. OpenAL's second HRTF is disabled on the dedicated output.
+
+Connect headset audio before opening the output. After a WiVRn device reconnect, stop and
+relaunch the audio box. The player closes on box stop, replacement or deletion. Audio uses
+its own device-paced thread; the graphics Runloop only reads or changes control state.

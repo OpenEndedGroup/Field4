@@ -1,19 +1,19 @@
 import afield.graphics.scene.reading.*
 
-fun source(box: Box, property: String) = checkNotNull(box.getPropertyRaw(property) as? String)
-fun shaders() = DiagramShaderSet(
-    source(strokeSource, "vertex"),
-    source(strokeSource, "fragment"),
-    source(pointSource, "vertex"),
-    source(pointSource, "fragment"),
-    source(textSource, "vertex"),
-    source(textSource, "fragment"),
-    source(blurSource, "vertex"),
-    source(blurSource, "fragment"),
-    source(compositeSource, "vertex"),
-    source(compositeSource, "fragment"),
+// Each shader box owns its moduleHere pipeline and its standard Alt+R action.
+// The renderer supplies pass-specific targets/resources without copying shader properties.
+val passes = mapOf(
+    "reading-strokes" to strokeModuleFactory,
+    "reading-markers" to pointModuleFactory,
+    "reading-slug" to textModuleFactory,
+    "reading-blur-1" to mediumHorizontalFactory,
+    "reading-blur-2" to mediumVerticalFactory,
+    "reading-blur-3" to broadHorizontalFactory,
+    "reading-blur-4" to broadVerticalFactory,
+    "reading-composite" to compositeModuleFactory,
 )
-prop<StereoDiagramRenderer>(drawing) = StereoDiagramRenderer(renderer, stereo, poem, shaders())
+
+prop<StereoDiagramRenderer>(drawing) = StereoDiagramRenderer(renderer, stereo, poem, moduleFactories = passes)
 val ownedDrawing = drawing
 controlGroup("drawing") {
     button("Recenter poem") { down -> if (down) drawing.recenter() }
@@ -28,7 +28,6 @@ controlGroup("drawing") {
         poem.examples.forEach { e -> e.player.dotRadiusScale = it.toFloat() }
     }
     checkbox("Show diagram dots", initialValue = true) { poem.examples.forEach { e -> e.player.showDots = it } }
-    button("Reload drawing, blur and compositor shaders") { down -> if (down) drawing.reload(shaders()) }
 }
 val grade = drawing.compositor.settings
 controlGroup("blur cascade") {
@@ -87,6 +86,12 @@ controlGroup("paint and colour") {
     colorPicker("Shadow tone (alpha = strength)", initialValue = grade.shadowTone) { grade.shadowTone.set(it) }
     colorPicker("Highlight tone (alpha = strength)", initialValue = grade.highlightTone) { grade.highlightTone.set(it) }
 }
+// Optional perceptual dither for downstream display quantization; zero keeps it disabled.
+controlGroup("display dither") {
+    slider("Dither (8-bit code steps)", initialValue = grade.supersampling.w.toDouble(), min = 0.0, max = 2.0) {
+        grade.supersampling.w = it.toFloat()
+    }
+}
 var lastStats = 0L
 loop {
     renderer.windows.forEach { it.pollEvents() }
@@ -96,7 +101,7 @@ loop {
         lastStats = now
         display(
             "frame",
-            "<div style='padding:12px;width:440px'>Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.</div>",
+            "<div style='padding:12px;width:440px'>${if (drawing.textBlurNeedsRebuild) "Blur capacity changed: rebuild Drawing. " else ""}Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.</div>",
         )
     }
     frame()

@@ -4674,6 +4674,18 @@ the browser stays sharp. Vulkan and the Slug helper are required.
 
 [Open →](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn)
 
+### video_one_vr
+
+[A stereo movie in a room](stereo_video.md): full-resolution side-by-side video on a movable
+flat or cylindrical screen, with native per-eye aspect, an explicit aspect override, a scrubber,
+background P010 decoding and an optional live Field browser. The desktop preview samples the
+same eye images used by OpenXR. A bundled original ten-bit stereo demo loads immediately;
+choose a local movie to replace it. Variable speed, video-local temporal exposure and independent
+12/24 fps material cadence are editable controls. No audio or scene compositor is involved.
+Vulkan is required; the public guide includes real native playback captures.
+
+[Open →](offline.html?file=assets/agent_transcripts/video_one_vr/metadata.edn)
+
 ### field_vr_ide
 
 [Field inside VR](field_vr_ide.md): the live canvas, editor and command palette in a world-locked

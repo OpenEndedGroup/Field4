@@ -63,8 +63,8 @@ class VideoDecoder(
 
     /**
      * Length of the video stream in seconds: its declared duration scaled by its time base, and
-     * 0.0 until [open] reads the header. A container that declares no duration stores a sentinel
-     * that is scaled like any other number, so check for a positive value before trusting it.
+     * 0.0 until [open] reads the header. Containers such as Matroska may omit stream duration;
+     * then the container duration is used, or zero if neither duration is known.
      */
     var duration: Double = 0.0
         private set
@@ -75,6 +75,14 @@ class VideoDecoder(
      * non-positive rate.
      */
     var fps: Double = 0.0
+        private set
+
+    /** FFmpeg stream colour metadata, used by display shaders without altering data-atlas decoding. */
+    var colorSpace: Int = AVCOL_SPC_UNSPECIFIED
+        private set
+    var colorRange: Int = AVCOL_RANGE_UNSPECIFIED
+        private set
+    var colorTransfer: Int = AVCOL_TRC_UNSPECIFIED
         private set
 
     private var isOpen = false
@@ -127,12 +135,16 @@ class VideoDecoder(
             val codecPar = videoStream.codecpar()
 
             // Get video properties
+            colorSpace = codecPar.color_space()
+            colorRange = codecPar.color_range()
+            colorTransfer = codecPar.color_trc()
             width = codecPar.width()
             height = codecPar.height()
 
             // Calculate duration and FPS
             val timeBase = videoStream.time_base()
-            duration = videoStream.duration() * av_q2d(timeBase)
+            duration = if (videoStream.duration() > 0) videoStream.duration() * av_q2d(timeBase)
+                else formatContext!!.duration().takeIf { it > 0 }?.toDouble()?.div(AV_TIME_BASE) ?: 0.0
 
             val frameRate = videoStream.avg_frame_rate()
             fps = av_q2d(frameRate)
@@ -229,11 +241,35 @@ class VideoDecoder(
      * Decode the next frame in [outputFormat]. Plane buffers are tightly packed even when FFmpeg's
      * working frame has aligned row padding, so Vulkan uploads never need to know the source stride.
      */
-    fun decodeNextFrame(): VideoFrame? {
+    fun decodeNextFrame(conversionStride: Int = 1, discardNonReference: Boolean = false): VideoFrame? {
         if (!isOpen) return null
 
         try {
-            if (!receiveNextFrame()) return null
+            require(conversionStride >= 1)
+            // This runs on the decoder owner thread. FFmpeg may omit disposable pictures, but
+            // required references are decoded; stride skips colour conversion/copy afterwards.
+            codecContext!!.skip_frame(if (discardNonReference) AVDISCARD_NONREF else AVDISCARD_DEFAULT)
+            var timestamp: Double
+            do {
+                if (!receiveNextFrame()) return null
+                timestamp = frame!!.best_effort_timestamp() * av_q2d(formatContext!!.streams(videoStreamIndex).time_base())
+            } while (conversionStride > 1 && fps > 0 && VideoFrameIndex.decoded(timestamp, fps) % conversionStride != 0L)
+
+            // Some codecs (notably FFV1) publish colour tags on frames rather than codec parameters.
+            frame!!.colorspace().takeIf { it != AVCOL_SPC_UNSPECIFIED }?.let { colorSpace = it }
+            frame!!.color_range().takeIf { it != AVCOL_RANGE_UNSPECIFIED }?.let { colorRange = it }
+            frame!!.color_trc().takeIf { it != AVCOL_TRC_UNSPECIFIED }?.let { colorTransfer = it }
+            val matrix = when (colorSpace) {
+                AVCOL_SPC_BT709 -> SWS_CS_ITU709
+                AVCOL_SPC_BT2020_NCL, AVCOL_SPC_BT2020_CL -> SWS_CS_BT2020
+                AVCOL_SPC_BT470BG, AVCOL_SPC_SMPTE170M -> SWS_CS_ITU601
+                else -> SWS_CS_ITU709
+            }
+            val coefficients = sws_getCoefficients(matrix)
+            val full = if (colorRange == AVCOL_RANGE_JPEG) 1 else 0
+            // Keep P010's source range/matrix. RGB output is full-range display/data values.
+            sws_setColorspaceDetails(swsContext, coefficients, full, coefficients,
+                if (outputFormat == VideoDecodeFormat.P010) full else 1, 0, 1 shl 16, 1 shl 16)
 
             // Convert to the requested upload format.
             sws_scale(
@@ -291,7 +327,7 @@ class VideoDecoder(
                 plane1 = planes.plane1,
                 plane0Stride = planes.stride0,
                 plane1Stride = planes.stride1,
-                timestamp = frame!!.best_effort_timestamp() * av_q2d(formatContext!!.streams(videoStreamIndex).time_base()),
+                timestamp = timestamp,
                 release = {
                     tightBufferPool.release(planes.plane0)
                     tightBufferPool.release(planes.plane1)

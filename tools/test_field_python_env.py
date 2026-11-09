@@ -21,6 +21,8 @@ class FieldPythonEnvironmentTest(unittest.TestCase):
 
     def test_entrypoint_bootstrap_preserves_the_entrypoint_and_arguments(self):
         with (
+            # A parent tool may already have re-execed; this test exercises the first hop.
+            mock.patch.dict(os.environ, {"FIELD_BACKDOOR_REEXEC": ""}),
             mock.patch.object(importlib.util, "find_spec", return_value=None),
             mock.patch.object(field_python_env.Path, "exists", return_value=True),
             mock.patch.object(field_python_env, "_is_running_interpreter", return_value=False),
@@ -33,6 +35,14 @@ class FieldPythonEnvironmentTest(unittest.TestCase):
         argv = execve.call_args.args[1]
         self.assertTrue(argv[1].endswith("tools/example.py"), argv)
         self.assertEqual("--flag", argv[2])
+
+    def test_a_second_hop_with_missing_dependencies_reports_the_repair(self):
+        with (
+            mock.patch.object(importlib.util, "find_spec", return_value=None),
+            mock.patch.dict(os.environ, {"FIELD_BACKDOOR_REEXEC": "1"}),
+        ):
+            with self.assertRaisesRegex(SystemExit, "Run: uv sync --group backdoor"):
+                field_python_env.ensure_repo_python()
 
     def test_the_uv_fallback_uses_the_entrypoints_dependency_group(self):
         with (

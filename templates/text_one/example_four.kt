@@ -1,7 +1,7 @@
 import afield.graphics.scene.reading.*
 import afield.graphics.text.*
-import kotlin.math.*
 import afield.graphics.text.sentences.*
+import kotlin.math.*
 
 // 4 · Sentence furniture. Reed-Kellogg shelves become a shallow spatial mobile, then a reading line.
 val parsed = Sentences.example(4)

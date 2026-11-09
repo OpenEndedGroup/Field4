@@ -19,6 +19,9 @@ This is the check that retires the prose. The rules:
   (``val historyOwner = thisBox``) is usually a smell but not always wrong, so it is a note: printed,
   never rewritten, and not a failure. Removing one means rewriting each use (``historyOwner.foo`` is
   ``foo``, ``historyOwner`` as an argument is ``thisBox``), which the revision pass or a person does.
+- ``raw-shader-property``: a literal shader-stage read through ``getPropertyRaw`` in box code.
+  Use the existing typed ``vertex`` / ``fragment`` / ``compute`` / ``task`` / ``mesh`` property
+  instead. Reported for review rather than blindly rewriting nullable casts or guard semantics.
 - ``spaced-fragment-marker``: ``// %-``. The splitter accepts it (``isFragmentBreak``), but until
   2026-10-05 it matched ``//%-`` exactly, so older Field ran a spaced marker as one fragment;
   published code uses the one documented spelling.
@@ -470,6 +473,13 @@ def _helper_findings(lines: list[str], i: int, end: int, makes_push: bool) -> li
     return out
 
 
+RAW_SHADER_PROPERTY = re.compile(
+    r'^\s*(?:(?:val|var)\s+\w+(?:\s*:[^=]+)?\s*=\s*)?'
+    r'(?:(?P<receiver>[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\.)?'
+    r'getPropertyRaw\(\s*"(?P<stage>vertex|fragment|compute|task|mesh)"\s*\)'
+)
+
+
 def check_block(lines: list[str], start: int, end: int, literals: bool = False,
                 helpers: bool = True) -> list[tuple[int, str, str, bool]]:
     """(line index, rule, message, fixable) for one Kotlin block. ``helpers`` False skips the
@@ -506,6 +516,11 @@ def check_block(lines: list[str], start: int, end: int, literals: bool = False,
             out.append((i, "spaced-fragment-marker",
                         "write `//%-`, the documented spelling of a fragment break", True))
         if helpers:
+            if raw := RAW_SHADER_PROPERTY.match(line):
+                receiver = raw['receiver']
+                typed = (receiver + '.' if receiver and receiver != 'thisBox' else '') + raw['stage']
+                out.append((i, "raw-shader-property",
+                            f"use typed `{typed}`; shader properties already exist on Box, no raw cast/helper needed", False))
             out.extend(_helper_findings(lines, i, end, makes_push))
         if literals and (lit := list_literals(line, lines[i - 1] if i > start else "",
                                                     lines[i + 1] if i + 1 < end else "")):

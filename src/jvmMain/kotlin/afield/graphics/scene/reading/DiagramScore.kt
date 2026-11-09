@@ -12,6 +12,7 @@ data class DiagramPose(
     var erase: Float = 0f,
     val offset: Vector3f = Vector3f(),
     var scale: Float = 1f,
+    var blur: Float = 0f, // additive Gaussian-radius score channel, in ems
 )
 
 class DiagramScore
@@ -19,6 +20,7 @@ internal constructor(
     val diagram: ReadingDiagram,
     val duration: Double,
     private val tracks: Map<String, List<(Double, DiagramPose) -> Unit>>,
+    internal val blurCapacities: Map<DiagramText, Float> = emptyMap(),
 ) {
     fun pose(item: DiagramItem, time: Double): DiagramPose {
         require(item.owner === diagram.owner && time.isFinite())
@@ -30,6 +32,7 @@ internal constructor(
 @ReadingDsl
 class DiagramScoreBuilder
 internal constructor(private val diagram: ReadingDiagram, private val duration: Double) {
+    private val blurCapacities = LinkedHashMap<DiagramText, Float>()
     private val tracks = LinkedHashMap<String, MutableList<(Double, DiagramPose) -> Unit>>()
 
     private fun track(item: DiagramItem, block: (Double, DiagramPose) -> Unit) {
@@ -61,6 +64,24 @@ internal constructor(private val diagram: ReadingDiagram, private val duration: 
         timing(at, seconds)
         track(item) { t, p -> p.opacity *= 1f - phase(t, at, seconds) }
     }
+
+    /** Radius is in ems, independent of opacity. Prepare/rebuild Drawing after adding blur tracks. */
+    fun blur(item: DiagramText, from: Float, to: Float, at: Double, seconds: Double = 4.0) {
+        timing(at, seconds)
+        require(listOf(from, to).all { it.isFinite() && it >= 0f })
+        val capacity = (blurCapacities[item] ?: 0f) + maxOf(from, to)
+        require(capacity.isFinite())
+        blurCapacities[item] = capacity
+        track(item) { t, p -> p.blur += from + (to - from) * phase(t, at, seconds) }
+    }
+
+    /** A word resolves slowly from a broad Gaussian cloud into its exact Slug outline. */
+    fun blurIn(item: DiagramText, at: Double, seconds: Double = 4.0, radius: Float = .8f) =
+        blur(item, radius, 0f, at, seconds)
+
+    /** A word dissolves into a broad Gaussian cloud; opacity remains an independent channel. */
+    fun blurOut(item: DiagramText, at: Double, seconds: Double = 4.0, radius: Float = .8f) =
+        blur(item, 0f, radius, at, seconds)
 
     fun drawIn(path: DiagramPath, at: Double, seconds: Double = 1.0) {
         timing(at, seconds)
@@ -136,7 +157,7 @@ internal constructor(private val diagram: ReadingDiagram, private val duration: 
         }
     }
 
-    internal fun build() = DiagramScore(diagram, duration, tracks.mapValues { it.value.toList() })
+    internal fun build() = DiagramScore(diagram, duration, tracks.mapValues { it.value.toList() }, blurCapacities.toMap())
 }
 
 fun diagramScore(
