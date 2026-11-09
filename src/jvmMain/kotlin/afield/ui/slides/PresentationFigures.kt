@@ -10,10 +10,12 @@ import afield.ui.output.forgetControlValues
 import afield.ui.output.glideControl
 import afield.ui.output.setControl
 import kotlinx.coroutines.Job
+import kotlinx.html.FIGURE
+import kotlinx.html.attributesMapOf
 import kotlinx.html.div
 import kotlinx.html.figcaption
-import kotlinx.html.figure
 import kotlinx.html.style
+import kotlinx.html.visit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -49,32 +51,32 @@ import java.util.concurrent.atomic.AtomicLong
 private val figureSlotCounter = AtomicLong()
 
 /**
- * A live figure: the output of the box called [name] fills this slot on the audience display.
- *
- * [channels] shows only those output channels (empty shows all of them); [height] is the slot's
- * height in the 1920 × 1080 slide frame, and its width is that of its container. A [caption] is
- * plain text beneath it. The box is looked up by name when the slide is attached to a step, so a
- * typo fails the Presentation box rather than showing an empty slot.
+ * The live figure slot [AudienceBuilder.figure] writes. Written with kotlinx.html's tag classes rather
+ * than its `figure { }` builder, whose name the member shadows.
  */
-fun AudienceBuilder.figure(name: String, vararg channels: String, height: Int = 720, caption: String = "") {
+internal fun AudienceBuilder.writeFigure(name: String, channels: Array<out String>, height: Int?, caption: String) {
     require(name.isNotBlank() && name.length <= 256) { "A figure needs the name of a box" }
     require(channels.size <= 16 && channels.all { it.isNotBlank() && it.length <= 128 && it.none { c -> c.code < 32 || c == ',' } }) {
         "Name at most 16 output channels"
     }
-    require(height in 60..1080) { "A figure's height is between 60 and 1080 slide pixels" }
+    require(height == null || height in 60..1080) { "A figure's height is between 60 and 1080 slide pixels" }
     require(figures.size < 8) { "Use at most eight figures on one slide" }
     val id = "figure-${figureSlotCounter.incrementAndGet()}"
     figures += AudienceFigure(id = id, box = "", name = name, channels = channels.toList())
-    figure(classes = "field-live-figure") {
-        style = "height:${height}px"
+    FIGURE(attributesMapOf("class", "field-live-figure"), consumer).visit {
+        if (height != null) style = "height:${height}px;flex:none"
         div(classes = "field-live-figure-slot") { attributes["data-field-figure"] = id }
         if (caption.isNotBlank()) figcaption { +caption }
     }
 }
 
-/** Prose beside a live figure: the slide's two-column layout, with the figure on the right by default. */
+/**
+ * Prose beside a live figure, with the figure on the right by default. The figure takes about two
+ * thirds of the slide's width and its full height, and the prose is set smaller than a text slide's,
+ * at a comfortable measure: the figure is the thing to look at. [height] pins the figure's height.
+ */
 fun AudienceBuilder.figureBeside(
-    name: String, vararg channels: String, figureOnLeft: Boolean = false, height: Int = 800, caption: String = "",
+    name: String, vararg channels: String, figureOnLeft: Boolean = false, height: Int? = null, caption: String = "",
     block: AudienceBuilder.() -> Unit
 ) {
     div(classes = "field-figure-beside") {
