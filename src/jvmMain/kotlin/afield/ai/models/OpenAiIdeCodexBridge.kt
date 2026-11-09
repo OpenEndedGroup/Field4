@@ -923,6 +923,83 @@ class OpenAiIdeCodexBridge(
     fun threadStateToJson(state: ThreadState): String = mapper.writeValueAsString(state)
     fun threadStateFromJson(json: String): ThreadState = mapper.readValue(json)
 
+    /** Autocomplete needs one text response, with no hosted conversation, tool catalogue or agent loop. */
+    fun completeText(instructions: String, prompt: String, maxOutputTokens: Long, context: String = ""): String {
+        // Keep the reusable context separate from the changing draft. GPT-6's implicit write is at
+        // the *latest* user message, so mark this earlier boundary explicitly on the direct OpenAI path.
+        val explicitCache = runtimeConfig.provider == "openai" && modelName.startsWith("gpt-6") && context.isNotBlank()
+        val input = mutableListOf(buildMessageItem(ResponseInputItem.Message.Role.DEVELOPER, instructions))
+        if (explicitCache) input += ResponseInputItem.ofMessage(ResponseInputItem.Message.builder()
+            .role(ResponseInputItem.Message.Role.USER).addContent(ResponseInputText.builder().text(context)
+                .putAdditionalProperty("prompt_cache_breakpoint", JsonValue.from(mapOf("mode" to "explicit"))).build()).build())
+        else if (context.isNotBlank()) input += buildMessageItem(ResponseInputItem.Message.Role.USER, context)
+        input += buildMessageItem(ResponseInputItem.Message.Role.USER, prompt)
+        val params = ResponseCreateParams.builder().model(chatModel).maxOutputTokens(maxOutputTokens)
+            .store(false).input(ResponseCreateParams.Input.ofResponse(input))
+        if (explicitCache) params.putAdditionalBodyProperty("prompt_cache_options",
+            JsonValue.from(mapOf("mode" to "explicit", "ttl" to "30m")))
+        if (!runtimeConfig.usesStatelessResponses) {
+            params.reasoning(if (modelName.startsWith("gpt-6-luna")) Reasoning.builder().effort(ReasoningEffort.NONE).build()
+                else reasoningConfig)
+        }
+        val attempt = AiRequestLedger.request(mapOf("provider" to runtimeConfig.provider,
+            "endpoint" to AiRequestLedger.endpoint(runtimeConfig.baseUrl), "model" to modelName,
+            "fileKey" to "ai4:chat-autocomplete", "phase" to "text_completion", "maxOutputTokens" to maxOutputTokens,
+            "reasoningEffort" to if (runtimeConfig.usesStatelessResponses) "provider-default"
+                else if (modelName.startsWith("gpt-6-luna")) "none" else reasoningEffort.toString())).attempt()
+        var failure: Exception? = null
+        try {
+            val response = responses.create(params.build())
+            attempt.response(response)
+            validateModelResponse(response, allowEmpty = true)
+            return extractOutputTextWithNewlines(response)
+        } catch (error: Exception) { failure = error; throw error }
+        finally { attempt.finish(failure) }
+    }
+
+    private data class ThreadCheckpoint(
+        val version: Int = 1,
+        val provider: String,
+        val endpointHash: String,
+        val model: String,
+        val state: ThreadState,
+        val history: List<ResponseInputItem>? = null
+    )
+
+    /** Hosted IDs for OpenAI; full structured local history (including tool results) for stateless APIs. */
+    fun checkpointThread(state: ThreadState): String {
+        if (runtimeConfig.usesStatelessResponses) settleStatelessHistory(state)
+        return mapper.writeValueAsString(ThreadCheckpoint(provider = runtimeConfig.provider,
+            endpointHash = sha256(runtimeConfig.baseUrl), model = modelName, state = state,
+            history = if (runtimeConfig.usesStatelessResponses) statelessHistory[state.localThreadId]?.toList() else null))
+    }
+
+    fun restoreThread(checkpoint: String, report: (String) -> Unit = {}): ThreadState? = runCatching {
+        val saved = mapper.readValue<ThreadCheckpoint>(checkpoint)
+        val mismatch = when {
+            saved.version != 1 -> "checkpoint_version_changed"
+            saved.provider != runtimeConfig.provider -> "provider_changed"
+            saved.model != modelName -> "model_changed"
+            saved.endpointHash != sha256(runtimeConfig.baseUrl) -> "endpoint_changed"
+            else -> null
+        }
+        if (mismatch != null) { report(mismatch); return null }
+        if (runtimeConfig.usesStatelessResponses) {
+            val history = saved.history ?: run { report("structured_history_missing"); return null }
+            statelessHistory[saved.state.localThreadId] = history.toMutableList()
+        } else {
+            // Validate before sending any new prompt or running tools. A removed/unavailable hosted
+            // response falls back to transcript reconstruction instead of poisoning the next turn.
+            val previous = saved.state.previousResponseId ?: run { report("response_id_missing"); return null }
+            client.responses().withOptions { it.maxRetries(0) }.retrieve(previous)
+        }
+        report(if (runtimeConfig.usesStatelessResponses) "structured_history_restored" else "hosted_response_restored")
+        saved.state
+    }.onFailure {
+        val status = generateSequence(it) { e -> e.cause }.filterIsInstance<com.openai.errors.OpenAIServiceException>().firstOrNull()?.statusCode()
+        report(if (status != null) "hosted_lookup_http_$status" else "checkpoint_error_${it::class.java.simpleName}")
+    }.getOrNull()
+
     data class SendResult(
         val threadState: ThreadState,
         val text: String,
@@ -1264,7 +1341,7 @@ class OpenAiIdeCodexBridge(
         return params.toBuilder().input(ResponseCreateParams.Input.ofResponse(safe)).build()
     }
 
-    private fun validateModelResponse(response: Response) {
+    private fun validateModelResponse(response: Response, allowEmpty: Boolean = false) {
         response.error().ifPresent { throw ModelResponseFailure(it.code().toString(), it.message()) }
         when (response.status().orElse(null)?.toString()) {
             "incomplete" -> throw ModelResponseFailure(
@@ -1278,6 +1355,7 @@ class OpenAiIdeCodexBridge(
             val refusal = response.output().mapNotNull { it.message().orElse(null) }
                 .flatMap { it.content() }.mapNotNull { it.refusal().orElse(null)?.refusal() }.joinToString("\n")
             if (refusal.isNotBlank()) throw ModelResponseFailure("refusal", refusal)
+            if (allowEmpty) return
             throw ModelResponseFailure("local_empty_answer",
                 "The local model returned no answer or tool call. It may have exhausted its context or output budget while thinking. " +
                     "Start a fresh conversation or reduce the input if automatic recovery cannot make room.")
