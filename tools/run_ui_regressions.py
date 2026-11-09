@@ -4211,6 +4211,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="controls-slider-label-spaces",
+            description="A slider label split for a middle ellipsis keeps the space at the split: \"focal length\", not \"focallength\".",
+            commands=[
+                "new-box --name ControlsSliderLabelSpaces",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/controls-slider-label-spaces.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/controls-slider-label-spaces.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="keyframe-linked-simplify",
             description="The keyframe editor's Simplify slider simplifies lanes that share key times to the same times, and leaves other lanes alone.",
             commands=[
