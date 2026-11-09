@@ -114,13 +114,14 @@ fun KeyframeScope.slider(
     lawExponent: Double = 2.0,
     lawCenter: Double = (range.start + range.endInclusive) / 2,
     significantDigits: Int = defaultSignificantDigits(law),
+    hoverText: String? = null,
 ): KeyframeControl<Double> = KeyframeControl(
     this, initial, label, { it }, "slider", { stored -> stored.value?.coerceIn(range.start, range.endInclusive) },
     register = { n, get, set -> doubleTarget(n, get, set) },
     build = { c ->
         val handle = keyframeSlider(
             this@slider, c.name, c.label, range.start, range.endInclusive, step, law, lawExponent, lawCenter,
-            significantDigits, get = { c.value }, set = { c.fromControl(it) }
+            significantDigits, hoverText = hoverText, get = { c.value }, set = { c.fromControl(it) }
         )
         val mirror: (Double) -> Unit = { handle.set(it) }
         mirror
@@ -137,13 +138,14 @@ fun KeyframeScope.slider(
     lawExponent: Double = 2.0,
     lawCenter: Double = (range.start + range.endInclusive) / 2,
     significantDigits: Int = defaultSignificantDigits(law),
+    hoverText: String? = null,
 ): KeyframeControl<Float> = KeyframeControl(
     this, initial, label, { it }, "slider", { stored -> stored.value?.coerceIn(range.start, range.endInclusive)?.toFloat() },
     register = { n, get, set -> floatTarget(n, get, set) },
     build = { c ->
         val handle = keyframeFloatSlider(
             this@slider, c.name, c.label, range.start, range.endInclusive, step, law, lawExponent, lawCenter,
-            significantDigits, get = { c.value }, set = { c.fromControl(it) }
+            significantDigits, hoverText = hoverText, get = { c.value }, set = { c.fromControl(it) }
         )
         val mirror: (Float) -> Unit = { handle.set(it.toDouble()) }
         mirror
@@ -151,11 +153,11 @@ fun KeyframeScope.slider(
 )
 
 /** A keyframed checkbox as a delegated `Boolean` local, through [keyframeCheckbox]. */
-fun KeyframeScope.checkbox(initial: Boolean, label: String? = null): KeyframeControl<Boolean> = KeyframeControl(
+fun KeyframeScope.checkbox(initial: Boolean, label: String? = null, hoverText: String? = null): KeyframeControl<Boolean> = KeyframeControl(
     this, initial, label, { it }, "checkbox", { stored -> stored.checked },
     register = { n, get, set -> booleanTarget(n, get, set) },
     build = { c ->
-        val handle = keyframeCheckbox(this@checkbox, c.name, c.label, get = { c.value }, set = { c.fromControl(it) })
+        val handle = keyframeCheckbox(this@checkbox, c.name, c.label, hoverText = hoverText, get = { c.value }, set = { c.fromControl(it) })
         val mirror: (Boolean) -> Unit = { handle.set(it) }
         mirror
     }
@@ -168,6 +170,7 @@ fun KeyframeScope.vec2(
     yRange: ClosedFloatingPointRange<Double> = -1.0..1.0,
     label: String? = null,
     step: Double = 0.01,
+    hoverText: String? = null,
 ): KeyframeControl<Vector2f> = KeyframeControl(
     this, initial, label, { Vector2f(it) }, "vec2",
     { stored -> if (stored.x == null && stored.y == null) null else Vector2f((stored.x ?: initial.x.toDouble()).toFloat(), (stored.y ?: initial.y.toDouble()).toFloat()) },
@@ -175,7 +178,7 @@ fun KeyframeScope.vec2(
     build = { c ->
         val handle = keyframeVec2Control(
             this@vec2, c.name, c.label, xRange.start to xRange.endInclusive, yRange.start to yRange.endInclusive, step,
-            get = { c.value }, set = { c.fromControl(it) }
+            hoverText = hoverText, get = { c.value }, set = { c.fromControl(it) }
         )
         val mirror: (Vector2f) -> Unit = { handle.set(it) }
         mirror
@@ -183,7 +186,7 @@ fun KeyframeScope.vec2(
 )
 
 /** A keyframed RGBA colour picker as a delegated `Vector4f` local, through [keyframeColorPicker]. */
-fun KeyframeScope.color(initial: Vector4f, label: String? = null): KeyframeControl<Vector4f> = KeyframeControl(
+fun KeyframeScope.color(initial: Vector4f, label: String? = null, hoverText: String? = null): KeyframeControl<Vector4f> = KeyframeControl(
     this, initial, label, { Vector4f(it) }, "color",
     { stored ->
         if (stored.r == null && stored.g == null && stored.b == null && stored.a == null) null
@@ -194,18 +197,18 @@ fun KeyframeScope.color(initial: Vector4f, label: String? = null): KeyframeContr
     },
     register = { n, get, set -> vector4Target(n, get, set) },
     build = { c ->
-        val handle = keyframeColorPicker(this@color, c.name, c.label, get = { c.value }, set = { c.fromControl(it) })
+        val handle = keyframeColorPicker(this@color, c.name, c.label, hoverText = hoverText, get = { c.value }, set = { c.fromControl(it) })
         val mirror: (Vector4f) -> Unit = { handle.set(it) }
         mirror
     }
 )
 
 /** A keyframed text field as a delegated `String` local, through [keyframeText]. Keys step between strings. */
-fun KeyframeScope.text(initial: String, label: String? = null): KeyframeControl<String> = KeyframeControl(
+fun KeyframeScope.text(initial: String, label: String? = null, hoverText: String? = null): KeyframeControl<String> = KeyframeControl(
     this, initial, label, { it }, "string", { stored -> stored.text },
     register = { n, get, set -> stringTarget(n, get, set) },
     build = { c ->
-        val handle = keyframeText(this@text, c.name, c.label, get = { c.value }, set = { c.fromControl(it) })
+        val handle = keyframeText(this@text, c.name, c.label, hoverText = hoverText, get = { c.value }, set = { c.fromControl(it) })
         val mirror: (String) -> Unit = { handle.set(it) }
         mirror
     }
