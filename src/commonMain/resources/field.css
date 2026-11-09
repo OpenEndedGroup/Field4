@@ -6363,14 +6363,15 @@ body.mode-editor-only .field-toast {
     align-items: center;
     justify-content: center;
 }
-/* CSS zoom, not a transform: zoom lays the figure out again at its new size, so text and SVG are
-   drawn at full resolution, a three.js iframe sees the zoom as a higher devicePixelRatio and
-   renders its canvas sharp, and pointer coordinates stay consistent for sliders, editable
-   points and orbit drags. A transform only magnifies what was drawn at the smaller size. */
+/* A transform, as the canvas's own zoom is: Field's panel auto-sizing (outputareas2.js layoutScale)
+   divides rect sizes by the transform scale, so it keeps measuring layout pixels. CSS zoom fed
+   zoomed sizes back into panel widths, which ran away to 33 554 432 px. A static scale repaints
+   text and SVG at the final size, and the three.js viewer multiplies its pixel ratio by its frame's
+   on-screen scale, so neither is a magnified small picture. */
 #field-figure-host > .box.field-figure-box {
     position: relative !important;
-    transform: none !important;
-    zoom: var(--field-figure-zoom, 1);
+    transform: scale(var(--field-figure-zoom, 1)) !important;
+    transform-origin: center center;
     width: auto !important;
     height: auto !important;
     flex: none;
@@ -6396,11 +6397,13 @@ body.mode-editor-only .field-toast {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
 }
-/* Every shown channel is as wide as the widest, stacked with one even gap. */
+/* Shown channels stack in one centred column with one even gap. No channel is stretched to the
+   column's width with a percentage: Field's panel auto-sizing measures content and writes the
+   panel width back, and a percentage of a max-content column fed that back without bound. */
 #field-figure-host .field-figure-box .disclosure-group {
     display: flex !important;
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
     gap: 12px;
     width: max-content !important;
     min-width: 0 !important;
@@ -6412,7 +6415,7 @@ body.mode-editor-only .field-toast {
     max-width: none !important;
     margin: 0 !important;
     border: none !important;
-    align-items: stretch !important;
+    align-items: center !important;
 }
 #field-figure-host .field-figure-box .disclosure-header { display: none !important; }
 #field-figure-host .field-figure-box .disclosure.field-figure-hidden { display: none !important; }
@@ -6422,12 +6425,15 @@ body.mode-editor-only .field-toast {
     border: none !important;
     box-shadow: none !important;
     padding: 0 !important;
-    min-width: 100% !important;
     max-width: none !important;
     font-size: 15px;
     line-height: 1.45;
 }
 /* Text panels grow to their text; drawings and iframes keep the size their panel was given. */
+#field-figure-host .field-figure-box .disclosure-content:not(:has(.afield-lines-output-shell)):not(:has(iframe)):not(:has(.control-group)) {
+    width: max-content !important;
+    max-width: 720px !important;
+}
 #field-figure-host .field-figure-box .disclosure-content:not(:has(.afield-lines-output-shell)):not(:has(iframe)) {
     height: auto !important;
     min-height: 0 !important;
@@ -6449,7 +6455,7 @@ body.mode-editor-only .field-toast {
     font-family: "Iosevka Web", Iosevka !important;
 }
 /* Compact controls: subordinate to the picture. No row boxes, rows only as tall as the slider
-   track, smaller labels and values, and two columns once there are more than three controls. */
+   itself (32px), smaller labels and values, and two columns once there are more than three. */
 #field-figure-host .field-figure-box .control-group {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr);
@@ -6478,6 +6484,11 @@ body.mode-editor-only .field-toast {
 }
 #field-figure-host .field-figure-box .field-label { font-size: 10px; }
 #field-figure-host .field-figure-box .field-value { font-size: 10px; min-width: 34px; opacity: 0.85; }
-#field-figure-host .field-figure-box .field-slider-visual { height: 28px; }
-#field-figure-host .field-figure-box .field-checkbox { display: flex; align-items: center; gap: 10px; min-height: 28px; }
-#field-figure-host .field-figure-box .checkbox-toggle { zoom: 0.65; }
+#field-figure-host .field-figure-box .field-checkbox { display: flex; align-items: center; gap: 10px; min-height: 32px; }
+/* The controls panel is exactly as wide as the picture above it (figureMode.kt measures it). Its
+   own width cannot come from its content: a slider track sizes itself to its row, and the panel
+   auto-sizing writes the row width back, so a content-sized panel grew without bound. */
+#field-figure-host .field-figure-box .disclosure-content:has(.control-group) {
+    width: var(--field-figure-width, 480px) !important;
+}
+#field-figure-host .field-figure-box .field-checkbox .checkbox-toggle { width: 22px; height: 22px; flex-basis: 22px; }
