@@ -4221,6 +4221,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="output-panel-mode-switch",
+            description="HTML that replaces a lines viewer in the same channel sizes the panel to itself instead of keeping the viewer's pinned height.",
+            commands=[
+                "new-box --name OutputPanelModeSwitch",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/output-panel-mode-switch.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/output-panel-mode-switch.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="keyframe-linked-simplify",
             description="The keyframe editor's Simplify slider simplifies lanes that share key times to the same times, and leaves other lanes alone.",
             commands=[

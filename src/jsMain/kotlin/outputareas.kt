@@ -888,6 +888,10 @@ fun handleOutputAreaRequest(box: HTMLElement, set: Set_output) {
     } else if (updatePersistentLinesOutput(contentRoot, set.value)) {
         (inter.open as (String) -> Unit).invoke(channelId)
     } else {
+        // The three and lines viewers pin their panel's size ("fixed"). Ordinary HTML that replaces
+        // one in the same channel sizes to its content again; otherwise a channel that once held
+        // `lines(...)` clips a 400-pixel `showPlane` card to the 150 pixels the viewer had.
+        contentRoot.asDynamic().dataset.afieldAutoSizeMode = "content"
         insertHTMLWithScripts(contentRoot, set.value)
     }
 
