@@ -1,10 +1,10 @@
 # A world-space WAV through WiVRn
 
-Box **18 · Head-tracked WAV** plays `files/spatial-demo.wav`, copied from Field's mono
-`public/docs/assets/eigendrum/square-centre.wav` (2.5 seconds, 44.1 kHz). Its resonant percussion
-loops as a fixed emitter in the same OpenXR reference space as the graphics. Steam Audio
-renders it to binaural stereo, then a dedicated OpenAL output feeds WiVRn's PipeWire sink.
-The desktop default device is unchanged. Headphones give better ear isolation than open speakers.
+Box **18 · Head-tracked WAV** places resonant percussion at a fixed point in the room.
+The bundled mono clip from the Eigendrum example is 2.5 seconds at 44.1 kHz and loops in the same
+OpenXR space as the graphics. Steam Audio renders binaural stereo through a dedicated OpenAL
+output to WiVRn's PipeWire sink;
+your desktop's default device stays as it was. Headphones give better ear isolation than open speakers.
 
 Launch Reading space and Drawing with the headset connected, then launch box 18. Play/Pause,
 Restart, Loop, Gain and X/Y/Z controls are in its output. The status panel shows the actual
@@ -26,9 +26,9 @@ Run those statements as editor selections/lines. Keep the full box source intact
 
 ## Coordinates and lifecycle
 
-Positions are absolute OpenXR world coordinates in metres: +X right, +Y up, -Z forward.
-They are not offsets that turn with the head. A source at `(-.6, 1.5, -1.5)` is left of the
-origin, 1.5 metres high and 1.5 metres forward. Its relationship to the wearer depends on the
+Positions use OpenXR world coordinates in metres: +X right, +Y up, -Z forward. They stay fixed
+as your head turns. A source at `(-.6, 1.5, -1.5)` is left of the origin, 1.5 metres high and
+1.5 metres forward. Its relationship to the wearer depends on the
 runtime's current reference-space origin. To attach audio to a moving visual, feed that
 visual's transformed world position to `place`; include the reading renderer's placement
 transform, not just its diagram-local point.
@@ -58,7 +58,7 @@ measurement of total latency. OpenAL currently receives PCM16 from FieldAudioEng
 also accepts PCM16 stereo. No spatial encoding is sent over the network: WiVRn carries the
 finished left and right channels.
 
-The native test renders actual Steam Audio samples to check transport and head rotation. A
-broadband test probe gives a reliable ear-level comparison; the musical demo is bass-heavy.
-Live verification checked a 48 kHz stereo Field stream targeting `wivrn.sink`. Listening in
-the headset is still needed to judge localization and head-turn latency.
+The native test checks transport and head rotation with rendered Steam Audio samples. A broadband
+probe gives a clearer ear-level comparison than the bass-heavy musical demo. Live verification
+checked a 48 kHz stereo Field stream targeting `wivrn.sink`; listening in the headset is still
+needed to judge localization and head-turn latency.
