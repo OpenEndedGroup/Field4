@@ -611,6 +611,10 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // The pilot explainer deck (2026-11-09): its deck box opens Electron audience windows and
+        // its figure box returns an audio patch for the audio device. PresentationFiguresTest
+        // covers the figure engine without either.
+        "explainer_sine_pitch",
         "text_one_vr",
         "video_one_vr",
         // Audio curves: every box is a playback loop under a waveform player that waits for the

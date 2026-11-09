@@ -1,0 +1,120 @@
+name: explainer_sine_pitch
+description: >
+  The pilot explainer deck: four presentation slides about a sine wave and its pitch, after
+  Bartosz Ciechanowski's "Sound" (https://ciechanow.ski/sound/), with our own words and figures.
+  One figure box, sine, draws twenty milliseconds of a sine wave, shows a frequency slider and a
+  sound checkbox, and plays the tone through FieldAudioEngine. The deck box places it beside
+  prose with figureBeside, sets its controls per slide with control(...), and glides the slider
+  up an octave in a cue. Run sine's box is not needed: run deck in Field's Electron app and the
+  deck launches sine when its slide comes up, and stops it when the talk leaves it.
+docs:
+  - page: presentation_studio.md
+    why: "Live figures beside prose: the template the explainer decks are built from."
+operations:
+  - create:
+      box: esp_sine
+      name: sine
+      frame: { x: 380.0, y: 140.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // One sine wave, drawn and heard. How often it repeats is its pitch.
+          val pitch = Param(220f)
+          val loudness = Param(0f)
+
+          // Twenty milliseconds of the wave, 640 pixels wide.
+          fun draw(hz: Double) = lines(fline {
+              moveTo(0.0, 120.0)
+              for (x in 1..640) lineTo(x.toDouble(), 120.0 - 90.0 * sin(2 * PI * hz * 0.02 * x / 640))
+              thickness = 2.0
+              color = vec(0.4, 0.9, 1.0, 1.0)
+          }, channel = "wave", w = 640.0, h = 240.0)
+
+          draw(220.0)
+          controlGroup {
+              slider("frequency", 110.0, 880.0, step = 1.0, initialValue = 220.0, law = ControlLaw.LOGARITHMIC) {
+                  pitch.base = it.toFloat()
+                  draw(it)
+              }
+              checkbox("sound") { loudness.base = if (it) 0.15f else 0f }
+          }
+
+          audio(SineOsc(pitch), gain = loudness)
+  - create:
+      box: esp_deck
+      name: deck
+      frame: { x: 60.0, y: 140.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          import kotlinx.html.*
+
+          // Four slides: prose, a live figure and its slider, a cue that moves the slider, and
+          // the same figure heard. "sine" is the box that draws and plays the wave.
+          presentation(title = "A sine wave and its pitch") {
+              step("A sine wave and its pitch", id = "opening") {
+                  audience {
+                      +"""
+                          # A sine wave and its pitch
+
+                          A sound is air pushed back and forth against your ear. The smoothest
+                          push is a sine wave: one even swing, repeated.
+
+                          How often the swing repeats is what you hear as pitch.
+                      """.md
+                      p(classes = "muted") {
+                          +"After “Sound” by Bartosz Ciechanowski, ciechanow.ski/sound. Words and figures made in Field."
+                      }
+                  }
+                  markdownNote("The question: what makes one note higher than another? [[next]]")
+              }
+              step("How often it repeats", id = "wave") {
+                  audience {
+                      figureBeside("sine") {
+                          +"""
+                              ## How often it repeats
+
+                              The line is twenty milliseconds of the wave. Drag **frequency**:
+                              as the number rises, more swings fit into the same time.
+
+                              Frequency counts swings per second, in hertz.
+                          """.md
+                      }
+                  }
+                  control("sine", "frequency", 220.0)
+                  control("sine", "sound", false)
+                  markdownNote("Let someone drag the slider. [[back]] [[next]]")
+              }
+              step("Twice as often", id = "octave") {
+                  audience {
+                      figureBeside("sine") {
+                          +"""
+                              ## Twice as often
+
+                              220 Hz is the A below middle C. Doubling the frequency fits
+                              twice as many swings in, and we hear the same note an octave up.
+                          """.md
+                      }
+                  }
+                  control("sine", "frequency", 220.0)
+                  control("sine", "sound", false)
+                  cue("Up an octave") { control("sine", "frequency", 440.0, glideMs = 1500) }
+                  markdownNote("Next glides the slider from 220 to 440 Hz. [[back]] [[next]]")
+              }
+              step("Hear it", id = "listen") {
+                  audience {
+                      figureBeside("sine") {
+                          +"""
+                              ## Hear it
+
+                              Tick **sound**, then drag **frequency**. The wave you see is the
+                              tone you hear: one box draws it and plays it.
+                          """.md
+                      }
+                  }
+                  cue("Sound on") { control("sine", "sound", true) }
+                  markdownNote("Next turns the sound on; leaving the talk stops it. [[back]] [[finish]]")
+              }
+          }
+              .present()
+  - execute:
+      box: esp_deck
+      property: code

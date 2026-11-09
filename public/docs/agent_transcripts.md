@@ -2672,6 +2672,19 @@ Walkthrough: [Audio curves: a sound as a few slow controls](audio_curves.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/audio_curve_explorer/metadata.edn)
 
+### explainer_sine_pitch
+
+**A four-slide explainer with a figure you can hear.** One box, `sine`, draws twenty milliseconds
+of a sine wave, shows a frequency slider and a sound checkbox, and plays the tone. A second,
+`deck`, is a presentation after Bartosz Ciechanowski's [Sound](https://ciechanow.ski/sound/), in
+our own words: an opening slide, the figure beside prose with its slider, a cue that glides the
+slider up an octave, and a slide where a cue turns the sound on. Run `deck` in Field's Electron app;
+the talk starts `sine` when its slide comes up and stops it when the talk leaves. It is the
+template for the explainer decks, described in
+[Live figures beside prose](presentation_studio.md#live-figures-beside-prose).
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_sine_pitch/metadata.edn)
+
 ### audio_ai_underfit_mancini
 
 Import a held-out excerpt, hash the completed Experiment in Terror
