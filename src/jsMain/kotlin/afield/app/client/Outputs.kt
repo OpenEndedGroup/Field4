@@ -1610,6 +1610,27 @@ private fun appendErrorSuggestions(
     container.appendChild(wrap)
 }
 
+/**
+ * Put late fix rows (an output of kind `"suggestions"`) under the error already shown on [line] of
+ * [editor], replacing any rows it has. The server sends the error first and the rows for an
+ * unresolved name once its completion search finishes, so the rows can find the error gone (the box
+ * ran again, or another box is selected); then they are dropped.
+ */
+fun attachErrorSuggestions(
+    editor: dynamic,
+    line: Int,
+    suggestions: dynamic,
+    boxUid: String,
+    boxProperty: String
+) {
+    val found = findReusableOutput(editor, line, "error", allowNearby = false) ?: return
+    val inner = found.domNodeInner as? HTMLElement ?: return
+    val existing = inner.querySelectorAll(".field-fix-suggestions")
+    for (i in 0 until existing.length) (existing.item(i) as? HTMLElement)?.remove()
+    appendErrorSuggestions(editor, inner, suggestions, boxUid, boxProperty)
+    scheduleOutputHeightRecompute(editor, found)
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun addOutput(

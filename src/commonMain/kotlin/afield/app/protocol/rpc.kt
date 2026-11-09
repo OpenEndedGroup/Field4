@@ -119,6 +119,12 @@ data class Output(
     val endLine: Int = -1,
     val endColumn: Int = -1,
     val stack: List<OutputStackLocation> = emptyList(),
+    /**
+     * Fix rows for an error. An `"error"` output carries the ones that cost nothing to find. The
+     * rows for an unresolved name take a completion and arrive later, as an output of kind
+     * `"suggestions"` with an empty [html] and the error's [line]; the client adds them under the
+     * error already shown on that line and drops them when there is none.
+     */
     val suggestions: List<OutputSuggestion> = emptyList(),
     /**
      * Set on an end-of-run `"ok"` when this run also reported an error, so the client keeps the
@@ -138,7 +144,8 @@ data class Output(
 /**
  * A single actionable fix for a compile/runtime error, rendered in the error output area as a
  * row with two buttons: "Apply" (does the edit directly via Monaco executeEdits) and "Ask AI4"
- * (hands the fix to the assistant with a shaped prompt). See suggestionsFor() on the JVM side.
+ * (hands the fix to the assistant with a shaped prompt). See immediateSuggestionsFor() and
+ * symbolSuggestionsFor() on the JVM side.
  *
  * [kind] discriminates how "Apply" behaves client-side:
  *   - "rename"   replace the offending token at [line]/[column] with [replacement]

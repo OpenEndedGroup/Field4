@@ -5,6 +5,7 @@ import afield.app.client.main
 import afield.app.client.monaco
 
 import afield.app.client.addOutput
+import afield.app.client.attachErrorSuggestions
 import afield.app.client.clearEditorOutputsForBoxBeforeLaunch
 import afield.app.client.clearErrors
 import afield.app.client.clearStackTraceHints
@@ -503,6 +504,11 @@ fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
         "warning" -> {
             if (routeToMain) addOutput(w.globalEditor, html, line, "warning", annotation, frameMarker, startColumn, endLine, endColumn)
             if (embeddedEditor != null) addOutput(embeddedEditor.editor, html, line, "warning", annotation, frameMarker, startColumn, endLine, endColumn)
+        }
+        // Fix rows that arrive after their error (Output.suggestions): they change no status.
+        "suggestions" -> {
+            if (routeToMain) attachErrorSuggestions(w.globalEditor, line, payload.suggestions, uid, property)
+            if (embeddedEditor != null) attachErrorSuggestions(embeddedEditor.editor, line, payload.suggestions, uid, property)
         }
         "ok" -> {
             monacoSetStatus(uid, true, html)
