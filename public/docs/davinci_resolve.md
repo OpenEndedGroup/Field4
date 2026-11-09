@@ -1,12 +1,10 @@
 # DaVinci Resolve: Timelines and Markers
 
-A box can read the project open in a running DaVinci Resolve: its timelines, the markers on them
-with their colors, names and notes, the markers on clips, and where the playhead is. Every marker
-comes back with its frame on the timeline, so an animation, a score or a lighting cue in Field can
-be laid out against an edit made in Resolve.
+Read the project you have open in DaVinci Resolve from a Field box: its timelines, their markers,
+markers on clips and the playhead position. Each marker comes back with its frame on the timeline,
+so you can line up an animation, a score or a lighting cue with your edit.
 
-Everything is in `Resolve`, which box code can use without an import. This box lists the markers on
-the timeline open in Resolve:
+Box code can use `Resolve` without an import. This box lists the markers on the open timeline:
 
 ```diffstatic {data-lang=kotlin}
 for (m in Resolve.markers()) print("${m.timecode}  frame ${m.frame}  ${m.color}  ${m.name}: ${m.note}")
@@ -40,8 +38,8 @@ the timeline starts at, so a timeline that starts at `01:00:00:00` at 24 fps put
 The drawings made with the viewer's annotation tool are not available to scripts, so a marker's
 annotation here is its text: the name, the note and the custom data.
 
-`Resolve.markers("Edit 2")` reads the timeline called "Edit 2" instead of the current one; a name
-the project does not have fails with the names it does have. `Resolve.timeline(name)` returns the
+`Resolve.markers("Edit 2")` reads the timeline called "Edit 2". If the project has no timeline
+by that name, the error lists the available names. `Resolve.timeline(name)` returns the
 whole `ResolveTimeline`: its name, `fps`, `dropFrame`, `startFrame`, `endFrame`, `length`,
 `startTimecode`, whether it is the `current` one, and its `markers`. Two helpers pick markers out:
 `markersAt(frame)` returns those whose duration covers a frame, and `markersColored("Red")` those
@@ -81,12 +79,12 @@ val under = Resolve.timeline().markersAt(here.frame)
 print("${here.timecode}: ${under.joinToString { it.name }.ifEmpty { "no marker" }}")
 ```
 
-Each call asks Resolve again, so what comes back is what the project holds at that moment.
+Each call asks Resolve again, so it sees the current state of the project.
 
 ## Resolve on another machine
 
-`Resolve.on("macbook-pro-2")` is the Resolve running on another machine, named by host name or
-address; a Tailscale name works. It has the same calls as `Resolve`:
+Use `Resolve.on("macbook-pro-2")` to reach Resolve on another machine, by host name or address.
+A Tailscale name works too. It has the same calls as `Resolve`:
 
 ```diffstatic {data-lang=kotlin}
 val other = Resolve.on("macbook-pro-2")
@@ -111,8 +109,8 @@ for m in fr.markers("Edit 2"):
 ```
 
 `fr.timelines()`, `fr.timeline(name)`, `fr.clip_markers(name)`, `fr.playhead()` and `fr.status()`
-match the Kotlin calls, and each takes `host="macbook-pro-2"` for another machine. From a terminal, `python -m fieldresolve markers "Edit 2"` (run in Field's
-`python/` directory) prints the same thing as JSON.
+match the Kotlin calls, and each takes `host="macbook-pro-2"` for another machine. From a terminal
+in Field's `python/` directory, `python -m fieldresolve markers "Edit 2"` prints the markers as JSON.
 
 ## How it connects
 

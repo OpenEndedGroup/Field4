@@ -747,9 +747,9 @@ replaces the first.
 
 [Rules that decide when notes play](datalog.md#rules-that-decide-when-notes-play): Datalog
 `event(Instrument, Note, Velocity, T)` rules over a sixteen-step bar, after
-[Dogalog](https://github.com/danja/dogalog). Box 1 writes a Euclidean kick, a snare that `within`
-brings in at bar 1, hats from bar 2 and a lead picked from `scale(48, minor_pent, ...)`, prints the
-grid each bar derives and plays four bars with `showPatAudio`. Box 2 asks `why` the kick at step 20
+[Dogalog](https://github.com/danja/dogalog). Box 1 writes a Euclidean kick, brings in a snare and
+hats with `within`, and picks a lead from `scale(48, minor_pent, ...)`. It prints each bar's grid
+and plays four bars with `showPatAudio`. Box 2 asks `why` the kick at step 20
 played (the proof ends in the fact `euc(20, 4, 16, 0)`) and shows that the snare at step 4 did not.
 
 ![Four bars of a step grid: kick on every fourth step, a lead on five steps, the snare from bar 1 and hats from bar 2](assets/datalog/rhythm.png)
@@ -2727,9 +2727,6 @@ chord with `iter index` over a bass note drawn by `wchoose`, a drum grid played 
 and a grid to launch, which plays each step through the audio engine as it comes due. Each of the
 others lists its notes and puts an audio player in its `audio` panel.
 
-`DemoTranscriptExecSmokeTest` has no Kotlin to compile here: the root holds no code and it skips the five ForthField boxes, which are
-not Kotlin; `ForthStepsTest` runs the words and the page's three grids.
-
 [Open →](offline.html?file=assets/agent_transcripts/forth_step_sequencer/metadata.edn)
 
 ### python_box_parity
@@ -4326,7 +4323,7 @@ macro run growing_nca
 
 ### atmospheric_sky
 
-**A sky from the physics of air, with the sun on a slider.** Beneath a renderer, one fullscreen box
+**A sky made from sunlight and air, with the sun on a slider.** Beneath a renderer, one fullscreen box
 includes `sky/atmosphere.glsl` and draws single scattering through Earth's atmosphere (Rayleigh, Mie,
 ozone): blue at noon, orange at sunset, a violet twilight, and the planet with its blue rim from
 space. Sun elevation and azimuth, altitude, camera pitch and exposure are sliders. See
