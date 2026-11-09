@@ -485,6 +485,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
     - [reading](graphics.md#diagramcompositor-kt)
 - [shader](graphics.md#introspection-kt)
     - [learning](graphics.md#gpushaderlearningview-kt)
+- [sky](graphics.md#atmosphere-kt)
 - [text](graphics.md#decorations-kt)
     - [sentences](graphics.md#decorations-kt)
     - [slug](graphics.md#slugbuffer-kt)
@@ -661,20 +662,20 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**37564 public symbols across 1695 source files**, 22097 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**37587 public symbols across 1697 source files**, 22119 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 226 | 713 | 315 (44%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 227 | 715 | 316 (44%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 21 | 158 | 56 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 206 | 206 (100%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2162 | 1623 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1061 | 502 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 357 | 9064 | 5727 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 358 | 9085 | 5748 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 427 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 514 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -802,6 +803,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [assimpBrowsing.kt](workspace.md#assimpbrowsing-kt) | Workspace · internal | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [Asta.kt](languages.md#asta-kt) | Languages | 16 | 1 | Source-to-source rewriting of a JavaScript box, over Nashorn's parse tree. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [AsyncOperation.kt](execution.md#asyncoperation-kt) | Execution | 8 | 8 | A future-backed operation whose callbacks stop firing once the box run that started it ends. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>sky/<wbr></small> [Atmosphere.kt](graphics.md#atmosphere-kt) | Graphics | 21 | 21 |  | [Field 4 Graphics](../afield_four_graphics.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [AtmosphereGpuParitySmoke.kt](examples.md#atmospheregpuparitysmoke-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [Attachment.kt](graphics.md#attachment-kt) | Graphics | 5 | 0 | An image plus image view sized and formatted to be used as a framebuffer attachment. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [AttachmentExcerpt.kt](ai4.md#attachmentexcerpt-kt) | AI4 | 0 | 0 | Reading a long attachment one window at a time, under the guards every attachment shares. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [Attributes.kt](polytopes.md#attributes-kt) | Polytopes | 7 | 7 | Untyped per-element data, carried alongside the topology and propagated through transforms. |  |
@@ -1193,7 +1196,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineEditing.kt](graphics.md#flineediting-kt) | Graphics | 3 | 0 | The server side of an editable `Box.lines(..., editable = true)` drawing: an edit session per widget that applies the browser's point drags and new strokes to the live `FLine`s. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineExact.kt](graphics.md#flineexact-kt) | Graphics | 5 | 5 | Curve-preserving boolean operations and cubic offsets for `FLine`, in the manner of Paper.js. | [FLine examples (Field graphics)](../fline_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineGaussianProcess.kt](graphics.md#flinegaussianprocess-kt) | Graphics | 35 | 16 | Gaussian-process curves: fit a GP to an `FLine` or to points, then draw its mean, samples and uncertainty as lines. | [Drawing with Gaussian processes](../gaussian_processes.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineGeometry.kt](graphics.md#flinegeometry-kt) | Graphics | 264 | 118 | Comprehensive computational geometry utilities for FLine operations implemented as extension functions. | [FLine examples (Field graphics)](../fline_examples.md), [Vectorizing line drawings: polyvector fields](../polyvector.md), [Euclid's Elements](../euclid_elements.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineGeometry.kt](graphics.md#flinegeometry-kt) | Graphics | 264 | 118 | Comprehensive computational geometry utilities for FLine operations implemented as extension functions. | [FLine examples (Field graphics)](../fline_examples.md), [Vectorizing line drawings: polyvector fields](../polyvector.md), [Field 4 Graphics](../afield_four_graphics.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>graphics/<wbr></small> [FLineGeometryExamples.kt](examples.md#flinegeometryexamples-kt) | Examples | 34 | 34 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineGeometrySmile.kt](graphics.md#flinegeometrysmile-kt) | Graphics | 3 | 3 | Resamples an `FLine` through a fitted curve: `bySmileSplineInterpolating` (Smile cubic spline), `bySmileGaussianProcessInterpolating` (Gaussian process) and `byAkimaInterpolating`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>graphics/<wbr></small> [FLineHitInspectorFigure.kt](examples.md#flinehitinspectorfigure-kt) | Examples | 7 | 5 |  |  |

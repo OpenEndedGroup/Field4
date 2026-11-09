@@ -75,6 +75,8 @@
   {"doc": "ascii_shape", "box": "ascii_shape_shapes", "codeSha256": "933dea8163d17928", "codeLines": 20, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "ascii_shape", "box": "ascii_shape_sphere", "codeSha256": "c11a6c95ea5a7505", "codeLines": 17, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "assimp_browsing", "box": "assimp_scene", "codeSha256": "52782ea07752c1a4", "codeLines": 8, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "atmospheric_sky", "box": "agent_graphics_context", "codeSha256": "bae6f0398a499cd0", "codeLines": 15, "receivers": ["afield.document.graph.Box"], "preamble": "atmospheric_sky__agent_graphics_context.preamble.kt"},
+  {"doc": "atmospheric_sky", "box": "atmospheric_sky", "codeSha256": "1015eb2cf45a171a", "codeLines": 42, "receivers": ["afield.document.graph.Box"], "preamble": "atmospheric_sky__atmospheric_sky.preamble.kt"},
   {"doc": "audio_ai_analysis", "box": "analyse_nancy", "codeSha256": "4582717451f11f02", "codeLines": 76, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "audio_ai_analysis", "box": "analysis_guide", "codeSha256": "84a9430c65837c3b", "codeLines": 12, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "audio_ai_analysis", "box": "analysis_visualizer_gallery", "codeSha256": "ebc793de7c3db5cf", "codeLines": 19, "receivers": ["afield.document.graph.Box"], "preamble": ""},
