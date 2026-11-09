@@ -34,7 +34,7 @@ operations:
               val sky = 4000.0 * time
               display(
                   "readout",
-                  "<p style='opacity:.8'>open ${"%.3f".format(time)} s: about ${"%.0f".format(sky)} photons on a detector facing the sky, which holds ${full.toInt()}</p>",
+                  "<p style='opacity:.8'>open ${time.f3} s: about ${sky.f0} photons on a detector facing the sky, which holds ${full.toInt()}</p>",
               )
           }
 
@@ -251,7 +251,7 @@ operations:
               val degrees = 2 * atan(0.5 / distance) * 180 / PI
               display(
                   "readout",
-                  "<p style='opacity:.8'>sensor ${"%.2f".format(distance)} behind the hole: a view ${"%.0f".format(degrees)}° wide</p>",
+                  "<p style='opacity:.8'>sensor ${distance.f2} behind the hole: a view ${degrees.f0}° wide</p>",
               )
           }
 
@@ -328,7 +328,7 @@ operations:
               val edge = image[0, 10, 0] / image.reference
               display(
                   "readout",
-                  "<p style='opacity:.8'>the edge of the sensor gets ${"%.0f".format(100 * edge)}% of the light the middle gets</p>",
+                  "<p style='opacity:.8'>the edge of the sensor gets ${(100 * edge).f0}% of the light the middle gets</p>",
               )
           }
 
@@ -401,7 +401,7 @@ operations:
               val shift = slab * sin(theta - inside) / cos(inside)
               display(
                   "readout",
-                  "<p style='opacity:.8'>slab ${"%.2f".format(slab)} thick: the ray comes out shifted ${"%.2f".format(shift)} sideways</p>",
+                  "<p style='opacity:.8'>slab ${slab.f2} thick: the ray comes out shifted ${shift.f2} sideways</p>",
               )
           }
 
@@ -561,10 +561,10 @@ operations:
               )
               val crossing =
                   if (turned.isNaN()) "none crosses: total internal reflection"
-                  else "crosses at ${"%.1f".format(turned * 180 / PI)}°"
+                  else "crosses at ${(turned * 180 / PI).f1}°"
               display(
                   "readout",
-                  "<p style='opacity:.8'>arrives at ${"%.1f".format(angle)}°, ${"%.0f".format(100 * reflected)}% reflects, $crossing</p>",
+                  "<p style='opacity:.8'>arrives at ${angle.f1}°, ${(100 * reflected).f0}% reflects, $crossing</p>",
               )
           }
 
@@ -738,10 +738,10 @@ operations:
                   interactive = false,
               )
               val where =
-                  if (image > 0) "a sharp image ${"%.2f".format(image)} behind the lens" else "no image: the rays spread apart"
+                  if (image > 0) "a sharp image ${image.f2} behind the lens" else "no image: the rays spread apart"
               display(
                   "readout",
-                  "<p style='opacity:.8'>focal length ${"%.1f".format(focal)}, source ${"%.1f".format(source)} in front: $where</p>",
+                  "<p style='opacity:.8'>focal length ${focal.f1}, source ${source.f1} in front: $where</p>",
               )
           }
 
@@ -779,7 +779,7 @@ operations:
               display("sensor", PngEncoder.encode(image.toArgb(scale = 5), 600, 400))
               display(
                   "readout",
-                  "<p style='opacity:.8'>f/${"%.1f".format(focal / aperture)}, sensor ${"%.3f".format(sensor)} behind the lens, sharp at ${"%.1f".format(focus)} in front</p>",
+                  "<p style='opacity:.8'>f/${(focal / aperture).f1}, sensor ${sensor.f3} behind the lens, sharp at ${focus.f1} in front</p>",
               )
           }
 
@@ -935,10 +935,10 @@ operations:
                   window = Rect(0.0, 0.0, 640.0, 300.0),
                   interactive = false,
               )
-              val farText = if (far.isInfinite()) "to infinity" else "to ${"%.2f".format(far)}"
+              val farText = if (far.isInfinite()) "to infinity" else "to ${far.f2}"
               display(
                   "readout",
-                  "<p style='opacity:.8'>f/${"%.1f".format(focal / aperture)}, focused at ${"%.2f".format(focus)}: sharp from ${"%.2f".format(near)} $farText</p>",
+                  "<p style='opacity:.8'>f/${(focal / aperture).f1}, focused at ${focus.f2}: sharp from ${near.f2} $farText</p>",
               )
           }
 
