@@ -7,8 +7,7 @@
 // Electron started with --disable-backgrounding-occluded-windows --disable-renderer-backgrounding:
 // otherwise a covered audience window gets no animation frames, its figure panels never size to new
 // content, and its figure views come out black. Each
-// view is reached with Next; before each capture the audience window is brought forward, every live
-// figure page is waited for, and the window is captured with macOS `screencapture -l`, choosing the
+// view is reached with Next; before each capture every live figure page is waited for, and the window is captured with macOS `screencapture -l`, choosing the
 // "Field audience" window whose owner is <Electron PID> (other Electron apps may have windows of the
 // same title). Files are NN-<step id>.png, with -cueK for a view a cue reached; give the deck's step
 // ids in order, or the step titles are used. A view whose presenter shows an error stops the walk.
@@ -109,14 +108,12 @@ async function figuresSettled(prefix) {
 }
 
 
-let bringForward = async () => {};
 try {
   const control = await connect((await until(targets, xs => xs.some(x => x.url.endsWith('/presentation-control.html')), 'presenter'))
     .find(x => x.url.endsWith('/presentation-control.html')));
   const status = () => control.evaluate('document.getElementById("status").textContent');
   const error = () => control.evaluate('document.getElementById("error").textContent');
   const action = name => control.evaluate(`window.fieldPresentation.action(${JSON.stringify(name)}), 1`);
-  bringForward = async () => { await action('show-audience'); await pause(400); };
   await action('first');
   await until(status, s => s?.startsWith('1 /'), 'first view');
   const views = [];
@@ -128,18 +125,19 @@ try {
     const title = now.split(' · ')[1] || `step-${step}`;
     const name = `${String(n).padStart(2, '0')}-${stepIds[step - 1] || title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}${cue ? `-cue${cue}` : ''}.png`;
     // Cues glide controls for up to about three seconds.
-    await bringForward();
     await pause(cue ? 3500 : 1500);
     const figures = await figuresSettled(name.replace(/\.png$/, ''));
-    // Another app may raise its own audience window over ours at any moment. Launched with
+    // The window is never raised: raising it takes keyboard focus from whoever is at the machine,
+    // and their next keystroke (Space, an arrow) would move this talk on. Launched with
     // --disable-backgrounding-occluded-windows, a covered window still draws its figure views and
-    // screencapture -l still sees them, so being in front is preferred, not required.
-    let window = null;
-    for (let attempt = 0; attempt < 3 && !window?.inFront; attempt++) { await bringForward(); await pause(figures ? 1200 : 600); window = audienceWindow(); }
+    // screencapture -l still sees them.
+    await pause(figures ? 1200 : 600);
+    const window = audienceWindow();
+    assert.equal(await status(), now, `the presenter moved on by itself (someone else is driving this talk) at ${now}`);
     assert.equal(await error(), '', `presenter error at ${now}`);
     execFileSync('screencapture', ['-x', '-o', '-l', window.id, path.join(output, name)]);
     const stillInFront = audienceWindow().inFront;
-    views.push({file: name, status: now, figures, inFrontAfterCapture: stillInFront});
+    views.push({file: name, status: now, figures, inFront: window.inFront && stillInFront});
     console.log(`${name}\t${now}\t${figures} figure(s)`);
     previous = now;
     const cues = now.match(/cue (\d+) \/ (\d+)/);

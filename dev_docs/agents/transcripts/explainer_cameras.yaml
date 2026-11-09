@@ -266,7 +266,7 @@ operations:
           // parallel to where it was going, but shifted. The faint line is the path it would have taken.
           val glass = 1.5
           val unit = 100.0
-          val top = 120.0
+          val top = 100.0
           val cyan = vec(0.4, 0.9, 1.0, 1.0)
           val guide = vec(1.0, 1.0, 1.0, 0.35)
           var slab = 1.0
@@ -278,7 +278,7 @@ operations:
               val bottom = top + slab * unit
               val entryX = 200.0
               val exitX = entryX + slab * unit * tan(inside)
-              val endY = 400.0
+              val endY = 360.0
               val start = frameExit(entryX, top, -sin(theta), -cos(theta), 640.0, endY)
               val guideEnd = frameExit(entryX, top, sin(theta), cos(theta), 640.0, endY)
               val parts = listOf(
@@ -293,7 +293,7 @@ operations:
                       thickness = 2.5
                   },
               )
-              showPlane(parts, channel = "side", width = 640, height = 400, padding = 0.0, window = Rect(0.0, 0.0, 640.0, endY), interactive = false)
+              showPlane(parts, channel = "side", width = 640, height = 360, padding = 0.0, window = Rect(0.0, 0.0, 640.0, endY), interactive = false)
               // How far apart the two parallel paths are, measured square to them.
               val shift = slab * sin(theta - inside) / cos(inside)
               display("readout", "<p style='opacity:.8'>slab ${"%.2f".format(slab)} thick: the ray comes out shifted ${"%.2f".format(shift)} sideways</p>")
