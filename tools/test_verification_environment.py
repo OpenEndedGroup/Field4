@@ -558,6 +558,33 @@ os._exit(0)
             monitor.close()
             self.assertEqual(len(list(self.root.glob('*/*.json'))), 0)
 
+    def test_collected_budget_does_not_reenter_admission_lock(self):
+        # A finalizer may run during another claim's admission. The child timeout makes a lock
+        # regression fail instead of hanging the entire test suite and the lander.
+        tools = str(Path(__file__).resolve().parent)
+        script = f'''import gc, os, sys
+from pathlib import Path
+from types import SimpleNamespace
+sys.path.insert(0, {tools!r})
+from verification_environment import DiskBudget, GIB
+from verification_resources import SharedDiskClaim
+root = Path({str(self.root)!r})
+os.environ['FIELD_VERIFY_BUDGET_DIR'] = str(root)
+budget = DiskBudget(root, probe=lambda _: SimpleNamespace(free=20 * GIB),
+                    floor_gib=8, reserve_gib=0, planned_gib=0)
+budget.admit(budget.sample())
+other = SharedDiskClaim(root)
+with other.admission():
+    del budget
+    gc.collect()
+assert len(list(root.glob('*/*.json'))) == 1
+other.acquire(free=20 * GIB, floor=8 * GIB, reserve=0, planned=0)
+assert len(list(root.glob('*/*.json'))) == 1
+other.close()
+assert not list(root.glob('*/*.json'))
+'''
+        subprocess.run([sys.executable, '-c', script], check=True, timeout=10)
+
 
 if __name__ == "__main__":
     unittest.main()

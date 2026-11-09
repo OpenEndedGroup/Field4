@@ -1176,6 +1176,10 @@
     const label = document.createElement("div");
     label.className = "phone-control-label";
     label.textContent = control.label || control.id || "control";
+    if (control.hoverText) {
+      label.dataset.hoverText = control.hoverText;
+      label.dataset.hoverHtml = control.hoverHtml || "";
+    }
 
     const value = document.createElement("div");
     value.className = "phone-control-value";

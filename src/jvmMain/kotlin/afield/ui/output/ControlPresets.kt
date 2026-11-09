@@ -161,11 +161,11 @@ fun ControlGroupBuilder.presetBar(
     var name = saved.lastOrNull() ?: "A"
     inlineRow {
         text("preset", initialValue = name) { name = it.trim().ifEmpty { "A" } }
-        button("store preset", "store") { down -> if (down) bar.store(name) }
-        button("recall preset", "recall") { down -> if (down) bar.recall(name) }
+        compactButton("store preset", "store") { down -> if (down) bar.store(name) }
+        compactButton("recall preset", "recall") { down -> if (down) bar.recall(name) }
     }
     if (saved.isNotEmpty()) inlineRow {
-        saved.forEach { key -> button("▸ $key", "▸ $key") { down -> if (down) bar.recall(key) } }
+        saved.forEach { key -> compactButton("▸ $key", "▸ $key") { down -> if (down) bar.recall(key) } }
     }
     if (morph) slider(presetMorphLabel, 0.0, 1.0, 0.001, initialValue = 0.0) { t -> bar.morph(t, morphBetween) }
     return bar

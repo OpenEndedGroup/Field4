@@ -1376,6 +1376,31 @@ Available pieces include:
 
 `vec2Control(...)` gives you an XY pad with a vector line and readouts for its length and angle.
 
+### Help on a control
+
+Give a control optional `hoverText` to explain its label. Hold the pointer over the underlined label,
+or focus the control with the keyboard, to show the help. The popup is drawn in Field's page, so it
+also appears on the Field panel in VR. Write the help in Markdown: emphasis, code, lists and links
+work. Raw HTML is filtered before the popup is shown.
+
+```diffstatic {data-lang=kotlin}
+var size = 0.4
+var trails = false
+controlGroup("look") {
+    slider("size", initialValue = 0.4, hoverText = "Radius in **metres**.") { size = it }
+    checkbox("trails", hoverText = "Keep previous positions visible.") { trails = it }
+    button("Reset", hoverText = "Request a fresh drawing.") { down ->
+        if (down) println("reset")
+    }
+}
+```
+
+The same argument works on standalone controls, grouped sliders, XY pads, checkboxes, text inputs,
+colour pickers, buttons and meters, and on the multislider, matrix, range slider, menu and gesture
+pad. For `sliders(...)`, put it in each `SliderConfig`; for a property-bound control, pass it to
+`syncToProperty(...)`. Keyframed controls accept it too, for example
+`var size by keys.slider(0.4, 0.1..1.0, hoverText = "Radius in metres.")`.
+
 ### Handling a slider
 
 Standalone sliders, `sliders(...)` and sliders in a `controlGroup` share the same gestures:
