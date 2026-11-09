@@ -269,8 +269,11 @@ a cue moves a control). Nothing here changes the deck format.
   `COMPILE_ONLY` in `DemoTranscriptExecSmokeTest`, since decks open Electron windows and most play sound).
 - **Boxes:** one `deck` box holding the `presentation { }`, and one box per figure, named with the
   figure-table name (`snake_case`, unique in the document). Stable ids `es_` (sound), `ec_`
-  (cameras), `el_` (lights) plus the name. Lay figure boxes out on the canvas in slide order, in a
-  grid to the right of `deck`, so the document reads as a table of contents.
+  (cameras), `el_` (lights) plus the name. End the deck with `.arrangeBoxes().present()`: running
+  `deck` puts it and every figure box in one row in slide order, each clear of the previous one's
+  output panels (**Arrange Boxes by Presentation**, `PresentationArrangement.kt`). The frames in
+  the transcript are only where boxes start: a grid of 160 × 50 frames whose outputs are 640 px
+  wide piles the outputs on top of one another.
 - **Sections** follow the essay's section order, `section("Air") { ... }`, with step ids in
   `kebab-case` that stay stable across edits.
 - **First slide:** the title, two or three sentences of our own on what the talk covers, and the
