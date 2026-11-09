@@ -42,9 +42,9 @@ set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 
 setlocal
 set BUILD_DIR=%LOCALAPPDATA%\gradle-jvm
-set JVM_TARGET_DIR=%BUILD_DIR%\amazon-corretto-17-x64-windows-jdk-aca311\
+set JVM_TARGET_DIR=%BUILD_DIR%\amazon-corretto-25-x64-windows-jdk-9e071a\
 
-set JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-17-x64-windows-jdk.zip
+set JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-25-x64-windows-jdk.zip
 
 set IS_TAR_GZ=0
 set JVM_TEMP_FILE=gradle-jvm.zip
