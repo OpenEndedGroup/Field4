@@ -1,9 +1,8 @@
 # Words becoming weather
 
-Word blur is a separate, text-local Gaussian effect. It can soften one word into a broad
-cloud while neighbouring words, dots and lines stay sharp. Zero blur uses analytic Slug
-outlines again. It does not accumulate previous headset images: moving your head always
-uses the current eye pose.
+Soften one word into a broad Gaussian cloud while neighbouring words, dots and lines stay sharp.
+At zero blur, the word returns to analytic Slug outlines. The blur belongs to the text, so turning
+your head uses the current eye pose without accumulating old headset images.
 
 ## Score a slow entrance and exit
 
@@ -18,8 +17,8 @@ val score = diagramScore(graph, duration = 30.0) {
 }
 ```
 
-Radius is the Gaussian standard deviation in **ems**, not pixels. A radius of `.9f` is
-already a very broad blur. Blur and opacity are independent: leave opacity alone to keep
+Radius is the Gaussian standard deviation in **ems**, relative to the font size. A radius of
+`.9f` is already a very broad blur. Blur and opacity are independent: leave opacity alone to keep
 the ink's total energy while it spreads, or fade it separately. Broad clouds have lower
 peak brightness; the blur does not artificially renormalize their peaks. The tracks are
 seekable and additive, so an entrance and exit can coexist without modifying the graph.
@@ -48,8 +47,8 @@ new range. No allocation or Gaussian rebuild occurs during normal scrubbing.
 ## Quality and cost
 
 The cache renders Slug coverage into padded, linear R16F masks and builds fifteen Gaussian
-levels once. Runtime interpolation matches Gaussian variance, with an analytic-to-cache
-transition near zero. Padding extends four standard deviations beyond each side.
+levels once. The renderer interpolates between levels by Gaussian variance, switching from the
+analytic outline near zero. Padding extends four standard deviations beyond each side.
 
 Defaults use a 2048 × 1024 source and retain at least 128 × 128 pixels at broad levels.
 Two distinct prepared text shapes share an array batch; a partially filled batch costs the

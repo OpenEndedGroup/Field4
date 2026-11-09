@@ -344,18 +344,17 @@ remain available without them.
 
 ## Words becoming weather
 
-Text can emerge from a broad Gaussian cloud and slowly dissolve again, independently
-for each text item. `blurIn(word, at = 0.0, seconds = 8.0, radius = .9f)` and
-`blurOut(word, at = 18.0, seconds = 9.0, radius = 1.2f)` add seekable score tracks;
-opacity remains a separate control. Radii are in ems. The sixth playground demonstrates
-this alongside the five diagram and typography examples.
+Let each piece of text emerge from a broad Gaussian cloud, then slowly dissolve again.
+`blurIn(word, at = 0.0, seconds = 8.0, radius = .9f)` and
+`blurOut(word, at = 18.0, seconds = 9.0, radius = 1.2f)` add tracks you can seek through;
+opacity remains a separate control. Radii are in ems, relative to the font size. Try it in the
+sixth playground, alongside the five diagram and typography examples.
 
-The renderer caches padded Slug coverage and Gaussian levels in text coordinates.
-Current eye poses draw those masks each frame, so the effect does not retain old headset
-images. Only text with a blur reservation allocates this cache. For live radius controls,
-set `blurCapacity` before preparing Drawing, then change `blur`; re-create Drawing after
-increasing its reserved range. Each default pair of cached text shapes uses approximately
-22.3 MiB of mask storage.
+The renderer caches padded Slug coverage and Gaussian levels in text coordinates, then draws the
+masks with the current eye poses each frame. Only text with a blur reservation allocates this
+cache. For a live radius control, set `blurCapacity` before preparing Drawing, then change `blur`.
+Re-create Drawing if you increase the reserved range. Each default pair of cached text shapes
+uses approximately 22.3 MiB of mask storage.
 
 ## Dependency length in real texts
 

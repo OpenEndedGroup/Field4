@@ -1,15 +1,10 @@
 # A room for a stereo movie
 
-`video_one` is a small side-by-side movie player. The bundled original stereo demo loads by default;
-`FIELD_STEREO_VIDEO` or the file control selects a different local file.
-**4 · Video shader** has editable `vertex` and `fragment` tabs. Use **Reload Shader** (Alt+R) in that box to reload
-them without restarting playback. `moduleHere { +movie }` supplies the standard reload
-actions and typed Kotlin accessors; `+movie` supplies its eye target and texture bindings. `uv` is the full per-eye coordinate, `eye` is 0/1, and
-`luma`/`chroma` sample the packed P010 planes. The push constants document screen and
-colour-conversion parameters. The **Swap eyes** button mirrors the transport checkbox.
- The file is decoded once; each eye samples
-its own half on a shared room-locked cylindrical screen. The desktop preview samples the
-actual eye image. There is no scene blur stack or audio; optional temporal accumulation happens directly in video coordinates.
+Play a side-by-side stereo movie on a curved screen you can move around the room. The bundled
+demo loads automatically; use `FIELD_STEREO_VIDEO` or the file control to choose another local movie.
+Each frame is decoded once, and each eye samples its own half. The desktop preview shows the eye image.
+The player has no audio. Optional motion exposure accumulates movie frames while the rest of the
+scene stays sharp.
 
 ## Start
 
@@ -44,10 +39,9 @@ each half so bilinear filtering cannot pull pixels from the other eye across the
 
 ## Transport
 
-**Playing** pauses/resumes. **Seek (seconds)** pauses at the requested position; resume with
-**Playing**. Successive seeks are coalesced and decoded in the background rather than queued
-as a long sequence of render-thread operations. The displayed position follows uploaded
-frames and the scrubber follows it without generating one document edit per playback tick.
+**Playing** pauses or resumes. **Seek (seconds)** pauses at the chosen position; resume with
+**Playing**. Seeking runs in the background, and successive requests are combined. The displayed
+position and scrubber follow the uploaded frames without making a document edit on every tick.
 **Back to start** also pauses. Compressed files seek to a nearby keyframe before decoding the
 requested frame; a long GOP can make a seek take longer than ordinary playback.
 
@@ -65,14 +59,19 @@ RGBA16F/16-bit or ten-bit swapchain over an eight-bit one. This also benefits `t
 eye image to eight-bit. Legacy runtimes can still require a lower-precision swapchain; check
 the format/precision report in box 1. The mirror may quantize to the desktop display format.
 
-A floating-point application target does **not** prove a ten-bit headset stream. WiVRn's
-negotiated encoder and decoder must also be checked. Configure a supported AV1 or HEVC encoder with `bit-depth: 10`; the live connection
-is the authority. WiVRn's
-single-projection-layer fast path bypasses its eight-bit layer-squashing intermediate; adding
-separate OpenXR composition layers would require auditing that path again. The Field browser
-here is part of the application projection, not a separate OpenXR layer.
+For a ten-bit headset stream, configure a supported AV1 or HEVC encoder with `bit-depth: 10`,
+then check the encoder and decoder negotiated by the live WiVRn connection. Floating-point eye
+images alone cannot establish the precision of the whole path. WiVRn's single-projection-layer
+fast path bypasses its eight-bit layer-squashing intermediate; adding separate OpenXR layers would
+require checking that path again. The Field browser here is part of the application projection.
 
 ## Code
+
+**4 · Video shader** has editable `vertex` and `fragment` tabs. Use **Reload Shader** (Alt+R)
+to reload them without restarting playback. `moduleHere { +movie }` supplies the reload actions,
+typed Kotlin accessors, eye target and texture bindings. `uv` is the full per-eye coordinate,
+`eye` is 0/1, and `luma`/`chroma` sample the packed P010 planes. The push constants document the
+screen and colour conversion. **Swap eyes** mirrors the transport checkbox.
 
 `StereoVideoSurface` owns the decoder, mesh and one pre-scene upload hook; the shader box
 owns its `moduleHere` pipeline. Its
@@ -124,16 +123,15 @@ backlog is kept. Sustainable speed depends on the movie's codec, resolution and 
 
 ## Material cadence
 
-**Material: unlimited**, **Material: 24 fps** and **Material: 12 fps** set a wall-time publication
-rate independently of playback speed. The status reports the selected cap. Decode continues
-following the playback clock; capped ticks upload only the newest ready picture and discard
-intermediate queued samples. They do not play those samples later as a delayed backlog. At
-8×/12 fps, a 24 fps movie advances approximately sixteen source frames per material tick.
+**Material: unlimited**, **Material: 24 fps** and **Material: 12 fps** set how often the movie
+image updates, independently of playback speed. Decode continues on the playback clock; each capped
+tick uploads the newest ready picture and discards intermediate samples. At 8×/12 fps, a 24 fps
+movie advances approximately sixteen source frames per material tick. The status shows the cap.
 
 The sharp texture and temporal exposure both hold between ticks. Accumulation adds each
 selected material frame once; persistence remains a real-time half-life. Headset rendering,
 screen placement and current eye poses stay at the runtime cadence. New files, scrubbing and
 clear requests take effect on the next permitted material tick. Display timing quantizes tick
-presentation; missed ticks are skipped, never replayed as a burst. Selecting unlimited restores
-ordinary per-source-frame publication. This is an apparent frame-rate effect, not a 12/24 Hz VR
-render loop, and it does not interpolate optical flow between source pictures.
+presentation; missed ticks are skipped. Selecting unlimited restores ordinary per-source-frame
+updates. The effect holds the movie image while VR keeps rendering at its usual rate; there is no
+optical-flow interpolation between source pictures.
