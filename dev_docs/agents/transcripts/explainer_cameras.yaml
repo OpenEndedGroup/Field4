@@ -369,9 +369,18 @@ operations:
               slider("glass index", 1.0, 2.4, step = 0.01, initialValue = 1.5) { index = it; draw() }
           }
 
+          // Paced by the clock, not by the loop, which runs far faster than the display: the wave moves
+          // 25 pixels a second, a wavelength in under two seconds, and is redrawn thirty times a second.
+          var last = AnimationClock.nowSeconds()
+          var drawnAt = 0.0
           loop {
-              if (playing) travelled += 0.7
-              draw()
+              val now = AnimationClock.nowSeconds()
+              if (playing) travelled += 25.0 * (now - last)
+              last = now
+              if (now - drawnAt >= 1.0 / 30) {
+                  drawnAt = now
+                  draw()
+              }
           }
   - create:
       box: ec_snell
