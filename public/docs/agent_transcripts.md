@@ -3351,11 +3351,11 @@ repeatable camera path in the existing CPU/allocation timeline. See
 ### openxr_eye_intersection
 
 A white wire cube at the closest-approach midpoint of the two real
-HTC eye rays, with a 3 cm maximum gap and explicit LOCAL-to-world conversion. A translated,
+per-eye gaze rays, with a 3 cm maximum gap and explicit LOCAL-to-world conversion. A translated,
 30-degree-yaw world origin and a hold control make coordinate mistakes visible when you move your
 head. The EXT combined ray is drawn separately because one ray cannot determine depth. macOS
 renders the reference grid and cubes without simulating eye data; hardware validation needs an
-HTC-capable OpenXR runtime. See [the coordinate walkthrough](openxr_eye_intersection.md).
+eye-tracking headset whose OpenXR runtime reports each eye. See [the coordinate walkthrough](openxr_eye_intersection.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/openxr_eye_intersection/metadata.edn)
 

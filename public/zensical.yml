@@ -461,7 +461,7 @@ nav:
       - Field inside VR: field_vr_ide.md
       - ImGui as a VR Panel: imgui_vr_panel.md
       # Last, after the two in-headset pages: an OpenXR starting point that needs a headset with
-      # eye tracking (HTC's extension for the intersection), the narrowest hardware in the section.
+      # per-eye eye tracking, the narrowest hardware requirement in the section.
       - Eye-Tracked Gaze Marker: openxr_eye_intersection.md
   - AI & Agents:
     # First, ahead of the explanations: a showcase of whole documents agents built from a blank
