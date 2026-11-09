@@ -387,6 +387,100 @@ turn shows as a changing slope, and the `debug` panel counts the ticks.
 
 `frame` hands control back to Field, and the word starts again on the next tick, so keep anything that must last between ticks in variables, not on the stack.
 
+## Each step is a program
+
+A step sequencer is usually a row of cells, each holding a note. In
+[Cagire](https://cagire.raphaelforment.fr), Raphaël Forment's Forth sequencer, each cell holds a
+short Forth program instead, and the program decides what the step plays each time the sequencer
+comes round to it. ForthField borrows that design and a handful of Cagire's words. Cagire's source is
+at [git.raphaelforment.fr/BuboBubo/cagire](https://git.raphaelforment.fr/BuboBubo/cagire); like
+Field, it is AGPL-3.0-or-later.
+
+`seq: name … ;seq` defines a grid. Each `|` ends a step and an empty step is a rest. Note names are
+literals, so `c4` pushes 60 and `eb3` pushes 51, and `note` sounds one on the current step. Between
+`<` and `>`, a step takes one item each time it comes round: the first pass plays the first item, the
+second pass the second, and so on, wrapping. This grid has four steps. The first alternates through C,
+E flat and G, and the third between G and C:
+
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_alternation.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-alternation" alt="The box's stdout panel lists twelve steps, one note per line: step 0 c4, step 2 g3, step 4 d#3, step 6 c4, step 8 g3, step 10 g3, each with its cell and MIDI number. Below it an audio panel holds a player for the rendered steps."}
+120 bpm
+seq: line  < c4 eb3 g3 > note | | < g3 c4 > note | ;seq
+line 12 run-steps
+line 12 render-steps
+```
+
+`line 12 run-steps` runs the first twelve steps and prints the notes they played; `render-steps`
+renders the same steps to a player in the box's `audio` panel. A step is a sixteenth note at the tempo
+`bpm` sets. The log spells E flat as `d#3`, which is the same MIDI note:
+
+```diffstatic_runner {data-lang=forth audio="assets/forth_examples/steps_alternation.wav" audio-spec="forth-steps-alternation" audio-renderer="afield.lang.forth.ForthStepsDocs" embed=true hidden=true name="forth-steps-alternation-audio"}
+\ Offline-rendered by ForthStepsDocs.renderWav("forth-steps-alternation").
+```
+
+Inside a step, `<` opens an alternation only when its `>` is on the same line with no `if`, `do` or
+definition between them, so `x 0 < if … then` in a step is still a comparison. Outside a step, `<` and
+`>` are always the comparisons.
+
+### A synth is a word
+
+The voice words set up the note that `note` will play: `sine`, `saw`, `square` and `tri` choose the
+oscillator, `lpf` sets a lowpass corner in Hz, `decay` the time in seconds for the note to fall away,
+and `gain` its level. Every step starts from a plain sine, so a sound you want on several steps is a
+word. Cagire writes `{ 110 saw 800 lpf out } synth`; in ForthField the same idea is a colon definition:
+
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_synth_word.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-synth-word" alt="The stdout panel lists eight steps of a bass line: c2 and c3 sawtooth notes with lpf 900, a rest on every third step, and the fourth step moving from d#2 to g2. Below it an audio panel holds a player."}
+: acid  saw 900 lpf 0.12 decay ;
+130 bpm
+seq: bass  acid c2 note | acid c3 note | | acid < eb2 g2 bb2 > note ;seq
+bass 8 run-steps
+bass 24 render-steps
+```
+
+Six passes of the grid, with the last step walking E flat, G, B flat:
+
+```diffstatic_runner {data-lang=forth audio="assets/forth_examples/steps_synth_word.wav" audio-spec="forth-steps-synth-word" audio-renderer="afield.lang.forth.ForthStepsDocs" embed=true hidden=true name="forth-steps-synth-word-audio"}
+\ Offline-rendered by ForthStepsDocs.renderWav("forth-steps-synth-word").
+```
+
+### Lists, `iter` and weighted choice
+
+`[ … ]` gathers what its words push into a list. `iter` pushes how many times the grid has come round
+to this step, and `index` takes that item of the list, wrapping, so `[ c5 e5 g5 b5 ] iter index note`
+climbs the chord one pass at a time. `wchoose` takes a list of values and a list of weights and picks
+one value, here C three times out of five. `fm ( ratio index -- )` makes a two-operator FM voice whose
+brightness falls away with the note, which is a bell:
+
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/steps_bell.png" capture="box" open-outputs="true" wait="1.0" embed=true name="forth-steps-bell" alt="The stdout panel lists eight steps: step 0 c5 fm 3.50:4, step 2 a sine c3, step 4 e5 fm, step 6 a sine bass note chosen by wchoose. Below it an audio panel holds a player."}
+: bell  3.5 4 fm 1.4 decay 0.5 gain ;
+90 bpm
+seq: chime  bell [ c5 e5 g5 b5 ] iter index note | | sine 0.3 decay [ c3 g3 eb3 ] [ 6 3 1 ] wchoose note | ;seq
+7 seed chime 8 run-steps
+7 seed chime 32 render-steps
+```
+
+`seed` fixes the random draws, so the log and the player choose the same bass notes. Eight passes:
+
+```diffstatic_runner {data-lang=forth audio="assets/forth_examples/steps_bell.wav" audio-spec="forth-steps-bell" audio-renderer="afield.lang.forth.ForthStepsDocs" embed=true hidden=true name="forth-steps-bell-audio"}
+\ Offline-rendered by ForthStepsDocs.renderWav("forth-steps-bell").
+```
+
+`choose ( list -- x )` picks without weights, `pass` and `step` push the pass count and the step
+number for programs that want to do their own arithmetic.
+
+### Running a grid live
+
+In a launched box, `tick-steps` runs every step whose time has come on the wall clock and prints the
+notes, and `frame` hands control back to Field until the next tick:
+
+```diffstatic {data-lang=forth}
+seq: line  < c4 eb3 g3 > note | | < g3 c4 > note | ;seq
+: play  line tick-steps frame ;
+play
+```
+
+Redefine `line` while it runs and the next step plays the new program. `tick-steps` prints rather than
+sounds; for sound, use `render-steps`.
+
 ## When a definition misbehaves
 
 Use `see name` to check that the word running is the definition you think it is, and read the error before adding prints: it already names the failing token, the stack and the chain of word calls.

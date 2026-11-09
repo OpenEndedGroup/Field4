@@ -102,3 +102,16 @@ class ForthStepsTest {
         assertEquals("step 0  cell 0  c4 (60)  sine\nstep 1  cell 0  d#3 (51)  sine\nstep 2  cell 0  g3 (55)  sine\n", out.toString())
     }
 }
+
+/** The audio on forth_examples.md is rendered from [ForthStepsDocs.SCENES]; the page must show that same source. */
+class ForthStepsDocsTest {
+    @Test
+    fun everySceneIsOnThePageAndRendersSound() {
+        val page = java.io.File("public/docs/forth_examples.md").readText()
+        for ((name, source) in ForthStepsDocs.SCENES) {
+            assertTrue(source in page, "forth_examples.md no longer shows scene '$name' as ForthStepsDocs renders it")
+            assertTrue("name=\"$name\"" in page, "no fence named $name")
+            assertTrue(ForthStepsDocs.render(name).size > 48_000, "scene $name rendered under a quarter second")
+        }
+    }
+}
