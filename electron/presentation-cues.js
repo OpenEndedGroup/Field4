@@ -23,6 +23,30 @@ function fieldDocumentUrl(fieldUrl, document) {
   } catch { return null; }
 }
 
+// A live figure on an HTML slide: one box's output (the Field page's ?figure= mode), in the
+// presentation's own document. `document` is that document's name, taken from the source page.
+function figureUrl(fieldUrl, document, figure, background) {
+  const base = fieldDocumentUrl(fieldUrl, document);
+  if (!base || !validFigure(figure)) return null;
+  const url = new URL(base);
+  url.searchParams.set('figure', figure.box);
+  if (figure.channels?.length) url.searchParams.set('channels', figure.channels.join(','));
+  if (typeof background === 'string' && /^(#[0-9A-Fa-f]{3,8}|rgba?\([0-9., ]+\))$/.test(background)) {
+    url.searchParams.set('bg', background);
+  }
+  return url.href;
+}
+
+function validFigure(figure) {
+  return !!figure && typeof figure === 'object' &&
+    typeof figure.id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(figure.id) &&
+    typeof figure.box === 'string' && /^[A-Za-z0-9_.:-]{1,128}$/.test(figure.box) &&
+    (figure.name == null || (typeof figure.name === 'string' && figure.name.length <= 256)) &&
+    (figure.channels == null || (Array.isArray(figure.channels) && figure.channels.length <= 16 &&
+      figure.channels.every(c => typeof c === 'string' && c.length > 0 && c.length <= 128 && !/[\x00-\x1f,]/.test(c)))) &&
+    (figure.rect == null || validRect(figure.rect) !== null);
+}
+
 function guestUrl(slide, base, fieldUrl) {
   if (!slide || typeof slide !== 'object') return null;
   if (slide.type === 'field-document') return fieldDocumentUrl(fieldUrl, slide.document);
@@ -92,7 +116,12 @@ function validateGuideState(state) {
     throw new Error('Invalid guide audience content');
   }
   if (content.rect != null && !validRect(content.rect)) throw new Error('Invalid guide audience rect');
+  if (content.figures != null && (content.type !== 'html' || !Array.isArray(content.figures) ||
+      content.figures.length > 8 || !content.figures.every(validFigure) ||
+      new Set(content.figures.map(f => f.id)).size !== content.figures.length)) {
+    throw new Error('Invalid guide audience figures');
+  }
   return state;
 }
 
-module.exports = {validRect, validDocumentName, fieldDocumentUrl, guestUrl, fieldActions, validateGuideState};
+module.exports = {validRect, validDocumentName, fieldDocumentUrl, figureUrl, validFigure, guestUrl, fieldActions, validateGuideState};

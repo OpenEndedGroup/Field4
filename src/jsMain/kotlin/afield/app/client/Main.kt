@@ -2483,6 +2483,8 @@ private fun applyViewportTranslation(
  * is every pane's visible world rect `(x, y, w, h)`, in pane order, the main (bottom-right) pane last.
  */
 internal fun sendViewportsToServer() {
+    // A presentation figure shows one box, not the canvas; Box.viewport stays the author's.
+    if (figureModeActive) return
     val v = CanvasCamera.main.visibleWorldRect()
     send(
         Message("set-viewport").payload(
@@ -5760,7 +5762,8 @@ suspend fun main() {
     window.asDynamic().fieldSharedUiContext = sharedUiContext
     fieldDisplayMode = when {
         flagParam(searchParams, "editorOnly") -> "editor-only"
-        flagParam(searchParams, "noeditor") -> "no-editor"
+        // A presentation figure (?figure=<uid>) is one box's output; it never shows the editor.
+        flagParam(searchParams, "noeditor") || searchParams.get("figure") != null -> "no-editor"
         else -> "normal"
     }
     window.asDynamic().fieldDisplayMode = fieldDisplayMode
@@ -5776,6 +5779,7 @@ suspend fun main() {
     if (flagParam(searchParams, "transparent")) {
         document.body?.classList?.add("mode-transparent")
     }
+    installFigureMode(searchParams)
     window.asDynamic().fieldBackdoorUiReady = false
     window.asDynamic().fieldBackdoorDisconnectedOverlayActive = false
     window.asDynamic().currentDocumentFilename = filename

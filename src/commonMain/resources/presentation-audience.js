@@ -13,12 +13,28 @@
     const root = frame.contentDocument?.documentElement;
     if (root?.dataset.fieldBuilds === 'waiting') root.dataset.fieldBuilds = 'active';
   };
+  // Where each live figure slot sits, as fractions of this window, with the colour behind it.
+  // Electron lays a native view of the figure's box output over each one.
+  function measureFigures() {
+    const slide = frame.contentDocument;
+    if (!slide) return [];
+    const scale = Math.min(innerWidth / 1920, innerHeight / 1080);
+    const left = (innerWidth - 1920 * scale) / 2, top = (innerHeight - 1080 * scale) / 2;
+    const clamp = value => Math.min(1, Math.max(0, value));
+    return Array.from(slide.querySelectorAll('[data-field-figure]'), element => {
+      const box = element.getBoundingClientRect();
+      const x = clamp((left + box.left * scale) / innerWidth), y = clamp((top + box.top * scale) / innerHeight);
+      return {id: element.dataset.fieldFigure, background: getComputedStyle(element).backgroundColor,
+        rect: [x, y, Math.min(1 - x, box.width * scale / innerWidth), Math.min(1 - y, box.height * scale / innerHeight)]};
+    }).filter(figure => figure.rect[2] > 0 && figure.rect[3] > 0);
+  }
+  window.measureFigures = measureFigures;
   window.renderPresentation = state => new Promise((resolve, reject) => {
     const timer = setTimeout(() => finish(new Error('The audience slide did not finish loading')), 12000);
     function finish(error) {
       clearTimeout(timer);
       frame.removeEventListener('load', ready);
-      if (error) reject(error); else resolve();
+      if (error) reject(error); else resolve({figures: measureFigures()});
     }
     async function ready() {
       try {
@@ -64,6 +80,12 @@
       [data-field-builds="waiting"] .field-fade-in{opacity:0}
       [data-field-builds="active"] .field-fade-in{animation:field-fade-in var(--field-fade-duration,350ms) ease-out var(--field-fade-delay,0ms) both}
       .field-retained .field-fade-in{animation:none!important;opacity:1!important}
+      .field-live-figure{margin:0;display:flex;flex-direction:column;width:100%}
+      .field-live-figure-slot{flex:1;min-height:0;background:var(--field-figure-bg,var(--field-slide-bg,#000))}
+      .field-live-figure>figcaption{font-size:24px;color:var(--field-slide-muted,#aaa);margin-top:16px}
+      .field-figure-beside{display:flex;align-items:center;gap:80px;width:100%}
+      .field-figure-text{flex:1;min-width:0}.field-figure-column{flex:1.25;min-width:0}
+      .field-figure-text h1{font-size:88px}.field-figure-text h2{font-size:64px}
       @keyframes field-fade-in{from{opacity:0}to{opacity:1}}
       @media(prefers-reduced-motion:reduce){.field-fade-in{animation:none!important;opacity:1!important}}
       </style></head><body><main>${html}</main></body></html>`;
