@@ -58,12 +58,21 @@ object Ai4ChatAutocomplete {
     /** What comes after [draft], or "" when the model has nothing to add. Throws when the provider does. */
     fun complete(boxName: String, property: String, code: String, history: String, draft: String): String {
         val bridge = bridge()
-        val state = bridge.startThread(fileKey = "ai4:chat-autocomplete", fileText = "", instructions = instructions)
-        val reply = bridge.send(state, prompt(boxName, property, code, history, draft), maxOutputTokens = 400L, maxToolRounds = 0)
-        return suggestion(reply.text, draft)
+        val started = System.nanoTime()
+        val reply = bridge.completeText(instructions, draftPrompt(draft), context = context(boxName, property, code, history))
+        return suggestion(reply, draft).also {
+            afield.app.diagnostics.logging.lprintln("info,ai_completions", "chat autocomplete: provider=${bridge.modelIdentity?.provider} " +
+                "model=${bridge.modelIdentity?.requestedModel} elapsedMs=${(System.nanoTime() - started) / 1_000_000} " +
+                "draftChars=${draft.length} replyChars=${reply.length} suggestionChars=${it.length}")
+        }
     }
 
-    internal fun prompt(boxName: String, property: String, code: String, history: String, draft: String): String = buildString {
+    private fun draftPrompt(draft: String) = "The person's draft, which ends where the cursor is:\n<<<$draft>>>"
+
+    internal fun prompt(boxName: String, property: String, code: String, history: String, draft: String): String =
+        context(boxName, property, code, history) + "\n\n" + draftPrompt(draft)
+
+    private fun context(boxName: String, property: String, code: String, history: String): String = buildString {
         appendLine("Box: ${boxName.ifBlank { "(unnamed)" }}, editing its `$property` property.")
         if (code.isNotBlank()) {
             appendLine()
@@ -87,12 +96,7 @@ object Ai4ChatAutocomplete {
                 appendLine("${if (block.role == "you") "Person" else "Assistant"}: $bounded")
             }
         }
-        appendLine()
-        appendLine("The person's draft, which ends where the cursor is:")
-        append("<<<")
-        append(draft)
-        append(">>>")
-    }
+    }.trimEnd()
 
     /**
      * The model's [raw] reply as text to append to [draft]: the first line, without quotes or fences, and
