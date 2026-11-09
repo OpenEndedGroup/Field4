@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-225 source file(s), 711 public symbol(s), 314 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+226 source file(s), 713 public symbol(s), 315 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -323,7 +323,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1016) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1020) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -2072,6 +2072,20 @@ The reload-transition matrix, on a real device: one box, one graphics module, an
 ### ShaderTypedStructurePreambleSmokeTest { #shadertypedstructurepreamblesmoketest-kt-shadertypedstructurepreamblesmoketest }
 
 [<code class="highlight"><span class="k">class</span> <span class="nc">ShaderTypedStructurePreambleSmokeTest</span></code>](source/jvmMain/afield/examples/four/ShaderTypedStructurePreambleSmokeTest/#L12)
+
+## ShapeAsciiGpuSmoke.kt { #shapeasciigpusmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/ShapeAsciiGpuSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/ShapeAsciiGpuSmoke/)
+
+### ShapeAsciiGpuSmoke { #shapeasciigpusmoke-kt-shapeasciigpusmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">ShapeAsciiGpuSmoke</span></code>](source/jvmMain/afield/examples/four/ShapeAsciiGpuSmoke/#L63)
+
+Runs the GPU matcher of `ascii_shape.md` on a real renderer and checks it against the CPU.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="shapeasciigpusmoke-kt--shapeasciigpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ShapeAsciiGpuSmoke/#L81) |  |
 
 ## SlugRenderSmoke.kt { #slugrendersmoke-kt }
 

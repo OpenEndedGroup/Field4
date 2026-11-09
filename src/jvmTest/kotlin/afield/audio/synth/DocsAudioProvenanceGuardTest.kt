@@ -68,7 +68,7 @@ class DocsAudioProvenanceGuardTest {
             Origin.DOUGH_WASM to 2,
             Origin.STEAM_AUDIO_HRTF to 3,
             Origin.SONIC_PI to 1,
-            Origin.MODAL_SYNTHESIS to 8,
+            Origin.MODAL_SYNTHESIS to 12,
         )
         assertEquals(
             expected,
@@ -286,7 +286,11 @@ class DocsAudioProvenanceGuardTest {
          * ([Origin.STEAM_AUDIO_HRTF]), two [Origin.STAND_IN_SYNTH] and one [Origin.DIRT_SAMPLES]
          * clip, and `sonic_pi.md`'s `bikes.wav`, the first [Origin.SONIC_PI]: a take recorded from
          * a real Sonic Pi, which the audit skips rather than compares.
+         *
+         * `eigendrum.md` added four (2026-11-08), [Origin.MODAL_SYNTHESIS]: [afield.audio.modal.EigendrumDocs]
+         * strikes the bare, Ramakrishna–Sondhi-loaded and syahi-fitted disks and the 4:5:6 triad drum.
+         * They landed uncounted because the lander's guard does not run this test.
          */
-        const val EXPECTED_FENCE_COUNT = 95
+        const val EXPECTED_FENCE_COUNT = 99
     }
 }

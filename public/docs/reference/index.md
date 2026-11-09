@@ -661,13 +661,13 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**37531 public symbols across 1690 source files**, 22074 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**37564 public symbols across 1695 source files**, 22097 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 225 | 711 | 314 (44%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 226 | 713 | 315 (44%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 21 | 158 | 56 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 206 | 206 (100%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
@@ -683,12 +683,12 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ALife](alife.md) | 22 | 1127 | 1030 (91%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 10 | 464 | 464 (100%) | Optimisation over a space you can only sample. |
-| [Visualization](visualization.md) | 64 | 1777 | 1280 (72%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 65 | 1786 | 1289 (72%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 43 | 1534 | 763 (49%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1317 | 721 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 89 | 2332 | 1214 (52%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 586 | 586 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 123 | 3103 | 1527 (49%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 126 | 3125 | 1540 (49%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 239 | 3212 | 1294 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 95 | 2120 | 799 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 687 | 410 (59%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
@@ -1002,6 +1002,9 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogLineNotes.kt](languages.md#dataloglinenotes-kt) | Languages | 3 | 3 | Line notes for a Datalog box (`LineNotes`): what a line's statement means in the model the box's runs have built. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogObjects.kt](languages.md#datalogobjects-kt) | Languages | 4 | 4 | Any live object graph as Datalog base relations, by way of `afield.data.query.graph`. | [Datalog in a box](../datalog.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogParser.kt](languages.md#datalogparser-kt) | Languages | 7 | 5 | Source text to abstract syntax: the lexer and recursive-descent parser every Datalog program in Field goes through, and the two word lists that decide what the notation reserves. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogRhythm.kt](languages.md#datalogrhythm-kt) | Languages | 12 | 10 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogRhythmDirtDocs.kt](languages.md#datalogrhythmdirtdocs-kt) | Languages | 4 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogRhythmSoundDocs.kt](languages.md#datalogrhythmsounddocs-kt) | Languages | 6 | 2 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogSmokeTest.kt](languages.md#datalogsmoketest-kt) | Languages · internal | 3 | 1 | Smoke test for the Datalog deductive-database language in `afield.data.query.datalog`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogWhyNot.kt](languages.md#datalogwhynot-kt) | Languages | 16 | 10 | The why-not layer: `Datalog.whyNot` walks a failing conjunction literal by literal and names the one that took the answer count to zero. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [DeBruijnTiling.kt](graphics.md#debruijntiling-kt) | Graphics | 29 | 20 |  | [Penrose and Other Quasiperiodic Tilings](../debruijn_tilings.md) |
@@ -2038,7 +2041,9 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [ShaderTypedStructurePreambleSmokeTest.kt](examples.md#shadertypedstructurepreamblesmoketest-kt) | Examples · internal | 1 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [ShadowedSnippetNameChecker.kt](workspace.md#shadowedsnippetnamechecker-kt) | Workspace · internal | 8 | 3 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [ShadowedSnippetNameSmokeTest.kt](workspace.md#shadowedsnippetnamesmoketest-kt) | Workspace · internal | 2 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [ShapeAscii.kt](visualization.md#shapeascii-kt) | Visualization | 28 | 27 | Shape-aware ASCII rendering: an `Img` turned into a grid of characters chosen for the *shape* of what falls in each cell, not only its brightness, after Alex Harri's essay ASCII characters are not pixels. | [Shape-aware ASCII](../ascii_shape.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [ShapeAscii.kt](visualization.md#shapeascii-kt) | Visualization | 30 | 29 | Shape-aware ASCII rendering: an `Img` turned into a grid of characters chosen for the *shape* of what falls in each cell, not only its brightness, after Alex Harri's essay ASCII characters are not pixels. | [Shape-aware ASCII](../ascii_shape.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [ShapeAsciiGpu.kt](visualization.md#shapeasciigpu-kt) | Visualization | 7 | 7 | What a GPU version of `ShapeAscii` needs from the CPU side, for shaders that live in boxes. | [Shape-aware ASCII](../ascii_shape.md) |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [ShapeAsciiGpuSmoke.kt](examples.md#shapeasciigpusmoke-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr>pressure/<wbr></small> [ShapeAudit.kt](simulation.md#shapeaudit-kt) | Simulation | 5 | 2 | Geometric checks on a deformed pressure envelope: `ShapeAudits` finds triangle self-intersections, sharp folds between neighbouring triangles, panel seams and multi-panel junction angles. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr>diffusion/<wbr></small> [SharedGpuSlot.kt](video.md#sharedgpuslot-kt) | Video | 0 | 0 | One slot of the GPU memory a diffusion session shares with its worker: a device-local buffer and a timeline semaphore, both exported to the worker as file descriptors. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [SharedTypes.kt](workspace.md#sharedtypes-kt) | Workspace · internal | 7 | 7 | Lets several boxes in one document use the same Kotlin class, with its real type. |  |

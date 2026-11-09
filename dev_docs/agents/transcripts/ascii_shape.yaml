@@ -2,8 +2,11 @@ name: ascii_shape
 description: >-
   Shape-aware ASCII rendering (ShapeAscii): an Img turned into characters chosen by a six-circle
   shape vector per cell rather than brightness alone, after Alex Harri's essay. Brightness vs shape
-  on an FLine drawing, the sampling circles, a lit sphere, the two contrast steps, and a live
-  spinning cube in a charGrid. Companion to public/docs/ascii_shape.md.
+  on an FLine drawing, the sampling circles, a lit sphere, the two contrast steps, a live
+  spinning cube in a charGrid, and the same matcher on the GPU over a lit torus knot in a native Vulkan
+  window, as scene, match and draw boxes whose shaders are their fragment properties, with a box
+  that checks the GPU's characters against the CPU's.
+  Companion to public/docs/ascii_shape.md.
 operations:
   - create:
       box: ascii_shape_shapes
@@ -184,6 +187,375 @@ operations:
               val img = Img.zeros(480, 260, 3).drawFLines(lines, color = Vec4(1f, 1f, 1f, 1f))
               drawAscii(ascii.convert(img, COLS, contrast = 3.0, rows = ROWS))
           }
+  - create:
+      box: ascii_shape_renderer
+      name: renderer
+      frame: { x: 40.0, y: 460.0, w: 300.0, h: 100.0 }
+      properties:
+        notes: |
+          # Renderer
+
+          Opens a native window the size of the GPU section's 128 x 48 character grid (on a 2x display). Launch it first, then the scene, match and draw boxes beneath it in that order.
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Shape ASCII", initialDimensions = Rect(80.0, 80.0, 640.0, 456.0))
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: ascii_shape_gpu_scene
+      name: Scene, a lit knot
+      frame: { x: 380.0, y: 460.0, w: 300.0, h: 100.0 }
+      properties:
+        notes: |
+          # Scene
+
+          A lit torus knot drawn into `scene`, an offscreen target 128 x 48 font cells in size, and the `ascii` charset the boxes beneath read. Edit the vertex and fragment shaders and re-run. Docs: ascii_shape.md#on-the-gpu-over-a-live-scene.
+        vertex: |
+          #version 450
+          layout(location = 0) in vec3 pos;
+          layout(location = 1) in vec3 normal;
+          layout(location = 0) out vec3 fnormal;
+
+          layout(push_constant) uniform Push {
+              float time;
+              float aspect;
+          } pc;
+
+          void main() {
+              // turn about y, then x
+              float a = pc.time * 0.7;
+              float b = pc.time * 0.45;
+              mat3 ry = mat3(cos(a), 0.0, -sin(a), 0.0, 1.0, 0.0, sin(a), 0.0, cos(a));
+              mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cos(b), sin(b), 0.0, -sin(b), cos(b));
+              vec3 p = rx * ry * pos;
+              fnormal = rx * ry * normal;
+              // a camera 5 units back looking along +z; +y is up, since Field flips its viewports;
+              // depth runs 0..1 from z = 1 to z = 8
+              float z = p.z + 5.0;
+              gl_Position = vec4(p.x * 2.4 / pc.aspect, p.y * 2.4, (z - 1.0) / 7.0 * z, z);
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) in vec3 fnormal;
+          layout(location = 0) out vec4 outColor;
+
+          void main() {
+              // a light up and to the left of the camera
+              vec3 l = normalize(vec3(-0.5, 0.6, -0.65));
+              float d = max(dot(normalize(fnormal), l), 0.0);
+              outColor = vec4(vec3(0.04 + 0.96 * d), 1.0);
+          }
+        code: |
+          import org.lwjgl.vulkan.VK10.*
+
+          // The font the characters are matched in, and an offscreen target exactly 128 x 48 of its cells.
+          // The boxes beneath this one read both.
+          prop<ShapeAscii>(ascii) = ShapeAscii()
+          prop<RenderToTexture>(scene) = RenderToTexture {
+              width = 128 * ascii.cellWidth
+              height = 48 * ascii.cellHeight
+              // Plain 8-bit, not sRGB, so a shader reading it and the CPU reading it back see the same numbers.
+              format = VK_FORMAT_R8G8B8A8_UNORM
+              colorFormats = [VK_FORMAT_R8G8B8A8_UNORM]
+              useDepth = true
+          }
+          renderer.renderList += "scene" to scene
+
+          // The knot is drawn into the scene, not into the window.
+          var module = moduleHere { +scene }
+          var knot = Mesh()
+          module += "knot" to knot
+          scene += "knot" to module
+
+          // The vertex shader turns the knot by `time` and projects it at the scene's shape.
+          var time = 0f
+          knot.time = {
+              time += 1f / 60
+              time
+          }
+          knot.aspect = { scene.parameters.width.toFloat() / scene.parameters.height }
+
+          // A (2, 3) torus knot: a tube of radius 0.16 around a centre line, 240 steps along it and 16 around.
+          fun centre(a: Double) =
+              vec(0.42 * (2 + cos(3 * a)) * cos(2 * a), 0.42 * (2 + cos(3 * a)) * sin(2 * a), -0.42 * sin(3 * a))
+          knot.set(240 * 16, 240 * 16 * 2) {
+              for (i in 0 until 240) for (j in 0 until 16) {
+                  val a = 2 * PI * i / 240
+                  val along = (centre(a + 1e-4) - centre(a - 1e-4)).normalize()
+                  val side = vec(along.y, -along.x, 0).normalize()
+                  val up = vec(side.y * along.z, -side.x * along.z, side.x * along.y - side.y * along.x)
+                  val w = 2 * PI * j / 16
+                  val out = side * cos(w).toFloat() + up * sin(w).toFloat()
+                  val p = centre(a) + out * 0.16f
+                  pos.add(p.x, p.y, p.z)
+                  normal.add(out.x, out.y, out.z)
+                  val next = (i + 1) % 240
+                  tri.add(i * 16 + j, next * 16 + j, next * 16 + (j + 1) % 16)
+                  tri.add(i * 16 + j, next * 16 + (j + 1) % 16, i * 16 + (j + 1) % 16)
+              }
+          }
+  - create:
+      box: ascii_shape_gpu_match
+      name: Match, one glyph per cell
+      frame: { x: 720.0, y: 460.0, w: 300.0, h: 100.0 }
+      properties:
+        notes: |
+          # Match
+
+          The fragment shader runs once per character cell: six circle means, the two contrast steps, and the nearest of the glyph vectors, written as an index into `cells`. Edit it and re-run.
+        vertex: |
+          #version 450
+          layout(location = 0) in vec3 pos;
+          layout(location = 0) out vec2 uv;
+
+          void main() {
+              // uv runs from 0 to 1 across the target. Field flips its viewports so that +y is up,
+              // so uv.y = 0 is the bottom edge.
+              uv = pos.xy * 0.5 + 0.5;
+              gl_Position = vec4(pos, 1.0);
+          }
+        fragment: |
+          #version 450
+          // The scene, and every glyph's six numbers: texel (g, 0) holds glyph g's first four, (g, 1) its
+          // last two.
+          layout(set = 0, binding = 0) uniform sampler2D sceneTex;
+          layout(set = 0, binding = 1) uniform sampler2D glyphVectors;
+
+          layout(push_constant) uniform Push {
+              vec2 cell;
+              float contrast;
+              float directional;
+          } pc;
+
+          layout(location = 0) out vec4 outColor;
+
+          // The six sampling circles, in cell units: two columns of three, the right one a little higher.
+          // The glyph vectors were measured with these circles, so change them together.
+          const vec2 CENTRES[6] = vec2[6](
+          vec2(0.28, 0.20), vec2(0.72, 0.13),
+          vec2(0.28, 0.53), vec2(0.72, 0.47),
+          vec2(0.28, 0.87), vec2(0.72, 0.80)
+          );
+          // The circles' radius, as a share of the cell's width.
+          const float RADIUS = 0.24;
+          // The outer circles sit this many times further from the cell's centre than the inner ones.
+          const float OUTER_PUSH = 2.6;
+
+          // The mean brightness of the scene inside the circle centred at c (cell units) in the cell whose
+          // top-left pixel is origin. A pixel counts if its centre lies inside the circle.
+          float circle(ivec2 origin, vec2 c, ivec2 cell, ivec2 size) {
+              float r = RADIUS * float(cell.x);
+              vec2 centre = c * vec2(cell);
+              float sum = 0.0;
+              int n = 0;
+              for (int y = int(floor(centre.y - r)) - 1; y <= int(centre.y + r) + 1; y++) {
+                  for (int x = int(floor(centre.x - r)) - 1; x <= int(centre.x + r) + 1; x++) {
+                      vec2 d = vec2(x, y) + 0.5 - centre;
+                      if (dot(d, d) <= r * r) {
+                          vec3 s = texelFetch(sceneTex, clamp(origin + ivec2(x, y), ivec2(0), size - 1), 0).rgb;
+                          sum += clamp((s.r + s.g + s.b) / 3.0, 0.0, 1.0);
+                          n++;
+                      }
+                  }
+              }
+              return sum / float(n);
+          }
+
+          void main() {
+              // One fragment per cell: this cell's pixels in the scene start here.
+              ivec2 cell = ivec2(pc.cell);
+              ivec2 size = textureSize(sceneTex, 0);
+              ivec2 origin = ivec2(gl_FragCoord.xy) * cell;
+
+              float v[6];
+              for (int k = 0; k < 6; k++) v[k] = circle(origin, CENTRES[k], cell, size);
+
+              // Directional contrast: where the circle just outside the cell, in the same direction, is
+              // brighter, darken this one.
+              if (pc.directional != 1.0) {
+                  for (int k = 0; k < 6; k++) {
+                      float outside = circle(origin, 0.5 + (CENTRES[k] - 0.5) * OUTER_PUSH, cell, size);
+                      float m = max(v[k], outside);
+                      if (m > 0.0 && v[k] > 0.0) v[k] = pow(v[k] / m, pc.directional) * m;
+                  }
+              }
+
+              // Contrast: the brightest circle stays, the others fall towards zero.
+              if (pc.contrast != 1.0) {
+                  float m = 0.0;
+                  for (int k = 0; k < 6; k++) m = max(m, v[k]);
+                  for (int k = 0; k < 6; k++) if (m > 0.0 && v[k] > 0.0) v[k] = pow(v[k] / m, pc.contrast) * m;
+              }
+
+              // The glyph whose six numbers are nearest, by squared distance; the first one wins a tie.
+              int best = 0;
+              float bestDistance = 1e30;
+              for (int g = 0; g < textureSize(glyphVectors, 0).x; g++) {
+                  vec4 a = texelFetch(glyphVectors, ivec2(g, 0), 0);
+                  vec4 b = texelFetch(glyphVectors, ivec2(g, 1), 0);
+                  vec4 da = a - vec4(v[0], v[1], v[2], v[3]);
+                  vec2 db = b.xy - vec2(v[4], v[5]);
+                  float d = dot(da, da) + dot(db, db);
+                  if (d < bestDistance) {
+                      bestDistance = d;
+                      best = g;
+                  }
+              }
+              // The glyph's index, stored in an 8-bit channel.
+              outColor = vec4(float(best) / 255.0, 0.0, 0.0, 1.0);
+          }
+        code: |
+          import org.lwjgl.vulkan.VK10.*
+
+          // One texel per character cell; the fragment shader writes the chosen glyph's index into red.
+          prop<RenderToTexture>(cells) = RenderToTexture {
+              width = scene.parameters.width / ascii.cellWidth
+              height = scene.parameters.height / ascii.cellHeight
+              format = VK_FORMAT_R8G8B8A8_UNORM
+              colorFormats = [VK_FORMAT_R8G8B8A8_UNORM]
+              useDepth = false
+          }
+          // Rendered after the scene it reads, even when the scene box runs again.
+          renderer.renderList += "cells" to cells.after(scene)
+
+          // The shader's two textures, bound by the names it gives them: the scene, and every glyph's six numbers.
+          prop<RenderToTexture>(sceneTex) = scene
+          prop<LoadedTexture>(glyphVectors) = ascii.glyphVectorTexture()
+
+          var module = moduleHere { +cells }
+          var m = Mesh()
+          module += "match" to m
+          cells += "match" to module
+
+          // The shader's push constants: a cell's size in pixels, and the two contrast exponents.
+          m.cell = { vec(ascii.cellWidth, ascii.cellHeight) }
+          m.contrast = { 3f }
+          m.directional = { 3f }
+
+          // One triangle covering the whole target, so the fragment shader runs once per texel: once per cell.
+          m.set(3, 1) {
+              pos.add(-1, -1, 0, 3, -1, 0, -1, 3, 0)
+              tri.add(0, 1, 2)
+          }
+  - create:
+      box: ascii_shape_gpu_draw
+      name: Draw, glyphs into the window
+      frame: { x: 1060.0, y: 460.0, w: 300.0, h: 100.0 }
+      properties:
+        notes: |
+          # Draw
+
+          The fragment shader looks up each cell's glyph and draws its pixels from the atlas into the window, with the scene in the lower right corner. Edit it and re-run.
+        vertex: |
+          #version 450
+          layout(location = 0) in vec3 pos;
+          layout(location = 0) out vec2 uv;
+
+          void main() {
+              // uv runs from 0 to 1 across the target. Field flips its viewports so that +y is up,
+              // so uv.y = 0 is the bottom edge.
+              uv = pos.xy * 0.5 + 0.5;
+              gl_Position = vec4(pos, 1.0);
+          }
+        fragment: |
+          #version 450
+          // The chosen glyph for each cell, every glyph's pixels side by side, and the scene itself.
+          layout(set = 0, binding = 0) uniform sampler2D cellsTex;
+          layout(set = 0, binding = 1) uniform sampler2D atlasTex;
+          layout(set = 0, binding = 2) uniform sampler2D sceneTex;
+
+          layout(push_constant) uniform Push {
+              vec4 ink;
+              vec4 background;
+              vec2 cell;
+          } pc;
+
+          layout(location = 0) in vec2 uv;
+          layout(location = 0) out vec4 outColor;
+
+          void main() {
+              // uv.y runs up the window; the cells and the atlas keep their top row first.
+              vec2 p = vec2(uv.x, 1.0 - uv.y);
+
+              // The scene, small, in the lower right corner.
+              if (p.x > 0.76 && p.y > 0.76) {
+                  outColor = vec4(texture(sceneTex, (p - 0.76) / 0.24).rgb, 1.0);
+                  return;
+              }
+
+              // Which cell this pixel is in, and which glyph the match pass chose for it.
+              vec2 grid = vec2(textureSize(cellsTex, 0));
+              vec2 g = p * grid;
+              float glyph = floor(texelFetch(cellsTex, ivec2(g), 0).r * 255.0 + 0.5);
+
+              // Where this pixel falls in that glyph's cell of the atlas; kept half a pixel inside the cell
+              // so filtering does not pull in the neighbouring glyph.
+              vec2 inCell = clamp(fract(g) * pc.cell, vec2(0.5), pc.cell - 0.5);
+              vec2 atlas = vec2(textureSize(atlasTex, 0));
+              float ink = texture(atlasTex, (vec2(glyph * pc.cell.x, 0.0) + inCell) / atlas).r;
+              outColor = mix(pc.background, pc.ink, ink);
+          }
+        code: |
+          // The glyph chosen for each cell, and every glyph's pixels, bound by the shader's names for them.
+          // `sceneTex`, for the corner, is the match box's.
+          prop<RenderToTexture>(cellsTex) = cells
+          prop<LoadedTexture>(atlasTex) = ascii.glyphAtlasTexture()
+
+          var module = moduleHere()
+          var m = Mesh()
+          module += "characters" to m
+          renderer += "characters" to module
+
+          m.cell = { vec(ascii.cellWidth, ascii.cellHeight) }
+          // Field's window is sRGB, which brightens these to #E6E6E6 on #161619.
+          m.ink = { vec(0.79, 0.79, 0.79, 1) }
+          m.background = { vec(0.008, 0.008, 0.01, 1) }
+
+          // One triangle covering the window.
+          m.set(3, 1) {
+              pos.add(-1, -1, 0, 3, -1, 0, -1, 3, 0)
+              tri.add(0, 1, 2)
+          }
+  - create:
+      box: ascii_shape_gpu_agreement
+      name: GPU against CPU
+      frame: { x: 1400.0, y: 460.0, w: 300.0, h: 100.0 }
+      properties:
+        notes: |
+          # The same characters as the CPU
+
+          Reads back one frame's scene with the glyphs the match box chose, twice a second, and converts the same pixels on the CPU, exhaustively and through the cache. Launch after the draw box.
+        code: |
+          // Twice a second: read back one frame's scene with the glyphs the match pass chose for it, convert
+          // the same pixels on the CPU, exhaustively and through the cache, and count the cells that agree.
+          frames {
+              while (true) {
+                  val readback = ascii.readCells(scene, cells)
+                  while (!readback.isDone) frame()
+                  val (picture, chars) = readback.get()
+                  // the match box's contrast and directional
+                  val exact =
+                      ascii.convert(picture, chars.cols, contrast = 3.0, directional = 3.0, rows = chars.rows, exact = true)
+                  val cached = ascii.convert(picture, chars.cols, contrast = 3.0, directional = 3.0, rows = chars.rows)
+                  display(
+                      "agreement",
+                      "GPU = CPU exact on ${(100 * chars.agreement(exact)).f2}% of cells, " +
+                          "= CPU cached on ${(100 * chars.agreement(cached)).f2}%",
+                  )
+                  repeat(30) { frame() }
+              }
+          }
+  - connect: { parent: ascii_shape_renderer, child: ascii_shape_gpu_scene }
+  - connect: { parent: ascii_shape_gpu_scene, child: ascii_shape_gpu_match }
+  - connect: { parent: ascii_shape_gpu_match, child: ascii_shape_gpu_draw }
+  - connect: { parent: ascii_shape_gpu_draw, child: ascii_shape_gpu_agreement }
   - launch:
       box: ascii_shape_shapes
       property: code

@@ -653,8 +653,9 @@ object DemoTranscriptExecSmokeTest {
         // through the audio device. CharGridTest checks the cells, the panel's diffs and the sound
         // grouping headless.
         "madp_chargrid",
-        // Shape-aware ASCII: the cube box is a charGrid that runs until stopped. ShapeAsciiTest pins
-        // the matcher headless.
+        // Shape-aware ASCII: the cube box is a charGrid that runs until stopped, and the GPU boxes
+        // open a native Window + Renderer. ShapeAsciiTest pins the matcher and compiles the GPU
+        // pass's shaders headless; ascii.shape-gpu.smoke runs the pass against the CPU.
         "ascii_shape",
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
