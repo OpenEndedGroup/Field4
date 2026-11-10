@@ -89,4 +89,15 @@ class PresentationArrangementTest {
         assertEquals(setOf(deck.id, fig.id), rects.single().values.map { it.uid }.toSet())
         assertEquals(0, PresentationArrangement.arrange(show, runFigures = false, timeoutMs = 5_000), "arranging again moves nothing")
     }
+
+    @Test fun aPresentationsNoteKeepsToTheCornerUnlessAStepAnchorsIt() {
+        val s = session()
+        val deck = s.box("deck")
+        val fig = s.box("fig")
+        val talk = deck.presentation { step("Free") { markdownNote("hi") }; step("Held") { markdownNote("there"); anchorNoteTo(fig) } }
+        assertEquals("", talk.noteAnchorUid(talk.steps[0]), "the note does not cover the boxes beside the deck")
+        assertEquals(fig.id, talk.noteAnchorUid(talk.steps[1]))
+        val guide = deck.slideShow { step("Guide") { markdownNote("hi") } }
+        assertEquals(deck.id, guide.noteAnchorUid(guide.steps[0]), "a guide's note still sits beside its box")
+    }
 }
