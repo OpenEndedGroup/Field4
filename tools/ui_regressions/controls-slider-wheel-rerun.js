@@ -15,6 +15,11 @@ wheel(s, -100); wheel(s, -100);
 const focused = val(s);
 wheel(s, 100);
 const back = val(s);
+const wheelX = (dx) => s.querySelector('.field-slider-visual').dispatchEvent(new WheelEvent('wheel', { deltaX: dx, bubbles: true, cancelable: true }));
+for (let i = 0; i < 20; i++) wheelX(1);
+const right = val(s);
+for (let i = 0; i < 20; i++) wheelX(-1);
+const left = val(s);
 s.blur();
 // Drag from 0.3 to 0.9; at 0.5 the box re-displays the group, replacing the slider's DOM.
 const svg = s.querySelector('.field-slider-visual');
@@ -31,9 +36,10 @@ window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 3
 await sleep(800);
 const live = find();
 const seen = parseFloat(document.getElementById('slider-rerun-seen')?.textContent);
-const result = { unfocused, focused, back, replaced, liveValue: val(live), seen };
+const result = { unfocused, focused, back, right, left, replaced, liveValue: val(live), seen };
 if (unfocused !== 0.2) throw new Error('an unfocused slider took the wheel: ' + JSON.stringify(result));
 if (Math.abs(focused - 0.22) > 1e-9 || Math.abs(back - 0.21) > 1e-9) throw new Error('the wheel did not step a focused slider: ' + JSON.stringify(result));
+if (!(right > back) || Math.abs(left - back) > 0.011) throw new Error('horizontal motion did not accumulate in the right direction: ' + JSON.stringify(result));
 if (!replaced) throw new Error('the box did not re-render the slider mid-drag (test precondition): ' + JSON.stringify(result));
 if (!(val(live) > 0.8)) throw new Error('the drag died when the slider was re-rendered: ' + JSON.stringify(result));
 if (Math.abs(seen - val(live)) > 0.011) throw new Error('Kotlin did not receive the post-re-render drag: ' + JSON.stringify(result));

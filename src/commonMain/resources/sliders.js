@@ -1846,6 +1846,7 @@ const fmt = (v, decimals) => {
 
 // Slider (1D) ---------------------------------------------------------------
 const sliderState = { active: null };
+const sliderWheelState = new WeakMap();
 
 /**
  * The law a slider element declares, or a linear one.
@@ -2786,8 +2787,9 @@ function addDelegatedListeners() {
         }
     }, true);
     // The wheel turns a slider only once it has focus (a click or Tab gave it one): an unfocused
-    // slider under a passing wheel must not steal the canvas scroll. One notch is one arrow press;
-    // shift ×10 (many mice report shift-wheel as deltaX), alt ÷10.
+    // slider under a passing wheel must not steal the canvas scroll. Vertical notches are arrow
+    // presses; horizontal motion follows the track, retaining sub-step movement until it accumulates.
+    // Shift-wheel still acts as a coarse notch (some mice report it as deltaX).
     document.addEventListener('wheel', (evt) => {
         const container = evt.target.closest?.('.field-slider');
         if (!container || document.activeElement !== container) return;
@@ -2795,6 +2797,16 @@ function addDelegatedListeners() {
         if (!delta) return;
         evt.preventDefault();
         evt.stopPropagation();
+        if (!evt.shiftKey && Math.abs(evt.deltaX) > Math.abs(evt.deltaY)) {
+            const value = parseFloat(container.dataset.value);
+            const previous = sliderWheelState.get(container);
+            const t = previous && previous.value === value ? previous.t : sliderCurrentT(container);
+            const next = clamp(t + evt.deltaX / sliderTrackPixels(container) * (evt.altKey ? SLIDER_FINE : 1), 0, 1);
+            setSliderT(container, next);
+            sliderWheelState.set(container, { t: next, value: parseFloat(container.dataset.value) });
+            return;
+        }
+        sliderWheelState.delete(container);
         sliderKeyDown(container, { key: delta < 0 ? 'ArrowUp' : 'ArrowDown', shiftKey: evt.shiftKey, altKey: evt.altKey });
     }, { capture: true, passive: false });
 }
