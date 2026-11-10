@@ -187,6 +187,17 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        // The explainer talks (2026-11-10): explainer_sound, explainer_cameras and explainer_lights are
+        // COMPILE_ONLY because their deck boxes open Electron audience windows and play sound. Their
+        // figure boxes are published on explainer_*.md, where the docs runner runs and captures each one.
+        "copyInto" to "explainer_sound.md; used in a Sound figure box; the deck is COMPILE_ONLY (Electron windows, sound), the docs runner runs the figure",
+        "echoGain" to "explainer_sound.md; a helper the echo figure box defines for itself; the deck is COMPILE_ONLY, the docs runner runs the figure",
+        "sensorMesh" to "explainer_cameras.md; afield.simulation.optics, drawn by the pinhole_box figure; the deck is COMPILE_ONLY, the docs runner runs the figure",
+        "wavelengthColor" to "explainer_cameras.md; afield.simulation.optics, used by the dispersion figure; the deck is COMPILE_ONLY, the docs runner runs the figure",
+        "triangleArea" to "explainer_lights.md; used by a Lights figure box; the deck is COMPILE_ONLY, the docs runner runs the figure",
+        // presentation_studio.md teaches these for decks, which need the Electron app and an open canvas.
+        "arrangeBoxes" to "presentation_studio.md; arranging needs a canvas that has drawn the figures' panels, so only Electron or a browser runs it; PresentationArrangement tests cover the layout",
+        "onDrag" to "presentation_studio.md; drag events come from a person dragging a lines figure in a browser or Electron, which CI has no one to do",
         // growing_nca.md (2026-11-08): stepMesh is not a library API but a helper the page's GPU box
         // defines for itself, building one fixed-parity ComputeMesh; growing_nca is COMPILE_ONLY because
         // that box needs a renderer. GrowingNcaTest runs the same rule on the CPU.

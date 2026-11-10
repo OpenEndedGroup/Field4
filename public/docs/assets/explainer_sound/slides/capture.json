@@ -109,14 +109,6 @@
    "sha256": "e77d15ba299c00e73778df7cf0e260fe426cc4d8c3a043e00c66557e3d5c9486"
   },
   {
-   "file": "tones-microphone.png",
-   "view": "21 / 36 \u00b7 Listening back",
-   "figures": 1,
-   "inFront": true,
-   "captureSha256": "a364326187cdba5dc4d8d959a553ce5009658f4efb4252597ded430c0bc8ac86",
-   "sha256": "353b73015ad4fe598cb6c98b6f3901ec33059f474704b05ff895834b16b02e2d"
-  },
-  {
    "file": "springs-one.png",
    "view": "22 / 36 \u00b7 A mass between springs",
    "figures": 1,

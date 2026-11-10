@@ -1104,13 +1104,12 @@ audio(50 { i -> SineOsc(Param(110f * partial(i))) * weights[i] }.reduce { a, b -
 
 ### Listening back
 
-<figure class="field-margin-figure" markdown>
-![The slide “Listening back” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/tones-microphone.png)
-</figure>
-
 Whistle: one bar. Sing a vowel: a row of them, at multiples of your note.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/microphone.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-microphone" alt="An empty spectrum, with a listen checkbox that starts the microphone"}
+This figure needs a microphone: it draws nothing until it hears something, so there is no picture
+of it here. Open the talk in Field and tick **listen**.
+
+```diffstatic {data-lang=kotlin name="explainer-sound-microphone"}
 /*
 What the microphone hears, taken apart into sines. Tick "listen"; each bar is how much of one
 frequency, 20 Hz wide, is in the last tenth of a second, from 0 to 2,500 Hz. A whistle stands up

@@ -6,7 +6,9 @@
 
 `public/docs/explainer_<deck>.md` shows, for every figure of a talk, the figure box's code in a
 `diffstatic_runner` fence. The docs runner runs that fence body in a fresh box and captures its
-output panels, so the picture is of the code on the page. The decks themselves live in
+output panels, so the picture is of the code on the page. A figure that cannot draw anything without
+a device the build does not have (the Sound talk's microphone) is a plain `diffstatic` fence with the
+same `name=`, held to its box the same way and never captured. The decks themselves live in
 `dev_docs/agents/transcripts/explainer_<deck>.yaml`, one `create` per figure box. Two copies of one
 program drift unless something compares them, and this is that comparison: a fence named
 `explainer-<deck>-<figure>` must, with its `:::fold` / `:::endfold` marker lines removed, be
@@ -45,7 +47,7 @@ FOLDED_HELPERS = {
 }
 
 FENCE = re.compile(
-    r"^(?P<open>```+)diffstatic_runner \{(?P<attrs>[^\n]*)\}\n(?P<body>.*?)^(?P=open)[ \t]*$",
+    r"^(?P<open>```+)(?P<kind>diffstatic(?:_runner)?) \{(?P<attrs>[^\n]*)\}\n(?P<body>.*?)^(?P=open)[ \t]*$",
     re.S | re.M,
 )
 NAME = re.compile(r'\bname="explainer-(?P<deck>[a-z]+)-(?P<figure>[a-z0-9_]+)"')
@@ -170,7 +172,7 @@ def sync() -> int:
             if strip_folds(match.group("body")).rstrip("\n") == code[name.group("figure")].rstrip("\n"):
                 return match.group(0)
             body = fold(code[name.group("figure")].rstrip("\n") + "\n")
-            return f"{match.group('open')}diffstatic_runner {{{match.group('attrs')}}}\n{body}{match.group('open')}"
+            return f"{match.group('open')}{match.group('kind')} {{{match.group('attrs')}}}\n{body}{match.group('open')}"
 
         updated = FENCE.sub(replace, text)
         if updated != text:
