@@ -11,6 +11,49 @@ view.draw(screenModule)
 
 val controlMirrors = mutableListOf<() -> Unit>()
 
+// Local primitive properties survive document saves. Blank overrides inherit the global layout.
+prop<Float>(screenAngleOffset) = (thisBox.getPropertyRaw("screenAngleOffset") as? Number)?.toFloat() ?: 0f
+prop<String>(screenRadiusOverride) = (thisBox.getPropertyRaw("screenRadiusOverride") as? String) ?: ""
+prop<String>(screenFillOverride) = (thisBox.getPropertyRaw("screenFillOverride") as? String) ?: ""
+fun setScreenLayout(next: afield.graphics.scene.video.StereoVideoScreenLayout) {
+    carousel.editLayout { screenLayouts = screenLayouts.mapIndexed { i, value -> if (i == screenIndex) next else value } }
+}
+setScreenLayout(afield.graphics.scene.video.StereoVideoScreenLayout(screenAngleOffset,
+    screenRadiusOverride.toFloatOrNull(), screenFillOverride.toFloatOrNull()))
+fun afield.ui.output.ControlGroupBuilder.screenLayoutNumber(label: String, read: () -> Float?,
+    allowBlank: Boolean = false, help: String, write: (Float?) -> Unit) {
+    var lastModel = read()
+    val handle = stringInput(label, initialValue = lastModel?.toString().orEmpty(), hoverText = help) { raw ->
+        runCatching {
+            val text = raw.trim()
+            val value = text.toFloatOrNull()
+            require((allowBlank && text.isEmpty()) || (value != null && value.isFinite())) { "Enter a finite number${if (allowBlank) " or leave blank" else ""} for $label" }
+            write(value)
+            lastModel = read()
+        }.onFailure { markdown("layout error", it.message ?: "Could not set $label") }
+            .onSuccess { displayClear("layout error") }
+    }
+    controlMirrors += { val value = read(); if (value != lastModel) { lastModel = value; handle.set(value?.toString().orEmpty()) } }
+}
+controlGroup("screen layout") {
+    screenLayoutNumber("Angle offset (degrees)", { carousel.screenLayouts[screenIndex].angleOffsetDegrees },
+        help = "Unbounded angle added to this screen's numbered sector and the global ring angle. Move screens into clusters, overlap them or give them multiple turns. The screen number, video delay and saved appearance stay attached to it.") { value ->
+        setScreenLayout(carousel.screenLayouts[screenIndex].copy(angleOffsetDegrees = value!!)); screenAngleOffset = value
+    }
+    screenLayoutNumber("Radius override (m)", { carousel.screenLayouts[screenIndex].radiusMeters }, allowBlank = true,
+        help = "Blank follows the global radius. Otherwise an unbounded signed radius for this screen only. Farther radii also make wider/taller screens at the same fill; use this to put large screens behind small ones. Negative crosses to the opposite side; zero collapses the screen.") { value ->
+        setScreenLayout(carousel.screenLayouts[screenIndex].copy(radiusMeters = value)); screenRadiusOverride = value?.toString().orEmpty()
+    }
+    screenLayoutNumber("Sector fill override", { carousel.screenLayouts[screenIndex].fill }, allowBlank = true,
+        help = "Blank follows global fill. Unbounded angular width in units of one screen sector. Above one overlaps neighbours, zero collapses width, negative mirrors geometry. Large values can curve through multiple turns; they are not clamped to a half circle.") { value ->
+        setScreenLayout(carousel.screenLayouts[screenIndex].copy(fill = value)); screenFillOverride = value?.toString().orEmpty()
+    }
+    slider("Screen opacity", min = 0.0, max = 1.0, step = .01, initialValue = view.opacity.toDouble(),
+        hoverText = "Straight-alpha coverage, independent of the on/off brightness envelope. One is opaque; zero reveals screens behind it. Included in screen looks. Screens are sorted from far to near using this frame's eye views; the Field pane draws last.") { view.opacity = it.toFloat() }
+        .also { h -> controlMirrors += { h.set(view.opacity.toDouble()) } }
+}
+displayOpen("screen layout")
+
 controlGroup("screen exposure") {
     checkbox("Accumulated image", initialValue = view.accumulationMix > 0f,
         hoverText = "Enable this screen's own temporal exposure. With it off, the screen shows its delayed sharp picture; it still shares the single decoder.") { view.accumulationMix = if (it) 1f else 0f }.also { h -> controlMirrors += { h.set(view.accumulationMix > 0f) } }

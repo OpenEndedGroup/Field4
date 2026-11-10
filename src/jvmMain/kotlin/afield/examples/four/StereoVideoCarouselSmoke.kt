@@ -45,6 +45,8 @@ object StereoVideoCarouselSmoke {
         val window = Window("Shared stereo carousel regression")
         val renderer = Renderer(window)
         val stereo = MultiviewStereoTarget(renderer, 1024, 64, withDepth = false)
+        stereo.stereoCamera.base.at.set(0f, 0f, 0f)
+        stereo.stereoCamera.base.target.set(0f, 0f, -1f)
         val carousel = StereoVideoCarousel(renderer, stereo)
         try {
             check(carousel.load(file.toString())) { carousel.source.error ?: "Cannot load fixture" }
@@ -79,12 +81,15 @@ object StereoVideoCarouselSmoke {
                 while (!condition() && System.nanoTime() < limit) frame()
                 check(condition()) { "Carousel timed out" }
             }
-            fun read(screen: Int): FloatArray {
-                modules.forEachIndexed { i, module -> module.current.enabled = i == screen }
+            fun readPixels(): FloatArray {
                 val request = stereo.layered.readPixelsAsync()
                 until { request.isDone }
                 val bytes = ByteBuffer.wrap(request.get()).order(ByteOrder.LITTLE_ENDIAN)
                 return FloatArray(1024) { x -> java.lang.Float.float16ToFloat(bytes.getShort((32 * 1024 + x) * 8)) }
+            }
+            fun read(screen: Int): FloatArray {
+                modules.forEachIndexed { i, module -> module.current.enabled = i == screen }
+                return readPixels()
             }
             carousel.source.seek(0.0)
             until { carousel.surfaces.all { it.hasFrame && it.timestamp == 0.0 } }
@@ -105,6 +110,25 @@ object StereoVideoCarouselSmoke {
                     check(abs(pixels[x] - expected) < .001f) { "Screen $screen pixel $x: ${pixels[x]} vs $expected" }
                 }
             }
+            // Two overlapping test triangles carry actual, differently delayed movie pictures.
+            // Sorting must follow the current plane locations, rather than persistent screen indices.
+            modules.forEachIndexed { i, module -> module.current.enabled = i < 2 }
+            carousel.surfaces[0].apply { placement.center.set(0f, 0f, -2f); opacity = .25f }
+            carousel.surfaces[1].placement.center.set(0f, 0f, -4f)
+            frame()
+            val overlap = readPixels()
+            for (x in 0..1023) check(abs(overlap[x] - (.25f * original[1023 - x] + .75f * original[x])) < .002f) {
+                "Back-to-front blend failed at $x: actual=${overlap[x]}, expected=${.25f * original[1023 - x] + .75f * original[x]}, order=${stereo.layered.modules.keys}, view=${stereo.eyeViewMatrix(0)}"
+            }
+            carousel.surfaces[0].placement.center.z = -5f
+            carousel.surfaces[1].apply { placement.center.z = -1f; opacity = .5f }
+            frame()
+            val reversed = readPixels()
+            for (x in 0..1023) check(abs(reversed[x] - (.125f * original[1023 - x] + .5f * original[x])) < .002f) {
+                "Moved planes retained their previous painter order at $x"
+            }
+            carousel.surfaces.forEach { it.opacity = 1f }
+            carousel.layout()
             val samples = carousel.surfaces.map { it.accumulationSamples }
             repeat(8) { frame() }
             check(carousel.surfaces.map { it.accumulationSamples } == samples) { "Held delayed input accumulated repeatedly" }

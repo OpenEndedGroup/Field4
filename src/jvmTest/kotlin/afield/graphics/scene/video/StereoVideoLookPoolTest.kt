@@ -5,7 +5,7 @@ import kotlin.test.*
 
 class StereoVideoLookPoolTest {
     private val slow = StereoVideoLook(1f, .48, 1.06, true, 12.0, 11.7f, .68f, .245f)
-    private val sharp = StereoVideoLook(0f, .1, .5, false, 6.0, 0f, 0f, 0f)
+    private val sharp = StereoVideoLook(0f, .1, .5, false, 6.0, 0f, 0f, 0f, opacity = .3f)
 
     @Test fun capturesOneScreenAndRecallsAnySubsetWithOptionalSharedSpeed() {
         val directory = Files.createTempDirectory("field-screen-looks")
