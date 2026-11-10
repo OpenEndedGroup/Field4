@@ -327,6 +327,27 @@ step (the textbook `4/3` is the constant-*diameter* form); and enclosed area mat
 `9^n · A₀ · (1 + 3/5(1 − (4/9)^n))` to `3e-8` relative. That last floor is `FLine`'s single-precision
 coordinate storage, not the maths.
 
+### Self-organizing trees — `alife_tree_growth.kt`
+
+Palubicki et al. 2009 in 2-D, after Chema Guerra's "Growing trees" (brashandplucky.com, 2026-10-15).
+Choices the method leaves open, and what fixed them:
+
+- **Shadow constants.** The first defaults (`a = 1`, `b = 2`, one cell per metamer) put a vertical
+  stack of buds at zero light by season 3, so every tree starved and shed itself to a stub. The
+  defaults are now `a = 0.2`, `b = 1.6`, depth 8, and `α = 3`; mean bud light at season 30 is still
+  only ~0.09, which is what the light view should show (a lit rim over a dark crown).
+- **Light direction.** Picking "the least-shaded cell" with ties broken by sample order leaned every
+  tree left in open sky. It is now the light-weighted mean direction over the cone, which is the
+  heading itself when nothing is shaded.
+- **λ and crown shape**, seed 4, 30 seasons: λ 0.44 → 78 wide × 79 tall, 0.50 → 63 × 81,
+  0.56 → 49 × 90, 0.62 → 35 × 90 (the grid is 100 tall, so the leaders stop at its top).
+  `TreeGrowthTest.apicalControlMovesTheForm` and the gallery's `tree-growth` stage pin the ordering.
+- **Conservation.** At λ = 0 or 1 the weighted Borchert–Honda denominator can vanish while one side
+  still has light; the split then falls back to following light, so the worst error over λ ∈ {0 … 1}
+  stays ~1e-15 (`resourceIsConservedEverySeason`).
+- `measure()` runs again after growth and shedding, so `render()` shows the tree as it now stands;
+  before that, every new tip drew with zero light.
+
 ## One program per agent — `alife_script.kt`
 
 Every other system in this family advances a whole population with one call and one parameter block:
