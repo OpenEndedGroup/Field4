@@ -2505,9 +2505,7 @@ operations:
                                 Instruments*](https://archive.org/details/physicsofmusical0000flet) (Springer, 1991):
                                 strings, plates, pipes and rooms in depth.
                               - Julius O. Smith III, [*Physical Audio Signal Processing*](https://ccrma.stanford.edu/~jos/pasp/),
-                                free online: from waves on strings to digital models of them.
-                          """
-                                  .md
+                                free online: from waves on strings to digital models of them.""".md
                               p(classes = "muted") {
                                   +"After “Sound” by Bartosz Ciechanowski, https://ciechanow.ski/sound/. Words and figures made in Field."
                               }
