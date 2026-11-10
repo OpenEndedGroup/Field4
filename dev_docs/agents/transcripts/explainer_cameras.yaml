@@ -32,9 +32,9 @@ operations:
               val counts = light.photons(perSecond * time, seed = 3)
               display("sensor", PngEncoder.encode(counts.toArgb(exposure = 1 / full, scale = 10), 480, 320))
               val sky = 4000.0 * time
-              display(
+              markdown(
                   "readout",
-                  "<p style='opacity:.8'>open ${time.f3} s: about ${sky.f0} photons on a detector facing the sky, which holds ${full.toInt()}</p>",
+                  "open ${time.f3} s: about ${sky.f0} photons on a detector facing the sky, which holds ${full.toInt()}",
               )
           }
 
@@ -249,10 +249,7 @@ operations:
                   interactive = false,
               )
               val degrees = 2 * atan(0.5 / distance) * 180 / PI
-              display(
-                  "readout",
-                  "<p style='opacity:.8'>sensor ${distance.f2} behind the hole: a view ${degrees.f0}° wide</p>",
-              )
+              markdown("readout", "sensor ${distance.f2} behind the hole: a view ${degrees.f0}° wide")
           }
 
           draw()
@@ -326,10 +323,7 @@ operations:
                   interactive = false,
               )
               val edge = image[0, 10, 0] / image.reference
-              display(
-                  "readout",
-                  "<p style='opacity:.8'>the edge of the sensor gets ${(100 * edge).f0}% of the light the middle gets</p>",
-              )
+              markdown("readout", "the edge of the sensor gets ${(100 * edge).f0}% of the light the middle gets")
           }
 
           draw()
@@ -399,10 +393,7 @@ operations:
               )
               // How far apart the two parallel paths are, measured square to them.
               val shift = slab * sin(theta - inside) / cos(inside)
-              display(
-                  "readout",
-                  "<p style='opacity:.8'>slab ${slab.f2} thick: the ray comes out shifted ${shift.f2} sideways</p>",
-              )
+              markdown("readout", "slab ${slab.f2} thick: the ray comes out shifted ${shift.f2} sideways")
           }
 
           draw()
@@ -560,12 +551,8 @@ operations:
                   interactive = false,
               )
               val crossing =
-                  if (turned.isNaN()) "none crosses: total internal reflection"
-                  else "crosses at ${(turned * 180 / PI).f1}°"
-              display(
-                  "readout",
-                  "<p style='opacity:.8'>arrives at ${angle.f1}°, ${(100 * reflected).f0}% reflects, $crossing</p>",
-              )
+                  if (turned.isNaN()) "none crosses: total internal reflection" else "crosses at ${(turned * 180 / PI).f1}°"
+              markdown("readout", "arrives at ${angle.f1}°, ${(100 * reflected).f0}% reflects, $crossing")
           }
 
           draw()
@@ -737,12 +724,8 @@ operations:
                   window = Rect(0.0, 0.0, 640.0, 360.0),
                   interactive = false,
               )
-              val where =
-                  if (image > 0) "a sharp image ${image.f2} behind the lens" else "no image: the rays spread apart"
-              display(
-                  "readout",
-                  "<p style='opacity:.8'>focal length ${focal.f1}, source ${source.f1} in front: $where</p>",
-              )
+              val where = if (image > 0) "a sharp image ${image.f2} behind the lens" else "no image: the rays spread apart"
+              markdown("readout", "focal length ${focal.f1}, source ${source.f1} in front: $where")
           }
 
           draw()
@@ -777,9 +760,9 @@ operations:
               val camera = SensorCamera(z = -4.5, sensorDistance = sensor, apertureDiameter = aperture, focalLength = focal)
               val image = camera.render(scene, 120, 80, samples = 96)
               display("sensor", PngEncoder.encode(image.toArgb(scale = 5), 600, 400))
-              display(
+              markdown(
                   "readout",
-                  "<p style='opacity:.8'>f/${(focal / aperture).f1}, sensor ${sensor.f3} behind the lens, sharp at ${focus.f1} in front</p>",
+                  "f/${(focal / aperture).f1}, sensor ${sensor.f3} behind the lens, sharp at ${focus.f1} in front",
               )
           }
 
@@ -936,10 +919,7 @@ operations:
                   interactive = false,
               )
               val farText = if (far.isInfinite()) "to infinity" else "to ${far.f2}"
-              display(
-                  "readout",
-                  "<p style='opacity:.8'>f/${(focal / aperture).f1}, focused at ${focus.f2}: sharp from ${near.f2} $farText</p>",
-              )
+              markdown("readout", "f/${(focal / aperture).f1}, focused at ${focus.f2}: sharp from ${near.f2} $farText")
           }
 
           draw()
@@ -996,9 +976,9 @@ operations:
                   "<span style='display:inline-block;width:75px;text-align:center;${if (k == chosen) "color:#ff9933" else ""}'>f/$s</span>"
               }
               val share = "1/${1 shl chosen}"
-              display(
+              markdown(
                   "readout",
-                  "<div style='width:600px'>${labels.joinToString("")}<p style='opacity:.8'>f/${stops[chosen]} lets in $share of the light of f/1.4</p></div>",
+                  "<div style='width:600px'>${labels.joinToString("")}</div>\n\nf/${stops[chosen]} lets in $share of the light of f/1.4",
               )
           }
 
@@ -1680,6 +1660,7 @@ operations:
                       }
                   }
               }
+              .arrangeBoxes()
               .present()
   - execute:
       box: ec_deck
