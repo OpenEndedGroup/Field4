@@ -73,3 +73,17 @@ data class PresentationState(
     val checkpoint: String = "",
     val searchTexts: List<String> = emptyList()
 )
+
+/**
+ * Arrange Boxes by Presentation: the server's request to a canvas client to put [boxes] (uids, in
+ * slide order) in one row from where the first one is, each box after the previous one's footprint
+ * (its frame and every open output panel) plus [gap] world units, every frame at the first one's y.
+ * Only a client knows how big those panels are drawn. After the first box (the Presentation box)
+ * the gap is [leadGap]: the presenter's notes appear beside that box, and must not cover a figure.
+ */
+@Serializable
+data class ArrangeBoxesRequest(val id: String, val boxes: List<String>, val gap: Double = 80.0, val leadGap: Double = 440.0)
+
+/** A client's answer to an [ArrangeBoxesRequest]: the frames to give the boxes. */
+@Serializable
+data class ArrangeBoxesResult(val id: String, val frames: List<Set_rect>)

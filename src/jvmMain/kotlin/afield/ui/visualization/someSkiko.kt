@@ -105,18 +105,21 @@ fun linesToHTML(
     w: Double = -1.0,
     h: Double = -1.0,
     fitToSize: Boolean = false,
-): String {
+): String = linesToHTML(lines, w, h, fitToSize, frame = null)
+
+/** [linesToHTML] framed on [frame] (source coordinates) rather than on these lines' own bounds. */
+internal fun linesToHTML(lines: List<FLine>, w: Double, h: Double, fitToSize: Boolean, frame: afield.app.protocol.Rect?): String {
     val renderable = lines.renderableLines()
-    val fit = computeFitTransform(renderable, w, h, fitToSize)
+    val fit = computeFitTransform(renderable, w, h, fitToSize, frame)
     return if (renderable.any { it.onClick != null || it.hoverColor != null }) {
         val pairs = renderable.map { it to it.applyFit(fit) }
         wrapLinesOutput(
             buildInteractiveSVG(pairs, w, h, fit),
-            pairs.map { it.second }.combinedRenderableBoundsOrNull()
+            frame?.let { framedBounds(it, fit, w, h, keepOrigin = true) } ?: pairs.map { it.second }.combinedRenderableBoundsOrNull()
         )
     } else {
         val scaled = renderable.map { it.applyFit(fit) }
-        wrapLinesOutput(drawToSVG(scaled, w, h), renderedSvgBoundsFor(scaled, w, h))
+        wrapLinesOutput(drawToSVG(scaled, w, h), frame?.let { framedBounds(it, fit, w, h) } ?: renderedSvgBoundsFor(scaled, w, h))
     }
 }
 
@@ -143,17 +146,19 @@ fun Box.lines(
     editable: Boolean = false,
     drawing: Boolean = false,
     liveDrawing: Boolean = false,
+    framing: LinesFraming = LinesFraming.Auto,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
 ): EditableFLineViewState? {
     val lines = m.asList().renderableLines()
+    val frame = linesFrame(channel, lines, framing)
     if (editable) {
-        val fit = computeFitTransform(lines, w, h, fitToSize)
+        val fit = computeFitTransform(lines, w, h, fitToSize, frame)
         val pairs = lines.map { it to it.applyFit(fit) }
         val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing, onEditCommitted = onEditCommitted)
         display(channel, widget.html)
         return widget.viewState
     }
-    display(channel, linesToHTML(lines, w, h, fitToSize))
+    display(channel, linesToHTML(lines, w, h, fitToSize, frame))
     return null
 }
 
@@ -180,17 +185,19 @@ fun Box.lines(
     editable: Boolean = false,
     drawing: Boolean = false,
     liveDrawing: Boolean = false,
+    framing: LinesFraming = LinesFraming.Auto,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
 ): EditableFLineViewState? {
     val lines = m.renderableLines()
+    val frame = linesFrame(channel, lines, framing)
     if (editable) {
-        val fit = computeFitTransform(lines, w, h, fitToSize)
+        val fit = computeFitTransform(lines, w, h, fitToSize, frame)
         val pairs = lines.map { it to it.applyFit(fit) }
         val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing, onEditCommitted = onEditCommitted)
         display(channel, widget.html)
         return widget.viewState
     }
-    display(channel, linesToHTML(lines, w, h, fitToSize))
+    display(channel, linesToHTML(lines, w, h, fitToSize, frame))
     return null
 }
 
@@ -216,11 +223,14 @@ fun Box.lines(
     editable: Boolean = false,
     drawing: Boolean = false,
     liveDrawing: Boolean = false,
+    framing: LinesFraming = LinesFraming.Auto,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
 ): Map<String, EditableFLineViewState> {
     val filteredLinesByChannel = linesByChannel.mapValues { (_, lines) -> lines.renderableLines() }
     val allLines = filteredLinesByChannel.values.flatten()
-    val fit = computeFitTransform(allLines, w, h, fitToSize)
+    // One framing for the whole map, so split channels keep the same scale as each other.
+    val frame = linesFrame(if (splitByChannel) linesByChannel.keys.joinToString("\u0000") else channel, allLines, framing)
+    val fit = computeFitTransform(allLines, w, h, fitToSize, frame)
     val states = linkedMapOf<String, EditableFLineViewState>()
     if (splitByChannel) {
         filteredLinesByChannel.forEach { (channelName, lines) ->
@@ -232,10 +242,11 @@ fun Box.lines(
                 states[channelName] = widget.viewState
             } else if (hasInteractive) {
                 val pairs = lines.map { it to it.applyFit(fit) }
-                display(channelName, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit), pairs.map { it.second }.combinedRenderableBoundsOrNull()))
+                display(channelName, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit),
+                    frame?.let { framedBounds(it, fit, w, h, keepOrigin = true) } ?: pairs.map { it.second }.combinedRenderableBoundsOrNull()))
             } else {
                 val scaled = lines.map { it.applyFit(fit) }
-                display(channelName, wrapLinesOutput(drawToSVG(scaled, w, h), renderedSvgBoundsFor(scaled, w, h)))
+                display(channelName, wrapLinesOutput(drawToSVG(scaled, w, h), frame?.let { framedBounds(it, fit, w, h) } ?: renderedSvgBoundsFor(scaled, w, h)))
             }
         }
     } else {
@@ -247,10 +258,11 @@ fun Box.lines(
             states[channel] = widget.viewState
         } else if (hasInteractive) {
             val pairs = allLines.map { it to it.applyFit(fit) }
-            display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit), pairs.map { it.second }.combinedRenderableBoundsOrNull()))
+            display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit),
+                frame?.let { framedBounds(it, fit, w, h, keepOrigin = true) } ?: pairs.map { it.second }.combinedRenderableBoundsOrNull()))
         } else {
             val scaled = allLines.map { it.applyFit(fit) }
-            display(channel, wrapLinesOutput(drawToSVG(scaled, w, h), renderedSvgBoundsFor(scaled, w, h)))
+            display(channel, wrapLinesOutput(drawToSVG(scaled, w, h), frame?.let { framedBounds(it, fit, w, h) } ?: renderedSvgBoundsFor(scaled, w, h)))
         }
     }
     return states
@@ -303,6 +315,85 @@ private fun renderedSvgBoundsFor(lines: Collection<FLine>, w: Double, h: Double)
         bounds.w,
         bounds.h
     )
+}
+
+/**
+ * The bounds a held or fixed [frame] (source coordinates) occupies in the drawn SVG: through [fit]
+ * when there is one, and with the same origin rule as [renderedSvgBoundsFor] (an axis drawn at its
+ * content's own size starts at zero). [keepOrigin] is the interactive SVG's rule, which never moves
+ * its geometry.
+ */
+private fun framedBounds(
+    frame: afield.app.protocol.Rect, fit: FitTransform?, w: Double, h: Double, keepOrigin: Boolean = false
+): afield.app.protocol.Rect {
+    val s = fit?.scale?.toDouble() ?: 1.0
+    val x = if (fit == null) frame.x else (frame.x + fit.offsetX) * s
+    val y = if (fit == null) frame.y else (frame.y + fit.offsetY) * s
+    return afield.app.protocol.Rect(
+        if (!keepOrigin && w <= 0.0) 0.0 else x,
+        if (!keepOrigin && h <= 0.0) 0.0 else y,
+        frame.w * s,
+        frame.h * s
+    )
+}
+
+/**
+ * How a `lines(...)` output is framed in its panel from one display to the next.
+ *
+ * The viewer fits each display to a rectangle: by default the bounds of the lines just drawn. For a
+ * static drawing that is right, but an animation redrawn every frame is then refitted every frame,
+ * so anything moving near the edge rescales and shifts the whole picture.
+ *
+ * - [Auto], the default: a display from an animation (code running on the Runloop, as `loop { }` and
+ *   `frames { }` bodies do) keeps the framing of the box's last display on that channel in this run;
+ *   any other display (the box's own run, a slider callback) fits its own lines, as before.
+ * - [Fit] fits every display to its own lines.
+ * - [Hold] fits the first display of a run and keeps that framing until the box runs again or stops.
+ * - [fixed] frames every display on a rectangle you give, in the lines' own coordinates.
+ */
+sealed interface LinesFraming {
+    data object Auto : LinesFraming
+    data object Fit : LinesFraming
+    data object Hold : LinesFraming
+    data class Fixed(val x: Double, val y: Double, val w: Double, val h: Double) : LinesFraming {
+        init { require(listOf(x, y, w, h).all { it.isFinite() } && w > 0 && h > 0) { "A fixed frame needs a finite, positive size" } }
+    }
+
+    companion object {
+        /** Frame every display on `x, y, w, h`, in the lines' own coordinates. */
+        fun fixed(x: Double, y: Double, w: Double, h: Double): LinesFraming = Fixed(x, y, w, h)
+    }
+}
+
+/** True while a display comes from an animation; the Runloop thread runs `loop { }` and `frames { }`. Tests replace it. */
+internal var linesDisplayIsAnimation: () -> Boolean = { afield.runtime.lifecycle.Runloop.isMainThread }
+
+private data class HeldLinesFrame(val launchEpoch: Int, val bounds: afield.app.protocol.Rect)
+
+private val heldLinesFrames = java.util.WeakHashMap<Box, MutableMap<String, HeldLinesFrame>>()
+
+/**
+ * The frame this display of [channel] is drawn on, or null to fit the lines' own bounds. A held
+ * frame belongs to one launch of the box: stopping it (and so relaunching it, or a presentation's
+ * Reset: figures) moves `launchEpoch` on, and the next display frames itself afresh.
+ */
+internal fun Box.linesFrame(channel: String, lines: Collection<FLine>, framing: LinesFraming): afield.app.protocol.Rect? {
+    if (framing is LinesFraming.Fixed) return afield.app.protocol.Rect(framing.x, framing.y, framing.w, framing.h)
+    val content = lines.combinedRenderableBoundsOrNull() ?: return null
+    val epoch = launchEpoch.get()
+    synchronized(heldLinesFrames) {
+        val held = heldLinesFrames.getOrPut(this) { HashMap() }
+        val current = held[channel]?.takeIf { it.launchEpoch == epoch }?.bounds
+        val hold = when (framing) {
+            LinesFraming.Hold -> true
+            LinesFraming.Auto -> linesDisplayIsAnimation()
+            else -> false
+        }
+        if (hold && current != null) return current
+        held[channel] = HeldLinesFrame(epoch, content)
+        // The first held display, and every display that fits itself, draw exactly as before.
+        return if (hold) content else null
+    }
 }
 
 /**
@@ -387,12 +478,14 @@ fun drawToSVG(n: List<FLine>, w: Double = -1.0, h: Double = -1.0): String {
 
 internal data class FitTransform(val scale: Float, val offsetX: Float, val offsetY: Float)
 
-private fun computeFitTransform(lines: Collection<FLine>, w: Double, h: Double, enabled: Boolean): FitTransform? {
+private fun computeFitTransform(
+    lines: Collection<FLine>, w: Double, h: Double, enabled: Boolean, frame: afield.app.protocol.Rect? = null
+): FitTransform? {
     if (!enabled) return null
     if (lines.isEmpty()) return null
     if (w <= 0.0 || h <= 0.0) return null
 
-    val bounds = lines.combinedRenderableBoundsOrNull() ?: return null
+    val bounds = frame ?: lines.combinedRenderableBoundsOrNull() ?: return null
     if (bounds.w <= 0f || bounds.h <= 0f) return null
 
     val safety = 20f

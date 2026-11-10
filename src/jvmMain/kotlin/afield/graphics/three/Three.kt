@@ -18,6 +18,7 @@ import afield.ui.visualization.lines
 import afield.document.graph.Box
 import afield.geometry.mesh.MeshView
 import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.boxMesh
 import afield.math.linalg.Vec3
 import afield.math.linalg.Vec4
 import afield.geometry.mesh.boundsArray
@@ -220,6 +221,22 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     ) {
         camera = ThreeCameraSpec(yaw, pitch, distance, fieldOfView, padding, upAxis, follow)
         autoFrame = false
+    }
+
+    /**
+     * Fit the camera to the box from [min] to [max] instead of to what is drawn.
+     *
+     * The viewer frames its first view on the meshes in the scene. A figure whose content grows or
+     * moves with a slider (a lamp that gets bigger, a dome of lights that fills in) would otherwise be
+     * framed on whatever its first frame happened to hold. This adds an invisible box of that size,
+     * which the camera fits and nothing else sees: it draws no pixels, writes no depth and cannot be
+     * picked.
+     */
+    fun fitTo(min: Vec3, max: Vec3, panel: Int? = null) {
+        require(min.x <= max.x && min.y <= max.y && min.z <= max.z) { "fitTo needs min <= max on every axis, got $min and $max" }
+        val box = boxMesh(max.x - min.x, max.y - min.y, max.z - min.z)
+            .translated((min.x + max.x) / 2, (min.y + max.y) / 2, (min.z + max.z) / 2)
+        mesh(box, wireframe = false, opacity = 0.0, panel = panel, id = "fitTo")
     }
 
     /** The camera as a [MeshView] already describes it — the migration path for existing figures. */

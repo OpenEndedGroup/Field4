@@ -3636,6 +3636,25 @@ class Server {
                 Handled.yes
             })
 
+            // Arrange Boxes by Presentation (palette): lay the document out by the talk's sections.
+            // The server knows the order, the client the size of every output panel; see
+            // afield.ui.slides.PresentationArrangement.
+            handlers["arrange-by-presentation"] = mutableSetOf({ _, _ ->
+                val info = thisSessionInfo.get()
+                val shows = info.boxes.values.mapNotNull { it.getPropertyRaw("slideShow") as? SlideShowInstance }
+                    .filter { it.presentationOptions != null }
+                val show = SlideShowInstance.activeIn(info.root)?.takeIf { it in shows } ?: shows.firstOrNull()
+                if (show == null) notify("Run the Presentation box first: its talk decides the order", "layout")
+                else GlobalScope.launch { afield.ui.slides.PresentationArrangement.arrange(show) }
+                Handled.yes
+            })
+
+            handlers["arrange-boxes-result"] = mutableSetOf({ message, _ ->
+                afield.ui.slides.PresentationArrangement.complete(
+                    Json.decodeFromJsonElement<afield.app.protocol.ArrangeBoxesResult>(message.payload!!))
+                Handled.yes
+            })
+
             handlers["controller-selection"] = mutableSetOf({ message, reply ->
                 val selection = Json.decodeFromJsonElement<ControllerSelectionState>(message.payload!!)
                 recordControllerSelection(thisSessionInfo.get(), selection)

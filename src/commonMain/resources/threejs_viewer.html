@@ -635,10 +635,21 @@ window.addEventListener('pagehide', () => { pageActive = false; renderScheduler.
 window.addEventListener('pageshow', () => { pageActive = true; renderScheduler.visibilityChanged(); });
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+// How much larger than its layout size this viewer's frame is drawn: a zoomed canvas or a
+// presentation figure scales the frame with a transform, and a canvas sized for the layout size
+// would be magnified and blur. Capped so a deep zoom cannot ask for an enormous canvas.
+function frameScale() {
+    try {
+        const frame = window.frameElement;
+        if (!frame || !(frame.offsetWidth > 0)) return 1;
+        const scale = frame.getBoundingClientRect().width / frame.offsetWidth;
+        return Number.isFinite(scale) && scale > 1 ? Math.min(scale, 3) : 1;
+    } catch (_) { return 1; }
+}
 function getDpr() {
     const override = parseFloat(urlParams.get('dpr'));
     if (Number.isFinite(override) && override > 0) return override;
-    return Math.max(2, window.devicePixelRatio || 1);
+    return Math.max(2, window.devicePixelRatio || 1) * frameScale();
 }
 renderer.setPixelRatio(getDpr());
 renderer.setSize(container.clientWidth, container.clientHeight);

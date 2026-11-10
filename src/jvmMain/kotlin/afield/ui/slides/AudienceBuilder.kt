@@ -54,6 +54,20 @@ class AudienceBuilder internal constructor(
         }
     }
 
+    /**
+     * A live figure: the output of the box called [name] fills this slot on the audience display.
+     *
+     * [channels] shows only those output channels (empty shows all of them). By default the slot
+     * takes the room its container leaves, so a slide that is only a figure runs nearly full-bleed
+     * and a heading above it takes what it needs; [height], in the 1920 × 1080 slide frame, pins it.
+     * Its width is that of its container. A [caption] is plain text beneath it. The box is looked up
+     * by name when the slide is attached to a step, so a typo fails the Presentation box rather than
+     * showing an empty slot. A member, so that it wins over kotlinx.html's own `figure` when box code
+     * imports `kotlinx.html.*`.
+     */
+    fun figure(name: String, vararg channels: String, height: Int? = null, caption: String = "") =
+        writeFigure(name, channels, height, caption)
+
     /** Fade this text, image or group in on forward entry; Back shows its completed state. */
     fun fadeIn(durationMs: Int = 350, delayMs: Int = 0, block: AudienceBuilder.() -> Unit) {
         require(durationMs in 0..10_000 && delayMs in 0..60_000) { "Use a fade of 0–10000 ms and a delay of 0–60000 ms" }

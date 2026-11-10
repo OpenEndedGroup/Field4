@@ -284,8 +284,11 @@ a cue moves a control). Nothing here changes the deck format.
   `COMPILE_ONLY` in `DemoTranscriptExecSmokeTest`, since decks open Electron windows and most play sound).
 - **Boxes:** one `deck` box holding the `presentation { }`, and one box per figure, named with the
   figure-table name (`snake_case`, unique in the document). Stable ids `es_` (sound), `ec_`
-  (cameras), `el_` (lights) plus the name. Lay figure boxes out on the canvas in slide order, in a
-  grid to the right of `deck`, so the document reads as a table of contents.
+  (cameras), `el_` (lights) plus the name. End the deck with `.arrangeBoxes().present()`: running
+  `deck` puts it and every figure box in one row in slide order, each clear of the previous one's
+  output panels (**Arrange Boxes by Presentation**, `PresentationArrangement.kt`). The frames in
+  the transcript are only where boxes start: a grid of 160 × 50 frames whose outputs are 640 px
+  wide piles the outputs on top of one another.
 - **Sections** follow the essay's section order, `section("Air") { ... }`, with step ids in
   `kebab-case` that stay stable across edits.
 - **First slide:** the title, two or three sentences of our own on what the talk covers, and the
@@ -300,6 +303,12 @@ a cue moves a control). Nothing here changes the deck format.
   orange `vec(1.0, 0.6, 0.2, 1.0)` for a second, white at 35 % alpha for guides. Sliders are named
   for the quantity in plain words (`frequency`, not `f`). Put controls in the `controls` channel and
   the picture in a named channel (`wave`, `scene`, `side`).
+- **Readouts** are `markdown("readout", "text with **numbers**")`, never HTML with inline styles:
+  the figure view sets readouts in Iosevka at its own size. Figure views force Iosevka on
+  everything anyway (`tools/test_presentation_fonts.py` keeps sans-serif out of the path).
+- **Animations** that redraw `lines(...)` in `loop { }` keep the first frame's framing by default
+  (`LinesFraming.Auto`); give `LinesFraming.fixed(x, y, w, h)` when the extent is known. No
+  invisible framing lines.
 - **Sound** never starts by itself. A figure that sounds has a `sound` checkbox (or hold buttons)
   and gain 0 until the reader or a cue (`control("x", "sound", true)`) turns it on. Every step that
   shows a sounding figure and should be silent declares `control("x", "sound", false)`, so Back is

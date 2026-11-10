@@ -15,9 +15,11 @@ import org.w3c.dom.url.URLSearchParams
  *
  * The page is an ordinary Field client of the document, so the output is the real one: its scripts
  * run, its sliders send their updates, and output replay fills it on attach. The box element is moved
- * into a fixed host above the canvas (Field reparents boxes between panes in the same way), its chrome
- * and channel headers are hidden, and a CSS scale fits its natural size to the window, overflow included
- * (`figureFitZoom`). Nothing else
+ * into a fixed host above the canvas (Field reparents boxes between panes in the same way), its chrome,
+ * channel headers, panel borders and resize grips are hidden (`field.css`), and a scale transform
+ * fits its natural size, overflow included (`figureFitZoom`), to the window. A transform, as the
+ * canvas's zoom is, because Field's panel auto-sizing measures through one correctly; a three.js
+ * viewer inside it renders at its frame's on-screen scale once told to resize. Nothing else
  * of the document is visible or reachable, and this client never sends its viewport, so a figure
  * cannot change what `Box.viewport` reports to box code.
  */
@@ -53,15 +55,32 @@ internal fun installFigureMode(params: URLSearchParams) {
             disclosure.classList.toggle("field-figure-hidden", !shown)
             if (shown && inter != null && inter.isOpen(id) != true) inter.open(id)
         }
+        // Controls take the width of the widest picture (a drawing, a 3D view, an image) above them.
+        val pictureWidth = group.querySelectorAll(".disclosure:not(.field-figure-hidden) > .disclosure-content").asList()
+            .map { it as HTMLElement }
+            .filter { it.querySelector(".afield-lines-output-shell, iframe, img, canvas, video") != null && it.querySelector(".control-group") == null }
+            .maxOfOrNull { it.offsetWidth } ?: 480
+        if (host.style.getPropertyValue("--field-figure-width") != "${pictureWidth}px") host.style.setProperty("--field-figure-width", "${pictureWidth}px")
         val area = box.querySelector(".outputArea") as? HTMLElement ?: return
+        // Content wider than the area (an editable drawing) overflows to the right; widening the box
+        // to it keeps the whole figure centred. Measured afresh each time, so it can shrink again.
+        box.style.removeProperty("min-width")
+        if (area.scrollWidth > area.offsetWidth) box.style.setProperty("min-width", "${area.scrollWidth}px", "important")
+        // The scale is a transform, so offset and scroll sizes are the area's own layout size,
+        // overflow included (figureFitZoom).
+        val applied = host.style.getPropertyValue("--field-figure-zoom").toDoubleOrNull() ?: 1.0
         val zoom = afield.app.protocol.figureFitZoom(
             area.offsetWidth.toDouble(), area.offsetHeight.toDouble(),
             area.scrollWidth.toDouble(), area.scrollHeight.toDouble(),
             window.innerWidth.toDouble(), window.innerHeight.toDouble()
         ) ?: return
-        val current = host.style.getPropertyValue("--field-figure-zoom").toDoubleOrNull()
-        if (current == null || kotlin.math.abs(current - zoom) > 0.002) {
+        if (kotlin.math.abs(applied - zoom) > 0.002 * zoom) {
             host.style.setProperty("--field-figure-zoom", zoom.asDynamic().toFixed(4) as String)
+            // A three.js viewer scales its pixel ratio by its frame's on-screen size, but sizes its
+            // canvas only on resize: tell it, so it re-renders sharp at the new scale.
+            box.querySelectorAll("iframe").asList().forEach { frame ->
+                runCatching { (frame as org.w3c.dom.HTMLIFrameElement).contentWindow?.dispatchEvent(org.w3c.dom.events.Event("resize")) }
+            }
         }
     }
 

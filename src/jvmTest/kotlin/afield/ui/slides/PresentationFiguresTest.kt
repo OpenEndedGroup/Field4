@@ -4,6 +4,7 @@ import afield.document.graph.Box
 import afield.ui.output.controlGroup
 import afield.ui.output.setControl
 import kotlinx.coroutines.runBlocking
+import kotlinx.html.*
 import kotlin.test.*
 
 class PresentationFiguresTest {
@@ -174,6 +175,18 @@ class PresentationFiguresTest {
         assertEquals(220.0, afield.ui.output.controllerControlsForBox(tone.id).single().value,
             "after a reset the figure starts at its initial value")
         assertTrue(runner.relaunched >= 1)
+    }
+
+    @Test fun figureIsTheLiveFigureEvenWithKotlinxHtmlImported() = runBlocking {
+        // kotlinx.html has its own figure(classes) builder; box code imports kotlinx.html.*, and a
+        // slide written `figure("tone")` once silently became an empty <figure class="tone">.
+        val (host, figures) = deck("tone")
+        val show = host.presentation { step("Bleed") { audience { +"## A heading".md; figure("tone") } } }
+        show.figureStage.runner = FakeRunner(figures)
+        show.command("start")
+        val content = show.presentationState()!!.content!!
+        assertEquals(figures[0].id, content.figures.single().box)
+        assertTrue("field-live-figure" in content.html && "class=\"tone\"" !in content.html)
     }
 
     @Test fun aRevealOverAFigureKeepsItLive() = runBlocking {
