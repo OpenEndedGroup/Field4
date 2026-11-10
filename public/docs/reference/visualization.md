@@ -4843,7 +4843,8 @@ Marks, axes, and the claims made about them.
 A checkbox drawn in the editor that re-runs one block of a box without re-running the box.
 
 `flipbox` extends [`Marker`](workspace.md#stdlib-graph-kt-marker), so it is reached through a marker uid in the source
-(`__m("aVq3x-k2").flipbox(true) { … }`), and the checkbox is drawn at that call: over a bare
+(`__m("aVq3x-k2").flipbox(true) { … }`; the editor's Cmd+Shift+. inserts one, see
+[markers](../visualizers.md#markers)), and the checkbox is drawn at that call: over a bare
 `true` or `false` argument where there is one, and before the call otherwise.
 
 The rest of the file is that decoration. A [`RawDecoration`](visualization.md#decorations-kt-rawdecoration) carries the glyph, its hover colour
@@ -4859,7 +4860,7 @@ It belongs with the other marker decorations in `decorations.kt` (`toggle`, `bee
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="flipbox-kt--flipbox"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Marker</span><span class="p">.</span><span class="nf">flipbox</span><span class="p">(</span><span class="n">initial</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ui/visualization/flipbox/#L71) | A block with a checkbox drawn in the editor over its argument: it runs when the box evaluates with the box ticked, and you tick it to run the block again. Each evaluation unticks it. |
+| <a id="flipbox-kt--flipbox"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Marker</span><span class="p">.</span><span class="nf">flipbox</span><span class="p">(</span><span class="n">initial</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ui/visualization/flipbox/#L72) | A block with a checkbox drawn in the editor over its argument: it runs when the box evaluates with the box ticked, and you tick it to run the block again. Each evaluation unticks it. |
 
 ## heatmap.kt { #heatmap-kt }
 
