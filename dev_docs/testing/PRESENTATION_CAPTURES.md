@@ -107,6 +107,25 @@ before each capture (macOS does not composite views of a covered window), and wr
 `figure-slide.png`, `figure-glide.png` and `figures.json` with the transcript and image hashes.
 `dev_docs/EXPLAINER_PRESENTATIONS.md` has the full recipe, from starting Field to stopping it.
 
+For a whole deck, `node tools/presentation/capture-deck.mjs <CDP URL> <Electron PID> <output dir> [step ids...]`
+walks the presented talk from its first view to its last with Next and writes one window capture per
+view, `NN-<step id>.png` (`-cueK` for a view a cue reached), plus each figure page on its own as
+`NN-<step id>.figure-<box>.png` and a `views.json`. It waits for every figure page to settle (images
+decoded, no panel clipping its content, the scale unchanged for 1.5 s) and picks the "Field audience"
+window owned by the given PID, since several Electrons may be presenting at once. Several Electrons
+on one screen raise their audience windows over each other, and a covered window gets no animation
+frames: its figure panels stop resizing to new content and its figure views come out black. Start
+the capturing Electron with `--disable-backgrounding-occluded-windows --disable-renderer-backgrounding`
+(after `--remote-debugging-port=<cdp>`) and a covered window keeps drawing, and `screencapture -l`
+sees its figures. A locked screen still blanks them; check `CGSSessionScreenIsLocked` in
+`ioreg -n Root -d1` first.
+
+`node tools/presentation/orbit-figure.mjs <CDP URL> <figure box uid> <output dir> [--then-next]`
+checks a `three` figure on the current slide: it drags across the figure view with CDP mouse input
+and requires the viewer's camera (`FieldViewer.cameraPose()`) to have turned about its target, the
+distance unchanged; with `--then-next` it runs the presenter's Next (a cue that redraws the figure)
+and requires the camera to be kept.
+
 None of these drivers launches or quits Electron. Close the Electron you started (`kill -INT` its
 PID) and stop its Field server when the capture is done, whether or not it passed; Electron
 renames its process to `Field4`, so record the PID when you launch it rather than searching for it

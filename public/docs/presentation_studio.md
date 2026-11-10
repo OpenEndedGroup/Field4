@@ -519,6 +519,9 @@ side in `div(classes = "columns") { ... }`. Name output channels to show only pa
 one box, and a slider in one moves the other. A figure is found by its box name when the
 Presentation box runs, so a name that matches no box, or several, stops the talk with an error.
 
+A `three { ... }` figure can be turned by dragging it on the audience display, as in an output
+panel. When a slider or a cue redraws it, the camera stays where the audience left it.
+
 Next, Previous and a jump in the outline all set the controls a step and its cues declare, in
 order, so going back to a slide puts its figure back as the slide describes it. **Refresh slide**
 leaves the controls where the audience put them. `control(figure, label, true)` ticks a checkbox.
