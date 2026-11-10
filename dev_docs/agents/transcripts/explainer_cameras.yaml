@@ -171,15 +171,17 @@ operations:
                   }
               }
               /*
-              The box and the rays through it are the subject: the view frames the box (at its
-              longest, with the sensor 2.5 back) and the rays' first stretch, not the scene, whose
-              picture is below.
+              The box, the rays through it and the objects they come from: the view frames the box
+              (at its longest, with the sensor 2.5 back) and the two spheres, and lets the floor run
+              off the edges.
               */
               three(channel = "box", height = 320, width = 640) {
+                  mesh(scene.mesh(), wireframe = false)
                   mesh(pinhole.sensorMesh(wall, exposure), wireframe = false, unlit = true, cullBackFaces = false)
                   lines(pinhole.outline() + rays)
-                  fitTo(vec(-1.0, 0.4, -7.6), vec(1.0, 2.0, -3.2))
+                  fitTo(vec(-1.6, 0.0, -7.6), vec(1.6, 2.0, 1.6))
                   camera(yaw = 240.0, pitch = 16.0)
+                  // The scene's bright sky, as in the pictures the camera takes.
                   background("#d8dde3")
               }
               // Smoothed: these pixels stand for a picture, not for detectors.
