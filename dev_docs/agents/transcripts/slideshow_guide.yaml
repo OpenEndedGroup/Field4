@@ -57,9 +57,7 @@ operations:
                       ## A tour of this document
                       This guide has four steps. Each one selects the box it is about.
 
-                      [[next:Start →]]
-                      """
-                          .trimIndent(),
+                      [[next:Start →]]""".trimIndent(),
                       animated = true,
                   )
                   selectBox(guide)
@@ -73,9 +71,7 @@ operations:
                       ## `numbers` makes a list
                       The green line points at it. Visits to this step: **{{visits}}**.
 
-                      [[back]] [[next]]
-                      """
-                          .trimIndent(),
+                      [[back]] [[next]]""".trimIndent(),
                       animated = true,
                   )
                   selectBox(numbersBox)
@@ -87,9 +83,7 @@ operations:
                       ## Line 3 does the work
                       `squares` maps each number to its square.
 
-                      [[back]] [[next]]
-                      """
-                          .trimIndent(),
+                      [[back]] [[next]]""".trimIndent(),
                       animated = true,
                   )
                   selectBox(squaresBox, property = "code", line = 3, highlight = 3)
@@ -107,9 +101,7 @@ operations:
                       ## Your turn
                       [Give this guide a star](#custom:star). Stars so far: **{{stars}}**.
 
-                      [[home:Start again]] [[finish]]
-                      """
-                          .trimIndent(),
+                      [[home:Start again]] [[finish]]""".trimIndent(),
                       animated = true,
                   )
                   linkCallback("star") {

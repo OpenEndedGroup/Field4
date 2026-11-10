@@ -5,9 +5,7 @@ val teachingGuide = slideShow {
             ## A real document on the screen
             The editor shows the source of **Live Field**. Change a sentence and run the box.
 
-            [[next:Next: use the saved macro]]
-            """
-                .trimIndent(),
+            [[next:Next: use the saved macro]]""".trimIndent(),
         )
         selectBoxByName("Live Field", property = "code", line = 1, highlight = 1)
     }
@@ -18,9 +16,7 @@ val teachingGuide = slideShow {
             Press **Run reveal_wave** in the presenter controls. The macro creates and runs a wave box.
             Select **A wave, live**, change `0.17`, and run it again.
 
-            [[back]] [[next]]
-            """
-                .trimIndent(),
+            [[back]] [[next]]""".trimIndent(),
         )
     }
     step("Teach from the working material") {
@@ -30,9 +26,7 @@ val teachingGuide = slideShow {
             This document, its source, this guide, and the macro live in the talk repository.
             Close this guide and advance the presentation cue to return to the talk.
 
-            [[back]] [[finish]]
-            """
-                .trimIndent(),
+            [[back]] [[finish]]""".trimIndent(),
         )
     }
 }

@@ -2924,8 +2924,7 @@ for (i in 0 until 240) {
                 const f = document.querySelector("iframe[src*='score_view']")
                 const s = f && f.contentDocument && f.contentDocument.getElementById("status")
                 return s ? s.textContent : "no score view yet"
-                """
-                    .trimIndent(),
+                """.trimIndent(),
             )
             .toString()
     val t = Regex("score · ([0-9.]+)s").find(at)?.groupValues?.get(1)?.toDouble()

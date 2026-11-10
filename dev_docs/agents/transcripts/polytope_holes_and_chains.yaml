@@ -49,9 +49,7 @@ operations:
                   (a disk with one hole is 1 - 1, so a sphere with a window is 1)
               closed manifold = ${topology.validate(checkManifold = true).isValid}, and the only complaints are
                   ${topology.validate(checkManifold = true).issues.size} one-sided window edges
-              triangles cut from the windowed face = $rimTriangles (a solid square would be 2)
-              """
-                  .trimIndent(),
+              triangles cut from the windowed face = $rimTriangles (a solid square would be 2)""".trimIndent(),
           )
           println("\nrefused, by name:")
           refusals.forEach { (call, message) -> println("  $call -> $message") }
@@ -78,9 +76,7 @@ operations:
                       - outer ring: `${topology.faceCycle(face.id).size}` vertices
                       - holes: `${holes.map { it.size }}`
                       - triangles: `${(0 until geometry.triangleCount).count { geometry.sourceFace(it) == face.id }}`
-                      - clicked at: `${hit.position}`
-                      """
-                          .trimIndent(),
+                      - clicked at: `${hit.position}`""".trimIndent(),
                   )
               }
           }
@@ -177,9 +173,7 @@ operations:
               """
               left: one face, two boundary rings, ${plate(true).toTriMesh().triangleCount} triangles
               right: the identical outline with the ring dropped, ${plate(false).toTriMesh().triangleCount} triangles
-              the filled area differs by exactly the ring: ${4.0 * hole * hole}
-              """
-                  .trimIndent(),
+              the filled area differs by exactly the ring: ${4.0 * hole * hole}""".trimIndent(),
           )
   - create:
       box: polytope_chained_vocabulary
@@ -229,9 +223,7 @@ operations:
               result: ${long.polyhedron.topology.elements(0).size}v ${long.polyhedron.topology.elements(2).size}f,
                   chi = ${long.polyhedron.topology.eulerCharacteristic()}
               a composite still refuses a single realization policy:
-                  ${runCatching { cube().ambo().transform(ConwayOperator.BEVEL, DualCentroidRealization) }.exceptionOrNull()?.message}
-              """
-                  .trimIndent(),
+                  ${runCatching { cube().ambo().transform(ConwayOperator.BEVEL, DualCentroidRealization) }.exceptionOrNull()?.message}""".trimIndent(),
           )
           viz("chain", long.summary())
   - execute:
