@@ -101,4 +101,23 @@ class AtmosphereTest {
         assertTrue(low.z / low.x < 0.2, "low sun $low should be red-orange")
         assertTrue(night.x == 0.0 && night.y == 0.0 && night.z == 0.0, "sun below the horizon $night")
     }
+
+    @Test
+    fun sunDiscKeepsItsPowerInOneTexel() {
+        val w = 64; val h = 32
+        val sun = Atmosphere.direction(Math.toRadians(30.0), 1.0)
+        val rgba = FloatArray(w * h * 4)
+        Atmosphere.addSunDisc(rgba, w, h, sun, a)
+        var power = 0.0; var lit = 0
+        for (j in 0 until h) for (k in 0 until w) {
+            val r = rgba[(j * w + k) * 4].toDouble()
+            if (r > 0) lit++
+            power += r * 2 * Math.PI / w * (kotlin.math.cos(Math.PI * j / h) - kotlin.math.cos(Math.PI * (j + 1) / h))
+        }
+        val expected = Atmosphere.sunLight(sun, a).x * 20.0 * 1000.0 * 2 * Math.PI * (1 - kotlin.math.cos(0.00465))
+        assertTrue(lit == 1 && abs(power - expected) / expected < 1e-5, "sun power $power in $lit texels, expected $expected")
+        val night = FloatArray(w * h * 4)
+        Atmosphere.addSunDisc(night, w, h, Atmosphere.direction(Math.toRadians(-5.0)), a)
+        assertTrue(night.all { it == 0f })
+    }
 }

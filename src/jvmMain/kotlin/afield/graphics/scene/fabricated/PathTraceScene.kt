@@ -339,6 +339,25 @@ class PathTraceEnvironment(val width: Int, val height: Int, rgba: FloatArray) {
             } finally { MemoryUtil.nmemFree(out[0]) }
         }
         fun constant(r: Float = 1f, g: Float = r, b: Float = r) = PathTraceEnvironment(1, 1, floatArrayOf(r, g, b, 1f))
+
+        /**
+         * The procedural atmosphere (`afield.graphics.sky.Atmosphere`) with the sun at [sunElevation] /
+         * [sunAzimuth] degrees, baked at [width] x [height] with the sun disc folded into its texel by
+         * `Atmosphere.addSunDisc`, so the environment's importance sampling finds the sun. [scale]
+         * multiplies the radiance. Like any environment this is a snapshot: to move the sun, build a
+         * new one and a new tracer.
+         */
+        fun fromAtmosphere(
+            sunElevation: Double, sunAzimuth: Double = 0.0, width: Int = 512, height: Int = 256,
+            scale: Double = 0.2, altitude: Double = 0.2,
+            params: afield.graphics.sky.Atmosphere.Params = afield.graphics.sky.Atmosphere.Params(),
+        ): PathTraceEnvironment {
+            val sky = afield.graphics.sky.Atmosphere
+            val sun = sky.direction(Math.toRadians(sunElevation), Math.toRadians(sunAzimuth))
+            val rgba = sky.bakeEquirect(width, height, sun, params, altitude, scale = scale)
+            sky.addSunDisc(rgba, width, height, sun, params, altitude, scale = scale)
+            return PathTraceEnvironment(width, height, rgba)
+        }
     }
 }
 

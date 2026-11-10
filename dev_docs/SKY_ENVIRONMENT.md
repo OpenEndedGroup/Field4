@@ -17,6 +17,17 @@ Method and traps:
 - Parity: CPU bake texels equal `radiance` along `equirectDirection` exactly, and
   `equirectDirection` inverts the shader's mapping (`AtmosphereTest`). No GPU bake exists, so no
   GPU-vs-CPU texel parity is claimed.
-- The path tracer loads its environment from an EXR path; it does not take this texture yet.
+- Path tracer: `PathTraceEnvironment.fromAtmosphere(sunElevation, sunAzimuth, 512, 256)` extends
+  the existing float-array environment (`PathTraceEnvironment(w, h, rgba)`); `PathTraceDemo.install`
+  gained an overload taking a `PathTraceEnvironment`. Same equirect convention (v = acos(y)/pi).
+  The sun disc is folded into its single texel by `Atmosphere.addSunDisc` (power-conserving,
+  `AtmosphereTest.sunDiscKeepsItsPowerInOneTexel`), so the tracer's env CDF + MIS samples it:
+  shadows come out clean. Remaining speckle source is caustics (diffuse -> mirror -> sun), which no
+  light sampling can reach; `indirectClamp = 10f` removes them (seen: speckles at 45/4 deg without
+  it, none with it at 1024 spp). The sun texel at 512 wide is ~0.7 deg, larger than the real 0.53 deg.
+- The tracer runs on this Mac (M-series, `COMPUTE_BVH` backend, 1280x720, 1024 spp in ~1 min).
+  Its environment is a snapshot: a moving sun means a new environment and tracer.
+- Path-traced captures: `public/docs/assets/path_tracing/atmosphere_{high,sunset,twilight}.png`
+  (native-window, static images, not runner fences).
 - Captures: fabricate-scene `sky-environment-{high,sunset,twilight}`; demo
   `dev_docs/agents/transcripts/sky_environment.yaml`.

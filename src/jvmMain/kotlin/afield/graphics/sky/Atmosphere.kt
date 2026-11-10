@@ -180,6 +180,31 @@ object Atmosphere {
     }
 
     /**
+     * Add the sun disc to a baked equirect [rgba] without losing or inventing energy: the disc's
+     * radiance (`sunColor * 1000`, as [radiance] draws it, times the transmittance along [sunDir]) times
+     * its solid angle is spread over the one texel holding [sunDir], divided by that texel's solid angle.
+     * An importance-sampled environment (the path tracer's) then finds the sun as a bright texel it
+     * samples on purpose, which is what keeps it from turning into fireflies. Nothing is added once the
+     * planet hides the sun.
+     */
+    fun addSunDisc(
+        rgba: FloatArray, width: Int, height: Int, sunDir: V3, a: Params = Params(), altitude: Double = 0.2,
+        sunColor: V3 = V3(20.0, 20.0, 20.0), sunAngularRadius: Double = 0.00465, scale: Double = 1.0,
+    ) {
+        val t = sunLight(sunDir, a, altitude)
+        if (t.x <= 0 && t.y <= 0 && t.z <= 0) return
+        val u = kotlin.math.atan2(sunDir.z, sunDir.x) / (2 * Math.PI) + 0.5
+        val v = kotlin.math.acos(sunDir.y.coerceIn(-1.0, 1.0)) / Math.PI
+        val i = ((u - kotlin.math.floor(u)) * width).toInt().coerceIn(0, width - 1)
+        val j = (v * height).toInt().coerceIn(0, height - 1)
+        val texelSolidAngle = 2 * Math.PI / width * (cos(Math.PI * j / height) - cos(Math.PI * (j + 1) / height))
+        val discSolidAngle = 2 * Math.PI * (1 - cos(sunAngularRadius))
+        val l = t * sunColor * (1000.0 * discSolidAngle / texelSolidAngle * scale)
+        val o = (j * width + i) * 4
+        rgba[o] += l.x.toFloat(); rgba[o + 1] += l.y.toFloat(); rgba[o + 2] += l.z.toFloat()
+    }
+
+    /**
      * Colour of direct sunlight at [altitude] km: [sunColor] times the transmittance from there to
      * the top of the atmosphere along [sunDir]. White-ish overhead, orange-red near the horizon, black
      * once the planet hides the sun.
