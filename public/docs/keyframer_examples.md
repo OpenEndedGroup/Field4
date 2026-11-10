@@ -1225,3 +1225,71 @@ runtime program at five values of the push constant, and compares both ends agai
 ??? aside "Agents: test coverage"
     [`dev_docs/KEYFRAMER_COVERAGE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/KEYFRAMER_COVERAGE.md) has the public surface of `keyframer.kt` against its ledger, and
     the calls a headless test cannot reach.
+
+## Ordered groups: one rule for a whole look
+
+An `OrderedKeyframeGroup` makes one key describe a whole ordered collection. A lane can be a
+constant, such as `0.2`, or a source-backed function of the member's zero-based index:
+
+```kotlin
+val cooling = sourceBlock { screenNo: Int ->
+    0.1 + 0.04 * screenNo
+}
+```
+
+Use the flat lambda form, with its parameter type. Field retains both the callable and its source.
+A saved key stores the expression and its owning box, so reopening it does not turn the rule into
+eight unrelated sliders. Constants remain ordinary numbers.
+
+```kotlin
+val group = OrderedKeyframeGroup(
+    count = { 8 },
+    sourceBoxId = thisBox.id,
+) { resolved ->
+    // This callback receives every validated value together.
+    println(resolved.values("cooling"))
+}.lane("cooling", initial = 0.0) { it in 0.0..1.0 }
+
+val quiet = group.capture()
+group["cooling"] = cooling
+val wave = group.capture()
+val saved = FileManager.current().path("%document/keys/cooling-wave")
+wave.save(saved)
+
+group.apply(group.scope.loadKey(saved))
+group.apply(group.blend(quiet, wave) { index -> index / 7.0 })
+```
+
+The group uses the ordinary `KeyframeScope` store, versions and keyframe browser. Apply evaluates
+all lanes at all member indices, checks finite values and lane domains, then invokes the one commit
+callback. A rule that fails at index 7 leaves the previous working rules untouched. Put coupled
+checks in `group.validate { resolved -> ... }`. The commit callback should only install already
+validated data; it must not throw after partially writing the sketch.
+
+Blending mixes the **outputs** of two rules at each member. The programs can be completely
+different. `group.scope.interpolate(a, b, t)` uses this pointwise interpretation for registered
+group lanes, while ordinary code lanes retain their existing code-blend semantics.
+
+For a travelling transition, call this from a control loop with elapsed seconds:
+
+```kotlin
+val key = group.transition(quiet, wave,
+    seconds = elapsed,
+    durationSeconds = 1.5,
+    staggerSeconds = 0.12)
+group.apply(key)
+```
+
+Each member starts `index * staggerSeconds` later. Zero duration gives staggered cuts. Intermediate
+rules remain saveable, including a transition held halfway through. Their progress samples retain
+the group size at capture; adding members to a sampled rule requires rebuilding that rule.
+
+Hydrate saved expressions during setup or on a control thread. A restored function compiles once;
+subsequent calls reuse it. Inherited `prop` and `@exported` accessors stay dynamic. Unexported local
+variables are not durable captures: put those values in the expression or an inherited property.
+Rules evaluate when applied, rather than running an implicit animation loop of their own.
+
+The loadable [ordered-group transcript](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/transcripts/ordered_group_keyframes.yaml)
+exercises native save/reload, changing inherited properties, a saved midpoint and invalid-value
+rejection without a graphics device. `video_three` uses this same API for whole-carousel looks;
+its single decoder's speed remains a separate global lane.

@@ -1,10 +1,25 @@
 package afield.runtime.macros
 
 import afield.document.graph.Box
+import afield.runtime.kotlin.FieldKtParser
+import org.jetbrains.kotlin.psi.KtLambdaExpression
+import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 
 fun Box.macro_sourceBlock(args: List<String>): Insert {
     val raw = args.joinToString("")
     val body = extractSourceBlockBody(raw)
+    val lambda = synchronized(FieldKtParser) {
+        FieldKtParser.parse("val captured = {\n$body\n}")
+            .collectDescendantsOfType<KtProperty>().first().initializer as KtLambdaExpression
+    }
+    if (lambda.valueParameters.isNotEmpty()) {
+        require(lambda.valueParameters.size == 1 && lambda.valueParameters.single().typeReference != null) {
+            "sourceBlock functions need one explicitly typed parameter, e.g. sourceBlock { index: Int -> index * 0.1 }"
+        }
+        val source = "{\n$body\n}"
+        return Insert(here = "afield.study.source.SourceBackedFunction(boxId = ${kotlinStringLiteral(id)}, source = ${kotlinStringLiteral(source)}, function = $source)")
+    }
     val sourceLiteral = kotlinStringLiteral(body)
     val boxLiteral = kotlinStringLiteral(id)
     return Insert(
