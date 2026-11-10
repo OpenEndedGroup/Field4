@@ -2063,12 +2063,13 @@ operations:
                               +"""
                               # Further reading
 
-                              - Eric J. Heller, *Why You Hear What You Hear* (Princeton, 2013): the physics
-                                of sound and its perception, with experiments to try.
-                              - Neville H. Fletcher and Thomas D. Rossing, *The Physics of Musical
-                                Instruments* (Springer, 1998): strings, plates, pipes and rooms in depth.
-                              - Julius O. Smith III, *Physical Audio Signal Processing*, free at
-                                ccrma.stanford.edu/~jos/pasp: from waves on strings to digital models of them.
+                              - Eric J. Heller, [*Why You Hear What You Hear*](https://www.whyyouhearwhatyouhear.com/)
+                                (Princeton, 2013): the physics of sound and its perception, with experiments to try.
+                              - Neville H. Fletcher and Thomas D. Rossing, [*The Physics of Musical
+                                Instruments*](https://archive.org/details/physicsofmusical0000flet) (Springer, 1991):
+                                strings, plates, pipes and rooms in depth.
+                              - Julius O. Smith III, [*Physical Audio Signal Processing*](https://ccrma.stanford.edu/~jos/pasp/),
+                                free online: from waves on strings to digital models of them.
                           """
                                   .md
                               p(classes = "muted") {

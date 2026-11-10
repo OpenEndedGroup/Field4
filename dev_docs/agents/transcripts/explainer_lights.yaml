@@ -1274,9 +1274,9 @@ operations:
                           +"""
                           ## Further reading
 
-                          - Matt Pharr, Wenzel Jakob and Greg Humphreys, *Physically Based Rendering*, free at pbr-book.org.
-                          - Romain Guy and Mathias Agopian, *Physically Based Rendering in Filament*, google.github.io/filament.
-                          - Michael F. Cohen and John R. Wallace, *Radiosity and Realistic Image Synthesis* (1993).
+                          - Matt Pharr, Wenzel Jakob and Greg Humphreys, [*Physically Based Rendering*](https://pbr-book.org/), free online.
+                          - Romain Guy and Mathias Agopian, [*Physically Based Rendering in Filament*](https://google.github.io/filament/Filament.md.html), free online.
+                          - Michael F. Cohen and John R. Wallace, [*Radiosity and Realistic Image Synthesis*](https://archive.org/details/radiosityrealist0000cohe) (1993).
                       """
                               .md
                           p(classes = "muted") {
