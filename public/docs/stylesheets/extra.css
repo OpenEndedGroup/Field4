@@ -1758,7 +1758,6 @@ html .md-typeset details.aside > :last-child {
     display: block;
     width: 100%;
     height: auto;
-    border: 1px solid var(--mono-border);
 }
 
 @media screen and (min-width: 82em) {
