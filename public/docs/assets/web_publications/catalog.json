@@ -2905,6 +2905,37 @@
         "public/docs/assets/agent_transcripts/noiselang_distributions/noise_weighted_scale_code_.kt": "c56c9e76e748972ec69785ee1911683d18d07843673875e2a53e76c62e048053"
       }
     },
+    "assets/agent_transcripts/noiselang_gpu/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-10T23:29:39.535Z",
+      "channels": 1,
+      "file": "assets/web_publications/noiselang_gpu/document/metadata.edn",
+      "files": {
+        "assets/web_publications/noiselang_gpu/document/metadata.edn": "0597b05a84deec25e661080d65e546b1428d0c38eb5cf2da7d5ee281a9a47025",
+        "assets/web_publications/noiselang_gpu/document/outputs.json": "77210aca76eaee295ae0f7bf3e196488b14e029373276dbe2f010f7d625d6114",
+        "assets/web_publications/noiselang_gpu/outputs/0.html": "db08039da203a92ea3129701dfdfb4ba4a1fa840cff3f7cf04f0a5c9cda3c7ce"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/noiselang_gpu/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/noiselang_gpu.yaml": "2b2174305dab86d2a9752ab19629f1f16bd89f39aac1e3927f128eb860fcceab",
+        "public/docs/assets/agent_transcripts/noiselang_gpu/agent_graphics_context_code_.kt": "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2",
+        "public/docs/assets/agent_transcripts/noiselang_gpu/guides/distributions.md": "b108cdf237f4431ee00c84d91a4f416b15e8a31f7aa650ac4195392bba2da53c",
+        "public/docs/assets/agent_transcripts/noiselang_gpu/metadata.edn": "7b11104fb792d07a6376fdd2b1130e6eb47c6d1f19fc634db66a943cb5b13879",
+        "public/docs/assets/agent_transcripts/noiselang_gpu/noiselang_gpu_code_.kt": "d7b7382f2cf041aac87bc5c7cf31df608cb51195ff8dd41c6c7f9138dffe821b",
+        "public/docs/assets/agent_transcripts/noiselang_gpu/noiselang_gpu_dists_code_.kt": "d73c0ace1b3ebb19821c73920b301325e99a0008fe5d08946facb74f9ab7064a",
+        "public/docs/assets/agent_transcripts/noiselang_gpu/noiselang_gpu_fragment_.glsl": "43af486c22c99598b0897d36b7c058a0ed5d847835561083034ea732d2156db5",
+        "public/docs/assets/agent_transcripts/noiselang_gpu/noiselang_gpu_vertex_.glsl": "79bb3964ee2fc6971421d619a6d4019b66a4f08a7f60983ecb528d79e1abd1f2",
+        "public/docs/assets/distributions-gpu.png": "1ad1679d672442a23a0df40a858de82905d37f38fd0ca328f5bb34786778987d",
+        "public/docs/distributions.md#capture-box=noiselang_gpu": "76c3296322fc8050294b0aac04e598884d7b12c2a28c43aec2bf52c2232e2262"
+      },
+      "supplementalSources": [
+        "public/docs/assets/distributions-gpu.png",
+        "public/docs/distributions.md#capture-box=noiselang_gpu"
+      ]
+    },
     "assets/agent_transcripts/notation_elements/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
       "capturedAt": "2026-11-10T08:55:17.771Z",

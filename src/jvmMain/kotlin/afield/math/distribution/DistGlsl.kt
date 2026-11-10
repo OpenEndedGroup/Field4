@@ -18,7 +18,27 @@ import afield.graphics.vulkan.util.GpuProbe
  * A [Dist.map] node is Kotlin and cannot be lowered; [toGlsl] throws and names it.
  */
 fun Dist.toGlsl(functionName: String = "nlSample"): String {
-    val plan = Plan(listOf(this))
+    val g = lowerGraph(listOf(this), functionName)
+    val signature = if (g.hasEvidence) "(inout uint s, inout float lw)" else "(inout uint s)"
+    return buildString {
+        append(GLSL_RNG)
+        for (h in g.helpers) append(h)
+        append(g.preludes)
+        append("float ").append(functionName).append(signature).append(" {\n")
+        append(g.body)
+        append("    return ").append(g.roots[0]).append(";\n}\n")
+    }
+}
+
+/**
+ * A graph lowered to GLSL statements: one `float nK = …;` per node, in evaluation order, with
+ * evidence nodes adding to `lw` once each. [roots] are the local names of the requested roots.
+ * Prelude ids are prefixed with [prefix], so several lowered graphs can share one shader.
+ */
+internal class LoweredGraph(val helpers: Set<String>, val preludes: String, val body: String, val roots: List<String>, val hasEvidence: Boolean)
+
+internal fun lowerGraph(rootDists: List<Dist>, prefix: String): LoweredGraph {
+    val plan = Plan(rootDists)
     val names = HashMap<Int, String>()
     val body = StringBuilder()
     val helpers = LinkedHashSet<String>()
@@ -31,22 +51,14 @@ fun Dist.toGlsl(functionName: String = "nlSample"): String {
         val name = "n$k"
         names[k] = name
         helpers += d.glslHelpers
-        d.glslPrelude?.let { preludes.append(it("${functionName}_$name")) }
+        d.glslPrelude?.let { preludes.append(it("${prefix}_$name")) }
         val ins = d.inputs.map { names[plan.indexOf(it)]!! }
-        val expr = g(ins, "s").replace(GLSL_ID, "${functionName}_$name")
+        val expr = g(ins, "s").replace(GLSL_ID, "${prefix}_$name")
         body.append("    float ").append(name).append(" = ").append(expr).append(";\n")
         // each piece of evidence counts once, however many variables it conditions
         if (d.kind == Dist.Kind.Given && counted.add(d.inputs[1])) body.append("    lw += ").append(ins[1]).append(";\n")
     }
-    val signature = if (plan.hasEvidence) "(inout uint s, inout float lw)" else "(inout uint s)"
-    return buildString {
-        append(GLSL_RNG)
-        for (h in helpers) append(h)
-        append(preludes)
-        append("float ").append(functionName).append(signature).append(" {\n")
-        append(body)
-        append("    return n").append(plan.order.size - 1).append(";\n}\n")
-    }
+    return LoweredGraph(helpers, preludes.toString(), body.toString(), rootDists.map { names[plan.indexOf(it)]!! }, plan.hasEvidence)
 }
 
 /** The hash and uniform every lowered graph uses. 24 random bits per draw, in `[0, 1)`. */

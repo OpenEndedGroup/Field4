@@ -4401,6 +4401,24 @@ macro run atmospheric_sky
 
 [Open →](offline.html?file=assets/agent_transcripts/atmospheric_sky/metadata.edn)
 
+### noiselang_gpu
+
+**Distributions drawn inside a fragment shader.** One box defines a ring, the ring given
+x + y > 0.5, and a Gaussian process through five readings; `distHere` and `gpHere` make them
+`#include "dist/ring"`, `#include "dist/arc"` and `#include "gp/ridge"`. The shader box beneath it
+draws three panels from them: 320 draws of the ring, the arc the condition keeps (a posterior drawn
+per point on the GPU), and twenty whole curves of the process with its mean and band. See
+[Distributions in a shader](distributions.md#distributions-in-a-shader).
+
+![three panels: a blue ring of points, the orange arc of it above a diagonal line, and blue Gaussian-process curves through five orange readings](assets/distributions-gpu.png)
+
+```diffstatic {data-lang=text}
+macro write noiselang_gpu --file dev_docs/agents/transcripts/noiselang_gpu.yaml
+macro run noiselang_gpu
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/noiselang_gpu/metadata.edn)
+
 ### sky_environment
 
 **The sky lights the scene.** Beneath a renderer, one box bakes the atmospheric sky into the

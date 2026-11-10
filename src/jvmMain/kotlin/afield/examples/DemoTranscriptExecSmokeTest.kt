@@ -945,6 +945,10 @@ object DemoTranscriptExecSmokeTest {
         // Opens a Vulkan window for the fullscreen sky shader; the scattering it includes is graded on
         // the CPU twin by AtmosphereTest (closed-form transmittance, blue noon, red sunset).
         "atmospheric_sky",
+        // Opens a Vulkan window for a fullscreen shader that includes distributions (dist/…) and a
+        // Gaussian process (gp/…) defined by the box above it; the GLSL is graded on the GPU by the
+        // jvm-main smoke four.noiselang.gpu-includes and compiled by GlslIncludeTest.
+        "noiselang_gpu",
         // Opens a Vulkan window for the fabricate renderer lit by the baked sky; the bake is graded
         // by AtmosphereTest (texels equal radiance, sunset key light reddens).
         "sky_environment",

@@ -692,8 +692,120 @@ weighted estimate. With `raw = true` it writes two samples per invocation, each 
     PCG hash with 24 bits per draw, and normals are Box–Muller on both sides, so CPU and GPU use the
     same constructions but different random streams.
 
-The replayable demo is `dev_docs/agents/transcripts/noiselang_distributions.yaml`: the spike, the
-die and the triangle, the questions above, the densities, and the walks, as four boxes.
+## Distributions in a shader
+
+`GpuMonteCarlo` answers a question about a distribution on the GPU. You can also draw from a
+distribution inside your own shaders, so a fragment shader colours a pixel, or a compute shader
+places a particle, with a draw from a graph you wrote in a box. `distHere("ring", d)` makes `d`
+available to the shaders of that box and of every box beneath it, as `#include "dist/ring"`:
+
+| in the box | in the shader, after `#include "dist/name"` |
+| --- | --- |
+| `distHere("name", d)` | `float name(inout uint s)`: one draw |
+| `distHere("name", listOf(a, b, …))` | `void name(inout uint s, out float v[N])`: one joint draw, and `name_SIZE` is `N` |
+| `distHere("name", posterior)` | the same, an approximate posterior draw; `bool name_try(…)` says whether it found one |
+| `gpHere("name", GpShaderModel(…))` | `float name(x, uint curve)`, `float name_mean(x)`, `float name_sd(x)` |
+
+`s` is the random state, and every draw advances it. Seed it once per pixel with
+`nlSeed(gl_FragCoord.xy, frame)`, or once per invocation with `nlSeed(gl_GlobalInvocationID, frame)`.
+To draw the same values at every pixel, seed by a number of your own: `nlSeed(uint(k), salt)` is
+draw `k`.
+
+Define the distributions in a box above the shader's box, and run it first. A shader's push
+constants become Kotlin properties of its box when the box compiles, so the shader has to compile
+before the box that owns it runs. Includes defined in that same box would not exist yet.
+
+Here one box defines a ring, the same ring given `x + y > 0.5`, and a Gaussian process through five
+readings:
+
+<!--
+FIELD_TEST
+id: docs.distributions.gpu-includes
+runner: backdoor-box
+tags: [docs, distributions, gpu, graphics]
+timeoutSec: 180
+expect:
+  screenshot:
+    kind: native-window
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/distributions-gpu.png" alt="three panels drawn by one fragment shader: on the left a blue ring of 320 points; in the middle, orange points on the part of the same ring above a thin grey diagonal line, the posterior given x + y > 0.5; on the right, twenty pale blue Gaussian-process curves threaded through five orange readings, a white mean curve, and a dark band two standard deviations wide that is narrow at the readings and wide between and beyond them" timeout="180" capture="native-window" native-wait-frames="30" max-width="1600" embed=true name="distributions-gpu" macro-file="../../dev_docs/agents/transcripts/noiselang_gpu.yaml" capture-box="noiselang_gpu"}
+:::static
+import afield.math.distribution.*
+
+// a ring: radius about 1, any angle; drawn jointly, so x and y share the same radius and angle
+val radius = normal(1, 0.08)
+val angle = uniform(0, 2 * Math.PI)
+val ring = listOf(radius * angle.cos(), radius * angle.sin())
+distHere("ring", ring)
+
+// the same ring, given x + y > 0.5: a posterior the shader draws by weighted reservoir sampling
+val arc = ring.given(ring[0] + ring[1] gt 0.5)
+distHere("arc", arc, posteriorPool = 16)
+
+// a Gaussian process through five readings: each `curve` number is one whole random function
+val xs = doubleArrayOf(0.5, 2.0, 3.5, 6.0, 7.5)
+val ys = doubleArrayOf(0.2, 1.1, 0.4, 0.9, -0.3)
+gpHere("ridge", GpShaderModel.of(xs, ys, lengthScale = 1.0, noiseStd = 0.1))
+```
+
+The shader box beneath it draws one fullscreen triangle, as [the atmospheric sky](afield_four_graphics.md#atmospheric-sky)
+does. Its fragment shader includes all three and splats the same 320 draws at every pixel, seeding
+draw `k` with `nlSeed(uint(k), salt)`:
+
+```diffstatic {data-lang=glsl}
+:::static
+#include "dist/ring"
+#include "dist/arc"
+#include "gp/ridge"
+
+float splats(vec2 p, bool conditioned, float r) {
+    float acc = 0.0;
+    for (int k = 0; k < 320; k++) {
+        uint s = nlSeed(uint(k), conditioned ? 23u : 11u);
+        float v[2];
+        if (conditioned) { if (!arc_try(s, v)) continue; } else ring(s, v);
+        vec2 d = p - vec2(v[0], v[1]);
+        acc += exp(-dot(d, d) / (2.0 * r * r));
+    }
+    return min(acc, 1.0);
+}
+
+// and in the third panel, at the pixel's x and y:
+float m = ridge_mean(x), sd = ridge_sd(x);   // the band
+for (int k = 0; k < 20; k++) {
+    float f = ridge(x, uint(k));               // curve k at this x
+    ...
+}
+```
+
+The middle panel is a posterior drawn on the GPU. Each of its points is one of 16 draws of the ring,
+chosen by weight, and the condition gives a draw outside the arc a weight of 0. `arc_try` returns
+false when none of the 16 was inside, about once in two thousand draws here, and the shader skips
+those. `name(…)` alone would return 0. A posterior with soft evidence, such as
+`mu given observed(normal(mu, 1), readings)`, works the same way, with weights that are likelihoods.
+A larger `posteriorPool` is a better draw and a slower one.
+
+A `GpShaderModel` is the random-feature form of a Gaussian process with an RBF kernel: 64 sine and
+cosine pairs by default, and up to 64 readings in one to three dimensions, so `x` is a `float`, a
+`vec2` or a `vec3`. `ridge(x, curve)` builds draw number `curve` from its random weights, corrects it
+towards the readings, and evaluates it at `x`. Every pixel that passes the same `curve` sees the same
+function. Each call costs about `frequencies × readings` multiply-adds. `model.cpu` is the same
+model on the CPU, so a box can plot or question what the shader draws.
+
+??? aside "How the shader GP is checked"
+    The draw is pathwise conditioning (Matheron's rule): a function from the prior's random features,
+    plus the fitted covariance applied to how far that function misses the readings. That is the same
+    construction as `GpFeatureModel.samplePath`, written out in GLSL. The smoke test
+    `four.noiselang.gpu-includes` draws 16 384 curves on the GPU at four points, one of them far past the
+    last reading, and checks their mean and variance against the finite-feature posterior's own
+    `predict`. The worst gaps were 0.01 in the mean, at the extrapolated point, and about 1% in the variance. The same
+    smoke checks the mixture, posterior and ring includes against exact answers.
+    `GlslIncludeTest` compiles fragment and compute shaders that include several distributions and
+    processes together, so the guards that keep shared helpers to one copy are tested.
+
+The replayable demos are `dev_docs/agents/transcripts/noiselang_distributions.yaml`, nine boxes
+that need no renderer (every section above, from the spike to the Gaussian process), and
+`noiselang_gpu.yaml`, the shader scene. Both are [starting points](agent_transcripts.md#noiselang_distributions).
 
 ## Limitations and what's next
 
@@ -721,6 +833,9 @@ What this library does not do yet, so you know where the edges are:
 - **A posterior pattern or parameter draws approximately.** Each value is one of `posteriorPool`
   (256) weighted draws, chosen by weight. When the evidence is rare, that pool holds few accepted
   draws, and the same values repeat more often than they would in the true posterior.
+- **A shader's distributions come from a box above it.** Includes defined in the shader's own box
+  do not exist yet when that box first compiles its shaders. The shader GP is the random-feature
+  approximation, which is close to the RBF process for 64 frequencies but not identical to it.
 - **A Gaussian process becomes one node per point per normal.** `gp.dists(xs)` is fine for tens or
   a few hundred points. For thousands, sample the `GpJoint` directly.
 - **`ᛟ.distribution(param)` keeps up with the last 8192 draws.** If more than that arrive between two
@@ -735,10 +850,6 @@ Where it could go next:
 - **Observations from live inputs.** Patterns and parameters draw from distributions now; the other
   direction is open. Onsets from a pattern or a microphone, or positions from a tracked hand, could
   arrive as `observed` data and update a posterior that another pattern plays.
-- **The GLSL lowering as an include.** `toGlsl()` already writes a distribution as one function.
-  Shipped as a `#include` with its seed plumbing, a fragment, compute or particle shader could draw
-  from a distribution defined in a box, and the box's histogram would describe what the GPU is
-  drawing.
 - **Richer inline views.** Quantile bands, an empirical CDF beside the bars, and two distributions
   overlaid with the distance between them, all updating as samples arrive.
 - **Gradients.** Normals and uniforms can be reparameterized, so `E(f(x; θ))` has a gradient in θ.
