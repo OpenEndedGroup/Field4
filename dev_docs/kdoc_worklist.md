@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 22375 of 38068 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 22377 of 38072 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2031 undocumented entry points** (types, top-level functions and values) and 12986 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2031 undocumented entry points** (types, top-level functions and values) and 12988 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -593,9 +593,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AgentEvalCorpus.kt](../src/jvmMain/kotlin/afield/ai/agent/AgentEvalCorpus.kt) | AI4 | — | 0 | 25 | 41% |
 | [ChatArchiveCli.kt](../src/jvmMain/kotlin/afield/ai/conversation/chatlog/ChatArchiveCli.kt) | AI4 | — | 0 | 25 | 7% |
 | [FaustEngine.kt](../src/jvmMain/kotlin/afield/audio/synth/FaustEngine.kt) | Synthesis | — | 0 | 25 | 45% |
+| [StereoVideoLookPool.kt](../src/jvmMain/kotlin/afield/graphics/scene/video/StereoVideoLookPool.kt) | Graphics | — | 0 | 25 | 21% |
 | [PatPitchDetection.kt](../src/jvmMain/kotlin/afield/audio/synth/PatPitchDetection.kt) | Patterns | — | 0 | 24 | 50% |
 | [ClusterGeometryDemo.kt](../src/jvmMain/kotlin/afield/graphics/render/ClusterGeometryDemo.kt) | Graphics | — | 0 | 23 | 4% |
-| [StereoVideoLookPool.kt](../src/jvmMain/kotlin/afield/graphics/scene/video/StereoVideoLookPool.kt) | Graphics | — | 0 | 23 | 23% |
 | [Geometry.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Geometry.kt) | Audio | — | 0 | 22 | 33% |
 | [MqttClient.kt](../src/jvmMain/kotlin/afield/io/mqtt/MqttClient.kt) | Networking | — | 0 | 22 | 52% |
 | [AmbisonicsEffects.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/AmbisonicsEffects.kt) | Audio | — | 0 | 21 | 63% |
@@ -605,7 +605,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DatalogEngine.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogEngine.kt) | Languages | — | 0 | 19 | 43% |
 | [ReconstructionDemo.kt](../src/jvmMain/kotlin/afield/media/reconstruction/ReconstructionDemo.kt) | Imaging | — | 0 | 19 | 9% |
 | [MarfVectors.kt](../src/jvmMain/kotlin/afield/audio/synth/MarfVectors.kt) | Patterns | — | 0 | 18 | 18% |
-| [StereoVideoSurface.kt](../src/jvmMain/kotlin/afield/graphics/scene/video/StereoVideoSurface.kt) | Graphics | — | 0 | 18 | 48% |
+| [StereoVideoSurface.kt](../src/jvmMain/kotlin/afield/graphics/scene/video/StereoVideoSurface.kt) | Graphics | — | 0 | 18 | 51% |
 | [MqttCodec.kt](../src/jvmMain/kotlin/afield/io/mqtt/MqttCodec.kt) | Networking | — | 0 | 18 | 48% |
 | [RectSLPatternOps.kt](../src/jvmMain/kotlin/afield/lang/rectsl/RectSLPatternOps.kt) | Languages | — | 0 | 18 | 14% |
 | [Devices.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Devices.kt) | Audio | — | 0 | 17 | 50% |

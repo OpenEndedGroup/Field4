@@ -665,7 +665,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**38068 public symbols across 1740 source files**, 22375 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**38072 public symbols across 1740 source files**, 22377 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -678,7 +678,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2162 | 1623 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1061 | 502 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 386 | 9350 | 5873 (62%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 386 | 9354 | 5875 (62%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 801 | 431 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 514 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -2244,13 +2244,13 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoColorimetry.kt](graphics.md#stereovideocolorimetry-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [StereoVideoColourTransferSmoke.kt](examples.md#stereovideocolourtransfersmoke-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [StereoVideoDecodeProbe.kt](examples.md#stereovideodecodeprobe-kt) | Examples | 2 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoLookPool.kt](graphics.md#stereovideolookpool-kt) | Graphics | 30 | 7 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoLookPool.kt](graphics.md#stereovideolookpool-kt) | Graphics | 32 | 7 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoLookRecall.kt](graphics.md#stereovideolookrecall-kt) | Graphics | 6 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoPlacement.kt](graphics.md#stereovideoplacement-kt) | Graphics | 9 | 4 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [StereoVideoPrecisionSmoke.kt](examples.md#stereovideoprecisionsmoke-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoScreenLayout.kt](graphics.md#stereovideoscreenlayout-kt) | Graphics | 4 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoSource.kt](graphics.md#stereovideosource-kt) | Graphics | 14 | 2 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoSurface.kt](graphics.md#stereovideosurface-kt) | Graphics | 35 | 17 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoSurface.kt](graphics.md#stereovideosurface-kt) | Graphics | 37 | 19 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>paint/<wbr></small> [StereoWarp.kt](graphics.md#stereowarp-kt) | Graphics | 7 | 7 | A smooth map between the two canvases of a stereo pair, so canvas texture such as weave and grain sits on the painted surface in both eyes: `StereoWarp`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [StigmergySweep.kt](examples.md#stigmergysweep-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [stippletransport.kt](machine-learning.md#stippletransport-kt) | Machine learning | 13 | 13 | Runs a learned stipple transport on the CPU: a small SiLU network, trained by the optional PyTorch tool in `optional/transport-flow`, that moves points from a uniform source rectangle toward an image's density. |  |
