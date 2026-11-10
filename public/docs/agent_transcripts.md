@@ -408,11 +408,10 @@ audio an offline buffer. See [A Drawn Score, Heard](chain_drawn_score.md).
 
 ### chain_tracked_body
 
-A tracked body, measured and heard, as two boxes. `measured` replays a recorded mediapipe pose
-stream of the *Ballet Mécanique* swing clip, fills WiVRn's eight body slots from it, and asks
-`BodyGeometry` how far the right wrist is from the body, drawing it over a still from the film every 1.2 s and the
-distance over the clip; `heard` plays that distance as a pattern built with `patTimed`. Both run
-headless, with no headset. See [A Tracked Body, Measured and Heard](chain_tracked_body.md).
+In [A Tracked Body, Measured and Heard](chain_tracked_body.md), two boxes turn a pose recording
+from *Ballet Mécanique* into a drawing and a sound. `measured` fills WiVRn's eight body slots and
+uses `BodyGeometry` to trace the right wrist's distance from the body, drawing over film stills;
+`heard` plays that distance as a `patTimed` pattern. Both run headless, without a headset.
 
 [Open →](offline.html?file=assets/agent_transcripts/chain_tracked_body/metadata.edn)
 
