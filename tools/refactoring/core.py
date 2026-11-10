@@ -15,8 +15,12 @@ import shutil
 import stat
 import subprocess
 import tempfile
+import zipfile
 
 from .containers import ContainerError, extract, issue, patch
+from ..verification_runtime import MissingJdkError, field_java
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 VERSION = 1
 EXCLUDED = {'.git', '.gradle', '.kotlin', '.venv', 'node_modules', 'build', 'backups', 'backup', '.backups', 'thumbnails', '.field-backdoor', '.agent-scratch'}
@@ -353,12 +357,54 @@ def discover(root: Path, repo=False) -> tuple[list[str], list[dict]]:
     return files, retained
 
 
+ENGINE_MAIN_CLASS = 'afield/tools/refactor/MainKt.class'
+
+
+def engine_java_major(executable: Path) -> int:
+    """The Java release the installed engine was compiled for, from its main class's file version.
+
+    The engine has no jvmToolchain, so it targets whatever JDK gradlew ran on; reading the
+    class file keeps this right when that JDK moves. 25 when the jar cannot be read.
+    """
+    jar = executable.parent.parent / 'lib' / 'field-refactor-engine.jar'
+    try:
+        with zipfile.ZipFile(jar) as archive, archive.open(ENGINE_MAIN_CLASS) as stream:
+            header = stream.read(8)
+    except (OSError, KeyError, zipfile.BadZipFile):
+        return 25
+    if len(header) < 8 or header[:4] != b'\xca\xfe\xba\xbe':
+        return 25
+    return int.from_bytes(header[6:8], 'big') - 44
+
+
+def engine_environment(executable: Path) -> dict[str, str]:
+    """Environment whose `JAVA_HOME` makes the engine's start script run on Field's JDK.
+
+    The Gradle start script otherwise takes `JAVA_HOME` or PATH's `java`, which may be older
+    than the engine's class files (a JDK 22 on PATH against a build for 25).
+    """
+    minimum = engine_java_major(executable)
+    try:
+        java = field_java(REPO_ROOT, minimum, 'the standalone refactor engine')
+    except MissingJdkError as error:
+        raise RefactorError(str(error)) from None
+    home = Path(java).parent.parent
+    env = dict(os.environ)
+    if (home / 'release').is_file():
+        env['JAVA_HOME'] = str(home)
+    else:  # a launcher stub such as macOS /usr/bin/java: let the script find it on PATH
+        env.pop('JAVA_HOME', None)
+        env['PATH'] = os.pathsep.join([str(Path(java).parent), env.get('PATH', '')])
+    return env
+
+
 class KotlinEngine:
     def __init__(self, executable: Path):
         if not executable.is_file():
             raise RefactorError('build the standalone engine first: tools/refactor.py build-engine')
         self.proc = subprocess.Popen([str(executable)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                     stderr=None, text=True, encoding='utf-8', bufsize=1)
+                                     stderr=None, text=True, encoding='utf-8', bufsize=1,
+                                     env=engine_environment(executable))
         self.cache = {}
 
     def declarations(self, code: str) -> dict:
