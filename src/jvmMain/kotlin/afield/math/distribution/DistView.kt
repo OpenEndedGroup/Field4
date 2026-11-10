@@ -301,4 +301,44 @@ fun Marker.distribution(d: Dist, batch: Int = 2_000, title: String? = null, exac
     return if (p.weighted && !p.weightedMoments.anyAccepted) Estimate(Double.NaN, Double.NaN, p.drawn, 0.0) else p.estimate
 }
 
+private class LiveHeard(val param: DistParam, val p: Progressive) {
+    var seen = 0L
+    val limiter = RateLimiter(10.0, 0.2)
+}
+
+/**
+ * The inline visualizer for what a [DistParam] is playing: each call adds the values drawn since
+ * the last call and redraws their histogram under the exact pmf or density of the parameter's
+ * distribution. The bars are the sound's own values, not a separate sample, so they show what you
+ * are hearing settle onto the distribution you wrote.
+ *
+ * ```kotlin
+ * val pitch = categorical(listOf(220, 275, 330), listOf(3, 1, 2)).param(everySeconds = 0.125)
+ * loop {
+ *     __m("heard").distribution(pitch)
+ *     frame()
+ * }
+ * ```
+ */
+fun Marker.distribution(param: DistParam, title: String? = null, exact: Double? = null): Estimate? {
+    val location = locationForTextStringOnStack("distribution", this.box, end = true, offset = 1)
+    val key = "__distribution_heard__"
+    var live = this.properties[key] as? LiveHeard
+    if (live == null || live.param !== param) {
+        live = LiveHeard(param, Progressive(param.dist, suppliedDraws = true))
+        this.properties[key] = live
+    }
+    val total = param.drawCount
+    val fresh = (total - live.seen).coerceIn(0L, 8192L).toInt()
+    if (fresh > 0) {
+        val all = param.played()
+        live.p.addDraws(all.copyOfRange(all.size - minOf(fresh, all.size), all.size))
+        live.seen = total
+    }
+    live.limiter {
+        location?.let { this.box._printHere(it.line, distributionSvg(live.p, title = title ?: "heard: ${param.dist.describe()}", exact = exact)) }
+    }
+    return if (live.p.drawn > 0) live.p.estimate else null
+}
+
 private fun tick(v: Double): String = if (v == floor(v) && abs(v) < 1e9) v.toLong().toString() else if (abs(v) < 1e-3) "0" else "%.3g".format(v)

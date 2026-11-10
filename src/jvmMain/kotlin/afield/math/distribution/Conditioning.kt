@@ -92,6 +92,18 @@ fun observed(model: Dist, data: List<Number>): Evidence = observed(model, Double
  */
 fun logLikelihood(logLik: Dist): Evidence = Evidence(logLik)
 
+/**
+ * Every variable of a vector conditioned on the same [evidence], which counts once: for a rhythm,
+ * a melody or a curve, `steps.given(steps.sum() eq 5)` is sixteen steps with exactly five hits.
+ */
+fun List<Dist>.given(evidence: Evidence): List<Dist> = map { it given evidence }
+
+/** Every variable of a vector conditioned on the same [condition] (or weight), which counts once. */
+fun List<Dist>.given(condition: Dist): List<Dist> {
+    val e = Evidence(condition.asLogWeightNode())
+    return map { it given e }
+}
+
 /** Thrown by a query when no sample is consistent with the evidence. */
 class EvidenceImpossibleException(message: String) : IllegalStateException(message)
 

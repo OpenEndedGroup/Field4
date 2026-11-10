@@ -189,7 +189,7 @@ class Dist internal constructor(
      * When nothing satisfies the condition, a query throws [EvidenceImpossibleException] rather than
      * answer NaN.
      */
-    infix fun given(condition: Dist): Dist = given(Evidence(condition.asLogWeight()))
+    infix fun given(condition: Dist): Dist = given(Evidence(condition.asLogWeightNode()))
 
     /**
      * The same graph with every [given] removed: what this variable is before the evidence.
@@ -197,7 +197,7 @@ class Dist internal constructor(
      */
     fun prior(): Dist = stripEvidence(this, IdentityHashMap())
 
-    private fun asLogWeight(): Dist = Dist(
+    internal fun asLogWeightNode(): Dist = Dist(
         "weight", listOf(this),
         { ins, out, n, _ -> val a = ins[0]; for (i in 0 until n) { val w = a[i]; out[i] = if (w > 0) ln(w) else if (w == 0.0) Double.NEGATIVE_INFINITY else Double.NaN } },
         { ins, _ -> "(${ins[0]} > 0.0 ? log(${ins[0]}) : $GLSL_NEG_INF)" },
@@ -644,6 +644,15 @@ class Plan(val roots: List<Dist>) {
     /** Positions in [order] of the [Dist.given] nodes, whose second input is a log-weight. */
     private val givens: IntArray = order.indices.filter { order[it].kind == Dist.Kind.Given }.toIntArray()
 
+    /**
+     * The distinct evidence nodes, by identity: evidence applied to several variables
+     * (`steps.given(e)`) is one observation, counted once, however many nodes it conditions.
+     */
+    internal val evidenceNodes: List<Dist> = run {
+        val seen = java.util.Collections.newSetFromMap(IdentityHashMap<Dist, Boolean>())
+        givens.map { order[it].inputs[1] }.filter { seen.add(it) }
+    }
+
     /** True if any node weighs its samples, so the plan's draws are weighted. */
     val hasEvidence: Boolean get() = givens.isNotEmpty()
 
@@ -668,7 +677,7 @@ class Plan(val roots: List<Dist>) {
         val result = Array(roots.size) { DoubleArray(n) }
         val bufs = Array(order.size) { DoubleArray(min(batch, max(n, 1))) }
         val insOf = order.map { d -> Array(d.inputs.size) { bufs[indexOf(d.inputs[it])] } }
-        val weightBufs = givens.map { bufs[indexOf(order[it].inputs[1])] }
+        val weightBufs = evidenceNodes.map { bufs[indexOf(it)] }
         var done = 0
         while (done < n) {
             val m = min(batch, n - done)

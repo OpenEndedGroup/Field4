@@ -23,6 +23,7 @@ fun Dist.toGlsl(functionName: String = "nlSample"): String {
     val body = StringBuilder()
     val helpers = LinkedHashSet<String>()
     val preludes = StringBuilder()
+    val counted = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<Dist, Boolean>())
     plan.order.forEachIndexed { k, d ->
         val g = d.glsl ?: throw UnsupportedOperationException(
             "node '${d.op}' is Kotlin (`map`) and cannot be lowered to GLSL; rewrite it with Dist operators"
@@ -34,7 +35,8 @@ fun Dist.toGlsl(functionName: String = "nlSample"): String {
         val ins = d.inputs.map { names[plan.indexOf(it)]!! }
         val expr = g(ins, "s").replace(GLSL_ID, "${functionName}_$name")
         body.append("    float ").append(name).append(" = ").append(expr).append(";\n")
-        if (d.kind == Dist.Kind.Given) body.append("    lw += ").append(ins[1]).append(";\n")
+        // each piece of evidence counts once, however many variables it conditions
+        if (d.kind == Dist.Kind.Given && counted.add(d.inputs[1])) body.append("    lw += ").append(ins[1]).append(";\n")
     }
     val signature = if (plan.hasEvidence) "(inout uint s, inout float lw)" else "(inout uint s)"
     return buildString {

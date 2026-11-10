@@ -399,8 +399,9 @@ object DemoTranscriptExecSmokeTest {
         // Five independent pure-CPU automatic-differentiation boxes; plot, showSignals and
         // showPlaneGrid all end in display(), so no AWT, no GPU and nothing to launch.
         "autodiff_worked_example",
-        // Random variables sampled on the CPU and drawn by the inline distribution view; two boxes
-        // launch loop { } but need no Window, Renderer or device.
+        // Random variables sampled on the CPU and drawn by the inline distribution view; three boxes
+        // launch loop { } but need no Window, Renderer or device. The live-audio box (8) is created
+        // but never launched, so no audio device is needed either; the pattern boxes render offline.
         "noiselang_distributions",
         // λ-terms compiled to interaction nets, reduced and read back, against a substitution
         // evaluator that shares nothing with them. Pure CPU: no Window, no Renderer, no service —

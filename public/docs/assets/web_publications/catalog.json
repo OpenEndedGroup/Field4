@@ -2872,26 +2872,37 @@
     },
     "assets/agent_transcripts/noiselang_distributions/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
-      "capturedAt": "2026-11-10T19:30:13.964Z",
-      "channels": 1,
+      "capturedAt": "2026-11-10T22:53:21.678Z",
+      "channels": 7,
       "file": "assets/web_publications/noiselang_distributions/document/metadata.edn",
       "files": {
-        "assets/web_publications/noiselang_distributions/document/metadata.edn": "67d75008f745fd372ff09766a2e16b382f2bdc693577540c39cd90c544cf58e4",
-        "assets/web_publications/noiselang_distributions/document/outputs.json": "09b6d71baa8bc1c092ef99ee9a98bde7123cfa17c1801c2636b40f6c94dc3776",
-        "assets/web_publications/noiselang_distributions/outputs/0.html": "8a847dd50b593c7858b2004aa2b82f430e1aa4638325b5c10427c090e0b2f114"
+        "assets/web_publications/noiselang_distributions/document/metadata.edn": "8feba5ca22289fe5092d9c37b44de192175c4fd7bfbe3fd7c45ee2638940372b",
+        "assets/web_publications/noiselang_distributions/document/outputs.json": "b9c1decd9f703414e734995f61a5c2b64d5f661cc8f9f8878c76439620f7de36",
+        "assets/web_publications/noiselang_distributions/outputs/0.html": "4f183d137f6749d50b5fb2c2f11ab2552d765e0baa0656ca266d0931b476a02c",
+        "assets/web_publications/noiselang_distributions/outputs/1.html": "70bf64e6e2cf256f067db671ff4dc784e2d44181cd011c34b64819401afb5d84",
+        "assets/web_publications/noiselang_distributions/outputs/2.html": "c8d39f1e4f9c0153a7953a304cf956565e314c498b7a406b3f8c2cc734d1ada0",
+        "assets/web_publications/noiselang_distributions/outputs/3.html": "2d0b248f73e3bed089e5e9ac191913222dd7a97d3f6ccb91ab8665f4bebe47c2",
+        "assets/web_publications/noiselang_distributions/outputs/4.html": "c8d39f1e4f9c0153a7953a304cf956565e314c498b7a406b3f8c2cc734d1ada0",
+        "assets/web_publications/noiselang_distributions/outputs/5.html": "671b809059481a86d2140981a5ab4b0c97ea283b344b2f38ed4609451b21e32b",
+        "assets/web_publications/noiselang_distributions/outputs/6.html": "c330b74ade31b684ade4a7ba7a3f3c6dcc7a216583a852f319230549d600e59f"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/noiselang_distributions/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/noiselang_distributions.yaml": "edf17906a0a4c31d0efdd7ae3a737e6a3a5a5e2e5531173456977113d827bb43",
+        "dev_docs/agents/transcripts/noiselang_distributions.yaml": "3bbef2c6eccd9c3a7bf9166f5ccd9ae8da56714009eb77db8677d944d18fcb24",
         "public/docs/assets/agent_transcripts/noiselang_distributions/guides/distributions.md": "da1f2d77ff7eb8353197fee50688c85504e9304bc1c1f2fc6fdde2eb2a6b824b",
-        "public/docs/assets/agent_transcripts/noiselang_distributions/metadata.edn": "aff0e4314d3759a3b4307522d414ee0b448ff8e868913fca208df18d1beceba7",
+        "public/docs/assets/agent_transcripts/noiselang_distributions/metadata.edn": "0b88084ea8789bb06022c47f296be462ac112fff4c031ba15989f91981234d07",
         "public/docs/assets/agent_transcripts/noiselang_distributions/noise_density_code_.kt": "597a3efa3d95f8e6905d9d543be1f6943c83363b3b0ba8ece609a3146f95b897",
+        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_five_in_sixteen_code_.kt": "d178f206df6ac7d7929fc674ee9d02034c9a9568d9d1bbe7b0b6603e4281f8d1",
+        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_gp_curves_code_.kt": "377e6a5f8219d87ee9fd0ded2fff5c134d8f3903f6e8c42160fad66541de1b1f",
+        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_live_pitch_code_.kt": "9ebf7474bb8e72f3ce99aed9e2d928d87c78e3d3bb19df6bf449248f78592d41",
+        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_posterior_code_.kt": "ac23af72b9b85076ac2700fb87c412e6d46c888b54132ec008faf0dca6213fdb",
         "public/docs/assets/agent_transcripts/noiselang_distributions/noise_queries_code_.kt": "7823faaeef227f49f83123b9299d6a17767c8aea428e11370c940ac1f08ea10d",
         "public/docs/assets/agent_transcripts/noiselang_distributions/noise_spike_to_triangle_code_.kt": "f175368cb641f43424446b4d4cba3671b7981b95b32c7dfd0308f4255399385a",
-        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_walks_code_.kt": "48276aaf40bef0d14a89620d5af66403d1d695d0e371583c4364dd88f8b5d769"
+        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_walks_code_.kt": "48276aaf40bef0d14a89620d5af66403d1d695d0e371583c4364dd88f8b5d769",
+        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_weighted_scale_code_.kt": "c56c9e76e748972ec69785ee1911683d18d07843673875e2a53e76c62e048053"
       }
     },
     "assets/agent_transcripts/notation_elements/metadata.edn": {
