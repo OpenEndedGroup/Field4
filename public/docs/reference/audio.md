@@ -4,7 +4,7 @@
 
 Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. `SoundPathMap.kt` is the one to read first: the declared, re-derived-from-the-code map of every route Field has from a box to something audible, which [Making a sound in Field: every path there is](../sound_paths.md) renders as a page. [Sonic Pi](../sonic_pi.md) covers owned mode in full.
 
-90 source file(s), 2351 public symbol(s), 1217 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+91 source file(s), 2360 public symbol(s), 1226 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -5490,6 +5490,27 @@ A mono WAV emitter in OpenXR world metres, binauralized by Steam Audio once per 
 ## SynthCookbookCompileDemo.kt { #synthcookbookcompiledemo-kt }
 
 `src/jvmMain/kotlin/afield/audio/synth/SynthCookbookCompileDemo.kt`
+
+## TrackedBodyDocs.kt { #trackedbodydocs-kt }
+
+`src/jvmMain/kotlin/afield/audio/synth/TrackedBodyDocs.kt` — [read the source](source/jvmMain/afield/audio/synth/TrackedBodyDocs/)
+
+### TrackedBodyDocs { #trackedbodydocs-kt-trackedbodydocs }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">TrackedBodyDocs</span></code>](source/jvmMain/afield/audio/synth/TrackedBodyDocs/#L29)
+
+The audio clip of `public/docs/chain_tracked_body.md`, rendered offline for the docs runner's `audio=` fence.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="trackedbodydocs-kt--trackedbodydocs--recording"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RECORDING</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/audio/synth/TrackedBodyDocs/#L31) | The recording, relative to a Field checkout. |
+| <a id="trackedbodydocs-kt--trackedbodydocs--fps"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">FPS</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/audio/synth/TrackedBodyDocs/#L34) | The clip's frame rate; one cycle of the pattern lasts as long as the clip. |
+| <a id="trackedbodydocs-kt--trackedbodydocs--voice"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">VOICE</span><span class="p">:</span> <span class="nc">PatVoiceSpec</span></code>](source/jvmMain/afield/audio/synth/TrackedBodyDocs/#L37) | The voice the `heard` box plays with. |
+| <a id="trackedbodydocs-kt--trackedbodydocs--frames"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">frames</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">RECORDING</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Float</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="o">?</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Float</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/TrackedBodyDocs/#L40) | Per frame, null or 33 landmarks as [x, y, z, visibility]; and the frame's width over height. |
+| <a id="trackedbodydocs-kt--trackedbodydocs--hits"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">hits</span><span class="p">(</span><span class="n">frames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Float</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="o">?</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">aspect</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BodyHit</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/TrackedBodyDocs/#L50) | The right wrist's closest point on the body, per frame (null where no body was found). |
+| <a id="trackedbodydocs-kt--trackedbodydocs--notes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">notes</span><span class="p">(</span><span class="n">hits</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BodyHit</span><span class="o">?</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TimedNote</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/TrackedBodyDocs/#L73) | One note per five frames: nearer the body is higher, the head louder, a gap a rest. |
+| <a id="trackedbodydocs-kt--trackedbodydocs--render"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">RECORDING</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatSoundDocs</span><span class="p">.</span><span class="nc">Stereo</span></code>](source/jvmMain/afield/audio/synth/TrackedBodyDocs/#L84) | The clip as stereo, one cycle at the recording's speed. |
+| <a id="trackedbodydocs-kt--trackedbodydocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/TrackedBodyDocs/#L91) | The published clip; `name` is the fence's `audio-spec` and must be `"right-wrist"`. |
 
 ## ToneKotlinJs.kt { #tonekotlinjs-kt }
 

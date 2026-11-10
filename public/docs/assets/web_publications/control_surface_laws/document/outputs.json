@@ -1,18 +1,18 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T09:00:02.479Z",
+  "capturedAt": "2026-11-10T09:22:39.671Z",
   "documentName": "control_surface_laws",
   "outputs": [
     {
       "uid": "control_surface_meter",
       "channel": "levels",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [
         "svg"
       ],
-      "width": 532,
-      "height": 143,
+      "width": 536,
+      "height": 160,
       "path": "outputs/0.html"
     },
     {

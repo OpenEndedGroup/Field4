@@ -141,7 +141,7 @@ run its example to check that it works on your machine.
 Your choices are saved in `~/.field4/first-run.properties`. Reopen the tool with `./field.sh --setup`
 (Windows: `.\field.bat --setup`); this command configures setup and exits. Noninteractive launches
 skip the questionnaire. Automation may also set `AFIELD_FIRST_RUN=skip`; prerequisite checks still
-apply. The helper builds on the wrapper's Java 17, independently of Field's compiler fork.
+apply. The helper builds on the JDK the Gradle wrapper downloads, independently of Field's compiler fork.
 
 The terminal shows startup progress and server URLs:
 

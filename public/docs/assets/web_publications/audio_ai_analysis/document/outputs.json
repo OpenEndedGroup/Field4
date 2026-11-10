@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T08:41:57.272Z",
+  "capturedAt": "2026-11-10T09:04:07.528Z",
   "documentName": "audio_ai_analysis",
   "outputs": [
     {
@@ -29,14 +29,14 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 283,
+      "width": 309,
       "height": 40,
       "path": "outputs/2.html"
     },
     {
       "uid": "analysis_visualizer_gallery",
       "channel": "analysis board",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [
         "plotly",

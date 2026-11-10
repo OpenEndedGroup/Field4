@@ -139,6 +139,9 @@ object DemoTranscriptExecSmokeTest {
         // and measure onsets and pitches in the renders. No
         // audio device is opened; the audio is an offline buffer displayed as a data: URI.
         "drawn_score",
+        // Two CPU boxes: a recorded mediapipe pose stream into BodyGeometry, drawn with FLine and played
+        // through patTimed into an audio player. Offline buffers only; no headset, Window or Renderer.
+        "chain_tracked_body",
         // Five CPU boxes: two strokes drawn from code, read back, resampled and paired with
         // matchPoints, morphed, and the morph played as pitch into audio players. Offline buffers only.
         "drawn_morph",
@@ -611,6 +614,9 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // Box 2 returns a live patSynth launch (an audio-engine registration held while the box runs);
+        // the drawing-to-facts path and the live re-solve are covered by DatalogRhythmLiveTest.
+        "datalog_rhythm_drawn",
         // Requires a connected OpenXR runtime and real tracking; geometry math is covered by BodyGeometryTest.
         "body_one",
         "text_one_vr",
@@ -929,6 +935,9 @@ object DemoTranscriptExecSmokeTest {
         // Opens a Vulkan window for the fullscreen sky shader; the scattering it includes is graded on
         // the CPU twin by AtmosphereTest (closed-form transmittance, blue noon, red sunset).
         "atmospheric_sky",
+        // Opens a Vulkan window for the fabricate renderer lit by the baked sky; the bake is graded
+        // by AtmosphereTest (texels equal radiance, sunset key light reddens).
+        "sky_environment",
         // The same deal again, one tier up: both open a native Vulkan renderer to draw a trained
         // field, and both are graded far more sharply than a replay could manage — the
         // interpolation they demonstrate is measured in `WeightInterpolationTest`, endpoint

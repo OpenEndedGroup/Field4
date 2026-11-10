@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T08:35:16.169Z",
+  "capturedAt": "2026-11-10T08:57:30.540Z",
   "documentName": "keyframe_code_blend",
   "outputs": [
     {
@@ -9,8 +9,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 464,
-      "height": 166,
+      "width": 465,
+      "height": 165,
       "path": "outputs/0.html"
     },
     {
@@ -19,8 +19,8 @@
       "open": false,
       "warnings": [],
       "kinds": [],
-      "width": 424,
-      "height": 176,
+      "width": 426,
+      "height": 175,
       "path": "outputs/1.html"
     },
     {
@@ -29,7 +29,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 471,
+      "width": 472,
       "height": 163,
       "path": "outputs/2.html"
     },
@@ -39,7 +39,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 424,
+      "width": 426,
       "height": 176,
       "path": "outputs/3.html"
     },
@@ -50,7 +50,7 @@
       "warnings": [],
       "kinds": [],
       "width": 604,
-      "height": 134,
+      "height": 132,
       "path": "outputs/4.html"
     }
   ]

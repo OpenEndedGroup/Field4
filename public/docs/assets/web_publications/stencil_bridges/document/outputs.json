@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T08:35:01.569Z",
+  "capturedAt": "2026-11-10T08:57:18.677Z",
   "documentName": "stencil_bridges",
   "outputs": [
     {
@@ -9,7 +9,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 200,
+      "width": 211,
       "height": 94,
       "path": "outputs/0.html"
     },
@@ -31,7 +31,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 269,
+      "width": 293,
       "height": 132,
       "path": "outputs/2.html"
     },
@@ -41,7 +41,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 259,
+      "width": 282,
       "height": 94,
       "path": "outputs/3.html"
     }

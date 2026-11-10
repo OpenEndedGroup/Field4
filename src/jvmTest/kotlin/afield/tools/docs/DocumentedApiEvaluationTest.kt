@@ -198,6 +198,14 @@ class DocumentedApiEvaluationTest {
         "recenterInspection" to "body_tracking.md; document-local helper reads the live headset heading and updates its inspection offset; body_one is COMPILE_ONLY, live tracking controls exercise it",
         "reportSection" to "body_tracking.md; document-local status formatter closes over live tracking observations; body_one is COMPILE_ONLY and live inspector panels exercise its output",
         "updateBodyQueries" to "body_tracking.md; document-local overlay update reads current head/hand/controller tracking and publishes Vulkan marker uniforms; live query capture exercises it, pure geometry has JVM tests",
+        // fabricate_renderer.md "A sky that lights the scene" (2026-11-10): the sky_environment boxes
+        // draw through StandardRenderer into a native window, so the transcript is COMPILE_ONLY.
+        // The CPU bake they consume has tests (AtmosphereTest, PathTraceEnvironmentAtmosphereTest).
+        "applyFabricateMaterial" to "fabricate_renderer.md; sets a material on a bundle bound to a live Vulkan renderer; sky_environment is COMPILE_ONLY, its scene capture exercises it",
+        "bindNode" to "fabricate_renderer.md; binds a scene node into the renderer's GPU mesh pairs, needing a live Renderer; sky_environment is COMPILE_ONLY, real captures exercise it",
+        "registerTestTorus" to "fabricate_renderer.md; uploads a torus mesh to a live StandardRenderer bundle; sky_environment is COMPILE_ONLY, its scene capture exercises it",
+        "showEnvironmentBackground" to "fabricate_renderer.md; switches the deferred pass's backdrop on a live bundle; needs a Vulkan renderer, exercised by the sky_environment and skybox captures",
+        "torusNode" to "fabricate_renderer.md; a helper the sky_environment box defines for itself over a live bundle; COMPILE_ONLY transcript, real scene capture",
         // growing_nca.md (2026-11-08): stepMesh is not a library API but a helper the page's GPU box
         // defines for itself, building one fixed-parity ComputeMesh; growing_nca is COMPILE_ONLY because
         // that box needs a renderer. GrowingNcaTest runs the same rule on the CPU.

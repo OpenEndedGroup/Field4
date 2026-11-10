@@ -123,30 +123,30 @@ JVM_TEMP_FILE=$BUILD_DIR/gradle-jvm-temp.tar.gz
 if [ "$darwin" = "true" ]; then
     case $JVM_ARCH in
     x86_64)
-        JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-17-x64-macos-jdk.tar.gz
-        JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-17-x64-macos-jdk-ba9887
+        JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-25-x64-macos-jdk.tar.gz
+        JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-25-x64-macos-jdk-91cfd8
         ;;
     arm64)
-        JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-macos-jdk.tar.gz
-        JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-17-aarch64-macos-jdk-61fa25
+        JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-25-aarch64-macos-jdk.tar.gz
+        JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-25-aarch64-macos-jdk-70895b
         ;;
     *) 
         die "Unknown architecture $JVM_ARCH"
         ;;
     esac
 elif [ "$cygwin" = "true" ] || [ "$msys" = "true" ]; then
-    JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-17-x64-windows-jdk.zip
-    JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-17-x64-windows-jdk-aca311
+    JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-25-x64-windows-jdk.zip
+    JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-25-x64-windows-jdk-9e071a
 else
     JVM_ARCH=$(linux$(getconf LONG_BIT) uname -m)
      case $JVM_ARCH in
         x86_64)
-            JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-17-x64-linux-jdk.tar.gz
-            JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-17-x64-linux-jdk-f9fee4
+            JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-25-x64-linux-jdk.tar.gz
+            JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-25-x64-linux-jdk-558dd9
             ;;
         aarch64)
-            JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-linux-jdk.tar.gz
-            JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-17-aarch64-linux-jdk-11b11b
+            JVM_URL=https://corretto.aws/downloads/latest/amazon-corretto-25-aarch64-linux-jdk.tar.gz
+            JVM_TARGET_DIR=$BUILD_DIR/amazon-corretto-25-aarch64-linux-jdk-fc02b9
             ;;
         *) 
             die "Unknown architecture $JVM_ARCH"

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T08:40:53.579Z",
+  "capturedAt": "2026-11-10T09:02:59.353Z",
   "documentName": "petri_state_space",
   "outputs": [
     {
@@ -22,7 +22,7 @@
       "warnings": [],
       "kinds": [],
       "width": 467,
-      "height": 130,
+      "height": 131,
       "path": "outputs/1.html"
     },
     {
@@ -88,7 +88,7 @@
       "warnings": [],
       "kinds": [],
       "width": 467,
-      "height": 173,
+      "height": 175,
       "path": "outputs/7.html"
     },
     {

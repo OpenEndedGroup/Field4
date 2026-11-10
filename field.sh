@@ -498,10 +498,14 @@ ensure_gradle_jvm() {
     # half-extracted JDK (tar then fails with "Cannot mkdir: No such file or directory" on every
     # entry). This script starts exactly such a pair — the backgrounded sidecar gradlew below and the
     # foreground build gradlew — so on a fresh clone the two race and the build dies. Provision once,
-    # serially, before either of them runs. Nothing to do once a previous run has left a .flag behind;
-    # that is the same up-to-date marker gradlew itself checks, so warm runs pay nothing.
+    # serially, before either of them runs. Nothing to do once a previous run has left a .flag that
+    # holds one of the JVM_URLs gradlew names: that is the same up-to-date marker gradlew itself
+    # checks, so warm runs pay nothing. Any .flag is not enough — after the bootstrap JDK changes
+    # (Corretto 17 → 25) the old one's flag would wave the race straight back in.
+    wanted_jvm_urls=$(sed -n 's/^[[:space:]]*JVM_URL=//p' ./gradlew)
     for flag in "$HOME"/.field4/gradle-jvm/*/.flag; do
-        [ -e "$flag" ] && return 0
+        [ -e "$flag" ] || continue
+        printf '%s\n' "$wanted_jvm_urls" | grep -qxF -- "$(cat "$flag")" && return 0
     done
     if [ "${AFIELD_OFFLINE:-}" = 1 ]; then
         echo "field: offline but the build JVM is not cached; run ./field.sh once online first" >&2
@@ -785,7 +789,7 @@ electron_launcher_available() {
 }
 
 run_first_run_setup() {
-    # A separate Kotlin/JVM 17 application: it builds without the Field compiler fork or GPU code.
+    # A separate Kotlin/JVM application on the wrapper's JDK: it builds without the Field compiler fork or GPU code.
     check_platform || return 1
     ensure_gradle_jvm || return 1
     echo "field: preparing the small welcome tool (separate from the Field build)…" >&2
