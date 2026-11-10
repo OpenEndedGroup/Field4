@@ -139,6 +139,9 @@ object DemoTranscriptExecSmokeTest {
         // and measure onsets and pitches in the renders. No
         // audio device is opened; the audio is an offline buffer displayed as a data: URI.
         "drawn_score",
+        // Two CPU boxes: a recorded mediapipe pose stream into BodyGeometry, drawn with FLine and played
+        // through patTimed into an audio player. Offline buffers only; no headset, Window or Renderer.
+        "chain_tracked_body",
         // Five CPU boxes: two strokes drawn from code, read back, resampled and paired with
         // matchPoints, morphed, and the morph played as pitch into audio players. Offline buffers only.
         "drawn_morph",
