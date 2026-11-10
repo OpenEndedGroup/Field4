@@ -484,7 +484,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
     - [body](graphics.md#bodygeometry-kt)
     - [fabricated](renderers.md#fabricatedirectlighting-kt)
     - [reading](graphics.md#diagramcompositor-kt)
-    - [video](graphics.md#stereovideocolorimetry-kt)
+    - [video](graphics.md#stereovideocarousel-kt)
 - [shader](graphics.md#introspection-kt)
     - [learning](graphics.md#gpushaderlearningview-kt)
 - [sky](graphics.md#atmosphere-kt)
@@ -665,20 +665,20 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**37923 public symbols across 1725 source files**, 22300 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**37942 public symbols across 1730 source files**, 22302 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 231 | 723 | 320 (44%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 232 | 725 | 321 (44%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 21 | 158 | 56 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 206 | 206 (100%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 18 | 439 | 269 (61%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2162 | 1623 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1061 | 502 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 376 | 9231 | 5821 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 380 | 9248 | 5822 (62%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 427 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 514 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -2237,11 +2237,14 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [StereoEyeCopy.kt](graphics.md#stereoeyecopy-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [StereoPackingSmokeTest.kt](examples.md#stereopackingsmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [StereoPoseSource.kt](graphics.md#stereoposesource-kt) | Graphics | 9 | 9 | The interface for a stereo head pose that arrives from somewhere other than OpenXR, such as a remote headset. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoCarousel.kt](graphics.md#stereovideocarousel-kt) | Graphics | 11 | 3 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [StereoVideoCarouselSmoke.kt](examples.md#stereovideocarouselsmoke-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoColorimetry.kt](graphics.md#stereovideocolorimetry-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [StereoVideoDecodeProbe.kt](examples.md#stereovideodecodeprobe-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoPlacement.kt](graphics.md#stereovideoplacement-kt) | Graphics | 9 | 4 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [StereoVideoPrecisionSmoke.kt](examples.md#stereovideoprecisionsmoke-kt) | Examples | 2 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoSurface.kt](graphics.md#stereovideosurface-kt) | Graphics | 36 | 16 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoSource.kt](graphics.md#stereovideosource-kt) | Graphics | 14 | 2 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoSurface.kt](graphics.md#stereovideosurface-kt) | Graphics | 27 | 11 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>paint/<wbr></small> [StereoWarp.kt](graphics.md#stereowarp-kt) | Graphics | 7 | 7 | A smooth map between the two canvases of a stereo pair, so canvas texture such as weave and grain sits on the painted surface in both eyes: `StereoWarp`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [StigmergySweep.kt](examples.md#stigmergysweep-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [stippletransport.kt](machine-learning.md#stippletransport-kt) | Machine learning | 13 | 13 | Runs a learned stipple transport on the CPU: a small SiLU network, trained by the optional PyTorch tool in `optional/transport-flow`, that moves points from a uniform source rectangle toward an image's density. |  |
@@ -2371,11 +2374,13 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [VideoExposureBlur.kt](graphics.md#videoexposureblur-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [VideoExposureCadence.kt](graphics.md#videoexposurecadence-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [VideoFrameAccumulator.kt](graphics.md#videoframeaccumulator-kt) | Graphics | 0 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [VideoFrameHistory.kt](graphics.md#videoframehistory-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [VideoFrameIndex.kt](graphics.md#videoframeindex-kt) | Graphics | 3 | 3 | Frame-number arithmetic for constant-frame-rate video, shared by the code that asks for a frame and the code that reports which frame a decoder produced. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [VideoFrameQueue.kt](graphics.md#videoframequeue-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr></small> [videoFrames.kt](video.md#videoframes-kt) | Video | 2 | 2 | Reading a video file frame by frame as Field images, through ffmpeg. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [VideoHistoryCursor.kt](graphics.md#videohistorycursor-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [VideoMaterialCadence.kt](graphics.md#videomaterialcadence-kt) | Graphics | 3 | 2 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [VideoTexture.kt](graphics.md#videotexture-kt) | Graphics | 39 | 31 | Plays a video file into Vulkan textures that a shader can sample, with `VideoTexture.load`, `VideoTexture.play`, `VideoTexture.pause`, `VideoTexture.seek` and `VideoTexture.unload`. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [VideoTexture.kt](graphics.md#videotexture-kt) | Graphics | 40 | 32 | Plays a video file into Vulkan textures that a shader can sample, with `VideoTexture.load`, `VideoTexture.play`, `VideoTexture.pause`, `VideoTexture.seek` and `VideoTexture.unload`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>video/<wbr></small> [VideoTextureExample.kt](examples.md#videotextureexample-kt) | Examples | 5 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [VirtualFileSystem.kt](workspace.md#virtualfilesystem-kt) | Workspace | 18 | 18 | A read-only view of box text in saved documents as addressable files, so tools that expect files can read a box's code or shaders without opening Field. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>visionos/<wbr></small> [VisionGeometryPreview.kt](graphics.md#visiongeometrypreview-kt) | Graphics | 19 | 17 | See a Live Metal box's `geometry { … }` on your desk, without a headset. |  |

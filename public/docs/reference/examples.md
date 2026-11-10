@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-231 source file(s), 723 public symbol(s), 320 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+232 source file(s), 725 public symbol(s), 321 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2156,6 +2156,20 @@ Checks the first packed-image sampling, eye draw count, and eye aspect on a non-
 | Declaration | Summary |
 | --- | --- |
 | <a id="stereopackingsmoketest-kt--stereopackingsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoPackingSmokeTest/#L35) |  |
+
+## StereoVideoCarouselSmoke.kt { #stereovideocarouselsmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/StereoVideoCarouselSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/StereoVideoCarouselSmoke/)
+
+### StereoVideoCarouselSmoke { #stereovideocarouselsmoke-kt-stereovideocarouselsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StereoVideoCarouselSmoke</span></code>](source/jvmMain/afield/examples/four/StereoVideoCarouselSmoke/#L35)
+
+Real P010 GPU copies, eight independently accumulated surfaces, and a shared decoder through seek/refill.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="stereovideocarouselsmoke-kt--stereovideocarouselsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoVideoCarouselSmoke/#L36) |  |
 
 ## StereoVideoDecodeProbe.kt { #stereovideodecodeprobe-kt }
 

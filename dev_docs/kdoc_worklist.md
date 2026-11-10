@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 22300 of 37923 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 22302 of 37942 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2031 undocumented entry points** (types, top-level functions and values) and 12916 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2031 undocumented entry points** (types, top-level functions and values) and 12933 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -600,7 +600,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AmbisonicsEffects.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/AmbisonicsEffects.kt) | Audio | — | 0 | 21 | 63% |
 | [HeadlessPuppetBrowser.kt](../src/jvmMain/kotlin/afield/media/browser/HeadlessPuppetBrowser.kt) | Imaging | — | 0 | 21 | 19% |
 | [BoidSketch.kt](../src/jvmMain/kotlin/afield/simulation/particles/BoidSketch.kt) | Simulation | — | 0 | 21 | 77% |
-| [StereoVideoSurface.kt](../src/jvmMain/kotlin/afield/graphics/scene/video/StereoVideoSurface.kt) | Graphics | — | 0 | 20 | 44% |
 | [OpenXRHmdTarget.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/targets/OpenXRHmdTarget.kt) | Graphics | — | 0 | 20 | 51% |
 | [DatalogEngine.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogEngine.kt) | Languages | — | 0 | 19 | 43% |
 | [ReconstructionDemo.kt](../src/jvmMain/kotlin/afield/media/reconstruction/ReconstructionDemo.kt) | Imaging | — | 0 | 19 | 9% |
@@ -615,6 +614,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SimdVerletWind.kt](../src/jvmMain/kotlin/afield/simulation/physics/SimdVerletWind.kt) | Simulation | — | 0 | 17 | 46% |
 | [keyframeBrowser.kt](../src/jvmMain/kotlin/afield/animation/keyframes/keyframeBrowser.kt) | Visualization | — | 0 | 16 | 75% |
 | [SpatialWavPlayer.kt](../src/jvmMain/kotlin/afield/audio/synth/SpatialWavPlayer.kt) | Audio | — | 0 | 16 | 15% |
+| [StereoVideoSurface.kt](../src/jvmMain/kotlin/afield/graphics/scene/video/StereoVideoSurface.kt) | Graphics | — | 0 | 16 | 40% |
 | [MultiPingPongRenderToTexture.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/targets/MultiPingPongRenderToTexture.kt) | Graphics | — | 0 | 16 | 41% |
 | [RenderToTexture.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/targets/RenderToTexture.kt) | Graphics | — | 0 | 16 | 76% |
 | [RtpMidiSession.kt](../src/jvmMain/kotlin/afield/io/midi/rtp/RtpMidiSession.kt) | Networking | — | 0 | 16 | 43% |
@@ -644,6 +644,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [MeshBuilder.kt](../src/jvmMain/kotlin/afield/graphics/render/MeshBuilder.kt) | Graphics | — | 0 | 12 | 25% |
 | [FabricatePassGraph.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricatePassGraph.kt) | Renderers | — | 0 | 12 | 7% |
 | [standardShapes.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/standardShapes.kt) | Renderers | — | 0 | 12 | 7% |
+| [StereoVideoSource.kt](../src/jvmMain/kotlin/afield/graphics/scene/video/StereoVideoSource.kt) | Graphics | — | 0 | 12 | 14% |
 | [OscQueryRemote.kt](../src/jvmMain/kotlin/afield/io/osc/query/OscQueryRemote.kt) | Networking | — | 0 | 12 | 29% |
 | [SyphonTexture.kt](../src/jvmMain/kotlin/afield/io/syphon/SyphonTexture.kt) | Graphics | — | 0 | 12 | 31% |
 | [HostTypes.kt](../src/jvmMain/kotlin/afield/lang/fieldml/type/HostTypes.kt) | Languages | — | 0 | 12 | 61% |
@@ -699,8 +700,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/data/graph/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
 | [HistoryMetrics.kt](../src/jvmMain/kotlin/afield/document/history/HistoryMetrics.kt) | Workspace | — | 0 | 8 | 11% |
 | [OpenDlssNrImage.kt](../src/jvmMain/kotlin/afield/graphics/render/neural/OpenDlssNrImage.kt) | Graphics | — | 0 | 8 | 20% |
+| [StereoVideoCarousel.kt](../src/jvmMain/kotlin/afield/graphics/scene/video/StereoVideoCarousel.kt) | Graphics | — | 0 | 8 | 27% |
 | [PlaybackClock.kt](../src/jvmMain/kotlin/afield/graphics/texture/video/PlaybackClock.kt) | Graphics | — | 0 | 8 | 46% |
-| [VideoTexture.kt](../src/jvmMain/kotlin/afield/graphics/texture/video/VideoTexture.kt) | Graphics | — | 0 | 8 | 79% |
+| [VideoTexture.kt](../src/jvmMain/kotlin/afield/graphics/texture/video/VideoTexture.kt) | Graphics | — | 0 | 8 | 80% |
 | [Types.kt](../src/jvmMain/kotlin/afield/lang/fieldml/type/Types.kt) | Languages | — | 0 | 8 | 72% |
 | [StackSLPrograms.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLPrograms.kt) | Languages | — | 0 | 8 | 79% |
 | [StackSLStudy.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLStudy.kt) | Languages | — | 0 | 8 | 82% |
@@ -1046,6 +1048,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ShapeAsciiGpuSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/ShapeAsciiGpuSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [SlugRenderSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/SlugRenderSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [StereoPackingSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/four/StereoPackingSmokeTest.kt) | Examples | — | 0 | 1 | 50% |
+| [StereoVideoCarouselSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/StereoVideoCarouselSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [StereoVideoDecodeProbe.kt](../src/jvmMain/kotlin/afield/examples/four/StereoVideoDecodeProbe.kt) | Examples | — | 0 | 1 | 50% |
 | [StereoVideoPrecisionSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/StereoVideoPrecisionSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [StigmergySweep.kt](../src/jvmMain/kotlin/afield/examples/four/StigmergySweep.kt) | Examples | — | 0 | 1 | 50% |
