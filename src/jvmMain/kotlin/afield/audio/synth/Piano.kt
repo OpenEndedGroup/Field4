@@ -207,7 +207,10 @@ class Piano(
         java.util.Arrays.fill(force, 0, numFrames, 0.0)
         for (k in 0 until 88) java.util.Arrays.fill(ownByKey[k], 0, numFrames, 0.0)
 
-        // segments between events, so a note starts on its own sample
+        // Segments between events, so a note, a release or a pedal change lands on its own sample
+        // and the output is the same at any block size.
+        val res = resonance!!; val brd = board!!; val rm = roomFx!!
+        val dcK = 1.0 - 2 * PI * 20.0 / fs
         var at = 0
         while (at < numFrames) {
             while (pending.isNotEmpty() && pending.peek().frame <= start + at) apply(pending.poll(), at, bHard, bBridge)
@@ -221,25 +224,22 @@ class Piano(
                 v.render(force, ownByKey[v.key], at, to, bInh, bDecay, bPedal, ccPedal, fs)
                 if (v.finished) iter.remove()
             }
-            at = to
-        }
-
-        val res = resonance!!; val brd = board!!; val rm = roomFx!!
-        val dcK = 1.0 - 2 * PI * 20.0 / fs
-        for (i in 0 until numFrames) {
-            val input = force[i]
-            val pedalNow = max(bPedal[i].toDouble(), ccPedal).coerceIn(0.0, 1.0)
-            val wet = res.process(input, pedalNow, ownByKey, keyActive, i)
-            val bridge = input + voicing.resonanceGain * bCoup[i] * wet
-            brd.process(bridge * bBoard[i], lr)
-            for (c in 0..1) {
-                val o = lr[c] - dcIn[c] + dcK * dcOut[c]
-                dcIn[c] = lr[c]; dcOut[c] = o; lr[c] = o
+            for (i in at until to) {
+                val input = force[i]
+                val pedalNow = max(bPedal[i].toDouble(), ccPedal).coerceIn(0.0, 1.0)
+                val wet = res.process(input, pedalNow, ownByKey, keyActive, i)
+                val bridge = input + voicing.resonanceGain * bCoup[i] * wet
+                brd.process(bridge * bBoard[i], lr)
+                for (c in 0..1) {
+                    val o = lr[c] - dcIn[c] + dcK * dcOut[c]
+                    dcIn[c] = lr[c]; dcOut[c] = o; lr[c] = o
+                }
+                rm.process(lr, bRoom[i].toDouble())
+                val g = OUTPUT_GAIN * bGain[i]
+                outL[i] = pianoLimitOutput(lr[0] * g).toFloat()
+                outR[i] = pianoLimitOutput(lr[1] * g).toFloat()
             }
-            rm.process(lr, bRoom[i].toDouble())
-            val g = OUTPUT_GAIN * bGain[i]
-            outL[i] = pianoLimitOutput(lr[0] * g).toFloat()
-            outR[i] = pianoLimitOutput(lr[1] * g).toFloat()
+            at = to
         }
         for (k in 0 until 88) keyActive[k] = false
         frame = start + numFrames
