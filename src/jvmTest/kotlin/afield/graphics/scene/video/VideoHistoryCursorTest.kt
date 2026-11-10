@@ -19,12 +19,16 @@ class VideoHistoryCursorTest {
         assertEquals(100, pictures[cursor.slot(7)!!]) // never samples the previous loop/seek
     }
 
-    @Test fun fourFrameSpacingSelectsEightIndependentTimesWithinTwentyNinePictures() {
-        val cursor = VideoHistoryCursor(29)
-        val pictures = LongArray(29)
-        for (serial in 0L..100L) pictures[cursor.advance()] = serial
-        assertEquals((0..7).map { 100L - it * 4 }, (0..7).map { pictures[cursor.slot(it * 4)!!] })
-        assertFailsWith<IllegalArgumentException> { cursor.slot(29) }
+    @Test fun eightScreensSelectIndependentTimesAtFourAndEightFrameSpacing() {
+        for (spacing in listOf(4, 8)) {
+            val capacity = 7 * spacing + 1
+            val cursor = VideoHistoryCursor(capacity)
+            val pictures = LongArray(capacity)
+            for (serial in 0L..200L) pictures[cursor.advance()] = serial
+            assertEquals((0..7).map { 200L - it * spacing },
+                (0..7).map { pictures[cursor.slot(it * spacing)!!] })
+            assertFailsWith<IllegalArgumentException> { cursor.slot(capacity) }
+        }
         assertFailsWith<IllegalArgumentException> { VideoHistoryCursor(0) }
     }
 }

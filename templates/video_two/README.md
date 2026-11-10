@@ -5,8 +5,8 @@ movie, transport and active decode stream. Each published P010 image is copied o
 bounded GPU ring. The screens select progressively older pictures from that ring and own
 independent temporal accumulators, paired-exposure clocks and Gaussian caches.
 
-The default spacing is **one published picture**. Box 2 changes it from 1 to 4: eight screens
-then use ages `0,1,…,7` through `0,4,…,28`. These are uploaded material pictures, after the
+The default spacing is **one published picture**. Box 2 changes it from 1 to 8: eight screens
+then use ages `0,1,…,7` through `0,8,…,56`. These are uploaded material pictures, after the
 alternate-frame selection and material cap. They are not headset frames, and skipped decoder
 pictures do not create history entries. Box 3 shows each screen's actual source timestamp and
 age, so the relationship to playback speed is visible.
@@ -44,13 +44,58 @@ in box 2's constructor; the prepared document uses eight.
 Box 3's style buttons broadcast speed/mix changes to all screens. Screen boxes then allow
 independent accumulation mix, half-life, input weight, clearing, paired cadence, rate, blur
 sigma/mix and linear-light darkening. **Copy screen 1 look to all** broadcasts those settings;
-it does not merge the histories. Per-screen control readouts are initialized when their boxes
-run; the source time table stays live. A running score can overwrite the material values.
+it does not merge the histories. Per-screen controls follow recalled keys and global style changes
+at UI rate; the source time table stays live. A running score can overwrite the material values.
 
 A copied Resolve score and video-time score should broadcast exposure settings to the ring,
 while changing the shared speed once. Resolve playhead following/Get uses screen 1's newest
 image timestamp. It never uses a delayed screen as the shared transport clock. Stop the scores
 for independent manual tuning.
+
+## Shared screen looks
+
+Box **0 · Shared screen looks** captures one screen into a common, native Field keyframe pool.
+Choose **Capture from screen**, enter a name and press **Store named look**. Each material box
+also has **Store from this screen**. The initial look is seeded as **slow blur** once; later
+launches retain the saved key. Storing the same name adds a version.
+
+Keys contain accumulation mix, half-life, incoming weight, cadence enable/rate, soft-half blur
+sigma/mix and darkening, plus shared playback speed. Check any collection of screens and press
+**Recall to checked screens**. **Restore playback speed** defaults off: appearance changes keep
+the current shared speed unless explicitly enabled. With no screens selected, this option
+allows a speed-only recall. Each screen's own Recall button applies just to that screen.
+
+**Stagger / screen (s)** inserts a fixed wall-time delay between the selected screens in ring
+order. For screens 2, 4 and 7 with 0.2 seconds, arrivals are at 0, 0.2 and 0.4 seconds. Zero
+applies together. The shared speed changes once at the start when enabled. A new recall replaces
+pending arrivals; **Cancel pending recall** leaves already-applied screens alone. The status
+shows progress. Playback and headset rendering continue throughout.
+
+Keys live at `%document/keys/screen-looks` (`files/keys/screen-looks` in the document folder).
+The native browser lists saved looks and their versions. Application uses the named Recall
+controls above. Keys store parameters, while the current accumulation pixels continue evolving.
+Ring geometry, frame spacing and spin remain separate global controls. Stop active scores when
+tuning manually, since scores can continue writing appearance parameters.
+
+From code, indices are zero-based and the exported properties resolve through the box graph:
+
+```kotlin
+screenLooks.store("slow blur", screen = 0)
+screenLookRecall.recall("slow blur", screens = setOf(0, 2, 7),
+    withSpeed = false, delaySeconds = .2)
+screenLookRecall.cancel()
+```
+
+The shared-look box ticks the bounded scheduler; it loads each recalled key once and keeps at
+most one pending arrival per selected screen. No movie seek or GPU readback is involved.
+
+## Ring motion
+
+**Ring motion** adds signed **Spin coarse** (−30 to +30 turns/second) and **Spin fine** (−1 to
++1 turns/second, 0.001 steps). Their sum advances the ring using real elapsed time. The range
+reaches wagonwheel aliases; the fine control trims them. **Stop ring rotation** zeros both
+speeds and holds the current angle. The movie clock, frame spacing and keyframe pool remain
+independent. Both speeds start at zero.
 
 ## History lifetime and memory
 
@@ -60,7 +105,7 @@ additional decoding to manufacture the pre-roll. Pause freezes source publicatio
 screen's paired-exposure phase. A local exposure clear affects that screen only.
 
 The history uses 3 bytes per packed source pixel (P010 luma plus subsampled chroma), excluding
-allocation padding. For 3840×1080, eight pictures cost about 95 MiB; 29 cost about 344 MiB.
+allocation padding. For 3840×1080, eight pictures cost about 95 MiB; 57 cost about 676 MiB.
 Slots allocate as history fills. Each enabled full-resolution accumulator adds about 63 MiB,
 and each enabled paired-exposure cache about 55 MiB. The eye buffers are separate. The single
 `VideoTexture` retains its existing standby decoder for cheap loop rewinds; there are no eight
@@ -80,7 +125,7 @@ them first, then the source. File changes rebuild source-sized exposure resource
 resizing retains a valid current picture while the new ring refills. Use the live graph and
 inherited `prop` values; do not construct a decoder in a screen box.
 
-Checks: `VideoHistoryCursorTest` covers warm-up, wrap and ages 0–28. The Vulkan smoke
+Checks: `VideoHistoryCursorTest` covers warm-up, wrap and ages 0–56. The Vulkan smoke
 `four.stereo-video.carousel` exercises actual P010 copies, ten-bit precision, eight delayed
 outputs, independent exposures/cadence, cylindrical geometry and seek/refill. The existing
 `four.stereo-video.precision` still checks the ordinary one-screen path.
