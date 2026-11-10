@@ -785,6 +785,33 @@
         "public/docs/assets/agent_transcripts/certified_envelope/workbench_code_.kt": "764beaf3a8fce7f6eb07de14a2c13daef71a66b7ded3055a6a64d3a28452b8ed"
       }
     },
+    "assets/agent_transcripts/chain_tracked_body/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-10T10:03:24.150Z",
+      "channels": 5,
+      "file": "assets/web_publications/chain_tracked_body/document/metadata.edn",
+      "files": {
+        "assets/web_publications/chain_tracked_body/document/metadata.edn": "173a9d2e2866c98b18d919d0b127fe459cbc9afdc46b6ee49343e45d443793f7",
+        "assets/web_publications/chain_tracked_body/document/outputs.json": "911186f4129d4807a5480c1785745d87bde6e07375efebcb77765a28f23e4c1c",
+        "assets/web_publications/chain_tracked_body/outputs/0.html": "59781cd5424c804ca719d904fe4d1a34398fc21d21c670675d9ba884c5637128",
+        "assets/web_publications/chain_tracked_body/outputs/1.html": "480f7077e1819effe0dc42e31bc779600b2f4c77b0ed0ae839d5c013d6442a3d",
+        "assets/web_publications/chain_tracked_body/outputs/2.html": "4b9544bef4afc3170c13309866412ed6d06cf010e0f114e7930ec3accd5ece73",
+        "assets/web_publications/chain_tracked_body/outputs/3.html": "b34f8f67702bcfb97fb7662ddec93007da1a2d9fd77c9d1c78f890e4fc777453",
+        "assets/web_publications/chain_tracked_body/outputs/4.html": "80f4479e8d4f5219242426014b483418c9fac63f52418031007f3131b5f57e7b"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/chain_tracked_body/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/chain_tracked_body.yaml": "07dfa1693ba92dfd39c7b0a187acd0b39343a7b5df2ca60c8a751ea2f94020b3",
+        "public/docs/assets/agent_transcripts/chain_tracked_body/ctb_heard_code_.kt": "e93c3349a252127e6829118e17b6dfccd5b4e30531e74edcf4b9df8c93b60fb4",
+        "public/docs/assets/agent_transcripts/chain_tracked_body/ctb_measured_code_.kt": "411e8588711111327e259d02e7c491bdda1e58307a91454de0dddba315aab49f",
+        "public/docs/assets/agent_transcripts/chain_tracked_body/guides/body_tracking.md": "36a56fc9239058276daa0fb5abff4ff1efc8865932de8cfd4bd50e6b0636644e",
+        "public/docs/assets/agent_transcripts/chain_tracked_body/guides/chain_tracked_body.md": "ec7e591ccef71aa2a7ea6067be85987af58100e3e876804b27c681f5c7beb13c",
+        "public/docs/assets/agent_transcripts/chain_tracked_body/metadata.edn": "c01349c44b86ab6c4d5b0c3b03a189b0ade6e2040b16fe53943f47f2f7473293"
+      }
+    },
     "assets/agent_transcripts/chart_clip/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
       "capturedAt": "2026-11-10T09:12:19.876Z",

@@ -149,6 +149,8 @@
   {"doc": "chain_scene_to_light", "box": "rig_measure", "codeSha256": "7f858f6dd396304d", "codeLines": 17, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "chain_scene_to_light", "box": "rig_receiver", "codeSha256": "b1cc79ba76644500", "codeLines": 17, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "chain_scene_to_light", "box": "scene_sender", "codeSha256": "187d8596454ed2e9", "codeLines": 56, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "chain_tracked_body", "box": "ctb_heard", "codeSha256": "83b1e04d3665794f", "codeLines": 71, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "chain_tracked_body", "box": "ctb_measured", "codeSha256": "c21d14f4a646821b", "codeLines": 123, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "chart_clip", "box": "clip_marks", "codeSha256": "6a3d4bae467db0f8", "codeLines": 48, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "chart_clip", "box": "clip_off", "codeSha256": "e6c15a6ad9e72bbb", "codeLines": 30, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "chart_clip", "box": "clip_on", "codeSha256": "ec92f4c5a4089420", "codeLines": 39, "receivers": ["afield.document.graph.Box"], "preamble": ""},

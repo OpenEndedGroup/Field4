@@ -1204,7 +1204,7 @@ Turns a region of the drawing layer into a pattern: rectangles, level strokes an
 
 `src/jvmMain/kotlin/afield/audio/synth/NotationPatterns.kt` — [read the source](source/jvmMain/afield/audio/synth/NotationPatterns/)
 
-**Used in:** [A Drawn Score, Heard](../chain_drawn_score.md), [A Drawn Morph, Heard](../chain_drawn_morph.md)
+**Used in:** [A Drawn Score, Heard](../chain_drawn_score.md), [A Drawn Morph, Heard](../chain_drawn_morph.md), [A Tracked Body, Measured and Heard](../chain_tracked_body.md)
 
 ### Top-level functions { #notationpatterns-kt-functions }
 

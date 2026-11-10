@@ -11447,7 +11447,7 @@ Regenerate the rigged fixture, measure the skinning, and write frames a person c
 
 `src/jvmMain/kotlin/afield/graphics/scene/body/BodyGeometry.kt` — [read the source](source/jvmMain/afield/graphics/scene/body/BodyGeometry/)
 
-**Used in:** [Body and hand tracking](../body_tracking.md)
+**Used in:** [Body and hand tracking](../body_tracking.md), [A Tracked Body, Measured and Heard](../chain_tracked_body.md)
 
 ### Top-level functions { #bodygeometry-kt-functions }
 
