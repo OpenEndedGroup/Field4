@@ -130,3 +130,24 @@ None of these drivers launches or quits Electron. Close the Electron you started
 PID) and stop its Field server when the capture is done, whether or not it passed; Electron
 renames its process to `Field4`, so record the PID when you launch it rather than searching for it
 afterwards, and never signal a `Field4` you did not start.
+
+## The explainer pages' slides
+
+`public/docs/explainer_{sound,cameras,lights}.md` show, in the right margin beside each figure, the
+slide that first uses it, plus the title slide and the "Further reading" slide. They are
+`capture-deck.mjs` window captures of the deck presented in this checkout's Electron, one deck at a
+time: replay the transcript into a disposable workspace document, open it in Electron (started with
+the two Chromium switches above, PID recorded), run its `deck` box, and run
+
+```sh
+CAPTURE_ONLY=<first-use step ids, comma-separated> \
+  node tools/presentation/capture-deck.mjs http://127.0.0.1:<cdp> <Electron PID> <out dir> <every step id, in order>
+```
+
+Each page uses the cue-0 view of its step (`NN-<step id>.png`), scaled with `sips -Z 960` to
+`public/docs/assets/explainer_<deck>/slides/<step id>.png`. The `capture.json` beside them records
+the transcript's hash, each window capture's hash before scaling and each committed file's hash.
+To move Electron to the next deck, stop the presented `deck` box, navigate the main page to
+`index.html?file=<next document>` over CDP, and run that deck's `deck` box. The figure fences on the
+same pages are ordinary docs-runner captures; `tools/explainer_pages.py check` keeps their code equal
+to the transcripts' figure boxes, and `sync` rewrites them after a deck edit.
