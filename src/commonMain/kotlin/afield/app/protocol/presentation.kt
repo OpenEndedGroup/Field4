@@ -52,6 +52,30 @@ fun figureFitZoom(
     return (minOf(viewWidth / width, viewHeight / height) * 0.96).coerceIn(0.2, 4.0)
 }
 
+/** How a figure page places a box's output area: a scale, and a shift in the area's own pixels. */
+data class FigureFit(val zoom: Double, val shiftX: Double, val shiftY: Double)
+
+/**
+ * [figureFitZoom], and the shift that centres the content when it overflows the area. Applied as
+ * `scale(zoom) translate(shiftX, shiftY)` about the area's centre, which moves only paint: nothing
+ * here changes the layout it was measured from, so measuring again gives the same answer.
+ *
+ * The figure page once centred an overflowing drawing by widening the box to the content with a
+ * `min-width`. That was a layout write: content sized to its container grew with the box, and
+ * Field's panel auto-sizing wrote the larger size back into the panel, so every pass measured a
+ * wider overflow than the last and the figure shrank towards nothing.
+ */
+fun figureFit(
+    offsetWidth: Double, offsetHeight: Double, scrollWidth: Double, scrollHeight: Double,
+    viewWidth: Double, viewHeight: Double
+): FigureFit? {
+    val zoom = figureFitZoom(offsetWidth, offsetHeight, scrollWidth, scrollHeight, viewWidth, viewHeight) ?: return null
+    // Overflow runs right and down from the area's origin; centre the content on the area instead.
+    val shiftX = (offsetWidth - maxOf(offsetWidth, scrollWidth)) / 2
+    val shiftY = (offsetHeight - maxOf(offsetHeight, scrollHeight)) / 2
+    return FigureFit(zoom, shiftX, shiftY)
+}
+
 @Serializable
 data class AudienceMacro(val name: String, val scope: String = "document", val project: String = "")
 

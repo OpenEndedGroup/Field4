@@ -6389,7 +6389,7 @@ body.mode-editor-only .field-toast {
    on-screen scale, so neither is a magnified small picture. */
 #field-figure-host > .box.field-figure-box {
     position: relative !important;
-    transform: scale(var(--field-figure-zoom, 1)) !important;
+    transform: scale(var(--field-figure-zoom, 1)) translate(var(--field-figure-shift, 0px 0px)) !important;
     transform-origin: center center;
     width: auto !important;
     height: auto !important;

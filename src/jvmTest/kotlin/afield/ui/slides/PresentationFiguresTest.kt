@@ -214,4 +214,33 @@ class PresentationFiguresTest {
         assertNull(afield.app.protocol.figureFitZoom(0.0, 0.0, 0.0, 0.0, 552.0, 510.0), "an area with no size yet has no zoom")
         assertEquals(4.0, afield.app.protocol.figureFitZoom(10.0, 10.0, 10.0, 10.0, 1000.0, 1000.0))
     }
+
+    /**
+     * The fit runs four times a second on a live figure page, so it must be idempotent. A layout in
+     * which content sized to its container grows with the box (the Sound deck's pluck) used to
+     * ratchet: widening the box to the overflow made the overflow wider on the next pass.
+     */
+    @Test fun theFigureFitIsIdempotentWhereWideningTheBoxRatcheted() {
+        // Area 520 wide; its drawing is 40 px wider than whatever the box is laid out at.
+        fun layout(boxMinWidth: Double): Pair<Double, Double> {
+            val area = maxOf(520.0, boxMinWidth)
+            return area to area + 40
+        }
+        var boxMinWidth = 0.0
+        val oldWay = (1..20).map {
+            val (offset, scroll) = layout(boxMinWidth)
+            if (scroll > offset) boxMinWidth = scroll
+            afield.app.protocol.figureFitZoom(offset, 382.0, scroll, 382.0, 552.0, 510.0)!!
+        }
+        assertTrue(oldWay.last() < oldWay.first() * 0.5, "the min-width approach shrinks the figure every pass")
+
+        val fits = (1..20).map {
+            val (offset, scroll) = layout(0.0)     // figureFit writes no layout
+            afield.app.protocol.figureFit(offset, 382.0, scroll, 382.0, 552.0, 510.0)!!
+        }
+        assertEquals(1, fits.distinct().size, "the same fit every pass")
+        assertEquals(552.0 / 560 * 0.96, fits.first().zoom, 1e-9)
+        assertEquals(-20.0, fits.first().shiftX, 1e-9, "centred: half the 40 px overflow")
+        assertEquals(0.0, fits.first().shiftY)
+    }
 }
