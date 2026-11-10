@@ -124,4 +124,25 @@ function validateGuideState(state) {
   return state;
 }
 
-module.exports = {validRect, validDocumentName, fieldDocumentUrl, figureUrl, validFigure, guestUrl, fieldActions, validateGuideState};
+/**
+ * Where [action] takes a talk that is on [state]: {index, cueIndex}, with cueIndex null when the step
+ * decides; null when it goes nowhere. Moves count from the step the talk is on, not from one still
+ * pending, so a held key or a second click retargets the pending move rather than stacking another.
+ */
+function guideTarget(state, action, id) {
+  const count = state.titles.length;
+  const cues = state.cueTitles?.length || 0;
+  const cue = state.cueIndex || 0;
+  let target = null;
+  if (action === 'next') target = cue < cues ? {index: state.index, cueIndex: cue + 1} : {index: state.index + 1, cueIndex: 0};
+  if (action === 'previous') target = cue > 0 ? {index: state.index, cueIndex: cue - 1} : {index: state.index - 1, cueIndex: null};
+  if (action === 'first') target = {index: 0, cueIndex: 0};
+  if (action === 'last') target = {index: count - 1, cueIndex: 0};
+  if (action === 'goto') target = {index: Number(id), cueIndex: 0};
+  if (!target || !Number.isInteger(target.index) || target.index < 0 || target.index >= count) return null;
+  return target.index === state.index && target.cueIndex === cue ? null : target;
+}
+
+function sameTarget(a, b) { return !!a && !!b && a.index === b.index && a.cueIndex === b.cueIndex; }
+
+module.exports = {validRect, validDocumentName, fieldDocumentUrl, figureUrl, validFigure, guestUrl, fieldActions, validateGuideState, guideTarget, sameTarget};

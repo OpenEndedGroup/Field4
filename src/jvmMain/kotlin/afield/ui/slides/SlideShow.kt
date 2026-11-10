@@ -696,6 +696,7 @@ class SlideShowInstance(
      * Stops the slideshow and hides notes
      */
     suspend fun stop() {
+        WaitingPresentations.withdraw(this)
         currentStep?.onExit?.invoke()
         currentStepIndex = -1
         currentCueIndex = 0

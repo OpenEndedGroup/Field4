@@ -8,7 +8,7 @@ import {createTalk} from '../new-talk.mjs';
 import {validateProject} from '../server.mjs';
 
 const require = createRequire(import.meta.url);
-const {fieldDocumentUrl, fieldActions, guestUrl, validRect} = require('../../../electron/presentation-cues.js');
+const {fieldDocumentUrl, fieldActions, guestUrl, validRect, guideTarget, sameTarget} = require('../../../electron/presentation-cues.js');
 
 test('Field cues stay on the current local Field server and reject path-like names', () => {
   const fieldUrl = 'https://localhost:9488/index.html?file=old-document';
@@ -125,4 +125,20 @@ test('native search text remains optional, aligned and bounded', () => {
   for (const searchTexts of ['bad', ['one'], [null, 'two'], ['x'.repeat(16385), 'two']]) {
     assert.throws(() => validateGuideState({...state, searchTexts}), /search text/);
   }
+});
+
+test('a move targets a step counted from where the talk is, so repeats retarget instead of stacking', () => {
+  const on = (index, cueIndex = 0, cues = 0) => ({index, cueIndex, titles: ['a', 'b', 'c', 'd'], cueTitles: Array(cues).fill('cue')});
+  assert.deepEqual(guideTarget(on(1), 'next'), {index: 2, cueIndex: 0});
+  assert.deepEqual(guideTarget(on(1, 0, 2), 'next'), {index: 1, cueIndex: 1}, 'a cue comes before the next step');
+  assert.deepEqual(guideTarget(on(1, 2, 2), 'next'), {index: 2, cueIndex: 0});
+  assert.deepEqual(guideTarget(on(2), 'previous'), {index: 1, cueIndex: null}, 'the earlier step decides which cue it returns to');
+  assert.deepEqual(guideTarget(on(2), 'goto', '0'), {index: 0, cueIndex: 0});
+  assert.equal(guideTarget(on(3), 'next'), null, 'nothing after the last step');
+  assert.equal(guideTarget(on(0), 'previous'), null);
+  assert.equal(guideTarget(on(2), 'goto', '2'), null, 'the step it is on goes nowhere');
+  assert.equal(guideTarget(on(2), 'goto', '9'), null);
+  // A held key: every repeat is measured from the confirmed step, so it names the move under way.
+  assert.ok(sameTarget(guideTarget(on(1), 'next'), guideTarget(on(1), 'next')));
+  assert.ok(!sameTarget(guideTarget(on(1), 'next'), guideTarget(on(1), 'goto', '3')), 'a click elsewhere retargets');
 });

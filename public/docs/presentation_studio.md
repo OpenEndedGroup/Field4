@@ -594,6 +594,11 @@ A figure has panels only once it has run, so arranging first runs each figure bo
 nothing yet, waits for its output, and stops it again. Only a canvas knows how large each panel is
 drawn, so the document has to be open in Field for the arrangement to happen.
 
+A deck can also run before any window has its document open, from a transcript for instance. Then
+the arrangement and the talk wait. The first Field canvas to open the document arranges it, and
+when that canvas is the Electron app, the audience and presenter windows open on the step the talk
+is on.
+
 ## Reuse the starter as a kit
 
 The [Presentations package](kits.md#add-a-self-contained-kit-in-welcome) is declared by `field-kit.json`. It supplies the starting point, its guide and the order of the boxes to run. Documents created through Kits belong to the **kit-presentation** Project and record their package and runtime revisions in `.field-kit-instance.json`.

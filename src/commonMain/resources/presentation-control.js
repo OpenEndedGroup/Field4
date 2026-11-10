@@ -14,7 +14,95 @@
   let filtered = [];
   const textSearch = window.FieldPresentationSearch;
 
-  for (const action of ['previous', 'next', 'reload', 'show-audience', 'fullscreen',
+  // A press shows for at least PRESS_MS, however quick the click: :active alone lasts only as long
+  // as the button is held, which on a trackpad tap is too short to see.
+  const PRESS_MS = 120;
+  const PENDING_FAIL_MS = 5000;
+  const pendingNote = document.getElementById('pending-note');
+  const progress = document.getElementById('progress');
+  let pending = null;
+
+  function press(element) {
+    if (!element || element.disabled) return;
+    element.classList.add('pressed');
+    element.pressedAt = performance.now();
+    clearTimeout(element.pressTimer);
+  }
+  function release(element, now = performance.now()) {
+    clearTimeout(element.pressTimer);
+    element.pressTimer = setTimeout(() => element.classList.remove('pressed'), Math.max(0, PRESS_MS - (now - (element.pressedAt || 0))));
+  }
+  const pressable = target => target.closest?.('button, summary, input');
+  addEventListener('pointerdown', event => { if (event.button === 0) press(pressable(event.target)); }, true);
+  for (const type of ['pointerup', 'pointercancel']) {
+    addEventListener(type, () => document.querySelectorAll('.pressed').forEach(element => release(element)), true);
+  }
+  /** A key that moves the talk presses its button as a click would. */
+  function pressBriefly(element) { press(element); release(element); }
+
+  /**
+   * Where [action] takes the talk from the step it is on: {index, cueIndex}, cueIndex null when the
+   * step decides; null when it goes nowhere. electron/presentation-cues.js has the same rule for the
+   * move Electron makes, so what is shown pending here is what Electron goes to.
+   */
+  function targetFor(action, id) {
+    if (!info) return null;
+    const cues = info.cueTitles?.length || 0;
+    const cue = info.cueIndex || 0;
+    let target = null;
+    if (action === 'next') target = cue < cues ? {index: info.index, cueIndex: cue + 1} : {index: info.index + 1, cueIndex: 0};
+    if (action === 'previous') target = cue > 0 ? {index: info.index, cueIndex: cue - 1} : {index: info.index - 1, cueIndex: null};
+    if (action === 'goto') target = {index: Number(id), cueIndex: 0};
+    if (!target || !Number.isInteger(target.index) || target.index < 0 || target.index >= info.count) return null;
+    return target.index === info.index && target.cueIndex === cue ? null : target;
+  }
+
+  function slideLabel(target) {
+    const number = String(target.index + 1).padStart(String(info.count).length, '0');
+    const cue = target.index === info.index && target.cueIndex ? ` · cue ${target.cueIndex}` : '';
+    return `${number} · ${info.titles[target.index]}${cue}`;
+  }
+
+  /** Marks [target] as where the talk is going, until a state confirms it or [PENDING_FAIL_MS] pass. */
+  function showPending(target, action) {
+    if (!target) return;
+    clearTimeout(pending?.timer);
+    pending = {...target, action, failed: false, timer: setTimeout(failPending, PENDING_FAIL_MS)};
+    renderPending();
+  }
+  function failPending() {
+    if (!pending) return;
+    pending.failed = true;
+    renderPending();
+  }
+  function clearPending() {
+    clearTimeout(pending?.timer);
+    pending = null;
+    renderPending();
+  }
+  function renderPending() {
+    const going = !!pending && !pending.failed;
+    rows.forEach(row => row.element.classList.toggle('pending', going && row.index === pending.index));
+    document.getElementById('next').classList.toggle('pending', going && pending.action === 'next');
+    document.getElementById('previous').classList.toggle('pending', going && pending.action === 'previous');
+    progress.hidden = !going;
+    pendingNote.hidden = !pending;
+    pendingNote.classList.toggle('failed', !!pending?.failed);
+    pendingNote.textContent = !pending ? '' : pending.failed
+      ? `Did not reach ${slideLabel(pending)}: the talk has not answered`
+      : `Going to ${slideLabel(pending)}…`;
+  }
+
+  /** Moves the talk, showing where to at once rather than when the audience changes. */
+  function move(action, id) {
+    showPending(targetFor(action, id), action);
+    bridge.action(action, id);
+  }
+
+  for (const action of ['previous', 'next']) {
+    document.getElementById(action).addEventListener('click', () => move(action));
+  }
+  for (const action of ['reload', 'show-audience', 'fullscreen',
     'show-guide', 'run-macro', 'start-guide', 'guide-previous', 'guide-next', 'stop-guide', 'reset-checkpoint', 'run-cue']) {
     document.getElementById(action).addEventListener('click', () => bridge.action(action));
   }
@@ -96,7 +184,7 @@
       excerpt.hidden = true;
       description.append(label, excerpt);
       element.append(number, description);
-      element.addEventListener('click', () => bridge.action('goto', id));
+      element.addEventListener('click', () => move('goto', id));
       (branch.at(-1)?.element || slides).append(element);
       const body = info.searchTexts?.[index] || '';
       const row = {element, index, excerpt, body, ancestors: [...branch], search: textSearch.fold(`${index + 1} ${path.join(' ')} ${info.titles[index]} ${body}`)};
@@ -165,8 +253,22 @@
     if (!search.value && (rebuilt || previousIndex !== info.index)) rows[info.index]?.element.scrollIntoView({block: 'nearest'});
     previousIndex = info.index;
     error.textContent = '';
+    if (pending && info.index === pending.index && (pending.cueIndex == null || cueIndex === pending.cueIndex)) clearPending();
+    else if (pending && !pending.failed) {
+      // A step landed on the way to a retargeted one: keep waiting for the rest.
+      clearTimeout(pending.timer);
+      pending.timer = setTimeout(failPending, PENDING_FAIL_MS);
+      renderPending();
+    } else if (pending) clearPending();
   });
-  bridge.onError(message => { error.textContent = message; });
+  // Electron reports every move, including ones from the audience window's keys and clickers.
+  bridge.onPending?.(next => {
+    if (next.action === 'next' || next.action === 'previous') pressBriefly(document.getElementById(next.action));
+    if (!pending || pending.index !== next.index || pending.cueIndex !== next.cueIndex || pending.failed) {
+      showPending({index: next.index, cueIndex: next.cueIndex}, next.action);
+    }
+  });
+  bridge.onError(message => { error.textContent = message; failPending(); });
   addEventListener('keydown', event => {
     if (event.isComposing || event.defaultPrevented) return;
     const editing = event.target.closest('input, textarea, [contenteditable="true"]');
@@ -179,6 +281,10 @@
     if (event.target instanceof HTMLButtonElement && [' ', 'Enter'].includes(event.key)) return;
     const action = ['ArrowRight', 'PageDown', ' '].includes(event.key) ? 'next' :
       ['ArrowLeft', 'PageUp'].includes(event.key) ? 'previous' : null;
-    if (action) { event.preventDefault(); bridge.action(action); }
+    if (action) {
+      event.preventDefault();
+      pressBriefly(document.getElementById(action));
+      move(action);
+    }
   });
 })();

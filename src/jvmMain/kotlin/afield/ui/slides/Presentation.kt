@@ -2,11 +2,15 @@ package afield.ui.slides
 
 import afield.app.protocol.AudienceContent
 import afield.app.protocol.AudienceMacro
+import afield.app.protocol.Message
+import afield.app.protocol.payload
+import afield.app.server.SessionInformation
 import afield.document.graph.Box
 import afield.runtime.lifecycle.inMain
 import kotlinx.html.stream.createHTML
 import kotlinx.html.visitAndFinalize
 import java.net.URI
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Giving a talk from a Field document: [Box.presentation] builds the same steps a `slideShow` does,
@@ -60,13 +64,53 @@ fun Box.presentation(
     return instance
 }
 
-/** Open this guide as a presentation, using note HTML for steps without an explicit audience surface. */
+/**
+ * Open this guide as a presentation, using note HTML for steps without an explicit audience surface.
+ *
+ * Only Field's Electron app opens the windows. A talk presented before an Electron window has the
+ * document open (a transcript runs the deck headless) waits, and opens when one does; see
+ * [WaitingPresentations].
+ */
 fun SlideShowInstance.present() {
     if (presentationOptions == null) presentationOptions = PresentationOptions(hostBox.name.ifBlank { "Field presentation" })
+    WaitingPresentations.hold(this)
     inMain(Box.boxContextElement(hostBox)) {
         val index = steps.indexOfFirst { it.id == resumeStepId }.takeIf { it >= 0 }
             ?: resumeStep.takeIf { it >= 0 }?.coerceAtMost(steps.lastIndex) ?: currentStepIndex.coerceAtLeast(0)
         goToStep(index, resumeCue)
+    }
+}
+
+/**
+ * Presentations no Electron window has shown yet, by document. [SlideShowInstance.present] holds its
+ * talk here before publishing the first step; an Electron canvas that hands a step's state to its
+ * windows says so (`presentation-shown`) and the talk stops waiting. Until then each canvas that
+ * finishes loading the document is sent the talk's current state, so the windows open as if the deck
+ * had been run with Electron already open. A later `present()` of the same document replaces the one
+ * waiting, and stopping the talk withdraws it.
+ */
+object WaitingPresentations {
+    private val waiting = ConcurrentHashMap<SessionInformation, SlideShowInstance>()
+
+    private fun SlideShowInstance.document(): SessionInformation? = hostBox.takeIf { it.isInsideInitialized() }?.inside
+
+    /** [show] waits for an Electron window, replacing any talk already waiting in its document. */
+    fun hold(show: SlideShowInstance) { show.document()?.let { waiting[it] = show } }
+
+    /** An Electron canvas of [info] showed [slideshowId]: that talk no longer waits. */
+    fun shown(info: SessionInformation, slideshowId: String) {
+        waiting.computeIfPresent(info) { _, show -> show.takeUnless { it.slideshowId == slideshowId } }
+    }
+
+    /** [show] stopped: if it was waiting, it no longer is. */
+    fun withdraw(show: SlideShowInstance) { show.document()?.let { waiting.remove(it, show) } }
+
+    /** The `presentation-state` a canvas that finishes loading [info] is sent, if a talk is waiting there. */
+    fun stateFor(info: SessionInformation): Message? {
+        val show = waiting[info] ?: return null
+        if (show.currentStepIndex < 0) return null
+        val state = show.presentationState() ?: return null
+        return Message("presentation-state").payload(state)
     }
 }
 

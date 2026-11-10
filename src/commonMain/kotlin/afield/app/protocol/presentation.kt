@@ -108,6 +108,13 @@ data class PresentationState(
 @Serializable
 data class ArrangeBoxesRequest(val id: String, val boxes: List<String>, val gap: Double = 80.0, val leadGap: Double = 440.0)
 
+/**
+ * An Electron canvas has handed a [PresentationState] to its audience and presenter windows
+ * (`presentation-shown`), so a talk presented before any Electron had the document open stops waiting.
+ */
+@Serializable
+data class PresentationShown(val slideshowId: String)
+
 /** A client's answer to an [ArrangeBoxesRequest]: the frames to give the boxes. */
 @Serializable
 data class ArrangeBoxesResult(val id: String, val frames: List<Set_rect>)

@@ -38,6 +38,50 @@ class PresentationTest {
         assertEquals("Discuss", show.currentStep!!.title)
     }
 
+    /**
+     * A transcript runs a deck headless, so `present()` publishes its first step before any Electron
+     * window has the document open, and nothing opened the windows. The talk now waits: each canvas
+     * that finishes loading is sent its current state until an Electron canvas says it showed it.
+     */
+    @Test
+    fun aTalkPresentedBeforeAnyElectronWaitsUntilOneShowsIt() = runBlocking {
+        val label = "waiting-${System.nanoTime()}"
+        val root = Box("$label-root")
+        val info = afield.app.server.SessionInformation(filename = "<$label>", documentName = label, root = root, ephemeral = true)
+            .also { root.inside = it; it.loading = false; it.boxes[root.id] = root }
+        val deck = Box("$label-deck").also { it.inside = info; info.boxes[it.id] = it; it.name = "deck" }
+        fun talk() = deck.presentation(title = "Talk") { step("Opening") { audienceMarkdown("# Hi") }; step("Two") { audienceMarkdown("# Two") } }
+
+        val first = talk()
+        WaitingPresentations.hold(first)
+        first.command("start")
+        first.command("next")
+        val sent = WaitingPresentations.stateFor(info)!!
+        val state = kotlinx.serialization.json.Json.decodeFromJsonElement(afield.app.protocol.PresentationState.serializer(), sent.payload!!)
+        assertEquals("presentation-state", sent.name)
+        assertEquals(1, state.index, "a canvas that loads later is sent the step the talk is on now")
+        assertEquals(state, WaitingPresentations.stateFor(info)?.let {
+            kotlinx.serialization.json.Json.decodeFromJsonElement(afield.app.protocol.PresentationState.serializer(), it.payload!!)
+        }, "a browser that cannot open windows leaves it waiting for the next canvas")
+
+        WaitingPresentations.shown(info, "some-other-talk")
+        assertTrue(WaitingPresentations.stateFor(info) != null, "showing a different talk does not count")
+        WaitingPresentations.shown(info, first.slideshowId)
+        assertNull(WaitingPresentations.stateFor(info), "once an Electron canvas has shown it, it no longer waits")
+
+        // A later present() replaces the waiting talk, and stopping withdraws it.
+        WaitingPresentations.hold(first)
+        val second = talk()
+        WaitingPresentations.hold(second)
+        second.command("start")
+        first.command("stop")
+        assertEquals(0, WaitingPresentations.stateFor(info)?.let {
+            kotlinx.serialization.json.Json.decodeFromJsonElement(afield.app.protocol.PresentationState.serializer(), it.payload!!).index
+        }, "stopping the replaced talk leaves the newer one waiting")
+        second.command("stop")
+        assertNull(WaitingPresentations.stateFor(info), "a stopped talk does not open windows")
+    }
+
     @Test
     fun markdownFragmentsRenderAlongsideEscapedHtmlAndImages() {
         assertEquals(mdEscape("_literal_"), "_literal_".md)

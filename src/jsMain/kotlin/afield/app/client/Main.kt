@@ -72,6 +72,7 @@ import afield.app.protocol.Notify
 import afield.app.protocol.OscEditorCommand
 import afield.app.protocol.Output
 import afield.app.protocol.OutputControl
+import afield.app.protocol.PresentationShown
 import afield.app.protocol.ProvisionalSet
 import afield.app.protocol.Rect
 import afield.app.protocol.SelectAndEditBox
@@ -6916,11 +6917,13 @@ suspend fun main() {
     }
 
     // Only a Field tab in Electron can open a native audience window. Browser clients keep guides local.
+    // Saying so lets a talk presented before any Electron window was open stop waiting for one.
     handlers.put("presentation-state") { message, _ ->
         val bridge = window.asDynamic().fieldElectron
-        if (bridge != null && bridge.presentGuide != null) {
+        if (bridge != null && bridge.presentGuide != null && !figureModeActive) {
             val state = JSON.parse<dynamic>(message.payload.toString())
             bridge.presentGuide(state)
+            send(Message("presentation-shown").payload(PresentationShown(state.slideshowId as String)))
         }
         Handled.yes
     }
