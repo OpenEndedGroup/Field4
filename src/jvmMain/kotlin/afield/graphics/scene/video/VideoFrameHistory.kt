@@ -27,14 +27,23 @@ internal data class PublishedVideoFrame(
 ) : VideoSourceFrame
 
 /** Native P010 GPU ring: one pair of exact plane copies per published frame, shared by every screen. */
-internal class VideoFrameHistory(private val renderer: Renderer, val capacity: Int) : AutoCloseable {
-    private val cursor = VideoHistoryCursor(capacity)
+internal class VideoFrameHistory(private val renderer: Renderer, capacity: Int) : AutoCloseable {
+    private var cursor = VideoHistoryCursor(capacity)
     private data class Storage(val images: List<Image>, val views: List<ImageView>, var frame: PublishedVideoFrame? = null)
-    private val slots = arrayOfNulls<Storage>(capacity)
+    private val slots = MutableList<Storage?>(capacity) { null }
+    val capacity get() = cursor.capacity
     val count get() = cursor.count
     val bytes get() = slots.filterNotNull().sumOf { slot -> slot.images.sumOf { it.memorySize } }
 
     fun clear() { cursor.clear() }
+
+    /** Reset the temporal layout, retaining allocated images for subsequent slider edits. Queue thread only. */
+    fun resize(capacity: Int) {
+        if (capacity == this.capacity) return
+        val next = VideoHistoryCursor(capacity)
+        while (slots.size < capacity) slots.add(null)
+        cursor = next
+    }
 
     fun capture(command: CommandBuffer, source: VideoTexture, serial: Long): PublishedVideoFrame {
         val slot = cursor.advance()
@@ -51,11 +60,15 @@ internal class VideoFrameHistory(private val renderer: Renderer, val capacity: I
             source.colorSpace, source.colorRange, storage.views).also { storage.frame = it }
     }
 
-    fun frame(framesBehind: Int): PublishedVideoFrame? = cursor.slot(framesBehind)?.let { slots[it]?.frame }
+    // UI requests can change between source preparation and surface sampling. Clamp against this
+    // frame's actual ring, never a concurrently edited requested capacity.
+    fun frame(framesBehind: Int): PublishedVideoFrame? =
+        cursor.slot(framesBehind.coerceIn(0, capacity - 1))?.let { slots[it]?.frame }
 
     override fun close() {
         val allocated = slots.filterNotNull()
         renderer.cleanup.add { allocated.forEach { slot -> slot.views.forEach { it.cleanup() }; slot.images.forEach { it.cleanup() } } }
+        slots.clear()
         cursor.clear()
     }
 }

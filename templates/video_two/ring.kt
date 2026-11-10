@@ -3,7 +3,7 @@ import afield.graphics.scene.video.*
 displayClearAll()
 
 // One source owns decoding, transport and GPU history. Screens own their exposures and geometry.
-prop<StereoVideoCarousel>(carousel) = StereoVideoCarousel(renderer, stereo, count = 8, spacingFrames = 1, automaticDrawing = false)
+prop<StereoVideoCarousel>(carousel) = StereoVideoCarousel(renderer, stereo, count = 8, spacingFrames = 16, automaticDrawing = false)
 prop<StereoVideoSurface>(movie) = carousel.surfaces.first() // newest view; existing score/playhead APIs use its clock
 val ownedCarousel = carousel
 carousel.radius = 2.5f

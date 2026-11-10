@@ -13,7 +13,7 @@ internal class VideoHistoryCursor(val capacity: Int) {
         return newest
     }
     fun slot(framesBehind: Int): Int? {
-        require(framesBehind in 0 until capacity)
+        require(framesBehind in 0 until capacity) { "Video history age $framesBehind outside active capacity $capacity (filled $count)" }
         if (count == 0) return null
         return Math.floorMod(newest - framesBehind.coerceAtMost(count - 1), capacity)
     }

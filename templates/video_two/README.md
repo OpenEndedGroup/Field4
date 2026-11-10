@@ -5,7 +5,7 @@ movie, transport and active decode stream. Each published P010 image is copied o
 bounded GPU ring. The screens select progressively older pictures from that ring and own
 independent temporal accumulators, paired-exposure clocks and Gaussian caches.
 
-The default spacing is **one published picture**. Box 2 changes it from 1 to 16: eight screens
+The default spacing is **sixteen published pictures**. Box 2 changes it from 1 to 16: eight screens
 then cover ages 0–7 through 0–112. **Reverse delay direction** defaults on: in screen-number
 order the ages are `0,7,6,…,1` times the spacing. Turn it off for `0,1,…,7`. Screen 1 stays
 newest, and each screen keeps its geometry and appearance. These are uploaded material pictures, after the
@@ -148,7 +148,9 @@ screen's paired-exposure phase. A local exposure clear affects that screen only.
 
 The history uses 3 bytes per packed source pixel (P010 luma plus subsampled chroma), excluding
 allocation padding. For 3840×1080, eight pictures cost about 95 MiB; 113 cost about 1341 MiB.
-Slots allocate as history fills. Each enabled full-resolution accumulator adds about 63 MiB,
+Slots allocate as history fills. Resizing retains already allocated image pairs up to the largest
+filled ring in this session, reusing them on subsequent edits; closing or replacing the source
+releases them through the graphics retirement queue. Each enabled full-resolution accumulator adds about 63 MiB,
 and each enabled paired-exposure cache about 55 MiB. The eye buffers are separate. The single
 `VideoTexture` retains its existing standby decoder for cheap loop rewinds; there are no eight
 independent playback/decode queues.
@@ -164,7 +166,8 @@ reads through command-buffer barriers, without a readback or a new queued frame.
 A surface created without an explicit shared source owns a one-picture source, preserving the
 `video_one` API. Shared surfaces do not close their source; `StereoVideoCarousel.close()` closes
 them first, then the source. File changes rebuild source-sized exposure resources. Delay-ring
-resizing retains a valid current picture while the new ring refills. Use the live graph and
+resizing retains a valid current picture while the new ring refills, and sampling clamps to the
+active ring capacity if a UI request changes during that frame. Use the live graph and
 inherited `prop` values; do not construct a decoder in a screen box.
 
 Checks: `VideoHistoryCursorTest` covers warm-up, wrap and ages 0–112. The Vulkan smoke
