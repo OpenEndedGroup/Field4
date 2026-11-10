@@ -650,3 +650,8 @@ The API is `movie.exposureCadenceEnabled`, `exposurePairsPerSecond`, `exposureBl
 `exposureBlurMix` and `exposureDarkening`. Box 4's `accumulatedImage` is the held full-resolution
 exposure while enabled, and `softenedImage` is its Gaussian version. `pc.accumulation.z` is the
 soft-half blur blend; `.w` is its linear darkening. Both are zero during the clear half.
+
+When changing speed, background playback re-anchors its clock to the image currently displayed.
+A decoder that fell behind at 8× therefore slows immediately when you select 1×, without racing
+to repay the old clock gap. Already-decoded future pictures wait for their presentation times;
+material caps discard only intermediate pictures that are already due.

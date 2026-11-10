@@ -130,12 +130,18 @@ class VideoTexture(
     // Internal clock used when no external clock is provided
     private val internalClock = SystemClock()
 
-    /** Positive playback multiplier for the internal clock; externally clocked movies own their rate. */
+    /** Positive playback multiplier, anchored to the displayed frame; externally clocked movies own their rate. */
     var playbackRate: Double
         get() = internalClock.rate
         set(value) {
             require(clock == null) { "Change the external clock's rate instead" }
-            internalClock.rate = value
+            require(value.isFinite() && value > 0.0)
+            if (value == internalClock.rate) return
+            // At high rates decoding can fall seconds behind the requested clock. Preserve the
+            // image the user actually sees, rather than making a slower rate repay that debt.
+            val position = if (backgroundDecode && uploadedFrame && explicitSeekRequest == null)
+                currentTimestamp else internalClock.getCurrentTime()
+            internalClock.setRateAt(value, position)
         }
 
     /** Keep one source frame in every N before colour conversion/upload. Exact seeks ignore this. */
@@ -153,11 +159,9 @@ class VideoTexture(
     /** A capped material consumes the newest available sample, discarding intermediate queued ones. */
     @Volatile
     var preferLatestDecodedFrame = false
-    var supersededDecodedFrames: Long = 0
-        private set
-    private val decodedQueue = ArrayDeque<DecodedFrame>()
-    var droppedDecodedFrames: Long = 0
-        private set
+    val supersededDecodedFrames: Long get() = decodedQueue.superseded
+    private val decodedQueue = VideoFrameQueue<DecodedFrame>({ it.frame.timestamp }, { it.frame.close() })
+    val droppedDecodedFrames: Long get() = decodedQueue.dropped
 
 
     // Active clock (external if provided, internal otherwise)
@@ -685,17 +689,13 @@ class VideoTexture(
         if (!uploadFrame) return false
         return synchronized(decodedFrameLock) {
             val queued = queueDecodedFrames
-            if (queued && preferLatestDecodedFrame) {
-                while (decodedQueue.size > 1) {
-                    decodedQueue.removeFirst().frame.close()
-                    supersededDecodedFrames++
-                }
-            }
-            val ready = if (queued) decodedQueue.removeFirstOrNull() else decodedFrame.get()
+            val deadline = if (seek == null) targetTimestamp + frameDuration * .5 else null
+            val ready = if (queued) decodedQueue.take(deadline, preferLatestDecodedFrame) else decodedFrame.get()
             if (ready == null) return@synchronized false
             try {
                 if (ready.serial == seenDecodedSerial) return@synchronized false
                 if (seek != null && ready.seekGeneration != seek.generation) return@synchronized false
+                if (!queued && deadline != null && ready.frame.timestamp > deadline) return@synchronized false
                 val uploaded = uploadDecodedFrame(commandBuffer, ready)
                 if (uploaded && explicitSeekRequest === seek) explicitSeekRequest = null
                 uploaded
@@ -779,6 +779,11 @@ class VideoTexture(
                 if (request.exactFrame != null && already != null &&
                     VideoFrameIndex.decoded(already.frame.timestamp, activeDecoder.fps) == request.exactFrame) continue
                 val delta = request.timestamp - decoderTimestamp
+                // An internal clock only moves backwards through an explicit seek/loop request.
+                // After a rate change its queued future pictures are still useful: let the clock
+                // reach them instead of seeking FFmpeg backwards and decoding them all again.
+                if (clock == null && queueDecodedFrames && !request.seek && request.exactFrame == null &&
+                    decoderTimestamp.isFinite() && delta <= frameDuration * .5) continue
                 // A strided decode can already have supplied the next target's picture. Do not
                 // decode another future picture or seek backwards just to answer that target again.
                 if (queueDecodedFrames && !request.seek && request.exactFrame == null && decoderTimestamp.isFinite() &&
@@ -891,11 +896,7 @@ class VideoTexture(
             val ready = DecodedFrame(decodeSerial.incrementAndGet(), frame, seekGeneration)
             if (queueDecodedFrames) {
                 // Bounded burst buffer: no unbounded latency or memory growth if decoding outruns VR.
-                if (decodedQueue.size >= 8) {
-                    decodedQueue.removeFirst().frame.close()
-                    droppedDecodedFrames++
-                }
-                decodedQueue.addLast(ready)
+                decodedQueue.add(ready)
             } else {
                 decodedFrame.getAndSet(ready)?.frame?.close()
             }
@@ -905,7 +906,6 @@ class VideoTexture(
     private fun clearDecodedFrame() {
         synchronized(decodedFrameLock) {
             decodedFrame.getAndSet(null)?.frame?.close()
-            decodedQueue.forEach { it.frame.close() }
             decodedQueue.clear()
         }
     }
