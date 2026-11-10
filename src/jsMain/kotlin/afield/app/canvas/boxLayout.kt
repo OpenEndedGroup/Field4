@@ -30,6 +30,7 @@ import afield.app.client.canvasGestures
 import afield.app.client.hasRenderableFrame
 import afield.app.client.isBoxVisible
 import afield.app.notifications.notify
+import afield.app.client.LoadingTracker
 import afield.app.client.figureModeActive
 import afield.app.protocol.ArrangeBoxesRequest
 import afield.app.protocol.ArrangeBoxesResult
@@ -354,9 +355,10 @@ fun registerBoxLayoutActions(builtin: dynamic) {
     byTalk.detail = "Put the Presentation box and its figures in one row in slide order, each clear of the last one's output panels"
     byTalk.run = { send(Message("arrange-by-presentation")) }
     builtin.push(byTalk)
-    // A figure page shows one box alone; only a canvas can measure and answer.
+    // A figure page shows one box alone; only a canvas can measure and answer. A canvas still
+    // loading has not drawn its boxes, so it leaves the request to the replay it asks for once loaded.
     handlers.put("arrange-boxes") { message, _ ->
-        if (!figureModeActive) {
+        if (!figureModeActive && LoadingTracker.isFinished()) {
             val request = Json.decodeFromJsonElement(ArrangeBoxesRequest.serializer(), message.payload!!)
             BoxLayout.arrangeWhenSettled(request) { send(Message("arrange-boxes-result").payload(it)) }
         }

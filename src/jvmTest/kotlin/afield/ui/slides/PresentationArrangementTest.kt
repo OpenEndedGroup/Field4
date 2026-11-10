@@ -8,12 +8,17 @@ import afield.app.protocol.Set_rect
 import afield.app.protocol.Set_rects
 import afield.document.graph.Box
 import afield.ui.output.controlGroup
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * Arrange Boxes by Presentation: the talk decides the order (the Presentation box, then figures in
@@ -105,11 +110,59 @@ class PresentationArrangementTest {
         assertEquals(listOf("open"), opened.map { it.action }, "the collapsed panel is opened before measuring")
 
         // A canvas attaches later: it is sent the parked request, and its answer is applied.
-        val parked = PresentationArrangement.parkedRequestFor(s)!!
+        val parked = PresentationArrangement.outstandingRequestFor(s)!!
         val request = Json.decodeFromJsonElement<ArrangeBoxesRequest>(parked.payload!!)
         PresentationArrangement.complete(ArrangeBoxesResult(request.id, listOf(Set_rect(fig.id, "frame", Rect(900.0, 0.0, 160.0, 50.0)))))
         assertEquals(Rect(900.0, 0.0, 160.0, 50.0), fig.frame)
-        assertEquals(null, PresentationArrangement.parkedRequestFor(s), "answered once, it no longer waits")
+        assertEquals(null, PresentationArrangement.outstandingRequestFor(s), "answered once, it no longer waits")
+    }
+
+    /**
+     * The Cameras deck, run by a transcript with no canvas open: Electron attached while [arrange]
+     * was still waiting for an answer. The request used to be held only once that wait ended, so
+     * the canvas that attached during it was sent nothing and the document was never arranged.
+     */
+    @Test fun aCanvasThatAttachesWhileTheServerWaitsIsSentTheRequest() = runBlocking {
+        val s = session()
+        val deck = s.box("deck")
+        val fig = s.box("fig")
+        val show = deck.presentation(title = "Talk") { step("One") { audience { figure("fig") } } }
+        PresentationArrangement.deliver = { _, _ -> }
+        val arranging = async(Dispatchers.Default) {
+            PresentationArrangement.arrange(show, runFigures = false, timeoutMs = 10_000)
+        }
+        var request: Message? = null
+        val deadline = System.currentTimeMillis() + 5_000
+        while (request == null && System.currentTimeMillis() < deadline) {
+            request = PresentationArrangement.outstandingRequestFor(s)
+            delay(10)
+        }
+        val id = Json.decodeFromJsonElement<ArrangeBoxesRequest>(request!!.payload!!).id
+        PresentationArrangement.complete(ArrangeBoxesResult(id, listOf(Set_rect(fig.id, "frame", Rect(700.0, 0.0, 160.0, 50.0)))))
+        assertEquals(1, arranging.await(), "the late canvas's answer arranges the document within the wait")
+        assertEquals(Rect(700.0, 0.0, 160.0, 50.0), fig.frame)
+        assertEquals(null, PresentationArrangement.outstandingRequestFor(s))
+    }
+
+    /** Figures that run one after another keep the wait going while each shows its first output. */
+    @Test fun slowFiguresAreWaitedForWhileTheyKeepArriving() = runBlocking {
+        val s = session()
+        val figures = (0 until 4).map { s.box("slow$it") }
+        val started = System.currentTimeMillis()
+        val producer = launch(Dispatchers.Default) {
+            // Each takes 150 ms, so the four take twice the 300 ms quiet allowance.
+            figures.forEach { delay(150); it.output.retainedAreas.put("main", "<div>ready</div>") }
+        }
+        PresentationArrangement.awaitFirstOutputs(figures, quietMs = 300, pollMs = 10)
+        producer.join()
+        assertEquals(0, figures.count { it.output.retainedAreas.channels().isEmpty() }, "every figure was waited for")
+        assertTrue(System.currentTimeMillis() - started >= 550, "the wait outlasted one quiet allowance")
+
+        // A figure that never shows anything is given up on after the allowance.
+        val stuck = s.box("stuck")
+        val before = System.currentTimeMillis()
+        PresentationArrangement.awaitFirstOutputs(listOf(stuck), quietMs = 200, pollMs = 10)
+        assertTrue(System.currentTimeMillis() - before in 190..2_000)
     }
 
     @Test fun aPresentationsNoteKeepsToTheCornerUnlessAStepAnchorsIt() {
