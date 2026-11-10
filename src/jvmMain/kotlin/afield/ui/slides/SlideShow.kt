@@ -341,6 +341,7 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
             title = title,
             noteHtml = noteHtml,
             noteAnchorBox = noteAnchorBox ?: hostBox,
+            noteAnchored = noteAnchorBox != null,
             targetBox = targetBox,
             targetProperty = targetProperty,
             targetLine = targetLine,
@@ -395,7 +396,9 @@ data class SlideStep(
     val checkpoint: String = "",
     val reset: (suspend () -> Unit)? = null,
     val audienceProvider: (() -> AudienceContent)? = null,
-    val controls: List<FigureControl> = emptyList()
+    val controls: List<FigureControl> = emptyList(),
+    /** True when the step chose [noteAnchorBox] itself, rather than taking the host box by default. */
+    val noteAnchored: Boolean = false,
 ) {
     /** True when this step or one of its cues shows a live figure or sets a figure's control. */
     internal val hasFigures: Boolean
@@ -491,6 +494,15 @@ class SlideShowInstance(
             else if (activeByRoot[root] === this) activeByRoot.remove(root)
         }
     }
+
+    /**
+     * Where [step]'s note goes on the canvas: the box the step anchors it to, else, in a guide, the
+     * guide's own box. A presentation's note is for the presenter, who also reads it in the
+     * presenter window, so unless the step anchors it, it keeps to the corner of the canvas ("")
+     * rather than covering the figures laid out beside the deck.
+     */
+    internal fun noteAnchorUid(step: SlideStep): String =
+        if (step.noteAnchored || presentationOptions == null) (step.noteAnchorBox ?: hostBox).id else ""
 
     val currentStep: SlideStep?
         get() = if (currentStepIndex >= 0 && currentStepIndex < steps.size) steps[currentStepIndex] else null
@@ -589,7 +601,7 @@ class SlideShowInstance(
             
             fun note(html: String, animated: Boolean) = ShowSlideNote(
                 html = html,
-                uid = step.noteAnchorBox?.id ?: hostBox.id,
+                uid = noteAnchorUid(step),
                 persistent = step.persistent,
                 animated = animated,
                 annotations = step.annotations,
