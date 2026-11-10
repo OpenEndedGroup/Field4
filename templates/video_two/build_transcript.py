@@ -62,7 +62,13 @@ def main():
         for kind, uid in [('material', 'video1_shader'), ('accumulation', 'video1_accumulation')]:
             for stage in ['vertex', 'fragment']:
                 stages[kind][stage] = (args.shader_document / f'{uid}_{stage}_.glsl').read_text()
-    launch = ['video1_context', 'video1_screen']
+    operations.append({'create': dict(box='video2_looks', name='0 · Shared screen looks',
+        frame=dict(x=-700, y=0, w=500, h=100), properties=dict(code=(here / 'looks.kt').read_text()))})
+    operations.append({'connect': dict(parent='video1_screen', child='video2_looks')})
+    operations.append({'create': dict(box='video2_motion', name='Ring motion',
+        frame=dict(x=-700, y=2200, w=500, h=100), properties=dict(code=(here / 'motion.kt').read_text()))})
+    operations.append({'connect': dict(parent='video1_screen', child='video2_motion')})
+    launch = ['video1_context', 'video1_screen', 'video2_looks', 'video2_motion']
     for index in range(8):
         x, y = 1300 + index % 4 * 650, index // 4 * 1800
         for kind, uid, name, offset in [
@@ -76,6 +82,8 @@ def main():
             else:
                 operations.append({'create': payload})
                 operations.append({'connect': dict(parent='video1_screen', child=uid)})
+            if kind == 'material':
+                operations.append({'connect': dict(parent='video2_looks', child=uid)})
             launch.append(uid)
     launch.append('video1_playback')
     for name, ops in [('create', operations), ('launch', [{'launch': {'box': uid}} for uid in launch] + [{'await': {'wait': 'pending'}}]),

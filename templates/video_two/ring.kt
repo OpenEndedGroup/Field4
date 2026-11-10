@@ -34,16 +34,16 @@ controlGroup("ring layout") {
         hoverText = "Fraction of each 45-degree sector occupied by its screen. One joins the screens into a cylinder; 0.9 leaves a small gap. Positive curvature faces inward.") {
         carousel.fill = it.toFloat(); carousel.layout()
     }
-    slider("Ring rotation (degrees)", min = -180.0, max = 180.0, step = .1, initialValue = 0.0,
+    slider("Ring rotation (degrees)", min = -180.0, max = 180.0, step = .1, initialValue = carousel.azimuthDegrees.toDouble(),
         hoverText = "Rotate the whole screen arrangement around gravity's up axis. The ring remains fixed in room space, rather than following each head movement.") {
         carousel.azimuthDegrees = it.toFloat(); carousel.layout()
     }
-    slider("Delay spacing (frames)", min = 1.0, max = 4.0, step = 1.0, initialValue = carousel.spacingFrames.toDouble(),
-        hoverText = "Published-picture offset between neighbouring screens. One gives ages 0–7; four gives 0,4,…,28. Headset redraws do not advance this ring. A spacing edit refills it and resets exposures; warm-up holds the oldest available image.") {
+    slider("Delay spacing (frames)", min = 1.0, max = 8.0, step = 1.0, initialValue = carousel.spacingFrames.toDouble(),
+        hoverText = "Published-picture offset between neighbouring screens. One gives ages 0–7; eight gives 0,8,…,56. Headset redraws do not advance this ring. A spacing edit refills it and resets exposures; warm-up holds the oldest available image.") {
         carousel.spacingFrames = it.toInt()
     }
     for ((axis, label) in listOf("x", "y", "z").withIndex()) {
-        slider("Ring centre $label (m)", min = -5.0, max = 5.0, step = .01, initialValue = 0.0,
+        slider("Ring centre $label (m)", min = -5.0, max = 5.0, step = .01, initialValue = when (axis) { 0 -> carousel.center.x.toDouble(); 1 -> carousel.center.y.toDouble(); else -> carousel.center.z.toDouble() },
             hoverText = "World-space centre of the screen cylinder. Default zero surrounds the origin. This is independent of the optional Field browser pane.") {
             when (axis) { 0 -> carousel.center.x = it.toFloat(); 1 -> carousel.center.y = it.toFloat(); else -> carousel.center.z = it.toFloat() }
             carousel.layout()
