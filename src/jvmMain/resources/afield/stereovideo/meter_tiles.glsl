@@ -3,6 +3,7 @@ layout(set=0,binding=0) uniform sampler2D accumulationImage;
 layout(std430,set=0,binding=1) buffer VideoMeterTiles { vec4 records[]; } tiles;
 layout(push_constant) uniform MeterTilePush {
     vec4 geometry; // width, height, tiles X, first output record for this screen
+    vec4 grading; // global pre-exposure gamma, reserved
 } pc;
 
 layout(local_size_x=16,local_size_y=16) in;
@@ -17,6 +18,8 @@ void main() {
         ivec2 p=base+ivec2(x,y)*16;
         if(all(lessThan(p,size))) {
             vec3 rgb=texelFetch(accumulationImage,p,0).rgb;
+            // Match the presentation shader before reducing RGB and luminance; preserve HDR headroom.
+            if(pc.grading.x!=1) rgb=pow(max(rgb,vec3(0)),vec3(1/pc.grading.x));
             vec4 value=vec4(rgb,dot(rgb,vec3(.2126,.7152,.0722))); // RGB plus linear luminance
             for(int k=0;k<4;k++) if(!isnan(value[k])&&!isinf(value[k])) {
                 lo[k]=min(lo[k],value[k]); hi[k]=max(hi[k],value[k]); sum[k]+=value[k]; count[k]++;

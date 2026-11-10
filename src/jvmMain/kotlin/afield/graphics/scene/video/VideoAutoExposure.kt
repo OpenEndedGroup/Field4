@@ -36,6 +36,7 @@ class VideoAutoExposure(
         val enabled: Boolean = false,
         val mode: Mode = Mode.OFF,
         val mix: Float = 1f,
+        val preExposureGamma: Float = 1f,
         val meterHz: Double = 12.0,
         val risingAlpha: Float = .25f,
         val risingBeta: Float = .05f,
@@ -52,6 +53,7 @@ class VideoAutoExposure(
     ) {
         init {
             require(mix.isFinite() && mix in 0f..1f)
+            require(preExposureGamma.isFinite() && preExposureGamma > 0f) { "Pre-exposure gamma must be finite and positive" }
             require(meterHz.isFinite() && meterHz > 0.0 && meterHz <= 240.0)
             require(listOf(risingAlpha, risingBeta, fallingAlpha, fallingBeta).all { it.isFinite() && it in 0f..1f })
             require(listOf(maximumVelocity, blackPadding, whitePadding, blackMinimum, blackMaximum,
@@ -120,6 +122,7 @@ class VideoAutoExposure(
     private var finishMesh: ComputeMesh? = null
     private var linkedMesh: ComputeMesh? = null
     private val revisions = LongArray(screens) { Long.MIN_VALUE }
+    private var meteredGamma = Float.NaN
     private var lastMeasurement = 0L
     private var lastReadback = 0L
     private var serial = 0L
@@ -134,7 +137,7 @@ class VideoAutoExposure(
 
     internal fun appearance(screen: Int, mix: Float): Vector4f = Vector4f(
         if (frameSettings.mode == Mode.OFF) 0f else frameSettings.mix * mix,
-        (if (frameSettings.mode == Mode.LINKED) screens else screen).toFloat(), 0f, 0f,
+        (if (frameSettings.mode == Mode.LINKED) screens else screen).toFloat(), frameSettings.preExposureGamma, 0f,
     )
 
     internal data class Source(val image: HasImageView, val width: Int, val height: Int, val revision: Long)
@@ -197,6 +200,12 @@ class VideoAutoExposure(
         if (!ensureModules()) return
         val time = now()
         val s = frameSettings
+        if (meteredGamma != s.preExposureGamma) {
+            // A new transfer curve invalidates even paused-image scans and the old filter domain.
+            revisions.fill(Long.MIN_VALUE)
+            resetRequest.set(true)
+            meteredGamma = s.preExposureGamma
+        }
         val interval = (1e9 / s.meterHz).toLong().coerceAtLeast(1)
         val reset = resetRequest.getAndSet(false)
         val measurement = reset || lastMeasurement == 0L || time - lastMeasurement >= interval ||
@@ -213,6 +222,7 @@ class VideoAutoExposure(
                 if (measurement && revisions[i] != source.revision) {
                     selected = source.image
                     tileMesh!!.apply {
+                        push["grading"] = Vector4f(s.preExposureGamma, 0f, 0f, 0f)
                         x = tileX; y = tileY; z = 1
                         push["geometry"] = Vector4f(source.width.toFloat(), source.height.toFloat(), tileX.toFloat(), (i * tileCount * 4).toFloat())
                     }

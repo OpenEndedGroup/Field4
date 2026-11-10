@@ -141,6 +141,17 @@ object VideoAutoExposureSmoke {
             near(excluded.linked.rawMean[3], .7f, "invalid buffer excluded")
             near(excluded.linked.finiteCount[3], 85f, "valid pooled pixel count", 0f)
             check(meter.tileDispatches == 4L)
+            // Gamma edits must rescan a paused buffer immediately, before the next scheduled sample.
+            meter.settings = meter.settings.copy(preExposureGamma = 2f)
+            time = 5_300_000_000L
+            val graded = awaitNew(excluded.serial)
+            near(graded.linked.rawMinimum[3], kotlin.math.sqrt(.6f), "pre-gamma minimum")
+            near(graded.linked.rawMaximum[3], kotlin.math.sqrt(.8f), "pre-gamma maximum")
+            val expectedMean = (0..16).map { kotlin.math.sqrt(.6f + .2f * it / 16) }.average().toFloat()
+            near(graded.linked.rawMean[3], expectedMean, "gamma before mean reduction")
+            near(graded.linked.mean[3], graded.linked.rawMean[3], "gamma resets tracker domain", .00001f)
+            check(meter.tileDispatches == 5L) { "Gamma edit did not rescan the held valid image" }
+            near(meter.appearance(0, 1f).z, 2f, "presentation pre-gamma linkage", 0f)
             val updates = meter.measurements
             meter.settings = meter.settings.copy(enabled = false)
             time = 6_000_000_000L
