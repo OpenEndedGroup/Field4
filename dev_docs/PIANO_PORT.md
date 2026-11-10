@@ -107,8 +107,27 @@ regions' different modal colouring, not the strings.
 - coopiano's four bridge-region soundboards (stereo image by register); the port uses the single
   shared response.
 - Voice stealing with a fade, the live MIDI host, presets from `.ini`, and coopiano's prepared-strike
-  cache. Strikes are prepared on the audio thread at their own sample: a few milliseconds for a
-  bass note at 48 kHz, which can overrun a 128-frame block when many bass notes start together.
+  cache. Instead of a cache, strikes are prepared on `PianoStrikePool` workers up to a second before
+  their sample, with the hammer, bridge and soft-pedal values the audio thread last read. At the
+  strike the audio thread takes the worker's result if those values still hold, and prepares it
+  itself otherwise, so the output is identical either way
+  (`PianoPreparationTest.strikesPreparedAheadAreTheSame`). The strike's random seed is fixed when
+  the note is queued, not when it sounds. Live, a note played "now" waits up to 30 ms for its
+  worker rather than stalling the block; `pianoRender` always waits.
+
+## What the port adds beyond coopiano
+
+- Preparations (`PianoPreparation`): a point mass `m` at `x` scales partial `n` by
+  `1/sqrt(1 + 2(m/M)·sin²(nπx))` (first-order point-mass perturbation, written so it never reaches
+  zero; `M` is the string's mass), and damping adds `c·sin²(nπx)` to its decay rate, floored at
+  zero. Both are applied per phasor in the 32-sample recompute, to each parent of a longitudinal
+  phantom separately. A 2 g bolt at 0.3 on A4 measures 297, 542, 1222 Hz against the formula's 297,
+  542, 1219. The rattle is a coasting object with friction (60/s) and restitution 0.3 inside a gap,
+  ringing a 2-pole resonator at each catch with the relative speed. Modes are not coupled.
+- Close microphones (`PianoMic`), each with position, balance pan and gain, optionally one string;
+  they also hear the sympathetic strings' force.
+- `bridgeInput` (25 N per unit) into the resonance and board; `unaCorda` (contact share of the last
+  string, felt × (1 − 0.3u)); `sostenuto` latched every 64 samples; CC 66/67 from MIDI clips.
 
 ## Cost
 

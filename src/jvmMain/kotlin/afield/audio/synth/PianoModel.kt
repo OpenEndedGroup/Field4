@@ -481,6 +481,8 @@ internal class PianoNoteData(capacity: Int) {
     var hammerVelocity = 0.0
     var B = 0.0
     var L = 1.0
+    /** Mass of one string (kg), against which a preparation's mass is weighed. */
+    var ms = 1.0
 
     fun add(): Int {
         if (count == zr.size) grow()
@@ -511,18 +513,18 @@ internal class PianoNoteData(capacity: Int) {
      * zero. [pin] 0..1 moves the fundamental back to where it is at s = 1, so stiffness is heard as
      * timbre instead of detune (values outside 0..1 over- or under-correct, which is allowed).
      */
-    fun omega(i: Int, s: Double, pin: Double = 0.0): Double {
+    fun omega(i: Int, s: Double, pin: Double = 0.0, fa: Double = 1.0, fb: Double = 1.0): Double {
         val f = f0s[i]
-        var hz = na[i] * f * pianoStiffness(s, B, na[i]) + shA[i]
-        if (nb[i] > 0) hz += nb[i] * f * pianoStiffness(s, B, nb[i]) + shB[i]
+        var hz = (na[i] * f * pianoStiffness(s, B, na[i]) + shA[i]) * fa
+        if (nb[i] > 0) hz += (nb[i] * f * pianoStiffness(s, B, nb[i]) + shB[i]) * fb
         if (pin != 0.0) hz *= Math.pow(pianoStiffness(1.0, B, 1) / pianoStiffness(s, B, 1), pin)
         return 2 * PI * hz * pol[i]
     }
 
     /** d(omega)/ds, for the per-sample correction inside a block (central difference). */
-    fun dOmegaDs(i: Int, s: Double, pin: Double = 0.0): Double {
+    fun dOmegaDs(i: Int, s: Double, pin: Double = 0.0, fa: Double = 1.0, fb: Double = 1.0): Double {
         val h = 1e-3 * max(1.0, abs(s))
-        val d = (omega(i, s + h, pin) - omega(i, s - h, pin)) / (2 * h)
+        val d = (omega(i, s + h, pin, fa, fb) - omega(i, s - h, pin, fa, fb)) / (2 * h)
         return if (d.isFinite()) d else 0.0
     }
 }
@@ -543,7 +545,8 @@ internal object PianoStrike {
 
     class Contact(val durationMs: Double, val peakForce: Double, val force: DoubleArray, val hammer: DoubleArray)
 
-    fun runContact(k: PianoKey, strs: List<PianoString>, vh0: Double, fs: Double): Contact {
+    /** [hit] is how much of the hammer each string meets (1 all of it, 0 missed: the una corda shift). */
+    fun runContact(k: PianoKey, strs: List<PianoString>, vh0: Double, fs: Double, hit: DoubleArray? = null): Contact {
         val os = 32
         val dt = 1.0 / (fs * os)
         val maxSteps = (0.030 * fs * os).toInt()
@@ -562,18 +565,20 @@ internal object PianoStrike {
             }
             var fTot = 0.0
             var anyContact = false
-            for (s in strs) {
+            for ((si, s) in strs.withIndex()) {
+                val share = hit?.getOrNull(si) ?: 1.0
                 var ys = 0.0
                 for (n in 0 until s.n) ys += s.sa[n] * s.q[n]
                 val delta = yh - ys
                 var f = 0.0
-                if (!separated && delta > 0.0) {
+                if (!separated && delta > 0.0 && share > 0.0) {
                     anyContact = true
                     var yds = 0.0
                     for (n in 0 until s.n) yds += s.sa[n] * s.qd[n]
                     val ddot = vh - yds
                     f = k.K * delta.pow(k.p) * (1.0 + 0.12 * ddot)
                     if (f < 0.0) f = 0.0
+                    f *= share
                 }
                 fTot += f
                 peak = max(peak, f)
@@ -631,7 +636,7 @@ internal object PianoStrike {
 
     private fun addPhantoms(
         k: PianoKey, par: List<Parent>, dampSigKey: Double, out: PianoNoteData, registerGain: Double,
-        softenHighs: Boolean, s: PianoString,
+        softenHighs: Boolean, s: PianoString, si: Int,
     ) {
         if (par.isEmpty()) return
         var maxa = 0.0
@@ -675,13 +680,13 @@ internal object PianoStrike {
                 val nominal = 2 * PI * (par[i].n * s.f0s * sqrt(1 + k.B * par[i].n * par[i].n) + out.shA[idx] +
                     par[j].n * s.f0s * sqrt(1 + k.B * par[j].n * par[j].n) + out.shB[idx])
                 out.pol[idx] = wPh / nominal
-                out.stringIndex[idx] = -1
+                out.stringIndex[idx] = si
                 out.amp0[idx] = Math.hypot(zr, zi)
             }
         }
     }
 
-    fun prepare(k: PianoKey, keyStrings: List<PianoString>, velocity0: Double, seed: Long, fs: Double): PianoNoteData {
+    fun prepare(k: PianoKey, keyStrings: List<PianoString>, velocity0: Double, seed: Long, fs: Double, hit: DoubleArray? = null): PianoNoteData {
         val rng = PianoRng(seed)
         val g = rng.Normal()
         val velocity = velocity0.coerceIn(0.02, 1.0)
@@ -690,9 +695,9 @@ internal object PianoStrike {
             val asym = if (keyStrings.size == 2) (if (i == 0) 0.25 else -0.25) else 0.0
             s.copyForStrike((1.0 + k.v.horizontalRatio) * (1.0 + asym + 0.13 * rng.uniform(-1.0, 1.0)))
         }
-        val con = runContact(k, strs, vh, fs)
+        val con = runContact(k, strs, vh, fs, hit)
         val out = PianoNoteData(256)
-        out.B = k.B; out.L = k.L
+        out.B = k.B; out.L = k.L; out.ms = k.ms
         collectPhasors(k, strs, out)
         out.coff = con.force.size
         for (i in 0 until out.count) out.peakAmp = max(out.peakAmp, out.amp0[i])
@@ -897,8 +902,8 @@ internal object PianoStrike {
                 }
             }
             if (wantPhantoms) {
-                addPhantoms(k, parV, keyDampSig, out, registerGain, k.v.softenLongitudinalHighs, s)
-                addPhantoms(k, parH, keyDampSig, out, registerGain, k.v.softenLongitudinalHighs, s)
+                addPhantoms(k, parV, keyDampSig, out, registerGain, k.v.softenLongitudinalHighs, s, si)
+                addPhantoms(k, parH, keyDampSig, out, registerGain, k.v.softenLongitudinalHighs, s, si)
             }
         }
     }
@@ -1122,12 +1127,12 @@ internal class PianoResonance(v: PianoVoicing, private val fs: Double) {
     val modeCount: Int get() = cs.size
 
     /** One sample: returns the wet resonance for bridge-force [input] and pedal lift [pedal] 0..1. */
-    fun process(input0: Double, pedal: Double, own: Array<DoubleArray>, active: BooleanArray, at: Int): Double {
+    fun process(input0: Double, pedal: Double, own: Array<DoubleArray>, active: BooleanArray, at: Int, latched: BooleanArray? = null): Double {
         var wet = 0.0
         for (g in 0 until 88) {
             // a key's own force does not drive its own resonators (coopiano own_drive = 0)
             val input = if (active[g]) input0 - own[g][at] else input0
-            val target = if (held[g] > 0 || undamped[g]) 1.0 else pedal
+            val target = if (held[g] > 0 || undamped[g] || (latched != null && latched[g])) 1.0 else pedal
             var op = openness[g]
             if (op < target) op = min(target, op + ramp) else if (op > target) op = max(target, op - ramp)
             openness[g] = op
