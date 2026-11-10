@@ -4273,6 +4273,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="three-figure-mode",
+            description="A three viewer moved into a presentation figure's host drops its grey background and HUD; on the canvas it keeps both.",
+            commands=[
+                "new-box --name FigureModeRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-figure-mode.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-figure-mode.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="three-xray",
             description="X-ray renders hidden geometry while preserving nearest-surface picks, saved evidence and idle rendering.",
             commands=[
