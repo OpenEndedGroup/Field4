@@ -83,10 +83,12 @@ class StereoVideoSource(
             }
             playRequest.getAndSet(null)?.let { if (it) source.play() else source.pause() }
             val requestedHistory = this@StereoVideoSource.historyFrames
-            if ((history?.capacity ?: 1) != requestedHistory) {
-                current = current?.copy(imageViewArray = source.imageViewArray.toList())
-                history?.close()
-                history = if (requestedHistory > 1) VideoFrameHistory(renderer, requestedHistory) else null
+            val activeHistory = history
+            if (activeHistory != null && activeHistory.capacity != requestedHistory) {
+                activeHistory.resize(requestedHistory)
+                epoch++
+            } else if (activeHistory == null && requestedHistory > 1) {
+                history = VideoFrameHistory(renderer, requestedHistory)
                 epoch++
             }
             materialTick = cadence.tick(System.nanoTime(), materialFramesPerSecond)
@@ -110,7 +112,7 @@ class StereoVideoSource(
     }
 
     internal fun frame(framesBehind: Int): PublishedVideoFrame? =
-        history?.frame(framesBehind.coerceAtMost(historyFrames - 1)) ?: current
+        history?.frame(framesBehind) ?: current
 
     fun play() { playRequest.set(true) }
     fun pause() { playRequest.set(false) }
