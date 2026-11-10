@@ -58,7 +58,8 @@ internal constructor(private val player: ReadingDiagramPlayer, private val time:
         val layout = requireNotNull(player.shape(run).layout)
         if (index == run.text.length || run.text[index] == '\n') {
             val line = layout.lines[run.text.take(index).count { it == '\n' }]
-            return textPoint(run, line.advanceWidth.toFloat(), -line.baselineY.toFloat())
+            return textPoint(run, line.advanceWidth.toFloat(),
+                -(line.glyphs.minOfOrNull { it.origin.y + it.offset.y } ?: line.baselineY.toFloat()))
         }
         val glyph =
             requireNotNull(layout.glyphs.firstOrNull { it.charIndex == index }) {
@@ -95,6 +96,9 @@ internal constructor(private val player: ReadingDiagramPlayer, private val time:
             textPoint(run, it.x, it.y, it.z)
         }
 
+    internal fun connectionNodes(connection: DiagramConnection): List<Vector3f> =
+        player.connectionNodes(connection, this)
+
     fun path(path: DiagramPath): FLine {
         require(path.owner === player.diagram.owner)
         paths[path.id]?.let {
@@ -105,7 +109,7 @@ internal constructor(private val player: ReadingDiagramPlayer, private val time:
             val result = path.make(this)
             val offset = pose(path).offset
             val transformed =
-                if (offset.lengthSquared() == 0f) result
+                if (path.connection != null || offset.lengthSquared() == 0f) result
                 else result.copy().transform { Vector3f(it).add(offset) }
             paths[path.id] = transformed
             return transformed
@@ -175,6 +179,11 @@ class ReadingDiagramPlayer(
     private val accelerationOutput = Vector3f()
     var physicsSteps = 0L
         private set
+
+    private val connectionPhysics by lazy { DiagramConnectionPhysics(this) }
+
+    internal fun connectionNodes(connection: DiagramConnection, frame: DiagramFrame) =
+        connectionPhysics.nodes(connection, frame)
 
     private var accumulator = 0.0
     private var physicsTime = 0.0
@@ -259,6 +268,7 @@ class ReadingDiagramPlayer(
             state.pz[i] = p.rest.z
         }
         accumulator = 0.0
+        connectionPhysics.reset()
     }
 
     fun restart() {
@@ -322,6 +332,7 @@ class ReadingDiagramPlayer(
                     }
                 }
             }
+            connectionPhysics.step(DiagramFrame(this, playback.sampleTime), fixedStep.toFloat())
             accumulator -= fixedStep
             physicsTime += fixedStep
             physicsSteps++

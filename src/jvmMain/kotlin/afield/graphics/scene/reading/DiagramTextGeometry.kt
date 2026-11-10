@@ -247,9 +247,13 @@ internal fun ReadingText.prepareMetrics(start: Int, end: Int): DiagramTextMetric
         l.glyphs.firstOrNull { it.charIndex == end && it.lineIndex == index }?.origin?.x
             ?: l.lines[index].advanceWidth.toFloat()
     }
-    val baseline = -l.lines[glyphs.first().lineIndex].baselineY.toFloat()
-    val lastBaseline = -l.lines[glyphs.last().lineIndex].baselineY.toFloat()
-    val perLine = HashMap<Int, FLine>()
+    // A dropped initial has its own lower baseline on line zero. Prefer the body's baseline
+    // when a selection also contains body glyphs; an initial-only span keeps its real baseline.
+    val firstY = glyphs.filter { it.lineIndex == glyphs.first().lineIndex }.minOf { it.origin.y + it.offset.y }
+    val lastY = glyphs.filter { it.lineIndex == glyphs.last().lineIndex }.minOf { it.origin.y + it.offset.y }
+    val baseline = -firstY
+    val lastBaseline = -lastY
+    val bodies = ArrayList<DiagramTextRect>()
     val outline = FLine()
     for (g in glyphs) if (!g.glyph.isBlank) {
         val transform = g.transform()
@@ -259,21 +263,21 @@ internal fun ReadingText.prepareMetrics(start: Int, end: Int): DiagramTextMetric
                 Vector3f(q.x.toFloat(), -q.y.toFloat(), 0f)
             }
         outline.nodes.addAll(part.nodes)
-        perLine.getOrPut(g.lineIndex) { FLine() }.nodes.addAll(part.nodes)
+        readingInkBounds(part)?.let {
+            val y = -g.origin.y - g.offset.y
+            bodies.add(DiagramTextRect(it.left, max(it.bottom, y), it.right, max(it.top, y)))
+        }
     }
     val ink = readingInkBounds(outline)
     val selectedFaces = glyphs.map { glyphFaces[it.charIndex] ?: l.typeface }.distinct()
-    val ascent = selectedFaces.maxOf { it.ascent }.toFloat()
-    val descent = selectedFaces.maxOf { it.descent }.toFloat()
-    fun height(sample: String): Float = selectedFaces.maxOf { face ->
-        readingInkBounds(layoutText(sample, face).toFLine().transform { Vector3f(it.x, -it.y, 0f) })
-            ?.top ?: 0f
-    }
-    val bodies = perLine.mapNotNull { (index, shape) ->
-        readingInkBounds(shape)?.let {
-            val y = -l.lines[index].baselineY.toFloat()
-            DiagramTextRect(it.left, max(it.bottom, y), it.right, max(it.top, y))
+    fun face(g: PlacedGlyph) = glyphFaces[g.charIndex] ?: l.typeface
+    val ascent = glyphs.maxOf { face(it).ascent.toFloat() + firstY - it.origin.y - it.offset.y }.coerceAtLeast(0f)
+    val descent = glyphs.maxOf { face(it).descent.toFloat() + it.origin.y + it.offset.y - lastY }.coerceAtLeast(0f)
+    fun height(sample: String): Float {
+        val heights = selectedFaces.associateWith { face ->
+            readingInkBounds(layoutText(sample, face).toFLine().transform { Vector3f(it.x, -it.y, 0f) })?.top ?: 0f
         }
+        return glyphs.maxOf { heights.getValue(face(it)) + firstY - it.origin.y - it.offset.y }.coerceAtLeast(0f)
     }
     val body =
         if (bodies.isEmpty()) DiagramTextRect(left, baseline, left, baseline)
