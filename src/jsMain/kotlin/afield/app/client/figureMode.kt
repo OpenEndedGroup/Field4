@@ -70,7 +70,7 @@ internal fun installFigureMode(params: URLSearchParams) {
             area.scrollWidth.toDouble(), area.scrollHeight.toDouble(),
             window.innerWidth.toDouble(), window.innerHeight.toDouble()
         ) ?: return
-        val shift = "${fit.shiftX.asDynamic().toFixed(1)}px ${fit.shiftY.asDynamic().toFixed(1)}px"
+        val shift = "${fit.shiftX.asDynamic().toFixed(1)}px, ${fit.shiftY.asDynamic().toFixed(1)}px"
         if (host.style.getPropertyValue("--field-figure-shift") != shift) host.style.setProperty("--field-figure-shift", shift)
         val applied = host.style.getPropertyValue("--field-figure-zoom").toDoubleOrNull() ?: 1.0
         val zoom = fit.zoom
