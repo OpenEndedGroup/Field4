@@ -1156,28 +1156,18 @@ operations:
           // Sound pressure level: 20 × log10 of the pressure swing over 20 micropascals, the quietest a
           // young ear hears at 1 kHz. Drag "pressure" (a logarithmic slider, in pascals) and read the level.
           fun level(pa: Double) = 20 * log10(pa / 20e-6)
+          lateinit var bar: MeterHandle
 
           fun show(pa: Double) {
               val db = level(pa)
-              val marks = listOf(0.0 to "hearing just begins", 60.0 to "talking, a metre away", 120.0 to "it starts to hurt")
-              // Each mark hangs below the bar on its own row, so the labels never run into each other.
-              val ticks = marks.mapIndexed { i, (d, label) ->
-                  val anchor = if (d > 100) "transform:translateX(-100%);border-right" else "border-left"
-                  "<div style='position:absolute;left:${d / 140 * 100}%;top:${66 + 26 * i}px;$anchor:1px solid #fff6;padding:0 6px;font-size:15px;color:#fffa;white-space:nowrap'>${d.toInt()} dB: $label</div>"
-              }.joinToString("")
-              display("level", """
-                  <div style='width:640px;height:150px;position:relative;color:#e6f6ff'>
-                    <div style='font-size:34px'>${"%.3g".format(pa)} Pa &rarr; ${db.f1} dB</div>
-                    <div style='position:absolute;left:0;right:0;top:56px;height:6px;background:#fff2'></div>
-                    <div style='position:absolute;left:0;top:56px;height:6px;width:${(db / 140 * 100).coerceIn(0.0, 100.0)}%;background:#66e6ff'></div>
-                    $ticks
-                  </div>
-              """.trimIndent())
+              markdown("readout", "**${"%.3g".format(pa)} Pa → ${db.f1} dB**\n\n0 dB: hearing just begins · 60 dB: talking, a metre away · 120 dB: it starts to hurt")
+              if (::bar.isInitialized) bar.set(db)
           }
 
           show(0.02)
           controlGroup {
               slider("pressure", 0.00002, 200.0, step = 0.00001, initialValue = 0.02, law = ControlLaw.LOGARITHMIC) { show(it) }
+              bar = meter("decibels", 0.0, 140.0, initialValue = level(0.02))
           }
   - create:
       box: es_doppler
@@ -2089,6 +2079,7 @@ operations:
                       }
                   }
               }
+              .arrangeBoxes()
               .present()
   - execute:
       box: es_deck
