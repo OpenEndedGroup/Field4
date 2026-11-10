@@ -1,8 +1,8 @@
 package afield.io.resolve
 
 /**
- * Reads timelines, markers and the playhead from a running DaVinci Resolve, through Resolve's own
- * Python scripting API.
+ * Reads timelines and markers, and reads or moves the playhead of a running DaVinci Resolve,
+ * through Resolve's own Python scripting API.
  *
  * [Resolve] is the whole surface: [Resolve.markers] for the current timeline or one by name,
  * [Resolve.timelines] for every timeline in the open project, [Resolve.clipMarkers] for markers
@@ -173,6 +173,25 @@ open class ResolveConnection internal constructor(
     /** The playhead of the current timeline; Resolve reports none for other timelines. */
     fun playhead(): ResolvePlayhead = Resolve.decode(Resolve.call("playhead", null, host))
 
+    /** Read only if [timeline] is already open; never switches the editor's current timeline. */
+    fun playhead(timeline: String): ResolvePlayhead = Resolve.decode(Resolve.call("playhead", timeline, host))
+
+    /** Move the current timeline's playhead to [frame], counted from its start, and return the observed position. */
+    fun setPlayhead(frame: Int, timeline: String? = null): ResolvePlayhead {
+        require(frame >= 0) { "Playhead frame must be non-negative" }
+        return Resolve.decode(Resolve.call("setPlayhead", timeline, host, mapOf("frame" to JsonPrimitive(frame))))
+    }
+
+    /** Move to an absolute record timecode, including the timeline's start-timecode offset. */
+    fun setPlayhead(timecode: String, timeline: String? = null): ResolvePlayhead =
+        Resolve.decode(Resolve.call("setPlayhead", timeline, host, mapOf("timecode" to JsonPrimitive(timecode))))
+
+    /** Move to seconds from the timeline start, rounded to the nearest timeline frame. */
+    fun setPlayheadSeconds(seconds: Double, timeline: String? = null): ResolvePlayhead {
+        require(seconds.isFinite() && seconds >= 0) { "Playhead seconds must be finite and non-negative" }
+        return Resolve.decode(Resolve.call("setPlayhead", timeline, host, mapOf("seconds" to JsonPrimitive(seconds))))
+    }
+
     override fun toString() = "Resolve on ${host ?: "this machine"}"
 }
 
@@ -214,13 +233,14 @@ object Resolve : ResolveConnection(null) {
     private var worker: Worker? = null
     private var nextId = 0L
 
-    internal fun call(op: String, timeline: String?, host: String?): JsonElement = synchronized(this) {
+    internal fun call(op: String, timeline: String?, host: String?, arguments: Map<String, JsonElement> = emptyMap()): JsonElement = synchronized(this) {
         val w = worker?.takeIf { it.alive } ?: Worker.start().also { worker = it }
         val id = ++nextId
         val request = JsonObject(buildMap {
             put("id", JsonPrimitive(id)); put("op", JsonPrimitive(op))
             if (timeline != null) put("timeline", JsonPrimitive(timeline))
             if (host != null) put("host", JsonPrimitive(host))
+            putAll(arguments)
         })
         val where = host?.let { " on $it" }.orEmpty()
         val line = try {
