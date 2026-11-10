@@ -1,15 +1,14 @@
 # A Tracked Body, Measured and Heard
 
-Take a recording of a moving body, ask [Body and hand tracking](body_tracking.md)'s geometry where
-one hand is relative to the rest of the body, draw the answer with `FLine`, and play it as a
-pattern. Four parts of Field that know nothing about each other are joined by a few lines of box
-code each.
+In a clip from *Ballet Mécanique*, a woman swings while holding the ropes. We'll track her pose,
+measure how close her wrist comes to the rest of her body, draw the result over the film and turn
+the distance into sound. Along the way we'll use [body geometry](body_tracking.md), `FLine` and
+Field's pattern language together.
 
-The body comes from a film rather than a headset. [Computer vision in Python](python_cv.md)'s
-`Pose` detector (mediapipe) ran over the public-domain *Ballet Mécanique* swing clip that ships in
-`python/fieldcv/samples/`, and `templates/chain_tracked_body/record_pose.py` saved what it found
-as `public/docs/assets/chain_tracked_body/swing_pose.json`: for each of the clip's frames, either
-nothing or 33 landmarks. Re-running that script reproduces the file.
+The public-domain clip ships with Field. The `Pose` detector from [Computer vision in
+Python](python_cv.md) (mediapipe) has already been run over it, saving either 33 landmarks or no
+pose for each frame in [swing_pose.json](assets/chain_tracked_body/swing_pose.json). To make the
+recording again, run [record_pose.py](https://github.com/OpenEndedGroup/Field4/blob/main/templates/chain_tracked_body/record_pose.py).
 
 ## From landmarks to WiVRn's body slots
 
@@ -19,8 +18,8 @@ the box below fills each slot from the nearest landmarks: the chest is between t
 lower arm is halfway along the forearm, a lower leg halfway along the shin. The nose stands in for
 the head pose. Image coordinates become a y-up world measured in frame heights, not metres.
 
-The query is the right wrist, as in the live page's overlay, measured against limb cylinders 0.03
-frame heights thick and a head sphere of 0.07. `videoFrames` decodes the clip with ffmpeg, and
+We query the right wrist, as in the live tracking overlay, against limb cylinders with a radius of
+0.03 frame heights and a head sphere with a radius of 0.07. `videoFrames` decodes the clip with ffmpeg, and
 `drawFLines` draws onto every 30th frame: mediapipe's own skeleton in thin white, the eight body
 slots and their connections in green, and the right wrist in pink, with a line to the closest point
 the geometry found. Below the stills is the signed distance over the whole clip.
@@ -152,15 +151,15 @@ display(
 ```
 
 The clip opens with no body in frame, so the curve starts where the detector first finds one. The
-film frames her from the waist up, so the hips, legs and feet are mediapipe's guesses below the
-bottom edge: the slots are filled all the same, and `BodyGeometry` has no way to know.
+film shows her from the waist up; the hips, legs and feet are mediapipe's guesses below the frame.
+Those estimates still fill the slots, and `BodyGeometry` has no way to distinguish them.
 For 71 of the 308 frames the nearest thing to the wrist is the head sphere: she holds the swing's
 ropes, so her hands are up beside her head. The wrist is never inside the body. Its distance stays
 at least 0.103 frame heights, partly because a lower-arm slot sits mid-forearm, so the wrist is
 always about half a forearm from the end of its own limb.
 
-The jitter from frame to frame comes from the detector. `BodyGeometry` copies each frame as it is
-and does not smooth or fill gaps, so a frame with no body has no hit.
+The jitter from frame to frame comes from the detector. `BodyGeometry` copies each frame as it is:
+it neither smooths the positions nor fills gaps, so a frame with no body has no hit.
 
 ## The distance as a pattern
 
@@ -249,8 +248,8 @@ Here it is, rendered offline to a `.wav` from the same recording:
 // TrackedBodyDocs repeats the heard box's steps and renders one cycle at the clip's speed.
 ```
 
-The rests at the start are the frames with no body. The louder notes are the frames where her head,
-not a limb, is the nearest part of her body to the wrist.
+The rests at the start are the frames with no body. The louder notes mark the frames where her head
+is the part nearest to her wrist.
 
 ## What is not here yet
 
