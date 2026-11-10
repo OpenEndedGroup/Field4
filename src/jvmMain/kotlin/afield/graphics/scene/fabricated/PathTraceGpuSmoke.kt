@@ -379,6 +379,13 @@ object PathTraceDemo {
     fun install(
         renderer: Renderer, environmentPath: String? = null, width: Int = 640, height: Int = 360,
         backend: PathTracingRenderer.Backend
+    ): PathTracingRenderer =
+        install(renderer, environmentPath?.let { PathTraceEnvironment.fromFile(it) } ?: PathTraceEnvironment.constant(), width, height, backend)
+
+    /** The same scene under a given [environment], such as `PathTraceEnvironment.fromAtmosphere(...)`. */
+    fun install(
+        renderer: Renderer, environment: PathTraceEnvironment, width: Int = 640, height: Int = 360,
+        backend: PathTracingRenderer.Backend = PathTracingRenderer.Backend.AUTO
     ): PathTracingRenderer {
         val scene=PathTraceScene()
         val floor=scene.material(PathTraceMaterial.diffuse(0.48f,0.48f,0.48f))
@@ -390,7 +397,6 @@ object PathTraceDemo {
         scene.sphere(Vector3f(0f,0.8f,0f),0.8f,gold,48,24)
         scene.sphere(Vector3f(1.7f,0.8f,0f),0.8f,rough,48,24)
         val camera=Camera(renderer).also { it.at.set(3.5f,2.4f,7.5f); it.target.set(0f,0.65f,0f); it.p.fov=0.62 }
-        return PathTracingRenderer(renderer,scene,environmentPath?.let { PathTraceEnvironment.fromFile(it) }
-            ?: PathTraceEnvironment.constant(),width,height,camera,backend).install()
+        return PathTracingRenderer(renderer,scene,environment,width,height,camera,backend).install()
     }
 }

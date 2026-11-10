@@ -4355,6 +4355,20 @@ macro run atmospheric_sky
 
 [Open →](offline.html?file=assets/agent_transcripts/atmospheric_sky/metadata.edn)
 
+### sky_environment
+
+**The sky lights the scene.** Beneath a renderer, one box bakes the atmospheric sky into the
+fabricate renderer's environment texture and keeps its key light on the sun, coloured by the air it
+passes through. Two sliders move the sun; reflections, image-based light and backdrop follow. See
+[A sky that lights the scene](fabricate_renderer.md#a-sky-that-lights-the-scene).
+
+```diffstatic {data-lang=text}
+macro write sky_environment --file dev_docs/agents/transcripts/sky_environment.yaml
+macro run sky_environment
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/sky_environment/metadata.edn)
+
 ### learned_boids
 
 **Two flocks side by side: one running Reynolds boids, one running a network that learned it.** Four

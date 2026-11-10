@@ -302,9 +302,45 @@ still illuminates objects and remains visible in reflections and through refract
 surfaces. Changing either background control resets accumulation. This is a useful
 art-direction/compositing control; it does not change the environment's radiance.
 
-For a sky computed from the sun's position rather than a photographed one, see
-[An atmospheric sky](afield_four_graphics.md#atmospheric-sky). That sky is a fullscreen pass of its
-own and does not light the path tracer.
+### A sky from the sun's position
+
+`PathTraceEnvironment.fromAtmosphere` bakes [the atmospheric sky](afield_four_graphics.md#atmospheric-sky)
+for the sun you give it and returns an environment the tracer can use. That gives you a blue noon, an
+orange sunset or a dim twilight without loading a photograph.
+
+```diffstatic {data-lang=kotlin}
+tracer = PathTraceDemo.install(
+    renderer,
+    PathTraceEnvironment.fromAtmosphere(sunElevation = 4.0, sunAzimuth = -150.0),
+    width = 1280,
+    height = 720,
+)
+tracer.indirectClamp = 10f // the sun seen in a mirror is a caustic: clamp it
+```
+
+The sun disc is part of the environment. Its power goes into the one texel it falls in, so the
+tracer's environment sampling aims at the sun the way it aims at a bright window in a photograph, and
+shadows come out sharp and clean. Light that reaches the sun only by way of a mirror can't be aimed at
+like that. Without `indirectClamp` (see [Reducing bright specks](#reducing-bright-specks)), the floor beside the gold sphere fills with bright speckles. The
+environment is a snapshot like any other, so moving the sun means building a new environment and
+installing a new tracer.
+
+The three spheres from [the material study](#start-with-the-material-study), traced at 1024 samples
+with the sun at 45°, 4° and −3°:
+
+![The red, gold and blue spheres on a grey floor under a pale blue sky, each with a sharp shadow cast away from the camera](assets/path_tracing/atmosphere_high.png)
+
+![The same spheres at sunset: an orange band along the horizon, the gold sphere reflects a small bright sun, the red sphere is lit warm along one side, the floor is dim](assets/path_tracing/atmosphere_sunset.png)
+
+![The same spheres after sunset, shown at exposure 8: a faint red glow on the horizon and on the upper side of each sphere, no shadows](assets/path_tracing/atmosphere_twilight.png)
+
+The twilight picture uses exposure 8 instead of 1.5. At the same exposure it is nearly black.
+
+??? aside "How these captures were made"
+    They are native-window screenshots of the tracer on an Apple M-series Mac (`COMPUTE_BVH` backend). Each was taken once its box printed `atmosphere path trace converged`. The box is `sky_path_trace` in `dev_docs/agents/transcripts/sky_environment.yaml`. These figures are not runner fences, so the docs build will not re-make them. Before `indirectClamp`, the 45° and 4° frames showed speckles beside the gold sphere. That is the caustic case described above.
+
+The fabricate renderer can use the same sky, see
+[A sky that lights the scene](fabricate_renderer.md#a-sky-that-lights-the-scene).
 
 ## Depth fog
 

@@ -935,6 +935,9 @@ object DemoTranscriptExecSmokeTest {
         // Opens a Vulkan window for the fullscreen sky shader; the scattering it includes is graded on
         // the CPU twin by AtmosphereTest (closed-form transmittance, blue noon, red sunset).
         "atmospheric_sky",
+        // Opens a Vulkan window for the fabricate renderer lit by the baked sky; the bake is graded
+        // by AtmosphereTest (texels equal radiance, sunset key light reddens).
+        "sky_environment",
         // The same deal again, one tier up: both open a native Vulkan renderer to draw a trained
         // field, and both are graded far more sharply than a replay could manage — the
         // interpolation they demonstrate is measured in `WeightInterpolationTest`, endpoint
