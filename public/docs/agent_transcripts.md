@@ -1545,7 +1545,7 @@ it); the NoiseLang questions — `P(X + Y < 10)`, the 23-person birthday problem
 samples settling under an exact and a kernel density; and a distribution of `FLine`s, 120 random
 walks drawn from one graph.
 
-```text
+```diffstatic {data-lang=text}
 macro write noiselang_distributions --file dev_docs/agents/transcripts/noiselang_distributions.yaml
 macro run noiselang_distributions
 ```
