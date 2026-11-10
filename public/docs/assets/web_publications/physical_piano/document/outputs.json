@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T20:39:06.252Z",
+  "capturedAt": "2026-11-10T21:33:47.501Z",
   "documentName": "physical_piano",
   "outputs": [
     {
@@ -16,6 +16,42 @@
       "path": "outputs/0.html"
     },
     {
+      "uid": "piano_close",
+      "channel": "soundboard",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "piano_close",
+      "channel": "close mic",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "piano_close",
+      "channel": "spectra",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 656,
+      "height": 294,
+      "path": "outputs/3.html"
+    },
+    {
       "uid": "piano_pedal",
       "channel": "pedal up",
       "open": true,
@@ -25,7 +61,7 @@
       "kinds": [],
       "width": 428,
       "height": 62,
-      "path": "outputs/1.html"
+      "path": "outputs/4.html"
     },
     {
       "uid": "piano_pedal",
@@ -37,7 +73,7 @@
       "kinds": [],
       "width": 428,
       "height": 62,
-      "path": "outputs/2.html"
+      "path": "outputs/5.html"
     },
     {
       "uid": "piano_pedal",
@@ -49,7 +85,7 @@
       "kinds": [],
       "width": 428,
       "height": 62,
-      "path": "outputs/3.html"
+      "path": "outputs/6.html"
     },
     {
       "uid": "piano_a4",
@@ -61,7 +97,7 @@
       "kinds": [],
       "width": 428,
       "height": 62,
-      "path": "outputs/4.html"
+      "path": "outputs/7.html"
     },
     {
       "uid": "piano_a4",
@@ -73,7 +109,7 @@
       ],
       "width": 656,
       "height": 211,
-      "path": "outputs/5.html"
+      "path": "outputs/8.html"
     },
     {
       "uid": "piano_wobble",
@@ -85,7 +121,7 @@
       "kinds": [],
       "width": 428,
       "height": 62,
-      "path": "outputs/6.html"
+      "path": "outputs/9.html"
     },
     {
       "uid": "piano_wobble",
@@ -97,7 +133,7 @@
       ],
       "width": 656,
       "height": 211,
-      "path": "outputs/7.html"
+      "path": "outputs/10.html"
     },
     {
       "uid": "piano_string",
@@ -109,7 +145,7 @@
       ],
       "width": 656,
       "height": 573,
-      "path": "outputs/8.html"
+      "path": "outputs/11.html"
     }
   ]
 }

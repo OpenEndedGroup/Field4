@@ -380,7 +380,7 @@ displayOpen("shape")
 :::endfold
 ```
 
-![Four plots of a C3 string's displacement along its length: a sharp kink near one end that splits and travels along the string](assets/sound_piano/string-shape.png)
+![Four plots of a C3 string's displacement along its length: a broad hump pushed in by the hammer that travels along the string and steepens](assets/sound_piano/string-shape.png)
 
 ### Stiffness you can hear
 
@@ -477,7 +477,7 @@ displayOpen("attack")
 :::endfold
 ```
 
-![Two waveforms of the first 80 ms of A2: the string tone alone, and the same tone with a low thud under its first tens of milliseconds and a short burst of key noise](assets/sound_piano/close-mic-attack.png)
+![Two waveforms of the first 80 ms of A2: the string tone alone, and the same tone riding on a low swell, the thump, over its first ten milliseconds](assets/sound_piano/close-mic-attack.png)
 
 The phrase from before through the close microphone at 0.08, room off, with thump and key noise
 up and damper noise doubled; then the microphone at the middle of the strings; then the microphone
