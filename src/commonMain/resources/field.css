@@ -6389,7 +6389,7 @@ body.mode-editor-only .field-toast {
    on-screen scale, so neither is a magnified small picture. */
 #field-figure-host > .box.field-figure-box {
     position: relative !important;
-    transform: scale(var(--field-figure-zoom, 1)) !important;
+    transform: scale(var(--field-figure-zoom, 1)) translate(var(--field-figure-shift, 0px, 0px)) !important;
     transform-origin: center center;
     width: auto !important;
     height: auto !important;
@@ -6511,3 +6511,8 @@ body.mode-editor-only .field-toast {
     width: var(--field-figure-width, 480px) !important;
 }
 #field-figure-host .field-figure-box .field-checkbox .checkbox-toggle { width: 22px; height: 22px; flex-basis: 22px; }
+/* An editable drawing in a figure is for dragging its points: its selection masks and status line
+   are editing tools, shown only when the box asks for drawing (`lines(..., drawing = true)`). */
+#field-figure-host .field-figure-box .field-fline-editor-overlay:not(:has(.field-fline-editor-modegroup:not(.is-hidden))) {
+    display: none !important;
+}

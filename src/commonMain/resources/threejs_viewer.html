@@ -39,6 +39,13 @@
             inset: 0;
         }
 
+        /* In a presentation figure (index.html?figure=) the scene sits on the deck's own background
+           (the figure host's colour, set on the root by inPresentationFigure), and the viewer's
+           counters and tools are not part of the picture. On the canvas nothing changes. */
+        body.in-figure { background: transparent; }
+        body.in-figure #canvas-wrap:not([style*="background"]) { background: transparent; }
+        body.in-figure #hud { display: none !important; }
+
         #canvas-wrap canvas:focus,
         #canvas-wrap canvas:focus-visible {
             outline: none;
@@ -646,6 +653,18 @@ function frameScale() {
         return Number.isFinite(scale) && scale > 1 ? Math.min(scale, 3) : 1;
     } catch (_) { return 1; }
 }
+// True when this viewer is a live figure on a presentation slide: its frame sits in the figure
+// page's host (figureMode.kt). Same origin, so the parent document can be read.
+// Asked again at every payload: the figure page moves the box into its host after the page loads.
+// The figure's host colour is painted on this document's root: a frame whose colour scheme differs
+// from its embedder's gets an opaque white backdrop, so leaving the root transparent shows white.
+function inPresentationFigure() {
+    let host = null;
+    try { host = window.frameElement?.closest('#field-figure-host') || null; } catch (_) { host = null; }
+    document.documentElement.style.background = host ? window.parent.getComputedStyle(host).backgroundColor : '';
+    return !!host;
+}
+document.body.classList.toggle('in-figure', inPresentationFigure());
 function getDpr() {
     const override = parseFloat(urlParams.get('dpr'));
     if (Number.isFinite(override) && override > 0) return override;
@@ -997,7 +1016,9 @@ function applyLabels(payload) {
     });
     container.classList.toggle('scene-dimmed', !!payload.dimmed);
     // A picture to look at rather than a model to inspect: no tool buttons, no counts.
-    document.body.classList.toggle('hud-off', payload.hud === false);
+    const figure = inPresentationFigure();
+    document.body.classList.toggle('in-figure', figure);
+    document.body.classList.toggle('hud-off', payload.hud === false || figure);
     sceneNote.textContent = payload.note || '';
 }
 
@@ -6383,8 +6404,9 @@ function applyGeometry(payload) {
     const cameraKey = payload.camera ? JSON.stringify(payload.camera) : null;
     if (payload.camera && cameraKey !== appliedCameraSpec && payload.bounds && panelState.cameras.length <= 1) {
         camera.aspect = container.clientHeight > 0 ? container.clientWidth / container.clientHeight : 1;
+        // fitTo declares the box to frame: its corners, not the geometry, which may reach beyond it.
         applyCameraSpec(camera, payload.camera, payload.bounds, true,
-            sweptFitPoints(fitPointsForPanel(-1), payload.bounds, !!payload.turntable));
+            sweptFitPoints(payload.fitBounds ? null : fitPointsForPanel(-1), payload.bounds, !!payload.turntable));
         const derived = cameraPresetEye(payload.camera, payload.bounds);
         cameraUp(payload.camera.upAxis === 'Z' ? [0, 0, 1] : [0, 1, 0]);
         controls.target.set(derived.target[0], derived.target[1], derived.target[2]);
@@ -7142,7 +7164,7 @@ function onResize() {
     if (viewportChanged && !cameraWasMoved && !inspectorState.selection && payloadState && payloadState.camera && payloadState.bounds && panelState.cameras.length <= 1) {
         const turned = cameraTurned ? camera.position.clone().sub(controls.target) : null;
         applyCameraSpec(camera, payloadState.camera, payloadState.bounds, true,
-            sweptFitPoints(fitPointsForPanel(-1), payloadState.bounds, !!payloadState.turntable));
+            sweptFitPoints(payloadState.fitBounds ? null : fitPointsForPanel(-1), payloadState.bounds, !!payloadState.turntable));
         const derived = cameraPresetEye(payloadState.camera, payloadState.bounds);
         controls.target.set(derived.target[0], derived.target[1], derived.target[2]);
         // A turning view keeps its angle: the refit changes the framing, not how far it has turned.

@@ -88,6 +88,19 @@ class RuleTests(unittest.TestCase):
         self.assertTrue(all(not f[3] for f in raw), "cast/guard semantics need human review")
 
 
+    def test_an_animating_box_may_not_name_a_helper_like_a_frames_member(self):
+        animated = ["fun frame() = lines(fline { moveTo(0.0, 0.0) })", "loop {", "    frame()", "}"]
+        found = idioms.check_block(animated, 0, len(animated))
+        self.assertEqual([(0, "frames-name-shadow")], [(i, rule) for i, rule, _, _ in found])
+        self.assertFalse(found[0][3], "renaming is a person's call: reported, never rewritten")
+        for name in ("delay", "end", "wait"):
+            block = [f"private fun {name}(x: Double) = x", "frames { while (frame()) { } }"]
+            self.assertEqual(["frames-name-shadow"], [r for _, r, _, _ in idioms.check_block(block, 0, 2)], name)
+        # A box that does not animate may call its helper what it likes; so may a member call.
+        self.assertEqual([], idioms.check_block(["fun frame() = 1", "println(frame())"], 0, 2))
+        self.assertEqual([], idioms.check_block(["fun drawFrame() = 1", "loop { drawFrame() }"], 0, 2))
+        self.assertEqual([], idioms.check_block(["val frame = fline { }", "loop { lines(frame) }"], 0, 2))
+
     def test_each_rule_is_reported_on_its_file_line(self):
         f = Fixture({TRANSCRIPT: YAML})
         try:
