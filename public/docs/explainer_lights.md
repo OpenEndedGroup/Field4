@@ -19,12 +19,12 @@ prose](presentation_studio.md#live-figures-beside-prose) says how a deck like th
 ### A lamp over a floor
 
 <figure class="field-margin-figure" markdown>
-![The slide “A lamp over a floor” in the audience window: its prose on the left and the live opening_scene figure on the right.](assets/explainer_lights/slides/opening.png)
+![The slide “A lamp over a floor” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/opening.png)
 </figure>
 
 Slide the lamp across, or change its size. Drag the picture to look around.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/opening_scene.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-opening_scene" alt="A lamp over a floor with a block on it. The light at every vertex is computed here."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/opening_scene.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-opening_scene" alt="A three-dimensional view of a square lamp above a grey floor with a small block on it, the floor bright beneath the lamp and darkening outward, the block casting a shadow, with position and size sliders"}
 :::fold imports
 import afield.graphics.lighting.*
 :::endfold
@@ -62,7 +62,7 @@ controlGroup {
 ### Power
 
 <figure class="field-margin-figure" markdown>
-![The slide “Power” in the audience window: its prose on the left and the live sphere_light figure on the right.](assets/explainer_lights/slides/power.png)
+![The slide “Power” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/power.png)
 </figure>
 
 A lamp turns electrical power into light, and we measure the light the same way: in watts, the
@@ -70,7 +70,7 @@ energy leaving the source each second.
 
 Think of it as rays streaming outward. A stronger lamp sends more of them.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/sphere_light.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-sphere_light" alt="A glowing ball and the light leaving it, drawn as rays: one ray for every quarter watt."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/sphere_light.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-sphere_light" alt="A small grey sphere on black with thin rays streaming out from it in every direction, a readout of 10 W and 40 rays, and a power slider"}
 // A glowing ball and the light leaving it, drawn as rays: one ray for every quarter watt.
 val golden = PI * (3 - sqrt(5.0))
 
@@ -111,13 +111,13 @@ controlGroup {
 ### Brightness is not power
 
 <figure class="field-margin-figure" markdown>
-![The slide “Brightness is not power” in the audience window: its prose on the left and the live perceived figure on the right.](assets/explainer_lights/slides/perceived.png)
+![The slide “Brightness is not power” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/perceived.png)
 </figure>
 
 Twice the power does not look twice as bright. Our eyes compress what they receive, and a screen can
 only show so much: once a channel is full, every brighter value looks the same white.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/perceived.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-perceived" alt="The light a patch gives off, against what a screen can show of it. The swatch is the patch; the curve is the brightness the screen sends, which runs out at its brightest white."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/perceived.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-perceived" alt="A cyan curve of how bright a light looks against its power, rising steeply and then flat once it reaches white, an orange marker at 10 W, a grey swatch of that brightness, a readout that 10 W shows 48% of white, and a power slider"}
 // The light a patch gives off, against what a screen can show of it. The swatch is the patch;
 // the curve is the brightness the screen sends, which runs out at its brightest white.
 fun draw(watts: Double) {
@@ -166,13 +166,13 @@ controlGroup {
 ### Light at a slant
 
 <figure class="field-margin-figure" markdown>
-![The slide “Light at a slant” in the audience window: its prose on the left and the live light_angle figure on the right.](assets/explainer_lights/slides/slant.png)
+![The slide “Light at a slant” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/slant.png)
 </figure>
 
 Tilt a beam away from straight down and the same rays spread over more floor. The light per square
 metre falls as the cosine of the angle from the surface's normal: half at 60°, nothing at 90°.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/light_angle.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-light_angle" alt="Parallel rays falling on an orange patch of floor, seen from the side. Tilt them away from straight down and fewer of them land on the patch."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/light_angle.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-light_angle" alt="Above, a side view of vertical cyan rays landing on an orange patch of floor; below, the cosine curve falling from 1 at 0° toward 0 at 90°, a readout that 12 of 12 rays land and cos 0° is 1.00, and an angle slider"}
 // Parallel rays falling on an orange patch of floor, seen from the side.
 // Tilt them away from straight down and fewer of them land on the patch.
 val rays = 12
@@ -242,13 +242,13 @@ controlGroup {
 ### Shape from the cosine
 
 <figure class="field-margin-figure" markdown>
-![The slide “Shape from the cosine” in the audience window: its prose on the left and the live lit_sphere figure on the right.](assets/explainer_lights/slides/lit-sphere.png)
+![The slide “Shape from the cosine” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/lit-sphere.png)
 </figure>
 
 Every point on a ball faces the lamp at a different angle. The cosine alone draws the shading that
 tells us the ball is round.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/lit_sphere.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-lit_sphere" alt="A ball under one far-away light. Its shading is the cosine factor and nothing else."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/lit_sphere.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-lit_sphere" alt="A grey ball on black, lit from the upper left so it shades smoothly to dark on its lower right, and a two-dimensional pad for the light's direction"}
 :::fold imports
 import afield.graphics.lighting.*
 :::endfold
@@ -279,13 +279,13 @@ controlGroup {
 ### Farther away
 
 <figure class="field-margin-figure" markdown>
-![The slide “Farther away” in the audience window: its prose on the left and the live distance_rays figure on the right.](assets/explainer_lights/slides/distance.png)
+![The slide “Farther away” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/distance.png)
 </figure>
 
 Light leaving a point spreads over a sphere, and a sphere's area grows with the square of its
 radius. Twice as far, a quarter of the light: the inverse-square law.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/distance_rays.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-distance_rays" alt="A point light sends 600 rays into a cone. Move the square patch away and count how many reach it."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/distance_rays.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-distance_rays" alt="A three-dimensional view of rays fanning out from a point light, some of them landing on an orange square panel, a readout that 169 of 400 rays reach it at 1.0 m, and a distance slider"}
 // A point light sends 600 rays into a cone. Move the square patch away and count how many reach it.
 val count = 600
 val golden = PI * (3 - sqrt(5.0))
@@ -337,13 +337,13 @@ controlGroup {
 ### How big things look
 
 <figure class="field-margin-figure" markdown>
-![The slide “How big things look” in the audience window: its prose on the left and the live car_angle figure on the right.](assets/explainer_lights/slides/angles.png)
+![The slide “How big things look” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/angles.png)
 </figure>
 
 How large something looks is the angle it takes up in front of you. Walk away from a car and that
 angle shrinks, close to one over the distance.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/car_angle.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-car_angle" alt="A car 1.8 m wide driving away from you, from above and through your eye. How wide it looks is the angle it spans, and that angle shrinks about as one over the distance."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/car_angle.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-car_angle" alt="Above, a top view of an eye and an orange car with the narrow angle it takes up; below, the eye's view, the car as an orange block on the horizon, a readout that a car 10 m away spans 16.3°, and a distance slider"}
 // A car 1.8 m wide driving away from you, from above and through your eye. How wide it looks is
 // the angle it spans, and that angle shrinks about as one over the distance.
 fun draw(distance: Double) {
@@ -398,13 +398,13 @@ controlGroup {
 ### Angles as lengths
 
 <figure class="field-margin-figure" markdown>
-![The slide “Angles as lengths” in the audience window: its prose on the left and the live radians figure on the right.](assets/explainer_lights/slides/radians.png)
+![The slide “Angles as lengths” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/radians.png)
 </figure>
 
 Measure an angle by the arc it cuts from a circle: arc length over radius is the angle in radians,
 and a whole turn is 2π. For a small angle the arc is nearly straight, so size ≈ angle × distance.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/radians.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-radians" alt="An angle measured by the arc it cuts from a circle. Unrolled on the right, the arc is so many radii long: that count is the angle in radians."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/radians.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-radians" alt="A circle with a highlighted cyan arc cut off by a 60° angle and a short bar for the radius, a readout that 60° is 1.05 radians, and angle and radius sliders"}
 // An angle measured by the arc it cuts from a circle. Unrolled on the right, the arc is so many
 // radii long: that count is the angle in radians.
 var radius = 90.0
@@ -466,14 +466,14 @@ controlGroup {
 ### Angles in three dimensions
 
 <figure class="field-margin-figure" markdown>
-![The slide “Angles in three dimensions” in the audience window: its prose on the left and the live projected_rect figure on the right.](assets/explainer_lights/slides/solid-angle.png)
+![The slide “Angles in three dimensions” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/solid-angle.png)
 </figure>
 
 Project a shape onto a sphere of radius one around your eye. The patch it covers is its solid angle,
 in steradians; the whole sphere is 4π. Move a panel twice as far and its solid angle drops to a
 quarter.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/projected_rect.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-projected_rect" alt="A square panel 0.8 m across and its shadow on a sphere of radius one around the eye. The area of that shadow is the panel's solid angle; move the panel away and it shrinks as the square."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/projected_rect.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-projected_rect" alt="A pale cyan panel in front of a wireframe unit sphere around the eye, the patch it covers on the sphere drawn on its surface, a readout of the solid angle and of solid angle times distance squared, and a distance slider"}
 // A square panel 0.8 m across and its shadow on a sphere of radius one around the eye. The area of
 // that shadow is the panel's solid angle; move the panel away and it shrinks as the square.
 val sphere = icosphereMesh(4, 1.0)
@@ -518,14 +518,14 @@ controlGroup {
 ### What the floor sees
 
 <figure class="field-margin-figure" markdown>
-![The slide “What the floor sees” in the audience window: its prose on the left and the live hemisphere figure on the right.](assets/explainer_lights/slides/hemisphere.png)
+![The slide “What the floor sees” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/hemisphere.png)
 </figure>
 
 A point on a floor looks out on a hemisphere of directions. Project the lamp onto that hemisphere,
 then flatten it straight down onto the disc beneath: the share of the disc it covers is the share of
 light the point gets. The flattening is the cosine factor again.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/hemisphere.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-hemisphere" alt="What one point on the floor sees: a hemisphere of directions. The lamp, pushed onto that hemisphere (orange) and then flattened straight down onto the disc beneath (cyan). The share of the disc the flattened lamp covers is the share of the lamp's radiance that reaches the point."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/hemisphere.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-hemisphere" alt="A three-dimensional view of a white lamp panel over a grey floor, its outline projected onto a hemisphere around a floor point in orange and then flattened onto the disc below in cyan, a readout of 18.1% of the disc, and a lamp position slider"}
 :::fold imports
 import afield.graphics.lighting.*
 :::endfold
@@ -578,14 +578,14 @@ controlGroup {
 ### Brightness that does not fade
 
 <figure class="field-margin-figure" markdown>
-![The slide “Brightness that does not fade” in the audience window: its prose on the left and the live constant_radiance figure on the right.](assets/explainer_lights/slides/radiance.png)
+![The slide “Brightness that does not fade” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/radiance.png)
 </figure>
 
 Step back from a lamp and it looks just as bright, only smaller. Each cell in the eye takes in a
 fixed cone of directions; farther away, that cone covers more of the lamp, and the extra area makes
 up for the inverse-square law exactly. What stays the same is called radiance.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/constant_radiance.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-constant_radiance" alt="An eye looking at a wide lamp, from the side. One cell of the eye takes in a fixed cone of directions; move the lamp away and the cone covers more of it."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/constant_radiance.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-constant_radiance" alt="A side view of an eye at the left looking through a narrow cyan cone at an orange lamp, a readout that at 1.0 m the cone covers 1.0 times the area and each part looks 1.0 times fainter, and a distance slider"}
 // An eye looking at a wide lamp, from the side. One cell of the eye takes in a fixed cone of
 // directions; move the lamp away and the cone covers more of it.
 fun draw(distance: Double) {
@@ -632,14 +632,14 @@ controlGroup {
 ### Equally bright from every side
 
 <figure class="field-margin-figure" markdown>
-![The slide “Equally bright from every side” in the audience window: its prose on the left and the live lambert_lobe figure on the right.](assets/explainer_lights/slides/lambert.png)
+![The slide “Equally bright from every side” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/lambert.png)
 </figure>
 
 A matte emitter sends less power off to the side, in proportion to the cosine of the angle. Seen
 from that side its surface is foreshortened by the same cosine, so it looks equally bright from any
 direction.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/lambert_lobe.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-lambert_lobe" alt="A small matte patch giving off light, seen from the side. It sends less light off to the side, as the cosine of the angle, and it also looks narrower from there by the same cosine."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/lambert_lobe.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-lambert_lobe" alt="A side view of a flat orange emitter with its emission drawn as a cyan circle resting on it, longest straight up and shrinking toward the sides, faint rays around it, a readout at 0°, and a viewing angle slider"}
 // A small matte patch giving off light, seen from the side. It sends less light off to the side,
 // as the cosine of the angle, and it also looks narrower from there by the same cosine.
 val rays = 41
@@ -703,14 +703,14 @@ controlGroup {
 ### Mirror to matte
 
 <figure class="field-margin-figure" markdown>
-![The slide “Mirror to matte” in the audience window: its prose on the left and the live rough_mirror figure on the right.](assets/explainer_lights/slides/reflections.png)
+![The slide “Mirror to matte” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/reflections.png)
 </figure>
 
 A mirror sends each ray back at the angle it arrived. Roughen it and every ray meets a facet tilted
 its own way, so the returning rays fan out. A surface rough enough at every scale sends light back
 in all directions alike: matte.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/rough_mirror.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-rough_mirror" alt="Parallel rays striking a surface, seen from the side. Each ray meets a tiny facet of the surface and leaves as from a mirror; roughness tilts the facets, so the rays fan out."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/rough_mirror.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-rough_mirror" alt="A side view of orange rays arriving at a surface from the left and cyan rays leaving it to the right, all at the mirror angle, with roughness and light angle sliders"}
 // Parallel rays striking a surface, seen from the side. Each ray meets a tiny facet of the
 // surface and leaves as from a mirror; roughness tilts the facets, so the rays fan out.
 val rays = 25
@@ -771,13 +771,13 @@ controlGroup {
 ### Soft and hard shadows
 
 <figure class="field-margin-figure" markdown>
-![The slide “Soft and hard shadows” in the audience window: its prose on the left and the live soft_shadow figure on the right.](assets/explainer_lights/slides/soft-shadow.png)
+![The slide “Soft and hard shadows” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/soft-shadow.png)
 </figure>
 
 Keep the lamp's power fixed and make it bigger. Points near the edge of the shadow can now see part
 of the lamp, and the hard edge softens into a penumbra.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/soft_shadow.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-soft_shadow" alt="A black wall on a white floor, lit by a ball of light. The ball always gives out 40 W; make it bigger and the edge of the shadow softens. The wall's faces sit on the floor's grid lines, so no floor vertex is half under it."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/soft_shadow.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-soft_shadow" alt="A three-dimensional view of a lamp above a floor and a block casting a dark shadow with a sharp edge, an orange point at the shadow's edge and the line from it to the lamp, a readout of how much of the lamp that point sees, and size, altitude and point sliders"}
 :::fold imports
 import afield.graphics.lighting.*
 :::endfold
@@ -841,13 +841,13 @@ controlGroup {
 ### Coloured light
 
 <figure class="field-margin-figure" markdown>
-![The slide “Coloured light” in the audience window: its prose on the left and the live light_colour figure on the right.](assets/explainer_lights/slides/colour.png)
+![The slide “Coloured light” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/colour.png)
 </figure>
 
 We stand in for the many wavelengths of light with three: red, green and blue power. A surface's
 colour is how much of each it sends back.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/light_colour.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-light_colour" alt="Nine tiles of different colours under one lamp whose colour you pick. A tile can only send back the colours the lamp gives it."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/light_colour.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-light_colour" alt="Nine tiles in white, red, green, blue, yellow, cyan, magenta, orange and grey under a white light, and a light colour picker"}
 :::fold imports
 import afield.graphics.lighting.*
 :::endfold
@@ -882,13 +882,13 @@ controlGroup {
 ### Lights add up
 
 <figure class="field-margin-figure" markdown>
-![The slide “Lights add up” in the audience window: its prose on the left and the live additive figure on the right.](assets/explainer_lights/slides/additive.png)
+![The slide “Lights add up” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/additive.png)
 </figure>
 
 Two lamps on one floor simply add. Where a red and a green pool of light overlap, the floor turns
 yellow.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/additive.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-additive" alt="Red, green and blue lamps over a white floor with a white block. Where two pools overlap their light adds; the block's shadows take the colours of the lamps it hides."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/additive.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-additive" alt="A floor lit by red, green and blue lamps, the coloured pools overlapping into mixed colours around a white block, with red, green and blue checkboxes and a spread slider"}
 :::fold imports
 import afield.graphics.lighting.*
 :::endfold
@@ -935,13 +935,13 @@ controlGroup {
 ### Light keeps going
 
 <figure class="field-margin-figure" markdown>
-![The slide “Light keeps going” in the audience window: its prose on the left and the live red_wall figure on the right.](assets/explainer_lights/slides/bounces.png)
+![The slide “Light keeps going” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/bounces.png)
 </figure>
 
 The light a surface sends back lands on other surfaces. A red wall beside a white floor tints the
 floor red. Each bounce is weaker than the last, and their sum is the scene's indirect light.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/red_wall.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-red_wall" alt="A white floor beside a red wall, lit by one small lamp close to the wall, so the wall is lit far more brightly than the floor. The solve follows the light through three bounces once, when the box runs; the sliders only choose what to show."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/red_wall.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-red_wall" alt="A three-dimensional view of a white floor meeting a red wall with a lamp near the wall, the floor lit only directly at zero bounces, with power and bounces sliders and a bounced light only checkbox"}
 :::fold imports
 import afield.graphics.lighting.*
 :::endfold
@@ -983,13 +983,13 @@ controlGroup {
 ### A sky of light
 
 <figure class="field-margin-figure" markdown>
-![The slide “A sky of light” in the audience window: its prose on the left and the live sky_sphere figure on the right.](assets/explainer_lights/slides/sky.png)
+![The slide “A sky of light” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/sky.png)
 </figure>
 
 Surround the scene with light from every direction, like an overcast sky. Nothing casts a hard
 shadow, yet a tile still darkens the ground just beneath it.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/sky_sphere.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-sky_sphere" alt="A floor under a dome of small lamps, all of them together giving out 400 W, and a black tile held above the floor. With one lamp the tile casts a hard shadow; with hundreds the light comes from the whole sky and only the ground right under the tile stays dark."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/sky_sphere.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-sky_sphere" alt="A three-dimensional view of a pale floor with a dark tile floating just above it and a darker patch beneath the tile, lit by one small lamp, with lamps and tile height sliders"}
 :::fold imports
 import afield.graphics.lighting.*
 :::endfold

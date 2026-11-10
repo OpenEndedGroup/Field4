@@ -565,6 +565,11 @@ tools unless the box also asks for `drawing = true`, and lines marked `fixed = t
 The four-slide deck this section comes from is the `explainer_sine_pitch` transcript in
 [Agent transcripts](agent_transcripts.md); it ends with the figure you can hear.
 
+Three whole talks are built this way, after Bartosz Ciechanowski's essays: [Sound](explainer_sound.md),
+[Cameras and Lenses](explainer_cameras.md) and [Lights and Shadows](explainer_lights.md). Each page
+goes through its talk figure by figure, with the figure box's code, what it draws and the slide that
+shows it, and opens the whole talk as a document you can import.
+
 !!! note "Figures need the Electron app"
     A figure is a separate live view laid over its slot on the audience display, so it appears in
     Field's Electron app only. Fades and reveals apply to the prose around it; the figure itself

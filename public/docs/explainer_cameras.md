@@ -28,13 +28,13 @@ prose](presentation_studio.md#live-figures-beside-prose) says how a deck like th
 ### Counting light
 
 <figure class="field-margin-figure" markdown>
-![The slide “Counting light” in the audience window: its prose on the left and the live photon_grid figure on the right.](assets/explainer_cameras/slides/photons.png)
+![The slide “Counting light” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/photons.png)
 </figure>
 
 Each detector counts the light that reaches it while the shutter is open. Too little and the count
 is grain; too much and it fills to white.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/photon_grid.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-photon_grid" alt="A 48 × 32 sensor collecting photons from the test scene. Light arrives at random, so a short exposure is grainy; each detector holds at most 400, so a long one turns bright parts flat white."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/photon_grid.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-photon_grid" alt="A grainy sensor picture of a red and a green sphere on a checkerboard, every pixel speckled by the photons it happened to count, a readout of about 200 photons on a detector facing the sky, and a collection time slider"}
 :::fold imports
 import afield.media.image.util.PngEncoder
 import afield.simulation.optics.*
@@ -67,13 +67,13 @@ controlGroup {
 ### Colour from filters
 
 <figure class="field-margin-figure" markdown>
-![The slide “Colour from filters” in the audience window: its prose on the left and the live kilopixel figure on the right.](assets/explainer_cameras/slides/colour.png)
+![The slide “Colour from filters” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/colour.png)
 </figure>
 
 A filter over each detector lets it count only red, green or blue. The two colours a pixel missed
 are guessed from its neighbours.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/kilopixel.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-kilopixel" alt="A sensor of 32 × 32 detectors, a kilopixel. Bare, each detector counts all light the same. With filters each counts only red, green or blue; filling in guesses the other two from neighbours."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/kilopixel.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-kilopixel" alt="A blocky grey 32 by 32 pixel picture of the two spheres on the checkerboard, with colour filters and fill in colours checkboxes, both unticked"}
 :::fold imports
 import afield.media.image.util.PngEncoder
 import afield.simulation.optics.*
@@ -120,12 +120,12 @@ controlGroup {
 ### A scene to photograph
 
 <figure class="field-margin-figure" markdown>
-![The slide “A scene to photograph” in the audience window: its prose on the left and the live test_scene figure on the right.](assets/explainer_cameras/slides/scene.png)
+![The slide “A scene to photograph” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/scene.png)
 </figure>
 
 Every camera in this talk looks at this. Drag to look around it.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/test_scene.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-test_scene" alt="The scene every camera in the talk photographs. Drag to look around it."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/test_scene.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-test_scene" alt="A three-dimensional view of the test scene: a red sphere and a green sphere on a grey and white checkerboard floor against a pale sky"}
 :::fold imports
 import afield.simulation.optics.*
 :::endfold
@@ -140,12 +140,12 @@ three(channel = "scene", height = 400, width = 640) {
 ### A bare sensor
 
 <figure class="field-margin-figure" markdown>
-![The slide “A bare sensor” in the audience window: its prose on the left and the live bare_sensor figure on the right.](assets/explainer_cameras/slides/bare-sensor.png)
+![The slide “A bare sensor” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/bare-sensor.png)
 </figure>
 
 Every detector gets light from every point of the scene, so every count is the same blend.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/bare_sensor.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-bare_sensor" alt="A sensor held up to the scene with nothing in front of it. One point on each ball sends light to every detector, and so does every other point: each detector gets the same blend."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/bare_sensor.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-bare_sensor" alt="The scene with a bare sensor beside it and a fan of rays reaching it, and under it the sensor's picture: an even, pale grey with nothing in it"}
 :::fold imports
 import afield.simulation.optics.*
 :::endfold
@@ -178,13 +178,13 @@ display("sensor", image.html(width = 480))
 ### A box with a hole
 
 <figure class="field-margin-figure" markdown>
-![The slide “A box with a hole” in the audience window: its prose on the left and the live pinhole_box figure on the right.](assets/explainer_cameras/slides/pinhole.png)
+![The slide “A box with a hole” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/pinhole.png)
 </figure>
 
 Through a small hole each detector sees one patch of the scene. A picture forms on the back wall,
 upside down.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/pinhole_box.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-pinhole_box" alt="A closed box with a small hole, looking at the test scene. The picture forms on the back wall."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/pinhole_box.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-pinhole_box" alt="A three-dimensional view of a small box with a hole facing the spheres, orange rays crossing at the hole and landing on its back wall, and below it the picture on that wall: the two spheres on the checkerboard, slightly soft, with hole diameter and sensor distance sliders and a fixed exposure checkbox"}
 :::fold imports
 import afield.simulation.optics.*
 :::endfold
@@ -258,12 +258,12 @@ controlGroup {
 ### How much it sees
 
 <figure class="field-margin-figure" markdown>
-![The slide “How much it sees” in the audience window: its prose on the left and the live field_of_view figure on the right.](assets/explainer_cameras/slides/field-of-view.png)
+![The slide “How much it sees” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/field-of-view.png)
 </figure>
 
 Rays cross at the hole. A sensor further back takes a narrower view, drawn larger.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/field_of_view.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-field_of_view" alt="A pinhole camera from the side. Rays cross at the hole, so the picture is upside down; the sensor's edges and its distance from the hole set how wide a view it takes."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/field_of_view.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-field_of_view" alt="A side view of a pinhole camera: two cyan rays from the edges of an orange object cross at the hole and reach the sensor, and a readout says a sensor 1.00 behind the hole has a view 53° wide, with a sensor distance slider"}
 :::fold imports
 import afield.simulation.optics.*
 :::endfold
@@ -348,13 +348,13 @@ controlGroup {
 ### Darker at the edges
 
 <figure class="field-margin-figure" markdown>
-![The slide “Darker at the edges” in the audience window: its prose on the left and the live off_axis figure on the right.](assets/explainer_cameras/slides/falloff.png)
+![The slide “Darker at the edges” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/falloff.png)
 </figure>
 
 From the edge of the sensor the hole is further away and seen at a slant: the light falls as cos⁴ of
 the angle.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/off_axis.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-off_axis" alt="A pinhole camera looking at an even sky. Its picture is darker towards the edges: the curve is the brightness across the sensor, the faint line cos⁴ of the angle each point looks out at."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/off_axis.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-off_axis" alt="A grey strip bright in the middle and dark at both ends, a bell-shaped cyan curve of brightness across the sensor, a readout that the edge gets 19% of the light the middle gets, and a sensor distance slider"}
 :::fold imports
 import afield.media.image.util.PngEncoder
 import afield.simulation.optics.*
@@ -432,12 +432,12 @@ controlGroup {
 ### Glass moves things
 
 <figure class="field-margin-figure" markdown>
-![The slide “Glass moves things” in the audience window: its prose on the left and the live slab_ray figure on the right.](assets/explainer_cameras/slides/glass.png)
+![The slide “Glass moves things” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/glass.png)
 </figure>
 
 A ray bends going into glass and bends back coming out: it leaves parallel, but shifted.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/slab_ray.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-slab_ray" alt="One ray through a slab of glass. It bends going in and bends back coming out, so it leaves parallel to where it was going, but shifted. The faint line is the path it would have taken."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/slab_ray.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-slab_ray" alt="A side view of a ray crossing a glass slab: it bends toward the vertical inside and leaves parallel to where it came in, shifted sideways from a faint straight continuation, with a readout of the shift and thickness and angle sliders"}
 :::fold imports
 import afield.simulation.optics.*
 :::endfold
@@ -515,12 +515,12 @@ controlGroup {
 ### Light is a wave
 
 <figure class="field-margin-figure" markdown>
-![The slide “Light is a wave” in the audience window: its prose on the left and the live into_glass figure on the right.](assets/explainer_cameras/slides/wave.png)
+![The slide “Light is a wave” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/wave.png)
 </figure>
 
 In glass the wave travels more slowly, so its crests crowd together.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/into_glass.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-into_glass" alt="The crests of a light wave arriving at glass. In glass the wave is slower, so the crests bunch up; arriving at a slant, each crest bends where it crosses, and the wave turns."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/into_glass.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-into_glass" alt="Horizontal cyan wave crests over a darker band of glass, closer together inside the glass, with an orange ray line across them, a playing checkbox and angle and glass index sliders"}
 :::fold imports
 import afield.simulation.optics.*
 :::endfold
@@ -605,12 +605,12 @@ loop {
 ### Snell's law
 
 <figure class="field-margin-figure" markdown>
-![The slide “Snell's law” in the audience window: its prose on the left and the live snell figure on the right.](assets/explainer_cameras/slides/snell.png)
+![The slide “Snell's law” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/snell.png)
 </figure>
 
 Snell's law: n₁ sin θ₁ = n₂ sin θ₂. Some light always reflects, more of it at grazing angles.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/snell.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-snell" alt="A ray meets glass (index 1.5). Part of it turns as it crosses, part reflects; the line widths show how the light divides."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/snell.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-snell" alt="A thick cyan ray coming down at 40° to a glass surface and turning toward the vertical as it crosses, a thin orange reflected ray, and a readout that 5% reflects and the ray crosses at 25.4°, with an angle slider and a from inside the glass checkbox"}
 :::fold imports
 import afield.simulation.optics.*
 :::endfold
@@ -692,12 +692,12 @@ controlGroup {
 ### Tilted faces
 
 <figure class="field-margin-figure" markdown>
-![The slide “Tilted faces” in the audience window: its prose on the left and the live prism_segments figure on the right.](assets/explainer_cameras/slides/wedge.png)
+![The slide “Tilted faces” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/wedge.png)
 </figure>
 
 A tilted face turns a ray. Steeper tilts further out, and the rays can be made to meet.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/prism_segments.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-prism_segments" alt="Parallel rays through glass whose back face is made of flat segments. One segment each side is a pair of prisms: the rays turn but stay parallel. More segments, closer to a curve, and they meet."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/prism_segments.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-prism_segments" alt="Parallel cyan rays from the left meeting one flat-faced glass segment, all leaving at the same angle, with a segments slider at 1"}
 :::fold imports
 import afield.simulation.optics.*
 :::endfold
@@ -782,12 +782,12 @@ controlGroup {
 ### A thin lens
 
 <figure class="field-margin-figure" markdown>
-![The slide “A thin lens” in the audience window: its prose on the left and the live thin_lens figure on the right.](assets/explainer_cameras/slides/thin-lens.png)
+![The slide “A thin lens” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/thin-lens.png)
 </figure>
 
 A smooth curve is the limit of the steps. A point at o comes to focus at i, where 1/o + 1/i = 1/f.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/thin_lens.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-thin_lens" alt="A thin lens bends each ray in proportion to how far from the middle it passes, so the rays from one point meet again on the other side."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/thin_lens.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-thin_lens" alt="An orange source point on the left, cyan rays fanning out to a lens and meeting again at an orange image point behind it, and a readout that a focal length 2.0 lens with the source 5.0 in front makes a sharp image 3.33 behind it, with source distance and focal length sliders"}
 :::fold imports
 import afield.simulation.optics.*
 :::endfold
@@ -883,12 +883,12 @@ controlGroup {
 ### A camera with a lens
 
 <figure class="field-margin-figure" markdown>
-![The slide “A camera with a lens” in the audience window: its prose on the left and the live lens_camera figure on the right.](assets/explainer_cameras/slides/lens-camera.png)
+![The slide “A camera with a lens” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/lens-camera.png)
 </figure>
 
 A lens bends every ray from a point to one place on the sensor: a wide hole, and still sharp.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/lens_camera.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-lens_camera" alt="The test scene through a lens. Choose the distance to focus at and the lens puts its sensor where that distance comes out sharp; nearer and further things blur."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/lens_camera.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-lens_camera" alt="A sensor picture through a lens: the red sphere sharp, the green sphere and the far checkerboard blurred, a readout of f/2.0 with the sensor 1.333 behind the lens, sharp at 4.0 in front, and focus distance, aperture and focal length sliders"}
 :::fold imports
 import afield.simulation.optics.*
 :::endfold
@@ -932,12 +932,12 @@ controlGroup {
 ### The shape of blur
 
 <figure class="field-margin-figure" markdown>
-![The slide “The shape of blur” in the audience window: its prose on the left and the live bokeh figure on the right.](assets/explainer_cameras/slides/aperture.png)
+![The slide “The shape of blur” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/aperture.png)
 </figure>
 
 An out-of-focus light is a picture of the opening. Iris blades make it a polygon.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/bokeh.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-bokeh" alt="Small lights far behind the point the lens is focused on. Each one spreads into a copy of the opening: a disc for a round one, a polygon for an iris of blades."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/bokeh.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-bokeh" alt="A dozen out-of-focus coloured lights on black, each a soft round disc, with aperture and blades sliders"}
 :::fold imports
 import afield.simulation.optics.*
 :::endfold
@@ -998,12 +998,12 @@ controlGroup {
 ### How deep is sharp
 
 <figure class="field-margin-figure" markdown>
-![The slide “How deep is sharp” in the audience window: its prose on the left and the live depth_of_field figure on the right.](assets/explainer_cameras/slides/depth-of-field.png)
+![The slide “How deep is sharp” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/depth-of-field.png)
 </figure>
 
 Blur smaller than a pixel looks sharp. A smaller opening widens that band, and costs light.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/depth_of_field.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-depth_of_field" alt="A lens focused at one distance. Points between the near and far limits make blur circles smaller than a pixel (here 0.04), so everything in the shaded band looks sharp."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/depth_of_field.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-depth_of_field" alt="A side view of a lens with orange and cyan ray cones closing to a sensor line, a readout of f/1.0 focused at 3.00 and sharp from 2.78 to 3.26, and aperture, focal length and focus distance sliders"}
 :::fold imports
 import afield.simulation.optics.*
 :::endfold
@@ -1102,12 +1102,12 @@ controlGroup {
 ### f-numbers
 
 <figure class="field-margin-figure" markdown>
-![The slide “f-numbers” in the audience window: its prose on the left and the live f_stops figure on the right.](assets/explainer_cameras/slides/f-number.png)
+![The slide “f-numbers” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/f-number.png)
 </figure>
 
 Focal length over opening. Each stop is √2 narrower and lets in half the light.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/f_stops.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-f_stops" alt="The opening at each full f-stop for one lens, drawn to scale. Each is √2 narrower than the last, so it has half the area and lets in half the light."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/f_stops.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-f_stops" alt="A row of circular openings shrinking from left to right, labelled f/1.4 to f/16 with f/2.8 picked out in orange, a readout that f/2.8 lets in a quarter of the light of f/1.4, and a stop slider"}
 // The opening at each full f-stop for one lens, drawn to scale. Each is √2 narrower than the
 // last, so it has half the area and lets in half the light.
 val stops = listOf("1.4", "2", "2.8", "4", "5.6", "8", "11", "16")
@@ -1161,12 +1161,12 @@ controlGroup {
 ### Spheres miss
 
 <figure class="field-margin-figure" markdown>
-![The slide “Spheres miss” in the audience window: its prose on the left and the live spherical_aberration figure on the right.](assets/explainer_cameras/slides/spherical.png)
+![The slide “Spheres miss” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/spherical.png)
 </figure>
 
 A spherical face bends rim rays too much: no one place is sharp for all of them.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/spherical_aberration.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-spherical_aberration" alt="Parallel rays through a lens with a spherical back face, traced exactly with Snell's law. Rays near the rim (orange) cross the axis before those near the middle (cyan)."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/spherical_aberration.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-spherical_aberration" alt="Parallel rays through a spherical lens on the left converging to the right, the rim rays crossing the axis before the central ones so no single point is sharp, with a lens radius slider"}
 :::fold imports
 import afield.simulation.optics.*
 :::endfold
@@ -1250,12 +1250,12 @@ controlGroup {
 ### Colours split
 
 <figure class="field-margin-figure" markdown>
-![The slide “Colours split” in the audience window: its prose on the left and the live dispersion figure on the right.](assets/explainer_cameras/slides/chromatic.png)
+![The slide “Colours split” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_cameras/slides/chromatic.png)
 </figure>
 
 Glass bends blue more than red, so each colour has its own focus.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/dispersion.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-dispersion" alt="White light is every colour at once, and glass bends blue more than red. Through a prism the colours fan out; through a lens each colour comes to its own focus."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/dispersion.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-dispersion" alt="Above, a white ray entering a triangular prism and leaving as a fanned rainbow; below, parallel rays through a lens where each colour comes to focus at its own distance, with dispersion and angle sliders"}
 :::fold imports
 import afield.simulation.optics.*
 :::endfold

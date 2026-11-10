@@ -1,0 +1,208 @@
+{
+ "tool": "tools/presentation/capture-deck.mjs (macOS screencapture -l of this checkout's Electron audience window)",
+ "transcript": "dev_docs/agents/transcripts/explainer_sound.yaml",
+ "transcriptSha256": "3ecd65b8378d7e8e847f29b531a550999d7e961b1a35d568b28cf6459d62dd50",
+ "resized": "sips -Z 960 (the window capture scaled to 960 px wide)",
+ "slides": [
+  {
+   "file": "opening.png",
+   "view": "1 / 36 \u00b7 Sound",
+   "figures": 0,
+   "inFront": true,
+   "captureSha256": "728cd1d7f5dae977036c1cd283d64c614a770dc7bb4c8296c851506f7267a122",
+   "sha256": "9c721cd74c2d510be88fec9fd5147d315153944bf51b4115211af20f82d05cfb"
+  },
+  {
+   "file": "keyboard.png",
+   "view": "2 / 36 \u00b7 Three keys",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "a42165242de9572d019994ebb1449b0a74dc2d6b11d9ad6fa7e49e994d5609ac",
+   "sha256": "b2b6ccb39820539a0611f5f23e5f309576dc0e39eb8496f94bc03fff4e4cd0d9"
+  },
+  {
+   "file": "air-crowd.png",
+   "view": "3 / 36 \u00b7 Air is a crowd",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "820ea36752f2e2bf635b3c81a02789852cc072123c1ed7bfc3c35c85a327b5b3",
+   "sha256": "ba4ed164a16ec5958f3a681209efd1d327ba7d02bc50c04b558243010b5d490d"
+  },
+  {
+   "file": "air-tube.png",
+   "view": "7 / 36 \u00b7 A plate in a tube \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "fbe177f6c9169ac4abb50e819df2340c58bb5abacdf2b837fbab32936a3caee1",
+   "sha256": "c203c94ea56783ad72e49b953cfc7d5e2ba746f8c04e48daa2c62fdfd4612810"
+  },
+  {
+   "file": "sounds-pop.png",
+   "view": "9 / 36 \u00b7 A jump is a pop",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "ed6d515bf4c5fa102b8c7dcbaf6d4403214533c4ac6865b090d366ca59a11924",
+   "sha256": "4d8a7005591fb82a5387e3d9e5aa97eaf40d46ad6adab6e2f4c70353d127bcb3"
+  },
+  {
+   "file": "sounds-add.png",
+   "view": "11 / 36 \u00b7 Sounds add",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "b1653bac97d2d5c5b97241e3a660f5b4da31fd047d03d402414515f977b320db",
+   "sha256": "b43644e8c1bb71f007c3017a1e85e9e8cc1452ccb50a5a7bc0edbe536f33e16d"
+  },
+  {
+   "file": "sounds-triangle.png",
+   "view": "13 / 36 \u00b7 Three numbers for a shape \u00b7 cue 0 / 3",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "71605e8f97be12e7ec11c9ec0df2b5f62ba42903c5355023289d7b09c814c930",
+   "sha256": "73531b88c736b444c5b97dfb87a0f3d02736b729dc2a0bde295be379ff173803"
+  },
+  {
+   "file": "sounds-cancel.png",
+   "view": "14 / 36 \u00b7 Half a cycle apart, they cancel \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "dec9e4b10ab24abc4a0326f3df441a9cb6d8016f12eac103221f17173d28180d",
+   "sha256": "7e541fd81a25651a70c1d26a11a46707039564893afd723a109ad71f6d84c103"
+  },
+  {
+   "file": "sounds-draw.png",
+   "view": "15 / 36 \u00b7 Draw a shape, hear it",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "535501a509062228a17627edcf7cec720cb744bbe71cf4ab40ab6349c6929bc8",
+   "sha256": "65b6d95f2c9273ba9f9f55441e8ead32d99ca4a069243719bf5650573c9add8b"
+  },
+  {
+   "file": "tones-circle.png",
+   "view": "16 / 36 \u00b7 A turning circle",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "8a950bfacdefb8be8c3619c8916bfc01cb67b8c7c46be386d17fd43eaa7390c6",
+   "sha256": "bebf669b5a8b21f935155431bd9eb5d4dbea4da559ca03228eac92b44edeaa6f"
+  },
+  {
+   "file": "tones-sweep.png",
+   "view": "17 / 36 \u00b7 The range of hearing \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "47cb1ae61403a696d7e7a5c84b89ca36fd252a93a70db71c92679d25a448a99d",
+   "sha256": "816cf9bab12e6e39dd2f9f86fb5b47fadc4c962cbb0768865858dffd5ce6fa72"
+  },
+  {
+   "file": "tones-beats.png",
+   "view": "18 / 36 \u00b7 Close tones beat",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "22f27164389d69afa7d7d1d7474a673ad86042aedf63f469eb7939faacb6c10c",
+   "sha256": "637b48645fcdf2fcc2b6f95b52e541b117ad9e88e1f5a927345d6b5ef23b7e79"
+  },
+  {
+   "file": "tones-square.png",
+   "view": "19 / 36 \u00b7 Every shape is a sum of sines \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "677cd33bd3b5472626c1486237eb48df98394c2d0de2d09d2f38f43bcba55c1d",
+   "sha256": "e77d15ba299c00e73778df7cf0e260fe426cc4d8c3a043e00c66557e3d5c9486"
+  },
+  {
+   "file": "tones-microphone.png",
+   "view": "21 / 36 \u00b7 Listening back",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "a364326187cdba5dc4d8d959a553ce5009658f4efb4252597ded430c0bc8ac86",
+   "sha256": "353b73015ad4fe598cb6c98b6f3901ec33059f474704b05ff895834b16b02e2d"
+  },
+  {
+   "file": "springs-one.png",
+   "view": "22 / 36 \u00b7 A mass between springs",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "a667b43976874f553d49634b4c3dc4fd1cd6b69226a019f30a2f444fef2e8e72",
+   "sha256": "46064fdbadcfc2e0dcaa804d4a576af372ed14166d8196fcde171ae7017de31c"
+  },
+  {
+   "file": "springs-string.png",
+   "view": "25 / 36 \u00b7 A string is many masses \u00b7 cue 0 / 2",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "d076f92702d57eec4ee5ba8b0574252dc7a29cfbfaeed13902f392a1da4c9d3d",
+   "sha256": "303f7c367c9f7f02c033276123ea5f355100f17139e2563d7d697d1057bae52c"
+  },
+  {
+   "file": "waves-sphere.png",
+   "view": "28 / 36 \u00b7 A pulsing sphere \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "424ab2dccc1ca3a64be53fea05eecf5b7b94ffdfb7a6a8bbb81b398962722cd7",
+   "sha256": "07b15a2dbb1e0089624a077363216d7bfcc75119adcfe1bb163916f566634fa9"
+  },
+  {
+   "file": "waves-directional.png",
+   "view": "29 / 36 \u00b7 Aimed sound \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "6183bb1e4dbb67600c06eadd133e7b1f4f63b6643fb942d73ca53f3f4e87a122",
+   "sha256": "f185e456711ed702ba0a413c9fb3b62d9a00908240cd750e311c4e2b101f93bc"
+  },
+  {
+   "file": "waves-distance.png",
+   "view": "30 / 36 \u00b7 Later and quieter",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "23c5248f28aab5c01d5753d1ecdee62c90156fa72f7daae4589ed85c666a3c46",
+   "sha256": "b4037479f55991ac32df47e6a3c6f97514e19df51201a491bc75cb20caf7cdb7"
+  },
+  {
+   "file": "waves-decibels.png",
+   "view": "31 / 36 \u00b7 Decibels \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "d4a0a3cfcc5901a1654694a8b67d552600d3a2b4a3fdb60581a1b13127518352",
+   "sha256": "e392b183e88a59aa70af5a615091896d2d19a31434b683145a174db293a52538"
+  },
+  {
+   "file": "waves-doppler.png",
+   "view": "32 / 36 \u00b7 A moving source",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "328b7a3c42307f3395250b97864e7f4149ff022375549eaa6c1bb7a96c3b85e3",
+   "sha256": "6a179a8ea55b153b111e86a2b0fdfee93f8a627fb6584ad5fee2cd296c7a2652"
+  },
+  {
+   "file": "waves-two-speakers.png",
+   "view": "33 / 36 \u00b7 Two speakers",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "38fcbf8838c1877649e496f98e6a506f5c12b62ba5d51a4c7ef88a187b4a279d",
+   "sha256": "7f4398000a1f7b59f9192bb5b586a6c8aaea2f771f97bd7dee4b335cd2d8dbd0"
+  },
+  {
+   "file": "waves-echo.png",
+   "view": "34 / 36 \u00b7 Echo",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "30109c29d30473dff4d847997b04e02dfe000c3744f633c1ac4c2731ae8995e3",
+   "sha256": "bd3fa4c5c6fdea71fd630d6ce7247045622e24d1c2334404af695ee87bb02d78"
+  },
+  {
+   "file": "waves-reverb.png",
+   "view": "35 / 36 \u00b7 A room \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "cbb361fc1266dd032fb8acf75d6e22bd54e5d95d04b936f6aa4d7d5915dbd332",
+   "sha256": "5bbceaa0c0c5a3d6f50cfcff0353cf21d189f1c97c983513b72b84459c050f5d"
+  },
+  {
+   "file": "further-reading.png",
+   "view": "36 / 36 \u00b7 Further reading",
+   "figures": 0,
+   "inFront": true,
+   "captureSha256": "9e0fdbd3ac7fec1e431578aff22ef3663da809737deafe21381d778a306e2229",
+   "sha256": "51ea6773c2b325ca636bdbf88f3b0c57b3fd936b34982d6a219eb296e53fd10f"
+  }
+ ]
+}

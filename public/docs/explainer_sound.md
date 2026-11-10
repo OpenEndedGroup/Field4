@@ -26,12 +26,12 @@ prose](presentation_studio.md#live-figures-beside-prose) says how a deck like th
 ## Three keys
 
 <figure class="field-margin-figure" markdown>
-![The slide “Three keys” in the audience window: its prose on the left and the live keyboard figure on the right.](assets/explainer_sound/slides/keyboard.png)
+![The slide “Three keys” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/keyboard.png)
 </figure>
 
 Hold a key. Each moves the air in its own repeating pattern.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/keyboard.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-keyboard" alt="Three keys. Hold one to hear it; the line is the shape of the air pressure it makes."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/keyboard.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-keyboard" alt="A flat cyan line, the pressure while no key is held, above three hold buttons labelled low, middle and high"}
 // Three keys. Hold one to hear it; the line is the shape of the air pressure it makes.
 val shapes = listOf<(Double) -> Double>(
     { t -> sin(2 * PI * t) },
@@ -76,18 +76,24 @@ controlGroup {
 audio(3 { i -> voices[i] * adsr(0.01, 0.05, 1.0, 0.25, gates[i]) }.reduce { a, b -> a + b } / 3.0, gain = 0.15f)
 ```
 
+Listen: the low, middle and high keys one at a time, then all three together.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/explainer_sound/keyboard.wav" audio-spec="keyboard" audio-renderer="afield.audio.synth.ExplainerSoundDocs" embed=true hidden=true name="explainer-sound-keyboard-audio"}
+// Offline-rendered by ExplainerSoundDocs.renderWav("keyboard").
+```
+
 ## Air
 
 ### Air is a crowd
 
 <figure class="field-margin-figure" markdown>
-![The slide “Air is a crowd” in the audience window: its prose on the left and the live pressure_box figure on the right.](assets/explainer_sound/slides/air-crowd.png)
+![The slide “Air is a crowd” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/air-crowd.png)
 </figure>
 
 Air is molecules flying at about 500 m/s until they hit something. This is a flat cartoon of a few
 hundred.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/pressure_box.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-pressure_box" alt="A flat box of molecules. They fly straight, bounce off one another and off the walls. 'length' moves the right wall; the plot counts hits on it per unit of wall per second."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/pressure_box.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-pressure_box" alt="A dark box full of small cyan molecules, white flashes where they strike the walls, below it a plot of pressure as hits on the right wall rising to a plateau, and speed and length sliders with a follow one checkbox"}
 :::fold imports
 import afield.media.image.util.PngEncoder
 :::endfold
@@ -219,13 +225,13 @@ loop {
 ### A plate in a tube
 
 <figure class="field-margin-figure" markdown>
-![The slide “A plate in a tube” in the audience window: its prose on the left and the live tube_plate figure on the right.](assets/explainer_sound/slides/air-tube.png)
+![The slide “A plate in a tube” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/air-tube.png)
 </figure>
 
 Each line is a slice of air. Push the plate: the crowding runs down the tube; the slices only
 shuffle.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/tube_plate.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-tube_plate" alt="Slices of air in a tube. Each line is one slice; the plate at the left end pushes on the first, each slice pushes on the next, and the far end lets the disturbance out instead of echoing it."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/tube_plate.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-tube_plate" alt="A tube seen from the side, an orange plate at its left end and a row of thin grey vertical lines for the slices of air, evenly spaced, with a plate slider and a colour checkbox"}
 // Slices of air in a tube. Each line is one slice; the plate at the left end pushes on the first,
 // each slice pushes on the next, and the far end lets the disturbance out instead of echoing it.
 val n = 80
@@ -306,12 +312,12 @@ loop {
 ### A jump is a pop
 
 <figure class="field-margin-figure" markdown>
-![The slide “A jump is a pop” in the audience window: its prose on the left and the live repeated_jumps figure on the right.](assets/explainer_sound/slides/sounds-pop.png)
+![The slide “A jump is a pop” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/sounds-pop.png)
 </figure>
 
 A sudden move of the plate is a pop. A bigger move, a louder pop.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/repeated_jumps.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-repeated_jumps" alt="A plate that jumps. Hold 'jump' to move it forward by 'distance'; tick 'repeat' and it jumps back and forth by itself, 'rate' times a second. With 'sound' on you hear the air the plate pushes."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/repeated_jumps.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-repeated_jumps" alt="An orange plate seen from the side above a flat cyan trace of its position, with a jump button, distance and rate sliders, and repeat and sound checkboxes"}
 // A plate that jumps. Hold "jump" to move it forward by "distance"; tick "repeat" and it jumps back
 // and forth by itself, "rate" times a second. With "sound" on you hear the air the plate pushes.
 var distance = 0.5
@@ -373,15 +379,21 @@ loop { draw(AnimationClock.nowSeconds() - start) } +
     audio((SquareOsc(pace) * swing + offset) / hpf(15, 0.1), gain = level)
 ```
 
+Listen: the plate jumping 4 times a second, then 30, then 220. The pops blur into a buzz, then a note.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/explainer_sound/repeated_jumps.wav" audio-spec="repeated_jumps" audio-renderer="afield.audio.synth.ExplainerSoundDocs" embed=true hidden=true name="explainer-sound-repeated_jumps-audio"}
+// Offline-rendered by ExplainerSoundDocs.renderWav("repeated_jumps").
+```
+
 ### Sounds add
 
 <figure class="field-margin-figure" markdown>
-![The slide “Sounds add” in the audience window: its prose on the left and the live wave_synth figure on the right.](assets/explainer_sound/slides/sounds-add.png)
+![The slide “Sounds add” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/sounds-add.png)
 </figure>
 
 Two keys at once: the plate makes both motions, and they add. The bottom line is what you hear.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/wave_synth.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-wave_synth" alt="Three keys, each a repeating pattern of the plate, and a fourth that plays the sum of the first two as one pattern of its own. Each row is twenty milliseconds of a key; the bottom row, below the line, is what you hear. An invisible frame the size of the figure, so its bounds, and so its scale, never change."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/wave_synth.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-wave_synth" alt="Three thin grey wave shapes, a square, a triangle and a sawtooth, above a flat orange line for their sum while no key is held, and hold buttons A, B, C and A + B"}
 // Three keys, each a repeating pattern of the plate, and a fourth that plays the sum of the first two
 // as one pattern of its own. Each row is twenty milliseconds of a key;
 // the bottom row, below the line, is what you hear.
@@ -440,13 +452,13 @@ audio(4 { i -> voices[i] * adsr(0.01, 0.05, 1.0, 0.2, gates[i]) }.reduce { a, b 
 ### Three numbers for a shape
 
 <figure class="field-margin-figure" markdown>
-![The slide “Three numbers for a shape” in the audience window: its prose on the left and the live triangle_params figure on the right.](assets/explainer_sound/slides/sounds-triangle.png)
+![The slide “Three numbers for a shape” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/sounds-triangle.png)
 </figure>
 
 **Amplitude** is loudness, **frequency** is pitch, **phase** is where it starts, which alone you
 cannot hear.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/triangle_params.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-triangle_params" alt="One repeating triangle and the three numbers that place it. The faint line is the same triangle with no shift, for comparison; the sound follows amplitude and frequency."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/triangle_params.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-triangle_params" alt="A cyan triangle wave, four peaks across the figure, with amplitude, frequency and phase sliders and a sound checkbox"}
 // One repeating triangle and the three numbers that place it. The faint line is the same triangle
 // with no shift, for comparison; the sound follows amplitude and frequency.
 var amplitude = 0.6
@@ -488,12 +500,12 @@ audio(TriOsc(pitch), gain = level)
 ### Half a cycle apart, they cancel
 
 <figure class="field-margin-figure" markdown>
-![The slide “Half a cycle apart, they cancel” in the audience window: its prose on the left and the live phase_cancel figure on the right.](assets/explainer_sound/slides/sounds-cancel.png)
+![The slide “Half a cycle apart, they cancel” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/sounds-cancel.png)
 </figure>
 
 Two equal tones add. Shift one by half a cycle and every push meets a pull: silence.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/phase_cancel.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-phase_cancel" alt="Two identical tones, the second slid along by 'shift' (a fraction of a cycle), and their sum."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/phase_cancel.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-phase_cancel" alt="Two cyan sine waves in step and their orange sum below, twice as tall, with a shift slider at 0 and a sound checkbox"}
 // Two identical tones, the second slid along by "shift" (a fraction of a cycle), and their sum.
 var shift = 0.0
 var on = false
@@ -537,12 +549,12 @@ audio((SineOsc(Param(220f)) + SineOsc(Param(220f), phaseMod = offset)) / 2.0, ga
 ### Draw a shape, hear it
 
 <figure class="field-margin-figure" markdown>
-![The slide “Draw a shape, hear it” in the audience window: its prose on the left and the live draw_wave figure on the right.](assets/explainer_sound/slides/sounds-draw.png)
+![The slide “Draw a shape, hear it” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/sounds-draw.png)
 </figure>
 
 Drag the points, then hold a key. Corners and jumps sound brighter.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/draw_wave.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-draw_wave" alt="Draw one cycle and hear it repeated. Drag the points of the curve, or draw a new stroke across the box; the keys play whatever is drawn at three pitches. The bars are how much of each multiple of the key's frequency the shape holds."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/draw_wave.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-draw_wave" alt="One drawn period of a wave as a cyan line through draggable points, and below it orange bars for how much of each multiple the drawing holds, mostly the first, with low, middle and high hold buttons"}
 // Draw one cycle and hear it repeated. Drag the points of the curve, or draw a new stroke across the
 // box; the keys play whatever is drawn at three pitches. The bars are how much of each multiple of
 // the key's frequency the shape holds.
@@ -629,12 +641,12 @@ audio(3 { i -> voices[i] * adsr(0.01, 0.05, 1.0, 0.25, gates[i]) }.reduce { a, b
 ### A turning circle
 
 <figure class="field-margin-figure" markdown>
-![The slide “A turning circle” in the audience window: its prose on the left and the live circle_sine figure on the right.](assets/explainer_sound/slides/tones-circle.png)
+![The slide “A turning circle” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/tones-circle.png)
 </figure>
 
 Radius is amplitude, speed of turning is frequency, starting point is phase.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/circle_sine.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-circle_sine" alt="A point going round a circle, and its height over time. The trace scrolls left, newest at the circle."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/circle_sine.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-circle_sine" alt="A point on a circle at the left, its height traced to the right as a cyan sine wave, with radius, turns per second and start sliders"}
 // A point going round a circle, and its height over time. The trace scrolls left, newest at the circle.
 var radius = 0.8
 var speed = 0.5      // turns per second
@@ -690,12 +702,12 @@ loop {
 ### The range of hearing
 
 <figure class="field-margin-figure" markdown>
-![The slide “The range of hearing” in the audience window: its prose on the left and the live sine_sweep figure on the right.](assets/explainer_sound/slides/tones-sweep.png)
+![The slide “The range of hearing” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/tones-sweep.png)
 </figure>
 
 The purest tone. We hear about 20 Hz to 20,000 Hz, best between 1,000 and 5,000.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/sine_sweep.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-sine_sweep" alt="One sine wave, drawn and heard. How often it repeats is its pitch; how far it swings, its loudness."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/sine_sweep.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-sine_sweep" alt="Five cycles of a cyan sine wave, twenty milliseconds of a 220 Hz tone, with frequency and amplitude sliders and a sound checkbox"}
 // One sine wave, drawn and heard. How often it repeats is its pitch; how far it swings, its loudness.
 val pitch = Param(220f)
 val level = Param(0f)
@@ -736,15 +748,21 @@ controlGroup {
 audio(SineOsc(pitch), gain = level)
 ```
 
+Listen: the tone gliding from 20 Hz to 20,000 Hz over ten seconds, as if the frequency slider were dragged from end to end.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/explainer_sound/sine_sweep.wav" audio-spec="sine_sweep" audio-renderer="afield.audio.synth.ExplainerSoundDocs" embed=true hidden=true name="explainer-sound-sine_sweep-audio"}
+// Offline-rendered by ExplainerSoundDocs.renderWav("sine_sweep").
+```
+
 ### Close tones beat
 
 <figure class="field-margin-figure" markdown>
-![The slide “Close tones beat” in the audience window: its prose on the left and the live beats figure on the right.](assets/explainer_sound/slides/tones-beats.png)
+![The slide “Close tones beat” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/tones-beats.png)
 </figure>
 
 A few hertz apart, two sines drift in and out of step: one tone, swelling and fading.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/beats.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-beats" alt="Two sine tones a few hertz apart. Hold one key, then both: the sum swells and fades as the two drift in and out of step. The picture is one second of what you hear; each column spans the wave's highest and lowest points in a 640th of a second, so the outline is the loudness."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/beats.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-beats" alt="A flat cyan line while neither key is held, two hold buttons, 220 Hz and 220 Hz + difference, and a difference slider at 3.0"}
 // Two sine tones a few hertz apart. Hold one key, then both: the sum swells and fades as the two
 // drift in and out of step. The picture is one second of what you hear; each column spans the
 // wave's highest and lowest points in a 640th of a second, so the outline is the loudness.
@@ -792,15 +810,21 @@ val tones = listOf(SineOsc(Param(220f)), SineOsc(second))
 audio(2 { i -> tones[i] * adsr(0.01, 0.05, 1.0, 0.25, gates[i]) }.reduce { a, b -> a + b } / 2.0, gain = 0.15f)
 ```
 
+Listen: 220 Hz alone, then 223 Hz added. The sum swells and fades three times a second.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/explainer_sound/beats.wav" audio-spec="beats" audio-renderer="afield.audio.synth.ExplainerSoundDocs" embed=true hidden=true name="explainer-sound-beats-audio"}
+// Offline-rendered by ExplainerSoundDocs.renderWav("beats").
+```
+
 ### Every shape is a sum of sines
 
 <figure class="field-margin-figure" markdown>
-![The slide “Every shape is a sum of sines” in the audience window: its prose on the left and the live square_partials figure on the right.](assets/explainer_sound/slides/tones-square.png)
+![The slide “Every shape is a sum of sines” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/tones-square.png)
 </figure>
 
 Odd multiples, each smaller, build a square. The ripples at the corners never shrink in height.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/square_partials.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-square_partials" alt="Sines at 1, 3, 5, 7… times a base frequency, each 1/n as tall, add up to a square wave. 'sines' is how many are in the sum; the faint line is the square they are approaching."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/square_partials.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-square_partials" alt="A thin grey square wave and the cyan sine of its first partial following it, with a sines slider at 1 and a sound checkbox"}
 // Sines at 1, 3, 5, 7… times a base frequency, each 1/n as tall, add up to a square wave. "sines" is
 // how many are in the sum; the faint line is the square they are approaching.
 var count = 1
@@ -841,12 +865,12 @@ audio(50 { i -> SineOsc(Param(110f * partial(i))) * weights[i] }.reduce { a, b -
 ### Listening back
 
 <figure class="field-margin-figure" markdown>
-![The slide “Listening back” in the audience window: its prose on the left and the live microphone figure on the right.](assets/explainer_sound/slides/tones-microphone.png)
+![The slide “Listening back” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/tones-microphone.png)
 </figure>
 
 Whistle: one bar. Sing a vowel: a row of them, at multiples of your note.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/microphone.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-microphone" alt="What the microphone hears, taken apart into sines. Tick 'listen'; each bar is how much of one frequency, 20 Hz wide, is in the last tenth of a second, from 0 to 2,500 Hz. A whistle stands up as one bar; a sung vowel as a row of bars at whole multiples of the note. Nothing is played back."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/microphone.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-microphone" alt="An empty spectrum, with a listen checkbox that starts the microphone"}
 // What the microphone hears, taken apart into sines. Tick "listen"; each bar is how much of one
 // frequency, 20 Hz wide, is in the last tenth of a second, from 0 to 2,500 Hz. A whistle stands up
 // as one bar; a sung vowel as a row of bars at whole multiples of the note. Nothing is played back.
@@ -897,12 +921,12 @@ loop {
 ### A mass between springs
 
 <figure class="field-margin-figure" markdown>
-![The slide “A mass between springs” in the audience window: its prose on the left and the live normal_modes figure on the right.](assets/explainer_sound/slides/springs-one.png)
+![The slide “A mass between springs” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/springs-one.png)
 </figure>
 
 It swings as a sine, at a pitch set by stiffness and mass, however far it was pulled.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/normal_modes.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-normal_modes" alt="Masses on a line of springs between two walls, moving in one of their normal modes. 'mode' chooses which (a line of n masses has n), and 'add the lowest' mixes mode 1 in as well."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/normal_modes.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-normal_modes" alt="A mass, an orange ball, held between two zig-zag springs fixed to posts at either end, with masses and mode sliders and an add the lowest checkbox"}
 // Masses on a line of springs between two walls, moving in one of their normal modes. "mode"
 // chooses which (a line of n masses has n), and "add the lowest" mixes mode 1 in as well.
 var masses = 1
@@ -971,13 +995,13 @@ loop {
 ### A string is many masses
 
 <figure class="field-margin-figure" markdown>
-![The slide “A string is many masses” in the audience window: its prose on the left and the live pluck figure on the right.](assets/explainer_sound/slides/springs-string.png)
+![The slide “A string is many masses” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/springs-string.png)
 </figure>
 
 A string's modes are whole numbers of half waves, at whole multiples of the lowest pitch: the
 harmonics.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/pluck.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-pluck" alt="A string held at both ends. 'pluck' pulls it aside at 'pluck at' (the orange dot) and lets go. What follows is a sum of the string's modes, each a whole number of half waves, ringing at whole multiples of the lowest frequency, the high ones dying away faster. 'mode' shows one mode alone (0 shows the pluck); 'length' stops the string short, as a finger on a fret does."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/pluck.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-pluck" alt="A straight string between two pegs with an orange dot marking where it will be plucked, a pluck button, and pluck at, mode and length sliders"}
 // A string held at both ends. "pluck" pulls it aside at "pluck at" (the orange dot) and lets go.
 // What follows is a sum of the string's modes, each a whole number of half waves, ringing at whole multiples of the lowest frequency, the high ones dying
 // away faster. "mode" shows one mode alone (0 shows the pluck); "length" stops the string short,
@@ -1059,17 +1083,23 @@ loop {
 } + audio(partials.reduce { a, b -> a + b }, gain = 0.15f)
 ```
 
+Listen: the string plucked at a quarter of its length, then near its end. The second pluck is brighter.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/explainer_sound/pluck.wav" audio-spec="pluck" audio-renderer="afield.audio.synth.ExplainerSoundDocs" embed=true hidden=true name="explainer-sound-pluck-audio"}
+// Offline-rendered by ExplainerSoundDocs.renderWav("pluck").
+```
+
 ## Pressure waves
 
 ### A pulsing sphere
 
 <figure class="field-margin-figure" markdown>
-![The slide “A pulsing sphere” in the audience window: its prose on the left and the live pulsing_sphere figure on the right.](assets/explainer_sound/slides/waves-sphere.png)
+![The slide “A pulsing sphere” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/waves-sphere.png)
 </figure>
 
 Rings of high and low pressure. Their spacing is the wavelength: 343 Hz makes one metre.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/pulsing_sphere.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-pulsing_sphere" alt="A sphere swelling and shrinking, seen in cross-section: red is pressure above the usual, blue below. The picture is four metres across, and the bar at the bottom is one metre. Time runs slowed down, half a cycle a second whatever the frequency, so only the spacing of the rings changes with it."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/pulsing_sphere.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-pulsing_sphere" alt="A pressure field around a small pulsing sphere: rings of orange for high pressure and blue for low spreading outward, a white bar for one metre, and a frequency slider at 343 Hz"}
 :::fold imports
 import afield.media.image.util.PngEncoder
 :::endfold
@@ -1123,13 +1153,13 @@ loop {
 ### Aimed sound
 
 <figure class="field-margin-figure" markdown>
-![The slide “Aimed sound” in the audience window: its prose on the left and the live wall_plate figure on the right.](assets/explainer_sound/slides/waves-directional.png)
+![The slide “Aimed sound” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/waves-directional.png)
 </figure>
 
 A plate in a wall spreads low notes every way. Once the waves are shorter than the plate, its edges
 interfere and the sound is aimed ahead.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/wall_plate.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-wall_plate" alt="A plate 60 cm across set in a wall on the left, pushing air back and forth: red is pressure above the usual, blue below. When its waves are longer than the plate the sound spreads every way; when they are shorter, the edges of the plate interfere and the sound is aimed ahead. The strip below is the pressure along the plate's axis. The picture is four metres across, the bar is one metre; time runs slowed, half a cycle a second, whatever the frequency."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/wall_plate.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-wall_plate" alt="A pressure field from a plate set in a wall at the left, curved orange and blue fronts spreading to the right, a cyan strip below of the pressure along the axis, and a frequency slider"}
 :::fold imports
 import afield.media.image.util.PngEncoder
 :::endfold
@@ -1218,12 +1248,12 @@ loop {
 ### Later and quieter
 
 <figure class="field-margin-figure" markdown>
-![The slide “Later and quieter” in the audience window: its prose on the left and the live speaker_ear figure on the right.](assets/explainer_sound/slides/waves-distance.png)
+![The slide “Later and quieter” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/waves-distance.png)
 </figure>
 
 About 3 ms a metre. Twice as far, half the pressure swing.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/speaker_ear.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-speaker_ear" alt="A speaker on the left and a listener (the orange point) you drag. The rings are one metre apart, fainter as the sound spreads; the meters say how late the sound arrives and how much quieter it is than one metre away. The picture is ten metres across; the bar is one metre."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/speaker_ear.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-speaker_ear" alt="A speaker at the left sending out cyan wavefronts toward an orange listener, a short bar for one metre, and two meters for the delay in milliseconds and the level in decibels"}
 // A speaker on the left and a listener (the orange point) you drag. The rings are one metre apart,
 // fainter as the sound spreads; the meters say how late the sound arrives and how much quieter it
 // is than one metre away. The picture is ten metres across; the bar is one metre.
@@ -1283,12 +1313,12 @@ measure()
 ### Decibels
 
 <figure class="field-margin-figure" markdown>
-![The slide “Decibels” in the audience window: its prose on the left and the live decibels figure on the right.](assets/explainer_sound/slides/waves-decibels.png)
+![The slide “Decibels” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/waves-decibels.png)
 </figure>
 
 Every ten times the pressure adds 20 dB. Twice the distance costs about 6 dB.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/decibels.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-decibels" alt="Sound pressure level: 20 × log10 of the pressure swing over 20 micropascals, the quietest a young ear hears at 1 kHz. Drag 'pressure' (a logarithmic slider, in pascals) and read the level."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/decibels.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-decibels" alt="A readout of 0.0200 Pa as 60.0 dB, with landmarks from where hearing begins to where it starts to hurt, and pressure and decibel sliders"}
 // Sound pressure level: 20 × log10 of the pressure swing over 20 micropascals, the quietest a
 // young ear hears at 1 kHz. Drag "pressure" (a logarithmic slider, in pascals) and read the level.
 fun level(pa: Double) = 20 * log10(pa / 20e-6)
@@ -1310,13 +1340,13 @@ controlGroup {
 ### A moving source
 
 <figure class="field-margin-figure" markdown>
-![The slide “A moving source” in the audience window: its prose on the left and the live doppler figure on the right.](assets/explainer_sound/slides/waves-doppler.png)
+![The slide “A moving source” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/waves-doppler.png)
 </figure>
 
 Ahead of the source the rings crowd, and the pitch is higher; behind, lower. Time is slowed a
 hundred times.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/doppler.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-doppler" alt="A source moving left to right past a listener (orange), sending out rings that spread at the speed of sound. Time is slowed a hundred times, so a ring grows by a fraction of the gap between rings in each painted frame even at fifteen frames a second. Ahead of the source the rings crowd together, behind it they spread out. With 'sound' on you hear a 440 Hz tone at the pitch the listener receives."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/doppler.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-doppler" alt="A moving source, a white dot, inside cyan rings that crowd together ahead of it and spread out behind, an orange listener below, a speed slider and a sound checkbox"}
 // A source moving left to right past a listener (orange), sending out rings that spread at the
 // speed of sound. Time is slowed a hundred times, so a ring grows by a fraction of the gap between
 // rings in each painted frame even at fifteen frames a second. Ahead of the source the rings crowd together, behind
@@ -1394,12 +1424,12 @@ loop {
 ### Two speakers
 
 <figure class="field-margin-figure" markdown>
-![The slide “Two speakers” in the audience window: its prose on the left and the live two_speakers figure on the right.](assets/explainer_sound/slides/waves-two-speakers.png)
+![The slide “Two speakers” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/waves-two-speakers.png)
 </figure>
 
 On the orange lines one speaker's push meets the other's pull and the tone nearly vanishes.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/two_speakers.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-two_speakers" alt="Two speakers on the left play the same tone. Each faint ring is a crest of one speaker's wave, a wavelength apart; the orange curves are where a crest from one always meets a trough from the other, so the two cancel. Drag the listener (the orange point). With 'sound' on you hear the tone at the loudness it has there. The picture is ten metres across."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/two_speakers.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-two_speakers" alt="Two speakers at the left, faint rings for the crests of each one's wave, orange curves where a crest always meets a trough, an orange listener between them, a frequency slider and a sound checkbox"}
 // Two speakers on the left play the same tone. Each faint ring is a crest of one speaker's wave, a
 // wavelength apart; the orange curves are where a crest from one always meets a trough from the
 // other, so the two cancel. Drag the listener (the orange point). With "sound" on you hear the tone
@@ -1503,12 +1533,12 @@ audio(SineOsc(pitch), gain = level)
 ### Echo
 
 <figure class="field-margin-figure" markdown>
-![The slide “Echo” in the audience window: its prose on the left and the live echo figure on the right.](assets/explainer_sound/slides/waves-echo.png)
+![The slide “Echo” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/waves-echo.png)
 </figure>
 
 Far from a wall, a second clap. Within about 50 ms, closer than 8 m, one sound.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/echo.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-echo" alt="You clap, standing 'distance to the wall' metres from a wall. The pulse travels there and back at 343 m/s, shown at its real speed. Below, a timeline: the clap at 0, its echo when it returns; the shaded part is the first 50 ms, inside which the ear hears the two as one sound."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/echo.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-echo" alt="You, a white dot, standing 20 m from a wall, and below a time line with the first 50 ms shaded, where the echo would be heard as part of the clap, with a clap button and a distance to the wall slider"}
 // You clap, standing "distance to the wall" metres from a wall. The pulse travels there and back at
 // 343 m/s, shown at its real speed. Below, a timeline: the clap at 0, its echo when it returns; the
 // shaded part is the first 50 ms, inside which the ear hears the two as one sound.
@@ -1574,12 +1604,12 @@ loop {
 ### A room
 
 <figure class="field-margin-figure" markdown>
-![The slide “A room” in the audience window: its prose on the left and the live reverb figure on the right.](assets/explainer_sound/slides/waves-reverb.png)
+![The slide “A room” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_sound/slides/waves-reverb.png)
 </figure>
 
 Bounces pile up into a tail: reverberation. Bigger, harder rooms ring longer.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/reverb.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-reverb" alt="A room seen from above, and when its echoes reach the listener (orange) after a sound from the source (white): each tick is one path off the walls, its height how much of the sound is left. A bigger room spaces them out and stretches the tail; softer walls make each bounce lose more. The keys play short notes through a reverberator set from the same two sliders."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/reverb.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-reverb" alt="A room seen from above with a white source and an orange listener, and below it the echoes reaching the listener as a dense cyan comb of ticks that fades away, with low, middle and high hold buttons and room size and soft walls sliders"}
 // A room seen from above, and when its echoes reach the listener (orange) after a sound from the
 // source (white): each tick is one path off the walls, its height how much of the sound is left.
 // A bigger room spaces them out and stretches the tail; softer walls make each bounce lose more.
