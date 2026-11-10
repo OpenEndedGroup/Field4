@@ -302,7 +302,8 @@ class FieldJavaSelectionTests(unittest.TestCase):
         return _fake_jdk(self.home / ".field4/toolchains" / name / "Contents/Home", java, graal)
 
     def test_toolchain_graalvm_beats_an_older_java_on_path(self):
-        self.assertEqual(field_java(self.repo, 25), str(self.graal()))
+        graal = self.graal()
+        self.assertEqual(field_java(self.repo, 25), str(graal))
 
     def test_toolchain_graalvm_beats_a_java_home_that_also_qualifies(self):
         graal = self.graal()
