@@ -149,7 +149,8 @@ Gamma above one brightens midtones; below one darkens them. White below black re
 Coincident endpoints use a tiny signed span, producing a stable near-threshold instead of NaNs.
 The neutral triplet bypasses this calculation exactly, including for values above one.
 
-Order: accumulated/blurred image → levels → paired soft-half darkening → sharp/accumulated mix
+Order: accumulated/blurred image → global pre-exposure gamma → black/white levels and per-screen
+presentation gamma → paired soft-half darkening → sharp/accumulated mix
 → headset-clock brightness envelope → opacity blend with the screens behind. The sharp branch
 is unaffected. **Accumulation mix must be above zero to see the levels.** Output transfer
 encoding and the native ten-bit video decode remain separate.
@@ -157,6 +158,18 @@ encoding and the native ten-bit video decode remain separate.
 All three values are stored in new screen looks, including staggered recalls. Earlier keys that
 lack them retain the current levels. The controls mirror recalled values, and their ranges are
 black/white −2 to +4 and gamma 0.05 to 8. The Reset button changes just these three parameters.
+
+```kotlin
+val screen = carousel.surfaces[0]
+screen.accumulationBlackLevel = .04f
+screen.accumulationWhiteLevel = .7f
+screen.accumulationGamma = 1.5f
+```
+
+Manual levels and the global pre-exposure gamma share the existing two-`vec4` `ScreenAppearance` uniform.
+No additional RTT, readback, history image or queued frame is introduced. The GPU regression
+checks the transfer curve, sharp bypass, inversion, equal endpoints and neutral recovery of the
+original accumulated pixels.
 
 ## GPU auto exposure
 
@@ -167,9 +180,23 @@ start off, preserving the saved look. The controls also work while the renderer 
 settings remain editable and bind to the carousel when it starts. Accumulation must have been
 enabled to create a buffer.
 
+**Global pre-exposure gamma** is a shared power curve applied before exposure normalization:
+`RGB = max(RGB, 0)^(1/gamma)`. One is neutral, above one lifts midtones, and below one darkens
+them. It acts on every accumulated screen, including in Manual mode; the delayed sharp branch
+and stored accumulation history are untouched. Each screen's existing **Presentation gamma**
+remains a separate control after black/white normalization.
+
+The meter applies this same power curve to each RGB texel *before* reducing RGB and luminance.
+It measures the unblurred accumulation, while presentation applies the curve after choosing the
+held/blurred image. Gamma is part of the global saved settings, rather than individual look keys.
+Changing gamma invalidates cached reductions even for paused buffers, and seeds the trackers in
+the new domain at the next enabled-meter frame. A disabled meter retains its frozen endpoints.
+No extra RTT or queued frame is required.
+
 The GPU reduces RGB and luminance to min, mean and max. Linked mode pools the raw extrema and
 pixel-weighted means before filtering. Hidden screens and held/frozen buffers participate while
-their accumulations remain valid. Measurements precede presentation, paired blur/darkening,
+their accumulations remain valid. Measurements follow global pre-gamma and precede exposure
+normalization, paired blur/darkening,
 flashing and opacity, so the exposure never measures its own correction.
 
 Each statistic/channel keeps its own level and velocity. Two **alpha-beta pairs**, one rising
@@ -191,11 +218,11 @@ next valid measurement and clears velocities, without clearing any accumulation.
 Black is predicted minimum luminance minus **Black padding**; white is predicted maximum plus
 **White padding**. Separate black/white bounds and **Maximum contrast gain** constrain these
 endpoints even during prediction overshoot. Positive padding reserves headroom/footroom;
-negative padding clips more. Mean is tracked and available to code, while gamma stays manual.
+negative padding clips more. Mean is tracked and available to code; both gamma controls stay manual.
 
 **Global auto mix × each screen's Auto exposure mix** blends automatic endpoints with manual
 black/white. Local mix belongs to screen looks, including staggered recalls. Global mode,
-filter gains, bounds and meter rate persist together in the shared box's settings property.
+pre-exposure gamma, filter gains, bounds and meter rate persist together in the shared box's settings property.
 Turning **Update GPU meter** off freezes existing statistics and endpoints; select **Manual
 levels** to stop applying them. Missing/invalid measurements fall back to manual endpoints.
 
@@ -203,7 +230,7 @@ levels** to stop applying them. Missing/invalid measurements fall back to manual
 import afield.graphics.scene.video.VideoAutoExposure
 
 carousel.autoExposure.settings = carousel.autoExposure.settings.copy(
-    enabled = true, mode = VideoAutoExposure.Mode.LINKED,
+    enabled = true, mode = VideoAutoExposure.Mode.LINKED, preExposureGamma = 1.25f,
     risingAlpha = .25f, risingBeta = .05f,
     fallingAlpha = .1f, fallingBeta = .01f,
     blackPadding = .01f, whitePadding = .02f,
@@ -230,17 +257,6 @@ bounds, invalid buffers, settings persistence and the actual presentation shader
 The smoke IDs are `four.stereo-video.auto-exposure`, `four.stereo-video.precision` and
 `four.stereo-video.carousel`.
 
-```kotlin
-val screen = carousel.surfaces[0]
-screen.accumulationBlackLevel = .04f
-screen.accumulationWhiteLevel = .7f
-screen.accumulationGamma = 1.5f
-```
-
-The values use the three spare components of the existing 16-byte `ScreenAppearance` uniform.
-No additional RTT, readback, history image or queued frame is introduced. The GPU regression
-checks the transfer curve, sharp bypass, inversion, equal endpoints and neutral recovery of the
-original accumulated pixels.
 
 ## Ring motion and the headset zoetrope
 

@@ -194,6 +194,13 @@ object StereoVideoPrecisionSmoke {
             for (x in 0..1023) check(abs(automatic[x] - ((cleared[x] - .2f) / .6f).coerceIn(0f, 1f)) < .002f) {
                 "GPU automatic endpoints did not reach the presentation shader at $x"
             }
+            movie.autoExposure.settings = movie.autoExposure.settings.copy(preExposureGamma = 2f)
+            repeat(4) { frame() }
+            val preGraded = read()
+            for (x in 0..1023) check(abs(preGraded[x] - ((cleared[x].pow(.5f) - .2f) / .6f).coerceIn(0f, 1f)) < .002f) {
+                "Global gamma was not applied before auto exposure at $x"
+            }
+            movie.autoExposure.settings = movie.autoExposure.settings.copy(preExposureGamma = 1f)
             movie.autoExposureMix = 0f
             frame()
             val manualBypass = read()

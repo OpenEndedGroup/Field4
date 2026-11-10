@@ -5,7 +5,7 @@ layout(binding = 2) uniform sampler2D accumulatedImage; // float16 linear-light 
 layout(binding = 3) uniform sampler2D softenedImage; // held exposure after per-eye Gaussian filtering
 layout(std140, binding = 8) uniform ScreenAppearance {
     vec4 levels; // opacity, accumulation black, accumulation white, accumulation gamma
-    vec4 autoMeter; // auto/manual mix, statistics row index, reserved, reserved
+    vec4 autoMeter; // auto/manual mix, statistics row index, global pre-exposure gamma, reserved
 } appearance;
 layout(std430, binding = 9) readonly buffer VideoExposureStatistics {
     vec4 records[]; // twelve vec4 per screen, then one linked record; GPU-owned levels and velocities
@@ -27,6 +27,8 @@ vec3 toLinear(vec3 c) {
 }
 vec3 presentAccumulation(vec3 rgb) {
     if (appearance.levels.w <= 0) return rgb; // an uninitialized level block stays neutral
+    float preGamma = appearance.autoMeter.z;
+    if (preGamma > 0 && preGamma != 1) rgb = pow(max(rgb, vec3(0)), vec3(1 / preGamma));
     float black = appearance.levels.y, white = appearance.levels.z;
     if (appearance.autoMeter.x > 0) {
         uint at=uint(appearance.autoMeter.y+.5)*12u+11u;

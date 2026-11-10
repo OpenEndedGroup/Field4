@@ -35,8 +35,10 @@ fun afield.ui.output.ControlGroupBuilder.exposureSlider(label: String, min: Doub
     exposureMirrors += { handle.set(get(exposureSettings())) }
 }
 controlGroup("meter and exposure mode") {
+    exposureSlider("Global pre-exposure gamma", .05, 8.0, .001, { it.preExposureGamma.toDouble() },
+        "Global power curve before black/white exposure, applied equally to every accumulated screen and the GPU meter: RGB = max(RGB, 0)^(1/gamma). One is neutral; above one lifts midtones. This also works in manual mode. Changing it remeasures held buffers and resets the trackers in the new domain. Does not modify accumulation history or sharp video; per-screen Presentation gamma follows exposure.") { s, v -> s.copy(preExposureGamma = v.toFloat()) }
     checkbox("Update GPU meter", initialValue = exposureSettings().enabled,
-        hoverText = "Measure raw accumulation buffers, before presentation, blur cadence, flashing and opacity. Off freezes existing statistics and tracker state; an enabled auto mode can still use those frozen endpoints. With no valid buffer, auto exposure falls back to manual levels.") { v -> changeExposure { it.copy(enabled = v) } }
+        hoverText = "Measure accumulation buffers after Global pre-exposure gamma, before black/white exposure, blur cadence, flashing and opacity. Off freezes existing statistics and tracker state; an enabled auto mode can still use those frozen endpoints. With no valid buffer, auto exposure falls back to manual levels.") { v -> changeExposure { it.copy(enabled = v) } }
         .also { h -> exposureMirrors += { h.set(exposureSettings().enabled) } }
     button("Manual levels", hoverText = "Use each screen's manual black and white levels. Meter updates remain independently controlled by the checkbox.") { down ->
         if (down) changeExposure { it.copy(mode = VideoAutoExposure.Mode.OFF) }
