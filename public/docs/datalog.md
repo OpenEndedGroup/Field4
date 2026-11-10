@@ -609,9 +609,9 @@ event(snare, 36, 100, 4)   [event(V, 36, 100, T) :- hit(P, V, _1), pos(T, P)]
     pos(4, 4)   [fact]
 ```
 
-`r.facts("name") { rows }` is the general form: any relation read live, from a slider, a sensor or
-another box, compared by value so the bar is solved again only when the rows really change. The
-function runs on the thread that schedules the notes, ahead of the audio, so it should only read.
+Use `r.facts("name") { rows }` to read any relation live from a slider, sensor or another box.
+Field compares the rows by value and solves the bar again only when they change. The function runs
+on the note-scheduling thread, ahead of the audio, so it should only read.
 Open the [starting point](agent_transcripts.md#datalog_rhythm_drawn) to draw a bar and play it.
 
 ## The editor knows the language
