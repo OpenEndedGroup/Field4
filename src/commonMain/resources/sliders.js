@@ -2021,7 +2021,8 @@ function startSliderDrag(container, event) {
     if (event.target?.setPointerCapture && event.pointerId !== undefined) {
         try { event.target.setPointerCapture(event.pointerId); } catch (_) {}
     }
-    try { container.focus({ preventScroll: true }); } catch (_) {}
+    // focusVisible: false — a drag focuses the slider for its keys, but it is not keyboard focus, so no ring.
+    try { container.focus({ preventScroll: true, focusVisible: false }); } catch (_) {}
     const relative = !!event.shiftKey;
     if (!relative) {
         const v = sliderValueFromPointer(container, event);
@@ -2437,7 +2438,8 @@ function startVec2Drag(container, event) {
     if (event.target?.setPointerCapture && event.pointerId !== undefined) {
         try { event.target.setPointerCapture(event.pointerId); } catch (_) {}
     }
-    try { container.focus({ preventScroll: true }); } catch (_) {}
+    // focusVisible: false — a drag focuses the slider for its keys, but it is not keyboard focus, so no ring.
+    try { container.focus({ preventScroll: true, focusVisible: false }); } catch (_) {}
     const relative = !!event.shiftKey;
     if (!relative) {
         const next = vec2ValueFromPointer(container, event);
