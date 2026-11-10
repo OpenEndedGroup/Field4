@@ -22,6 +22,8 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 
 const [endpoint, ownerPid, outputArg, ...stepIds] = process.argv.slice(2);
+// CAPTURE_ONLY=id,id captures only those steps' views and passes the others quickly.
+const only = new Set((process.env.CAPTURE_ONLY || '').split(',').map(s => s.trim()).filter(Boolean));
 assert.ok(endpoint && ownerPid && outputArg, 'Usage: node tools/presentation/capture-deck.mjs <CDP endpoint> <Electron PID> <output dir> [step ids...]');
 assert.ok(['localhost', '127.0.0.1'].includes(new URL(endpoint).hostname), 'CDP must be loopback');
 assert.equal(process.platform, 'darwin', 'The composited window capture uses macOS screencapture');
@@ -124,6 +126,15 @@ try {
     const cue = Number((now.match(/cue (\d+) \//) || [])[1] || 0);
     const title = now.split(' · ')[1] || `step-${step}`;
     const name = `${String(n).padStart(2, '0')}-${stepIds[step - 1] || title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}${cue ? `-cue${cue}` : ''}.png`;
+    const stepId = stepIds[step - 1] || title;
+    if (only.size && !only.has(stepId)) {
+      previous = now;
+      const skipCues = now.match(/cue (\d+) \/ (\d+)/);
+      if (Number(step) === Number(total) && (!skipCues || skipCues[1] === skipCues[2])) break;
+      await pause(600);
+      await action('next');
+      continue;
+    }
     // Cues glide controls for up to about three seconds.
     await pause(cue ? 3500 : 1500);
     const figures = await figuresSettled(name.replace(/\.png$/, ''));

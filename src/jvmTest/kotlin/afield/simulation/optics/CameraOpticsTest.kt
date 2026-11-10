@@ -226,4 +226,13 @@ class CameraOpticsTest {
         for (a in airAfter.filter { it in -150.0..-20.0 }) assertEquals(0.4, a - airBefore.filter { it < a }.max(), 1e-9)
         for (g in glassAfter.filter { it in 20.0..150.0 }) assertEquals(0.4 / 1.5, g - glassBefore.filter { it < g }.max(), 1e-9)
     }
+
+    @Test
+    fun aSensorPictureIsShownAtTheWidthAsked() {
+        val image = SensorImage(4, 2, FloatArray(4 * 2 * 3) { 0.5f })
+        val smooth = image.html(width = 400)
+        assertTrue(smooth.startsWith("<img src='data:image/png;base64,iVBORw0KGgo"), smooth.take(60))
+        assertTrue("width='400' height='200'" in smooth && "image-rendering:auto" in smooth)
+        assertTrue("image-rendering:pixelated" in image.html(width = 400, smooth = false))
+    }
 }

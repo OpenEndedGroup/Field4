@@ -106,7 +106,6 @@ operations:
       frame: { x: 870.0, y: 140.0, w: 170.0, h: 50.0 }
       properties:
         code: |
-          import afield.media.image.util.PngEncoder
           import afield.simulation.optics.*
 
           // A sensor held up to the scene with nothing in front of it. One point on each ball sends light to
@@ -131,36 +130,60 @@ operations:
               camera(yaw = 235.0, pitch = 18.0, distance = 1.5)
               background("#d8dde3")
           }
-          display("sensor", PngEncoder.encode(image.toArgb(scale = 10), 480, 320))
+          display("sensor", image.html(width = 480))
   - create:
       box: ec_pinhole_box
       name: pinhole_box
       frame: { x: 300.0, y: 220.0, w: 170.0, h: 50.0 }
       properties:
         code: |
-          import afield.media.image.util.PngEncoder
           import afield.simulation.optics.*
 
           // A closed box with a small hole, looking at the test scene. The picture forms on the back wall.
           val scene = OpticsScene.testScene()
-          val objects = scene.mesh()
           var hole = 0.04
           var distance = 1.0
           var fixedExposure = false
 
+          // Three points of the scene, each with its ray through the hole to the back wall.
+          val marked = listOf(Triple(-0.9, 1.4, -0.8), Triple(1.0, 1.2, 1.3), Triple(0.3, 0.0, -2.0))
+
           fun draw() {
               val pinhole = SensorCamera(z = -5.0, sensorDistance = distance, apertureDiameter = hole)
-              val image = pinhole.render(scene, 96, 64, samples = 48)
+              val image = pinhole.render(scene, 240, 160, samples = 48)
+              // A coarser copy for the back wall of the 3D box, which needs a quad per pixel.
+              val wall = pinhole.render(scene, 96, 64, samples = 24)
               // Fixed: right for a hole 0.08 wide at distance 1. Otherwise each picture is scaled to look right.
               val exposure = if (fixedExposure) 1.0 / (PI * 0.04 * 0.04) else 1.0 / image.reference
+              // Each ray from 1.8 units in front of the hole, through it, to where it lands.
+              val rays = marked.map { (x, y, z) ->
+                  val landing = pinhole.imageOf(x, y, z)
+                  val dx = x
+                  val dy = y - 1.2
+                  val dz = z + 5.0
+                  val k = 1.8 / sqrt(dx * dx + dy * dy + dz * dz)
+                  fline {
+                      moveTo(dx * k, 1.2 + dy * k, -5.0 + dz * k)
+                      lineTo(0.0, 1.2, -5.0)
+                      lineTo(landing[0], landing[1], landing[2])
+                      color = vec(1.0, 0.6, 0.2, 1.0)
+                      thickness = 1.5
+                  }
+              }
+              /*
+              The box and the rays through it are the subject: the view frames the box (at its
+              longest, with the sensor 2.5 back) and the rays' first stretch, not the scene, whose
+              picture is below.
+              */
               three(channel = "box", height = 320, width = 640) {
-                  mesh(objects, wireframe = false)
-                  mesh(pinhole.sensorMesh(image, exposure), wireframe = false, unlit = true, cullBackFaces = false)
-                  lines(pinhole.outline())
-                  camera(yaw = 235.0, pitch = 18.0, distance = 1.5)
+                  mesh(pinhole.sensorMesh(wall, exposure), wireframe = false, unlit = true, cullBackFaces = false)
+                  lines(pinhole.outline() + rays)
+                  fitTo(vec(-1.0, 0.4, -7.6), vec(1.0, 2.0, -3.2))
+                  camera(yaw = 240.0, pitch = 16.0)
                   background("#d8dde3")
               }
-              display("sensor", PngEncoder.encode(image.toArgb(exposure, scale = 5), 480, 320))
+              // Smoothed: these pixels stand for a picture, not for detectors.
+              display("sensor", image.html(exposure, width = 480))
           }
 
           draw()
@@ -745,7 +768,6 @@ operations:
       frame: { x: 300.0, y: 380.0, w: 170.0, h: 50.0 }
       properties:
         code: |
-          import afield.media.image.util.PngEncoder
           import afield.simulation.optics.*
 
           // The test scene through a lens. Choose the distance to focus at and the lens puts its sensor
@@ -758,8 +780,9 @@ operations:
           fun draw() {
               val sensor = ThinLens.imageDistance(focal, focus)
               val camera = SensorCamera(z = -4.5, sensorDistance = sensor, apertureDiameter = aperture, focalLength = focal)
-              val image = camera.render(scene, 120, 80, samples = 96)
-              display("sensor", PngEncoder.encode(image.toArgb(scale = 5), 600, 400))
+              val image = camera.render(scene, 300, 200, samples = 64)
+              // Smoothed when scaled: a picture, not a grid of detectors.
+              display("sensor", image.html(width = 600))
               markdown(
                   "readout",
                   "f/${(focal / aperture).f1}, sensor ${sensor.f3} behind the lens, sharp at ${focus.f1} in front",
@@ -787,7 +810,6 @@ operations:
       frame: { x: 490.0, y: 380.0, w: 170.0, h: 50.0 }
       properties:
         code: |
-          import afield.media.image.util.PngEncoder
           import afield.simulation.optics.*
 
           // Small lights far behind the point the lens is focused on. Each one spreads into a copy of the
@@ -826,7 +848,8 @@ operations:
                   bladeRotation = 0.3,
               )
               val image = camera.render(lights, 150, 100, samples = 400)
-              display("sensor", PngEncoder.encode(image.toArgb(exposure = 1.0 / camera.reference, scale = 4), 600, 400))
+              // Low resolution keeps 400 rays a pixel quick; smoothed, the discs read as discs.
+              display("sensor", image.html(exposure = 1.0 / camera.reference, width = 600))
           }
 
           draw()

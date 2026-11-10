@@ -515,6 +515,19 @@ class SensorImage(val width: Int, val height: Int, val rgb: FloatArray, val refe
     }
 
     /**
+     * The picture as an `<img>` for `display(...)`, drawn [width] CSS pixels wide. A camera's picture
+     * is shown [smooth] (the browser interpolates between pixels when it scales it up); `smooth =
+     * false` keeps every pixel a crisp square, for figures where the detectors are the point.
+     */
+    fun html(exposure: Double = 1.0 / reference, width: Int = this.width, upright: Boolean = true, smooth: Boolean = true): String {
+        val png = afield.media.image.util.PngEncoder.encode(toArgb(exposure, upright), this.width, this.height)
+        val data = java.util.Base64.getEncoder().encodeToString(png)
+        val rendering = if (smooth) "auto" else "pixelated"
+        return "<img src='data:image/png;base64,$data' width='$width' height='${width * height / this.width}' " +
+            "style='display:block;image-rendering:$rendering;border-radius:6px'>"
+    }
+
+    /**
      * What a sensor with a Bayer filter records: at each pixel only the channel its filter passes, in the
      * 2 × 2 pattern red, green / green, blue. The other two channels are zero.
      */
