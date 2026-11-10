@@ -6,6 +6,7 @@ layout(binding = 3) uniform sampler2D softenedImage; // held exposure after per-
 layout(std140, binding = 8) uniform ScreenAppearance {
     vec4 levels; // opacity, accumulation black, accumulation white, accumulation gamma
     vec4 autoMeter; // auto/manual mix, statistics row index, global pre-exposure gamma, sharp colour transfer
+    vec4 outputTone; // shadow cooling, reserved, reserved, reserved
 } appearance;
 layout(std430, binding = 9) readonly buffer VideoExposureStatistics {
     vec4 records[]; // sixteen vec4 per screen, then one linked record; GPU-owned levels and velocities
@@ -61,6 +62,16 @@ vec3 borrowAccumulationColour(vec3 original, vec3 reference) {
     return mix(original, tinted, smoothstep(.000001, .0001, referenceY));
 }
 
+// Output toning follows both video branches and the brightness envelope; the exposure meter never sees it.
+vec3 coolOutputShadows(vec3 rgb) {
+    float y = dot(rgb, vec3(.2126, .7152, .0722));
+    float amount = appearance.outputTone.x * (1 - smoothstep(.015, .25, y));
+    if (amount <= 0 || y <= .000001) return rgb;
+    // This blue/cyan direction has zero luminance. Reuse the same-Y gamut compression and black guard.
+    const vec3 cool = vec3(-.4, .05, (.4 * .2126 - .05 * .7152) / .0722);
+    return borrowAccumulationColour(rgb, rgb + y * amount * cool);
+}
+
 void main() {
     int sourceEye = pc.image.z > .5 ? 1 - eye : eye;
     vec2 q = vec2((float(sourceEye) + uv.x) * .5, pc.image.w > .5 ? 1 - uv.y : uv.y);
@@ -93,5 +104,6 @@ void main() {
             sharp = mix(sharp, borrowAccumulationColour(sharp, blurred), appearance.autoMeter.w);
     }
     blurred *= 1 - pc.accumulation.w; // preserve the paired darkening after presentation levels
-    color = vec4(mix(sharp, blurred, pc.accumulation.x) * max(0, 1 + pc.colorimetry.w), clamp(appearance.levels.x, 0, 1));
+    vec3 presented = mix(sharp, blurred, pc.accumulation.x) * max(0, 1 + pc.colorimetry.w);
+    color = vec4(coolOutputShadows(presented), clamp(appearance.levels.x, 0, 1));
 }

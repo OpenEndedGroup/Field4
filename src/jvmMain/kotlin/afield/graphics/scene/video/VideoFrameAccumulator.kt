@@ -80,11 +80,11 @@ internal class VideoFrameAccumulator(
         lastTime = 0
     }
 
-    fun render(command: CommandBuffer, index: Int, halfLife: Double, incoming: Double) {
+    fun render(command: CommandBuffer, index: Int, halfLife: Double, incoming: Double, shadowCooling: Float = 0f) {
         val now = System.nanoTime()
         val elapsed = if (lastTime == 0L) 0.0 else (now - lastTime) / 1e9
         val fraction = weights.add(elapsed, halfLife, incoming)
-        mesh.push["weights"] = Vector4f(fraction, if (valid) 1f else 0f, 0f, 0f)
+        mesh.push["weights"] = Vector4f(fraction, if (valid) 1f else 0f, shadowCooling, 0f)
         mesh.push["colorimetry"] = StereoVideoColorimetry.parameters(source.colorSpace, source.colorRange)
         val destination = 1 - written
         targets[destination].render(command, index)

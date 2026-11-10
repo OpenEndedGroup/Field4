@@ -63,6 +63,11 @@ class StereoVideoSurface(
     val materialUpdates get() = stream.materialUpdates
     val omittedMaterialFrames get() = stream.omittedMaterialFrames
 
+    /** Luminance-preserving cool shadow tone after blending and brightness, immediately before output. */
+    @Volatile
+    var shadowCooling = 0f
+        set(value) { require(value.isFinite() && value in 0f..1f); field = value }
+
     /** Sharp/accumulated image blend. Zero bypasses accumulation unless sharp colour transfer needs it. */
     @Volatile
     var accumulationMix = 0f
@@ -77,6 +82,11 @@ class StereoVideoSurface(
     @Volatile
     var accumulationInputWeight = 1.0
         set(value) { require(value.isFinite() && value in 0.0..100.0); field = value }
+    /** Cool new decoded contributions before temporal accumulation; existing history is retained. */
+    @Volatile
+    var accumulationShadowCooling = 0f
+        set(value) { require(value.isFinite() && value in 0f..1f); field = value }
+
     /** Presentation-only input black/white levels; the accumulated pixels remain untouched. */
     @Volatile
     var accumulationBlackLevel = 0f
@@ -191,7 +201,7 @@ class StereoVideoSurface(
                 exposureBlur?.clear()
             }
             if (accumulating && hasFrame && (uploaded || reset)) {
-                accumulator?.render(command, index, accumulationHalfLife, accumulationInputWeight)
+                accumulator?.render(command, index, accumulationHalfLife, accumulationInputWeight, accumulationShadowCooling)
                 meterRevision++
             }
             accumulationWasEnabled = accumulating
@@ -218,6 +228,7 @@ class StereoVideoSurface(
             module?.current?.liveUniformStructures?.get("ScreenAppearance")?.set("levels",
                 Vector4f(opacity, accumulationBlackLevel, accumulationWhiteLevel, accumulationGamma))
             module?.current?.liveUniformStructures?.get("ScreenAppearance")?.set("autoMeter", autoExposure.appearance(autoExposureIndex, autoExposureMix).apply { w = accumulationColourTransfer })
+            module?.current?.liveUniformStructures?.get("ScreenAppearance")?.set("outputTone", Vector4f(shadowCooling, 0f, 0f, 0f))
             mesh?.apply {
                 resize(if (hasFrame && opacity > 0f) strips * 6 else 0, 0)
                 push["model"] = placement.model()
@@ -329,6 +340,7 @@ class StereoVideoSurface(
         pointer.current.liveUniformStructures["ScreenAppearance"]?.set("levels",
             Vector4f(opacity, accumulationBlackLevel, accumulationWhiteLevel, accumulationGamma))
         pointer.current.liveUniformStructures["ScreenAppearance"]?.set("autoMeter", Vector4f(0f))
+        pointer.current.liveUniformStructures["ScreenAppearance"]?.set("outputTone", Vector4f(shadowCooling, 0f, 0f, 0f))
         pointer += "screen" to screen
 
         val overlays = stereo.layered.modules.filterKeys { it != name }

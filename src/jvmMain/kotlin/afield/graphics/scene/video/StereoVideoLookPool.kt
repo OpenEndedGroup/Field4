@@ -20,6 +20,8 @@ data class StereoVideoLook(
     val gamma: Float = 1f,
     val autoExposureMix: Float = 1f,
     val accumulationColourTransfer: Float = 0f,
+    val shadowCooling: Float = 0f,
+    val accumulationShadowCooling: Float = 0f,
 ) {
     fun applyTo(screen: StereoVideoSurface) {
         screen.accumulationMix = accumulationMix
@@ -36,6 +38,8 @@ data class StereoVideoLook(
         screen.accumulationGamma = gamma
         screen.autoExposureMix = autoExposureMix
         screen.accumulationColourTransfer = accumulationColourTransfer
+        screen.shadowCooling = shadowCooling
+        screen.accumulationShadowCooling = accumulationShadowCooling
     }
 
     companion object {
@@ -43,7 +47,7 @@ data class StereoVideoLook(
             screen.accumulationHalfLife, screen.accumulationInputWeight, screen.exposureCadenceEnabled,
             screen.exposurePairsPerSecond, screen.exposureBlurSigma, screen.exposureBlurMix, screen.exposureDarkening,
             screen.opacity, screen.accumulationBlackLevel, screen.accumulationWhiteLevel, screen.accumulationGamma, screen.autoExposureMix,
-            screen.accumulationColourTransfer)
+            screen.accumulationColourTransfer, screen.shadowCooling, screen.accumulationShadowCooling)
     }
 }
 
@@ -108,6 +112,8 @@ class StereoVideoLookPool internal constructor(
         scope.floatTarget("presentation.gamma", { read(captureScreen).gamma }) { value -> change { it.copy(gamma = value) } }
         scope.floatTarget("presentation.autoMix", { read(captureScreen).autoExposureMix }) { value -> change { it.copy(autoExposureMix = value) } }
         scope.floatTarget("presentation.colourTransfer", { read(captureScreen).accumulationColourTransfer }) { value -> change { it.copy(accumulationColourTransfer = value) } }
+        scope.floatTarget("input.shadowCooling", { read(captureScreen).accumulationShadowCooling }) { value -> change { it.copy(accumulationShadowCooling = value) } }
+        scope.floatTarget("output.shadowCooling", { read(captureScreen).shadowCooling }) { value -> change { it.copy(shadowCooling = value) } }
         scope.doubleTarget("playback.speed", readSpeed) { value -> if (restoreSpeed) writeSpeed(value) }
     }
 

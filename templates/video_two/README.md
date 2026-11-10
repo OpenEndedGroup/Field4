@@ -101,7 +101,7 @@ Choose **Capture from screen**, enter a name and press **Store named look**. Eac
 also has **Store from this screen**. The initial look is seeded as **slow blur** once; later
 launches retain the saved key. Storing the same name adds a version.
 
-Keys contain opacity, accumulation black/white/gamma, sharp colour transfer, local auto-exposure mix, mix, half-life, incoming weight, cadence enable/rate, soft-half blur
+Keys contain opacity, accumulation black/white/gamma, sharp colour transfer, input/output shadow cooling, local auto-exposure mix, mix, half-life, incoming weight, cadence enable/rate, soft-half blur
 sigma/mix and darkening, plus shared playback speed and, once Ring motion is launched, the six headset-flash settings. Check any collection of screens and press
 **Recall to checked screens**. **Restore playback speed** defaults off: appearance changes keep
 the current shared speed unless explicitly enabled. With no screens selected, this option
@@ -166,7 +166,7 @@ screen.accumulationWhiteLevel = .7f
 screen.accumulationGamma = 1.5f
 ```
 
-Manual levels and the global pre-exposure gamma share the existing two-`vec4` `ScreenAppearance` uniform.
+Manual levels and the global pre-exposure gamma share the three-`vec4` `ScreenAppearance` uniform.
 No additional RTT, readback, history image or queued frame is introduced. The GPU regression
 checks the transfer curve, sharp bypass, inversion, equal endpoints and neutral recovery of the
 original accumulated pixels.
@@ -208,6 +208,42 @@ screen.accumulationMix = 0f // sharp luminance/detail with processed accumulatio
 `four.stereo-video.colour-transfer` exercises the actual decoded video and presentation shader
 with a controlled GPU accumulation: partial/full mixes preserve luminance across the ramp,
 highlights stay in gamut, black references are safe, and sharp-only accumulation stays alive.
+
+
+## Input and output shadow cooling
+
+Each screen has two independent controls, both neutral at zero and included in new look keys:
+
+- **Input shadow cooling**, in **screen exposure**, applies to decoded linear RGB before the
+  incoming picture enters temporal accumulation. Existing history is retained; only new
+  contributions carry the new tint. Its effect follows incoming weight and half-life. While
+  paused, **Clear this exposure** rebuilds from the held frame with the current input setting.
+- **Output shadow cooling**, in **output colour**, applies after sharp/accumulation blending and
+  the brightness/flash envelope, immediately before opacity/output. It updates immediately,
+  including on paused material, and does not feed back into metering or accumulation.
+
+Both add a blue/cyan chroma direction with zero linear luminance. Shadow weight is full below
+`Y = 0.015`, fades with a smoothstep and reaches zero at `Y = 0.25`; brighter pixels are
+unchanged. Same-luminance chroma compression avoids clipping RGB channels, and almost-black
+pixels have a smooth safe fallback. These are colour controls rather than brightness changes.
+
+Input cooling affects the accumulation seen by the global gamma, exposure meter and optional
+sharp colour transfer. Nonlinear gamma/exposure can consequently respond to that new colour.
+Output cooling is the last material colour operation and has no such feedback. It evaluates the
+actual post-brightness luminance, so the flash envelope can move pixels into or out of the
+shadow range. The original sharp input is affected by input cooling only when it borrows
+colour from the accumulation.
+
+```kotlin
+val screen = carousel.surfaces[0]
+screen.accumulationShadowCooling = .4f // new contributions; previous history remains
+screen.shadowCooling = .25f           // final output, immediately
+```
+
+Input uses the spare `weights.z` push-constant component in the accumulation shader. Output
+uses `ScreenAppearance.outputTone.x`; the uniform is now 48 bytes. Both are shader arithmetic
+in existing passes: no new RTT, readback or queued headset frame. GPU checks cover luminance,
+highlight neutrality, output ordering, retained input history, clear and neutral bypass.
 
 ## GPU auto exposure
 
@@ -333,7 +369,7 @@ Small finish passes predict bounded endpoints before the current scene draw. Fil
 grading remain GPU-resident: no CPU wait or extra rendered frame is needed. A single-flight
 snapshot of the small statistics buffer updates the markdown table at most four times per
 second after existing graphics completion; it is telemetry only, never the exposure source.
-The presentation uniform remains two `vec4`s; the existing 128-byte draw push block is unchanged.
+The presentation uniform contains three `vec4`s (including the output-toning controls); the existing 128-byte draw push block is unchanged.
 The small statistics record now contains sixteen `vec4`s per screen/linked row, including quantile
 levels, velocities and sketch diagnostics.
 

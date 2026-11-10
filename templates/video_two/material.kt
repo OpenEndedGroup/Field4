@@ -69,6 +69,9 @@ controlGroup("screen exposure") {
         hoverText = "Real-time decay of this screen's accumulated history. Only new selected input pictures contribute; repeated headset draws do not add extra weight.") { view.accumulationHalfLife = it }.also { h -> controlMirrors += { h.set(view.accumulationHalfLife) } }
     slider("Incoming weight", min = 0.0, max = 4.0, step = .01, initialValue = view.accumulationInputWeight,
         hoverText = "Weight of each newly selected delayed picture in this screen's exposure. Zero holds a valid exposure. Clear starts it again without affecting the other screens.") { view.accumulationInputWeight = it }.also { h -> controlMirrors += { h.set(view.accumulationInputWeight) } }
+    slider("Input shadow cooling", min = 0.0, max = 1.0, step = .01, initialValue = view.accumulationShadowCooling.toDouble(),
+        hoverText = "Add blue/cyan to decoded shadow pixels before they enter the temporal accumulation. Preserves linear luminance; full weight below 0.015 fades to zero at 0.25. Applies to new contributions only: existing history retains its old colour and fades according to Half-life. Clear this exposure to rebuild it from the held frame when paused. The exposure meter and sharp colour transfer see the cooled accumulation; the original sharp video is unaffected. Independent of Output shadow cooling. Included in saved looks.") { view.accumulationShadowCooling = it.toFloat() }
+        .also { h -> controlMirrors += { h.set(view.accumulationShadowCooling.toDouble()) } }
     button("Clear this exposure", hoverText = "Reset only this screen's accumulated image and paired-exposure clock. The shared decoder and delay ring keep running.") { down -> if (down) view.clearAccumulation() }
 }
 // Levels grade the displayed accumulated/blurred image, never the stored running mean.
@@ -93,6 +96,13 @@ controlGroup("accumulation presentation") {
     }
 }
 displayOpen("accumulation presentation")
+
+controlGroup("output colour") {
+    slider("Output shadow cooling", min = 0.0, max = 1.0, step = .01, initialValue = view.shadowCooling.toDouble(),
+        hoverText = "Add a gentle blue/cyan tone to the final dark pixels, after sharp/accumulation blending and the brightness/flash envelope, immediately before opacity/output. Zero is neutral. Full shadow weighting below 0.015 linear luminance fades smoothly to zero at 0.25; highlights stay unchanged. Preserves linear luminance, with same-luminance chroma compression to avoid RGB clipping. Does not alter accumulation history, the exposure meter or the sharp colour reference. Included in saved looks.") { view.shadowCooling = it.toFloat() }
+        .also { h -> controlMirrors += { h.set(view.shadowCooling.toDouble()) } }
+}
+displayOpen("output colour")
 
 controlGroup("screen cadence") {
     checkbox("Paired exposure cadence", initialValue = view.exposureCadenceEnabled,
