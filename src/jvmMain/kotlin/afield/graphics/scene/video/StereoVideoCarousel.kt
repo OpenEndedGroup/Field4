@@ -15,10 +15,14 @@ class StereoVideoCarousel(
 ) : AutoCloseable {
     init { require(count in 2..16 && spacingFrames >= 0 && (count - 1L) * spacingFrames < 256) }
     val source = StereoVideoSource(renderer, stereo, "carousel-source", (count - 1) * spacingFrames + 1)
+    val autoExposure = VideoAutoExposure(renderer, count)
+    private val meterBegin = Target { command, _ -> autoExposure.beginFrame(command) }
+    init { stereo.beforeScene["carousel-meter-begin"] = meterBegin }
     val surfaces = List(count) { i ->
         StereoVideoSurface(renderer, stereo, name = "carousel-screen-$i", source = source,
-            automaticDrawing = automaticDrawing).also { it.delayFrames = i * spacingFrames }
+            automaticDrawing = automaticDrawing, sharedAutoExposure = autoExposure, autoExposureIndex = i).also { it.delayFrames = i * spacingFrames }
     }
+    private val meterFinish = Target { command, _ -> autoExposure.record(command, surfaces.map { it.accumulationMeterSource() }) }
     /** Spacing is in published pictures, not headset frames; changing it refills the bounded history. */
     var spacingFrames = spacingFrames
         set(value) {
@@ -82,6 +86,7 @@ class StereoVideoCarousel(
 
     init {
         layout()
+        stereo.beforeScene["carousel-meter-finish"] = meterFinish
         stereo.beforeScene["carousel-screen-order"] = sortTarget
     }
 
@@ -94,8 +99,13 @@ class StereoVideoCarousel(
     }
 
     override fun close() {
-        renderer.runOnQueueThread { stereo.beforeScene.remove("carousel-screen-order", sortTarget) }
+        renderer.runOnQueueThread {
+            stereo.beforeScene.remove("carousel-screen-order", sortTarget)
+            stereo.beforeScene.remove("carousel-meter-begin", meterBegin)
+            stereo.beforeScene.remove("carousel-meter-finish", meterFinish)
+        }
         surfaces.asReversed().forEach { it.close() }
+        autoExposure.close()
         source.close()
     }
 }

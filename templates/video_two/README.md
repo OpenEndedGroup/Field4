@@ -101,7 +101,7 @@ Choose **Capture from screen**, enter a name and press **Store named look**. Eac
 also has **Store from this screen**. The initial look is seeded as **slow blur** once; later
 launches retain the saved key. Storing the same name adds a version.
 
-Keys contain opacity, accumulation mix, half-life, incoming weight, cadence enable/rate, soft-half blur
+Keys contain opacity, accumulation black/white/gamma, local auto-exposure mix, mix, half-life, incoming weight, cadence enable/rate, soft-half blur
 sigma/mix and darkening, plus shared playback speed and, once Ring motion is launched, the six headset-flash settings. Check any collection of screens and press
 **Recall to checked screens**. **Restore playback speed** defaults off: appearance changes keep
 the current shared speed unless explicitly enabled. With no screens selected, this option
@@ -130,6 +130,115 @@ screenLookRecall.cancel()
 
 The shared-look box ticks the bounded scheduler; it loads each recalled key once and keeps at
 most one pending arrival per selected screen. No movie seek or GPU readback is involved.
+
+## Accumulation presentation levels
+
+Each screen's material box has an **accumulation presentation** group with black level, white
+level and presentation gamma sliders, plus **Reset presentation levels**. Defaults are 0, 1
+and 1. Levels change the displayed accumulated image; they never write into its running mean,
+reset an exposure or change the selected movie frames.
+
+Black/white normalization acts on linear-light RGB after the held/blurred exposure is selected:
+
+```text
+normalized = clamp((accumulatedRGB - black) / (white - black), 0, 1)
+presented = normalized ^ (1 / gamma)
+```
+
+Gamma above one brightens midtones; below one darkens them. White below black reverses contrast.
+Coincident endpoints use a tiny signed span, producing a stable near-threshold instead of NaNs.
+The neutral triplet bypasses this calculation exactly, including for values above one.
+
+Order: accumulated/blurred image → levels → paired soft-half darkening → sharp/accumulated mix
+→ headset-clock brightness envelope → opacity blend with the screens behind. The sharp branch
+is unaffected. **Accumulation mix must be above zero to see the levels.** Output transfer
+encoding and the native ten-bit video decode remain separate.
+
+All three values are stored in new screen looks, including staggered recalls. Earlier keys that
+lack them retain the current levels. The controls mirror recalled values, and their ranges are
+black/white −2 to +4 and gamma 0.05 to 8. The Reset button changes just these three parameters.
+
+## GPU auto exposure
+
+**Shared auto exposure** meters every valid accumulation buffer in linear light, including both
+eyes. Choose **Auto: per screen** for independent levels or **Auto: linked screens** for shared
+levels. **Manual levels** bypasses automatic endpoints. Both the meter and automatic grading
+start off, preserving the saved look. Accumulation must have been enabled to create a buffer.
+
+The GPU reduces RGB and luminance to min, mean and max. Linked mode pools the raw extrema and
+pixel-weighted means before filtering. Hidden screens and held/frozen buffers participate while
+their accumulations remain valid. Measurements precede presentation, paired blur/darkening,
+flashing and opacity, so the exposure never measures its own correction.
+
+Each statistic/channel keeps its own level and velocity. Two **alpha-beta pairs**, one rising
+and one falling, use the recurrence from Field's `AlphaBetaFilter`:
+
+```text
+predicted = level + velocity * dt
+residual = measurement - predicted
+level = predicted + alpha * residual
+velocity = velocity + beta * residual / dt
+```
+
+A measurement's direction selects the pair; when unchanged, the residual selects it so the
+tracker can settle. Gains apply per meter sample (default 12 Hz), rather than per headset frame.
+Between samples the GPU predicts from velocity for up to one sample interval. **Velocity cap**
+optionally limits that velocity; zero leaves it free. **Reset exposure trackers** seeds from the
+next valid measurement and clears velocities, without clearing any accumulation.
+
+Black is predicted minimum luminance minus **Black padding**; white is predicted maximum plus
+**White padding**. Separate black/white bounds and **Maximum contrast gain** constrain these
+endpoints even during prediction overshoot. Positive padding reserves headroom/footroom;
+negative padding clips more. Mean is tracked and available to code, while gamma stays manual.
+
+**Global auto mix × each screen's Auto exposure mix** blends automatic endpoints with manual
+black/white. Local mix belongs to screen looks, including staggered recalls. Global mode,
+filter gains, bounds and meter rate persist together in the shared box's settings property.
+Turning **Update GPU meter** off freezes existing statistics and endpoints; select **Manual
+levels** to stop applying them. Missing/invalid measurements fall back to manual endpoints.
+
+```kotlin
+import afield.graphics.scene.video.VideoAutoExposure
+
+carousel.autoExposure.settings = carousel.autoExposure.settings.copy(
+    enabled = true, mode = VideoAutoExposure.Mode.LINKED,
+    risingAlpha = .25f, risingBeta = .05f,
+    fallingAlpha = .1f, fallingBeta = .01f,
+    blackPadding = .01f, whitePadding = .02f,
+    minimumSpan = .05f, // maximum contrast gain = 20
+)
+carousel.surfaces[0].autoExposureMix = .5f
+carousel.autoExposure.reset()
+```
+
+The settings controls validate edits atomically and report rejected combinations. When setting
+`settings` directly from another box, update the shared box's `videoExposureSettings` JSON too
+if that change should survive reopening; the controls already do this automatically.
+
+Changed images are scanned at the meter cadence; paused buffers reuse their previous reduction.
+Small finish passes predict bounded endpoints before the current scene draw. Filtering and
+grading remain GPU-resident: no CPU wait or extra rendered frame is needed. A single-flight
+snapshot of the small statistics buffer updates the markdown table at most four times per
+second after existing graphics completion; it is telemetry only, never the exposure source.
+The presentation uniform is now two `vec4`s; the existing 128-byte draw push block is unchanged.
+
+Verification covers finite pixel counts and non-aligned image sizes, pooled statistics,
+directional tracking against the existing CPU filter, prediction, frozen-image scan reuse,
+bounds, invalid buffers, settings persistence and the actual presentation shader's auto mix.
+The smoke IDs are `four.stereo-video.auto-exposure`, `four.stereo-video.precision` and
+`four.stereo-video.carousel`.
+
+```kotlin
+val screen = carousel.surfaces[0]
+screen.accumulationBlackLevel = .04f
+screen.accumulationWhiteLevel = .7f
+screen.accumulationGamma = 1.5f
+```
+
+The values use the three spare components of the existing 16-byte `ScreenAppearance` uniform.
+No additional RTT, readback, history image or queued frame is introduced. The GPU regression
+checks the transfer curve, sharp bypass, inversion, equal endpoints and neutral recovery of the
+original accumulated pixels.
 
 ## Ring motion and the headset zoetrope
 

@@ -1,6 +1,7 @@
 package afield.examples.four
 
 import afield.graphics.scene.video.StereoVideoSurface
+import afield.graphics.scene.video.VideoAutoExposure
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.targets.MultiviewStereoTarget
 import afield.graphics.vulkan.util.Options
@@ -153,6 +154,52 @@ object StereoVideoPrecisionSmoke {
             check(movie.accumulationSamples == 1L && cleared[0] > .99f && cleared[1023] < .001f) {
                 "Clear did not replace the previous exposure with the held source frame"
             }
+            movie.accumulationBlackLevel = .12f
+            movie.accumulationWhiteLevel = .78f
+            movie.accumulationGamma = 1.7f
+            frame()
+            val levelled = read()
+            for (x in 0..1023) {
+                val expected = ((cleared[x] - .12f) / .66f).coerceIn(0f, 1f).pow(1f / 1.7f)
+                check(abs(levelled[x] - expected) < .002f) { "Accumulation levels failed at $x" }
+            }
+            check(movie.accumulationSamples == 1L) { "Presentation levels fed back into accumulation" }
+            movie.accumulationMix = 0f
+            frame()
+            val sharpBypass = read()
+            for (x in 0..1023) check(abs(sharpBypass[x] - cleared[x]) < .001f) { "Levels changed sharp input at $x" }
+            movie.accumulationMix = 1f
+            movie.accumulationBlackLevel = 1f
+            movie.accumulationWhiteLevel = 0f
+            movie.accumulationGamma = 1f
+            frame()
+            val inverted = read()
+            for (x in 0..1023) check(abs(inverted[x] - (1f - cleared[x])) < .002f) { "Reversed levels failed at $x" }
+            movie.accumulationBlackLevel = .4f
+            movie.accumulationWhiteLevel = .4f
+            frame()
+            check(read().all { it.isFinite() && it in 0f..1f }) { "Coincident black/white levels produced invalid pixels" }
+            movie.accumulationBlackLevel = 0f
+            movie.accumulationWhiteLevel = 1f
+            frame()
+            val neutralLevels = read()
+            for (x in 0..1023) check(abs(neutralLevels[x] - cleared[x]) < .001f) { "Presentation changed stored history at $x" }
+            movie.autoExposure.settings = VideoAutoExposure.Settings(enabled = true, mode = VideoAutoExposure.Mode.PER_SCREEN,
+                risingAlpha = 1f, risingBeta = 0f, fallingAlpha = 1f, fallingBeta = 0f,
+                blackPadding = -.2f, whitePadding = -.2f, blackMaximum = 1f, whiteMinimum = 0f, whiteMaximum = 2f)
+            val meterDeadline = System.nanoTime() + 10_000_000_000L
+            while (movie.autoExposure.latest?.screens?.firstOrNull()?.valid != true && System.nanoTime() < meterDeadline) frame()
+            check(movie.autoExposure.latest?.screens?.firstOrNull()?.valid == true) { "Video meter never became valid: ${movie.autoExposure.error}" }
+            val automatic = read()
+            for (x in 0..1023) check(abs(automatic[x] - ((cleared[x] - .2f) / .6f).coerceIn(0f, 1f)) < .002f) {
+                "GPU automatic endpoints did not reach the presentation shader at $x"
+            }
+            movie.autoExposureMix = 0f
+            frame()
+            val manualBypass = read()
+            for (x in 0..1023) check(abs(manualBypass[x] - cleared[x]) < .001f) { "Per-screen auto mix failed to bypass at $x" }
+            movie.autoExposureMix = 1f
+            movie.autoExposure.settings = movie.autoExposure.settings.copy(enabled = false, mode = VideoAutoExposure.Mode.OFF)
             // The real held-exposure + Gaussian path must preserve eye separation and precision.
             // A paused movie holds its first (soft/dark) half, making the readback deterministic.
             movie.exposureCadenceEnabled = true
