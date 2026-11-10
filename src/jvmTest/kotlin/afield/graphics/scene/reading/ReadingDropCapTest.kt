@@ -25,7 +25,7 @@ class ReadingDropCapTest {
         val shape = shape(run)
         val initial = shape.measure(run.initial.start, run.initial.endExclusive)
         val baseH = readingInkBounds(layoutText("H", font).toFLine().transform { afield.math.linalg.Vector3f(it.x,-it.y,0f) })!!.top
-        assertEquals(baseH, initial.ink.top, .02f)
+        assertEquals(baseH, initial.ink.top, .1f) // font-outline quantization is below a tenth of a font unit
         assertEquals((-2 * font.lineHeight).toFloat(), initial.ink.bottom, .02f)
         assertEquals(initial.ink.bottom, initial.noDescenders.bottom, .02f)
         val layout = shape.layout!!
@@ -68,6 +68,38 @@ class ReadingDropCapTest {
         val span = run.word("softly")
         assertTrue(shape.measure(span.start, span.endExclusive).hasInk)
         assertTrue(shape.glyphFaces.getValue(span.start).awtFont.isItalic)
+    }
+
+    @Test fun oneLineDescenderInitialDoesNotMoveTheBodyBaseline() {
+        val graph = readingDiagram {
+            text("p", "gentle water", point("a", 0, 0)) { dropCap(lines = 1) }
+        }
+        val run = graph.text("p")
+        val shape = shape(run)
+        assertEquals(0f, shape.measure().baseline, .001f)
+        val initial = shape.measure(0, 1)
+        assertEquals(0f, initial.ink.bottom, .1f)
+        assertTrue(initial.baseline > 0f)
+    }
+
+    @Test fun renderPartsSharePoseAndBlurWhileMeasurementsStayLogical() {
+        val graph = readingDiagram {
+            text("p", text, point("a", 0, 0)) { dropCap(); blurCapacity = 1f; blur = .4f }
+        }
+        val run = graph.text("p")
+        val logical = shape(run)
+        val first = logical.copy(text = "initial render part")
+        val second = logical.copy(text = "body render part")
+        val partitioned = logical.copy(renderParts = listOf(first, second))
+        val player = ReadingDiagramPlayer(graph, font, mapOf(run.id to partitioned),
+            diagramScore(graph, 10.0) {}, mapOf(run to partitioned))
+        player.update(0.0)
+        assertEquals(2, player.maximumLabels)
+        assertEquals(listOf(first, second), player.labels.map { it.shape })
+        assertEquals(player.labels[0].position, player.labels[1].position)
+        assertEquals(listOf(.4f, .4f), player.labels.map { it.blur })
+        assertEquals(setOf(first, second), player.blurRequests.keys)
+        assertEquals(logical.measure(), player.frame().measure(run))
     }
 
     @Test fun invalidInitialAndParametersFailBeforeNativePreparation() {

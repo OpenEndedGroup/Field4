@@ -58,8 +58,10 @@ internal constructor(private val player: ReadingDiagramPlayer, private val time:
         val layout = requireNotNull(player.shape(run).layout)
         if (index == run.text.length || run.text[index] == '\n') {
             val line = layout.lines[run.text.take(index).count { it == '\n' }]
-            return textPoint(run, line.advanceWidth.toFloat(),
-                -(line.glyphs.minOfOrNull { it.origin.y + it.offset.y } ?: line.baselineY.toFloat()))
+            val bodyY = line.baselineY.toFloat()
+            val baselineY = if (line.glyphs.any { kotlin.math.abs(it.origin.y + it.offset.y - bodyY) < 1e-4f }) bodyY
+                else line.glyphs.minOfOrNull { it.origin.y + it.offset.y } ?: bodyY
+            return textPoint(run, line.advanceWidth.toFloat(), -baselineY)
         }
         val glyph =
             requireNotNull(layout.glyphs.firstOrNull { it.charIndex == index }) {
@@ -148,13 +150,13 @@ class ReadingDiagramPlayer(
             val requests = LinkedHashMap<ReadingText, Float>()
             for (run in diagram.texts) {
                 val amount = maxOf(run.blurCapacity, run.blur + (playback.score.blurCapacities[run] ?: 0f))
-                if (amount > 0f) requests.merge(shape(run), amount, ::maxOf)
+                if (amount > 0f) for (part in shape(run).renderShapes) requests.merge(part, amount, ::maxOf)
             }
             return requests
         }
 
     override val maximumLabels
-        get() = diagram.texts.size
+        get() = diagram.texts.sumOf { shape(it).renderShapes.size }
 
     override val geometry = DiagramGeometry()
     override val labels = ArrayList<ReadingLabel>()
@@ -221,20 +223,27 @@ class ReadingDiagramPlayer(
                             layout.toFLine(filled = true, stroked = false).copy().transform { p ->
                                 Vector3f(p.x - layout.advanceWidth.toFloat() * .5f, -p.y, 0f)
                             }
-                        ReadingText(
-                            run.text,
-                            layout.advanceWidth.toFloat(),
-                            outline,
-                            SlugPath.compile(outline, helper, .01f),
-                            layout,
-                            (listOf(key.face) + key.ranges.map { it.face }).distinct(),
-                            layout.glyphs.associate { g ->
-                                g.charIndex to
-                                    (key.ranges
-                                        .lastOrNull { g.charIndex in it.start until it.end }
-                                        ?.face ?: key.face)
-                            },
-                        )
+                        val faces = (listOf(key.face) + key.ranges.map { it.face }).distinct()
+                        val glyphFaces = layout.glyphs.associate { g ->
+                            g.charIndex to (key.ranges.lastOrNull { g.charIndex in it.start until it.end }?.face ?: key.face)
+                        }
+                        val parts = if (key.dropCap == null) emptyList() else {
+                            // Slug's per-path band offsets are 16-bit. Keep the large initial and
+                            // each body line in separate atlases, in the SAME paragraph coordinates.
+                            layout.glyphs.groupBy { if (it.charIndex < key.dropCap.end) -1 else it.lineIndex }
+                                .values.filter { glyphs -> glyphs.any { !it.glyph.isBlank } }.map { glyphs ->
+                                    val partLayout = TextLayout(layout.text, layout.typeface, glyphs, layout.lines,
+                                        layout.tracking, layout.lineHeight, layout.align)
+                                    val partOutline = partLayout.toFLine(filled = true, stroked = false).copy().transform { p ->
+                                        Vector3f(p.x - layout.advanceWidth.toFloat() * .5f, -p.y, 0f)
+                                    }
+                                    ReadingText(run.text, layout.advanceWidth.toFloat(), partOutline,
+                                        SlugPath.compile(partOutline, helper, .01f), layout, faces, glyphFaces)
+                                }
+                        }
+                        ReadingText(run.text, layout.advanceWidth.toFloat(), outline,
+                            parts.firstOrNull()?.slug ?: SlugPath.compile(outline, helper, .01f),
+                            layout, faces, glyphFaces, parts)
                     }
                 runs[run] = shape
                 progress(i + 1, diagram.texts.size, run.text)
@@ -342,10 +351,10 @@ class ReadingDiagramPlayer(
         labels.clear()
         for (text in diagram.texts) {
             val p = frame.pose(text)
-            if (p.opacity * text.color.w > 1e-5f)
+            if (p.opacity * text.color.w > 1e-5f) for (part in shape(text).renderShapes)
                 labels.add(
                     ReadingLabel(
-                        shape(text),
+                        part,
                         frame.textPosition(text),
                         p.opacity,
                         frame.textScale(text),
