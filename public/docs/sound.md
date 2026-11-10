@@ -484,7 +484,8 @@ up and damper noise doubled; then the microphone at the middle of the strings; t
 drifting along the strings while the stiffness swings at 180 Hz with the fundamental pinned:
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/sound_piano/piano-close.wav" audio-spec="piano-close" audio-renderer="afield.audio.synth.PianoDocs" embed=true hidden=true name="sound-doc-piano-close"}
-// Piano(dry = Param(1f), room = Param(0f), micPosition = Param(0.08f), thump = Param(1f), keyNoise = Param(1f), damperNoise = Param(2f))
+// Piano(dry = Param(1f), room = Param(0f), micPosition = Param(0.08f), thump = Param(1f), keyNoise = Param(1f),
+// damperNoise = Param(2f))
 ```
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/sound_piano/piano-close-middle.wav" audio-spec="piano-close-middle" audio-renderer="afield.audio.synth.PianoDocs" embed=true hidden=true name="sound-doc-piano-close-middle"}
@@ -511,9 +512,19 @@ runs the same code the engine runs, as fast as it can, and returns the samples;
 what you hear:
 
 ```diffstatic {data-lang=kotlin}
-val r = pianoRender(6.0, Piano(dry = Param(1f), thump = Param(1f))) { play(pat("[a2,e3] [e4 a4 c5 e5]"), cycles = 4, cps = 0.8, startFrame = 0) }
+val r = pianoRender(6.0, Piano(dry = Param(1f), thump = Param(1f))) {
+    play(pat("[a2,e3] [e4 a4 c5 e5]"), cycles = 4, cps = 0.8, startFrame = 0)
+}
 showPianoAudio(r, "close")
-display("spectrum", pianoPlotSvg(pianoSpectrumDb(r.mono, startSample = 22_050).copyOfRange(0, 1_860), "close mic", xLabel = "Hz", yLabel = "dB"))
+display(
+    "spectrum",
+    pianoPlotSvg(
+        pianoSpectrumDb(r.mono, startSample = 22_050).copyOfRange(0, 1_860),
+        "close mic",
+        xLabel = "Hz",
+        yLabel = "dB",
+    ),
+)
 ```
 
 Eight seconds of A4 render in about one second. The
