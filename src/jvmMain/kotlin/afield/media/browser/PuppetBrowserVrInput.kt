@@ -127,7 +127,7 @@ class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
         fun axis(stick: Float, pad: Float): Double {
             val raw = if (kotlin.math.abs(stick) > 0.12f) stick else pad
             val magnitude = ((kotlin.math.abs(raw) - 0.12) / 0.88).coerceIn(0.0, 1.0)
-            return kotlin.math.sign(raw.toDouble()) * magnitude * magnitude
+            return kotlin.math.sign(raw.toDouble()) * Math.pow(magnitude, 1.5)
         }
         val seconds = elapsedSeconds.coerceIn(0.0, 0.05)
         val (origin, direction) = PuppetBrowserPanel.controllerRay(state, Vector3f(0f, 0f, -1f))

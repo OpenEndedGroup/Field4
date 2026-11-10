@@ -183,7 +183,7 @@ class PuppetBrowserVrInputTest {
         val state = ControllerState(active = true, poseValid = true, thumbstickY = 0.5f)
         val pointer = assertNotNull(input.controller("right", state, 1.0 / 120))
         assertTrue(assertNotNull(panel.raycast(pointer.origin, pointer.direction)).onPanel)
-        assertEquals(-10.0 * Math.pow((0.5 - 0.12) / 0.88, 2.0), pointer.scrollY, 1e-6)
+        assertEquals(-10.0 * Math.pow((0.5 - 0.12) / 0.88, 1.5), pointer.scrollY, 1e-6)
         state.poseValid = false
         assertNull(input.controller("right", state, 0.01))
     }
@@ -195,6 +195,9 @@ class PuppetBrowserVrInputTest {
         assertEquals(0.0, horizontal.scrollY, 1e-9)
         input.update(listOf(horizontal))
         assertEquals(10.0, events.last { it.type == BrowserPointerEventType.WHEEL }.deltaX, 1e-6)
+        state.thumbstickX = -0.5f
+        val left = assertNotNull(input.controller("right", state, 1.0 / 120))
+        assertEquals(-10.0 * Math.pow((0.5 - 0.12) / 0.88, 1.5), left.scrollX, 1e-6)
         state.thumbstickX = 0f
         val stopped = assertNotNull(input.controller("right", state, 1.0 / 120))
         assertEquals(0.0, stopped.scrollX, 1e-9)
