@@ -758,6 +758,7 @@ private fun kValueKind(v: KValue): String = when (v) {
     is KValue.StackSL -> "stacksl"
     is KValue.Str -> "string"
     is KValue.SourceBlock -> "sourceBlock"
+    is KValue.SourceFunction -> "sourceFunction"
 }
 
 private fun typeLabelFor(kind: String, values: List<KValue>): String = when (kind) {
@@ -767,6 +768,7 @@ private fun typeLabelFor(kind: String, values: List<KValue>): String = when (kin
     "num" -> values.filterIsInstance<KValue.Num>().map { it.kind.name.lowercase() }.distinct().sorted().joinToString("/")
     "cameraPose" -> "pose"
     "sourceBlock" -> "source"
+    "sourceFunction" -> "function"
     else -> kind
 }
 
@@ -806,6 +808,7 @@ private fun variantsOf(present: List<Pair<Int, KValue>>): List<SlotVariant> {
         is KValue.Str -> v.value
         is KValue.StackSL -> v.value
         is KValue.SourceBlock -> v.source
+        is KValue.SourceFunction -> v.source
         else -> v.toString()
     }
     return present
@@ -994,7 +997,7 @@ private fun summariseSlot(
             summary("${formatSlotNumber(spread)}° arc", SlotDisplay.Poses(points, fileIds, spread, bands))
         }
 
-        "string", "stacksl", "sourceBlock" -> {
+        "string", "stacksl", "sourceBlock", "sourceFunction" -> {
             val variants = variantsOf(present)
             val text = if (variants.size == 1) "1 value" else "${variants.size} variants"
             summary(text, SlotDisplay.Variants(variants))

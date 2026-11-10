@@ -1700,6 +1700,19 @@ Walkthrough: [Blending two programs](keyframer_examples.md#blending-two-programs
 
 [Open →](offline.html?file=assets/agent_transcripts/keyframe_code_blend/metadata.edn)
 
+### ordered_group_keyframes
+
+One look describes a whole ordered collection: each lane is a constant or a source-backed
+function of the member index. This five-member example saves and restores a cooling rule,
+changes an inherited property, blends outputs with staggered progress, and saves a midpoint.
+A second rule comes from a different box, retaining its own context through the saved blend.
+An invalid value at the final member leaves the previous rules intact. The example uses CPU
+values and the real Kotlin compiler, so it needs no renderer or headset.
+
+Walkthrough: [Ordered groups](keyframer_examples.md#ordered-groups-one-rule-for-a-whole-look).
+
+[Open →](offline.html?file=assets/agent_transcripts/ordered_group_keyframes/metadata.edn)
+
 ### fn_rewrite_kotlin_boxes
 
 The same hazard as the pair above, in the rewrite language, with the
