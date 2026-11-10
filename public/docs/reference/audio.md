@@ -4,7 +4,7 @@
 
 Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. `SoundPathMap.kt` is the one to read first: the declared, re-derived-from-the-code map of every route Field has from a box to something audible, which [Making a sound in Field: every path there is](../sound_paths.md) renders as a page. [Sonic Pi](../sonic_pi.md) covers owned mode in full.
 
-91 source file(s), 2360 public symbol(s), 1226 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+92 source file(s), 2363 public symbol(s), 1229 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -4731,6 +4731,21 @@ The sound on `chain_petri_sparks.md`: the page's Petri net, played from the pinn
 | <a id="petrisparksdocs-kt--petrisparksdocs--render"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">net</span><span class="p">:</span> <span class="nc">PetriNet</span><span class="p">,</span> <span class="n">cycles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatSoundDocs</span><span class="p">.</span><span class="nc">Stereo</span></code>](source/jvmMain/afield/audio/synth/PetriSparksDocs/#L102) | Plays `cycles` cycles of `net`'s emitted sounds from the pinned Dirt-Samples, strictly. |
 | <a id="petrisparksdocs-kt--petrisparksdocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PetriSparksDocs/#L109) | Offline-render scene `name` and write a stereo 16-bit PCM WAV to `outPath`. |
 | <a id="petrisparksdocs-kt--petrisparksdocs--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PetriSparksDocs/#L118) |  |
+
+## PianoDocs.kt { #pianodocs-kt }
+
+`src/jvmMain/kotlin/afield/audio/synth/PianoDocs.kt` — [read the source](source/jvmMain/afield/audio/synth/PianoDocs/)
+
+### PianoDocs { #pianodocs-kt-pianodocs }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PianoDocs</span></code>](source/jvmMain/afield/audio/synth/PianoDocs/#L11)
+
+The piano clips on `public/docs/sound.md`, rendered offline for the docs runner's `audio="…"` fences (`renderWav(scene, path)`, see `public/docs_hooks.py` `ensure_audio`).
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="pianodocs-kt--pianodocs--scenes"></a>[<code class="highlight"><span class="k">val</span> <span class="n">scenes</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">PianoRender</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/PianoDocs/#L18) | Every scene by name: the piano it plays through. |
+| <a id="pianodocs-kt--pianodocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PianoDocs/#L41) | Offline-renders scene `name` to a stereo 16-bit WAV at `outPath`, peak-normalised to 0.89. |
 
 ## PrettyPrint.kt { #prettyprint-kt }
 

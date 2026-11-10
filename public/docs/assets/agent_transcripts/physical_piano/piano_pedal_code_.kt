@@ -19,7 +19,7 @@ val dry = take(1f, 0f)
 showPianoAudio(up, "pedal up")
 showPianoAudio(down, "pedal down")
 showPianoAudio(dry, "pedal down, no sympathetic strings")
-listOf("pedal up", "pedal down", "pedal down, no sympathetic strings").forEach { displayOpen(it) }
+["pedal up", "pedal down", "pedal down, no sympathetic strings"].forEach { displayOpen(it) }
 println(
     "level from 2.5 s to 5 s: pedal up %.1f dB, down %.1f dB, down without sympathetic strings %.1f dB"
         .format(tailDb(up), tailDb(down), tailDb(dry)),

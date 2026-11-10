@@ -1,0 +1,15 @@
+// A close-mic'd piano on the audio engine. Every slider is a Param read on the audio thread.
+val dry = Param(1f)
+val mic = Param(0.12f)
+val thump = Param(1f)
+val keys = Param(1f)
+val room = Param(0f)
+slider("board .. close mic", 0.0, 1.0, initialValue = 1.0, channel = "dry", onUpdate = { dry.base = it.toFloat() })
+slider("mic position", 0.0, 1.0, initialValue = 0.12, channel = "mic", onUpdate = { mic.base = it.toFloat() })
+slider("thump", 0.0, 4.0, initialValue = 1.0, channel = "thump", onUpdate = { thump.base = it.toFloat() })
+slider("key noise", 0.0, 4.0, initialValue = 1.0, channel = "keys", onUpdate = { keys.base = it.toFloat() })
+slider("room", 0.0, 1.0, initialValue = 0.0, channel = "room", onUpdate = { room.base = it.toFloat() })
+["dry", "mic", "thump", "keys", "room"].forEach { displayOpen(it) }
+val piano = Piano(dry = dry, micPosition = mic, thump = thump, keyNoise = keys, room = room)
+piano.play(pat("<[a2,e3] [f2,c3]> [e4 a4 c5 e5]"), cycles = 32, cps = 0.8)
+audio(piano, gain = 1f)

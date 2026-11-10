@@ -1,6 +1,6 @@
 // One of C3's strings, struck at velocity 0.8, drawn at five moments after the hammer
 // leaves it. The kink travelling along it is the hammer's blow.
-val times = listOf(0.0, 0.0005, 0.001, 0.002, 0.004)
+val times = [0.0, 0.0005, 0.001, 0.002, 0.004]
 val plots =
     times.joinToString("") { t ->
         pianoPlotSvg(

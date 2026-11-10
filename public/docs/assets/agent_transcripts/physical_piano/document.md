@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. piece
@@ -28,9 +28,58 @@ showPianoAudio(r, "piece")
 displayOpen("piece")
 ```
 
-## 2. pedal
+## 2. close
 
-<!-- field-box id="piano_pedal" index="1" -->
+<!-- field-box id="piano_close" index="1" -->
+
+### Narrative
+
+From `code`
+
+The same phrase twice: as the audience hears it, through the soundboard and room, and
+through a microphone a few centimetres over the strings, 8% of the way along them, with
+the hammer thump and the keys turned up and the room off.
+
+```edn [field-box id="piano_close" role="properties"]
+{"id" "piano_close" "index" 1 "name" "close" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "close" "_tombstone" false "frame" #afield/rect [20.0 1960.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_close_code_.kt" "lines" 30 "characters" 1124 "sha256" "097c5f33681b6f7c035a7542936b73dbb85ce90a40b8d1807fea9ead49fc1aee"}]}
+```
+
+```kotlin [field-property box="piano_close" name="code" path="piano_close_code_.kt"]
+/*
+The same phrase twice: as the audience hears it, through the soundboard and room, and
+through a microphone a few centimetres over the strings, 8% of the way along them, with
+the hammer thump and the keys turned up and the room off.
+*/
+val tune = pat("<[a2,e3] [f2,c3]> [e4 a4 c5 e5]")
+fun take(p: Piano) = pianoRender(6.0, p) { play(tune, cycles = 4, cps = 0.8, startFrame = 0) }
+val board = take(Piano(sampleRate = 44_100))
+val close = take(
+    Piano(
+        sampleRate = 44_100,
+        dry = Param(1f),
+        room = Param(0f),
+        micPosition = Param(0.08f),
+        thump = Param(1f),
+        keyNoise = Param(1f),
+        damperNoise = Param(2f),
+    ),
+)
+showPianoAudio(board, "soundboard")
+showPianoAudio(close, "close mic")
+fun spectrum(r: PianoRender, title: String) = pianoPlotSvg(
+    pianoSpectrumDb(r.mono, startSample = 22_050, fftSize = 32_768).copyOfRange(0, 3_715),
+    title,
+    height = 140,
+    xLabel = "0-5 kHz",
+    yLabel = "dB",
+)
+display("spectra", spectrum(board, "soundboard") + spectrum(close, "close mic at 0.08"))
+["soundboard", "close mic", "spectra"].forEach { displayOpen(it) }
+```
+
+## 3. pedal
+
+<!-- field-box id="piano_pedal" index="2" -->
 
 ### Narrative
 
@@ -41,7 +90,7 @@ string, so the struck notes ring on and the unstruck strings answer them. The th
 keeps the pedal down but turns the sympathetic strings off (coupling = 0).
 
 ```edn [field-box id="piano_pedal" role="properties"]
-{"id" "piano_pedal" "index" 1 "name" "pedal" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pedal" "_tombstone" false "frame" #afield/rect [760.0 760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_pedal_code_.kt" "lines" 26 "characters" 1230 "sha256" "4a74763041b87141ccb84a8da0f2dfc3e4c415cca8bdf9a57d771ca6c45d940d"}]}
+{"id" "piano_pedal" "index" 2 "name" "pedal" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pedal" "_tombstone" false "frame" #afield/rect [760.0 760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_pedal_code_.kt" "lines" 26 "characters" 1224 "sha256" "7f994e31f2032fe8c1228e3edeaf8736d6fe9f30a08c7636e56e6820da6d3856"}]}
 ```
 
 ```kotlin [field-property box="piano_pedal" name="code" path="piano_pedal_code_.kt"]
@@ -66,16 +115,16 @@ val dry = take(1f, 0f)
 showPianoAudio(up, "pedal up")
 showPianoAudio(down, "pedal down")
 showPianoAudio(dry, "pedal down, no sympathetic strings")
-listOf("pedal up", "pedal down", "pedal down, no sympathetic strings").forEach { displayOpen(it) }
+["pedal up", "pedal down", "pedal down, no sympathetic strings"].forEach { displayOpen(it) }
 println(
     "level from 2.5 s to 5 s: pedal up %.1f dB, down %.1f dB, down without sympathetic strings %.1f dB"
         .format(tailDb(up), tailDb(down), tailDb(dry)),
 )
 ```
 
-## 3. a4
+## 4. a4
 
-<!-- field-box id="piano_a4" index="2" -->
+<!-- field-box id="piano_a4" index="3" -->
 
 ### Narrative
 
@@ -84,7 +133,7 @@ From `code`
 A4 at velocity 0.5 for eight seconds, without the room: `./coopiano A4 0.5 8` in coopiano.
 
 ```edn [field-box id="piano_a4" role="properties"]
-{"id" "piano_a4" "index" 2 "name" "a4" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a4" "_tombstone" false "frame" #afield/rect [20.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_a4_code_.kt" "lines" 9 "characters" 593 "sha256" "789c1bd2e57d62cfab2944b92a98b02cc19a73d66a26e19dbefc482dd63476d9"}]}
+{"id" "piano_a4" "index" 3 "name" "a4" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a4" "_tombstone" false "frame" #afield/rect [20.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_a4_code_.kt" "lines" 9 "characters" 593 "sha256" "789c1bd2e57d62cfab2944b92a98b02cc19a73d66a26e19dbefc482dd63476d9"}]}
 ```
 
 ```kotlin [field-property box="piano_a4" name="code" path="piano_a4_code_.kt"]
@@ -99,9 +148,9 @@ displayOpen("spectrum")
 println("peak %.3f, %.1f s".format(r.peak, r.seconds))
 ```
 
-## 4. wobble
+## 5. wobble
 
-<!-- field-box id="piano_wobble" index="3" -->
+<!-- field-box id="piano_wobble" index="4" -->
 
 ### Narrative
 
@@ -112,7 +161,7 @@ of normal 110 times a second, which puts sidebands on every ringing partial. The
 hardness drifts between a tenth and twice normal every few seconds, read at each strike.
 
 ```edn [field-box id="piano_wobble" role="properties"]
-{"id" "piano_wobble" "index" 3 "name" "wobble" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "wobble" "_tombstone" false "frame" #afield/rect [20.0 1360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_wobble_code_.kt" "lines" 17 "characters" 908 "sha256" "60557111031264120c8895b0bedf3b77835b85b9a0fe55bcbb4aab23e2fbf00a"}]}
+{"id" "piano_wobble" "index" 4 "name" "wobble" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "wobble" "_tombstone" false "frame" #afield/rect [20.0 1360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_wobble_code_.kt" "lines" 17 "characters" 908 "sha256" "60557111031264120c8895b0bedf3b77835b85b9a0fe55bcbb4aab23e2fbf00a"}]}
 ```
 
 ```kotlin [field-property box="piano_wobble" name="code" path="piano_wobble_code_.kt"]
@@ -135,9 +184,9 @@ displayOpen("wobble")
 displayOpen("wobble spectrum")
 ```
 
-## 5. live
+## 6. live
 
-<!-- field-box id="piano_live" index="4" -->
+<!-- field-box id="piano_live" index="5" -->
 
 ### Narrative
 
@@ -147,7 +196,7 @@ The piano on the audio engine. Move the sliders while it plays: each one is a Pa
 every sample, so a slider and an oscillator are the same kind of input.
 
 ```edn [field-box id="piano_live" role="properties"]
-{"id" "piano_live" "index" 4 "name" "live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "live" "_tombstone" false "frame" #afield/rect [760.0 1360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_live_code_.kt" "lines" 19 "characters" 881 "sha256" "dfbbc972a7c95672d686ad6dc8a8227abd695130f9340d59cff8d2e152fc814b"}]}
+{"id" "piano_live" "index" 5 "name" "live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "live" "_tombstone" false "frame" #afield/rect [760.0 1360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_live_code_.kt" "lines" 20 "characters" 1005 "sha256" "115795f6306892778db9c64e5871e8dc34ae765488edb3f7b4a878359ecc292f"}]}
 ```
 
 ```kotlin [field-property box="piano_live" name="code" path="piano_live_code_.kt"]
@@ -157,24 +206,25 @@ val pedal = Param(0f)
 val stiffness = Param(1f)
 val board = Param(1f)
 slider("pedal", 0.0, 1.0, initialValue = 0.0, channel = "pedal", onUpdate = { pedal.base = it.toFloat() })
+// stiffness is exponential: the slider runs -1..2.5, the strings x0.1..x316
 slider(
-    "string stiffness",
-    0.0,
-    6.0,
-    initialValue = 1.0,
+    "string stiffness (log10)",
+    -1.0,
+    2.5,
+    initialValue = 0.0,
     channel = "stiffness",
-    onUpdate = { stiffness.base = it.toFloat() },
+    onUpdate = { stiffness.base = Math.pow(10.0, it).toFloat() },
 )
 slider("soundboard", 0.0, 2.0, initialValue = 1.0, channel = "soundboard", onUpdate = { board.base = it.toFloat() })
-listOf("pedal", "stiffness", "soundboard").forEach { displayOpen(it) }
-val piano = Piano(pedal = pedal, inharmonicity = stiffness, soundboard = board)
+["pedal", "stiffness", "soundboard"].forEach { displayOpen(it) }
+val piano = Piano(pedal = pedal, inharmonicity = stiffness, soundboard = board, pinFundamental = Param(1f))
 piano.play(pat("<[c3,g3] [a2,e3] [f2,c3] [g2,d3]> [e4 g4 c5 g4]"), cycles = 32, cps = 0.8)
 audio(piano, gain = 1f)
 ```
 
-## 6. string
+## 7. string
 
-<!-- field-box id="piano_string" index="5" -->
+<!-- field-box id="piano_string" index="6" -->
 
 ### Narrative
 
@@ -184,13 +234,13 @@ One of C3's strings, struck at velocity 0.8, drawn at five moments after the ham
 leaves it. The kink travelling along it is the hammer's blow.
 
 ```edn [field-box id="piano_string" role="properties"]
-{"id" "piano_string" "index" 5 "name" "string" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "string" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_string_code_.kt" "lines" 13 "characters" 481 "sha256" "27fcbb66f6b147b004ea2f19b4b3f6287e6f29f1fc682dd3c819c79a00369309"}]}
+{"id" "piano_string" "index" 6 "name" "string" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "string" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_string_code_.kt" "lines" 13 "characters" 475 "sha256" "0c4a370dca77a7dd8a44b458cf55742e6aba01a9c83a948e4cec9286976e40c3"}]}
 ```
 
 ```kotlin [field-property box="piano_string" name="code" path="piano_string_code_.kt"]
 // One of C3's strings, struck at velocity 0.8, drawn at five moments after the hammer
 // leaves it. The kink travelling along it is the hammer's blow.
-val times = listOf(0.0, 0.0005, 0.001, 0.002, 0.004)
+val times = [0.0, 0.0005, 0.001, 0.002, 0.004]
 val plots =
     times.joinToString("") { t ->
         pianoPlotSvg(
@@ -201,5 +251,37 @@ val plots =
     }
 display("shape", plots)
 displayOpen("shape")
+```
+
+## 8. close live
+
+<!-- field-box id="piano_close_live" index="7" -->
+
+### Narrative
+
+From `code`
+
+A close-mic'd piano on the audio engine. Every slider is a Param read on the audio thread.
+
+```edn [field-box id="piano_close_live" role="properties"]
+{"id" "piano_close_live" "index" 7 "name" "close live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "close live" "_tombstone" false "frame" #afield/rect [760.0 1960.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_close_live_code_.kt" "lines" 15 "characters" 1008 "sha256" "8baa764a57cccdb1bb69d034ecf599a9c845f5ce887ecb7e906fe6ceeac343fe"}]}
+```
+
+```kotlin [field-property box="piano_close_live" name="code" path="piano_close_live_code_.kt"]
+// A close-mic'd piano on the audio engine. Every slider is a Param read on the audio thread.
+val dry = Param(1f)
+val mic = Param(0.12f)
+val thump = Param(1f)
+val keys = Param(1f)
+val room = Param(0f)
+slider("board .. close mic", 0.0, 1.0, initialValue = 1.0, channel = "dry", onUpdate = { dry.base = it.toFloat() })
+slider("mic position", 0.0, 1.0, initialValue = 0.12, channel = "mic", onUpdate = { mic.base = it.toFloat() })
+slider("thump", 0.0, 4.0, initialValue = 1.0, channel = "thump", onUpdate = { thump.base = it.toFloat() })
+slider("key noise", 0.0, 4.0, initialValue = 1.0, channel = "keys", onUpdate = { keys.base = it.toFloat() })
+slider("room", 0.0, 1.0, initialValue = 0.0, channel = "room", onUpdate = { room.base = it.toFloat() })
+["dry", "mic", "thump", "keys", "room"].forEach { displayOpen(it) }
+val piano = Piano(dry = dry, micPosition = mic, thump = thump, keyNoise = keys, room = room)
+piano.play(pat("<[a2,e3] [f2,c3]> [e4 a4 c5 e5]"), cycles = 32, cps = 0.8)
+audio(piano, gain = 1f)
 ```
 

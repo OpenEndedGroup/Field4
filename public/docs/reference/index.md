@@ -668,7 +668,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**38561 public symbols across 1757 source files**, 22662 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**38570 public symbols across 1758 source files**, 22671 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -691,9 +691,9 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 10 | 464 | 464 (100%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 68 | 1837 | 1312 (71%) | Turning a value into something you can look at, without leaving the box. |
-| [Synthesis](synthesis.md) | 46 | 1618 | 792 (48%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
+| [Synthesis](synthesis.md) | 46 | 1624 | 798 (49%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1317 | 721 (54%) | Musical time, as a value. |
-| [Audio](audio.md) | 91 | 2360 | 1226 (51%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
+| [Audio](audio.md) | 92 | 2363 | 1229 (52%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 586 | 586 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 129 | 3181 | 1582 (49%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 239 | 3215 | 1297 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
@@ -1854,7 +1854,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [PhysarumNetworkGpuSmoke.kt](examples.md#physarumnetworkgpusmoke-kt) | Examples · internal | 6 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Physical.kt](synthesis.md#physical-kt) | Synthesis | 19 | 2 | Two processors over one delay line read at fractional sample positions: `FractionalDelay`, a plain echo, and `KarplusStrong`, the same line closed into a loop and tuned to a pitch. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [PhysicalDevice.kt](graphics.md#physicaldevice-kt) | Graphics | 15 | 15 | The GPU Field renders on: `PhysicalDevice.createPhysicalDevice` picks one, optionally by preferred name, and the object records its properties, features, memory types, queue families, extensions and driver identity. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Piano.kt](synthesis.md#piano-kt) | Synthesis | 35 | 18 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Piano.kt](synthesis.md#piano-kt) | Synthesis | 41 | 24 |  | [Sound: from a pattern to something you can hear](../sound.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [PianoDocs.kt](audio.md#pianodocs-kt) | Audio | 3 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [PianoModel.kt](synthesis.md#pianomodel-kt) | Synthesis | 39 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [PingPongRenderToTexture.kt](graphics.md#pingpongrendertotexture-kt) | Graphics | 43 | 21 | Feedback rendering: `PingPongRenderToTexture` keeps a ring of images per color attachment, so a module can sample the previous frame while drawing the next. | [Field 4 Graphics](../afield_four_graphics.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [PingPongRestoreSmoke.kt](examples.md#pingpongrestoresmoke-kt) | Examples | 2 | 1 |  |  |
