@@ -22,6 +22,11 @@ This is the check that retires the prose. The rules:
 - ``raw-shader-property``: a literal shader-stage read through ``getPropertyRaw`` in box code.
   Use the existing typed ``vertex`` / ``fragment`` / ``compute`` / ``task`` / ``mesh`` property
   instead. Reported for review rather than blindly rewriting nullable casts or guard semantics.
+- ``frames-name-shadow``: a box that animates (``loop { }``, ``frames { }``, ``forever { }``,
+  ``eachFrame { }``, ``animate { }``) declaring its own ``fun frame()``, ``delay()``, ``end()`` or
+  ``wait()``. Inside the animation's body those names are ``Frames`` members, so a call meant for the
+  helper advances or ends the animation instead, with no error: the Sound deck's ``pulsing_sphere``
+  never moved because its drawing helper was called ``frame()``. Rename the helper. Blocking.
 - ``spaced-fragment-marker``: ``// %-``. The splitter accepts it (``isFragmentBreak``), but until
   2026-10-05 it matched ``//%-`` exactly, so older Field ran a spaced marker as one fragment;
   published code uses the one documented spelling.
@@ -126,6 +131,9 @@ LOOKUP_ALIAS = re.compile(
 )
 BOX_ALIAS = re.compile(r"^\s*va[lr]\s+(?P<name>\w+)\s*(?::\s*Box\??\s*)?=\s*thisBox\s*(?://.*)?$")
 SPACED_MARKER = re.compile(r"^(?P<indent>\s*)//\s+%-(?P<rest>.*)$")
+# A box that animates, and a function of its own named like a Frames member (frame, delay, end, wait).
+ANIMATES = re.compile(r"(?<![.\w])(?:loop|frames|forever|eachFrame|animate)\s*\{")
+FRAMES_SHADOW = re.compile(r"^\s*(?:(?:private|internal|suspend|inline|local)\s+)*fun\s+(?P<name>frame|delay|end|wait)\s*\(")
 # Where `list-literal` applies: the hand-written docs pages. Transcripts, demos, templates and the lesson
 # and demo sidecars under public/docs/assets still use listOf and are about to be refactored; the
 # reference pages are generated from KDoc. Widen this once the refactor lands.
@@ -487,9 +495,14 @@ def check_block(lines: list[str], start: int, end: int, literals: bool = False,
     text = "\n".join(lines[start:end])
     starts_coroutines = bool(COROUTINE_START.search(text))
     makes_push = bool(MAKES_PUSH_MEMBERS.search(text))
+    animates = bool(ANIMATES.search(text))
     out = []
     for i in range(start, end):
         line = lines[i]
+        if animates and (m := FRAMES_SHADOW.match(line)):
+            out.append((i, "frames-name-shadow",
+                        f"rename `{m['name']}()`: inside loop {{ }} / frames {{ }} `{m['name']}()` is the animation's own "
+                        f"Frames.{m['name']}(), so a call meant for this helper {'advances a frame' if m['name'] in ('frame', 'delay', 'wait') else 'ends the animation'} instead", False))
         if RENDERER_LINE.match(line):
             if starts_coroutines:
                 out.append((i, "redundant-renderer",

@@ -3014,8 +3014,20 @@ fun Box.controlGroup(channel: String = "controls", columns: Int, block: ControlG
             """ style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));width:min(${520 * columns}px,calc(100vw - 64px));max-width:${520 * columns}px;gap:6px" """
         display(channel, """<div class="control-group"$layout>$grouped</div>""")
     }
+    controlGroupShowings.merge(controllerControlGroupKey(id, channel), 1, Int::plus)
     builder.runAfterShown()
 }
+
+private val controlGroupShowings = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
+/**
+ * How many times [box] has shown its control group in [channel]. A run registers its callbacks while
+ * it builds the group, and only then publishes and displays it carrying the values it was built with;
+ * a value set in between moves the old group and is then drawn over. This count changes only once
+ * the new group is on screen.
+ */
+internal fun controlGroupShowings(box: Box, channel: String): Int =
+    controlGroupShowings[controllerControlGroupKey(box.id, channel)] ?: 0
 
 /**
  * Shows a control bound to the box property [propertyName] and marks that property persistent.

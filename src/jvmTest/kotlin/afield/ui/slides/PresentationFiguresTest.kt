@@ -98,6 +98,27 @@ class PresentationFiguresTest {
         assertFalse(tone.setControl("missing", 1.0))
     }
 
+    /**
+     * A step that sets a checkbox the control already shows ticked must still reach the box: a new run
+     * holds its variable at its initial value however the control remembers being. Seen in the cameras
+     * deck, where a "fixed exposure" checkbox read ticked over a picture drawn without it.
+     */
+    @Test fun setControlRunsTheCallbackEvenWhenTheValueIsUnchanged() {
+        val (_, figures) = deck("camera")
+        val camera = figures[0]
+        val ticks = mutableListOf<Boolean>()
+        val moves = mutableListOf<Double>()
+        camera.controlGroup("controls") {
+            checkbox("fixed exposure") { ticks += it }
+            slider("hole", 0.0, 1.0, initialValue = 0.5) { moves += it }
+        }
+        assertTrue(camera.setControl("fixed exposure", true))
+        assertTrue(camera.setControl("fixed exposure", true))
+        assertEquals(listOf(true, true), ticks, "the second, unchanged, setting still runs the callback")
+        assertTrue(camera.setControl("hole", 0.5))
+        assertEquals(listOf(0.5), moves, "a slider set to the value it shows runs its callback too")
+    }
+
     @Test fun aControlOnAFigureTheDeckLaunchesWaitsForTheNewRunsControls() = runBlocking {
         // The box ran once before (its controls are still registered), and launching it again is
         // asynchronous. The step's value must reach the new run, not the old run's control that the
@@ -123,6 +144,103 @@ class PresentationFiguresTest {
         while (440.0 !in newRun && System.currentTimeMillis() < deadline) kotlinx.coroutines.delay(50)
         assertEquals(440.0, newRun.last(), "the new run gets the step's value once it has drawn its slider")
         assertFalse(440.0 in oldRun)
+        show.command("stop")
+    }
+
+    /**
+     * A new run registers its slider's callback while it is still building its control group, and
+     * only then shows the group with the value it was built with. A step's value applied in between
+     * would move the old group and then be drawn over: the slider would read the old value while the
+     * box ran with the new one (seen in the cameras deck: "focus distance 9.999", "sharp at 4.0").
+     */
+    @Test fun aControlWaitsUntilTheNewRunHasShownItsControls() = runBlocking {
+        val (host, figures) = deck("tone")
+        val tone = figures[0]
+        val oldRun = mutableListOf<Double>()
+        tone.controlGroup("controls") { slider("frequency", 100.0, 1000.0, initialValue = 900.0) { oldRun += it } }
+        val runner = object : FigureRunner by FakeRunner(figures) {
+            override fun launch(boxes: List<Box>) {}
+            override fun controlRegistration(box: Box, channel: String, label: String): Any? =
+                afield.ui.output.controlRegistration(box, channel, label)
+        }
+        val show = host.presentation {
+            step("Low") { audience { figure("tone") }; control("tone", "frequency", 440.0) }
+        }
+        show.figureStage.runner = runner
+        show.command("start")
+        val registered = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val newRun = java.util.Collections.synchronizedList(mutableListOf<Double>())
+        val build = Thread {
+            tone.controlGroup("controls") {
+                slider("frequency", 100.0, 1000.0, initialValue = 900.0) { newRun += it }
+                registered.countDown()
+                release.await()
+            }
+        }.apply { start() }
+        registered.await()
+        kotlinx.coroutines.delay(700)
+        assertFalse(440.0 in newRun, "nothing is applied while the new run is still building its group")
+        release.countDown()
+        build.join()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (440.0 !in newRun && System.currentTimeMillis() < deadline) kotlinx.coroutines.delay(50)
+        assertEquals(440.0, newRun.last(), "the new run gets the step's value once its group is shown")
+        val shown = afield.ui.output.controlGroupControlsWithKeys(tone, "controls").single().second
+        assertEquals(440.0, shown.value, "and the slider it shows reads that value")
+        show.command("stop")
+    }
+
+    /**
+     * The Lights deck's additive figure: the slide turns "blue" off, a cue turns it on. The figure had
+     * been ticked before, so its relaunched run showed a stale tick; the step's "off" landed while the
+     * new run was building, the group was then drawn ticked over a box without blue, and the cue's "on"
+     * matched what the panel claimed and did nothing. Blue never came on. Now the step waits for the
+     * shown group, and the cue reaches the box.
+     */
+    @Test fun aLaterCueMatchingAStaleTickStillTurnsItOn() = runBlocking {
+        val (host, figures) = deck("additive")
+        val additive = figures[0]
+        var blue = false
+        additive.controlGroup("controls") { checkbox("blue") { blue = it } }
+        additive.setControl("blue", true)                     // ticked in an earlier visit
+        val runner = object : FigureRunner by FakeRunner(figures) {
+            override fun launch(boxes: List<Box>) {}
+            override fun controlRegistration(box: Box, channel: String, label: String): Any? =
+                afield.ui.output.controlRegistration(box, channel, label)
+        }
+        val show = host.presentation {
+            step("Red and green") {
+                audience { figure("additive") }
+                control("additive", "blue", false)
+                cue("Add blue") { control("additive", "blue", true) }
+            }
+        }
+        show.figureStage.runner = runner
+        show.command("start")
+        // The relaunched run: its variable starts off, the checkbox restores its remembered tick.
+        val registered = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val build = Thread {
+            blue = false
+            additive.controlGroup("controls") {
+                checkbox("blue") { blue = it }
+                registered.countDown()
+                release.await()
+            }
+        }.apply { start() }
+        registered.await()
+        kotlinx.coroutines.delay(400)
+        release.countDown()
+        build.join()
+        val deadline = System.currentTimeMillis() + 5_000
+        fun shown() = afield.ui.output.controlGroupControlsWithKeys(additive, "controls").single().second.checked
+        while ((blue || shown() != false) && System.currentTimeMillis() < deadline) kotlinx.coroutines.delay(50)
+        assertEquals(false, shown(), "the step's off is applied to the group the new run shows")
+        assertFalse(blue)
+        show.command("next")
+        assertTrue(blue, "the cue's on reaches the box")
+        assertEquals(true, shown())
         show.command("stop")
     }
 
@@ -213,5 +331,34 @@ class PresentationFiguresTest {
         assertEquals(552.0 / 699 * 0.96, wide, 1e-9, "the zoom must fit the 699 px drawing that overflows a 520 px area")
         assertNull(afield.app.protocol.figureFitZoom(0.0, 0.0, 0.0, 0.0, 552.0, 510.0), "an area with no size yet has no zoom")
         assertEquals(4.0, afield.app.protocol.figureFitZoom(10.0, 10.0, 10.0, 10.0, 1000.0, 1000.0))
+    }
+
+    /**
+     * The fit runs four times a second on a live figure page, so it must be idempotent. A layout in
+     * which content sized to its container grows with the box (the Sound deck's pluck) used to
+     * ratchet: widening the box to the overflow made the overflow wider on the next pass.
+     */
+    @Test fun theFigureFitIsIdempotentWhereWideningTheBoxRatcheted() {
+        // Area 520 wide; its drawing is 40 px wider than whatever the box is laid out at.
+        fun layout(boxMinWidth: Double): Pair<Double, Double> {
+            val area = maxOf(520.0, boxMinWidth)
+            return area to area + 40
+        }
+        var boxMinWidth = 0.0
+        val oldWay = (1..20).map {
+            val (offset, scroll) = layout(boxMinWidth)
+            if (scroll > offset) boxMinWidth = scroll
+            afield.app.protocol.figureFitZoom(offset, 382.0, scroll, 382.0, 552.0, 510.0)!!
+        }
+        assertTrue(oldWay.last() < oldWay.first() * 0.5, "the min-width approach shrinks the figure every pass")
+
+        val fits = (1..20).map {
+            val (offset, scroll) = layout(0.0)     // figureFit writes no layout
+            afield.app.protocol.figureFit(offset, 382.0, scroll, 382.0, 552.0, 510.0)!!
+        }
+        assertEquals(1, fits.distinct().size, "the same fit every pass")
+        assertEquals(552.0 / 560 * 0.96, fits.first().zoom, 1e-9)
+        assertEquals(-20.0, fits.first().shiftX, 1e-9, "centred: half the 40 px overflow")
+        assertEquals(0.0, fits.first().shiftY)
     }
 }

@@ -519,6 +519,9 @@ side in `div(classes = "columns") { ... }`. Name output channels to show only pa
 one box, and a slider in one moves the other. A figure is found by its box name when the
 Presentation box runs, so a name that matches no box, or several, stops the talk with an error.
 
+A `three { ... }` figure can be turned by dragging it on the audience display, as in an output
+panel. When a slider or a cue redraws it, the camera stays where the audience left it.
+
 Next, Previous and a jump in the outline all set the controls a step and its cues declare, in
 order, so going back to a slide puts its figure back as the slide describes it. **Refresh slide**
 leaves the controls where the audience put them. `control(figure, label, true)` ticks a checkbox.
@@ -546,6 +549,12 @@ frame decides the scale and position and later frames keep them, so something mo
 does not rescale the whole picture; relaunching the box, or **Reset: figures**, frames it afresh.
 Pass `framing = LinesFraming.fixed(0.0, 0.0, 640.0, 300.0)` to choose the frame yourself, or
 `framing = LinesFraming.Fit` to refit every frame.
+
+A figure can animate and be dragged at once. `lines(..., onDrag = { e -> ... })` hands the box each
+press, move and release on the drawing as `LinesDragEvent(x, y, phase)`, in the lines' own
+coordinates, while the box goes on redrawing every frame: pull a ringing string aside and let go.
+`editable = true` is for drawings whose own points the reader moves; in a figure it shows no editing
+tools unless the box also asks for `drawing = true`, and lines marked `fixed = true` stay put.
 
 The four-slide deck this section comes from is the `explainer_sine_pitch` transcript in
 [Agent transcripts](agent_transcripts.md); it ends with the figure you can hear.

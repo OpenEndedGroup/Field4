@@ -872,6 +872,8 @@ window.__flineHoverOut = function(groupEl) {
         var faces = [];
 
         scene.lines.forEach(function(line) {
+            // A fixed line is scenery: drawn by the renderer, but nothing on it is selectable.
+            if (line.fixed) return;
             var pieces = [];
             var currentPiece = null;
             var previousAnchor = null;
