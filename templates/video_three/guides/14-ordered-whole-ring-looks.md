@@ -19,7 +19,7 @@ controls the one decoder. A held transition is a saveable look. The resolved tab
 lane's eight actual values. Expressions can use inherited props; vanished local captures cannot
 be restored. Rules run on Apply/recall, not continuously when idle.
 
-Each shared slider replaces its lane with a constant. Each source field is a draft: use Apply all
+Each shared slider replaces its lane with a constant. Each multiline source field is a draft: use Apply all
 rule drafts to compile and validate them together. Refresh drafts after a recall or a code edit.
 Invalid drafts retain the last working scene. For code, use `sourceBlock { screenNo: Int -> ... }`;
 for a source text field, enter the lambda itself, including braces and the parameter type.
@@ -49,3 +49,7 @@ It does not write the document metadata directly. Save through Field after creat
 Core design in the Field repository: `dev_docs/animation/ORDERED_GROUP_KEYFRAMES.md`.
 The numeric API also works for lights, instanced geometry, voices or any ordered collection with a
 single validated commit callback.
+
+Parameter and inspector panels use `controlGroup(..., restoreValues = false)`: their current model
+supplies initial values, so cached widget values cannot flatten functions or replace a restored look
+on rerun. The ordinary control-group cache policy remains available elsewhere.
