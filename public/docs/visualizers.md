@@ -908,6 +908,24 @@ loop {
 
 Run either as a launch, not a plain execute.
 
+### A random variable, settling
+
+`ᛟ.distribution(d)` is the same kind of passthrough for a random variable from
+[Distributions](distributions.md): each call draws another batch of `d` and draws its histogram
+under its exact probabilities or density, with the running mean settling inside its standard-error
+band. Launch it in a `loop { }`:
+
+```diffstatic {data-lang=kotlin}
+:::static
+import afield.math.distribution.*
+
+val twoDice = die(6) + die(6)
+loop {
+    __m("two dice").distribution(twoDice, exact = 7.0)
+    frame()
+}
+```
+
 ### Piano rolls in the editor
 
 The piano-roll visualizer is the same idea, but for scheduled notes rather than scalar values.

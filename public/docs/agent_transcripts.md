@@ -1535,6 +1535,23 @@ packing settles instead of chattering across the contact.
 
 [Open →](offline.html?file=assets/agent_transcripts/autodiff_worked_example/metadata.edn)
 
+### noiselang_distributions
+
+Values that are **probability distributions**, from [Distributions](distributions.md). Four
+pure-CPU boxes: a Dirac spike, a die and the triangle two dice make, drawn by the inline
+`ᛟ.distribution` view as the samples arrive, with the mean of `5 + d6 + d6` settling on 12 (launch
+it); the NoiseLang questions — `P(X + Y < 10)`, the 23-person birthday problem at about 0.507,
+4·P(inside the unit circle) ≈ π — each printed with its standard error beside the exact value;
+samples settling under an exact and a kernel density; and a distribution of `FLine`s, 120 random
+walks drawn from one graph.
+
+```diffstatic {data-lang=text}
+macro write noiselang_distributions --file dev_docs/agents/transcripts/noiselang_distributions.yaml
+macro run noiselang_distributions
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/noiselang_distributions/metadata.edn)
+
 ### interaction_nets_lambda
 
 A λ-term **compiled to an interaction net**, reduced by local rules, and read back — checked against an

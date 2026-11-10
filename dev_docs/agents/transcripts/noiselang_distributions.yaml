@@ -1,0 +1,138 @@
+name: noiselang_distributions
+description: >
+  Every value a probability distribution: afield.math.distribution, a Kotlin take on NoiseLang
+  (manualmeida.dev/articles/noiselang). A name is one node of a lazy graph, so x - x is exactly 0;
+  iid() and draws(n, d) make independent copies; P / E / Var / quantile sample the graph and answer
+  with a standard error. Four pure-compute boxes, no renderer:
+    1. noise_spike_to_triangle — LAUNCH it. A Dirac spike at 5, one die, and 5 + d6 + d6, each drawn
+                    by the inline ᛟ.distribution visualizer: the bars fill in under the exact pmf
+                    (orange ticks) while the running mean of S settles on 12 inside its ±2 SE band.
+    2. noise_queries — run it. The card's queries as one-shot estimates: E(S), P(X + Y < 10), the
+                    23-person birthday problem (≈ 0.507), 4·P(inside the unit circle) ≈ π, a
+                    variance and a quantile — each printed beside its exact value and its z-score.
+    3. noise_density — LAUNCH it. Samples of N(0,1) + N(2, 0.5) settling under the exact density of
+                    the sum (a normal with sd √1.25), and a squared normal under a kernel estimate,
+                    dashed, because that one has no closed form here.
+    4. noise_walks — run it. A distribution of FLines: a random walk whose heading drifts by an
+                    independent normal at each of 40 steps is ONE Dist graph; 120 joint samples of
+                    it are drawn as 120 paths, and the endpoint distance — another node of the same
+                    graph — is estimated with its SE and drawn as a distribution.
+  Replay into a fresh Field (field_run_transcript), then edit a distribution and re-run: the
+  visualizer starts again whenever the expression changes. GPU parity is the jvm-main smoke
+  four.noiselang.gpu-parity (needs a renderer, so it is not a box here).
+docs:
+  - page: distributions.md
+    why: "The page for afield.math.distribution: the DSL, its queries, the visualizer and the GPU lowering."
+operations:
+  - create:
+      box: noise_spike_to_triangle
+      name: 1 · spike, die, two dice — launch me
+      frame: { x: 40.0, y: 40.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.math.distribution.*
+
+          val a = Dist.dirac(5)
+          val d1 = die(6)
+          val d2 = die(6)
+          val s = a + d1 + d2
+
+          loop {
+              __m("spike").distribution(a, batch = 500, title = "A = 5, a Dirac spike")
+              __m("die").distribution(d1, batch = 500, title = "D1, a fair die")
+              __m("sum").distribution(s, batch = 500, title = "S = A + D1 + D2", exact = 12.0)
+              frame()
+          }
+  - create:
+      box: noise_queries
+      name: 2 · P, E, Var and quantiles, with standard errors
+      frame: { x: 40.0, y: 180.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.math.distribution.*
+
+          fun show(label: String, e: Estimate, exact: Double) =
+              println("%-24s %-28s exact %.5f   z = %+.2f".format(label, e, exact, e.zFrom(exact)))
+
+          val x = die(6)
+          val y = die(6)
+          show("E(5 + X + Y)", E(5 + x + y), 12.0)
+          show("P(X + Y < 10)", P(x + y lt 10), 30.0 / 36)
+          show("E(X - X)", E(x - x), 0.0)
+          show("Var(X - X')", Var(x - x.iid()), 35.0 / 6)
+
+          val birthday = draws(23, uniformInt(1, 365))
+          val noShared = (0 until 23).fold(1.0) { p, k -> p * (365.0 - k) / 365.0 }
+          show("P(shared birthday)", P(hasDuplicates(birthday)), 1 - noShared)
+
+          val u = uniform(-1, 1)
+          val v = uniform(-1, 1)
+          show("4 P(u² + v² < 1)", P(u * u + v * v lt 1) * 4, Math.PI)
+          show("median of exp(1)", quantile(exponential(1), 0.5), kotlin.math.ln(2.0))
+  - create:
+      box: noise_density
+      name: 3 · samples settling under a density — launch me
+      frame: { x: 500.0, y: 40.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.math.distribution.*
+
+          val sum = normal(0, 1) + normal(2, 0.5)
+          val squared = normal(0, 1).squared()
+
+          loop {
+              __m("sum").distribution(sum, batch = 400, title = "N(0,1) + N(2,0.5)", exact = 2.0)
+              __m("sq").distribution(squared, batch = 400, title = "Z², no closed form here", exact = 1.0)
+              frame()
+          }
+  - create:
+      box: noise_walks
+      name: 4 · a distribution of FLines
+      frame: { x: 500.0, y: 180.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.math.distribution.*
+
+          // One graph: heading drifts by an independent normal each step; x and y accumulate.
+          val steps = 40
+          var heading: Dist = Dist.dirac(0)
+          var x: Dist = Dist.dirac(0)
+          var y: Dist = Dist.dirac(0)
+          val xs = ArrayList<Dist>()
+          val ys = ArrayList<Dist>()
+          for (k in 0 until steps) {
+              heading = heading + normal(0, 0.25)
+              x = x + heading.cos() * 4
+              y = y + heading.sin() * 4
+              xs += x
+              ys += y
+          }
+          val reach = (x * x + y * y).sqrt()
+
+          // 120 joint draws of every node: each sample is one whole path.
+          val walks = 120
+          val drawn = jointSamples(*(xs + ys).toTypedArray(), n = walks, seed = 7)
+          val paths =
+              (0 until walks).map { w ->
+                  fline {
+                      moveTo(200, 150)
+                      for (k in 0 until steps) lineTo(200 + drawn[k][w], 150 - drawn[steps + k][w])
+                      color = vec(0.0, 0.67, 1.0, 0.35)
+                  }
+              }
+          lines(paths, channel = "walks", w = 400.0, h = 300.0)
+
+          println("E(reach) = ${E(reach, n = 50_000)}   (a straight line would be ${steps * 4})")
+          __m("reach").distribution(reach, batch = 20_000, title = "distance from the start after $steps steps")
+  - launch:
+      box: noise_spike_to_triangle
+      property: code
+  - execute:
+      box: noise_queries
+      property: code
+  - launch:
+      box: noise_density
+      property: code
+  - execute:
+      box: noise_walks
+      property: code
