@@ -6404,8 +6404,9 @@ function applyGeometry(payload) {
     const cameraKey = payload.camera ? JSON.stringify(payload.camera) : null;
     if (payload.camera && cameraKey !== appliedCameraSpec && payload.bounds && panelState.cameras.length <= 1) {
         camera.aspect = container.clientHeight > 0 ? container.clientWidth / container.clientHeight : 1;
+        // fitTo declares the box to frame: its corners, not the geometry, which may reach beyond it.
         applyCameraSpec(camera, payload.camera, payload.bounds, true,
-            sweptFitPoints(fitPointsForPanel(-1), payload.bounds, !!payload.turntable));
+            sweptFitPoints(payload.fitBounds ? null : fitPointsForPanel(-1), payload.bounds, !!payload.turntable));
         const derived = cameraPresetEye(payload.camera, payload.bounds);
         cameraUp(payload.camera.upAxis === 'Z' ? [0, 0, 1] : [0, 1, 0]);
         controls.target.set(derived.target[0], derived.target[1], derived.target[2]);
@@ -7163,7 +7164,7 @@ function onResize() {
     if (viewportChanged && !cameraWasMoved && !inspectorState.selection && payloadState && payloadState.camera && payloadState.bounds && panelState.cameras.length <= 1) {
         const turned = cameraTurned ? camera.position.clone().sub(controls.target) : null;
         applyCameraSpec(camera, payloadState.camera, payloadState.bounds, true,
-            sweptFitPoints(fitPointsForPanel(-1), payloadState.bounds, !!payloadState.turntable));
+            sweptFitPoints(payloadState.fitBounds ? null : fitPointsForPanel(-1), payloadState.bounds, !!payloadState.turntable));
         const derived = cameraPresetEye(payloadState.camera, payloadState.bounds);
         controls.target.set(derived.target[0], derived.target[1], derived.target[2]);
         // A turning view keeps its angle: the refit changes the framing, not how far it has turned.

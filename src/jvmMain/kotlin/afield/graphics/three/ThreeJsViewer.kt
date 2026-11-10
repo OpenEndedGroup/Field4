@@ -431,6 +431,8 @@ data class ThreeGeometryPayload(
     val bounds: ThreeBounds? = null,
     val meta: ThreeMeta? = null,
     val autoFrame: Boolean = true,
+    /** Frame [bounds] exactly, not the geometry's own points: set by `three { fitTo(min, max) }`. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val fitBounds: Boolean = false,
     /** Per-FLine interactive objects (separate geometry with click/hover callbacks). */
     val interactive: List<ThreeInteractiveObject> = emptyList(),
     val scene: ThreeEditableScene? = null,
