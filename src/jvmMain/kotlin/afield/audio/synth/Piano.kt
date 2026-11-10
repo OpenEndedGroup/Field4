@@ -86,6 +86,18 @@ class Piano(
     val hardness: Param = Param(1f),
     val bridgeCoupling: Param = Param(voicing.bridgeCoupling.toFloat()),
     val gain: Param = Param(1f),
+    /** 0 lets stiffness detune the note; 1 holds the fundamental where it is at inharmonicity 1. */
+    val pinFundamental: Param = Param(0f),
+    /** Close-mic position along the speaking length, 0 at the agraffe, 1 at the bridge (any value). */
+    val micPosition: Param = Param(0.12f),
+    /** 0 is the soundboard; 1 is the close microphone on the strings alone. */
+    val dry: Param = Param(0f),
+    /** Hammer thump, from the strike's own contact force. */
+    val thump: Param = Param(0f),
+    /** Damper felt landing on a ringing string (1 is the prepared level). */
+    val damperNoise: Param = Param(1f),
+    /** Key bottoming on the keybed and returning to the rail. */
+    val keyNoise: Param = Param(0f),
     /** Sample rate the soundboard and resonators are built for; rebuilt if the engine's differs. */
     val sampleRate: Int = 48_000,
     val maxVoices: Int = 48,
@@ -111,7 +123,8 @@ class Piano(
     private var strikes = 0L
     private var dcIn = doubleArrayOf(0.0, 0.0); private var dcOut = doubleArrayOf(0.0, 0.0)
 
-    private var bufs = Array(10) { FloatArray(0) }
+    private var bufs = Array(16) { FloatArray(0) }
+    private var mic = DoubleArray(0)
     private var force = DoubleArray(0)
     private var ownByKey = Array(88) { DoubleArray(0) }
     private val keyActive = BooleanArray(88)
@@ -205,16 +218,26 @@ class Piano(
 
     override fun generateStereo(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext) {
         if (ctx.sampleRate.toDouble() != fs) build(ctx.sampleRate.toDouble())
-        if (bufs[0].size < numFrames) { bufs = Array(10) { FloatArray(numFrames) }; force = DoubleArray(numFrames); ownByKey = Array(88) { DoubleArray(numFrames) } }
+        if (bufs[0].size < numFrames) { bufs = Array(16) { FloatArray(numFrames) }; force = DoubleArray(numFrames); mic = DoubleArray(numFrames); ownByKey = Array(88) { DoubleArray(numFrames) } }
         val bPedal = bufs[0]; val bInh = bufs[1]; val bDecay = bufs[2]; val bCoup = bufs[3]; val bBoard = bufs[4]
         val bRoom = bufs[5]; val bHard = bufs[6]; val bBridge = bufs[7]; val bGain = bufs[8]
         pedal.render(bPedal, numFrames, ctx); inharmonicity.render(bInh, numFrames, ctx); decay.render(bDecay, numFrames, ctx)
         coupling.render(bCoup, numFrames, ctx); soundboard.render(bBoard, numFrames, ctx); room.render(bRoom, numFrames, ctx)
         hardness.render(bHard, numFrames, ctx); bridgeCoupling.render(bBridge, numFrames, ctx); gain.render(bGain, numFrames, ctx)
+        val bPin = bufs[9]; val bMicX = bufs[10]; val bDry = bufs[11]; val bThump = bufs[12]; val bDamp = bufs[13]; val bKey = bufs[14]
+        pinFundamental.render(bPin, numFrames, ctx); micPosition.render(bMicX, numFrames, ctx); dry.render(bDry, numFrames, ctx)
+        thump.render(bThump, numFrames, ctx); damperNoise.render(bDamp, numFrames, ctx); keyNoise.render(bKey, numFrames, ctx)
+        // Inputs may be anything a signal graph produces; only NaN and infinities are refused.
+        pianoFinite(bPedal, numFrames, 0f); pianoFinite(bInh, numFrames, 1f); pianoFinite(bDecay, numFrames, 1f)
+        pianoFinite(bCoup, numFrames, 1f); pianoFinite(bBoard, numFrames, 1f); pianoFinite(bRoom, numFrames, 0f)
+        pianoFinite(bHard, numFrames, 1f); pianoFinite(bBridge, numFrames, voicing.bridgeCoupling.toFloat()); pianoFinite(bGain, numFrames, 1f)
+        pianoFinite(bPin, numFrames, 0f); pianoFinite(bMicX, numFrames, 0.12f); pianoFinite(bDry, numFrames, 0f)
+        pianoFinite(bThump, numFrames, 0f); pianoFinite(bDamp, numFrames, 1f); pianoFinite(bKey, numFrames, 0f)
 
         while (true) pending.add(incoming.poll() ?: break)
         val start = frame
         java.util.Arrays.fill(force, 0, numFrames, 0.0)
+        java.util.Arrays.fill(mic, 0, numFrames, 0.0)
         for (k in 0 until 88) java.util.Arrays.fill(ownByKey[k], 0, numFrames, 0.0)
 
         // Segments between events, so a note, a release or a pedal change lands on its own sample
@@ -231,7 +254,7 @@ class Piano(
             while (iter.hasNext()) {
                 val v = iter.next()
                 keyActive[v.key] = true
-                v.render(force, ownByKey[v.key], at, to, bInh, bDecay, bPedal, ccPedal, fs)
+                v.render(force, ownByKey[v.key], at, to, bInh, bDecay, bPedal, ccPedal, fs, mic, bPin, bMicX, bThump, bDamp, bKey)
                 if (v.finished) iter.remove()
             }
             for (i in at until to) {
@@ -244,10 +267,20 @@ class Piano(
                     val o = lr[c] - dcIn[c] + dcK * dcOut[c]
                     dcIn[c] = lr[c]; dcOut[c] = o; lr[c] = o
                 }
+                val dr = bDry[i].toDouble()
+                if (dr != 0.0) {
+                    val m = MIC_GAIN * mic[i]
+                    lr[0] = (1 - dr) * lr[0] + dr * m; lr[1] = (1 - dr) * lr[1] + dr * m
+                }
                 rm.process(lr, bRoom[i].toDouble())
                 val g = OUTPUT_GAIN * bGain[i]
-                outL[i] = pianoLimitOutput(lr[0] * g).toFloat()
-                outR[i] = pianoLimitOutput(lr[1] * g).toFloat()
+                var l = pianoLimitOutput(lr[0] * g); var r = pianoLimitOutput(lr[1] * g)
+                if (!(l.isFinite() && r.isFinite())) {
+                    // Only reachable through overflow inside a filter: start the board and room afresh.
+                    l = 0.0; r = 0.0; brd.reset(); rm.reset(); dcIn[0] = 0.0; dcIn[1] = 0.0; dcOut[0] = 0.0; dcOut[1] = 0.0
+                }
+                outL[i] = l.toFloat()
+                outR[i] = r.toFloat()
             }
             at = to
         }
@@ -269,7 +302,7 @@ class Piano(
             }
             1 -> {
                 val k = e.midi.coerceIn(21, 108) - 21
-                for (v in voices) if (v.key == k) v.keyDown = false
+                for (v in voices) if (v.key == k) v.release()
                 val r = resonance!!
                 if (r.held[k] > 0) r.held[k]--
             }
@@ -280,12 +313,22 @@ class Piano(
     companion object {
         /** Bridge force to output: coopiano's instrument gain, then about 9 dB so mf peaks near -10 dBFS. */
         const val OUTPUT_GAIN = 0.0011 * 2.8
+        /** Close-mic signal to the soundboard output's scale: A2 at velocity 0.7 measured 5 dB under the board at 1.0. */
+        const val MIC_GAIN = 1.8
     }
 }
 
 /** One struck key: its phasor bank, dampers and attack buffer, rendered on the audio thread. */
 internal class PianoVoice(val key: Int, val data: PianoNoteData, private val hasDamper: Boolean, fs: Double, transitionSeconds: Double) {
     var keyDown = true
+        private set
+    private var releasePos = -1
+    private var micX = Double.NaN
+    private var micW = DoubleArray(data.count)
+
+    fun release() {
+        if (keyDown) { keyDown = false; releasePos = 0 }
+    }
     var finished = false
         private set
     private var age = 0L
@@ -298,40 +341,68 @@ internal class PianoVoice(val key: Int, val data: PianoNoteData, private val has
     private var blockLeft = 0
     private var sBlock = Double.NaN
     private var dBlock = Double.NaN
+    private var pinBlock = 0.0
     private var or_ = DoubleArray(data.count); private var oi = DoubleArray(data.count)
     private var dr = DoubleArray(data.count); private var di = DoubleArray(data.count)
     private var dw = DoubleArray(data.count)
 
-    private fun recompute(s: Double, d: Double, fs: Double) {
-        sBlock = s; dBlock = d
+    private fun recompute(s: Double, d: Double, pin: Double, fs: Double) {
+        sBlock = s; dBlock = d; pinBlock = pin
         val nyq = PI * 0.95
         for (p in 0 until data.count) {
-            val w = data.omega(p, s) / fs
+            val w = data.omega(p, s, pin) / fs
             val sig = data.sigma[p] * d
             val sigD = max(data.dampSig[p], sig)
             if (w >= nyq || w <= 0) { or_[p] = 0.0; oi[p] = 0.0; dr[p] = 0.0; di[p] = 0.0; dw[p] = 0.0; continue }
             val c = cos(w); val sn = sin(w)
             val mo = exp(-sig / fs); val md = exp(-sigD / fs)
             or_[p] = mo * c; oi[p] = mo * sn; dr[p] = md * c; di[p] = md * sn
-            dw[p] = data.dOmegaDs(p, s) / fs
+            dw[p] = data.dOmegaDs(p, s, pin) / fs
         }
     }
 
-    fun render(force: DoubleArray, own: DoubleArray, from: Int, to: Int, inh: FloatArray, dec: FloatArray, pedal: FloatArray, ccPedal: Double, fs: Double) {
+    private fun micWeights(x: Double) {
+        micX = x
+        if (micW.size < data.count) micW = DoubleArray(data.count)
+        for (p in 0 until data.count) {
+            val n = data.na[p] + data.nb[p]
+            // displacement at x relative to the slope the bridge feels: sin(nπx)/(nπ), at 1/x_ref
+            micW[p] = data.wOut[p] * sin(n * PI * x) / (n * PI) * MIC_NORM
+        }
+    }
+
+    fun render(
+        force: DoubleArray, own: DoubleArray, from: Int, to: Int, inh: FloatArray, dec: FloatArray, pedal: FloatArray, ccPedal: Double, fs: Double,
+        mic: DoubleArray? = null, pin: FloatArray? = null, micPos: FloatArray? = null,
+        thumpG: FloatArray? = null, damperG: FloatArray? = null, keyG: FloatArray? = null,
+    ) {
         val d = data
         for (i in from until to) {
             var out = 0.0
-            if (age < d.attack.size) out += d.attack[age.toInt()]
+            var noise = 0.0
+            val ia = age.toInt()
+            if (age < d.attack.size) out += d.attack[ia]
+            if (thumpG != null && ia < d.thump.size) noise += thumpG[i] * d.thump[ia]
+            if (keyG != null) {
+                if (ia < d.keyNoise.size) noise += keyG[i] * d.keyNoise[ia]
+                if (releasePos >= 0 && releasePos < d.releaseNoise.size) noise += keyG[i] * d.releaseNoise[releasePos++]
+            }
             // damper target for this sample
             val pd = max(pedal[i].toDouble(), ccPedal).coerceIn(0.0, 1.0)
             val target = if (!hasDamper || keyDown) 0.0 else pianoDamperContact(pd)
             if (target > 0.0 && noisePos < 0 && contact == 0.0) noisePos = 0
             if (contact < target) contact = min(target, contact + ramp) else if (contact > target) contact = max(target, contact - ramp)
-            if (noisePos >= 0 && noisePos < d.dampNoise.size) out += d.dampNoise[noisePos++]
+            if (noisePos >= 0 && noisePos < d.dampNoise.size) noise += (damperG?.get(i)?.toDouble() ?: 1.0) * d.dampNoise[noisePos++]
+            out += noise
+            var heard = noise
 
             if (age >= d.coff) {
-                val s = inh[i].toDouble(); val dd = dec[i].toDouble()
-                if (blockLeft <= 0 || sBlock.isNaN()) { recompute(s, dd, fs); blockLeft = 32 }
+                val s = inh[i].toDouble(); val dd = abs(dec[i].toDouble())
+                val pn = pin?.get(i)?.toDouble() ?: 0.0
+                if (blockLeft <= 0 || sBlock.isNaN()) {
+                    recompute(s, dd, pn, fs); blockLeft = 32
+                    if (mic != null) { val x = micPos?.get(i)?.toDouble() ?: 0.12; if (x != micX || micW.size < d.count) micWeights(x) }
+                }
                 blockLeft--
                 val ds = s - sBlock; val ddd = dd - dBlock
                 val corrected = ds != 0.0 || ddd != 0.0
@@ -341,13 +412,17 @@ internal class PianoVoice(val key: Int, val data: PianoNoteData, private val has
                 val zr = d.zr; val zi = d.zi; val wo = d.wOut
                 for (p in 0 until d.count) {
                     val re = zr[p]; val im = zi[p]
-                    out += wo[p] * re * (if (d.longitudinal[p]) onset else 1.0)
+                    val on = if (d.longitudinal[p]) onset else 1.0
+                    out += wo[p] * re * on
+                    if (mic != null) heard += micW[p] * re * on
                     var mr = or_[p] + c * (dr[p] - or_[p])
                     var mi = oi[p] + c * (di[p] - oi[p])
                     if (corrected) {
-                        val x = dw[p] * ds
-                        val y = d.sigma[p] * ddd / fs
-                        val cr = (1 - y) * (1 - 0.5 * x * x); val ci = (1 - y) * x
+                        // second-order rotation, renormalised and bounded so no modulation depth can grow a mode
+                        val x = (dw[p] * ds).coerceIn(-0.5, 0.5)
+                        val y = (d.sigma[p] * ddd / fs).coerceIn(-0.5, 1.0)
+                        val nrm = (1 - y) * (1 - 0.125 * x * x * x * x)
+                        val cr = nrm * (1 - 0.5 * x * x); val ci = nrm * x
                         val nr = mr * cr - mi * ci; mi = mr * ci + mi * cr; mr = nr
                     }
                     zr[p] = re * mr - im * mi
@@ -356,9 +431,11 @@ internal class PianoVoice(val key: Int, val data: PianoNoteData, private val has
                 if (--untilCull <= 0) { untilCull = 4096; cull() }
             }
             force[i] += out; own[i] += out
+            if (mic != null) mic[i] += heard
             age++
         }
-        if (age > d.coff && d.count == 0 && age >= d.attack.size && (noisePos < 0 || noisePos >= d.dampNoise.size)) finished = true
+        if (age > d.coff && d.count == 0 && age >= d.attack.size && age >= d.thump.size && age >= d.keyNoise.size &&
+            (noisePos < 0 || noisePos >= d.dampNoise.size) && (releasePos < 0 || releasePos >= d.releaseNoise.size)) finished = true
     }
 
     private fun cull() {
@@ -372,10 +449,21 @@ internal class PianoVoice(val key: Int, val data: PianoNoteData, private val has
                 d.shA[w] = d.shA[p]; d.shB[w] = d.shB[p]; d.pol[w] = d.pol[p]; d.longitudinal[w] = d.longitudinal[p]
                 d.stringIndex[w] = d.stringIndex[p]; d.amp0[w] = d.amp0[p]
                 or_[w] = or_[p]; oi[w] = oi[p]; dr[w] = dr[p]; di[w] = di[p]; dw[w] = dw[p]
+                if (p < micW.size) micW[w] = micW[p]
             }
             w++
         }
         d.count = w
+    }
+}
+
+private const val MIC_NORM = 1.0 / 0.12
+
+/** Replaces NaN with [default] and holds infinities at ±1e12, in place: the only clamp the inputs get. */
+internal fun pianoFinite(b: FloatArray, n: Int, default: Float) {
+    for (i in 0 until n) {
+        val v = b[i]
+        if (v.isNaN()) b[i] = default else if (v > 1e12f) b[i] = 1e12f else if (v < -1e12f) b[i] = -1e12f
     }
 }
 
