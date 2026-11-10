@@ -5,7 +5,7 @@ layout(push_constant) uniform MoviePush {
     vec4 surface;     // arc width, height, bend radians, strip count
     vec4 image;       // packed source width/height, swap eyes, vertical flip
     vec4 colorimetry; // Kr, Kb, full-range flag, reserved
-    vec4 accumulation; // processed mix, valid image, reserved, reserved
+    vec4 accumulation; // processed mix, valid image, spatial blur mix, linear darkening
 }
 pc;
 layout(location = 0) out vec2 uv;
