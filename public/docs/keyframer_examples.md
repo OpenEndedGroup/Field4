@@ -1231,7 +1231,7 @@ runtime program at five values of the push constant, and compares both ends agai
 An `OrderedKeyframeGroup` makes one key describe a whole ordered collection. A lane can be a
 constant, such as `0.2`, or a source-backed function of the member's zero-based index:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val cooling = sourceBlock { screenNo: Int ->
     0.1 + 0.04 * screenNo
 }
@@ -1241,7 +1241,7 @@ Use the flat lambda form, with its parameter type. Field retains both the callab
 A saved key stores the expression and its owning box, so reopening it does not turn the rule into
 eight unrelated sliders. Constants remain ordinary numbers.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val group = OrderedKeyframeGroup(
     count = { 8 },
     sourceBoxId = thisBox.id,
@@ -1272,11 +1272,14 @@ group lanes, while ordinary code lanes retain their existing code-blend semantic
 
 For a travelling transition, call this from a control loop with elapsed seconds:
 
-```kotlin
-val key = group.transition(quiet, wave,
+```diffstatic {data-lang=kotlin}
+val key = group.transition(
+    quiet,
+    wave,
     seconds = elapsed,
     durationSeconds = 1.5,
-    staggerSeconds = 0.12)
+    staggerSeconds = 0.12,
+)
 group.apply(key)
 ```
 
