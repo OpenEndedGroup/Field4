@@ -578,7 +578,7 @@ restarting anything. `r.why("event(kick, 36, 100, 20)")` explains a note the way
 
 ### Rules that listen to the drawing
 
-The facts a rhythm reads can come from the [drawing layer](notation.md). Draw a rectangle, name it
+The facts a rhythm reads can come from the [drawing layer](drawing_and_notation.md). Draw a rectangle, name it
 `drums`, and read it as sixteen steps across and three lanes down. Every mark inside it becomes a
 fact `hit(P, Voice, Mark)`: `P` is the step its left edge starts in, `Voice` the lane it sits in, and
 `Mark` its name (or its id, if it has none). One rule turns the hits into notes; `pos(T, P)` places a
@@ -591,7 +591,8 @@ val r = datalog(
     event(V, 36, 100, T) :- hit(P, V, _), pos(T, P).
     event(hh, 42, 40, T) :- every(T, 2, 1), pos(T, P), span(hh, A, B, _), P >= A, P < B.
     """,
-).rhythm().notationHits(drums, ["kick", "snare", "hh"])
+).rhythm()
+    .notationHits(drums, ["kick", "snare", "hh"])
 patSynth(r.pattern(), cps = 0.5)
 ```
 
