@@ -1,4 +1,3 @@
-import afield.media.image.util.PngEncoder
 import afield.simulation.optics.*
 
 // Small lights far behind the point the lens is focused on. Each one spreads into a copy of the
@@ -37,7 +36,8 @@ fun draw() {
         bladeRotation = 0.3,
     )
     val image = camera.render(lights, 150, 100, samples = 400)
-    display("sensor", PngEncoder.encode(image.toArgb(exposure = 1.0 / camera.reference, scale = 4), 600, 400))
+    // Low resolution keeps 400 rays a pixel quick; smoothed, the discs read as discs.
+    display("sensor", image.html(exposure = 1.0 / camera.reference, width = 600))
 }
 
 draw()

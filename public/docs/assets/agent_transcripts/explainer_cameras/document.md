@@ -140,33 +140,59 @@ controlGroup {
 <!-- field-box id="ec_pinhole_box" index="2" -->
 
 ```edn [field-box id="ec_pinhole_box" role="properties"]
-{"id" "ec_pinhole_box" "index" 2 "name" "pinhole_box" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pinhole_box" "_tombstone" false "frame" #afield/rect [300.0 220.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_pinhole_box_code_.kt" "lines" 40 "characters" 1418 "sha256" "85b09a3ab1143840700c75233bdf092d56ce3fdc63a68a873806ec9691295a43"}]}
+{"id" "ec_pinhole_box" "index" 2 "name" "pinhole_box" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pinhole_box" "_tombstone" false "frame" #afield/rect [300.0 220.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_pinhole_box_code_.kt" "lines" 66 "characters" 2595 "sha256" "87d5af13d904b3055aaecb7258a3273c9641b6ed51895c1e721617cb39dad524"}]}
 ```
 
 ```kotlin [field-property box="ec_pinhole_box" name="code" path="ec_pinhole_box_code_.kt"]
-import afield.media.image.util.PngEncoder
 import afield.simulation.optics.*
 
 // A closed box with a small hole, looking at the test scene. The picture forms on the back wall.
 val scene = OpticsScene.testScene()
-val objects = scene.mesh()
 var hole = 0.04
 var distance = 1.0
 var fixedExposure = false
 
+// Three points of the scene, each with its ray through the hole to the back wall.
+val marked = listOf(Triple(-0.9, 1.4, -0.8), Triple(1.0, 1.2, 1.3), Triple(0.3, 0.0, -2.0))
+
 fun draw() {
     val pinhole = SensorCamera(z = -5.0, sensorDistance = distance, apertureDiameter = hole)
-    val image = pinhole.render(scene, 96, 64, samples = 48)
+    val image = pinhole.render(scene, 240, 160, samples = 48)
+    // A coarser copy for the back wall of the 3D box, which needs a quad per pixel.
+    val wall = pinhole.render(scene, 96, 64, samples = 24)
     // Fixed: right for a hole 0.08 wide at distance 1. Otherwise each picture is scaled to look right.
     val exposure = if (fixedExposure) 1.0 / (PI * 0.04 * 0.04) else 1.0 / image.reference
+    // Each ray from 1.8 units in front of the hole, through it, to where it lands.
+    val rays = marked.map { (x, y, z) ->
+        val landing = pinhole.imageOf(x, y, z)
+        val dx = x
+        val dy = y - 1.2
+        val dz = z + 5.0
+        val k = 1.8 / sqrt(dx * dx + dy * dy + dz * dz)
+        fline {
+            moveTo(dx * k, 1.2 + dy * k, -5.0 + dz * k)
+            lineTo(0.0, 1.2, -5.0)
+            lineTo(landing[0], landing[1], landing[2])
+            color = vec(1.0, 0.6, 0.2, 1.0)
+            thickness = 1.5
+        }
+    }
+    /*
+    The box, the rays through it and the objects they come from: the view frames the box
+    (at its longest, with the sensor 2.5 back) and the two spheres, and lets the floor run
+    off the edges.
+    */
     three(channel = "box", height = 320, width = 640) {
-        mesh(objects, wireframe = false)
-        mesh(pinhole.sensorMesh(image, exposure), wireframe = false, unlit = true, cullBackFaces = false)
-        lines(pinhole.outline())
-        camera(yaw = 235.0, pitch = 18.0, distance = 1.5)
+        mesh(scene.mesh(), wireframe = false)
+        mesh(pinhole.sensorMesh(wall, exposure), wireframe = false, unlit = true, cullBackFaces = false)
+        lines(pinhole.outline() + rays)
+        fitTo(vec(-1.6, 0.0, -7.6), vec(1.6, 2.0, 1.6))
+        camera(yaw = 240.0, pitch = 16.0)
+        // The scene's bright sky, as in the pictures the camera takes.
         background("#d8dde3")
     }
-    display("sensor", PngEncoder.encode(image.toArgb(exposure, scale = 5), 480, 320))
+    // Smoothed: these pixels stand for a picture, not for detectors.
+    display("sensor", image.html(exposure, width = 480))
 }
 
 draw()
@@ -209,11 +235,10 @@ three(channel = "scene", height = 400, width = 640) {
 <!-- field-box id="ec_lens_camera" index="4" -->
 
 ```edn [field-box id="ec_lens_camera" role="properties"]
-{"id" "ec_lens_camera" "index" 4 "name" "lens_camera" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "lens_camera" "_tombstone" false "frame" #afield/rect [300.0 380.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_lens_camera_code_.kt" "lines" 36 "characters" 1191 "sha256" "d1175bdd9d6034f7f1631c19174143273ff28cf6ffde0c892de7cc1d2d96fb3d"}]}
+{"id" "ec_lens_camera" "index" 4 "name" "lens_camera" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "lens_camera" "_tombstone" false "frame" #afield/rect [300.0 380.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_lens_camera_code_.kt" "lines" 36 "characters" 1186 "sha256" "addb11a818e8fb2c3e119b8793887f56e54bef8170a551fb664f87ae4de9e75e"}]}
 ```
 
 ```kotlin [field-property box="ec_lens_camera" name="code" path="ec_lens_camera_code_.kt"]
-import afield.media.image.util.PngEncoder
 import afield.simulation.optics.*
 
 // The test scene through a lens. Choose the distance to focus at and the lens puts its sensor
@@ -226,8 +251,9 @@ var aperture = 0.5
 fun draw() {
     val sensor = ThinLens.imageDistance(focal, focus)
     val camera = SensorCamera(z = -4.5, sensorDistance = sensor, apertureDiameter = aperture, focalLength = focal)
-    val image = camera.render(scene, 120, 80, samples = 96)
-    display("sensor", PngEncoder.encode(image.toArgb(scale = 5), 600, 400))
+    val image = camera.render(scene, 300, 200, samples = 64)
+    // Smoothed when scaled: a picture, not a grid of detectors.
+    display("sensor", image.html(width = 600))
     markdown(
         "readout",
         "f/${(focal / aperture).f1}, sensor ${sensor.f3} behind the lens, sharp at ${focus.f1} in front",
@@ -358,7 +384,7 @@ controlGroup {
 <!-- field-box id="ec_deck" index="6" -->
 
 ```edn [field-box id="ec_deck" role="properties"]
-{"id" "ec_deck" "index" 6 "name" "deck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "deck" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_deck_code_.kt" "lines" 444 "characters" 19406 "sha256" "6358232e4ca52f0f4b5a387bca93f88f9cb2beb809b0555dfdb08836f194eb58"}]}
+{"id" "ec_deck" "index" 6 "name" "deck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "deck" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_deck_code_.kt" "lines" 446 "characters" 19668 "sha256" "a52543dbd665c0030f05f85e6c61c57b0c3ef3535dc03dac740e24023a665153"}]}
 ```
 
 ```kotlin [field-property box="ec_deck" name="code" path="ec_deck_code_.kt"]
@@ -788,12 +814,14 @@ presentation(title = "Cameras and lenses") {
                     +"""
                 # Further reading
 
-                - Eugene Hecht, *Optics*: refraction, lenses and aberrations, worked properly.
-                - Richard Feynman, *QED: The Strange Theory of Light and Matter*: why light
-                  seems to take the quickest path.
+                - Eugene Hecht, [*Optics*](https://archive.org/details/optics0000hech_e5d5): refraction,
+                  lenses and aberrations, worked properly.
+                - Richard Feynman, [*QED: The Strange Theory of Light and Matter*](https://archive.org/details/qedstrangetheory0000feyn_x8n8):
+                  why light seems to take the quickest path.
                 - Matt Pharr, Wenzel Jakob and Greg Humphreys, *Physically Based Rendering*,
-                  the chapter on cameras: pinholes, thin lenses and real lens systems in code.
-                - Rudolf Kingslake, *A History of the Photographic Lens*.
+                  [the chapter on cameras](https://pbr-book.org/4ed/Cameras_and_Film), free online:
+                  pinholes, thin lenses and real lens systems in code.
+                - Rudolf Kingslake, [*A History of the Photographic Lens*](https://archive.org/details/historyofphotogr0000king).
             """
                         .md
                     p(classes = "muted") {
@@ -1248,11 +1276,10 @@ controlGroup {
 <!-- field-box id="ec_bokeh" index="13" -->
 
 ```edn [field-box id="ec_bokeh" role="properties"]
-{"id" "ec_bokeh" "index" 13 "name" "bokeh" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "bokeh" "_tombstone" false "frame" #afield/rect [490.0 380.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_bokeh_code_.kt" "lines" 53 "characters" 1458 "sha256" "2049791f2670afe92eb29f7c4368c232672cabe7112de9ddc6e94bd971f26db1"}]}
+{"id" "ec_bokeh" "index" 13 "name" "bokeh" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "bokeh" "_tombstone" false "frame" #afield/rect [490.0 380.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_bokeh_code_.kt" "lines" 53 "characters" 1474 "sha256" "e35315be4d0b5475447c8cb4fbf1e53757707c47c036e3b62b7758fe7c0efa58"}]}
 ```
 
 ```kotlin [field-property box="ec_bokeh" name="code" path="ec_bokeh_code_.kt"]
-import afield.media.image.util.PngEncoder
 import afield.simulation.optics.*
 
 // Small lights far behind the point the lens is focused on. Each one spreads into a copy of the
@@ -1291,7 +1318,8 @@ fun draw() {
         bladeRotation = 0.3,
     )
     val image = camera.render(lights, 150, 100, samples = 400)
-    display("sensor", PngEncoder.encode(image.toArgb(exposure = 1.0 / camera.reference, scale = 4), 600, 400))
+    // Low resolution keeps 400 rays a pixel quick; smoothed, the discs read as discs.
+    display("sensor", image.html(exposure = 1.0 / camera.reference, width = 600))
 }
 
 draw()
@@ -1727,11 +1755,10 @@ controlGroup {
 <!-- field-box id="ec_bare_sensor" index="18" -->
 
 ```edn [field-box id="ec_bare_sensor" role="properties"]
-{"id" "ec_bare_sensor" "index" 18 "name" "bare_sensor" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "bare_sensor" "_tombstone" false "frame" #afield/rect [870.0 140.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_bare_sensor_code_.kt" "lines" 26 "characters" 1121 "sha256" "665021aa8ba556871efd98c567ace996b5aa7ab4b2202270c468586eb1f7a961"}]}
+{"id" "ec_bare_sensor" "index" 18 "name" "bare_sensor" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "bare_sensor" "_tombstone" false "frame" #afield/rect [870.0 140.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_bare_sensor_code_.kt" "lines" 25 "characters" 1049 "sha256" "4582cae58a295c75a11e3e6c727c7bc9229eb3350b89c0ba81516efea6ea5c9e"}]}
 ```
 
 ```kotlin [field-property box="ec_bare_sensor" name="code" path="ec_bare_sensor_code_.kt"]
-import afield.media.image.util.PngEncoder
 import afield.simulation.optics.*
 
 // A sensor held up to the scene with nothing in front of it. One point on each ball sends light to
@@ -1756,6 +1783,6 @@ three(channel = "rays", height = 320, width = 640) {
     camera(yaw = 235.0, pitch = 18.0, distance = 1.5)
     background("#d8dde3")
 }
-display("sensor", PngEncoder.encode(image.toArgb(scale = 10), 480, 320))
+display("sensor", image.html(width = 480))
 ```
 

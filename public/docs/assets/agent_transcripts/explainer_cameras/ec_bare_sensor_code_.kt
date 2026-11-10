@@ -1,4 +1,3 @@
-import afield.media.image.util.PngEncoder
 import afield.simulation.optics.*
 
 // A sensor held up to the scene with nothing in front of it. One point on each ball sends light to
@@ -23,4 +22,4 @@ three(channel = "rays", height = 320, width = 640) {
     camera(yaw = 235.0, pitch = 18.0, distance = 1.5)
     background("#d8dde3")
 }
-display("sensor", PngEncoder.encode(image.toArgb(scale = 10), 480, 320))
+display("sensor", image.html(width = 480))

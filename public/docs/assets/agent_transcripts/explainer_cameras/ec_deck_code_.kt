@@ -424,12 +424,14 @@ presentation(title = "Cameras and lenses") {
                     +"""
                 # Further reading
 
-                - Eugene Hecht, *Optics*: refraction, lenses and aberrations, worked properly.
-                - Richard Feynman, *QED: The Strange Theory of Light and Matter*: why light
-                  seems to take the quickest path.
+                - Eugene Hecht, [*Optics*](https://archive.org/details/optics0000hech_e5d5): refraction,
+                  lenses and aberrations, worked properly.
+                - Richard Feynman, [*QED: The Strange Theory of Light and Matter*](https://archive.org/details/qedstrangetheory0000feyn_x8n8):
+                  why light seems to take the quickest path.
                 - Matt Pharr, Wenzel Jakob and Greg Humphreys, *Physically Based Rendering*,
-                  the chapter on cameras: pinholes, thin lenses and real lens systems in code.
-                - Rudolf Kingslake, *A History of the Photographic Lens*.
+                  [the chapter on cameras](https://pbr-book.org/4ed/Cameras_and_Film), free online:
+                  pinholes, thin lenses and real lens systems in code.
+                - Rudolf Kingslake, [*A History of the Photographic Lens*](https://archive.org/details/historyofphotogr0000king).
             """
                         .md
                     p(classes = "muted") {

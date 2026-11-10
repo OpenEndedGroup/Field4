@@ -1,4 +1,3 @@
-import afield.media.image.util.PngEncoder
 import afield.simulation.optics.*
 
 // The test scene through a lens. Choose the distance to focus at and the lens puts its sensor
@@ -11,8 +10,9 @@ var aperture = 0.5
 fun draw() {
     val sensor = ThinLens.imageDistance(focal, focus)
     val camera = SensorCamera(z = -4.5, sensorDistance = sensor, apertureDiameter = aperture, focalLength = focal)
-    val image = camera.render(scene, 120, 80, samples = 96)
-    display("sensor", PngEncoder.encode(image.toArgb(scale = 5), 600, 400))
+    val image = camera.render(scene, 300, 200, samples = 64)
+    // Smoothed when scaled: a picture, not a grid of detectors.
+    display("sensor", image.html(width = 600))
     markdown(
         "readout",
         "f/${(focal / aperture).f1}, sensor ${sensor.f3} behind the lens, sharp at ${focus.f1} in front",
