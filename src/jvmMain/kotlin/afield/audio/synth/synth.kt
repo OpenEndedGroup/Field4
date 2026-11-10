@@ -56,7 +56,8 @@
  *     audio { (saw * 0.1f).pan(-0.35f) }
  *     audio { Pan(sine * 0.08f, 0.4.p) }
  *
- * Launch more than one thing from a box either with `+`:
+ * Launch more than one thing from a box either with `+` (`__m("pat")` is a
+ * [marker](../visualizers.md#markers) that `patHighlight` draws through):
  *
  *     audio { saw * 0.05f } +
  *         pat("bd [hh hh] sd").respond(cps = 0.5) { event ->
@@ -421,7 +422,7 @@
  *     arp.at(3.5)
  *     display("roll", arp.pianoRollSvg())
  *
- * Inline in the editor, in the style of history / histogram:
+ * Inline in the editor, in the style of history / histogram, through a [marker](../visualizers.md#markers):
  *
  *     __m("arp").pianoRoll(arp.at(4.0))
  *

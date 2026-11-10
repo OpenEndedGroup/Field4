@@ -181,6 +181,9 @@ a.triggers().respond(cps = 1.0) { event ->
 }
 ```
 
+`__m("pat")` is a [marker](visualizers.md#markers); `patHighlight` uses it to highlight, in the
+editor, the source text that produced each event.
+
 `voice` is an ordinary pattern carrying `gain` and `pan` annotations, so every route in
 [Sound: the Pattern → Audio Path](sound.md) takes it unchanged. `triggers()` gives one event per
 stage, and the event's `whole` is the stage's real span, so `respond` strikes it once and the

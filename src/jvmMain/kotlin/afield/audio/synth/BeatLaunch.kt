@@ -13,7 +13,8 @@
  * including a bundle built with `+`. It returns a [BeatLaunchSpec], which does nothing on its own.
  * The handler registered at the bottom of this file recognises that spec when it arrives as a
  * box's last expression, waits, and then hands the value it was wrapping back to the normal launch
- * machinery. A bundle wrapped once therefore starts as a unit:
+ * machinery. A bundle wrapped once therefore starts as a unit (`__m("pat")` is a
+ * [marker](../visualizers.md#markers)):
  *
  *     (audio { saw * 0.05f } +
  *         pat("bd [hh hh] sd").respond(cps = 0.5) { event ->

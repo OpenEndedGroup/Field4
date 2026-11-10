@@ -36,7 +36,7 @@ map of six hundred entries or six million.
 ## See the distribution
 
 A mean and a spread do not say what shape the data has. To see the shape, draw it in the editor
-beside the code. `__m("name")` makes a *marker*: a named place on the line it is written on, which
+beside the code. `__m("name")` makes a [*marker*](visualizers.md#markers): a named place on the line it is written on, which
 remembers the values you hand it. `histogram(o, dur = ...)` adds `o` to the marker and draws a
 histogram of what it holds just under that line; `dur` is how many of the most recent values it
 keeps, so `dur = offsets.size` keeps them all. `stats` does the same and adds the median, quartiles, skew and the values in the order they arrived:

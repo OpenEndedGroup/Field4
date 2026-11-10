@@ -309,7 +309,7 @@ you; it changes nothing. It saves keeping that code commented out and uncommenti
 ### `flipbox`: a block with a checkbox
 
 A `flipbox` is a block you switch on and off with a checkbox. Press ++cmd+shift+period++ to insert
-a marker (drawn as a single rune), then write `.flipbox(true) { … }` after it:
+a [marker](visualizers.md#markers) (drawn as a single rune), then write `.flipbox(true) { … }` after it:
 
 ```diffstatic {data-lang=kotlin}
 __m("Zk3q-a1").flipbox(true) {
