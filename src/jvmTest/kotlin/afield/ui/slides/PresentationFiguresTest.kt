@@ -191,6 +191,59 @@ class PresentationFiguresTest {
         show.command("stop")
     }
 
+    /**
+     * The Lights deck's additive figure: the slide turns "blue" off, a cue turns it on. The figure had
+     * been ticked before, so its relaunched run showed a stale tick; the step's "off" landed while the
+     * new run was building, the group was then drawn ticked over a box without blue, and the cue's "on"
+     * matched what the panel claimed and did nothing. Blue never came on. Now the step waits for the
+     * shown group, and the cue reaches the box.
+     */
+    @Test fun aLaterCueMatchingAStaleTickStillTurnsItOn() = runBlocking {
+        val (host, figures) = deck("additive")
+        val additive = figures[0]
+        var blue = false
+        additive.controlGroup("controls") { checkbox("blue") { blue = it } }
+        additive.setControl("blue", true)                     // ticked in an earlier visit
+        val runner = object : FigureRunner by FakeRunner(figures) {
+            override fun launch(boxes: List<Box>) {}
+            override fun controlRegistration(box: Box, channel: String, label: String): Any? =
+                afield.ui.output.controlRegistration(box, channel, label)
+        }
+        val show = host.presentation {
+            step("Red and green") {
+                audience { figure("additive") }
+                control("additive", "blue", false)
+                cue("Add blue") { control("additive", "blue", true) }
+            }
+        }
+        show.figureStage.runner = runner
+        show.command("start")
+        // The relaunched run: its variable starts off, the checkbox restores its remembered tick.
+        val registered = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val build = Thread {
+            blue = false
+            additive.controlGroup("controls") {
+                checkbox("blue") { blue = it }
+                registered.countDown()
+                release.await()
+            }
+        }.apply { start() }
+        registered.await()
+        kotlinx.coroutines.delay(400)
+        release.countDown()
+        build.join()
+        val deadline = System.currentTimeMillis() + 5_000
+        fun shown() = afield.ui.output.controlGroupControlsWithKeys(additive, "controls").single().second.checked
+        while ((blue || shown() != false) && System.currentTimeMillis() < deadline) kotlinx.coroutines.delay(50)
+        assertEquals(false, shown(), "the step's off is applied to the group the new run shows")
+        assertFalse(blue)
+        show.command("next")
+        assertTrue(blue, "the cue's on reaches the box")
+        assertEquals(true, shown())
+        show.command("stop")
+    }
+
     @Test fun figuresRunWhileTheirSlideIsUpAndAHandLaunchedBoxIsLeftAlone() = runBlocking {
         val (host, figures) = deck("tone", "wave", "clock")
         val runner = FakeRunner(figures)
