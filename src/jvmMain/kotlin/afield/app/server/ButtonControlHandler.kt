@@ -89,15 +89,8 @@ internal fun registerButtonUpdateHandler() {
 
         val callback = getButtonCallback(update.controlId)
         if (callback != null) {
-            // /ws feeds buttons through its ordered control consumer; do not reorder callbacks again.
-            GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                try {
-                    callback(update.pressed)
-                } catch (e: Exception) {
-                    lprintln("error,controls", "Error in button callback: ${e.message}")
-                    e.printStackTrace()
-                }
-            }
+            // A press and a release are edges: queued in order and never coalesced (ControlCallbackLanes).
+            afield.ui.output.deliverControlCallback(update.controlId, edge = true) { callback(update.pressed) }
         } else {
             lprintln("warning,controls", "No callback registered for button: ${update.controlId}")
         }
