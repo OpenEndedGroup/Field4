@@ -58,6 +58,10 @@ class AiBoxConversationTest {
                 AiChatModelIdentity("openai", "gpt-6-astra", "gpt-6-astra").marker() +
                 "Done.\n<<progress>>\nCompiled\nAll checks passed.\n<<ai>>\n![plot](data:image/png;base64,YWJj)"
             AiBoxConversation.write(box, transcript)
+            val panel = """{"present":true,"open":false,"property":"fragment","width":1080,"height":820}"""
+            box.setPropertyRaw("ai4_chat_panel", panel)
+            val continuation = """{"version":1,"checkpoint":"provider-owned-state"}"""
+            box.setPropertyRaw("ai4_continuation", continuation, doResync = false)
             assertTrue(session.hasPendingSidecarSave(box.id, AiBoxConversation.PROPERTY))
             assertEquals("", AiBoxConversation.read(other))
             val saving = SavingContext()
@@ -67,11 +71,19 @@ class AiBoxConversationTest {
             session.boxes.clear()
             val loaded = saving.loadFromEdnText(portable, directory.path, initIfCreated = false).single()
             assertEquals(transcript, AiBoxConversation.read(loaded))
+            assertEquals(panel, loaded.getPropertyRaw("ai4_chat_panel"))
+            assertEquals(continuation, loaded.getPropertyRaw("ai4_continuation"))
+            needsResync.removeAll { it.first === loaded }
+            loaded.resyncAll()
+            assertFalse(loaded to "ai4_chat_history" in needsResync, "Load history once through its dedicated request")
+            assertTrue(loaded to "ai4_chat_panel" in needsResync)
             // Portable documents also retain the transcript without their sidecar files.
             directory.resolve("signal_ai4_chat_history_.md").delete()
             session.boxes.clear()
             val imported = saving.loadFromEdnText(portable, directory.path, preferInlineFiles = true, initIfCreated = false).single()
             assertEquals(transcript, AiBoxConversation.read(imported))
+            assertEquals(panel, imported.getPropertyRaw("ai4_chat_panel"))
+            assertEquals(continuation, imported.getPropertyRaw("ai4_continuation"))
             AiBoxConversation.write(imported, "")
             val cleared = saving.exportEdnPackage(setOf(imported), directory.path)
             session.boxes.clear()
@@ -81,6 +93,19 @@ class AiBoxConversationTest {
             needsResync.removeAll { it.first.isInsideInitialized() && it.first.inside === session }
             directory.deleteRecursively()
         }
+    }
+
+    @Test fun legacyChatsGainPresentationWithoutReopeningAnExplicitlyRemovedPanel() {
+        val box = Box("legacy-chat")
+        box.setPropertyRaw(AiBoxConversation.PROPERTY, "<<you>>\nHello\n<<ai>>\nWelcome", doResync = false)
+        AiBoxConversation.ensurePanel(box)
+        assertTrue(box.getPropertyRaw(AiBoxConversation.PANEL_PROPERTY).toString().contains("\"open\":true"))
+        box.setPropertyRaw(AiBoxConversation.PANEL_PROPERTY, """{"present":false}""", doResync = false)
+        AiBoxConversation.ensurePanel(box)
+        assertEquals("""{"present":false}""", box.getPropertyRaw(AiBoxConversation.PANEL_PROPERTY))
+        AiBoxConversation.write(box, AiBoxConversation.read(box) + "\n<<you>>\nContinue")
+        assertEquals("""{"present":false}""", box.getPropertyRaw(AiBoxConversation.PANEL_PROPERTY))
+        needsResync.removeAll { it.first === box }
     }
 
     @Test fun interruptedRepliesRemainReadableWithoutPretendingAToolIsStillRunning() {

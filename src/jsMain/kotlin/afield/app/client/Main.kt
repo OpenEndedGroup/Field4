@@ -6604,6 +6604,12 @@ suspend fun main() {
         var found = defaultCreate(u)
 
         when {
+            set.property == "ai4_chat_panel" -> {
+                found.asDynamic()[set.property] = set.value
+                val restore = window.asDynamic().restoreAiChatPanel
+                if (restore != null) restore(u)
+            }
+
             set.property == "name" -> {
                 found.getElementsByClassName("doubleClickToEdit").asList()[0].innerHTML = set.value
                 found.unsafeCast<dynamic>().name = set.value

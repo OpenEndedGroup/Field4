@@ -79,6 +79,20 @@ interface LlmBridge {
         instructions: String = ""
     ): LlmThreadState
 
+    /** Optional durable continuation. Unsupported providers keep using the saved prose transcript. */
+    fun checkpointThread(state: LlmThreadState): String? = null
+
+    /** Best effort; return null for incompatible, unavailable or expired continuation state. */
+    fun restoreThread(checkpoint: String, report: (String) -> Unit = {}): LlmThreadState? {
+        report("unsupported_provider")
+        return null
+    }
+
+    /** Small, independent text task. Providers may bypass agent setup and tool registration entirely. */
+    fun completeText(instructions: String, prompt: String, maxOutputTokens: Long = 256, context: String = ""): String =
+        send(startThread("ai4:chat-autocomplete", "", instructions), listOf(context, prompt).filter { it.isNotBlank() }.joinToString("\n\n"),
+            maxOutputTokens = maxOutputTokens, maxToolRounds = 0).text
+
     fun send(
         state: LlmThreadState,
         userPrompt: String,
@@ -98,7 +112,7 @@ interface LlmBridge {
 }
 
 /**
- * Adapter that presents the existing (untouched) [OpenAiIdeCodexBridge] as an
+ * Adapter that presents [OpenAiIdeCodexBridge] as an
  * [LlmBridge]. Overrides carry no default values (Kotlin forbids that on an
  * override); the defaults live on the interface and reach every call site typed
  * as [LlmBridge]. A blank [startThread] instruction defers to the inner bridge's
@@ -107,6 +121,11 @@ interface LlmBridge {
 class OpenAiLlmBridge(private val inner: OpenAiIdeCodexBridge) : LlmBridge {
     val delegate: OpenAiIdeCodexBridge get() = inner
     override val modelIdentity: AiChatModelIdentity get() = inner.modelIdentity
+
+    override fun checkpointThread(state: LlmThreadState): String = inner.checkpointThread(state)
+    override fun restoreThread(checkpoint: String, report: (String) -> Unit): LlmThreadState? = inner.restoreThread(checkpoint, report)
+    override fun completeText(instructions: String, prompt: String, maxOutputTokens: Long, context: String): String =
+        inner.completeText(instructions, prompt, maxOutputTokens, context)
 
     override fun startThread(fileKey: String, fileText: String, instructions: String): LlmThreadState =
         if (instructions.isBlank()) inner.startThread(fileKey, fileText)

@@ -769,7 +769,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "autorun",
             "layers",
             "layerFrames",
-            "ai4_auto_name"
+            "ai4_auto_name",
+            // Restore chat presentation without resending transcripts or executing their boxes.
+            "ai4_chat_panel"
         ).map { it.toRegex() }
 
         var ioPersistentProperties = mutableSetOf(
@@ -852,6 +854,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "ai4_auto_name",
             "ai4_auto_name_signature",
             "ai4_chat_history",
+            "ai4_chat_panel",
+            "ai4_continuation",
             "ai4_chat_running",
             // What a box chat's suspended turn waits for, so a restarted Field resumes it (afield.ai.agent.StudyBuildAwaits).
             "ai4_chat_suspension",
@@ -863,6 +867,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         )
 
         var ioSeparateProperties = mutableMapOf(
+            "ai4_continuation" to "json",
             "fragment" to "glsl",
             "stackSL" to "stacksl",
             "rectSL" to "rectsl",
