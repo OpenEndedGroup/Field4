@@ -26,7 +26,7 @@ fun distributionSvg(
     p: Progressive,
     title: String? = null,
     widthPx: Int = 480,
-    heightPx: Int = 230,
+    heightPx: Int = 200,
     maxDiscrete: Int = 80,
     exact: Double? = null,
     color: String = "#0af",
@@ -35,7 +35,7 @@ fun distributionSvg(
 ): String {
     val s = p.kept()
     val w = widthPx.toDouble()
-    val histH = heightPx * 0.58
+    val histH = heightPx * 0.55
     val padL = 14.0; val padR = 14.0; val padT = if (title != null) 26.0 else 16.0
     val innerW = w - padL - padR
     val sb = StringBuilder()
