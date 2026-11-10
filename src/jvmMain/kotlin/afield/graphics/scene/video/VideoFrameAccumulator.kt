@@ -5,7 +5,6 @@ import afield.graphics.shader.fromViews
 import afield.graphics.texture.LoadedTexture
 import afield.graphics.texture.HasImageView
 import afield.graphics.texture.TextureSampler
-import afield.graphics.texture.video.VideoTexture
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.device.CommandBuffer
 import afield.graphics.vulkan.targets.RenderToTexture
@@ -16,7 +15,7 @@ import org.lwjgl.vulkan.VK10.*
 /** One full-resolution, video-local RGBA16F pass per selected source frame, independent of eye poses. */
 internal class VideoFrameAccumulator(
     private val renderer: Renderer,
-    private val source: VideoTexture,
+    private val source: VideoSourceFrame,
     factory: ((Parameters) -> ModulePointer)?,
 ) : AutoCloseable, HasImageView {
     private val targets = List(2) { i ->

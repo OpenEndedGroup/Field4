@@ -1,4 +1,4 @@
-"""Read timelines, markers and the playhead from a running DaVinci Resolve.
+"""Read timelines and markers, and read or move the playhead of a running DaVinci Resolve.
 
 Resolve's scripting API (``DaVinciResolveScript``, a CPython extension that ships inside the
 Resolve app) connects to the running application over a local socket. This module finds it,
@@ -42,6 +42,7 @@ __all__ = [
     "markers",
     "clip_markers",
     "playhead",
+    "set_playhead",
     "frames_to_timecode",
     "timecode_to_frames",
 ]
@@ -346,3 +347,33 @@ def playhead(name: str | None = None, host: str | None = None) -> dict:
     record = timecode_to_frames(tc, fps, drop)
     start = int(t.GetStartFrame())
     return {"timeline": t.GetName(), "timecode": tc, "recordFrame": record, "frame": record - start, "seconds": (record - start) / fps, "fps": fps}
+
+
+def set_playhead(frame: int | None = None, name: str | None = None, host: str | None = None,
+                 *, seconds: float | None = None, timecode: str | None = None) -> dict:
+    """Seek the current timeline by relative frame, relative seconds, or absolute record timecode.
+
+    Exactly one position is required. Seconds round to the nearest frame. A named timeline must
+    already be current: this never changes the editor's timeline behind its user's back.
+    Returns the observed playhead, which a best-effort follower can verify and retry later.
+    """
+    import math
+    if sum(value is not None for value in (frame, seconds, timecode)) != 1:
+        raise ValueError("give exactly one of frame, seconds or timecode")
+    _, t, current_name = _find(_project(connect(host)), name)
+    if t.GetName() != current_name:
+        raise ValueError(f"open timeline {name!r} in Resolve first (current: {current_name!r})")
+    fps, drop = _rate(t)
+    start, end = int(t.GetStartFrame()), int(t.GetEndFrame())
+    if seconds is not None:
+        if isinstance(seconds, bool) or not math.isfinite(seconds) or seconds < 0:
+            raise ValueError("playhead seconds must be finite and non-negative")
+        frame = math.floor(seconds * fps + 0.5)
+    elif timecode is not None:
+        frame = timecode_to_frames(timecode, fps, drop) - start
+    if isinstance(frame, bool) or not isinstance(frame, int) or not 0 <= frame < end - start:
+        raise ValueError(f"playhead frame must be an integer in 0..{end - start - 1}, from the timeline start")
+    tc = frames_to_timecode(start + frame, fps, drop)
+    if not t.SetCurrentTimecode(tc):
+        raise ResolveUnavailable(f"Resolve refused playhead {tc!r} in {t.GetName()!r}; check the open page and close any modal dialog")
+    return playhead(name, host)

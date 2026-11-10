@@ -83,6 +83,21 @@ class ResolveTest {
     }
 
     @Test
+    fun `playhead setters use relative frames and seconds or absolute timecode`() {
+        assertEquals(48, Resolve.setPlayhead(48).frame)
+        assertEquals("01:00:02:00", Resolve.playhead().timecode)
+        assertEquals(60, Resolve.setPlayheadSeconds(2.51).frame)
+        assertEquals(96, Resolve.setPlayhead("01:00:04:00").frame)
+        assertEquals(96, Resolve.playhead("Edit 1").frame)
+        assertFailsWith<IllegalArgumentException> { Resolve.setPlayheadSeconds(Double.NaN) }
+        assertFailsWith<IllegalArgumentException> { Resolve.setPlayhead(-1) }
+        assertFailsWith<IllegalStateException> { Resolve.setPlayhead(0, "Edit DF") }
+        assertEquals("Edit 1", Resolve.playhead().timeline)
+        assertEquals(12, Resolve.on("macbook-pro-2").setPlayhead(12).frame)
+        assertEquals(96, Resolve.playhead().frame)
+    }
+
+    @Test
     fun `on(host) asks that machine's Resolve through the same worker`() {
         val other = Resolve.on("macbook-pro-2")
         assertEquals("Fake Project on macbook-pro-2", other.status().project)

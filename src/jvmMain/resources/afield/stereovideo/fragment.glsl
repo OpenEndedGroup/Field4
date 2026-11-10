@@ -2,12 +2,13 @@
 layout(binding = 0) uniform sampler2D luma; // full-resolution packed SBS P010 luma, R16_UNORM
 layout(binding = 1) uniform sampler2D chroma; // half-resolution interleaved Cb/Cr, R16G16_UNORM
 layout(binding = 2) uniform sampler2D accumulatedImage; // float16 linear-light running mean
+layout(binding = 3) uniform sampler2D softenedImage; // held exposure after per-eye Gaussian filtering
 layout(push_constant) uniform MoviePush {
     mat4 model;       // screen-local metres to room space
     vec4 surface;     // arc width, height, bend radians, strip count
     vec4 image;       // packed source width/height, swap eyes, vertical flip
-    vec4 colorimetry; // Kr, Kb, full-range flag, reserved
-    vec4 accumulation; // processed mix, valid image, reserved, reserved
+    vec4 colorimetry; // Kr, Kb, full-range flag, brightness minus one
+    vec4 accumulation; // processed mix, valid image, spatial blur mix, linear darkening
 }
 pc;
 layout(location = 0) in vec2 uv; // per-eye image coordinates, top-left origin
@@ -37,5 +38,11 @@ void main() {
     // display/stream encoding.
     vec3 sharp = toLinear(clamp(rgb, 0, 1));
     vec3 blurred = pc.accumulation.y > .5 ? texture(accumulatedImage, qY).rgb : sharp;
-    color = vec4(mix(sharp, blurred, pc.accumulation.x), 1);
+    if (pc.accumulation.y > .5 && pc.accumulation.z > 0) {
+        vec2 halfTexel = .5 / vec2(textureSize(softenedImage, 0));
+        vec2 qSoft = clamp(q, lower + halfTexel, upper - halfTexel);
+        blurred = mix(blurred, texture(softenedImage, qSoft).rgb, pc.accumulation.z);
+    }
+    blurred *= 1 - pc.accumulation.w; // darken only the exposure, in linear light
+    color = vec4(mix(sharp, blurred, pc.accumulation.x) * max(0, 1 + pc.colorimetry.w), 1);
 }

@@ -43,6 +43,9 @@ class Timeline:
     def GetSetting(self, key): return self.settings[key]
     def GetMarkers(self): return self.markers
     def GetCurrentTimecode(self): return self.tc
+    def SetCurrentTimecode(self, timecode):
+        self.tc = timecode
+        return True
     def GetTrackCount(self, kind): return len(self.items.get(kind, []))
     def GetItemListInTrack(self, kind, i): return self.items[kind][i - 1]
 

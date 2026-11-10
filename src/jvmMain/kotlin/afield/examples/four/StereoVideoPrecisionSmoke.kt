@@ -96,6 +96,16 @@ object StereoVideoPrecisionSmoke {
                 val expected = if (v <= .04045f) v / 12.92f else ((v + .055f) / 1.055f).pow(2.4f)
                 check(abs(values[x] - expected) < .001f) { "Pixel $x: ${values[x]} versus $expected" }
             }
+            // Zoetrope levels multiply linear light, preserving dim ramps and gains above one.
+            for (gain in listOf(.125f, 2f, 0f)) {
+                movie.brightness = gain
+                frame()
+                val exposed = read()
+                for (x in 0..1023) check(abs(exposed[x] - values[x] * gain) < .002f) {
+                    "Linear exposure $gain failed at $x: ${exposed[x]} versus ${values[x] * gain}"
+                }
+            }
+            movie.brightness = 1f
             movie.swapEyes = true
             frame()
             val swapped = read()
@@ -136,8 +146,36 @@ object StereoVideoPrecisionSmoke {
             check(movie.accumulationSamples == 1L && cleared[0] > .99f && cleared[1023] < .001f) {
                 "Clear did not replace the previous exposure with the held source frame"
             }
+            // The real held-exposure + Gaussian path must preserve eye separation and precision.
+            // A paused movie holds its first (soft/dark) half, making the readback deterministic.
+            movie.exposureCadenceEnabled = true
+            movie.exposureBlurMix = 1f
+            movie.exposureBlurSigma = 4f
+            movie.exposureDarkening = .25f
+            movie.clearAccumulation()
+            frame()
+            val softened = read()
+            check(softened[0] in .73f.. .751f && softened[1023] < .001f) {
+                "Exposure darkening/seam clamp failed: ${softened[0]}, ${softened[1023]}"
+            }
+            // Blur reaches inward from the black endpoint of the ramp. Crossing the SBS seam
+            // would instead introduce the neighbouring eye's white endpoint.
+            check(softened[1023] > cleared[1023]) { "Gaussian did not soften the endpoint" }
+            movie.exposureBlurMix = 0f
+            movie.exposureDarkening = 0f
+            frame()
+            val held = read()
+            check(held.map { it.toBits() }.toSet().size == 1024) { "Held exposure lost ten-bit precision" }
+            for (x in 0..1023) check(abs(held[x] - cleared[x]) < .001f) { "Held copy changed pixel $x" }
+            movie.exposureBlurMix = 1f
+            movie.exposureBlurSigma = 0f
+            frame()
+            val zeroRadius = read()
+            for (x in 0..1023) check(zeroRadius[x] == held[x]) { "Zero-radius blur softened pixel $x" }
+            movie.exposureCadenceEnabled = false
             movie.accumulationMix = 0f
             frame()
+            println("Video exposure cadence PASSED: held float16 copy, per-eye Gaussian, linear darkening, bypass")
             println("Video accumulation PASSED: float16 linear mean, held-frame gating, clear, sharp bypass")
             println(
                 "StereoVideo precision PASSED: $distinct levels; P010 -> movie shader -> float eyes; paused seek held",
