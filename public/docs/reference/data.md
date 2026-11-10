@@ -1406,7 +1406,7 @@ will error without one.
 
 `src/jvmMain/kotlin/afield/document/workspace/FileManager.kt` — [read the source](source/jvmMain/afield/document/workspace/FileManager/)
 
-**Used in:** [File management](../files_and_paths.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
+**Used in:** [File management](../files_and_paths.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
 
 ### Top-level values { #filemanager-kt-values }
 

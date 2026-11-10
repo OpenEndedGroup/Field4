@@ -2986,6 +2986,26 @@
         "public/docs/openxr_eye_intersection.md#capture-box=eye_ray_renderer"
       ]
     },
+    "assets/agent_transcripts/ordered_group_keyframes/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-10T21:00:01.299Z",
+      "channels": 1,
+      "file": "assets/web_publications/ordered_group_keyframes/document/metadata.edn",
+      "files": {
+        "assets/web_publications/ordered_group_keyframes/document/metadata.edn": "0d95eb8a30e35d5a0dfbe2bdcd7f8e9e3dc1a2534281ba052f66e428b0804bda",
+        "assets/web_publications/ordered_group_keyframes/document/outputs.json": "6db50dd19759174b86c09e62a41499a8a419b3b72b2e74180ee89f97f9aea1a0",
+        "assets/web_publications/ordered_group_keyframes/outputs/0.html": "d12fe9c2ee02e546757e3a313e259e09bb64de28ea5b74fd3527baf1752d35b4"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/ordered_group_keyframes/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/ordered_group_keyframes.yaml": "65fc04f04e1b2e4eb2cb142c1dc0e0d2ebf7762847f014ac087c2239cb24fdc0",
+        "public/docs/assets/agent_transcripts/ordered_group_keyframes/guides/keyframer_examples-ordered-groups-one-rule-for-a-whole-look.md": "e8f467f4477f481f4fa6d840506aaf95a2e4e31e4177d2e25d4ae2171a5c8b6f",
+        "public/docs/assets/agent_transcripts/ordered_group_keyframes/metadata.edn": "ea8d87b90e58e2ad11a2c687746a81c1a1ecea0544425ae6f57d8669efc7917f",
+        "public/docs/assets/agent_transcripts/ordered_group_keyframes/ordered_group_demo_code_.kt": "79ae743d85de84713c14a150e1c689cfc91a2fa21d744d34a8e395961249c284",
+        "public/docs/assets/agent_transcripts/ordered_group_keyframes/ordered_group_other_code_.kt": "5e762134a1e45eb36fa6df47e673be5d6734aeb4997387c597a8b309d918201c"
+      }
+    },
     "assets/agent_transcripts/paint_canvas/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
       "capturedAt": "2026-11-10T09:21:48.095Z",

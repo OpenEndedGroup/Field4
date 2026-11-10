@@ -2071,8 +2071,8 @@ in-browser edit button would break that. Getting a modified look back out goes t
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="keyframebrowsing-kt--registerkeyframebrowser"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">registerKeyframeBrowser</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="nc">KeyframeScope</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/keyframeBrowsing/#L114) | Register a directory + glob for browsing and return the token the iframe passes back on every request. |
-| <a id="keyframebrowsing-kt--installkeyframebrowserhandler"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installKeyframeBrowserHandler</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/keyframeBrowsing/#L640) |  |
+| <a id="keyframebrowsing-kt--registerkeyframebrowser"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">registerKeyframeBrowser</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="nc">KeyframeScope</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/keyframeBrowsing/#L115) | Register a directory + glob for browsing and return the token the iframe passes back on every request. |
+| <a id="keyframebrowsing-kt--installkeyframebrowserhandler"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installKeyframeBrowserHandler</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/keyframeBrowsing/#L643) |  |
 
 ## logstream.kt { #logstream-kt }
 
@@ -8182,7 +8182,7 @@ Two inheritable declarations of one extension property (`Box._x`, `Once.speed`) 
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="source-block-macro-kt--macro-sourceblock"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;sourceBlock</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span></code>](source/jvmMain/afield/runtime/macros/source_block_macro/#L5) |  |
+| <a id="source-block-macro-kt--macro-sourceblock"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;sourceBlock</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span></code>](source/jvmMain/afield/runtime/macros/source_block_macro/#L8) |  |
 
 ## BoxStudyBuilds.kt { #boxstudybuilds-kt }
 
@@ -9179,10 +9179,14 @@ code-blend plan) saves that text, and a block loaded back from it compiles the t
 box it came from, the first time it is called. So a saved block works before (or without) the box
 that wrote it running again.
 
-A block made by this call carries its lambda and is safe to call at once. A block loaded back from
-saved text is not safe to call from inside its own box's running code: compiling it runs that box's
-code again, which calls the block again. Call it from another box, a frame loop or a control
-callback; [`SourceBackedBlockSelfBoxReentry`](internal.md#sourcebackedblock-kt-sourcebackedblockselfboxreentry) stops the loop and says so if you do.
+A typed one-argument lambda uses the same flat spelling:
+`sourceBlock { screenNo: Int -> 0.1 + 0.04 * screenNo }`. It produces a
+[`SourceBackedFunction`](search.md#sourcebackedfunction-kt-sourcebackedfunction) retaining the complete lambda, including its parameter type. This form
+is a Field box macro; compiled Kotlin can construct [`SourceBackedFunction`](search.md#sourcebackedfunction-kt-sourcebackedfunction) explicitly.
+
+Restored blocks compile once. During their owner's body they use a separate engine with the
+inherited preamble, avoiding recursive body execution. Inherited properties remain available;
+unexported local variables are not durable captures and must be written into the source instead.
 
 Should the macro not run (code that reaches this function some other way), the result still works,
 with an empty [`SourceBackedBlock.source`](internal.md#sourcebackedblock-kt--sourcebackedblock--source).
@@ -9193,7 +9197,7 @@ with an empty [`SourceBackedBlock.source`](internal.md#sourcebackedblock-kt--sou
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="sourceblock-kt--sourceblock"></a>[<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">sourceBlock</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">SourceBackedBlock</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/study/source/sourceBlock/#L62) | A block carrying `block` and no source, which is what `sourceBlock { … }` compiles to when the macro has not rewritten it. |
+| <a id="sourceblock-kt--sourceblock"></a>[<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">sourceBlock</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">SourceBackedBlock</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/study/source/sourceBlock/#L66) | A block carrying `block` and no source, which is what `sourceBlock { … }` compiles to when the macro has not rewritten it. |
 
 ## KnobNames.kt { #knobnames-kt }
 
