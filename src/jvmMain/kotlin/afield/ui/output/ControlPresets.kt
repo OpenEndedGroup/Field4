@@ -69,7 +69,7 @@ internal fun applyControlChanges(
     return changed
 }
 
-private fun invokeControlCallback(control: ControllerControl) {
+private fun invokeControlCallback(control: ControllerControl) = ControlCallbackLanes.runNow(controlLane(control.id), control.id) {
     runCatching {
         when (control.type) {
             "slider" -> control.value?.let { getSliderCallback(control.id)?.invoke(it) }

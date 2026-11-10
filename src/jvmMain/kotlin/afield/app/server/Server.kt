@@ -253,6 +253,7 @@ import afield.ui.output.getColorCallback
 import afield.ui.output.getFLineClickCallback
 import afield.ui.output.getFileUploadCallback
 import afield.ui.output.getSliderCallback
+import afield.ui.output.deliverControlCallback
 import afield.ui.output.getStringCallback
 import afield.ui.output.getVec2Callback
 import afield.ui.output.stats
@@ -3692,14 +3693,8 @@ class Server {
                 // Get the callback for this slider and invoke it
                 val callback = getSliderCallback(update.sliderId)
                 if (callback != null) {
-                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                        try {
-                            callback(update.value)
-                        } catch (e: Exception) {
-                            lprintln("error,slider", "Error in slider callback: ${e.message}")
-                            e.printStackTrace()
-                        }
-                    }
+                    // Newest value wins, one callback of a box at a time, off this socket's consumer (ControlCallbackLanes).
+                    deliverControlCallback(update.sliderId) { callback(update.value) }
                 } else {
                     lprintln("warning,slider", "No callback registered for slider: ${update.sliderId}")
                 }
@@ -3716,16 +3711,8 @@ class Server {
 
                 val callback = getVec2Callback(update.controlId)
                 if (callback != null) {
-                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
-                    // the callback out of order, so it could end on a stale value.
-                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                        try {
-                            callback(Vector2f(update.x.toFloat(), update.y.toFloat()))
-                        } catch (e: Exception) {
-                            lprintln("error,controls", "Error in vec2 callback: ${e.message}")
-                            e.printStackTrace()
-                        }
-                    }
+                    // Newest value wins, one callback of a box at a time, off this socket's consumer (ControlCallbackLanes).
+                    deliverControlCallback(update.controlId) { callback(Vector2f(update.x.toFloat(), update.y.toFloat())) }
                 } else {
                     lprintln("warning,controls", "No callback registered for vec2: ${update.controlId}")
                 }
@@ -3741,16 +3728,8 @@ class Server {
 
                 val callback = getCheckboxCallback(update.controlId)
                 if (callback != null) {
-                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
-                    // the callback out of order, so it could end on a stale value.
-                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                        try {
-                            callback(update.value)
-                        } catch (e: Exception) {
-                            lprintln("error,controls", "Error in checkbox callback: ${e.message}")
-                            e.printStackTrace()
-                        }
-                    }
+                    // Newest value wins, one callback of a box at a time, off this socket's consumer (ControlCallbackLanes).
+                    deliverControlCallback(update.controlId) { callback(update.value) }
                 } else {
                     lprintln("warning,controls", "No callback registered for checkbox: ${update.controlId}")
                 }
@@ -3956,16 +3935,8 @@ class Server {
 
                 val callback = getStringCallback(update.controlId)
                 if (callback != null) {
-                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
-                    // the callback out of order, so it could end on a stale value.
-                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                        try {
-                            callback(update.value)
-                        } catch (e: Exception) {
-                            lprintln("error,controls", "Error in string callback: ${e.message}")
-                            e.printStackTrace()
-                        }
-                    }
+                    // Newest value wins, one callback of a box at a time, off this socket's consumer (ControlCallbackLanes).
+                    deliverControlCallback(update.controlId) { callback(update.value) }
                 } else {
                     lprintln("warning,controls", "No callback registered for string: ${update.controlId}")
                 }
@@ -4018,23 +3989,15 @@ class Server {
 
                 val callback = getColorCallback(update.controlId)
                 if (callback != null) {
-                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
-                    // the callback out of order, so it could end on a stale value.
-                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                        try {
-                            callback(
+                    // Newest value wins, one callback of a box at a time, off this socket's consumer (ControlCallbackLanes).
+                    deliverControlCallback(update.controlId) { callback(
                                 Vector4f(
                                     update.r.toFloat(),
                                     update.g.toFloat(),
                                     update.b.toFloat(),
                                     update.a.toFloat()
                                 )
-                            )
-                        } catch (e: Exception) {
-                            lprintln("error,controls", "Error in color callback: ${e.message}")
-                            e.printStackTrace()
-                        }
-                    }
+                            ) }
                 } else {
                     lprintln("warning,controls", "No callback registered for color: ${update.controlId}")
                 }

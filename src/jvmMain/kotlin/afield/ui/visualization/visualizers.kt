@@ -178,15 +178,8 @@ internal fun registerArrayControlUpdateHandler() {
 
         val callback = arrayCallbacks[update.controlId]
         if (callback != null) {
-            // In arrival order (the socket serializes array-update): a plain launch could reorder a drag.
-            GlobalScope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
-                try {
-                    callback(update.values)
-                } catch (e: Exception) {
-                    lprintln("error,controls", "Error in array control callback: ${e.message}")
-                    e.printStackTrace()
-                }
-            }
+            // Newest value wins, one callback of a box at a time (ControlCallbackLanes).
+            afield.ui.output.deliverControlCallback(update.controlId, kind = "array") { callback(update.values) }
         } else {
             lprintln("warning,controls", "No callback registered for array control: ${update.controlId}")
         }
