@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="analysis_guide" index="0" -->
 
 ```edn [field-box id="analysis_guide" role="properties"]
-{"id" "analysis_guide" "index" 0 "name" "1 · analysis guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · analysis guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_guide_code_.kt" "lines" 12 "characters" 1082 "sha256" "377776ef5289a305a91e5c49cebe86261ee43dbb55c10cb1c26be594db66705c"}]}
+{"id" "analysis_guide" "index" 0 "name" "1 · analysis guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · analysis guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_guide_code_.kt" "lines" 10 "characters" 1068 "sha256" "5ea95dfbebdc0a577532a6579ea06bd09d92de6110869a5f51d199cc9f874646"}]}
 ```
 
 ```kotlin [field-property box="analysis_guide" name="code" path="analysis_guide_code_.kt"]
@@ -22,9 +22,7 @@ display(
       <h2 style="margin:0 0 8px;color:#7fcbd7">Beat and pitch analysis</h2>
       <p><b>librosa</b> supplies the onset envelope, multi-scale tempograms, beat grid and monophonic pYIN track. <b>Basic Pitch</b> supplies polyphonic note events, activations, pitch bends and MIDI. Essentia is not loaded by this worker.</p>
       <p>Run box 2 for real cached beat and pitch previews of Nancy from 18–42 seconds. Run box 3 for the complete live path: filename lookup → source window → three submitted jobs → WebSocket progress → durable results → synchronized analysis board. The source player and every analysis lane share hover, zoom and playback time; click any plot to seek the recording. Re-running unchanged requests is a cache hit.</p>
-    </section>
-    """
-        .trimIndent(),
+    </section>""".trimIndent(),
 )
 display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 ```

@@ -38,9 +38,7 @@ display(
       ${patTallyOnsets(energy, scheduled, tolerance).describe("energy  (amplitude envelope)")}
       ${patTallyOnsets(pitch, scheduled, tolerance).describe("pitch   (periodicity)      ")}
       ${patTallyOnsets(merged, scheduled, tolerance).describe("merged  (the union)        ")}
-    The energy detector is not misconfigured. The evidence it consumes is not in this signal.
-"""
-        .trimIndent(),
+    The energy detector is not misconfigured. The evidence it consumes is not in this signal.""".trimIndent(),
 )
 
 showPatTranscriptionOf(

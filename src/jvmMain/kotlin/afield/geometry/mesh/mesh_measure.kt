@@ -514,6 +514,64 @@ class MeshBvh(val mesh: TriMesh, leafSize: Int = 8) {
         )
     }
 
+    /**
+     * Whether any triangle lies on the segment from `(ox, oy, oz)` along `(dx, dy, dz)`, strictly
+     * between [minDistance] and [maxDistance] (in units of the direction's length).
+     *
+     * The shadow-ray query: it stops at the first triangle it finds rather than looking for the
+     * nearest, and takes plain doubles so a lighting loop of a million rays allocates nothing. Back
+     * faces block, as an opaque solid's inside does.
+     */
+    fun occluded(
+        ox: Double, oy: Double, oz: Double,
+        dx: Double, dy: Double, dz: Double,
+        maxDistance: Double,
+        minDistance: Double = 1e-9,
+    ): Boolean {
+        if (nodeCount == 0) return false
+        if (dx == 0.0 && dy == 0.0 && dz == 0.0) return false
+        val idx = if (dx != 0.0) 1.0 / dx else Double.MAX_VALUE
+        val idy = if (dy != 0.0) 1.0 / dy else Double.MAX_VALUE
+        val idz = if (dz != 0.0) 1.0 / dz else Double.MAX_VALUE
+        val p = mesh.positions
+        val stack = IntArray(64)
+        var sp = 0
+        stack[sp++] = 0
+        while (sp > 0) {
+            val node = stack[--sp]
+            if (boxEntry(node, ox, oy, oz, idx, idy, idz, maxDistance) > maxDistance) continue
+            if (isLeaf(node)) {
+                val from = -nodeLeft[node] - 1
+                for (i in from until from + nodeRight[node]) {
+                    val t = order[i]
+                    val a = mesh.ia(t) * 3; val b = mesh.ib(t) * 3; val c = mesh.ic(t) * 3
+                    val e1x = (p[b] - p[a]).toDouble(); val e1y = (p[b + 1] - p[a + 1]).toDouble(); val e1z = (p[b + 2] - p[a + 2]).toDouble()
+                    val e2x = (p[c] - p[a]).toDouble(); val e2y = (p[c + 1] - p[a + 1]).toDouble(); val e2z = (p[c + 2] - p[a + 2]).toDouble()
+                    val px = dy * e2z - dz * e2y
+                    val py = dz * e2x - dx * e2z
+                    val pz = dx * e2y - dy * e2x
+                    val det = e1x * px + e1y * py + e1z * pz
+                    if (abs(det) < 1e-18) continue
+                    val invDet = 1.0 / det
+                    val tx = ox - p[a]; val ty = oy - p[a + 1]; val tz = oz - p[a + 2]
+                    val u = (tx * px + ty * py + tz * pz) * invDet
+                    if (u < -1e-9 || u > 1.0 + 1e-9) continue
+                    val qx = ty * e1z - tz * e1y
+                    val qy = tz * e1x - tx * e1z
+                    val qz = tx * e1y - ty * e1x
+                    val v = (dx * qx + dy * qy + dz * qz) * invDet
+                    if (v < -1e-9 || u + v > 1.0 + 1e-9) continue
+                    val hit = (e2x * qx + e2y * qy + e2z * qz) * invDet
+                    if (hit > minDistance && hit < maxDistance) return true
+                }
+            } else {
+                stack[sp++] = nodeLeft[node]
+                stack[sp++] = nodeRight[node]
+            }
+        }
+        return false
+    }
+
     /** Every triangle the ray meets, nearest first — what a "cut this solid with a line" query wants. */
     fun raycastAll(origin: Vec3, direction: Vec3, maxDistance: Double = Double.MAX_VALUE): List<RayHit> {
         val hits = mutableListOf<RayHit>()

@@ -62,7 +62,5 @@ markdown(
     - Hard endpoints ("arrive here in 4 s"); tempo, offset and amplitude transforms of recalled passages.
     - More dancers: the bridges make a memory of several performers possible.
 
-    Full report: dev_docs/TEMPORAL_MEMORY_EXPERIMENTS.md. Data: public/docs/assets/temporal_memory/cmu_05/README.md.
-    """
-        .trimIndent(),
+    Full report: dev_docs/TEMPORAL_MEMORY_EXPERIMENTS.md. Data: public/docs/assets/temporal_memory/cmu_05/README.md.""".trimIndent(),
 )

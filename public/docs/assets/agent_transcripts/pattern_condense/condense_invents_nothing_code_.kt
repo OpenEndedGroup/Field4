@@ -65,7 +65,5 @@ markdown(
 
     None of this rests on the search's own opinion of itself: every string it returned was
     re-parsed and re-played before it was accepted, and the namings above are recomputed from
-    the generators rather than read off the label.
-    """
-        .trimIndent(),
+    the generators rather than read off the label.""".trimIndent(),
 )

@@ -770,7 +770,10 @@ stop, delete and close bug. Per box: `jobs`, `runningStrands`, `stopHooks`, `own
 ownerships by kind: `audio-patch`, `patsynth-feeder`, `control-callback`, `runloop-preRun`,
 `runloop-postRun`, `render-module`, `stream-process`), `ownedByPolicy`, a sample of `ownedKeys`
 (each tagged with its policy), `engine` (`live`/`none`), `liveTotal`, which sums everything but the
-engine, and `liveRunning`, which sums only what a stop releases. `policies` maps each kind to its
+engine, and `liveRunning`, which sums only what a stop releases. `details` holds what a live ownership says it is doing, for kinds that can say: each audio patch
+reports `rms`, `peak` and `hz` (upward zero crossings) over its last ~85 ms of rendered output, after
+gain, so a check can tell a patch that plays from one that is in the mix but silent without anyone
+listening. `policies` maps each kind to its
 release policy; `unattributed` counts registrations made with no box executing. MCP:
 `field_lifecycle_census`.
 

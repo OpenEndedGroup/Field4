@@ -34,7 +34,5 @@ display(
     spectrum. The spectrum is then only asked one question — sparse or dense — which is what
     separates a chord (a few discrete partials) from a snare (a continuum).
     Compare: a sawtooth is a full harmonic stack on ONE note and is NOT refused,
-    because timbre is not polyphony.
-    """
-        .trimIndent(),
+    because timbre is not polyphony.""".trimIndent(),
 )

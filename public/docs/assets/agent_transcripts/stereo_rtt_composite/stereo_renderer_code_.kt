@@ -27,8 +27,6 @@ display(
     For VR, connect your OpenXR runtime first, set useHeadset = true above,
     then restart Field and launch the boxes again. Eye size comes from the runtime.<br>
     Stop box 4 to pause the render loop. Restart Field to change mode or eye size.
-    </div>
-    """
-        .trimIndent(),
+    </div>""".trimIndent(),
 )
 displayOpen("guide")

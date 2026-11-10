@@ -43,9 +43,7 @@ display(
     "resolution",
     """
     minHz ${minHz.f1} Hz → analysis window $window samples (${(1000.0 * window / PatSoundDocs.SR).f1} ms)
-    the notes are ${(1000.0 / cps / 16).f1} ms long
-"""
-        .trimIndent(),
+    the notes are ${(1000.0 / cps / 16).f1} ms long""".trimIndent(),
 )
 display("verdict", heard.diagnosis.describe())
 display("recovered", "pat(\"${heard.miniNotation}\")")

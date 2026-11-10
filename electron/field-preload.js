@@ -57,6 +57,9 @@ contextBridge.exposeInMainWorld("fieldElectron", {
   presentGuide(state) {
     ipcRenderer.send("field-presentation-native-state", state);
   },
+  openPresentationLink(href) {
+    ipcRenderer.send("field-presentation-open-link", String(href));
+  },
   presentationTypeScript(request) {
     return ipcRenderer.invoke("field-presentation-tsx", request);
   },

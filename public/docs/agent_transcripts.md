@@ -2733,6 +2733,56 @@ Walkthrough: [Audio curves: a sound as a few slow controls](audio_curves.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/audio_curve_explorer/metadata.edn)
 
+### explainer_sine_pitch
+
+**A four-slide explainer with a figure you can hear.** One box, `sine`, draws twenty milliseconds
+of a sine wave, shows a frequency slider and a sound checkbox, and plays the tone. A second,
+`deck`, is a presentation after Bartosz Ciechanowski's [Sound](https://ciechanow.ski/sound/), in
+our own words: an opening slide, the figure beside prose with its slider, a cue that glides the
+slider up an octave, and a slide where a cue turns the sound on. Run `deck` in Field's Electron app;
+the talk starts `sine` when its slide comes up and stops it when the talk leaves. It is the
+template for the explainer decks, described in
+[Live figures beside prose](presentation_studio.md#live-figures-beside-prose).
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_sine_pitch/metadata.edn)
+
+### explainer_sound
+
+**The Sound explainer as a Field presentation.** A `deck` box follows Bartosz Ciechanowski's
+[Sound](https://ciechanow.ski/sound/) section by section, in our own words: air as a crowd of
+molecules, a plate pushing slices of air down a tube, pops that repeat into notes, sums of shapes
+and of sines, masses, springs and plucked strings, and pressure waves spreading through the open
+and through rooms. Each figure is its own box, named for what it shows and laid out to the right of
+`deck` in slide order, so the canvas reads as a table of contents. Run `deck` in Field's Electron
+app; the talk starts each figure when its slide comes up and stops it when the talk moves on, and
+nothing sounds until someone holds a key or ticks **sound**. Built on
+[Live figures beside prose](presentation_studio.md#live-figures-beside-prose).
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_sound/metadata.edn)
+
+### explainer_cameras
+
+**An explainer deck on cameras and lenses.** A `deck` box holds a presentation after Bartosz
+Ciechanowski's [Cameras and Lenses](https://ciechanow.ski/cameras-and-lenses/), in our own words,
+in the essay's order: a sensor counting light, a box with a hole, glass, light as a wave, lenses,
+aperture and focus, and the faults of real lenses. Each figure is its own box to the right of the
+deck; the sensor pictures are ray-traced on the CPU by `afield.simulation.optics`. Run `deck` in
+Field's Electron app; the talk starts each figure when its slide comes up.
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_cameras/metadata.edn)
+
+### explainer_lights
+
+**A talk on light and shadow, with figures lit on the CPU.** One box, `deck`, is a presentation
+after Bartosz Ciechanowski's [Lights and Shadows](https://ciechanow.ski/lights-and-shadows/), in our
+own words, section by section from power and the cosine factor to soft shadows, colour and bounced
+light. Each figure is its own box, laid out in slide order beside it. The three-dimensional figures
+compute the light at every vertex with `afield.graphics.lighting` (point, sphere and rectangle
+lights, shadow rays, a coarse radiosity solve) and draw the result unlit in a three view. Run `deck`
+in Field's Electron app; the talk starts each figure when its slide comes up.
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_lights/metadata.edn)
+
 ### audio_ai_underfit_mancini
 
 Import a held-out excerpt, hash the completed Experiment in Terror
@@ -2972,8 +3022,7 @@ for (i in 0 until 240) {
                 const f = document.querySelector("iframe[src*='score_view']")
                 const s = f && f.contentDocument && f.contentDocument.getElementById("status")
                 return s ? s.textContent : "no score view yet"
-                """
-                    .trimIndent(),
+                """.trimIndent(),
             )
             .toString()
     val t = Regex("score · ([0-9.]+)s").find(at)?.groupValues?.get(1)?.toDouble()

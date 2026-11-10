@@ -17,9 +17,7 @@ val show = slideShow {
             ## A tour of this document
             This guide has four steps. Each one selects the box it is about.
 
-            [[next:Start →]]
-            """
-                .trimIndent(),
+            [[next:Start →]]""".trimIndent(),
             animated = true,
         )
         selectBox(guide)
@@ -33,9 +31,7 @@ val show = slideShow {
             ## `numbers` makes a list
             The green line points at it. Visits to this step: **{{visits}}**.
 
-            [[back]] [[next]]
-            """
-                .trimIndent(),
+            [[back]] [[next]]""".trimIndent(),
             animated = true,
         )
         selectBox(numbersBox)
@@ -47,9 +43,7 @@ val show = slideShow {
             ## Line 3 does the work
             `squares` maps each number to its square.
 
-            [[back]] [[next]]
-            """
-                .trimIndent(),
+            [[back]] [[next]]""".trimIndent(),
             animated = true,
         )
         selectBox(squaresBox, property = "code", line = 3, highlight = 3)
@@ -67,9 +61,7 @@ val show = slideShow {
             ## Your turn
             [Give this guide a star](#custom:star). Stars so far: **{{stars}}**.
 
-            [[home:Start again]] [[finish]]
-            """
-                .trimIndent(),
+            [[home:Start again]] [[finish]]""".trimIndent(),
             animated = true,
         )
         linkCallback("star") {

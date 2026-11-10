@@ -20,9 +20,7 @@ operations:
                 <h2 style="margin:0 0 8px;color:#7fcbd7">Corpus microscope</h2>
                 <p>Run box 2 for the complete path: resolve Nancy and Candlestick by filename; submit and await multi-scale segmentation and grouped descriptor jobs; query a six-second Nancy window; then audition the nearest windows and automatic source-to-neighbour splices.</p>
                 <p>Every descriptor is an immutable NPZ asset. Retrieval weights remain visible and editable: harmony, pitch, texture, rhythm and dynamics. Players from different files share relative time, so hover, zoom, seek and the playback cursor line up without pretending that their file timestamps are the same.</p>
-              </section>
-              """
-                  .trimIndent(),
+              </section>""".trimIndent(),
           )
           display("all durable jobs", fieldAudioJobMonitor(heightPixels = 410))
   - create:

@@ -26,7 +26,5 @@ ${result.network}
 
 | curve | ends at | persistence | points |
 | --- | --- | ---: | ---: |
-$rows
-"""
-        .trimIndent(),
+$rows""".trimIndent(),
 )

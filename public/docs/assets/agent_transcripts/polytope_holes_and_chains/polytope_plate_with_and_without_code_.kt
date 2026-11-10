@@ -74,7 +74,5 @@ println(
     """
     left: one face, two boundary rings, ${plate(true).toTriMesh().triangleCount} triangles
     right: the identical outline with the ring dropped, ${plate(false).toTriMesh().triangleCount} triangles
-    the filled area differs by exactly the ring: ${4.0 * hole * hole}
-    """
-        .trimIndent(),
+    the filled area differs by exactly the ring: ${4.0 * hole * hole}""".trimIndent(),
 )

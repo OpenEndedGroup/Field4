@@ -310,6 +310,57 @@ class ThreeGeometryWireTest {
         }
     }
 
+    /**
+     * A shading figure (a shadowed mesh relit by a slider) changes only its colours. The positions,
+     * normals and index hash the same in both generations, so the viewer reuses them, fetches only the
+     * colours through `only=`, and the arrays it ends with are the new generation's, bit for bit.
+     */
+    @Test
+    fun aColourOnlyChangeFetchesOnlyTheColours() {
+        val n = 3000
+        val positions = FloatArray(n * 3) { it * 0.001f }
+        val normals = FloatArray(n * 3) { if (it % 3 == 1) 1f else 0f }
+        val index = IntArray(n) { it }
+        fun payload(shade: Float) = ThreeGeometryPayload(uid = "u", drawables = listOf(ThreeDrawable(ThreeGeometryData(mapOf(
+            "position" to ThreeAttribute(3, positions), "normal" to ThreeAttribute(3, normals),
+            "color" to ThreeAttribute(3, FloatArray(n * 3) { shade * (it % 3) })), ThreeIndex("Uint16Array", index)),
+            ThreeDrawStyle.surface(), id = "floor")))
+        val first = payload(0.2f).splitForWire("g1")
+        val second = payload(0.7f).splitForWire("g2")
+        val t1 = first.description.buffers!!.entries
+        val t2 = second.description.buffers!!.entries
+        val changed = t2.indices.filter { t1[it].hash != t2[it].hash }
+        assertEquals(1, changed.size, "only the colour array hashes differently")
+        val colourOnly = second.buffers!!.subset(changed)!!.toByteArray()
+        assertEquals(n * 3 * 4L, colourOnly.size.toLong(), "the subset is the colours alone")
+        assertTrue(colourOnly.size * 3 < second.buffers.bytes, "far fewer bytes than the whole geometry (${colourOnly.size} of ${second.buffers.bytes})")
+
+        ViewerJavaScript.Session.open(regionName = "wire-payload", exports = EXPORTS).use { js ->
+            val wire1 = json.encodeToString(ThreeGeometryPayload.serializer(), first.description)
+            val wire2 = json.encodeToString(ThreeGeometryPayload.serializer(), second.description)
+            val bound1 = js.call("bindWireBuffers", js.fromJson(wire1), js.arrayBuffer(first.buffers!!.toByteArray()))
+            val attrs1 = bound1.getMember("drawables").getArrayElement(0).getMember("geometry").getMember("attributes")
+            // What the viewer holds after drawing the first generation: its arrays, by hash.
+            val held = js.fromJson("{}")
+            val heldMap = js.member("WIRE_BUFFER_TYPES").context.eval("js", "(o) => new Map(Object.entries(o))")
+            listOf("position", "normal", "color").forEach { held.putMember(attrs1.getMember(it).getMember("hash").asString(), attrs1.getMember(it).getMember("array")) }
+            held.putMember(bound1.getMember("drawables").getArrayElement(0).getMember("geometry").getMember("index").getMember("hash").asString(),
+                bound1.getMember("drawables").getArrayElement(0).getMember("geometry").getMember("index").getMember("array"))
+            val message = js.fromJson(wire2)
+            val table = message.getMember("buffers")
+            val plan = js.call("wireReusable", table, heldMap.execute(held))
+            val missing = plan.getMember("missing")
+            assertEquals(changed, (0 until missing.arraySize).map { missing.getArrayElement(it).asInt() }, "the viewer asks for the colours only")
+            val full = js.call("wireAssemble", table, plan.getMember("reuse"), missing, js.arrayBuffer(colourOnly))
+            val bound2 = js.call("bindWireBuffers", message, full)
+            val attrs2 = bound2.getMember("drawables").getArrayElement(0).getMember("geometry").getMember("attributes")
+            val want = payload(0.7f).drawables.single().geometry.attributes
+            listOf("position", "normal", "color").forEach { name ->
+                assertContentEquals(want.getValue(name).array.map { it.toRawBits() }, floats(attrs2.getMember(name).getMember("array")).map { it.toRawBits() }, name)
+            }
+        }
+    }
+
     @Test
     fun aLaterGeometryMessageMakesEverythingQueuedBeforeItMoot() {
         ViewerJavaScript.Session.open(regionName = "wire-payload", exports = EXPORTS).use { js ->

@@ -40,8 +40,6 @@ println(
     result: ${long.polyhedron.topology.elements(0).size}v ${long.polyhedron.topology.elements(2).size}f,
         chi = ${long.polyhedron.topology.eulerCharacteristic()}
     a composite still refuses a single realization policy:
-        ${runCatching { cube().ambo().transform(ConwayOperator.BEVEL, DualCentroidRealization) }.exceptionOrNull()?.message}
-    """
-        .trimIndent(),
+        ${runCatching { cube().ambo().transform(ConwayOperator.BEVEL, DualCentroidRealization) }.exceptionOrNull()?.message}""".trimIndent(),
 )
 viz("chain", long.summary())

@@ -15,7 +15,17 @@ body {
   font-weight: var(--field-font-weight);
 }
 h1 { font-size: 18px; font-weight: 400; margin: 0 0 5px; }
-#status { color: var(--field-fg-muted); margin: 0 0 18px; font-size: 14px; }
+#status-line { margin: 0 0 14px; font-size: 14px; min-height: 1.4em; }
+#status { color: var(--field-fg-muted); }
+#pending-note { margin-left: 12px; color: var(--field-accent); }
+#pending-note.failed { color: var(--field-danger); }
+/* A thin bar along the top while a move is on its way, before the audience changes. */
+#progress { position: fixed; top: 0; left: 0; right: 0; height: 2px; overflow: hidden; z-index: 10; }
+#progress::before {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 30%;
+  background: var(--field-accent); animation: field-progress 0.9s ease-in-out infinite;
+}
+@keyframes field-progress { from { left: -30%; } to { left: 100%; } }
 [hidden] { display: none !important; }
 button, input {
   font: inherit;
@@ -26,16 +36,33 @@ button, input {
   padding: 9px 12px;
   min-height: 38px;
 }
-button { cursor: pointer; }
-button:hover:not(:disabled), summary:hover { background: var(--field-hover); color: var(--field-fg-strong); }
+button { cursor: pointer; transition: background-color 80ms, border-color 80ms, color 80ms; }
+/* Hover is a hint; pressed is unmistakable, and .pressed holds it for a quick click (see PRESS_MS). */
+button:hover:not(:disabled), summary:hover { background: var(--field-hover); color: var(--field-fg-strong); border-color: var(--field-border-strong); }
+input:hover { border-color: var(--field-border-strong); }
+button:active:not(:disabled), button.pressed:not(:disabled), summary:active, summary.pressed {
+  background: var(--field-accent-panel); border-color: var(--field-accent); color: var(--field-accent-text); transition: none;
+}
 button:disabled { opacity: .38; cursor: default; }
 button:focus-visible, input:focus-visible, summary:focus-visible {
   outline: 1px solid var(--field-accent);
   outline-offset: 2px;
 }
+input:focus { border-color: var(--field-accent-muted); }
 .row { display: flex; flex-wrap: wrap; gap: 6px; flex-shrink: 0; }
+/* Navigation wraps on its own; the step's reset keeps to the right end of the same line. */
+.controls { display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 24px; flex-shrink: 0; }
+.controls > .row:first-child { flex: 1 1 auto; min-width: 0; }
+#lesson-actions { flex: none; margin-left: auto; }
 #previous, #next { color: var(--field-fg-bright); border-color: var(--field-border-strong); }
-#field-actions, #interactive-guide, #lesson-actions { margin-top: 8px; }
+#previous.pending, #next.pending { border-color: var(--field-accent); color: var(--field-accent-text); }
+#field-actions, #interactive-guide { margin-top: 8px; }
+/* A linked page is a detour: say what is showing and how to get back, in the accent. */
+#link-bar { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 6px 6px 6px 12px; flex-shrink: 0;
+  border: 1px solid var(--field-accent-muted); border-radius: 6px; background: var(--field-accent-subtle); }
+#link-bar .link-label { color: var(--field-fg-muted); }
+#link-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--field-accent-text); }
+#close-link { flex: none; border-color: var(--field-accent); color: var(--field-fg-bright); }
 #error { color: var(--field-danger); white-space: pre-wrap; margin: 8px 0; flex-shrink: 0; }
 #error:empty { margin: 0; }
 .picker {
@@ -59,10 +86,11 @@ button:focus-visible, input:focus-visible, summary:focus-visible {
 #slides::-webkit-scrollbar-thumb { background: var(--field-scrollbar-thumb); border-radius: 6px; }
 #slides details { border-left: 1px solid var(--field-border-medium); margin-left: 10px; padding-left: 12px; }
 #slides > details { margin-left: 0; }
-#slides summary { padding: 9px 8px; border-radius: 6px; cursor: pointer; color: var(--field-fg-muted); }
+#slides summary { padding: 3px 8px; line-height: 18px; margin: 2px 0 0; border: 1px solid transparent; border-radius: 4px; cursor: pointer; color: var(--field-fg-muted); }
 #slides summary.contains-current { color: var(--field-fg-bright); }
 #slides summary span:first-child { margin-left: 6px; }
 .section-range { float: right; color: var(--field-fg-dim); font-size: 13px; font-variant-numeric: tabular-nums; }
+/* One line a slide: about twice as many fit as with button padding, and a full-width row is still easy to hit. */
 #slides button.slide {
   display: flex;
   align-items: baseline;
@@ -70,16 +98,27 @@ button:focus-visible, input:focus-visible, summary:focus-visible {
   width: 100%;
   text-align: left;
   border: 1px solid transparent;
+  border-radius: 4px;
   background: transparent;
-  padding: 8px 12px;
-  margin: 3px 0;
+  padding: 0 10px;
+  margin: 0;
+  min-height: 0;
+  font-size: 14px;
+  line-height: 16px;
   color: var(--field-fg-soft);
 }
-#slides button.slide:hover { background: var(--field-bg); color: var(--field-fg-bright); }
+#slides button.slide:hover { background: var(--field-hover); color: var(--field-fg-bright); }
 #slides button.slide.active { background: var(--field-surface); border-color: var(--field-accent-muted); color: var(--field-accent); }
+#slides button.slide:active, #slides button.slide.pressed { background: var(--field-accent-panel); border-color: var(--field-accent); color: var(--field-accent-text); }
+/* Where the talk is going, before the audience changes: dashed until the state confirms it. */
+#slides button.slide.pending {
+  border: 1px dashed var(--field-accent); background: var(--field-accent-subtle); color: var(--field-accent-text);
+  animation: field-pending 0.9s ease-in-out infinite alternate;
+}
+@keyframes field-pending { from { background: var(--field-accent-subtle); } to { background: var(--field-accent-panel); } }
 #slides button.slide.search-choice { outline: 1px solid var(--field-fg-muted); outline-offset: -1px; }
 #slides button.slide:focus-visible { outline: 1px solid var(--field-accent); outline-offset: 1px; }
-.slide-number { font-size: 13px; color: var(--field-fg-dim); min-width: 3ch; font-variant-numeric: tabular-nums; }
+.slide-number { font-size: 12px; color: var(--field-fg-dim); min-width: 3ch; font-variant-numeric: tabular-nums; }
 #slides button.active .slide-number { color: var(--field-accent); }
 .slide-description { min-width: 0; flex: 1; }
 .slide-excerpt { display: block; font-size: 13px; line-height: 1.5; color: var(--field-fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -88,4 +127,4 @@ button:focus-visible, input:focus-visible, summary:focus-visible {
   .picker { padding: 10px; }
   .search-row label { flex-basis: 100%; }
 }
-</style></head><body><h1 id="title">FIELD / PRESENT</h1><div id="status" role="status">Opening guide…</div><div class="row"><button id="previous">← Previous</button><button id="next">Next →</button><button id="reload">Refresh slide</button><button id="show-audience">Show audience</button><button id="fullscreen">Fullscreen audience</button></div><div id="field-actions" class="row" hidden><button id="show-guide">Document notes</button><button id="run-macro" disabled>Run cue macro</button></div><div id="interactive-guide" class="row" hidden><button id="start-guide">Start document guide</button><button id="guide-previous">← Guide back</button><button id="guide-next">Guide next →</button><button id="stop-guide">Close document guide</button></div><div id="lesson-actions" class="row" hidden><button id="reset-checkpoint" hidden>Reset experiment</button><button id="run-cue" hidden>Run cue again</button></div><p id="error" role="alert"></p><nav class="picker" aria-label="Slide outline"><div class="search-row"><label for="slide-search">Find slide</label><input id="slide-search" type="search" placeholder="Slide text, title, section or number" autocomplete="off" maxlength="512" aria-controls="slides" title="/ or ⌘/Ctrl+F to search · ↑↓ choose · Enter visit · Esc close" aria-description="/ or ⌘/Ctrl+F to search. Up and Down choose a slide; Enter visits it; Escape closes search."><span id="slide-matches" role="status"></span></div><div id="slides"></div></nav><script src="/presentation-search.js"></script><script src="/presentation-control.js"></script></body></html>
+</style></head><body><h1 id="title">FIELD / PRESENT</h1><div id="progress" hidden></div><div id="status-line"><span id="status" role="status">Opening guide…</span><span id="pending-note" role="status" hidden></span></div><div class="controls"><div class="row"><button id="previous">← Previous</button><button id="next">Next →</button><button id="reload">Refresh slide</button><button id="show-audience">Show audience</button><button id="fullscreen">Fullscreen audience</button></div><div id="lesson-actions" class="row" hidden><button id="reset-checkpoint" hidden>Reset experiment</button><button id="run-cue" hidden>Run cue again</button></div></div><div id="field-actions" class="row" hidden><button id="show-guide">Document notes</button><button id="run-macro" disabled>Run cue macro</button></div><div id="interactive-guide" class="row" hidden><button id="start-guide">Start document guide</button><button id="guide-previous">← Guide back</button><button id="guide-next">Guide next →</button><button id="stop-guide">Close document guide</button></div><div id="link-bar" role="status" hidden><span class="link-label">Showing</span><span id="link-title"></span><button id="close-link">← Back to the slide</button></div><p id="error" role="alert"></p><nav class="picker" aria-label="Slide outline"><div class="search-row"><label for="slide-search">Find slide</label><input id="slide-search" type="search" placeholder="Slide text, title, section or number" autocomplete="off" maxlength="512" aria-controls="slides" title="/ or ⌘/Ctrl+F to search · ↑↓ choose · Enter visit · Esc close" aria-description="/ or ⌘/Ctrl+F to search. Up and Down choose a slide; Enter visits it; Escape closes search."><span id="slide-matches" role="status"></span></div><div id="slides"></div></nav><script src="/presentation-search.js"></script><script src="/presentation-control.js"></script></body></html>

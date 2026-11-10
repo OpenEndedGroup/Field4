@@ -623,6 +623,19 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // The pilot explainer deck (2026-11-09): its deck box opens Electron audience windows and
+        // its figure box returns an audio patch for the audio device. PresentationFiguresTest
+        // covers the figure engine without either.
+        "explainer_sine_pitch",
+        // The Sound explainer deck: the same shape at full length. The deck opens Electron audience
+        // windows, its figures return audio patches and run animation loops.
+        "explainer_sound",
+        // The cameras explainer deck: its deck box opens Electron audience windows. Its figures
+        // are CPU ray tracing (CameraOpticsTest) and three/lines outputs.
+        "explainer_cameras",
+        // The Lights and Shadows deck: its deck box opens Electron audience windows. Its figures are
+        // CPU lighting in three views; LightingTest checks the physics they are drawn from.
+        "explainer_lights",
         // Box 2 returns a live patSynth launch (an audio-engine registration held while the box runs);
         // the drawing-to-facts path and the live re-solve are covered by DatalogRhythmLiveTest.
         "datalog_rhythm_drawn",

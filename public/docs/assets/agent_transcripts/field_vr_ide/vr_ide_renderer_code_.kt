@@ -36,8 +36,6 @@ display(
     Quest keyboard and mouse use WiVRn HID forwarding after setup; see the saved guide.<br>
     Another browser can edit this same document with its own input focus.<br>
     Stop box 2 to close the browser. Restart Field to switch VR mode or eye size.
-    </div>
-    """
-        .trimIndent(),
+    </div>""".trimIndent(),
 )
 displayOpen("guide")

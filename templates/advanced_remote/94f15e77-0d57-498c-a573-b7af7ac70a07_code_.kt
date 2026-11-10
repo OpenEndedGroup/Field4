@@ -115,7 +115,5 @@ markdown(
     let sys = new LSystem(cfg.axiom, cfg.rules);
     let sentence = sys.iterate(cfg.iter);
     drawLSystem(sentence, cfg.angle, cfg.step);
-    ```
-    """
-        .trimIndent(),
+    ```""".trimIndent(),
 )

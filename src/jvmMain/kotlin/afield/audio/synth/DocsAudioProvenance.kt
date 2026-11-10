@@ -157,6 +157,9 @@ object DocsAudioProvenance {
         // pinned Dirt-Samples one-shots and a committed public-domain film clip. See
         // subharmonic_sound.md.
         "afield.audio.synth.SubharmonicSoundDocs" to Origin.DOUGH_DSP,
+        // Five sounding figures of the Sound explainer, their signal graphs rebuilt from the figure boxes and
+        // played with a fixed performance. See explainer_sound.md.
+        "afield.audio.synth.ExplainerSoundDocs" to Origin.DOUGH_DSP,
         // Both of its figures are one Faust program rendered offline, so the family is the same at
         // eight voices and at one — the difference between them is voice allocation, not origin.
         "afield.audio.synth.FaustPolySoundDocs" to Origin.FAUST,

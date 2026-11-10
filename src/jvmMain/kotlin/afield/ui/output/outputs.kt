@@ -1830,6 +1830,23 @@ internal fun buildButtonHtml(controlId: String, label: String, hit: String = "ho
 }
 
 /**
+ * The markup for one key of [ControlGroupBuilder.keys]: a momentary button whose label is on the key,
+ * with its computer [letter], if any, in `data-key-letter` for `sliders.js` and under the label.
+ */
+internal fun buildKeyHtml(controlId: String, label: String, letter: Char?): String {
+    val escaped = escapeHtml(label)
+    val key = letter?.lowercaseChar()?.toString()
+    val letterAttribute = if (key == null) "" else " data-key-letter=\"$key\""
+    val shortcut = if (key == null) "" else " aria-keyshortcuts=\"${key.uppercase()}\""
+    val hint = if (key == null) "" else "<span class=\"field-key-letter\">${key.uppercase()}</span>"
+    return """
+        <div class="field-control field-button field-key" data-control-id="$controlId"$letterAttribute>
+            <button type="button" class="field-button-hit field-key-hit" id="$controlId" aria-pressed="false"$shortcut><span class="field-key-label">$escaped</span>$hint</button>
+        </div>
+    """.trimIndent()
+}
+
+/**
  * Displays a momentary button in an output disclosure — down while it is held, up when it is let go.
  *
  * ```kotlin
@@ -2047,6 +2064,10 @@ private const val controlGroupValuesProperty = "_controlGroupValues"
 private val controllerControlGroups = java.util.concurrent.ConcurrentHashMap<String, List<ControllerControl>>()
 private val controllerControlGroupBoxes = java.util.concurrent.ConcurrentHashMap<String, Box>()
 
+/** The id of the box whose control group holds the control [controlId], or null. */
+internal fun controlOwnerBoxId(controlId: String): String? =
+    controllerControlGroups.entries.firstOrNull { (_, controls) -> controls.any { it.id == controlId } }?.key?.substringBefore('\u0000')
+
 private fun controllerControlGroupKey(boxId: String, channel: String): String = "$boxId\u0000$channel"
 
 private fun controlGroupControlKey(channel: String, type: String, label: String, ordinal: Int): String =
@@ -2232,6 +2253,15 @@ private fun Box.updateCachedControlGroupValueInMemory(control: ControllerControl
     notePersistentChange(controlGroupValuesProperty)
 }
 
+/**
+ * Forget every control value [controlGroup] remembers for this box, in memory and in the document,
+ * so its next run starts each control at its `initialValue`. A presentation's "Reset: figures" uses it.
+ */
+internal fun Box.forgetControlValues() {
+    properties.remove(controlGroupCacheProperty)
+    if (properties.remove(controlGroupValuesProperty) != null) notePersistentChange(controlGroupValuesProperty)
+}
+
 internal fun registerControllerControlGroup(box: Box, channel: String, controls: List<ControllerControl>) {
     val key = controllerControlGroupKey(box.id, channel)
     controllerControlGroups[key] = controls.map { control ->
@@ -2362,6 +2392,18 @@ class ControlValueHandle<T> internal constructor(
     }
 }
 
+/**
+ * The controls of one [controlGroup]: sliders, pads, colour pickers, checkboxes, text, buttons and keys.
+ *
+ * **Dragging skips values.** A drag sends about sixty values a second, and a callback that redraws
+ * something expensive (a shadowed mesh, a ray-traced image) can take longer than that. So a control's
+ * callback never runs twice at once, and while one call runs only the newest value is kept: the
+ * callback sees the values it can keep up with, the picture follows the hand, and the value the drag
+ * ends on always runs. A box's callbacks run one at a time, off the websocket's thread, as they always
+ * have run off the Runloop. A button's and a key's presses and releases are never skipped, since each
+ * is an event rather than a value. Pass `everyValue = true` to a slider, pad or colour picker for code
+ * that needs the whole path, such as a gesture recorder.
+ */
 class ControlGroupBuilder(private val box: Box, private val channel: String) {
     /** The box this group belongs to — for builder extensions such as `presetBar` (ControlPresets.kt). */
     internal val ownerBox: Box get() = box
@@ -2520,6 +2562,8 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      * @param significantDigits digits shown, or `0` to derive the decimal count from [step] as before;
      *   nonlinear laws default to 4, so one control can read `20.00` and `20000`
      * @param hoverText optional Markdown help shown at the label
+     * @param everyValue run [onUpdate] for every value a drag sends, instead of the newest one
+     *   (see the class notes on dragging); for code that records the whole gesture
      * @param onUpdate callback invoked with the current value
      */
     fun slider(
@@ -2533,13 +2577,15 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         lawCenter: Double = (min + max) / 2,
         significantDigits: Int = defaultSignificantDigits(law),
         hoverText: String? = null,
-            onUpdate: (Double) -> Unit
+        everyValue: Boolean = false,
+        onUpdate: (Double) -> Unit
     ): ControlValueHandle<Double> {
         val cached = cachedControl("slider", "slider", label)
         val sliderId = cached.id
         val value = cached.previous?.value?.coerceIn(min, max) ?: initialValue
         val spec = ControlLawSpec(law, min, max, lawExponent, lawCenter).also { it.validate(label) }
         registerSliderCallback(sliderId, onUpdate)
+        ControlCallbackLanes.everyValue(sliderId, everyValue)
         if (cached.previous?.value != null) {
             onUpdate(value)
         }
@@ -2580,13 +2626,15 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      * @param label text shown beside the picker
      * @param initialValue color used when no cached value exists
      * @param hoverText optional Markdown help shown at the label
+     * @param everyValue run [onUpdate] for every value a drag sends, not only the newest
      * @param onUpdate callback invoked with the selected RGBA color
      */
     fun colorPicker(
         label: String,
         initialValue: Vector4f = Vector4f(1.0f, 1.0f, 1.0f, 1.0f),
         hoverText: String? = null,
-            onUpdate: (Vector4f) -> Unit
+        everyValue: Boolean = false,
+        onUpdate: (Vector4f) -> Unit
     ): ControlValueHandle<Vector4f> {
         val cached = cachedControl("color", "color", label)
         val controlId = cached.id
@@ -2597,6 +2645,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             (cached.previous?.a ?: initialValue.w.toDouble()).toFloat()
         )
         registerColorCallback(controlId, onUpdate)
+        ControlCallbackLanes.everyValue(controlId, everyValue)
         if (cached.previous?.r != null || cached.previous?.g != null || cached.previous?.b != null || cached.previous?.a != null) {
             onUpdate(Vector4f(value))
         }
@@ -2656,6 +2705,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      * @param yRange selectable range for the y component
      * @param step increment used for interaction and displayed precision
      * @param hoverText optional Markdown help shown at the label
+     * @param everyValue run [onUpdate] for every value a drag sends, not only the newest
      * @param onUpdate callback invoked with the selected vector
      */
     fun vec2Control(
@@ -2665,7 +2715,8 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         yRange: Pair<Double, Double> = -1.0 to 1.0,
         step: Double = 0.01,
         hoverText: String? = null,
-            onUpdate: (Vector2f) -> Unit
+        everyValue: Boolean = false,
+        onUpdate: (Vector2f) -> Unit
     ): ControlValueHandle<Vector2f> {
         val cached = cachedControl("vec2", "vec2", label)
         val controlId = cached.id
@@ -2674,6 +2725,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             (cached.previous?.y ?: initialValue.y.toDouble()).toFloat()
         )
         registerVec2Callback(controlId, onUpdate)
+        ControlCallbackLanes.everyValue(controlId, everyValue)
         if (cached.previous?.x != null || cached.previous?.y != null) {
             onUpdate(Vector2f(value))
         }
@@ -2730,6 +2782,59 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      * @param onUpdate called with `true` on the way down and `false` on the way up
      */
     fun button(label: String, hoverText: String? = null, onUpdate: (Boolean) -> Unit) = hitButton(label, "hold", hoverText, onUpdate)
+
+    /**
+     * Adds a row of momentary keys, like a small keyboard: each is a [button], down while it is held.
+     *
+     * ```kotlin
+     * val gates = 3 { Gate() }
+     * controlGroup {
+     *     keys("low", "middle", "high", letters = "wer") { key, down ->
+     *         if (down) gates[key].open() else gates[key].close()
+     *     }
+     * }
+     * ```
+     *
+     * The keys sit side by side with their labels on them, and [onUpdate] says which key moved, by its
+     * index in [labels]. Releases are as safe as a [button]'s: a pointer that comes up anywhere, a
+     * cancelled touch or the window losing focus lets the key go, so a gate cannot be left open.
+     *
+     * [letters] gives each key a computer key, in order (`"wer"` puts W, E and R on three keys); a key
+     * held there plays until it is released, and auto-repeat is not a new press. The letters are
+     * honoured where the output is shown alone, as a figure on a presentation slide (`?figure=`), where
+     * the keyboard has no other use; on the canvas the same letters are Field's own shortcuts, so there
+     * the keys answer to the pointer, and to space or enter when focused.
+     *
+     * @param labels the text on each key, left to right
+     * @param letters one letter per key, or empty for none
+     * @param hoverText optional Markdown help shown at the keys, as for any other control
+     * @param onUpdate called with the key's index and `true` on the way down, `false` on the way up
+     */
+    fun keys(vararg labels: String, letters: String = "", hoverText: String? = null, onUpdate: (key: Int, down: Boolean) -> Unit) {
+        require(labels.isNotEmpty()) { "keys needs at least one label" }
+        require(letters.isEmpty() || letters.length == labels.size) {
+            "keys takes one letter per key or none: ${labels.size} keys, letters \"$letters\""
+        }
+        require(letters.all { it.isLetterOrDigit() }) { "key letters are letters or digits: \"$letters\"" }
+        inlineRow {
+            labels.forEachIndexed { index, label ->
+                val identity = controlIdentity("button", "button", label)
+                registerButtonCallback(identity.id) { down -> onUpdate(index, down) }
+                emit(
+                    buildKeyHtml(identity.id, label, letters.getOrNull(index)),
+                    ControllerControl(
+                        id = identity.id,
+                        type = "button",
+                        label = label,
+                        channel = channel,
+                        checked = false,
+                        hoverText = hoverText
+                    ),
+                    hoverText
+                )
+            }
+        }
+    }
 
     /** [button] whose hit area reads [hit]; for compact strips, where the hit text is the label. */
     internal fun hitButton(label: String, hit: String, hoverText: String? = null, onUpdate: (Boolean) -> Unit) {
@@ -3003,8 +3108,20 @@ fun Box.controlGroup(channel: String = "controls", columns: Int, block: ControlG
             """ style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));width:min(${520 * columns}px,calc(100vw - 64px));max-width:${520 * columns}px;gap:6px" """
         display(channel, """<div class="control-group"$layout>$grouped</div>""")
     }
+    controlGroupShowings.merge(controllerControlGroupKey(id, channel), 1, Int::plus)
     builder.runAfterShown()
 }
+
+private val controlGroupShowings = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
+/**
+ * How many times [box] has shown its control group in [channel]. A run registers its callbacks while
+ * it builds the group, and only then publishes and displays it carrying the values it was built with;
+ * a value set in between moves the old group and is then drawn over. This count changes only once
+ * the new group is on screen.
+ */
+internal fun controlGroupShowings(box: Box, channel: String): Int =
+    controlGroupShowings[controllerControlGroupKey(box.id, channel)] ?: 0
 
 /**
  * Shows a control bound to the box property [propertyName] and marks that property persistent.

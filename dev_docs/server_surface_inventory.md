@@ -285,7 +285,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-133 command names, in the `handlers` table. This is the real command API, it is roughly twice
+137 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -301,7 +301,7 @@ the file, and the reach is described per file below in prose that a human checke
 
 | declaring file | commands |
 | --- | --- |
-| `Server.kt` | 55 |
+| `Server.kt` | 59 |
 | `agent_backdoor.kt` | 28 |
 | `history.kt` | 14 |
 | `executing.kt` | 10 |
@@ -418,6 +418,8 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `ai-state-tree` | `Ai4Installer.kt` |
 | `ai-transcribe` | `VoiceTranscriber.kt` |
 | `ai-transcribe-warm` | `VoiceTranscriber.kt` |
+| `arrange-boxes-result` | `Server.kt` |
+| `arrange-by-presentation` | `Server.kt` |
 | `array-update` | `visualizers.kt` |
 | `blame-history-line` | `history.kt` |
 | `button-update` | `ButtonControlHandler.kt` |
@@ -444,6 +446,8 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `document-guide` | `documentGuides.kt` |
 | `electron-rtt-release` | `ElectronRTTView.kt` |
 | `electron-rtt-subscribe` | `ElectronRTTView.kt` |
+| `lines-drag` | `Server.kt` |
+| `presentation-shown` | `Server.kt` |
 | `webrtc-aaaframe-signed-in` | `WebRTC.kt` |
 | `webrtc-publishers-pick` | `WebRTC.kt` |
 | `webrtc-publishers-subscribe` | `WebRTC.kt` |

@@ -69,7 +69,5 @@ markdown(
     - <span style="color:#ff9942">orange</span> — `read slow 3 "<0 1 2 3 4>"`, each address held three stages
     - <span style="color:#85e585">green</span> — `read saw slow 8`, a fractional address blending two slots
 
-    Same five stages in all three. Only the trajectory differs.
-    """
-        .trimIndent(),
+    Same five stages in all three. Only the trajectory differs.""".trimIndent(),
 )

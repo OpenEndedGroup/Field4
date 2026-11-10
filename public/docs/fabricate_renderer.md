@@ -537,9 +537,7 @@ bundle.addShaderEffect(
         vec3 lifted = pow(max(warm, vec3(0.0)), vec3(0.88));
         vec3 graded = mix(c.rgb, lifted, 0.72) * mix(0.38, 1.22, vignette);
         outColor = vec4(graded, c.a);
-    }
-    """
-        .trimIndent(),
+    }""".trimIndent(),
     renderer = renderer,
 )
 

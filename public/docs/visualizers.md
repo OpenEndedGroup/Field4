@@ -1753,6 +1753,17 @@ syncToProperty("gain", 0.5, min = 0.0, max = 2.0)
 
 Declare the property with `propDown<Double>(gain)` and moving the slider also reruns every box that reads `gain`; see [Properties that re-run boxes](reactive_properties.md#a-control-reruns-the-boxes-that-read-it).
 
+### When a callback is slower than the drag
+
+A drag sends about sixty values a second. When a callback takes longer than that, because it redraws
+a shaded mesh or traces an image, Field does not queue every value behind it: a control's callback
+never runs twice at once, and while one call is running only the newest value waits. The callback
+therefore sees fewer, later values, the picture keeps up with the hand, and the value the drag ends
+on is always the last one it gets. A box's callbacks run one at a time. A button's or a key's press
+and release are events, not values, so none of them is ever skipped. For code that needs every
+value of a drag, such as one that records the path, pass `everyValue = true` to `slider`,
+`vec2Control` or `colorPicker`.
+
 ### Build one surface with mixed control types
 
 `controlGroup(...)` is the easiest way to build a compact surface for one box. Pair it with a normal display channel when the controls need a readable status or preview panel.

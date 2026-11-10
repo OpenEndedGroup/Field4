@@ -82,9 +82,7 @@ loop {
                         readyState: video.readyState,
                         title: document.title
                     }
-                })()
-                """
-                    .trimIndent(),
+                })()""".trimIndent(),
                 userGesture = true,
                 timeoutMillis = 15_000,
             )

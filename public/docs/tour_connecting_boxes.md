@@ -19,9 +19,7 @@ fun boxAt(name: String): List<Double> =
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     if (!b) return null
     const r = b.getBoundingClientRect()
-    return [r.left + r.width / 2, r.top + r.height / 2].join(",")
-"""
-                .trimIndent(),
+    return [r.left + r.width / 2, r.top + r.height / 2].join(",")""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -41,9 +39,7 @@ fun freeEditorLayout() {
         const c = document.querySelector(".monaco-editor-container")
         if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
         if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
-        return true
-        """
-            .trimIndent(),
+        return true""".trimIndent(),
     )
 }
 // The page-load toasts are hidden the way screenshot prep hides them.

@@ -5,6 +5,7 @@ package afield.app.server
 import afield.animation.keyframes.Handle
 import afield.app.diagnostics.named
 import afield.app.protocol.AgentOpenDocument
+import afield.app.protocol.LinesDrag
 import afield.data.table.cell
 import afield.data.table.div
 import afield.data.table.minus
@@ -252,6 +253,7 @@ import afield.ui.output.getColorCallback
 import afield.ui.output.getFLineClickCallback
 import afield.ui.output.getFileUploadCallback
 import afield.ui.output.getSliderCallback
+import afield.ui.output.deliverControlCallback
 import afield.ui.output.getStringCallback
 import afield.ui.output.getVec2Callback
 import afield.ui.output.stats
@@ -2725,7 +2727,10 @@ class Server {
                     box.output.retainedAreas.snapshot(box.id) + controllerControlsForBox(box.id).map {
                         Message("control-value-update").payload(it)
                     }
-                }
+                } + listOfNotNull(
+                    afield.ui.slides.PresentationArrangement.outstandingRequestFor(info),
+                    afield.ui.slides.WaitingPresentations.stateFor(info),
+                )
                 if (session != null) GlobalScope.launch {
                     for (item in messages) session.send(Json.encodeToString(item))
                 }
@@ -3636,6 +3641,31 @@ class Server {
                 Handled.yes
             })
 
+            // Arrange Boxes by Presentation (palette): lay the document out by the talk's sections.
+            // The server knows the order, the client the size of every output panel; see
+            // afield.ui.slides.PresentationArrangement.
+            handlers["arrange-by-presentation"] = mutableSetOf({ _, _ ->
+                val info = thisSessionInfo.get()
+                val shows = info.boxes.values.mapNotNull { it.getPropertyRaw("slideShow") as? SlideShowInstance }
+                    .filter { it.presentationOptions != null }
+                val show = SlideShowInstance.activeIn(info.root)?.takeIf { it in shows } ?: shows.firstOrNull()
+                if (show == null) notify("Run the Presentation box first: its talk decides the order", "layout")
+                else GlobalScope.launch { afield.ui.slides.PresentationArrangement.arrange(show) }
+                Handled.yes
+            })
+
+            handlers["presentation-shown"] = mutableSetOf({ message, _ ->
+                afield.ui.slides.WaitingPresentations.shown(thisSessionInfo.get(),
+                    Json.decodeFromJsonElement<afield.app.protocol.PresentationShown>(message.payload!!).slideshowId)
+                Handled.yes
+            })
+
+            handlers["arrange-boxes-result"] = mutableSetOf({ message, _ ->
+                afield.ui.slides.PresentationArrangement.complete(
+                    Json.decodeFromJsonElement<afield.app.protocol.ArrangeBoxesResult>(message.payload!!))
+                Handled.yes
+            })
+
             handlers["controller-selection"] = mutableSetOf({ message, reply ->
                 val selection = Json.decodeFromJsonElement<ControllerSelectionState>(message.payload!!)
                 recordControllerSelection(thisSessionInfo.get(), selection)
@@ -3672,14 +3702,8 @@ class Server {
                 // Get the callback for this slider and invoke it
                 val callback = getSliderCallback(update.sliderId)
                 if (callback != null) {
-                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                        try {
-                            callback(update.value)
-                        } catch (e: Exception) {
-                            lprintln("error,slider", "Error in slider callback: ${e.message}")
-                            e.printStackTrace()
-                        }
-                    }
+                    // Newest value wins, one callback of a box at a time, off this socket's consumer (ControlCallbackLanes).
+                    deliverControlCallback(update.sliderId) { callback(update.value) }
                 } else {
                     lprintln("warning,slider", "No callback registered for slider: ${update.sliderId}")
                 }
@@ -3696,16 +3720,8 @@ class Server {
 
                 val callback = getVec2Callback(update.controlId)
                 if (callback != null) {
-                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
-                    // the callback out of order, so it could end on a stale value.
-                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                        try {
-                            callback(Vector2f(update.x.toFloat(), update.y.toFloat()))
-                        } catch (e: Exception) {
-                            lprintln("error,controls", "Error in vec2 callback: ${e.message}")
-                            e.printStackTrace()
-                        }
-                    }
+                    // Newest value wins, one callback of a box at a time, off this socket's consumer (ControlCallbackLanes).
+                    deliverControlCallback(update.controlId) { callback(Vector2f(update.x.toFloat(), update.y.toFloat())) }
                 } else {
                     lprintln("warning,controls", "No callback registered for vec2: ${update.controlId}")
                 }
@@ -3721,16 +3737,8 @@ class Server {
 
                 val callback = getCheckboxCallback(update.controlId)
                 if (callback != null) {
-                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
-                    // the callback out of order, so it could end on a stale value.
-                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                        try {
-                            callback(update.value)
-                        } catch (e: Exception) {
-                            lprintln("error,controls", "Error in checkbox callback: ${e.message}")
-                            e.printStackTrace()
-                        }
-                    }
+                    // Newest value wins, one callback of a box at a time, off this socket's consumer (ControlCallbackLanes).
+                    deliverControlCallback(update.controlId) { callback(update.value) }
                 } else {
                     lprintln("warning,controls", "No callback registered for checkbox: ${update.controlId}")
                 }
@@ -3760,6 +3768,18 @@ class Server {
                     lprintln("warning,fline", "No callback registered for FLine: ${click.callbackId}")
                 }
 
+                Handled.yes
+            })
+
+            handlers["lines-drag"] = mutableSetOf({ message, _ ->
+                val drag = Json.decodeFromJsonElement<LinesDrag>(message.payload!!)
+                GlobalScope.launch {
+                    try {
+                        if (!afield.ui.visualization.deliverLinesDrag(drag)) lprintln("debug,fline", "No drag callback for ${drag.id}")
+                    } catch (e: Exception) {
+                        lprintln("error,fline", "Error in lines drag callback: ${e.message}")
+                    }
+                }
                 Handled.yes
             })
 
@@ -3924,16 +3944,8 @@ class Server {
 
                 val callback = getStringCallback(update.controlId)
                 if (callback != null) {
-                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
-                    // the callback out of order, so it could end on a stale value.
-                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                        try {
-                            callback(update.value)
-                        } catch (e: Exception) {
-                            lprintln("error,controls", "Error in string callback: ${e.message}")
-                            e.printStackTrace()
-                        }
-                    }
+                    // Newest value wins, one callback of a box at a time, off this socket's consumer (ControlCallbackLanes).
+                    deliverControlCallback(update.controlId) { callback(update.value) }
                 } else {
                     lprintln("warning,controls", "No callback registered for string: ${update.controlId}")
                 }
@@ -3986,23 +3998,15 @@ class Server {
 
                 val callback = getColorCallback(update.controlId)
                 if (callback != null) {
-                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
-                    // the callback out of order, so it could end on a stale value.
-                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                        try {
-                            callback(
+                    // Newest value wins, one callback of a box at a time, off this socket's consumer (ControlCallbackLanes).
+                    deliverControlCallback(update.controlId) { callback(
                                 Vector4f(
                                     update.r.toFloat(),
                                     update.g.toFloat(),
                                     update.b.toFloat(),
                                     update.a.toFloat()
                                 )
-                            )
-                        } catch (e: Exception) {
-                            lprintln("error,controls", "Error in color callback: ${e.message}")
-                            e.printStackTrace()
-                        }
-                    }
+                            ) }
                 } else {
                     lprintln("warning,controls", "No callback registered for color: ${update.controlId}")
                 }
@@ -5776,7 +5780,10 @@ class Server {
                                 // cross-site browser reads refused by installFieldApiSameSiteGuard.
                                 val uid = call.request.queryParameters["uid"] ?: ""
                                 val generation = call.request.queryParameters["generation"] ?: ""
-                                val buffers = afield.graphics.three.threeGeometryBuffers(uid, generation)
+                                // `only=3,7` asks for just those buffers: a viewer reusing the arrays it holds.
+                                val only = call.request.queryParameters["only"]?.split(',')?.mapNotNull { it.trim().toIntOrNull() }
+                                val all = afield.graphics.three.threeGeometryBuffers(uid, generation)
+                                val buffers = if (only == null) all else all?.subset(only)
                                 if (buffers == null) call.respond(HttpStatusCode.NotFound, "No current geometry for that view and generation")
                                 else {
                                     call.response.header(HttpHeaders.CacheControl, "private, max-age=3600, immutable")

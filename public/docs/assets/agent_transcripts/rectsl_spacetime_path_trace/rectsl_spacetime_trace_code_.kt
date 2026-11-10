@@ -36,9 +36,7 @@ val source =
     "pulse" rect
       1.2 1.2 ->wh
       1.6 -1.4 ->xy
-      '( 0=0.3  4=2.2 ) ->w
-    """
-        .trimIndent()
+      '( 0=0.3  4=2.2 ) ->w""".trimIndent()
 
 val program = compileRectSL(source).program
 val field = program.toAdField()
