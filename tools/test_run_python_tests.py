@@ -118,6 +118,70 @@ class AHungModuleNamesItself(unittest.TestCase):
 
 
 
+class OnlyTheChangedCorpusRuns(unittest.TestCase):
+    NAMES = ["tools.test_check_staged_generated_artifacts", "tools.test_docs_voice_detectors", "tools.test_land"]
+
+    def _scope(self, paths: list[str] | None) -> tuple[list[str], str]:
+        with tempfile.TemporaryDirectory() as tmp:
+            env = {}
+            if paths is not None:
+                listing = Path(tmp, "changed.txt")
+                listing.write_text("\n".join(paths) + "\n")
+                env[run_python_tests.CHANGED_PATHS_ENV] = str(listing)
+            return run_python_tests.scoped_module_names(list(self.NAMES), env)
+
+    def test_without_a_change_list_every_suite_runs(self):
+        self.assertEqual(self._scope(None)[0], self.NAMES)
+
+    def test_regenerated_reference_pages_skip_unrelated_suites(self):
+        names, why = self._scope(["public/docs/reference/math.md"])
+        self.assertIn("tools.test_docs_voice_detectors", names)
+        self.assertNotIn("tools.test_land", names)
+        self.assertIn("--all runs every suite", why)
+
+    def test_a_tooling_change_runs_every_suite(self):
+        names, why = self._scope(["public/docs/reference/math.md", "tools/land.py"])
+        self.assertEqual(names, self.NAMES)
+        self.assertIn("Python tooling", why)
+
+
+class SuitesRunInParallel(unittest.TestCase):
+    """Each suite in its own process: verdicts, JUnit and output must survive the trip back."""
+
+    SUITES = {
+        "scratch_green": "import unittest\nclass T(unittest.TestCase):\n    def test_ok(self):\n        print('green says hi')\n",
+        "scratch_red": "import unittest\nclass T(unittest.TestCase):\n    def test_red(self):\n        self.assertEqual(1, 2, 'one is not two')\n",
+        "scratch_dies": "import os\nos._exit(3)\n",
+    }
+
+    def test_reds_and_a_suite_that_dies_are_named_and_greens_pass(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, body in self.SUITES.items():
+                Path(tmp, f"{name}.py").write_text(body)
+            results = Path(tmp, "results")
+            results.mkdir()
+            out = io.StringIO()
+            env = {**os.environ, "PYTHONPATH": tmp + os.pathsep + os.environ.get("PYTHONPATH", "")}
+            with mock.patch.dict(os.environ, env), mock.patch.object(run_python_tests, "RESULTS_DIR", results), \
+                    mock.patch("sys.stdout", out):
+                outcomes, durations = run_python_tests.run_parallel(sorted(self.SUITES), jobs=3)
+            written = sorted(path.name for path in results.iterdir())
+        self.assertEqual(set(durations), set(self.SUITES))
+        self.assertEqual(outcomes["scratch_green"], (("scratch_green", 1, 0, 0, 0), [], False))
+        row, lines, failed = outcomes["scratch_red"]
+        self.assertTrue(failed)
+        self.assertEqual(row, ("scratch_red", 1, 1, 0, 0))
+        self.assertIn("one is not two", lines[0])
+        row, lines, failed = outcomes["scratch_dies"]
+        self.assertTrue(failed)
+        self.assertIn("exited 3 without reporting a result", lines[0])
+        # The parent's results directory, not the repository's: the lander reads that one.
+        self.assertEqual(written, ["TEST-scratch_dies.xml", "TEST-scratch_green.xml", "TEST-scratch_red.xml"])
+        log = out.getvalue()
+        self.assertIn("green says hi", log, "a suite's own output reaches the log")
+        self.assertNotIn(run_python_tests.RESULT_MARKER, log, "the hand-off line is not log noise")
+
+
 class SuitesCannotReachTheOuterRepository(unittest.TestCase):
     def test_a_merge_hooks_git_dir_is_cleared(self):
         env = {"GIT_DIR": "/repo/.git", "GIT_INDEX_FILE": "/repo/.git/index", "GIT_REFLOG_ACTION": "merge",

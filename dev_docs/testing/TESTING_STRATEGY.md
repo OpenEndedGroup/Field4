@@ -55,12 +55,16 @@ its subtests that way on any machine with Field open, until its sandbox started 
 `PORT`.
 
 The Python tool suites (`uv run --project . --group backdoor python tools/run_python_tests.py`,
-the Gradle `checkPythonTools` task, about 6 minutes) are not run on every landing. The lander
-picks guards by changed path (`guards_for_paths` in `tools/check_staged_generated_artifacts.py`),
-and `checkPythonTools` is selected only by changes under `dev_docs/agents/demos/`. A branch that
-lands green has therefore not run `tools/test_*.py`, which is how the (since retired) `CARRIER_PAGES` ledger in
-`tools/check_doc_offline_links.py` stayed stale on `main` after f9f3910c5. If you touch
-`tools/`, `field.sh`, or a page those suites read, run the suite yourself before enqueueing.
+the Gradle `checkPythonTools` task) run each `tools/test_*.py` module in its own process, several
+at once: about 2 minutes for all of them. The lander picks guards by changed path
+(`guards_for_paths` in `tools/check_staged_generated_artifacts.py`). `checkPythonTools` is selected
+by Python tooling, build files, and the corpora some suites read (demos, the generated reference
+pages, the completion scrape). When only corpora changed, it runs only the suites that name that
+corpus (`python_tool_modules_for_paths`); `--all` or a run with no change list runs every suite. A
+branch that lands green has therefore not necessarily run every `tools/test_*.py`, which is how the
+(since retired) `CARRIER_PAGES` ledger in `tools/check_doc_offline_links.py` stayed stale on `main`
+after f9f3910c5. If you touch `field.sh` or a page those suites read, run the suite yourself before
+enqueueing.
 
 Incremental capture keys hash capture-affecting syntax from
 `public/docs_hooks.py`, not its diagnostic prose, logging calls, or
