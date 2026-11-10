@@ -36,32 +36,26 @@ fun applyRingDelayOrder() {
 }
 applyRingDelayOrder()
 
-// Finite numeric fields deliberately have no aesthetic min/max; edits publish atomically on the queue.
+// Broad slider ranges retain playful signed layouts; current values extend them on first construction.
 val layoutMirrors = mutableListOf<() -> Unit>()
-fun afield.ui.output.ControlGroupBuilder.layoutNumber(label: String, read: () -> Float,
-    help: String, mirror: Boolean = true, write: (Float) -> Unit) {
-    var lastModel = read()
-    val handle = stringInput(label, initialValue = lastModel.toString(), hoverText = help) { raw ->
-        runCatching {
-            val value = raw.trim().toFloatOrNull()
-            require(value != null && value.isFinite()) { "Enter a finite number for $label" }
-            carousel.editLayout { write(value) }
-            lastModel = read()
-        }.onFailure { markdown("layout error", it.message ?: "Could not set $label") }
+fun afield.ui.output.ControlGroupBuilder.layoutSlider(label: String, min: Double, max: Double, step: Double,
+    read: () -> Float, help: String, mirror: Boolean = true, write: (Float) -> Unit) {
+    val initial = read().toDouble()
+    val handle = slider(label, min = minOf(min, initial), max = maxOf(max, initial), step = step,
+        initialValue = initial, hoverText = help) { value ->
+        runCatching { carousel.editLayout { write(value.toFloat()) } }
+            .onFailure { markdown("layout error", it.message ?: "Could not set $label") }
             .onSuccess { displayClear("layout error") }
     }
-    if (mirror) layoutMirrors += {
-        val value = read()
-        if (value != lastModel) { lastModel = value; handle.set(value.toString()) }
-    }
+    if (mirror) layoutMirrors += { handle.set(read().toDouble()) }
 }
 controlGroup("ring layout") {
-    layoutNumber("Global radius (m)", { carousel.radius },
-        "Unbounded finite room-space radius. Each screen with a blank radius follows this value; overrides stay independent. Negative radii place screens on the opposite side, zero collapses them.") { carousel.radius = it }
-    layoutNumber("Global sector fill", { carousel.fill },
-        "Unbounded fraction of one angular sector. One joins neighbouring screens, above one overlaps them; zero collapses width and negative values mirror the geometry. Per-screen blank fills follow this value.") { carousel.fill = it }
-    layoutNumber("Set ring angle (degrees)", { carousel.azimuthDegrees },
-        "Set the global angle without wrapping or limiting the number entered. Each screen adds its sector and local angle offset. While spinning, motion status shows the changing angle; this field retains the last command.", mirror = false) { carousel.azimuthDegrees = it }
+    layoutSlider("Global radius (m)", -50.0, 50.0, .01, { carousel.radius },
+        "Signed room-space radius, from -50 to +50 metres. Each screen with a blank radius follows this value; overrides stay independent. Negative radii place screens on the opposite side, zero collapses them.") { carousel.radius = it }
+    layoutSlider("Global sector fill", -16.0, 16.0, .01, { carousel.fill },
+        "Signed fraction of one angular sector, from -16 to +16. One joins neighbouring screens, above one overlaps them; zero collapses width and negative values mirror the geometry. Per-screen blank fills follow this value.") { carousel.fill = it }
+    layoutSlider("Set ring angle (degrees)", -1440.0, 1440.0, .1, { carousel.azimuthDegrees },
+        "Set the global angle across four turns in either direction. Each screen adds its sector and local angle offset. While spinning, motion status shows the changing angle; this field retains the last command.", mirror = false) { carousel.azimuthDegrees = it }
     slider("Delay spacing (frames)", min = 1.0, max = 16.0, step = 1.0, initialValue = carousel.spacingFrames.toDouble(),
         hoverText = "Published-picture offset between neighbouring screens. One gives ages 0–7; sixteen gives 0,16,…,112. Headset redraws do not advance this ring. A spacing edit refills it and resets exposures; warm-up holds the oldest available image.") {
         carousel.spacingFrames = it.toInt()
@@ -73,9 +67,9 @@ controlGroup("ring layout") {
         applyRingDelayOrder()
     }
     for ((axis, label) in listOf("x", "y", "z").withIndex()) {
-        layoutNumber("Ring centre $label (m)", {
+        layoutSlider("Ring centre $label (m)", -50.0, 50.0, .01, {
             when (axis) { 0 -> carousel.center.x; 1 -> carousel.center.y; else -> carousel.center.z }
-        }, "Unbounded finite world-space coordinate of the ring centre, shared by every screen. Independent of head motion and the Field browser pane.") {
+        }, "Signed world-space coordinate from -50 to +50 metres of the ring centre, shared by every screen. Independent of head motion and the Field browser pane.") {
             when (axis) { 0 -> carousel.center.x = it; 1 -> carousel.center.y = it; else -> carousel.center.z = it }
         }
     }

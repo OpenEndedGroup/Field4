@@ -11,7 +11,7 @@ view.draw(screenModule)
 
 val controlMirrors = mutableListOf<() -> Unit>()
 
-// Local primitive properties survive document saves. Blank overrides inherit the global layout.
+// Local primitive properties survive document saves. Empty stored overrides follow global layout.
 prop<Float>(screenAngleOffset) = (thisBox.getPropertyRaw("screenAngleOffset") as? Number)?.toFloat() ?: 0f
 prop<String>(screenRadiusOverride) = (thisBox.getPropertyRaw("screenRadiusOverride") as? String) ?: ""
 prop<String>(screenFillOverride) = (thisBox.getPropertyRaw("screenFillOverride") as? String) ?: ""
@@ -20,33 +20,39 @@ fun setScreenLayout(next: afield.graphics.scene.video.StereoVideoScreenLayout) {
 }
 setScreenLayout(afield.graphics.scene.video.StereoVideoScreenLayout(screenAngleOffset,
     screenRadiusOverride.toFloatOrNull(), screenFillOverride.toFloatOrNull()))
-fun afield.ui.output.ControlGroupBuilder.screenLayoutNumber(label: String, read: () -> Float?,
-    allowBlank: Boolean = false, help: String, write: (Float?) -> Unit) {
-    var lastModel = read()
-    val handle = stringInput(label, initialValue = lastModel?.toString().orEmpty(), hoverText = help) { raw ->
-        runCatching {
-            val text = raw.trim()
-            val value = text.toFloatOrNull()
-            require((allowBlank && text.isEmpty()) || (value != null && value.isFinite())) { "Enter a finite number${if (allowBlank) " or leave blank" else ""} for $label" }
-            write(value)
-            lastModel = read()
-        }.onFailure { markdown("layout error", it.message ?: "Could not set $label") }
+fun afield.ui.output.ControlGroupBuilder.screenLayoutSlider(label: String, min: Double, max: Double, step: Double,
+    read: () -> Float, help: String, write: (Float) -> Unit) {
+    val initial = read().toDouble()
+    val handle = slider(label, min = minOf(min, initial), max = maxOf(max, initial), step = step,
+        initialValue = initial, hoverText = help) { value ->
+        runCatching { write(value.toFloat()) }
+            .onFailure { markdown("layout error", it.message ?: "Could not set $label") }
             .onSuccess { displayClear("layout error") }
     }
-    controlMirrors += { val value = read(); if (value != lastModel) { lastModel = value; handle.set(value?.toString().orEmpty()) } }
+    controlMirrors += { handle.set(read().toDouble()) }
 }
 controlGroup("screen layout") {
-    screenLayoutNumber("Angle offset (degrees)", { carousel.screenLayouts[screenIndex].angleOffsetDegrees },
-        help = "Unbounded angle added to this screen's numbered sector and the global ring angle. Move screens into clusters, overlap them or give them multiple turns. The screen number, video delay and saved appearance stay attached to it.") { value ->
-        setScreenLayout(carousel.screenLayouts[screenIndex].copy(angleOffsetDegrees = value!!)); screenAngleOffset = value
+    screenLayoutSlider("Angle offset (degrees)", -1440.0, 1440.0, .1, { carousel.screenLayouts[screenIndex].angleOffsetDegrees },
+        help = "Four turns in either direction, added to this screen's numbered sector and global ring angle. Move screens into clusters or overlap them. Screen number, video delay and saved appearance stay attached to it.") { value ->
+        setScreenLayout(carousel.screenLayouts[screenIndex].copy(angleOffsetDegrees = value)); screenAngleOffset = value
     }
-    screenLayoutNumber("Radius override (m)", { carousel.screenLayouts[screenIndex].radiusMeters }, allowBlank = true,
-        help = "Blank follows the global radius. Otherwise an unbounded signed radius for this screen only. Farther radii also make wider/taller screens at the same fill; use this to put large screens behind small ones. Negative crosses to the opposite side; zero collapses the screen.") { value ->
+    checkbox("Follow global radius", initialValue = carousel.screenLayouts[screenIndex].radiusMeters == null,
+        hoverText = "Follow the global ring radius while checked. Dragging this screen's radius slider makes an independent override and clears this check. Recheck to follow the global radius again.") { follow ->
+        val value = if (follow) null else carousel.screenLayouts[screenIndex].radiusMeters ?: carousel.radius
         setScreenLayout(carousel.screenLayouts[screenIndex].copy(radiusMeters = value)); screenRadiusOverride = value?.toString().orEmpty()
+    }.also { h -> controlMirrors += { h.set(carousel.screenLayouts[screenIndex].radiusMeters == null) } }
+    screenLayoutSlider("Screen radius (m)", -50.0, 50.0, .01, { carousel.screenLayouts[screenIndex].radiusMeters ?: carousel.radius },
+        help = "Independent signed radius, from -50 to +50 metres. Dragging disables Follow global radius. Farther radii make larger screens at the same fill; negative crosses to the opposite side and zero collapses the screen.") { value ->
+        setScreenLayout(carousel.screenLayouts[screenIndex].copy(radiusMeters = value)); screenRadiusOverride = value.toString()
     }
-    screenLayoutNumber("Sector fill override", { carousel.screenLayouts[screenIndex].fill }, allowBlank = true,
-        help = "Blank follows global fill. Unbounded angular width in units of one screen sector. Above one overlaps neighbours, zero collapses width, negative mirrors geometry. Large values can curve through multiple turns; they are not clamped to a half circle.") { value ->
+    checkbox("Follow global fill", initialValue = carousel.screenLayouts[screenIndex].fill == null,
+        hoverText = "Follow global sector fill while checked. Dragging this screen's fill slider makes an independent override. Recheck to follow the global fill again.") { follow ->
+        val value = if (follow) null else carousel.screenLayouts[screenIndex].fill ?: carousel.fill
         setScreenLayout(carousel.screenLayouts[screenIndex].copy(fill = value)); screenFillOverride = value?.toString().orEmpty()
+    }.also { h -> controlMirrors += { h.set(carousel.screenLayouts[screenIndex].fill == null) } }
+    screenLayoutSlider("Screen sector fill", -16.0, 16.0, .01, { carousel.screenLayouts[screenIndex].fill ?: carousel.fill },
+        help = "Angular width from -16 to +16 sectors. Dragging disables Follow global fill. Above one overlaps neighbours, zero collapses width, negative mirrors geometry. Large values can wrap through multiple turns.") { value ->
+        setScreenLayout(carousel.screenLayouts[screenIndex].copy(fill = value)); screenFillOverride = value.toString()
     }
     slider("Screen opacity", min = 0.0, max = 1.0, step = .01, initialValue = view.opacity.toDouble(),
         hoverText = "Straight-alpha coverage, independent of the on/off brightness envelope. One is opaque; zero reveals screens behind it. Included in screen looks. Screens are sorted from far to near using this frame's eye views; the Field pane draws last.") { view.opacity = it.toFloat() }
