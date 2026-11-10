@@ -101,6 +101,20 @@ class LightingTest {
     }
 
     @Test
+    fun sightLinesSplitAtTheShadowEdgeAsVisibilityDoes() {
+        val slab = panelBoxMesh(6.0, 0.05, 6.0, divisions = 2).translated(-3.0, 0.5, 0.0)
+        val tree = slab.bvh()
+        val lamp = SphereLight(Vec3(0f, 2f, 0f), 0.4, power = 100.0, samples = 512)
+        fun clearShare(x: Float) = lamp.sightLines(Vec3(x, 0f, 0f), up, tree).let { l -> l.count { it.clear }.toDouble() / l.size }
+        assertEquals(1.0, clearShare(1.5f), "out in the open every line is clear")
+        assertEquals(0.0, clearShare(-1.5f), "deep under the slab none is")
+        val edge = clearShare(0f)
+        assertTrue(edge > 0.2 && edge < 0.8, "at the edge some are and some are not, got $edge")
+        // Only the half of the ball facing the point is sampled.
+        assertTrue(lamp.sightLines(Vec3(1.5f, 0f, 0f), up).size in 200..312)
+    }
+
+    @Test
     fun aClosedWhiteRoomReturnsAlbedoTimesTheLightEachBounce() {
         // Inside a sphere, the form factors from any point to the whole wall sum to 1, so with a light
         // at the centre every bounce is the albedo times the one before, everywhere.

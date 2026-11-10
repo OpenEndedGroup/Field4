@@ -273,6 +273,35 @@ fun TriMesh.irradiance(lights: List<LightSource>, occluders: TriMesh? = this): F
 /** [irradiance] for one light. */
 fun TriMesh.irradiance(light: LightSource, occluders: TriMesh? = this): FloatArray = irradiance(listOf(light), occluders)
 
+/** One line of sight from a receiving point to a sample point on a light: where it ends, and whether it is clear. */
+data class SightLine(val from: Vec3, val to: Vec3, val clear: Boolean)
+
+/**
+ * The lines of sight from [point] (on a surface facing [normal]) to every sample point on [light]
+ * that faces it, each marked clear or blocked by [occluders]: the rays [visibilityAt] counts,
+ * there to be drawn. In a penumbra some are clear and some are not.
+ */
+fun LightSource.sightLines(point: Vec3, normal: Vec3, occluders: MeshBvh? = null): List<SightLine> {
+    val n = unit(normal.x.toDouble(), normal.y.toDouble(), normal.z.toDouble())
+    val px = point.x.toDouble(); val py = point.y.toDouble(); val pz = point.z.toDouble()
+    val ox = px + n[0] * SHADOW_BIAS; val oy = py + n[1] * SHADOW_BIAS; val oz = pz + n[2] * SHADOW_BIAS
+    val s = sampleCache
+    val out = ArrayList<SightLine>()
+    var k = 0
+    while (k < s.size) {
+        val dx = s[k] - px; val dy = s[k + 1] - py; val dz = s[k + 2] - pz
+        val r = sqrt(dx * dx + dy * dy + dz * dz)
+        val faces = r > 1e-9 && (dx * n[0] + dy * n[1] + dz * n[2]) > 0.0 &&
+            (s[k + 3] == 0.0 && s[k + 4] == 0.0 && s[k + 5] == 0.0 || -(dx * s[k + 3] + dy * s[k + 4] + dz * s[k + 5]) > 0.0)
+        if (faces) {
+            val blocked = occluders?.occluded(ox, oy, oz, s[k] - ox, s[k + 1] - oy, s[k + 2] - oz, maxDistance = 1.0 - 1e-6, minDistance = 1e-6) ?: false
+            out += SightLine(Vec3(point), Vec3(s[k].toFloat(), s[k + 1].toFloat(), s[k + 2].toFloat()), !blocked)
+        }
+        k += 7
+    }
+    return out
+}
+
 /** [visibilityAt] at every vertex: one value per vertex in `0..1`. */
 fun TriMesh.visibility(light: LightSource, occluders: TriMesh = this): FloatArray {
     val mesh = if (hasNormals) this else withVertexNormals()
