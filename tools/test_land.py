@@ -711,5 +711,26 @@ while kill -0 "$pid" 2>/dev/null; do sleep 0.1; done
         self.assertNotIn("a guard failed", status)
         self.assertNotIn("branch: upsilon", self.land(self.primary, "bouncy", "--context").stdout)
 
+
+class StatusFramesStayCheap(unittest.TestCase):
+    """`status --watch` redraws every 2 s; a frame must not reread every finished landing log."""
+
+    def test_a_finished_log_is_read_once_and_a_growing_one_again(self):
+        from unittest import mock
+        from tools import land
+        with tempfile.TemporaryDirectory() as tmp:
+            log = Path(tmp, "batch.log")
+            log.write_text("=== start\nmerge_regen: merging x\n")
+            item = {"id": "x", "branch": "b", "log": str(log)}
+            with mock.patch.object(land, "_RAN_GRADLE", {}), \
+                    mock.patch.object(land, "_log_lines", wraps=land._log_lines) as read:
+                self.assertFalse(land._ran_gradle(item))
+                self.assertFalse(land._ran_gradle(item))
+                self.assertEqual(read.call_count, 1, "an unchanged log was read twice")
+                with log.open("a") as out:
+                    out.write("> Task :checkPythonTools\n")
+                self.assertTrue(land._ran_gradle(item), "a log that grew must be read again")
+                self.assertEqual(read.call_count, 2)
+
 if __name__ == "__main__":
     unittest.main()
