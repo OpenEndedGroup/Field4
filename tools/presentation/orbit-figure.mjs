@@ -58,7 +58,8 @@ try {
     await pause(25);
   }
   await figure.call('Input.dispatchMouseEvent', {type: 'mouseReleased', x: x0 + dx, y: y0, button: 'left', buttons: 0, clickCount: 1});
-  await pause(800);
+  // The orbit controls are damped, so the camera coasts a little after the release; let it stop.
+  await pause(2500);
   const after = await pose();
   await shot('after.png');
   const radius = [length(sub(before.eye, before.target)), length(sub(after.eye, after.target))];
@@ -74,7 +75,9 @@ try {
     const next = await pose();
     await shot('next.png');
     result.next = next;
-    assert.ok(length(sub(next.eye, after.eye)) < 1e-3 * radius[0], `redrawing the figure reset its camera: ${JSON.stringify(result)}`);
+    // A reset would put the eye back where it started, a radius or more away; allow for a last
+    // fraction of coasting.
+    assert.ok(length(sub(next.eye, after.eye)) < 0.02 * radius[0], `redrawing the figure reset its camera: ${JSON.stringify(result)}`);
   }
   fs.writeFileSync(path.join(output, 'orbit.json'), JSON.stringify(result, null, 2) + '\n');
   console.log(`PASS: ${box} orbits (eye moved ${moved.toFixed(3)} at radius ${radius[0].toFixed(3)})${flag ? ', and keeps its camera across Next' : ''}`);
