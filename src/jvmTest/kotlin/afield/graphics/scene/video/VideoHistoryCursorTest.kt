@@ -19,8 +19,8 @@ class VideoHistoryCursorTest {
         assertEquals(100, pictures[cursor.slot(7)!!]) // never samples the previous loop/seek
     }
 
-    @Test fun eightScreensSelectIndependentTimesAtFourAndEightFrameSpacing() {
-        for (spacing in listOf(4, 8)) {
+    @Test fun eightScreensSelectIndependentTimesThroughSixteenFrameSpacing() {
+        for (spacing in listOf(4, 8, 16)) {
             val capacity = 7 * spacing + 1
             val cursor = VideoHistoryCursor(capacity)
             val pictures = LongArray(capacity)

@@ -60,19 +60,27 @@ fun updateScreenFlash(change: (VideoCarouselClock.Flash) -> VideoCarouselClock.F
 }
 controlGroup("headset flash") {
     checkbox("Flash enabled", initialValue = carouselClock.flashes[screenIndex].enabled,
-        hoverText = "Gate only this screen's drawing using the shared headset-tick clock. The Field pane stays visible, and decoding, accumulation and head tracking keep running. Independent of paired video blur cadence.") { v -> updateScreenFlash { it.copy(enabled = v) } }
+        hoverText = "Modulate only this screen's brightness using the shared headset-tick clock. The Field pane stays visible, and decoding, accumulation and head tracking keep running. Independent of paired video blur cadence.") { v -> updateScreenFlash { it.copy(enabled = v) } }
         .also { h -> controlMirrors += { h.set(carouselClock.flashes[screenIndex].enabled) } }
-    slider("Flash every (frames)", min = 1.0, max = 120.0, step = 1.0,
-        initialValue = carouselClock.flashes[screenIndex].everyFrames.toDouble(),
-        hoverText = "Pulse interval in whole headset refresh periods. Ten means 12 flashes/second at 120 Hz. Match Frames per step in Ring motion to expose the same part of each rotation step.") { v -> updateScreenFlash { it.copy(everyFrames = v.toInt()) } }
-        .also { h -> controlMirrors += { h.set(carouselClock.flashes[screenIndex].everyFrames.toDouble()) } }
-    slider("Flash on (frames)", min = 1.0, max = 120.0, step = 1.0,
+    slider("Flash on time (frames)", min = 0.0, max = 240.0, step = 1.0,
         initialValue = carouselClock.flashes[screenIndex].onFrames.toDouble(),
-        hoverText = "Whole headset ticks illuminated within each interval. One is about 8.33 ms at 120 Hz; the remainder is black. At or above the interval the shutter stays open. This reduces average light without brightness compensation.") { v -> updateScreenFlash { it.copy(onFrames = v.toInt()) } }
+        hoverText = "Duration of the on-brightness part in whole headset ticks. One is about 8.33 ms at 120 Hz. The full interval is on plus off time. Zero skips this part and keeps at least one off tick.") { v -> updateScreenFlash { it.copy(onFrames = v.toInt(), offFrames = if (v == 0.0) it.offFrames.coerceAtLeast(1) else it.offFrames) } }
         .also { h -> controlMirrors += { h.set(carouselClock.flashes[screenIndex].onFrames.toDouble()) } }
-    slider("Flash phase (frames)", min = 0.0, max = 119.0, step = 1.0,
+    slider("Flash off time (frames)", min = 0.0, max = 240.0, step = 1.0,
+        initialValue = carouselClock.flashes[screenIndex].offFrames.toDouble(),
+        hoverText = "Independent duration of the off-brightness part. It need not be black: set Off brightness below. One on plus nine off ticks makes a ten-tick cycle, or 12 Hz at a 120 Hz headset rate. Zero skips the off part.") { v -> updateScreenFlash { it.copy(offFrames = v.toInt(), onFrames = if (v == 0.0) it.onFrames.coerceAtLeast(1) else it.onFrames) } }
+        .also { h -> controlMirrors += { h.set(carouselClock.flashes[screenIndex].offFrames.toDouble()) } }
+    slider("Flash on brightness", min = 0.0, max = 4.0, step = .01,
+        initialValue = carouselClock.flashes[screenIndex].onBrightness.toDouble(),
+        hoverText = "Linear-light gain during the on part, after sharp/accumulated mixing and paired blur. One is unchanged, zero black and two doubles light. No automatic duty-cycle compensation; values above one may clip in the headset's output encoding.") { v -> updateScreenFlash { it.copy(onBrightness = v.toFloat()) } }
+        .also { h -> controlMirrors += { h.set(carouselClock.flashes[screenIndex].onBrightness.toDouble()) } }
+    slider("Flash off brightness", min = 0.0, max = 4.0, step = .01,
+        initialValue = carouselClock.flashes[screenIndex].offBrightness.toDouble(),
+        hoverText = "Linear-light gain during the off part. Zero closes the shutter; a small value keeps a dim continuous image underneath the pulses. On and off levels are independent, so the off portion may even be brighter.") { v -> updateScreenFlash { it.copy(offBrightness = v.toFloat()) } }
+        .also { h -> controlMirrors += { h.set(carouselClock.flashes[screenIndex].offBrightness.toDouble()) } }
+    slider("Flash phase (frames)", min = -240.0, max = 240.0, step = 1.0,
         initialValue = carouselClock.flashes[screenIndex].phaseFrames.toDouble(),
-        hoverText = "Delay this screen's pulse relative to the shared rotation/flash origin, modulo its interval. Zero opens at tick zero and every full interval. Different phases distribute flashes around the ring.") { v -> updateScreenFlash { it.copy(phaseFrames = v.toInt()) } }
+        hoverText = "Signed local phase in headset ticks, added to screen index times the shared stagger in Ring motion. Positive delays the cycle; negative advances it. Wrapped modulo on plus off duration, on the same origin as rotation.") { v -> updateScreenFlash { it.copy(phaseFrames = v.toInt()) } }
         .also { h -> controlMirrors += { h.set(carouselClock.flashes[screenIndex].phaseFrames.toDouble()) } }
 }
 displayOpen("headset flash")

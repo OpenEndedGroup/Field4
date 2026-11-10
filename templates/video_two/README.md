@@ -5,8 +5,8 @@ movie, transport and active decode stream. Each published P010 image is copied o
 bounded GPU ring. The screens select progressively older pictures from that ring and own
 independent temporal accumulators, paired-exposure clocks and Gaussian caches.
 
-The default spacing is **one published picture**. Box 2 changes it from 1 to 8: eight screens
-then cover ages 0–7 through 0–56. **Reverse delay direction** defaults on: in screen-number
+The default spacing is **one published picture**. Box 2 changes it from 1 to 16: eight screens
+then cover ages 0–7 through 0–112. **Reverse delay direction** defaults on: in screen-number
 order the ages are `0,7,6,…,1` times the spacing. Turn it off for `0,1,…,7`. Screen 1 stays
 newest, and each screen keeps its geometry and appearance. These are uploaded material pictures, after the
 alternate-frame selection and material cap. They are not headset frames, and skipped decoder
@@ -62,7 +62,7 @@ also has **Store from this screen**. The initial look is seeded as **slow blur**
 launches retain the saved key. Storing the same name adds a version.
 
 Keys contain accumulation mix, half-life, incoming weight, cadence enable/rate, soft-half blur
-sigma/mix and darkening, plus shared playback speed and, once Ring motion is launched, the four headset-flash settings. Check any collection of screens and press
+sigma/mix and darkening, plus shared playback speed and, once Ring motion is launched, the six headset-flash settings. Check any collection of screens and press
 **Recall to checked screens**. **Restore playback speed** defaults off: appearance changes keep
 the current shared speed unless explicitly enabled. With no screens selected, this option
 allows a speed-only recall. Each screen's own Recall button applies just to that screen.
@@ -104,12 +104,28 @@ shutters for the first tick. At 120 Hz that is twelve steps and flashes per seco
 8.33 ms illuminated pulse. **Open all shutters** removes flashes while retaining rotation;
 **Stop ring rotation** disables sector lock and drift and holds the current orientation.
 
-Each material box has **headset flash** controls: enable, interval, illuminated duration and
-phase, all in integer headset ticks. A ten-tick interval and phase zero align with ten-tick
-rotation steps. Phase one exposes the following tick instead. Give screens different phases
-for a chase; a duration at or above its interval leaves that screen illuminated continuously.
-Short pulses reduce average brightness without compensation. Flash settings join newly stored
-screen looks. Existing keys without these lanes leave current shutters unchanged.
+Each material box has **headset flash** controls: enable, separate **on/off times**, separate
+**on/off brightness** and a signed **phase**. Durations are integer headset ticks; one tick is
+8.33 ms at 120 Hz. The interval is on time plus off time. Either duration may be zero to hold
+the other level continuously; the controls prevent a zero-length total cycle.
+
+Brightness is a linear-light multiplier, after sharp/accumulated mixing and video-local blur.
+One preserves the image, zero makes it black, and two doubles its light. Both levels are
+independent: use a dim off level to keep the picture visible between flashes, or invert the
+levels. The UI ranges from 0 to 4; the float scene retains values above one, though final
+headset encoding may clip them. There is no automatic duty-cycle compensation.
+
+In **Ring motion → shared flash timing**, **Flash stagger / screen (frames)** adds a signed
+phase delay per screen. Screen 1 adds zero, screen 2 one stagger, screen 3 two, and so on.
+Each screen's local phase adds to this offset, modulo its own on+off interval. **Copy screen 1
+flash to all** copies its six envelope settings while retaining the shared stagger. **Align
+all flash phases** zeros local phases and shared stagger, preserving durations and levels.
+The stagger is a global control separate from movie delay spacing and keyframe-recall delay.
+
+For example, on 2 / off 8, levels 1.5 / 0.1, stagger 1 gives a ten-tick cycle whose two-tick
+bright window travels around the ring. Match the total interval to **Frames per step** to
+expose a fixed part of each rotation step. All six per-screen settings join newly stored
+screen looks; old keys without them leave current envelopes unchanged.
 
 Both rotation and flashes read one `VideoCarouselClock` on the graphics queue, before the
 surface preparation targets. Its origin is shared. OpenXR's predicted display time and actual
@@ -119,7 +135,7 @@ pulses keep their schedule. The status shows the measured runtime rate and commo
 Desktop mode uses a nominal 120 Hz grid. These clocks run independently of video playback,
 including pause, 24 fps material selection and the separate soft/dark exposure pairs.
 
-A shutter gates the screen's draw module only. The source, history, exposure and head pose keep
+The envelope multiplies the screen's linear-light output; zero skips its draw module. The source, history, exposure and head pose keep
 updating, and the Field pane stays visible. Flashing adds no RTT or readback. Rotation is applied
 before this frame's mesh push constants; both eyes share the same rotation and shutter state.
 
@@ -131,7 +147,7 @@ additional decoding to manufacture the pre-roll. Pause freezes source publicatio
 screen's paired-exposure phase. A local exposure clear affects that screen only.
 
 The history uses 3 bytes per packed source pixel (P010 luma plus subsampled chroma), excluding
-allocation padding. For 3840×1080, eight pictures cost about 95 MiB; 57 cost about 676 MiB.
+allocation padding. For 3840×1080, eight pictures cost about 95 MiB; 113 cost about 1341 MiB.
 Slots allocate as history fills. Each enabled full-resolution accumulator adds about 63 MiB,
 and each enabled paired-exposure cache about 55 MiB. The eye buffers are separate. The single
 `VideoTexture` retains its existing standby decoder for cheap loop rewinds; there are no eight
@@ -151,7 +167,7 @@ them first, then the source. File changes rebuild source-sized exposure resource
 resizing retains a valid current picture while the new ring refills. Use the live graph and
 inherited `prop` values; do not construct a decoder in a screen box.
 
-Checks: `VideoHistoryCursorTest` covers warm-up, wrap and ages 0–56. The Vulkan smoke
+Checks: `VideoHistoryCursorTest` covers warm-up, wrap and ages 0–112. The Vulkan smoke
 `four.stereo-video.carousel` exercises actual P010 copies, ten-bit precision, eight delayed
 outputs, independent exposures/cadence, cylindrical geometry and seek/refill. The existing
 `four.stereo-video.precision` still checks the ordinary one-screen path.

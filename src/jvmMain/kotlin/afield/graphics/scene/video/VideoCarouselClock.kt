@@ -21,16 +21,29 @@ class VideoCarouselClock(val screens: Int) {
         }
     }
 
-    data class Flash(val enabled: Boolean = false, val everyFrames: Int = 10,
-                     val onFrames: Int = 1, val phaseFrames: Int = 0) {
-        init { require(everyFrames in 1..240 && onFrames in 1..240 && phaseFrames in 0..239) }
-        fun visible(tick: Long): Boolean = !enabled ||
-            Math.floorMod(tick - phaseFrames, everyFrames.toLong()) < onFrames.coerceAtMost(everyFrames)
+    /** Two linear-light levels, with independent whole-refresh durations and a signed phase offset. */
+    data class Flash(val enabled: Boolean = false, val onFrames: Int = 1, val offFrames: Int = 9,
+                     val phaseFrames: Int = 0, val onBrightness: Float = 1f, val offBrightness: Float = 0f) {
+        init {
+            require(onFrames in 0..2400 && offFrames in 0..2400 && onFrames + offFrames > 0)
+            require(phaseFrames in -2400..2400)
+            require(listOf(onBrightness, offBrightness).all { it.isFinite() && it in 0f..16f })
+        }
+        val everyFrames get() = onFrames + offFrames
+        fun brightness(tick: Long, extraPhase: Long = 0L): Float {
+            if (!enabled) return 1f
+            return if (Math.floorMod(tick - phaseFrames - extraPhase, everyFrames.toLong()) < onFrames)
+                onBrightness else offBrightness
+        }
+        fun visible(tick: Long): Boolean = brightness(tick) > 0f
     }
 
     @Volatile var motion = Motion()
     @Volatile var flashes: List<Flash> = List(screens) { Flash() }
         set(value) { require(value.size == screens); field = value.toList() }
+    /** Whole headset ticks of additional phase per screen, independent of video delay spacing. */
+    @Volatile var flashStaggerFrames = 0
+        set(value) { require(value in -2400..2400); field = value }
     @Volatile var tick = 0L
         private set
     @Volatile var refreshHz = 0.0
@@ -77,5 +90,6 @@ class VideoCarouselClock(val screens: Int) {
     }
 
     /** A frame shutter; no decoder state, video timestamp or Runloop frame count enters this decision. */
-    fun visible(screen: Int): Boolean = flashes[screen].visible(tick)
+    fun brightness(screen: Int): Float = flashes[screen].brightness(tick, screen.toLong() * flashStaggerFrames)
+    fun visible(screen: Int): Boolean = brightness(screen) > 0f
 }

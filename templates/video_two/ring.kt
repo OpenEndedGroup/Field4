@@ -49,8 +49,8 @@ controlGroup("ring layout") {
         hoverText = "Rotate the whole screen arrangement around gravity's up axis. The ring remains fixed in room space, rather than following each head movement.") {
         carousel.azimuthDegrees = it.toFloat(); carousel.layout()
     }
-    slider("Delay spacing (frames)", min = 1.0, max = 8.0, step = 1.0, initialValue = carousel.spacingFrames.toDouble(),
-        hoverText = "Published-picture offset between neighbouring screens. One gives ages 0–7; eight gives 0,8,…,56. Headset redraws do not advance this ring. A spacing edit refills it and resets exposures; warm-up holds the oldest available image.") {
+    slider("Delay spacing (frames)", min = 1.0, max = 16.0, step = 1.0, initialValue = carousel.spacingFrames.toDouble(),
+        hoverText = "Published-picture offset between neighbouring screens. One gives ages 0–7; sixteen gives 0,16,…,112. Headset redraws do not advance this ring. A spacing edit refills it and resets exposures; warm-up holds the oldest available image.") {
         carousel.spacingFrames = it.toInt()
         applyRingDelayOrder()
     }

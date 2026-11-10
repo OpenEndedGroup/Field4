@@ -7,7 +7,7 @@ layout(push_constant) uniform MoviePush {
     mat4 model;       // screen-local metres to room space
     vec4 surface;     // arc width, height, bend radians, strip count
     vec4 image;       // packed source width/height, swap eyes, vertical flip
-    vec4 colorimetry; // Kr, Kb, full-range flag, reserved
+    vec4 colorimetry; // Kr, Kb, full-range flag, brightness minus one
     vec4 accumulation; // processed mix, valid image, spatial blur mix, linear darkening
 }
 pc;
@@ -44,5 +44,5 @@ void main() {
         blurred = mix(blurred, texture(softenedImage, qSoft).rgb, pc.accumulation.z);
     }
     blurred *= 1 - pc.accumulation.w; // darken only the exposure, in linear light
-    color = vec4(mix(sharp, blurred, pc.accumulation.x), 1);
+    color = vec4(mix(sharp, blurred, pc.accumulation.x) * max(0, 1 + pc.colorimetry.w), 1);
 }
