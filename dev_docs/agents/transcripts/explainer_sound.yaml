@@ -906,10 +906,10 @@ operations:
           val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
           val left = 12.0
           val middle = 150.0
-          fun end() = left + 616 * length
+          fun stringEnd() = left + 616 * length
 
           fun pluck(x: Double, y: Double) {
-              at = ((x - left) / (end() - left)).coerceIn(0.05, 0.95)
+              at = ((x - left) / (stringEnd() - left)).coerceIn(0.05, 0.95)
               depth = ((middle - y) / 130).coerceIn(-1.0, 1.0)
               if (abs(depth) < 0.05) return
               plucked = time
@@ -918,14 +918,14 @@ operations:
           }
 
           fun scenery(): List<FLine> {
-              val rest = fline { moveTo(end(), middle); lineTo(628.0, middle); thickness = 1.5; color = vec(1.0, 1.0, 1.0, 0.3) }
-              val pegs = fline { circle(left, middle, 7.0); circle(end(), middle, 7.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.8) }
+              val rest = fline { moveTo(stringEnd(), middle); lineTo(628.0, middle); thickness = 1.5; color = vec(1.0, 1.0, 1.0, 0.3) }
+              val pegs = fline { circle(left, middle, 7.0); circle(stringEnd(), middle, 7.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.8) }
               return [frame, rest, pegs]
           }
 
           fun string(y: (Double) -> Double) = fline {
               moveTo(left, middle)
-              for (i in 1..300) lineTo(left + (end() - left) * i / 300, middle - 130 * y(i / 300.0))
+              for (i in 1..300) lineTo(left + (stringEnd() - left) * i / 300, middle - 130 * y(i / 300.0))
               thickness = 3.0
               color = vec(0.4, 0.9, 1.0, 1.0)
           }
@@ -937,13 +937,13 @@ operations:
                   if (mode > 0) sin(mode * PI * x) * cos(PI * mode * time)
                   else (1..n).sumOf { k -> weight(k) * sin(k * PI * x) * cos(PI * k * since) * exp(-since / decay(k)) }
               }
-              val mark = fline { circle(left + (end() - left) * at, middle + 24, 6.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
+              val mark = fline { circle(left + (stringEnd() - left) * at, middle + 24, 6.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
               lines(scenery() + string(y) + mark, channel = "string", w = 640.0, h = 300.0)
           }
 
           animate()
           controlGroup {
-              keys("pluck", letters = "p") { _, down -> if (down) pluck(left + (end() - left) * at, middle - 130 * 0.8) }
+              keys("pluck", letters = "p") { _, down -> if (down) pluck(left + (stringEnd() - left) * at, middle - 130 * 0.8) }
               slider("pluck at", 0.05, 0.5, step = 0.01, initialValue = 0.25) { at = it }
               slider("mode", 0.0, 6.0, step = 1.0, initialValue = 0.0) { mode = it.toInt() }
               slider("length", 0.5, 1.0, step = 0.01, initialValue = 1.0) { length = it }
