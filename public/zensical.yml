@@ -176,6 +176,11 @@ nav:
     - Interactive Guides: interactive_guides.md
   - Presenting & Teaching:
     - Presenting with Field: presentation_studio.md
+    # Three talks built as Field presentations, each page the talk's figures in slide order.
+    - Explainers:
+      - Sound: explainer_sound.md
+      - Cameras and Lenses: explainer_cameras.md
+      - Lights and Shadows: explainer_lights.md
   - Drawing From Data:
     # First in the section, ahead of the groups: it is the small vocabulary underneath movement,
     # cameras, lighting, meshes, simulation and spatial data, so every group below uses it. Moved
