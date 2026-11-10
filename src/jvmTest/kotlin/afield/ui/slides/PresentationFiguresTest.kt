@@ -147,6 +147,50 @@ class PresentationFiguresTest {
         show.command("stop")
     }
 
+    /**
+     * A new run registers its slider's callback while it is still building its control group, and
+     * only then shows the group with the value it was built with. A step's value applied in between
+     * would move the old group and then be drawn over: the slider would read the old value while the
+     * box ran with the new one (seen in the cameras deck: "focus distance 9.999", "sharp at 4.0").
+     */
+    @Test fun aControlWaitsUntilTheNewRunHasShownItsControls() = runBlocking {
+        val (host, figures) = deck("tone")
+        val tone = figures[0]
+        val oldRun = mutableListOf<Double>()
+        tone.controlGroup("controls") { slider("frequency", 100.0, 1000.0, initialValue = 900.0) { oldRun += it } }
+        val runner = object : FigureRunner by FakeRunner(figures) {
+            override fun launch(boxes: List<Box>) {}
+            override fun controlRegistration(box: Box, channel: String, label: String): Any? =
+                afield.ui.output.controlRegistration(box, channel, label)
+        }
+        val show = host.presentation {
+            step("Low") { audience { figure("tone") }; control("tone", "frequency", 440.0) }
+        }
+        show.figureStage.runner = runner
+        show.command("start")
+        val registered = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val newRun = java.util.Collections.synchronizedList(mutableListOf<Double>())
+        val build = Thread {
+            tone.controlGroup("controls") {
+                slider("frequency", 100.0, 1000.0, initialValue = 900.0) { newRun += it }
+                registered.countDown()
+                release.await()
+            }
+        }.apply { start() }
+        registered.await()
+        kotlinx.coroutines.delay(700)
+        assertFalse(440.0 in newRun, "nothing is applied while the new run is still building its group")
+        release.countDown()
+        build.join()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (440.0 !in newRun && System.currentTimeMillis() < deadline) kotlinx.coroutines.delay(50)
+        assertEquals(440.0, newRun.last(), "the new run gets the step's value once its group is shown")
+        val shown = afield.ui.output.controlGroupControlsWithKeys(tone, "controls").single().second
+        assertEquals(440.0, shown.value, "and the slider it shows reads that value")
+        show.command("stop")
+    }
+
     @Test fun figuresRunWhileTheirSlideIsUpAndAHandLaunchedBoxIsLeftAlone() = runBlocking {
         val (host, figures) = deck("tone", "wave", "clock")
         val runner = FakeRunner(figures)

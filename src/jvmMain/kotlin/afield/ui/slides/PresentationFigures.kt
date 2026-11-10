@@ -186,7 +186,7 @@ internal class FigureStage(private val host: Box, var runner: FigureRunner = Fie
     /** True while [c]'s box is still showing the controls of the run before the one this stage launched. */
     private fun waitingForNewRun(c: FigureControl): Boolean {
         val old = previousRun[key(c)] ?: return false
-        if (runner.controlRegistration(c.box, c.channel, c.label) === old) return true
+        if (runner.controlRegistration(c.box, c.channel, c.label) == old) return true
         previousRun.remove(key(c))
         return false
     }
