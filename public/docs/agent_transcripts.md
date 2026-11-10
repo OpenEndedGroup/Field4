@@ -1165,6 +1165,19 @@ rather than run: a `Frames` that is only built never runs. None of the twenty op
 
 [Open →](offline.html?file=assets/agent_transcripts/alife_worked_example/metadata.edn)
 
+### alife_tree_growth
+
+[Trees that compete for light](alife_examples.md#trees-that-compete-for-light) as three boxes. Box 1
+grows one tree for 30 seasons with `TreeGrowth`: each bud reads the light left by everyone else's
+shadow, light is summed toward the root, and the root's growth resource is split back up each fork by
+the Borchert–Honda rule. It prints `isTree()`, the worst resource-conservation error over the 30
+seasons and the crown size under four values of the apical control `λ`, and draws the seasons, the
+bud light, the resource flow, the shadow grid and the four crowns. Box 2 is the same tree growing over
+seven seconds; launch it. Box 3 puts `λ` on a slider and regrows the tree as you drag. All three are
+pure CPU.
+
+[Open →](offline.html?file=assets/agent_transcripts/alife_tree_growth/metadata.edn)
+
 ### braitenberg_where_next
 
 Sections 5 to 9 of [Braitenberg vehicles with memory](braitenberg_vehicles.md) as five boxes. Box 1

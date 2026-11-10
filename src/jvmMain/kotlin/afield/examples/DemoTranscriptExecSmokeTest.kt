@@ -353,6 +353,9 @@ object DemoTranscriptExecSmokeTest {
         // Ten independent pure-CPU spatial-ALife boxes; nothing opens a Window or a Renderer.
         "alife_evolution",
         "alife_worked_example",
+        // Three pure-CPU tree-growth boxes; the video box is an animateEvolution clip and the
+        // third mounts a slider. No Window, no Renderer.
+        "alife_tree_growth",
         // Three pure-CPU Particle Lenia boxes; the two animated ones are animateEvolution clips and are launched.
         "particle_lenia",
         // Five pure-CPU Braitenberg-vehicle boxes (braitenberg_vehicles.md sections 5-9); the

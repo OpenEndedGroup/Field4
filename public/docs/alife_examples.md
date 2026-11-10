@@ -21,7 +21,7 @@ with the alignment term zeroed reaches 0.073.
 
 ## Source files
 
-Six dependency-free files built on the existing [imaging](imaging_examples.md) and
+Seven dependency-free files built on the existing [imaging](imaging_examples.md) and
 [mesh](mesh_examples.md) families. Nothing here reimplements convolution, connected-component
 labelling, colour mapping or marching cubes:
 
@@ -42,6 +42,8 @@ labelling, colour mapping or marching cubes:
   aggregation with two control models.
 - **`alife_lsystem.kt`** — a bracketed, parametric, optionally stochastic L-system with a turtle that
   emits [`FLine`](fline_examples.md)s, and space-colonization branching.
+- **`alife_tree_growth.kt`** — [trees that compete for light](#trees-that-compete-for-light): buds
+  in a shadow grid, light summed toward the root and growth resource split back up by Borchert–Honda.
 - **`alife_field.kt`** — the [inline `ToHTML` views](#evaluating-one-of-these-in-a-box-the-inline-views),
   kept in their own file so the five above name nothing from Field's visualizer.
 
@@ -1146,11 +1148,11 @@ prop<ShaderPhysarumSystem>(physarum) = ShaderPhysarumSystem() {
     agentCount = 300_000
     speciesCount = 3
     exclusive = true
-    attraction = listOf(
+    attraction = [
         vec(1f, -2f, -2f, 0f),
         vec(-2f, 1f, -2f, 0f),
         vec(-2f, -2f, 1f, 0f),
-    )
+    ]
 }
 physarum.trail.settings.diffusion = 0.2f
 physarum.installInto()
@@ -1875,6 +1877,138 @@ animateEvolution(
     cellSide = 384,
     step = { it.step(GRAY_SCOTT_SPOTS) },
     panels = { s, n -> bridge(s, n) },
+)
+```
+
+### Trees that compete for light
+
+Space colonization grows toward points you place. The model below, after Palubicki and colleagues'
+[self-organizing tree models](https://algorithmicbotany.org/papers/selforg.sig2009.small.pdf)
+(SIGGRAPH 2009), needs no target. A tree is a chain of *metamers*: an internode with a bud at its tip
+and an axillary bud beside it. Each bud measures the light that reaches it, and the shape of the crown
+comes from buds competing for that light. Chema Guerra's
+[Growing trees](https://brashandplucky.com/2026/10/15/growing-trees.html) walks through the same
+method; this is a 2-D version of it in
+[`alife_tree_growth.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/simulation/agents/alife_tree_growth.kt).
+
+One season of [`TreeGrowth.step()`](reference/simulation.md#alife-tree-growth-kt-treegrowth) does five things:
+
+1. **Shadow.** Every bud adds shadow to a wedge of grid cells below it, widening by one cell per row
+   and halving roughly every row and a half ([`ShadowGrid`](reference/simulation.md#alife-tree-growth-kt-shadowgrid)).
+   Shadows add up, so the inside of the crown goes dark.
+2. **Light.** A bud reads `Q = 1 − (shadow from everyone else)`, clamped to `0 .. 1`.
+3. **Light flows down.** `Q` is summed from the tips to the root, so every branch knows how much light
+   its whole subtree collects.
+4. **Resource flows up.** The root receives `v = α · Q_root` units of growth resource and passes them
+   back up. At each fork the Borchert–Honda rule splits it between the continuing axis and the lateral
+   branch: `v_main = v · λQ_main / (λQ_main + (1 − λ)Q_lateral)`. At `λ = 0.5` the resource follows the
+   light. Above 0.5 the leader takes more of it (apical dominance), and below 0.5 the side branches do.
+5. **Growth and shedding.** A bud given `v ≥ 1` grows a shoot of `⌊v⌋` metamers, bending toward the
+   brightest part of the cone ahead of it and toward the sky. A side branch whose light per metamer
+   falls under a threshold is dropped.
+
+Three properties of the model are checked every season rather than taken from a picture. The structure
+is a tree (`isTree()`, the same check `ColonizationTree` makes, here also run after every shed). The
+resource that reaches the buds equals the resource handed to the root, since the rule only ever splits
+it. And adding shadow never makes a bud brighter.
+
+The figure grows one tree for 30 seasons. The top row shows it at seasons 2, 5, 10, 20 and 30. The
+middle row shows the season-20 tree three ways: every bud coloured by the light it read, every
+internode coloured by the resource flowing through it, and the shadow grid itself. The bottom row
+shows the same seed under four values of `λ`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/tree_growth.png" wait="10.0" capture="box" open-outputs="true" padding="20"}
+:::static
+// One tree, 30 seasons. Each step() is one season: shadow, light, Borchert-Honda allocation,
+// growth and shedding.
+val tree = TreeGrowth(seed = 4L)
+val seasons = [2, 5, 10, 20, 30]
+val strip = ArrayList<Pair<String, Img>>()
+var views: List<Pair<String, Img>> = []
+for (s in 1..30) {
+    tree.step()
+    if (s in seasons)
+        strip.add("season " + s + ": " + tree.nodeCount + " metamers" to tree.render(TreeView.STRUCTURE, 3))
+    if (s == 20) {
+        views = [
+            "season 20: bud light" to tree.render(TreeView.LIGHT, 3),
+            "resource flow (log)" to tree.render(TreeView.RESOURCE, 3),
+            "shadow grid" to tree.render(TreeView.SHADOW, 3),
+        ]
+    }
+}
+println(tree)
+println("a tree (one root, n-1 edges, acyclic): " + tree.isTree())
+
+// Borchert-Honda only ever splits, so what reaches the buds is what the root was given.
+println(
+    "worst resource conservation error over 30 seasons: " + "%.1e".format(tree.history.maxOf { it.conservationError }),
+)
+val last = tree.history.last()
+println(
+    "season 30: " +
+        last.buds +
+        " buds read " +
+        last.baseLight.f6 +
+        " units of light; root gets " +
+        last.baseResource.f6,
+)
+
+// Apical control: the same seed, four values of lambda.
+val lambdas = [0.44, 0.5, 0.56, 0.62]
+val crowns = lambdas.map { lam ->
+    val t = TreeGrowth(params = TreeGrowthParams(lambda = lam), seed = 4L).stepTimes(30)
+    val xs = (0 until t.nodeCount).map { t.x(it) }
+    val ys = (0 until t.nodeCount).map { t.y(it) }
+    println(
+        "λ = " +
+            lam +
+            ": " +
+            t.nodeCount +
+            " metamers, crown " +
+            (xs.max() - xs.min()).f0 +
+            " wide, " +
+            (ys.max() - ys.min()).f0 +
+            " tall",
+    )
+    "lambda = " + lam to t.render(TreeView.STRUCTURE, 3)
+}
+
+showImg(montage(strip + views + crowns, columns = 5, cellSide = 300))
+```
+
+![a strip of five frames of one tree growing from a two-metamer sprout to a broad crown at season 30; then the season-20 tree three ways — buds glowing yellow on the crown's upper edge and dark inside it, internodes coloured from a bright trunk to dim twigs, and a dark shadow mass under the crown; then four trees from the same seed going from wide and spreading at λ 0.44 to narrow and columnar at λ 0.62](assets/alife_examples/tree_growth.png)
+
+The light view shows why the crown has the outline it has. Only the buds on its upper and outer surface
+read much light. The resource follows them, so the tree grows at its edge, and the shaded branches
+inside lose their resource and are shed. By season 30 the tree has shed more metamers than it keeps.
+The bottom row shows what `λ` does. At 0.44 the resource spreads into side branches and the crown is
+wider than it is tall. At 0.62 the leaders keep most of it, and the tree is a narrow column that reaches
+the top of the grid.
+
+### Thirty seasons, growing
+
+Each frame of the video below is a season or part of one, and the framing is the whole grid, so the tree
+grows inside a fixed frame. The left panel is the structure. On the right the buds are coloured by the
+light they read: the lit edge moves outward and upward as the tree grows, and the inside goes dark.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/tree_growth.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="900" embed=true name="alife-tree-growth-video" alt="a tree growing for thirty seasons in a fixed frame, beside the same tree with its buds coloured by the light they receive, the lit edge moving outward as the crown fills in"}
+:::static
+// Thirty seasons over seven seconds. TreeGrowth is mutable and step() returns it, so it is the
+// `step` here directly. render() frames the whole grid, so the tree grows inside a fixed frame.
+animateEvolution(
+    TreeGrowth(seed = 4L),
+    totalSteps = 30,
+    seconds = 7.0,
+    columns = 2,
+    cellSide = 450,
+    step = { it.step() },
+    panels = { t, n ->
+        [
+            "season " + n + ": " + t.nodeCount + " metamers" to t.render(TreeView.STRUCTURE, 4),
+            "bud light, " + t.shedMetamersTotal + " shed" to t.render(TreeView.LIGHT, 4),
+        ]
+    },
 )
 ```
 

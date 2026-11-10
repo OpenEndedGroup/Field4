@@ -1,0 +1,145 @@
+name: alife_tree_growth
+description: >
+  Trees that compete for light, from the "Trees that compete for light" sections of
+  public/docs/alife_examples.md, as three boxes. Box 1 grows one tree for 30 seasons with TreeGrowth:
+  every bud reads the light left by everyone else's shadow, light is summed toward the root, and the
+  root's growth resource is split back up each fork by the Borchert-Honda rule. It prints the tree,
+  isTree(), the worst resource-conservation error over the 30 seasons, and the crown size under four
+  values of the apical control lambda, and draws seasons 2 to 30, the bud light, the resource flow, the
+  shadow grid and the four crowns. Box 2 is the same tree growing over seven seconds; launch it. Box 3
+  puts lambda on a slider and regrows the tree as you drag. All three are pure CPU, with no Window or
+  Renderer.
+docs:
+  - page: alife_examples.md
+    why: "The page section these boxes come from."
+operations:
+  - create:
+      box: tree_growth
+      name: "Trees that compete for light"
+      frame:
+        x: 60.0
+        y: 60.0
+        w: 360.0
+        h: 100.0
+      properties:
+        code: |
+          // One tree, 30 seasons. Each step() is one season: shadow, light, Borchert-Honda allocation,
+          // growth and shedding.
+          val tree = TreeGrowth(seed = 4L)
+          val seasons = [2, 5, 10, 20, 30]
+          val strip = ArrayList<Pair<String, Img>>()
+          var views: List<Pair<String, Img>> = []
+          for (s in 1..30) {
+              tree.step()
+              if (s in seasons)
+                  strip.add("season " + s + ": " + tree.nodeCount + " metamers" to tree.render(TreeView.STRUCTURE, 3))
+              if (s == 20) {
+                  views = [
+                      "season 20: bud light" to tree.render(TreeView.LIGHT, 3),
+                      "resource flow (log)" to tree.render(TreeView.RESOURCE, 3),
+                      "shadow grid" to tree.render(TreeView.SHADOW, 3),
+                  ]
+              }
+          }
+          println(tree)
+          println("a tree (one root, n-1 edges, acyclic): " + tree.isTree())
+
+          // Borchert-Honda only ever splits, so what reaches the buds is what the root was given.
+          println(
+              "worst resource conservation error over 30 seasons: " + "%.1e".format(tree.history.maxOf { it.conservationError }),
+          )
+          val last = tree.history.last()
+          println(
+              "season 30: " +
+                  last.buds +
+                  " buds read " +
+                  last.baseLight.f6 +
+                  " units of light; root gets " +
+                  last.baseResource.f6,
+          )
+
+          // Apical control: the same seed, four values of lambda.
+          val lambdas = [0.44, 0.5, 0.56, 0.62]
+          val crowns = lambdas.map { lam ->
+              val t = TreeGrowth(params = TreeGrowthParams(lambda = lam), seed = 4L).stepTimes(30)
+              val xs = (0 until t.nodeCount).map { t.x(it) }
+              val ys = (0 until t.nodeCount).map { t.y(it) }
+              println(
+                  "λ = " +
+                      lam +
+                      ": " +
+                      t.nodeCount +
+                      " metamers, crown " +
+                      (xs.max() - xs.min()).f0 +
+                      " wide, " +
+                      (ys.max() - ys.min()).f0 +
+                      " tall",
+              )
+              "lambda = " + lam to t.render(TreeView.STRUCTURE, 3)
+          }
+
+          showImg(montage(strip + views + crowns, columns = 5, cellSide = 300))
+  - create:
+      box: tree_growth_moving
+      name: "Thirty seasons, growing — launch me"
+      frame:
+        x: 60.0
+        y: 200.0
+        w: 360.0
+        h: 100.0
+      properties:
+        code: |
+          // Thirty seasons over seven seconds. TreeGrowth is mutable and step() returns it, so it is the
+          // `step` here directly. render() frames the whole grid, so the tree grows inside a fixed frame.
+          animateEvolution(
+              TreeGrowth(seed = 4L),
+              totalSteps = 30,
+              seconds = 7.0,
+              columns = 2,
+              cellSide = 450,
+              step = { it.step() },
+              panels = { t, n ->
+                  [
+                      "season " + n + ": " + t.nodeCount + " metamers" to t.render(TreeView.STRUCTURE, 4),
+                      "bud light, " + t.shedMetamersTotal + " shed" to t.render(TreeView.LIGHT, 4),
+                  ]
+              },
+          )
+  - create:
+      box: tree_growth_lambda
+      name: "Apical control on a slider"
+      frame:
+        x: 460.0
+        y: 60.0
+        w: 360.0
+        h: 100.0
+      properties:
+        code: |
+          // Apical control, live: drag the slider and the same seed regrows for 30 seasons under that lambda.
+          // 0.5 sends growth resource where the light is; above it the leader wins, below it the side branches.
+          fun regrow(lam: Double) {
+              val t = TreeGrowth(params = TreeGrowthParams(lambda = lam), seed = 4L).stepTimes(30)
+              showImg(
+                  montage(
+                      [
+                          "lambda = " + lam.f2 + ": " + t.nodeCount + " metamers" to t.render(TreeView.STRUCTURE, 4),
+                          "bud light" to t.render(TreeView.LIGHT, 4),
+                      ],
+                      columns = 2,
+                      cellSide = 480,
+                  ),
+              )
+          }
+          slider("apical control λ", min = 0.40, max = 0.66, step = 0.01, initialValue = 0.5) { regrow(it) }
+          displayOpen("controls")
+          regrow(0.5)
+  - execute:
+      box: tree_growth
+      property: code
+      type: fragment
+  - execute:
+      box: tree_growth_lambda
+      property: code
+      type: fragment
+  - await:
+      wait: pending
