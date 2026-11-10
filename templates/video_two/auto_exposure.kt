@@ -55,6 +55,16 @@ controlGroup("meter and exposure mode") {
         "Alpha-beta measurement cadence, independent of headset/video rate. Only changed accumulation images are scanned; cached measurements still correct the trackers at this cadence. Between samples the GPU predicts from retained velocities. Changing cadence changes the response of the per-sample gains.") { s, v -> s.copy(meterHz = v) }
     button("Reset exposure trackers", hoverText = "Seed min, mean and max from the next measurement and zero their velocities. Does not clear or modify the accumulation images.") { down -> if (down) { attachedExposureMeter?.reset(); resetExposureOnAttach = attachedExposureMeter == null } }
 }
+controlGroup("quantile endpoint sketch") {
+    checkbox("Use quantile endpoints", initialValue = exposureSettings().endpointSource == VideoAutoExposure.EndpointSource.QUANTILES,
+        hoverText = "Use the GPU FieldStats sketch's low/high luminance quantiles for exposure instead of absolute min/max. Samples 4096 selected pixels per valid screen, plus 4096 spread across screens for linked mode. One active lane records each pixel, so subgroup averaging does not erase extremes. The 64-centroid result is approximate; the raw min/mean/max table remains a comparison. Meter mode must be Auto for exposure to change.") { v ->
+        changeExposure { it.copy(endpointSource = if (v) VideoAutoExposure.EndpointSource.QUANTILES else VideoAutoExposure.EndpointSource.EXTREMA) }
+    }.also { h -> exposureMirrors += { h.set(exposureSettings().endpointSource == VideoAutoExposure.EndpointSource.QUANTILES) } }
+    exposureSlider("Shadow quantile", 0.0, 1.0, .001, { it.lowQuantile.toDouble() },
+        "Quantile used as the black candidate, before padding and bounds. 0.02 means the estimated 2nd percentile: the lowest 2% no longer define black. Must be below Highlight quantile. Changing it resets the trackers but reuses a valid cached sketch.") { s, v -> s.copy(lowQuantile = v.toFloat()) }
+    exposureSlider("Highlight quantile", 0.0, 1.0, .001, { it.highQuantile.toDouble() },
+        "Quantile used as the white candidate, before padding and bounds. 0.98 means the estimated 98th percentile: isolated bright specks have less influence. Must be above Shadow quantile. Median is always shown for comparison.") { s, v -> s.copy(highQuantile = v.toFloat()) }
+}
 controlGroup("directional alpha-beta") {
     exposureSlider("Rising alpha", 0.0, 1.0, .001, { it.risingAlpha.toDouble() },
         "Level correction gain for rising measurements, applied independently to min, mean and max in RGB and luminance. The update matches Field's AlphaBetaFilter. On flat measurements, the prediction residual selects the pair so velocity can settle.") { s, v -> s.copy(risingAlpha = v.toFloat()) }
@@ -84,6 +94,7 @@ controlGroup("auto endpoint margins and bounds") {
         "Caps reciprocal endpoint span: white - black >= 1 / this value. Prevents a flat buffer or crossed predictions from amplifying tiny differences without limit. Gamma and flash brightness are separate.") { s, v -> s.copy(minimumSpan = (1.0 / v).toFloat()) }
 }
 displayOpen("meter and exposure mode")
+displayOpen("quantile endpoint sketch")
 displayOpen("directional alpha-beta")
 displayOpen("auto endpoint margins and bounds")
 displayOpen("meter status")
@@ -109,8 +120,14 @@ loop {
                 else "| $name | ${v.minimum[3].f3} | ${v.mean[3].f3} | ${v.maximum[3].f3} | ${v.black.f3} | ${v.white.f3} |"
             }
         } ?: "| No completed measurements | — | — | — | — | — |"
+        val quantileRows = snapshot?.let { snap ->
+            (snap.screens.mapIndexed { i, v -> "Screen ${i + 1}" to v } + ("Linked" to snap.linked)).joinToString("\n") { (name, v) ->
+                if (v.quantiles[3] < .5f) "| $name | — | — | — | — | — |"
+                else "| $name | ${v.quantiles[0].f3} | ${v.quantiles[1].f3} | ${v.quantiles[2].f3} | ${v.sketchCount.toInt()} | ${v.droppedSketchPartials.toInt()} |"
+            }
+        } ?: "| No sketch yet | — | — | — | — | — |"
         val exposureStatus = """
-### ${if (meter == null) "Renderer stopped · settings ready" else settings.mode.toString()} · meter ${if (settings.enabled) "updating" else "frozen / off"}
+### ${if (meter == null) "Renderer stopped · settings ready" else settings.mode.toString()} · ${settings.endpointSource} · meter ${if (settings.enabled) "updating" else "frozen / off"}
 
 ${exposureControlError.ifEmpty { meter?.error ?: "" }}
 
@@ -120,6 +137,14 @@ ${exposureControlError.ifEmpty { meter?.error ?: "" }}
 | --- | --- | --- | --- | --- | --- |
 $rows
 
+**${meter?.sketchBatches ?: 0}** sketch batches · **${meter?.sketchSamples ?: 0}** selected pixels (cumulative).
+Extra GPU sketch cost: **${meter?.sketchGpuMilliseconds?.f3 ?: "waiting for a timestamp"} ms** (sparse, timestamp-only).
+
+| Source | Q${(settings.lowQuantile * 100).f1} | Median | Q${(settings.highQuantile * 100).f1} | Samples | Dropped |
+| --- | --- | --- | --- | --- | --- |
+$quantileRows
+
+Quantiles use independent directional alpha-beta trackers; dropped partials fall back to extrema.
 Settings can be edited while the renderer is stopped and apply when the carousel starts.
 Luminance shown; RGB statistics and velocities are also available in `carousel.autoExposure.latest`.
 Automatic endpoints include inter-sample prediction, margins and bounds, before global/local mix.

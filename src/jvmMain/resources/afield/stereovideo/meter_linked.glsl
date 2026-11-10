@@ -5,8 +5,10 @@ layout(push_constant) uniform MeterLinkedPush {
     vec4 gains; // rising alpha/beta, falling alpha/beta
     vec4 margins; // black footroom, white headroom, minimum endpoint span, reserved
     vec4 bounds; // black minimum/maximum, white minimum/maximum
+    vec4 quantiles; // endpoint source (0 extrema / 1 sketch), low/high quantiles, sketch available
     vec4 limits; // optional velocity cap, reserved
 } pc;
+// FIELD_STATS
 // METER_COMMON
 layout(local_size_x=1) in;
 void main() {

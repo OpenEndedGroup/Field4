@@ -199,6 +199,52 @@ their accumulations remain valid. Measurements follow global pre-gamma and prece
 normalization, paired blur/darkening,
 flashing and opacity, so the exposure never measures its own correction.
 
+### Optional quantile endpoints
+
+In **quantile endpoint sketch**, enable **Use quantile endpoints** to derive exposure from
+**Shadow quantile** and **Highlight quantile**, rather than absolute minimum and maximum.
+Defaults are the estimated 2nd and 98th percentiles. The meter must be updating and an Auto mode
+selected to affect exposure. Turning the checkbox off returns to min/max; neither choice changes
+accumulation pixels. The original min/mean/max table remains visible for comparison.
+
+This uses the actual `fieldStatsHere` GPU implementation: **64 centroids** over **4,096 selected
+luminance pixels per valid screen**, plus a further 4,096 samples distributed across the valid
+same-sized buffers for linked mode. The deterministic sample positions span both eyes and use the
+global pre-exposure gamma. Sampling only occurs at the existing meter cadence when an image,
+gamma or valid-source set changes. Held images reuse their sketch; changing quantile cutoffs
+reuses the centroids and resets the trackers without rescanning pixels.
+
+One active lane per workgroup records each selected pixel. FieldStats' subgroup reduction thus
+sees one pixel per partial, rather than averaging unrelated pixels before building its sketch.
+The result is still a bounded estimate: neither the 64-centroid sketch nor the 4,096-pixel sample
+is an exact pixel distribution. Even cutoff 0 or 1 returns a sketch endpoint; use min/max mode
+for true extrema. Large black regions still legitimately occupy the lower quantiles.
+
+The low quantile, median and high quantile have independent directional alpha-beta levels and
+velocities. Padding, bounds, maximum gain and global/local auto mix apply afterwards, exactly
+as for extrema. No FieldStats EMA slots are used. Invalid or overflowed sketches fall back to
+extrema; the status table reports valid sample counts and dropped partials. The generic
+FieldStats CPU snapshots are disabled: the existing small, nonblocking telemetry copy carries
+the values needed by the UI. No image or sample cloud is read back.
+
+For eight screens the fixed partial storage is about **3.4 MiB**. The reset and reduction passes
+are shared across channels; min/max mode performs no sketch dispatches. **Extra GPU sketch cost**
+reports sparse timestamps around just the extra sampling/reset/reduce passes, with invocation
+counters disabled. Compare it in the live scene rather than inferring cost from the buffer size.
+
+```kotlin
+carousel.autoExposure.settings = carousel.autoExposure.settings.copy(
+    endpointSource = VideoAutoExposure.EndpointSource.QUANTILES,
+    lowQuantile = .05f, highQuantile = .95f,
+)
+val comparison = carousel.autoExposure.latest?.linked
+// rawQuantiles / quantiles contain low, median, high, validity.
+// quantileVelocities.xyz contains the corresponding rates (w is reserved).
+// sketchCount and droppedSketchPartials describe the sampled distribution, not the full image.
+```
+
+### Directional tracking and bounds
+
 Each statistic/channel keeps its own level and velocity. Two **alpha-beta pairs**, one rising
 and one falling, use the recurrence from Field's `AlphaBetaFilter`:
 
@@ -215,14 +261,14 @@ Between samples the GPU predicts from velocity for up to one sample interval. **
 optionally limits that velocity; zero leaves it free. **Reset exposure trackers** seeds from the
 next valid measurement and clears velocities, without clearing any accumulation.
 
-Black is predicted minimum luminance minus **Black padding**; white is predicted maximum plus
+Black is the predicted low statistic minus **Black padding**; white is the predicted high statistic plus
 **White padding**. Separate black/white bounds and **Maximum contrast gain** constrain these
 endpoints even during prediction overshoot. Positive padding reserves headroom/footroom;
 negative padding clips more. Mean is tracked and available to code; both gamma controls stay manual.
 
 **Global auto mix × each screen's Auto exposure mix** blends automatic endpoints with manual
 black/white. Local mix belongs to screen looks, including staggered recalls. Global mode,
-pre-exposure gamma, filter gains, bounds and meter rate persist together in the shared box's settings property.
+pre-exposure gamma, quantile selection/cutoffs, filter gains, bounds and meter rate persist together in the shared box's settings property.
 Turning **Update GPU meter** off freezes existing statistics and endpoints; select **Manual
 levels** to stop applying them. Missing/invalid measurements fall back to manual endpoints.
 
@@ -249,11 +295,14 @@ Small finish passes predict bounded endpoints before the current scene draw. Fil
 grading remain GPU-resident: no CPU wait or extra rendered frame is needed. A single-flight
 snapshot of the small statistics buffer updates the markdown table at most four times per
 second after existing graphics completion; it is telemetry only, never the exposure source.
-The presentation uniform is now two `vec4`s; the existing 128-byte draw push block is unchanged.
+The presentation uniform remains two `vec4`s; the existing 128-byte draw push block is unchanged.
+The small statistics record now contains sixteen `vec4`s per screen/linked row, including quantile
+levels, velocities and sketch diagnostics.
 
 Verification covers finite pixel counts and non-aligned image sizes, pooled statistics,
 directional tracking against the existing CPU filter, prediction, frozen-image scan reuse,
-bounds, invalid buffers, settings persistence and the actual presentation shader's auto mix.
+bounds, invalid buffers, settings persistence, robust quantiles in the presence of outliers,
+cached sketch reuse, extrema switching and the actual presentation shader's auto mix.
 The smoke IDs are `four.stereo-video.auto-exposure`, `four.stereo-video.precision` and
 `four.stereo-video.carousel`.
 
