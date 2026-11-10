@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T16:34:22.618Z",
+  "capturedAt": "2026-11-10T22:28:13.659Z",
   "documentName": "wfc_worked_example",
   "outputs": [
     {
@@ -81,7 +81,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 472,
+      "width": 468,
       "height": 330,
       "path": "outputs/7.html"
     },

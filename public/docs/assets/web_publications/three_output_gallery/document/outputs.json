@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T13:55:23.117Z",
+  "capturedAt": "2026-11-10T22:02:51.720Z",
   "documentName": "three_output_gallery",
   "outputs": [
     {
@@ -64,11 +64,11 @@
     {
       "uid": "three-output-winding",
       "channel": "the CPU rasterizer",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
       "width": 468,
-      "height": 445,
+      "height": 446,
       "path": "outputs/5.html"
     },
     {

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T16:36:44.817Z",
+  "capturedAt": "2026-11-10T22:31:55.858Z",
   "documentName": "alife_worked_example",
   "outputs": [
     {
@@ -29,7 +29,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 442,
+      "width": 438,
       "height": 482,
       "path": "outputs/2.html"
     },

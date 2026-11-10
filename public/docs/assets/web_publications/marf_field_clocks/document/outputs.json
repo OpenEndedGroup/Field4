@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T16:26:37.269Z",
+  "capturedAt": "2026-11-10T22:13:31.945Z",
   "documentName": "marf_field_clocks",
   "outputs": [
     {
@@ -10,7 +10,7 @@
       "warnings": [],
       "kinds": [],
       "width": 474,
-      "height": 768,
+      "height": 769,
       "path": "outputs/0.html"
     },
     {
@@ -42,7 +42,7 @@
       "warnings": [],
       "kinds": [],
       "width": 475,
-      "height": 590,
+      "height": 366,
       "path": "outputs/3.html"
     }
   ]
