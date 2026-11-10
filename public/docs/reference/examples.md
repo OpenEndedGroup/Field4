@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-232 source file(s), 725 public symbol(s), 321 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+233 source file(s), 727 public symbol(s), 322 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2191,13 +2191,13 @@ Optional local-file throughput probe: the actual P010 conversion/copy path, with
 
 ### StereoVideoPrecisionSmoke { #stereovideoprecisionsmoke-kt-stereovideoprecisionsmoke }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">StereoVideoPrecisionSmoke</span></code>](source/jvmMain/afield/examples/four/StereoVideoPrecisionSmoke/#L36)
+[<code class="highlight"><span class="k">object</span> <span class="nc">StereoVideoPrecisionSmoke</span></code>](source/jvmMain/afield/examples/four/StereoVideoPrecisionSmoke/#L37)
 
 A real lossless ten-bit video through P010 uploads, the movie shader and the shared eye target.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="stereovideoprecisionsmoke-kt--stereovideoprecisionsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoVideoPrecisionSmoke/#L38) |  |
+| <a id="stereovideoprecisionsmoke-kt--stereovideoprecisionsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoVideoPrecisionSmoke/#L39) |  |
 
 ## StigmergySweep.kt { #stigmergysweep-kt }
 
@@ -2212,6 +2212,20 @@ A parameter sweep for multi-species [`ShaderPhysarumSystem`](alife.md#alife-phys
 | Declaration | Summary |
 | --- | --- |
 | <a id="stigmergysweep-kt--stigmergysweep--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StigmergySweep/#L112) |  |
+
+## VideoAutoExposureSmoke.kt { #videoautoexposuresmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/VideoAutoExposureSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/VideoAutoExposureSmoke/)
+
+### VideoAutoExposureSmoke { #videoautoexposuresmoke-kt-videoautoexposuresmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">VideoAutoExposureSmoke</span></code>](source/jvmMain/afield/examples/four/VideoAutoExposureSmoke/#L37)
+
+Real float RTT reductions, weighted pooling, directional alpha-beta tracking and asynchronous telemetry.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="videoautoexposuresmoke-kt--videoautoexposuresmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/VideoAutoExposureSmoke/#L38) |  |
 
 ## EvolveWorkedExample.kt { #evolveworkedexample-kt }
 
