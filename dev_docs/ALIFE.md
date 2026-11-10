@@ -39,6 +39,7 @@ stop.
 | `alife_continuous.kt` | `diffuse`, `GrayScottState`, `turingPattern`, `LeniaRule`, `leniaRun` |
 | `alife_agents.kt` | `BoidFlock`, `PhysarumSwarm`, `dlaCluster` / `edenCluster` / `sprinkleCluster` |
 | `alife_lsystem.kt` | `LSystem`, `turtleDraw`, `rasterizeFLines`, `spaceColonization` |
+| `alife_tree_growth.kt` | `TreeGrowth`, `ShadowGrid`, `TreeGrowthParams`, `SeasonReport`, `TreeView` — self-organizing tree growth (Palubicki 2009, Borchert–Honda) |
 | `alife_dla.kt` | `ShaderDlaSettings`, `ShaderDlaSystem` — the GPU aggregation, and not the same thing as `alife_agents.kt`'s CPU `dlaCluster` |
 | `alife_bml.kt` | `ShaderBmlSettings`, `ShaderBmlSystem` — the Biham–Middleton–Levine traffic model as one fragment pass over a ping-pong texture; GPU only, no CPU counterpart |
 | `alife_lbm.kt` | `ShaderLatticeBoltzmannSettings`, `ShaderLatticeBoltzmannSystem`, `FluidVisualizationMode` — a D2Q9 lattice Boltzmann fluid with a drawable control texture and advected dye; GPU only |

@@ -1,5 +1,8 @@
 package afield.examples.stdlib
 
+import afield.simulation.agents.TreeGrowth
+import afield.simulation.agents.TreeGrowthParams
+import afield.simulation.agents.TreeView
 import afield.simulation.agents.BoidFlock
 import afield.simulation.agents.BoidParams
 import afield.simulation.automata.CYCLIC_EXCITABLE
@@ -172,7 +175,7 @@ expect:
  *    `-1/3` lag-1 autocorrelation, proportionality of correlation length to wavelength, and recovery of
  *    a *prescribed* mass–radius exponent at `D = 1.00, 1.26, 1.71, 2.00`.
  *
- * **Two tiers.** `--tier fast` (the `stdlib.alife.gallery` FIELD_TEST, 11 figures, ~6 s) is everything whose
+ * **Two tiers.** `--tier fast` (the `stdlib.alife.gallery` FIELD_TEST, 12 figures, ~7 s) is everything whose
  * evidence is an exact identity or a closed-form comparison. `--tier slow`
  * (`stdlib.alife.gallery.slow`, ~25 s) is the seven figures that integrate something to a statistical
  * verdict. `--tier all` is the default when run by hand. See [Tier].
@@ -1996,6 +1999,41 @@ object AlifeGallery {
         ).savePng(File(outDir, "alife-colonization.png").absolutePath)
     }
 
+    /**
+     * Self-organizing tree growth: buds competing for light. The structure must stay a tree through
+     * growth and shedding, Borchert–Honda allocation must deliver exactly what the root was given, and
+     * apical control must move the crown the way the method says: a high λ narrower and taller.
+     */
+    private fun figureTreeGrowth(outDir: File) {
+        val tree = TreeGrowth(seed = 4L).stepTimes(30)
+        println("[alife-gallery]     $tree")
+        check(tree.isTree(), "tree growth: still a tree after 30 seasons of growth and shedding")
+        val worst = tree.history.maxOf { it.conservationError }
+        check(worst < 1e-9, "tree growth: resource conserved every season (worst ${"%.1e".format(worst)})")
+        check(tree.shedMetamersTotal > 0, "tree growth: shading sheds branches (${tree.shedMetamersTotal} metamers)")
+        fun extent(t: TreeGrowth): Pair<Double, Double> {
+            val xs = (0 until t.nodeCount).map { t.x(it) }
+            val ys = (0 until t.nodeCount).map { t.y(it) }
+            return (xs.max() - xs.min()) to (ys.max() - ys.min())
+        }
+        val spread = TreeGrowth(params = TreeGrowthParams(lambda = 0.44), seed = 4L).stepTimes(30)
+        val leader = TreeGrowth(params = TreeGrowthParams(lambda = 0.62), seed = 4L).stepTimes(30)
+        val (ws, hs) = extent(spread)
+        val (wl, hl) = extent(leader)
+        check(
+            ws > wl && hl > hs,
+            "tree growth: λ 0.44 is wider (${f(ws)} vs ${f(wl)}) and λ 0.62 taller (${f(hl)} vs ${f(hs)})"
+        )
+        montage(
+            listOf(
+                "lambda 0.44" to spread.render(TreeView.STRUCTURE, 3),
+                "lambda 0.5: bud light" to tree.render(TreeView.LIGHT, 3),
+                "lambda 0.62" to leader.render(TreeView.STRUCTURE, 3)
+            ),
+            columns = 3, cellSide = 320
+        ).savePng(File(outDir, "alife-tree-growth.png").absolutePath)
+    }
+
     // ==========================================================================================
     // 9b — The bridge out to FLine, against the geometry of a circle
     // ==========================================================================================
@@ -2362,6 +2400,7 @@ object AlifeGallery {
         Stage("dla", Tier.FAST, ::figureDla),
         Stage("l-system", Tier.FAST, ::figureLSystem),
         Stage("colonization", Tier.FAST, ::figureColonization),
+        Stage("tree-growth", Tier.FAST, ::figureTreeGrowth),
         Stage("bridge-flines", Tier.FAST, ::figureBridgeFLines),
         Stage("3d-ca", Tier.FAST, ::figureVolume),
         Stage("rpentomino", Tier.SLOW, ::figureRPentomino),
