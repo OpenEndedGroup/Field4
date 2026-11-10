@@ -26,7 +26,7 @@ fun distributionSvg(
     p: Progressive,
     title: String? = null,
     widthPx: Int = 480,
-    heightPx: Int = 200,
+    heightPx: Int = 230,
     maxDiscrete: Int = 80,
     exact: Double? = null,
     color: String = "#0af",
@@ -35,7 +35,7 @@ fun distributionSvg(
 ): String {
     val s = p.kept()
     val w = widthPx.toDouble()
-    val histH = heightPx * 0.62
+    val histH = heightPx * 0.58
     val padL = 14.0; val padR = 14.0; val padT = if (title != null) 26.0 else 16.0
     val innerW = w - padL - padR
     val sb = StringBuilder()
@@ -119,7 +119,7 @@ fun distributionSvg(
     sb.append("""<line x1="${f(xm)}" x2="${f(xm)}" y1="${f(y0)}" y2="${f(yBase)}" stroke="#fff" stroke-dasharray="2,2"/>""")
     // axis labels: the ends, and the discrete values when there are few
     val ticks = if (discrete && distinct.size <= 24) (pmf?.keys?.filter { it in lo..hi }?.takeIf { it.size <= 24 } ?: distinct) else listOf(lo, (lo + hi) / 2, hi)
-    for (t in ticks) sb.append(text(xOf(t).coerceIn(padL + 6, w - padR - 6), yBase + 12, fmtShort(t), color, 9, "middle", 0.7))
+    for (t in ticks) sb.append(text(xOf(t).coerceIn(padL + 6, w - padR - 6), yBase + 12, tick(t), color, 9, "middle", 0.7))
     val legend = when {
         discrete && pmf != null -> "exact pmf"
         pdf != null -> "exact density"
@@ -130,8 +130,8 @@ fun distributionSvg(
 
     // running estimate strip
     val tr = p.trace
-    val sy0 = padT + histH; val sy1 = heightPx - 18.0
-    sb.append(text(padL, sy0 - 2, "E = $est" + (exact?.let { "   exact ${fmtShort(it)}" } ?: ""), "#fff", 10, "start"))
+    val sy0 = yBase + 34; val sy1 = heightPx - 18.0
+    sb.append(text(padL, yBase + 28, "E = $est" + (exact?.let { "   exact ${fmtShort(it)}" } ?: ""), "#fff", 10, "start"))
     if (tr.size >= 2) {
         val n0 = log10(tr.first().first.toDouble()); val n1 = log10(tr.last().first.toDouble()).let { if (it <= n0) n0 + 1 else it }
         val tail = tr.drop(tr.size / 5)
@@ -217,3 +217,5 @@ fun Marker.distribution(d: Dist, batch: Int = 2_000, title: String? = null, exac
     }
     return p.estimate
 }
+
+private fun tick(v: Double): String = if (v == floor(v) && abs(v) < 1e9) v.toLong().toString() else if (abs(v) < 1e-3) "0" else "%.3g".format(v)
