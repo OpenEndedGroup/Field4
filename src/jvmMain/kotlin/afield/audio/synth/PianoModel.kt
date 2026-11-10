@@ -27,8 +27,9 @@ package afield.audio.synth
 //
 // What changed in the port: the sample rate is a parameter rather than a fixed 44.1 kHz; the
 // random draws are coopiano's own (mt19937_64 with libc++'s uniform and normal distributions,
-// reproduced in PianoRng), so at 44.1 kHz a dry note matches the C++ to rounding; the soundboard is the single shared stereo response (coopiano's
-// make_soundboard_ir), not its four bridge regions; each phasor remembers its partial number and
+// reproduced in PianoRng), so at 44.1 kHz a dry note matches the C++ to rounding; the soundboard is
+// coopiano's four bridge regions (make_soundboard_regions) or, with spread and position depth at 0,
+// its single shared response (make_soundboard_ir); each phasor remembers its partial number and
 // string so inharmonicity and decay can be modulated while it rings (see Piano.kt).
 
 import kotlin.math.PI
@@ -86,6 +87,13 @@ data class PianoVoicing(
     val boardDecayScale: Double = 1.10,
     val boardLowModeDensity: Double = 1.0,
     val boardRippleFraction: Double = 0.25,
+    /**
+     * Stereo spread of the four bridge regions, 0..1: bass to the left as the player hears it, the
+     * low modes kept centred. 0 with [boardPositionDepth] 0 is one shared board for every key.
+     */
+    val boardSpread: Double = 0.7,
+    /** How much a key's place along the bridge colours the board, 0..1 (coopiano `position_depth`). */
+    val boardPositionDepth: Double = 0.5,
     // sympathetic resonance
     val resonanceGain: Double = 0.18,
     val resonanceMaximumDecaySeconds: Double = 12.0,
@@ -921,12 +929,33 @@ internal fun pianoDamperContact(pedal: Double): Double {
 /** The shared stereo soundboard impulse response (coopiano `make_soundboard_ir`). */
 internal object PianoSoundboardIr {
     private val cache = HashMap<Pair<Double, PianoVoicing>, Pair<DoubleArray, DoubleArray>>()
+    private val regionCache = HashMap<Pair<Double, PianoVoicing>, Regions>()
+
+    /** Four bridge regions: each one's stereo head (the first [HEAD_SECONDS]), and the shared tail every key's force goes through. */
+    class Regions(val headL: Array<DoubleArray>, val headR: Array<DoubleArray>, val tailL: DoubleArray, val tailR: DoubleArray)
+
+    const val REGIONS = 4
+    const val HEAD_SECONDS = 0.2
+
+    /** A key's place along the bridge, 0 at A0 and 1 at C8. */
+    fun bridgePosition(midi: Double): Double = ((midi - 21.0) / 87.0).coerceIn(0.0, 1.0)
+    fun regionPosition(r: Int): Double = (r + 0.5) / REGIONS
+
+    /** The lower of the two regions key [midi] feeds and its crossfade toward the next (coopiano `key_region_`). */
+    fun keyRegion(midi: Double): Pair<Int, Double> {
+        val x = bridgePosition(midi) * REGIONS - 0.5
+        val lower = floor(x.coerceIn(0.0, REGIONS - 1.0)).toInt()
+        return lower to (x - lower).coerceIn(0.0, 1.0)
+    }
+
+    private fun voicingKey(fs: Double, v: PianoVoicing) = fs to v.copy(knock = true, scrape = true, damperNoise = true)
 
     @Synchronized
-    fun get(fs: Double, v: PianoVoicing): Pair<DoubleArray, DoubleArray> {
-        val key = fs to v.copy(knock = true, scrape = true, damperNoise = true)
-        return cache.getOrPut(key) { build(fs, v, 0xb0a4d5eedL) }
-    }
+    fun get(fs: Double, v: PianoVoicing): Pair<DoubleArray, DoubleArray> =
+        cache.getOrPut(voicingKey(fs, v)) { val (l, r, _) = build(fs, v, 0xb0a4d5eedL, false); l to r }
+
+    @Synchronized
+    fun regions(fs: Double, v: PianoVoicing): Regions = regionCache.getOrPut(voicingKey(fs, v)) { build(fs, v, 0xb0a4d5eedL, true).third!! }
 
     fun radiation(f: Double, v: PianoVoicing): Double =
         (f * f / (f * f + v.boardBassCornerHz * v.boardBassCornerHz)) / (1.0 + (f / v.boardTrebleCornerHz).pow(v.boardTrebleSlope))
@@ -939,10 +968,22 @@ internal object PianoSoundboardIr {
         return sparse + density * (dense - sparse)
     }
 
-    private fun build(fs: Double, v: PianoVoicing, seed: Long): Pair<DoubleArray, DoubleArray> {
+    /**
+     * The shared response (coopiano `make_soundboard_ir`), and with [withRegions] the four region
+     * responses as well (coopiano `make_soundboard_regions`): the same modes, decays and stereo
+     * phases, excited by a smooth random mode shape along the bridge (`boardPositionDepth`) and
+     * panned by region above the bass (`boardSpread`). The main draws are the shared board's, in
+     * the same order, so its response is unchanged; the mode shapes have their own stream.
+     */
+    private fun build(fs: Double, v: PianoVoicing, seed: Long, withRegions: Boolean): Triple<DoubleArray, DoubleArray, Regions?> {
         val n = (1.4 * v.boardDecayScale * fs).toInt()
         val irL = DoubleArray(n); val irR = DoubleArray(n)
+        val k = REGIONS
+        val regL = if (withRegions) Array(k) { DoubleArray(n) } else emptyArray()
+        val regR = if (withRegions) Array(k) { DoubleArray(n) } else emptyArray()
         val rng = PianoRng(seed)
+        val spatial = PianoRng(seed xor -0x61c8864680b583ebL)
+        val weight = DoubleArray(k); val gainL = DoubleArray(k); val gainR = DoubleArray(k)
         fun um() = rng.uniform(-1.0, 1.0)
         var f = 48.0
         while (f < min(16500.0, fs * 0.45)) {
@@ -957,23 +998,46 @@ internal object PianoSoundboardIr {
             var rr = ampR * cos(phR); var ri = ampR * sin(phR)
             val mag = exp(-sig / fs); val sr = mag * cos(2 * PI * f / fs); val sim = mag * sin(2 * PI * f / fs)
             val len = min(n, (t60 * 1.15 * fs).toInt())
+            if (withRegions) {
+                val cycles = 0.5 + f / 800.0; val phase = spatial.nextDouble() * 2 * PI
+                var mean = 0.0
+                for (r in 0 until k) { weight[r] = cos(2 * PI * cycles * regionPosition(r) + phase); mean += weight[r] / k }
+                for (r in 0 until k) weight[r] = 1.0 + v.boardPositionDepth * 0.25 * (weight[r] - mean)
+                val directional = ((f - 60.0) / 540.0).coerceIn(0.0, 1.0)
+                for (r in 0 until k) {
+                    val angle = PI / 4 * (1.0 + v.boardSpread * directional * (2 * regionPosition(r) - 1.0))
+                    gainL[r] = sqrt(2.0) * cos(angle) * weight[r]; gainR[r] = sqrt(2.0) * sin(angle) * weight[r]
+                }
+            }
             for (i in 0 until len) {
                 irL[i] += li; irR[i] += ri
+                if (withRegions) for (r in 0 until k) { regL[r][i] += gainL[r] * li; regR[r][i] += gainR[r] * ri }
                 val nlr = lr * sr - li * sim; li = lr * sim + li * sr; lr = nlr
                 val nrr = rr * sr - ri * sim; ri = rr * sim + ri * sr; rr = nrr
             }
             f += modeSpacing(f, v.boardLowModeDensity) * (0.75 + 0.5 * rng.nextDouble())
         }
-        flatten(irL, v, fs); flatten(irR, v, fs)
+        val cL = correction(irL, v, fs); val cR = correction(irR, v, fs)
+        applyCorrection(irL, cL); applyCorrection(irR, cR)
+        for (r in 0 until regL.size) { applyCorrection(regL[r], cL); applyCorrection(regR[r], cR) }
         var e = 0.0
         for (i in 0 until n) e += irL[i] * irL[i] + irR[i] * irR[i]
         val s = 1.0 / sqrt(e / 2.0)
         for (i in 0 until n) { irL[i] *= s; irR[i] *= s }
-        return irL to irR
+        if (!withRegions) return Triple(irL, irR, null)
+        val head = (HEAD_SECONDS * fs).toInt().coerceIn(1, n); val fade = max(1, head / 5)
+        fun window(i: Int) = if (i < head - fade) 1.0 else if (i >= head) 0.0 else 0.5 * (1.0 + cos(PI * (i - (head - fade)) / fade))
+        val tailL = DoubleArray(n); val tailR = DoubleArray(n)
+        for (i in 0 until n) {
+            val w = window(i)
+            tailL[i] = irL[i] * (1 - w); tailR[i] = irR[i] * (1 - w)
+            for (r in 0 until k) { regL[r][i] *= s * w; regR[r][i] *= s * w }
+        }
+        return Triple(irL, irR, Regions(Array(k) { regL[it].copyOf(head) }, Array(k) { regR[it].copyOf(head) }, tailL, tailR))
     }
 
     /** Minimum-phase equalisation toward the radiation target (coopiano `ir_correction`). */
-    private fun flatten(ir: DoubleArray, v: PianoVoicing, fs: Double) {
+    private fun correction(ir: DoubleArray, v: PianoVoicing, fs: Double): Pair<DoubleArray, DoubleArray> {
         var n = 1
         while (n < ir.size * 2) n = n shl 1
         val hr = DoubleArray(n); val hi = DoubleArray(n)
@@ -1001,12 +1065,20 @@ internal object PianoSoundboardIr {
         for (i in 1 until half) { cr[i] *= 2.0; ci[i] *= 2.0 }
         for (i in half + 1 until n) { cr[i] = 0.0; ci[i] = 0.0 }
         PianoMath.fft(cr, ci, false)
-        // exp of complex cepstrum spectrum, times H
-        for (i in 0 until n) {
-            val m = exp(cr[i]); val er = m * cos(ci[i]); val ei = m * sin(ci[i])
-            val r = hr[i] * er - hi[i] * ei; val im = hr[i] * ei + hi[i] * er
-            hr[i] = r; hi[i] = im
-        }
+        // exp of the complex cepstrum spectrum: the multiplier for H
+        val er = DoubleArray(n); val ei = DoubleArray(n)
+        for (i in 0 until n) { val m = exp(cr[i]); er[i] = m * cos(ci[i]); ei[i] = m * sin(ci[i]) }
+        return er to ei
+    }
+
+    /** Multiplies [ir]'s spectrum by [c] (coopiano `apply_ir_correction`). */
+    private fun applyCorrection(ir: DoubleArray, c: Pair<DoubleArray, DoubleArray>) {
+        val (er, ei) = c
+        val n = er.size
+        val hr = DoubleArray(n); val hi = DoubleArray(n)
+        System.arraycopy(ir, 0, hr, 0, ir.size)
+        PianoMath.fft(hr, hi, false)
+        for (i in 0 until n) { val r = hr[i] * er[i] - hi[i] * ei[i]; val im = hr[i] * ei[i] + hi[i] * er[i]; hr[i] = r; hi[i] = im }
         PianoMath.fft(hr, hi, true)
         for (i in ir.indices) ir[i] = hr[i]
     }
@@ -1032,6 +1104,9 @@ internal class PianoBoardConvolver(irL: DoubleArray, irR: DoubleArray, private v
     private val tailL = DoubleArray(p); private val tailR = DoubleArray(p)
     private val ar = DoubleArray(n2); private val ai = DoubleArray(n2)
     private val br = DoubleArray(n2); private val bi = DoubleArray(n2)
+    /** Partitions with any nonzero tap; a region tail is zero for its first 0.16 s. */
+    private val live = BooleanArray(parts) { k -> (k * p until min((k + 1) * p, max(irL.size, irR.size))).any { (it < irL.size && irL[it] != 0.0) || (it < irR.size && irR[it] != 0.0) } }
+    private val headLive = live.isNotEmpty() && live[0]
 
     init {
         for (k in 1 until parts) {
@@ -1055,11 +1130,13 @@ internal class PianoBoardConvolver(irL: DoubleArray, irR: DoubleArray, private v
         frame[pos] = x
         var l = tailL[pos]; var r = tailR[pos]
         // direct head: y[n] += sum_{i<p} h[i] x[n-i]
-        var i = 0
-        var j = pos
-        while (i <= pos) { val v = frame[j]; l += headL[i] * v; r += headR[i] * v; i++; j-- }
-        j = p - 1
-        while (i < p) { val v = prevFrame[j]; l += headL[i] * v; r += headR[i] * v; i++; j-- }
+        if (headLive) {
+            var i = 0
+            var j = pos
+            while (i <= pos) { val v = frame[j]; l += headL[i] * v; r += headR[i] * v; i++; j-- }
+            j = p - 1
+            while (i < p) { val v = prevFrame[j]; l += headL[i] * v; r += headR[i] * v; i++; j-- }
+        }
         out[0] = l; out[1] = r
         pos++
         if (pos == p) { pos = 0; frameDone() }
@@ -1076,6 +1153,7 @@ internal class PianoBoardConvolver(irL: DoubleArray, irR: DoubleArray, private v
         // tail for the next frame m: sum_{k>=1} X_{m-k} H_k, newest spectrum is X_{m-1}
         ar.fill(0.0); ai.fill(0.0); br.fill(0.0); bi.fill(0.0)
         for (k in 1 until parts) {
+            if (!live[k]) continue
             val xi0 = ((xHead - (k - 1)) % parts + parts) % parts
             val xrr = xr[xi0]; val xii = xi[xi0]
             val lr = hLr[k]; val li = hLi[k]; val rr = hRr[k]; val ri = hRi[k]
@@ -1100,12 +1178,19 @@ internal class PianoResonance(v: PianoVoicing, private val fs: Double) {
     private val cs: DoubleArray; private val sn: DoubleArray
     private val openR: DoubleArray; private val closedR: DoubleArray; private val drive: DoubleArray
     private val ramp = 1.0 / (v.resonanceTransitionSeconds * fs)
+    // Each mode's unprepared tuning, so preparations can move it and put it back.
+    private val modeHz: DoubleArray; private val modeSigma: DoubleArray; private val modeN: IntArray
+    private val keyMs = DoubleArray(88)
+    private val closedFloor = PianoMath.LN1000 / v.resonanceDamperDecaySeconds
+    private val prepared = BooleanArray(88)
 
     init {
         val c = ArrayList<Double>(); val s = ArrayList<Double>(); val o = ArrayList<Double>(); val cl = ArrayList<Double>(); val d = ArrayList<Double>()
+        val hz = ArrayList<Double>(); val sg = ArrayList<Double>(); val nn = ArrayList<Int>()
         for (key in 0 until 88) {
             val k = PianoKey(21.0 + key, v)
             begin[key] = c.size
+            keyMs[key] = k.ms
             undamped[key] = !k.hasDamper
             openness[key] = if (undamped[key]) 1.0 else 0.0
             for (partial in 1..16) {
@@ -1117,11 +1202,51 @@ internal class PianoResonance(v: PianoVoicing, private val fs: Double) {
                 val angle = 2.0 * PI * f / fs
                 val weight = 1.0 / (partial * (1.0 + (f / 3500.0).pow(2.0)))
                 c.add(cos(angle)); s.add(sin(angle)); o.add(open); cl.add(closed); d.add(2.0 * (1.0 - open) * weight)
+                hz.add(f); sg.add(sigma); nn.add(partial)
             }
             end[key] = c.size
         }
         cs = c.toDoubleArray(); sn = s.toDoubleArray(); openR = o.toDoubleArray(); closedR = cl.toDoubleArray(); drive = d.toDoubleArray()
         re = DoubleArray(cs.size); im = DoubleArray(cs.size)
+        modeHz = hz.toDoubleArray(); modeSigma = sg.toDoubleArray(); modeN = nn.toIntArray()
+    }
+
+    private val pw = DoubleArray(16); private val ps = DoubleArray(16); private val pf = DoubleArray(16); private val pg = DoubleArray(16)
+
+    /**
+     * Retunes key [key]'s sympathetic strings for the preparations on it: [pos], [grams] and
+     * [damping] per preparation, [count] of them. The heaviest mass is solved exactly
+     * ([PianoMassCoupling]); the others move each mode by their own amount. Ringing modes keep
+     * their state. [count] 0 puts the key back as built.
+     */
+    fun prepare(key: Int, count: Int, pos: DoubleArray, grams: DoubleArray, damping: DoubleArray) {
+        if (count == 0 && !prepared[key]) return
+        prepared[key] = count > 0
+        val b = begin[key]; val n = end[key] - b
+        if (n == 0) return
+        var heaviest = -1
+        for (j in 0 until count) if (grams[j] > 0 && (heaviest < 0 || grams[j] > grams[heaviest])) heaviest = j
+        for (m in 0 until n) { pw[m] = 2 * PI * modeHz[b + m]; pf[m] = 1.0 }
+        if (heaviest >= 0) {
+            val c = 2.0 * grams[heaviest] * 1e-3 / keyMs[key]
+            for (m in 0 until n) { ps[m] = sin(modeN[b + m] * PI * pos[heaviest]); pg[m] = 0.0 }
+            if (c > 0 && c.isFinite()) PianoMassCoupling.solve(pw, ps, n, c, pf, null, pg)
+        }
+        for (m in 0 until n) {
+            var f = modeHz[b + m] * pf[m]
+            var sigma = modeSigma[b + m]
+            for (j in 0 until count) {
+                val sh = sin(modeN[b + m] * PI * pos[j])
+                if (j != heaviest) f *= pianoMassFactor(2.0 * grams[j] * 1e-3 / keyMs[key] * sh * sh)
+                sigma += damping[j] * sh * sh
+            }
+            sigma = max(0.0, sigma)
+            val angle = 2.0 * PI * f / fs
+            val ok = f.isFinite() && angle > 0 && angle < PI * 0.95
+            cs[b + m] = if (ok) cos(angle) else 1.0; sn[b + m] = if (ok) sin(angle) else 0.0
+            openR[b + m] = if (ok) exp(-sigma / fs) else 0.0
+            closedR[b + m] = if (ok) exp(-max(sigma, closedFloor) / fs) else 0.0
+        }
     }
 
     val modeCount: Int get() = cs.size

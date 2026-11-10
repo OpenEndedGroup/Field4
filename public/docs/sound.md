@@ -346,7 +346,7 @@ which takes a few milliseconds for a bass note. Worker threads do that work up t
 the note's sample, so a scheduled bass chord costs the audio thread nothing. A note played "now",
 from a MIDI keyboard, starts as soon as its strike is ready, at most 30 ms later. On an M-series
 laptop the worst 128-frame block after a six-note bass chord takes 4.8 ms with the workers and
-31 ms without them. Either way the output is the same, sample for sample.
+over 30 ms without them. Either way the output is the same, sample for sample.
 
 Two pianos play side by side with `+`:
 
@@ -371,9 +371,21 @@ thousand for A1, where three strings each carry fifty or more partials.
 
 Real piano strings are stiff, so their partials run sharp of whole multiples of the fundamental by
 `sqrt(1 + B·n²)`. `inharmonicity` multiplies `B`. The bridge sums every mode's push into one force.
-That force drives the soundboard, a synthesised stereo impulse response built from many decaying modes. It also drives 88
-sympathetic strings tuned to the keyboard. With the pedal down their dampers lift and they ring in
-answer to the notes you play.
+That force drives the soundboard, a synthesised stereo impulse response built from many decaying
+modes. The bridge is split into four regions along the keyboard, and each key feeds the nearest two.
+Each region's board starts out with the same modes but excites them differently and sits at its own
+place in the stereo image, so the bass is to the left and the treble to the right, as the player
+hears it: A1 comes out 6.6 dB louder on the left, and C7 5.6 dB louder on the right.
+`PianoVoicing(boardSpread = 0.0, boardPositionDepth = 0.0)` gives one shared board for every key. The
+force also drives 88 sympathetic strings tuned to the keyboard. With the pedal down their dampers
+lift and they ring in answer to the notes you play.
+
+The phrase through one shared board; the first clip in the next section is the same phrase through
+the four regions:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/sound_piano/piano-shared-board.wav" audio-spec="piano-shared-board" audio-renderer="afield.audio.synth.PianoDocs" embed=true hidden=true name="sound-doc-piano-shared-board"}
+// Piano(voicing = PianoVoicing(boardSpread = 0.0, boardPositionDepth = 0.0))
+```
 
 Every one of those stages can be heard, and the mode bank can be drawn. Here is one C3 string, struck
 at velocity 0.8, at four moments after the hammer leaves it:
@@ -504,9 +516,9 @@ drifting along the strings while the stiffness swings at 180 Hz with the fundame
 ```
 
 Against the soundboard version of the same phrase, the close microphone at 0.08 moves the
-spectral centroid from 767 Hz to 1037 Hz, puts 4.5 dB more energy between 2 and 5 kHz, and makes
-the first 40 ms of each note 5 dB louder against what follows (6.0 dB against 1.0 dB), which is the
-thump and the key.
+spectral centroid from 760 Hz to 1040 Hz, puts 5.5 dB more energy between 2 and 5 kHz, and makes
+the first 40 ms of each note 5.6 dB louder against what follows (6.0 dB against 0.4 dB), which is
+the thump and the key.
 
 The microphone is read every 32 samples, so a `micPosition` oscillator above about 700 Hz is heard
 as steps; stiffness and decay are applied every sample.
@@ -569,10 +581,16 @@ preparation on one of a key's two or three strings (0, 1 or 2) instead of all of
 screw wedged between two strings leaves the third alone.
 
 A bolt is heavy against a treble string and light against a bass one. A4's string weighs 2.2 g, so
-a 2 g bolt 30% of the way along it moves its first three partials from 440, 881 and 1323 Hz to 297,
-542 and 1222 Hz. They are no longer a harmonic series, and the note sounds like a gong. An 8 g bolt
-moves them to 183, 320 and 771 Hz. A partial with a node under the bolt does not move at all. The
-spectra are A4 without a bolt, with 2 g and with 8 g at `x = 0.3`:
+a 2 g bolt 30% of the way along it moves its first three partials from 440, 881 and 1323 Hz to 273,
+678 and 1283 Hz. They are no longer a harmonic series, and the note sounds like a gong. An 8 g bolt
+moves them to 155, 645 and 1272 Hz. A partial with a node under the bolt does not move at all.
+
+A bolt this heavy does more than lower each partial: the partials' shapes along the string mix, and
+the string's modes are computed again with the bolt on it. Each one falls, but never below the
+unprepared partial beneath it, so the second partial of the 8 g bolt stays above 440 Hz. Adding
+more weight pushes the lowest partial further down, toward a string stopped at the bolt. The mixing
+also changes how loudly each partial reaches the bridge and the microphones. The spectra are A4
+without a bolt, with 2 g and with 8 g at `x = 0.3`:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sound_piano/bolt-spectra.png" wait="2" capture="box" open-outputs="true" name="sound-doc-piano-bolt"}
 fun spectrum(grams: Double, title: String): String {
@@ -613,8 +631,11 @@ string, from 8% to 52% of the way; then with a loose nut on the bass strings:
 ```
 
 A preparation's position, mass and damping are read every 32 samples, and the rattle every sample.
-The hammer meets the string as if it were unprepared: its contact lasts only one to four
-milliseconds.
+The heaviest mass on each string is solved exactly over its lowest 48 partials, again every 128
+samples while it moves. Any other masses on the same string, and the partials above the 48th, move
+each by its own amount. The hammer meets the string as if it were unprepared, because its contact
+lasts only one to four milliseconds; the strike is then carried over into the prepared string's
+modes. The sympathetic strings are retuned every 256 samples.
 
 ### More than one microphone
 
@@ -647,7 +668,7 @@ answer a note are in the close sound too.
 ### The soft pedal and the sostenuto
 
 `unaCorda` is the soft pedal. Down, it shifts the action so each hammer misses one string of a
-three-string note and meets the other two with softer felt. E4 comes out 1.4 dB quieter, with 3.4 dB
+three-string note and meets the other two with softer felt. E4 comes out 1.4 dB quieter, with 3.3 dB
 less of its energy above 2 kHz. It is read at each strike, like `hardness`, so a pedal moved while a
 note rings changes the next note, not that one.
 
@@ -698,8 +719,14 @@ each chord:
 // Piano(pedal = Param(1f), coupling = Param(6f), bridgeInput = Param(0f).modulate(player.toMono() * 4f))
 ```
 
-The answering strings are the 88 keys' sympathetic strings, 16 partials each. They are tuned to the
-voicing and do not carry the preparations.
+The answering strings are the 88 keys' sympathetic strings, 16 partials each, and they carry the
+preparations: a bolted key's strings answer at the bolted pitches, and a rubber-wedged key barely
+answers at all. A prepared piano with its pedal down rings in its own tuning. The same phrase, played
+into the prepared piano from the start of this section with its pedal down:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/sound_piano/piano-through-prepared.wav" audio-spec="piano-through-prepared" audio-renderer="afield.audio.synth.PianoDocs" embed=true hidden=true name="sound-doc-piano-through-prepared"}
+// Piano(pedal = Param(1f), coupling = Param(6f), preparations = PREPARED, bridgeInput = Param(0f).modulate(player.toMono() * 4f))
+```
 
 ### Rendering a MIDI file
 
@@ -720,24 +747,20 @@ allows, about eight times real time for one held note.
 
 What the piano does not do yet:
 
-- **One soundboard.** coopiano gives each of four bridge regions its own soundboard response; this
-  port shares one stereo response across the keyboard.
 - **The felt is coopiano's.** The hammer's nonlinearity is the model's power-law felt spring and
   nothing more: no felt hysteresis or wear.
-- **Preparations act on each mode separately.** A bolt moves and damps every mode by its own
-  amount, but it does not couple modes to each other, which a heavy real bolt does. The sympathetic
-  strings are not prepared.
+- **Only one mass per string is solved exactly.** A second bolt on the same string, and the
+  partials above the 48th, move each by its own amount. Rubber damps each mode without mixing them.
 - **A dense bass chord is still heavy to ring.** Six bass notes are about six and a half thousand
   modes, close to 5 ms of work per 128-frame block on an M-series laptop: more than a 128-frame
-  buffer at 48 kHz allows (2.7 ms), so the live engine needs a larger buffer for them.
+  buffer at 48 kHz allows (2.7 ms), so the live engine needs a larger buffer for them. The four
+  board regions add about 60% to the board's cost; eight seconds of A4 render in about 1.6 s.
 
 Where it could go next:
 
-- **coopiano's four bridge regions**, for a soundboard that changes colour across the keyboard.
-- **Prepared sympathetic strings**, so a prepared piano with its pedal down answers in its own
-  tuning.
 - **Felt and preparations that touch the strike**: a hammer hitting a screw, felt between hammer and
   string.
+- **Several masses on one string solved together**, for two bolts that pull against each other.
 
 <a id="what-a-voice-caption-promises"></a>
 

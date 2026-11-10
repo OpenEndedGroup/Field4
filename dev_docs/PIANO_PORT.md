@@ -102,10 +102,25 @@ regions' different modal colouring, not the strings.
   The first version ran the chain after all segments and let a later note open its resonators
   early.
 
-## What it leaves out
+## The four bridge regions
 
-- coopiano's four bridge-region soundboards (stereo image by register); the port uses the single
-  shared response.
+`PianoSoundboardIr.regions` ports `make_soundboard_regions`: the same main draws as the shared
+board in the same order, the mode shapes from their own stream (`seed ^ 0x9e3779b97f4a7c15`), the
+equaliser derived from the shared response and applied to every region, the heads kept for 0.2 s
+with a raised-cosine fade and the shared tail convolved once from the summed force. Routing is
+coopiano's `render_force`: each key's own force into its two nearest regions, the rest (sympathetic
+strings, `bridgeInput`) shared evenly. `voicing.boardSpread` / `boardPositionDepth` default to
+coopiano's 0.7 / 0.5.
+
+Checked in Field only (`PianoRegionsTest`): with spread 0 and depth 1e-12 the region split
+reproduces the shared board to 3.7e-9 of a 0.54 peak, so the heads, tail and routing add up; with
+the defaults A1 is 6.6 dB louder left and C7 5.6 dB louder right. It has not been compared against
+coopiano's C++ with its default four-region preset: building the C++ was not possible in the session
+that ported it. To compare, run `./coopiano A4 0.5 8` with `GP_NO_REVERB=1` and no preset against
+`pianoRender(8.0, Piano(sampleRate = 44_100, room = Param(0f))) { noteOn(69, 0.5, 0) }`, as in the
+whole-chain section above.
+
+## What it leaves out
 - Voice stealing with a fade, the live MIDI host, presets from `.ini`, and coopiano's prepared-strike
   cache. Instead of a cache, strikes are prepared on `PianoStrikePool` workers up to a second before
   their sample, with the hammer, bridge and soft-pedal values the audio thread last read. At the
@@ -117,6 +132,13 @@ regions' different modal colouring, not the strings.
 
 ## What the port adds beyond coopiano
 
+- Exact point-mass modes (`PianoMassCoupling`): the heaviest mass on each string solves
+  `K v = λ(I + c s sᵀ) v` over the lowest 48 partials by the secular equation (bracketed Newton, one
+  root per interval, `PianoCouplingTest` against a dense Jacobi solve to 1e-14), carries the struck
+  state into the prepared modes (`η = VᵀMz`) when the bolt is there at the strike and adiabatically
+  afterwards, and remixes bridge, microphone and rattle weights. 8 g at 0.3 on A4: 155, 645, 1272,
+  1506 Hz exact against 184, 320, 1017, 944 by the per-mode rule. The sympathetic strings
+  (`PianoResonance.prepare`) take the same solve over their 16 partials, retuned every 256 samples.
 - Preparations (`PianoPreparation`): a point mass `m` at `x` scales partial `n` by
   `1/sqrt(1 + 2(m/M)·sin²(nπx))` (first-order point-mass perturbation, written so it never reaches
   zero; `M` is the string's mass), and damping adds `c·sin²(nπx)` to its decay rate, floored at

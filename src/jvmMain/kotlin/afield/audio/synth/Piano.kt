@@ -27,7 +27,8 @@ import kotlin.math.sqrt
  * and a slow horizontal one, and that two-stage decay is the piano's "prompt sound" and
  * "aftersound". Pairs of neighbouring modes add the string's longitudinal "phantom" partials at their
  * sum frequencies. The summed bridge force drives 88 keys' worth of sympathetic string resonators,
- * then a synthesised stereo soundboard response, then a small room.
+ * then a synthesised stereo soundboard split into coopiano's four bridge regions (bass left, treble
+ * right; [PianoVoicing.boardSpread]), then a small room.
  *
  * `Piano` is a [StereoNode], so `audio(Piano(), gain = 1f)` plays it, and it is played the way a piano is:
  *
@@ -76,14 +77,12 @@ import kotlin.math.sqrt
  *
  * # Against coopiano
  *
- * A4 at velocity 0.5, eight seconds, no room, rendered here and by coopiano's own C++ with its
- * single shared soundboard: the first eight partials land within 0.001 Hz of each other, their
+ * A4 at velocity 0.5, eight seconds, no room, rendered here and by coopiano's own C++, both with one
+ * shared soundboard (`PianoVoicing(boardSpread = 0.0, boardPositionDepth = 0.0)` here): the first eight partials land within 0.001 Hz of each other, their
  * levels and their early and late decay rates agree to 0.01 dB, and the waveforms differ by -75 dB
  * over the first half second. The random draws are coopiano's own (mt19937_64 and libc++'s
  * distributions, reproduced in Kotlin). Method and numbers are in `dev_docs/PIANO_PORT.md`; `PianoTest`
- * pins the hammer contact against the C++. The port differs in two ways: the sample rate is a
- * parameter, and the soundboard is coopiano's single shared stereo response rather than its four
- * bridge regions. Everything this class adds to coopiano (the moving controls, the close
+ * pins the hammer contact against the C++. The sample rate is a parameter. Everything this class adds to coopiano (the moving controls, the close
  * microphones, preparations, the soft and sostenuto pedals, the bridge input) leaves that match
  * alone when it is at its default.
  */
@@ -192,6 +191,12 @@ class Piano(
     @Volatile private var fs = 0.0
     private var resonance: PianoResonance? = null
     private var board: PianoBoardConvolver? = null
+    /** The four bridge regions' heads, when the voicing spreads the board; [board] is then the shared tail. */
+    private var regionBoards: Array<PianoBoardConvolver> = emptyArray()
+    private val regionLower = IntArray(88); private val regionUpper = DoubleArray(88)
+    private val regionIn = DoubleArray(PianoSoundboardIr.REGIONS)
+    private val regionOut = DoubleArray(2)
+    private val activeKeys = IntArray(88)
     private var roomFx: PianoRoom? = null
     private val voices = ArrayList<PianoVoice>()
     private val keyStrings = java.util.concurrent.ConcurrentHashMap<Long, List<PianoString>>()
@@ -348,8 +353,16 @@ class Piano(
     private fun build(rate: Double) {
         fs = rate
         resonance = PianoResonance(voicing, rate)
-        val (l, r) = PianoSoundboardIr.get(rate, voicing)
-        board = PianoBoardConvolver(l, r)
+        if (voicing.boardSpread > 0.0 || voicing.boardPositionDepth > 0.0) {
+            val reg = PianoSoundboardIr.regions(rate, voicing)
+            board = PianoBoardConvolver(reg.tailL, reg.tailR)
+            regionBoards = Array(PianoSoundboardIr.REGIONS) { PianoBoardConvolver(reg.headL[it], reg.headR[it]) }
+            for (k in 0 until 88) { val (lo, up) = PianoSoundboardIr.keyRegion(21.0 + k); regionLower[k] = lo; regionUpper[k] = up }
+        } else {
+            val (l, r) = PianoSoundboardIr.get(rate, voicing)
+            board = PianoBoardConvolver(l, r)
+            regionBoards = emptyArray()
+        }
         roomFx = PianoRoom(rate, voicing)
     }
 
@@ -417,6 +430,7 @@ class Piano(
                 if (shouldDefer(e, start + at)) deferred.add(e) else apply(e, at, bHard, bBridge, bUna)
             }
             sostenutoAt(max(bSost[at].toDouble(), ccSost))
+            prepareResonance(at, start + at)
             var to = numFrames
             val next = pending.peek()
             if (next != null && next.frame < start + numFrames) to = (next.frame - start).toInt().coerceIn(at + 1, numFrames)
@@ -429,12 +443,34 @@ class Piano(
                 v.render(force, ownByKey[v.key], at, to, fs, inp)
                 if (v.finished) iter.remove()
             }
+            var nActive = 0
+            for (k in 0 until 88) if (keyActive[k]) activeKeys[nActive++] = k
+            val nReg = regionBoards.size
             for (i in at until to) {
                 val input = force[i] + INPUT_FORCE * bIn[i]
                 val pedalNow = max(bPedal[i].toDouble(), ccPedal).coerceIn(0.0, 1.0)
                 val wet = res.process(input, pedalNow, ownByKey, keyActive, i, sostLatched)
                 val sympathetic = voicing.resonanceGain * bCoup[i] * wet
-                brd.process((input + sympathetic) * bBoard[i], lr)
+                val boardIn = (input + sympathetic) * bBoard[i]
+                brd.process(boardIn, lr)
+                if (nReg > 0) {
+                    // Each key's own force into its two nearest regions; whatever no key accounts for
+                    // (the sympathetic strings, the bridge input) is shared evenly, so the regions sum
+                    // to the board's input (coopiano `render_force`).
+                    java.util.Arrays.fill(regionIn, 0.0)
+                    var routed = 0.0
+                    for (a in 0 until nActive) {
+                        val k = activeKeys[a]; val x = ownByKey[k][i] * bBoard[i]
+                        val up = regionUpper[k]; val lo = regionLower[k]
+                        if (up > 0.0 && lo + 1 < nReg) { regionIn[lo] += (1 - up) * x; regionIn[lo + 1] += up * x } else regionIn[lo] += x
+                        routed += x
+                    }
+                    val share = (boardIn - routed) / nReg
+                    for (r in 0 until nReg) {
+                        regionBoards[r].process(regionIn[r] + share, regionOut)
+                        lr[0] += regionOut[0]; lr[1] += regionOut[1]
+                    }
+                }
                 for (c in 0..1) {
                     val o = lr[c] - dcIn[c] + dcK * dcOut[c]
                     dcIn[c] = lr[c]; dcOut[c] = o; lr[c] = o
@@ -455,7 +491,7 @@ class Piano(
                 var l = pianoLimitOutput(lr[0] * g); var r = pianoLimitOutput(lr[1] * g)
                 if (!(l.isFinite() && r.isFinite())) {
                     // Only reachable through overflow inside a filter: start the board and room afresh.
-                    l = 0.0; r = 0.0; brd.reset(); rm.reset(); dcIn[0] = 0.0; dcIn[1] = 0.0; dcOut[0] = 0.0; dcOut[1] = 0.0
+                    l = 0.0; r = 0.0; brd.reset(); rm.reset(); for (b in regionBoards) b.reset(); dcIn[0] = 0.0; dcIn[1] = 0.0; dcOut[0] = 0.0; dcOut[1] = 0.0
                 }
                 outL[i] = l.toFloat()
                 outR[i] = r.toFloat()
@@ -511,6 +547,32 @@ class Piano(
             2 -> ccPedal = e.value.coerceIn(0.0, 1.0)
             3 -> ccSost = e.value.coerceIn(0.0, 1.0)
             4 -> ccSoft = e.value.coerceIn(0.0, 1.0)
+        }
+    }
+
+    // Per key, the preparations on it, and the values its sympathetic strings were last tuned for.
+    private val prepsByKey = Array(88) { k -> preparations.indices.filter { 21 + k in preparations[it].keys }.toIntArray() }
+    private val resTuned = Array(88) { DoubleArray(prepsByKey[it].size * 3) }
+    private var tunedRes: PianoResonance? = null
+    private val rPos = DoubleArray(maxOf(1, preparations.size)); private val rGrams = DoubleArray(maxOf(1, preparations.size)); private val rDamp = DoubleArray(maxOf(1, preparations.size))
+
+    /** Tunes the sympathetic strings of every prepared key for the preparations at sample [i], every 256 frames. */
+    private fun prepareResonance(i: Int, absFrame: Long) {
+        if (preparations.isEmpty()) return
+        val res = resonance!!
+        if (tunedRes !== res) { for (t in resTuned) t.fill(Double.NaN); tunedRes = res } else if (absFrame % 256 != 0L) return
+        for (k in 0 until 88) {
+            val list = prepsByKey[k]
+            if (list.isEmpty()) continue
+            val tuned = resTuned[k]
+            var changed = false
+            for ((j, pi) in list.withIndex()) {
+                val b = prepBufs[pi]
+                rPos[j] = b[PianoPreparation.POSITION][i].toDouble(); rGrams[j] = b[PianoPreparation.MASS][i].toDouble(); rDamp[j] = b[PianoPreparation.DAMPING][i].toDouble()
+                if (tuned[3 * j] != rPos[j] || tuned[3 * j + 1] != rGrams[j] || tuned[3 * j + 2] != rDamp[j]) changed = true
+                tuned[3 * j] = rPos[j]; tuned[3 * j + 1] = rGrams[j]; tuned[3 * j + 2] = rDamp[j]
+            }
+            if (changed) res.prepare(k, list.size, rPos, rGrams, rDamp)
         }
     }
 
@@ -608,6 +670,113 @@ internal class PianoVoice(
     private val ry1 = DoubleArray(np); private val ry2 = DoubleArray(np)
     private val rattleNorm = data.tonePeakAmp / max(1e-9, data.hammerVelocity) * RATTLE_GAIN
 
+    /**
+     * The heaviest mass on one string, solved exactly over its lowest [COUPLED_MODES] partials
+     * ([PianoMassCoupling]): each prepared mode k is carried by the phasors of partial k, with its
+     * own frequency, and is heard through a mixture of the unprepared modes' bridge, microphone and
+     * rattle weights.
+     */
+    private class Coupling {
+        var n = 0
+        val partial = IntArray(COUPLED_MODES); val pV = IntArray(COUPLED_MODES); val pH = IntArray(COUPLED_MODES)
+        val w = DoubleArray(COUPLED_MODES); val shape = DoubleArray(COUPLED_MODES)
+        val fac = DoubleArray(COUPLED_MODES); val guess = DoubleArray(COUPLED_MODES)
+        val vec = Array(COUPLED_MODES) { DoubleArray(COUPLED_MODES) }
+        val byPartial = DoubleArray(COUPLED_MODES + 1) { 1.0 }
+        var prep = -1; var c = 0.0; var x = Double.NaN; var s = Double.NaN; var pin = Double.NaN
+        var projected = false
+    }
+    private val couplings = arrayOfNulls<Coupling>(3)
+    private var coupled = false
+    private var couplingMapsDirty = false
+    private var couplingTick = 0
+    private var wEff = data.wOut.copyOf(data.count)
+    private val tmpA = DoubleArray(COUPLED_MODES); private val tmpB = DoubleArray(COUPLED_MODES)
+
+    private fun updateCoupling(s: Double, pin: Double, pos: DoubleArray, massR: DoubleArray, str: IntArray) {
+        if (couplingTick++ % 4 != 0 && !couplingMapsDirty) return
+        val d = data
+        var changedAny = false
+        for (si in 0 until 3) {
+            var j0 = -1
+            for (j in 0 until np) if ((str[j] < 0 || str[j] == si) && massR[j] > COUPLING_MIN && massR[j].isFinite() && (j0 < 0 || massR[j] > massR[j0])) j0 = j
+            val cp0 = couplings[si]
+            if (j0 < 0) {
+                if (cp0 != null) { resetWeights(si); couplings[si] = null; changedAny = true }
+                continue
+            }
+            val cp = cp0 ?: Coupling().also { couplings[si] = it }
+            val c = massR[j0]; val x = pos[j0]
+            if (!couplingMapsDirty && cp0 != null && cp.prep == j0 && cp.c == c && cp.x == x && cp.s == s && cp.pin == pin) continue
+            resetWeights(si)
+            // the string's transverse partials up to COUPLED_MODES that still sound in both polarizations
+            java.util.Arrays.fill(tmpA, -1.0); java.util.Arrays.fill(tmpB, -1.0)
+            for (p in 0 until d.count) {
+                if (d.stringIndex[p] != si || d.longitudinal[p] || d.na[p] > COUPLED_MODES) continue
+                if (d.pol[p] == 1.0) tmpA[d.na[p] - 1] = p.toDouble() else tmpB[d.na[p] - 1] = p.toDouble()
+            }
+            val oldN = cp.n
+            var n = 0
+            for (q in 0 until COUPLED_MODES) if (tmpA[q] >= 0 && tmpB[q] >= 0) {
+                if (n >= oldN || cp.partial[n] != q + 1) cp.guess[n] = 0.0
+                cp.partial[n] = q + 1; cp.pV[n] = tmpA[q].toInt(); cp.pH[n] = tmpB[q].toInt(); n++
+            }
+            cp.n = n
+            if (n == 0) { couplings[si] = null; changedAny = true; continue }
+            for (k in 0 until n) { cp.w[k] = d.omega(cp.pV[k], s, pin); cp.shape[k] = sin(cp.partial[k] * PI * x) }
+            PianoMassCoupling.solve(cp.w, cp.shape, n, c, cp.fac, cp.vec, cp.guess)
+            cp.byPartial.fill(1.0)
+            for (k in 0 until n) cp.byPartial[cp.partial[k]] = if (cp.fac[k].isFinite() && cp.fac[k] > 0) cp.fac[k] else 1.0
+            cp.prep = j0; cp.c = c; cp.x = x; cp.s = s; cp.pin = pin
+            if (!cp.projected) {
+                // the struck string meets a bolt already on it: put its state into the prepared modes
+                if (age - d.coff < 64) { project(cp, cp.pV, c); project(cp, cp.pH, c) }
+                cp.projected = true
+            }
+            for (k in 0 until n) {
+                var wv = 0.0; var wh = 0.0
+                for (j in 0 until n) { wv += d.wOut[cp.pV[j]] * cp.vec[k][j]; wh += d.wOut[cp.pH[j]] * cp.vec[k][j] }
+                wEff[cp.pV[k]] = wv; wEff[cp.pH[k]] = wh
+            }
+            changedAny = true
+        }
+        couplingMapsDirty = false
+        coupled = couplings.any { it != null }
+        if (changedAny) java.util.Arrays.fill(micX, Double.NaN)
+    }
+
+    private fun resetWeights(si: Int) {
+        val d = data
+        for (p in 0 until d.count) if (d.stringIndex[p] == si) wEff[p] = d.wOut[p]
+    }
+
+    /** Modal state [idx] (one polarization) into the prepared modes: η = Vᵀ M z. */
+    private fun project(cp: Coupling, idx: IntArray, c: Double) {
+        val d = data; val n = cp.n
+        var sr = 0.0; var si = 0.0
+        for (j in 0 until n) { sr += cp.shape[j] * d.zr[idx[j]]; si += cp.shape[j] * d.zi[idx[j]] }
+        for (k in 0 until n) {
+            var ar = 0.0; var ai = 0.0
+            for (j in 0 until n) {
+                val v = cp.vec[k][j]
+                ar += v * (d.zr[idx[j]] + c * cp.shape[j] * sr); ai += v * (d.zi[idx[j]] + c * cp.shape[j] * si)
+            }
+            tmpA[k] = ar; tmpB[k] = ai
+        }
+        for (k in 0 until n) { d.zr[idx[k]] = tmpA[k]; d.zi[idx[k]] = tmpB[k] }
+    }
+
+    /** Re-expresses per-phasor weights [w] (bridge-, microphone- or rattle-side) in each coupled string's prepared modes. */
+    private fun remix(w: DoubleArray) {
+        for (cp in couplings) {
+            if (cp == null) continue
+            for (idx in arrayOf(cp.pV, cp.pH)) {
+                for (k in 0 until cp.n) { var a = 0.0; for (j in 0 until cp.n) a += w[idx[j]] * cp.vec[k][j]; tmpA[k] = a }
+                for (k in 0 until cp.n) w[idx[k]] = tmpA[k]
+            }
+        }
+    }
+
     private fun recompute(s: Double, d: Double, pin: Double, fs: Double, i: Int, inp: PianoBlockInputs) {
         sBlock = s; dBlock = d; pinBlock = pin
         val nyq = PI * 0.95
@@ -631,16 +800,19 @@ internal class PianoVoice(
                 rc1[j] = 2 * r * cos(w); rc2[j] = -r * r; rg[j] = 1 - r
             }
         }
+        if (np > 0) updateCoupling(s, pin, pos, massR, str)
         for (p in 0 until data.count) {
             var fa = 1.0; var fb = 1.0; var add = 0.0
+            val cp = if (coupled) couplings[data.stringIndex[p]] else null
             for (j in 0 until np) {
                 if (str[j] >= 0 && data.stringIndex[p] != str[j]) { if (rattleOn[j]) rw[j][p] = 0.0; continue }
+                val exact = cp != null && cp.prep == j
                 val sa = sin(data.na[p] * PI * pos[j])
-                fa *= pianoMassFactor(massR[j] * sa * sa)
+                fa *= if (exact && data.na[p] <= COUPLED_MODES && cp!!.byPartial[data.na[p]] != 1.0) cp.byPartial[data.na[p]] else pianoMassFactor(massR[j] * sa * sa)
                 add += damp[j] * sa * sa
                 if (data.nb[p] > 0) {
                     val sb = sin(data.nb[p] * PI * pos[j])
-                    fb *= pianoMassFactor(massR[j] * sb * sb)
+                    fb *= if (exact && data.nb[p] <= COUPLED_MODES && cp!!.byPartial[data.nb[p]] != 1.0) cp.byPartial[data.nb[p]] else pianoMassFactor(massR[j] * sb * sb)
                     add += damp[j] * sb * sb
                 }
                 if (rattleOn[j]) rw[j][p] = if (data.longitudinal[p]) 0.0 else sa
@@ -655,6 +827,7 @@ internal class PianoVoice(
             dw[p] = data.dOmegaDs(p, s, pin, fa, fb) / fs
         }
         if (!anyRattle) for (j in 0 until np) { ry1[j] = 0.0; ry2[j] = 0.0 }
+        if (coupled) for (j in 0 until np) if (rattleOn[j]) remix(rw[j])
     }
 
     private fun micWeights(m: Int, x: Double, string: Int) {
@@ -668,6 +841,7 @@ internal class PianoVoice(
             // feels its slope, ∝ n: so each mode is weighted by sin(nπx), scaled to the bridge near x_ref.
             w[p] = data.wOut[p] * sin(n * PI * x) * MIC_NORM
         }
+        if (coupled) remix(w)
     }
 
     fun render(force: DoubleArray, own: DoubleArray, from: Int, to: Int, fs: Double, inp: PianoBlockInputs) {
@@ -710,7 +884,7 @@ internal class PianoVoice(
                 val c = contact
                 val pAge = age - d.coff
                 val onset = if (pAge >= rise) 1.0 else { val t = pAge.toDouble() / rise; t * t * (3 - 2 * t) }
-                val zr = d.zr; val zi = d.zi; val wo = d.wOut
+                val zr = d.zr; val zi = d.zi; val wo = if (coupled) wEff else d.wOut
                 val w0 = if (nm == 1) micW[0] else null
                 if (nm > 1) { if (hm.size != nm) hm = DoubleArray(nm) else hm.fill(0.0) }
                 var rattles = false
@@ -795,13 +969,14 @@ internal class PianoVoice(
                 d.dampSig[w] = d.dampSig[p]; d.na[w] = d.na[p]; d.nb[w] = d.nb[p]; d.f0s[w] = d.f0s[p]
                 d.shA[w] = d.shA[p]; d.shB[w] = d.shB[p]; d.pol[w] = d.pol[p]; d.longitudinal[w] = d.longitudinal[p]
                 d.stringIndex[w] = d.stringIndex[p]; d.amp0[w] = d.amp0[p]
-                or_[w] = or_[p]; oi[w] = oi[p]; dr[w] = dr[p]; di[w] = di[p]; dw[w] = dw[p]
+                or_[w] = or_[p]; oi[w] = oi[p]; dr[w] = dr[p]; di[w] = di[p]; dw[w] = dw[p]; wEff[w] = wEff[p]
                 for (m in micW) if (p < m.size) m[w] = m[p]
                 for (r in rw) if (p < r.size) r[w] = r[p]
             }
             w++
         }
         d.count = w
+        if (coupled) couplingMapsDirty = true
     }
 }
 
@@ -811,6 +986,10 @@ internal fun pianoMassFactor(t: Double): Double = if (t >= 0.0) 1.0 / sqrt(1.0 +
 /** Rattle output against the voice's tone level, per m/s of string velocity at the catch over the hammer's. */
 private const val RATTLE_GAIN = 14.0
 private const val RATTLE_RING_SECONDS = 0.0025
+/** Partials per string solved exactly under the heaviest mass; above them each mode moves by its own amount. */
+private const val COUPLED_MODES = 48
+/** Below this mass ratio (2m/M) the per-mode rule is within a fraction of a cent of the exact one, and is used. */
+private const val COUPLING_MIN = 0.02
 /** How fast a coasting rattle slows (1/s), and how much of its speed it keeps bouncing off the string. */
 private const val RATTLE_FRICTION = 60.0
 private const val RATTLE_RESTITUTION = 0.3

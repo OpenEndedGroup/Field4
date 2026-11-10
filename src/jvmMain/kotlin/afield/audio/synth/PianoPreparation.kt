@@ -2,6 +2,8 @@
 package afield.audio.synth
 
 import java.io.File
+import kotlin.math.abs
+import kotlin.math.sqrt
 
 /**
  * Something placed on the strings of a [Piano]'s keys, the way John Cage prepared a piano: a bolt, a
@@ -143,5 +145,73 @@ private class StereoMono(private val source: StereoRenderable) : Signal() {
         if (l.size < numFrames) { l = FloatArray(numFrames); r = FloatArray(numFrames) }
         source.render(l, r, numFrames, ctx)
         for (i in 0 until numFrames) output[i] = 0.5f * (l[i] + r[i])
+    }
+}
+
+/**
+ * The modes of a string carrying one point mass, exactly: the generalized eigenproblem
+ * `K v = λ (I + c·s·sᵀ) v` in the unprepared string's modal coordinates, with `K` the diagonal of
+ * squared mode frequencies, `s` each mode's shape `sin(nπx)` at the mass and `c = 2m/M`.
+ *
+ * A mass only lowers modes, and the k-th prepared mode stays above the (k−1)-th unprepared one: the
+ * roots of the secular equation `1/(cλ) = Σ s²/(ω² − λ)` interlace with the unprepared `ω²`, one per
+ * interval. A mode with a node at the mass keeps its frequency and its shape. The prepared modes
+ * are mixtures of the unprepared ones, which changes how each is heard at the bridge.
+ */
+internal object PianoMassCoupling {
+    /**
+     * For [n] modes with increasing angular frequencies [w] and shapes [s] at the mass, writes each
+     * prepared mode's frequency ratio to [fac] (prepared over unprepared, mode k for mode k) and, when
+     * [vec] is given, its M-normalised shape in unprepared coordinates (`vec[k][j]`), signed so
+     * `vec[k][k] > 0`. [guess] holds the previous roots (λ) to start from, and receives the new ones.
+     * [c] must be positive.
+     */
+    fun solve(w: DoubleArray, s: DoubleArray, n: Int, c: Double, fac: DoubleArray, vec: Array<DoubleArray>?, guess: DoubleArray) {
+        val coupled = IntArray(n); var nc = 0
+        for (k in 0 until n) if (s[k] * s[k] > 1e-12) coupled[nc++] = k
+        for (k in 0 until n) if (s[k] * s[k] <= 1e-12) {
+            fac[k] = 1.0; guess[k] = w[k] * w[k]
+            if (vec != null) { java.util.Arrays.fill(vec[k], 0, n, 0.0); vec[k][k] = 1.0 }
+        }
+        var prev = 0.0
+        for (i in 0 until nc) {
+            val k = coupled[i]
+            val hi = w[k] * w[k]
+            var lo = prev
+            prev = hi
+            var up = hi
+            var lam = guess[k]
+            if (!(lam > lo && lam < up)) {
+                val diag = hi / (1.0 + c * s[k] * s[k])
+                lam = if (diag > lo && diag < up) diag else 0.5 * (lo + up)
+            }
+            for (iter in 0 until 80) {
+                var f = 1.0 / (c * lam); var df = -1.0 / (c * lam * lam)
+                for (jj in 0 until nc) {
+                    val j = coupled[jj]
+                    val d = w[j] * w[j] - lam
+                    val s2 = s[j] * s[j]
+                    f -= s2 / d; df -= s2 / (d * d)
+                }
+                if (f > 0) lo = lam else up = lam
+                var next = lam - f / df
+                if (!(next > lo && next < up)) next = 0.5 * (lo + up)
+                val done = abs(next - lam) <= 1e-14 * hi
+                lam = next
+                if (done || up - lo <= 1e-15 * hi) break
+            }
+            guess[k] = lam
+            fac[k] = sqrt(lam) / w[k]
+            if (vec != null) {
+                val v = vec[k]
+                java.util.Arrays.fill(v, 0, n, 0.0)
+                var sv = 0.0; var vv = 0.0
+                for (jj in 0 until nc) { val j = coupled[jj]; val x = s[j] / (w[j] * w[j] - lam); v[j] = x; sv += s[j] * x; vv += x * x }
+                var norm = sqrt(vv + c * sv * sv)
+                if (!(norm > 0) || !norm.isFinite()) { java.util.Arrays.fill(v, 0, n, 0.0); v[k] = 1.0; continue }
+                if (v[k] < 0) norm = -norm
+                for (jj in 0 until nc) { val j = coupled[jj]; v[j] /= norm }
+            }
+        }
     }
 }

@@ -231,7 +231,7 @@ class PianoPreparationTest {
     /** Every docs scene renders finite and audible; with PIANO_TEST_DUMP=1 they are written for listening. */
     @Test
     fun docsScenesRender() {
-        for (name in listOf("piano-prepared", "piano-sliding-bolt", "piano-rattle", "piano-mic-pair", "piano-una-corda", "piano-through-piano")) {
+        for (name in listOf("piano-prepared", "piano-sliding-bolt", "piano-rattle", "piano-mic-pair", "piano-una-corda", "piano-through-piano", "piano-shared-board", "piano-through-prepared")) {
             val r = PianoDocs.scenes.getValue(name)()
             println("PIANO scene $name: ${"%.1f".format(r.seconds)} s, peak ${"%.2f".format(r.peak)}, rms ${"%.1f".format(rms(r.mono, 0.0, r.seconds))} dB")
             assertTrue(r.left.all { it.isFinite() } && r.peak > 0.01f, name)

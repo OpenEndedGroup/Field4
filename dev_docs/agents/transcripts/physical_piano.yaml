@@ -13,7 +13,7 @@ description: >
   control on a slider. `prepared` plays the phrase plain and with bolts, rubber and a rattle on the
   strings, and plots A4 with and without a bolt; `prepared live` puts a bolt, a rattle and the soft
   and sostenuto pedals on sliders. `mic pair` records with two panned microphones, and with two on
-  single strings. `through` plays one piano into the bridge of another with its pedal down. `midi`
+  single strings. `through` plays one piano into the bridge of another with its pedal down, plain and prepared. `midi`
   writes a clip in code and renders it to a WAV with `pianoRenderMidi`.
 
   Every box but `live`, `close live` and `prepared live` renders offline into audio players, so no audio device is needed for them.
@@ -289,19 +289,25 @@ operations:
       properties:
         code: |
           // One piano played into the bridge of another whose pedal is down: the second piano's
-          // strings answer every chord. `toMono()` turns any stereo source into a signal.
-          val player = Piano(sampleRate = 44_100, room = Param(0f), dry = Param(1f), micPosition = Param(0.1f))
-          player.play(pat("<[a2,e3] [f2,c3]> [e4 a4 c5 e5]"), cycles = 4, cps = 0.8, startFrame = 0)
-          val resonator = Piano(
-              sampleRate = 44_100,
-              pedal = Param(1f),
-              coupling = Param(6f),
-              soundboard = Param(0.5f),
-              room = Param(0.35f),
-              bridgeInput = Param(0f).modulate(player.toMono() * 4f),
-          )
-          showPianoAudio(pianoRender(8.0, resonator), "through")
-          displayOpen("through")
+          // strings answer every chord. Then into a prepared piano, whose strings answer in its own
+          // tuning. `toMono()` turns any stereo source into a signal.
+          fun through(preparations: List<PianoPreparation>): PianoRender {
+              val player = Piano(sampleRate = 44_100, room = Param(0f), dry = Param(1f), micPosition = Param(0.1f))
+              player.play(pat("<[a2,e3] [f2,c3]> [e4 a4 c5 e5]"), cycles = 4, cps = 0.8, startFrame = 0)
+              val resonator = Piano(
+                  sampleRate = 44_100,
+                  pedal = Param(1f),
+                  coupling = Param(6f),
+                  soundboard = Param(0.5f),
+                  room = Param(0.35f),
+                  preparations = preparations,
+                  bridgeInput = Param(0f).modulate(player.toMono() * 4f),
+              )
+              return pianoRender(8.0, resonator)
+          }
+          showPianoAudio(through(emptyList()), "through")
+          showPianoAudio(through(listOf(PianoPreparation.bolt(36..72, at = 0.28, grams = 6.0))), "through prepared")
+          ["through", "through prepared"].forEach { displayOpen(it) }
   - create:
       box: piano_midi
       name: midi

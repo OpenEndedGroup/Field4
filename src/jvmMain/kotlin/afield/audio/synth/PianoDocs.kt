@@ -53,6 +53,18 @@ object PianoDocs {
                 ),
             )
         },
+        "piano-shared-board" to { phrase(Piano(sampleRate = 44_100, voicing = PianoVoicing(boardSpread = 0.0, boardPositionDepth = 0.0))) },
+        "piano-through-prepared" to {
+            val player = Piano(sampleRate = 44_100, room = Param(0f), dry = Param(1f), micPosition = Param(0.1f))
+            player.play(pat(PHRASE), cycles = 4, cps = 0.8, startFrame = 0)
+            pianoRender(
+                8.0,
+                Piano(
+                    sampleRate = 44_100, pedal = Param(1f), coupling = Param(6f), soundboard = Param(0.5f), room = Param(0.35f),
+                    preparations = PREPARED, bridgeInput = Param(0f).modulate(player.toMono() * 4f),
+                ),
+            )
+        },
         "piano-una-corda" to { phrase(Piano(sampleRate = 44_100, unaCorda = Param(1f))) },
         "piano-through-piano" to {
             val player = Piano(sampleRate = 44_100, room = Param(0f), dry = Param(1f), micPosition = Param(0.1f))
