@@ -19,6 +19,7 @@ data class StereoVideoLook(
     val whiteLevel: Float = 1f,
     val gamma: Float = 1f,
     val autoExposureMix: Float = 1f,
+    val accumulationColourTransfer: Float = 0f,
 ) {
     fun applyTo(screen: StereoVideoSurface) {
         screen.accumulationMix = accumulationMix
@@ -34,13 +35,15 @@ data class StereoVideoLook(
         screen.accumulationWhiteLevel = whiteLevel
         screen.accumulationGamma = gamma
         screen.autoExposureMix = autoExposureMix
+        screen.accumulationColourTransfer = accumulationColourTransfer
     }
 
     companion object {
         fun capture(screen: StereoVideoSurface) = StereoVideoLook(screen.accumulationMix,
             screen.accumulationHalfLife, screen.accumulationInputWeight, screen.exposureCadenceEnabled,
             screen.exposurePairsPerSecond, screen.exposureBlurSigma, screen.exposureBlurMix, screen.exposureDarkening,
-            screen.opacity, screen.accumulationBlackLevel, screen.accumulationWhiteLevel, screen.accumulationGamma, screen.autoExposureMix)
+            screen.opacity, screen.accumulationBlackLevel, screen.accumulationWhiteLevel, screen.accumulationGamma, screen.autoExposureMix,
+            screen.accumulationColourTransfer)
     }
 }
 
@@ -104,6 +107,7 @@ class StereoVideoLookPool internal constructor(
         scope.floatTarget("presentation.white", { read(captureScreen).whiteLevel }) { value -> change { it.copy(whiteLevel = value) } }
         scope.floatTarget("presentation.gamma", { read(captureScreen).gamma }) { value -> change { it.copy(gamma = value) } }
         scope.floatTarget("presentation.autoMix", { read(captureScreen).autoExposureMix }) { value -> change { it.copy(autoExposureMix = value) } }
+        scope.floatTarget("presentation.colourTransfer", { read(captureScreen).accumulationColourTransfer }) { value -> change { it.copy(accumulationColourTransfer = value) } }
         scope.doubleTarget("playback.speed", readSpeed) { value -> if (restoreSpeed) writeSpeed(value) }
     }
 

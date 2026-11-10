@@ -148,7 +148,7 @@ Quantiles use independent directional alpha-beta trackers; dropped partials fall
 Settings can be edited while the renderer is stopped and apply when the carousel starts.
 Luminance shown; RGB statistics and velocities are also available in `carousel.autoExposure.latest`.
 Automatic endpoints include inter-sample prediction, margins and bounds, before global/local mix.
-No accumulation or a zero accumulation mix in a fresh screen means there is no buffer to meter yet.
+Enable accumulation or Sharp colour from accumulation on a fresh screen to create a buffer to meter.
         """.trimIndent()
         // Replacing unchanged DOM repeatedly retriggers content autosizing. Keep this card's width stable.
         if (exposureStatus != lastExposureStatus) {
