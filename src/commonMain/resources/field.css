@@ -2076,11 +2076,18 @@ body.field-pane-resizing-h * {
 
 .field-slider:focus,
 .field-vec2:focus { outline: none; }
+/*
+Keyboard focus only. A slider keeps focus after it is dragged, so :focus-within drew a ring after
+every mouse drag, presentation figures included; :focus-visible is the browser's "focus came from
+the keyboard". The ring stands off the control, takes its rounding, and is drawn at a third of the
+accent so it marks the control without boxing it in.
+*/
 .field-slider:focus-visible,
-.field-slider:focus-within,
+.field-slider:has(:focus-visible),
 .field-vec2:focus-visible {
-    border-radius: 4px;
-    box-shadow: 0 0 0 1px var(--field-accent-text-soft);
+    outline: 1px solid rgba(var(--field-accent-rgb), 0.35);
+    outline-offset: 4px;
+    border-radius: 6px;
 }
 .field-slider > .field-value,
 .field-vec2 .field-value,
