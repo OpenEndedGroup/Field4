@@ -85,9 +85,9 @@ You can also move the playhead. Frames and seconds count from the timeline start
 includes the timeline's own record-clock offset:
 
 ```diffstatic {data-lang=kotlin}
-Resolve.setPlayhead(240)                 // frame 240 from the timeline start
-Resolve.setPlayheadSeconds(10.0)         // the same position on a 24 fps timeline
-Resolve.setPlayhead("01:00:10:00")       // absolute record timecode
+Resolve.setPlayhead(240) // frame 240 from the timeline start
+Resolve.setPlayheadSeconds(10.0) // the same position on a 24 fps timeline
+Resolve.setPlayhead("01:00:10:00") // absolute record timecode
 ```
 
 Each setter returns the observed `ResolvePlayhead`. Seconds round to the nearest timeline frame;
@@ -112,7 +112,8 @@ link.enabled = true
 loop {
     link.offer(movie.timestamp) // uploaded source-video seconds; do not multiply by playback speed
     frame()
-}.end { link.close() }
+}
+    .end { link.close() }
 ```
 
 Offer `null` while no movie frame is available. `link.status` reports the latest target and
