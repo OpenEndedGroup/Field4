@@ -190,6 +190,9 @@ nav:
       - "GP Optimisation and Preference": gaussian_process_optimization.md
       - Differentiating Functions: autodiff_examples.md
       - Proving a Function's Range: fn_intervals.md
+      # Beside the GP pages: a value that is a whole distribution, sampled and queried with its
+      # standard error, and lowered to GLSL for the GPU.
+      - Distributions: distributions.md
     - Time & Signals:
       - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
       # Directly after the interpolants page: that page eases a value from code, this one draws it.
