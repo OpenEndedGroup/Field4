@@ -7,6 +7,7 @@ const find = () => [...document.querySelectorAll('iframe')].find(f => {
 async function viewer() { for (let i = 0; i < 100; i++) { const f = find(); if (f && f.contentDocument.readyState === 'complete') return f; await delay(100); } throw new Error('Missing figure-mode fixture'); }
 const look = f => { const d = f.contentDocument, w = f.contentWindow;
   return {figure: d.body.classList.contains('in-figure'), bg: w.getComputedStyle(d.body).backgroundColor,
+    root: w.getComputedStyle(d.documentElement).backgroundColor,
     wrap: w.getComputedStyle(d.getElementById('canvas-wrap')).backgroundColor,
     hud: w.getComputedStyle(d.getElementById('hud')).display}; };
 let frame = await viewer();
@@ -16,7 +17,7 @@ try {
   if (canvas.hud === 'none') throw new Error('The canvas viewer shows its HUD');
   if (canvas.bg === 'rgba(0, 0, 0, 0)') throw new Error('The canvas viewer keeps its own background');
   const box = frame.closest('.box'), home = box.parentElement, next = box.nextSibling;
-  const host = document.createElement('div'); host.id = 'field-figure-host';
+  const host = document.createElement('div'); host.id = 'field-figure-host'; host.style.background = 'rgb(0, 0, 0)';
   document.body.appendChild(host); host.appendChild(box);
   let inFigure;
   for (let i = 0; i < 100; i++) { await delay(100); const f = find(); if (f && f.contentDocument.readyState === 'complete' && (inFigure = look(f)).figure) break; }
@@ -24,8 +25,9 @@ try {
   if (!inFigure?.figure) throw new Error('A viewer inside #field-figure-host knows it is a figure');
   if (inFigure.bg !== 'rgba(0, 0, 0, 0)' || inFigure.wrap !== 'rgba(0, 0, 0, 0)') throw new Error(`Figure background is transparent, got ${inFigure.bg} / ${inFigure.wrap}`);
   if (inFigure.hud !== 'none') throw new Error('Figure hides the HUD');
+  if (inFigure.root !== 'rgb(0, 0, 0)') throw new Error(`Figure root takes the host colour (an unpainted root shows white), got ${inFigure.root}`);
   for (let i = 0; i < 100; i++) { await delay(100); const f = find(); if (f && f.contentDocument.readyState === 'complete' && !look(f).figure) { frame = f; break; } }
   const back = look(frame);
-  if (back.figure || back.bg !== canvas.bg || back.hud !== canvas.hud) throw new Error('Back on the canvas, the viewer looks as it did');
+  if (back.figure || back.bg !== canvas.bg || back.hud !== canvas.hud || back.root !== canvas.root) throw new Error('Back on the canvas, the viewer looks as it did');
   return {ok: true, canvas, inFigure, back};
 } catch (e) { return {ok: false, reason: String(e.message || e), canvas}; }

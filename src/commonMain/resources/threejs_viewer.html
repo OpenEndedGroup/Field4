@@ -39,9 +39,9 @@
             inset: 0;
         }
 
-        /* In a presentation figure (index.html?figure=) the scene sits on the deck's own background,
-           which the figure page paints behind this frame, and the viewer's counters and tools are
-           not part of the picture. The canvas keeps its usual grey and HUD. */
+        /* In a presentation figure (index.html?figure=) the scene sits on the deck's own background
+           (the figure host's colour, set on the root by inPresentationFigure), and the viewer's
+           counters and tools are not part of the picture. On the canvas nothing changes. */
         body.in-figure { background: transparent; }
         body.in-figure #canvas-wrap:not([style*="background"]) { background: transparent; }
         body.in-figure #hud { display: none !important; }
@@ -656,8 +656,13 @@ function frameScale() {
 // True when this viewer is a live figure on a presentation slide: its frame sits in the figure
 // page's host (figureMode.kt). Same origin, so the parent document can be read.
 // Asked again at every payload: the figure page moves the box into its host after the page loads.
+// The figure's host colour is painted on this document's root: a frame whose colour scheme differs
+// from its embedder's gets an opaque white backdrop, so leaving the root transparent shows white.
 function inPresentationFigure() {
-    try { return !!window.frameElement?.closest('#field-figure-host'); } catch (_) { return false; }
+    let host = null;
+    try { host = window.frameElement?.closest('#field-figure-host') || null; } catch (_) { host = null; }
+    document.documentElement.style.background = host ? window.parent.getComputedStyle(host).backgroundColor : '';
+    return !!host;
 }
 document.body.classList.toggle('in-figure', inPresentationFigure());
 function getDpr() {
