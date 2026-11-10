@@ -145,6 +145,48 @@ object Atmosphere {
         return l
     }
 
+    /**
+     * The world direction of texel ([i], [j]) of a [width] x [height] equirect, in the convention the
+     * fabricate renderer samples (`directionToEquirect` in `standardRenderer.kt`, rotation 0): column 0
+     * starts at -x and runs through +z, row 0 is straight up.
+     */
+    fun equirectDirection(i: Int, j: Int, width: Int, height: Int): V3 {
+        val phi = ((i + 0.5) / width - 0.5) * 2 * Math.PI
+        val lat = (0.5 - (j + 0.5) / height) * Math.PI
+        return V3(cos(lat) * cos(phi), kotlin.math.sin(lat), cos(lat) * kotlin.math.sin(phi))
+    }
+
+    /**
+     * The sky seen from [altitude] km above the ground, baked into a [width] x [height] linear RGBA
+     * equirect (row-major from the top, alpha 1), each texel `radiance(...) * scale` along
+     * [equirectDirection]. The sun disc is left out (`sunAngularRadius = 0`): a one-texel spike of
+     * 20 000 would be sampled as noise by image-based lighting, and the disc belongs to the key light
+     * [sunLight] returns instead. Rows are baked in parallel.
+     */
+    fun bakeEquirect(
+        width: Int, height: Int, sunDir: V3, a: Params = Params(), altitude: Double = 0.2,
+        sunColor: V3 = V3(20.0, 20.0, 20.0), scale: Double = 1.0, steps: Int = 24, lightSteps: Int = 6,
+    ): FloatArray {
+        val out = FloatArray(width * height * 4)
+        val ro = V3(0.0, a.planetRadius + altitude, 0.0)
+        java.util.stream.IntStream.range(0, height).parallel().forEach { j ->
+            for (i in 0 until width) {
+                val l = radiance(a, ro, equirectDirection(i, j, width, height), sunDir, sunColor, 0.0, steps, lightSteps)
+                val o = (j * width + i) * 4
+                out[o] = (l.x * scale).toFloat(); out[o + 1] = (l.y * scale).toFloat(); out[o + 2] = (l.z * scale).toFloat(); out[o + 3] = 1f
+            }
+        }
+        return out
+    }
+
+    /**
+     * Colour of direct sunlight at [altitude] km: [sunColor] times the transmittance from there to
+     * the top of the atmosphere along [sunDir]. White-ish overhead, orange-red near the horizon, black
+     * once the planet hides the sun.
+     */
+    fun sunLight(sunDir: V3, a: Params = Params(), altitude: Double = 0.2, sunColor: V3 = V3(1.0, 1.0, 1.0)): V3 =
+        transmittanceToTop(a, V3(0.0, a.planetRadius + altitude, 0.0), sunDir, 64) * sunColor
+
     /** Unit direction at [elevation] above the horizon (radians) and [azimuth] about +y, for a camera whose up is +y. */
     fun direction(elevation: Double, azimuth: Double = 0.0) =
         V3(cos(elevation) * kotlin.math.sin(azimuth), kotlin.math.sin(elevation), -cos(elevation) * cos(azimuth))

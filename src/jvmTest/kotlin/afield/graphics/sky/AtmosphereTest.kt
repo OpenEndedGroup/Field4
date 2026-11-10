@@ -60,4 +60,45 @@ class AtmosphereTest {
         for (name in listOf("earthAtmosphere", "skyRadiance", "skyTransmittanceToTop", "skyMiePhase"))
             assertTrue(name in glsl, name)
     }
+
+    /** `directionToEquirect` from the fabricate lighting shader, rotation 0, transcribed. */
+    private fun shaderUv(d: V3): Pair<Double, Double> {
+        val u = kotlin.math.atan2(d.z, d.x) / (2 * Math.PI) + 0.5
+        val v = kotlin.math.asin(d.y.coerceIn(-1.0, 1.0)) / Math.PI + 0.5
+        return (u - kotlin.math.floor(u)) to (1 - v)
+    }
+
+    @Test
+    fun equirectTexelsSitWhereTheRendererSamplesThem() {
+        val w = 32; val h = 16
+        for (j in 0 until h) for (i in 0 until w) {
+            val (u, v) = shaderUv(Atmosphere.equirectDirection(i, j, w, h))
+            assertTrue(abs(u * w - (i + 0.5)) < 1e-6 && abs(v * h - (j + 0.5)) < 1e-6, "texel $i,$j sampled at ${u * w},${v * h}")
+        }
+    }
+
+    @Test
+    fun bakedTexelsAreTheRadianceAlongTheirDirection() {
+        val w = 16; val h = 8
+        val sun = Atmosphere.direction(Math.toRadians(10.0), 0.3)
+        val baked = Atmosphere.bakeEquirect(w, h, sun, a, altitude = 0.2, scale = 0.5, steps = 12, lightSteps = 4)
+        val ro = V3(0.0, a.planetRadius + 0.2, 0.0)
+        for ((i, j) in listOf(0 to 0, 5 to 2, 11 to 3, 15 to 7)) {
+            val l = Atmosphere.radiance(a, ro, Atmosphere.equirectDirection(i, j, w, h), sun, sunAngularRadius = 0.0, steps = 12, lightSteps = 4) * 0.5
+            val o = (j * w + i) * 4
+            for ((e, g) in listOf(l.x to baked[o], l.y to baked[o + 1], l.z to baked[o + 2]))
+                assertTrue(abs(e - g) <= 1e-6 * maxOf(1.0, abs(e)), "texel $i,$j: $g vs $e")
+            assertTrue(baked[o + 3] == 1f)
+        }
+    }
+
+    @Test
+    fun sunLightReddensTowardTheHorizonAndGoesOutBelowIt() {
+        val noon = Atmosphere.sunLight(Atmosphere.direction(Math.toRadians(70.0)), a)
+        val low = Atmosphere.sunLight(Atmosphere.direction(Math.toRadians(2.0)), a)
+        val night = Atmosphere.sunLight(Atmosphere.direction(Math.toRadians(-6.0)), a)
+        assertTrue(noon.z / noon.x > 0.7, "noon sun $noon should be near white")
+        assertTrue(low.z / low.x < 0.2, "low sun $low should be red-orange")
+        assertTrue(night.x == 0.0 && night.y == 0.0 && night.z == 0.0, "sun below the horizon $night")
+    }
 }
