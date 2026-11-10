@@ -25,6 +25,17 @@ carousel.surfaces.forEach { view ->
 }
 carousel.source.speed = 8.0
 
+// Reverse time around the fixed screen layout, keeping screen 1 as the newest image.
+prop<Boolean>(reverseScreenDelays) = (thisBox.getPropertyRaw("reverseScreenDelays") as? Boolean) ?: true
+fun applyRingDelayOrder() {
+    val count = carousel.surfaces.size
+    carousel.surfaces.forEachIndexed { i, screen ->
+        val ageIndex = if (reverseScreenDelays) (count - i) % count else i
+        screen.delayFrames = ageIndex * carousel.spacingFrames
+    }
+}
+applyRingDelayOrder()
+
 controlGroup("ring layout") {
     slider("Radius (metres)", min = .75, max = 6.0, step = .01, initialValue = carousel.radius.toDouble(),
         hoverText = "Distance from the ring centre to the middle of every screen. Width and curvature follow the radius, so each screen remains part of the same cylinder.") {
@@ -41,6 +52,12 @@ controlGroup("ring layout") {
     slider("Delay spacing (frames)", min = 1.0, max = 8.0, step = 1.0, initialValue = carousel.spacingFrames.toDouble(),
         hoverText = "Published-picture offset between neighbouring screens. One gives ages 0–7; eight gives 0,8,…,56. Headset redraws do not advance this ring. A spacing edit refills it and resets exposures; warm-up holds the oldest available image.") {
         carousel.spacingFrames = it.toInt()
+        applyRingDelayOrder()
+    }
+    checkbox("Reverse delay direction", initialValue = reverseScreenDelays,
+        hoverText = "Reverse the progression of delayed pictures around the ring while keeping screen 1 newest. Enabled gives ages 0,7,6,…,1 times the spacing; off gives 0,1,…,7. Geometry and each screen's saved look stay in place.") {
+        reverseScreenDelays = it
+        applyRingDelayOrder()
     }
     for ((axis, label) in listOf("x", "y", "z").withIndex()) {
         slider("Ring centre $label (m)", min = -5.0, max = 5.0, step = .01, initialValue = when (axis) { 0 -> carousel.center.x.toDouble(); 1 -> carousel.center.y.toDouble(); else -> carousel.center.z.toDouble() },

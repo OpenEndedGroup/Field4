@@ -1,4 +1,5 @@
 import afield.ui.output.ControlValueHandle
+import afield.graphics.scene.video.VideoCarouselClock
 
 displayClearAll()
 
@@ -53,5 +54,28 @@ controlGroup("shared looks") {
             .onFailure { markdown("look action", "Could not recall look: ${it.message}") }
     }
 }
+// Whole-refresh shutter settings share the rotation clock, independently of the movie's blur pairs.
+fun updateScreenFlash(change: (VideoCarouselClock.Flash) -> VideoCarouselClock.Flash) {
+    carouselClock.flashes = carouselClock.flashes.mapIndexed { i, f -> if (i == screenIndex) change(f) else f }
+}
+controlGroup("headset flash") {
+    checkbox("Flash enabled", initialValue = carouselClock.flashes[screenIndex].enabled,
+        hoverText = "Gate only this screen's drawing using the shared headset-tick clock. The Field pane stays visible, and decoding, accumulation and head tracking keep running. Independent of paired video blur cadence.") { v -> updateScreenFlash { it.copy(enabled = v) } }
+        .also { h -> controlMirrors += { h.set(carouselClock.flashes[screenIndex].enabled) } }
+    slider("Flash every (frames)", min = 1.0, max = 120.0, step = 1.0,
+        initialValue = carouselClock.flashes[screenIndex].everyFrames.toDouble(),
+        hoverText = "Pulse interval in whole headset refresh periods. Ten means 12 flashes/second at 120 Hz. Match Frames per step in Ring motion to expose the same part of each rotation step.") { v -> updateScreenFlash { it.copy(everyFrames = v.toInt()) } }
+        .also { h -> controlMirrors += { h.set(carouselClock.flashes[screenIndex].everyFrames.toDouble()) } }
+    slider("Flash on (frames)", min = 1.0, max = 120.0, step = 1.0,
+        initialValue = carouselClock.flashes[screenIndex].onFrames.toDouble(),
+        hoverText = "Whole headset ticks illuminated within each interval. One is about 8.33 ms at 120 Hz; the remainder is black. At or above the interval the shutter stays open. This reduces average light without brightness compensation.") { v -> updateScreenFlash { it.copy(onFrames = v.toInt()) } }
+        .also { h -> controlMirrors += { h.set(carouselClock.flashes[screenIndex].onFrames.toDouble()) } }
+    slider("Flash phase (frames)", min = 0.0, max = 119.0, step = 1.0,
+        initialValue = carouselClock.flashes[screenIndex].phaseFrames.toDouble(),
+        hoverText = "Delay this screen's pulse relative to the shared rotation/flash origin, modulo its interval. Zero opens at tick zero and every full interval. Different phases distribute flashes around the ring.") { v -> updateScreenFlash { it.copy(phaseFrames = v.toInt()) } }
+        .also { h -> controlMirrors += { h.set(carouselClock.flashes[screenIndex].phaseFrames.toDouble()) } }
+}
+displayOpen("headset flash")
+
 screenLooks.watchControls(screenIndex) { controlMirrors.forEach { it() } }
 displayOpen("shared looks")
