@@ -112,6 +112,29 @@ object StereoVideoColourTransferSmoke {
             frame()
             val black = read()
             for (x in 0..1023) for (c in 0..2) check(abs(black[x][c] - original[x][c]) < .0001f) { "Black-reference fallback failed" }
+            // Output cooling applies after both branches and brightness, and preserves their final luminance.
+            movie.accumulationColourTransfer = 0f
+            for ((mix, brightness) in listOf(0f to 1f, .6f to .7f)) {
+                movie.accumulationMix = mix
+                movie.brightness = brightness
+                movie.shadowCooling = 0f
+                frame()
+                val neutral = read()
+                movie.shadowCooling = 1f
+                frame()
+                val cooled = read()
+                for (x in 0..1023) {
+                    check(cooled[x].all { it.isFinite() && it in -.00001f..1.00001f })
+                    check(abs(luminance(cooled[x]) - luminance(neutral[x])) < .0007f) { "Shadow cooling changed output luminance at $x" }
+                    if (luminance(neutral[x]) >= .25f)
+                        for (c in 0..2) check(cooled[x][c] == neutral[x][c]) { "Shadow cooling changed a highlight" }
+                }
+                check(cooled[256][2] > cooled[256][0] * 1.4f) { "No cool shadow tone" }
+                movie.shadowCooling = 0f
+                frame()
+                val restored = read()
+                for (x in 0..1023) for (c in 0..2) check(restored[x][c] == neutral[x][c]) { "Non-neutral cooling bypass" }
+            }
             println("Stereo video colour transfer PASSED: sharp-only accumulation, chromaticity, luminance, gamut, bypass, black fallback")
         } finally {
             movie.close()

@@ -80,13 +80,14 @@ object StereoVideoPrecisionSmoke {
             while ((!movie.hasFrame || movie.timestamp != 0.0) && System.nanoTime() < deadline) frame()
             check(movie.hasFrame)
             check(stereo.layered.parameters.format == VK_FORMAT_R16G16B16A16_SFLOAT)
-            fun read(): FloatArray {
+            fun readRgb(): Array<FloatArray> {
                 val request = stereo.layered.readPixelsAsync()
                 val until = System.nanoTime() + 10_000_000_000L
                 while (!request.isDone && System.nanoTime() < until) frame()
                 val b = ByteBuffer.wrap(request.get()).order(ByteOrder.LITTLE_ENDIAN)
-                return FloatArray(1024) { x -> java.lang.Float.float16ToFloat(b.getShort((32 * 1024 + x) * 8)) }
+                return Array(1024) { x -> FloatArray(3) { c -> java.lang.Float.float16ToFloat(b.getShort((32 * 1024 + x) * 8 + c * 2)) } }
             }
+            fun read() = readRgb().map { it[0] }.toFloatArray()
             val values = read()
             val distinct = values.map { java.lang.Float.floatToIntBits(it) }.toSet().size
             check(distinct == 1024) {
@@ -236,6 +237,30 @@ object StereoVideoPrecisionSmoke {
             movie.exposureCadenceEnabled = false
             movie.accumulationMix = 0f
             frame()
+            val sharpRgb = readRgb()
+            movie.accumulationShadowCooling = 1f
+            movie.accumulationMix = 1f
+            movie.clearAccumulation()
+            frame()
+            val inputCooled = readRgb()
+            fun luma(rgb: FloatArray) = rgb[0] * .2126f + rgb[1] * .7152f + rgb[2] * .0722f
+            for (x in 0..1023) {
+                check(inputCooled[x].all { it.isFinite() && it in -.00001f..1.00001f })
+                check(abs(luma(inputCooled[x]) - luma(sharpRgb[x])) < .0007f) { "Input cooling changed luminance" }
+                if (luma(sharpRgb[x]) >= .25f)
+                    for (c in 0..2) check(abs(inputCooled[x][c] - sharpRgb[x][c]) < .0007f) { "Input cooling changed highlights" }
+            }
+            val shadow = sharpRgb.indices.first { luma(sharpRgb[it]) in .03f.. .08f }
+            check(inputCooled[shadow][2] > inputCooled[shadow][0] * 1.4f) { "No input shadow cooling" }
+            movie.accumulationShadowCooling = 0f
+            repeat(3) { frame() }
+            val retained = readRgb()
+            for (x in 0..1023) for (c in 0..2) check(retained[x][c] == inputCooled[x][c]) { "Input edit recoloured held history" }
+            movie.clearAccumulation()
+            frame()
+            val resetInput = readRgb()
+            for (x in 0..1023) for (c in 0..2) check(abs(resetInput[x][c] - sharpRgb[x][c]) < .0007f) { "Cleared input retained old cooling" }
+            println("Input shadow cooling PASSED: decoded inputs, linear luminance, highlights, retained history and clear")
             println("Video exposure cadence PASSED: held float16 copy, per-eye Gaussian, linear darkening, bypass")
             println("Video accumulation PASSED: float16 linear mean, held-frame gating, clear, sharp bypass")
             println(
