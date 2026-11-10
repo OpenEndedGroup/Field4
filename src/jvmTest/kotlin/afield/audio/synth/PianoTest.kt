@@ -163,4 +163,87 @@ class PianoTest {
         assertEquals(3, nested.items.size)
         assertTrue(nested.items.all { it is AudioPatchSpec })
     }
+
+    private fun sig(f: Float, depth: Float, centre: Float = 0f): Param = Param(centre).modulate(SineOsc(freq = Param(f)) * depth)
+
+    /** No input, however wild, makes a NaN: negative, huge, infinite and NaN constants, and audio-rate sines. */
+    @Test
+    fun extremeInputsStayFinite() {
+        val wild = listOf(-1e6f, -50f, -1f, 0f, 100f, 1e9f, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NaN)
+        fun check(name: String, p: Piano) {
+            val r = pianoRender(0.5, p) { noteOn(33, 1.0, 0); noteOn(69, 0.8, 0); noteOn(100, 0.6, 500); noteOff(69, 9000); noteOff(33, 15000) }
+            val bad = r.left.count { !it.isFinite() } + r.right.count { !it.isFinite() }
+            assertEquals(0, bad, "$name: $bad non-finite samples")
+        }
+        for (v in wild) {
+            val c = Param(v)
+            check("inharmonicity $v", Piano(sampleRate = 44_100, inharmonicity = Param(v)))
+            check("decay $v", Piano(sampleRate = 44_100, decay = Param(v)))
+            check("pedal $v", Piano(sampleRate = 44_100, pedal = Param(v)))
+            check("soundboard $v", Piano(sampleRate = 44_100, soundboard = Param(v), coupling = Param(v)))
+            check("close mic $v", Piano(sampleRate = 44_100, dry = Param(v), micPosition = Param(v), thump = Param(v), keyNoise = Param(v), damperNoise = Param(v), pinFundamental = c))
+        }
+        check("audio-rate everything", Piano(sampleRate = 44_100,
+            inharmonicity = sig(310f, 400f), decay = sig(97f, 30f), pedal = sig(40f, 3f), soundboard = sig(523f, 1e4f),
+            pinFundamental = sig(11f, 2f), micPosition = sig(880f, 3f), dry = sig(5f, 2f), thump = sig(200f, 50f), room = sig(3f, 20f)))
+    }
+
+    private fun peakNear(x: FloatArray, hz: Double, from: Double = 0.3, lo: Double = 0.97, hi: Double = 1.06): Pair<Double, Double> {
+        val spec = pianoSpectrumDb(x, (from * 44_100).toInt(), 32768)
+        val bin = hz * 32768 / 44_100
+        var best = -1; for (i in (bin * lo).toInt()..(bin * hi).toInt()) if (best < 0 || spec[i] > spec[best]) best = i
+        return best * 44_100.0 / 32768 to spec[best]
+    }
+
+    /** ×100 stiffness stretches partial 10 by more than a semitone; with the fundamental pinned, partial 1 stays put. */
+    @Test
+    fun wideStiffnessIsHeardAndCanKeepItsPitch() {
+        val f0 = PianoMath.midiToFreq(45.0)
+        fun render(s: Float, pin: Float) = pianoRender(1.5, Piano(sampleRate = 44_100, room = Param(0f), inharmonicity = Param(s), pinFundamental = Param(pin))) { noteOn(45, 0.7, 0) }.mono
+        val base = render(1f, 0f); val stiff = render(100f, 0f); val pinned = render(100f, 1f); val soft = render(-100f, 0f)
+        val p1 = peakNear(base, f0).first; val q1 = peakNear(stiff, f0, hi = 1.3).first; val r1 = peakNear(pinned, f0).first
+        val p10 = peakNear(base, 10 * f0).first
+        val q10 = peakNear(stiff, 10 * f0, hi = 2.5).first; val r10 = peakNear(pinned, 10 * f0, hi = 2.5).first; val s10 = peakNear(soft, 10 * f0, lo = 0.5, hi = 1.02).first
+        println("PIANO A2 x100: partial 1 ${"%.1f".format(p1)} -> ${"%.1f".format(q1)} Hz (pinned ${"%.1f".format(r1)}); partial 10 ${"%.0f".format(p10)} -> ${"%.0f".format(q10)} (pinned ${"%.0f".format(r10)}, x-100 ${"%.0f".format(s10)})")
+        assertTrue(q10 > p10 * 1.06, "x100 stretches partial 10 past a semitone")
+        assertTrue(abs(r1 - p1) < 0.5, "pinned fundamental stays within half a hertz")
+        assertTrue(r10 > p10 * 1.04, "pinned upper partials still stretch")
+        assertTrue(s10 < p10 * 0.99, "negative stiffness compresses partials")
+    }
+
+    /** The close mic hears the string where it sits: at x = 1/2 the even partials are nodes. */
+    @Test
+    fun closeMicFollowsPickupPosition() {
+        val f0 = PianoMath.midiToFreq(45.0)
+        fun render(x: Float, dryMix: Float = 1f, th: Float = 0f, key: Float = 0f) =
+            pianoRender(1.5, Piano(sampleRate = 44_100, room = Param(0f), dry = Param(dryMix), micPosition = Param(x), thump = Param(th), keyNoise = Param(key))) { noteOn(45, 0.7, 0) }.mono
+        val board = render(0.12f, 0f); val near = render(0.12f); val mid = render(0.5f)
+        fun level(x: FloatArray, n: Int) = peakNear(x, n * f0, lo = 0.99, hi = 1.03).second
+        val drop2 = (level(near, 2) - level(near, 1)) - (level(mid, 2) - level(mid, 1))
+        val drop3 = (level(near, 3) - level(near, 1)) - (level(mid, 3) - level(mid, 1))
+        println("PIANO mic x=0.5 vs 0.12: partial 2 down ${"%.1f".format(drop2)} dB, partial 3 down ${"%.1f".format(drop3)} dB (relative to partial 1)")
+        println("PIANO dry mic level ${"%.1f".format(rms(near, 0.05, 1.0))} dB vs soundboard ${"%.1f".format(rms(board, 0.05, 1.0))} dB")
+        assertTrue(drop2 > 20.0, "partial 2 sits on a node at x = 1/2")
+        assertTrue(drop2 > drop3 + 10.0, "odd partials do not")
+        assertTrue(abs(rms(near, 0.05, 1.0) - rms(board, 0.05, 1.0)) < 6.0, "dry mic sits near the board's level")
+        // thump and key noise add energy in the first 40 ms and leave the tail alone
+        val noisy = render(0.12f, th = 1f, key = 1f)
+        val early = rms(noisy, 0.0, 0.04) - rms(near, 0.0, 0.04)
+        val late = rms(noisy, 0.5, 1.0) - rms(near, 0.5, 1.0)
+        println("PIANO thump+key: first 40 ms +${"%.1f".format(early)} dB, 0.5-1 s +${"%.2f".format(late)} dB")
+        assertTrue(early > 1.0 && abs(late) < 0.5)
+    }
+
+    /** Before/after .wav files of the close mic, for listening. */
+    @Test
+    fun closeMicWavs() {
+        if (!dump) return
+        val tune = pat("<[a2,e3] [f2,c3]> [e4 a4 c5 e5]")
+        fun r(p: Piano) = pianoRender(6.0, p) { play(tune, cycles = 4, cps = 0.8, startFrame = 0) }
+        r(Piano(sampleRate = 44_100)).writeWav(File(out, "close_before.wav"), 0.89f)
+        r(Piano(sampleRate = 44_100, dry = Param(1f), room = Param(0f), micPosition = Param(0.08f), thump = Param(1f), keyNoise = Param(1f), damperNoise = Param(2f))).writeWav(File(out, "close_after.wav"), 0.89f)
+        r(Piano(sampleRate = 44_100, dry = Param(1f), room = Param(0f), micPosition = Param(0.5f), thump = Param(1f), keyNoise = Param(1f))).writeWav(File(out, "close_mid_string.wav"), 0.89f)
+        r(Piano(sampleRate = 44_100, inharmonicity = Param(60f), pinFundamental = Param(1f))).writeWav(File(out, "stiff_x60_pinned.wav"), 0.89f)
+        r(Piano(sampleRate = 44_100, dry = Param(0.7f), micPosition = sig(0.3f, 0.1f, 0.2f), inharmonicity = sig(180f, 40f, 1f))).writeWav(File(out, "close_moving_mic_fm.wav"), 0.89f)
+    }
 }

@@ -495,21 +495,43 @@ internal class PianoNoteData(capacity: Int) {
         stringIndex = stringIndex.copyOf(n); amp0 = amp0.copyOf(n)
     }
 
-    /** Angular frequency of phasor [i] for inharmonicity scale [s] (1 = as prepared). */
-    fun omega(i: Int, s: Double): Double {
+    /** Hammer-on-string force, one value per output sample of the contact (newtons). */
+    var hammerForce = DoubleArray(0)
+    /** Close-mic thump: the hammer force through a short wooden body; scaled by `Piano.thump`. */
+    var thump = DoubleArray(0)
+    /** Key bottoming on the keybed (strike) and lifting back to the rail (release); `Piano.keyNoise`. */
+    var keyNoise = DoubleArray(0)
+    var releaseNoise = DoubleArray(0)
+
+    /**
+     * Angular frequency of phasor [i] for inharmonicity scale [s] (1 = as prepared).
+     *
+     * Any [s] is safe: [s] above zero stretches the partials by `sqrt(1 + s·B·n²)`; below zero
+     * compresses them by the reciprocal of `sqrt(1 + |s|·B·n²)`, a mirror image that never reaches
+     * zero. [pin] 0..1 moves the fundamental back to where it is at s = 1, so stiffness is heard as
+     * timbre instead of detune (values outside 0..1 over- or under-correct, which is allowed).
+     */
+    fun omega(i: Int, s: Double, pin: Double = 0.0): Double {
         val f = f0s[i]
-        var hz = na[i] * f * sqrt(1.0 + s * B * na[i] * na[i]) + shA[i]
-        if (nb[i] > 0) hz += nb[i] * f * sqrt(1.0 + s * B * nb[i] * nb[i]) + shB[i]
+        var hz = na[i] * f * pianoStiffness(s, B, na[i]) + shA[i]
+        if (nb[i] > 0) hz += nb[i] * f * pianoStiffness(s, B, nb[i]) + shB[i]
+        if (pin != 0.0) hz *= Math.pow(pianoStiffness(1.0, B, 1) / pianoStiffness(s, B, 1), pin)
         return 2 * PI * hz * pol[i]
     }
 
-    /** d(omega)/ds, for the per-sample correction inside a block. */
-    fun dOmegaDs(i: Int, s: Double): Double {
-        val f = f0s[i]
-        var d = na[i] * f * B * na[i] * na[i] / (2 * sqrt(1.0 + s * B * na[i] * na[i]))
-        if (nb[i] > 0) d += nb[i] * f * B * nb[i] * nb[i] / (2 * sqrt(1.0 + s * B * nb[i] * nb[i]))
-        return 2 * PI * d * pol[i]
+    /** d(omega)/ds, for the per-sample correction inside a block (central difference). */
+    fun dOmegaDs(i: Int, s: Double, pin: Double = 0.0): Double {
+        val h = 1e-3 * max(1.0, abs(s))
+        val d = (omega(i, s + h, pin) - omega(i, s - h, pin)) / (2 * h)
+        return if (d.isFinite()) d else 0.0
     }
+}
+
+/** Partial-n stiffness factor for scale [s]: stretched above zero, mirrored (compressed) below; never NaN. */
+internal fun pianoStiffness(s: Double, B: Double, n: Int): Double {
+    val x = abs(s) * B * n * n
+    val r = sqrt(1.0 + x)
+    return if (s >= 0.0) r else 1.0 / r
 }
 
 /** Note preparation: hammer contact plus phasor collection (coopiano `prep_note_into`). */
@@ -519,7 +541,7 @@ internal object PianoStrike {
 
     private class Parent(val ar: Double, val ai: Double, val w: Double, val sig: Double, val n: Int)
 
-    class Contact(val durationMs: Double, val peakForce: Double, val force: DoubleArray)
+    class Contact(val durationMs: Double, val peakForce: Double, val force: DoubleArray, val hammer: DoubleArray)
 
     fun runContact(k: PianoKey, strs: List<PianoString>, vh0: Double, fs: Double): Contact {
         val os = 32
@@ -529,6 +551,7 @@ internal object PianoStrike {
         var touched = false; var separated = false
         var peak = 0.0; var duration = 0.0
         val force = ArrayList<Double>()
+        val hammer = ArrayList<Double>()
         var step = 0
         while (step < maxSteps) {
             if (separated && step % os == 0) break
@@ -559,6 +582,7 @@ internal object PianoStrike {
                     s.q[n] += dt * s.qd[n]
                 }
             }
+            if (step % os == 0) hammer.add(fTot)
             if (anyContact) touched = true
             if (!separated && touched && !anyContact && vh < 0.0) {
                 separated = true
@@ -569,7 +593,7 @@ internal object PianoStrike {
             step++
         }
         if (!separated) duration = step * dt * 1000.0
-        return Contact(duration, peak, force.toDoubleArray())
+        return Contact(duration, peak, force.toDoubleArray(), hammer.toDoubleArray())
     }
 
     private fun aftersoundShare(partial: Int) = if (partial == 1) 0.35 else if (partial == 2) 0.6 else 1.0
@@ -731,7 +755,64 @@ internal object PianoStrike {
             out.dampNoise = dn
         }
         out.contactMs = con.durationMs; out.peakForce = con.peakForce; out.hammerVelocity = vh
+        closeMicNoises(k, con, out, velocity, seed, fs)
         return out
+    }
+
+    /**
+     * Mechanism sounds a close microphone hears, built from this strike's own hammer force and with
+     * their own random stream, so the coopiano-matched draws above are untouched.
+     */
+    private fun closeMicNoises(k: PianoKey, con: Contact, out: PianoNoteData, velocity: Double, seed: Long, fs: Double) {
+        val gn = PianoRng(seed xor 0x5DEECE66DL).Normal()
+        val level = out.tonePeakAmp
+        val hf = con.hammer
+        out.hammerForce = hf
+        val peak = max(1e-9, hf.maxOrNull() ?: 0.0)
+        // thump: the force pulse itself (the felt's push) plus two wooden body modes it rings
+        val tlen = (0.08 * fs).toInt()
+        val th = DoubleArray(tlen)
+        val bodies = doubleArrayOf(95.0, 210.0 * (k.f0 / 261.6).pow(0.15))
+        val decays = doubleArrayOf(35.0, 60.0)
+        val wts = doubleArrayOf(1.0, 0.55)
+        for (b in bodies.indices) {
+            val w = 2 * PI * bodies[b] / fs
+            val r = exp(-decays[b] / fs)
+            val c1 = 2 * r * cos(w); val c2 = -r * r
+            var y1 = 0.0; var y2 = 0.0
+            for (i in 0 until tlen) {
+                val x = if (i < hf.size) hf[i] / peak else 0.0
+                val y = x * w + c1 * y1 + c2 * y2
+                y2 = y1; y1 = y
+                th[i] += wts[b] * y
+            }
+        }
+        for (i in 0 until min(tlen, hf.size)) th[i] += 0.6 * hf[i] / peak
+        val tg = 0.5 * level * velocity.pow(0.8)
+        for (i in 0 until tlen) th[i] *= tg
+        out.thump = th
+        // key noise: keybed knock a few ms after the hammer leaves, and a softer release click
+        fun burst(len: Double, delay: Double, hz: DoubleArray, decay: Double, amp: Double): DoubleArray {
+            val n = ((len + delay) * fs).toInt()
+            val o = DoubleArray(n)
+            val d0 = (delay * fs).toInt()
+            for (f in hz) {
+                val w = 2 * PI * f / fs; val r = exp(-1.0 / (0.004 * fs))
+                val c1 = 2 * r * cos(w); val c2 = -r * r
+                var y1 = 0.0; var y2 = 0.0
+                for (i in d0 until n) {
+                    val t = (i - d0) / fs
+                    val x = gn.next() * exp(-decay * t) * (1 - exp(-t / 0.0004))
+                    val y = x * (1 - r) + c1 * y1 + c2 * y2
+                    y2 = y1; y1 = y
+                    o[i] += amp * y
+                }
+            }
+            return o
+        }
+        val kv = out.hammerVelocity / max(1e-9, k.v.maximumVelocityMps)
+        out.keyNoise = burst(0.03, (con.durationMs * 1e-3) + 0.006, doubleArrayOf(380.0, 1450.0, 3100.0), 140.0, 0.9 * level * kv)
+        out.releaseNoise = burst(0.025, 0.0, doubleArrayOf(620.0, 2300.0), 180.0, 0.35 * level)
     }
 
     private fun knockVelocity(velocity: Double, f0: Double): Double {
@@ -1092,6 +1173,12 @@ internal class PianoRoom(fs: Double, v: PianoVoicing) {
     private val prevIn = DoubleArray(2); private val hpState = DoubleArray(2)
     private val mixed = DoubleArray(8)
     private val input = DoubleArray(2)
+
+    /** Empties every delay line and filter. */
+    fun reset() {
+        for (l in lines + diffusion + predelay.toList() + early.toList()) { l.s.fill(0.0); l.head = 0 }
+        filtered.fill(0.0); prevIn.fill(0.0); hpState.fill(0.0); mixed.fill(0.0); input.fill(0.0)
+    }
 
     /** Adds the wet room to [lr] in place, scaled by [mix]. */
     fun process(lr: DoubleArray, mix: Double) {
