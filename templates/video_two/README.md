@@ -6,7 +6,9 @@ bounded GPU ring. The screens select progressively older pictures from that ring
 independent temporal accumulators, paired-exposure clocks and Gaussian caches.
 
 The default spacing is **one published picture**. Box 2 changes it from 1 to 8: eight screens
-then use ages `0,1,…,7` through `0,8,…,56`. These are uploaded material pictures, after the
+then cover ages 0–7 through 0–56. **Reverse delay direction** defaults on: in screen-number
+order the ages are `0,7,6,…,1` times the spacing. Turn it off for `0,1,…,7`. Screen 1 stays
+newest, and each screen keeps its geometry and appearance. These are uploaded material pictures, after the
 alternate-frame selection and material cap. They are not headset frames, and skipped decoder
 pictures do not create history entries. Box 3 shows each screen's actual source timestamp and
 age, so the relationship to playback speed is visible.
@@ -60,7 +62,7 @@ also has **Store from this screen**. The initial look is seeded as **slow blur**
 launches retain the saved key. Storing the same name adds a version.
 
 Keys contain accumulation mix, half-life, incoming weight, cadence enable/rate, soft-half blur
-sigma/mix and darkening, plus shared playback speed. Check any collection of screens and press
+sigma/mix and darkening, plus shared playback speed and, once Ring motion is launched, the four headset-flash settings. Check any collection of screens and press
 **Recall to checked screens**. **Restore playback speed** defaults off: appearance changes keep
 the current shared speed unless explicitly enabled. With no screens selected, this option
 allows a speed-only recall. Each screen's own Recall button applies just to that screen.
@@ -89,13 +91,37 @@ screenLookRecall.cancel()
 The shared-look box ticks the bounded scheduler; it loads each recalled key once and keeps at
 most one pending arrival per selected screen. No movie seek or GPU readback is involved.
 
-## Ring motion
+## Ring motion and the headset zoetrope
 
-**Ring motion** adds signed **Spin coarse** (−30 to +30 turns/second) and **Spin fine** (−1 to
-+1 turns/second, 0.001 steps). Their sum advances the ring using real elapsed time. The range
-reaches wagonwheel aliases; the fine control trims them. **Stop ring rotation** zeros both
-speeds and holds the current angle. The movie clock, frame spacing and keyframe pool remain
-independent. Both speeds start at zero.
+**Ring motion** retains manual coarse/fine spin. **Stepped rotation** holds the geometry for
+**Frames per step** whole headset refresh periods. **Lock to screen sectors** replaces manual
+spin with signed, integer sector hops at those boundaries. One sector is 45 degrees for eight
+screens. **Lock drift** adds a tiny continuous detuning: 0.001 turns/second is 0.36 degrees/second.
+Zero drift locks the repeated screen outlines; different movie ages and looks still swap places.
+
+Start with **Try sector lock + flash**. It sets one sector every ten headset ticks and opens all
+shutters for the first tick. At 120 Hz that is twelve steps and flashes per second, with an
+8.33 ms illuminated pulse. **Open all shutters** removes flashes while retaining rotation;
+**Stop ring rotation** disables sector lock and drift and holds the current orientation.
+
+Each material box has **headset flash** controls: enable, interval, illuminated duration and
+phase, all in integer headset ticks. A ten-tick interval and phase zero align with ten-tick
+rotation steps. Phase one exposes the following tick instead. Give screens different phases
+for a chase; a duration at or above its interval leaves that screen illuminated continuously.
+Short pulses reduce average brightness without compensation. Flash settings join newly stored
+screen looks. Existing keys without these lanes leave current shutters unchanged.
+
+Both rotation and flashes read one `VideoCarouselClock` on the graphics queue, before the
+surface preparation targets. Its origin is shared. OpenXR's predicted display time and actual
+refresh period count physical refresh ticks, including missed application frames; duplicate
+predictions never advance. A missed image cannot be flashed retrospectively, but subsequent
+pulses keep their schedule. The status shows the measured runtime rate and common tick counter.
+Desktop mode uses a nominal 120 Hz grid. These clocks run independently of video playback,
+including pause, 24 fps material selection and the separate soft/dark exposure pairs.
+
+A shutter gates the screen's draw module only. The source, history, exposure and head pose keep
+updating, and the Field pane stays visible. Flashing adds no RTT or readback. Rotation is applied
+before this frame's mesh push constants; both eyes share the same rotation and shutter state.
 
 ## History lifetime and memory
 

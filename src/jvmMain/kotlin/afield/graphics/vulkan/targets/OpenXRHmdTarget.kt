@@ -763,6 +763,10 @@ class OpenXRHmdTarget(
     var locatedViewDisplayTime: Long = 0L
         private set
 
+    /** Runtime refresh period for the currently located views, in nanoseconds. */
+    var locatedViewDisplayPeriod: Long = 0L
+        private set
+
     private fun prepareFrame(): PreparedFrame? {
         if (disabledReason != null) return null
         if (!initialized) {
@@ -864,6 +868,7 @@ class OpenXRHmdTarget(
                             frame.viewsLocated = true
                             locatedViewFrameId = xrFrameCounter
                             locatedViewDisplayTime = frame.displayTime
+                            locatedViewDisplayPeriod = frame.displayPeriod
                         }
                     }
                     frame
