@@ -12,9 +12,7 @@ ui.eval(
     f.src = "/welcome"
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1100px;height:850px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 var ready = false
 for (i in 0 until 60) {
@@ -26,9 +24,7 @@ for (i in 0 until 60) {
                 if (!d?.getElementById("open-first-steps")) return false
                 const splash = d.getElementById("splash-screen")
                 if (splash && !splash.classList.contains("hidden")) return false
-                return [...d.querySelectorAll("details > summary")].every(s => !/loading|checking/i.test(s.textContent))
-                """
-                    .trimIndent(),
+                return [...d.querySelectorAll("details > summary")].every(s => !/loading|checking/i.test(s.textContent))""".trimIndent(),
             )
             .toString()
     if (state == "true") {
@@ -56,9 +52,7 @@ ui.eval(
     const c = document.querySelector(".monaco-editor-container")
     Object.assign(c.style, {width:"620px", height:"710px", top:"0px", right:"0px", left:"auto", bottom:"auto", transform:"none"})
     window.globalEditor.layout()
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.clickSelector(".monaco-editor")
 ui.keypressDisplay(true)
@@ -67,9 +61,7 @@ ui.eval(
     """
     const label = document.querySelector('#keycast-overlay .keycast-text').textContent
     if (!['Alt+↑', '⌥↑'].includes(label)) throw new Error('launch chord was not displayed once: ' + label)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(2500)
 ui.eval(
@@ -85,9 +77,7 @@ ui.eval(
     match.range = {startLineNumber: match.range.endLineNumber, endLineNumber: match.range.endLineNumber, endColumn: "var petals = 5".length + 1}
     editor.setSelection({startLineNumber:match.range.startLineNumber, startColumn:match.range.endColumn-1, endLineNumber:match.range.endLineNumber, endColumn:match.range.endColumn})
     editor.focus()
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(2800)
 ui.typeSlowly("8", 160)
@@ -102,9 +92,7 @@ ui.eval(
     if (!window.globalEditor.getModel().getValue().includes("\nvar petals = 8 ")) throw new Error("the editor did not retain the edit")
     const outputs = [...document.querySelectorAll('.tick_text, .execution_output .inner_output')]
     if (!outputs.some(e => e.textContent.trim() === '8')) throw new Error("the real inline value eight did not appear")
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(3500)
 ui.press("Alt+ArrowDown")
@@ -160,9 +148,7 @@ ui.eval(
     for (const uid of ['first_graphics_renderer', 'first_graphics_triangle']) {
         if (!boxes.some(b => b.uid === uid)) throw new Error('missing template box: ' + uid)
     }
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(800)
 ```

@@ -74,7 +74,5 @@ markdown(
     Four outputs, each on its own channel: **roll** draws the three lanes, **played** is the
     buffer that was actually transcribed, **condensed** is `${condensed.notation}` rendered
     back through the same voice, and this table is **main**. The two players should be the
-    same bar — that is the claim, and it is the one part of this box you can check by ear.
-    """
-        .trimIndent(),
+    same bar — that is the claim, and it is the one part of this box you can check by ear.""".trimIndent(),
 )

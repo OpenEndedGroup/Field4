@@ -30,9 +30,7 @@ operations:
                   <svg width="300" height="300" style="background:#05080a;border:1px solid #136178">
                     <line x1="150" y1="150" x2="${150 + orbit.x * 120}" y2="${150 - orbit.y * 120}" stroke="#136178"/>$dot
                   </svg>
-                  <div style="font:18px Iosevka,monospace;color:#0cc8ed">$title  cutoff ${cutoff.toInt()} Hz</div>
-              """
-                      .trimIndent(),
+                  <div style="font:18px Iosevka,monospace;color:#0cc8ed">$title  cutoff ${cutoff.toInt()} Hz</div>""".trimIndent(),
               )
           }
           controlGroup("controls") {

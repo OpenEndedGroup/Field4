@@ -282,9 +282,7 @@ operations:
               """
               ${ladder.h}
 
-              ${torn.h}
-          """
-                  .trimIndent(),
+              ${torn.h}""".trimIndent(),
           )
   - launch: { box: log_channels, property: code }
   - launch: { box: log_mute, property: code }

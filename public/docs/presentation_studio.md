@@ -111,9 +111,7 @@ audience {
         Something _worth trying_ in the live document.
 
         1. Predict what changes.
-        2. Run the experiment.
-    """
-        .md
+        2. Run the experiment.""".md
 }
 ```
 
@@ -131,9 +129,7 @@ audience {
     imageBeside("wave.svg", alt = "A sine wave", citation = "Author · source · license") {
         +"""
             # A small change.
-            Make a prediction, then try it in Field.
-        """
-            .md
+            Make a prediction, then try it in Field.""".md
     }
 }
 ```
@@ -452,14 +448,15 @@ isolated view. A slide of further reading is just links:
 
 ```diffstatic {data-lang=kotlin}
 step("Further reading") {
-        audienceMarkdown("""
-            # Further reading
+    audienceMarkdown(
+        """
+        # Further reading
 
-            - [Cameras and Lenses](https://ciechanow.ski/cameras-and-lenses/), the essay this follows
-            - [Attention Is All You Need](https://arxiv.org/pdf/1706.03762) (PDF)
-            - [My notes](file:///Users/me/talks/notes.pdf) (a PDF on this computer)
-        """.trimIndent())
-    }
+        - [Cameras and Lenses](https://ciechanow.ski/cameras-and-lenses/), the essay this follows
+        - [Attention Is All You Need](https://arxiv.org/pdf/1706.03762) (PDF)
+        - [My notes](file:///Users/me/talks/notes.pdf) (a PDF on this computer)""".trimIndent(),
+    )
+}
 ```
 
 Web pages open even when the site refuses to be framed, and PDFs open in Electron's PDF viewer,
@@ -525,9 +522,7 @@ presentation(title = "A sine wave and its pitch") {
                         ## Twice as often
 
                         220 Hz is the A below middle C. Doubling the frequency fits
-                        twice as many swings in, and we hear the same note an octave up.
-                    """
-                        .md
+                        twice as many swings in, and we hear the same note an octave up.""".md
                 }
             }
             control("sine", "frequency", 220.0)

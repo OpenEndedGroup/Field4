@@ -52,9 +52,7 @@ ui.eval(
     f.src = "/welcome"
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1700px;height:2000px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 var state = ""
 for (i in 0 until 80) {
@@ -68,9 +66,7 @@ for (i in 0 until 80) {
                 if (!panel.open) panel.querySelector("summary").click()
                 const pending = [...panel.querySelectorAll("[id$='-state'], #ai-settings-summary")].filter(e => /checking/i.test(e.textContent)).length +
                     (/Gathering/.test(panel.textContent) ? 1 : 0)
-                return pending === 0 ? "ready" : "pending:" + pending
-                """
-                    .trimIndent(),
+                return pending === 0 ? "ready" : "pending:" + pending""".trimIndent(),
             )
             .toString()
     if (state.contains("ready")) break
@@ -94,9 +90,7 @@ ui.eval(
     m.setAttribute("style", "position:fixed;pointer-events:none;background:transparent;border:0;z-index:2147483001;" +
         "left:" + (o.left + r.left) + "px;top:" + (o.top + r.top) + "px;width:" + r.width + "px;height:" + r.height + "px")
     document.body.appendChild(m)
-    return [r.width, r.height]
-    """
-        .trimIndent(),
+    return [r.width, r.height]""".trimIndent(),
 )
 ui.pause(300)
 ```

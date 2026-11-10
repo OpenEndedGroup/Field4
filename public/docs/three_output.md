@@ -864,8 +864,7 @@ for (i in 0 until 120) {
                     return b.getAttribute("aria-pressed")
                 }
                 return "waiting"
-                """
-                    .trimIndent(),
+                """.trimIndent(),
             )
             .toString()
     if (pressed.contains("true")) break

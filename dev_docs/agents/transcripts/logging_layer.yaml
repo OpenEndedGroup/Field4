@@ -280,9 +280,7 @@ operations:
               """
               ${ladder.h}
 
-              ${torn.h}
-          """
-                  .trimIndent(),
+              ${torn.h}""".trimIndent(),
           )
   - execute: { box: log_channels, property: code }
   - await: {}

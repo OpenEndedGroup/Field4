@@ -37,9 +37,7 @@ ui.eval(
     const front = api.sources().find(s => s.source.id === "front")
     const p = api.project(front.id, [0, 24, 0])
     api.region({ cx: p.x, cy: p.y, width: 0.16, height: 0.09, angle: 25 })
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(500)
 ui.eval(
@@ -50,9 +48,7 @@ ui.eval(
     note.value = "Only the visible surface in this rotated rectangle."
     note.dispatchEvent(new frame.contentWindow.Event("input"))
     doc.getElementById("feature-save").click()
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(1000)
 ```
