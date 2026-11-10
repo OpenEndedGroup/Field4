@@ -3690,6 +3690,40 @@
         "public/docs/assets/agent_transcripts/photo_to_solid_chain/photo_plaque_code_.kt": "efac2b47034b1fc668f4b9133b280c67c95d10833965666662403f2f393f485a"
       }
     },
+    "assets/agent_transcripts/physical_piano/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-10T20:39:06.252Z",
+      "channels": 9,
+      "file": "assets/web_publications/physical_piano/document/metadata.edn",
+      "files": {
+        "assets/web_publications/physical_piano/document/metadata.edn": "d48d2729ae0067adba3b6a467d1b41842854e35ae9a23eb029eefefb749298eb",
+        "assets/web_publications/physical_piano/document/outputs.json": "6b2722e95f95fe6cbb04af46c238284777de90bf384f3c1e5c8abe288c8c6be0",
+        "assets/web_publications/physical_piano/outputs/0.html": "1bfee76ede118ca32df3d68b657ad005d5f8004df8ac233d1f33a0303eeae1a8",
+        "assets/web_publications/physical_piano/outputs/1.html": "1bfee76ede118ca32df3d68b657ad005d5f8004df8ac233d1f33a0303eeae1a8",
+        "assets/web_publications/physical_piano/outputs/2.html": "1bfee76ede118ca32df3d68b657ad005d5f8004df8ac233d1f33a0303eeae1a8",
+        "assets/web_publications/physical_piano/outputs/3.html": "1bfee76ede118ca32df3d68b657ad005d5f8004df8ac233d1f33a0303eeae1a8",
+        "assets/web_publications/physical_piano/outputs/4.html": "1bfee76ede118ca32df3d68b657ad005d5f8004df8ac233d1f33a0303eeae1a8",
+        "assets/web_publications/physical_piano/outputs/5.html": "e38c1c7eb03affefa713f419f44eef5e2b95eda6494fe218bdc10f14bc99f7e8",
+        "assets/web_publications/physical_piano/outputs/6.html": "1bfee76ede118ca32df3d68b657ad005d5f8004df8ac233d1f33a0303eeae1a8",
+        "assets/web_publications/physical_piano/outputs/7.html": "1a83e787c479b097c9a80c120907ecc7a93dfc0409e30616cf7b534d40b293c6",
+        "assets/web_publications/physical_piano/outputs/8.html": "cd6ce8f0d56f6b904bf0025e3ef3b9b6042cbf50a0cda8401f72bb74bf7e3c08"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/physical_piano/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/physical_piano.yaml": "4b230a4b01aa29725ebd355cdbd86cefe4d819b5d0d7dac82490ade39c5e8214",
+        "public/docs/assets/agent_transcripts/physical_piano/guides/reference-synthesis.md": "36525063b67318cbafb142e468648ff6053af641b31867434242aa428657d749",
+        "public/docs/assets/agent_transcripts/physical_piano/metadata.edn": "c47ef066eefdd7846733945d18a517b29cd2b05f3c04dba8660a8ac679533361",
+        "public/docs/assets/agent_transcripts/physical_piano/piano_a4_code_.kt": "789c1bd2e57d62cfab2944b92a98b02cc19a73d66a26e19dbefc482dd63476d9",
+        "public/docs/assets/agent_transcripts/physical_piano/piano_live_code_.kt": "dfbbc972a7c95672d686ad6dc8a8227abd695130f9340d59cff8d2e152fc814b",
+        "public/docs/assets/agent_transcripts/physical_piano/piano_pedal_code_.kt": "4a74763041b87141ccb84a8da0f2dfc3e4c415cca8bdf9a57d771ca6c45d940d",
+        "public/docs/assets/agent_transcripts/physical_piano/piano_piece_code_.kt": "a7e0f1d4e36b2870df16eaad9399633cccba474101f9466b0663de1bbf29ebc8",
+        "public/docs/assets/agent_transcripts/physical_piano/piano_string_code_.kt": "27fcbb66f6b147b004ea2f19b4b3f6287e6f29f1fc682dd3c819c79a00369309",
+        "public/docs/assets/agent_transcripts/physical_piano/piano_wobble_code_.kt": "60557111031264120c8895b0bedf3b77835b85b9a0fe55bcbb4aab23e2fbf00a"
+      }
+    },
     "assets/agent_transcripts/physics_manifold_path_trace/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
       "capturedAt": "2026-11-10T09:23:41.807Z",
