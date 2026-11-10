@@ -17,7 +17,7 @@ From `code`
 One bank, three readers. The bank has no position of its own; the readers do.
 
 ```edn [field-box id="marf_readers" role="properties"]
-{"id" "marf_readers" "index" 0 "name" "one bank, three readers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one bank, three readers" "_tombstone" false "frame" #afield/rect [60.0 60.0 340.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "marf_readers_code_.kt" "lines" 75 "characters" 2502 "sha256" "152a812b045d323897adc1578e9b1f8233f33570af4d8a219ea24e64b541c556"}]}
+{"id" "marf_readers" "index" 0 "name" "one bank, three readers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one bank, three readers" "_tombstone" false "frame" #afield/rect [60.0 60.0 340.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "marf_readers_code_.kt" "lines" 73 "characters" 2488 "sha256" "fe63e2db0e4dec8522fa068e4b9920086e9c601137fb6eb0f64f2f10d0a65554"}]}
 ```
 
 ```kotlin [field-property box="marf_readers" name="code" path="marf_readers_code_.kt"]
@@ -92,9 +92,7 @@ markdown(
     - <span style="color:#ff9942">orange</span> — `read slow 3 "<0 1 2 3 4>"`, each address held three stages
     - <span style="color:#85e585">green</span> — `read saw slow 8`, a fractional address blending two slots
 
-    Same five stages in all three. Only the trajectory differs.
-    """
-        .trimIndent(),
+    Same five stages in all three. Only the trajectory differs.""".trimIndent(),
 )
 ```
 
@@ -207,7 +205,7 @@ A stage's value need not be a number. One Vector3f reader, drawn as its three co
 one stage structure carrying three values, so the osc:2 stage bumps all of them at once.
 
 ```edn [field-box id="marf_vector" role="properties"]
-{"id" "marf_vector" "index" 3 "name" "one Vector3f reader, three components" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one Vector3f reader, three components" "_tombstone" false "frame" #afield/rect [60.0 1500.0 340.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "marf_vector_code_.kt" "lines" 71 "characters" 2582 "sha256" "cabd5c2c0eebb4b00143c09d6fe2c4dff407e69060fc11dde58e69a4cd417851"}]}
+{"id" "marf_vector" "index" 3 "name" "one Vector3f reader, three components" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one Vector3f reader, three components" "_tombstone" false "frame" #afield/rect [60.0 1500.0 340.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "marf_vector_code_.kt" "lines" 69 "characters" 2568 "sha256" "a42e495a06c2aa5c180b58fd9316c2f19718e04052ac10f22a2fa7bc5eb6eb0c"}]}
 ```
 
 ```kotlin [field-property box="marf_vector" name="code" path="marf_vector_code_.kt"]
@@ -278,9 +276,7 @@ markdown(
 
     The stage boundaries fall in the same places in all three lanes, because there is one stage
     structure carrying three values. `signal { it.x.toDouble() }` is how a vector reader reaches
-    the rest of the language, which is scalar nearly everywhere.
-    """
-        .trimIndent(),
+    the rest of the language, which is scalar nearly everywhere.""".trimIndent(),
 )
 ```
 

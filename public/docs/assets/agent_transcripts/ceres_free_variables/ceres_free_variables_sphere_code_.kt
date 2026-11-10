@@ -76,9 +76,7 @@ if (backend == null) {
 
         ```
         ./gradlew buildCeresRedistributable
-        ```
-        """
-            .trimIndent(),
+        ```""".trimIndent(),
     )
     displayOpen("fit")
     threeLines(dots(), channel = "fit3d", name = "ceres-sphere", height = 480, autoFrame = true)
@@ -155,9 +153,7 @@ if (backend == null) {
         ceres       centre (${centre.x.f9}, ${centre.y.f9}, ${centre.z.f9})  radius ${radius.f9}
         closed form centre (${trueCentre.x.f9}, ${trueCentre.y.f9}, ${trueCentre.z.f9})  radius ${trueRadius.f9}
         centre off by ${"%.2e".format(centreError)}, radius off by ${"%.2e".format(kotlin.math.abs(radius - trueRadius))}
-        ${result.summary}
-        """
-            .trimIndent(),
+        ${result.summary}""".trimIndent(),
     )
 
     // The fitted sphere, as latitude and longitude circles.
@@ -248,9 +244,7 @@ if (backend == null) {
         }
         ```
 
-        It names no point at all — every unknown here is a free variable.
-        """
-            .trimIndent(),
+        It names no point at all — every unknown here is a free variable.""".trimIndent(),
     )
     displayOpen("fit")
 }

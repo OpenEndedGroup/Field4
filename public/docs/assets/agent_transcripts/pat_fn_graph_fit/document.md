@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pat_fn_fit" index="0" -->
 
 ```edn [field-box id="pat_fn_fit" role="properties"]
-{"id" "pat_fn_fit" "index" 0 "name" "2 · fit the rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · fit the rhythm" "_tombstone" false "frame" #afield/rect [60.0 390.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_fit_code_.kt" "lines" 23 "characters" 932 "sha256" "2e33c31026edae4968fed68c7d9a7e5010aca79f0d6456ec5abb1370f350de94"}]}
+{"id" "pat_fn_fit" "index" 0 "name" "2 · fit the rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · fit the rhythm" "_tombstone" false "frame" #afield/rect [60.0 390.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_fit_code_.kt" "lines" 21 "characters" 914 "sha256" "325dbd5c036dbc639fc1706cec7370ed46c2a702ceb521ed042471838d4cb697"}]}
 ```
 
 ```kotlin [field-property box="pat_fn_fit" name="code" path="pat_fn_fit_code_.kt"]
@@ -30,9 +30,7 @@ with(Functions) {
         """
     seed    ${seed.graphNode().strings["source"]}
     fitted  ${run.fitted.graphNode().strings["source"]}
-    RMSE    ${run.initialError.f4} -> ${run.finalError.f4}
-    """
-            .trimIndent()
+    RMSE    ${run.initialError.f4} -> ${run.finalError.f4}""".trimIndent()
     println(report)
     display("<pre>" + report + "</pre>")
 
@@ -52,7 +50,7 @@ Each atom is a kernel: g = Gaussian, adsr = a full envelope. The numbers in the
 text are the gesture; `cps` is how fast the pattern runs in seconds.
 
 ```edn [field-box id="pat_fn_inspect" role="properties"]
-{"id" "pat_fn_inspect" "index" 1 "name" "1 · the pat node" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · the pat node" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_inspect_code_.kt" "lines" 18 "characters" 576 "sha256" "7db21bea4168c4423e295ab0b3af46ccb0b43229e84f797770387fa4ddf716ae"}]}
+{"id" "pat_fn_inspect" "index" 1 "name" "1 · the pat node" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · the pat node" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_inspect_code_.kt" "lines" 16 "characters" 566 "sha256" "743e75bcff262a3717d6ceaee44a00b5bf749d18bdb08fd8cc11a49d45039064"}]}
 ```
 
 ```kotlin [field-property box="pat_fn_inspect" name="code" path="pat_fn_inspect_code_.kt"]
@@ -68,9 +66,7 @@ source    ${node.strings["source"]}
 knobs     ${node.children.joinToString("  ") { it.role }}
 values    ${gesture.extractParameters().joinToString("  ")}
 
-${gesture.graphText()}
-"""
-        .trimIndent()
+${gesture.graphText()}""".trimIndent()
 
 println(report)
 display("<pre>" + report + "</pre>")
@@ -81,7 +77,7 @@ display("<pre>" + report + "</pre>")
 <!-- field-box id="pat_fn_permute" index="2" -->
 
 ```edn [field-box id="pat_fn_permute" role="properties"]
-{"id" "pat_fn_permute" "index" 2 "name" "3 · what it cannot do" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · what it cannot do" "_tombstone" false "frame" #afield/rect [620.0 390.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_permute_code_.kt" "lines" 25 "characters" 1122 "sha256" "e4082126ac8b2bb87bacc49e30c371ee78e803a377a3eec01a1dea7869437e99"}]}
+{"id" "pat_fn_permute" "index" 2 "name" "3 · what it cannot do" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · what it cannot do" "_tombstone" false "frame" #afield/rect [620.0 390.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_permute_code_.kt" "lines" 23 "characters" 1104 "sha256" "c783f3bbba7dbdf197beed1f51633b0077af561a0c392a92dd8baaf8a37cb728"}]}
 ```
 
 ```kotlin [field-property box="pat_fn_permute" name="code" path="pat_fn_permute_code_.kt"]
@@ -104,9 +100,7 @@ with(Functions) {
 
     It descends, but not to the answer: it escapes into wide kernels, where a
     normalised blend flattens toward the mean of its atom values. Structure search
-    (evolve) is the tool for re-assigning values between atoms.
-    """
-            .trimIndent()
+    (evolve) is the tool for re-assigning values between atoms.""".trimIndent()
     println(report)
     display("<pre>" + report + "</pre>")
 }

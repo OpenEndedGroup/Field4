@@ -247,9 +247,7 @@ val page =
                 <tr><td>beta</td><td>48</td><td>9</td></tr>
                 <tr><td>gamma</td><td>93</td><td>n/a</td></tr>
               </tbody>
-            </table>
-            """
-                .trimIndent(),
+            </table>""".trimIndent(),
         )
     }
 val browser = HeadlessPuppetBrowser(page.toURI().toString())

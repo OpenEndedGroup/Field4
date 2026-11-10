@@ -35,7 +35,5 @@ markdown(
     As a pattern again: ${firstCycle.size} events in cycle 0, pitches
     `${firstCycle.sortedBy { it.arc.start }.map { it.value }.joinToString(" ")}`.
 
-    The roll above is drawn from the *file*, not from the clip box 1 held in memory.
-    """
-        .trimIndent(),
+    The roll above is drawn from the *file*, not from the clip box 1 held in memory.""".trimIndent(),
 )

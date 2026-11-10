@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="ceres_free_variables_planes" index="0" -->
 
 ```edn [field-box id="ceres_free_variables_planes" role="properties"]
-{"id" "ceres_free_variables_planes" "index" 0 "name" "Ceres — a plane per face, solved as a free variable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — a plane per face, solved as a free variable" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_planes_code_.kt" "lines" 228 "characters" 9144 "sha256" "441720fc0ab2bfe5dd8f9386ab5654c7e910b58c0fafb2f39d2c2f62ba5d240d"}]}
+{"id" "ceres_free_variables_planes" "index" 0 "name" "Ceres — a plane per face, solved as a free variable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — a plane per face, solved as a free variable" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_planes_code_.kt" "lines" 220 "characters" 9040 "sha256" "67ee9634ba7aa34878502397155d8b9c8c066a3b6adaa30d07c0a38b103a37bd"}]}
 ```
 
 ````kotlin [field-property box="ceres_free_variables_planes" name="code" path="ceres_free_variables_planes_code_.kt"]
@@ -87,9 +87,7 @@ if (backend == null) {
 
         That produces a self-contained library — `otool -L` shows only `libc++` and
         `libSystem` — from pinned Ceres and Eigen source. `dev_docs/CERES.md` has the whole
-        story.
-        """
-            .trimIndent(),
+        story.""".trimIndent(),
     )
     displayOpen("ceres")
     threeLines(faintSeed(), channel = "solid", name = "ceres-planes", height = 520, autoFrame = true)
@@ -158,9 +156,7 @@ if (backend == null) {
         the two answers differ by at most ${"%.2e".format(agreement)}
         canonical  : tangency spread ${"%.3e".format(diagnostics.tangencyRadiusSpread)}  centre ${"%.3e".format(diagnostics.tangencyCentroidOffset)}  planarity ${"%.3e".format(diagnostics.maxFacePlanarityError)}
         every solved normal is still unit to ${"%.2e".format(worstUnit)} — the sphere manifold's own doing,
-        since no residual ever asks it to stay there
-        """
-            .trimIndent(),
+        since no residual ever asks it to stay there""".trimIndent(),
     )
 
     val status: (String) -> Unit = { message -> markdown("plane", message) }
@@ -194,9 +190,7 @@ if (backend == null) {
                 - worst corner off this plane: `${"%.3e".format(worst)}`
 
                 The residual is just `corner . n - d`, written in Kotlin and differentiated by
-                Ceres on `ceres::Jet` — no C++, no finite differences.
-                """
-                    .trimIndent(),
+                Ceres on `ceres::Jet` — no C++, no finite differences.""".trimIndent(),
             )
         }
     }
@@ -237,9 +231,7 @@ if (backend == null) {
         stem is one of the free variables — a unit normal, drawn from the point of its plane
         nearest the origin.
 
-        Click a face to read its plane.
-        """
-            .trimIndent(),
+        Click a face to read its plane.""".trimIndent(),
     )
     displayOpen("plane")
 }
@@ -250,7 +242,7 @@ if (backend == null) {
 <!-- field-box id="ceres_free_variables_sphere" index="1" -->
 
 ```edn [field-box id="ceres_free_variables_sphere" role="properties"]
-{"id" "ceres_free_variables_sphere" "index" 1 "name" "Ceres — unknowns that are not points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — unknowns that are not points" "_tombstone" false "frame" #afield/rect [580.0 80.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_sphere_code_.kt" "lines" 256 "characters" 9981 "sha256" "69394ae2970cd2cd7c6153e5ca90a088abd734257264e12d72f04dbebd800de6"}]}
+{"id" "ceres_free_variables_sphere" "index" 1 "name" "Ceres — unknowns that are not points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — unknowns that are not points" "_tombstone" false "frame" #afield/rect [580.0 80.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_sphere_code_.kt" "lines" 250 "characters" 9915 "sha256" "a5055d771aa77532748f93e3c367cce7ac1802b4b095541451ef27f6859a27ac"}]}
 ```
 
 ````kotlin [field-property box="ceres_free_variables_sphere" name="code" path="ceres_free_variables_sphere_code_.kt"]
@@ -332,9 +324,7 @@ if (backend == null) {
 
         ```
         ./gradlew buildCeresRedistributable
-        ```
-        """
-            .trimIndent(),
+        ```""".trimIndent(),
     )
     displayOpen("fit")
     threeLines(dots(), channel = "fit3d", name = "ceres-sphere", height = 480, autoFrame = true)
@@ -411,9 +401,7 @@ if (backend == null) {
         ceres       centre (${centre.x.f9}, ${centre.y.f9}, ${centre.z.f9})  radius ${radius.f9}
         closed form centre (${trueCentre.x.f9}, ${trueCentre.y.f9}, ${trueCentre.z.f9})  radius ${trueRadius.f9}
         centre off by ${"%.2e".format(centreError)}, radius off by ${"%.2e".format(kotlin.math.abs(radius - trueRadius))}
-        ${result.summary}
-        """
-            .trimIndent(),
+        ${result.summary}""".trimIndent(),
     )
 
     // The fitted sphere, as latitude and longitude circles.
@@ -504,9 +492,7 @@ if (backend == null) {
         }
         ```
 
-        It names no point at all — every unknown here is a free variable.
-        """
-            .trimIndent(),
+        It names no point at all — every unknown here is a free variable.""".trimIndent(),
     )
     displayOpen("fit")
 }

@@ -17,7 +17,7 @@ From `code`
 Sixteen notes in half a second: 31 ms each.
 
 ```edn [field-box id="pitch_roundtrip_register" role="properties"]
-{"id" "pitch_roundtrip_register" "index" 0 "name" "4 · POKE THIS — the register is the whole lever" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · POKE THIS — the register is the whole lever" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_register_code_.kt" "lines" 51 "characters" 1950 "sha256" "2dc1cb9e86e55025163a8468fe7aedeace61ca4f26c7a458f0c861afa93ec45e"}]}
+{"id" "pitch_roundtrip_register" "index" 0 "name" "4 · POKE THIS — the register is the whole lever" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · POKE THIS — the register is the whole lever" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_register_code_.kt" "lines" 49 "characters" 1940 "sha256" "089d65b439daa1a707d582a174fcec7df934071fa703c215e8f98dd02399b99a"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_register" name="code" path="pitch_roundtrip_register_code_.kt"]
@@ -66,9 +66,7 @@ display(
     "resolution",
     """
     minHz ${minHz.f1} Hz → analysis window $window samples (${(1000.0 * window / PatSoundDocs.SR).f1} ms)
-    the notes are ${(1000.0 / cps / 16).f1} ms long
-"""
-        .trimIndent(),
+    the notes are ${(1000.0 / cps / 16).f1} ms long""".trimIndent(),
 )
 display("verdict", heard.diagnosis.describe())
 display("recovered", "pat(\"${heard.miniNotation}\")")
@@ -91,7 +89,7 @@ rise per note — and an energy detector handles it fine. That was measured, and
 this box uses Dough instead.
 
 ```edn [field-box id="pitch_roundtrip_legato" role="properties"]
-{"id" "pitch_roundtrip_legato" "index" 1 "name" "3 · a line with no attacks in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · a line with no attacks in it" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_legato_code_.kt" "lines" 54 "characters" 2010 "sha256" "74871e5d37c67c746e0dedc116cf63d8f0f5e679bef1f764c45793d0b70cdda6"}]}
+{"id" "pitch_roundtrip_legato" "index" 1 "name" "3 · a line with no attacks in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · a line with no attacks in it" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_legato_code_.kt" "lines" 52 "characters" 2000 "sha256" "ace444217022cb93ccddd82aaffe93ef2f8d95a43e775c7434e33da3a1fc94d3"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_legato" name="code" path="pitch_roundtrip_legato_code_.kt"]
@@ -135,9 +133,7 @@ display(
       ${patTallyOnsets(energy, scheduled, tolerance).describe("energy  (amplitude envelope)")}
       ${patTallyOnsets(pitch, scheduled, tolerance).describe("pitch   (periodicity)      ")}
       ${patTallyOnsets(merged, scheduled, tolerance).describe("merged  (the union)        ")}
-    The energy detector is not misconfigured. The evidence it consumes is not in this signal.
-"""
-        .trimIndent(),
+    The energy detector is not misconfigured. The evidence it consumes is not in this signal.""".trimIndent(),
 )
 
 showPatTranscriptionOf(
@@ -164,7 +160,7 @@ inability, not the loudest note. `~` is the only thing mini-notation can say for
 that sounded and was not named, so the refusal lives in the warnings and the verdict.
 
 ```edn [field-box id="pitch_roundtrip_refusal" role="properties"]
-{"id" "pitch_roundtrip_refusal" "index" 2 "name" "5 · a chord, refused rather than guessed at" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · a chord, refused rather than guessed at" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_refusal_code_.kt" "lines" 40 "characters" 1481 "sha256" "a7555f084b78fd4e6c1b2e82a77cf875b33970c438e07402e146a6bfdf1b9c3d"}]}
+{"id" "pitch_roundtrip_refusal" "index" 2 "name" "5 · a chord, refused rather than guessed at" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · a chord, refused rather than guessed at" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_refusal_code_.kt" "lines" 38 "characters" 1467 "sha256" "8304f135288085bc2d7f903f37bffa0532b47681e3b071144df049cb41aec9bd"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_refusal" name="code" path="pitch_roundtrip_refusal_code_.kt"]
@@ -204,9 +200,7 @@ display(
     spectrum. The spectrum is then only asked one question — sparse or dense — which is what
     separates a chord (a few discrete partials) from a snare (a continuum).
     Compare: a sawtooth is a full harmonic stack on ONE note and is NOT refused,
-    because timbre is not polyphony.
-    """
-        .trimIndent(),
+    because timbre is not polyphony.""".trimIndent(),
 )
 ```
 
@@ -261,7 +255,7 @@ display("summary", heard.describe())
 <!-- field-box id="pitch_roundtrip_guide" index="4" -->
 
 ```edn [field-box id="pitch_roundtrip_guide" role="properties"]
-{"id" "pitch_roundtrip_guide" "index" 4 "name" "1 · hearing pitch — the loop and its last arrow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · hearing pitch — the loop and its last arrow" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_guide_code_.kt" "lines" 36 "characters" 2346 "sha256" "0327076a102683d8bf152dcab3f2f1749c01347dd61344c719b272da032e2ca7"}]}
+{"id" "pitch_roundtrip_guide" "index" 4 "name" "1 · hearing pitch — the loop and its last arrow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · hearing pitch — the loop and its last arrow" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_guide_code_.kt" "lines" 32 "characters" 2322 "sha256" "59454b11574cd1da7147f0a712537ac4332a63c49d017a057f6f732192e16c6f"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_guide" name="code" path="pitch_roundtrip_guide_code_.kt"]
@@ -285,9 +279,7 @@ display(
       <p style="margin:12px 0 0;color:#98a6b3">Pitch error is reported in <b>cents</b>, not in note
       names. One of the corpus cases is exactly 50 cents from equal temperament, where the correct
       note name genuinely does not exist — a measurement 0.1 cents out flips it a semitone.</p>
-    </section>
-    """
-        .trimIndent(),
+    </section>""".trimIndent(),
 )
 
 display(
@@ -297,9 +289,7 @@ display(
     so the register you admit sets the shortest note you can resolve:
       minHz  65 Hz (the wide default) → ${patPitchFrameSpan(PatSoundDocs.SR, 65.0)} samples = ${(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 65.0) / PatSoundDocs.SR).f1} ms
       minHz 261 Hz (a treble line)    → ${patPitchFrameSpan(PatSoundDocs.SR, 261.0)} samples = ${(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 261.0) / PatSoundDocs.SR).f1} ms
-    That ratio is what box 4 is about.
-"""
-        .trimIndent(),
+    That ratio is what box 4 is about.""".trimIndent(),
 )
 ```
 

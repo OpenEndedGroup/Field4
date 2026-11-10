@@ -17,7 +17,7 @@ From `code`
 A point light sends 600 rays into a cone. Move the square patch away and count how many reach it.
 
 ```edn [field-box id="el_distance_rays" role="properties"]
-{"id" "el_distance_rays" "index" 0 "name" "distance_rays" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "distance_rays" "_tombstone" false "frame" #afield/rect [480.0 210.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_distance_rays_code_.kt" "lines" 44 "characters" 1623 "sha256" "f7d8215574376e90e422d1b34e0901328a5527e40fda5d2aaa151b5655258279"}]}
+{"id" "el_distance_rays" "index" 0 "name" "distance_rays" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "distance_rays" "_tombstone" false "frame" #afield/rect [480.0 210.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_distance_rays_code_.kt" "lines" 45 "characters" 1643 "sha256" "fedaba5b566237318e4ecb1e5c59a0f75a94dc6676d2b2d87bf4d13e98c969f6"}]}
 ```
 
 ```kotlin [field-property box="el_distance_rays" name="code" path="el_distance_rays_code_.kt"]
@@ -45,10 +45,11 @@ fun draw(distance: Double) {
             color = if (hit) vec(0.4, 0.9, 1.0, 1.0) else vec(1.0, 1.0, 1.0, 0.12)
         }
     }
-    val patch = planeMesh(1, 1, 0.5, 0.5)
-        .rotated(Quat().rotateY((-PI / 2).toFloat()))
-        .translated(distance, 0.0, 0.0)
-        .withColor(1.0, 0.6, 0.2)
+    val patch =
+        planeMesh(1, 1, 0.5, 0.5)
+            .rotated(Quat().rotateY((-PI / 2).toFloat()))
+            .translated(distance, 0.0, 0.0)
+            .withColor(1.0, 0.6, 0.2)
     three(channel = "scene", width = 640, height = 380) {
         lines(rays)
         mesh(patch, unlit = true, wireframe = false, cullBackFaces = false)
@@ -72,18 +73,27 @@ controlGroup {
 <!-- field-box id="el_hemisphere" index="1" -->
 
 ```edn [field-box id="el_hemisphere" role="properties"]
-{"id" "el_hemisphere" "index" 1 "name" "hemisphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "hemisphere" "_tombstone" false "frame" #afield/rect [480.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_hemisphere_code_.kt" "lines" 43 "characters" 2554 "sha256" "f6c75b065cb2210d1f7b2ceefec8f3bf14e7d34e280dc4adf46d32913b15cce6"}]}
+{"id" "el_hemisphere" "index" 1 "name" "hemisphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "hemisphere" "_tombstone" false "frame" #afield/rect [480.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_hemisphere_code_.kt" "lines" 57 "characters" 2645 "sha256" "70516a3f0d62dcf5608b22ca3bf61c0c516bbec392f22e27c6c1bc617eff44c7"}]}
 ```
 
 ```kotlin [field-property box="el_hemisphere" name="code" path="el_hemisphere_code_.kt"]
 import afield.graphics.lighting.*
 
-// What one point on the floor sees: a hemisphere of directions. The lamp, pushed onto that
-// hemisphere (orange) and then flattened straight down onto the disc beneath (cyan). The share of
-// the disc the flattened lamp covers is the share of the lamp's radiance that reaches the point.
-val dome = icosphereMesh(4, 1.0).let { ball -> ball.filterTriangles { t -> ball.triangle(t).let { (a, b, c) -> a.y + b.y + c.y > 0 } } }
+/*
+What one point on the floor sees: a hemisphere of directions. The lamp, pushed onto that
+hemisphere (orange) and then flattened straight down onto the disc beneath (cyan). The share of
+the disc the flattened lamp covers is the share of the lamp's radiance that reaches the point.
+*/
+val dome =
+    icosphereMesh(4, 1.0).let { ball ->
+        ball.filterTriangles { t -> ball.triangle(t).let { (a, b, c) -> a.y + b.y + c.y > 0 } }
+    }
 val floor = floorMesh(2.6, 2.6, divisions = 48)
-val rim = fline { moveTo(1.0, 0.0, 0.0); for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96)); color = vec(1.0, 1.0, 1.0, 0.4) }
+val rim = fline {
+    moveTo(1.0, 0.0, 0.0)
+    for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96))
+    color = vec(1.0, 1.0, 1.0, 0.4)
+}
 val side = 1.0
 
 fun draw(across: Double) {
@@ -97,11 +107,16 @@ fun draw(across: Double) {
     // radiance times the flattened area it covers.
     val radiance = lamp.power / (PI * side * side)
     val e = irradianceAt(vec(0.0, 0.0, 0.0), vec(0.0, 1.0, 0.0), lamp).x
-    val sight = listOf(-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5).map { (x, z) ->
-        fline { moveTo(0.0, 0.0, 0.0); lineTo(across + x, 1.2, z); color = vec(1.0, 1.0, 1.0, 0.3) }
-    }
+    val sight =
+        listOf(-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5).map { (x, z) ->
+            fline {
+                moveTo(0.0, 0.0, 0.0)
+                lineTo(across + x, 1.2, z)
+                color = vec(1.0, 1.0, 1.0, 0.3)
+            }
+        }
     three(channel = "scene", width = 640, height = 420) {
-        mesh(floor.lit(listOf(lamp), occluders = null, exposure = 0.35), unlit = true, wireframe = false)
+        mesh(floor.lit([lamp], occluders = null, exposure = 0.35), unlit = true, wireframe = false)
         mesh(dome.withColor(0.4, 0.45, 0.5), opacity = 0.12, wireframe = false, cullBackFaces = false)
         lines(sight + rim)
         mesh(lamp.mesh(), unlit = true, wireframe = false, cullBackFaces = false)
@@ -185,7 +200,7 @@ controlGroup {
 <!-- field-box id="el_deck" index="3" -->
 
 ```edn [field-box id="el_deck" role="properties"]
-{"id" "el_deck" "index" 3 "name" "deck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "deck" "_tombstone" false "frame" #afield/rect [60.0 140.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_deck_code_.kt" "lines" 407 "characters" 19556 "sha256" "3046b66c98684b94799a8cd9ffa50421bf7b548028ada56fa125d696e30c36e2"}]}
+{"id" "el_deck" "index" 3 "name" "deck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "deck" "_tombstone" false "frame" #afield/rect [60.0 140.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_deck_code_.kt" "lines" 439 "characters" 20172 "sha256" "e4ddb62c75ac3ee22fbc56afb494b3b7c7ae2e5db7f48349fc943f2c90b7ef5d"}]}
 ```
 
 ```kotlin [field-property box="el_deck" name="code" path="el_deck_code_.kt"]
@@ -213,7 +228,9 @@ presentation(title = "Lights and Shadows") {
             }
             control("opening_scene", "position", 0.6)
             control("opening_scene", "size", 0.5)
-            markdownNote("A lamp, a floor and a block. Every colour on the floor is computed from the physics in this talk. [[next]]")
+            markdownNote(
+                "A lamp, a floor and a block. Every colour on the floor is computed from the physics in this talk. [[next]]",
+            )
         }
 
         section("Power") {
@@ -250,7 +267,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("perceived", "power", 10.0)
                 cue("Past white") { control("perceived", "power", 90.0, glideMs = 2000) }
-                markdownNote("Next pushes the power to 90 W: past 50 W the screen has nothing brighter to show. [[back]] [[next]]")
+                markdownNote(
+                    "Next pushes the power to 90 W: past 50 W the screen has nothing brighter to show. [[back]] [[next]]",
+                )
             }
             step("Surfaces pass light on", id = "matte") {
                 audience {
@@ -267,7 +286,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("opening_scene", "position", 0.6)
                 control("opening_scene", "size", 0.5)
-                markdownNote("The opening scene again: drag it round; the floor looks the same from every side. [[back]] [[next]]")
+                markdownNote(
+                    "The opening scene again: drag it round; the floor looks the same from every side. [[back]] [[next]]",
+                )
             }
         }
 
@@ -287,7 +308,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("light_angle", "angle", 0.0)
                 cue("Tilt to 60°") { control("light_angle", "angle", 60.0, glideMs = 1800) }
-                markdownNote("Next tilts the rays to 60°: six of twelve land, and cos 60° is one half. [[back]] [[next]]")
+                markdownNote(
+                    "Next tilts the rays to 60°: six of twelve land, and cos 60° is one half. [[back]] [[next]]",
+                )
             }
             step("Shape from the cosine", id = "lit-sphere") {
                 audience {
@@ -301,7 +324,9 @@ presentation(title = "Lights and Shadows") {
                             .md
                     }
                 }
-                markdownNote("Drag the light control round the ball; the dark side always faces away from it. [[back]] [[next]]")
+                markdownNote(
+                    "Drag the light control round the ball; the dark side always faces away from it. [[back]] [[next]]",
+                )
             }
             step("Farther away", id = "distance") {
                 audience {
@@ -318,7 +343,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("distance_rays", "distance", 1.0)
                 cue("Twice as far") { control("distance_rays", "distance", 2.0, glideMs = 1800) }
-                markdownNote("Next moves the patch from 1 m to 2 m: about a quarter as many rays reach it. [[back]] [[next]]")
+                markdownNote(
+                    "Next moves the patch from 1 m to 2 m: about a quarter as many rays reach it. [[back]] [[next]]",
+                )
             }
             step("A light with a size", id = "rect-light") {
                 audience {
@@ -335,7 +362,9 @@ presentation(title = "Lights and Shadows") {
                 control("opening_scene", "position", 0.6)
                 control("opening_scene", "size", 0.1)
                 cue("A wider lamp") { control("opening_scene", "size", 1.2, glideMs = 2000) }
-                markdownNote("Next widens the lamp from 10 cm to 1.2 m at the same power: the pool spreads and the shadow softens. [[back]] [[next]]")
+                markdownNote(
+                    "Next widens the lamp from 10 cm to 1.2 m at the same power: the pool spreads and the shadow softens. [[back]] [[next]]",
+                )
             }
         }
 
@@ -354,7 +383,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("car_angle", "distance", 10.0)
                 cue("Twice as far") { control("car_angle", "distance", 20.0, glideMs = 1800) }
-                markdownNote("Next drives the car from 10 m to 20 m: the angle it spans halves, near enough. [[back]] [[next]]")
+                markdownNote(
+                    "Next drives the car from 10 m to 20 m: the angle it spans halves, near enough. [[back]] [[next]]",
+                )
             }
             step("Angles as lengths", id = "radians") {
                 audience {
@@ -392,7 +423,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("projected_rect", "distance", 1.3)
                 cue("Twice as far") { control("projected_rect", "distance", 2.6, glideMs = 1800) }
-                markdownNote("Next moves the panel from 1.3 m to 2.6 m: a quarter of the solid angle, while solid angle × distance² stays near the panel's area. [[back]] [[next]]")
+                markdownNote(
+                    "Next moves the panel from 1.3 m to 2.6 m: a quarter of the solid angle, while solid angle × distance² stays near the panel's area. [[back]] [[next]]",
+                )
             }
         }
 
@@ -413,7 +446,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("hemisphere", "lamp position", 0.0)
                 cue("Lamp to one side") { control("hemisphere", "lamp position", 1.5, glideMs = 2000) }
-                markdownNote("Next slides the lamp off to the side: its patch on the dome moves down and flattens to a smaller share of the disc. The readout checks the share against the lighting library. [[back]] [[next]]")
+                markdownNote(
+                    "Next slides the lamp off to the side: its patch on the dome moves down and flattens to a smaller share of the disc. The readout checks the share against the lighting library. [[back]] [[next]]",
+                )
             }
         }
 
@@ -434,7 +469,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("constant_radiance", "distance", 1.0)
                 cue("Step back") { control("constant_radiance", "distance", 3.0, glideMs = 2000) }
-                markdownNote("Next steps back to 3 m: the cone takes in nine times the lamp, each piece nine times fainter. [[back]] [[next]]")
+                markdownNote(
+                    "Next steps back to 3 m: the cone takes in nine times the lamp, each piece nine times fainter. [[back]] [[next]]",
+                )
             }
             step("Equally bright from every side", id = "lambert") {
                 audience {
@@ -472,7 +509,9 @@ presentation(title = "Lights and Shadows") {
                 control("rough_mirror", "roughness", 0.0)
                 control("rough_mirror", "light angle", 40.0)
                 cue("Roughen it") { control("rough_mirror", "roughness", 1.0, glideMs = 2500) }
-                markdownNote("A mirror first; Next roughens the surface until the reflected rays leave in all directions. [[back]] [[next]]")
+                markdownNote(
+                    "A mirror first; Next roughens the surface until the reflected rays leave in all directions. [[back]] [[next]]",
+                )
             }
         }
 
@@ -495,7 +534,9 @@ presentation(title = "Lights and Shadows") {
                 control("soft_shadow", "point", 1.15)
                 cue("A bigger lamp") { control("soft_shadow", "size", 0.4, glideMs = 2000) }
                 cue("Into the shadow") { control("soft_shadow", "point", 0.3, glideMs = 2500) }
-                markdownNote("The orange point sits at the shadow's edge; its cyan lines reach the parts of the lamp it can see. Next grows the lamp from 5 cm to 40 cm at the same 40 W, then walks the point into the shadow. [[back]] [[next]]")
+                markdownNote(
+                    "The orange point sits at the shadow's edge; its cyan lines reach the parts of the lamp it can see. Next grows the lamp from 5 cm to 40 cm at the same 40 W, then walks the point into the shadow. [[back]] [[next]]",
+                )
             }
         }
 
@@ -530,7 +571,9 @@ presentation(title = "Lights and Shadows") {
                 control("additive", "green", true)
                 control("additive", "blue", false)
                 cue("Add blue") { control("additive", "blue", true) }
-                markdownNote("Red and green first; Next turns on the blue lamp. Look at the block's coloured shadows. [[back]] [[next]]")
+                markdownNote(
+                    "Red and green first; Next turns on the blue lamp. Look at the block's coloured shadows. [[back]] [[next]]",
+                )
             }
         }
 
@@ -552,7 +595,9 @@ presentation(title = "Lights and Shadows") {
                 control("red_wall", "bounced light only", false)
                 cue("Three bounces") { control("red_wall", "bounces", 3.0, glideMs = 1500) }
                 cue("Only the bounced light") { control("red_wall", "bounced light only", true) }
-                markdownNote("Direct light only first. Next adds three bounces and the floor by the wall turns pink; the next shows the bounced light alone. [[back]] [[next]]")
+                markdownNote(
+                    "Direct light only first. Next adds three bounces and the floor by the wall turns pink; the next shows the bounced light alone. [[back]] [[next]]",
+                )
             }
         }
 
@@ -573,7 +618,9 @@ presentation(title = "Lights and Shadows") {
                 control("sky_sphere", "lamps", 1.0)
                 control("sky_sphere", "tile height", 0.3)
                 cue("A sky of lamps") { control("sky_sphere", "lamps", 300.0, glideMs = 3000) }
-                markdownNote("One lamp overhead; Next spreads the same 400 W over 300 lamps. Then try the tile height. [[back]] [[next]]")
+                markdownNote(
+                    "One lamp overhead; Next spreads the same 400 W over 300 lamps. Then try the tile height. [[back]] [[next]]",
+                )
             }
         }
 
@@ -610,7 +657,7 @@ A small matte patch giving off light, seen from the side. It sends less light of
 as the cosine of the angle, and it also looks narrower from there by the same cosine.
 
 ```edn [field-box id="el_lambert_lobe" role="properties"]
-{"id" "el_lambert_lobe" "index" 4 "name" "lambert_lobe" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "lambert_lobe" "_tombstone" false "frame" #afield/rect [840.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_lambert_lobe_code_.kt" "lines" 56 "characters" 2078 "sha256" "4713392f84a131a582abde1625659f35a61a47eef7af28959395f2df0dbd192d"}]}
+{"id" "el_lambert_lobe" "index" 4 "name" "lambert_lobe" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "lambert_lobe" "_tombstone" false "frame" #afield/rect [840.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_lambert_lobe_code_.kt" "lines" 59 "characters" 2101 "sha256" "f2958f7d91be59c5485c25014f98dcd44598d49171b7de660d35a6afedad5808"}]}
 ```
 
 ```kotlin [field-property box="el_lambert_lobe" name="code" path="el_lambert_lobe_code_.kt"]
@@ -663,7 +710,10 @@ fun draw(degrees: Double) {
     }
     lines(drawn, channel = "side", w = 640.0, h = 280.0, framing = LinesFraming.fixed(0.0, 0.0, 640.0, 280.0))
     val c = cos(v)
-    markdown("readout", "${degrees.roundToInt()}°: ${(c * 100).roundToInt()} % of the power, ${(c * 100).roundToInt()} % of the width")
+    markdown(
+        "readout",
+        "${degrees.roundToInt()}°: ${(c * 100).roundToInt()} % of the power, ${(c * 100).roundToInt()} % of the width",
+    )
 }
 
 draw(0.0)
@@ -729,7 +779,7 @@ controlGroup {
 <!-- field-box id="el_lit_sphere" index="6" -->
 
 ```edn [field-box id="el_lit_sphere" role="properties"]
-{"id" "el_lit_sphere" "index" 6 "name" "lit_sphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "lit_sphere" "_tombstone" false "frame" #afield/rect [300.0 210.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_lit_sphere_code_.kt" "lines" 23 "characters" 958 "sha256" "779d8e5d0979777901764ed555bf74074724211bd027542c96747e027e0fdb43"}]}
+{"id" "el_lit_sphere" "index" 6 "name" "lit_sphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "lit_sphere" "_tombstone" false "frame" #afield/rect [300.0 210.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_lit_sphere_code_.kt" "lines" 23 "characters" 952 "sha256" "7ccc6c3dc8c85b6af32f6a10a12c0a0e76dc707e77a6e745611d01260ebe355c"}]}
 ```
 
 ```kotlin [field-property box="el_lit_sphere" name="code" path="el_lit_sphere_code_.kt"]
@@ -745,7 +795,7 @@ fun draw(toward: Vec2) {
     // Φ = 4π·100² W makes the irradiance one watt per square metre where the light hits head on.
     val sun = PointLight(vec(toward.x * far, toward.y * far, z * far), power = 4 * PI * far * far)
     three(channel = "scene", width = 640, height = 420) {
-        mesh(ball.lit(listOf(sun), occluders = null, exposure = 2.0), unlit = true, wireframe = false)
+        mesh(ball.lit([sun], occluders = null, exposure = 2.0), unlit = true, wireframe = false)
         camera(yaw = 0.0, pitch = 0.0, distance = 2.4)
         background("#000000")
         hud(false)
@@ -763,15 +813,17 @@ controlGroup {
 <!-- field-box id="el_sky_sphere" index="7" -->
 
 ```edn [field-box id="el_sky_sphere" role="properties"]
-{"id" "el_sky_sphere" "index" 7 "name" "sky_sphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "sky_sphere" "_tombstone" false "frame" #afield/rect [1020.0 350.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_sky_sphere_code_.kt" "lines" 38 "characters" 1807 "sha256" "f3740bb2702d6e78266fc3e68d612b4e3ff53ae55ce57f4a95839b3b21b5b7de"}]}
+{"id" "el_sky_sphere" "index" 7 "name" "sky_sphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "sky_sphere" "_tombstone" false "frame" #afield/rect [1020.0 350.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_sky_sphere_code_.kt" "lines" 46 "characters" 1842 "sha256" "e9681a487e474afc278413f4cff5cea1a75cb908493f65a9997fba29d5f3a2d4"}]}
 ```
 
 ```kotlin [field-property box="el_sky_sphere" name="code" path="el_sky_sphere_code_.kt"]
 import afield.graphics.lighting.*
 
-// A floor under a dome of small lamps, all of them together giving out 400 W, and a black tile
-// held above the floor. With one lamp the tile casts a hard shadow; with hundreds the light comes
-// from the whole sky and only the ground right under the tile stays dark.
+/*
+A floor under a dome of small lamps, all of them together giving out 400 W, and a black tile
+held above the floor. With one lamp the tile casts a hard shadow; with hundreds the light comes
+from the whole sky and only the ground right under the tile stays dark.
+*/
 val floor = floorMesh(3.0, 3.0, divisions = 60).withColor(0.8, 0.8, 0.8)
 val golden = PI * (3 - sqrt(5.0))
 val dot = icosphereMesh(1, 0.03).withColor(1.0, 1.0, 1.0)
@@ -802,8 +854,14 @@ fun draw() {
 
 draw()
 controlGroup {
-    slider("lamps", 1.0, 300.0, step = 1.0, initialValue = count, law = ControlLaw.LOGARITHMIC) { count = it; draw() }
-    slider("tile height", 0.05, 0.8, step = 0.01, initialValue = height) { height = it; draw() }
+    slider("lamps", 1.0, 300.0, step = 1.0, initialValue = count, law = ControlLaw.LOGARITHMIC) {
+        count = it
+        draw()
+    }
+    slider("tile height", 0.05, 0.8, step = 0.01, initialValue = height) {
+        height = it
+        draw()
+    }
 }
 ```
 
@@ -819,7 +877,7 @@ A square panel 0.8 m across and its shadow on a sphere of radius one around the 
 that shadow is the panel's solid angle; move the panel away and it shrinks as the square.
 
 ```edn [field-box id="el_projected_rect" role="properties"]
-{"id" "el_projected_rect" "index" 8 "name" "projected_rect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "projected_rect" "_tombstone" false "frame" #afield/rect [300.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_projected_rect_code_.kt" "lines" 37 "characters" 2106 "sha256" "900cb1e5599047bd6cc180cd60a13fe9a324866f1a075c6d48fd894fd1232f1f"}]}
+{"id" "el_projected_rect" "index" 8 "name" "projected_rect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "projected_rect" "_tombstone" false "frame" #afield/rect [300.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_projected_rect_code_.kt" "lines" 50 "characters" 2232 "sha256" "e592b335557131bd9f0346715ceaf050aabc92ce9830413d70be4f702ff8bfd3"}]}
 ```
 
 ```kotlin [field-property box="el_projected_rect" name="code" path="el_projected_rect_code_.kt"]
@@ -828,8 +886,16 @@ that shadow is the panel's solid angle; move the panel away and it shrinks as th
 val sphere = icosphereMesh(4, 1.0)
 // Two great circles, so the sphere reads as a sphere without a wireframe in the way.
 val circles = listOf(
-    fline { moveTo(1.0, 0.0, 0.0); for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96)); color = vec(1.0, 1.0, 1.0, 0.35) },
-    fline { moveTo(1.0, 0.0, 0.0); for (k in 1..96) lineTo(cos(2 * PI * k / 96), sin(2 * PI * k / 96), 0.0); color = vec(1.0, 1.0, 1.0, 0.35) },
+    fline {
+        moveTo(1.0, 0.0, 0.0)
+        for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96))
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    },
+    fline {
+        moveTo(1.0, 0.0, 0.0)
+        for (k in 1..96) lineTo(cos(2 * PI * k / 96), sin(2 * PI * k / 96), 0.0)
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    },
 )
 
 fun draw(distance: Double) {
@@ -839,9 +905,14 @@ fun draw(distance: Double) {
     var omega = 0.0
     for (t in 0 until shadow.triangleCount) omega += shadow.triangleArea(t)
     // From the eye through each corner of the patch to the panel's corner.
-    val corners = listOf(-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4).map { (x, y) ->
-        fline { moveTo(0.0, 0.0, 0.0); lineTo(x, y, -distance); color = vec(1.0, 1.0, 1.0, 0.35) }
-    }
+    val corners =
+        listOf(-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4).map { (x, y) ->
+            fline {
+                moveTo(0.0, 0.0, 0.0)
+                lineTo(x, y, -distance)
+                color = vec(1.0, 1.0, 1.0, 0.35)
+            }
+        }
     three(channel = "scene", width = 640, height = 420) {
         mesh(sphere.withColor(0.4, 0.45, 0.5), opacity = 0.1, wireframe = false)
         lines(circles + corners)
@@ -867,15 +938,17 @@ controlGroup {
 <!-- field-box id="el_soft_shadow" index="9" -->
 
 ```edn [field-box id="el_soft_shadow" role="properties"]
-{"id" "el_soft_shadow" "index" 9 "name" "soft_shadow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "soft_shadow" "_tombstone" false "frame" #afield/rect [300.0 350.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_soft_shadow_code_.kt" "lines" 54 "characters" 2599 "sha256" "b1a88b4fcc69cab145868af97f4fcdd1e3dea6a6cb3196e9438374fffdfcf564"}]}
+{"id" "el_soft_shadow" "index" 9 "name" "soft_shadow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "soft_shadow" "_tombstone" false "frame" #afield/rect [300.0 350.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_soft_shadow_code_.kt" "lines" 68 "characters" 2670 "sha256" "145be80ef4195e86ba19992adcd0a28dbc1be0ed6b75f15723ba1ea1e78b99aa"}]}
 ```
 
 ```kotlin [field-property box="el_soft_shadow" name="code" path="el_soft_shadow_code_.kt"]
 import afield.graphics.lighting.*
 
-// A black wall on a white floor, lit by a ball of light. The ball always gives out 40 W;
-// make it bigger and the edge of the shadow softens.
-// The wall's faces sit on the floor's grid lines, so no floor vertex is half under it.
+/*
+A black wall on a white floor, lit by a ball of light. The ball always gives out 40 W;
+make it bigger and the edge of the shadow softens.
+The wall's faces sit on the floor's grid lines, so no floor vertex is half under it.
+*/
 val floor = floorMesh(4.0, 3.2, divisions = 80).withColor(0.8, 0.8, 0.8)
 val wall = panelBoxMesh(0.05, 0.6, 1.2, divisions = 4).translated(0.025, 0.3, 0.0).withColor(0.03, 0.03, 0.03)
 val blocker = wall.bvh()
@@ -902,7 +975,7 @@ fun draw() {
     }
     if (litFor != "$size $altitude") {
         // Only the wall casts shadows; the floor need not be tested against its own triangles.
-        litScene = scene.lit(listOf(lamp), occluders = wall, exposure = 0.6)
+        litScene = scene.lit([lamp], occluders = wall, exposure = 0.6)
         litFor = "$size $altitude"
     }
     three(channel = "scene", width = 640, height = 420) {
@@ -916,14 +989,26 @@ fun draw() {
         background("#000000")
         hud(false)
     }
-    markdown("readout", "The orange point sees ${(100.0 * sight.count { it.clear } / sight.size.coerceAtLeast(1)).roundToInt()} % of the lamp")
+    markdown(
+        "readout",
+        "The orange point sees ${(100.0 * sight.count { it.clear } / sight.size.coerceAtLeast(1)).roundToInt()} % of the lamp",
+    )
 }
 
 draw()
 controlGroup {
-    slider("size", 0.02, 0.5, step = 0.01, initialValue = size) { size = it; draw() }
-    slider("altitude", 15.0, 85.0, step = 1.0, initialValue = altitude) { altitude = it; draw() }
-    slider("point", -1.5, 1.8, step = 0.01, initialValue = probe) { probe = it; draw() }
+    slider("size", 0.02, 0.5, step = 0.01, initialValue = size) {
+        size = it
+        draw()
+    }
+    slider("altitude", 15.0, 85.0, step = 1.0, initialValue = altitude) {
+        altitude = it
+        draw()
+    }
+    slider("point", -1.5, 1.8, step = 0.01, initialValue = probe) {
+        probe = it
+        draw()
+    }
 }
 ```
 
@@ -1147,7 +1232,7 @@ Parallel rays striking a surface, seen from the side. Each ray meets a tiny face
 surface and leaves as from a mirror; roughness tilts the facets, so the rays fan out.
 
 ```edn [field-box id="el_rough_mirror" role="properties"]
-{"id" "el_rough_mirror" "index" 13 "name" "rough_mirror" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "rough_mirror" "_tombstone" false "frame" #afield/rect [1020.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_rough_mirror_code_.kt" "lines" 53 "characters" 1953 "sha256" "54b6a027d0f8a09d921c5118920b7149fbcb1177f7f8c15f461a1ec6b0ce94a8"}]}
+{"id" "el_rough_mirror" "index" 13 "name" "rough_mirror" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "rough_mirror" "_tombstone" false "frame" #afield/rect [1020.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_rough_mirror_code_.kt" "lines" 59 "characters" 1991 "sha256" "1af0ab11e029cd435e80ffe466c33837af5a380d6dec4604010bcbae9d520438"}]}
 ```
 
 ```kotlin [field-property box="el_rough_mirror" name="code" path="el_rough_mirror_code_.kt"]
@@ -1201,8 +1286,14 @@ fun draw() {
 
 draw()
 controlGroup {
-    slider("roughness", 0.0, 1.0, step = 0.01, initialValue = roughness) { roughness = it; draw() }
-    slider("light angle", 0.0, 70.0, step = 1.0, initialValue = angle) { angle = it; draw() }
+    slider("roughness", 0.0, 1.0, step = 0.01, initialValue = roughness) {
+        roughness = it
+        draw()
+    }
+    slider("light angle", 0.0, 70.0, step = 1.0, initialValue = angle) {
+        angle = it
+        draw()
+    }
 }
 ```
 
@@ -1211,7 +1302,7 @@ controlGroup {
 <!-- field-box id="el_additive" index="14" -->
 
 ```edn [field-box id="el_additive" role="properties"]
-{"id" "el_additive" "index" 14 "name" "additive" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "additive" "_tombstone" false "frame" #afield/rect [660.0 350.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_additive_code_.kt" "lines" 37 "characters" 1538 "sha256" "a182b00f3f408e5235bf4574c7425af395756415bdd33400729e032ffe965be3"}]}
+{"id" "el_additive" "index" 14 "name" "additive" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "additive" "_tombstone" false "frame" #afield/rect [660.0 350.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_additive_code_.kt" "lines" 56 "characters" 1730 "sha256" "48d07b748eb450f9013f7b39b851c9ec3851fd7466339002fc26c077240b87e7"}]}
 ```
 
 ```kotlin [field-property box="el_additive" name="code" path="el_additive_code_.kt"]
@@ -1232,10 +1323,17 @@ fun draw() {
         Triple(red, 90.0, vec(1.0, 0.0, 0.0)),
         Triple(green, 210.0, vec(0.0, 1.0, 0.0)),
         Triple(blue, 330.0, vec(0.0, 0.0, 1.0)),
-    ).filter { it.first }.map { (_, degrees, colour) ->
-        val a = degrees * PI / 180
-        SphereLight(vec(spread * cos(a), 1.2, spread * sin(a)), radius = 0.04, power = 25.0, color = colour, samples = 128)
-    }
+    ).filter { it.first }
+        .map { (_, degrees, colour) ->
+            val a = degrees * PI / 180
+            SphereLight(
+                vec(spread * cos(a), 1.2, spread * sin(a)),
+                radius = 0.04,
+                power = 25.0,
+                color = colour,
+                samples = 128,
+            )
+        }
     three(channel = "scene", width = 640, height = 420) {
         mesh(scene.lit(lamps, occluders = block, exposure = 1.2), unlit = true, wireframe = false)
         lamps.forEach { mesh(it.mesh(), unlit = true, wireframe = false) }
@@ -1247,10 +1345,22 @@ fun draw() {
 
 draw()
 controlGroup {
-    checkbox("red", initialValue = true) { red = it; draw() }
-    checkbox("green", initialValue = true) { green = it; draw() }
-    checkbox("blue", initialValue = true) { blue = it; draw() }
-    slider("spread", 0.0, 1.2, step = 0.01, initialValue = spread) { spread = it; draw() }
+    checkbox("red", initialValue = true) {
+        red = it
+        draw()
+    }
+    checkbox("green", initialValue = true) {
+        green = it
+        draw()
+    }
+    checkbox("blue", initialValue = true) {
+        blue = it
+        draw()
+    }
+    slider("spread", 0.0, 1.2, step = 0.01, initialValue = spread) {
+        spread = it
+        draw()
+    }
 }
 ```
 
@@ -1266,7 +1376,7 @@ An angle measured by the arc it cuts from a circle. Unrolled on the right, the a
 radii long: that count is the angle in radians.
 
 ```edn [field-box id="el_radians" role="properties"]
-{"id" "el_radians" "index" 15 "name" "radians" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "radians" "_tombstone" false "frame" #afield/rect [1020.0 210.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_radians_code_.kt" "lines" 54 "characters" 1859 "sha256" "b7c33132b897d9db77ee555c1f4a56b7d6cb5a0b793003698e35888da36c5b97"}]}
+{"id" "el_radians" "index" 15 "name" "radians" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "radians" "_tombstone" false "frame" #afield/rect [1020.0 210.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_radians_code_.kt" "lines" 60 "characters" 1897 "sha256" "58afcecbca48b8a2bd98235222de1e19604a1c177429ee45fbae14d87c0f25b9"}]}
 ```
 
 ```kotlin [field-property box="el_radians" name="code" path="el_radians_code_.kt"]
@@ -1321,8 +1431,14 @@ fun draw() {
 
 draw()
 controlGroup {
-    slider("angle", 0.0, 360.0, step = 1.0, initialValue = degrees) { degrees = it; draw() }
-    slider("radius", 40.0, 120.0, step = 1.0, initialValue = radius) { radius = it; draw() }
+    slider("angle", 0.0, 360.0, step = 1.0, initialValue = degrees) {
+        degrees = it
+        draw()
+    }
+    slider("radius", 40.0, 120.0, step = 1.0, initialValue = radius) {
+        radius = it
+        draw()
+    }
 }
 ```
 
@@ -1331,7 +1447,7 @@ controlGroup {
 <!-- field-box id="el_light_colour" index="16" -->
 
 ```edn [field-box id="el_light_colour" role="properties"]
-{"id" "el_light_colour" "index" 16 "name" "light_colour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "light_colour" "_tombstone" false "frame" #afield/rect [480.0 350.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_light_colour_code_.kt" "lines" 27 "characters" 1137 "sha256" "e43799ad42c7c7b0ce96b2586c0f08b7836ba312bd4f9d67ff8c7c71b3e25443"}]}
+{"id" "el_light_colour" "index" 16 "name" "light_colour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "light_colour" "_tombstone" false "frame" #afield/rect [480.0 350.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_light_colour_code_.kt" "lines" 40 "characters" 1244 "sha256" "8a7a4f2391292f04930ce3be572bb2b662d3baee0a2c61695c4ab2198e8396d5"}]}
 ```
 
 ```kotlin [field-property box="el_light_colour" name="code" path="el_light_colour_code_.kt"]
@@ -1340,18 +1456,31 @@ import afield.graphics.lighting.*
 // Nine tiles of different colours under one lamp whose colour you pick. A tile can only send
 // back the colours the lamp gives it.
 val colours = listOf(
-    vec(0.8, 0.8, 0.8), vec(0.8, 0.1, 0.1), vec(0.1, 0.7, 0.1),
-    vec(0.1, 0.2, 0.8), vec(0.8, 0.7, 0.1), vec(0.1, 0.7, 0.7),
-    vec(0.7, 0.1, 0.7), vec(0.8, 0.4, 0.1), vec(0.3, 0.3, 0.3),
+    vec(0.8, 0.8, 0.8),
+    vec(0.8, 0.1, 0.1),
+    vec(0.1, 0.7, 0.1),
+    vec(0.1, 0.2, 0.8),
+    vec(0.8, 0.7, 0.1),
+    vec(0.1, 0.7, 0.7),
+    vec(0.7, 0.1, 0.7),
+    vec(0.8, 0.4, 0.1),
+    vec(0.3, 0.3, 0.3),
 )
-val tiles = colours.withIndex().map { (i, c) ->
-    floorMesh(0.5, 0.5, divisions = 8).translated((i % 3 - 1) * 0.6, 0.0, (i / 3 - 1) * 0.6).withColor(c.x, c.y, c.z)
-}.reduce { a, b -> a + b }
+val tiles =
+    colours
+        .withIndex()
+        .map { (i, c) ->
+            floorMesh(0.5, 0.5, divisions = 8)
+                .translated((i % 3 - 1) * 0.6, 0.0, (i / 3 - 1) * 0.6)
+                .withColor(c.x, c.y, c.z)
+        }
+        .reduce { a, b -> a + b }
 
 fun draw(light: Vec4) {
-    val lamp = RectLight(vec(0.0, 1.6, 0.0), width = 1.2, height = 1.2, power = 60.0, color = vec(light.x, light.y, light.z))
+    val lamp =
+        RectLight(vec(0.0, 1.6, 0.0), width = 1.2, height = 1.2, power = 60.0, color = vec(light.x, light.y, light.z))
     three(channel = "scene", width = 640, height = 420) {
-        mesh(tiles.lit(listOf(lamp), occluders = null, exposure = 0.6), unlit = true, wireframe = false)
+        mesh(tiles.lit([lamp], occluders = null, exposure = 0.6), unlit = true, wireframe = false)
         camera(yaw = 0.0, pitch = 60.0, distance = 2.0)
         background("#000000")
         hud(false)
@@ -1369,7 +1498,7 @@ controlGroup {
 <!-- field-box id="el_opening_scene" index="17" -->
 
 ```edn [field-box id="el_opening_scene" role="properties"]
-{"id" "el_opening_scene" "index" 17 "name" "opening_scene" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "opening_scene" "_tombstone" false "frame" #afield/rect [300.0 140.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_opening_scene_code_.kt" "lines" 28 "characters" 1135 "sha256" "55ff4c4e8a97a2a63256f9ef9ffd9487f7ce312c47902af4ab17cbe7417e6a37"}]}
+{"id" "el_opening_scene" "index" 17 "name" "opening_scene" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "opening_scene" "_tombstone" false "frame" #afield/rect [300.0 140.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_opening_scene_code_.kt" "lines" 34 "characters" 1167 "sha256" "979b26735c144943e37d2246371d0a694fbe5ab4028df19e03601415cdfba1dd"}]}
 ```
 
 ```kotlin [field-property box="el_opening_scene" name="code" path="el_opening_scene_code_.kt"]
@@ -1386,7 +1515,7 @@ fun draw() {
     val lamp = RectLight(vec(across, 1.3, 0.0), width = size, height = size, power = 30.0)
     three(channel = "scene", width = 640, height = 420) {
         // Only the block casts shadows.
-        mesh(scene.lit(listOf(lamp), occluders = block, exposure = 0.5), unlit = true, wireframe = false)
+        mesh(scene.lit([lamp], occluders = block, exposure = 0.5), unlit = true, wireframe = false)
         // Frame the view on the whole set, so it holds still as the lamp changes.
         fitTo(vec(-2.0, 0.0, -2.0), vec(2.0, 1.6, 2.0))
         mesh(lamp.mesh(), unlit = true, wireframe = false, cullBackFaces = false)
@@ -1398,8 +1527,14 @@ fun draw() {
 
 draw()
 controlGroup {
-    slider("position", -1.2, 1.2, initialValue = across) { across = it; draw() }
-    slider("size", 0.05, 1.5, initialValue = size) { size = it; draw() }
+    slider("position", -1.2, 1.2, initialValue = across) {
+        across = it
+        draw()
+    }
+    slider("size", 0.05, 1.5, initialValue = size) {
+        size = it
+        draw()
+    }
 }
 ```
 
@@ -1408,27 +1543,34 @@ controlGroup {
 <!-- field-box id="el_red_wall" index="18" -->
 
 ```edn [field-box id="el_red_wall" role="properties"]
-{"id" "el_red_wall" "index" 18 "name" "red_wall" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "red_wall" "_tombstone" false "frame" #afield/rect [840.0 350.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_red_wall_code_.kt" "lines" 32 "characters" 1408 "sha256" "b57b832d472843a735452e397e95ee4f4945a87a2fbca0f601566f1fd0bd2e12"}]}
+{"id" "el_red_wall" "index" 18 "name" "red_wall" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "red_wall" "_tombstone" false "frame" #afield/rect [840.0 350.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_red_wall_code_.kt" "lines" 48 "characters" 1495 "sha256" "d867675feb9471c5191b7abc5470e4a5f9d64455413ae1464a59cba92dbcb27e"}]}
 ```
 
 ```kotlin [field-property box="el_red_wall" name="code" path="el_red_wall_code_.kt"]
 import afield.graphics.lighting.*
 
-// A white floor beside a red wall, lit by one small lamp close to the wall, so the wall is lit
-// far more brightly than the floor. The solve follows the light through three bounces once,
-// when the box runs; the sliders only choose what to show.
+/*
+A white floor beside a red wall, lit by one small lamp close to the wall, so the wall is lit
+far more brightly than the floor. The solve follows the light through three bounces once,
+when the box runs; the sliders only choose what to show.
+*/
 val floor = floorMesh(2.4, 2.4, divisions = 24).withColor(0.8, 0.8, 0.8)
 val wall = panelBoxMesh(2.4, 1.4, 0.05, divisions = 16).translated(0.0, 0.7, -1.225).withColor(0.9, 0.06, 0.03)
 val lamp = SphereLight(vec(0.0, 0.9, -0.8), radius = 0.06, power = 1.0)
-val solve = Radiosity(floor + wall, listOf(lamp), bounces = 3)
+val solve = Radiosity(floor + wall, [lamp], bounces = 3)
 
 var power = 20.0
 var bounces = 0.0
 var bounceOnly = false
 
 fun draw() {
-    val shown = solve.lit(upTo = bounces.toInt(), from = if (bounceOnly) 1 else 0,
-        exposure = if (bounceOnly) 2.0 else 0.6, scale = power, toneMap = ToneMap.EXPONENTIAL)
+    val shown = solve.lit(
+        upTo = bounces.toInt(),
+        from = if (bounceOnly) 1 else 0,
+        exposure = if (bounceOnly) 2.0 else 0.6,
+        scale = power,
+        toneMap = ToneMap.EXPONENTIAL,
+    )
     three(channel = "scene", width = 640, height = 420) {
         mesh(shown, unlit = true, wireframe = false)
         mesh(lamp.mesh(), unlit = true, wireframe = false)
@@ -1440,9 +1582,18 @@ fun draw() {
 
 draw()
 controlGroup {
-    slider("power", 5.0, 60.0, step = 1.0, initialValue = power) { power = it; draw() }
-    slider("bounces", 0.0, 3.0, step = 1.0, initialValue = bounces) { bounces = it; draw() }
-    checkbox("bounced light only") { bounceOnly = it; draw() }
+    slider("power", 5.0, 60.0, step = 1.0, initialValue = power) {
+        power = it
+        draw()
+    }
+    slider("bounces", 0.0, 3.0, step = 1.0, initialValue = bounces) {
+        bounces = it
+        draw()
+    }
+    checkbox("bounced light only") {
+        bounceOnly = it
+        draw()
+    }
 }
 ```
 

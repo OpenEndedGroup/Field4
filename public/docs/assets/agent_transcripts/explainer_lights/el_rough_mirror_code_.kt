@@ -48,6 +48,12 @@ fun draw() {
 
 draw()
 controlGroup {
-    slider("roughness", 0.0, 1.0, step = 0.01, initialValue = roughness) { roughness = it; draw() }
-    slider("light angle", 0.0, 70.0, step = 1.0, initialValue = angle) { angle = it; draw() }
+    slider("roughness", 0.0, 1.0, step = 0.01, initialValue = roughness) {
+        roughness = it
+        draw()
+    }
+    slider("light angle", 0.0, 70.0, step = 1.0, initialValue = angle) {
+        angle = it
+        draw()
+    }
 }

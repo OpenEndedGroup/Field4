@@ -45,9 +45,7 @@ val program =
             }
         }
         onFrame { frame -> uniform("spin", frame.time * 0.5) }
-    }
-    """
-        .trimIndent()
+    }""".trimIndent()
 
 // This really compiles the Kotlin above to JavaScript and really runs it; the mesh drawn
 // below is the packed array Metal would have received. It takes a second or two.

@@ -92,9 +92,7 @@ go {
           timing them once each in order flatters whichever runs second</div>
         <div style="margin-top:8px;color:#8a8a8a">TALA is never chosen by
           <code>PetriLayout.AUTO</code>, so nothing already drawn changes.</div>
-      </div>
-    """
-            .trimIndent(),
+      </div>""".trimIndent(),
     )
 }
 

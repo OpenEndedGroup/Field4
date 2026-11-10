@@ -5,7 +5,7 @@ import afield.simulation.optics.*
 val cyan = vec(0.4, 0.9, 1.0, 1.0)
 var spread = 2.0
 var angle = 50.0
-val waves = listOf(410.0, 450.0, 490.0, 530.0, 570.0, 610.0, 650.0, 690.0)
+val waves = [410.0, 450.0, 490.0, 530.0, 570.0, 610.0, 650.0, 690.0]
 
 fun index(nm: Double) = Refraction.cauchyIndex(nm, b = 4200.0 * spread)
 fun colour(nm: Double) = Refraction.wavelengthColor(nm).let { vec(it[0], it[1], it[2], 0.9) }
@@ -50,7 +50,7 @@ fun prism() {
     for (nm in waves) {
         val n = index(nm)
         val inside = Refraction.refract(dx, dy, 0.866, 0.5, 1.0, n) ?: continue
-        val faces = listOf(a to c, b to c)
+        val faces = [a to c, b to c]
         val (t, face) =
             faces
                 .mapNotNull { (p, q) -> hit(px, py, inside[0], inside[1], p, q)?.let { it to (p to q) } }
@@ -96,9 +96,9 @@ fun lens() {
         },
     )
     val green = index(550.0)
-    for (nm in listOf(650.0, 550.0, 450.0)) {
+    for (nm in [650.0, 550.0, 450.0]) {
         val focal = 300.0 * (green - 1) / (index(nm) - 1)
-        for (h in listOf(-90.0, -60.0, 60.0, 90.0)) parts += fline {
+        for (h in [-90.0, -60.0, 60.0, 90.0]) parts += fline {
             moveTo(0.0, 120 + h)
             lineTo(160.0, 120 + h)
             frameExit(160.0, 120 + h, 1.0, -h / focal, 640.0, 240.0).let { lineTo(it[0], it[1]) }

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="vr_ide_renderer" index="0" -->
 
 ```edn [field-box id="vr_ide_renderer" role="properties"]
-{"id" "vr_ide_renderer" "index" 0 "name" "1 - VR IDE renderer" "parents" ["root"] "children" ["vr_ide_panel"] "properties" {"children" #{#afield/box "vr_ide_panel"} "parents" #{#afield/box "root"} "name" "1 - VR IDE renderer" "_tombstone" false "frame" #afield/rect [60.0 60.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vr_ide_renderer_code_.kt" "lines" 43 "characters" 2124 "sha256" "eb3a49f3f5e485500925e44ffab68367c321941c92f46d1a2b0ca201056c2fff"}]}
+{"id" "vr_ide_renderer" "index" 0 "name" "1 - VR IDE renderer" "parents" ["root"] "children" ["vr_ide_panel"] "properties" {"children" #{#afield/box "vr_ide_panel"} "parents" #{#afield/box "root"} "name" "1 - VR IDE renderer" "_tombstone" false "frame" #afield/rect [60.0 60.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vr_ide_renderer_code_.kt" "lines" 41 "characters" 2110 "sha256" "9f04b1aca21f4c45968de0c493eeac4206698b903b091eb8a2ac70c526a75c4d"}]}
 ```
 
 ```kotlin [field-property box="vr_ide_renderer" name="code" path="vr_ide_renderer_code_.kt"]
@@ -53,9 +53,7 @@ display(
     Quest keyboard and mouse use WiVRn HID forwarding after setup; see the saved guide.<br>
     Another browser can edit this same document with its own input focus.<br>
     Stop box 2 to close the browser. Restart Field to switch VR mode or eye size.
-    </div>
-    """
-        .trimIndent(),
+    </div>""".trimIndent(),
 )
 displayOpen("guide")
 ```
@@ -131,7 +129,7 @@ From `code`
 Select this box, open its editor, change the colour or message, then Run box (Alt+Up).
 
 ```edn [field-box id="vr_ide_playground" role="properties"]
-{"id" "vr_ide_playground" "index" 2 "name" "Playground - edit and run from VR" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Playground - edit and run from VR" "_tombstone" false "frame" #afield/rect [580.0 300.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vr_ide_playground_code_.kt" "lines" 13 "characters" 382 "sha256" "c45441dd78ad57a39384759b8d42d803b88253dd664e8b302fff0a21c7ed9ed2"}]}
+{"id" "vr_ide_playground" "index" 2 "name" "Playground - edit and run from VR" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Playground - edit and run from VR" "_tombstone" false "frame" #afield/rect [580.0 300.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vr_ide_playground_code_.kt" "lines" 11 "characters" 372 "sha256" "1a5e3f985c408fca3fc71eb2ff471abe61484fecacb914478c44a6ab1f5a1acd"}]}
 ```
 
 ```kotlin [field-property box="vr_ide_playground" name="code" path="vr_ide_playground_code_.kt"]
@@ -142,9 +140,7 @@ display(
     """
     <div style="width:320px;padding:24px;background:$colour;color:white;font:24px system-ui">
     Hello from inside Field VR!
-    </div>
-"""
-        .trimIndent(),
+    </div>""".trimIndent(),
 )
 displayOpen("hello")
 println("Code executed in the same Field document")

@@ -106,7 +106,7 @@ the easel, the tube paints, the kept tools and the hung paintings.
 Needs the paint library: ./gradlew buildPaintNative.
 
 ```edn [field-box id="ai4_paint_studio" role="properties"]
-{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 946 "characters" 52159 "sha256" "2439b3021746ea6825c37a873c505f729f4e4b4745acac3136850bf7e236e882"}]}
+{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 944 "characters" 52133 "sha256" "29a3f2350aaeec0a1d59340548f18611ea3e6445d4bf09d381a5a6a5c62bf7cb"}]}
 ```
 
 ```kotlin [field-property box="ai4_paint_studio" name="code" path="ai4_paint_studio_code_.kt"]
@@ -1000,9 +1000,7 @@ else
         |profile, tilt and roll of the hand, for marks that depend on the hand (flicks, rolled ribbons, a broken drybrush scrub, a
         |pressed-and-lifted line). It takes oil or watercolour; paint_look map="contact" shows where its hairs touched.
         |Colours: "#rrggbb", or real tube paints mixed by parts, "lead white:4, cadmium yellow:1" (they mix like paint, so blue and
-        |yellow make green). Tubes: ${Tubes.names.joinToString()}.
-        """
-                .trimMargin()
+        |yellow make green). Tubes: ${Tubes.names.joinToString()}.""".trimMargin()
         }
 
         command("canvas", "show the canvas here") { "![the canvas](${pngUrl(canvas().png())})\n\n${state()}" }

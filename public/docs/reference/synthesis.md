@@ -4,7 +4,7 @@
 
 Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. One value type carries the whole thing: `Signal` is a block-rendered mono source, `SignalProcessor` is a `Signal` that reads another one, and `/` chains the two, so `saw / OnePole(800.p)` is a filtered sawtooth and nothing else had to be declared. Control values are `Param`, which a plain number becomes with `.p`, and which can itself be driven by a signal. `audio { … }` closes a mono or stereo graph into an `AudioPatchSpec`; return one as a box's last expression and the box stays lit for as long as it is making sound. Underneath is a shared OpenAL engine, one process-wide, with warm-up passes available so the first buffer is not also the JIT's first look at your graph. On top of the oscillator / filter / effect / envelope families sit three larger things that are not Field's own DSP: **Faust**, whose compiler is embedded as WebAssembly and turns a `#faust` box into a running node in the same graph; the **dough** ports, hand-rolled float math whose inaccuracy is part of the sound; and the **spectral** and **granular** layers, which are Field's own. `Visualizers.kt` is how you look at any of it — every function there is an extension on a type declared in this category. Start from `synth.kt`, which is the terse surface a box actually imports; [Sound: from a pattern to something you can hear](../sound.md) is the prose, [Faust](../faust.md) is the embedded compiler with worked examples, and [DoughDSP: hear the primitives](../dough_dsp_sound.md) plays the ports.
 
-43 source file(s), 1534 public symbol(s), 763 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+44 source file(s), 1542 public symbol(s), 771 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -932,7 +932,7 @@ draw.
 
 `src/jvmMain/kotlin/afield/audio/synth/Effects.kt` — [read the source](source/jvmMain/afield/audio/synth/Effects/)
 
-**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md)
+**Used in:** [Sound](../explainer_sound.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
 
 ### Delay { #effects-kt-delay }
 
@@ -1247,6 +1247,26 @@ Limits how fast a signal can change. [`riseTime`](synthesis.md#envelopes-kt--sle
 | <a id="envelopes-kt--slew--risetime"></a><code class="highlight"><span class="k">val</span> <span class="n">riseTime</span><span class="p">:</span> <span class="nc">Param</span></code> |  |
 | <a id="envelopes-kt--slew--falltime"></a><code class="highlight"><span class="k">val</span> <span class="n">fallTime</span><span class="p">:</span> <span class="nc">Param</span></code> |  |
 | <a id="envelopes-kt--slew--generate"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generate</span><span class="p">(</span><span class="n">output</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/Envelopes/#L400) |  |
+
+## ExplainerSoundDocs.kt { #explainersounddocs-kt }
+
+`src/jvmMain/kotlin/afield/audio/synth/ExplainerSoundDocs.kt` — [read the source](source/jvmMain/afield/audio/synth/ExplainerSoundDocs/)
+
+### ExplainerSoundDocs { #explainersounddocs-kt-explainersounddocs }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">ExplainerSoundDocs</span></code>](source/jvmMain/afield/audio/synth/ExplainerSoundDocs/#L27)
+
+The listening clips on the Sound explainer page (`public/docs/explainer_sound.md`): five of the talk's sounding figures, played offline through the same signal graph each figure box builds.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="explainersounddocs-kt--explainersounddocs--sr"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SR</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/synth/ExplainerSoundDocs/#L30) | Sample rate of every clip. |
+| <a id="explainersounddocs-kt--explainersounddocs--block"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">BLOCK</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/synth/ExplainerSoundDocs/#L33) | Frames per block; a `Param { }` supplier is read once per block, as in the engine. |
+| <a id="explainersounddocs-kt--explainersounddocs--peak"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">PEAK</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/audio/synth/ExplainerSoundDocs/#L36) | Peak level each clip is normalised to. |
+| <a id="explainersounddocs-kt--explainersounddocs--scenes"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">SCENES</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/ExplainerSoundDocs/#L39) | The scenes `audio-spec=` can name, each with what it plays. |
+| <a id="explainersounddocs-kt--explainersounddocs--figure-lines"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">FIGURE&#95;LINES</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/ExplainerSoundDocs/#L48) | For each scene, the figure box it comes from and the lines of that box's code it rebuilds. |
+| <a id="explainersounddocs-kt--explainersounddocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/ExplainerSoundDocs/#L156) | Renders the scene `name` (a key of [`SCENES`](synthesis.md#explainersounddocs-kt--explainersounddocs--scenes)) to a 16-bit mono WAV at `outPath`. |
+| <a id="explainersounddocs-kt--explainersounddocs--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/ExplainerSoundDocs/#L171) | Writes every scene into the directory given as the first argument (default: a temp dir). |
 
 ## FM.kt { #fm-kt }
 
@@ -1971,8 +1991,8 @@ The audio device and the patches playing through it.
 | <a id="fieldaudioengine-kt--fieldaudioengine--disablelinkoutput"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">disableLinkOutput</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FieldAudioEngine</span></code>](source/jvmMain/afield/audio/synth/FieldAudioEngine/#L455) | Drop the engine's own reference to Link and unmute the local device. |
 | <a id="fieldaudioengine-kt--fieldaudioengine--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/audio/synth/FieldAudioEngine/#L462) |  |
 | <a id="fieldaudioengine-kt--fieldaudioengine--register"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">register</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">AudioPatchSpec</span><span class="p">)</span><span class="p">:</span> <span class="nc">AudioPatchHandle</span></code>](source/jvmMain/afield/audio/synth/FieldAudioEngine/#L483) | Put `spec` in the mix and return the handle that takes it out again. |
-| <a id="fieldaudioengine-kt--fieldaudioengine--start"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/FieldAudioEngine/#L513) | Open the devices and begin rendering, or return at once if that has already been attempted. |
-| <a id="fieldaudioengine-kt--fieldaudioengine--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/FieldAudioEngine/#L544) | Ask the audio thread to stop and wait up to two seconds for it, releasing the OpenAL device, source, buffers and capture stream on the way out. |
+| <a id="fieldaudioengine-kt--fieldaudioengine--start"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/FieldAudioEngine/#L517) | Open the devices and begin rendering, or return at once if that has already been attempted. |
+| <a id="fieldaudioengine-kt--fieldaudioengine--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/FieldAudioEngine/#L548) | Ask the audio thread to stop and wait up to two seconds for it, releasing the OpenAL device, source, buffers and capture stream on the way out. |
 
 ## Filters.kt { #filters-kt }
 
@@ -2317,7 +2337,7 @@ hands back a fresh instance every time it is read.
 
 `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt` — [read the source](source/jvmMain/afield/audio/synth/Oscillators/)
 
-**Used in:** [Csound](../csound.md)
+**Used in:** [Sound](../explainer_sound.md), [Csound](../csound.md)
 
 ### Phasor { #oscillators-kt-phasor }
 
@@ -3735,7 +3755,7 @@ first, and the job is registered with the box so it stops when the box does.
 
 `src/jvmMain/kotlin/afield/audio/synth/Visualizers.kt` — [read the source](source/jvmMain/afield/audio/synth/Visualizers/)
 
-**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md)
+**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md), [Sound](../explainer_sound.md)
 
 ### Top-level functions { #visualizers-kt-functions }
 
@@ -4603,7 +4623,7 @@ launch/stop manage registration automatically.
 
 `src/jvmMain/kotlin/afield/audio/synth/synth.kt` — [read the source](source/jvmMain/afield/audio/synth/synth/)
 
-**Used in:** [Pure Data](../pure_data.md), [How to make sound in Field](../sound_paths.md)
+**Used in:** [Sound](../explainer_sound.md), [Pure Data](../pure_data.md), [How to make sound in Field](../sound_paths.md)
 
 ### Top-level functions { #synth-kt-functions }
 

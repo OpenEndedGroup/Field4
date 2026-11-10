@@ -37,7 +37,7 @@ start(renderer::run)
 <!-- field-box id="diffusion_curves" index="1" -->
 
 ```edn [field-box id="diffusion_curves" role="properties"]
-{"id" "diffusion_curves" "index" 1 "name" "3 · spinning curves" "parents" ["root" "diffusion_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "diffusion_renderer"} "name" "3 · spinning curves" "_tombstone" false "frame" #afield/rect [440.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_curves_code_.kt" "lines" 108 "characters" 4734 "sha256" "ea557ba7b1037b4b3251144beb84571f1c6b4d1cbf6e305c87ac6c5dc7520072"}]}
+{"id" "diffusion_curves" "index" 1 "name" "3 · spinning curves" "parents" ["root" "diffusion_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "diffusion_renderer"} "name" "3 · spinning curves" "_tombstone" false "frame" #afield/rect [440.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_curves_code_.kt" "lines" 106 "characters" 4716 "sha256" "d9a051e82e7e9e00f14acb64f63cd0bbb654759d0e88ccfc9959674f81c0791c"}]}
 ```
 
 ```kotlin [field-property box="diffusion_curves" name="code" path="diffusion_curves_code_.kt"]
@@ -65,9 +65,7 @@ if (!support.available) {
         ${support.reason}
 
         See [Streaming diffusion](https://openendedgroup.com/Field4/streaming_diffusion/).
-        The model environment is optional; you can keep editing this document.
-    """
-            .trimIndent(),
+        The model environment is optional; you can keep editing this document.""".trimIndent(),
     )
 } else {
     var material = 1 // 0 ink, 1 charcoal, 2 barbed wire
@@ -156,7 +154,7 @@ if (!support.available) {
 <!-- field-box id="diffusion_guide" index="2" -->
 
 ```edn [field-box id="diffusion_guide" role="properties"]
-{"id" "diffusion_guide" "index" 2 "name" "1 · streaming diffusion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · streaming diffusion" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_guide_code_.kt" "lines" 18 "characters" 738 "sha256" "6aa0eef134434b5745dbfcf31135427e1bd6b55996b1fd322ccd28e032c446d6"}]}
+{"id" "diffusion_guide" "index" 2 "name" "1 · streaming diffusion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · streaming diffusion" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_guide_code_.kt" "lines" 16 "characters" 724 "sha256" "5be5920673c3caf152696c6faefd84157f63d1355ee011ff4952866017ce4595"}]}
 ```
 
 ```kotlin [field-property box="diffusion_guide" name="code" path="diffusion_guide_code_.kt"]
@@ -174,9 +172,7 @@ markdown(
     On other platforms the curves box explains availability without starting it.
     Set `FIELD_STREAMDIFFUSION_ROOT` before starting Field after completing the setup.
 
-    [Setup and RTT integration](https://openendedgroup.com/Field4/streaming_diffusion/)
-    """
-        .trimIndent(),
+    [Setup and RTT integration](https://openendedgroup.com/Field4/streaming_diffusion/)""".trimIndent(),
 )
 ```
 

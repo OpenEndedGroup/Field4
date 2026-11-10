@@ -101,7 +101,7 @@ Stands in for a hand: sends a stroke, an arrow and a text from the page over the
 `notation-scene` message the drawing layer sends. Needs the document open in a browser.
 
 ```edn [field-box id="ne_hand" role="properties"]
-{"id" "ne_hand" "index" 1 "name" "hand" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "hand" "_tombstone" false "frame" #afield/rect [1100.0 640.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ne_hand_code_.kt" "lines" 25 "characters" 1621 "sha256" "49a854d6a8c3cdee49f723c488307a792d9966c7dded3a5efca333083b27bc81"}]}
+{"id" "ne_hand" "index" 1 "name" "hand" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "hand" "_tombstone" false "frame" #afield/rect [1100.0 640.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ne_hand_code_.kt" "lines" 24 "characters" 1612 "sha256" "ccc7ff7473b2cb6be81b025fec74e6ea8cf0fc2b971b64836793d01caf7cff09"}]}
 ```
 
 ```kotlin [field-property box="ne_hand" name="code" path="ne_hand_code_.kt"]
@@ -127,8 +127,7 @@ const arrow = { ...base("hand-arrow-$t", "arrow", 1100, 670, ${f.x + f.w + 4 - 1
 const text = { ...base("hand-text-$t", "text", 1100, 830, 120, 25), text: "by hand", originalText: "by hand",
     fontSize: 20, fontFamily: 5, textAlign: "left", verticalAlign: "top", containerId: null, lineHeight: 1.25 };
 send("notation-scene", { scene: JSON.stringify({ type: "excalidraw", version: 2, elements: [stroke, arrow, text] }) });
-</script>sent"""
-        .trimIndent(),
+</script>sent""".trimIndent(),
 )
 ```
 

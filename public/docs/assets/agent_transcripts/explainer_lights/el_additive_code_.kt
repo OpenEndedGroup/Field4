@@ -15,10 +15,17 @@ fun draw() {
         Triple(red, 90.0, vec(1.0, 0.0, 0.0)),
         Triple(green, 210.0, vec(0.0, 1.0, 0.0)),
         Triple(blue, 330.0, vec(0.0, 0.0, 1.0)),
-    ).filter { it.first }.map { (_, degrees, colour) ->
-        val a = degrees * PI / 180
-        SphereLight(vec(spread * cos(a), 1.2, spread * sin(a)), radius = 0.04, power = 25.0, color = colour, samples = 128)
-    }
+    ).filter { it.first }
+        .map { (_, degrees, colour) ->
+            val a = degrees * PI / 180
+            SphereLight(
+                vec(spread * cos(a), 1.2, spread * sin(a)),
+                radius = 0.04,
+                power = 25.0,
+                color = colour,
+                samples = 128,
+            )
+        }
     three(channel = "scene", width = 640, height = 420) {
         mesh(scene.lit(lamps, occluders = block, exposure = 1.2), unlit = true, wireframe = false)
         lamps.forEach { mesh(it.mesh(), unlit = true, wireframe = false) }
@@ -30,8 +37,20 @@ fun draw() {
 
 draw()
 controlGroup {
-    checkbox("red", initialValue = true) { red = it; draw() }
-    checkbox("green", initialValue = true) { green = it; draw() }
-    checkbox("blue", initialValue = true) { blue = it; draw() }
-    slider("spread", 0.0, 1.2, step = 0.01, initialValue = spread) { spread = it; draw() }
+    checkbox("red", initialValue = true) {
+        red = it
+        draw()
+    }
+    checkbox("green", initialValue = true) {
+        green = it
+        draw()
+    }
+    checkbox("blue", initialValue = true) {
+        blue = it
+        draw()
+    }
+    slider("spread", 0.0, 1.2, step = 0.01, initialValue = spread) {
+        spread = it
+        draw()
+    }
 }

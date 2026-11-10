@@ -888,9 +888,7 @@ else
         |profile, tilt and roll of the hand, for marks that depend on the hand (flicks, rolled ribbons, a broken drybrush scrub, a
         |pressed-and-lifted line). It takes oil or watercolour; paint_look map="contact" shows where its hairs touched.
         |Colours: "#rrggbb", or real tube paints mixed by parts, "lead white:4, cadmium yellow:1" (they mix like paint, so blue and
-        |yellow make green). Tubes: ${Tubes.names.joinToString()}.
-        """
-                .trimMargin()
+        |yellow make green). Tubes: ${Tubes.names.joinToString()}.""".trimMargin()
         }
 
         command("canvas", "show the canvas here") { "![the canvas](${pngUrl(canvas().png())})\n\n${state()}" }

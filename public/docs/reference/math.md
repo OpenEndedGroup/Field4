@@ -538,7 +538,7 @@ which is the minimum-norm subgradient. PyTorch instead defines `relu'(0) = 0`.
 
 `src/jvmMain/kotlin/afield/math/autodiff/autodiff.kt` — [read the source](source/jvmMain/afield/math/autodiff/autodiff/)
 
-**Used in:** [Spatial artificial life](../alife_examples.md), [Functions to FLine examples (Field graphics)](../functions_examples.md), [Frames and the animation loop](../animation_time_model.md)
+**Used in:** [Spatial artificial life](../alife_examples.md), [Sound](../explainer_sound.md), [Functions to FLine examples (Field graphics)](../functions_examples.md)
 
 ### Top-level functions { #autodiff-kt-functions }
 
@@ -2628,7 +2628,7 @@ in `linalg_spatial.kt`, convex hulls in `linalg_mesh.kt`.
 
 `src/jvmMain/kotlin/afield/math/linalg/linalg.kt` — [read the source](source/jvmMain/afield/math/linalg/linalg/)
 
-**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [A Drawn Morph, Heard](../chain_drawn_morph.md), [Datalog in a box](../datalog.md)
+**Used in:** [Lights and Shadows](../explainer_lights.md), [FLine examples (Field graphics)](../fline_examples.md), [A Drawn Morph, Heard](../chain_drawn_morph.md)
 
 ### Top-level functions { #linalg-kt-functions }
 

@@ -46,7 +46,7 @@ A macro is YAML. This one is what the recorder writes when you make a box with c
 make another, and connect them with `g`.
 
 ```edn [field-box id="mr_stamp" role="properties"]
-{"id" "mr_stamp" "index" 1 "name" "stamp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "stamp" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mr_stamp_code_.kt" "lines" 24 "characters" 759 "sha256" "3ad0a4e2e74cf73cec5036a02b947410fe49913c7f0fc36d387705c66c084336"}]}
+{"id" "mr_stamp" "index" 1 "name" "stamp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "stamp" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mr_stamp_code_.kt" "lines" 22 "characters" 745 "sha256" "883a0518068d157da791b8c05a84162a2081712b489dbde10887b863b9f80ece"}]}
 ```
 
 ```kotlin [field-property box="mr_stamp" name="code" path="mr_stamp_code_.kt"]
@@ -69,9 +69,7 @@ val stamp =
           frame: { x: 880.0, y: 80.0, w: 300.0, h: 100.0 }
       - connect:
           parent: stamp_source
-          child: stamp_sink
-    """
-        .trimIndent()
+          child: stamp_sink""".trimIndent()
 val saved = OperationTranscript.writeMacro(thisBox.inside.filename, "stamp", stamp)
 println("${saved.message} ${saved.operationCount} operations")
 ```

@@ -18,7 +18,7 @@ The rule that places loot. It changes only after a replay on real placements: se
 "Change a rule without breaking what already works" in the Field docs.
 
 ```edn [field-box id="staged_rule" role="properties"]
-{"id" "staged_rule" "index" 0 "name" "Loot rule" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Loot rule" "_tombstone" false "frame" #afield/rect [1440.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_rule_code_.kt" "lines" 53 "characters" 2133 "sha256" "8873cb64b38a5e1cf1688955693d70dd0a790725c1000b19c6e746475b89bbdc"}]}
+{"id" "staged_rule" "index" 0 "name" "Loot rule" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Loot rule" "_tombstone" false "frame" #afield/rect [1440.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_rule_code_.kt" "lines" 52 "characters" 2124 "sha256" "b9d0a87aa58bac83234618c502126baf99a1a5ae63b20e8e76923e2802013c75"}]}
 ```
 
 ```kotlin [field-property box="staged_rule" name="code" path="staged_rule_code_.kt"]
@@ -45,8 +45,7 @@ fun place(points: String): Map<String, String> {
     return placed
 }
 ::place
-"""
-        .trimStart()
+""".trimStart()
 
 val loot = qualifiedSource(
     "loot",
@@ -798,7 +797,7 @@ The brief, for you and for the agent. It is also kept as guides/start-here.md, w
 read.
 
 ```edn [field-box id="staged_start" role="properties"]
-{"id" "staged_start" "index" 4 "name" "Start here" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Start here" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_start_code_.kt" "lines" 35 "characters" 1925 "sha256" "044d1f33557b68d79f0dcfec680dfb616e02a9422723fac660b697e93b2c33b5"}]}
+{"id" "staged_start" "index" 4 "name" "Start here" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Start here" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_start_code_.kt" "lines" 33 "characters" 1911 "sha256" "1b3727ac73cd2c87f3210f915bd6cdc914b6781bccf916f9189439511aaa83e0"}]}
 ```
 
 ```kotlin [field-property box="staged_start" name="code" path="staged_start_code_.kt"]
@@ -827,9 +826,7 @@ val brief =
     - Run the corpus before you call a rule change done: a change that suits this level can break a variant.
 
     Evaluate the results, not only the checks. Look at the paths and the placement, and say what you see. The checks
-    only cover what someone thought to measure.
-    """
-        .trimIndent()
+    only cover what someone thought to measure.""".trimIndent()
 
 val guide = "%document/guides/start-here.md".file
 if (!guide.exists()) {

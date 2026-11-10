@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:13:47.268Z",
+  "capturedAt": "2026-11-10T14:00:58.109Z",
   "documentName": "gesture_paint_replay",
   "outputs": [
     {
@@ -58,7 +58,7 @@
         "svg"
       ],
       "width": 536,
-      "height": 464,
+      "height": 472,
       "path": "outputs/4.html"
     },
     {

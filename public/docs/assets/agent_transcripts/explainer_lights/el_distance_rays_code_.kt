@@ -22,10 +22,11 @@ fun draw(distance: Double) {
             color = if (hit) vec(0.4, 0.9, 1.0, 1.0) else vec(1.0, 1.0, 1.0, 0.12)
         }
     }
-    val patch = planeMesh(1, 1, 0.5, 0.5)
-        .rotated(Quat().rotateY((-PI / 2).toFloat()))
-        .translated(distance, 0.0, 0.0)
-        .withColor(1.0, 0.6, 0.2)
+    val patch =
+        planeMesh(1, 1, 0.5, 0.5)
+            .rotated(Quat().rotateY((-PI / 2).toFloat()))
+            .translated(distance, 0.0, 0.0)
+            .withColor(1.0, 0.6, 0.2)
     three(channel = "scene", width = 640, height = 380) {
         lines(rays)
         mesh(patch, unlit = true, wireframe = false, cullBackFaces = false)

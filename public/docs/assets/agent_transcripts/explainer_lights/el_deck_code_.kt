@@ -22,7 +22,9 @@ presentation(title = "Lights and Shadows") {
             }
             control("opening_scene", "position", 0.6)
             control("opening_scene", "size", 0.5)
-            markdownNote("A lamp, a floor and a block. Every colour on the floor is computed from the physics in this talk. [[next]]")
+            markdownNote(
+                "A lamp, a floor and a block. Every colour on the floor is computed from the physics in this talk. [[next]]",
+            )
         }
 
         section("Power") {
@@ -59,7 +61,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("perceived", "power", 10.0)
                 cue("Past white") { control("perceived", "power", 90.0, glideMs = 2000) }
-                markdownNote("Next pushes the power to 90 W: past 50 W the screen has nothing brighter to show. [[back]] [[next]]")
+                markdownNote(
+                    "Next pushes the power to 90 W: past 50 W the screen has nothing brighter to show. [[back]] [[next]]",
+                )
             }
             step("Surfaces pass light on", id = "matte") {
                 audience {
@@ -76,7 +80,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("opening_scene", "position", 0.6)
                 control("opening_scene", "size", 0.5)
-                markdownNote("The opening scene again: drag it round; the floor looks the same from every side. [[back]] [[next]]")
+                markdownNote(
+                    "The opening scene again: drag it round; the floor looks the same from every side. [[back]] [[next]]",
+                )
             }
         }
 
@@ -96,7 +102,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("light_angle", "angle", 0.0)
                 cue("Tilt to 60°") { control("light_angle", "angle", 60.0, glideMs = 1800) }
-                markdownNote("Next tilts the rays to 60°: six of twelve land, and cos 60° is one half. [[back]] [[next]]")
+                markdownNote(
+                    "Next tilts the rays to 60°: six of twelve land, and cos 60° is one half. [[back]] [[next]]",
+                )
             }
             step("Shape from the cosine", id = "lit-sphere") {
                 audience {
@@ -110,7 +118,9 @@ presentation(title = "Lights and Shadows") {
                             .md
                     }
                 }
-                markdownNote("Drag the light control round the ball; the dark side always faces away from it. [[back]] [[next]]")
+                markdownNote(
+                    "Drag the light control round the ball; the dark side always faces away from it. [[back]] [[next]]",
+                )
             }
             step("Farther away", id = "distance") {
                 audience {
@@ -127,7 +137,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("distance_rays", "distance", 1.0)
                 cue("Twice as far") { control("distance_rays", "distance", 2.0, glideMs = 1800) }
-                markdownNote("Next moves the patch from 1 m to 2 m: about a quarter as many rays reach it. [[back]] [[next]]")
+                markdownNote(
+                    "Next moves the patch from 1 m to 2 m: about a quarter as many rays reach it. [[back]] [[next]]",
+                )
             }
             step("A light with a size", id = "rect-light") {
                 audience {
@@ -144,7 +156,9 @@ presentation(title = "Lights and Shadows") {
                 control("opening_scene", "position", 0.6)
                 control("opening_scene", "size", 0.1)
                 cue("A wider lamp") { control("opening_scene", "size", 1.2, glideMs = 2000) }
-                markdownNote("Next widens the lamp from 10 cm to 1.2 m at the same power: the pool spreads and the shadow softens. [[back]] [[next]]")
+                markdownNote(
+                    "Next widens the lamp from 10 cm to 1.2 m at the same power: the pool spreads and the shadow softens. [[back]] [[next]]",
+                )
             }
         }
 
@@ -163,7 +177,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("car_angle", "distance", 10.0)
                 cue("Twice as far") { control("car_angle", "distance", 20.0, glideMs = 1800) }
-                markdownNote("Next drives the car from 10 m to 20 m: the angle it spans halves, near enough. [[back]] [[next]]")
+                markdownNote(
+                    "Next drives the car from 10 m to 20 m: the angle it spans halves, near enough. [[back]] [[next]]",
+                )
             }
             step("Angles as lengths", id = "radians") {
                 audience {
@@ -201,7 +217,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("projected_rect", "distance", 1.3)
                 cue("Twice as far") { control("projected_rect", "distance", 2.6, glideMs = 1800) }
-                markdownNote("Next moves the panel from 1.3 m to 2.6 m: a quarter of the solid angle, while solid angle × distance² stays near the panel's area. [[back]] [[next]]")
+                markdownNote(
+                    "Next moves the panel from 1.3 m to 2.6 m: a quarter of the solid angle, while solid angle × distance² stays near the panel's area. [[back]] [[next]]",
+                )
             }
         }
 
@@ -222,7 +240,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("hemisphere", "lamp position", 0.0)
                 cue("Lamp to one side") { control("hemisphere", "lamp position", 1.5, glideMs = 2000) }
-                markdownNote("Next slides the lamp off to the side: its patch on the dome moves down and flattens to a smaller share of the disc. The readout checks the share against the lighting library. [[back]] [[next]]")
+                markdownNote(
+                    "Next slides the lamp off to the side: its patch on the dome moves down and flattens to a smaller share of the disc. The readout checks the share against the lighting library. [[back]] [[next]]",
+                )
             }
         }
 
@@ -243,7 +263,9 @@ presentation(title = "Lights and Shadows") {
                 }
                 control("constant_radiance", "distance", 1.0)
                 cue("Step back") { control("constant_radiance", "distance", 3.0, glideMs = 2000) }
-                markdownNote("Next steps back to 3 m: the cone takes in nine times the lamp, each piece nine times fainter. [[back]] [[next]]")
+                markdownNote(
+                    "Next steps back to 3 m: the cone takes in nine times the lamp, each piece nine times fainter. [[back]] [[next]]",
+                )
             }
             step("Equally bright from every side", id = "lambert") {
                 audience {
@@ -281,7 +303,9 @@ presentation(title = "Lights and Shadows") {
                 control("rough_mirror", "roughness", 0.0)
                 control("rough_mirror", "light angle", 40.0)
                 cue("Roughen it") { control("rough_mirror", "roughness", 1.0, glideMs = 2500) }
-                markdownNote("A mirror first; Next roughens the surface until the reflected rays leave in all directions. [[back]] [[next]]")
+                markdownNote(
+                    "A mirror first; Next roughens the surface until the reflected rays leave in all directions. [[back]] [[next]]",
+                )
             }
         }
 
@@ -304,7 +328,9 @@ presentation(title = "Lights and Shadows") {
                 control("soft_shadow", "point", 1.15)
                 cue("A bigger lamp") { control("soft_shadow", "size", 0.4, glideMs = 2000) }
                 cue("Into the shadow") { control("soft_shadow", "point", 0.3, glideMs = 2500) }
-                markdownNote("The orange point sits at the shadow's edge; its cyan lines reach the parts of the lamp it can see. Next grows the lamp from 5 cm to 40 cm at the same 40 W, then walks the point into the shadow. [[back]] [[next]]")
+                markdownNote(
+                    "The orange point sits at the shadow's edge; its cyan lines reach the parts of the lamp it can see. Next grows the lamp from 5 cm to 40 cm at the same 40 W, then walks the point into the shadow. [[back]] [[next]]",
+                )
             }
         }
 
@@ -339,7 +365,9 @@ presentation(title = "Lights and Shadows") {
                 control("additive", "green", true)
                 control("additive", "blue", false)
                 cue("Add blue") { control("additive", "blue", true) }
-                markdownNote("Red and green first; Next turns on the blue lamp. Look at the block's coloured shadows. [[back]] [[next]]")
+                markdownNote(
+                    "Red and green first; Next turns on the blue lamp. Look at the block's coloured shadows. [[back]] [[next]]",
+                )
             }
         }
 
@@ -361,7 +389,9 @@ presentation(title = "Lights and Shadows") {
                 control("red_wall", "bounced light only", false)
                 cue("Three bounces") { control("red_wall", "bounces", 3.0, glideMs = 1500) }
                 cue("Only the bounced light") { control("red_wall", "bounced light only", true) }
-                markdownNote("Direct light only first. Next adds three bounces and the floor by the wall turns pink; the next shows the bounced light alone. [[back]] [[next]]")
+                markdownNote(
+                    "Direct light only first. Next adds three bounces and the floor by the wall turns pink; the next shows the bounced light alone. [[back]] [[next]]",
+                )
             }
         }
 
@@ -382,7 +412,9 @@ presentation(title = "Lights and Shadows") {
                 control("sky_sphere", "lamps", 1.0)
                 control("sky_sphere", "tile height", 0.3)
                 cue("A sky of lamps") { control("sky_sphere", "lamps", 300.0, glideMs = 3000) }
-                markdownNote("One lamp overhead; Next spreads the same 400 W over 300 lamps. Then try the tile height. [[back]] [[next]]")
+                markdownNote(
+                    "One lamp overhead; Next spreads the same 400 W over 300 lamps. Then try the tile height. [[back]] [[next]]",
+                )
             }
         }
 

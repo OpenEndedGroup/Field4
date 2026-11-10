@@ -51,9 +51,7 @@ ui.eval(
     window.globalEditor.layout()
     window.globalEditor.setPosition({lineNumber: 6, column: 5})
     window.globalEditor.focus()
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.press("Alt+1")
 ui.pause(1500)
@@ -61,9 +59,7 @@ ui.eval(
     """
     const bars = document.querySelectorAll(".monaco-editor .margin [class*='execution-marker-']")
     if (bars.length == 0) throw new Error("no execution marker in the margin")
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ```
 
@@ -111,9 +107,7 @@ ui.eval(
     window.globalEditor.layout()
     window.globalEditor.setPosition({lineNumber: 4, column: 9})
     window.globalEditor.focus()
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.press("Alt+1")
 ui.pause(1800)
@@ -124,9 +118,7 @@ ui.eval(
     if (!badge || badge.textContent.trim() !== "1") throw new Error("go badge missing or wrong: " + (badge && badge.textContent))
     if (box.classList.contains("running")) throw new Error("the box is drawn as launched")
     if (!document.querySelector(".monaco-editor .margin [class*='execution-marker-']")) throw new Error("no margin marker")
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ```
 

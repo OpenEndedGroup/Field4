@@ -10,7 +10,7 @@ fun draw(toward: Vec2) {
     // Φ = 4π·100² W makes the irradiance one watt per square metre where the light hits head on.
     val sun = PointLight(vec(toward.x * far, toward.y * far, z * far), power = 4 * PI * far * far)
     three(channel = "scene", width = 640, height = 420) {
-        mesh(ball.lit(listOf(sun), occluders = null, exposure = 2.0), unlit = true, wireframe = false)
+        mesh(ball.lit([sun], occluders = null, exposure = 2.0), unlit = true, wireframe = false)
         camera(yaw = 0.0, pitch = 0.0, distance = 2.4)
         background("#000000")
         hud(false)

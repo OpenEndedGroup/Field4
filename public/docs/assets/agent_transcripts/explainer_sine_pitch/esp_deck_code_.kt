@@ -11,9 +11,7 @@ presentation(title = "A sine wave and its pitch") {
                 A sound is air pushed back and forth against your ear. The smoothest
                 push is a sine wave: one even swing, repeated.
 
-                How often the swing repeats is what you hear as pitch.
-            """
-                    .md
+                How often the swing repeats is what you hear as pitch.""".md
                 p(classes = "muted") {
                     +"After “Sound” by Bartosz Ciechanowski, ciechanow.ski/sound. Words and figures made in Field."
                 }
@@ -29,9 +27,7 @@ presentation(title = "A sine wave and its pitch") {
                     The line is twenty milliseconds of the wave. Drag **frequency**:
                     as the number rises, more swings fit into the same time.
 
-                    Frequency counts swings per second, in hertz.
-                """
-                        .md
+                    Frequency counts swings per second, in hertz.""".md
                 }
             }
             control("sine", "frequency", 220.0)
@@ -45,9 +41,7 @@ presentation(title = "A sine wave and its pitch") {
                     ## Twice as often
 
                     220 Hz is the A below middle C. Doubling the frequency fits
-                    twice as many swings in, and we hear the same note an octave up.
-                """
-                        .md
+                    twice as many swings in, and we hear the same note an octave up.""".md
                 }
             }
             control("sine", "frequency", 220.0)
@@ -62,9 +56,7 @@ presentation(title = "A sine wave and its pitch") {
                     ## Hear it
 
                     Tick **sound**, then drag **frequency**. The wave you see is the
-                    tone you hear: one box draws it and plays it.
-                """
-                        .md
+                    tone you hear: one box draws it and plays it.""".md
                 }
             }
             cue("Sound on") { control("sine", "sound", true) }

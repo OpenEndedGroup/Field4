@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:24:04.973Z",
+  "capturedAt": "2026-11-10T14:08:30.742Z",
   "documentName": "audio_ai_corpus_microscope",
   "outputs": [
     {
@@ -9,8 +9,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 446,
-      "height": 309,
+      "width": 200,
+      "height": 651,
       "path": "outputs/0.html"
     },
     {

@@ -177,7 +177,7 @@ run {
 <!-- field-box id="manifold_levelset_slices" index="1" -->
 
 ```edn [field-box id="manifold_levelset_slices" role="properties"]
-{"id" "manifold_levelset_slices" "index" 1 "name" "Manifold — a Kotlin lambda as a level set, then sliced" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a Kotlin lambda as a level set, then sliced" "_tombstone" false "frame" #afield/rect [80.0 230.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_levelset_slices_code_.kt" "lines" 124 "characters" 5206 "sha256" "7b2adce9e29e1506239680bb2f380603cf04b0dcb27a3da684dcce6aa62978b2"}]}
+{"id" "manifold_levelset_slices" "index" 1 "name" "Manifold — a Kotlin lambda as a level set, then sliced" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a Kotlin lambda as a level set, then sliced" "_tombstone" false "frame" #afield/rect [80.0 230.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_levelset_slices_code_.kt" "lines" 122 "characters" 5176 "sha256" "e0c3a43486575f86323ccc81ad71d05f685a2c0edb8ea79903dbdec5403ea27f"}]}
 ```
 
 ```kotlin [field-property box="manifold_levelset_slices" name="code" path="manifold_levelset_slices_code_.kt"]
@@ -199,9 +199,7 @@ run {
             `-DMANIFOLD_CBIND=ON`.
 
             Then run this box again. The binding finds `libmanifoldc` on its own; set
-            `-Dafield.manifold.library=<path>` if you built your own.
-            """
-                .trimIndent(),
+            `-Dafield.manifold.library=<path>` if you built your own.""".trimIndent(),
         )
         return@run
     }

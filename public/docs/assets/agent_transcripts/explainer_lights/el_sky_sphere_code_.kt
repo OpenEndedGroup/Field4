@@ -1,8 +1,10 @@
 import afield.graphics.lighting.*
 
-// A floor under a dome of small lamps, all of them together giving out 400 W, and a black tile
-// held above the floor. With one lamp the tile casts a hard shadow; with hundreds the light comes
-// from the whole sky and only the ground right under the tile stays dark.
+/*
+A floor under a dome of small lamps, all of them together giving out 400 W, and a black tile
+held above the floor. With one lamp the tile casts a hard shadow; with hundreds the light comes
+from the whole sky and only the ground right under the tile stays dark.
+*/
 val floor = floorMesh(3.0, 3.0, divisions = 60).withColor(0.8, 0.8, 0.8)
 val golden = PI * (3 - sqrt(5.0))
 val dot = icosphereMesh(1, 0.03).withColor(1.0, 1.0, 1.0)
@@ -33,6 +35,12 @@ fun draw() {
 
 draw()
 controlGroup {
-    slider("lamps", 1.0, 300.0, step = 1.0, initialValue = count, law = ControlLaw.LOGARITHMIC) { count = it; draw() }
-    slider("tile height", 0.05, 0.8, step = 0.01, initialValue = height) { height = it; draw() }
+    slider("lamps", 1.0, 300.0, step = 1.0, initialValue = count, law = ControlLaw.LOGARITHMIC) {
+        count = it
+        draw()
+    }
+    slider("tile height", 0.05, 0.8, step = 0.01, initialValue = height) {
+        height = it
+        draw()
+    }
 }

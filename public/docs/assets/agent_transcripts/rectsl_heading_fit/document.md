@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rectsl_heading_solve" index="0" -->
 
 ```edn [field-box id="rectsl_heading_solve" role="properties"]
-{"id" "rectsl_heading_solve" "index" 0 "name" "solve for where it points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "solve for where it points" "_tombstone" false "frame" #afield/rect [80.0 900.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_solve_code_.kt" "lines" 37 "characters" 1458 "sha256" "9482eef4089f34ecbbc902e49622334b42c7ce0f34def4584035a17c5adbbe5e"}]}
+{"id" "rectsl_heading_solve" "index" 0 "name" "solve for where it points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "solve for where it points" "_tombstone" false "frame" #afield/rect [80.0 900.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_solve_code_.kt" "lines" 36 "characters" 1453 "sha256" "0703dcdb7b88acae7c3586f7991c8da4f85578a8ae68fb087404291133886d85"}]}
 ```
 
 ```kotlin [field-property box="rectsl_heading_solve" name="code" path="rectsl_heading_solve_code_.kt"]
@@ -50,8 +50,7 @@ val agreement = heading.gradientAgreement(
 |solved:        ${fit.parameters}   (pi/4 wants rise = 1)
 |residual:      ${fit.initialResidual} -> ${fit.finalResidual}
 |heading(2.0):  ${fit.fitted.sample(2.0)}  vs  ${PI / 4.0}
-|exact gradient vs central difference: $agreement"""
-    .trimMargin()
+|exact gradient vs central difference: $agreement""".trimMargin()
 ```
 
 ## 2. a heading, and the half turn it avoids
@@ -59,7 +58,7 @@ val agreement = heading.gradientAgreement(
 <!-- field-box id="rectsl_heading_lowering" index="1" -->
 
 ```edn [field-box id="rectsl_heading_lowering" role="properties"]
-{"id" "rectsl_heading_lowering" "index" 1 "name" "a heading, and the half turn it avoids" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a heading, and the half turn it avoids" "_tombstone" false "frame" #afield/rect [80.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_lowering_code_.kt" "lines" 77 "characters" 2522 "sha256" "46b4885640ca1bd2c49202f849e0f1b4c15cbd507a9398e9f08f6f75056daec3"}]}
+{"id" "rectsl_heading_lowering" "index" 1 "name" "a heading, and the half turn it avoids" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a heading, and the half turn it avoids" "_tombstone" false "frame" #afield/rect [80.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_lowering_code_.kt" "lines" 76 "characters" 2517 "sha256" "b37839bff91eacd8eeb1c4af1718fe1aff9e8df0033168d6ad1848c35b531f63"}]}
 ```
 
 ```kotlin [field-property box="rectsl_heading_lowering" name="code" path="rectsl_heading_lowering_code_.kt"]
@@ -138,7 +137,6 @@ display(
 
 """worst |sampler - lowered| over ${strobe.size} strobes: $worst
 |the quadrant-less form is a half turn out at $halfTurns of them
-|lowered graph: ${lowered.extractParameters().size} numeric leaves"""
-    .trimMargin()
+|lowered graph: ${lowered.extractParameters().size} numeric leaves""".trimMargin()
 ```
 

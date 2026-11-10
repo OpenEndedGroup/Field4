@@ -17,7 +17,7 @@ From `code`
 One sine wave, drawn and heard. How often it repeats is its pitch; how far it swings, its loudness.
 
 ```edn [field-box id="es_sine_sweep" role="properties"]
-{"id" "es_sine_sweep" "index" 0 "name" "sine_sweep" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "sine_sweep" "_tombstone" false "frame" #afield/rect [500.0 300.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_sine_sweep_code_.kt" "lines" 38 "characters" 1203 "sha256" "2f756e42f66483eea2559ed2d4502435ed2fe7938c43e6986ec5e39a1e3e9a54"}]}
+{"id" "es_sine_sweep" "index" 0 "name" "sine_sweep" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "sine_sweep" "_tombstone" false "frame" #afield/rect [500.0 300.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_sine_sweep_code_.kt" "lines" 51 "characters" 1270 "sha256" "45a9bc32c1ce2ea48c8bde8593151e433432b30f07ed564d453af5633a7b3799"}]}
 ```
 
 ```kotlin [field-property box="es_sine_sweep" name="code" path="es_sine_sweep_code_.kt"]
@@ -30,7 +30,11 @@ var on = false
 
 // Twenty milliseconds of the wave, 640 pixels wide.
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 240.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun draw() = lines(
     frame,
@@ -53,9 +57,18 @@ fun update() {
 
 update()
 controlGroup {
-    slider("frequency", 20.0, 20000.0, step = 1.0, initialValue = 220.0, law = ControlLaw.LOGARITHMIC) { hz = it; update() }
-    slider("amplitude", 0.0, 1.0, step = 0.01, initialValue = 0.8) { amplitude = it; update() }
-    checkbox("sound") { on = it; update() }
+    slider("frequency", 20.0, 20000.0, step = 1.0, initialValue = 220.0, law = ControlLaw.LOGARITHMIC) {
+        hz = it
+        update()
+    }
+    slider("amplitude", 0.0, 1.0, step = 0.01, initialValue = 0.8) {
+        amplitude = it
+        update()
+    }
+    checkbox("sound") {
+        on = it
+        update()
+    }
 }
 
 audio(SineOsc(pitch), gain = level)
@@ -74,13 +87,15 @@ frequency, 20 Hz wide, is in the last tenth of a second, from 0 to 2,500 Hz. A w
 as one bar; a sung vowel as a row of bars at whole multiples of the note. Nothing is played back.
 
 ```edn [field-box id="es_microphone" role="properties"]
-{"id" "es_microphone" "index" 1 "name" "microphone" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "microphone" "_tombstone" false "frame" #afield/rect [300.0 380.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_microphone_code_.kt" "lines" 43 "characters" 1942 "sha256" "d442bab88dbacc879cb301c10f5eb1743e07938bf701fcba550c67c2014fa60d"}]}
+{"id" "es_microphone" "index" 1 "name" "microphone" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "microphone" "_tombstone" false "frame" #afield/rect [300.0 380.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_microphone_code_.kt" "lines" 66 "characters" 2197 "sha256" "84d93be56e80b71c82a56d785e88adeb74edb89e023313c316f52d130e22cca5"}]}
 ```
 
 ```kotlin [field-property box="es_microphone" name="code" path="es_microphone_code_.kt"]
-// What the microphone hears, taken apart into sines. Tick "listen"; each bar is how much of one
-// frequency, 20 Hz wide, is in the last tenth of a second, from 0 to 2,500 Hz. A whistle stands up
-// as one bar; a sung vowel as a row of bars at whole multiples of the note. Nothing is played back.
+/*
+What the microphone hears, taken apart into sines. Tick "listen"; each bar is how much of one
+frequency, 20 Hz wide, is in the last tenth of a second, from 0 to 2,500 Hz. A whistle stands up
+as one bar; a sung vowel as a row of bars at whole multiples of the note. Nothing is played back.
+*/
 var listening = false
 val mic = audioIn.scope(4096)
 
@@ -89,11 +104,27 @@ fun bars(amps: List<Double>) {
     val top = amps.maxOrNull()?.coerceAtLeast(2e-3) ?: 2e-3
     val shapes = amps.mapIndexed { i, a ->
         val h = 200 * (a / top).coerceIn(0.0, 1.0)
-        fline { rect(i * 5.0, 220 - h, 4.0, h.coerceAtLeast(0.5)); filled = true; stroked = false; color = vec(0.4, 0.9, 1.0, 1.0) }
+        fline {
+            rect(i * 5.0, 220 - h, 4.0, h.coerceAtLeast(0.5))
+            filled = true
+            stroked = false
+            color = vec(0.4, 0.9, 1.0, 1.0)
+        }
     }
     // A tick every 500 Hz along the bottom.
-    val ticks = fline { (0..5).forEach { k -> moveTo(k * 125.0, 224.0); lineTo(k * 125.0, 234.0) }; thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
-    val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+    val ticks = fline {
+        (0..5).forEach { k ->
+            moveTo(k * 125.0, 224.0)
+            lineTo(k * 125.0, 234.0)
+        }
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
+    val frame = fline {
+        rect(0.0, 0.0, 640.0, 240.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.0)
+    }
     lines([frame, ticks] + shapes, channel = "spectrum", w = 640.0, h = 240.0)
 }
 
@@ -110,13 +141,18 @@ loop {
         if (n > 0) {
             // A Hann window, then the strength of each 20 Hz step: a slow Fourier transform, 128 bins.
             val windowed = DoubleArray(n) { x[it] * (0.5 - 0.5 * cos(2 * PI * it / n)) }
-            bars(List(128) { b ->
-                val f = (b + 0.5) * 20.0 / snap.sampleRate
-                var re = 0.0
-                var im = 0.0
-                for (i in 0 until n) { re += windowed[i] * cos(2 * PI * f * i); im -= windowed[i] * sin(2 * PI * f * i) }
-                sqrt(re * re + im * im) / n
-            })
+            bars(
+                List(128) { b ->
+                    val f = (b + 0.5) * 20.0 / snap.sampleRate
+                    var re = 0.0
+                    var im = 0.0
+                    for (i in 0 until n) {
+                        re += windowed[i] * cos(2 * PI * f * i)
+                        im -= windowed[i] * sin(2 * PI * f * i)
+                    }
+                    sqrt(re * re + im * im) / n
+                },
+            )
         }
     }
     delay(60)
@@ -135,7 +171,7 @@ One repeating triangle and the three numbers that place it. The faint line is th
 with no shift, for comparison; the sound follows amplitude and frequency.
 
 ```edn [field-box id="es_triangle_params" role="properties"]
-{"id" "es_triangle_params" "index" 2 "name" "triangle_params" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "triangle_params" "_tombstone" false "frame" #afield/rect [500.0 220.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_triangle_params_code_.kt" "lines" 36 "characters" 1446 "sha256" "d669ba44791eb38a16c7becfe257b5bf2a4da909f02d79d2d197b16cf5104a74"}]}
+{"id" "es_triangle_params" "index" 2 "name" "triangle_params" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "triangle_params" "_tombstone" false "frame" #afield/rect [500.0 220.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_triangle_params_code_.kt" "lines" 59 "characters" 1587 "sha256" "f6b6cc9d816120dfcba6e533fe30da2650ec7d745e6da95b1f846a381ad88650"}]}
 ```
 
 ```kotlin [field-property box="es_triangle_params" name="code" path="es_triangle_params_code_.kt"]
@@ -149,7 +185,11 @@ val pitch = Param(220f)
 val level = Param(0f)
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 240.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun triangle(t: Double) = 1 - 4 * abs(t - floor(t + 0.5))
 
@@ -163,15 +203,34 @@ fun wave(shift: Double, c: Vec4) = fline {
 fun update() {
     pitch.base = hz.toFloat()
     level.base = if (on) (0.15 * amplitude).toFloat() else 0f
-    lines(frame, wave(0.0, vec(1.0, 1.0, 1.0, 0.35)), wave(phase, vec(0.4, 0.9, 1.0, 1.0)), channel = "wave", w = 640.0, h = 240.0)
+    lines(
+        frame,
+        wave(0.0, vec(1.0, 1.0, 1.0, 0.35)),
+        wave(phase, vec(0.4, 0.9, 1.0, 1.0)),
+        channel = "wave",
+        w = 640.0,
+        h = 240.0,
+    )
 }
 
 update()
 controlGroup {
-    slider("amplitude", 0.0, 1.0, step = 0.01, initialValue = 0.6) { amplitude = it; update() }
-    slider("frequency", 55.0, 880.0, step = 1.0, initialValue = 220.0, law = ControlLaw.LOGARITHMIC) { hz = it; update() }
-    slider("phase", 0.0, 1.0, step = 0.01, initialValue = 0.0) { phase = it; update() }
-    checkbox("sound") { on = it; update() }
+    slider("amplitude", 0.0, 1.0, step = 0.01, initialValue = 0.6) {
+        amplitude = it
+        update()
+    }
+    slider("frequency", 55.0, 880.0, step = 1.0, initialValue = 220.0, law = ControlLaw.LOGARITHMIC) {
+        hz = it
+        update()
+    }
+    slider("phase", 0.0, 1.0, step = 0.01, initialValue = 0.0) {
+        phase = it
+        update()
+    }
+    checkbox("sound") {
+        on = it
+        update()
+    }
 }
 
 audio(TriOsc(pitch), gain = level)
@@ -189,7 +248,7 @@ A plate that jumps. Hold "jump" to move it forward by "distance"; tick "repeat" 
 and forth by itself, "rate" times a second. With "sound" on you hear the air the plate pushes.
 
 ```edn [field-box id="es_repeated_jumps" role="properties"]
-{"id" "es_repeated_jumps" "index" 3 "name" "repeated_jumps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "repeated_jumps" "_tombstone" false "frame" #afield/rect [900.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_repeated_jumps_code_.kt" "lines" 59 "characters" 2801 "sha256" "74d463a8e1aed922b6799cdfa1dbb2208d82ffd8503d4e1ec3731ff952deab39"}]}
+{"id" "es_repeated_jumps" "index" 3 "name" "repeated_jumps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "repeated_jumps" "_tombstone" false "frame" #afield/rect [900.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_repeated_jumps_code_.kt" "lines" 85 "characters" 2944 "sha256" "d97c59b21f6144fd7ebc6485db58226f01ff08575882cdff3a86d2048127c24e"}]}
 ```
 
 ```kotlin [field-property box="es_repeated_jumps" name="code" path="es_repeated_jumps_code_.kt"]
@@ -200,15 +259,19 @@ var rate = 4.0
 var held = false
 var repeat = false
 val level = Param(0f)
-val swing = Param(0f)      // how far the repeated motion goes
-val offset = Param(0f)     // where "jump" holds the plate
+val swing = Param(0f) // how far the repeated motion goes
+val offset = Param(0f) // where "jump" holds the plate
 val pace = Param(4f)
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 300.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
-fun position(t: Double) = (if (held) distance else 0.0) +
-    (if (repeat) distance * (if ((t * rate) % 1.0 < 0.5) 1.0 else -1.0) else 0.0)
+fun position(t: Double) =
+    (if (held) distance else 0.0) + (if (repeat) distance * (if ((t * rate) % 1.0 < 0.5) 1.0 else -1.0) else 0.0)
 
 fun update() {
     swing.base = if (repeat) distance.toFloat() else 0f
@@ -228,24 +291,46 @@ fun draw(now: Double) {
         stroked = false
         color = vec(1.0, 0.6, 0.2, if (blur) 0.45 else 1.0)
     }
-    val rest = fline { moveTo(126.0, 14.0); lineTo(126.0, 146.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
+    val rest = fline {
+        moveTo(126.0, 14.0)
+        lineTo(126.0, 146.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
     val trace = fline {
         moveTo(0.0, 230.0 - 60 * position(now - 0.25))
         for (i in 1..640) lineTo(i.toDouble(), 230.0 - 60 * position(now - 0.25 + 0.25 * i / 640))
         thickness = 2.0
         color = vec(0.4, 0.9, 1.0, 1.0)
     }
-    val axis = fline { moveTo(0.0, 230.0); lineTo(640.0, 230.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
+    val axis = fline {
+        moveTo(0.0, 230.0)
+        lineTo(640.0, 230.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
     lines(frame, plate, rest, axis, trace, channel = "plate", w = 640.0, h = 300.0)
 }
 
 draw(0.0)
 controlGroup {
-    keys("jump") { _, down -> held = down; update() }
-    slider("distance", 0.0, 1.0, step = 0.01, initialValue = 0.5) { distance = it; update() }
-    checkbox("repeat") { repeat = it; update() }
+    keys("jump") { _, down ->
+        held = down
+        update()
+    }
+    slider("distance", 0.0, 1.0, step = 0.01, initialValue = 0.5) {
+        distance = it
+        update()
+    }
+    checkbox("repeat") {
+        repeat = it
+        update()
+    }
     checkbox("sound") { level.base = if (it) 0.15f else 0f }
-    slider("rate", 1.0, 440.0, step = 1.0, initialValue = 4.0, law = ControlLaw.LOGARITHMIC) { rate = it; update() }
+    slider("rate", 1.0, 440.0, step = 1.0, initialValue = 4.0, law = ControlLaw.LOGARITHMIC) {
+        rate = it
+        update()
+    }
 }
 
 val start = AnimationClock.nowSeconds()
@@ -267,13 +352,15 @@ box; the keys play whatever is drawn at three pitches. The bars are how much of 
 the key's frequency the shape holds.
 
 ```edn [field-box id="es_draw_wave" role="properties"]
-{"id" "es_draw_wave" "index" 4 "name" "draw_wave" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "draw_wave" "_tombstone" false "frame" #afield/rect [900.0 220.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_draw_wave_code_.kt" "lines" 79 "characters" 3229 "sha256" "c6727fe234e0b1a75386856727fa8fa7b3fb6943c75c8b6d49edc461e8842d42"}]}
+{"id" "es_draw_wave" "index" 4 "name" "draw_wave" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "draw_wave" "_tombstone" false "frame" #afield/rect [900.0 220.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_draw_wave_code_.kt" "lines" 107 "characters" 3574 "sha256" "ac679b43f2d9b4609cc540a193464d4876086b47b1a4a32eb53b36f440a6719e"}]}
 ```
 
 ```kotlin [field-property box="es_draw_wave" name="code" path="es_draw_wave_code_.kt"]
-// Draw one cycle and hear it repeated. Drag the points of the curve, or draw a new stroke across the
-// box; the keys play whatever is drawn at three pitches. The bars are how much of each multiple of
-// the key's frequency the shape holds.
+/*
+Draw one cycle and hear it repeated. Drag the points of the curve, or draw a new stroke across the
+box; the keys play whatever is drawn at three pitches. The bars are how much of each multiple of
+the key's frequency the shape holds.
+*/
 val table = FloatArray(2048)
 val gates = 3 { Gate() }
 val voices = [196f, 247f, 294f].map { WavetableOsc(table, Param(it)) }
@@ -292,20 +379,21 @@ fun starter() = fline {
 // One cycle, read left to right, as samples between -1 and 1 with no offset.
 fun samples(shape: FLine): FloatArray {
     val points = shape.nodes.map { it.to.x.toDouble() to it.to.y.toDouble() }.sortedBy { it.first }
-    val raw = DoubleArray(table.size) { i ->
-        val x = 640.0 * i / table.size
-        val j = points.indexOfFirst { it.first >= x }
-        when {
-            j < 0 -> (140 - points.last().second) / 100
-            j == 0 -> (140 - points.first().second) / 100
-            else -> {
-                val (ax, ay) = points[j - 1]
-                val (bx, by) = points[j]
-                val t = if (bx > ax) (x - ax) / (bx - ax) else 0.0
-                (140 - (ay + (by - ay) * t)) / 100
+    val raw =
+        DoubleArray(table.size) { i ->
+            val x = 640.0 * i / table.size
+            val j = points.indexOfFirst { it.first >= x }
+            when {
+                j < 0 -> (140 - points.last().second) / 100
+                j == 0 -> (140 - points.first().second) / 100
+                else -> {
+                    val (ax, ay) = points[j - 1]
+                    val (bx, by) = points[j]
+                    val t = if (bx > ax) (x - ax) / (bx - ax) else 0.0
+                    (140 - (ay + (by - ay) * t)) / 100
+                }
             }
         }
-    }
     val mean = raw.average()
     val peak = raw.maxOf { abs(it - mean) }.coerceAtLeast(1e-6)
     return FloatArray(raw.size) { ((raw[it] - mean) / peak).toFloat() }
@@ -314,16 +402,30 @@ fun samples(shape: FLine): FloatArray {
 // How much of each of the first 24 multiples of the base frequency is in the cycle.
 fun partials() {
     val n = table.size
-    val amps = (1..24).map { k ->
-        var re = 0.0
-        var im = 0.0
-        for (i in 0 until n) { re += table[i] * cos(2 * PI * k * i / n); im -= table[i] * sin(2 * PI * k * i / n) }
-        2 * sqrt(re * re + im * im) / n
-    }
+    val amps =
+        (1..24).map { k ->
+            var re = 0.0
+            var im = 0.0
+            for (i in 0 until n) {
+                re += table[i] * cos(2 * PI * k * i / n)
+                im -= table[i] * sin(2 * PI * k * i / n)
+            }
+            2 * sqrt(re * re + im * im) / n
+        }
     val bars = amps.mapIndexed { i, a ->
-        fline { rect(10.0 + i * 26.0, 150 - 140 * a.coerceAtMost(1.0), 18.0, 140 * a.coerceAtMost(1.0)); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
+        fline {
+            rect(10.0 + i * 26.0, 150 - 140 * a.coerceAtMost(1.0), 18.0, 140 * a.coerceAtMost(1.0))
+            filled = true
+            stroked = false
+            color = vec(1.0, 0.6, 0.2, 1.0)
+        }
     }
-    val axis = fline { moveTo(0.0, 150.0); lineTo(640.0, 150.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
+    val axis = fline {
+        moveTo(0.0, 150.0)
+        lineTo(640.0, 150.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
     lines(bars + axis, channel = "partials", w = 640.0, h = 160.0)
 }
 
@@ -333,12 +435,23 @@ fun use(shape: FLine) {
 }
 
 fun show(shape: FLine) {
-    val axis = fline { moveTo(0.0, 140.0); lineTo(640.0, 140.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
+    val axis = fline {
+        moveTo(0.0, 140.0)
+        lineTo(640.0, 140.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
     lines(axis, shape, channel = "wave", w = 640.0, h = 280.0, editable = true, drawing = true) { edited ->
         // A new stroke replaces the shape; a dragged point reshapes it.
         val latest = edited.last()
         use(latest)
-        if (edited.size > 2) show(latest.copy().apply { thickness = 2.5; color = vec(0.4, 0.9, 1.0, 1.0) })
+        if (edited.size > 2)
+            show(
+                latest.copy().apply {
+                    thickness = 2.5
+                    color = vec(0.4, 0.9, 1.0, 1.0)
+                },
+            )
     }
 }
 
@@ -365,36 +478,49 @@ drift in and out of step. The picture is one second of what you hear; each colum
 wave's highest and lowest points in a 640th of a second, so the outline is the loudness.
 
 ```edn [field-box id="es_beats" role="properties"]
-{"id" "es_beats" "index" 5 "name" "beats" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "beats" "_tombstone" false "frame" #afield/rect [700.0 300.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_beats_code_.kt" "lines" 45 "characters" 1802 "sha256" "6733792e5454683baca97e504aeef1caa397380d107bcc062bde3317147062de"}]}
+{"id" "es_beats" "index" 5 "name" "beats" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "beats" "_tombstone" false "frame" #afield/rect [700.0 300.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_beats_code_.kt" "lines" 58 "characters" 1916 "sha256" "0801c4f334cf3cf291eaac69f64efed884534848f4399399bc01ac83bce8fbd4"}]}
 ```
 
 ```kotlin [field-property box="es_beats" name="code" path="es_beats_code_.kt"]
-// Two sine tones a few hertz apart. Hold one key, then both: the sum swells and fades as the two
-// drift in and out of step. The picture is one second of what you hear; each column spans the
-// wave's highest and lowest points in a 640th of a second, so the outline is the loudness.
+/*
+Two sine tones a few hertz apart. Hold one key, then both: the sum swells and fades as the two
+drift in and out of step. The picture is one second of what you hear; each column spans the
+wave's highest and lowest points in a 640th of a second, so the outline is the loudness.
+*/
 var difference = 3.0
 val held = BooleanArray(2)
 val gates = 2 { Gate() }
 val second = Param(223f)
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 240.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun draw() {
     val f = [220.0, 220.0 + difference]
-    val columns = (0 until 640).map { x ->
-        val values = (0 until 24).map { k ->
-            val t = (x + k / 24.0) / 640
-            (0..1).sumOf { i -> if (held[i]) sin(2 * PI * f[i] * t) else 0.0 }
+    val columns =
+        (0 until 640).map { x ->
+            val values =
+                (0 until 24).map { k ->
+                    val t = (x + k / 24.0) / 640
+                    (0..1).sumOf { i -> if (held[i]) sin(2 * PI * f[i] * t) else 0.0 }
+                }
+            fline {
+                moveTo(x.toDouble(), 120 - 50 * values.max())
+                lineTo(x.toDouble(), 120 - 50 * values.min() + 0.5)
+                thickness = 1.0
+                color = vec(0.4, 0.9, 1.0, 1.0)
+            }
         }
-        fline {
-            moveTo(x.toDouble(), 120 - 50 * values.max())
-            lineTo(x.toDouble(), 120 - 50 * values.min() + 0.5)
-            thickness = 1.0
-            color = vec(0.4, 0.9, 1.0, 1.0)
-        }
+    val axis = fline {
+        moveTo(0.0, 120.0)
+        lineTo(640.0, 120.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
     }
-    val axis = fline { moveTo(0.0, 120.0); lineTo(640.0, 120.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
     lines([frame, axis] + columns, channel = "sum", w = 640.0, h = 240.0)
 }
 
@@ -412,7 +538,7 @@ controlGroup {
     }
 }
 
-val tones = listOf(SineOsc(Param(220f)), SineOsc(second))
+val tones = [SineOsc(Param(220f)), SineOsc(second)]
 audio(2 { i -> tones[i] * adsr(0.01, 0.05, 1.0, 0.25, gates[i]) }.reduce { a, b -> a + b } / 2.0, gain = 0.15f)
 ```
 
@@ -427,19 +553,23 @@ From `code`
 A point going round a circle, and its height over time. The trace scrolls left, newest at the circle.
 
 ```edn [field-box id="es_circle_sine" role="properties"]
-{"id" "es_circle_sine" "index" 6 "name" "circle_sine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "circle_sine" "_tombstone" false "frame" #afield/rect [300.0 300.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_circle_sine_code_.kt" "lines" 50 "characters" 2147 "sha256" "f267e2a2984c07c553c5122dc7ee8d803a67e99ed02c10fcce600662cba51068"}]}
+{"id" "es_circle_sine" "index" 6 "name" "circle_sine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "circle_sine" "_tombstone" false "frame" #afield/rect [300.0 300.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_circle_sine_code_.kt" "lines" 78 "characters" 2305 "sha256" "ff9d85515d5269e2d31fadbdb69054444ebe279426e3e93d35868f196122dc9e"}]}
 ```
 
 ```kotlin [field-property box="es_circle_sine" name="code" path="es_circle_sine_code_.kt"]
 // A point going round a circle, and its height over time. The trace scrolls left, newest at the circle.
 var radius = 0.8
-var speed = 0.5      // turns per second
-var start = 0.0      // where the point starts, as a fraction of a turn
+var speed = 0.5 // turns per second
+var start = 0.0 // where the point starts, as a fraction of a turn
 var angle = 0.0
 val heights = mutableListOf<Double>()
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 280.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 280.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun draw() {
     val cx = 110.0
@@ -449,11 +579,35 @@ fun draw() {
     val px = cx + r * cos(turn)
     val py = cy - r * sin(turn)
     val guide = vec(1.0, 1.0, 1.0, 0.35)
-    val circle = fline { circle(cx, cy, r); thickness = 1.5; color = guide }
-    val spoke = fline { moveTo(cx, cy); lineTo(px, py); thickness = 1.5; color = guide }
-    val level = fline { moveTo(px, py); lineTo(240.0, py); thickness = 1.0; color = guide }
-    val dot = fline { circle(px, py, 6.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
-    val axis = fline { moveTo(240.0, cy); lineTo(640.0, cy); thickness = 1.0; color = guide }
+    val circle = fline {
+        circle(cx, cy, r)
+        thickness = 1.5
+        color = guide
+    }
+    val spoke = fline {
+        moveTo(cx, cy)
+        lineTo(px, py)
+        thickness = 1.5
+        color = guide
+    }
+    val level = fline {
+        moveTo(px, py)
+        lineTo(240.0, py)
+        thickness = 1.0
+        color = guide
+    }
+    val dot = fline {
+        circle(px, py, 6.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    val axis = fline {
+        moveTo(240.0, cy)
+        lineTo(640.0, cy)
+        thickness = 1.0
+        color = guide
+    }
     val trace = fline {
         heights.reversed().forEachIndexed { i, h -> if (i == 0) moveTo(240.0, cy - h) else lineTo(240.0 + i, cy - h) }
         thickness = 3.0
@@ -488,22 +642,24 @@ loop {
 <!-- field-box id="es_wall_plate" index="7" -->
 
 ```edn [field-box id="es_wall_plate" role="properties"]
-{"id" "es_wall_plate" "index" 7 "name" "wall_plate" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "wall_plate" "_tombstone" false "frame" #afield/rect [300.0 460.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_wall_plate_code_.kt" "lines" 79 "characters" 3199 "sha256" "8197964685c652ec89570661a191ca2ec49db77f221ad4587a9181c5f4c54326"}]}
+{"id" "es_wall_plate" "index" 7 "name" "wall_plate" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "wall_plate" "_tombstone" false "frame" #afield/rect [300.0 460.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_wall_plate_code_.kt" "lines" 84 "characters" 3177 "sha256" "5f51cb3fe2e5259313ea8857b20716bd16109addd26e8ea9a4a28f403fe87bf5"}]}
 ```
 
 ```kotlin [field-property box="es_wall_plate" name="code" path="es_wall_plate_code_.kt"]
 import afield.media.image.util.PngEncoder
 
-// A plate 60 cm across set in a wall on the left, pushing air back and forth: red is pressure above
-// the usual, blue below. When its waves are longer than the plate the sound spreads every way; when
-// they are shorter, the edges of the plate interfere and the sound is aimed ahead. The strip below
-// is the pressure along the plate's axis. The picture is four metres across, the bar is one metre;
-// time runs slowed, half a cycle a second, whatever the frequency.
+/*
+A plate 60 cm across set in a wall on the left, pushing air back and forth: red is pressure above
+the usual, blue below. When its waves are longer than the plate the sound spreads every way; when
+they are shorter, the edges of the plate interfere and the sound is aimed ahead. The strip below
+is the pressure along the plate's axis. The picture is four metres across, the bar is one metre;
+time runs slowed, half a cycle a second, whatever the frequency.
+*/
 val imageW = 640
 val imageH = 300
-val fieldH = 228               // the pressure field; below it, a strip plotting the axis
+val fieldH = 228 // the pressure field; below it, a strip plotting the axis
 val metre = 160.0
-val cell = 2                   // the field is solved on a 2 × 2 pixel grid and drawn up
+val cell = 2 // the field is solved on a 2 × 2 pixel grid and drawn up
 val gw = imageW / cell
 val gh = fieldH / cell
 val px = IntArray(imageW * imageH)
@@ -559,7 +715,10 @@ fun paint() {
 solve()
 paint()
 controlGroup {
-    slider("frequency", 150.0, 3000.0, step = 1.0, initialValue = 400.0, law = ControlLaw.LOGARITHMIC) { hz = it; solve() }
+    slider("frequency", 150.0, 3000.0, step = 1.0, initialValue = 400.0, law = ControlLaw.LOGARITHMIC) {
+        hz = it
+        solve()
+    }
 }
 
 var clock = AnimationClock.nowSeconds()
@@ -585,7 +744,7 @@ Sines at 1, 3, 5, 7… times a base frequency, each 1/n as tall, add up to a squ
 how many are in the sum; the faint line is the square they are approaching.
 
 ```edn [field-box id="es_square_partials" role="properties"]
-{"id" "es_square_partials" "index" 8 "name" "square_partials" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "square_partials" "_tombstone" false "frame" #afield/rect [900.0 300.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_square_partials_code_.kt" "lines" 35 "characters" 1633 "sha256" "4117ea16af0b6a1fda44ad4cd0341218c6942709ca85c49527c3ae7d08551071"}]}
+{"id" "es_square_partials" "index" 8 "name" "square_partials" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "square_partials" "_tombstone" false "frame" #afield/rect [900.0 300.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_square_partials_code_.kt" "lines" 52 "characters" 1715 "sha256" "a9358377af20ad4baea48c019947ea6f1819179301867a5e0a09712b7650daa6"}]}
 ```
 
 ```kotlin [field-property box="es_square_partials" name="code" path="es_square_partials_code_.kt"]
@@ -597,9 +756,13 @@ val level = Param(0f)
 val weights = 50 { Param(0f) }
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 260.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 260.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
-fun partial(i: Int) = 2 * i + 1                      // 1, 3, 5, …
+fun partial(i: Int) = 2 * i + 1 // 1, 3, 5, …
 fun sum(t: Double) = (0 until count).sumOf { i -> 4 / PI / partial(i) * sin(2 * PI * partial(i) * t) }
 fun square(t: Double) = if (t - floor(t) < 0.5) 1.0 else -1.0
 
@@ -613,13 +776,26 @@ fun update() {
         thickness = width
         color = c
     }
-    lines(frame, wave(::square, vec(1.0, 1.0, 1.0, 0.35), 1.5), wave(::sum, vec(0.4, 0.9, 1.0, 1.0), 3.0), channel = "wave", w = 640.0, h = 260.0)
+    lines(
+        frame,
+        wave(::square, vec(1.0, 1.0, 1.0, 0.35), 1.5),
+        wave(::sum, vec(0.4, 0.9, 1.0, 1.0), 3.0),
+        channel = "wave",
+        w = 640.0,
+        h = 260.0,
+    )
 }
 
 update()
 controlGroup {
-    slider("sines", 1.0, 50.0, step = 1.0, initialValue = 1.0) { count = it.toInt(); update() }
-    checkbox("sound") { on = it; update() }
+    slider("sines", 1.0, 50.0, step = 1.0, initialValue = 1.0) {
+        count = it.toInt()
+        update()
+    }
+    checkbox("sound") {
+        on = it
+        update()
+    }
 }
 
 // One oscillator per odd multiple of 110 Hz, each at the weight the sum gives it.
@@ -640,15 +816,21 @@ the bottom row, below the line, is what you hear.
 An invisible frame the size of the figure, so its bounds, and so its scale, never change.
 
 ```edn [field-box id="es_wave_synth" role="properties"]
-{"id" "es_wave_synth" "index" 9 "name" "wave_synth" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "wave_synth" "_tombstone" false "frame" #afield/rect [300.0 220.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_wave_synth_code_.kt" "lines" 53 "characters" 2378 "sha256" "e9997beb46e187f3d18a90d497fc07072b644882ef97607462f3be6479832601"}]}
+{"id" "es_wave_synth" "index" 9 "name" "wave_synth" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "wave_synth" "_tombstone" false "frame" #afield/rect [300.0 220.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_wave_synth_code_.kt" "lines" 76 "characters" 2518 "sha256" "ff0973e3b0fb7dbe1ce5e9ea5432d9782d99afba8be5d8ebdd28a030e15b922f"}]}
 ```
 
 ```kotlin [field-property box="es_wave_synth" name="code" path="es_wave_synth_code_.kt"]
-// Three keys, each a repeating pattern of the plate, and a fourth that plays the sum of the first two
-// as one pattern of its own. Each row is twenty milliseconds of a key;
-// the bottom row, below the line, is what you hear.
-// An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+/*
+Three keys, each a repeating pattern of the plate, and a fourth that plays the sum of the first two
+as one pattern of its own. Each row is twenty milliseconds of a key;
+the bottom row, below the line, is what you hear.
+An invisible frame the size of the figure, so its bounds, and so its scale, never change.
+*/
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 300.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun square(t: Double) = if (t - floor(t) < 0.5) 1.0 else -1.0
 fun triangle(t: Double) = 1 - 4 * abs(t - floor(t + 0.5))
@@ -665,7 +847,10 @@ val names = ["A", "B", "C", "A + B"]
 // The fourth key reads one cycle of A + B from a table: 220 and 330 Hz repeat together 110 times a second.
 val table = FloatArray(2048) { patterns[3](it / 2048.0 / 110).toFloat() }
 val voices = listOf<Signal>(
-    SquareOsc(Param(220f)) * 0.5, TriOsc(Param(330f)) * 0.5, SawOsc(Param(275f)) * 0.5, WavetableOsc(table, Param(110f)),
+    SquareOsc(Param(220f)) * 0.5,
+    TriOsc(Param(330f)) * 0.5,
+    SawOsc(Param(275f)) * 0.5,
+    WavetableOsc(table, Param(110f)),
 )
 val gates = 4 { Gate() }
 val held = BooleanArray(4)
@@ -681,9 +866,23 @@ fun row(y: Double, f: (Double) -> Double, c: Vec4, scale: Double, width: Double)
 fun draw() {
     val cyan = vec(0.4, 0.9, 1.0, 1.0)
     val idle = vec(0.4, 0.9, 1.0, 0.35)
-    val rows = 4 { i -> row(24.0 + 44 * i, patterns[i], if (held[i]) cyan else idle, if (i == 3) 19.0 else 38.0, if (held[i]) 3.0 else 2.0) }
-    val sum = row(250.0, { t -> (0..3).sumOf { if (held[it]) patterns[it](t) else 0.0 } }, vec(1.0, 0.6, 0.2, 1.0), 40.0, 3.0)
-    val rule = fline { moveTo(0.0, 198.0); lineTo(640.0, 198.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.3) }
+    val rows = 4 { i ->
+        row(
+            24.0 + 44 * i,
+            patterns[i],
+            if (held[i]) cyan else idle,
+            if (i == 3) 19.0 else 38.0,
+            if (held[i]) 3.0 else 2.0,
+        )
+    }
+    val sum =
+        row(250.0, { t -> (0..3).sumOf { if (held[it]) patterns[it](t) else 0.0 } }, vec(1.0, 0.6, 0.2, 1.0), 40.0, 3.0)
+    val rule = fline {
+        moveTo(0.0, 198.0)
+        lineTo(640.0, 198.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.3)
+    }
     lines([frame] + rows + rule + sum, channel = "patterns", w = 640.0, h = 300.0)
 }
 
@@ -711,43 +910,50 @@ Slices of air in a tube. Each line is one slice; the plate at the left end pushe
 each slice pushes on the next, and the far end lets the disturbance out instead of echoing it.
 
 ```edn [field-box id="es_tube_plate" role="properties"]
-{"id" "es_tube_plate" "index" 10 "name" "tube_plate" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "tube_plate" "_tombstone" false "frame" #afield/rect [700.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_tube_plate_code_.kt" "lines" 73 "characters" 2705 "sha256" "14c93a1fbb9bcff6791c073e3e73915b16fa432261348d470461179d8bc78a76"}]}
+{"id" "es_tube_plate" "index" 10 "name" "tube_plate" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "tube_plate" "_tombstone" false "frame" #afield/rect [700.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_tube_plate_code_.kt" "lines" 80 "characters" 2778 "sha256" "d69523e98d5ef9cb04456685ea2637912a52e304af414b41789ebaacb5677646"}]}
 ```
 
 ```kotlin [field-property box="es_tube_plate" name="code" path="es_tube_plate_code_.kt"]
 // Slices of air in a tube. Each line is one slice; the plate at the left end pushes on the first,
 // each slice pushes on the next, and the far end lets the disturbance out instead of echoing it.
 val n = 80
-val gap = 7.0               // pixels between slices at rest
-val u = DoubleArray(n)      // how far each slice has moved from rest, in pixels
+val gap = 7.0 // pixels between slices at rest
+val u = DoubleArray(n) // how far each slice has moved from rest, in pixels
 val v = DoubleArray(n)
 var target = 0.0
 var plate = 0.0
 var colour = false
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 260.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 260.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun draw() {
-    val slices = (1 until n - 1).map { i ->
-        val x = 50 + i * gap + u[i]
-        // Squeezed where neighbours are closer than usual, stretched where they are further apart.
-        val strain = (u[i + 1] - u[i - 1]) / (2 * gap)
-        val k = (abs(strain) * 4).coerceAtMost(1.0)
-        fline {
-            moveTo(x, 60.0)
-            lineTo(x, 200.0)
-            thickness = 2.0
-            color = when {
-                !colour -> vec(1.0, 1.0, 1.0, 0.6)
-                strain < 0 -> vec(0.55 + 0.45 * k, 0.55 - 0.35 * k, 0.55 - 0.4 * k, 1.0)
-                else -> vec(0.55 - 0.4 * k, 0.55 - 0.1 * k, 0.55 + 0.45 * k, 1.0)
+    val slices =
+        (1 until n - 1).map { i ->
+            val x = 50 + i * gap + u[i]
+            // Squeezed where neighbours are closer than usual, stretched where they are further apart.
+            val strain = (u[i + 1] - u[i - 1]) / (2 * gap)
+            val k = (abs(strain) * 4).coerceAtMost(1.0)
+            fline {
+                moveTo(x, 60.0)
+                lineTo(x, 200.0)
+                thickness = 2.0
+                color = when {
+                    !colour -> vec(1.0, 1.0, 1.0, 0.6)
+                    strain < 0 -> vec(0.55 + 0.45 * k, 0.55 - 0.35 * k, 0.55 - 0.4 * k, 1.0)
+                    else -> vec(0.55 - 0.4 * k, 0.55 - 0.1 * k, 0.55 + 0.45 * k, 1.0)
+                }
             }
         }
-    }
     val walls = fline {
-        moveTo(30.0, 50.0); lineTo(630.0, 50.0)
-        moveTo(30.0, 210.0); lineTo(630.0, 210.0)
+        moveTo(30.0, 50.0)
+        lineTo(630.0, 50.0)
+        moveTo(30.0, 210.0)
+        lineTo(630.0, 210.0)
         thickness = 1.5
         color = vec(1.0, 1.0, 1.0, 0.35)
     }
@@ -802,7 +1008,7 @@ Masses on a line of springs between two walls, moving in one of their normal mod
 chooses which (a line of n masses has n), and "add the lowest" mixes mode 1 in as well.
 
 ```edn [field-box id="es_normal_modes" role="properties"]
-{"id" "es_normal_modes" "index" 11 "name" "normal_modes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "normal_modes" "_tombstone" false "frame" #afield/rect [500.0 380.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_normal_modes_code_.kt" "lines" 63 "characters" 2358 "sha256" "d7122874cf03b5e466b990e4c9c0e054003523700a1ffcfcf89fdfba529cc338"}]}
+{"id" "es_normal_modes" "index" 11 "name" "normal_modes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "normal_modes" "_tombstone" false "frame" #afield/rect [500.0 380.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_normal_modes_code_.kt" "lines" 77 "characters" 2515 "sha256" "ef5869c0c9450d24af87414cd035e6da4f17786ec173357dd2762d4573eab0b8"}]}
 ```
 
 ```kotlin [field-property box="es_normal_modes" name="code" path="es_normal_modes_code_.kt"]
@@ -818,7 +1024,11 @@ fun shape(k: Int, j: Int) = sin(k * PI * j / (masses + 1))
 fun rate(k: Int) = 2 * sin(k * PI / (2 * (masses + 1)))
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 300.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun spring(x0: Double, y0: Double, x1: Double, y1: Double) = fline {
     moveTo(x0, y0)
@@ -835,23 +1045,33 @@ fun draw() {
     val k = mode.coerceAtMost(masses)
     val mix = addLowest && k != 1
     val xs = (0..masses + 1).map { 8.0 + 624.0 * it / (masses + 1) }
-    val ys = (0..masses + 1).map { j ->
-        if (j == 0 || j == masses + 1) 150.0 else {
-            val main = shape(k, j) * cos(2 * PI * 0.6 * rate(k) * time)
-            val low = if (mix) shape(1, j) * cos(2 * PI * 0.6 * rate(1) * time) else 0.0
-            150 - 115 * (if (mix) (main + low) / 2 else main)
+    val ys =
+        (0..masses + 1).map { j ->
+            if (j == 0 || j == masses + 1) 150.0
+            else {
+                val main = shape(k, j) * cos(2 * PI * 0.6 * rate(k) * time)
+                val low = if (mix) shape(1, j) * cos(2 * PI * 0.6 * rate(1) * time) else 0.0
+                150 - 115 * (if (mix) (main + low) / 2 else main)
+            }
         }
-    }
     val walls = fline {
-        moveTo(8.0, 10.0); lineTo(8.0, 290.0)
-        moveTo(632.0, 10.0); lineTo(632.0, 290.0)
+        moveTo(8.0, 10.0)
+        lineTo(8.0, 290.0)
+        moveTo(632.0, 10.0)
+        lineTo(632.0, 290.0)
         thickness = 4.0
         color = vec(1.0, 1.0, 1.0, 0.5)
     }
     val springs = (0..masses).map { spring(xs[it], ys[it], xs[it + 1], ys[it + 1]) }
-    val balls = (1..masses).map { j ->
-        fline { circle(xs[j], ys[j], 22.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
-    }
+    val balls =
+        (1..masses).map { j ->
+            fline {
+                circle(xs[j], ys[j], 22.0)
+                filled = true
+                stroked = false
+                color = vec(1.0, 0.6, 0.2, 1.0)
+            }
+        }
     lines([frame, walls] + springs + balls, channel = "springs", w = 640.0, h = 300.0)
 }
 
@@ -885,27 +1105,29 @@ rings in each painted frame even at fifteen frames a second. Ahead of the source
 it they spread out. With "sound" on you hear a 440 Hz tone at the pitch the listener receives.
 
 ```edn [field-box id="es_doppler" role="properties"]
-{"id" "es_doppler" "index" 12 "name" "doppler" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "doppler" "_tombstone" false "frame" #afield/rect [900.0 460.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_doppler_code_.kt" "lines" 70 "characters" 2998 "sha256" "7092a2bc66c27cdf7788ecc7b8097095b7b3ec1e56d14c143c88de77c61ea651"}]}
+{"id" "es_doppler" "index" 12 "name" "doppler" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "doppler" "_tombstone" false "frame" #afield/rect [900.0 460.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_doppler_code_.kt" "lines" 95 "characters" 3123 "sha256" "ac31582bccfcf5314d40a6195117102dc18883054648a75812235871a6ee3c62"}]}
 ```
 
 ```kotlin [field-property box="es_doppler" name="code" path="es_doppler_code_.kt"]
-// A source moving left to right past a listener (orange), sending out rings that spread at the
-// speed of sound. Time is slowed a hundred times, so a ring grows by a fraction of the gap between
-// rings in each painted frame even at fifteen frames a second. Ahead of the source the rings crowd together, behind
-// it they spread out. With "sound" on you hear a 440 Hz tone at the pitch the listener receives.
+/*
+A source moving left to right past a listener (orange), sending out rings that spread at the
+speed of sound. Time is slowed a hundred times, so a ring grows by a fraction of the gap between
+rings in each painted frame even at fifteen frames a second. Ahead of the source the rings crowd together, behind
+it they spread out. With "sound" on you hear a 440 Hz tone at the pitch the listener receives.
+*/
 val metre = 64.0
 val c = 343.0
-val slow = 100.0          // picture time runs this many times slower than real time
-val every = 0.27          // seconds of picture time between rings
-var speed = 150.0          // metres per second
+val slow = 100.0 // picture time runs this many times slower than real time
+val every = 0.27 // seconds of picture time between rings
+var speed = 150.0 // metres per second
 var on = false
 var time = 0.0
-val emitted = mutableListOf<Pair<Double, Double>>()   // (time, x in metres) of each ring
+val emitted = mutableListOf<Pair<Double, Double>>() // (time, x in metres) of each ring
 var x = 0.0
 var nextRing = 0.0
 val pitch = Param(440f)
 val level = Param(0f)
-val listener = Pair(6.0, -2.5)  // metres: right of centre, below the path
+val listener = Pair(6.0, -2.5) // metres: right of centre, below the path
 
 fun ring(cx: Double, cy: Double, r: Double) = fline {
     var drawing = false
@@ -922,7 +1144,11 @@ fun ring(cx: Double, cy: Double, r: Double) = fline {
 fun step(dt: Double) {
     time += dt
     x += speed / slow * dt
-    if (x > 10.5) { x = -0.5; emitted.clear(); nextRing = time }
+    if (x > 10.5) {
+        x = -0.5
+        emitted.clear()
+        nextRing = time
+    }
     // A ring every few tenths of a second of picture time, placed where the source was when it left.
     while (nextRing <= time) {
         emitted += nextRing to x - speed / slow * (time - nextRing)
@@ -939,10 +1165,29 @@ fun step(dt: Double) {
 
 fun draw() {
     val y = 130.0
-    val rings = emitted.map { (t0, x0) -> ring(metre * x0, y, c / slow * (time - t0) * metre).apply { thickness = 1.5; color = vec(0.4, 0.9, 1.0, 0.8) } }
-    val source = fline { circle(metre * x, y, 8.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.9) }
-    val ear = fline { circle(metre * listener.first, y - metre * listener.second, 9.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
-    val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+    val rings = emitted.map { (t0, x0) ->
+        ring(metre * x0, y, c / slow * (time - t0) * metre).apply {
+            thickness = 1.5
+            color = vec(0.4, 0.9, 1.0, 0.8)
+        }
+    }
+    val source = fline {
+        circle(metre * x, y, 8.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.9)
+    }
+    val ear = fline {
+        circle(metre * listener.first, y - metre * listener.second, 9.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    val frame = fline {
+        rect(0.0, 0.0, 640.0, 300.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.0)
+    }
     lines([frame] + rings + source + ear, channel = "street", w = 640.0, h = 300.0)
 }
 
@@ -975,14 +1220,16 @@ A bigger room spaces them out and stretches the tail; softer walls make each bou
 The keys play short notes through a reverberator set from the same two sliders.
 
 ```edn [field-box id="es_reverb" role="properties"]
-{"id" "es_reverb" "index" 13 "name" "reverb" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "reverb" "_tombstone" false "frame" #afield/rect [700.0 540.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_reverb_code_.kt" "lines" 51 "characters" 2929 "sha256" "fff232b8407d821c4aa5b75fed56fc012f156c410896ecdca2b9e25ebfe8634c"}]}
+{"id" "es_reverb" "index" 13 "name" "reverb" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "reverb" "_tombstone" false "frame" #afield/rect [700.0 540.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_reverb_code_.kt" "lines" 87 "characters" 3125 "sha256" "1035b8523b07144467bddfcdb7087a3e715672626bd3787d5a4468b05f1e7e8d"}]}
 ```
 
 ```kotlin [field-property box="es_reverb" name="code" path="es_reverb_code_.kt"]
-// A room seen from above, and when its echoes reach the listener (orange) after a sound from the
-// source (white): each tick is one path off the walls, its height how much of the sound is left.
-// A bigger room spaces them out and stretches the tail; softer walls make each bounce lose more.
-// The keys play short notes through a reverberator set from the same two sliders.
+/*
+A room seen from above, and when its echoes reach the listener (orange) after a sound from the
+source (white): each tick is one path off the walls, its height how much of the sound is left.
+A bigger room spaces them out and stretches the tail; softer walls make each bounce lose more.
+The keys play short notes through a reverberator set from the same two sliders.
+*/
 var size = 0.4
 var soft = 0.3
 val gates = 3 { Gate() }
@@ -990,7 +1237,7 @@ val roomSize = Param(0.6f)
 val damping = Param(0.4f)
 
 fun draw() {
-    val w = 4 + 16 * size                  // metres
+    val w = 4 + 16 * size // metres
     val h = 0.6 * w
     val reflect = 1 - 0.6 * soft
     val sx = 0.3 * w
@@ -1008,14 +1255,42 @@ fun draw() {
         if (t > 0.6) continue
         // What is left of the sound, against the direct path; drawn as a square root so the tail shows.
         val a = reflect.pow(abs(i) + abs(j)) * direct / d
-        ticks += fline { moveTo(20 + 1000 * t, 270.0); lineTo(20 + 1000 * t, 270 - 100 * sqrt(a)); thickness = 1.5; color = vec(0.4, 0.9, 1.0, 1.0) }
+        ticks += fline {
+            moveTo(20 + 1000 * t, 270.0)
+            lineTo(20 + 1000 * t, 270 - 100 * sqrt(a))
+            thickness = 1.5
+            color = vec(0.4, 0.9, 1.0, 1.0)
+        }
     }
-    val scale = 7.0                        // the plan: pixels per metre
-    val plan = fline { rect(20.0, 10.0, scale * w, scale * h); thickness = 2.0; color = vec(1.0, 1.0, 1.0, 0.35 + 0.5 * (1 - soft)) }
-    val source = fline { circle(20 + scale * sx, 10 + scale * sy, 4.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.9) }
-    val ear = fline { circle(20 + scale * lx, 10 + scale * ly, 4.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
-    val axis = fline { moveTo(20.0, 270.0); lineTo(620.0, 270.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
-    val frame = fline { rect(0.0, 0.0, 640.0, 280.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+    val scale = 7.0 // the plan: pixels per metre
+    val plan = fline {
+        rect(20.0, 10.0, scale * w, scale * h)
+        thickness = 2.0
+        color = vec(1.0, 1.0, 1.0, 0.35 + 0.5 * (1 - soft))
+    }
+    val source = fline {
+        circle(20 + scale * sx, 10 + scale * sy, 4.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.9)
+    }
+    val ear = fline {
+        circle(20 + scale * lx, 10 + scale * ly, 4.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    val axis = fline {
+        moveTo(20.0, 270.0)
+        lineTo(620.0, 270.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
+    val frame = fline {
+        rect(0.0, 0.0, 640.0, 280.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.0)
+    }
     lines([frame, plan, source, ear, axis] + ticks, channel = "room", w = 640.0, h = 280.0)
     roomSize.base = (0.5 + 0.48 * size).toFloat()
     damping.base = (0.2 + 0.7 * soft).toFloat()
@@ -1024,8 +1299,14 @@ fun draw() {
 draw()
 controlGroup {
     keys("low", "middle", "high", letters = "wer") { key, down -> if (down) gates[key].open() else gates[key].close() }
-    slider("room size", 0.0, 1.0, step = 0.01, initialValue = 0.4) { size = it; draw() }
-    slider("soft walls", 0.0, 1.0, step = 0.01, initialValue = 0.3) { soft = it; draw() }
+    slider("room size", 0.0, 1.0, step = 0.01, initialValue = 0.4) {
+        size = it
+        draw()
+    }
+    slider("soft walls", 0.0, 1.0, step = 0.01, initialValue = 0.3) {
+        soft = it
+        draw()
+    }
 }
 
 val notes = [196f, 247f, 294f].mapIndexed { i, hz -> SawOsc(Param(hz)) / lpf(1800) * perc(0.25, 0.005, gates[i]) }
@@ -1037,15 +1318,17 @@ audio(notes.reduce { a, b -> a + b } / 2.0 / FreeVerb(roomSize, damping, Param(0
 <!-- field-box id="es_deck" index="14" -->
 
 ```edn [field-box id="es_deck" role="properties"]
-{"id" "es_deck" "index" 14 "name" "deck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "deck" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_deck_code_.kt" "lines" 610 "characters" 27017 "sha256" "b8b38ebadb6e324e00352c620abb702ef74818d260fe9abf755cc3c51dde9d7e"}]}
+{"id" "es_deck" "index" 14 "name" "deck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "deck" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_deck_code_.kt" "lines" 630 "characters" 27365 "sha256" "1555f6987dc48caa2b9c9e660bca6e36575f06af8bc75837bffd4a10b909a4e4"}]}
 ```
 
 ```kotlin [field-property box="es_deck" name="code" path="es_deck_code_.kt"]
 import kotlinx.html.*
 
-// The talk. Each figure is a box of the same name in this document; the deck starts a figure
-// when its slide comes up and stops it when the talk moves on. Nothing sounds until someone
-// holds a key or ticks "sound".
+/*
+The talk. Each figure is a box of the same name in this document; the deck starts a figure
+when its slide comes up and stops it when the talk moves on. Nothing sounds until someone
+holds a key or ticks "sound".
+*/
 
 presentation(title = "Sound") {
         section("Sound") {
@@ -1066,7 +1349,9 @@ presentation(title = "Sound") {
                         +"After “Sound” by Bartosz Ciechanowski, ciechanow.ski/sound. Words and figures made in Field."
                     }
                 }
-                markdownNote("Every figure in this talk is a live box. Sound starts only when someone holds a key or ticks **sound**. [[next]]")
+                markdownNote(
+                    "Every figure in this talk is a live box. Sound starts only when someone holds a key or ticks **sound**. [[next]]",
+                )
             }
             step("Three keys", id = "keyboard") {
                 audience {
@@ -1182,7 +1467,9 @@ presentation(title = "Sound") {
                 control("tube_plate", "colour", true)
                 cue("Push") { control("tube_plate", "plate", 12.0, glideMs = 300) }
                 cue("Pull back") { control("tube_plate", "plate", -12.0, glideMs = 600) }
-                markdownNote("Colour is pressure: red above, blue below. Next pushes the plate, then Next pulls it back. [[back]] [[next]]")
+                markdownNote(
+                    "Colour is pressure: red above, blue below. Next pushes the plate, then Next pulls it back. [[back]] [[next]]",
+                )
             }
         }
         section("Making sounds") {
@@ -1201,7 +1488,9 @@ presentation(title = "Sound") {
                 control("repeated_jumps", "distance", 0.5)
                 control("repeated_jumps", "rate", 4.0)
                 control("repeated_jumps", "sound", false)
-                markdownNote("Tick **sound**, then hold **jump**; drag **distance** to change how far it moves. [[back]] [[next]]")
+                markdownNote(
+                    "Tick **sound**, then hold **jump**; drag **distance** to change how far it moves. [[back]] [[next]]",
+                )
             }
             step("Repeat it and it becomes a note", id = "sounds-repeat") {
                 audience {
@@ -1220,7 +1509,9 @@ presentation(title = "Sound") {
                 control("repeated_jumps", "sound", false)
                 cue("Repeat") { control("repeated_jumps", "repeat", true) }
                 cue("Faster") { control("repeated_jumps", "rate", 220.0, glideMs = 4000) }
-                markdownNote("Tick **sound** to hear it. Next starts the repeats at 4 per second, then Next glides to 220. [[back]] [[next]]")
+                markdownNote(
+                    "Tick **sound** to hear it. Next starts the repeats at 4 per second, then Next glides to 220. [[back]] [[next]]",
+                )
             }
             step("Sounds add", id = "sounds-add") {
                 audience {
@@ -1269,7 +1560,9 @@ presentation(title = "Sound") {
                 cue("Louder") { control("triangle_params", "amplitude", 1.0, glideMs = 1500) }
                 cue("Higher") { control("triangle_params", "frequency", 440.0, glideMs = 1500) }
                 cue("Shift") { control("triangle_params", "phase", 0.5, glideMs = 1500) }
-                markdownNote("Tick **sound** first if you want it heard. Next: amplitude up, then frequency up, then phase shifted. [[back]] [[next]]")
+                markdownNote(
+                    "Tick **sound** first if you want it heard. Next: amplitude up, then frequency up, then phase shifted. [[back]] [[next]]",
+                )
             }
             step("Half a cycle apart, they cancel", id = "sounds-cancel") {
                 audience {
@@ -1334,7 +1627,9 @@ presentation(title = "Sound") {
                 control("sine_sweep", "frequency", 220.0)
                 control("sine_sweep", "sound", false)
                 cue("Up an octave") { control("sine_sweep", "frequency", 440.0, glideMs = 1500) }
-                markdownNote("Tick **sound**, then Next glides up an octave. Keep the room's volume low. [[back]] [[next]]")
+                markdownNote(
+                    "Tick **sound**, then Next glides up an octave. Keep the room's volume low. [[back]] [[next]]",
+                )
             }
             step("Close tones beat", id = "tones-beats") {
                 audience {
@@ -1482,7 +1777,9 @@ presentation(title = "Sound") {
                 control("pluck", "length", 1.0)
                 control("pluck", "pluck at", 0.25)
                 cue("Near the end") { control("pluck", "pluck at", 0.06, glideMs = 800) }
-                markdownNote("Press **pluck** (or P); Next moves the pluck near the end, then pluck again: brighter. [[back]] [[next]]")
+                markdownNote(
+                    "Press **pluck** (or P); Next moves the pluck near the end, then pluck again: brighter. [[back]] [[next]]",
+                )
             }
             step("Shorter, tighter, lighter", id = "springs-fret") {
                 audience {
@@ -1532,7 +1829,9 @@ presentation(title = "Sound") {
                 }
                 control("wall_plate", "frequency", 400.0)
                 cue("Higher") { control("wall_plate", "frequency", 2500.0, glideMs = 2000) }
-                markdownNote("Next raises the frequency past 2 kHz: the beam narrows. The strip is the pressure along the axis. [[back]] [[next]]")
+                markdownNote(
+                    "Next raises the frequency past 2 kHz: the beam narrows. The strip is the pressure along the axis. [[back]] [[next]]",
+                )
             }
             step("Later and quieter", id = "waves-distance") {
                 audience {
@@ -1592,7 +1891,9 @@ presentation(title = "Sound") {
                     }
                 }
                 control("two_speakers", "sound", false)
-                markdownNote("Drag the orange listener onto an orange line and it goes quiet. Tick **sound** to hear it. [[back]] [[next]]")
+                markdownNote(
+                    "Drag the orange listener onto an orange line and it goes quiet. Tick **sound** to hear it. [[back]] [[next]]",
+                )
             }
             step("Echo", id = "waves-echo") {
                 audience {
@@ -1664,18 +1965,22 @@ From `code`
 Two identical tones, the second slid along by "shift" (a fraction of a cycle), and their sum.
 
 ```edn [field-box id="es_phase_cancel" role="properties"]
-{"id" "es_phase_cancel" "index" 15 "name" "phase_cancel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "phase_cancel" "_tombstone" false "frame" #afield/rect [700.0 220.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_phase_cancel_code_.kt" "lines" 38 "characters" 1505 "sha256" "d5c492743592fd390940452ba1c9b818731e9fd6f887eaa1b887f07d91b04b58"}]}
+{"id" "es_phase_cancel" "index" 15 "name" "phase_cancel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "phase_cancel" "_tombstone" false "frame" #afield/rect [700.0 220.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_phase_cancel_code_.kt" "lines" 55 "characters" 1618 "sha256" "931dd92319d5279056c002678fb4170117f643cbaf8f7105c6358638d06da714"}]}
 ```
 
 ```kotlin [field-property box="es_phase_cancel" name="code" path="es_phase_cancel_code_.kt"]
 // Two identical tones, the second slid along by "shift" (a fraction of a cycle), and their sum.
 var shift = 0.0
 var on = false
-val offset = Param(0f)     // the second tone's shift, in radians
+val offset = Param(0f) // the second tone's shift, in radians
 val level = Param(0f)
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 300.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun row(y: Double, scale: Double, f: (Double) -> Double, c: Vec4) = fline {
     moveTo(0.0, y - scale * f(0.0))
@@ -1693,16 +1998,29 @@ fun update() {
         frame,
         row(46.0, 38.0, first, vec(0.4, 0.9, 1.0, 1.0)),
         row(134.0, 38.0, second, vec(0.4, 0.9, 1.0, 0.6)),
-        fline { moveTo(0.0, 182.0); lineTo(640.0, 182.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) },
+        fline {
+            moveTo(0.0, 182.0)
+            lineTo(640.0, 182.0)
+            thickness = 1.0
+            color = vec(1.0, 1.0, 1.0, 0.35)
+        },
         row(240.0, 28.0, { t -> first(t) + second(t) }, vec(1.0, 0.6, 0.2, 1.0)),
-        channel = "wave", w = 640.0, h = 300.0,
+        channel = "wave",
+        w = 640.0,
+        h = 300.0,
     )
 }
 
 update()
 controlGroup {
-    slider("shift", 0.0, 1.0, step = 0.01, initialValue = 0.0) { shift = it; update() }
-    checkbox("sound") { on = it; update() }
+    slider("shift", 0.0, 1.0, step = 0.01, initialValue = 0.0) {
+        shift = it
+        update()
+    }
+    checkbox("sound") {
+        on = it
+        update()
+    }
 }
 
 audio((SineOsc(Param(220f)) + SineOsc(Param(220f), phaseMod = offset)) / 2.0, gain = level)
@@ -1721,13 +2039,15 @@ You clap, standing "distance to the wall" metres from a wall. The pulse travels 
 shaded part is the first 50 ms, inside which the ear hears the two as one sound.
 
 ```edn [field-box id="es_echo" role="properties"]
-{"id" "es_echo" "index" 16 "name" "echo" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "echo" "_tombstone" false "frame" #afield/rect [500.0 540.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_echo_code_.kt" "lines" 60 "characters" 2937 "sha256" "115e03f4dc5442bc099adceb30fdfc77aed0c85cb1366d2e7fc6ed05f5f19e66"}]}
+{"id" "es_echo" "index" 16 "name" "echo" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "echo" "_tombstone" false "frame" #afield/rect [500.0 540.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_echo_code_.kt" "lines" 98 "characters" 3201 "sha256" "eb701441a0627685e306bd9f21b2a222d6635d43a4c2e9360fc336d7df7b1924"}]}
 ```
 
 ```kotlin [field-property box="es_echo" name="code" path="es_echo_code_.kt"]
-// You clap, standing "distance to the wall" metres from a wall. The pulse travels there and back at
-// 343 m/s, shown at its real speed. Below, a timeline: the clap at 0, its echo when it returns; the
-// shaded part is the first 50 ms, inside which the ear hears the two as one sound.
+/*
+You clap, standing "distance to the wall" metres from a wall. The pulse travels there and back at
+343 m/s, shown at its real speed. Below, a timeline: the clap at 0, its echo when it returns; the
+shaded part is the first 50 ms, inside which the ear hears the two as one sound.
+*/
 var distance = 20.0
 var clapped = -10.0
 var time = 0.0
@@ -1738,38 +2058,74 @@ val echoLevel = Param(0.15f)
 fun echoGain(d: Double) = (0.6 * 4 / (2 * d)).coerceAtMost(0.6)
 
 fun draw() {
-    val metre = 600 / 60.0                        // sixty metres across
+    val metre = 600 / 60.0 // sixty metres across
     val wall = 20 + metre * distance
-    val travelled = 343 * (time - clapped)        // metres the pulse has gone
+    val travelled = 343 * (time - clapped) // metres the pulse has gone
     val out = travelled <= distance
     val front = if (out) 20 + metre * travelled else wall - metre * (travelled - distance)
-    val pulse = if (travelled > 2 * distance) null else fline {
-        moveTo(front, 40.0); lineTo(front, 160.0)
-        thickness = 3.0
-        color = if (out) vec(0.4, 0.9, 1.0, 1.0) else vec(1.0, 0.6, 0.2, 1.0)
+    val pulse =
+        if (travelled > 2 * distance) null
+        else
+            fline {
+                moveTo(front, 40.0)
+                lineTo(front, 160.0)
+                thickness = 3.0
+                color = if (out) vec(0.4, 0.9, 1.0, 1.0) else vec(1.0, 0.6, 0.2, 1.0)
+            }
+    val wallLine = fline {
+        rect(wall, 30.0, 8.0, 140.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.7)
     }
-    val wallLine = fline { rect(wall, 30.0, 8.0, 140.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.7) }
-    val you = fline { circle(20.0, 100.0, 8.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.9) }
+    val you = fline {
+        circle(20.0, 100.0, 8.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.9)
+    }
     // The timeline: 0 to 400 ms across the figure.
     val ms = 600 / 400.0
     val returns = 1000 * 2 * distance / 343
-    val merged = fline { rect(20.0, 205.0, 50 * ms, 50.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.12) }
-    val axis = fline { moveTo(20.0, 255.0); lineTo(620.0, 255.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
-    val clap = fline { moveTo(20.0, 255.0); lineTo(20.0, 210.0); thickness = 3.0; color = vec(0.4, 0.9, 1.0, 1.0) }
+    val merged = fline {
+        rect(20.0, 205.0, 50 * ms, 50.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.12)
+    }
+    val axis = fline {
+        moveTo(20.0, 255.0)
+        lineTo(620.0, 255.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
+    val clap = fline {
+        moveTo(20.0, 255.0)
+        lineTo(20.0, 210.0)
+        thickness = 3.0
+        color = vec(0.4, 0.9, 1.0, 1.0)
+    }
     val echo = fline {
         moveTo(20 + ms * returns.coerceAtMost(400.0), 255.0)
         lineTo(20 + ms * returns.coerceAtMost(400.0), 255 - 45 * (echoGain(distance) / 0.6).coerceAtLeast(0.3))
         thickness = 3.0
         color = vec(1.0, 0.6, 0.2, 1.0)
     }
-    val frame = fline { rect(0.0, 0.0, 640.0, 280.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+    val frame = fline {
+        rect(0.0, 0.0, 640.0, 280.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.0)
+    }
     lines(listOfNotNull(frame, wallLine, you, pulse, merged, axis, clap, echo), channel = "wall", w = 640.0, h = 280.0)
 }
 
 draw()
 controlGroup {
     keys("clap", letters = "c") { _, down ->
-        if (down) { clapped = time; gate.open() } else gate.close()
+        if (down) {
+            clapped = time
+            gate.open()
+        } else gate.close()
     }
     slider("distance to the wall", 2.0, 60.0, step = 0.5, initialValue = 20.0) {
         distance = it
@@ -1796,25 +2152,29 @@ loop {
 From `code`
 
 A string held at both ends. "pluck" pulls it aside at "pluck at" (the orange dot) and lets go.
-What follows is a sum of the string's modes, each a whole number of half waves, ringing at whole multiples of the lowest frequency, the high ones dying
+What follows is a sum of the string's modes, each a whole number of half waves, ringing at whole multiples of the
+lowest frequency, the high ones dying
 away faster. "mode" shows one mode alone (0 shows the pluck); "length" stops the string short,
 as a finger on a fret does.
 
 ```edn [field-box id="es_pluck" role="properties"]
-{"id" "es_pluck" "index" 17 "name" "pluck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pluck" "_tombstone" false "frame" #afield/rect [700.0 380.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_pluck_code_.kt" "lines" 77 "characters" 3481 "sha256" "6d85c97f33ce48ed3551f4c6a54814b3a863e27ea95a30f97a6909e2edf70f22"}]}
+{"id" "es_pluck" "index" 17 "name" "pluck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pluck" "_tombstone" false "frame" #afield/rect [700.0 380.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_pluck_code_.kt" "lines" 102 "characters" 3598 "sha256" "a33bc7b375fe7caea6dc06b5151fd8b7c1048e791ccf6b1f10704c6951cbc70b"}]}
 ```
 
 ```kotlin [field-property box="es_pluck" name="code" path="es_pluck_code_.kt"]
-// A string held at both ends. "pluck" pulls it aside at "pluck at" (the orange dot) and lets go.
-// What follows is a sum of the string's modes, each a whole number of half waves, ringing at whole multiples of the lowest frequency, the high ones dying
-// away faster. "mode" shows one mode alone (0 shows the pluck); "length" stops the string short,
-// as a finger on a fret does.
+/*
+A string held at both ends. "pluck" pulls it aside at "pluck at" (the orange dot) and lets go.
+What follows is a sum of the string's modes, each a whole number of half waves, ringing at whole multiples of the
+lowest frequency, the high ones dying
+away faster. "mode" shows one mode alone (0 shows the pluck); "length" stops the string short,
+as a finger on a fret does.
+*/
 val n = 30
-var at = 0.25               // where the last pluck was, as a fraction of the string
-var depth = 0.8             // how far it was pulled, as a fraction of the picture's half-height
+var at = 0.25 // where the last pluck was, as a fraction of the string
+var depth = 0.8 // how far it was pulled, as a fraction of the picture's half-height
 var length = 1.0
 var mode = 0
-var plucked = -10.0         // when the pluck happened, in seconds since launch
+var plucked = -10.0 // when the pluck happened, in seconds since launch
 var time = 0.0
 
 fun weight(k: Int) = depth * 2 / (k * k * PI * PI * at * (1 - at)) * sin(k * PI * at)
@@ -1822,16 +2182,22 @@ fun decay(k: Int) = 2.5 / k.toDouble().pow(0.7)
 fun base() = 110 / length
 
 // The sound: one sine per mode, its loudness set by the pluck and its own decay.
-var audioPluck = -1f        // audio time of the latest pluck; NaN asks the audio thread to stamp it
-val partials = (1..n).map { k ->
-    SineOsc(Param { (k * base()).toFloat() }) * Param {
-        if (audioPluck.isNaN()) audioPluck = time
-        if (audioPluck < 0) 0f else (weight(k) * exp(-(time - audioPluck) / decay(k))).toFloat()
+var audioPluck = -1f // audio time of the latest pluck; NaN asks the audio thread to stamp it
+val partials =
+    (1..n).map { k ->
+        SineOsc(Param { (k * base()).toFloat() }) *
+            Param {
+                if (audioPluck.isNaN()) audioPluck = time
+                if (audioPluck < 0) 0f else (weight(k) * exp(-(time - audioPluck) / decay(k))).toFloat()
+            }
     }
-}
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 300.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 val left = 12.0
 val middle = 150.0
 fun stringEnd() = left + 616 * length
@@ -1846,8 +2212,19 @@ fun pluck(x: Double, y: Double) {
 }
 
 fun scenery(): List<FLine> {
-    val rest = fline { moveTo(stringEnd(), middle); lineTo(628.0, middle); thickness = 1.5; color = vec(1.0, 1.0, 1.0, 0.3) }
-    val pegs = fline { circle(left, middle, 7.0); circle(stringEnd(), middle, 7.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.8) }
+    val rest = fline {
+        moveTo(stringEnd(), middle)
+        lineTo(628.0, middle)
+        thickness = 1.5
+        color = vec(1.0, 1.0, 1.0, 0.3)
+    }
+    val pegs = fline {
+        circle(left, middle, 7.0)
+        circle(stringEnd(), middle, 7.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.8)
+    }
     return [frame, rest, pegs]
 }
 
@@ -1865,7 +2242,12 @@ fun animate() {
         if (mode > 0) sin(mode * PI * x) * cos(PI * mode * time)
         else (1..n).sumOf { k -> weight(k) * sin(k * PI * x) * cos(PI * k * since) * exp(-since / decay(k)) }
     }
-    val mark = fline { circle(left + (stringEnd() - left) * at, middle + 24, 6.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
+    val mark = fline {
+        circle(left + (stringEnd() - left) * at, middle + 24, 6.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
     lines(scenery() + string(y) + mark, channel = "string", w = 640.0, h = 300.0)
 }
 
@@ -1896,7 +2278,7 @@ Sound pressure level: 20 × log10 of the pressure swing over 20 micropascals, th
 young ear hears at 1 kHz. Drag "pressure" (a logarithmic slider, in pascals) and read the level.
 
 ```edn [field-box id="es_decibels" role="properties"]
-{"id" "es_decibels" "index" 18 "name" "decibels" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "decibels" "_tombstone" false "frame" #afield/rect [700.0 460.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_decibels_code_.kt" "lines" 16 "characters" 735 "sha256" "4622462227ed631dfcc0a6d65c9a01afc202e1494bd35559974033464c492400"}]}
+{"id" "es_decibels" "index" 18 "name" "decibels" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "decibels" "_tombstone" false "frame" #afield/rect [700.0 460.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_decibels_code_.kt" "lines" 19 "characters" 758 "sha256" "c633120ea5a91162cce0335abe92f76cb8355fa5bb082000a108d206cb828df9"}]}
 ```
 
 ```kotlin [field-property box="es_decibels" name="code" path="es_decibels_code_.kt"]
@@ -1907,7 +2289,10 @@ lateinit var bar: MeterHandle
 
 fun show(pa: Double) {
     val db = level(pa)
-    markdown("readout", "**${"%.3g".format(pa)} Pa → ${db.f1} dB**\n\n0 dB: hearing just begins · 60 dB: talking, a metre away · 120 dB: it starts to hurt")
+    markdown(
+        "readout",
+        "**${"%.3g".format(pa)} Pa → ${db.f1} dB**\n\n0 dB: hearing just begins · 60 dB: talking, a metre away · 120 dB: it starts to hurt",
+    )
     if (::bar.isInitialized) bar.set(db)
 }
 
@@ -1932,25 +2317,28 @@ other, so the two cancel. Drag the listener (the orange point). With "sound" on 
 at the loudness it has there. The picture is ten metres across.
 
 ```edn [field-box id="es_two_speakers" role="properties"]
-{"id" "es_two_speakers" "index" 19 "name" "two_speakers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "two_speakers" "_tombstone" false "frame" #afield/rect [300.0 540.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_two_speakers_code_.kt" "lines" 92 "characters" 4017 "sha256" "a1e2b61d5b82ced860aa689cc75ed6a818c3ca4144da9c6ad4f05b1f430562c4"}]}
+{"id" "es_two_speakers" "index" 19 "name" "two_speakers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "two_speakers" "_tombstone" false "frame" #afield/rect [300.0 540.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_two_speakers_code_.kt" "lines" 133 "characters" 4358 "sha256" "a924b9a12fcc0d802923d120338f107a9ffff13230b4956d9a19b273e706af33"}]}
 ```
 
 ```kotlin [field-property box="es_two_speakers" name="code" path="es_two_speakers_code_.kt"]
-// Two speakers on the left play the same tone. Each faint ring is a crest of one speaker's wave, a
-// wavelength apart; the orange curves are where a crest from one always meets a trough from the
-// other, so the two cancel. Drag the listener (the orange point). With "sound" on you hear the tone
-// at the loudness it has there. The picture is ten metres across.
+/*
+Two speakers on the left play the same tone. Each faint ring is a crest of one speaker's wave, a
+wavelength apart; the orange curves are where a crest from one always meets a trough from the
+other, so the two cancel. Drag the listener (the orange point). With "sound" on you hear the tone
+at the loudness it has there. The picture is ten metres across.
+*/
 val metre = 64.0
 var hz = 343.0
-var ear = Pair(5.0, 0.6)            // metres from the midpoint between the speakers
+var ear = Pair(5.0, 0.6) // metres from the midpoint between the speakers
 var on = false
 val pitch = Param(343f)
 val level = Param(0f)
-val speakers = listOf(0.4 to -0.9, 0.4 to 0.9)    // metres
+val speakers = [0.4 to -0.9, 0.4 to 0.9] // metres
 
 fun px(x: Double) = metre * x
 fun py(y: Double) = 150 - metre * y
-fun distance(x: Double, y: Double, s: Pair<Double, Double>) = sqrt((x - s.first) * (x - s.first) + (y - s.second) * (y - s.second))
+fun distance(x: Double, y: Double, s: Pair<Double, Double>) =
+    sqrt((x - s.first) * (x - s.first) + (y - s.second) * (y - s.second))
 
 // How big the pressure swing is at (x, y): the two waves added with their phases.
 fun loudness(x: Double, y: Double): Double {
@@ -1987,8 +2375,14 @@ fun quiet(gap: Double) = fline {
         var lo = -2.4
         var hi = 2.4
         fun diff(y: Double) = distance(x, y, speakers[0]) - distance(x, y, speakers[1])
-        if ((diff(lo) - gap) * (diff(hi) - gap) > 0) { started = false; continue }
-        repeat(30) { val mid = (lo + hi) / 2; if (diff(mid) < gap) lo = mid else hi = mid }
+        if ((diff(lo) - gap) * (diff(hi) - gap) > 0) {
+            started = false
+            continue
+        }
+        repeat(30) {
+            val mid = (lo + hi) / 2
+            if (diff(mid) < gap) lo = mid else hi = mid
+        }
         if (started) lineTo(px(x), py(lo)) else moveTo(px(x), py(lo))
         started = true
     }
@@ -2001,18 +2395,43 @@ fun update() {
 
 fun show() {
     val wavelength = 343 / hz
-    val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+    val frame = fline {
+        rect(0.0, 0.0, 640.0, 300.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.0)
+    }
     val crests = speakers.flatMap { s ->
         (1..(11 / wavelength).toInt()).map { k ->
-            ring(px(s.first), py(s.second), metre * k * wavelength).apply { thickness = 1.0; color = vec(0.4, 0.9, 1.0, 0.35) }
+            ring(px(s.first), py(s.second), metre * k * wavelength).apply {
+                thickness = 1.0
+                color = vec(0.4, 0.9, 1.0, 0.35)
+            }
         }
     }
     // A path difference can be no larger than the 1.8 m between the speakers.
-    val quietLines = (-6..5).map { m -> (m + 0.5) * wavelength }.filter { abs(it) < 1.8 }
-        .map { quiet(it).apply { thickness = 2.5; color = vec(1.0, 0.6, 0.2, 0.7) } }
-    val boxes = fline { speakers.forEach { (x, y) -> rect(px(x) - 10, py(y) - 14, 10.0, 28.0) }; filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.9) }
+    val quietLines =
+        (-6..5)
+            .map { m -> (m + 0.5) * wavelength }
+            .filter { abs(it) < 1.8 }
+            .map {
+                quiet(it).apply {
+                    thickness = 2.5
+                    color = vec(1.0, 0.6, 0.2, 0.7)
+                }
+            }
+    val boxes = fline {
+        speakers.forEach { (x, y) -> rect(px(x) - 10, py(y) - 14, 10.0, 28.0) }
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.9)
+    }
     val scenery = ([frame] + crests + quietLines + boxes).onEach { it.fixed = true }
-    val listener = fline { moveTo(px(ear.first), py(ear.second)); pointed = true; pointSize = 3.5; color = vec(1.0, 0.6, 0.2, 1.0) }
+    val listener = fline {
+        moveTo(px(ear.first), py(ear.second))
+        pointed = true
+        pointSize = 3.5
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
     lines(scenery + listener, channel = "field", w = 640.0, h = 300.0, editable = true) { edited ->
         val p = edited.last().nodes.first().to
         ear = (p.x / metre).coerceIn(0.5, 9.9) to ((150 - p.y) / metre).coerceIn(-2.3, 2.3)
@@ -2023,8 +2442,15 @@ fun show() {
 show()
 update()
 controlGroup {
-    slider("frequency", 100.0, 1000.0, step = 1.0, initialValue = 343.0, law = ControlLaw.LOGARITHMIC) { hz = it; update(); show() }
-    checkbox("sound") { on = it; update() }
+    slider("frequency", 100.0, 1000.0, step = 1.0, initialValue = 343.0, law = ControlLaw.LOGARITHMIC) {
+        hz = it
+        update()
+        show()
+    }
+    checkbox("sound") {
+        on = it
+        update()
+    }
 }
 
 audio(SineOsc(pitch), gain = level)
@@ -2043,15 +2469,17 @@ fainter as the sound spreads; the meters say how late the sound arrives and how 
 is than one metre away. The picture is ten metres across; the bar is one metre.
 
 ```edn [field-box id="es_speaker_ear" role="properties"]
-{"id" "es_speaker_ear" "index" 20 "name" "speaker_ear" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "speaker_ear" "_tombstone" false "frame" #afield/rect [500.0 460.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_speaker_ear_code_.kt" "lines" 52 "characters" 2488 "sha256" "db1b8d9e4b4edc2e62b3ade88857f02fe337283eb6975e220e2760b1fe539165"}]}
+{"id" "es_speaker_ear" "index" 20 "name" "speaker_ear" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "speaker_ear" "_tombstone" false "frame" #afield/rect [500.0 460.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_speaker_ear_code_.kt" "lines" 84 "characters" 2708 "sha256" "f12542e846339273e2205526d5dee1fccb200278e9b6f4f9356eee1751580d7e"}]}
 ```
 
 ```kotlin [field-property box="es_speaker_ear" name="code" path="es_speaker_ear_code_.kt"]
-// A speaker on the left and a listener (the orange point) you drag. The rings are one metre apart,
-// fainter as the sound spreads; the meters say how late the sound arrives and how much quieter it
-// is than one metre away. The picture is ten metres across; the bar is one metre.
+/*
+A speaker on the left and a listener (the orange point) you drag. The rings are one metre apart,
+fainter as the sound spreads; the meters say how late the sound arrives and how much quieter it
+is than one metre away. The picture is ten metres across; the bar is one metre.
+*/
 val metre = 64.0
-var ear = Pair(3.0, 0.0)       // metres from the speaker
+var ear = Pair(3.0, 0.0) // metres from the speaker
 lateinit var delay: MeterHandle
 lateinit var level: MeterHandle
 
@@ -2077,14 +2505,44 @@ fun measure() {
 fun show() {
     val sx = 24.0
     val sy = 150.0
-    val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+    val frame = fline {
+        rect(0.0, 0.0, 640.0, 300.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.0)
+    }
     // Brightness falls as one over the distance, as the pressure swing does.
-    val rings = (1..10).map { m -> ring(sx, sy, metre * m).apply { thickness = 2.0; color = vec(0.4, 0.9, 1.0, 0.25 + 0.75 / m) } }
-    val speaker = fline { rect(sx - 16, sy - 22, 16.0, 44.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.9) }
-    val path = fline { moveTo(sx, sy); lineTo(sx + metre * ear.first, sy - metre * ear.second); thickness = 1.5; color = vec(1.0, 0.6, 0.2, 0.5) }
-    val scale = fline { moveTo(40.0, 285.0); lineTo(40 + metre, 285.0); thickness = 3.0; color = vec(1.0, 1.0, 1.0, 0.8) }
+    val rings =
+        (1..10).map { m ->
+            ring(sx, sy, metre * m).apply {
+                thickness = 2.0
+                color = vec(0.4, 0.9, 1.0, 0.25 + 0.75 / m)
+            }
+        }
+    val speaker = fline {
+        rect(sx - 16, sy - 22, 16.0, 44.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.9)
+    }
+    val path = fline {
+        moveTo(sx, sy)
+        lineTo(sx + metre * ear.first, sy - metre * ear.second)
+        thickness = 1.5
+        color = vec(1.0, 0.6, 0.2, 0.5)
+    }
+    val scale = fline {
+        moveTo(40.0, 285.0)
+        lineTo(40 + metre, 285.0)
+        thickness = 3.0
+        color = vec(1.0, 1.0, 1.0, 0.8)
+    }
     val scenery = ([frame, speaker, path, scale] + rings).onEach { it.fixed = true }
-    val listener = fline { moveTo(sx + metre * ear.first, sy - metre * ear.second); pointed = true; pointSize = 3.5; color = vec(1.0, 0.6, 0.2, 1.0) }
+    val listener = fline {
+        moveTo(sx + metre * ear.first, sy - metre * ear.second)
+        pointed = true
+        pointSize = 3.5
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
     lines(scenery + listener, channel = "room", w = 640.0, h = 300.0, editable = true) { edited ->
         val p = edited.last().nodes.first().to
         ear = ((p.x - sx) / metre).coerceIn(0.3, 9.6) to ((sy - p.y) / metre).coerceIn(-2.2, 2.2)
@@ -2112,7 +2570,7 @@ From `code`
 Three keys. Hold one to hear it; the line is the shape of the air pressure it makes.
 
 ```edn [field-box id="es_keyboard" role="properties"]
-{"id" "es_keyboard" "index" 21 "name" "keyboard" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "keyboard" "_tombstone" false "frame" #afield/rect [300.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_keyboard_code_.kt" "lines" 42 "characters" 1417 "sha256" "c1acfaf83b7cddfa89ba8e0239f13b10d2bf3d1fe019b080ab72d6f9f94cba10"}]}
+{"id" "es_keyboard" "index" 21 "name" "keyboard" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "keyboard" "_tombstone" false "frame" #afield/rect [300.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_keyboard_code_.kt" "lines" 46 "characters" 1427 "sha256" "db6ee721210755edd646f35fe525fa36b27a3a51ef062b118781924bd9d63009"}]}
 ```
 
 ```kotlin [field-property box="es_keyboard" name="code" path="es_keyboard_code_.kt"]
@@ -2129,7 +2587,11 @@ val held = BooleanArray(3)
 
 // Twenty milliseconds of whatever is held, summed.
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 240.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun draw() = lines(
     frame,
@@ -2165,7 +2627,7 @@ audio(3 { i -> voices[i] * adsr(0.01, 0.05, 1.0, 0.25, gates[i]) }.reduce { a, b
 <!-- field-box id="es_pressure_box" index="22" -->
 
 ```edn [field-box id="es_pressure_box" role="properties"]
-{"id" "es_pressure_box" "index" 22 "name" "pressure_box" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pressure_box" "_tombstone" false "frame" #afield/rect [500.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_pressure_box_code_.kt" "lines" 122 "characters" 5164 "sha256" "7fd8f830f01afe37521fc42c452e6cccf2b75f7e1611736d2819e6988cb0a795"}]}
+{"id" "es_pressure_box" "index" 22 "name" "pressure_box" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pressure_box" "_tombstone" false "frame" #afield/rect [500.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_pressure_box_code_.kt" "lines" 163 "characters" 5564 "sha256" "a8e7c8e86cf6fd5c664727232a8f8b5e47481bda2829e32ca01f14e4547889d8"}]}
 ```
 
 ```kotlin [field-property box="es_pressure_box" name="code" path="es_pressure_box_code_.kt"]
@@ -2181,31 +2643,45 @@ val x = DoubleArray(n) { 30 + Math.random() * 580 }
 val y = DoubleArray(n) { 20 + Math.random() * 260 }
 val vx = DoubleArray(n)
 val vy = DoubleArray(n)
-n { i -> val a = Math.random() * 2 * PI; vx[i] = 2 * cos(a); vy[i] = 2 * sin(a) }
+n { i ->
+    val a = Math.random() * 2 * PI
+    vx[i] = 2 * cos(a)
+    vy[i] = 2 * sin(a)
+}
 
 var speed = 1.0
 var length = 1.0
 var follow = false
 val trail = mutableListOf<Pair<Double, Double>>()
-val flashes = mutableListOf<DoubleArray>()   // x, y, age
+val flashes = mutableListOf<DoubleArray>() // x, y, age
 val hitsPerFrame = mutableListOf<Double>()
 val rate = mutableListOf<Double>()
 
 val px = IntArray(imageW * imageH)
 fun dot(cx: Double, cy: Double, radius: Double, argb: Int) {
     for (j in (cy - radius).toInt()..(cy + radius).toInt()) for (i in (cx - radius).toInt()..(cx + radius).toInt()) {
-        if (i in 0 until imageW && j in 0 until imageH && (i - cx) * (i - cx) + (j - cy) * (j - cy) <= radius * radius) px[j * imageW + i] = argb
+        if (i in 0 until imageW && j in 0 until imageH && (i - cx) * (i - cx) + (j - cy) * (j - cy) <= radius * radius)
+            px[j * imageW + i] = argb
     }
 }
 
 // The picture, then the plot, then the controls, in that order down the output.
 display("box", PngEncoder.encode(px, imageW, imageH))
-fun plot() = showSignals("hits on the right wall" to rate.takeLast(120), channel = "rate", width = 640, height = 200, yTitle = "pressure")
+fun plot() = showSignals(
+    "hits on the right wall" to rate.takeLast(120),
+    channel = "rate",
+    width = 640,
+    height = 200,
+    yTitle = "pressure",
+)
 plot()
 controlGroup {
     slider("speed", 0.0, 2.0, step = 0.01, initialValue = 1.0) { speed = it }
     slider("length", 0.3, 1.0, step = 0.01, initialValue = 1.0) { length = it }
-    checkbox("follow one") { follow = it; trail.clear() }
+    checkbox("follow one") {
+        follow = it
+        trail.clear()
+    }
 }
 
 var frameCount = 0
@@ -2224,16 +2700,31 @@ fun step() {
         n { i ->
             x[i] += vx[i] * speed / steps
             y[i] += vy[i] * speed / steps
-            if (x[i] < left + r) { x[i] = left + r; vx[i] = abs(vx[i]); flashes += doubleArrayOf(left, y[i], 0.0) }
+            if (x[i] < left + r) {
+                x[i] = left + r
+                vx[i] = abs(vx[i])
+                flashes += doubleArrayOf(left, y[i], 0.0)
+            }
             if (x[i] > right - r) {
                 // A molecule the moving wall swept up is pushed back in, but that is not a hit.
                 val swept = x[i] - vx[i] * speed / steps > right - r
                 x[i] = right - r
                 vx[i] = -abs(vx[i])
-                if (!swept) { hits++; flashes += doubleArrayOf(right, y[i], 0.0) }
+                if (!swept) {
+                    hits++
+                    flashes += doubleArrayOf(right, y[i], 0.0)
+                }
             }
-            if (y[i] < top + r) { y[i] = top + r; vy[i] = abs(vy[i]); flashes += doubleArrayOf(x[i], top, 0.0) }
-            if (y[i] > bottom - r) { y[i] = bottom - r; vy[i] = -abs(vy[i]); flashes += doubleArrayOf(x[i], bottom, 0.0) }
+            if (y[i] < top + r) {
+                y[i] = top + r
+                vy[i] = abs(vy[i])
+                flashes += doubleArrayOf(x[i], top, 0.0)
+            }
+            if (y[i] > bottom - r) {
+                y[i] = bottom - r
+                vy[i] = -abs(vy[i])
+                flashes += doubleArrayOf(x[i], bottom, 0.0)
+            }
         }
         // Equal masses colliding head on swap the part of their velocities along the line between them.
         for (i in 0 until n) for (j in i + 1 until n) {
@@ -2246,32 +2737,44 @@ fun step() {
                 val ny = dy / d
                 val approach = (vx[i] - vx[j]) * nx + (vy[i] - vy[j]) * ny
                 if (approach > 0) {
-                    vx[i] -= approach * nx; vy[i] -= approach * ny
-                    vx[j] += approach * nx; vy[j] += approach * ny
+                    vx[i] -= approach * nx
+                    vy[i] -= approach * ny
+                    vx[j] += approach * nx
+                    vy[j] += approach * ny
                 }
             }
         }
     }
     // A moving wall heats or cools the gas; hold the average speed steady so only the squeeze shows.
     val mean = (0 until n).sumOf { sqrt(vx[it] * vx[it] + vy[it] * vy[it]) } / n
-    n { i -> vx[i] *= 2 / mean; vy[i] *= 2 / mean }
+    n { i ->
+        vx[i] *= 2 / mean
+        vy[i] *= 2 / mean
+    }
 
     if (speed > 0) {
         hitsPerFrame += hits / speed
         if (hitsPerFrame.size > 240) hitsPerFrame.removeAt(0)
     }
-    if (follow) { trail += x[0] to y[0]; if (trail.size > 1500) trail.removeAt(0) }
-
+    if (follow) {
+        trail += x[0] to y[0]
+        if (trail.size > 1500) trail.removeAt(0)
+    }
 }
 
 loop {
     val now = AnimationClock.nowSeconds()
     var caught = 0
-    while (clock < now && caught < 6) { clock += 1 / 60.0; step(); caught++ }
+    while (clock < now && caught < 6) {
+        clock += 1 / 60.0
+        step()
+        caught++
+    }
     if (clock < now) clock = now
     val right = right()
     px.fill(0xff050505.toInt())
-    for (j in top.toInt()..bottom.toInt()) for (i in left.toInt()..right.toInt()) px[j * imageW + i] = 0xff101418.toInt()
+    for (j in top.toInt()..bottom.toInt()) for (i in left.toInt()..right.toInt()) px[j * imageW + i] =
+        0xff101418.toInt()
     trail.forEach { (tx, ty) -> dot(tx, ty, 0.8, 0xffff9933.toInt()) }
     n { i -> dot(x[i], y[i], r, if (follow && i == 0) 0xffff9933.toInt() else 0xff66e6ff.toInt()) }
     flashes.forEach { f ->
@@ -2298,15 +2801,17 @@ loop {
 <!-- field-box id="es_pulsing_sphere" index="23" -->
 
 ```edn [field-box id="es_pulsing_sphere" role="properties"]
-{"id" "es_pulsing_sphere" "index" 23 "name" "pulsing_sphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pulsing_sphere" "_tombstone" false "frame" #afield/rect [900.0 380.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_pulsing_sphere_code_.kt" "lines" 44 "characters" 1757 "sha256" "6e866307f9698566d1d5aa3af3f60979047d55334999d628f4db412e0fc168d5"}]}
+{"id" "es_pulsing_sphere" "index" 23 "name" "pulsing_sphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pulsing_sphere" "_tombstone" false "frame" #afield/rect [900.0 380.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_pulsing_sphere_code_.kt" "lines" 48 "characters" 1793 "sha256" "e8c754dceee256e17c04ad0bdf064ddb0c3b655a6f393b0464810e0fc69914ed"}]}
 ```
 
 ```kotlin [field-property box="es_pulsing_sphere" name="code" path="es_pulsing_sphere_code_.kt"]
 import afield.media.image.util.PngEncoder
 
-// A sphere swelling and shrinking, seen in cross-section: red is pressure above the usual, blue below.
-// The picture is four metres across, and the bar at the bottom is one metre. Time runs slowed down,
-// half a cycle a second whatever the frequency, so only the spacing of the rings changes with it.
+/*
+A sphere swelling and shrinking, seen in cross-section: red is pressure above the usual, blue below.
+The picture is four metres across, and the bar at the bottom is one metre. Time runs slowed down,
+half a cycle a second whatever the frequency, so only the spacing of the rings changes with it.
+*/
 val imageW = 640
 val imageH = 300
 val px = IntArray(imageW * imageH)
@@ -2314,19 +2819,21 @@ var hz = 343.0
 var phase = 0.0
 
 fun paint() {
-    val wavelength = 160 * 343 / hz          // pixels: 160 to the metre
+    val wavelength = 160 * 343 / hz // pixels: 160 to the metre
     val cx = 160.0
     val cy = 150.0
     val r0 = 18 + 4 * sin(2 * PI * phase)
     for (j in 0 until imageH) for (i in 0 until imageW) {
         val r = sqrt((i - cx) * (i - cx) + (j - cy) * (j - cy))
-        px[j * imageW + i] = if (r < r0) 0xff9aa4ad.toInt() else {
-            // The swing falls with distance; in a flat picture of a sphere, as one over the distance.
-            val p = (60 / r).coerceAtMost(1.0) * sin(2 * PI * ((r - r0) / wavelength - phase))
-            val red = (255 * p.coerceAtLeast(0.0)).toInt()
-            val blue = (255 * (-p).coerceAtLeast(0.0)).toInt()
-            (0xff shl 24) or (red shl 16) or (((red + blue) / 4) shl 8) or blue
-        }
+        px[j * imageW + i] =
+            if (r < r0) 0xff9aa4ad.toInt()
+            else {
+                // The swing falls with distance; in a flat picture of a sphere, as one over the distance.
+                val p = (60 / r).coerceAtMost(1.0) * sin(2 * PI * ((r - r0) / wavelength - phase))
+                val red = (255 * p.coerceAtLeast(0.0)).toInt()
+                val blue = (255 * (-p).coerceAtLeast(0.0)).toInt()
+                (0xff shl 24) or (red shl 16) or (((red + blue) / 4) shl 8) or blue
+            }
     }
     for (j in 284..287) for (i in 20..180) px[j * imageW + i] = -1
     display("field", PngEncoder.encode(px, imageW, imageH))

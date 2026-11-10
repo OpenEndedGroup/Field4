@@ -49,6 +49,12 @@ fun draw() {
 
 draw()
 controlGroup {
-    slider("angle", 0.0, 360.0, step = 1.0, initialValue = degrees) { degrees = it; draw() }
-    slider("radius", 40.0, 120.0, step = 1.0, initialValue = radius) { radius = it; draw() }
+    slider("angle", 0.0, 360.0, step = 1.0, initialValue = degrees) {
+        degrees = it
+        draw()
+    }
+    slider("radius", 40.0, 120.0, step = 1.0, initialValue = radius) {
+        radius = it
+        draw()
+    }
 }

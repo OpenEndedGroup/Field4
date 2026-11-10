@@ -11,7 +11,7 @@ fun draw() {
     val lamp = RectLight(vec(across, 1.3, 0.0), width = size, height = size, power = 30.0)
     three(channel = "scene", width = 640, height = 420) {
         // Only the block casts shadows.
-        mesh(scene.lit(listOf(lamp), occluders = block, exposure = 0.5), unlit = true, wireframe = false)
+        mesh(scene.lit([lamp], occluders = block, exposure = 0.5), unlit = true, wireframe = false)
         // Frame the view on the whole set, so it holds still as the lamp changes.
         fitTo(vec(-2.0, 0.0, -2.0), vec(2.0, 1.6, 2.0))
         mesh(lamp.mesh(), unlit = true, wireframe = false, cullBackFaces = false)
@@ -23,6 +23,12 @@ fun draw() {
 
 draw()
 controlGroup {
-    slider("position", -1.2, 1.2, initialValue = across) { across = it; draw() }
-    slider("size", 0.05, 1.5, initialValue = size) { size = it; draw() }
+    slider("position", -1.2, 1.2, initialValue = across) {
+        across = it
+        draw()
+    }
+    slider("size", 0.05, 1.5, initialValue = size) {
+        size = it
+        draw()
+    }
 }

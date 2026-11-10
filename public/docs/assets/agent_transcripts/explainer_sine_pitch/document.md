@@ -55,7 +55,7 @@ audio(SineOsc(pitch), gain = loudness)
 <!-- field-box id="esp_deck" index="1" -->
 
 ```edn [field-box id="esp_deck" role="properties"]
-{"id" "esp_deck" "index" 1 "name" "deck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "deck" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "esp_deck_code_.kt" "lines" 74 "characters" 2887 "sha256" "4762fb9edd21032a5dccb97c62b911ce83592818e3f81b56dc5221f364b95f7f"}]}
+{"id" "esp_deck" "index" 1 "name" "deck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "deck" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "esp_deck_code_.kt" "lines" 66 "characters" 2727 "sha256" "13858913082cb736e37eb2f15c677ddcb5c055a16131d8ac934d09acf071945e"}]}
 ```
 
 ```kotlin [field-property box="esp_deck" name="code" path="esp_deck_code_.kt"]
@@ -72,9 +72,7 @@ presentation(title = "A sine wave and its pitch") {
                 A sound is air pushed back and forth against your ear. The smoothest
                 push is a sine wave: one even swing, repeated.
 
-                How often the swing repeats is what you hear as pitch.
-            """
-                    .md
+                How often the swing repeats is what you hear as pitch.""".md
                 p(classes = "muted") {
                     +"After “Sound” by Bartosz Ciechanowski, ciechanow.ski/sound. Words and figures made in Field."
                 }
@@ -90,9 +88,7 @@ presentation(title = "A sine wave and its pitch") {
                     The line is twenty milliseconds of the wave. Drag **frequency**:
                     as the number rises, more swings fit into the same time.
 
-                    Frequency counts swings per second, in hertz.
-                """
-                        .md
+                    Frequency counts swings per second, in hertz.""".md
                 }
             }
             control("sine", "frequency", 220.0)
@@ -106,9 +102,7 @@ presentation(title = "A sine wave and its pitch") {
                     ## Twice as often
 
                     220 Hz is the A below middle C. Doubling the frequency fits
-                    twice as many swings in, and we hear the same note an octave up.
-                """
-                        .md
+                    twice as many swings in, and we hear the same note an octave up.""".md
                 }
             }
             control("sine", "frequency", 220.0)
@@ -123,9 +117,7 @@ presentation(title = "A sine wave and its pitch") {
                     ## Hear it
 
                     Tick **sound**, then drag **frequency**. The wave you see is the
-                    tone you hear: one box draws it and plays it.
-                """
-                        .md
+                    tone you hear: one box draws it and plays it.""".md
                 }
             }
             cue("Sound on") { control("sine", "sound", true) }

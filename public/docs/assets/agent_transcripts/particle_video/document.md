@@ -45,7 +45,7 @@ particleVideoView(video, initialSeconds = 7.2, scale = 1, pointRadius = 1.5)
 <!-- field-box id="particle_video_guide" index="2" -->
 
 ```edn [field-box id="particle_video_guide" role="properties"]
-{"id" "particle_video_guide" "index" 2 "name" "1 · video particles" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · video particles" "_tombstone" false "frame" #afield/rect [40.0 40.0 400.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "particle_video_guide_code_.kt" "lines" 15 "characters" 580 "sha256" "8424964ed3651b0248472049d9e2346faf03ff17089194a95c4d75b0a8cc6b28"}]}
+{"id" "particle_video_guide" "index" 2 "name" "1 · video particles" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · video particles" "_tombstone" false "frame" #afield/rect [40.0 40.0 400.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "particle_video_guide_code_.kt" "lines" 13 "characters" 566 "sha256" "ad4a5831c092480d521e55328d4d3628da7ad6737e148f9fc6adbd944ebc218d"}]}
 ```
 
 ```kotlin [field-property box="particle_video_guide" name="code" path="particle_video_guide_code_.kt"]
@@ -60,9 +60,7 @@ markdown(
     `FIELD_PARTICLE_TRACKER_PYTHON` to an existing Torch/Torchvision interpreter.
     Replace the movie filename to track your own footage. Width 0 retains native resolution.
 
-    [Video tracking and setup](https://openendedgroup.com/Field4/particle_video/)
-    """
-        .trimIndent(),
+    [Video tracking and setup](https://openendedgroup.com/Field4/particle_video/)""".trimIndent(),
 )
 ```
 

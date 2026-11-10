@@ -101,7 +101,7 @@ show(0.05)
 <!-- field-box id="ms_network_table" index="2" -->
 
 ```edn [field-box id="ms_network_table" role="properties"]
-{"id" "ms_network_table" "index" 2 "name" "3 - What a result holds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - What a result holds" "_tombstone" false "frame" #afield/rect [60.0 260.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ms_network_table_code_.kt" "lines" 32 "characters" 1021 "sha256" "ddf077eef7699594fb3923f470a289222f4ef9201397f5a9f972bc63172aee7f"}]}
+{"id" "ms_network_table" "index" 2 "name" "3 - What a result holds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - What a result holds" "_tombstone" false "frame" #afield/rect [60.0 260.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ms_network_table_code_.kt" "lines" 30 "characters" 1011 "sha256" "9468364490d9806f7123aac5d0605d30f8733f6da483bef17eea7ef80df25e8d"}]}
 ```
 
 ```kotlin [field-property box="ms_network_table" name="code" path="ms_network_table_code_.kt"]
@@ -133,9 +133,7 @@ ${result.network}
 
 | curve | ends at | persistence | points |
 | --- | --- | ---: | ---: |
-$rows
-"""
-        .trimIndent(),
+$rows""".trimIndent(),
 )
 ```
 

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kratos_study" index="0" -->
 
 ```edn [field-box id="kratos_study" role="properties"]
-{"id" "kratos_study" "index" 0 "name" "Kratos parameter study" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos parameter study" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_study_code_.kt" "lines" 247 "characters" 11484 "sha256" "cd17edc62c721d2777d08d788683665c1dbc7fb76192676695978ca4bdf73498"}]}
+{"id" "kratos_study" "index" 0 "name" "Kratos parameter study" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos parameter study" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_study_code_.kt" "lines" 245 "characters" 11426 "sha256" "c75bde04e06fc95b0fd242fa9b4dfbc99b4c75be871e23d0ab65bcb98b615052"}]}
 ```
 
 ```kotlin [field-property box="kratos_study" name="code" path="kratos_study_code_.kt"]
@@ -204,9 +204,7 @@ frames {
                             - Probe ${probe.f4} K · asked for ${target.f2} K · miss ${(winner.objective ?: Double.NaN).f4} K
                             - Peak in the part ${peak.f4} K
                             - Closed form says this arm wants k = ${if (predicted == null) "?" else predicted.f3} W/(m K)
-                            - ${study.solveCount} solves · ${study.cacheHits} served from cache · mean ${study.meanSolveMs.f0} ms
-                        """
-                                .trimIndent() +
+                            - ${study.solveCount} solves · ${study.cacheHits} served from cache · mean ${study.meanSolveMs.f0} ms""".trimIndent() +
                                 (landscape?.let { "\n- ${it.feasible.size}/${it.samples.size} feasible" } ?: "") +
                                 (optimisation?.let {
                                     "\n\n${mdEscape(it.run.summary())}" +

@@ -18,7 +18,7 @@ Launch 1, 2, 2b, 3, 4 in order; stop box 4 to pause.
 Desktop preview first. For OpenXR: connect the headset, set true, restart Field.
 
 ```edn [field-box id="stereo_renderer" role="properties"]
-{"id" "stereo_renderer" "index" 0 "name" "1 - Window and renderer" "parents" ["root"] "children" ["stereo_scene"] "properties" {"children" #{#afield/box "stereo_scene"} "parents" #{#afield/box "root"} "name" "1 - Window and renderer" "_tombstone" false "frame" #afield/rect [60.0 60.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stereo_renderer_code_.kt" "lines" 34 "characters" 1319 "sha256" "db9899b47d9c37dd2d1e8db0bf2f47bc244c4c67407137cde7985a87873ac851"}]}
+{"id" "stereo_renderer" "index" 0 "name" "1 - Window and renderer" "parents" ["root"] "children" ["stereo_scene"] "properties" {"children" #{#afield/box "stereo_scene"} "parents" #{#afield/box "root"} "name" "1 - Window and renderer" "_tombstone" false "frame" #afield/rect [60.0 60.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stereo_renderer_code_.kt" "lines" 32 "characters" 1305 "sha256" "32233cf48614a3911e801615721f4b5275de25d2eb2a6048a680626bd861963a"}]}
 ```
 
 ```kotlin [field-property box="stereo_renderer" name="code" path="stereo_renderer_code_.kt"]
@@ -51,9 +51,7 @@ display(
     For VR, connect your OpenXR runtime first, set useHeadset = true above,
     then restart Field and launch the boxes again. Eye size comes from the runtime.<br>
     Stop box 4 to pause the render loop. Restart Field to change mode or eye size.
-    </div>
-    """
-        .trimIndent(),
+    </div>""".trimIndent(),
 )
 displayOpen("guide")
 ```

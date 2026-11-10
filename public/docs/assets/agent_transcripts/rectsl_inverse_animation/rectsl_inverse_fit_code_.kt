@@ -76,5 +76,4 @@ display(
 """x: ${fitX.initialParameters} -> ${fitX.parameters}
 |   residual ${fitX.initialResidual} -> ${fitX.finalResidual}
 |y: ${fitY.initialParameters} -> ${fitY.parameters}
-|   residual ${fitY.initialResidual} -> ${fitY.finalResidual}"""
-    .trimMargin()
+|   residual ${fitY.initialResidual} -> ${fitY.finalResidual}""".trimMargin()

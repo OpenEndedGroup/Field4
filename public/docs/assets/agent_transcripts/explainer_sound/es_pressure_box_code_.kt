@@ -10,31 +10,45 @@ val x = DoubleArray(n) { 30 + Math.random() * 580 }
 val y = DoubleArray(n) { 20 + Math.random() * 260 }
 val vx = DoubleArray(n)
 val vy = DoubleArray(n)
-n { i -> val a = Math.random() * 2 * PI; vx[i] = 2 * cos(a); vy[i] = 2 * sin(a) }
+n { i ->
+    val a = Math.random() * 2 * PI
+    vx[i] = 2 * cos(a)
+    vy[i] = 2 * sin(a)
+}
 
 var speed = 1.0
 var length = 1.0
 var follow = false
 val trail = mutableListOf<Pair<Double, Double>>()
-val flashes = mutableListOf<DoubleArray>()   // x, y, age
+val flashes = mutableListOf<DoubleArray>() // x, y, age
 val hitsPerFrame = mutableListOf<Double>()
 val rate = mutableListOf<Double>()
 
 val px = IntArray(imageW * imageH)
 fun dot(cx: Double, cy: Double, radius: Double, argb: Int) {
     for (j in (cy - radius).toInt()..(cy + radius).toInt()) for (i in (cx - radius).toInt()..(cx + radius).toInt()) {
-        if (i in 0 until imageW && j in 0 until imageH && (i - cx) * (i - cx) + (j - cy) * (j - cy) <= radius * radius) px[j * imageW + i] = argb
+        if (i in 0 until imageW && j in 0 until imageH && (i - cx) * (i - cx) + (j - cy) * (j - cy) <= radius * radius)
+            px[j * imageW + i] = argb
     }
 }
 
 // The picture, then the plot, then the controls, in that order down the output.
 display("box", PngEncoder.encode(px, imageW, imageH))
-fun plot() = showSignals("hits on the right wall" to rate.takeLast(120), channel = "rate", width = 640, height = 200, yTitle = "pressure")
+fun plot() = showSignals(
+    "hits on the right wall" to rate.takeLast(120),
+    channel = "rate",
+    width = 640,
+    height = 200,
+    yTitle = "pressure",
+)
 plot()
 controlGroup {
     slider("speed", 0.0, 2.0, step = 0.01, initialValue = 1.0) { speed = it }
     slider("length", 0.3, 1.0, step = 0.01, initialValue = 1.0) { length = it }
-    checkbox("follow one") { follow = it; trail.clear() }
+    checkbox("follow one") {
+        follow = it
+        trail.clear()
+    }
 }
 
 var frameCount = 0
@@ -53,16 +67,31 @@ fun step() {
         n { i ->
             x[i] += vx[i] * speed / steps
             y[i] += vy[i] * speed / steps
-            if (x[i] < left + r) { x[i] = left + r; vx[i] = abs(vx[i]); flashes += doubleArrayOf(left, y[i], 0.0) }
+            if (x[i] < left + r) {
+                x[i] = left + r
+                vx[i] = abs(vx[i])
+                flashes += doubleArrayOf(left, y[i], 0.0)
+            }
             if (x[i] > right - r) {
                 // A molecule the moving wall swept up is pushed back in, but that is not a hit.
                 val swept = x[i] - vx[i] * speed / steps > right - r
                 x[i] = right - r
                 vx[i] = -abs(vx[i])
-                if (!swept) { hits++; flashes += doubleArrayOf(right, y[i], 0.0) }
+                if (!swept) {
+                    hits++
+                    flashes += doubleArrayOf(right, y[i], 0.0)
+                }
             }
-            if (y[i] < top + r) { y[i] = top + r; vy[i] = abs(vy[i]); flashes += doubleArrayOf(x[i], top, 0.0) }
-            if (y[i] > bottom - r) { y[i] = bottom - r; vy[i] = -abs(vy[i]); flashes += doubleArrayOf(x[i], bottom, 0.0) }
+            if (y[i] < top + r) {
+                y[i] = top + r
+                vy[i] = abs(vy[i])
+                flashes += doubleArrayOf(x[i], top, 0.0)
+            }
+            if (y[i] > bottom - r) {
+                y[i] = bottom - r
+                vy[i] = -abs(vy[i])
+                flashes += doubleArrayOf(x[i], bottom, 0.0)
+            }
         }
         // Equal masses colliding head on swap the part of their velocities along the line between them.
         for (i in 0 until n) for (j in i + 1 until n) {
@@ -75,32 +104,44 @@ fun step() {
                 val ny = dy / d
                 val approach = (vx[i] - vx[j]) * nx + (vy[i] - vy[j]) * ny
                 if (approach > 0) {
-                    vx[i] -= approach * nx; vy[i] -= approach * ny
-                    vx[j] += approach * nx; vy[j] += approach * ny
+                    vx[i] -= approach * nx
+                    vy[i] -= approach * ny
+                    vx[j] += approach * nx
+                    vy[j] += approach * ny
                 }
             }
         }
     }
     // A moving wall heats or cools the gas; hold the average speed steady so only the squeeze shows.
     val mean = (0 until n).sumOf { sqrt(vx[it] * vx[it] + vy[it] * vy[it]) } / n
-    n { i -> vx[i] *= 2 / mean; vy[i] *= 2 / mean }
+    n { i ->
+        vx[i] *= 2 / mean
+        vy[i] *= 2 / mean
+    }
 
     if (speed > 0) {
         hitsPerFrame += hits / speed
         if (hitsPerFrame.size > 240) hitsPerFrame.removeAt(0)
     }
-    if (follow) { trail += x[0] to y[0]; if (trail.size > 1500) trail.removeAt(0) }
-
+    if (follow) {
+        trail += x[0] to y[0]
+        if (trail.size > 1500) trail.removeAt(0)
+    }
 }
 
 loop {
     val now = AnimationClock.nowSeconds()
     var caught = 0
-    while (clock < now && caught < 6) { clock += 1 / 60.0; step(); caught++ }
+    while (clock < now && caught < 6) {
+        clock += 1 / 60.0
+        step()
+        caught++
+    }
     if (clock < now) clock = now
     val right = right()
     px.fill(0xff050505.toInt())
-    for (j in top.toInt()..bottom.toInt()) for (i in left.toInt()..right.toInt()) px[j * imageW + i] = 0xff101418.toInt()
+    for (j in top.toInt()..bottom.toInt()) for (i in left.toInt()..right.toInt()) px[j * imageW + i] =
+        0xff101418.toInt()
     trail.forEach { (tx, ty) -> dot(tx, ty, 0.8, 0xffff9933.toInt()) }
     n { i -> dot(x[i], y[i], r, if (follow && i == 0) 0xffff9933.toInt() else 0xff66e6ff.toInt()) }
     flashes.forEach { f ->

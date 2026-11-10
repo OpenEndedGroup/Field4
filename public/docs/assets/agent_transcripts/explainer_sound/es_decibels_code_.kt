@@ -5,7 +5,10 @@ lateinit var bar: MeterHandle
 
 fun show(pa: Double) {
     val db = level(pa)
-    markdown("readout", "**${"%.3g".format(pa)} Pa → ${db.f1} dB**\n\n0 dB: hearing just begins · 60 dB: talking, a metre away · 120 dB: it starts to hurt")
+    markdown(
+        "readout",
+        "**${"%.3g".format(pa)} Pa → ${db.f1} dB**\n\n0 dB: hearing just begins · 60 dB: talking, a metre away · 120 dB: it starts to hurt",
+    )
     if (::bar.isInitialized) bar.set(db)
 }
 

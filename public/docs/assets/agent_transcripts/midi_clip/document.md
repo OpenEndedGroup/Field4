@@ -25,7 +25,7 @@ On macOS the IAC driver appears as two entries with the SAME name, one output an
 input, so a name alone does not identify a device: check the direction.
 
 ```edn [field-box id="midi_devices" role="properties"]
-{"id" "midi_devices" "index" 0 "name" "What can this machine see?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What can this machine see?" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_devices_code_.kt" "lines" 46 "characters" 1855 "sha256" "4c683712fe158b39fc19932457d2e367467ae6864a90b1843cb3bb4a4428e094"}]}
+{"id" "midi_devices" "index" 0 "name" "What can this machine see?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What can this machine see?" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_devices_code_.kt" "lines" 44 "characters" 1841 "sha256" "d61d80f84251aebd45522fa5bde20e2bc135e63d1d29f782aa57c0e58cdede91"}]}
 ```
 
 ```kotlin [field-property box="midi_devices" name="code" path="midi_devices_code_.kt"]
@@ -71,9 +71,7 @@ markdown(
 
     One caveat worth knowing before you open an input: doing so starts a non-daemon
     `Java Sound MidiInDevice Thread` that outlives `close()`, so a JVM that has opened a
-    MIDI input will not exit on its own.
-    """
-        .trimIndent(),
+    MIDI input will not exit on its own.""".trimIndent(),
 )
 ```
 
@@ -82,7 +80,7 @@ markdown(
 <!-- field-box id="midi_audition" index="1" -->
 
 ```edn [field-box id="midi_audition" role="properties"]
-{"id" "midi_audition" "index" 1 "name" "Hear it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Hear it" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_audition_code_.kt" "lines" 65 "characters" 1993 "sha256" "b1b7169ec59e80805b726e3a05badff4eaa35299a9fb6e1e1d0fdb4b928371ba"}]}
+{"id" "midi_audition" "index" 1 "name" "Hear it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Hear it" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_audition_code_.kt" "lines" 61 "characters" 1957 "sha256" "837d23302988e33d534ba9efb49e4add16b19ff86ca15659f201ff250b4fe22a"}]}
 ```
 
 ````kotlin [field-property box="midi_audition" name="code" path="midi_audition_code_.kt"]
@@ -127,9 +125,7 @@ val report =
     | soundbank | ${r.soundbankName} |
 
     Peak amplitude is the check that matters: a WAV of pure silence is exactly as large
-    as a loud one, so file size proves nothing. ${if (r.isSilent) "**This one is silent.**" else "This one is not silent."}
-    """
-            .trimIndent()
+    as a loud one, so file size proves nothing. ${if (r.isSilent) "**This one is silent.**" else "This one is not silent."}""".trimIndent()
     } else {
         """
     ### Offline rendering is not available in this JVM
@@ -144,9 +140,7 @@ val report =
     clip.playTo("Gervill")
     ```
 
-    Or to any other port `MidiDevices.outputs()` lists in box 3.
-    """
-            .trimIndent()
+    Or to any other port `MidiDevices.outputs()` lists in box 3.""".trimIndent()
     }
 
 showMidiRoll(clip)
@@ -158,7 +152,7 @@ markdown("main", report)
 <!-- field-box id="midi_write" index="2" -->
 
 ```edn [field-box id="midi_write" role="properties"]
-{"id" "midi_write" "index" 2 "name" "Write a MIDI file" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Write a MIDI file" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_write_code_.kt" "lines" 55 "characters" 1687 "sha256" "c2ed342dcaf89158a78bd311c9939b3aa88bf718119fc40a438c91eac5fdef94"}]}
+{"id" "midi_write" "index" 2 "name" "Write a MIDI file" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Write a MIDI file" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_write_code_.kt" "lines" 53 "characters" 1673 "sha256" "2219f29a4f3525853adc79c216dc545ce70b0261106e41738beea9058c2aaf2a"}]}
 ```
 
 ```kotlin [field-property box="midi_write" name="code" path="midi_write_code_.kt"]
@@ -213,9 +207,7 @@ markdown(
     | tempo | ${clip.bpmAt(0.0)} BPM |
     | length | ${clip.durationSeconds.f2}s / ${clip.durationBeats} beats |
 
-    Format 1, with a real conductor track. Open it in any DAW, or run box 2.
-    """
-        .trimIndent(),
+    Format 1, with a real conductor track. Open it in any DAW, or run box 2.""".trimIndent(),
 )
 ```
 
@@ -224,7 +216,7 @@ markdown(
 <!-- field-box id="midi_read" index="3" -->
 
 ```edn [field-box id="midi_read" role="properties"]
-{"id" "midi_read" "index" 3 "name" "Read it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Read it back" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_read_code_.kt" "lines" 41 "characters" 1474 "sha256" "6963b5f0a5a7f8ca80297beaad2127df9a57e1d5ebec06c5d4fe8a47ceb8bc18"}]}
+{"id" "midi_read" "index" 3 "name" "Read it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Read it back" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_read_code_.kt" "lines" 39 "characters" 1460 "sha256" "11299532d9350e0732da8a9657929ddd26e960be63cec593504fe806c0ec1851"}]}
 ```
 
 ```kotlin [field-property box="midi_read" name="code" path="midi_read_code_.kt"]
@@ -265,9 +257,7 @@ markdown(
     As a pattern again: ${firstCycle.size} events in cycle 0, pitches
     `${firstCycle.sortedBy { it.arc.start }.map { it.value }.joinToString(" ")}`.
 
-    The roll above is drawn from the *file*, not from the clip box 1 held in memory.
-    """
-        .trimIndent(),
+    The roll above is drawn from the *file*, not from the clip box 1 held in memory.""".trimIndent(),
 )
 ```
 

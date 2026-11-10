@@ -40,7 +40,5 @@ markdown(
 
     One caveat worth knowing before you open an input: doing so starts a non-daemon
     `Java Sound MidiInDevice Thread` that outlives `close()`, so a JVM that has opened a
-    MIDI input will not exit on its own.
-    """
-        .trimIndent(),
+    MIDI input will not exit on its own.""".trimIndent(),
 )

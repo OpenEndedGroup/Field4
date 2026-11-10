@@ -3,8 +3,16 @@
 val sphere = icosphereMesh(4, 1.0)
 // Two great circles, so the sphere reads as a sphere without a wireframe in the way.
 val circles = listOf(
-    fline { moveTo(1.0, 0.0, 0.0); for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96)); color = vec(1.0, 1.0, 1.0, 0.35) },
-    fline { moveTo(1.0, 0.0, 0.0); for (k in 1..96) lineTo(cos(2 * PI * k / 96), sin(2 * PI * k / 96), 0.0); color = vec(1.0, 1.0, 1.0, 0.35) },
+    fline {
+        moveTo(1.0, 0.0, 0.0)
+        for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96))
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    },
+    fline {
+        moveTo(1.0, 0.0, 0.0)
+        for (k in 1..96) lineTo(cos(2 * PI * k / 96), sin(2 * PI * k / 96), 0.0)
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    },
 )
 
 fun draw(distance: Double) {
@@ -14,9 +22,14 @@ fun draw(distance: Double) {
     var omega = 0.0
     for (t in 0 until shadow.triangleCount) omega += shadow.triangleArea(t)
     // From the eye through each corner of the patch to the panel's corner.
-    val corners = listOf(-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4).map { (x, y) ->
-        fline { moveTo(0.0, 0.0, 0.0); lineTo(x, y, -distance); color = vec(1.0, 1.0, 1.0, 0.35) }
-    }
+    val corners =
+        listOf(-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4).map { (x, y) ->
+            fline {
+                moveTo(0.0, 0.0, 0.0)
+                lineTo(x, y, -distance)
+                color = vec(1.0, 1.0, 1.0, 0.35)
+            }
+        }
     three(channel = "scene", width = 640, height = 420) {
         mesh(sphere.withColor(0.4, 0.45, 0.5), opacity = 0.1, wireframe = false)
         lines(circles + corners)

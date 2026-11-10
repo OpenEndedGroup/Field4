@@ -61,7 +61,7 @@ display("figure", figureSvg(figure))
 <!-- field-box id="dl_table" index="2" -->
 
 ```edn [field-box id="dl_table" role="properties"]
-{"id" "dl_table" "index" 2 "name" "4 · Five texts side by side" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Five texts side by side" "_tombstone" false "frame" #afield/rect [900.0 700.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dl_table_code_.kt" "lines" 23 "characters" 861 "sha256" "4ef7df13adf14a26ee921c8026ff22fa556e64ccbf76bd2f165ddf04530c9282"}]}
+{"id" "dl_table" "index" 2 "name" "4 · Five texts side by side" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Five texts side by side" "_tombstone" false "frame" #afield/rect [900.0 700.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dl_table_code_.kt" "lines" 21 "characters" 847 "sha256" "d0b575eb9598423df10abad97e9249eec5c6f46befef57de45b72672ca71cfb9"}]}
 ```
 
 ```kotlin [field-property box="dl_table" name="code" path="dl_table_code_.kt"]
@@ -84,9 +84,7 @@ markdown(
     """
     | text | sentences | mean words | ÷ free random | ÷ fixed order | ÷ shortest | shorter than chance |
     | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-    ${rows.joinToString("\n    ")}
-    """
-        .trimIndent(),
+    ${rows.joinToString("\n    ")}""".trimIndent(),
 )
 ```
 

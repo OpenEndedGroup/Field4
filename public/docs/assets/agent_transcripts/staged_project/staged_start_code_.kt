@@ -23,9 +23,7 @@ val brief =
     - Run the corpus before you call a rule change done: a change that suits this level can break a variant.
 
     Evaluate the results, not only the checks. Look at the paths and the placement, and say what you see. The checks
-    only cover what someone thought to measure.
-    """
-        .trimIndent()
+    only cover what someone thought to measure.""".trimIndent()
 
 val guide = "%document/guides/start-here.md".file
 if (!guide.exists()) {

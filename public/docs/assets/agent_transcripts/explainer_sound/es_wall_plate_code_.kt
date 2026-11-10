@@ -1,15 +1,17 @@
 import afield.media.image.util.PngEncoder
 
-// A plate 60 cm across set in a wall on the left, pushing air back and forth: red is pressure above
-// the usual, blue below. When its waves are longer than the plate the sound spreads every way; when
-// they are shorter, the edges of the plate interfere and the sound is aimed ahead. The strip below
-// is the pressure along the plate's axis. The picture is four metres across, the bar is one metre;
-// time runs slowed, half a cycle a second, whatever the frequency.
+/*
+A plate 60 cm across set in a wall on the left, pushing air back and forth: red is pressure above
+the usual, blue below. When its waves are longer than the plate the sound spreads every way; when
+they are shorter, the edges of the plate interfere and the sound is aimed ahead. The strip below
+is the pressure along the plate's axis. The picture is four metres across, the bar is one metre;
+time runs slowed, half a cycle a second, whatever the frequency.
+*/
 val imageW = 640
 val imageH = 300
-val fieldH = 228               // the pressure field; below it, a strip plotting the axis
+val fieldH = 228 // the pressure field; below it, a strip plotting the axis
 val metre = 160.0
-val cell = 2                   // the field is solved on a 2 × 2 pixel grid and drawn up
+val cell = 2 // the field is solved on a 2 × 2 pixel grid and drawn up
 val gw = imageW / cell
 val gh = fieldH / cell
 val px = IntArray(imageW * imageH)
@@ -65,7 +67,10 @@ fun paint() {
 solve()
 paint()
 controlGroup {
-    slider("frequency", 150.0, 3000.0, step = 1.0, initialValue = 400.0, law = ControlLaw.LOGARITHMIC) { hz = it; solve() }
+    slider("frequency", 150.0, 3000.0, step = 1.0, initialValue = 400.0, law = ControlLaw.LOGARITHMIC) {
+        hz = it
+        solve()
+    }
 }
 
 var clock = AnimationClock.nowSeconds()

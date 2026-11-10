@@ -6,9 +6,13 @@ val level = Param(0f)
 val weights = 50 { Param(0f) }
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 260.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 260.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
-fun partial(i: Int) = 2 * i + 1                      // 1, 3, 5, …
+fun partial(i: Int) = 2 * i + 1 // 1, 3, 5, …
 fun sum(t: Double) = (0 until count).sumOf { i -> 4 / PI / partial(i) * sin(2 * PI * partial(i) * t) }
 fun square(t: Double) = if (t - floor(t) < 0.5) 1.0 else -1.0
 
@@ -22,13 +26,26 @@ fun update() {
         thickness = width
         color = c
     }
-    lines(frame, wave(::square, vec(1.0, 1.0, 1.0, 0.35), 1.5), wave(::sum, vec(0.4, 0.9, 1.0, 1.0), 3.0), channel = "wave", w = 640.0, h = 260.0)
+    lines(
+        frame,
+        wave(::square, vec(1.0, 1.0, 1.0, 0.35), 1.5),
+        wave(::sum, vec(0.4, 0.9, 1.0, 1.0), 3.0),
+        channel = "wave",
+        w = 640.0,
+        h = 260.0,
+    )
 }
 
 update()
 controlGroup {
-    slider("sines", 1.0, 50.0, step = 1.0, initialValue = 1.0) { count = it.toInt(); update() }
-    checkbox("sound") { on = it; update() }
+    slider("sines", 1.0, 50.0, step = 1.0, initialValue = 1.0) {
+        count = it.toInt()
+        update()
+    }
+    checkbox("sound") {
+        on = it
+        update()
+    }
 }
 
 // One oscillator per odd multiple of 110 Hz, each at the weight the sum gives it.

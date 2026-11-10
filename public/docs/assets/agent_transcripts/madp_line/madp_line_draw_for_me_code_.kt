@@ -17,6 +17,5 @@ const elements = $strokes.map((s, i) => ({ id: "hand-$stamp-" + i, type: "freedr
     seed: 1, version: 1, versionNonce: 1, isDeleted: false, boundElements: [], link: null, locked: false,
     points: s.points, pressures: [], simulatePressure: true }));
 send("notation-scene", { scene: JSON.stringify({ type: "excalidraw", version: 2, elements }) });
-</script>three strokes sent"""
-        .trimIndent(),
+</script>three strokes sent""".trimIndent(),
 )

@@ -111,9 +111,7 @@ audience {
         Something _worth trying_ in the live document.
 
         1. Predict what changes.
-        2. Run the experiment.
-    """
-        .md
+        2. Run the experiment.""".md
 }
 ```
 
@@ -131,9 +129,7 @@ audience {
     imageBeside("wave.svg", alt = "A sine wave", citation = "Author · source · license") {
         +"""
             # A small change.
-            Make a prediction, then try it in Field.
-        """
-            .md
+            Make a prediction, then try it in Field.""".md
     }
 }
 ```
@@ -445,6 +441,36 @@ Each live surface fills the audience window by default. Pass `rect = listOf(0.04
 
 Webpages use top-level, isolated Electron views, allowing sites with iframe restrictions to load normally. A site's login, network, DRM and playback rules still apply. YouTube uses its embed player and needs a video that permits embedding. Navigation failures appear in the presenter controls.
 
+### Open a link without leaving the talk
+
+A link on a slide opens its page over the audience slide when you click it, in the same kind of
+isolated view. A slide of further reading is just links:
+
+```diffstatic {data-lang=kotlin}
+step("Further reading") {
+    audienceMarkdown(
+        """
+        # Further reading
+
+        - [Cameras and Lenses](https://ciechanow.ski/cameras-and-lenses/), the essay this follows
+        - [Attention Is All You Need](https://arxiv.org/pdf/1706.03762) (PDF)
+        - [My notes](file:///Users/me/talks/notes.pdf) (a PDF on this computer)""".trimIndent(),
+    )
+}
+```
+
+Web pages open even when the site refuses to be framed, and PDFs open in Electron's PDF viewer,
+from the web or from a `file:` link. Nothing else opens: any other `file:` link and any script link
+is refused, the page cannot open pop-ups, and it can only move on to other web pages and PDFs.
+Links in the step's note on the canvas open the same way.
+
+While a page is open, the presenter says what is showing and offers **← Back to** the slide. The
+slide stays highlighted in the outline. **Back**, Escape, **Next**, **Previous** or a click on the
+highlighted slide close the page and return to the slide as it was, with its figures, controls and
+cue untouched underneath. Next does not skip ahead. Clicking a different slide goes there. In the
+audience window, arrow keys, Space and Page Up/Down scroll the page, and Escape or a clicker's
+F8/F9 return to the slide.
+
 ## Live figures beside prose
 
 A slide can hold a live figure: the output of a box in the talk's own document, with its sliders,
@@ -496,9 +522,7 @@ presentation(title = "A sine wave and its pitch") {
                         ## Twice as often
 
                         220 Hz is the A below middle C. Doubling the frequency fits
-                        twice as many swings in, and we hear the same note an octave up.
-                    """
-                        .md
+                        twice as many swings in, and we hear the same note an octave up.""".md
                 }
             }
             control("sine", "frequency", 220.0)
@@ -597,6 +621,11 @@ presentation(title = "Lights and Shadows") {
 A figure has panels only once it has run, so arranging first runs each figure box that has shown
 nothing yet, waits for its output, and stops it again. Only a canvas knows how large each panel is
 drawn, so the document has to be open in Field for the arrangement to happen.
+
+A deck can also run before any window has its document open, from a transcript for instance. Then
+the arrangement and the talk wait. The first Field canvas to open the document arranges it, and
+when that canvas is the Electron app, the audience and presenter windows open on the step the talk
+is on.
 
 ## Reuse the starter as a kit
 

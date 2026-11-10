@@ -1,8 +1,10 @@
 import kotlinx.html.*
 
-// The talk. Each figure is a box of the same name in this document; the deck starts a figure
-// when its slide comes up and stops it when the talk moves on. Nothing sounds until someone
-// holds a key or ticks "sound".
+/*
+The talk. Each figure is a box of the same name in this document; the deck starts a figure
+when its slide comes up and stops it when the talk moves on. Nothing sounds until someone
+holds a key or ticks "sound".
+*/
 
 presentation(title = "Sound") {
         section("Sound") {
@@ -23,7 +25,9 @@ presentation(title = "Sound") {
                         +"After “Sound” by Bartosz Ciechanowski, ciechanow.ski/sound. Words and figures made in Field."
                     }
                 }
-                markdownNote("Every figure in this talk is a live box. Sound starts only when someone holds a key or ticks **sound**. [[next]]")
+                markdownNote(
+                    "Every figure in this talk is a live box. Sound starts only when someone holds a key or ticks **sound**. [[next]]",
+                )
             }
             step("Three keys", id = "keyboard") {
                 audience {
@@ -139,7 +143,9 @@ presentation(title = "Sound") {
                 control("tube_plate", "colour", true)
                 cue("Push") { control("tube_plate", "plate", 12.0, glideMs = 300) }
                 cue("Pull back") { control("tube_plate", "plate", -12.0, glideMs = 600) }
-                markdownNote("Colour is pressure: red above, blue below. Next pushes the plate, then Next pulls it back. [[back]] [[next]]")
+                markdownNote(
+                    "Colour is pressure: red above, blue below. Next pushes the plate, then Next pulls it back. [[back]] [[next]]",
+                )
             }
         }
         section("Making sounds") {
@@ -158,7 +164,9 @@ presentation(title = "Sound") {
                 control("repeated_jumps", "distance", 0.5)
                 control("repeated_jumps", "rate", 4.0)
                 control("repeated_jumps", "sound", false)
-                markdownNote("Tick **sound**, then hold **jump**; drag **distance** to change how far it moves. [[back]] [[next]]")
+                markdownNote(
+                    "Tick **sound**, then hold **jump**; drag **distance** to change how far it moves. [[back]] [[next]]",
+                )
             }
             step("Repeat it and it becomes a note", id = "sounds-repeat") {
                 audience {
@@ -177,7 +185,9 @@ presentation(title = "Sound") {
                 control("repeated_jumps", "sound", false)
                 cue("Repeat") { control("repeated_jumps", "repeat", true) }
                 cue("Faster") { control("repeated_jumps", "rate", 220.0, glideMs = 4000) }
-                markdownNote("Tick **sound** to hear it. Next starts the repeats at 4 per second, then Next glides to 220. [[back]] [[next]]")
+                markdownNote(
+                    "Tick **sound** to hear it. Next starts the repeats at 4 per second, then Next glides to 220. [[back]] [[next]]",
+                )
             }
             step("Sounds add", id = "sounds-add") {
                 audience {
@@ -226,7 +236,9 @@ presentation(title = "Sound") {
                 cue("Louder") { control("triangle_params", "amplitude", 1.0, glideMs = 1500) }
                 cue("Higher") { control("triangle_params", "frequency", 440.0, glideMs = 1500) }
                 cue("Shift") { control("triangle_params", "phase", 0.5, glideMs = 1500) }
-                markdownNote("Tick **sound** first if you want it heard. Next: amplitude up, then frequency up, then phase shifted. [[back]] [[next]]")
+                markdownNote(
+                    "Tick **sound** first if you want it heard. Next: amplitude up, then frequency up, then phase shifted. [[back]] [[next]]",
+                )
             }
             step("Half a cycle apart, they cancel", id = "sounds-cancel") {
                 audience {
@@ -291,7 +303,9 @@ presentation(title = "Sound") {
                 control("sine_sweep", "frequency", 220.0)
                 control("sine_sweep", "sound", false)
                 cue("Up an octave") { control("sine_sweep", "frequency", 440.0, glideMs = 1500) }
-                markdownNote("Tick **sound**, then Next glides up an octave. Keep the room's volume low. [[back]] [[next]]")
+                markdownNote(
+                    "Tick **sound**, then Next glides up an octave. Keep the room's volume low. [[back]] [[next]]",
+                )
             }
             step("Close tones beat", id = "tones-beats") {
                 audience {
@@ -439,7 +453,9 @@ presentation(title = "Sound") {
                 control("pluck", "length", 1.0)
                 control("pluck", "pluck at", 0.25)
                 cue("Near the end") { control("pluck", "pluck at", 0.06, glideMs = 800) }
-                markdownNote("Press **pluck** (or P); Next moves the pluck near the end, then pluck again: brighter. [[back]] [[next]]")
+                markdownNote(
+                    "Press **pluck** (or P); Next moves the pluck near the end, then pluck again: brighter. [[back]] [[next]]",
+                )
             }
             step("Shorter, tighter, lighter", id = "springs-fret") {
                 audience {
@@ -489,7 +505,9 @@ presentation(title = "Sound") {
                 }
                 control("wall_plate", "frequency", 400.0)
                 cue("Higher") { control("wall_plate", "frequency", 2500.0, glideMs = 2000) }
-                markdownNote("Next raises the frequency past 2 kHz: the beam narrows. The strip is the pressure along the axis. [[back]] [[next]]")
+                markdownNote(
+                    "Next raises the frequency past 2 kHz: the beam narrows. The strip is the pressure along the axis. [[back]] [[next]]",
+                )
             }
             step("Later and quieter", id = "waves-distance") {
                 audience {
@@ -549,7 +567,9 @@ presentation(title = "Sound") {
                     }
                 }
                 control("two_speakers", "sound", false)
-                markdownNote("Drag the orange listener onto an orange line and it goes quiet. Tick **sound** to hear it. [[back]] [[next]]")
+                markdownNote(
+                    "Drag the orange listener onto an orange line and it goes quiet. Tick **sound** to hear it. [[back]] [[next]]",
+                )
             }
             step("Echo", id = "waves-echo") {
                 audience {

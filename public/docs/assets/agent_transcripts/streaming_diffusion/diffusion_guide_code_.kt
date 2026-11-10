@@ -12,7 +12,5 @@ markdown(
     On other platforms the curves box explains availability without starting it.
     Set `FIELD_STREAMDIFFUSION_ROOT` before starting Field after completing the setup.
 
-    [Setup and RTT integration](https://openendedgroup.com/Field4/streaming_diffusion/)
-    """
-        .trimIndent(),
+    [Setup and RTT integration](https://openendedgroup.com/Field4/streaming_diffusion/)""".trimIndent(),
 )

@@ -1,11 +1,20 @@
 import afield.graphics.lighting.*
 
-// What one point on the floor sees: a hemisphere of directions. The lamp, pushed onto that
-// hemisphere (orange) and then flattened straight down onto the disc beneath (cyan). The share of
-// the disc the flattened lamp covers is the share of the lamp's radiance that reaches the point.
-val dome = icosphereMesh(4, 1.0).let { ball -> ball.filterTriangles { t -> ball.triangle(t).let { (a, b, c) -> a.y + b.y + c.y > 0 } } }
+/*
+What one point on the floor sees: a hemisphere of directions. The lamp, pushed onto that
+hemisphere (orange) and then flattened straight down onto the disc beneath (cyan). The share of
+the disc the flattened lamp covers is the share of the lamp's radiance that reaches the point.
+*/
+val dome =
+    icosphereMesh(4, 1.0).let { ball ->
+        ball.filterTriangles { t -> ball.triangle(t).let { (a, b, c) -> a.y + b.y + c.y > 0 } }
+    }
 val floor = floorMesh(2.6, 2.6, divisions = 48)
-val rim = fline { moveTo(1.0, 0.0, 0.0); for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96)); color = vec(1.0, 1.0, 1.0, 0.4) }
+val rim = fline {
+    moveTo(1.0, 0.0, 0.0)
+    for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96))
+    color = vec(1.0, 1.0, 1.0, 0.4)
+}
 val side = 1.0
 
 fun draw(across: Double) {
@@ -19,11 +28,16 @@ fun draw(across: Double) {
     // radiance times the flattened area it covers.
     val radiance = lamp.power / (PI * side * side)
     val e = irradianceAt(vec(0.0, 0.0, 0.0), vec(0.0, 1.0, 0.0), lamp).x
-    val sight = listOf(-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5).map { (x, z) ->
-        fline { moveTo(0.0, 0.0, 0.0); lineTo(across + x, 1.2, z); color = vec(1.0, 1.0, 1.0, 0.3) }
-    }
+    val sight =
+        listOf(-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5).map { (x, z) ->
+            fline {
+                moveTo(0.0, 0.0, 0.0)
+                lineTo(across + x, 1.2, z)
+                color = vec(1.0, 1.0, 1.0, 0.3)
+            }
+        }
     three(channel = "scene", width = 640, height = 420) {
-        mesh(floor.lit(listOf(lamp), occluders = null, exposure = 0.35), unlit = true, wireframe = false)
+        mesh(floor.lit([lamp], occluders = null, exposure = 0.35), unlit = true, wireframe = false)
         mesh(dome.withColor(0.4, 0.45, 0.5), opacity = 0.12, wireframe = false, cullBackFaces = false)
         lines(sight + rim)
         mesh(lamp.mesh(), unlit = true, wireframe = false, cullBackFaces = false)

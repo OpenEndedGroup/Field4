@@ -26,9 +26,7 @@ val inverted =
                 quad(b3, b2, b1, b0)   // <- the same four corners, reversed
             }
         }
-    }
-    """
-        .trimIndent()
+    }""".trimIndent()
 
 val capture = try {
     previewVisionGeometry(source = inverted)

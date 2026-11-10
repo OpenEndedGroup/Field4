@@ -68,7 +68,7 @@ println(
 <!-- field-box id="polytope_realization_relax" index="1" -->
 
 ```edn [field-box id="polytope_realization_relax" role="properties"]
-{"id" "polytope_realization_relax" "index" 1 "name" "4 — realization before and after, with diagnostics" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — realization before and after, with diagnostics" "_tombstone" false "frame" #afield/rect [1120.0 1000.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_realization_relax_code_.kt" "lines" 69 "characters" 2412 "sha256" "f742d9ffdd692cd03ba9a625622c70642c587982d3e01a16ff3e436d71e70134"}]}
+{"id" "polytope_realization_relax" "index" 1 "name" "4 — realization before and after, with diagnostics" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — realization before and after, with diagnostics" "_tombstone" false "frame" #afield/rect [1120.0 1000.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_realization_relax_code_.kt" "lines" 67 "characters" 2402 "sha256" "ce45f15201b5b792465fd229c98d67d93df55bf22c4fcfdff895bc30577868f8"}]}
 ```
 
 ```kotlin [field-property box="polytope_realization_relax" name="code" path="polytope_realization_relax_code_.kt"]
@@ -133,9 +133,7 @@ markdown(
 
     This is constraint relaxation, not canonicalisation. It has no symmetry model and it
     cannot tell you the shape you wish you had given it — only how far the shape you did
-    give it is from a common edge length, a common radius and planar faces.
-"""
-        .trimIndent(),
+    give it is from a common edge length, a common radius and planar faces.""".trimIndent(),
     width = 940,
 )
 
@@ -155,7 +153,7 @@ A scalar per face, written as an ordinary attribute. Selection and deployment ar
 separate concerns: `band` decides WHERE kis happens, `spike` decides HOW MUCH.
 
 ```edn [field-box id="polytope_parameter_field" role="properties"]
-{"id" "polytope_parameter_field" "index" 2 "name" "3 — a non-uniform parameter field on the faces" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a non-uniform parameter field on the faces" "_tombstone" false "frame" #afield/rect [80.0 1000.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_parameter_field_code_.kt" "lines" 80 "characters" 3347 "sha256" "d32d7c6870371f00a7403f9190f8c96e17893205975b43e7871a9d10cca6d494"}]}
+{"id" "polytope_parameter_field" "index" 2 "name" "3 — a non-uniform parameter field on the faces" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a non-uniform parameter field on the faces" "_tombstone" false "frame" #afield/rect [80.0 1000.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_parameter_field_code_.kt" "lines" 76 "characters" 3303 "sha256" "1bde3fbea00ac750d4dcaf5adfdd3556520b067fe787c94165c639e2a01f3753"}]}
 ```
 
 ```kotlin [field-property box="polytope_parameter_field" name="code" path="polytope_parameter_field_code_.kt"]
@@ -190,9 +188,7 @@ println(
     kis deployed over ${deployment.selectedSources?.size} of ${source.topology.elements(2).size} faces
     heightScale resolved over ${deployed.size} sources: $scalarRange
     output ${out.topology.elements(0).size}v ${out.topology.elements(1).size}e ${out.topology.elements(2).size}f
-    hover a face; click it to read the lineage that produced it
-    """
-        .trimIndent(),
+    hover a face; click it to read the lineage that produced it""".trimIndent(),
 )
 
 val card: (String) -> Unit = { message -> markdown("face provenance", message) }
@@ -223,9 +219,7 @@ val faceLines = out.toFaceFLines { face, line ->
             - role: `$role`
             - deployed spike: `${spike?.let { it.f3 } ?: "not selected"}`
             - source: ${result.sourceElements(face.id).joinToString { "rank ${it.rank} / id ${it.id.value}" }}
-            - clicked at: `${hit.position}`
-            """
-                .trimIndent(),
+            - clicked at: `${hit.position}`""".trimIndent(),
         )
     }
 }
@@ -253,7 +247,7 @@ Take the cube's coordinates away. The topology is untouched, and every combinato
 question about the dual is still decidable.
 
 ```edn [field-box id="polytope_abstract_dual" role="properties"]
-{"id" "polytope_abstract_dual" "index" 3 "name" "2 — a dual with no coordinates" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — a dual with no coordinates" "_tombstone" false "frame" #afield/rect [1120.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_abstract_dual_code_.kt" "lines" 45 "characters" 2308 "sha256" "2595a7bb1806896fbc68714058cb634aec94c3edddc61cafb2e414118d9ec25a"}]}
+{"id" "polytope_abstract_dual" "index" 3 "name" "2 — a dual with no coordinates" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — a dual with no coordinates" "_tombstone" false "frame" #afield/rect [1120.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_abstract_dual_code_.kt" "lines" 43 "characters" 2298 "sha256" "86b8b66538e6ebd3fe1359a3b840a9205dc74d18d40d6131bbd66fab961c182f"}]}
 ```
 
 ```kotlin [field-property box="polytope_abstract_dual" name="code" path="polytope_abstract_dual_code_.kt"]
@@ -294,9 +288,7 @@ markdown(
     | `toFaceFLines()` | `$flineRefusal` | ${realized.toFaceFLines().size} FLines |
     | `triangulate()` | `$triangleRefusal` | ${realized.triangulate().triangleCount} triangles |
 
-    The left column is a complete, valid, checkable octahedron. It has nowhere to be.
-"""
-        .trimIndent(),
+    The left column is a complete, valid, checkable octahedron. It has nowhere to be.""".trimIndent(),
     width = 900,
 )
 

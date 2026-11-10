@@ -11,7 +11,11 @@ val held = BooleanArray(3)
 
 // Twenty milliseconds of whatever is held, summed.
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 240.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun draw() = lines(
     frame,

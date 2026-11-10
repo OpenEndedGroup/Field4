@@ -102,7 +102,7 @@ runAsync<Pair<AudioAsset, CorpusPreview>>(
 <!-- field-box id="corpus_microscope_guide" index="1" -->
 
 ```edn [field-box id="corpus_microscope_guide" role="properties"]
-{"id" "corpus_microscope_guide" "index" 1 "name" "1 · corpus microscope guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · corpus microscope guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "corpus_microscope_guide_code_.kt" "lines" 12 "characters" 997 "sha256" "f49f349e3fe68e56e6022e523160f3525d6aaff193d48ef2f443f07359a9feed"}]}
+{"id" "corpus_microscope_guide" "index" 1 "name" "1 · corpus microscope guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · corpus microscope guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "corpus_microscope_guide_code_.kt" "lines" 10 "characters" 983 "sha256" "f4655155712ceba251b86da96bca09bbdfef28928fc8a4e2ba2b61a4d5c1869d"}]}
 ```
 
 ```kotlin [field-property box="corpus_microscope_guide" name="code" path="corpus_microscope_guide_code_.kt"]
@@ -113,9 +113,7 @@ display(
       <h2 style="margin:0 0 8px;color:#7fcbd7">Corpus microscope</h2>
       <p>Run box 2 for the complete path: resolve Nancy and Candlestick by filename; submit and await multi-scale segmentation and grouped descriptor jobs; query a six-second Nancy window; then audition the nearest windows and automatic source-to-neighbour splices.</p>
       <p>Every descriptor is an immutable NPZ asset. Retrieval weights remain visible and editable: harmony, pitch, texture, rhythm and dynamics. Players from different files share relative time, so hover, zoom, seek and the playback cursor line up without pretending that their file timestamps are the same.</p>
-    </section>
-    """
-        .trimIndent(),
+    </section>""".trimIndent(),
 )
 display("all durable jobs", fieldAudioJobMonitor(heightPixels = 410))
 ```

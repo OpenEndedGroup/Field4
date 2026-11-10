@@ -166,7 +166,7 @@ if (!file.isFile) {
 <!-- field-box id="disk_ply" index="2" -->
 
 ```edn [field-box id="disk_ply" role="properties"]
-{"id" "disk_ply" "index" 2 "name" "PLY — the format that carries colour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "PLY — the format that carries colour" "_tombstone" false "frame" #afield/rect [80.0 340.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "disk_ply_code_.kt" "lines" 72 "characters" 2661 "sha256" "ce3ef3aa0a1f71ab5714d79ac0f1637b179e5bbc3a4f08ad035b2b2e50095ff4"}]}
+{"id" "disk_ply" "index" 2 "name" "PLY — the format that carries colour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "PLY — the format that carries colour" "_tombstone" false "frame" #afield/rect [80.0 340.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "disk_ply_code_.kt" "lines" 70 "characters" 2639 "sha256" "dd0948a9147696ae013e60c5c239b56be5a93ab1c36cf1c9601c17d53ce94bdc"}]}
 ```
 
 ```kotlin [field-property box="disk_ply" name="code" path="disk_ply_code_.kt"]
@@ -199,9 +199,7 @@ try {
         1 1 0 60 60 255
         0 1 0 255 235 40
         3 0 1 2
-        3 0 2 3
-        """
-            .trimIndent() + "\n",
+        3 0 2 3""".trimIndent() + "\n",
     )
 
     // PlySupport.loadPly is parsing plus memAlloc: no renderer, no Vulkan, no Box context. Only

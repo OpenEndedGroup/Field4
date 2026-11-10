@@ -17,9 +17,7 @@ val program =
               1.4 1.4 ->wh
               "sweep" track-ref 1.0 free-param gain * 0.0 free-param bias + ->x
               0x44d4b4 solid ->fill
-            ;
-            """
-                .trimIndent(),
+            ;""".trimIndent(),
         )
         .program
 
@@ -69,7 +67,5 @@ markdown(
     IR after:    ${fit.fitted.describe()}
     residual:    ${fit.initialResidual} -> ${fit.finalResidual}
     x(1.0) = ${fit.fitted.sample(1.0)}   x(3.0) = ${fit.fitted.sample(3.0)}
-    ~~~
-"""
-        .trimIndent(),
+    ~~~""".trimIndent(),
 )

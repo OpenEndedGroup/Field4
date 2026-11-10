@@ -140,7 +140,7 @@ controlGroup {
 <!-- field-box id="ec_pinhole_box" index="2" -->
 
 ```edn [field-box id="ec_pinhole_box" role="properties"]
-{"id" "ec_pinhole_box" "index" 2 "name" "pinhole_box" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pinhole_box" "_tombstone" false "frame" #afield/rect [300.0 220.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_pinhole_box_code_.kt" "lines" 66 "characters" 2595 "sha256" "87d5af13d904b3055aaecb7258a3273c9641b6ed51895c1e721617cb39dad524"}]}
+{"id" "ec_pinhole_box" "index" 2 "name" "pinhole_box" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pinhole_box" "_tombstone" false "frame" #afield/rect [300.0 220.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_pinhole_box_code_.kt" "lines" 66 "characters" 2589 "sha256" "02b6612376415161c9c481ab347e875c77ba9fd22d91648f63b0a304b63f1256"}]}
 ```
 
 ```kotlin [field-property box="ec_pinhole_box" name="code" path="ec_pinhole_box_code_.kt"]
@@ -153,7 +153,7 @@ var distance = 1.0
 var fixedExposure = false
 
 // Three points of the scene, each with its ray through the hole to the back wall.
-val marked = listOf(Triple(-0.9, 1.4, -0.8), Triple(1.0, 1.2, 1.3), Triple(0.3, 0.0, -2.0))
+val marked = [Triple(-0.9, 1.4, -0.8), Triple(1.0, 1.2, 1.3), Triple(0.3, 0.0, -2.0)]
 
 fun draw() {
     val pinhole = SensorCamera(z = -5.0, sensorDistance = distance, apertureDiameter = hole)
@@ -1219,13 +1219,13 @@ The opening at each full f-stop for one lens, drawn to scale. Each is √2 narro
 last, so it has half the area and lets in half the light.
 
 ```edn [field-box id="ec_f_stops" role="properties"]
-{"id" "ec_f_stops" "index" 12 "name" "f_stops" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "f_stops" "_tombstone" false "frame" #afield/rect [870.0 380.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_f_stops_code_.kt" "lines" 46 "characters" 1496 "sha256" "8d32b802f1946dcb5e0994839fd5533a9535e6555b05dfa1ec39d249db91deb8"}]}
+{"id" "ec_f_stops" "index" 12 "name" "f_stops" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "f_stops" "_tombstone" false "frame" #afield/rect [870.0 380.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_f_stops_code_.kt" "lines" 46 "characters" 1490 "sha256" "5335f8d7f9b4eb97400a133a440f8472a88381950df9d5c901125a78f46fd9bb"}]}
 ```
 
 ```kotlin [field-property box="ec_f_stops" name="code" path="ec_f_stops_code_.kt"]
 // The opening at each full f-stop for one lens, drawn to scale. Each is √2 narrower than the
 // last, so it has half the area and lets in half the light.
-val stops = listOf("1.4", "2", "2.8", "4", "5.6", "8", "11", "16")
+val stops = ["1.4", "2", "2.8", "4", "5.6", "8", "11", "16"]
 val cyan = vec(0.4, 0.9, 1.0, 1.0)
 val orange = vec(1.0, 0.6, 0.2, 1.0)
 var chosen = 2
@@ -1609,7 +1609,7 @@ loop {
 <!-- field-box id="ec_dispersion" index="17" -->
 
 ```edn [field-box id="ec_dispersion" role="properties"]
-{"id" "ec_dispersion" "index" 17 "name" "dispersion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "dispersion" "_tombstone" false "frame" #afield/rect [490.0 460.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_dispersion_code_.kt" "lines" 135 "characters" 4146 "sha256" "a6bbf4ef1f49af836140246e66c96229c0c0f6f486e0f548cc255aa3f05e8326"}]}
+{"id" "ec_dispersion" "index" 17 "name" "dispersion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "dispersion" "_tombstone" false "frame" #afield/rect [490.0 460.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_dispersion_code_.kt" "lines" 135 "characters" 4122 "sha256" "238d4e8192257c06900b81fc30877011dde0372090d6a9a55d4a96cea2a1c439"}]}
 ```
 
 ```kotlin [field-property box="ec_dispersion" name="code" path="ec_dispersion_code_.kt"]
@@ -1620,7 +1620,7 @@ import afield.simulation.optics.*
 val cyan = vec(0.4, 0.9, 1.0, 1.0)
 var spread = 2.0
 var angle = 50.0
-val waves = listOf(410.0, 450.0, 490.0, 530.0, 570.0, 610.0, 650.0, 690.0)
+val waves = [410.0, 450.0, 490.0, 530.0, 570.0, 610.0, 650.0, 690.0]
 
 fun index(nm: Double) = Refraction.cauchyIndex(nm, b = 4200.0 * spread)
 fun colour(nm: Double) = Refraction.wavelengthColor(nm).let { vec(it[0], it[1], it[2], 0.9) }
@@ -1665,7 +1665,7 @@ fun prism() {
     for (nm in waves) {
         val n = index(nm)
         val inside = Refraction.refract(dx, dy, 0.866, 0.5, 1.0, n) ?: continue
-        val faces = listOf(a to c, b to c)
+        val faces = [a to c, b to c]
         val (t, face) =
             faces
                 .mapNotNull { (p, q) -> hit(px, py, inside[0], inside[1], p, q)?.let { it to (p to q) } }
@@ -1711,9 +1711,9 @@ fun lens() {
         },
     )
     val green = index(550.0)
-    for (nm in listOf(650.0, 550.0, 450.0)) {
+    for (nm in [650.0, 550.0, 450.0]) {
         val focal = 300.0 * (green - 1) / (index(nm) - 1)
-        for (h in listOf(-90.0, -60.0, 60.0, 90.0)) parts += fline {
+        for (h in [-90.0, -60.0, 60.0, 90.0]) parts += fline {
             moveTo(0.0, 120 + h)
             lineTo(160.0, 120 + h)
             frameExit(160.0, 120 + h, 1.0, -h / focal, 640.0, 240.0).let { lineTo(it[0], it[1]) }

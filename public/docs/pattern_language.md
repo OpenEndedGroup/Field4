@@ -896,9 +896,7 @@ source    ${node.strings["source"]}
 knobs     ${node.children.joinToString("  ") { it.role }}
 values    ${gesture.extractParameters().joinToString("  ")}
 
-${gesture.graphText()}
-"""
-        .trimIndent()
+${gesture.graphText()}""".trimIndent()
 
 println(report)
 display("<pre>" + report + "</pre>")
@@ -930,9 +928,7 @@ with(Functions) {
         """
     seed    ${seed.graphNode().strings["source"]}
     fitted  ${run.fitted.graphNode().strings["source"]}
-    RMSE    ${run.initialError.f4} -> ${run.finalError.f4}
-    """
-            .trimIndent()
+    RMSE    ${run.initialError.f4} -> ${run.finalError.f4}""".trimIndent()
     println(report)
     display("<pre>" + report + "</pre>")
 }

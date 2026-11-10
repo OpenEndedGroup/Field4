@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="analyse_sonic_pi_recording" index="0" -->
 
 ```edn [field-box id="analyse_sonic_pi_recording" role="properties"]
-{"id" "analyse_sonic_pi_recording" "index" 0 "name" "5 · Sonic Pi recording → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · Sonic Pi recording → analysis" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_sonic_pi_recording_code_.kt" "lines" 45 "characters" 1505 "sha256" "690e8bdc5b764eb27c3ff81962f774a7edbb56891b4aaaa2a053d22f88c87a1b"}]}
+{"id" "analyse_sonic_pi_recording" "index" 0 "name" "5 · Sonic Pi recording → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · Sonic Pi recording → analysis" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_sonic_pi_recording_code_.kt" "lines" 43 "characters" 1491 "sha256" "b3a57d65027773a37e8ff8f102026d041184e1bbff741d00568391b92a5280dc"}]}
 ```
 
 ```kotlin [field-property box="analyse_sonic_pi_recording" name="code" path="analyse_sonic_pi_recording_code_.kt"]
@@ -31,9 +31,7 @@ val ruby =
       use_synth :hollow
       play (scale :e3, :minor_pentatonic).tick, release: 0.7, amp: 0.35
       sleep 1
-    end
-    """
-        .trimIndent()
+    end""".trimIndent()
 
 recordSonicPiWav(
     sonicPi(),
@@ -67,7 +65,7 @@ recordSonicPiWav(
 <!-- field-box id="render_analysis_guide" index="1" -->
 
 ```edn [field-box id="render_analysis_guide" role="properties"]
-{"id" "render_analysis_guide" "index" 1 "name" "1 · render → analyse guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · render → analyse guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "render_analysis_guide_code_.kt" "lines" 13 "characters" 1233 "sha256" "4572c46eeaffe3370847a536af552e485d835b54e27f4fc723f2c2860965c027"}]}
+{"id" "render_analysis_guide" "index" 1 "name" "1 · render → analyse guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · render → analyse guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "render_analysis_guide_code_.kt" "lines" 11 "characters" 1219 "sha256" "f965a5a52597a31ad8b2cdbb5247e7491956567c5a2e3e9b9a070ff7659eef21"}]}
 ```
 
 ```kotlin [field-property box="render_analysis_guide" name="code" path="render_analysis_guide_code_.kt"]
@@ -79,9 +77,7 @@ display(
       <p>Each box below contains the whole loop: make sound, write WAV, import immutable bytes, submit named jobs, stream progress, await results, and draw a synchronized waveform/beat/pitch board. Re-run unchanged code and the content-addressed import plus operation cache return the same results.</p>
       <p><b>Pat, Dirt and Dough</b> render offline. <b>Faust</b> compiles and renders on a daemon future because its first compiler warm-up is slow. <b>Sonic Pi</b> records in real time on that same background executor. None blocks Field's run loop.</p>
       <p>The local <code>RenderedAudioFile.provenance</code> records the producing box and render parameters. The server asset id remains a hash of the WAV bytes; the Field document remains the authority for source code and arrangement.</p>
-    </section>
-    """
-        .trimIndent(),
+    </section>""".trimIndent(),
 )
 display("all durable jobs", fieldAudioJobMonitor(heightPixels = 390))
 ```
@@ -91,7 +87,7 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 390))
 <!-- field-box id="analyse_faust_render" index="2" -->
 
 ```edn [field-box id="analyse_faust_render" role="properties"]
-{"id" "analyse_faust_render" "index" 2 "name" "4 · Faust render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Faust render → analysis" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_faust_render_code_.kt" "lines" 36 "characters" 1360 "sha256" "0aaf51e975b6d209a013d974779676dfd2867d389c8c237061a8d4e6f65a1b45"}]}
+{"id" "analyse_faust_render" "index" 2 "name" "4 · Faust render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Faust render → analysis" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_faust_render_code_.kt" "lines" 34 "characters" 1346 "sha256" "c8636974d1f94422b1853d483cdb42c54f2ea7ed70d835b391200485066ceeb6"}]}
 ```
 
 ```kotlin [field-property box="analyse_faust_render" name="code" path="analyse_faust_render_code_.kt"]
@@ -103,9 +99,7 @@ val faustSource =
     import("stdfaust.lib");
     sweep = 240 + 170 * os.osc(0.11);
     voice = os.sawtooth(sweep) : fi.lowpass(3, 900 + 650 * os.osc(0.07));
-    process = voice * 0.18 <: _,_;
-    """
-        .trimIndent()
+    process = voice * 0.18 <: _,_;""".trimIndent()
 
 renderFaustWavAsync(
     Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "faust-sweep-study.wav"),

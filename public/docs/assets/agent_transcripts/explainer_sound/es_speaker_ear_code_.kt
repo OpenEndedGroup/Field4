@@ -1,8 +1,10 @@
-// A speaker on the left and a listener (the orange point) you drag. The rings are one metre apart,
-// fainter as the sound spreads; the meters say how late the sound arrives and how much quieter it
-// is than one metre away. The picture is ten metres across; the bar is one metre.
+/*
+A speaker on the left and a listener (the orange point) you drag. The rings are one metre apart,
+fainter as the sound spreads; the meters say how late the sound arrives and how much quieter it
+is than one metre away. The picture is ten metres across; the bar is one metre.
+*/
 val metre = 64.0
-var ear = Pair(3.0, 0.0)       // metres from the speaker
+var ear = Pair(3.0, 0.0) // metres from the speaker
 lateinit var delay: MeterHandle
 lateinit var level: MeterHandle
 
@@ -28,14 +30,44 @@ fun measure() {
 fun show() {
     val sx = 24.0
     val sy = 150.0
-    val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+    val frame = fline {
+        rect(0.0, 0.0, 640.0, 300.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.0)
+    }
     // Brightness falls as one over the distance, as the pressure swing does.
-    val rings = (1..10).map { m -> ring(sx, sy, metre * m).apply { thickness = 2.0; color = vec(0.4, 0.9, 1.0, 0.25 + 0.75 / m) } }
-    val speaker = fline { rect(sx - 16, sy - 22, 16.0, 44.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.9) }
-    val path = fline { moveTo(sx, sy); lineTo(sx + metre * ear.first, sy - metre * ear.second); thickness = 1.5; color = vec(1.0, 0.6, 0.2, 0.5) }
-    val scale = fline { moveTo(40.0, 285.0); lineTo(40 + metre, 285.0); thickness = 3.0; color = vec(1.0, 1.0, 1.0, 0.8) }
+    val rings =
+        (1..10).map { m ->
+            ring(sx, sy, metre * m).apply {
+                thickness = 2.0
+                color = vec(0.4, 0.9, 1.0, 0.25 + 0.75 / m)
+            }
+        }
+    val speaker = fline {
+        rect(sx - 16, sy - 22, 16.0, 44.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.9)
+    }
+    val path = fline {
+        moveTo(sx, sy)
+        lineTo(sx + metre * ear.first, sy - metre * ear.second)
+        thickness = 1.5
+        color = vec(1.0, 0.6, 0.2, 0.5)
+    }
+    val scale = fline {
+        moveTo(40.0, 285.0)
+        lineTo(40 + metre, 285.0)
+        thickness = 3.0
+        color = vec(1.0, 1.0, 1.0, 0.8)
+    }
     val scenery = ([frame, speaker, path, scale] + rings).onEach { it.fixed = true }
-    val listener = fline { moveTo(sx + metre * ear.first, sy - metre * ear.second); pointed = true; pointSize = 3.5; color = vec(1.0, 0.6, 0.2, 1.0) }
+    val listener = fline {
+        moveTo(sx + metre * ear.first, sy - metre * ear.second)
+        pointed = true
+        pointSize = 3.5
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
     lines(scenery + listener, channel = "room", w = 640.0, h = 300.0, editable = true) { edited ->
         val p = edited.last().nodes.first().to
         ear = ((p.x - sx) / metre).coerceIn(0.3, 9.6) to ((sy - p.y) / metre).coerceIn(-2.2, 2.2)

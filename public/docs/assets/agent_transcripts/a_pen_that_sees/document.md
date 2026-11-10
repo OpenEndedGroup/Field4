@@ -389,7 +389,7 @@ lines(
 <!-- field-box id="ps_measure" index="7" -->
 
 ```edn [field-box id="ps_measure" role="properties"]
-{"id" "ps_measure" "index" 7 "name" "5 - seeing against blind, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - seeing against blind, measured" "_tombstone" false "frame" #afield/rect [60.0 2060.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_measure_code_.kt" "lines" 35 "characters" 1205 "sha256" "02eb0b5f48dedf7c4b786405145ece061d94175ef5cca074976fb5b2a40d292a"}]}
+{"id" "ps_measure" "index" 7 "name" "5 - seeing against blind, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - seeing against blind, measured" "_tombstone" false "frame" #afield/rect [60.0 2060.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_measure_code_.kt" "lines" 33 "characters" 1195 "sha256" "276988f5196df048b094462dea6022c5be150fbb473dfef2773dad6a9178d152"}]}
 ```
 
 ```kotlin [field-property box="ps_measure" name="code" path="ps_measure_code_.kt"]
@@ -424,9 +424,7 @@ markdown(
 | | seeing | blind |
 |---|---|---|
 | Michaux beside a line: following | ${hatching("michaux")} | ${hatching("michaux-blind")} |
-| cracks in an outline: joins | ${cracking("cracks")} | ${cracking("cracks-blind")} |
-"""
-        .trimIndent(),
+| cracks in an outline: joins | ${cracking("cracks")} | ${cracking("cracks-blind")} |""".trimIndent(),
 )
 ```
 

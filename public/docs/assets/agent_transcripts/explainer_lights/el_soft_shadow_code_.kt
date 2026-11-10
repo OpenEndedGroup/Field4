@@ -1,8 +1,10 @@
 import afield.graphics.lighting.*
 
-// A black wall on a white floor, lit by a ball of light. The ball always gives out 40 W;
-// make it bigger and the edge of the shadow softens.
-// The wall's faces sit on the floor's grid lines, so no floor vertex is half under it.
+/*
+A black wall on a white floor, lit by a ball of light. The ball always gives out 40 W;
+make it bigger and the edge of the shadow softens.
+The wall's faces sit on the floor's grid lines, so no floor vertex is half under it.
+*/
 val floor = floorMesh(4.0, 3.2, divisions = 80).withColor(0.8, 0.8, 0.8)
 val wall = panelBoxMesh(0.05, 0.6, 1.2, divisions = 4).translated(0.025, 0.3, 0.0).withColor(0.03, 0.03, 0.03)
 val blocker = wall.bvh()
@@ -29,7 +31,7 @@ fun draw() {
     }
     if (litFor != "$size $altitude") {
         // Only the wall casts shadows; the floor need not be tested against its own triangles.
-        litScene = scene.lit(listOf(lamp), occluders = wall, exposure = 0.6)
+        litScene = scene.lit([lamp], occluders = wall, exposure = 0.6)
         litFor = "$size $altitude"
     }
     three(channel = "scene", width = 640, height = 420) {
@@ -43,12 +45,24 @@ fun draw() {
         background("#000000")
         hud(false)
     }
-    markdown("readout", "The orange point sees ${(100.0 * sight.count { it.clear } / sight.size.coerceAtLeast(1)).roundToInt()} % of the lamp")
+    markdown(
+        "readout",
+        "The orange point sees ${(100.0 * sight.count { it.clear } / sight.size.coerceAtLeast(1)).roundToInt()} % of the lamp",
+    )
 }
 
 draw()
 controlGroup {
-    slider("size", 0.02, 0.5, step = 0.01, initialValue = size) { size = it; draw() }
-    slider("altitude", 15.0, 85.0, step = 1.0, initialValue = altitude) { altitude = it; draw() }
-    slider("point", -1.5, 1.8, step = 0.01, initialValue = probe) { probe = it; draw() }
+    slider("size", 0.02, 0.5, step = 0.01, initialValue = size) {
+        size = it
+        draw()
+    }
+    slider("altitude", 15.0, 85.0, step = 1.0, initialValue = altitude) {
+        altitude = it
+        draw()
+    }
+    slider("point", -1.5, 1.8, step = 0.01, initialValue = probe) {
+        probe = it
+        draw()
+    }
 }

@@ -1,6 +1,6 @@
 // The opening at each full f-stop for one lens, drawn to scale. Each is √2 narrower than the
 // last, so it has half the area and lets in half the light.
-val stops = listOf("1.4", "2", "2.8", "4", "5.6", "8", "11", "16")
+val stops = ["1.4", "2", "2.8", "4", "5.6", "8", "11", "16"]
 val cyan = vec(0.4, 0.9, 1.0, 1.0)
 val orange = vec(1.0, 0.6, 0.2, 1.0)
 var chosen = 2

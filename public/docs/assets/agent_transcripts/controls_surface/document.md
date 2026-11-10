@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="surface" index="0" -->
 
 ```edn [field-box id="surface" role="properties"]
-{"id" "surface" "index" 0 "name" "1 - A performer's surface" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A performer's surface" "_tombstone" false "frame" #afield/rect [60.0 60.0 260.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "surface_code_.kt" "lines" 46 "characters" 1490 "sha256" "def660097b214a6a3937a20373cd226a8c7a6942a1a3d97ff2d0a8b105fcb72e"}]}
+{"id" "surface" "index" 0 "name" "1 - A performer's surface" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A performer's surface" "_tombstone" false "frame" #afield/rect [60.0 60.0 260.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "surface_code_.kt" "lines" 44 "characters" 1472 "sha256" "ffc02b328438458a6b48c0d8efd8f783dddc45879af8d6c5553c23de8ca4bd54"}]}
 ```
 
 ```kotlin [field-property box="surface" name="code" path="surface_code_.kt"]
@@ -31,9 +31,7 @@ fun draw() {
         <svg width="300" height="300" style="background:#05080a;border:1px solid #136178">
           <line x1="150" y1="150" x2="${150 + orbit.x * 120}" y2="${150 - orbit.y * 120}" stroke="#136178"/>$dot
         </svg>
-        <div style="font:18px Iosevka,monospace;color:#0cc8ed">$title  cutoff ${cutoff.toInt()} Hz</div>
-    """
-            .trimIndent(),
+        <div style="font:18px Iosevka,monospace;color:#0cc8ed">$title  cutoff ${cutoff.toInt()} Hz</div>""".trimIndent(),
     )
 }
 controlGroup("controls") {

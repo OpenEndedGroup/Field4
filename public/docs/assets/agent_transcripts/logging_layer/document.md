@@ -265,7 +265,7 @@ display(
 <!-- field-box id="log_stats" index="5" -->
 
 ```edn [field-box id="log_stats" role="properties"]
-{"id" "log_stats" "index" 5 "name" "Stat lines and the heatmap" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Stat lines and the heatmap" "_tombstone" false "frame" #afield/rect [60.0 5040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_stats_code_.kt" "lines" 42 "characters" 1506 "sha256" "2fffb680aa382c13412aafc1ae026fc50fbb71ab4473fc7ea9996558bd1a290b"}]}
+{"id" "log_stats" "index" 5 "name" "Stat lines and the heatmap" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Stat lines and the heatmap" "_tombstone" false "frame" #afield/rect [60.0 5040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_stats_code_.kt" "lines" 40 "characters" 1496 "sha256" "d7ff172db3b754eedc622ceae2ddf861260869b95a450fc1ebaf5658f6ca6207"}]}
 ```
 
 ```kotlin [field-property box="log_stats" name="code" path="log_stats_code_.kt"]
@@ -307,9 +307,7 @@ markdown(
     """
     ${ladder.h}
 
-    ${torn.h}
-"""
-        .trimIndent(),
+    ${torn.h}""".trimIndent(),
 )
 ```
 

@@ -7,7 +7,7 @@ var distance = 1.0
 var fixedExposure = false
 
 // Three points of the scene, each with its ray through the hole to the back wall.
-val marked = listOf(Triple(-0.9, 1.4, -0.8), Triple(1.0, 1.2, 1.3), Triple(0.3, 0.0, -2.0))
+val marked = [Triple(-0.9, 1.4, -0.8), Triple(1.0, 1.2, 1.3), Triple(0.3, 0.0, -2.0)]
 
 fun draw() {
     val pinhole = SensorCamera(z = -5.0, sensorDistance = distance, apertureDiameter = hole)

@@ -254,9 +254,7 @@ fun cellCentre(row: Int, col: Int): Pair<Double, Double> {
             const c = f && f.contentDocument && f.contentDocument.querySelector('.sheet-cell[data-row="$row"][data-col="$col"]')
             if (!c) return 'waiting'
             const a = f.getBoundingClientRect(), b = c.getBoundingClientRect()
-            return (a.left + b.left + b.width / 2) + ',' + (a.top + b.top + b.height / 2)
-        """
-                        .trimIndent(),
+            return (a.left + b.left + b.width / 2) + ',' + (a.top + b.top + b.height / 2)""".trimIndent(),
                 )
                 .toString()
                 .trim('"')

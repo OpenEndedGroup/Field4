@@ -70,9 +70,7 @@ if (backend == null) {
 
         That produces a self-contained library — `otool -L` shows only `libc++` and
         `libSystem` — from pinned Ceres and Eigen source. `dev_docs/CERES.md` has the whole
-        story.
-        """
-            .trimIndent(),
+        story.""".trimIndent(),
     )
     displayOpen("ceres")
     threeLines(faintSeed(), channel = "solid", name = "ceres-planes", height = 520, autoFrame = true)
@@ -141,9 +139,7 @@ if (backend == null) {
         the two answers differ by at most ${"%.2e".format(agreement)}
         canonical  : tangency spread ${"%.3e".format(diagnostics.tangencyRadiusSpread)}  centre ${"%.3e".format(diagnostics.tangencyCentroidOffset)}  planarity ${"%.3e".format(diagnostics.maxFacePlanarityError)}
         every solved normal is still unit to ${"%.2e".format(worstUnit)} — the sphere manifold's own doing,
-        since no residual ever asks it to stay there
-        """
-            .trimIndent(),
+        since no residual ever asks it to stay there""".trimIndent(),
     )
 
     val status: (String) -> Unit = { message -> markdown("plane", message) }
@@ -177,9 +173,7 @@ if (backend == null) {
                 - worst corner off this plane: `${"%.3e".format(worst)}`
 
                 The residual is just `corner . n - d`, written in Kotlin and differentiated by
-                Ceres on `ceres::Jet` — no C++, no finite differences.
-                """
-                    .trimIndent(),
+                Ceres on `ceres::Jet` — no C++, no finite differences.""".trimIndent(),
             )
         }
     }
@@ -220,9 +214,7 @@ if (backend == null) {
         stem is one of the free variables — a unit normal, drawn from the point of its plane
         nearest the origin.
 
-        Click a face to read its plane.
-        """
-            .trimIndent(),
+        Click a face to read its plane.""".trimIndent(),
     )
     displayOpen("plane")
 }

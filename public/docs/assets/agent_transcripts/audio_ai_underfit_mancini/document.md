@@ -68,7 +68,7 @@ client
 <!-- field-box id="underfit_mancini_guide" index="1" -->
 
 ```edn [field-box id="underfit_mancini_guide" role="properties"]
-{"id" "underfit_mancini_guide" "index" 1 "name" "1 · Mancini LoRA guide" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · Mancini LoRA guide" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "underfit_mancini_guide_code_.kt" "lines" 11 "characters" 1046 "sha256" "c44eecf3568ef8f25f7963ed1fcb8b859a15e6fc6e6c59242e0989aa517b316f"}]}
+{"id" "underfit_mancini_guide" "index" 1 "name" "1 · Mancini LoRA guide" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · Mancini LoRA guide" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "underfit_mancini_guide_code_.kt" "lines" 9 "characters" 1032 "sha256" "020b0ebc9eb71d2f77f00687d3c22078b1d537c319b8db62efe884a2a07165af"}]}
 ```
 
 ```kotlin [field-property box="underfit_mancini_guide" name="code" path="underfit_mancini_guide_code_.kt"]
@@ -79,9 +79,7 @@ display(
       <h2 style="margin:0 0 8px;color:#7fcbd7">Experiment in Terror · Underfit LoRA</h2>
       <p>This request uses 165 twelve-second chunks from the complete Henry Mancini album as training material. The pinned rank-16 DoRA checkpoint is applied to Stable Audio 3's small-music base model, with a 12-second source window extended to a 30-second candidate.</p>
       <p>Set <code>FIELD_AUDIO_UNDERFIT_SOURCE_WAV</code> to your source WAV (at least 12 seconds), set <code>FIELD_AUDIO_UNDERFIT_LORA_ROOT</code>, and start the Underfit worker before running box 2. The worker must have the staged base model and the checkpoint beneath that root. The request retains its model revisions, checkpoint digest, seed, and sampling controls in the durable candidate provenance.</p>
-    </section>
-    """
-        .trimIndent(),
+    </section>""".trimIndent(),
 )
 ```
 

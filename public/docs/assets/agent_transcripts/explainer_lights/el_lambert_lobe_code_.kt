@@ -47,7 +47,10 @@ fun draw(degrees: Double) {
     }
     lines(drawn, channel = "side", w = 640.0, h = 280.0, framing = LinesFraming.fixed(0.0, 0.0, 640.0, 280.0))
     val c = cos(v)
-    markdown("readout", "${degrees.roundToInt()}°: ${(c * 100).roundToInt()} % of the power, ${(c * 100).roundToInt()} % of the width")
+    markdown(
+        "readout",
+        "${degrees.roundToInt()}°: ${(c * 100).roundToInt()} % of the power, ${(c * 100).roundToInt()} % of the width",
+    )
 }
 
 draw(0.0)

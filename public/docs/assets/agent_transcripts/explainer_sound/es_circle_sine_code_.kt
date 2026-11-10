@@ -1,12 +1,16 @@
 // A point going round a circle, and its height over time. The trace scrolls left, newest at the circle.
 var radius = 0.8
-var speed = 0.5      // turns per second
-var start = 0.0      // where the point starts, as a fraction of a turn
+var speed = 0.5 // turns per second
+var start = 0.0 // where the point starts, as a fraction of a turn
 var angle = 0.0
 val heights = mutableListOf<Double>()
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 280.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 280.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun draw() {
     val cx = 110.0
@@ -16,11 +20,35 @@ fun draw() {
     val px = cx + r * cos(turn)
     val py = cy - r * sin(turn)
     val guide = vec(1.0, 1.0, 1.0, 0.35)
-    val circle = fline { circle(cx, cy, r); thickness = 1.5; color = guide }
-    val spoke = fline { moveTo(cx, cy); lineTo(px, py); thickness = 1.5; color = guide }
-    val level = fline { moveTo(px, py); lineTo(240.0, py); thickness = 1.0; color = guide }
-    val dot = fline { circle(px, py, 6.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
-    val axis = fline { moveTo(240.0, cy); lineTo(640.0, cy); thickness = 1.0; color = guide }
+    val circle = fline {
+        circle(cx, cy, r)
+        thickness = 1.5
+        color = guide
+    }
+    val spoke = fline {
+        moveTo(cx, cy)
+        lineTo(px, py)
+        thickness = 1.5
+        color = guide
+    }
+    val level = fline {
+        moveTo(px, py)
+        lineTo(240.0, py)
+        thickness = 1.0
+        color = guide
+    }
+    val dot = fline {
+        circle(px, py, 6.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    val axis = fline {
+        moveTo(240.0, cy)
+        lineTo(640.0, cy)
+        thickness = 1.0
+        color = guide
+    }
     val trace = fline {
         heights.reversed().forEachIndexed { i, h -> if (i == 0) moveTo(240.0, cy - h) else lineTo(240.0 + i, cy - h) }
         thickness = 3.0

@@ -1,36 +1,43 @@
 // Slices of air in a tube. Each line is one slice; the plate at the left end pushes on the first,
 // each slice pushes on the next, and the far end lets the disturbance out instead of echoing it.
 val n = 80
-val gap = 7.0               // pixels between slices at rest
-val u = DoubleArray(n)      // how far each slice has moved from rest, in pixels
+val gap = 7.0 // pixels between slices at rest
+val u = DoubleArray(n) // how far each slice has moved from rest, in pixels
 val v = DoubleArray(n)
 var target = 0.0
 var plate = 0.0
 var colour = false
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 260.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 260.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun draw() {
-    val slices = (1 until n - 1).map { i ->
-        val x = 50 + i * gap + u[i]
-        // Squeezed where neighbours are closer than usual, stretched where they are further apart.
-        val strain = (u[i + 1] - u[i - 1]) / (2 * gap)
-        val k = (abs(strain) * 4).coerceAtMost(1.0)
-        fline {
-            moveTo(x, 60.0)
-            lineTo(x, 200.0)
-            thickness = 2.0
-            color = when {
-                !colour -> vec(1.0, 1.0, 1.0, 0.6)
-                strain < 0 -> vec(0.55 + 0.45 * k, 0.55 - 0.35 * k, 0.55 - 0.4 * k, 1.0)
-                else -> vec(0.55 - 0.4 * k, 0.55 - 0.1 * k, 0.55 + 0.45 * k, 1.0)
+    val slices =
+        (1 until n - 1).map { i ->
+            val x = 50 + i * gap + u[i]
+            // Squeezed where neighbours are closer than usual, stretched where they are further apart.
+            val strain = (u[i + 1] - u[i - 1]) / (2 * gap)
+            val k = (abs(strain) * 4).coerceAtMost(1.0)
+            fline {
+                moveTo(x, 60.0)
+                lineTo(x, 200.0)
+                thickness = 2.0
+                color = when {
+                    !colour -> vec(1.0, 1.0, 1.0, 0.6)
+                    strain < 0 -> vec(0.55 + 0.45 * k, 0.55 - 0.35 * k, 0.55 - 0.4 * k, 1.0)
+                    else -> vec(0.55 - 0.4 * k, 0.55 - 0.1 * k, 0.55 + 0.45 * k, 1.0)
+                }
             }
         }
-    }
     val walls = fline {
-        moveTo(30.0, 50.0); lineTo(630.0, 50.0)
-        moveTo(30.0, 210.0); lineTo(630.0, 210.0)
+        moveTo(30.0, 50.0)
+        lineTo(630.0, 50.0)
+        moveTo(30.0, 210.0)
+        lineTo(630.0, 210.0)
         thickness = 1.5
         color = vec(1.0, 1.0, 1.0, 0.35)
     }

@@ -26,7 +26,7 @@ POKE THIS: change `bar`. Anything on an eight-step grid at MIDI 60 will be heard
 single figure and comes back as two halves.
 
 ```edn [field-box id="condense_from_audio" role="properties"]
-{"id" "condense_from_audio" "index" 0 "name" "3 - Close the loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Close the loop" "_tombstone" false "frame" #afield/rect [60.0 940.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_from_audio_code_.kt" "lines" 80 "characters" 2904 "sha256" "52ed89bfbdae940edb3e9766ef20364afa3b08b3ff206b3511de19d9afede096"}]}
+{"id" "condense_from_audio" "index" 0 "name" "3 - Close the loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Close the loop" "_tombstone" false "frame" #afield/rect [60.0 940.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_from_audio_code_.kt" "lines" 78 "characters" 2890 "sha256" "7d794b3f5a61ae7ccbd917854a35b0904e37fcb83f991ab2397373c61b7ea794"}]}
 ```
 
 ```kotlin [field-property box="condense_from_audio" name="code" path="condense_from_audio_code_.kt"]
@@ -106,9 +106,7 @@ markdown(
     Four outputs, each on its own channel: **roll** draws the three lanes, **played** is the
     buffer that was actually transcribed, **condensed** is `${condensed.notation}` rendered
     back through the same voice, and this table is **main**. The two players should be the
-    same bar — that is the claim, and it is the one part of this box you can check by ear.
-    """
-        .trimIndent(),
+    same bar — that is the claim, and it is the one part of this box you can check by ear.""".trimIndent(),
 )
 ```
 
@@ -133,7 +131,7 @@ a named figure - x(p,s) for Euclidean, x(kN) / x(gN) for Kolakoski - or spelled 
 which one you get is decided by character count and nothing else.
 
 ```edn [field-box id="condense_basics" role="properties"]
-{"id" "condense_basics" "index" 1 "name" "1 - Condense a rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Condense a rhythm" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_basics_code_.kt" "lines" 48 "characters" 1892 "sha256" "40e20b44fa0f5f717fc664d8fc5f88ef144c5a9cb8e04c702cadb17da28da84c"}]}
+{"id" "condense_basics" "index" 1 "name" "1 - Condense a rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Condense a rhythm" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_basics_code_.kt" "lines" 46 "characters" 1878 "sha256" "329e7072c4589da344c02c03ffb05954b4a54c9bf7cbc107e944ce84ab686c22"}]}
 ```
 
 ```kotlin [field-property box="condense_basics" name="code" path="condense_basics_code_.kt"]
@@ -181,9 +179,7 @@ markdown(
     Bounds this run used: ${found.first().limits}
 
     The figure is on the **roll** channel beside this one. These rhythms are abstract — `x`,
-    `bd`, `a` — so there is nothing to play here; box 3 is the one you can listen to.
-    """
-        .trimIndent(),
+    `bd`, `a` — so there is nothing to play here; box 3 is the one you can listen to.""".trimIndent(),
 )
 ```
 
@@ -192,7 +188,7 @@ markdown(
 <!-- field-box id="condense_invents_nothing" index="2" -->
 
 ```edn [field-box id="condense_invents_nothing" role="properties"]
-{"id" "condense_invents_nothing" "index" 2 "name" "2 - Invent nothing" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Invent nothing" "_tombstone" false "frame" #afield/rect [60.0 500.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_invents_nothing_code_.kt" "lines" 71 "characters" 2619 "sha256" "3ef4106539fa7dc3e74eab5dbd5e8a1b546eb8c1f43e50f47c1712712d563a78"}]}
+{"id" "condense_invents_nothing" "index" 2 "name" "2 - Invent nothing" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Invent nothing" "_tombstone" false "frame" #afield/rect [60.0 500.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_invents_nothing_code_.kt" "lines" 69 "characters" 2605 "sha256" "3433768bb945c0bb5cb72a3219c1eeaca94c36f2ecfc10c8100e960f96a32c91"}]}
 ```
 
 ```kotlin [field-property box="condense_invents_nothing" name="code" path="condense_invents_nothing_code_.kt"]
@@ -263,9 +259,7 @@ markdown(
 
     None of this rests on the search's own opinion of itself: every string it returned was
     re-parsed and re-played before it was accepted, and the namings above are recomputed from
-    the generators rather than read off the label.
-    """
-        .trimIndent(),
+    the generators rather than read off the label.""".trimIndent(),
 )
 ```
 

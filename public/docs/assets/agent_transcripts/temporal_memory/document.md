@@ -392,7 +392,7 @@ three(name = "dance-strip", width = 1000, height = 420) {
 <!-- field-box id="tm_notebook" index="6" -->
 
 ```edn [field-box id="tm_notebook" role="properties"]
-{"id" "tm_notebook" "index" 6 "name" "0 - lab notebook" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "0 - lab notebook" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_notebook_code_.kt" "lines" 68 "characters" 4097 "sha256" "823563c4da77a4616b752385a8b7351fd25fe9328053348986df454350810818"}]}
+{"id" "tm_notebook" "index" 6 "name" "0 - lab notebook" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "0 - lab notebook" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_notebook_code_.kt" "lines" 66 "characters" 4083 "sha256" "5ed4782e94fedb0e0f5cd686b384524aa2e895a0adb0150bcdf26f0f191fc2c0"}]}
 ```
 
 ```kotlin [field-property box="tm_notebook" name="code" path="tm_notebook_code_.kt"]
@@ -460,9 +460,7 @@ markdown(
     - Hard endpoints ("arrive here in 4 s"); tempo, offset and amplitude transforms of recalled passages.
     - More dancers: the bridges make a memory of several performers possible.
 
-    Full report: dev_docs/TEMPORAL_MEMORY_EXPERIMENTS.md. Data: public/docs/assets/temporal_memory/cmu_05/README.md.
-    """
-        .trimIndent(),
+    Full report: dev_docs/TEMPORAL_MEMORY_EXPERIMENTS.md. Data: public/docs/assets/temporal_memory/cmu_05/README.md.""".trimIndent(),
 )
 ```
 

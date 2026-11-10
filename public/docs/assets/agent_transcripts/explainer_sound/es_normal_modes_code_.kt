@@ -10,7 +10,11 @@ fun shape(k: Int, j: Int) = sin(k * PI * j / (masses + 1))
 fun rate(k: Int) = 2 * sin(k * PI / (2 * (masses + 1)))
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 300.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun spring(x0: Double, y0: Double, x1: Double, y1: Double) = fline {
     moveTo(x0, y0)
@@ -27,23 +31,33 @@ fun draw() {
     val k = mode.coerceAtMost(masses)
     val mix = addLowest && k != 1
     val xs = (0..masses + 1).map { 8.0 + 624.0 * it / (masses + 1) }
-    val ys = (0..masses + 1).map { j ->
-        if (j == 0 || j == masses + 1) 150.0 else {
-            val main = shape(k, j) * cos(2 * PI * 0.6 * rate(k) * time)
-            val low = if (mix) shape(1, j) * cos(2 * PI * 0.6 * rate(1) * time) else 0.0
-            150 - 115 * (if (mix) (main + low) / 2 else main)
+    val ys =
+        (0..masses + 1).map { j ->
+            if (j == 0 || j == masses + 1) 150.0
+            else {
+                val main = shape(k, j) * cos(2 * PI * 0.6 * rate(k) * time)
+                val low = if (mix) shape(1, j) * cos(2 * PI * 0.6 * rate(1) * time) else 0.0
+                150 - 115 * (if (mix) (main + low) / 2 else main)
+            }
         }
-    }
     val walls = fline {
-        moveTo(8.0, 10.0); lineTo(8.0, 290.0)
-        moveTo(632.0, 10.0); lineTo(632.0, 290.0)
+        moveTo(8.0, 10.0)
+        lineTo(8.0, 290.0)
+        moveTo(632.0, 10.0)
+        lineTo(632.0, 290.0)
         thickness = 4.0
         color = vec(1.0, 1.0, 1.0, 0.5)
     }
     val springs = (0..masses).map { spring(xs[it], ys[it], xs[it + 1], ys[it + 1]) }
-    val balls = (1..masses).map { j ->
-        fline { circle(xs[j], ys[j], 22.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
-    }
+    val balls =
+        (1..masses).map { j ->
+            fline {
+                circle(xs[j], ys[j], 22.0)
+                filled = true
+                stroked = false
+                color = vec(1.0, 0.6, 0.2, 1.0)
+            }
+        }
     lines([frame, walls] + springs + balls, channel = "springs", w = 640.0, h = 300.0)
 }
 

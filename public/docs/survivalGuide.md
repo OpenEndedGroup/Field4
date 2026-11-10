@@ -28,9 +28,7 @@ ui.eval(
     if (!c) throw new Error("no editor container")
     for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
     if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
-    return c.getBoundingClientRect().left
-    """
-        .trimIndent(),
+    return c.getBoundingClientRect().left""".trimIndent(),
 )
 ui.keypressDisplay(true)
 ui.pause(200)

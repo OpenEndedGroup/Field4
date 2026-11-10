@@ -1,18 +1,21 @@
-// Two speakers on the left play the same tone. Each faint ring is a crest of one speaker's wave, a
-// wavelength apart; the orange curves are where a crest from one always meets a trough from the
-// other, so the two cancel. Drag the listener (the orange point). With "sound" on you hear the tone
-// at the loudness it has there. The picture is ten metres across.
+/*
+Two speakers on the left play the same tone. Each faint ring is a crest of one speaker's wave, a
+wavelength apart; the orange curves are where a crest from one always meets a trough from the
+other, so the two cancel. Drag the listener (the orange point). With "sound" on you hear the tone
+at the loudness it has there. The picture is ten metres across.
+*/
 val metre = 64.0
 var hz = 343.0
-var ear = Pair(5.0, 0.6)            // metres from the midpoint between the speakers
+var ear = Pair(5.0, 0.6) // metres from the midpoint between the speakers
 var on = false
 val pitch = Param(343f)
 val level = Param(0f)
-val speakers = listOf(0.4 to -0.9, 0.4 to 0.9)    // metres
+val speakers = [0.4 to -0.9, 0.4 to 0.9] // metres
 
 fun px(x: Double) = metre * x
 fun py(y: Double) = 150 - metre * y
-fun distance(x: Double, y: Double, s: Pair<Double, Double>) = sqrt((x - s.first) * (x - s.first) + (y - s.second) * (y - s.second))
+fun distance(x: Double, y: Double, s: Pair<Double, Double>) =
+    sqrt((x - s.first) * (x - s.first) + (y - s.second) * (y - s.second))
 
 // How big the pressure swing is at (x, y): the two waves added with their phases.
 fun loudness(x: Double, y: Double): Double {
@@ -49,8 +52,14 @@ fun quiet(gap: Double) = fline {
         var lo = -2.4
         var hi = 2.4
         fun diff(y: Double) = distance(x, y, speakers[0]) - distance(x, y, speakers[1])
-        if ((diff(lo) - gap) * (diff(hi) - gap) > 0) { started = false; continue }
-        repeat(30) { val mid = (lo + hi) / 2; if (diff(mid) < gap) lo = mid else hi = mid }
+        if ((diff(lo) - gap) * (diff(hi) - gap) > 0) {
+            started = false
+            continue
+        }
+        repeat(30) {
+            val mid = (lo + hi) / 2
+            if (diff(mid) < gap) lo = mid else hi = mid
+        }
         if (started) lineTo(px(x), py(lo)) else moveTo(px(x), py(lo))
         started = true
     }
@@ -63,18 +72,43 @@ fun update() {
 
 fun show() {
     val wavelength = 343 / hz
-    val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+    val frame = fline {
+        rect(0.0, 0.0, 640.0, 300.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.0)
+    }
     val crests = speakers.flatMap { s ->
         (1..(11 / wavelength).toInt()).map { k ->
-            ring(px(s.first), py(s.second), metre * k * wavelength).apply { thickness = 1.0; color = vec(0.4, 0.9, 1.0, 0.35) }
+            ring(px(s.first), py(s.second), metre * k * wavelength).apply {
+                thickness = 1.0
+                color = vec(0.4, 0.9, 1.0, 0.35)
+            }
         }
     }
     // A path difference can be no larger than the 1.8 m between the speakers.
-    val quietLines = (-6..5).map { m -> (m + 0.5) * wavelength }.filter { abs(it) < 1.8 }
-        .map { quiet(it).apply { thickness = 2.5; color = vec(1.0, 0.6, 0.2, 0.7) } }
-    val boxes = fline { speakers.forEach { (x, y) -> rect(px(x) - 10, py(y) - 14, 10.0, 28.0) }; filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.9) }
+    val quietLines =
+        (-6..5)
+            .map { m -> (m + 0.5) * wavelength }
+            .filter { abs(it) < 1.8 }
+            .map {
+                quiet(it).apply {
+                    thickness = 2.5
+                    color = vec(1.0, 0.6, 0.2, 0.7)
+                }
+            }
+    val boxes = fline {
+        speakers.forEach { (x, y) -> rect(px(x) - 10, py(y) - 14, 10.0, 28.0) }
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.9)
+    }
     val scenery = ([frame] + crests + quietLines + boxes).onEach { it.fixed = true }
-    val listener = fline { moveTo(px(ear.first), py(ear.second)); pointed = true; pointSize = 3.5; color = vec(1.0, 0.6, 0.2, 1.0) }
+    val listener = fline {
+        moveTo(px(ear.first), py(ear.second))
+        pointed = true
+        pointSize = 3.5
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
     lines(scenery + listener, channel = "field", w = 640.0, h = 300.0, editable = true) { edited ->
         val p = edited.last().nodes.first().to
         ear = (p.x / metre).coerceIn(0.5, 9.9) to ((150 - p.y) / metre).coerceIn(-2.3, 2.3)
@@ -85,8 +119,15 @@ fun show() {
 show()
 update()
 controlGroup {
-    slider("frequency", 100.0, 1000.0, step = 1.0, initialValue = 343.0, law = ControlLaw.LOGARITHMIC) { hz = it; update(); show() }
-    checkbox("sound") { on = it; update() }
+    slider("frequency", 100.0, 1000.0, step = 1.0, initialValue = 343.0, law = ControlLaw.LOGARITHMIC) {
+        hz = it
+        update()
+        show()
+    }
+    checkbox("sound") {
+        on = it
+        update()
+    }
 }
 
 audio(SineOsc(pitch), gain = level)

@@ -24,9 +24,7 @@ for (i in 0 until 60) {
                 const s = window.drawingLayerState()
                 const tools = document.querySelector("#field-drawing-layer .App-toolbar")
                 const shown = !!tools && tools.getBoundingClientRect().width > 0
-                return (s && s.active && shown) ? "ready" : "waiting: active=" + (s && s.active) + " toolbar=" + shown
-                """
-                    .trimIndent(),
+                return (s && s.active && shown) ? "ready" : "waiting: active=" + (s && s.active) + " toolbar=" + shown""".trimIndent(),
             )
             .toString()
     if (ready.contains("ready")) break

@@ -7,7 +7,11 @@ var on = false
 
 // Twenty milliseconds of the wave, 640 pixels wide.
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 240.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun draw() = lines(
     frame,
@@ -30,9 +34,18 @@ fun update() {
 
 update()
 controlGroup {
-    slider("frequency", 20.0, 20000.0, step = 1.0, initialValue = 220.0, law = ControlLaw.LOGARITHMIC) { hz = it; update() }
-    slider("amplitude", 0.0, 1.0, step = 0.01, initialValue = 0.8) { amplitude = it; update() }
-    checkbox("sound") { on = it; update() }
+    slider("frequency", 20.0, 20000.0, step = 1.0, initialValue = 220.0, law = ControlLaw.LOGARITHMIC) {
+        hz = it
+        update()
+    }
+    slider("amplitude", 0.0, 1.0, step = 0.01, initialValue = 0.8) {
+        amplitude = it
+        update()
+    }
+    checkbox("sound") {
+        on = it
+        update()
+    }
 }
 
 audio(SineOsc(pitch), gain = level)

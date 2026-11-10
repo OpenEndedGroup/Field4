@@ -49,7 +49,5 @@ markdown(
     | tempo | ${clip.bpmAt(0.0)} BPM |
     | length | ${clip.durationSeconds.f2}s / ${clip.durationBeats} beats |
 
-    Format 1, with a real conductor track. Open it in any DAW, or run box 2.
-    """
-        .trimIndent(),
+    Format 1, with a real conductor track. Open it in any DAW, or run box 2.""".trimIndent(),
 )
