@@ -14,6 +14,7 @@ data class StereoVideoLook(
     val blurSigma: Float,
     val blurMix: Float,
     val darkening: Float,
+    val opacity: Float = 1f,
 ) {
     fun applyTo(screen: StereoVideoSurface) {
         screen.accumulationMix = accumulationMix
@@ -24,12 +25,13 @@ data class StereoVideoLook(
         screen.exposureBlurSigma = blurSigma
         screen.exposureBlurMix = blurMix
         screen.exposureDarkening = darkening
+        screen.opacity = opacity
     }
 
     companion object {
         fun capture(screen: StereoVideoSurface) = StereoVideoLook(screen.accumulationMix,
             screen.accumulationHalfLife, screen.accumulationInputWeight, screen.exposureCadenceEnabled,
-            screen.exposurePairsPerSecond, screen.exposureBlurSigma, screen.exposureBlurMix, screen.exposureDarkening)
+            screen.exposurePairsPerSecond, screen.exposureBlurSigma, screen.exposureBlurMix, screen.exposureDarkening, screen.opacity)
     }
 }
 
@@ -86,6 +88,9 @@ class StereoVideoLookPool internal constructor(
         scope.floatTarget("cadence.darkening", { read(captureScreen).darkening }) { value ->
             change { it.copy(darkening = value) }
         }
+        scope.floatTarget("appearance.opacity", { read(captureScreen).opacity }) { value ->
+            change { it.copy(opacity = value) }
+        }
         scope.doubleTarget("playback.speed", readSpeed) { value -> if (restoreSpeed) writeSpeed(value) }
     }
 
@@ -110,7 +115,7 @@ class StereoVideoLookPool internal constructor(
         return directory.resolve(clean)
     }
 
-    /** Store all eight appearance lanes plus the shared speed, without changing a screen. */
+    /** Store the appearance lanes plus the shared speed, without changing a screen. */
     fun store(name: String, screen: Int = captureScreen, note: String? = null): KeyframeScope.Key {
         captureScreen = screen
         return scope.capture().save(path(name), note).also {

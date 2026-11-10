@@ -54,6 +54,45 @@ while changing the shared speed once. Resolve playhead following/Get uses screen
 image timestamp. It never uses a delayed screen as the shared transport clock. Stop the scores
 for independent manual tuning.
 
+## Independent layouts and opacity
+
+Every material box has a **screen layout** group: an angle offset, a radius override, a sector-fill
+override and screen opacity. Layout numbers are unrestricted finite numeric fields, rather than
+bounded sliders. Leave radius or fill blank to follow the global value. Overrides belong to the
+screen number, so its delayed picture and appearance move with it.
+
+Angle adds to the global ring rotation and the screen's evenly spaced sector. Radius is an
+absolute distance from the ring centre. Fill is width in units of one sector: one joins
+neighbours, values above one overlap them, and large values can wrap through multiple turns.
+Negative radius crosses to the opposite side; negative fill mirrors geometry; zero collapses
+it. Global radius, fill, angle and centre controls accept finite numbers too. Invalid or
+unrepresentable geometry is rejected atomically, retaining the previous layout.
+
+For example, set one screen to radius 2 / fill 0.5, and another to radius 5 / fill 2, adjusting
+their angle offsets until they overlap. The larger screen sits behind the smaller one. Radius
+also changes physical width and height at the same angular fill. Opacity blends the foreground
+with the pictures behind it; it remains independent of the zoetrope's brightness envelope.
+New appearance keys include opacity. Layout overrides persist with their own boxes and are not
+changed by appearance recalls.
+
+Screens draw back to front using the mean centre depth in this frame's two eye views, with
+stable screen-number ties. Both eyes use the same order and the Field pane draws last. This is
+whole-screen painter sorting: intersecting or self-wrapping surfaces remain an approximation.
+No previous pose, frame of buffering or depth attachment is introduced.
+
+```kotlin
+carousel.editLayout {
+    screenLayouts = screenLayouts.mapIndexed { i, old ->
+        when (i) {
+            0 -> old.copy(radiusMeters = 2f, fill = .5f)
+            1 -> old.copy(radiusMeters = 5f, fill = 2f, angleOffsetDegrees = -45f)
+            else -> old
+        }
+    }
+}
+carousel.surfaces[0].opacity = .65f
+```
+
 ## Shared screen looks
 
 Box **0 · Shared screen looks** captures one screen into a common, native Field keyframe pool.
@@ -61,7 +100,7 @@ Choose **Capture from screen**, enter a name and press **Store named look**. Eac
 also has **Store from this screen**. The initial look is seeded as **slow blur** once; later
 launches retain the saved key. Storing the same name adds a version.
 
-Keys contain accumulation mix, half-life, incoming weight, cadence enable/rate, soft-half blur
+Keys contain opacity, accumulation mix, half-life, incoming weight, cadence enable/rate, soft-half blur
 sigma/mix and darkening, plus shared playback speed and, once Ring motion is launched, the six headset-flash settings. Check any collection of screens and press
 **Recall to checked screens**. **Restore playback speed** defaults off: appearance changes keep
 the current shared speed unless explicitly enabled. With no screens selected, this option
@@ -76,7 +115,7 @@ shows progress. Playback and headset rendering continue throughout.
 Keys live at `%document/keys/screen-looks` (`files/keys/screen-looks` in the document folder).
 The native browser lists saved looks and their versions. Application uses the named Recall
 controls above. Keys store parameters, while the current accumulation pixels continue evolving.
-Ring geometry, frame spacing and spin remain separate global controls. Stop active scores when
+Ring geometry, per-screen layout overrides, frame spacing and spin remain separate from appearance keys. Stop active scores when
 tuning manually, since scores can continue writing appearance parameters.
 
 From code, indices are zero-based and the exported properties resolve through the box graph:

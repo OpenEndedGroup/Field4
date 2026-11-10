@@ -33,7 +33,32 @@ class StereoVideoPlacementTest {
         p.bendDegrees = .01f
         assertEquals(-1.5f, p.point(0f, .5f).x, 1e-5f)
         p.widthMeters = 0f
-        assertFailsWith<IllegalArgumentException> { p.validate() }
+        assertEquals(0f, p.point(0f, 0f).length())
+        p.widthMeters = -3f
+        p.bendDegrees = 540f
+        p.validate()
+        assertTrue(p.point(0f, 0f).x.isFinite())
+    }
+
+    @Test fun independentLayoutsAllowOverlapsSignedRadiiAndMultipleTurns() {
+        val origin = afield.math.linalg.Vector3f()
+        val p = StereoVideoScreenLayout(angleOffsetDegrees = 720f, radiusMeters = -4f, fill = 6f)
+            .placement(0, 8, origin, 2.5f, 0f, .9f)
+        assertEquals(4f, p.center.z, 1e-5f)
+        assertEquals(270f, p.bendDegrees, 1e-5f)
+        assertEquals((4 * 1.5 * Math.PI).toFloat(), p.widthMeters, 1e-5f)
+        val collapsed = StereoVideoScreenLayout(radiusMeters = 0f, fill = 0f)
+            .placement(0, 8, origin, 2.5f, 0f, .9f)
+        assertEquals(0f, collapsed.widthMeters)
+        assertEquals(0f, collapsed.point(0f, 0f).length())
+    }
+
+    @Test fun painterOrderUsesCurrentViewAndStableTies() {
+        val positions = listOf(-1f, -5f, -3f, -3f).map { z -> StereoVideoPlacement().apply { center.set(0f, 0f, z) } }
+        val front = afield.math.linalg.Matrix4f()
+        assertEquals(listOf(1, 2, 3, 0), stereoVideoBackToFront(positions, front, front))
+        val back = afield.math.linalg.Matrix4f().rotateY(Math.PI.toFloat())
+        assertEquals(listOf(0, 2, 3, 1), stereoVideoBackToFront(positions, back, back))
     }
 
     @Test

@@ -96,6 +96,13 @@ object StereoVideoPrecisionSmoke {
                 val expected = if (v <= .04045f) v / 12.92f else ((v + .055f) / 1.055f).pow(2.4f)
                 check(abs(values[x] - expected) < .001f) { "Pixel $x: ${values[x]} versus $expected" }
             }
+            movie.opacity = .25f
+            frame()
+            val translucent = read()
+            for (x in 0..1023) check(abs(translucent[x] - values[x] * .25f) < .001f) {
+                "Straight-alpha screen blend failed at $x"
+            }
+            movie.opacity = 1f
             // Zoetrope levels multiply linear light, preserving dim ramps and gains above one.
             for (gain in listOf(.125f, 2f, 0f)) {
                 movie.brightness = gain

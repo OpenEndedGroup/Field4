@@ -3,6 +3,10 @@ layout(binding = 0) uniform sampler2D luma; // full-resolution packed SBS P010 l
 layout(binding = 1) uniform sampler2D chroma; // half-resolution interleaved Cb/Cr, R16G16_UNORM
 layout(binding = 2) uniform sampler2D accumulatedImage; // float16 linear-light running mean
 layout(binding = 3) uniform sampler2D softenedImage; // held exposure after per-eye Gaussian filtering
+layout(std140, binding = 8) uniform ScreenAppearance {
+    vec4 levels; // opacity, reserved, reserved, reserved; separate from the full 128-byte push block
+} appearance;
+
 layout(push_constant) uniform MoviePush {
     mat4 model;       // screen-local metres to room space
     vec4 surface;     // arc width, height, bend radians, strip count
@@ -44,5 +48,5 @@ void main() {
         blurred = mix(blurred, texture(softenedImage, qSoft).rgb, pc.accumulation.z);
     }
     blurred *= 1 - pc.accumulation.w; // darken only the exposure, in linear light
-    color = vec4(mix(sharp, blurred, pc.accumulation.x) * max(0, 1 + pc.colorimetry.w), 1);
+    color = vec4(mix(sharp, blurred, pc.accumulation.x) * max(0, 1 + pc.colorimetry.w), clamp(appearance.levels.x, 0, 1));
 }
