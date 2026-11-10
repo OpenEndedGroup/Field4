@@ -7,7 +7,11 @@ import afield.math.distribution.Dist
 import afield.math.distribution.E
 import afield.math.distribution.Estimate
 import afield.math.distribution.GpuMonteCarlo
+import afield.math.distribution.bernoulli
 import afield.math.distribution.die
+import afield.math.distribution.gamma
+import afield.math.distribution.observed
+import afield.math.distribution.poisson
 import afield.math.distribution.draws
 import afield.math.distribution.hasDuplicates
 import afield.math.distribution.mixture
@@ -53,6 +57,9 @@ object NoiseLangGpuParity {
 
         val x = die(6); val y = die(6)
         val u = uniform(-1, 1); val v = uniform(-1, 1)
+        val coin = uniform(0, 1)
+        val mu = normal(0, 10)
+        val rate = gamma(2, 1)
         val bdayExact = 1.0 - (0 until 23).fold(1.0) { a, k -> a * (365.0 - k) / 365.0 }
         val cases: List<Triple<String, Dist, Double>> = listOf(
             Triple("E(5 + d6 + d6)", 5 + x + y, 12.0),
@@ -62,6 +69,12 @@ object NoiseLangGpuParity {
             Triple("E(x - x)", x - x, 0.0),
             Triple("E(N(2,3)^2)", normal(2, 3).squared(), 13.0),
             Triple("E(mixture)", mixture(1 to normal(-2, 1), 3 to normal(4, 0.5)), 2.5),
+            // posteriors: the GPU weighs each sample by its evidence
+            Triple("P(x=6 | x+y>=10)", (x eq 6) given (x + y ge 10), 0.5),
+            Triple("E(p | 7 of 10)", coin given observed(bernoulli(coin), 1, 1, 0, 1, 1, 1, 0, 1, 1, 0), 8.0 / 12),
+            Triple("E(mu | 3 normals)", mu given observed(normal(mu, 1), 2.9, 3.3, 3.1), 9.3 / 3.01),
+            Triple("E(rate | counts)", rate given observed(poisson(rate), 3, 5, 4), 3.5),
+            Triple("E(poisson 50)", poisson(50), 50.0),
         )
         try {
             for ((i, c) in cases.withIndex()) {

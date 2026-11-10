@@ -64,8 +64,9 @@ class DistTest {
         val x = die(6); val y = die(6)
         check("P(X+Y<10)", P(x + y lt 10), 30.0 / 36, 0.002)
         assertEquals(30.0 / 36, exactPmf(x + y lt 10)!![1.0]!!, 1e-12)
-        // shared leaves are refused rather than wrongly convolved
-        assertNull(exactPmf(x + x))
+        // shared leaves are enumerated rather than wrongly convolved: x + x is 2, 4, ..., 12
+        assertEquals(6, exactPmf(x + x)!!.size)
+        assertNull(exactPmf(x + uniform(0, 1)))
     }
 
     @Test

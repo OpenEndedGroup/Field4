@@ -47,14 +47,30 @@ class Dist internal constructor(
     internal val constant: Double = Double.NaN,
     /** For [Kind.Linear] nodes: `out = a * in[0] + b * in[1] + c` (or with one input, `a * in + c`). */
     internal val linear: DoubleArray? = null,
+    /** The parametric family this node draws from: a [Kind.Leaf] with [familyParams], or a [Kind.Param] node. */
+    internal val family: Family? = null,
+    /** For a leaf with a [family]: its constant parameters. */
+    internal val familyParams: DoubleArray? = null,
+    /** GLSL helper functions [glsl] calls, emitted once per shader. */
+    internal val glslHelpers: List<String> = emptyList(),
+    /** GLSL declared at global scope for this node, given the node's local name (for data arrays). */
+    internal val glslPrelude: ((id: String) -> String)? = null,
 ) {
-    internal enum class Kind { Dirac, Leaf, Op }
+    /**
+     * `Dirac` is a constant, `Leaf` draws from constant parameters, `Param` draws from a [family]
+     * whose parameters are its inputs, `Given` passes its first input through and weighs the sample
+     * by its second (a log-likelihood), and `Op` is a deterministic function of its inputs.
+     */
+    internal enum class Kind { Dirac, Leaf, Param, Given, Op }
 
     /** For a normal leaf: (mean, sd), so sums of independent normals have an exact density. */
     internal var normalMs: Pair<Double, Double>? = null
 
     /** True if no sample of this variable depends on randomness. */
-    val isConstant: Boolean get() = kind == Kind.Dirac || (kind == Kind.Op && inputs.all { it.isConstant })
+    val isConstant: Boolean get() = kind == Kind.Dirac || ((kind == Kind.Op || kind == Kind.Given) && inputs.all { it.isConstant })
+
+    /** True if this graph carries evidence ([given]) anywhere, so its samples are weighted. */
+    val hasEvidence: Boolean get() = Plan(listOf(this)).hasEvidence
 
     // ---- arithmetic -------------------------------------------------------------------------
 
@@ -133,15 +149,91 @@ class Dist internal constructor(
     /** [n] independent copies. */
     fun iid(n: Int): List<Dist> = List(n) { iid() }
 
+    // ---- conditioning -----------------------------------------------------------------------
+
+    /**
+     * This variable, conditioned on [evidence]: the posterior.
+     *
+     * Every sample is weighted by how likely the evidence is on that sample, and every query
+     * ([P], [E], [Var], [quantile], [Progressive]) is then a weighted average. [observed] builds
+     * evidence from data; `and` joins two pieces of it.
+     *
+     * Evidence conditions the whole sample, not only this node: in `(mu given e) + y`, `mu` is
+     * conditioned and `y` is unaffected only because it shares nothing with `e`.
+     *
+     * ```kotlin
+     * val mu = normal(0, 10)
+     * val posterior = mu given observed(normal(mu, 1), 2.9, 3.3, 3.1)
+     * E(posterior)     // about 3.1, the data's mean pulled very slightly towards 0
+     * ```
+     */
+    infix fun given(evidence: Evidence): Dist = Dist(
+        "given", listOf(this, evidence.logLikelihood),
+        { ins, out, n, _ -> System.arraycopy(ins[0], 0, out, 0, n) },
+        { ins, _ -> ins[0] },
+        kind = Kind.Given,
+    )
+
+    /**
+     * This variable, conditioned on [condition] being true.
+     *
+     * A comparison such as `x + y gt 8` is 1 or 0, and a sample where it is 0 is discarded: this is
+     * rejection sampling, exact in the limit. Any non-negative variable works as a weight, so
+     * `x given w` weighs each sample by `w`. A negative weight is an error when queried.
+     *
+     * ```kotlin
+     * val x = die(6); val y = die(6)
+     * P((x eq 6) given (x + y ge 10))    // exactly 1/2: of the six ways to make 10 or more, three have a 6 first
+     * ```
+     *
+     * When nothing satisfies the condition, a query throws [EvidenceImpossibleException] rather than
+     * answer NaN.
+     */
+    infix fun given(condition: Dist): Dist = given(Evidence(condition.asLogWeight()))
+
+    /**
+     * The same graph with every [given] removed: what this variable is before the evidence.
+     * Leaves are shared with this graph, not copied, so `x.prior()` and `x` are the same variable.
+     */
+    fun prior(): Dist = stripEvidence(this, IdentityHashMap())
+
+    private fun asLogWeight(): Dist = Dist(
+        "weight", listOf(this),
+        { ins, out, n, _ -> val a = ins[0]; for (i in 0 until n) { val w = a[i]; out[i] = if (w > 0) ln(w) else if (w == 0.0) Double.NEGATIVE_INFINITY else Double.NaN } },
+        { ins, _ -> "(${ins[0]} > 0.0 ? log(${ins[0]}) : $GLSL_NEG_INF)" },
+    )
+
     // ---- sampling ---------------------------------------------------------------------------
 
-    /** [n] draws, in one vectorised pass over the graph. */
-    fun samples(n: Int, seed: Long = 1L): DoubleArray = Plan(listOf(this)).sample(n, SplittableRandom(seed))[0]
+    /**
+     * [n] draws, in one vectorised pass over the graph.
+     *
+     * For a graph with evidence ([given]) the draws are weighted; these are then resampled by weight,
+     * so they are draws from the posterior, with repeats. [weightedSamples] gives the raw draws and
+     * their weights.
+     */
+    fun samples(n: Int, seed: Long = 1L): DoubleArray {
+        val plan = Plan(listOf(this))
+        val rng = SplittableRandom(seed)
+        if (!plan.hasEvidence) return plan.sample(n, rng)[0]
+        val w = plan.sampleWeighted(n, rng)
+        return w.resampled(rng)[0]
+    }
+
+    /** [n] draws and their log-weights (null when the graph has no evidence). */
+    fun weightedSamples(n: Int, seed: Long = 1L): WeightedSamples = Plan(listOf(this)).sampleWeighted(n, SplittableRandom(seed))
 
     /** A one-line structural description, e.g. `(die6 + die6)`. Two describes match iff the graphs match. */
     fun describe(): String = describeInto(this, IdentityHashMap(), StringBuilder()).toString()
 
     override fun toString(): String = "Dist(${describe()})"
+
+    /** This node with other inputs: same operation, same exact-answer metadata. */
+    internal fun rebuild(newInputs: List<Dist>): Dist {
+        val c = Dist(op, newInputs, cpu, glsl, pmf, pdf, kind, constant, linear, family, familyParams, glslHelpers, glslPrelude)
+        c.normalMs = normalMs
+        return c
+    }
 
     // ---- helpers ----------------------------------------------------------------------------
 
@@ -183,8 +275,22 @@ class Dist internal constructor(
         private fun copyGraph(d: Dist, memo: IdentityHashMap<Dist, Dist>): Dist {
             if (d.isConstant) return d
             memo[d]?.let { return it }
-            val c = Dist(d.op, d.inputs.map { copyGraph(it, memo) }, d.cpu, d.glsl, d.pmf, d.pdf, d.kind, d.constant, d.linear)
-            c.normalMs = d.normalMs
+            val c = d.rebuild(d.inputs.map { copyGraph(it, memo) })
+            memo[d] = c
+            return c
+        }
+
+        /** Every node above a [Kind.Given] rebuilt without it; nodes with no evidence below are shared. */
+        internal fun stripEvidence(d: Dist, memo: IdentityHashMap<Dist, Dist>): Dist {
+            memo[d]?.let { return it }
+            val c = when {
+                d.kind == Kind.Given -> stripEvidence(d.inputs[0], memo)
+                d.inputs.isEmpty() -> d
+                else -> {
+                    val ins = d.inputs.map { stripEvidence(it, memo) }
+                    if (ins.indices.all { ins[it] === d.inputs[it] }) d else d.rebuild(ins)
+                }
+            }
             memo[d] = c
             return c
         }
@@ -193,6 +299,13 @@ class Dist internal constructor(
             when {
                 d.kind == Kind.Dirac -> sb.append(fmtShort(d.constant))
                 d.kind == Kind.Leaf -> { val id = ids.getOrPut(d) { ids.size }; sb.append(d.op).append('#').append(id) }
+                d.kind == Kind.Param -> {
+                    val id = ids.getOrPut(d) { ids.size }
+                    sb.append(d.op).append('#').append(id).append('(')
+                    d.inputs.forEachIndexed { i, x -> if (i > 0) sb.append(", "); describeInto(x, ids, sb) }
+                    sb.append(')')
+                }
+                d.kind == Kind.Given -> { sb.append('('); describeInto(d.inputs[0], ids, sb); sb.append(" | "); describeInto(d.inputs[1], ids, sb); sb.append(')') }
                 d.inputs.size == 2 -> { sb.append('('); describeInto(d.inputs[0], ids, sb); sb.append(' ').append(d.op).append(' '); describeInto(d.inputs[1], ids, sb); sb.append(')') }
                 d.op == "lin" -> { val l = d.linear!!; sb.append('('); sb.append(fmtShort(l[0])).append('*'); describeInto(d.inputs[0], ids, sb); sb.append(" + ").append(fmtShort(l[2])).append(')') }
                 else -> { sb.append(d.op).append('('); d.inputs.forEachIndexed { i, x -> if (i > 0) sb.append(", "); describeInto(x, ids, sb) }; sb.append(')') }
@@ -224,6 +337,9 @@ operator fun Number.div(d: Dist) = Dist.dirac(this) / d
 // Leaves
 // ---------------------------------------------------------------------------------------------
 
+/** In a node's GLSL, replaced by that node's local name, so its expression can call its own [Dist.glslPrelude]. */
+internal const val GLSL_ID = "@ID@"
+
 /** The PCG-hash uniform the GLSL lowering declares; every leaf draws through it. */
 internal const val GLSL_RND = "nlRnd"
 
@@ -231,39 +347,75 @@ internal fun leaf(
     name: String,
     pmf: Map<Double, Double>? = null,
     pdf: ((Double) -> Double)? = null,
+    family: Family? = null,
+    params: DoubleArray? = null,
     glsl: (rng: String) -> String,
     cpu: (rng: SplittableRandom) -> Double,
 ) = Dist(
     name, emptyList(), { _, out, n, rng -> for (i in 0 until n) out[i] = cpu(rng) },
     { _, r -> glsl(r) }, pmf = pmf, pdf = pdf, kind = Dist.Kind.Leaf,
+    family = family, familyParams = params, glslHelpers = family?.glslHelpers.orEmpty(),
 )
+
+/** A leaf drawn through its family's own sampler, for families added with conditioning. */
+private fun familyLeaf(name: String, f: Family, p: DoubleArray, pmf: Map<Double, Double>? = null, pdf: ((Double) -> Double)? = null): Dist {
+    val lits = p.map { glslFloat(it) }
+    return leaf(name, pmf = pmf, pdf = pdf, family = f, params = p, glsl = { r -> f.glslSample(lits, r) }) { f.sample(p, it) }
+}
+
+/**
+ * A draw from [f] whose parameters are themselves random: one draw per sample, from the
+ * parameters that sample has. If every parameter is a constant this is the ordinary leaf, [asLeaf].
+ */
+private fun familyNode(f: Family, params: List<Dist>, asLeaf: (DoubleArray) -> Dist): Dist {
+    if (params.all { it.kind == Dist.Kind.Dirac }) return asLeaf(DoubleArray(params.size) { params[it].constant })
+    return Dist(
+        f.name, params,
+        { ins, out, n, rng ->
+            val p = DoubleArray(ins.size)
+            for (i in 0 until n) {
+                for (j in p.indices) p[j] = ins[j][i]
+                out[i] = f.sample(p, rng)
+            }
+        },
+        { ins, r -> f.glslSample(ins, r) },
+        kind = Dist.Kind.Param, family = f, glslHelpers = f.glslHelpers,
+    )
+}
 
 /** Uniform integers `lo..hi`, inclusive. */
 fun uniformInt(lo: Int, hi: Int): Dist {
     require(hi >= lo) { "uniformInt($lo, $hi): empty range" }
     val k = hi - lo + 1
     val pmf = (lo..hi).associate { it.toDouble() to 1.0 / k }
-    return leaf("unifInt$lo..$hi", pmf = pmf, glsl = { r -> "(floor($GLSL_RND($r) * ${glslFloat(k.toDouble())}) + ${glslFloat(lo.toDouble())})" }) {
+    val fam = Family(
+        "uniformInt", listOf("lo", "hi"),
+        { x, _ -> if (x >= lo && x <= hi && x == floor(x)) -ln(k.toDouble()) else Double.NEGATIVE_INFINITY },
+        { x, _ -> "($x >= ${glslFloat(lo.toDouble())} && $x <= ${glslFloat(hi.toDouble())} && $x == floor($x) ? ${glslFloat(-ln(k.toDouble()))} : $GLSL_NEG_INF)" },
+        { _, rng -> (lo + rng.nextInt(k)).toDouble() },
+        { _, r -> "(floor($GLSL_RND($r) * ${glslFloat(k.toDouble())}) + ${glslFloat(lo.toDouble())})" },
+    )
+    return leaf("unifInt$lo..$hi", pmf = pmf, family = fam, params = doubleArrayOf(lo.toDouble(), hi.toDouble()), glsl = { r -> "(floor($GLSL_RND($r) * ${glslFloat(k.toDouble())}) + ${glslFloat(lo.toDouble())})" }) {
         (lo + it.nextInt(k)).toDouble()
     }
 }
 
 /** A fair [sides]-sided die: uniform on `1..sides`. */
 fun die(sides: Int = 6): Dist = uniformInt(1, sides).let {
-    Dist("die$sides", it.inputs, it.cpu, it.glsl, it.pmf, it.pdf, it.kind)
+    Dist("die$sides", it.inputs, it.cpu, it.glsl, it.pmf, it.pdf, it.kind, family = it.family, familyParams = it.familyParams)
 }
 
 /** Uniform on `[a, b)`. */
 fun uniform(a: Number = 0.0, b: Number = 1.0): Dist {
     val lo = a.toDouble(); val hi = b.toDouble()
-    return leaf("unif", pdf = { x -> if (x in lo..hi) 1.0 / (hi - lo) else 0.0 },
+    return leaf("unif", pdf = { x -> if (x in lo..hi) 1.0 / (hi - lo) else 0.0 }, family = Families.uniform, params = doubleArrayOf(lo, hi),
         glsl = { r -> "(${glslFloat(lo)} + ${glslFloat(hi - lo)} * $GLSL_RND($r))" }) { lo + (hi - lo) * it.nextDouble() }
 }
 
 /** Normal with mean [mu] and standard deviation [sigma]. */
 fun normal(mu: Number = 0.0, sigma: Number = 1.0): Dist {
     val m = mu.toDouble(); val s = sigma.toDouble()
-    return leaf("normal", pdf = { x -> val z = (x - m) / s; exp(-0.5 * z * z) / (s * sqrt(2 * Math.PI)) },
+    return leaf("normal", pdf = { x -> val z = (x - m) / s; exp(-0.5 * z * z) / (s * sqrt(2 * Math.PI)) }, family = Families.normal, params = doubleArrayOf(m, s),
         glsl = { r -> "(${glslFloat(m)} + ${glslFloat(s)} * sqrt(-2.0 * log(1.0 - $GLSL_RND($r))) * cos(6.2831853 * $GLSL_RND($r)))" }) {
         // Box-Muller, one of the pair, so CPU and GPU use the same construction.
         m + s * sqrt(-2.0 * ln(1.0 - it.nextDouble())) * cos(2 * Math.PI * it.nextDouble())
@@ -273,7 +425,7 @@ fun normal(mu: Number = 0.0, sigma: Number = 1.0): Dist {
 /** 1 with probability [p], else 0. */
 fun bernoulli(p: Number): Dist {
     val q = p.toDouble()
-    return leaf("bern", pmf = mapOf(1.0 to q, 0.0 to 1 - q), glsl = { r -> "float($GLSL_RND($r) < ${glslFloat(q)})" }) {
+    return leaf("bern", pmf = mapOf(1.0 to q, 0.0 to 1 - q), family = Families.bernoulli, params = doubleArrayOf(q), glsl = { r -> "float($GLSL_RND($r) < ${glslFloat(q)})" }) {
         if (it.nextDouble() < q) 1.0 else 0.0
     }
 }
@@ -281,9 +433,83 @@ fun bernoulli(p: Number): Dist {
 /** Exponential with the given [rate]. */
 fun exponential(rate: Number = 1.0): Dist {
     val l = rate.toDouble()
-    return leaf("exp", pdf = { x -> if (x < 0) 0.0 else l * exp(-l * x) },
+    return leaf("exp", pdf = { x -> if (x < 0) 0.0 else l * exp(-l * x) }, family = Families.exponential, params = doubleArrayOf(l),
         glsl = { r -> "(-log(1.0 - $GLSL_RND($r)) / ${glslFloat(l)})" }) { -ln(1.0 - it.nextDouble()) / l }
 }
+
+/** Poisson with the given [rate]: counts of events that happen independently at that rate. */
+fun poisson(rate: Number): Dist {
+    val l = rate.toDouble()
+    require(l >= 0) { "poisson($l): the rate must be non-negative" }
+    val p = doubleArrayOf(l)
+    return familyLeaf("poisson", Families.poisson, p, pmf = truncatedPmf(Families.poisson, p, 0.0))
+}
+
+/** Gamma with [shape] `k` and [rate] `r` (mean `k / r`); with shape 1 it is [exponential]. */
+fun gamma(shape: Number, rate: Number = 1.0): Dist {
+    val p = doubleArrayOf(shape.toDouble(), rate.toDouble())
+    require(p[0] > 0 && p[1] > 0) { "gamma(${p[0]}, ${p[1]}): shape and rate must be positive" }
+    return familyLeaf("gamma", Families.gamma, p, pdf = { x -> exp(Families.gamma.logDensity(x, p)) })
+}
+
+/** Beta on `(0, 1)`, with mean `a / (a + b)`: the usual prior for an unknown probability. */
+fun beta(a: Number, b: Number): Dist {
+    val p = doubleArrayOf(a.toDouble(), b.toDouble())
+    require(p[0] > 0 && p[1] > 0) { "beta(${p[0]}, ${p[1]}): both parameters must be positive" }
+    return familyLeaf("beta", Families.beta, p, pdf = { x -> exp(Families.beta.logDensity(x, p)) })
+}
+
+/** The pmf of a discrete family on `start, start + 1, …`, cut where the remaining mass is below 1e-15; null if that needs over 5000 values. */
+private fun truncatedPmf(f: Family, p: DoubleArray, start: Double): Map<Double, Double>? {
+    val out = LinkedHashMap<Double, Double>()
+    var total = 0.0
+    var x = start
+    while (total < 1 - 1e-15) {
+        val m = exp(f.logDensity(x, p))
+        if (m > 0) out[x] = m
+        total += m
+        x += 1
+        if (out.size > 5000) return null
+        if (m == 0.0 && x > start + 5000) return null // the mass is too far out to list
+    }
+    return out
+}
+
+// ---- families whose parameters are random -------------------------------------------------
+//
+// These are what make a model: `normal(mu, 1)` with `mu` itself a distribution draws a new mean
+// for every sample, and `observed(normal(mu, 1), data)` weighs each sample by how well its `mu`
+// explains the data. With constant parameters each is the ordinary leaf.
+
+/** Normal with a random mean. */
+fun normal(mu: Dist, sigma: Number = 1.0): Dist = familyNode(Families.normal, listOf(mu, Dist.dirac(sigma))) { normal(it[0], it[1]) }
+
+/** Normal with a random standard deviation. */
+fun normal(mu: Number, sigma: Dist): Dist = familyNode(Families.normal, listOf(Dist.dirac(mu), sigma)) { normal(it[0], it[1]) }
+
+/** Normal with a random mean and standard deviation. */
+fun normal(mu: Dist, sigma: Dist): Dist = familyNode(Families.normal, listOf(mu, sigma)) { normal(it[0], it[1]) }
+
+/** Uniform on `[a, b)` with random ends. */
+fun uniform(a: Dist, b: Dist): Dist = familyNode(Families.uniform, listOf(a, b)) { uniform(it[0], it[1]) }
+
+/** Uniform on `[a, b)` with a random lower end. */
+fun uniform(a: Dist, b: Number): Dist = uniform(a, Dist.dirac(b))
+
+/** Uniform on `[a, b)` with a random upper end. */
+fun uniform(a: Number, b: Dist): Dist = uniform(Dist.dirac(a), b)
+
+/** 1 with a random probability [p], else 0. */
+fun bernoulli(p: Dist): Dist = familyNode(Families.bernoulli, listOf(p)) { bernoulli(it[0]) }
+
+/** Exponential with a random [rate]. */
+fun exponential(rate: Dist): Dist = familyNode(Families.exponential, listOf(rate)) { exponential(it[0]) }
+
+/** Poisson with a random [rate]. */
+fun poisson(rate: Dist): Dist = familyNode(Families.poisson, listOf(rate)) { poisson(it[0]) }
+
+/** Gamma with a random [rate]. */
+fun gamma(shape: Number, rate: Dist): Dist = familyNode(Families.gamma, listOf(Dist.dirac(shape), rate)) { gamma(it[0], it[1]) }
 
 /**
  * A mixture: with probability `weights[i] / sum`, the value of `components[i]`.
@@ -296,21 +522,35 @@ fun mixture(components: List<Dist>, weights: List<Number> = List(components.size
     val w = weights.map { it.toDouble() }
     val total = w.sum()
     val cum = w.runningReduce { a, b -> a + b }.map { it / total }
-    val selector = uniform(0.0, 1.0)
+    // The selector is a discrete leaf, the index of the component, so a mixture of discrete parts
+    // has an exact pmf by enumeration. It draws one uniform per sample, as it always has.
+    val selector = Dist(
+        "select", emptyList(),
+        { _, out, n, rng ->
+            for (i in 0 until n) {
+                val u = rng.nextDouble()
+                var k = cum.indexOfFirst { u < it }
+                if (k < 0) k = cum.size - 1
+                out[i] = k.toDouble()
+            }
+        },
+        { _, r -> "nlSelect$GLSL_ID($GLSL_RND($r))" },
+        pmf = w.indices.associate { it.toDouble() to w[it] / total }, kind = Dist.Kind.Leaf,
+        glslPrelude = { id ->
+            var e = glslFloat((components.size - 1).toDouble())
+            for (k in components.size - 2 downTo 0) e = "(u < ${glslFloat(cum[k])} ? ${glslFloat(k.toDouble())} : $e)"
+            "float nlSelect$id(float u) { return $e; }\n"
+        },
+    )
     return Dist(
         "mix", listOf(selector) + components,
         { ins, out, n, _ ->
-            val u = ins[0]
-            for (i in 0 until n) {
-                var k = cum.indexOfFirst { u[i] < it }
-                if (k < 0) k = cum.size - 1
-                out[i] = ins[k + 1][i]
-            }
+            val sel = ins[0]
+            for (i in 0 until n) out[i] = ins[sel[i].toInt() + 1][i]
         },
         { ins, _ ->
-            // nested ternary from the last component back
             var e = ins.last()
-            for (k in components.size - 2 downTo 0) e = "(${ins[0]} < ${glslFloat(cum[k])} ? ${ins[k + 1]} : $e)"
+            for (k in components.size - 2 downTo 0) e = "(${ins[0]} == ${glslFloat(k.toDouble())} ? ${ins[k + 1]} : $e)"
             e
         },
     )
@@ -401,22 +641,58 @@ class Plan(val roots: List<Dist>) {
 
     fun indexOf(d: Dist): Int = index[d] ?: error("node not in plan")
 
-    /** [n] joint samples of every root, `result[root][sample]`. */
-    fun sample(n: Int, rng: SplittableRandom, batch: Int = 8192): Array<DoubleArray> {
+    /** Positions in [order] of the [Dist.given] nodes, whose second input is a log-weight. */
+    private val givens: IntArray = order.indices.filter { order[it].kind == Dist.Kind.Given }.toIntArray()
+
+    /** True if any node weighs its samples, so the plan's draws are weighted. */
+    val hasEvidence: Boolean get() = givens.isNotEmpty()
+
+    /** [n] joint samples of every root, `result[root][sample]`, ignoring any weights. */
+    fun sample(n: Int, rng: SplittableRandom, batch: Int = 8192): Array<DoubleArray> = run(n, rng, batch, null, null)
+
+    /** [n] joint samples and, when the plan has evidence, each sample's log-weight. */
+    fun sampleWeighted(n: Int, rng: SplittableRandom, batch: Int = 8192): WeightedSamples {
+        val lw = if (hasEvidence) DoubleArray(n) else null
+        return WeightedSamples(run(n, rng, batch, lw, null), lw)
+    }
+
+    /**
+     * The evaluation loop. [logWeights], when given, receives the sum of every evidence node's
+     * log-weight per sample. [fillLeaf], when given, supplies leaf values instead of drawing them
+     * (`fillLeaf(position in order, buffer, first sample index, count)`): exact enumeration.
+     */
+    internal fun run(
+        n: Int, rng: SplittableRandom, batch: Int, logWeights: DoubleArray?,
+        fillLeaf: ((k: Int, buf: DoubleArray, offset: Int, m: Int) -> Unit)?,
+    ): Array<DoubleArray> {
         val result = Array(roots.size) { DoubleArray(n) }
         val bufs = Array(order.size) { DoubleArray(min(batch, max(n, 1))) }
         val insOf = order.map { d -> Array(d.inputs.size) { bufs[indexOf(d.inputs[it])] } }
+        val weightBufs = givens.map { bufs[indexOf(order[it].inputs[1])] }
         var done = 0
         while (done < n) {
             val m = min(batch, n - done)
-            for (k in order.indices) order[k].cpu(insOf[k], bufs[k], m, rng)
+            for (k in order.indices) {
+                if (fillLeaf != null && order[k].kind == Dist.Kind.Leaf) fillLeaf(k, bufs[k], done, m)
+                else order[k].cpu(insOf[k], bufs[k], m, rng)
+            }
             for (r in roots.indices) System.arraycopy(bufs[indexOf(roots[r])], 0, result[r], done, m)
+            if (logWeights != null) for (w in weightBufs) for (i in 0 until m) logWeights[done + i] += w[i]
             done += m
         }
         return result
     }
 }
 
-/** [n] joint draws of several variables at once: `result[variable][sample]`. Dependencies are kept. */
-fun jointSamples(vararg ds: Dist, n: Int, seed: Long = 1L): Array<DoubleArray> =
-    Plan(ds.toList()).sample(n, SplittableRandom(seed))
+/**
+ * [n] joint draws of several variables at once: `result[variable][sample]`. Dependencies are kept.
+ *
+ * With evidence ([Dist.given]) the joint draws are resampled by weight, so each column is one draw
+ * from the joint posterior.
+ */
+fun jointSamples(vararg ds: Dist, n: Int, seed: Long = 1L): Array<DoubleArray> {
+    val plan = Plan(ds.toList())
+    val rng = SplittableRandom(seed)
+    if (!plan.hasEvidence) return plan.sample(n, rng)
+    return plan.sampleWeighted(n, rng).resampled(rng)
+}

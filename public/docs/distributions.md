@@ -33,6 +33,7 @@ The building blocks:
 | `die(6)`, `uniformInt(1, 365)` | whole numbers, each equally likely |
 | `uniform(a, b)`, `normal(mu, sigma)`, `exponential(rate)` | continuous distributions |
 | `bernoulli(p)` | 1 with probability `p`, else 0 |
+| `poisson(rate)`, `gamma(shape, rate)`, `beta(a, b)` | counts, positive amounts, probabilities |
 | `mixture(1 to a, 3 to b)`, `categorical(values, weights)` | pick one of several, by weight |
 
 They combine with `+ - * / %`, with numbers on either side, and with `abs()`, `sqrt()`, `exp()`,
@@ -40,6 +41,10 @@ They combine with `+ - * / %`, with numbers on either side, and with `abs()`, `s
 `lt le gt ge eq ne`, because Kotlin's `<` must return a plain `Boolean`. A comparison is itself a
 distribution that is 1 or 0, which is what makes `P(x + y lt 10)` work: a probability is the mean
 of a 0–1 variable. `and`, `or`, `!` and `where` combine those.
+
+A parameter can itself be a distribution: `normal(mu, 1)` with `mu = normal(0, 10)` draws a new mean
+for every sample. That is how you write a model whose parameters you want to learn from data
+([Conditioning on what you saw](#conditioning-on-what-you-saw)).
 
 ### A name is one variable
 
@@ -191,14 +196,128 @@ loop {
 }
 ```
 
-Exact probabilities come from convolving independent parts: dice, coins, constants, and `+ - *`
-and comparisons between variables that share no random part. `exactPmf(d)` and `exactPdf(d)` return
-them, or `null` when the graph is outside what they can do. `x + x` is refused rather than wrongly
-treated as two independent dice.
+Exact probabilities come from two places. Independent parts (dice, coins, constants, and `+ - *`
+and comparisons between variables that share no random part) are convolved. Anything else built
+from discrete leaves, such as `x + x`, `x * x lt 10` or a `categorical`, is enumerated: Field
+visits every joint value of the dice and coins, up to a million of them. `exactPmf(d)` and
+`exactPdf(d)` return the answer, or `null` when the graph is outside what they can do (a continuous
+leaf, or too many joint values, as with 23 birthdays).
 
 For your own plots, `Progressive(d)` is the accumulator the visualizer uses: `draw(n)` adds a batch,
 `estimate` is the running answer, `trace` the history of (n, mean, SE), and `kept()` the samples.
 `distributionSvg(progressive)` draws it.
+
+## Conditioning on what you saw
+
+`x given c` is `x` restricted to the samples where `c` is true. If two dice show 10 or more between
+them, how likely is it that the first one is a 6?
+
+```diffstatic {data-lang=kotlin}
+:::static
+import afield.math.distribution.*
+
+val x = die(6)
+val y = die(6)
+P((x eq 6) given (x + y ge 10))       // 0.5042 ± 0.002734 (n=200000, ess=33455)
+exactPmf(x given (x + y ge 10))       // {4.0=0.1666…, 5.0=0.3333…, 6.0=0.5}
+```
+
+Six of the 36 rolls make 10 or more, and three of those six start with a 6, so the answer is 1/2.
+Field gets it by drawing 200 000 pairs and keeping only the ones where the condition holds.
+`ess` is how many samples the answer rests on, here about one in six. A rare condition leaves few,
+and the standard error grows to say so. A condition that no sample meets throws
+`EvidenceImpossibleException` instead of answering NaN.
+
+A condition is the simplest kind of evidence. The other kind is data. `observed(model, data)` says
+"these numbers were drawn from `model`", and `model` may have random parameters. Here a coin of
+unknown bias, every bias equally likely to begin with, comes up heads seven times in ten:
+
+```diffstatic {data-lang=kotlin}
+:::static
+import afield.math.distribution.*
+
+val p = uniform(0, 1)
+val coin = p given observed(bernoulli(p), 1, 1, 0, 1, 1, 1, 0, 1, 1, 0)
+E(coin)                         // 0.6674 ± 0.0003210 (n=200000, ess=93637); exactly 8/12
+quantile(coin, 0.05)            // about 0.436: the bias is above this nineteen times in twenty
+```
+
+Each sample of `p` is weighed by how likely the seven heads are for that bias, `p⁷(1 − p)³`, and
+every question becomes a weighted average. The result is the posterior: what you believe about `p`
+after the flips. Here it is Beta(8, 4), so its mean is 8/12.
+
+These families take random parameters, so they can be the `model` in `observed`:
+
+| | |
+| --- | --- |
+| `normal(mu, sigma)` | a measurement of `mu` with noise `sigma` |
+| `bernoulli(p)` | a yes or no with probability `p` |
+| `poisson(rate)` | a count of events at a rate |
+| `exponential(rate)`, `gamma(shape, rate)` | waiting times, positive amounts |
+| `uniform(a, b)` | anywhere between two ends |
+| `beta(a, b)`, `die(n)`, `uniformInt(lo, hi)` | with constant parameters only |
+
+A model has to be one of these. `mu + normal(0, 1)` is the same distribution as `normal(mu, 1)`,
+but it is arithmetic on a leaf with no density, and `observed` refuses it.
+
+The posterior is a `Dist` like any other. You can add to it, compare it, draw it, or condition it
+again. Join two pieces of evidence with `and`. For a score that is not one of the families,
+`logLikelihood(d)` uses any variable as a log-likelihood. Any non-negative variable can also be a
+weight on its own: `x given x` is a die weighted by its face, so a 6 comes up six times as often as
+a 1. `post.prior()` is the same graph with the evidence taken out.
+
+`samples(n)` and `jointSamples` of a posterior draw weighted samples and resample them by weight,
+so the arrays they return hold posterior draws, with repeats. `weightedSamples(n)` gives the draws
+and their log-weights.
+
+`ᛟ.distribution(post)` draws a posterior the same way it draws anything else, with the bars
+weighted by the evidence. The prior is drawn as a dashed outline behind them, so you can see what
+the evidence changed. The footer gives the effective sample size. Here the mean of a measurement
+with a vague prior, `normal(0, 10)`, after three readings near 3:
+
+<!--
+FIELD_TEST
+id: docs.distributions.posterior
+runner: backdoor-box
+tags: [docs, distributions, inline, visualizers, conditioning]
+timeoutSec: 120
+execution: launch
+waitSec: 4.0
+expect:
+  screenshot:
+    kind: editor
+    padding: 10
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/distributions-posterior.png" alt="two inline distribution views: the posterior of mu, a bell of bars centred on 3.09 with the wide normal prior a nearly flat dashed line beneath it, and the posterior of a coin's bias peaking near 0.7 above the flat dashed outline of its uniform prior; each footer gives n and the effective sample size" wait="4.0" capture="editor" outputs="inline" padding="10" execution="launch" timeout="120" embed=true name="distributions-posterior"}
+:::static
+import afield.math.distribution.*
+
+val mu = normal(0, 10)
+val reading = mu given observed(normal(mu, 1), 2.9, 3.3, 3.1)
+
+val p = uniform(0, 1)
+val coin = p given observed(bernoulli(p), 1, 1, 0, 1, 1, 1, 0, 1, 1, 0)
+
+loop {
+    __m("reading").distribution(reading, batch = 2000, title = "mu given three readings", exact = 9.3 / 3.01)
+    __m("coin").distribution(coin, batch = 2000, title = "bias given 7 heads in 10", exact = 8.0 / 12)
+    frame()
+}
+```
+
+The view frames the posterior, so the prior on `mu`, spread from about −20 to 20, is a nearly flat
+dashed line under it. Most of the prior's samples are far from 3 and weigh almost nothing, so the
+effective sample size is under a tenth of the draws. That is the honest count. A tighter prior
+keeps more of them.
+
+??? aside "How the weights are summed"
+    A query is self-normalised importance sampling: with weights `w`, `E(x)` is `Σwx / Σw`, and its
+    standard error is `√(Σw²(x − mean)²) / Σw`. For a 0–1 condition these are exactly the mean and
+    standard error of the accepted samples. Weights travel as logs and are scaled by the largest
+    seen (`WeightedMoments`), so three hundred readings' worth of small likelihoods neither
+    underflow nor lose the samples that matter. `ConditioningTest` checks each posterior here
+    against its closed form: Beta for the coin, a normal prior and normal readings, and a gamma
+    prior with Poisson counts.
 
 ## Geometry from a distribution
 
@@ -282,8 +401,10 @@ frames {
 ```
 
 The same graphs on both, from the smoke test `four.noiselang.gpu-parity`
-(`tools/run_field_tests.py --id four.noiselang.gpu-parity`). Every GPU answer is within 0.4 of its
-own standard error of the exact value, and within 2 combined standard errors of the CPU's:
+(`tools/run_field_tests.py --id four.noiselang.gpu-parity`). Every GPU answer is within one of its
+own standard errors of the exact value, and within about two combined standard errors of the
+CPU's. The last four rows are posteriors, built with `given` and `observed` as in
+[Conditioning on what you saw](#conditioning-on-what-you-saw):
 
 | | CPU, 200 000 samples | GPU, 4 194 304 samples | exact |
 | --- | --- | --- | --- |
@@ -294,9 +415,20 @@ own standard error of the exact value, and within 2 combined standard errors of 
 | E(x − x) | 0 ± 0 | 0 ± 0 | 0 |
 | E(N(2, 3)²) | 13.02 ± 0.039 | 13.00 ± 0.0085 | 13 |
 | E(mixture of two normals) | 2.511 ± 0.0060 | 2.500 ± 0.0013 | 2.5 |
+| E(poisson(50)) | 50.00 ± 0.016 | 50.00 ± 0.0035 | 50 |
+| P(x = 6, given x + y ≥ 10) | 0.5042 ± 0.0027 | 0.4994 ± 0.00060 | 0.5 |
+| E(coin's bias, given 7 heads in 10) | 0.6674 ± 0.00032 | 0.6667 ± 0.000070 | 0.66667 (8/12) |
+| E(mu, given three normal readings) | 3.089 ± 0.0033 | 3.090 ± 0.00072 | 3.08970 |
+| E(Poisson rate, given three counts) | 3.502 ± 0.0030 | 3.500 ± 0.00065 | 3.5 |
 
 `GpuMonteCarlo(renderer, d, raw = true)` writes the samples themselves instead, four per
 invocation, for a histogram of GPU draws.
+
+A posterior runs on the GPU too. With evidence, the lowered function becomes
+`float nlSample(inout uint s, inout float lw)`. Each `given` adds its log-likelihood to `lw`, and
+`observed` data is compiled into the shader as a constant array. `GpuMonteCarlo` then returns the
+weighted estimate. With `raw = true` it writes two samples per invocation, each with its log-weight
+(`samples()`, `logWeights()`).
 
 ??? aside "How the GPU estimate is accumulated"
     Each invocation sums its samples in fp32 after subtracting its own first sample, and writes
@@ -308,3 +440,49 @@ invocation, for a histogram of GPU draws.
 
 The replayable demo is `dev_docs/agents/transcripts/noiselang_distributions.yaml`: the spike, the
 die and the triangle, the questions above, the densities, and the walks, as four boxes.
+
+## Limitations and what's next
+
+What this library does not do yet, so you know where the edges are:
+
+- **Conditioning is by weighting, so a vague prior is expensive.** `given` weighs samples drawn
+  from the prior. When the evidence is sharp and the prior is wide, most samples weigh almost
+  nothing. The effective sample size reports this, but nothing moves the samples towards the data
+  yet. There is no MCMC and no sequential Monte Carlo.
+- **Exact answers only in simple cases.** `exactPmf` handles graphs of discrete leaves, by
+  convolution or by visiting up to a million joint values, and gives up beyond 20 000 support
+  points. `exactPdf` knows continuous leaves, their affine images, and sums of independent normals.
+  A continuous graph with a shared leaf, such as `x * y` where `y` depends on `x`, or any continuous
+  posterior, falls back to sampling. A plot then shows a dashed kernel estimate instead of the exact
+  curve.
+- **Comparisons are words.** Kotlin's `<` has to return a `Boolean`, so a comparison that returns
+  a distribution is spelled `lt`, `le`, `gt`, `ge`, `eq` or `ne`.
+- **The GPU is single precision.** Uniforms carry 24 random bits, and the sums are fp32 (shifted so
+  they do not cancel, see the aside above). That is ample for the questions on this page. It is not
+  enough for probabilities near 10⁻⁷ or for tails that need more than about four million samples per
+  dispatch. The CPU and the GPU draw from different random streams, so their answers agree to
+  within standard error, not sample for sample.
+- **Distributions stay in their own package.** Short names like `die`, `normal`, `P` and `E` would
+  collide with other box code, so a box imports `afield.math.distribution.*` itself.
+- **Nothing makes sound yet.** Every output on this page is a number, a histogram or an FLine.
+
+Where it could go next:
+
+- **Sequential inference.** A posterior updated as observations arrive, by resampling and moving
+  its samples (sequential Monte Carlo): a performer's tempo from onsets, or a tracked hand. This
+  would also fix the wasted samples of a vague prior.
+- **Distributions as live inputs.** A `Param` whose next value is a draw, a rhythm whose onset
+  density is a quantile, or a pattern whose variation is `E` of something you can drag. The same
+  graph would drive the sound and the histogram beside it.
+- **The GLSL lowering as an include.** `toGlsl()` already writes a distribution as one function.
+  Shipped as a `#include` with its seed plumbing, a fragment, compute or particle shader could draw
+  from a distribution defined in a box, and the box's histogram would describe what the GPU is
+  drawing.
+- **Richer inline views.** Quantile bands, an empirical CDF beside the bars, and two distributions
+  overlaid with the distance between them, all updating as samples arrive.
+- **Gradients.** Normals and uniforms can be reparameterized, so `E(f(x; θ))` has a gradient in θ.
+  Joined to the autodiff work, you could optimize a distribution: tune a scatter of FLines or a
+  random rhythm by gradient descent instead of by hand.
+- **More exact cases.** Symmetry would make the birthday question exact, where enumerating 365²³
+  joint values cannot. Characteristic functions would give exact densities for more continuous
+  sums, and conjugate pairs (a Beta prior with coin flips) exact posteriors.
