@@ -83,20 +83,12 @@ internal fun controlKeyForLabel(box: Box, channel: String, label: String): Strin
     controlGroupControlsWithKeys(box, channel).firstOrNull { it.second.label == label && it.second.type in valueControlTypes }?.first
 
 /**
- * The callback registered now for the control labelled [label] in [box]'s [channel], or null. Each run
- * of a box registers its controls' callbacks afresh, so a changed value means a new run has drawn them.
+ * The live control labelled [label] in [box]'s [channel], or null. Each run of a box registers its
+ * control group afresh, as new objects, just before it displays the group, so a different object
+ * (by identity) means a new run has drawn its controls.
  */
-internal fun controlRegistration(box: Box, channel: String, label: String): Any? {
-    val control = controlGroupControlsWithKeys(box, channel)
-        .firstOrNull { it.second.label == label && it.second.type in valueControlTypes }?.second ?: return null
-    return when (control.type) {
-        "slider" -> getSliderCallback(control.id)
-        "checkbox" -> getCheckboxCallback(control.id)
-        "vec2" -> getVec2Callback(control.id)
-        "color" -> getColorCallback(control.id)
-        else -> null
-    }
-}
+internal fun controlRegistration(box: Box, channel: String, label: String): Any? =
+    controlGroupControlsWithKeys(box, channel).firstOrNull { it.second.label == label && it.second.type in valueControlTypes }?.second
 
 // ------------------------------------------------------------------------
 // Gesture listeners: every change a person makes, from the browser or the tablet

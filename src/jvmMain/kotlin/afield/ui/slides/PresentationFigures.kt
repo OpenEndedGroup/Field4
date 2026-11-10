@@ -183,13 +183,21 @@ internal class FigureStage(private val host: Box, var runner: FigureRunner = Fie
         runner.launch(boxes)
     }
 
-    /** True while [c]'s box is still showing the controls of the run before the one this stage launched. */
+    /**
+     * True while [c]'s box is still showing the controls of the run before the one this stage
+     * launched. A new run registers its controls a moment before it displays them, so once the new
+     * registration appears the control waits one more try: set in between, the value would be
+     * overwritten on screen by the group the run is about to display.
+     */
     private fun waitingForNewRun(c: FigureControl): Boolean {
         val old = previousRun[key(c)] ?: return false
-        if (runner.controlRegistration(c.box, c.channel, c.label) === old) return true
-        previousRun.remove(key(c))
-        return false
+        if (old === NEW_RUN_SEEN) { previousRun.remove(key(c)); return false }
+        val now = runner.controlRegistration(c.box, c.channel, c.label)
+        if (now != null && now !== old) previousRun[key(c)] = NEW_RUN_SEEN
+        return true
     }
+
+    private companion object { val NEW_RUN_SEEN = Any() }
 
     private fun boxes(figures: List<AudienceFigure>, known: List<FigureControl>): List<Box> =
         figures.map { it.box }.distinct().mapNotNull { uid ->
