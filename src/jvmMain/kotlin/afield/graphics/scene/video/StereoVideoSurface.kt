@@ -57,6 +57,25 @@ class StereoVideoSurface(
     @Volatile var accumulationInputWeight = 1.0
         set(value) { require(value.isFinite() && value in 0.0..100.0); field = value }
 
+    /** Hold a movie-local exposure per pair, alternating soft/dark then clear in real time. */
+    @Volatile var exposureCadenceEnabled = false
+    @Volatile var exposurePairsPerSecond = 12.0
+        set(value) { require(value.isFinite() && value in 1.0..30.0); field = value }
+    /** Gaussian sigma in original packed-video pixels; each eye is filtered independently. */
+    @Volatile var exposureBlurSigma = 2f
+        set(value) { require(value.isFinite() && value in 0f..16f); field = value }
+    @Volatile var exposureBlurMix = 1f
+        set(value) { require(value.isFinite() && value in 0f..1f); field = value }
+    /** Fraction of linear-light brightness removed from the soft half of each pair. */
+    @Volatile var exposureDarkening = .08f
+        set(value) { require(value.isFinite() && value in 0f..1f); field = value }
+    private val exposureClock = VideoExposureCadence()
+    private var exposureBlur: VideoExposureBlur? = null
+    private var exposureActive = false
+    private var exposurePair = Long.MIN_VALUE
+    private var exposureSigma = Float.NaN
+    private var exposureRate = Double.NaN
+
     /** Editable documents install a moduleHere factory before loading a movie. */
     var accumulationModuleFactory: ((Parameters) -> ModulePointer)? = null
     private var accumulator: VideoFrameAccumulator? = null
@@ -137,7 +156,8 @@ class StereoVideoSurface(
             playRequest.getAndSet(null)?.let { if (it) source.play() else source.pause() }
             // Decode follows the media clock on every display frame. Only publication is held;
             // capped ticks select the newest decoded picture instead of draining an old backlog.
-            val materialTick = materialCadence.tick(System.nanoTime(), materialFramesPerSecond)
+            val now = System.nanoTime()
+            val materialTick = materialCadence.tick(now, materialFramesPerSecond)
             source.preferLatestDecodedFrame = materialFramesPerSecond != 0
             val uploaded = source.update(command, uploadFrame = materialTick)
             if (uploaded) materialUpdates++
@@ -148,12 +168,32 @@ class StereoVideoSurface(
             val wrapped = uploaded && previousSourceTime.isFinite() && source.timestamp < previousSourceTime
             if (wrapped || (accumulating && !accumulationWasEnabled)) clearAccumulationRequest.set(true)
             val reset = materialTick && clearAccumulationRequest.getAndSet(false)
-            if (reset) accumulator?.clear()
+            if (reset) {
+                accumulator?.clear()
+                exposureClock.reset()
+                exposureBlur?.clear()
+            }
             if (accumulating && source.hasFrame && (uploaded || reset)) {
                 accumulator?.render(command, index, accumulationHalfLife, accumulationInputWeight)
             }
             accumulationWasEnabled = accumulating
             if (uploaded) previousSourceTime = source.timestamp
+
+            // Only the material is held. Current eye poses still draw it on every headset frame.
+            val wasActive = exposureActive
+            exposureActive = exposureCadenceEnabled && accumulating && accumulator?.valid == true
+            val phase = exposureClock.phase(now, source.playing, exposurePairsPerSecond)
+            if (exposureActive) {
+                val blur = exposureBlur ?: VideoExposureBlur(renderer, accumulator!!, source.width, source.height)
+                    .also { exposureBlur = it }
+                val refresh = !wasActive || !blur.valid || phase.pair != exposurePair || exposureRate != exposurePairsPerSecond
+                if (refresh || exposureSigma != exposureBlurSigma) {
+                    blur.render(command, index, exposureBlurSigma, refresh)
+                    exposurePair = phase.pair
+                    exposureSigma = exposureBlurSigma
+                    exposureRate = exposurePairsPerSecond
+                }
+            }
             if (source.colorTransfer == 16 || source.colorTransfer == 18) {
                 source.pause()
                 module?.current?.enabled = false
@@ -179,7 +219,9 @@ class StereoVideoSurface(
                         if (flipVertically) 1f else 0f,
                     )
                 push["colorimetry"] = StereoVideoColorimetry.parameters(source.colorSpace, source.colorRange)
-                push["accumulation"] = Vector4f(accumulationMix, if (accumulator?.valid == true) 1f else 0f, 0f, 0f)
+                push["accumulation"] = Vector4f(accumulationMix, if (accumulator?.valid == true) 1f else 0f,
+                    if (exposureActive && phase.softened && exposureBlurSigma > 0f) exposureBlurMix else 0f,
+                    if (exposureActive && phase.softened) exposureDarkening else 0f)
             }
         }
     }
@@ -208,6 +250,7 @@ class StereoVideoSurface(
                     "luma" -> 0
                     "chroma" -> 1
                     "accumulatedImage" -> 2
+                    "softenedImage" -> 3
                     else -> -1
                 }
             if (plane < 0) null
@@ -219,7 +262,11 @@ class StereoVideoSurface(
                             // need valid images. This renderer-owned fallback is never drawn as video.
                             override val imageView
                                 get() =
-                                    (if (plane == 2) accumulator?.imageView else video?.imageViewArray?.get(plane)?.imageView)
+                                    (when (plane) {
+                                        2 -> if (exposureActive) exposureBlur?.held?.imageView else accumulator?.imageView
+                                        3 -> exposureBlur?.blurred?.imageView
+                                        else -> video?.imageViewArray?.get(plane)?.imageView
+                                    })
                                         ?: LoadedTexture.stubTexture(renderer).imageView
                         },
                     ),
@@ -242,7 +289,7 @@ class StereoVideoSurface(
         screen.push["surface"] = Vector4f(3f, 1.6875f, 0f, strips.toFloat()) // width, height, bend, strips
         screen.push["image"] = Vector4f(2f, 2f, 0f, 0f) // packed size, eye swap, vertical flip
         screen.push["colorimetry"] = StereoVideoColorimetry.parameters(1, 1) // BT.709, limited range
-        screen.push["accumulation"] = Vector4f(0f) // processed mix, valid history
+        screen.push["accumulation"] = Vector4f(0f) // processed mix, valid history, spatial blur mix, darkening
         pointer += "screen" to screen
 
         val overlays = stereo.layered.modules.filterKeys { it != name }
@@ -291,6 +338,10 @@ class StereoVideoSurface(
             val oldVideo = video
             accumulator?.close()
             accumulator = null
+            exposureBlur?.close()
+            exposureBlur = null
+            exposureActive = false
+            exposureClock.reset()
             previousSourceTime = Double.NaN
             materialCadence.reset()
             materialUpdates = 0
@@ -339,6 +390,8 @@ class StereoVideoSurface(
             module?.current?.cleanup()
             accumulator?.close()
             accumulator = null
+            exposureBlur?.close()
+            exposureBlur = null
             video?.cleanup()
             sampler.cleanup()
             video = null

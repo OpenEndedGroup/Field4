@@ -14,7 +14,36 @@ var eyeSwapControl: ControlValueHandle<Boolean>? = null
 
 // Rebuild only on file change, when duration changes. Handles keep playback ticks out of
 // the document edit log; seeks pause, and an explicit Playing gesture resumes.
+// Paired film-like exposures: one held accumulated image, soft/dark first, then clear.
+// These controls only affect accumulated material; ordinary sharp playback is unchanged.
+fun showExposureCadence() {
+    controlGroup("exposure cadence") {
+        checkbox("Paired exposure cadence", initialValue = movie.exposureCadenceEnabled,
+            hoverText = "Hold one accumulated exposure per pair, showing a softened/darker half followed by a clear half. Real-time cadence is independent of 8x playback and headset refresh. Sharp sections bypass it; pause freezes the current half.") {
+            movie.exposureCadenceEnabled = it
+        }
+        slider("Exposure pairs / second", min = 1.0, max = 30.0, step = .1, initialValue = movie.exposurePairsPerSecond,
+            hoverText = "12 means twelve complete soft/dark → clear pairs per real second: 24 half-steps, like the paired frames of a 24 fps movie. The accumulated image is held for each pair; intermediate exposure samples still accumulate normally.") {
+            movie.exposurePairsPerSecond = it
+        }
+        slider("Soft-half blur sigma (px)", min = 0.0, max = 16.0, step = .1, initialValue = movie.exposureBlurSigma.toDouble(),
+            hoverText = "Gaussian sigma in original video pixels, applied separately to each eye. A half-resolution separable blur is rebuilt once per exposure pair, before drawing with the current head pose. The clear half keeps the full-resolution held image.") {
+            movie.exposureBlurSigma = it.toFloat()
+        }
+        slider("Soft-half blur mix", min = 0.0, max = 1.0, step = .01, initialValue = movie.exposureBlurMix.toDouble(),
+            hoverText = "Blend between the held exposure and its spatially blurred version during the first half only. Zero retains the held full-resolution exposure, one uses the Gaussian result. Independent of temporal accumulation mix.") {
+            movie.exposureBlurMix = it.toFloat()
+        }
+        slider("Soft-half darkening", min = 0.0, max = .5, step = .005, initialValue = movie.exposureDarkening.toDouble(),
+            hoverText = "Fraction of linear-light brightness removed from the first half of each exposure pair. 0.08 removes eight percent; zero turns the darkening off. The clear half has unchanged brightness.") {
+            movie.exposureDarkening = it.toFloat()
+        }
+    }
+    displayOpen("exposure cadence")
+}
+
 fun showTransport() {
+    showExposureCadence()
     displayClear("transport")
     controlGroup("transport") {
         playingControl = checkbox("Playing", initialValue = movie.playing) { if (it) movie.play() else movie.pause() }

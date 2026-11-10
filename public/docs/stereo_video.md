@@ -619,3 +619,34 @@ movie.accumulationModuleFactory = { configuration ->
     moduleHere(configuration)
 }
 ```
+
+## Paired exposure cadence
+
+**Paired exposure cadence** gives accumulated sections a paired-frame rhythm. At the default
+**Exposure pairs / second = 12**, one accumulated image is held for 1/12 real second. The first
+half is optionally softened and darkened; the second half shows the same exposure clear.
+That is 12 pairs, or 24 half-steps, per second even when source playback is 8×. This option
+starts off; enable it alongside **8x blur**, or leave it enabled while a score cuts between
+sharp and accumulated sections. Sharp sections bypass it automatically.
+
+**Soft-half blur sigma (px)** controls a Gaussian in original video pixels; **Soft-half blur
+mix** blends it with the full-resolution held exposure. Zero sigma or zero mix preserves the
+full-resolution image. **Soft-half darkening** removes a fraction of linear-light brightness:
+0.08 removes eight percent. The default sigma is 2 pixels, mix 1 and darkening 0.08.
+
+The exposure continues accumulating selected source frames normally. Only its displayed copy
+is held for each pair; the separate **Material: 12 fps** control limits source contributions
+and is not required for this effect. Pause freezes both the held exposure and its current
+half; seek, clear and loop wrap start a fresh exposure. Missed pairs are skipped, never queued.
+
+A full-resolution RGBA16F snapshot and two Gaussian passes are prepared before the eye draws,
+once per pair (and when the blur radius changes). Every tap stays inside its source eye.
+There is no previous headset image, readback or extra queued GPU frame: current eye poses
+still draw at the headset rate. Holding the material is the intentional apparent-framerate
+effect. The extra images are allocated lazily and retained until movie replacement or close;
+3840 × 1080 uses about 55 MiB beyond the temporal accumulator.
+
+The API is `movie.exposureCadenceEnabled`, `exposurePairsPerSecond`, `exposureBlurSigma`,
+`exposureBlurMix` and `exposureDarkening`. Box 4's `accumulatedImage` is the held full-resolution
+exposure while enabled, and `softenedImage` is its Gaussian version. `pc.accumulation.z` is the
+soft-half blur blend; `.w` is its linear darkening. Both are zero during the clear half.
