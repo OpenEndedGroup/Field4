@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 22302 of 37942 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 22312 of 37972 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2031 undocumented entry points** (types, top-level functions and values) and 12933 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2031 undocumented entry points** (types, top-level functions and values) and 12953 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -608,6 +608,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RectSLPatternOps.kt](../src/jvmMain/kotlin/afield/lang/rectsl/RectSLPatternOps.kt) | Languages | — | 0 | 18 | 14% |
 | [Devices.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Devices.kt) | Audio | — | 0 | 17 | 50% |
 | [PathTracingRenderer.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTracingRenderer.kt) | Renderers | — | 0 | 17 | 69% |
+| [StereoVideoLookPool.kt](../src/jvmMain/kotlin/afield/graphics/scene/video/StereoVideoLookPool.kt) | Graphics | — | 0 | 17 | 29% |
 | [MegaTextureDecoder.kt](../src/jvmMain/kotlin/afield/graphics/texture/mega/MegaTextureDecoder.kt) | Graphics | — | 0 | 17 | 34% |
 | [MultiviewStereoTarget.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/targets/MultiviewStereoTarget.kt) | Graphics | — | 0 | 17 | 19% |
 | [MorphoGenerator.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoGenerator.kt) | Languages | — | 0 | 17 | 39% |
@@ -829,6 +830,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SkinningEvidence.kt](../src/jvmMain/kotlin/afield/graphics/scene/SkinningEvidence.kt) | Graphics | — | 0 | 3 | 50% |
 | [FabricatePassChainBuilder.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricatePassChainBuilder.kt) | Renderers | — | 0 | 3 | 80% |
 | [ReadingTextBlur.kt](../src/jvmMain/kotlin/afield/graphics/scene/reading/ReadingTextBlur.kt) | Graphics | — | 0 | 3 | 25% |
+| [StereoVideoLookRecall.kt](../src/jvmMain/kotlin/afield/graphics/scene/video/StereoVideoLookRecall.kt) | Graphics | — | 0 | 3 | 50% |
 | [ShaderTraining.kt](../src/jvmMain/kotlin/afield/graphics/shader/learning/ShaderTraining.kt) | Graphics | — | 0 | 3 | 57% |
 | [TextureSampler.kt](../src/jvmMain/kotlin/afield/graphics/texture/TextureSampler.kt) | Graphics | — | 0 | 3 | 25% |
 | [BinocularGazeIntersection.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/targets/BinocularGazeIntersection.kt) | Graphics | — | 0 | 3 | 85% |
