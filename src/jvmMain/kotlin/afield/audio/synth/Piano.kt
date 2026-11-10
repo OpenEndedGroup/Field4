@@ -135,18 +135,26 @@ class Piano(
     /**
      * Schedules [cycles] cycles of [pattern] from [startFrame] (default: 50 ms from now).
      *
-     * Notes are named as in `pat` (`c4`, `e4`, `60`) and the `gain` annotation is the velocity,
-     * scaled by [velocity]. A note holds its key for its `sustain` share of the event.
+     * An atom is a MIDI number (`60`) or a note name (`c4`, `eb3`, `f#5`, middle C is `c4`); a `note`
+     * annotation wins over both. The `gain` annotation scales [velocity], and a note holds its key
+     * for its `sustain` share of the event, or [legato] without one: 1 holds to the next event, 0.1 is
+     * staccato.
      */
-    fun play(pattern: PatPattern<String>, cycles: Int = 1, cps: Double = 0.5, velocity: Double = 0.6, startFrame: Long = -1L) {
-        val sr = (if (fs > 0) fs else sampleRate.toDouble()).toInt()
-        val origin = if (startFrame >= 0) startFrame else frame + sr / 20
+    fun play(pattern: PatPattern<String>, cycles: Int = 1, cps: Double = 0.5, velocity: Double = 0.6, legato: Double = 0.9, startFrame: Long = -1L) {
+        val sr = if (fs > 0) fs else sampleRate.toDouble()
+        val origin = if (startFrame >= 0) startFrame else frame + (sr / 20).toLong()
         for (c in 0 until cycles) {
-            for (n in patSynthNotesForArc(pattern, PatArc(PatQ.of(c), PatQ.of(c + 1)), cps, sr, patVoice(sustain = 0.9), velocity, origin)) {
-                val midi = (69.0 + 12.0 * log2(n.hz / 440.0)).roundToInt()
+            for (e in pattern.events(PatArc(PatQ.of(c), PatQ.of(c + 1)))) {
+                if (!e.hasOnset) continue
+                val midi = e.annotations["note"]?.toDoubleOrNull()?.roundToInt() ?: pianoNoteNumber(e.value) ?: continue
                 if (midi !in 21..108) continue
-                noteOn(midi, n.gain.coerceIn(0.02, 1.0), n.startFrame)
-                noteOff(midi, n.startFrame + n.holdFrames.coerceAtLeast(1))
+                val startSec = e.extent.start.toDouble() / cps
+                val lenSec = (e.extent.end - e.extent.start).toDouble() / cps
+                val sustain = (e.annotations["sustain"]?.toDoubleOrNull() ?: legato).coerceIn(0.0, 1.0)
+                val vel = (velocity * (e.annotations["gain"]?.toDoubleOrNull() ?: 1.0)).coerceIn(0.02, 1.0)
+                val on = origin + Math.round(startSec * sr)
+                noteOn(midi, vel, on)
+                noteOff(midi, on + max(1L, Math.round(lenSec * sustain * sr)))
             }
         }
     }
@@ -477,4 +485,19 @@ internal fun pianoBridgeForce(midi: Int, velocity: Double, seconds: Double, seed
     voice.render(force, own, 0, n, one, one, zero, 0.0, fs)
     data.count = phasors.coerceAtMost(data.count)
     return force to data
+}
+
+/** `60` -> 60, `c4` -> 60, `eb3` -> 51, `f#5` -> 78; null when [atom] is neither. */
+fun pianoNoteNumber(atom: String): Int? {
+    val t = atom.trim().lowercase()
+    t.toDoubleOrNull()?.let { return it.roundToInt() }
+    val m = Regex("^([a-g])([#sb]?)(-?\\d)$").matchEntire(t) ?: return null
+    val base = when (m.groupValues[1]) { "c" -> 0; "d" -> 2; "e" -> 4; "f" -> 5; "g" -> 7; "a" -> 9; else -> 11 }
+    val acc = when (m.groupValues[2]) { "#", "s" -> 1; "b" -> -1; else -> 0 }
+    return 12 * (m.groupValues[3].toInt() + 1) + base + acc
+}
+
+/** Puts [render] in this box's output as an audio player, peak-normalised to -1 dBFS. */
+fun afield.document.graph.Box.showPianoAudio(render: PianoRender, channel: String = "main") {
+    display(channel, render.wav(normalizePeak = 0.89f))
 }
