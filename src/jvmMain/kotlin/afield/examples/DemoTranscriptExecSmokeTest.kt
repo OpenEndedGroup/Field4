@@ -145,6 +145,9 @@ object DemoTranscriptExecSmokeTest {
         // Five CPU boxes: two strokes drawn from code, read back, resampled and paired with
         // matchPoints, morphed, and the morph played as pitch into audio players. Offline buffers only.
         "drawn_morph",
+        // Five CPU boxes: the coopiano port rendered offline (A4, string shape, a pattern, pedal takes,
+        // audio-rate stiffness) into audio players. The sixth, `live`, is created but not executed.
+        "physical_piano",
         // Three CPU boxes: a SourceFramesStudy of a box property with registerStudyTools, then two
         // children that publish a SetNumbers revision and sweep/try variants. Frames come from a CPU
         // painter at 256 px at most; no Window, no Renderer.
