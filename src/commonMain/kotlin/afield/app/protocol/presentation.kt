@@ -111,3 +111,11 @@ data class ArrangeBoxesRequest(val id: String, val boxes: List<String>, val gap:
 /** A client's answer to an [ArrangeBoxesRequest]: the frames to give the boxes. */
 @Serializable
 data class ArrangeBoxesResult(val id: String, val frames: List<Set_rect>)
+
+/**
+ * A pointer drag on a `lines(..., onDrag = { })` drawing, sent by the viewer: [id] names the box
+ * and channel, [phase] is `start`, `move` or `end`, and [x], [y] are in the drawing's own SVG
+ * coordinates (the server undoes any fit back to the lines' coordinates).
+ */
+@Serializable
+data class LinesDrag(val id: String, val phase: String, val x: Double, val y: Double)

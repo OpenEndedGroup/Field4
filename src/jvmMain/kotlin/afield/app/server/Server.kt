@@ -5,6 +5,7 @@ package afield.app.server
 import afield.animation.keyframes.Handle
 import afield.app.diagnostics.named
 import afield.app.protocol.AgentOpenDocument
+import afield.app.protocol.LinesDrag
 import afield.data.table.cell
 import afield.data.table.div
 import afield.data.table.minus
@@ -3779,6 +3780,18 @@ class Server {
                     lprintln("warning,fline", "No callback registered for FLine: ${click.callbackId}")
                 }
 
+                Handled.yes
+            })
+
+            handlers["lines-drag"] = mutableSetOf({ message, _ ->
+                val drag = Json.decodeFromJsonElement<LinesDrag>(message.payload!!)
+                GlobalScope.launch {
+                    try {
+                        if (!afield.ui.visualization.deliverLinesDrag(drag)) lprintln("debug,fline", "No drag callback for ${drag.id}")
+                    } catch (e: Exception) {
+                        lprintln("error,fline", "Error in lines drag callback: ${e.message}")
+                    }
+                }
                 Handled.yes
             })
 
