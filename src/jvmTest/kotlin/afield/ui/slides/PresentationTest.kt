@@ -82,6 +82,18 @@ class PresentationTest {
         assertNull(WaitingPresentations.stateFor(info), "a stopped talk does not open windows")
     }
 
+    /** Further reading may link a local PDF for the talk to open; no other `file:` link, and no script, gets through. */
+    @Test
+    fun slideMarkdownKeepsLocalPdfLinksAndRefusesOtherFileAndScriptLinks() {
+        val html = SlideMarkdown.render(
+            "[notes](file:///Users/me/papers/Hecht%20Optics.pdf) [web](https://ciechanow.ski/) " +
+                "[passwd](file:///etc/passwd) [run](file:///Users/me/run.command) [js](javascript:alert(1))")
+        assertTrue("href=\"file:///Users/me/papers/Hecht%20Optics.pdf\"" in html, html)
+        assertTrue("href=\"https://ciechanow.ski/\"" in html, html)
+        assertTrue("/etc/passwd" !in html && "run.command" !in html && "javascript:" !in html, html)
+        assertTrue("field-local-pdf:" !in html, html)
+    }
+
     @Test
     fun markdownFragmentsRenderAlongsideEscapedHtmlAndImages() {
         assertEquals(mdEscape("_literal_"), "_literal_".md)

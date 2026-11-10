@@ -413,10 +413,19 @@ object SlideMarkdown {
     private val parser = MarkdownParser(flavour)
     private val navPattern = Regex("""\[\[\s*(next|previous|prev|back|home|start|stop|finish)(?:\s*:\s*([^\]]+))?]]""", RegexOption.IGNORE_CASE)
 
+    /**
+     * A link to a local PDF (`[notes](file:///…/notes.pdf)`), which a talk opens on the audience
+     * display. The renderer's safe-links pass turns every `file:` link into `#`; this one kind is
+     * carried past it under [LOCAL_PDF] and restored, and every other `file:` link is still refused.
+     */
+    private val localPdfLink = Regex("""\]\(\s*file:(//[^)\s]*\.pdf)\s*\)""", RegexOption.IGNORE_CASE)
+    private const val LOCAL_PDF = "field-local-pdf:"
+
     fun render(markdown: String): String {
         val mdWithNav = injectNavShortcuts(markdown)
-        val parsedTree = parser.buildMarkdownTreeFromString(mdWithNav)
-        return HtmlGenerator(mdWithNav, parsedTree, flavour).generateHtml()
+        val carried = localPdfLink.replace(mdWithNav) { "](${LOCAL_PDF}${it.groupValues[1]})" }
+        val parsedTree = parser.buildMarkdownTreeFromString(carried)
+        return HtmlGenerator(carried, parsedTree, flavour).generateHtml().replace("href=\"$LOCAL_PDF", "href=\"file:")
     }
 
     private fun injectNavShortcuts(markdown: String): String {
