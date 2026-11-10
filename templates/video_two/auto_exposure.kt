@@ -86,6 +86,7 @@ displayOpen("directional alpha-beta")
 displayOpen("auto endpoint margins and bounds")
 displayOpen("meter status")
 var lastExposureUI = 0L
+var lastExposureStatus = ""
 loop {
     val now = System.nanoTime()
     if (now - lastExposureUI > 250_000_000L) {
@@ -106,7 +107,7 @@ loop {
                 else "| $name | ${v.minimum[3].f3} | ${v.mean[3].f3} | ${v.maximum[3].f3} | ${v.black.f3} | ${v.white.f3} |"
             }
         } ?: "| No completed measurements | — | — | — | — | — |"
-        markdown("meter status", """
+        val exposureStatus = """
 ### ${if (meter == null) "Renderer stopped · settings ready" else settings.mode.toString()} · meter ${if (settings.enabled) "updating" else "frozen / off"}
 
 ${exposureControlError.ifEmpty { meter?.error ?: "" }}
@@ -121,7 +122,12 @@ Settings can be edited while the renderer is stopped and apply when the carousel
 Luminance shown; RGB statistics and velocities are also available in `carousel.autoExposure.latest`.
 Automatic endpoints include inter-sample prediction, margins and bounds, before global/local mix.
 No accumulation or a zero accumulation mix in a fresh screen means there is no buffer to meter yet.
-        """, open = false)
+        """.trimIndent()
+        // Replacing unchanged DOM repeatedly retriggers content autosizing. Keep this card's width stable.
+        if (exposureStatus != lastExposureStatus) {
+            markdown("meter status", exposureStatus, width = 680, open = false)
+            lastExposureStatus = exposureStatus
+        }
     }
     frame()
 }
