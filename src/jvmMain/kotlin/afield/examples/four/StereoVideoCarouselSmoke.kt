@@ -2,6 +2,7 @@ package afield.examples.four
 
 import afield.graphics.scene.video.StereoVideoCarousel
 import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.Target
 import afield.graphics.vulkan.targets.MultiviewStereoTarget
 import afield.graphics.vulkan.util.Options
 import afield.graphics.vulkan.util.Window
@@ -124,6 +125,28 @@ object StereoVideoCarouselSmoke {
             check(carousel.source.historyFrames == 29)
             check(carousel.surfaces.map { it.delayFrames } == (0..7).map { it * 4 })
             check(carousel.surfaces.all { it.hasFrame }) { "Spacing edit lost the held source frame" }
+            // A slider callback can arrive after the source prepares its ring but before surfaces sample it.
+            // Force that exact interleaving, in both directions, rather than relying on thread timing.
+            var spacingDuringPrepare: Int? = null
+            renderer.runOnQueueThread {
+                val targets = stereo.beforeScene.toMap()
+                stereo.beforeScene.clear()
+                targets.forEach { (name, target) ->
+                    stereo.beforeScene[name] = target
+                    if (name == "carousel-source") stereo.beforeScene["resize-during-sampling"] = Target { _, _ ->
+                        spacingDuringPrepare?.let { carousel.spacingFrames = it; spacingDuringPrepare = null }
+                    }
+                }
+            }
+            val allocatedBeforeDragging = carousel.source.historyBytes
+            for (spacing in listOf(16, 1, 12, 2, 16)) {
+                spacingDuringPrepare = spacing
+                frame()
+                frame() // consume the requested capacity on the next source preparation
+                check(carousel.source.historyFrames == spacing * 7 + 1)
+                check(carousel.surfaces.all { it.hasFrame }) { "Drag/refill lost the held picture" }
+                check(carousel.source.historyBytes == allocatedBeforeDragging) { "Paused resize discarded/reallocated image storage" }
+            }
             println("StereoVideo carousel PASSED: one source, exact P010 history, eight independent exposures, cadence isolation, seek/refill")
         } finally {
             carousel.close()
