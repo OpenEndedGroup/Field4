@@ -1,5 +1,6 @@
 package afield.audio.synth
 
+import afield.runtime.execution.plus
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.log10
@@ -149,5 +150,17 @@ class PianoTest {
         val arpeggio = pat("[c2 g2 e3 c4 g4 e5 ~ ~]")
         for ((name, pedal) in listOf("pedal_up" to 0f, "pedal_down" to 1f))
             pianoRender(5.0, Piano(sampleRate = 44_100, pedal = Param(pedal))) { play(arpeggio, cycles = 1, cps = 0.5, legato = 0.15, startFrame = 0) }.writeWav(File(out, "$name.wav"))
+    }
+
+    /** `piano + piano2` is a launch bundle, not a mix; `audio(bundle)` turns each source in it into a patch. */
+    @Test
+    fun audioAcceptsALaunchBundleOfPianos() {
+        val a = Piano(); val b = Piano()
+        val bundle = audio(a + b, gain = 0.5f)
+        assertEquals(2, bundle.items.size)
+        assertTrue(bundle.items.all { it is AudioPatchSpec }, "every piano became its own patch: ${bundle.items}")
+        val nested = audio(audio(a, gain = 1f) + b + Piano())
+        assertEquals(3, nested.items.size)
+        assertTrue(nested.items.all { it is AudioPatchSpec })
     }
 }
