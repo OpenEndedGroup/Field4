@@ -464,6 +464,8 @@ val mainZoom: Double get() = CanvasCamera.zoom
 
 const val MIN_CANVAS_ZOOM = 0.1
 const val MAX_CANVAS_ZOOM = 4.0
+// A typical 100-pixel wheel notch changes zoom by about 10%.
+private const val CANVAS_WHEEL_ZOOM_SENSITIVITY = 0.001
 
 /** The viewBox for a window-sized SVG layer drawn in world coordinates. */
 fun worldViewBox(width: Double, height: Double): String =
@@ -2887,7 +2889,7 @@ private fun installCanvasPanLatch() {
         event.preventDefault()
         event.stopPropagation()
         if (event.ctrlKey || event.metaKey) {
-            setCanvasZoom(mainZoom * exp(-event.deltaY * 0.01), event.clientX.toDouble(), event.clientY.toDouble())
+            setCanvasZoom(mainZoom * exp(-event.deltaY * CANVAS_WHEEL_ZOOM_SENSITIVITY), event.clientX.toDouble(), event.clientY.toDouble())
         } else {
             panCanvasBy(-event.deltaX, -event.deltaY, canvasPanLatchPane)
         }
@@ -7223,7 +7225,7 @@ suspend fun main() {
             // A trackpad pinch arrives as a ctrl+wheel; so does ctrl+scroll on a mouse.
             event.preventDefault()
             event.stopPropagation()
-            setCanvasZoom(mainZoom * exp(-event.deltaY * 0.01), event.clientX.toDouble(), event.clientY.toDouble())
+            setCanvasZoom(mainZoom * exp(-event.deltaY * CANVAS_WHEEL_ZOOM_SENSITIVITY), event.clientX.toDouble(), event.clientY.toDouble())
             latchCanvasWheel(CanvasCamera.paneAt(event.clientX.toDouble(), event.clientY.toDouble()))
         } else if (event.target is SVGElement) {
         } else {
