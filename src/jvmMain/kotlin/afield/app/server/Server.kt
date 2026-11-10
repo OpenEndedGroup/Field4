@@ -2727,7 +2727,10 @@ class Server {
                     box.output.retainedAreas.snapshot(box.id) + controllerControlsForBox(box.id).map {
                         Message("control-value-update").payload(it)
                     }
-                } + listOfNotNull(afield.ui.slides.PresentationArrangement.parkedRequestFor(info))
+                } + listOfNotNull(
+                    afield.ui.slides.PresentationArrangement.outstandingRequestFor(info),
+                    afield.ui.slides.WaitingPresentations.stateFor(info),
+                )
                 if (session != null) GlobalScope.launch {
                     for (item in messages) session.send(Json.encodeToString(item))
                 }
@@ -3648,6 +3651,12 @@ class Server {
                 val show = SlideShowInstance.activeIn(info.root)?.takeIf { it in shows } ?: shows.firstOrNull()
                 if (show == null) notify("Run the Presentation box first: its talk decides the order", "layout")
                 else GlobalScope.launch { afield.ui.slides.PresentationArrangement.arrange(show) }
+                Handled.yes
+            })
+
+            handlers["presentation-shown"] = mutableSetOf({ message, _ ->
+                afield.ui.slides.WaitingPresentations.shown(thisSessionInfo.get(),
+                    Json.decodeFromJsonElement<afield.app.protocol.PresentationShown>(message.payload!!).slideshowId)
                 Handled.yes
             })
 

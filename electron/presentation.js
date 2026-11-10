@@ -2,7 +2,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const {pathToFileURL} = require('node:url');
 const {app, BrowserWindow, WebContentsView, dialog, ipcMain, shell} = require('electron');
-const {validRect, guestUrl, figureUrl, fieldActions, validateGuideState} = require('./presentation-cues');
+const {validRect, guestUrl, figureUrl, fieldActions, validateGuideState, guideTarget, sameTarget} = require('./presentation-cues');
 const {paintTransitionFrame} = require('./presentation-transition');
 
 const PRELOAD = path.join(__dirname, 'presentation-preload.js');
@@ -359,26 +359,53 @@ async function commandGuide(session, command) {
     ${JSON.stringify({command, slideshowId: session.slideshowId})}))`);
 }
 
+/** Tells the presenter a move has started (from any window or key), so it can show where to. */
+function announcePending(session, target, action) {
+  if (target && session.control && !session.control.isDestroyed()) {
+    session.control.webContents.send('field-presentation-pending-to-control', {action, index: target.index, cueIndex: target.cueIndex});
+  }
+}
+
+/** After a move lands, makes the one that replaced it while it was in flight, if it still goes somewhere. */
+function runQueuedNavigation(session) {
+  const queued = session.queuedNavigation;
+  session.queuedNavigation = null;
+  if (!queued || active !== session || !guideTarget(session.state, 'goto', queued.index)) return;
+  void navigateGuide(session, 'goto', String(queued.index)).catch(error => emitError(session, error));
+}
+
 async function navigateGuide(session, action, id) {
-  if (session.navigating) return;
   const state = session.state;
+  if (session.navigating) {
+    // One move at a time: a different target waits for this one and replaces any other waiting;
+    // the same target again (a held key, a double click) is the move already under way.
+    if (action === 'reload') return;
+    const target = guideTarget(state, action, id);
+    session.queuedNavigation = target && !sameTarget(target, session.navigationTarget) ? target : null;
+    announcePending(session, session.queuedNavigation || session.navigationTarget, action);
+    return;
+  }
   let command = {first: 'home', last: String(state.titles.length - 1), reload: 'refresh'}[action] || action;
   if (action === 'goto') command = String(id);
   if ((action === 'next' && state.index === state.titles.length - 1 && state.cueIndex === state.cueTitles.length) ||
       (action === 'previous' && state.index === 0 && state.cueIndex === 0) ||
       (action === 'goto' && Number(id) === state.index)) return;
   session.navigating = true;
+  session.navigationTarget = action === 'reload' ? null : guideTarget(state, action, id);
+  announcePending(session, session.navigationTarget, action);
   try {
     await beginTransition(session);
     if (active !== session) return;
     await commandGuide(session, command);
     if (session.navigating) session.navigationTimer = setTimeout(() => {
       session.navigating = false;
+      session.queuedNavigation = null;
       clearTransition(session);
       emitError(session, 'The guide did not respond to navigation. Check the Presentation box for an error.');
     }, 12000);
   } catch (error) {
     session.navigating = false;
+    session.queuedNavigation = null;
     clearTransition(session);
     throw error;
   }
@@ -466,6 +493,8 @@ async function updateGuidePresentation(source, state) {
   } finally {
     clearTimeout(session.navigationTimer);
     session.navigating = false;
+    session.navigationTarget = null;
+    runQueuedNavigation(session);
   }
 }
 
