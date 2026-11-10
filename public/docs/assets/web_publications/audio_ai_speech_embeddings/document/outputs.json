@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:23:51.651Z",
+  "capturedAt": "2026-11-10T08:42:00.517Z",
   "documentName": "audio_ai_speech_embeddings",
   "outputs": [
     {
@@ -9,7 +9,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 458,
+      "width": 461,
       "height": 348,
       "path": "outputs/0.html"
     },
@@ -32,7 +32,7 @@
         "canvas-image"
       ],
       "width": 1052,
-      "height": 865,
+      "height": 869,
       "path": "outputs/2.html"
     }
   ]

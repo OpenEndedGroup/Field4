@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:11:47.977Z",
+  "capturedAt": "2026-11-10T08:33:06.027Z",
   "documentName": "drawn_morph",
   "outputs": [
     {
@@ -11,20 +11,20 @@
       "kinds": [
         "plotly"
       ],
-      "width": 712,
+      "width": 725,
       "height": 458,
       "path": "outputs/0.html"
     },
     {
       "uid": "dm_play",
       "channel": "matched",
-      "open": true,
+      "open": false,
       "warnings": [
         "Live media omitted"
       ],
       "kinds": [],
-      "width": 428,
-      "height": 62,
+      "width": 200,
+      "height": 40,
       "path": "outputs/1.html"
     },
     {

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T21:41:22.104Z",
+  "capturedAt": "2026-11-10T08:30:32.277Z",
   "documentName": "dependency_length",
   "outputs": [
     {
@@ -24,7 +24,7 @@
         "svg"
       ],
       "width": 927,
-      "height": 563,
+      "height": 564,
       "path": "outputs/1.html"
     },
     {
@@ -57,8 +57,8 @@
       "kinds": [
         "svg"
       ],
-      "width": 1071,
-      "height": 1493,
+      "width": 1199,
+      "height": 1678,
       "path": "outputs/4.html"
     }
   ]

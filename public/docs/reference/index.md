@@ -665,7 +665,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**37917 public symbols across 1722 source files**, 22296 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**37922 public symbols across 1724 source files**, 22299 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -678,7 +678,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2162 | 1623 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1061 | 502 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 373 | 9225 | 5817 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 375 | 9230 | 5820 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 427 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 514 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -2241,7 +2241,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [StereoVideoDecodeProbe.kt](examples.md#stereovideodecodeprobe-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoPlacement.kt](graphics.md#stereovideoplacement-kt) | Graphics | 9 | 4 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [StereoVideoPrecisionSmoke.kt](examples.md#stereovideoprecisionsmoke-kt) | Examples | 2 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoSurface.kt](graphics.md#stereovideosurface-kt) | Graphics | 31 | 13 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [StereoVideoSurface.kt](graphics.md#stereovideosurface-kt) | Graphics | 36 | 16 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>paint/<wbr></small> [StereoWarp.kt](graphics.md#stereowarp-kt) | Graphics | 7 | 7 | A smooth map between the two canvases of a stereo pair, so canvas texture such as weave and grain sits on the painted surface in both eyes: `StereoWarp`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [StigmergySweep.kt](examples.md#stigmergysweep-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [stippletransport.kt](machine-learning.md#stippletransport-kt) | Machine learning | 13 | 13 | Runs a learned stipple transport on the CPU: a small SiLU network, trained by the optional PyTorch tool in `optional/transport-flow`, that moves points from a uniform source rectangle toward an image's density. |  |
@@ -2368,6 +2368,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>topology/<wbr>vectorfield/<wbr></small> [VectorFieldTopology.kt](graphics.md#vectorfieldtopology-kt) | Graphics | 24 | 11 | The topology of a 2-D flow field: where it stands still, and the curves that divide it up. | [Vector field topology](../vector_field_topology.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [VideoAccumulationWeights.kt](graphics.md#videoaccumulationweights-kt) | Graphics | 4 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [VideoDecoder.kt](graphics.md#videodecoder-kt) | Graphics | 29 | 25 | Decodes video frames with FFmpeg into P010 or RGBA8 buffers (`VideoFrame`) for `VideoTexture`. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [VideoExposureBlur.kt](graphics.md#videoexposureblur-kt) | Graphics | 0 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [VideoExposureCadence.kt](graphics.md#videoexposurecadence-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>video/<wbr></small> [VideoFrameAccumulator.kt](graphics.md#videoframeaccumulator-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [VideoFrameIndex.kt](graphics.md#videoframeindex-kt) | Graphics | 3 | 3 | Frame-number arithmetic for constant-frame-rate video, shared by the code that asks for a frame and the code that reports which frame a decoder produced. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr></small> [videoFrames.kt](video.md#videoframes-kt) | Video | 2 | 2 | Reading a video file frame by frame as Field images, through ffmpeg. |  |

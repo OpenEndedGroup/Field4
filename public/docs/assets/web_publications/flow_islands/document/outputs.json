@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:14:16.912Z",
+  "capturedAt": "2026-11-10T08:34:56.080Z",
   "documentName": "flow_islands",
   "outputs": [
     {
@@ -21,7 +21,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 397,
+      "width": 364,
       "height": 94,
       "path": "outputs/1.html"
     }

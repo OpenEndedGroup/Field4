@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:39:20.804Z",
+  "capturedAt": "2026-11-10T08:56:27.710Z",
   "documentName": "teaching_a_pen",
   "outputs": [
     {
@@ -68,9 +68,11 @@
       "channel": "taste",
       "open": true,
       "warnings": [],
-      "kinds": [],
+      "kinds": [
+        "svg"
+      ],
       "width": 536,
-      "height": 92,
+      "height": 96,
       "path": "outputs/5.html"
     },
     {

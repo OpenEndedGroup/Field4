@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:35:30.433Z",
+  "capturedAt": "2026-11-10T08:53:11.477Z",
   "documentName": "controls_surface",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 536,
-      "height": 446,
+      "height": 456,
       "path": "outputs/0.html"
     },
     {
@@ -24,7 +24,7 @@
         "svg"
       ],
       "width": 308,
-      "height": 332,
+      "height": 335,
       "path": "outputs/1.html"
     },
     {

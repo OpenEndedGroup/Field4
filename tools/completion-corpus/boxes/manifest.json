@@ -1097,7 +1097,7 @@
   {"doc": "vector_field_explorer", "box": "vector_field_swirls", "codeSha256": "201402772ebae032", "codeLines": 42, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "video_one_vr", "box": "video1_accumulation", "codeSha256": "e6d670476de607ba", "codeLines": 5, "receivers": ["afield.document.graph.Box"], "preamble": "video_one_vr__video1_accumulation.preamble.kt"},
   {"doc": "video_one_vr", "box": "video1_context", "codeSha256": "a07dccb8cc9c3f16", "codeLines": 120, "receivers": ["afield.document.graph.Box"], "preamble": "video_one_vr__video1_context.preamble.kt"},
-  {"doc": "video_one_vr", "box": "video1_playback", "codeSha256": "8646fd03e24a59d2", "codeLines": 158, "receivers": ["afield.document.graph.Box"], "preamble": "video_one_vr__video1_playback.preamble.kt"},
+  {"doc": "video_one_vr", "box": "video1_playback", "codeSha256": "f42538205b282d03", "codeLines": 221, "receivers": ["afield.document.graph.Box"], "preamble": "video_one_vr__video1_playback.preamble.kt"},
   {"doc": "video_one_vr", "box": "video1_screen", "codeSha256": "bd7e11612038534f", "codeLines": 90, "receivers": ["afield.document.graph.Box"], "preamble": "video_one_vr__video1_screen.preamble.kt"},
   {"doc": "video_one_vr", "box": "video1_shader", "codeSha256": "1f9b818bf53f193f", "codeLines": 7, "receivers": ["afield.document.graph.Box"], "preamble": "video_one_vr__video1_shader.preamble.kt"},
   {"doc": "vision_geometry_animated", "box": "agent_vision_geometry_animated", "codeSha256": "3b9326f1bc96deb5", "codeLines": 43, "receivers": ["afield.document.graph.Box"], "preamble": ""},

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:17:09.042Z",
+  "capturedAt": "2026-11-10T08:37:25.791Z",
   "documentName": "spectral_examples",
   "outputs": [
     {
@@ -11,7 +11,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 712,
+      "width": 725,
       "height": 458,
       "path": "outputs/0.html"
     },
@@ -23,7 +23,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 712,
+      "width": 729,
       "height": 458,
       "path": "outputs/1.html"
     },
@@ -45,7 +45,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 712,
+      "width": 761,
       "height": 458,
       "path": "outputs/3.html"
     },

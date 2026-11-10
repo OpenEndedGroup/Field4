@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:38:33.267Z",
+  "capturedAt": "2026-11-10T08:55:43.562Z",
   "documentName": "typography_worked_example",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 862,
-      "height": 606,
+      "height": 604,
       "path": "outputs/0.html"
     },
     {
@@ -31,8 +31,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 352,
-      "height": 236,
+      "width": 348,
+      "height": 233,
       "path": "outputs/2.html"
     },
     {
@@ -56,7 +56,7 @@
         "svg"
       ],
       "width": 874,
-      "height": 340,
+      "height": 339,
       "path": "outputs/4.html"
     },
     {
@@ -78,7 +78,7 @@
         "svg"
       ],
       "width": 454,
-      "height": 482,
+      "height": 481,
       "path": "outputs/6.html"
     },
     {
@@ -134,7 +134,7 @@
         "svg"
       ],
       "width": 745,
-      "height": 282,
+      "height": 281,
       "path": "outputs/11.html"
     }
   ]

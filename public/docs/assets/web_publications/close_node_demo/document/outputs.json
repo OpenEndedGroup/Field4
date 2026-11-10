@@ -1,18 +1,18 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:30:09.248Z",
+  "capturedAt": "2026-11-10T08:46:53.933Z",
   "documentName": "close_node_demo",
   "outputs": [
     {
       "uid": "close_node_arrow",
       "channel": "main",
-      "open": true,
+      "open": false,
       "warnings": [],
       "kinds": [
         "svg"
       ],
-      "width": 918,
-      "height": 631,
+      "width": 914,
+      "height": 373,
       "path": "outputs/0.html"
     },
     {
@@ -24,7 +24,7 @@
         "svg"
       ],
       "width": 918,
-      "height": 631,
+      "height": 629,
       "path": "outputs/1.html"
     }
   ]

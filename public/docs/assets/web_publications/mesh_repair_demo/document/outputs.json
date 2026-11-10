@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:41:38.656Z",
+  "capturedAt": "2026-11-10T08:59:35.526Z",
   "documentName": "mesh_repair_demo",
   "outputs": [
     {
@@ -11,7 +11,7 @@
       "kinds": [
         "svg"
       ],
-      "width": 474,
+      "width": 433,
       "height": 293,
       "path": "outputs/0.html"
     },
@@ -33,8 +33,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 475,
-      "height": 633,
+      "width": 473,
+      "height": 651,
       "path": "outputs/2.html"
     }
   ]

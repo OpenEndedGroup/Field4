@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T21:42:55.542Z",
+  "capturedAt": "2026-11-10T08:36:47.416Z",
   "documentName": "uncrossed_leapers",
   "outputs": [
     {
@@ -21,7 +21,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 474,
+      "width": 433,
       "height": 174,
       "path": "outputs/1.html"
     },
@@ -31,7 +31,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 468,
+      "width": 429,
       "height": 40,
       "path": "outputs/2.html"
     },
@@ -65,7 +65,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 474,
+      "width": 468,
       "height": 429,
       "path": "outputs/5.html"
     },
@@ -87,7 +87,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 216,
+      "width": 227,
       "height": 195,
       "path": "outputs/7.html"
     },
@@ -133,7 +133,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 336,
+      "width": 353,
       "height": 148,
       "path": "outputs/11.html"
     },

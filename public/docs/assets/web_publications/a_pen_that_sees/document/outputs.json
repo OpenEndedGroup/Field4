@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:40:00.283Z",
+  "capturedAt": "2026-11-10T08:57:01.305Z",
   "documentName": "a_pen_that_sees",
   "outputs": [
     {
@@ -54,23 +54,23 @@
     {
       "uid": "ps_doodle",
       "channel": "draw here",
-      "open": true,
+      "open": false,
       "warnings": [],
       "kinds": [
         "svg"
       ],
-      "width": 548,
-      "height": 348,
+      "width": 532,
+      "height": 40,
       "path": "outputs/4.html"
     },
     {
       "uid": "ps_doodle",
       "channel": "hand",
-      "open": true,
+      "open": false,
       "warnings": [],
       "kinds": [],
       "width": 200,
-      "height": 46,
+      "height": 40,
       "path": "outputs/5.html"
     },
     {
@@ -103,7 +103,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 282,
+      "width": 272,
       "height": 77,
       "path": "outputs/8.html"
     },

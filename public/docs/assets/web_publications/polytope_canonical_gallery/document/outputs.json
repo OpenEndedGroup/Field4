@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:38:12.850Z",
+  "capturedAt": "2026-11-10T08:55:20.047Z",
   "documentName": "polytope_canonical_gallery",
   "outputs": [
     {
@@ -23,7 +23,7 @@
       "kinds": [
         "svg"
       ],
-      "width": 344,
+      "width": 326,
       "height": 521,
       "path": "outputs/1.html"
     }

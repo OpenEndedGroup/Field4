@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:08:05.595Z",
+  "capturedAt": "2026-11-10T08:30:18.326Z",
   "documentName": "sentence_diagrams",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 776,
-      "height": 507,
+      "height": 471,
       "path": "outputs/0.html"
     },
     {
@@ -23,8 +23,8 @@
       "kinds": [
         "svg"
       ],
-      "width": 776,
-      "height": 212,
+      "width": 828,
+      "height": 208,
       "path": "outputs/1.html"
     },
     {
@@ -36,7 +36,7 @@
         "svg"
       ],
       "width": 776,
-      "height": 423,
+      "height": 377,
       "path": "outputs/2.html"
     },
     {
@@ -48,7 +48,7 @@
         "svg"
       ],
       "width": 776,
-      "height": 325,
+      "height": 320,
       "path": "outputs/3.html"
     }
   ]

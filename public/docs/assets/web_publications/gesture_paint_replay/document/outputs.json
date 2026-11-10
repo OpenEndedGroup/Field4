@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:13:47.268Z",
+  "capturedAt": "2026-11-10T08:34:24.935Z",
   "documentName": "gesture_paint_replay",
   "outputs": [
     {
@@ -9,7 +9,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 469,
+      "width": 449,
       "height": 45,
       "path": "outputs/0.html"
     },
@@ -58,7 +58,7 @@
         "svg"
       ],
       "width": 536,
-      "height": 464,
+      "height": 472,
       "path": "outputs/4.html"
     },
     {
@@ -67,7 +67,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 469,
+      "width": 449,
       "height": 45,
       "path": "outputs/5.html"
     }

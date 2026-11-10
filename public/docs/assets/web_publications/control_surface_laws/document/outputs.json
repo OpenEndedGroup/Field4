@@ -1,18 +1,18 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:41:50.411Z",
+  "capturedAt": "2026-11-10T09:00:02.479Z",
   "documentName": "control_surface_laws",
   "outputs": [
     {
       "uid": "control_surface_meter",
       "channel": "levels",
-      "open": true,
+      "open": false,
       "warnings": [],
       "kinds": [
         "svg"
       ],
-      "width": 536,
-      "height": 160,
+      "width": 532,
+      "height": 143,
       "path": "outputs/0.html"
     },
     {
@@ -32,9 +32,11 @@
       "channel": "gesture",
       "open": true,
       "warnings": [],
-      "kinds": [],
+      "kinds": [
+        "svg"
+      ],
       "width": 536,
-      "height": 90,
+      "height": 102,
       "path": "outputs/2.html"
     }
   ]
