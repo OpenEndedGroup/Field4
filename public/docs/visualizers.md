@@ -785,9 +785,46 @@ m.histogram(0.42)
 
 The marker keeps the values it needs and draws the result beside that line in the editor.
 
+### Markers: `__m(...)` { #markers }
+
+`__m("name")` gives you the box's *marker* called `name`: a small named store that belongs to the
+box. Field makes it the first time the code asks for it and hands back the same one on every later
+run and every frame. A visualizer keeps its values there (the last 120 values of a histogram, say),
+which is how it fills up across frames. A marker lives in memory only and is not saved
+with the document.
+
+The editor will write one for you. Press ++cmd+shift+period++, or ++f1++ and **Insert Stack
+Mark**, and Field inserts `__m("…")` at the cursor with a fresh, unique id, such as
+`__m("Zq3kH0B-a7")`. The editor draws that text as a single rune, ᛟ, and the cursor steps over it
+as one character. So an example on this site that reads `__m("histogram").histogram(value)` looks
+like `ᛟ.histogram(value)` in the editor.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-palette-shell" screenshot="assets/insert-stack-mark.png" alt="Insert stack mark command" padding="6" wait="0" timeout="90" embed=true hidden=true name="insert-stack-mark"}
+ui.openEditor(id)
+ui.pause(700)
+ui.waitForSelector(".monaco-editor", 15000.0)
+ui.clickSelector(".monaco-editor")
+ui.pause(300)
+ui.press("F1")
+ui.waitForSelector(".afield-palette-shell", 8000.0)
+ui.pause(400)
+ui.type("stack")
+ui.pause(1200)
+```
+
+The id is unique so that each marker tracks one place in your code. Two calls with the same name
+share one store and mix their values. And because no other text in the box matches the id, Field
+can find that line again by its text alone, even when nothing in the box is running; that is how a
+[`flipbox`](running_code.md#flipbox-a-block-with-a-checkbox) redraws its checkbox when you click
+it.
+
+A name you type yourself works the same way, as long as no other marker in the box uses it. The
+examples on this site use readable names such as `"histogram"` and `"trail"`. The editor draws a
+name as a rune when it uses only letters, digits, `+`, `/` and `-`.
+
 ### Histogram, history, and summary stats
 
-Histograms answer “what values have I seen?”, history answers “how did the value move?”, and stats gives you a one-line summary.
+Histograms answer “what values have I seen?”, history answers “how did the value move?”, and stats gives you a one-line summary. Each one hangs off a [marker](#markers).
 
 The live examples below are all `loop { }` bodies, which is Field's frame loop: the body runs, then
 the frame advances, once per Runloop tick. What that tick is, and what stops one of these, is
@@ -837,20 +874,7 @@ Those three calls all share the same basic idea:
 - `ᛟ.history(value)` keeps a rolling time series.
 - `ᛟ.stats(value)` gives a compact summary panel.
 
-In the editor you can add a marker rune (ᛟ), with f1, "Insert Stack Mark", or shift+command period:
-
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-palette-shell" screenshot="assets/insert-stack-mark.png" alt="Insert stack mark command" padding="6" wait="0" timeout="90" embed=true hidden=true name="insert-stack-mark"}
-ui.openEditor(id)
-ui.pause(700)
-ui.waitForSelector(".monaco-editor", 15000.0)
-ui.clickSelector(".monaco-editor")
-ui.pause(300)
-ui.press("F1")
-ui.waitForSelector(".afield-palette-shell", 8000.0)
-ui.pause(400)
-ui.type("stack")
-ui.pause(1200)
-```
+Here ᛟ is the [marker](#markers) rune the editor draws over `__m("…")`.
 
 These functions are **passthroughs**. They return the value they were given, so you can drop them into a chain when you want to inspect the value flowing through a wire without changing the computation:
 
@@ -928,7 +952,8 @@ loop {
 
 ### Piano rolls in the editor
 
-The piano-roll visualizer is the same idea, but for scheduled notes rather than scalar values.
+The piano-roll visualizer is the same idea, but for scheduled notes rather than scalar values. It
+also hangs off a [marker](#markers).
 
 <!--
 FIELD_TEST

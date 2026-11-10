@@ -32,7 +32,8 @@ import afield.document.graph.Marker
  * A checkbox drawn in the editor that re-runs one block of a box without re-running the box.
  *
  * `flipbox` extends [Marker], so it is reached through a marker uid in the source
- * (`__m("aVq3x-k2").flipbox(true) { … }`), and the checkbox is drawn at that call: over a bare
+ * (`__m("aVq3x-k2").flipbox(true) { … }`; the editor's Cmd+Shift+. inserts one, see
+ * [markers](../visualizers.md#markers)), and the checkbox is drawn at that call: over a bare
  * `true` or `false` argument where there is one, and before the call otherwise.
  *
  * The rest of the file is that decoration. A [RawDecoration] carries the glyph, its hover colour
