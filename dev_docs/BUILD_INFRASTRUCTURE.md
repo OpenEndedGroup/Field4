@@ -473,7 +473,10 @@ Zensical watches its inputs with FSEvents even for `build`, and finishes only af
 sees 100 ms with no event. A process that keeps writing under the docs, theme or site dir holds the
 build at "Build started" at 0% CPU with no error. On 2026-10-09 that was Finder writing `.DS_Store`
 files into the open `public/field4/`; the staging dir removed that writer, and a stalled build lists
-the files that changed under watched dirs.
+modified files under the generated docs and overrides. Before stopping the process, the watchdog
+also records its state, disk space, open files and a macOS thread sample (Linux thread wait channels).
+These diagnostics are best effort and go into the build log. The modified-file scan does not detect
+every filesystem event, so an empty scan does not establish the cause of a stall.
 
 **Executable fences.** A `diffstatic_runner` or `diff_runner` fence is box code that the build runs
 against a live Field through the backdoor and captures: `screenshot=`, `video=`, `audio=`, with

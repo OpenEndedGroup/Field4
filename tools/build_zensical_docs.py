@@ -50,11 +50,8 @@ LOCAL_SITE_CAPTURE = re.compile(r"<!--\s*docs-capture-needs-local-site:\s*([a-zA
 ZENSICAL_STALL_ENV = "FIELD_DOCS_ZENSICAL_STALL_SEC"
 ZENSICAL_STALL_SECONDS = 120.0
 STALL_CPU_SECONDS = 1.0
-# A wedge with no file changing under zensical is the machine, not the tree: on 2026-10-24 three lander
-# builds in a row sat at "Build started" at 0% CPU in the eleven minutes after the Mac woke from
-# hibernate on a flat battery, with nothing written under the watched dirs, and the same build passed
-# by hand minutes later and in the lander from then on. Such a wedge is tried again this many times,
-# after ZENSICAL_STALL_RETRY_PAUSE seconds. A wedge with files changing is a writer and fails at once.
+# Retry an idle wedge once when no watched files changed. A prior wedge cleared on retry, but absence
+# of changed files does not establish its cause (events can include deletions and directory changes).
 ZENSICAL_STALL_RETRIES = 1
 ZENSICAL_STALL_RETRY_PAUSE = 30.0
 
@@ -1310,6 +1307,48 @@ def seconds_since_wake() -> float | None:
     return max(0.0, time.time() - int(match.group(1)))
 
 
+def report_zensical_stall(pid: int, cwd: Path, watched: list[Path]) -> None:
+    """Collect bounded, best-effort diagnostics while the stalled process is still alive.
+
+    The output goes to the normal build log, including on the lander. Diagnostics must never hide
+    the original failure or delay termination indefinitely; tools may be missing or lack permission.
+    """
+    print(f"Stall diagnostics: pid={pid}, cwd={cwd}, watched={', '.join(map(str, watched))}", flush=True)
+    try:
+        usage = shutil.disk_usage(cwd)
+        print(f"Disk at {cwd}: {usage.free / 1024**3:.1f} GiB free of {usage.total / 1024**3:.1f} GiB", flush=True)
+    except OSError as exc:
+        print(f"Disk usage unavailable: {exc}", flush=True)
+    commands = [("process", ["ps", "-o", "pid,ppid,state,time,%cpu,rss,command", "-p", str(pid)])]
+    if sys.platform == "darwin":
+        commands.append(("thread sample (2 seconds)", ["sample", str(pid), "2", "1"]))
+    elif sys.platform.startswith("linux"):
+        task_dir = Path(f"/proc/{pid}/task")
+        try:
+            tasks = sorted(task_dir.iterdir(), key=lambda p: int(p.name))
+            for task in tasks[:80]:
+                try:
+                    print(f"thread {task.name}: wchan={(task / 'wchan').read_text().strip()}")
+                except OSError as exc:
+                    print(f"thread {task.name}: wchan unavailable: {exc}")
+            if len(tasks) > 80:
+                print(f"... {len(tasks) - 80} more threads")
+        except OSError as exc:
+            print(f"Thread states unavailable: {exc}")
+    commands.append(("open files", ["lsof", "-nP", "-p", str(pid)]))
+    for label, command in commands:
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, errors="replace", timeout=10, check=False)
+            output = (result.stdout + result.stderr).strip()
+            # A symbolized multithreaded sample can be hundreds of KB; keep enough to include
+            # the watcher and worker threads, not just the first few stacks.
+            limit = 1000000 if label.startswith("thread sample") else (100000 if label == "open files" else 8000)
+            print(f"--- {label} (exit {result.returncode}) ---\n{output[:limit]}" +
+                  (f"\n... truncated ({len(output)} characters total)" if len(output) > limit else ""), flush=True)
+        except (OSError, subprocess.SubprocessError) as exc:
+            print(f"{label} unavailable: {exc}", flush=True)
+
+
 def run_zensical(command: list[str], *, cwd: Path, watched: list[Path], stall_seconds: float) -> ZensicalRun:
     """Run zensical, echoing its output, and stop it if it wedges.
 
@@ -1320,6 +1359,7 @@ def run_zensical(command: list[str], *, cwd: Path, watched: list[Path], stall_se
     started_wall = time.time()
     proc = subprocess.Popen(command, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1)
+    print(f"Zensical started: pid={proc.pid}, cwd={cwd}, idle limit={stall_seconds:g}s", flush=True)
     run = ZensicalRun(returncode=None)
     last_line = [time.monotonic()]
     reported_at: list[float | None] = [None]
@@ -1362,14 +1402,15 @@ def run_zensical(command: list[str], *, cwd: Path, watched: list[Path], stall_se
         if run.stalled:
             break
     if run.stalled:
+        print(f"\nzensical has stalled after {time.time() - started_wall:.0f} s: {run.stalled}.", flush=True)
+        report_zensical_stall(proc.pid, cwd, watched)
         count, changed = files_changed_since(watched, started_wall)
         run.changed = count
-        print(f"\nzensical has stalled: {run.stalled}.")
         if (woke := seconds_since_wake()) is not None:
             print(f"The machine last woke from sleep {woke / 60:.0f} min ago.")
         if count:
-            print(f"{count} file(s) changed under directories zensical watches since it started. A process "
-                  "that keeps writing there holds zensical's build open; the first of them:")
+            print(f"{count} file(s) were modified under checked directories since zensical started. "
+                  "Repeated writes can hold a build open; the first modified files:")
             for path in changed:
                 print(f"  {path}")
         proc.terminate()
@@ -1397,8 +1438,8 @@ def run_zensical_retrying_idle_wedges(
     for attempt in range(retries):
         if not (result.stalled and result.changed == 0):
             break
-        print(f"Nothing changed under the watched dirs, so this wedge is the machine, not the tree; "
-              f"trying again in {pause:.0f} s (retry {attempt + 1} of {retries}).", flush=True)
+        print(f"No modified files found under the watched dirs; the cause is unknown. "
+              f"Trying again in {pause:.0f} s (retry {attempt + 1} of {retries}).", flush=True)
         time.sleep(pause)
         if not before_retry():
             return None
