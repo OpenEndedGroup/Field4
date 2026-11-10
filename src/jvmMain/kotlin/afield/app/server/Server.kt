@@ -5771,7 +5771,10 @@ class Server {
                                 // cross-site browser reads refused by installFieldApiSameSiteGuard.
                                 val uid = call.request.queryParameters["uid"] ?: ""
                                 val generation = call.request.queryParameters["generation"] ?: ""
-                                val buffers = afield.graphics.three.threeGeometryBuffers(uid, generation)
+                                // `only=3,7` asks for just those buffers: a viewer reusing the arrays it holds.
+                                val only = call.request.queryParameters["only"]?.split(',')?.mapNotNull { it.trim().toIntOrNull() }
+                                val all = afield.graphics.three.threeGeometryBuffers(uid, generation)
+                                val buffers = if (only == null) all else all?.subset(only)
                                 if (buffers == null) call.respond(HttpStatusCode.NotFound, "No current geometry for that view and generation")
                                 else {
                                     call.response.header(HttpHeaders.CacheControl, "private, max-age=3600, immutable")
