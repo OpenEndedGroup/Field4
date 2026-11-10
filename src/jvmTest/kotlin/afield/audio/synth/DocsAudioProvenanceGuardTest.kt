@@ -63,7 +63,7 @@ class DocsAudioProvenanceGuardTest {
             Origin.STAND_IN_SYNTH to 22,
             Origin.DIRT_SAMPLES to 40,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
-            Origin.DOUGH_DSP to 18,
+            Origin.DOUGH_DSP to 23,
             Origin.FAUST to 6,
             Origin.DOUGH_WASM to 2,
             Origin.STEAM_AUDIO_HRTF to 3,
@@ -294,7 +294,11 @@ class DocsAudioProvenanceGuardTest {
          * `forth_examples.md` added four (2026-11-09): three ForthField step grids voiced by a
          * PatSynthBank ([Origin.STAND_IN_SYNTH], `ForthStepsDocs`) and one grid as a pattern through
          * the pinned Dirt-Samples ([Origin.DIRT_SAMPLES], `ForthStepsDirtDocs`).
+         *
+         * `explainer_sound.md` added five (2026-11-10), [Origin.DOUGH_DSP]: [ExplainerSoundDocs] rebuilds
+         * the keyboard, repeated jumps, sine sweep, beats and pluck figures' signal graphs and plays each
+         * with a fixed performance; `ExplainerSoundDocsTest` holds the graphs to the figure boxes.
          */
-        const val EXPECTED_FENCE_COUNT = 105
+        const val EXPECTED_FENCE_COUNT = 110
     }
 }
