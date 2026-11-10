@@ -208,12 +208,68 @@ class WaitForManagedServerTests(_Fixture):
             self.process.returncode = 1
         return self.healthy_after is not None and elapsed >= self.healthy_after
 
-    def run_wait(self, watch: ManagedStartupWatch) -> None:
+    OWN_IDENTITY = {"repoRoot": str(REPO_PATH), "pid": 4243, "workspace": "/tmp/ws"}
+
+    def run_wait(self, watch: ManagedStartupWatch, identities: list | None = None) -> mock.Mock:
+        """Run the wait; `identities` is what successive /api/instance-info calls answer (the last repeats)."""
+        answers = list(identities or [self.OWN_IDENTITY])
+
+        def fake_info(*_args, **_kwargs):
+            return answers.pop(0) if len(answers) > 1 else answers[0]
+
+        # Stopping must never reach os.killpg: the fake process's pid is not ours to signal.
+        stop = mock.Mock()
         with (
             mock.patch("tools.field_backdoor.health_check", side_effect=self.fake_health),
-            mock.patch("tools.field_backdoor.field_instance_info", return_value={"workspace": "/tmp/ws"}),
+            mock.patch("tools.field_backdoor.field_instance_info", side_effect=fake_info),
+            mock.patch.object(self.client, "_stop_managed_process", stop),
         ):
             asyncio.run(self.client.wait_for_managed_server(watch, poll_interval=0))
+        return stop
+
+    def test_a_foreign_field_answering_on_the_port_is_refused_and_ours_stopped(self) -> None:
+        # 2026-11-10: while this checkout was still building, the lander bound the chosen port and
+        # answered /health; the wait adopted the lander's workspace and ran boxes against main's code.
+        lander = {
+            "repoRoot": "/Users/someone/field4-worktrees/lander",
+            "pid": 81900,
+            "workspace": "/private/var/folders/xx/field-doc-publications-1/workspace",
+        }
+        self.script = [(5, "> Task :compileKotlinJvm\n")]
+        self.healthy_after = 60  # the foreign server answers long before our :runJvm
+        with self.assertRaises(BackdoorError) as raised:
+            self.run_wait(self.watch(), identities=[lander])
+        message = str(raised.exception)
+        self.assertIn("did not start", message)
+        self.assertIn("/Users/someone/field4-worktrees/lander", message)
+        self.assertIn("pid 81900", message)
+        events = [name for name, _ in self.logger.events]
+        self.assertIn("managed_server_foreign", events)
+        self.assertNotIn("managed_server_ready", events)
+        self.assertIsNone(self.client.server_workspace, "a foreign server's workspace must not be adopted")
+        self.assertLess(self.clock.now - self.start, 70, "the refusal is immediate, not a timeout")
+
+    def test_a_foreign_field_stops_the_spawned_server(self) -> None:
+        self.healthy_after = 10
+        foreign = {"repoRoot": "/elsewhere/checkout", "pid": 1, "workspace": "/elsewhere/ws"}
+        stop = mock.Mock()
+        with (
+            mock.patch("tools.field_backdoor.health_check", side_effect=self.fake_health),
+            mock.patch("tools.field_backdoor.field_instance_info", return_value=foreign),
+            mock.patch.object(self.client, "_stop_managed_process", stop),
+            self.assertRaises(BackdoorError),
+        ):
+            asyncio.run(self.client.wait_for_managed_server(self.watch(), poll_interval=0))
+        stop.assert_called_once_with()
+
+    def test_a_missing_identity_keeps_waiting_for_our_own_answer(self) -> None:
+        self.script = [(5, "> Task :runJvm\n")]
+        self.healthy_after = 20
+        self.run_wait(self.watch(), identities=[None, None, self.OWN_IDENTITY])
+        events = [name for name, _ in self.logger.events]
+        self.assertEqual(events.count("managed_server_identity_pending"), 2)
+        self.assertEqual(events[-1], "managed_server_ready")
+        self.assertEqual(self.client.server_workspace, "/tmp/ws")
 
     def test_a_cold_build_longer_than_120s_then_a_healthy_jvm_succeeds(self) -> None:
         self.script = [

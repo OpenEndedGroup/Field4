@@ -52,6 +52,12 @@ server now takes `--attach-existing` (whose default port is `$PORT` or 9092) or 
 explicit `--port 9092`. `tools/field_mcp.py` keeps 9092 as its default because it only
 ever attaches.
 
+A free port can still be taken by another checkout while this one builds, because the
+spawned JVM binds only after Gradle finishes. So a server the backdoor starts counts as
+ready only when `/api/instance-info` names this checkout. If another checkout's Field
+answers first, the backdoor logs `managed_server_foreign`, stops its own server and fails.
+Re-run to get the next free port.
+
 `status` reports whether this invocation owns the server and gives the session
 and managed-server log paths. A backdoor-owned Field enables JDWP on an ephemeral port the JVM binds itself
 (`AFIELD_JDWP_PORT=auto`) unless `AFIELD_JDWP_PORT` overrides or disables it. A plain
