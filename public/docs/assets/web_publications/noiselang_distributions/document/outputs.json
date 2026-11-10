@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-10T19:30:13.964Z",
+  "documentName": "noiselang_distributions",
+  "outputs": [
+    {
+      "uid": "noise_walks",
+      "channel": "walks",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    }
+  ]
+}

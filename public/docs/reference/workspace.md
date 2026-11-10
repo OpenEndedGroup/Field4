@@ -9137,7 +9137,7 @@ document's own drawing function; [`renderAll`](workspace.md#studyframes-kt--rend
 
 [<code class="highlight"><span class="k">interface</span> <span class="nc">StudyFrames</span><span class="p">&lt;</span><span class="k">in</span> <span class="nc">P</span><span class="p">&gt;</span></code>](source/jvmMain/afield/study/source/StudyFrames/#L58)
 
-Where a study's frames come from: [`P`](graphics.md#geometry-kt-p) — a program, a compiled scene — drawn at a size and a list of times, each frame handed back as a [`CpuRaster`](languages.md#stackslcpu-kt-cpuraster) of the program's raw output.
+Where a study's frames come from: `P` — a program, a compiled scene — drawn at a size and a list of times, each frame handed back as a [`CpuRaster`](languages.md#stackslcpu-kt-cpuraster) of the program's raw output.
 
 | Declaration | Summary |
 | --- | --- |

@@ -6692,7 +6692,7 @@ The plane `normal · x = d`.
 | Declaration | Summary |
 | --- | --- |
 | <a id="voronoi-kt--plane3--normal"></a><code class="highlight"><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span></code> | The plane's normal, **not** normalized — for a bisector it is the raw difference of two sites. |
-| <a id="voronoi-kt--plane3--d"></a><code class="highlight"><span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Float</span></code> | The offset: the plane is the points `x` with `dot(normal, x) == d`. Scaled by `normal`'s length. |
+| <a id="voronoi-kt--plane3--d"></a><code class="highlight"><span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Float</span></code> | The offset: the plane is the points `x` with `dot(normal, x) == d`. Scaled by [`normal`](math.md#dist-kt--normal)'s length. |
 
 ### VoronoiFace { #voronoi-kt-voronoiface }
 

@@ -560,6 +560,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 - *autodiff* — [Function](function.md#autodiff-fn-kt) · [Math](math.md#autodiff-kt)
 - [control](graphics.md#modelling-kt)
+- [distribution](math.md#dist-kt)
 - [estimation](math.md#pf-kt)
 - *functions* — [Function](function.md#fninterval-kt) · [Math](math.md#densedoubleops-kt)
 - [gp](math.md#gaussianprocess-kt)
@@ -610,7 +611,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ### simulation
 
-- *agents* — [ALife](alife.md#alife-kt) · [Simulation](simulation.md#alife-vehicles-kt)
+- *agents* — [ALife](alife.md#alife-kt) · [Simulation](simulation.md#alife-tree-growth-kt)
 - *automata* — [ALife](alife.md#alife-ca-kt) · [Data](data.md#booleannetworks-kt)
 - [creatures](simulation.md#creatures-kt)
 - [flow](simulation.md#flowshaders-kt)
@@ -665,24 +666,24 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**38035 public symbols across 1737 source files**, 22363 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**38232 public symbols across 1743 source files**, 22459 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 232 | 725 | 321 (44%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 233 | 727 | 322 (44%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 21 | 158 | 56 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 206 | 206 (100%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 18 | 439 | 269 (61%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
-| [Math](math.md) | 47 | 2162 | 1623 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
+| [Math](math.md) | 51 | 2285 | 1684 (73%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1061 | 502 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 385 | 9321 | 5863 (62%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 801 | 431 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 514 (67%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 49 | 1494 | 850 (56%) | Making a shape behave. |
+| [Simulation](simulation.md) | 50 | 1566 | 884 (56%) | Making a shape behave. |
 | [Imaging](imaging.md) | 55 | 887 | 452 (50%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 22 | 1127 | 1030 (91%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -783,6 +784,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_script.kt](alife.md#alife-script-kt) | ALife | 161 | 145 | Per-agent **scripted** behaviour for ALife: a coroutine each agent runs as its own little program, on a fixed-step virtual clock, composing into weighted steering drives. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_trail.kt](alife.md#alife-trail-kt) | ALife | 32 | 29 | A stigmergy field on the GPU: a four-channel trail texture that agents write into and read from, and that diffuses, decays and drifts on its own between their visits. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_trail_followers.kt](alife.md#alife-trail-followers-kt) | ALife | 22 | 22 | Particles that steer by a `TrailField`: the reading half of stigmergy, for any particle system. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_tree_growth.kt](simulation.md#alife-tree-growth-kt) | Simulation | 72 | 34 |  | [Spatial artificial life](../alife_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_vehicle_brains.kt](alife.md#alife-vehicle-brains-kt) | ALife | 69 | 65 | A larger Braitenberg vehicle genome, and an equal-budget comparison of the searches that look for one. | [Braitenberg vehicles with memory](../braitenberg_vehicles.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_vehicles.kt](simulation.md#alife-vehicles-kt) | Simulation | 93 | 86 | Braitenberg vehicles whose neurons have internal state: two light sensors, two motor neurons, two wheels, and between them a small dynamical system rather than a wire. | [Braitenberg vehicles with memory](../braitenberg_vehicles.md), [Agent transcript gallery](../agent_transcripts.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_walls.kt](alife.md#alife-walls-kt) | ALife | 59 | 43 | Walls for `alife_script.kt`: obstacles, swept circle collision, and radius-aware routing around them. | [Spatial artificial life](../alife_examples.md) |
@@ -1054,6 +1056,9 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>statistics/<wbr></small> [dirichlet.kt](math.md#dirichlet-kt) | Math | 11 | 0 | 2D multiplicatively weighted Voronoi (Apollonius) diagrams. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DirtRender.kt](audio.md#dirtrender-kt) | Audio | 15 | 15 | Offline rendering of a pattern through the **real** Dirt sample library. | [How to make sound in Field](../sound_paths.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DirtSamples.kt](audio.md#dirtsamples-kt) | Audio | 59 | 4 | The TidalCycles Dirt-Samples collection loaded, indexed, and played from Field. | [Boolean network music examples](../boolean_network_music_examples.md), [A Petri net that throws sparks](../chain_petri_sparks.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>distribution/<wbr></small> [Dist.kt](math.md#dist-kt) | Math | 72 | 27 |  | [Distributions: values that are probability distributions](../distributions.md), [Kotlin in the head (running Kotlin in a browser or Vision Pro)](../kotlin_in_the_head.md), [Building geometry in the headset](../vision_geometry.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>distribution/<wbr></small> [DistGlsl.kt](math.md#distglsl-kt) | Math | 21 | 13 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>distribution/<wbr></small> [DistView.kt](math.md#distview-kt) | Math | 2 | 2 |  | [Distributions: values that are probability distributions](../distributions.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [DlssReconstruction.kt](imaging.md#dlssreconstruction-kt) | Imaging | 17 | 5 | DLSS super resolution, DLAA and Ray Reconstruction through NVIDIA NGX, as a pass recorded into a Vulkan command buffer. | [From modules to reconstruction](../reconstruction_plumbing.md), [Neural reconstruction](../neural_reconstruction.md), [Ray Reconstruction](../ray_reconstruction.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>dmx/<wbr></small> [DmxBox.kt](lighting.md#dmxbox-kt) | Lighting | 8 | 8 | Box-scoped ownership of DMX sockets. | [Driving Lights: Art-Net and sACN](../dmx_lighting.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>dmx/<wbr></small> [DmxInput.kt](lighting.md#dmxinput-kt) | Lighting | 27 | 27 | DMX reception: Field as an Art-Net or sACN node on the network. | [Driving Lights: Art-Net and sACN](../dmx_lighting.md) |
@@ -1671,6 +1676,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [NgxNative.kt](internal.md#ngxnative-kt) | Internal · internal | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [NgxSupport.kt](imaging.md#ngxsupport-kt) | Imaging | 9 | 2 | Detection of NVIDIA NGX support and the sizes and modes DLSS reconstruction accepts. | [Neural reconstruction](../neural_reconstruction.md), [From modules to reconstruction](../reconstruction_plumbing.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr>util/<wbr></small> [NodeTool.kt](imaging.md#nodetool-kt) | Imaging | 5 | 5 | Locates a `node` binary new enough to run the JavaScript this repository generates, for the tests and tools that shell out to Node. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [NoiseLangGpuParity.kt](examples.md#noiselanggpuparity-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>notation/<wbr></small> [Notation.kt](visualization.md#notation-kt) | Visualization | 127 | 73 | The box-facing API for the drawing layer: `notation` reads the document's Excalidraw scene as `Mark`s, writes marks owned by the box through a `notation { }` block (`NotationBuilder`), changes existing ones with `Notation.edit`, and runs callbacks when a person draws. | [Drawn Strokes Become Paint](../chain_drawn_paint.md), [Drawing and Notation](../drawing_and_notation.md), [Agent transcript gallery](../agent_transcripts.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>notation/<wbr></small> [NotationGeometry.kt](visualization.md#notationgeometry-kt) | Visualization | 32 | 17 | Cutting the drawing with a line: the geometry behind reading notation by intersection — a vertical line is an instant, a horizontal one a pitch (or whatever a `NotationSpace` says the axes mean). |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [NotationPatterns.kt](patterns.md#notationpatterns-kt) | Patterns | 7 | 5 | Turns a region of the drawing layer into a pattern: rectangles, level strokes and moving strokes become notes, with x as time and y as MIDI pitch. | [A Drawn Score, Heard](../chain_drawn_score.md), [A Drawn Morph, Heard](../chain_drawn_morph.md), [A Tracked Body, Measured and Heard](../chain_tracked_body.md) |
@@ -1904,6 +1910,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>source/<wbr></small> [QualifiedSource.kt](workspace.md#qualifiedsource-kt) | Workspace | 60 | 45 | Qualified sources: changing a rule without breaking what already works | [Change a rule without breaking what already works](../qualified_sources.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [QualityPreset.kt](audio.md#qualitypreset-kt) | Audio | 11 | 10 | Measured quality presets for Steam Audio reflections and binaural rendering, as `QualityPreset`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>statistics/<wbr></small> [quantilewarp.kt](graphics.md#quantilewarp-kt) | Graphics | 53 | 53 | Reshapes a scalar signal's distribution by fitting a monotone 8-knot PCHIP curve from the measured quantiles of recent samples onto the quantiles of a chosen target distribution — `TargetDistributions.UnitNormal` by default, or any `QuantileFunction`. | [Measuring dependence between two signals](../statistics_examples.md), [Field 4 Graphics](../afield_four_graphics.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>distribution/<wbr></small> [Queries.kt](math.md#queries-kt) | Math | 28 | 19 |  | [Distributions: values that are probability distributions](../distributions.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [Queue.kt](graphics.md#queue-kt) | Graphics | 8 | 8 | Vulkan device queues: `Queue` fetches a queue from a family and submits command buffers with wait and signal semaphores and an optional fence. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>statistics/<wbr></small> [randoms.kt](math.md#randoms-kt) | Math | 15 | 15 | Box-scoped randomness. | [Flow Matching](../flow_matching.md), [State estimation: tracking what you cannot measure](../state_estimation_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [RayDeviceSupport.kt](graphics.md#raydevicesupport-kt) | Graphics | 10 | 10 | What the GPU supports for hardware ray tracing: `RayDeviceSupport` lists the acceleration-structure, ray-query and ray-tracing-pipeline extensions and features, and derives whether each path is usable. |  |
