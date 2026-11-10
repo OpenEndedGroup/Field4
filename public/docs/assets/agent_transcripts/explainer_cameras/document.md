@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 19 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 19 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. kilopixel
@@ -384,7 +384,7 @@ controlGroup {
 <!-- field-box id="ec_deck" index="6" -->
 
 ```edn [field-box id="ec_deck" role="properties"]
-{"id" "ec_deck" "index" 6 "name" "deck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "deck" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_deck_code_.kt" "lines" 446 "characters" 19668 "sha256" "a52543dbd665c0030f05f85e6c61c57b0c3ef3535dc03dac740e24023a665153"}]}
+{"id" "ec_deck" "index" 6 "name" "deck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "deck" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_deck_code_.kt" "lines" 398 "characters" 18580 "sha256" "dce2856d1a8ade4c2f37f973b7f64346c0119fcf39ddc7d8ec56806efa564417"}]}
 ```
 
 ```kotlin [field-property box="ec_deck" name="code" path="ec_deck_code_.kt"]
@@ -402,9 +402,7 @@ presentation(title = "Cameras and lenses") {
                 count: a grid of detectors, a box with a hole in it, then glass, shaped and
                 stacked until the picture is sharp, bright and in focus where we choose.
 
-                Every picture you will see is computed live, ray by ray.
-            """
-                        .md
+                Every picture you will see is computed live, ray by ray.""".md
                     p(classes = "muted") {
                         +"After “Cameras and Lenses” by Bartosz Ciechanowski, ciechanow.ski/cameras-and-lenses. Words and figures made in Field."
                     }
@@ -419,9 +417,7 @@ presentation(title = "Cameras and lenses") {
 
                     Each detector counts the light that reaches it while the shutter is
                     open. Too little and the count is grain; too much and it fills to
-                    white.
-                """
-                            .md
+                    white.""".md
                     }
                 }
                 control("photon_grid", "collection time", 0.05)
@@ -438,9 +434,7 @@ presentation(title = "Cameras and lenses") {
                     ## Colour from filters
 
                     A filter over each detector lets it count only red, green or blue. The
-                    two colours a pixel missed are guessed from its neighbours.
-                """
-                            .md
+                    two colours a pixel missed are guessed from its neighbours.""".md
                     }
                 }
                 control("kilopixel", "colour filters", false)
@@ -457,9 +451,7 @@ presentation(title = "Cameras and lenses") {
                         +"""
                     ## A scene to photograph
 
-                    Every camera in this talk looks at this. Drag to look around it.
-                """
-                            .md
+                    Every camera in this talk looks at this. Drag to look around it.""".md
                     }
                 }
                 markdownNote("Invite someone to drag the scene round. [[back]] [[next]]")
@@ -471,9 +463,7 @@ presentation(title = "Cameras and lenses") {
                     ## A bare sensor sees nothing
 
                     Every detector gets light from every point of the scene, so every
-                    count is the same blend.
-                """
-                            .md
+                    count is the same blend.""".md
                     }
                 }
                 markdownNote(
@@ -487,9 +477,7 @@ presentation(title = "Cameras and lenses") {
                     ## A box with a hole
 
                     Through a small hole each detector sees one patch of the scene. A
-                    picture forms on the back wall, upside down.
-                """
-                            .md
+                    picture forms on the back wall, upside down.""".md
                     }
                 }
                 control("pinhole_box", "hole diameter", 0.04)
@@ -506,9 +494,7 @@ presentation(title = "Cameras and lenses") {
                     ## How much it sees
 
                     Rays cross at the hole. A sensor further back takes a narrower view,
-                    drawn larger.
-                """
-                            .md
+                    drawn larger.""".md
                     }
                 }
                 control("field_of_view", "sensor distance", 1.0)
@@ -522,9 +508,7 @@ presentation(title = "Cameras and lenses") {
                     ## Darker at the edges
 
                     From the edge of the sensor the hole is further away and seen at a
-                    slant: the light falls as cos⁴ of the angle.
-                """
-                            .md
+                    slant: the light falls as cos⁴ of the angle.""".md
                     }
                 }
                 control("off_axis", "sensor distance", 0.8)
@@ -540,9 +524,7 @@ presentation(title = "Cameras and lenses") {
                     ## Sharp or bright, not both
 
                     Each point lights a patch the size of the hole. A smaller hole is
-                    sharper, and darker.
-                """
-                            .md
+                    sharper, and darker.""".md
                     }
                 }
                 control("pinhole_box", "hole diameter", 0.12)
@@ -562,9 +544,7 @@ presentation(title = "Cameras and lenses") {
                     ## Glass moves what you see
 
                     A ray bends going into glass and bends back coming out: it leaves
-                    parallel, but shifted.
-                """
-                            .md
+                    parallel, but shifted.""".md
                     }
                 }
                 control("slab_ray", "thickness", 1.0)
@@ -580,9 +560,7 @@ presentation(title = "Cameras and lenses") {
                         +"""
                     ## Light is a wave
 
-                    In glass the wave travels more slowly, so its crests crowd together.
-                """
-                            .md
+                    In glass the wave travels more slowly, so its crests crowd together.""".md
                     }
                 }
                 control("into_glass", "playing", true)
@@ -597,9 +575,7 @@ presentation(title = "Cameras and lenses") {
                     ## Why it turns
 
                     Arriving at a slant, each crest slows on one side first, and the wave
-                    turns.
-                """
-                            .md
+                    turns.""".md
                     }
                 }
                 control("into_glass", "playing", true)
@@ -615,9 +591,7 @@ presentation(title = "Cameras and lenses") {
                     ## How far it turns
 
                     Snell's law: n₁ sin θ₁ = n₂ sin θ₂. Some light always reflects, more
-                    of it at grazing angles.
-                """
-                            .md
+                    of it at grazing angles.""".md
                     }
                 }
                 control("snell", "angle", 30.0)
@@ -632,9 +606,7 @@ presentation(title = "Cameras and lenses") {
                     ## Trapped light
 
                     Leaving glass past about 42°, the light has no angle to take in air,
-                    and all of it reflects.
-                """
-                            .md
+                    and all of it reflects.""".md
                     }
                 }
                 control("snell", "angle", 30.0)
@@ -651,9 +623,7 @@ presentation(title = "Cameras and lenses") {
                     ## Tilted faces steer light
 
                     A tilted face turns a ray. Steeper tilts further out, and the rays can
-                    be made to meet.
-                """
-                            .md
+                    be made to meet.""".md
                     }
                 }
                 control("prism_segments", "segments", 1.0)
@@ -669,9 +639,7 @@ presentation(title = "Cameras and lenses") {
                     ## A lens brings rays together
 
                     A smooth curve is the limit of the steps. A point at o comes to focus
-                    at i, where 1/o + 1/i = 1/f.
-                """
-                            .md
+                    at i, where 1/o + 1/i = 1/f.""".md
                     }
                 }
                 control("thin_lens", "source distance", 5.0)
@@ -689,9 +657,7 @@ presentation(title = "Cameras and lenses") {
                     ## A camera with a lens
 
                     A lens bends every ray from a point to one place on the sensor: a wide
-                    hole, and still sharp.
-                """
-                            .md
+                    hole, and still sharp.""".md
                     }
                 }
                 control("lens_camera", "focus distance", 4.0)
@@ -706,9 +672,7 @@ presentation(title = "Cameras and lenses") {
                     ## Out of focus
 
                     Nearer or further, a point meets in front of the sensor or behind it,
-                    and lands as a disc.
-                """
-                            .md
+                    and lands as a disc.""".md
                     }
                 }
                 control("lens_camera", "focus distance", 4.0)
@@ -724,9 +688,7 @@ presentation(title = "Cameras and lenses") {
                     ## The shape of blur
 
                     An out-of-focus light is a picture of the opening. Iris blades make it
-                    a polygon.
-                """
-                            .md
+                    a polygon.""".md
                     }
                 }
                 control("bokeh", "aperture", 0.5)
@@ -742,9 +704,7 @@ presentation(title = "Cameras and lenses") {
                     ## How deep is sharp
 
                     Blur smaller than a pixel looks sharp. A smaller opening widens that
-                    band, and costs light.
-                """
-                            .md
+                    band, and costs light.""".md
                     }
                 }
                 control("depth_of_field", "aperture", 1.0)
@@ -762,9 +722,7 @@ presentation(title = "Cameras and lenses") {
                     ## f-numbers
 
                     Focal length over opening. Each stop is √2 narrower and lets in half
-                    the light.
-                """
-                            .md
+                    the light.""".md
                     }
                 }
                 control("f_stops", "stop", 0.0)
@@ -780,9 +738,7 @@ presentation(title = "Cameras and lenses") {
                     ## Spherical lenses miss
 
                     A spherical face bends rim rays too much: no one place is sharp for
-                    all of them.
-                """
-                            .md
+                    all of them.""".md
                     }
                 }
                 control("spherical_aberration", "lens radius", 20.0)
@@ -797,9 +753,7 @@ presentation(title = "Cameras and lenses") {
                         +"""
                     ## Colours split
 
-                    Glass bends blue more than red, so each colour has its own focus.
-                """
-                            .md
+                    Glass bends blue more than red, so each colour has its own focus.""".md
                     }
                 }
                 control("dispersion", "dispersion", 1.0)
@@ -821,9 +775,7 @@ presentation(title = "Cameras and lenses") {
                 - Matt Pharr, Wenzel Jakob and Greg Humphreys, *Physically Based Rendering*,
                   [the chapter on cameras](https://pbr-book.org/4ed/Cameras_and_Film), free online:
                   pinholes, thin lenses and real lens systems in code.
-                - Rudolf Kingslake, [*A History of the Photographic Lens*](https://archive.org/details/historyofphotogr0000king).
-            """
-                        .md
+                - Rudolf Kingslake, [*A History of the Photographic Lens*](https://archive.org/details/historyofphotogr0000king).""".md
                     p(classes = "muted") {
                         +"After “Cameras and Lenses” by Bartosz Ciechanowski, https://ciechanow.ski/cameras-and-lenses/. Words and figures made in Field."
                     }

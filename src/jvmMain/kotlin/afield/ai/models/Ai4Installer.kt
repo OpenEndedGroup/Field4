@@ -12,6 +12,7 @@
 package afield.ai.models
 
 import afield.ai.conversation.AiBoxConversation
+import afield.ai.conversation.AiThreadContinuation
 import afield.ai.conversation.AiLiveConversation
 import afield.ai.conversation.AiSessionTree
 import afield.ai.conversation.AiTurnInbox
@@ -778,7 +779,10 @@ fun installAi4() {
     val agentMemoryByKey = ConcurrentHashMap<String, AgentMemoryState>()
     // Box chats waiting for builds without the model; a document that loads arms the waits saved with it.
     val awaits = afield.ai.agent.StudyBuildAwaits.live
-    documentReadyHooks += { info -> awaits.rearm(info) }
+    documentReadyHooks += { info ->
+        info.boxes.values.forEach { AiBoxConversation.ensurePanel(it) }
+        awaits.rearm(info)
+    }
     /** The last turn's [ContextReport] per box (`doc\u0000uid`), for `/context`. Metadata only, never the text. */
     val lastContextByBox = ConcurrentHashMap<String, ContextReport>()
     var bridgeRevision = aiProviderConfigRevision()
@@ -829,21 +833,18 @@ fun installAi4() {
         )
     }
 
-    fun threadFor(fileKey: String, fileText: String, cacheKey: String = fileKey, history: String = ""): OpenAiIdeCodexBridge.ThreadState =
-        threadByKey[cacheKey] ?: bridge!!.startThread(fileKey, fileText + AiBoxConversation.resumeContext(history)).also {
-            it.lastFileText = fileText
-            threadByKey[cacheKey] = it
-        }
+    fun threadFor(fileKey: String, fileText: String, cacheKey: String = fileKey, history: String = "", owner: Box? = null): OpenAiIdeCodexBridge.ThreadState =
+        threadByKey[cacheKey] ?: (owner?.let { AiThreadContinuation.restore(it, bridge!!, fileKey, "edit", history) }
+            ?: bridge!!.startThread(fileKey, fileText + AiBoxConversation.resumeContext(history)).also { it.lastFileText = fileText })
+            .also { threadByKey[cacheKey] = it }
 
-    fun chatThreadFor(fileKey: String, fileText: String, cacheKey: String = fileKey, history: String = ""): OpenAiIdeCodexBridge.ThreadState =
-        chatThreadByKey[cacheKey] ?: chatBridge!!.startThread(
+    fun chatThreadFor(fileKey: String, fileText: String, cacheKey: String = fileKey, history: String = "", owner: Box? = null): OpenAiIdeCodexBridge.ThreadState =
+        chatThreadByKey[cacheKey] ?: (owner?.let { AiThreadContinuation.restore(it, chatBridge!!, fileKey, "general", history) }
+            ?: chatBridge!!.startThread(
             fileKey,
             fileText + AiBoxConversation.resumeContext(history),
             instructions = OpenAiIdeCodexBridge.defaultChatThreadInstructions
-        ).also {
-            it.lastFileText = fileText
-            chatThreadByKey[cacheKey] = it
-        }
+        ).also { it.lastFileText = fileText }).also { chatThreadByKey[cacheKey] = it }
 
     fun provisionalKey(entry: ProvisionalEntry): String = "${entry.uid}\u0000${entry.property}"
 
@@ -1019,9 +1020,11 @@ fun installAi4() {
     handlers["ai-chat-context"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<AiChatContextRequest>(message.payload!!)
         val report = lastContextByBox["${thisSessionInfo.get().filename}\u0000${request.uid}"]
-        val markdown = report?.toMarkdown()
+        val context = report?.toMarkdown()
             ?: "_No AI turn has run in this box since Field started, or the last one sent its instructions inline " +
                 "(AFIELD_AI4_EPHEMERAL_INSTRUCTIONS=off, or the OpenRouter provider)._"
+        val continuation = thisSessionInfo.get()?.boxes?.get(request.uid)?.let { AiThreadContinuation.diagnostics(it) }.orEmpty()
+        val markdown = listOf(context, continuation).filter { it.isNotBlank() }.joinToString("\n\n")
         reply(Message("ai-chat-context").payload(AiChatContextReply(request.uid, markdown)))
         Handled.yes
     })
@@ -2082,6 +2085,7 @@ fun installAi4() {
         currentThreads.keys.removeIf { it.startsWith(boxChatKey) && it != conversationKey }
         otherThreads.keys.removeIf { it.startsWith(boxChatKey) }
         val savedHistory = history()
+        val continuationBridge = if (exec.kind == "general") chatBridge!! else bridge!!
         // What the session tree records about this turn once it ends (AiSessionTree.recordTurn).
         val turnMeta = java.util.concurrent.atomic.AtomicReference<AiSessionTree.TurnMeta?>(null)
         val opFrom = OperationTranscript.turnBoundary(docPath)
@@ -2215,9 +2219,9 @@ fun installAi4() {
 
             try {
                 val state = if (exec.kind == "general") {
-                    chatThreadFor(fileKey, exec.prompt, conversationKey, savedHistory)
+                    chatThreadFor(fileKey, exec.prompt, conversationKey, savedHistory, box)
                 } else {
-                    threadFor(fileKey, exec.prompt, conversationKey, savedHistory)
+                    threadFor(fileKey, exec.prompt, conversationKey, savedHistory, box)
                 }
                 when (exec.kind) {
                     "chat" -> {
@@ -2624,6 +2628,12 @@ fun installAi4() {
                         branchAfter = runCatching { AgentExtensionRegistry.snapshotBranchStates(box) }.getOrDefault(emptyMap()))
                 AiSessionTree.recordTurn(box, savedHistory, history(), meta)
             }.onFailure { lprintln("warning,ai4", "session tree: could not record the turn: ${it.message}") }
+            runCatching {
+                val state = currentThreads[conversationKey]
+                if (failure == null && AiBoxConversation.turnFailure(box) == null && state != null) {
+                    AiThreadContinuation.save(box, continuationBridge, state, if (exec.kind == "general") "general" else "edit")
+                } else AiThreadContinuation.clear(box)
+            }.onFailure { lprintln("warning,ai4", "could not checkpoint provider continuation: ${it.message}") }
             // Releasing the box must survive a failure that also breaks the reporting: a NoClassDefFoundError
             // from classes rewritten under a live JVM threw out of `failed`, and the stale key refused every
             // later turn in that box until restart.

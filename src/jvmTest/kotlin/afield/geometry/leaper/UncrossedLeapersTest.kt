@@ -140,7 +140,7 @@ class UncrossedLeapersTest {
         val r = board.longUncrossedPath(rounds = 1000, nodesPerRound = 4_000, random = kotlin.random.Random(1))
         println(r)
         assertEquals(UNCROSSED_KNIGHT_PATH_MAXIMA[7], r.length)
-        assertNull(board.check(r.best!!.cells, moveIds = r.best!!.moves))
+        assertNull(board.check(r.best!!.cells, moveIds = r.best.moves))
         assertFalse(r.exhaustive)
     }
 

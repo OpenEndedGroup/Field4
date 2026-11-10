@@ -276,10 +276,9 @@ see [stereo video precision](stereo_video.md#colour-precision) for the stages to
 
 ## World-space audio through WiVRn
 
-`SpatialWavPlayer` places a mono WAV in the same OpenXR world as the graphics and renders
-Steam Audio binaural stereo from the published headset pose. It opens a dedicated named
-WiVRn output, leaving the desktop default alone. Steam Audio's native library is installed
-with `./gradlew fetchSteamAudioNatives`.
+Place a mono WAV in the OpenXR scene with `SpatialWavPlayer`. Steam Audio renders it as binaural
+stereo using the headset pose, through a named WiVRn output; your desktop's default output stays
+as it was. Install Steam Audio's native library first with `./gradlew fetchSteamAudioNatives`.
 
 ```diffstatic {data-lang=kotlin}
 val sound = SpatialWavPlayer(
@@ -293,12 +292,15 @@ sound.play()
 loop { frame() }.end { sound.close() }
 ```
 
-`pause()` retains the cursor, `seek(seconds)` scrubs, and `restart()` starts from zero.
-The audio example under `templates/text_one/audio/` adds controls and a bundled mono
-percussion WAV. Stereo WAVs currently use their left channel as the mono emitter. This
-player supplies HRTF direction and distance attenuation; it does not yet simulate room
-geometry, occlusion or reverberation. OpenAL's second HRTF is disabled on the dedicated output.
+`pause()` keeps your place, `seek(seconds)` scrubs, and `restart()` starts from zero. The audio
+example under `templates/text_one/audio/` adds controls and a bundled mono percussion WAV. For
+stereo WAVs, the player uses the left channel as its mono source. You get HRTF direction and
+distance attenuation; room geometry, occlusion and reverberation are not simulated yet. OpenAL
+disables its own HRTF on the dedicated output.
 
-Connect headset audio before opening the output. After a WiVRn device reconnect, stop and
-relaunch the audio box. The player closes on box stop, replacement or deletion. Audio uses
-its own device-paced thread; the graphics Runloop only reads or changes control state.
+Connect headset audio before opening the output. If the WiVRn device reconnects, stop and relaunch
+the audio box. The player closes when you stop, replace or delete the box. Audio runs on its own
+device-paced thread; the graphics Runloop reads and changes its controls.
+
+To inspect the tracking data behind headset interactions, open [body_one](body_tracking.md).
+It draws available hands, sparse body joints and controllers, with bounds and closest-point helpers.

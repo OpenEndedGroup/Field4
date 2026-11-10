@@ -771,6 +771,24 @@ class ShaderFieldStats(
         return module
     }
 
+    /** Release an explicitly owned GPU-only block after the owner has waited for its GPU work. */
+    internal fun releaseGpuOnly() {
+        check(!cpuSnapshotsEnabled) { "GPU-only release cannot race FieldStats CPU snapshots" }
+        val renderer = rendererRef ?: return
+        renderer.runOnQueueThread {
+            resetModule?.current?.cleanup()
+            reduceModule?.current?.cleanup()
+            partialParameters?.toBuffer(renderer)?.buffers?.forEach { it.cleanup() }
+            resultParameters?.toBuffer(renderer)?.buffers?.forEach { it.cleanup() }
+            rendererRef = null
+            partialParameters = null
+            resultParameters = null
+            resetModule = null
+            reduceModule = null
+            initialized = false
+        }
+    }
+
     internal fun includeSource(producer: Boolean): String {
         val producerExtensions = if (producer) """
             #extension GL_KHR_shader_subgroup_basic : require

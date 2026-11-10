@@ -47,15 +47,18 @@ class CharGridTest {
     @Test
     fun prevHoldsTheLastSnapshotAndClearZeroesIt() {
         val g = CharGridBuffer(3, 3, " #")
+        val frame = CharGridFrame(g, CharGridSounds(emptyList(), null, cells = 9) { _, _ -> })
         g.set(0, 0, 1, "#50fa7b")
         g.snapshot()
         g.set(0, 0, 0, "")
+        frame.CURSOR(2, 2)
         assertEquals(1, g.prev(0, 0))
         assertEquals("#50fa7b", g.prevColor(0, 0))
         assertEquals(0, g.get(0, 0))
-        g.clear()
+        frame.clearGrid()
         assertEquals(0, g.prev(0, 0))
         assertFalse(g.isShown(0, 0))
+        assertEquals(CharGridCursor(0, 0), frame.getCursor())
     }
 
     @Test

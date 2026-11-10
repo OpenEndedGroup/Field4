@@ -869,6 +869,51 @@ object StandardRendererDocsHarness {
         """.trimIndent()
     }
 
+    /** "A sky that lights the scene", sun high: the atmosphere baked by [afield.graphics.sky.SkyEnvironment] lights and backs the scene. */
+    suspend fun renderSkyEnvironmentHigh(outputPath: String, renderer: Renderer = rendererFromContextOrDocument()): File =
+        renderSkyEnvironment(outputPath, renderer, elevation = 45.0)
+
+    /** The same scene with the sun 4 degrees above the horizon. */
+    suspend fun renderSkyEnvironmentSunset(outputPath: String, renderer: Renderer = rendererFromContextOrDocument()): File =
+        renderSkyEnvironment(outputPath, renderer, elevation = 4.0)
+
+    /** The same scene with the sun 3 degrees below the horizon: no key light, only the sky. */
+    suspend fun renderSkyEnvironmentTwilight(outputPath: String, renderer: Renderer = rendererFromContextOrDocument()): File =
+        renderSkyEnvironment(outputPath, renderer, elevation = -3.0)
+
+    private suspend fun renderSkyEnvironment(outputPath: String, renderer: Renderer, elevation: Double): File {
+        val sky = afield.graphics.sky.SkyEnvironment(renderer)
+        sky.setSun(elevation, azimuth = 140.0, wait = true)
+        return renderScene(
+            outputPath,
+            renderer,
+            renderer.window,
+            StandardRenderer.Config(environmentTexture = sky.texture, environmentStrength = 1f, backgroundColor = srgbGray(0.06f))
+        ) { bundle, activeRenderer ->
+            bundle.scene.camera.at.set(0f, 0.55f, -4.2f)
+            bundle.scene.camera.target.set(0f, 0.15f, 0f)
+            bundle.scene.ambientColor.set(0f, 0f, 0f)
+            bundle.scene.aoStrength = 0.5f
+            bundle.scene.shadowStrength = 0.85f
+            bundle.scene.shadowExtent = 6.5f
+            bundle.scene.shadowBias = 0.0024f
+            bundle.showEnvironmentBackground(true, intensity = 1f)
+            addCheckerboardFloor(bundle, activeRenderer, tilesPerSide = 10, tileSize = 0.55f, y = -1.0f)
+            registerSphereNode(bundle, activeRenderer, "sky-white", Vector3f(-1.3f, -0.4f, 0.2f), 0.6f,
+                material(Vector4f(0.85f, 0.85f, 0.85f, 1f), metallic = 0f, roughness = 0.6f))
+            registerSphereNode(bundle, activeRenderer, "sky-chrome", Vector3f(0f, -0.4f, 0.6f), 0.6f,
+                material(Vector4f(0.92f, 0.92f, 0.94f, 1f), metallic = 1f, roughness = 0.05f))
+            registerTorusNode(
+                bundle = bundle, renderer = activeRenderer, name = "sky-red",
+                model = Matrix4f().translate(1.35f, -0.4f, 0.1f).rotateX(1.2f).rotateY(-0.5f),
+                material = material(Vector4f(0.75f, 0.12f, 0.08f, 1f), metallic = 0f, roughness = 0.35f),
+                slices = 64, stacks = 64, tubeRadius = 0.17f, majorRadius = 0.42f
+            )
+            sky.drive(bundle)
+            bundle.present(renderer = activeRenderer)
+        }
+    }
+
     private suspend fun renderScene(
         outputPath: String,
         renderer: Renderer,

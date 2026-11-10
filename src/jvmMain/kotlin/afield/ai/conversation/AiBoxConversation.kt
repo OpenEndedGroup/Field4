@@ -6,7 +6,7 @@ import afield.document.graph.Box
  * Where an AI4 chat transcript is stored: on the box for a box's chat, and in a file beside the document for the document chat.
  *
  * [AiBoxConversation] reads and writes the `ai4_chat_history` property and the turn's running flag;
- * the provider's own thread is only a cache that can be reseeded from that transcript.
+ * [AiThreadContinuation] optionally checkpoints provider state; the transcript is the portable fallback.
  * [DocumentChatStore] keeps the document-level chat in `<document>/ai4_document_chat.md`.
  */
 
@@ -14,6 +14,7 @@ import afield.document.graph.Box
 object AiBoxConversation {
     const val PROPERTY = "ai4_chat_history"
     const val RUNNING_PROPERTY = "ai4_chat_running"
+    const val PANEL_PROPERTY = "ai4_chat_panel"
     private const val TURN_SEQUENCE_PROPERTY = "_ai4_chat_turn_sequence"
     private const val TURN_FAILURE_PROPERTY = "_ai4_chat_turn_failure"
     private const val TURN_ROUNDS_PROPERTY = "_ai4_chat_turn_rounds"
@@ -35,9 +36,17 @@ object AiBoxConversation {
     fun read(box: Box): String = box.getPropertyRaw(PROPERTY) as? String ?: ""
 
     fun write(box: Box, transcript: String) {
+        ensurePanel(box, transcript)
         if (read(box) == transcript) return
         box.setPropertyRaw(PROPERTY, transcript, doResync = false)
         markPending(box)
+    }
+
+    /** Upgrade an older saved chat with a tiny presentation record; never resync its whole transcript. */
+    fun ensurePanel(box: Box, transcript: String = read(box)) {
+        if (transcript.isNotBlank() && box.getPropertyRaw(PANEL_PROPERTY) == null) {
+            box.setPropertyRaw(PANEL_PROPERTY, """{"present":true,"open":true,"property":"code"}""")
+        }
     }
 
     internal fun markPending(box: Box) {

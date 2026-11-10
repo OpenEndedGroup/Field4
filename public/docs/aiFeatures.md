@@ -22,15 +22,28 @@ Windows and Linux): see [Talking to AI4](voice_input.md).
 ![an AI Chat output area opened beneath a box named Texture. The reader's question, right-aligned in italics, is "how does Camera work in this code?"; under a GPT-5.2 label the answer runs as headed prose with copyable code blocks, quoting the box's own three lines back, then the push-constant block from the vertex shader, then the opening of `Camera.kt` with its file path named](assets/screenshot_47.png)
 
 The conversation belongs to the box. Field saves it with the document, including model
-labels, tool results and images. Reopen **AI Chat (panel)** after a reload or restart to
-read it and continue. Different property editors of the same box share that conversation.
+labels, tool results and images. When you reopen a document or restart Field, its panels return
+without running the boxes, with their selected code properties, sizes and collapsed states. Close a
+panel and you can reopen it with **AI Chat (panel)**; the conversation is still there. Restoring
+panels leaves keyboard focus where it is. Unsent drafts are not saved. Different property editors
+of the same box share the conversation.
 `/clear` deletes the box's saved conversation and starts a new one. Finish the current
 AI turn before clearing. Ordinary document autosave also checkpoints running replies.
 
-After a restart or provider change, AI4 uses the recent saved text as context. The full
-transcript stays in the document's `<box-id>_ai4_chat_history_.md` sidecar. To keep resumed
-requests bounded, model context uses at most the most recent 64,000 characters (preferring
-whole turns); saved images remain visible but must be attached again for fresh image analysis.
+After a restart, AI4 first tries to resume from a matching provider checkpoint. OpenAI uses its
+saved conversation and response IDs; Local and OpenRouter use structured message history, including
+tool calls and results. A checkpoint must match the provider, endpoint, model, code property,
+assistance mode and saved transcript. If it cannot be used, or the provider has no checkpoint
+support, AI4 starts a new thread with recent saved text as context.
+
+The full transcript stays in the document's `<box-id>_ai4_chat_history_.md` sidecar. When Field
+reconstructs a thread from text, it uses at most the most recent 64,000 characters, preferring whole
+turns. Saved images remain visible in that case, but must be attached again for fresh image analysis.
+
+Use `/context` to see whether a checkpoint was saved or resumed, or why Field fell back to the
+transcript. The same events appear in the server log under `ai4.continuation`, with the provider,
+model and opaque continuation IDs; credentials and conversation text are excluded. The last 12
+are also available on the box as `getPropertyRaw("_ai4_continuation_diagnostics")`.
 
 ### Suggestions as you type
 
@@ -40,6 +53,24 @@ the same letters keeps the rest. A suggestion is one short request with the box'
 its code, the last few turns and your draft. `/autocomplete off` turns suggestions off in this
 browser and `/autocomplete on` brings them back; `AFIELD_AI4_CHAT_AUTOCOMPLETE=off` turns them off
 for a whole Field, and `AFIELD_AI4_CHAT_AUTOCOMPLETE_MODEL` picks a model other than the fast one.
+Moving the caret to the end also schedules a suggestion; trailing whitespace is preserved. Field
+runs one request per composer at a time. If you change the draft while it is running, Field requests
+the latest draft after the stale reply returns.
+
+??? aside "Suggestion requests and diagnostics"
+    On the direct OpenAI path, the default fast model uses a single tool-free request with reasoning
+    disabled. Local and OpenRouter use the same small text request without hosted conversation state.
+    Stable box and conversation context is sent separately before the draft so backends can reuse its
+    prefix. Cache hits depend on the provider, matching content and minimum cacheable length; Field
+    does not pad short prompts. Cached-input and cache-write tokens appear in the usage ledger.
+    The direct OpenAI GPT-6 path marks the stable context boundary with a 30-minute cache lifetime,
+    without writing each changing draft into the prompt cache. Local and OpenRouter omit those options.
+
+    Request timings and model identity are logged under `ai_completions` and in
+    `~/.afield/logs/ai_usage/`. In the developer console,
+    `(await import('./aiChatAutocomplete.js')).chatAutocompleteDiagnostics()` distinguishes
+    requested, shown and discarded suggestions, including empty replies, moved cursors and typing
+    past a suggestion. It records character counts and outcomes, not the draft or suggested words.
 
 Misspelled words in the message are underlined as you type. In Field's own window, right-click one
 for corrections or to add it to the dictionary.

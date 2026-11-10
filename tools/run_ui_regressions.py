@@ -4181,6 +4181,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-editor", "@last", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="control-hover-help",
+            description="Optional control help renders safely in Field on hover and focus, including the VR page, without changing control interaction.",
+            commands=[
+                "new-box --name ControlHoverHelp",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/control-hover-help.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/control-hover-help.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="controls-vec2-keys",
             description="A vec2 pad takes focus, arrow keys nudge it a step per axis (shift x10), Backspace and double-click reset it, and its angle label agrees in sign with the readout.",
             commands=[
@@ -4499,6 +4509,31 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "new-box --name StateHistoryRegression --x 40 --y 40",
                 shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/state-tree-browser.kt"), "--timeout", timeout_text]),
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/state-tree-browser.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="ai-chat-autocomplete",
+            description="Composer completes before trailing whitespace, inserts at the caret, requests after cursor movement, and retries the latest draft without overlapping requests.",
+            commands=[
+                "new-box --name ChatAutocomplete --x 40 --y 40",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-autocomplete.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="ai-chat-persistence",
+            description="Saved box chats return through real reloads with their dimensions, selected property and open/removed state, without stealing focus.",
+            commands=[
+                "new-box --name ChatPersistence --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-persistence.kt"), "--timeout", timeout_text]),
+                *[
+                    command
+                    for phase in range(5)
+                    for command in (["sleep 1.5"] if phase else []) + [
+                        shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-persistence.js"), "--timeout", pw_timeout])
+                    ]
+                ],
             ],
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--timeout", pw_timeout]),
         ),

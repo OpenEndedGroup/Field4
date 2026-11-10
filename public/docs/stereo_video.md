@@ -1,36 +1,40 @@
 # Stereo video in a room
 
-A full-resolution side-by-side movie can play on a curved screen in VR, with the same eye image
-shown in a desktop preview. The [video_one starting point](offline.html?file=assets/agent_transcripts/video_one_vr/metadata.edn)
-provides file selection, a live scrubber, playback controls and screen placement. It starts with a bundled stereo demo; choose another local file at any time. It has no audio
-or scene blur compositor.
+Put a stereo movie on a curved screen in VR, and move the screen around the room. The
+[video_one starting point](offline.html?file=assets/agent_transcripts/video_one_vr/metadata.edn)
+opens a bundled demo and gives you a scrubber, playback controls and screen placement. Choose a
+local movie whenever you like; the player currently handles video without audio. The desktop
+preview shows the same eye images as the headset. The movie keeps its source resolution through
+decoding.
 
-Open the starting place, then launch **1 · Headset / preview / Field pane**, **2 · Stereo screen placement**,
-**4 · Video shader**, **5 · Temporal accumulation shader**, and **3 · Movie / transport**, in that order.
-The supplied launch macro does this for you. The bundled movie starts automatically. To use your own,
-enter its path in **Full SBS file** and press **Load movie**. Left half
-maps to the left eye; **Swap left and right** reverses that mapping. The screen starts at the
-native per-eye aspect ratio, `(file width / 2) / height`. No horizontal squeeze is assumed.
-The file remains at its packed source resolution until the video shader samples it.
+Open the starting point and launch these boxes in order:
+**1 · Headset / preview / Field pane**, **2 · Stereo screen placement**, **4 · Video shader**,
+**5 · Temporal accumulation shader**, and **3 · Movie / transport**. The supplied launch macro
+does this for you.
+
+The demo starts automatically. To use your own movie, enter its path in **Full SBS file** and
+press **Load movie**. The left half goes to the left eye; **Swap left and right** reverses that.
+The screen starts at the native per-eye aspect ratio, `(file width / 2) / height`, with no
+horizontal squeeze assumed. The file stays at its packed source resolution until the video shader
+samples it.
 
 **Arc width** sets the screen's width in metres, measured along the curve. **Bend** controls its
 horizontal angle: zero is flat, positive brings the edges forward. The displayed aspect ratio,
 center and yaw/pitch/roll are independent controls. **Bring screen in front** places the screen
 upright along the current horizontal gaze direction.
 
-The scrubber pauses at the chosen time; **Playing** resumes. Decoding and compressed-video
-seeking happen on a worker, with successive seek requests coalesced. Opening another file is
-an explicit operation and can briefly wait for old GPU references to drain.
+The scrubber pauses at the chosen time; **Playing** resumes. Decoding and seeking run in the
+background, and rapid seek requests are combined. Loading another file can briefly wait for the
+previous movie's GPU resources to clear.
 
 ## Try the starting place
 
 [Open video_one →](offline.html?file=assets/agent_transcripts/video_one_vr/metadata.edn)
 
-The original demo is a three-second loop: three moving spheres and a floor grid, viewed from two
-cameras 64 mm apart. It is full side-by-side, 1280 × 360 at 24 fps, with ten-bit YUV 4:2:0 codes
-and a BT.709 colour matrix. Each eye receives a 640 × 360 image. This is an intentionally small
-source for trying the player; larger files keep their original resolution. The demo is silent.
-[Download the source movie](assets/stereo_video/stereo-demo.mkv).
+The demo is a three-second loop of three moving spheres over a floor grid, viewed from cameras
+64 mm apart. It is a 1280 × 360 side-by-side movie at 24 fps, with ten-bit YUV 4:2:0 and a BT.709
+colour matrix. Each eye receives 640 × 360 pixels. It is a small file for trying the player;
+larger movies keep their original resolution. [Download the source movie](assets/stereo_video/stereo-demo.mkv).
 
 ```diffstatic_runner {data-lang=kotlin capture="native-window" native-wait-frames="8" screenshot="assets/stereo_video/player.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/video_one_native.yaml" capture-box="video1_context" wait="1" timeout="240" capture-profile="linux-nvidia" embed=true hidden=true name="stereo-video-player" alt="Field's native side-by-side eye preview: both eyes see a curved screen carrying cyan, orange and violet spheres above a floor grid."}
 // Decode the bundled ten-bit SBS movie and draw its left-eye view on the room's curved screen.
@@ -51,18 +55,17 @@ Try these controls in order:
 | Material: 12 fps | Hold the source material between ticks while the headset keeps rendering |
 | 1x sharp | Return to ordinary speed with accumulation disabled |
 
-The native figures above run the real decoder, P010 uploads, movie shader and float eye targets.
-The demo source is authored by `tools/generate_stereo_video_demo.py`; it is separate from those
-player captures. The playback preview shows both eye images side by side with a gentle simulated desktop
-head trajectory. It is an encoded recording, not a precision measurement or a recording of
-a wearer's tracking. The actual headset path uses the runtime's current predicted eye poses.
+The playback preview shows both eyes side by side as a simulated head moves through the room.
+The encoded recording shows the effect rather than measuring precision; in a headset the player
+uses the runtime's current predicted eye poses.
+The captures use the player's decoder, P010 uploads, movie shader and floating-point eye targets.
+The demo movie itself is made by [generate_stereo_video_demo.py](https://github.com/OpenEndedGroup/Field4/blob/main/tools/generate_stereo_video_demo.py).
 
 ## Headset and preview
 
-Set `headsetMode = true` in box 1 before creating a Vulkan renderer, connect WiVRn, and launch
-in a fresh Field process. OpenXR supplies the eye dimensions. The preview samples those same
-images; it does not render another version of the scene. Desktop-only mode uses a stereo
-camera without requiring a headset.
+For a headset, start a fresh Field process, connect WiVRn and set `headsetMode = true` in box 1
+before launching the renderer. OpenXR supplies the eye dimensions, and the preview samples those
+same eye images. Desktop-only mode uses a stereo camera and needs no headset.
 
 With `withFieldBrowser = true`, Field's live browser appears in a companion window and on a
 movable pane in the headset. It uses the same controller and keyboard/mouse support as
@@ -71,6 +74,7 @@ hidden in the headset or omitted entirely by changing the setup flag.
 
 ### 1 · Headset, preview and browser controls
 
+This box creates the renderer and eye targets. Set the headset and browser options before launching it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stereo_video/context-controls.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/video_one_native.yaml" capture-box="video1_context" wait=".5" timeout="240" capture-profile="linux-nvidia" embed=true name="stereo-video-context-controls" alt="The setup box controls for the stereo preview, desktop presentation and Field browser visibility."}
 import afield.graphics.vulkan.targets.*
@@ -213,11 +217,10 @@ The desktop preview can still quantize to the monitor's output format.
 This is an SDR player, including ten-bit SDR material. Tagged PQ/HLG movies need an HDR display
 path and are refused. Unspecified SDR matrix/range tags default to BT.709/limited.
 
-Application precision and transport precision are separate. Configure a supported ten-bit
-WiVRn encoder—AV1 or HEVC—with `bit-depth: 10`, then verify the negotiated encoder and decoder
-on the connected headset. A ten-bit request or a floating-point application target alone does
-not establish the complete path. Field submits the movie and its browser in one projection
-layer, using WiVRn's direct projection path rather than its layer-squashing intermediate.
+For ten-bit transport, configure a supported WiVRn encoder (AV1 or HEVC) with `bit-depth: 10`,
+then check the negotiated encoder and decoder on the headset. A ten-bit request or floating-point
+eye images alone cannot establish the precision of the whole path. Field submits the movie and
+browser together in one projection layer, using WiVRn's direct projection path.
 
 **4 · Video shader** contains editable `vertex`/`fragment` tabs and uses
 `moduleHere { +movie }`. **Reload Shader** (++alt+r++) reloads its current pipeline without
@@ -227,15 +230,15 @@ The editable source and guide are in `templates/video_one/`. `build_transcript.p
 /path/to/movie.mp4` produces create/launch/stop macros for a local file. Add `--headset` to
 select OpenXR and `--no-browser` to omit Field's browser pane.
 
-The WiVRn 26.6.2 Quest client source also selects an eight-bit sRGB eye swapchain after
-video decoding. Ten-bit transport therefore does not by itself establish ten-bit final
-headset composition. A higher-precision client path must be negotiated and tested separately.
+The WiVRn 26.6.2 Quest client source selects an eight-bit sRGB eye swapchain after decoding,
+so ten-bit transport alone does not give you ten-bit final headset composition. A higher-precision
+client path needs to be negotiated and tested separately.
 
 ## Screen placement controls
 
-**2 · Stereo screen placement** owns the movie surface and its world transform. The first
-control group changes the arc and aspect; the second places it in the room. The recenter
-function uses the current head pose while keeping the screen upright.
+Use **2 · Stereo screen placement** to shape the screen and place it in the room. The first
+control group changes the arc and aspect; the second sets its position and orientation. Recentring
+uses the current head pose and keeps the screen upright.
 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stereo_video/screen-controls.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/video_one_native.yaml" capture-box="video1_screen" wait=".5" timeout="240" capture-profile="linux-nvidia" embed=true name="stereo-video-screen-controls" alt="The live screen controls: arc width, bend, aspect, recenter distance and world position and rotation."}
@@ -339,27 +342,28 @@ loop { frame() }.end { ownedMovie.close() }
 
 ## Speed and motion exposure
 
-The transport has a continuous **Speed** control up to 8×. Above 4×, optional alternate-frame
-selection reduces conversion/uploads: a 24 fps movie at 8× contributes up to 96 pictures/sec.
+The transport's **Speed** control goes up to 8×. Above 4×, you can select alternate frames to
+reduce conversion and uploads: a 24 fps movie at 8× contributes up to 96 pictures per second.
 FFmpeg still decodes necessary reference pictures; optional non-reference skipping can reduce
 work further, depending on the codec. Headset rendering continues at the runtime refresh rate.
 
 **Accumulation mix**, **Persistence half-life (s)** and **Incoming frame weight** control a
 full-resolution RGBA16F temporal exposure in linear light. Only newly selected source frames
-are added. The exposure lives in the movie's coordinates, so head motion stays sharp. **Clear
+are added. The exposure lives in the movie's coordinates, so head motion and the rest of the scene
+stay sharp. **Clear
 accumulation** resets it; scrubbing, looping and file replacement also reset it. **8x blur**
 and **1x sharp** provide quick cuts between fast exposure and ordinary playback.
 
-Box **5 · Temporal accumulation shader** contains the editable accumulation shader, using
-Field's standard shader reload. Box 4 remains the final screen shader. Decode timing, skipped
-queue samples and exposure sample counts appear in the transport status. Playback speed is
-limited by actual decode throughput, with a bounded queue rather than growing latency.
+Edit the accumulation shader in **5 · Temporal accumulation shader** and reload it with Field's
+usual shader command. Box 4 remains the final screen shader. The transport status shows decode
+timing, skipped queue samples and exposure sample counts. Playback speed depends on decode
+throughput; a bounded queue keeps old frames from piling up.
 
 
 ### 3 · Movie and transport controls
 
-The controls below are live Field output, including the loaded demo, paused scrub position,
-speed, material cadence and temporal exposure. The longer UI and status code is folded.
+The box below shows the loaded movie, scrub position, speed, material cadence and temporal
+exposure. Its longer control and status code is folded.
 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stereo_video/transport-controls.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/video_one_native.yaml" capture-box="video1_playback" wait=".5" timeout="240" capture-profile="linux-nvidia" embed=true name="stereo-video-transport-controls" alt="The movie transport box with file selection, play and scrub controls, speed, material cadence, temporal exposure and eye selection."}
@@ -514,19 +518,19 @@ loop {
 
 ## Material cadence
 
-**Material: unlimited**, **Material: 24 fps** and **Material: 12 fps** set a wall-time publication
-rate independently of playback speed. The status reports the selected cap. Decode continues
-following the playback clock; capped ticks upload only the newest ready picture and discard
-intermediate queued samples. They do not play those samples later as a delayed backlog. At
-8×/12 fps, a 24 fps movie advances approximately sixteen source frames per material tick.
+**Material: unlimited**, **Material: 24 fps** and **Material: 12 fps** set how often the movie
+image updates, independently of playback speed. Decode continues on the playback clock; at each
+capped tick the player uploads the newest ready picture and discards intermediate queued samples.
+At 8×/12 fps, a 24 fps movie advances approximately sixteen source frames per material tick.
+The status reports the selected cap.
 
 The sharp texture and temporal exposure both hold between ticks. Accumulation adds each
 selected material frame once; persistence remains a real-time half-life. Headset rendering,
 screen placement and current eye poses stay at the runtime cadence. New files, scrubbing and
 clear requests take effect on the next permitted material tick. Display timing quantizes tick
-presentation; missed ticks are skipped, never replayed as a burst. Selecting unlimited restores
-ordinary per-source-frame publication. This is an apparent frame-rate effect, not a 12/24 Hz VR
-render loop, and it does not interpolate optical flow between source pictures.
+presentation; missed ticks are skipped. Selecting unlimited restores ordinary per-source-frame
+updates. The effect holds the movie image while VR keeps rendering at its usual rate; there is no
+optical-flow interpolation between source pictures.
 
 ## Code and ownership
 
@@ -536,10 +540,10 @@ image is uploaded once before either eye draws. `movie.placement` controls the s
 `movie.play()`, `movie.pause()`, `movie.seek(seconds)` and `movie.speed` control its transport.
 `movie.materialFramesPerSecond` accepts `0`, `12` or `24`; zero is uncapped.
 
-Stop transport first and the context last. The screen box owns the movie lifetime, and the
-shader boxes own their pipelines. The supplied stop macro follows that order. The starting
-place contains a guide and editable source for each layer. `templates/video_one/` contains
-the template sources and transcript builder. No personal movie files are bundled.
+Stop the transport first and the context last: the screen box owns the movie, and the shader
+boxes own their pipelines. The supplied stop macro follows that order. The starting point includes
+a guide and editable source for each layer; `templates/video_one/` holds the template sources
+and transcript builder.
 
 ## The editable shader boxes
 
@@ -604,9 +608,9 @@ void main() {
 }
 ```
 
-**5 · Temporal accumulation shader** supplies the separate video-local exposure pipeline.
-The movie supplies its ping-pong images and per-sample weights; the box owns the shader
-and the standard reload action. This does not accumulate previous headset images.
+**5 · Temporal accumulation shader** builds the exposure from movie frames. The movie supplies
+its ping-pong images and per-sample weights; the box owns the shader and the usual reload action.
+Headset images are not accumulated.
 
 ```diffstatic {data-lang=kotlin}
 // This box's vertex / fragment tabs own the video-local accumulation shader.
@@ -615,3 +619,39 @@ movie.accumulationModuleFactory = { configuration ->
     moduleHere(configuration)
 }
 ```
+
+## Paired exposure cadence
+
+**Paired exposure cadence** gives accumulated sections a paired-frame rhythm. At the default
+**Exposure pairs / second = 12**, one accumulated image is held for 1/12 real second. The first
+half is optionally softened and darkened; the second half shows the same exposure clear.
+That is 12 pairs, or 24 half-steps, per second even when source playback is 8×. This option
+starts off; enable it alongside **8x blur**, or leave it enabled while a score cuts between
+sharp and accumulated sections. Sharp sections bypass it automatically.
+
+**Soft-half blur sigma (px)** controls a Gaussian in original video pixels; **Soft-half blur
+mix** blends it with the full-resolution held exposure. Zero sigma or zero mix preserves the
+full-resolution image. **Soft-half darkening** removes a fraction of linear-light brightness:
+0.08 removes eight percent. The default sigma is 2 pixels, mix 1 and darkening 0.08.
+
+The exposure continues accumulating selected source frames normally. Only its displayed copy
+is held for each pair; the separate **Material: 12 fps** control limits source contributions
+and is not required for this effect. Pause freezes both the held exposure and its current
+half; seek, clear and loop wrap start a fresh exposure. Missed pairs are skipped, never queued.
+
+A full-resolution RGBA16F snapshot and two Gaussian passes are prepared before the eye draws,
+once per pair (and when the blur radius changes). Every tap stays inside its source eye.
+There is no previous headset image, readback or extra queued GPU frame: current eye poses
+still draw at the headset rate. Holding the material is the intentional apparent-framerate
+effect. The extra images are allocated lazily and retained until movie replacement or close;
+3840 × 1080 uses about 55 MiB beyond the temporal accumulator.
+
+The API is `movie.exposureCadenceEnabled`, `exposurePairsPerSecond`, `exposureBlurSigma`,
+`exposureBlurMix` and `exposureDarkening`. Box 4's `accumulatedImage` is the held full-resolution
+exposure while enabled, and `softenedImage` is its Gaussian version. `pc.accumulation.z` is the
+soft-half blur blend; `.w` is its linear darkening. Both are zero during the clear half.
+
+When changing speed, background playback re-anchors its clock to the image currently displayed.
+A decoder that fell behind at 8× therefore slows immediately when you select 1×, without racing
+to repay the old clock gap. Already-decoded future pictures wait for their presentation times;
+material caps discard only intermediate pictures that are already due.

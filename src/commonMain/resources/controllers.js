@@ -1177,6 +1177,10 @@
     const label = document.createElement("div");
     label.className = "phone-control-label";
     label.textContent = control.label || control.id || "control";
+    if (control.hoverText) {
+      label.dataset.hoverText = control.hoverText;
+      label.dataset.hoverHtml = control.hoverHtml || "";
+    }
 
     const value = document.createElement("div");
     value.className = "phone-control-value";
@@ -1187,13 +1191,13 @@
     shell.appendChild(header);
     // No hover on a touch surface, so a control's tooltip is a line under its label: clamped to two
     // lines, a tap opens the rest.
-    if (control.tooltip) {
+    if (control.hoverText) {
       const tip = document.createElement("div");
       tip.className = "phone-control-tooltip";
-      tip.textContent = control.tooltip;
+      tip.appendChild(safeControlHoverMarkdown(control.hoverHtml));
       tip.addEventListener("click", () => tip.classList.toggle("open"));
       shell.appendChild(tip);
-      shell.title = control.tooltip;
+      shell.title = control.hoverText;
     }
     return { shell, value };
   }

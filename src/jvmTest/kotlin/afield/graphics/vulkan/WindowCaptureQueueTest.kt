@@ -19,7 +19,7 @@ import kotlin.test.assertTrue
 class WindowCaptureQueueTest {
     @Test
     fun stoppedWindowReportsItsOwnFrameAndRemovesRequest() = runBlocking {
-        val queue = WindowCaptureQueue()
+        val queue = WindowCaptureQueue { "scene submissions=0; last failure=missing revealNodes" }
         queue.takeForFrame(0)
         val request = queue.enqueue(0, "unused.png", System.nanoTime())
         // A different window's progress must not hide this one's stall.
@@ -28,6 +28,7 @@ class WindowCaptureQueueTest {
             queue.await(request, timeoutMs = 1_000, noFrameTimeoutMs = 20)
         }
         assertTrue(error.message!!.contains("windowIndex=0 frame=1 unchanged"))
+        assertTrue(error.message!!.contains("last failure=missing revealNodes"))
         assertEquals(0, queue.pendingCount(0))
         assertTrue(queue.takeForFrame(0).isEmpty())
     }

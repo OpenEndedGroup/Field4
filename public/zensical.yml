@@ -108,6 +108,7 @@ nav:
     - Drawn Strokes Become Paint: chain_drawn_paint.md
     - A Generator, Graded by Datalog: chain_flow_islands.md
     - A Word Cut as a Stencil: chain_stencil_bridges.md
+    - A Tracked Body, Measured and Heard: chain_tracked_body.md
     # Last in Long Way Round, after the chain pages and grouped: the explainer talks, which chains.md
     # introduces as their own section after the MADP tools. More are expected to join them.
     - Explainers:
@@ -464,6 +465,7 @@ nav:
       - Geometry in the Headset: vision_geometry.md
       - Stereo RTT composite: stereo_rtt_composite.md
       - Stereo video: stereo_video.md
+      - Body and hand tracking: body_tracking.md
       - Field inside VR: field_vr_ide.md
       - ImGui as a VR Panel: imgui_vr_panel.md
       # Last, after the two in-headset pages: an OpenXR starting point that needs a headset with

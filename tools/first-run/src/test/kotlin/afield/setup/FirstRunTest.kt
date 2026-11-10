@@ -50,6 +50,17 @@ class FirstRunTest {
         assertTrue(plan.commands.isEmpty())
         assertTrue(plan.notes.any { "git-lfs" in it })
     }
+    @Test fun aMacWithoutHomebrewIsToldHowToGetCommandLineToolsAndGitLfs() {
+        val plan = packagePlan(null, true, setOf("git-lfs", "xcrun"), emptySet(), false, platform = "mac")
+        assertTrue(plan.commands.isEmpty())
+        assertTrue(plan.notes.any { "xcode-select --install" in it }, plan.notes.toString())
+        assertTrue(plan.notes.any { "https://git-lfs.com" in it }, plan.notes.toString())
+        assertFalse(plan.notes.any { "platform's package manager" in it }, plan.notes.toString())
+    }
+    @Test fun missingXcrunIsNamedAsCommandLineTools() {
+        assertEquals("Apple Command Line Tools", toolLabel("xcrun"))
+        assertEquals("git-lfs", toolLabel("git-lfs"))
+    }
     @Test fun nativeExtrasNeedCompilersEvenInBrowserMode() {
         val plan = packagePlan("apt-get", false, setOf("cmake", "g++"), setOf("ceres", "csound"), true)
         val argv = plan.commands.single()

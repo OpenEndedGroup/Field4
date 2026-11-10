@@ -9,7 +9,8 @@ dependencies {
     testImplementation(kotlin("test-junit"))
 }
 
-kotlin { jvmToolchain(17) }
+// No jvmToolchain: built on the JDK Gradle runs on (the wrapper's Corretto), which every checkout
+// has. A different pinned major needs a second JDK that nothing provisions.
 application {
     mainClass.set("afield.tools.refactor.MainKt")
     applicationDefaultJvmArgs = listOf("-Djava.awt.headless=true", "-Dapple.awt.UIElement=true", "-Xmx1g")

@@ -3,7 +3,9 @@ plugins {
     application
 }
 repositories { mavenCentral() }
-kotlin { jvmToolchain(17) }
+// No jvmToolchain: this builds and runs on the JDK Gradle itself runs on (the wrapper's Corretto),
+// which every machine has after ./gradlew's first contact. A pinned major that differs from it
+// needs a second JDK that a fresh machine does not have, and nothing here provisions one.
 // Reuse Server.kt's actual wordmark, without bringing Field or its compiler/native dependencies
 // into this independent application. Only this dependency-free source file joins the setup code.
 kotlin.sourceSets.getByName("main").kotlin.apply {
@@ -19,7 +21,7 @@ dependencies {
 }
 tasks.test { useJUnitPlatform() }
 
-// This independent build uses the wrapper's JDK 17. It never configures Field's build or needs LFS.
+// This independent build uses the wrapper's JDK. It never configures Field's build or needs LFS.
 tasks.register("prepareFirstRun") {
     dependsOn("installDist")
     outputs.upToDateWhen { false }

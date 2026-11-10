@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T14:00:48.809Z",
+  "capturedAt": "2026-11-10T16:27:01.116Z",
   "documentName": "inertial_movement",
   "outputs": [
     {
@@ -47,7 +47,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 712,
+      "width": 716,
       "height": 458,
       "path": "outputs/3.html"
     }

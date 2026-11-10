@@ -59,9 +59,9 @@ fun BufferParameters.asStereoViews(): StereoViews =
 /*graphics-pc-structure:colorimetry*/ var Structure.colorimetry by Structure.FromStructure<Any>() // Kr, Kb, full-range flag, reserved
 /*graphics-pc-binding:colorimetry*/ var Mesh.colorimetry by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>() // Kr, Kb, full-range flag, reserved
 /*graphics-pc-binding-group:colorimetry*/ var MeshGroup.colorimetry by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // Kr, Kb, full-range flag, reserved
-/*graphics-pc-structure:accumulation*/ var Structure.accumulation by Structure.FromStructure<Any>() // processed mix, valid image, reserved, reserved
-/*graphics-pc-binding:accumulation*/ var Mesh.accumulation by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>() // processed mix, valid image, reserved, reserved
-/*graphics-pc-binding-group:accumulation*/ var MeshGroup.accumulation by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // processed mix, valid image, reserved, reserved
+/*graphics-pc-structure:accumulation*/ var Structure.accumulation by Structure.FromStructure<Any>() // processed mix, valid image, spatial blur mix, linear darkening
+/*graphics-pc-binding:accumulation*/ var Mesh.accumulation by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>() // processed mix, valid image, spatial blur mix, linear darkening
+/*graphics-pc-binding-group:accumulation*/ var MeshGroup.accumulation by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // processed mix, valid image, spatial blur mix, linear darkening
 /*graphics-ubo:StereoViews*/ val ModulePointer.StereoViews by FromUniform()
 /*graphics-ubo-member:StereoViews:stereoVpL*/ var Structure.stereoVpL by Structure.FromStructure<afield.math.linalg.Matrix4f>() // left-eye projection/view
 /*graphics-ubo-member:StereoViews:stereoVpR*/ var Structure.stereoVpR by Structure.FromStructure<afield.math.linalg.Matrix4f>() // right-eye projection/view

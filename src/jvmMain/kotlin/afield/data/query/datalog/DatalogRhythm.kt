@@ -60,8 +60,7 @@ import afield.audio.synth.qFloor
  * up is unbounded recursion *across* time: a rule cannot see further back than the lookbehind.
  */
 class DlRhythm(
-    /** The program. Read afresh for each uncached cycle, so editing it changes the next bar. */
-    val program: Datalog,
+    program: Datalog,
     val stepsPerCycle: Int = 16,
     val lookbehind: Int = stepsPerCycle,
 ) {
@@ -75,8 +74,57 @@ class DlRhythm(
         override fun toString() = "event(${dlFormat(instrument)}, ${dlFormat(dlNormalize(note))}, ${dlFormat(dlNormalize(velocity))}, $step)"
     }
 
+    /**
+     * The program. Read afresh for each uncached cycle, so a new program changes the next bar.
+     *
+     * A launched pattern is queried on the pattern feeder's own thread, a little ahead of the audio,
+     * while box code edits on the main thread. Swapping the whole program with [rules] is the safe
+     * edit while it plays; mutating the [Datalog] in place races the feeder.
+     */
+    @Volatile
+    var program: Datalog = program
+        private set
+
+    private val live = java.util.concurrent.ConcurrentHashMap<String, () -> Iterable<Iterable<Any?>>>()
     private var memoKey: String? = null
     private val memo = HashMap<Long, Pair<Datalog, List<Event>>>()
+
+    /** How many bars have been solved (not served from the memo). A re-solve after an edit shows here. */
+    @Volatile
+    var solves: Long = 0L
+        private set
+
+    /**
+     * Replace the rules while the pattern plays: the next bar the scheduler asks for is solved with
+     * [source]. Returns this rhythm, so `rhythm.rules("...")` can be a box's last line.
+     */
+    fun rules(source: String): DlRhythm {
+        val next = Datalog().also { it.add(source) }
+        DlRhythm(next, stepsPerCycle, lookbehind).events(0) // parse and range errors surface here, on the caller's thread
+        program = next
+        return this
+    }
+
+    /**
+     * Base relation [pred] read from [rows] every time a bar is asked for, so facts that come from
+     * somewhere live — the drawing, a slider, a sensor — change what plays. The rows are compared by
+     * value: the memo is dropped only when they really changed. [rows] runs on whichever thread asks
+     * for the pattern (the feeder thread when launched), so it should read, not write.
+     *
+     * [notationHits] is the drawing's version.
+     */
+    fun facts(pred: String, rows: () -> Iterable<Iterable<Any?>>): DlRhythm {
+        live[pred] = rows
+        synchronized(this) { memoKey = null }
+        return this
+    }
+
+    /** Stop reading [pred] live. */
+    fun forget(pred: String): DlRhythm {
+        live.remove(pred)
+        synchronized(this) { memoKey = null }
+        return this
+    }
 
     /** The model for [cycle]'s window: the program plus the time predicates for that window. */
     fun window(cycle: Long): Datalog = solved(cycle).first
@@ -139,20 +187,31 @@ class DlRhythm(
     }
 
     private fun solved(cycle: Long): Pair<Datalog, List<Event>> {
-        // Keyed on the program text, so an edit to the rules drops the memo and the next query —
-        // the scheduler's next lookahead — is the new rules, with no restart of the player.
-        val key = program.program() + "\u0000" + program.facts.values.joinToString { "${it.name}:${it.rows().size}" }
-        if (key != memoKey) { memo.clear(); memoKey = key }
-        return memo.getOrPut(cycle) { solve(cycle) }
+        val prog = program
+        val liveRows = live.entries.sortedBy { it.key }.map { (k, f) -> k to f().map { row -> row.map(::dlNormalize) } }
+        // Keyed on the program text and every fact's value, so an edit to the rules or a moved mark
+        // drops the memo and the next query — the scheduler's next lookahead — is the new score,
+        // with no restart of the player.
+        val key = prog.program() + "\u0000" +
+            prog.facts.values.joinToString { "${it.name}:${it.rows().hashCode()}" } + "\u0000" +
+            liveRows.joinToString { "${it.first}:${it.second.hashCode()}" }
+        synchronized(this) {
+            if (key != memoKey) { memo.clear(); memoKey = key }
+            memo[cycle]?.let { return it }
+        }
+        val solved = solve(prog, liveRows, cycle)
+        synchronized(this) { if (key == memoKey) memo[cycle] = solved; solves++ }
+        return solved
     }
 
-    private fun solve(cycle: Long): Pair<Datalog, List<Event>> {
+    private fun solve(program: Datalog, liveRows: List<Pair<String, List<List<Any?>>>>, cycle: Long): Pair<Datalog, List<Event>> {
         val start = cycle * stepsPerCycle
         val until = start + stepsPerCycle
         val from = start - lookbehind
         val d = Datalog()
         program.rules.forEach { d.addRule(it) }
-        program.facts.values.forEach { rel -> if (rel.name !in TIME_PREDICATES) d.facts(rel.name, rel.rows()) }
+        program.facts.values.forEach { rel -> if (rel.name !in TIME_PREDICATES && !live.containsKey(rel.name)) d.facts(rel.name, rel.rows()) }
+        liveRows.forEach { (pred, rows) -> if (pred !in TIME_PREDICATES) d.facts(pred, rows) }
         addTimeFacts(d, program.rules, from, until)
         val events = d.rowsOf("event").mapNotNull { row ->
             if (row.size != 4) throw DlException("event/${row.size}: an event is event(Instrument, Note, Velocity, T)")

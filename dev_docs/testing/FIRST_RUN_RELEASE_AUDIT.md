@@ -20,7 +20,7 @@ now states prerequisites, unsupported architectures and optional-feature boundar
 | The server bound every interface and accepted cross-site browser commands by default | HTTPS defaults to loopback and the existing browser-origin guard defaults on. Remote clients opt into network binding. |
 | Enabling that guard blocked Monaco's opaque-origin `data:` worker | Monaco's bootstrap is served from Field's own origin; its real JavaScript diagnostics worker was exercised. |
 | Empty first-use caches/documents produced error-looking output | Missing persisted cache and missing initial-frame preview are normal first-use cases. |
-| Optional setup was scattered across prerequisites and runtime panels | A separate Kotlin/JVM 17 terminal welcome app offers desktop/browser mode and optional Vulkan/Python prerequisites. |
+| Optional setup was scattered across prerequisites and runtime panels | A separate Kotlin/JVM terminal welcome app offers desktop/browser mode and optional Vulkan/Python prerequisites. |
 
 The welcome app builds independently of Field's compiler fork and native code. It shows package
 manager argument vectors and requires `INSTALL` before execution. LFS recovery requires `PULL`.

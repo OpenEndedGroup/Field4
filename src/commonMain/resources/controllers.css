@@ -716,7 +716,7 @@ button {
   transition: width 90ms linear;
 }
 
-/* A control's tooltip (ControllerControl.tooltip): a quiet line under its label, two lines until tapped. */
+/* A control's tooltip (ControllerControl.hoverText): a quiet line under its label, two lines until tapped. */
 .phone-control-tooltip {
   color: var(--muted);
   font-size: 0.8125rem;

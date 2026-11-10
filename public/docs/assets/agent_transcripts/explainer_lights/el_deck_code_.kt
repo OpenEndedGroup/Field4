@@ -12,9 +12,7 @@ presentation(title = "Lights and Shadows") {
                     reached an eye. This talk builds up how much light lands on a surface,
                     and why one shadow is crisp while another is soft.
 
-                    Slide the lamp across, or change its size. Drag the picture to look around.
-                """
-                        .md
+                    Slide the lamp across, or change its size. Drag the picture to look around.""".md
                     p(classes = "muted") {
                         +"After “Lights and Shadows” by Bartosz Ciechanowski, ciechanow.ski/lights-and-shadows. Words and figures made in Field."
                     }
@@ -37,9 +35,7 @@ presentation(title = "Lights and Shadows") {
                         A lamp turns electrical power into light, and we measure the light the same way:
                         in watts, the energy leaving the source each second.
 
-                        Think of it as rays streaming outward. A stronger lamp sends more of them.
-                    """
-                            .md
+                        Think of it as rays streaming outward. A stronger lamp sends more of them.""".md
                     }
                 }
                 control("sphere_light", "power", 10.0)
@@ -54,9 +50,7 @@ presentation(title = "Lights and Shadows") {
 
                         Twice the power does not look twice as bright. Our eyes compress what they
                         receive, and a screen can only show so much: once a channel is full, every
-                        brighter value looks the same white.
-                    """
-                            .md
+                        brighter value looks the same white.""".md
                     }
                 }
                 control("perceived", "power", 10.0)
@@ -73,9 +67,7 @@ presentation(title = "Lights and Shadows") {
 
                         Most things do not glow. We see them because they send back part of the light
                         that reaches them. A matte surface scatters what it returns evenly in every
-                        direction, so it looks the same from wherever you stand.
-                    """
-                            .md
+                        direction, so it looks the same from wherever you stand.""".md
                     }
                 }
                 control("opening_scene", "position", 0.6)
@@ -95,9 +87,7 @@ presentation(title = "Lights and Shadows") {
 
                         Tilt a beam away from straight down and the same rays spread over more
                         floor. The light per square metre falls as the cosine of the angle from
-                        the surface's normal: half at 60°, nothing at 90°.
-                    """
-                            .md
+                        the surface's normal: half at 60°, nothing at 90°.""".md
                     }
                 }
                 control("light_angle", "angle", 0.0)
@@ -113,9 +103,7 @@ presentation(title = "Lights and Shadows") {
                         ## Shape from the cosine
 
                         Every point on a ball faces the lamp at a different angle. The cosine
-                        alone draws the shading that tells us the ball is round.
-                    """
-                            .md
+                        alone draws the shading that tells us the ball is round.""".md
                     }
                 }
                 markdownNote(
@@ -130,9 +118,7 @@ presentation(title = "Lights and Shadows") {
 
                         Light leaving a point spreads over a sphere, and a sphere's area grows with
                         the square of its radius. Twice as far, a quarter of the light: the
-                        inverse-square law.
-                    """
-                            .md
+                        inverse-square law.""".md
                     }
                 }
                 control("distance_rays", "distance", 1.0)
@@ -148,9 +134,7 @@ presentation(title = "Lights and Shadows") {
                         ## A light with a size
 
                         A real lamp is not a point. Each small piece of its surface behaves like a
-                        point light of its own, and the floor adds all of them up.
-                    """
-                            .md
+                        point light of its own, and the floor adds all of them up.""".md
                     }
                 }
                 control("opening_scene", "position", 0.6)
@@ -170,9 +154,7 @@ presentation(title = "Lights and Shadows") {
                         ## How big things look
 
                         How large something looks is the angle it takes up in front of you. Walk
-                        away from a car and that angle shrinks, close to one over the distance.
-                    """
-                            .md
+                        away from a car and that angle shrinks, close to one over the distance.""".md
                     }
                 }
                 control("car_angle", "distance", 10.0)
@@ -189,9 +171,7 @@ presentation(title = "Lights and Shadows") {
 
                         Measure an angle by the arc it cuts from a circle: arc length over radius
                         is the angle in radians, and a whole turn is 2π. For a small angle the arc
-                        is nearly straight, so size ≈ angle × distance.
-                    """
-                            .md
+                        is nearly straight, so size ≈ angle × distance.""".md
                     }
                 }
                 control("radians", "angle", 60.0)
@@ -210,9 +190,7 @@ presentation(title = "Lights and Shadows") {
 
                         Project a shape onto a sphere of radius one around your eye. The patch it
                         covers is its solid angle, in steradians; the whole sphere is 4π. Move a
-                        panel twice as far and its solid angle drops to a quarter.
-                    """
-                            .md
+                        panel twice as far and its solid angle drops to a quarter.""".md
                     }
                 }
                 control("projected_rect", "distance", 1.3)
@@ -233,9 +211,7 @@ presentation(title = "Lights and Shadows") {
                         A point on a floor looks out on a hemisphere of directions. Project the lamp
                         onto that hemisphere, then flatten it straight down onto the disc beneath:
                         the share of the disc it covers is the share of light the point gets.
-                        The flattening is the cosine factor again.
-                    """
-                            .md
+                        The flattening is the cosine factor again.""".md
                     }
                 }
                 control("hemisphere", "lamp position", 0.0)
@@ -256,9 +232,7 @@ presentation(title = "Lights and Shadows") {
                         Step back from a lamp and it looks just as bright, only smaller. Each cell in
                         the eye takes in a fixed cone of directions; farther away, that cone covers
                         more of the lamp, and the extra area makes up for the inverse-square law
-                        exactly. What stays the same is called radiance.
-                    """
-                            .md
+                        exactly. What stays the same is called radiance.""".md
                     }
                 }
                 control("constant_radiance", "distance", 1.0)
@@ -275,9 +249,7 @@ presentation(title = "Lights and Shadows") {
 
                         A matte emitter sends less power off to the side, in proportion to the cosine
                         of the angle. Seen from that side its surface is foreshortened by the same
-                        cosine, so it looks equally bright from any direction.
-                    """
-                            .md
+                        cosine, so it looks equally bright from any direction.""".md
                     }
                 }
                 control("lambert_lobe", "viewing angle", 0.0)
@@ -295,9 +267,7 @@ presentation(title = "Lights and Shadows") {
 
                         A mirror sends each ray back at the angle it arrived. Roughen it and every
                         ray meets a facet tilted its own way, so the returning rays fan out. A surface
-                        rough enough at every scale sends light back in all directions alike: matte.
-                    """
-                            .md
+                        rough enough at every scale sends light back in all directions alike: matte.""".md
                     }
                 }
                 control("rough_mirror", "roughness", 0.0)
@@ -318,9 +288,7 @@ presentation(title = "Lights and Shadows") {
 
                         Keep the lamp's power fixed and make it bigger. Points near the edge of the
                         shadow can now see part of the lamp, and the hard edge softens into a
-                        penumbra.
-                    """
-                            .md
+                        penumbra.""".md
                     }
                 }
                 control("soft_shadow", "size", 0.05)
@@ -342,9 +310,7 @@ presentation(title = "Lights and Shadows") {
                         ## Coloured light
 
                         We stand in for the many wavelengths of light with three: red, green and blue
-                        power. A surface's colour is how much of each it sends back.
-                    """
-                            .md
+                        power. A surface's colour is how much of each it sends back.""".md
                     }
                 }
                 markdownNote("Pick a lamp colour: under pure red, the green and blue tiles go dark. [[back]] [[next]]")
@@ -356,9 +322,7 @@ presentation(title = "Lights and Shadows") {
                         ## Lights add up
 
                         Two lamps on one floor simply add. Where a red and a green pool of light
-                        overlap, the floor turns yellow.
-                    """
-                            .md
+                        overlap, the floor turns yellow.""".md
                     }
                 }
                 control("additive", "red", true)
@@ -380,9 +344,7 @@ presentation(title = "Lights and Shadows") {
 
                         The light a surface sends back lands on other surfaces. A red wall beside a
                         white floor tints the floor red. Each bounce is weaker than the last, and
-                        their sum is the scene's indirect light.
-                    """
-                            .md
+                        their sum is the scene's indirect light.""".md
                     }
                 }
                 control("red_wall", "bounces", 0.0)
@@ -404,9 +366,7 @@ presentation(title = "Lights and Shadows") {
 
                         Surround the scene with light from every direction, like an overcast sky.
                         Nothing casts a hard shadow, yet a tile still darkens the ground just
-                        beneath it.
-                    """
-                            .md
+                        beneath it.""".md
                     }
                 }
                 control("sky_sphere", "lamps", 1.0)
@@ -425,9 +385,7 @@ presentation(title = "Lights and Shadows") {
 
                 - Matt Pharr, Wenzel Jakob and Greg Humphreys, [*Physically Based Rendering*](https://pbr-book.org/), free online.
                 - Romain Guy and Mathias Agopian, [*Physically Based Rendering in Filament*](https://google.github.io/filament/Filament.md.html), free online.
-                - Michael F. Cohen and John R. Wallace, [*Radiosity and Realistic Image Synthesis*](https://archive.org/details/radiosityrealist0000cohe) (1993).
-            """
-                    .md
+                - Michael F. Cohen and John R. Wallace, [*Radiosity and Realistic Image Synthesis*](https://archive.org/details/radiosityrealist0000cohe) (1993).""".md
                 p(classes = "muted") {
                     +"After “Lights and Shadows” by Bartosz Ciechanowski, https://ciechanow.ski/lights-and-shadows/. Words and figures made in Field."
                 }

@@ -198,6 +198,25 @@ class DocumentedApiEvaluationTest {
         // presentation_studio.md teaches these for decks, which need the Electron app and an open canvas.
         "arrangeBoxes" to "presentation_studio.md; arranging needs a canvas that has drawn the figures' panels, so only Electron or a browser runs it; PresentationArrangement tests cover the layout",
         "onDrag" to "presentation_studio.md; drag events come from a person dragging a lines figure in a browser or Electron, which CI has no one to do",
+        // body_one requires an active Vulkan/OpenXR session and real tracking. Its live
+        // linux-wivrn-live captures exercise these paths; BodyGeometryTest covers pure queries.
+        "bodyGeometry" to "body_tracking.md; snapshots body/head state from a live OpenXRHmdTarget, unavailable in headless CI; the resulting geometry queries have JVM tests",
+        "bodyState" to "body_tracking.md; reads named body estimates from a connected OpenXR runtime; body_one is COMPILE_ONLY and the live headset capture exercises tracking",
+        "bodyTrackerCount" to "body_tracking.md; runtime-dependent raw tracker count needs a connected OpenXR session; checked in the live body_one status panel",
+        "bodyTrackerPose" to "body_tracking.md; reads a raw tracker pose from the live OpenXR session; exercised by the real headset inspector capture",
+        "controllerState" to "body_tracking.md; runtime controller pose/input snapshot needs a connected OpenXR session; body_one compiles in CI and runs in the live capture profile",
+        "handState" to "body_tracking.md; hand joint observations require runtime tracking in an active OpenXR session; exercised by body_one on the connected Quest",
+        "recenterInspection" to "body_tracking.md; document-local helper reads the live headset heading and updates its inspection offset; body_one is COMPILE_ONLY, live tracking controls exercise it",
+        "reportSection" to "body_tracking.md; document-local status formatter closes over live tracking observations; body_one is COMPILE_ONLY and live inspector panels exercise its output",
+        "updateBodyQueries" to "body_tracking.md; document-local overlay update reads current head/hand/controller tracking and publishes Vulkan marker uniforms; live query capture exercises it, pure geometry has JVM tests",
+        // fabricate_renderer.md "A sky that lights the scene" (2026-11-10): the sky_environment boxes
+        // draw through StandardRenderer into a native window, so the transcript is COMPILE_ONLY.
+        // The CPU bake they consume has tests (AtmosphereTest, PathTraceEnvironmentAtmosphereTest).
+        "applyFabricateMaterial" to "fabricate_renderer.md; sets a material on a bundle bound to a live Vulkan renderer; sky_environment is COMPILE_ONLY, its scene capture exercises it",
+        "bindNode" to "fabricate_renderer.md; binds a scene node into the renderer's GPU mesh pairs, needing a live Renderer; sky_environment is COMPILE_ONLY, real captures exercise it",
+        "registerTestTorus" to "fabricate_renderer.md; uploads a torus mesh to a live StandardRenderer bundle; sky_environment is COMPILE_ONLY, its scene capture exercises it",
+        "showEnvironmentBackground" to "fabricate_renderer.md; switches the deferred pass's backdrop on a live bundle; needs a Vulkan renderer, exercised by the sky_environment and skybox captures",
+        "torusNode" to "fabricate_renderer.md; a helper the sky_environment box defines for itself over a live bundle; COMPILE_ONLY transcript, real scene capture",
         // growing_nca.md (2026-11-08): stepMesh is not a library API but a helper the page's GPU box
         // defines for itself, building one fixed-parity ComputeMesh; growing_nca is COMPILE_ONLY because
         // that box needs a renderer. GrowingNcaTest runs the same rule on the CPU.

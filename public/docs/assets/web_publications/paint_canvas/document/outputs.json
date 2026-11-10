@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T14:25:26.775Z",
+  "capturedAt": "2026-11-10T16:52:36.522Z",
   "documentName": "paint_canvas",
   "outputs": [
     {
@@ -30,7 +30,7 @@
       "warnings": [],
       "kinds": [],
       "width": 469,
-      "height": 46,
+      "height": 45,
       "path": "outputs/2.html"
     }
   ]

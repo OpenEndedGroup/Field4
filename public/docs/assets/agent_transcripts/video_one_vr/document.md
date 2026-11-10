@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 1 · Headset / preview / Field pane
@@ -324,7 +324,7 @@ The box's vertex / fragment tabs are the shader source. moduleHere supplies Alt+
 Update Shader, and typed Kotlin accessors for its documented push constants.
 
 ```edn [field-box id="video1_shader" role="properties"]
-{"id" "video1_shader" "index" 3 "name" "4 · Video shader" "parents" ["root" "video1_screen"] "children" ["video1_playback"] "properties" {"children" #{#afield/box "video1_playback"} "parents" #{#afield/box "root" #afield/box "video1_screen"} "name" "4 · Video shader" "_tombstone" false "frame" #afield/rect [1800.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "video1_shader_code_.kt" "lines" 7 "characters" 235 "sha256" "53437949ea2e45560adb2b9ab4e4841e678bd4f42b722e8ae3a37c34a6c30b20"} {"name" "vertex" "language" "glsl" "path" "video1_shader_vertex_.glsl" "lines" 53 "characters" 1996 "sha256" "7ab5a457a6b1a676b37087147f741f097d76e9f54a40512d754bf179dfbf2680"} {"name" "fragment" "language" "glsl" "path" "video1_shader_fragment_.glsl" "lines" 41 "characters" 2359 "sha256" "2c9dd37e2c63c66dbb40175fdbff1b38fc489c06460c3f68100361923a9c5790"}]}
+{"id" "video1_shader" "index" 3 "name" "4 · Video shader" "parents" ["root" "video1_screen"] "children" ["video1_playback"] "properties" {"children" #{#afield/box "video1_playback"} "parents" #{#afield/box "root" #afield/box "video1_screen"} "name" "4 · Video shader" "_tombstone" false "frame" #afield/rect [1800.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "video1_shader_code_.kt" "lines" 7 "characters" 235 "sha256" "53437949ea2e45560adb2b9ab4e4841e678bd4f42b722e8ae3a37c34a6c30b20"} {"name" "vertex" "language" "glsl" "path" "video1_shader_vertex_.glsl" "lines" 53 "characters" 2012 "sha256" "defec8a534b4508ccd61291aa9de49bd8a07fb2269c18530e2bcdb57e72af9f1"} {"name" "fragment" "language" "glsl" "path" "video1_shader_fragment_.glsl" "lines" 48 "characters" 2848 "sha256" "7e352c95efb830022ff4bf4470c41d612d7d73414e12825feccfe34f391ddaa6"}]}
 ```
 
 ```kotlin [field-property box="video1_shader" name="code" path="video1_shader_code_.kt"]
@@ -368,7 +368,7 @@ layout(push_constant) uniform MoviePush {
     vec4 surface; // arc width, height, bend radians, strip count
     vec4 image; // packed source width/height, swap eyes, vertical flip
     vec4 colorimetry; // Kr, Kb, full-range flag, reserved
-    vec4 accumulation; // processed mix, valid image, reserved, reserved
+    vec4 accumulation; // processed mix, valid image, spatial blur mix, linear darkening
 }
 pc;
 layout(location = 0) out vec2 uv;
@@ -398,12 +398,13 @@ void main() {
 layout(binding = 0) uniform sampler2D luma; // full-resolution packed SBS P010 luma, R16_UNORM
 layout(binding = 1) uniform sampler2D chroma; // half-resolution interleaved Cb/Cr, R16G16_UNORM
 layout(binding = 2) uniform sampler2D accumulatedImage; // float16 linear-light running mean
+layout(binding = 3) uniform sampler2D softenedImage; // held exposure after per-eye Gaussian filtering
 layout(push_constant) uniform MoviePush {
     mat4 model; // screen-local metres to room space
     vec4 surface; // arc width, height, bend radians, strip count
     vec4 image; // packed source width/height, swap eyes, vertical flip
     vec4 colorimetry; // Kr, Kb, full-range flag, reserved
-    vec4 accumulation; // processed mix, valid image, reserved, reserved
+    vec4 accumulation; // processed mix, valid image, spatial blur mix, linear darkening
 }
 pc;
 layout(location = 0) in vec2 uv; // per-eye image coordinates, top-left origin
@@ -433,6 +434,12 @@ void main() {
     // display/stream encoding.
     vec3 sharp = toLinear(clamp(rgb, 0, 1));
     vec3 blurred = pc.accumulation.y > .5 ? texture(accumulatedImage, qY).rgb : sharp;
+    if (pc.accumulation.y > .5 && pc.accumulation.z > 0) {
+        vec2 halfTexel = .5 / vec2(textureSize(softenedImage, 0));
+        vec2 qSoft = clamp(q, lower + halfTexel, upper - halfTexel);
+        blurred = mix(blurred, texture(softenedImage, qSoft).rgb, pc.accumulation.z);
+    }
+    blurred *= 1 - pc.accumulation.w; // darken only the exposure, in linear light
     color = vec4(mix(sharp, blurred, pc.accumulation.x), 1);
 }
 ```
@@ -442,7 +449,7 @@ void main() {
 <!-- field-box id="video1_playback" index="4" -->
 
 ```edn [field-box id="video1_playback" role="properties"]
-{"id" "video1_playback" "index" 4 "name" "3 · Movie / transport" "parents" ["root" "video1_shader" "video1_screen"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "video1_shader" #afield/box "video1_screen"} "name" "3 · Movie / transport" "_tombstone" false "frame" #afield/rect [1200.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "video1_playback_code_.kt" "lines" 158 "characters" 6403 "sha256" "57e1a46831caee51e1a1a3db5ebae3030c25a9599d1ce3c158f2a004771eade0"}]}
+{"id" "video1_playback" "index" 4 "name" "3 · Movie / transport" "parents" ["root" "video1_shader" "video1_screen"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "video1_shader" #afield/box "video1_screen"} "name" "3 · Movie / transport" "_tombstone" false "frame" #afield/rect [1200.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "video1_playback_code_.kt" "lines" 221 "characters" 9218 "sha256" "026424cd3abadfd045a7f1af41791054e8c6768d9d8a85d746935cb140580966"}]}
 ```
 
 ```kotlin [field-property box="video1_playback" name="code" path="video1_playback_code_.kt"]
@@ -460,9 +467,72 @@ var persistenceControl: ControlValueHandle<Double>? = null
 var mixControl: ControlValueHandle<Double>? = null
 var eyeSwapControl: ControlValueHandle<Boolean>? = null
 
-// Rebuild only on file change, when duration changes. Handles keep playback ticks out of
-// the document edit log; seeks pause, and an explicit Playing gesture resumes.
+/*
+Rebuild only on file change, when duration changes. Handles keep playback ticks out of
+the document edit log; seeks pause, and an explicit Playing gesture resumes.
+Paired film-like exposures: one held accumulated image, soft/dark first, then clear.
+These controls only affect accumulated material; ordinary sharp playback is unchanged.
+*/
+fun showExposureCadence() {
+    controlGroup("exposure cadence") {
+        checkbox(
+            "Paired exposure cadence",
+            initialValue = movie.exposureCadenceEnabled,
+            hoverText =
+                "Hold one accumulated exposure per pair, showing a softened/darker half followed by a clear half. Real-time cadence is independent of 8x playback and headset refresh. Sharp sections bypass it; pause freezes the current half.",
+        ) {
+            movie.exposureCadenceEnabled = it
+        }
+        slider(
+            "Exposure pairs / second",
+            min = 1.0,
+            max = 30.0,
+            step = .1,
+            initialValue = movie.exposurePairsPerSecond,
+            hoverText =
+                "12 means twelve complete soft/dark → clear pairs per real second: 24 half-steps, like the paired frames of a 24 fps movie. The accumulated image is held for each pair; intermediate exposure samples still accumulate normally.",
+        ) {
+            movie.exposurePairsPerSecond = it
+        }
+        slider(
+            "Soft-half blur sigma (px)",
+            min = 0.0,
+            max = 16.0,
+            step = .1,
+            initialValue = movie.exposureBlurSigma.toDouble(),
+            hoverText =
+                "Gaussian sigma in original video pixels, applied separately to each eye. A half-resolution separable blur is rebuilt once per exposure pair, before drawing with the current head pose. The clear half keeps the full-resolution held image.",
+        ) {
+            movie.exposureBlurSigma = it.toFloat()
+        }
+        slider(
+            "Soft-half blur mix",
+            min = 0.0,
+            max = 1.0,
+            step = .01,
+            initialValue = movie.exposureBlurMix.toDouble(),
+            hoverText =
+                "Blend between the held exposure and its spatially blurred version during the first half only. Zero retains the held full-resolution exposure, one uses the Gaussian result. Independent of temporal accumulation mix.",
+        ) {
+            movie.exposureBlurMix = it.toFloat()
+        }
+        slider(
+            "Soft-half darkening",
+            min = 0.0,
+            max = .5,
+            step = .005,
+            initialValue = movie.exposureDarkening.toDouble(),
+            hoverText =
+                "Fraction of linear-light brightness removed from the first half of each exposure pair. 0.08 removes eight percent; zero turns the darkening off. The clear half has unchanged brightness.",
+        ) {
+            movie.exposureDarkening = it.toFloat()
+        }
+    }
+    displayOpen("exposure cadence")
+}
+
 fun showTransport() {
+    showExposureCadence()
     displayClear("transport")
     controlGroup("transport") {
         playingControl = checkbox("Playing", initialValue = movie.playing) { if (it) movie.play() else movie.pause() }

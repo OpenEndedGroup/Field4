@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-229 source file(s), 719 public symbol(s), 318 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+233 source file(s), 727 public symbol(s), 322 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -323,7 +323,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1040) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1051) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -1428,6 +1428,20 @@ Runs `ShaderLatticeBoltzmannSystem` and `ShaderForestFireSystem` on a real rende
 | --- | --- |
 | <a id="atmospheregpuparitysmoke-kt--atmospheregpuparitysmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/AtmosphereGpuParitySmoke/#L64) |  |
 
+## BodySegmentFieldGpuSmoke.kt { #bodysegmentfieldgpusmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/BodySegmentFieldGpuSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/BodySegmentFieldGpuSmoke/)
+
+### BodySegmentFieldGpuSmoke { #bodysegmentfieldgpusmoke-kt-bodysegmentfieldgpusmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">BodySegmentFieldGpuSmoke</span></code>](source/jvmMain/afield/examples/four/BodySegmentFieldGpuSmoke/#L32)
+
+Real GPU address/layout, current-pose search, force sign and world/local transform checks.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="bodysegmentfieldgpusmoke-kt--bodysegmentfieldgpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/BodySegmentFieldGpuSmoke/#L33) |  |
+
 ## BoidSketchSmoke.kt { #boidsketchsmoke-kt }
 
 `src/jvmMain/kotlin/afield/examples/four/BoidSketchSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/BoidSketchSmoke/)
@@ -1999,6 +2013,20 @@ Close immediately after buffer replacement, before deferred releases can age out
 | --- | --- |
 | <a id="renderercleanupsmoke-kt--renderercleanupsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/RendererCleanupSmoke/#L37) |  |
 
+## RendererRecordingRecoverySmoke.kt { #rendererrecordingrecoverysmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/RendererRecordingRecoverySmoke.kt` — [read the source](source/jvmMain/afield/examples/four/RendererRecordingRecoverySmoke/)
+
+### RendererRecordingRecoverySmoke { #rendererrecordingrecoverysmoke-kt-rendererrecordingrecoverysmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">RendererRecordingRecoverySmoke</span></code>](source/jvmMain/afield/examples/four/RendererRecordingRecoverySmoke/#L29)
+
+Real failed command recording followed by recovery and desktop/offscreen presentation changes.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="rendererrecordingrecoverysmoke-kt--rendererrecordingrecoverysmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/RendererRecordingRecoverySmoke/#L31) |  |
+
 ## RttGpuTelemetrySmoke.kt { #rttgputelemetrysmoke-kt }
 
 `src/jvmMain/kotlin/afield/examples/four/RttGpuTelemetrySmoke.kt` — [read the source](source/jvmMain/afield/examples/four/RttGpuTelemetrySmoke/)
@@ -2129,6 +2157,20 @@ Checks the first packed-image sampling, eye draw count, and eye aspect on a non-
 | --- | --- |
 | <a id="stereopackingsmoketest-kt--stereopackingsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoPackingSmokeTest/#L35) |  |
 
+## StereoVideoCarouselSmoke.kt { #stereovideocarouselsmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/StereoVideoCarouselSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/StereoVideoCarouselSmoke/)
+
+### StereoVideoCarouselSmoke { #stereovideocarouselsmoke-kt-stereovideocarouselsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StereoVideoCarouselSmoke</span></code>](source/jvmMain/afield/examples/four/StereoVideoCarouselSmoke/#L36)
+
+Real P010 GPU copies, eight independently accumulated surfaces, and a shared decoder through seek/refill.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="stereovideocarouselsmoke-kt--stereovideocarouselsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoVideoCarouselSmoke/#L37) |  |
+
 ## StereoVideoDecodeProbe.kt { #stereovideodecodeprobe-kt }
 
 `src/jvmMain/kotlin/afield/examples/four/StereoVideoDecodeProbe.kt` — [read the source](source/jvmMain/afield/examples/four/StereoVideoDecodeProbe/)
@@ -2149,13 +2191,13 @@ Optional local-file throughput probe: the actual P010 conversion/copy path, with
 
 ### StereoVideoPrecisionSmoke { #stereovideoprecisionsmoke-kt-stereovideoprecisionsmoke }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">StereoVideoPrecisionSmoke</span></code>](source/jvmMain/afield/examples/four/StereoVideoPrecisionSmoke/#L36)
+[<code class="highlight"><span class="k">object</span> <span class="nc">StereoVideoPrecisionSmoke</span></code>](source/jvmMain/afield/examples/four/StereoVideoPrecisionSmoke/#L37)
 
 A real lossless ten-bit video through P010 uploads, the movie shader and the shared eye target.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="stereovideoprecisionsmoke-kt--stereovideoprecisionsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoVideoPrecisionSmoke/#L38) |  |
+| <a id="stereovideoprecisionsmoke-kt--stereovideoprecisionsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoVideoPrecisionSmoke/#L39) |  |
 
 ## StigmergySweep.kt { #stigmergysweep-kt }
 
@@ -2170,6 +2212,20 @@ A parameter sweep for multi-species [`ShaderPhysarumSystem`](alife.md#alife-phys
 | Declaration | Summary |
 | --- | --- |
 | <a id="stigmergysweep-kt--stigmergysweep--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StigmergySweep/#L112) |  |
+
+## VideoAutoExposureSmoke.kt { #videoautoexposuresmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/VideoAutoExposureSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/VideoAutoExposureSmoke/)
+
+### VideoAutoExposureSmoke { #videoautoexposuresmoke-kt-videoautoexposuresmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">VideoAutoExposureSmoke</span></code>](source/jvmMain/afield/examples/four/VideoAutoExposureSmoke/#L37)
+
+Real float RTT reductions, weighted pooling, directional alpha-beta tracking and asynchronous telemetry.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="videoautoexposuresmoke-kt--videoautoexposuresmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/VideoAutoExposureSmoke/#L38) |  |
 
 ## EvolveWorkedExample.kt { #evolveworkedexample-kt }
 

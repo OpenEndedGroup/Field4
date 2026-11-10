@@ -92,13 +92,15 @@ class DiskBudget:
         self.admitted = True
 
     def close(self):
+        # Explicit close removes the record now. If an abandoned budget is collected, its file
+        # handle closes without taking the admission lock; the next admission reaps its stale record.
         self.claim.close()
 
     def __del__(self):
         try:
-            self.close()
+            self.claim.abandon()
         except Exception:
-            pass  # OS lock expiry still makes the claim recoverable after process exit.
+            pass  # Process exit still releases the OS lock.
 
     def report(self) -> dict:
         return {"path": str(self.path), "floorBytes": self.floor, "reserveBytes": self.reserve,

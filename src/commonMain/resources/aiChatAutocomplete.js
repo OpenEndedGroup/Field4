@@ -16,6 +16,12 @@ const MIRRORED = ["fontFamily", "fontSize", "fontWeight", "fontStyle", "fontVari
         "paddingLeft", "whiteSpace", "wordBreak", "overflowWrap", "direction"];
 
 let offForThisField = false;
+const diagnosticEvents = [];
+
+/** Content-free request/display evidence, useful when a suggestion disappears before it can be read. */
+export function chatAutocompleteDiagnostics() {
+        return {state: chatAutocompleteState(), events: diagnosticEvents.slice()};
+}
 
 export function chatAutocompleteState() {
         if (offForThisField) return "off for this Field (AFIELD_AI4_CHAT_AUTOCOMPLETE)";
@@ -42,7 +48,7 @@ export function setChatAutocomplete(on) {
  * Lays the suggestion mirror over `textarea` (inside `inputWrap`, which must be positioned) and returns
  * `{clear}`; call `clear()` whenever the panel empties or replaces the draft itself.
  */
-export function mountChatAutocomplete(inputWrap, textarea, { chatUid, chatProperty }) {
+export function mountChatAutocomplete(inputWrap, textarea, { chatUid, chatProperty, requestSuggestion = sendWithReply }) {
         const ghost = document.createElement("div");
         ghost.className = "ai-chat-ghost";
         ghost.setAttribute("aria-hidden", "true");
@@ -56,15 +62,25 @@ export function mountChatAutocomplete(inputWrap, textarea, { chatUid, chatProper
         let suggestion = "";
         // The draft `suggestion` follows; a draft changed by the panel itself (send, rewind) makes it stale.
         let suggestionFor = "";
+        let suggestionAt = 0;
         let lastValue = textarea.value;
         let timer = 0;
         let seq = 0;
         let backoffUntil = 0;
+        let inFlight = false;
+        let pendingRequest = false;
 
-        const cursorAtEnd = () => textarea.selectionStart === textarea.value.length && textarea.selectionEnd === textarea.value.length;
+        // Spellcheck and cursor placement can leave an invisible trailing space after the caret.
+        // Complete at the caret while preserving that suffix, rather than silently disabling suggestions.
+        const cursorAtEnd = () => textarea.selectionStart === textarea.selectionEnd && /^\s*$/.test(textarea.value.slice(textarea.selectionEnd));
+        const prefix = () => textarea.value.slice(0, textarea.selectionEnd);
+        function note(event, fields = {}) {
+                diagnosticEvents.push({at: new Date().toISOString(), uid: chatUid(), event, ...fields});
+                if (diagnosticEvents.length > 80) diagnosticEvents.shift();
+        }
 
         function render() {
-                if (!suggestion || textarea.value !== suggestionFor) {
+                if (!suggestion || textarea.value !== suggestionFor || textarea.selectionEnd !== suggestionAt) {
                         suggestion = "";
                         ghost.style.display = "none";
                         return;
@@ -75,7 +91,7 @@ export function mountChatAutocomplete(inputWrap, textarea, { chatUid, chatProper
                 ghost.style.top = `${textarea.offsetTop + textarea.clientTop}px`;
                 ghost.style.width = `${textarea.clientWidth}px`;
                 ghost.style.height = `${textarea.clientHeight}px`;
-                typed.textContent = textarea.value;
+                typed.textContent = textarea.value.slice(0, suggestionAt);
                 rest.textContent = suggestion;
                 ghost.style.display = "block";
                 ghost.scrollTop = textarea.scrollTop;
@@ -89,66 +105,87 @@ export function mountChatAutocomplete(inputWrap, textarea, { chatUid, chatProper
                 render();
         }
 
-        function eligible() {
+        function eligible(ignoreBackoff = false) {
                 const value = textarea.value;
-                return chatAutocompleteOn() && Date.now() >= backoffUntil && document.activeElement === textarea
+                return chatAutocompleteOn() && (ignoreBackoff || Date.now() >= backoffUntil) && document.activeElement === textarea
                         && !textarea.disabled && cursorAtEnd() && value.trim().length >= 3 && !value.trimStart().startsWith("/");
         }
 
         function schedule() {
                 clearTimeout(timer);
-                if (eligible()) timer = setTimeout(request, DELAY_MS);
+                if (eligible(true)) timer = setTimeout(request, Math.max(DELAY_MS, backoffUntil - Date.now() + 10));
         }
 
         function request() {
                 if (!eligible()) return;
+                if (inFlight) { pendingRequest = true; return; }
                 const uid = chatUid();
                 if (!uid) return;
-                const draft = textarea.value;
+                const draft = prefix();
                 const mine = ++seq;
-                sendWithReply("ai-chat-suggest", { uid, property: chatProperty(), draft, seq: mine },
+                inFlight = true;
+                const started = Date.now();
+                note("requested", {draftChars: draft.length});
+                requestSuggestion("ai-chat-suggest", { uid, property: chatProperty(), draft, seq: mine },
                         `ai-chat-suggest-${uid}-${mine}-${Date.now()}`, (_message, response) => {
+                                inFlight = false;
+                                const retryLatest = pendingRequest;
+                                pendingRequest = false;
+                                note("response", {elapsedMs: Date.now() - started, suggestionChars: response?.suggestion?.length || 0,
+                                        failed: !!response?.error, disabled: !!response?.disabled});
                                 if (response?.disabled) {
                                         offForThisField = true;
                                         clear();
                                 } else if (response?.error) {
                                         backoffUntil = Date.now() + ERROR_BACKOFF_MS;
+                                        schedule();
                                 } else if (mine === seq) {
                                         show(draft, response?.suggestion || "");
+                                } else {
+                                        note("discarded", {reason: "cursor_or_draft_changed"});
                                 }
+                                if (!suggestion && eligible() && (retryLatest || prefix() !== draft)) schedule();
                                 return "remove";
                         });
         }
 
         // The reply is for `draft`; whatever the person typed since must be the start of the suggestion.
         function show(draft, text) {
-                const value = textarea.value;
-                if (!text || !value.startsWith(draft) || !cursorAtEnd() || document.activeElement !== textarea) return;
+                const value = prefix();
+                const reason = !text ? "empty_suggestion" : !value.startsWith(draft) ? "draft_changed"
+                        : !cursorAtEnd() ? "cursor_inside_text" : document.activeElement !== textarea ? "not_focused" : null;
+                if (reason) { note("discarded", {reason}); return; }
                 const typedSince = value.slice(draft.length);
-                if (!text.startsWith(typedSince) || text.length === typedSince.length) return;
+                if (!text.startsWith(typedSince) || text.length === typedSince.length) {
+                        note("discarded", {reason: "typed_past_suggestion"}); return;
+                }
                 suggestion = text.slice(typedSince.length);
-                suggestionFor = value;
+                suggestionFor = textarea.value;
+                suggestionAt = textarea.selectionEnd;
                 render();
+                note("shown", {suggestionChars: suggestion.length});
         }
 
         function accept(text) {
                 if (!text) return;
                 textarea.focus();
-                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+                textarea.setSelectionRange(suggestionAt, suggestionAt);
                 // insertText keeps the textarea's own undo; the input event it fires consumes the suggestion.
                 if (!document.execCommand?.("insertText", false, text)) {
-                        textarea.setRangeText(text, textarea.value.length, textarea.value.length, "end");
+                        textarea.setRangeText(text, suggestionAt, suggestionAt, "end");
                         textarea.dispatchEvent(new Event("input", { bubbles: true }));
                 }
         }
 
         textarea.addEventListener("input", () => {
                 const value = textarea.value;
-                if (suggestion && suggestionFor === lastValue && value.startsWith(lastValue) && cursorAtEnd()) {
-                        const added = value.slice(lastValue.length);
+                if (suggestion && suggestionFor === lastValue && value.startsWith(lastValue.slice(0, suggestionAt)) && cursorAtEnd()
+                        && value.slice(textarea.selectionEnd) === lastValue.slice(suggestionAt)) {
+                        const added = value.slice(suggestionAt, textarea.selectionEnd);
                         if (added && suggestion.startsWith(added)) {
                                 suggestion = suggestion.slice(added.length);
                                 suggestionFor = value;
+                                suggestionAt = textarea.selectionEnd;
                                 lastValue = value;
                                 render();
                                 if (!suggestion) schedule();
@@ -186,6 +223,11 @@ export function mountChatAutocomplete(inputWrap, textarea, { chatUid, chatProper
         });
 
         textarea.addEventListener("mousedown", clear);
+        textarea.addEventListener("mouseup", schedule);
+        textarea.addEventListener("focus", schedule);
+        textarea.addEventListener("keyup", event => {
+                if (!suggestion && /^(Arrow|Home$|End$|Page)/.test(event.key)) schedule();
+        });
         textarea.addEventListener("blur", clear);
         textarea.addEventListener("scroll", () => { ghost.scrollTop = textarea.scrollTop; });
         new ResizeObserver(render).observe(textarea);

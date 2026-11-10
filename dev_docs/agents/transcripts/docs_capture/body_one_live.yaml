@@ -1,0 +1,32 @@
+name: body_one_live
+description: Capture an already-running body_one and connected WiVRn headset without restarting its renderer.
+operations:
+  - execute-fragment:
+      box: body1_tracking
+      type: fragment
+      code: |
+        check(renderer.submittedSceneFrames > 0 && renderer.lastRenderFailure == null) {
+            "Launch the canonical body_one boxes with a connected headset before capturing"
+        }
+        check(xr.bodyState()?.isActive == true || Hand.entries.any { xr.handState(it)?.isActive == true }) {
+            "No live body or hand tracking to capture"
+        }
+  - execute-fragment:
+      box: body1_tracking
+      type: fragment
+      code: |
+        if (thisBox.getPropertyRaw("docsCaptureView") == null)
+            thisBox.setPropertyRaw("docsCaptureView", inspectionCopy to Vector3f(inspectionOffset))
+        val bodyCenter = trackedBody.bounds(limbRadius, headRadius)!!.center
+        val pictureCenter = vec(0f, 0f, -2.3f)
+        headOrientation.transform(pictureCenter).add(headPosition)
+        inspectionCopy = true
+        inspectionOffset.set(pictureCenter).sub(bodyCenter)
+  - create:
+      box: body1_preview_capture
+      name: Preview capture
+      properties:
+        code: 'val previewCaptureWindow = renderer.windows[1]'
+  - connect: {parent: body1_context, child: body1_preview_capture}
+  - launch: {box: body1_preview_capture}
+  - await: {wait: pending}

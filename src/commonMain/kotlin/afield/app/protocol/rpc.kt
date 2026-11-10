@@ -1911,14 +1911,8 @@ data class ControllerControl(
     val states: Int = 0,
     val polar: Boolean = false,
     val options: List<String> = emptyList(),
-    /**
-     * What this control is for, in a sentence or two — the `tooltip` argument every control takes.
-     *
-     * Usually written by whoever made the control (often an agent) for whoever will move it. The
-     * desktop shows it on hover over the control, the tablet under the label. Not cached with the
-     * value: each run's code supplies it again.
-     */
-    val tooltip: String? = null
+    val hoverText: String? = null,
+    val hoverHtml: String? = null
 )
 
 /**

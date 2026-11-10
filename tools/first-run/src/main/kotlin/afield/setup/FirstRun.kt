@@ -44,7 +44,7 @@ internal fun usesT64Packages(release: String): Boolean {
     return (values["ID"] == "ubuntu" && major >= 24) || (values["ID"] == "debian" && major >= 13)
 }
 
-internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String>, extras: Set<String>, ubuntuT64: Boolean): InstallPlan {
+internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String>, extras: Set<String>, ubuntuT64: Boolean, platform: String = "other"): InstallPlan {
     val packages = linkedSetOf<String>()
     val notes = mutableListOf<String>()
     val commands = mutableListOf<List<String>>()
@@ -112,7 +112,12 @@ internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String
             if ("vulkan" in extras) notes += "Use the welcome page's Vulkan panel for macOS SDK/driver setup; Linux Vulkan packages do not apply."
         }
         else -> {
-            if (missing.isNotEmpty()) notes += "Install missing tools with your platform's package manager: ${missing.sorted().joinToString()}."
+            // A Mac without Homebrew: name the two things a fresh Mac lacks and how to get them,
+            // rather than pointing at a package manager it does not have.
+            val generic = if (platform == "mac") missing - setOf("xcrun", "git-lfs") else missing
+            if (platform == "mac" && "xcrun" in missing) notes += "Apple Command Line Tools: xcode-select --install (finish Apple's dialog, then rerun setup)."
+            if (platform == "mac" && "git-lfs" in missing) notes += "Git LFS: install Homebrew (https://brew.sh) and rerun setup to have it offered here, or use the macOS installer from https://git-lfs.com. Then run git lfs install."
+            if (generic.isNotEmpty()) notes += "Install missing tools with your platform's package manager: ${generic.sorted().joinToString()}."
             if ("vulkan" in extras) notes += "Use the welcome page's Vulkan panel for your platform's driver/SDK instructions."
             if ("python" in extras) notes += "Install CPython and its development tools, then use the welcome page's Python panel to select it and install JEP."
         }
@@ -136,6 +141,9 @@ internal fun findExecutable(name: String, environment: Map<String, String> = Sys
 internal fun toolAvailable(name: String): Boolean {
     // Windows' App Execution Alias can exist without an installed Python interpreter.
     if (name == "python" && System.getProperty("os.name").startsWith("Windows")) return commandWorks("python", "--version")
+    // /usr/bin/xcrun ships with macOS itself, so finding it on PATH proves nothing. Ask it for
+    // clang++ the way field.sh's check_install does: that fails until Command Line Tools exist.
+    if (name == "xcrun") return commandWorks("xcrun", "--find", "clang++")
     if (findExecutable(name) != null) return true
     if (name != "git-lfs") return false
     // Git for Windows can resolve bundled LFS through its exec-path even when only Git/cmd is
@@ -149,6 +157,9 @@ internal fun toolAvailable(name: String): Boolean {
         } else proc.exitValue() == 0
     }.getOrDefault(false)
 }
+
+/** How a missing tool is named to the person reading setup's status lines. */
+internal fun toolLabel(name: String): String = if (name == "xcrun") "Apple Command Line Tools" else name
 
 internal fun commandDisplay(command: List<String>): String = command.joinToString(" ") { arg ->
     if (arg.any { it.isWhitespace() || it in "'\"$;&" }) "'" + arg.replace("'", "'\\''") + "'" else arg
@@ -203,7 +214,7 @@ fun main(args: Array<String>) {
     val platform = platformId(os)
     val coreTools = if ("--server-only" in args) basic.filter { it in setOf("git-lfs", "curl", "tar", "gzip") } else basic.toList()
     val coreMissing = coreTools.filter { !toolAvailable(it) }
-    ui.status("Launch tools", if (coreMissing.isEmpty()) "found" else "missing " + coreMissing.sorted().joinToString(), coreMissing.isNotEmpty())
+    ui.status("Launch tools", if (coreMissing.isEmpty()) "found" else "missing " + coreMissing.sorted().joinToString(transform = ::toolLabel), coreMissing.isNotEmpty())
     val lfsPointers = hasLfsPointers(root)
     ui.status("Compiler content", if (lfsPointers) "Git LFS download needed" else "present", lfsPointers)
     if (root.usableSpace < 10_000_000_000L) ui.paragraph("Make room before the initial build or optional downloads.")
@@ -232,13 +243,13 @@ fun main(args: Array<String>) {
     val selectedMissing = selectedTools.filter { !toolAvailable(it) }.toSet() +
         options.filter { it.extra.id in extras }.flatMap { it.missing }
     val release = File("/etc/os-release").takeIf { it.isFile }?.readText().orEmpty()
-    val proposed = packagePlan(manager, mode == "1", selectedMissing, applicable, usesT64Packages(release))
+    val proposed = packagePlan(manager, mode == "1", selectedMissing, applicable, usesT64Packages(release), platform)
     val plan = if (manager == "pacman") omitInstalledPacmanPackages(proposed, installedPacmanPackages(proposed)) else proposed
     val prepare = preparationCommands(extras, platform)
     ui.section(3, "Your setup plan")
     ui.status("Launch mode", if (mode == "1") "Desktop app" else "Browser / server")
     ui.status("Optional features", if (extras.isEmpty()) "none needed to get started" else extras.joinToString(", "))
-    ui.status("Prerequisite tools", if (selectedMissing.isEmpty()) "found" else "missing " + selectedMissing.sorted().joinToString(), selectedMissing.isNotEmpty())
+    ui.status("Prerequisite tools", if (selectedMissing.isEmpty()) "found" else "missing " + selectedMissing.sorted().joinToString(transform = ::toolLabel), selectedMissing.isNotEmpty())
     if (extras.isNotEmpty()) printExtras(root, platform, extras)
     println()
     ui.paragraph("System packages", dim = true)

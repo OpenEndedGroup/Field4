@@ -194,7 +194,7 @@ fun ControlGroupBuilder.presetBar(
     val saved = bar.names
     var name = saved.lastOrNull() ?: "A"
     inlineRow {
-        text("preset", initialValue = name, tooltip = "The preset name that store and recall act on") { name = it.trim().ifEmpty { "A" } }
+        text("preset", initialValue = name, hoverText = "The preset name that store and recall act on") { name = it.trim().ifEmpty { "A" } }
         hitButton("store preset", "store", "Save every control in this group under the preset name") { down -> if (down) bar.store(name) }
         hitButton("recall preset", "recall", "Set every control in this group to the named preset") { down -> if (down) bar.recall(name) }
     }
@@ -203,7 +203,7 @@ fun ControlGroupBuilder.presetBar(
     }
     if (morph) slider(
         presetMorphLabel, 0.0, 1.0, 0.001, initialValue = 0.0,
-        tooltip = if (morphBetween.isEmpty()) "Blend across the saved presets, in name order: 0 is the first, 1 the last"
+        hoverText = if (morphBetween.isEmpty()) "Blend across the saved presets, in name order: 0 is the first, 1 the last"
         else "Blend across ${morphBetween.joinToString(", ")}: 0 is the first, 1 the last"
     ) { t -> bar.morph(t, morphBetween) }
     return bar
@@ -366,7 +366,7 @@ fun ControlGroupBuilder.recordToggle(label: String, curveName: String = label, t
     val box = ownerBox
     val channel = ownerChannel
     val key = "${box.id}\u0000$channel\u0000$label"
-    button("● rec $label", tooltip = "Press, move '$label', press again: the take becomes keyframes in '$curveName'") { down ->
+    button("● rec $label", hoverText = "Press, move '$label', press again: the take becomes keyframes in '$curveName'") { down ->
         if (!down) return@button
         val running = activeRecordings.remove(key)
         if (running == null) {
@@ -515,5 +515,5 @@ fun Box.midiLearn(channel: String = "controls"): ControlMidiMap =
 fun ControlGroupBuilder.midiLearnButton(input: MidiInput? = null) {
     val map = ownerBox.midiLearn(ownerChannel)
     input?.let(map::attach)
-    button("MIDI learn", tooltip = "Press, touch a control here, then turn a MIDI knob to bind the two") { down -> if (down) map.learn() }
+    button("MIDI learn", hoverText = "Press, touch a control here, then turn a MIDI knob to bind the two") { down -> if (down) map.learn() }
 }

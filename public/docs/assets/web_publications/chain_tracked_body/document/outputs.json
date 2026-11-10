@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-10T16:25:45.853Z",
+  "documentName": "chain_tracked_body",
+  "outputs": [
+    {
+      "uid": "ctb_measured",
+      "channel": "stills",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 310,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "ctb_measured",
+      "channel": "distance",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "ctb_measured",
+      "channel": "summary",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 259,
+      "height": 67,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "ctb_heard",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 191,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "ctb_heard",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/4.html"
+    }
+  ]
+}

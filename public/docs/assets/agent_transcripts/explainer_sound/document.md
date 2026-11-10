@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 24 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 24 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. sine_sweep
@@ -1318,7 +1318,7 @@ audio(notes.reduce { a, b -> a + b } / 2.0 / FreeVerb(roomSize, damping, Param(0
 <!-- field-box id="es_deck" index="14" -->
 
 ```edn [field-box id="es_deck" role="properties"]
-{"id" "es_deck" "index" 14 "name" "deck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "deck" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_deck_code_.kt" "lines" 630 "characters" 27365 "sha256" "1555f6987dc48caa2b9c9e660bca6e36575f06af8bc75837bffd4a10b909a4e4"}]}
+{"id" "es_deck" "index" 14 "name" "deck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "deck" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "es_deck_code_.kt" "lines" 558 "characters" 25581 "sha256" "f42c6b17866afb506d84457e8f4757cb258c808cae874b9b52af010dbb131480"}]}
 ```
 
 ```kotlin [field-property box="es_deck" name="code" path="es_deck_code_.kt"]
@@ -1342,9 +1342,7 @@ presentation(title = "Sound") {
 
                     This talk builds that idea up from molecules: how air carries a push, how a
                     repeated push becomes a note, how notes combine, how strings make them, and how
-                    sound spreads through a room.
-                """
-                        .md
+                    sound spreads through a room.""".md
                     p(classes = "muted") {
                         +"After “Sound” by Bartosz Ciechanowski, ciechanow.ski/sound. Words and figures made in Field."
                     }
@@ -1359,9 +1357,7 @@ presentation(title = "Sound") {
                         +"""
                         ## Three keys
 
-                        Hold a key. Each moves the air in its own repeating pattern.
-                    """
-                            .md
+                        Hold a key. Each moves the air in its own repeating pattern.""".md
                     }
                 }
                 markdownNote("Hold a key with the mouse, or click the figure and use W, E and R. [[back]] [[next]]")
@@ -1376,9 +1372,7 @@ presentation(title = "Sound") {
 
                         Air is molecules flying at about 500 m/s until they
                         hit something. This is a flat cartoon of a few
-                        hundred.
-                    """
-                            .md
+                        hundred.""".md
                     }
                 }
                 control("pressure_box", "length", 1.0)
@@ -1392,9 +1386,7 @@ presentation(title = "Sound") {
                         ## Pressure is hits on a wall
 
                         Each bounce pushes the wall. Pressure is how much
-                        push each piece of wall gets: the plot.
-                    """
-                            .md
+                        push each piece of wall gets: the plot.""".md
                     }
                 }
                 control("pressure_box", "length", 1.0)
@@ -1407,9 +1399,7 @@ presentation(title = "Sound") {
                         +"""
                         ## Squeeze it
 
-                        Half the length, twice the hits: twice the pressure.
-                    """
-                            .md
+                        Half the length, twice the hits: twice the pressure.""".md
                     }
                 }
                 control("pressure_box", "length", 1.0)
@@ -1424,9 +1414,7 @@ presentation(title = "Sound") {
                         ## Nobody goes far
 
                         One molecule, knocked about, barely leaves home. A
-                        push travels by being handed on.
-                    """
-                            .md
+                        push travels by being handed on.""".md
                     }
                 }
                 control("pressure_box", "length", 1.0)
@@ -1441,9 +1429,7 @@ presentation(title = "Sound") {
 
                         Each line is a slice of air. Push the plate: the
                         crowding runs down the tube; the slices only
-                        shuffle.
-                    """
-                            .md
+                        shuffle.""".md
                     }
                 }
                 control("tube_plate", "plate", 0.0)
@@ -1458,9 +1444,7 @@ presentation(title = "Sound") {
                         ## Squeezed and stretched
 
                         Red is squeezed, blue stretched. Either travels at
-                        the speed of sound, about 343 m/s.
-                    """
-                            .md
+                        the speed of sound, about 343 m/s.""".md
                     }
                 }
                 control("tube_plate", "plate", 0.0)
@@ -1479,9 +1463,7 @@ presentation(title = "Sound") {
                         +"""
                         ## A jump is a pop
 
-                        A sudden move of the plate is a pop. A bigger move, a louder pop.
-                    """
-                            .md
+                        A sudden move of the plate is a pop. A bigger move, a louder pop.""".md
                     }
                 }
                 control("repeated_jumps", "repeat", false)
@@ -1499,9 +1481,7 @@ presentation(title = "Sound") {
                         ## Repeat it and it becomes a note
 
                         Past about twenty a second the pops blur into a
-                        tone. Its frequency, in hertz, is its pitch.
-                    """
-                            .md
+                        tone. Its frequency, in hertz, is its pitch.""".md
                     }
                 }
                 control("repeated_jumps", "rate", 4.0)
@@ -1520,9 +1500,7 @@ presentation(title = "Sound") {
                         ## Sounds add
 
                         Two keys at once: the plate makes both motions, and
-                        they add. The bottom line is what you hear.
-                    """
-                            .md
+                        they add. The bottom line is what you hear.""".md
                     }
                 }
                 markdownNote("Hold one key, then two. [[back]] [[next]]")
@@ -1533,9 +1511,7 @@ presentation(title = "Sound") {
                         +"""
                         ## One key, two sounds
 
-                        The last key plays A + B as one pattern. It sounds the same as holding both.
-                    """
-                            .md
+                        The last key plays A + B as one pattern. It sounds the same as holding both.""".md
                     }
                 }
                 markdownNote("Hold the first two keys together, then the fourth alone. [[back]] [[next]]")
@@ -1548,9 +1524,7 @@ presentation(title = "Sound") {
 
                         **Amplitude** is loudness, **frequency** is pitch,
                         **phase** is where it starts, which alone you cannot
-                        hear.
-                    """
-                            .md
+                        hear.""".md
                     }
                 }
                 control("triangle_params", "amplitude", 0.6)
@@ -1571,9 +1545,7 @@ presentation(title = "Sound") {
                         ## Half a cycle apart, they cancel
 
                         Two equal tones add. Shift one by half a cycle and
-                        every push meets a pull: silence.
-                    """
-                            .md
+                        every push meets a pull: silence.""".md
                     }
                 }
                 control("phase_cancel", "shift", 0.0)
@@ -1587,9 +1559,7 @@ presentation(title = "Sound") {
                         +"""
                         ## Draw a shape, hear it
 
-                        Drag the points, then hold a key. Corners and jumps sound brighter.
-                    """
-                            .md
+                        Drag the points, then hold a key. Corners and jumps sound brighter.""".md
                     }
                 }
                 markdownNote("Drag points on the curve, then hold a key. [[back]] [[next]]")
@@ -1602,9 +1572,7 @@ presentation(title = "Sound") {
                         +"""
                         ## A sine wave is a turning circle
 
-                        Radius is amplitude, speed of turning is frequency, starting point is phase.
-                    """
-                            .md
+                        Radius is amplitude, speed of turning is frequency, starting point is phase.""".md
                     }
                 }
                 control("circle_sine", "radius", 0.8)
@@ -1619,9 +1587,7 @@ presentation(title = "Sound") {
                         ## The range of hearing
 
                         The purest tone. We hear about 20 Hz to 20,000 Hz,
-                        best between 1,000 and 5,000.
-                    """
-                            .md
+                        best between 1,000 and 5,000.""".md
                     }
                 }
                 control("sine_sweep", "frequency", 220.0)
@@ -1638,9 +1604,7 @@ presentation(title = "Sound") {
                         ## Two close tones beat
 
                         A few hertz apart, two sines drift in and out of
-                        step: one tone, swelling and fading.
-                    """
-                            .md
+                        step: one tone, swelling and fading.""".md
                     }
                 }
                 markdownNote("Hold both keys; drag **difference**. [[back]] [[next]]")
@@ -1652,9 +1616,7 @@ presentation(title = "Sound") {
                         ## Every shape is a sum of sines
 
                         Odd multiples, each smaller, build a square. The
-                        ripples at the corners never shrink in height.
-                    """
-                            .md
+                        ripples at the corners never shrink in height.""".md
                     }
                 }
                 control("square_partials", "sines", 1.0)
@@ -1668,9 +1630,7 @@ presentation(title = "Sound") {
                         +"""
                         ## Taking a drawing apart
 
-                        Your drawing is a sum of sines too. The bars say how much of each multiple.
-                    """
-                            .md
+                        Your drawing is a sum of sines too. The bars say how much of each multiple.""".md
                     }
                 }
                 markdownNote("Redraw the shape and watch the bars. [[back]] [[next]]")
@@ -1681,9 +1641,7 @@ presentation(title = "Sound") {
                         +"""
                         ## Listening back
 
-                        Whistle: one bar. Sing a vowel: a row of them, at multiples of your note.
-                    """
-                            .md
+                        Whistle: one bar. Sing a vowel: a row of them, at multiples of your note.""".md
                     }
                 }
                 control("microphone", "listen", false)
@@ -1698,9 +1656,7 @@ presentation(title = "Sound") {
                         ## A mass between springs
 
                         It swings as a sine, at a pitch set by stiffness and
-                        mass, however far it was pulled.
-                    """
-                            .md
+                        mass, however far it was pulled.""".md
                     }
                 }
                 control("normal_modes", "masses", 1.0)
@@ -1715,9 +1671,7 @@ presentation(title = "Sound") {
                         ## Two masses, two ways to move
 
                         Together, or against each other and a little faster.
-                        Any motion mixes the two.
-                    """
-                            .md
+                        Any motion mixes the two.""".md
                     }
                 }
                 control("normal_modes", "masses", 2.0)
@@ -1733,9 +1687,7 @@ presentation(title = "Sound") {
                         +"""
                         ## More masses, more modes
 
-                        Five masses, five modes. Higher modes wiggle more.
-                    """
-                            .md
+                        Five masses, five modes. Higher modes wiggle more.""".md
                     }
                 }
                 control("normal_modes", "masses", 5.0)
@@ -1750,9 +1702,7 @@ presentation(title = "Sound") {
                         ## A string is many masses
 
                         A string's modes are whole numbers of half waves, at
-                        whole multiples of the lowest pitch: the harmonics.
-                    """
-                            .md
+                        whole multiples of the lowest pitch: the harmonics.""".md
                     }
                 }
                 control("pluck", "mode", 1.0)
@@ -1768,9 +1718,7 @@ presentation(title = "Sound") {
                         ## Pluck it
 
                         A pluck rings every mode at once. Near the middle it
-                        is round; near the end, bright.
-                    """
-                            .md
+                        is round; near the end, bright.""".md
                     }
                 }
                 control("pluck", "mode", 0.0)
@@ -1787,9 +1735,7 @@ presentation(title = "Sound") {
                         +"""
                         ## Shorter, tighter, lighter: higher
 
-                        Half the length, an octave up. Tighter is higher; heavier is lower.
-                    """
-                            .md
+                        Half the length, an octave up. Tighter is higher; heavier is lower.""".md
                     }
                 }
                 control("pluck", "mode", 0.0)
@@ -1806,9 +1752,7 @@ presentation(title = "Sound") {
                         ## A pulsing sphere
 
                         Rings of high and low pressure. Their spacing is the
-                        wavelength: 343 Hz makes one metre.
-                    """
-                            .md
+                        wavelength: 343 Hz makes one metre.""".md
                     }
                 }
                 control("pulsing_sphere", "frequency", 343.0)
@@ -1822,9 +1766,7 @@ presentation(title = "Sound") {
                         ## Aimed sound
 
                         A plate in a wall spreads low notes every way. Once the waves are shorter
-                        than the plate, its edges interfere and the sound is aimed ahead.
-                    """
-                            .md
+                        than the plate, its edges interfere and the sound is aimed ahead.""".md
                     }
                 }
                 control("wall_plate", "frequency", 400.0)
@@ -1839,9 +1781,7 @@ presentation(title = "Sound") {
                         +"""
                         ## Further away: later and quieter
 
-                        About 3 ms a metre. Twice as far, half the pressure swing.
-                    """
-                            .md
+                        About 3 ms a metre. Twice as far, half the pressure swing.""".md
                     }
                 }
                 markdownNote("Drag the orange listener; the meters give the delay and the level. [[back]] [[next]]")
@@ -1853,9 +1793,7 @@ presentation(title = "Sound") {
                         ## Decibels
 
                         Every ten times the pressure adds 20 dB. Twice the
-                        distance costs about 6 dB.
-                    """
-                            .md
+                        distance costs about 6 dB.""".md
                     }
                 }
                 control("decibels", "pressure", 0.02)
@@ -1870,9 +1808,7 @@ presentation(title = "Sound") {
 
                         Ahead of the source the rings crowd, and the pitch
                         is higher; behind, lower. Time is slowed a hundred
-                        times.
-                    """
-                            .md
+                        times.""".md
                     }
                 }
                 control("doppler", "speed", 150.0)
@@ -1885,9 +1821,7 @@ presentation(title = "Sound") {
                         +"""
                         ## Two speakers
 
-                        On the orange lines one speaker's push meets the other's pull and the tone nearly vanishes.
-                    """
-                            .md
+                        On the orange lines one speaker's push meets the other's pull and the tone nearly vanishes.""".md
                     }
                 }
                 control("two_speakers", "sound", false)
@@ -1902,9 +1836,7 @@ presentation(title = "Sound") {
                         ## Echo
 
                         Far from a wall, a second clap. Within about 50 ms,
-                        closer than 8 m, one sound.
-                    """
-                            .md
+                        closer than 8 m, one sound.""".md
                     }
                 }
                 markdownNote("Drag **distance to the wall**, then **clap**. [[back]] [[next]]")
@@ -1916,9 +1848,7 @@ presentation(title = "Sound") {
                         ## A room
 
                         Bounces pile up into a tail: reverberation. Bigger,
-                        harder rooms ring longer.
-                    """
-                            .md
+                        harder rooms ring longer.""".md
                     }
                 }
                 control("reverb", "room size", 0.4)
@@ -1939,9 +1869,7 @@ presentation(title = "Sound") {
                       Instruments*](https://archive.org/details/physicsofmusical0000flet) (Springer, 1991):
                       strings, plates, pipes and rooms in depth.
                     - Julius O. Smith III, [*Physical Audio Signal Processing*](https://ccrma.stanford.edu/~jos/pasp/),
-                      free online: from waves on strings to digital models of them.
-                """
-                        .md
+                      free online: from waves on strings to digital models of them.""".md
                     p(classes = "muted") {
                         +"After “Sound” by Bartosz Ciechanowski, https://ciechanow.ski/sound/. Words and figures made in Field."
                     }

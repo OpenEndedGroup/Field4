@@ -1032,6 +1032,106 @@ Some values `.h2` hands straight back to `.h`, because the compact rendering alr
 
 To see all of it at once, insert the **h2 Explorer Examples** template and run its boxes top to bottom.
 
+### Tables and heat maps
+
+Build a `Table` from named columns and pass it straight to `display`. `heat` colours numeric
+cells while keeping their values visible:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val readings = table(
+    "site" to listOf("north", "south", "west"),
+    "morning" to listOf(0.2, 0.8, 0.5),
+    "evening" to listOf(0.7, 0.3, 0.4),
+).heat("morning", "evening", by = HeatScope.TABLE)
+
+display("readings", readings)
+```
+
+`HeatScope.TABLE` uses one range across the heated cells, so equal values have equal colours.
+`HeatScope.COLUMN` (the default) gives each column its own range, useful for different units;
+`HeatScope.ROW` compares the heated values within each row. Omit the column names to heat every
+numeric column. Text, nulls and non-finite numbers remain unfilled.
+
+The default colormap is `"viridis"`; choose another with `colormap = "magma"`, for example.
+For signed values, `colormap = "cyanorange", center = 0.0` makes the range symmetric around
+zero. Heat can be applied more than once to give different columns different maps or scopes.
+
+Tables can also be assembled row by row with `Table(listOf("site", "reading")).row("north", 0.2)`.
+Use `.format` to change a column's displayed text, `.color`, `.role` or `.roleBy` for text colours,
+and `.expect` to highlight values that fail a check. Formatting functions return trusted HTML;
+escape text from outside sources. By default, a table shows at most 64 rows. See the
+[table API](reference/visualization.md#tables-kt) and the
+[Eigendrum example](eigendrum.md) for more.
+
+### Plots and charts
+
+For named series with axes, a legend and hover, `showSignals` makes and displays a Plotly plot:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val samples = (0..100).map { it / 10.0 }
+showSignals(
+    "sine" to samples.map { sin(it) },
+    "cosine" to samples.map { cos(it) },
+    x = samples,
+    title = "two signals",
+    xTitle = "time",
+    channel = "plot",
+)
+```
+
+It displays the plot itself. `linePlot`, `scatter` and `violin` instead return a plot to pass to
+`display`; `showSpectrogram` plots audio with time and frequency axes. See
+[Looking at Data](tour_data.md#plot-it) and the [Plotly helpers](reference/visualization.md#plotly-kt).
+
+For plots made from FLine geometry, use `Chart` or `showChart`: add lines, points,
+bars and bands, pick a mark, or show which values fall outside an expected range. The
+[Charts as FLines](chart.md) guide compares the two plotters. For a function's *proven* bounds and
+the search that found them, see [`showIntervals`](fn_intervals.md#seeing-the-proof).
+
+### A matrix as an image
+
+`showHeatmap` draws a rectangular matrix as pixels. This is different from `Table.heat`, which
+keeps the numbers and labels visible in cells:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val grid = Array(24) { row ->
+    DoubleArray(32) { col -> sin(col * 0.25) * cos(row * 0.3) }
+}
+showHeatmap(grid, channel = "field", colormap = "coolwarm", width = 480, smooth = false)
+```
+
+By default the colour range follows the data and row zero is at the bottom. Set `vmin` and `vmax`
+to give several images the same scale, `flipY = false` to put row zero at the top, or
+`transpose = true` for data stored column first. `smooth = false` preserves the individual cells.
+`showHeatmap` displays and returns PNG bytes; `heatmapImage` returns the raster without displaying
+it. See the [heatmap API](reference/visualization.md#heatmap-kt) and a
+[Gaussian-process example](gaussian_processes.md).
+
+### Drawings and character grids
+
+Use `lines` for an FLine drawing in an output, with optional point editing. `threeLines` and
+`three { … }` add an orbitable 3D view for lines and meshes. Start with
+[seeing an FLine](fline_examples.md#seeing-an-fline-static-and-editable-viewers) or
+[Three.js scenes](three_output.md).
+
+`charGrid` runs a drawing block each tick on a grid of characters. Leave it as the box's last
+expression so stopping the box stops the animation:
+
+```diffstatic {data-lang=kotlin}
+:::static
+charGrid(cols = 32, rows = 8, glyphs = "░▒▓█") {
+    clearGrid()
+    SET(frame % COLS, ROWS / 2, 3, "#dddddd")
+}
+```
+
+For a program that writes one character per tick, use `charStream`. See the
+[character-grid examples](agent_transcripts.md#madp_chargrid) and
+[shape-aware ASCII](ascii_shape.md#live-in-a-char-grid).
+
 ### Markdown for captions and tables
 
 For a heading, a table and some text, Markdown is often easier to write than a string of HTML.
@@ -1098,6 +1198,18 @@ Three rules matter once a figure mixes computed values into the prose:
 Beyond GitHub-flavoured markdown there are two additions: `:::row … :::end`, splitting columns on a `---` line, for the before/after shape markdown cannot spell; and `{role:text}` spans — `accent`, `muted`, `dim`, `ok`, `warn`, `bad` — so a callout never needs a hex literal. Neither applies inside code, so a `:::row` or a `{warn:…}` shown *as* an example stays as written. The figure above uses both: the before/after row, and the `ok`, `warn` and `muted` spans on its status line.
 
 You do not need `trimIndent()`; the text is dedented for you, and unlike `trimIndent` it survives having a multi-line value interpolated into it. `width` pins the card's width; without it the card is as wide as its widest unbreakable line.
+
+To add entries to a running report instead of replacing it each time, use `markdownAppend`:
+
+```diffstatic {data-lang=kotlin}
+:::static
+markdown("report", "### Run")
+markdownAppend("report", "First pass complete.")
+markdownAppend("report", "Second pass complete.")
+```
+
+It keeps the newest 200 entries and 32,768 characters by default; `maxEntries` and `maxChars`
+change those limits. Calling `markdown` on that channel replaces the report and its history.
 
 ### Trees and columns
 
@@ -1323,6 +1435,12 @@ This is useful for demos, guided tutorials, and boxes that are meant to be rerun
 `displayClear` removes the panel rather than emptying it; [Box Output](box_output.md) covers all
 four calls and the mouse gestures that do the same.
 
+For a compact status, `progressBar("work", 0.5)` writes a one-line channel; the
+[one-line channels guide](box_output.md#one-line-channels) explains how to remove it. For a real
+interactive shell or program in an output, see [A Terminal in a Box](terminal.md). A box can also
+[inspect and control a live output iframe](reference/visualization.md#liveoutputiframe-kt) in the
+Field Electron app; [this example](ai4_live_iframe.md) exposes a page to AI4.
+
 ## Controls: sliders, toggles, colors, text, and XY pads
 
 Field can build small control surfaces directly into output areas: sliders and pads you drag while the box runs.
@@ -1364,17 +1482,43 @@ controlGroup("controls") {
 println("controls ready")
 ```
 
-Available pieces include:
+The reference has the full signatures for each control. Where a control can also go inside a
+group, the second link takes you to that version:
 
-- `slider(...)`
-- `sliders(...)`
-- `vec2Control(...)`
-- `checkbox(...)`
-- `stringInput(...)`
-- `colorPicker(...)`
-- `controlGroup(...) { ... }`
+- [`slider(...)`](reference/visualization.md#outputs-kt--slider) · [in a group](reference/visualization.md#outputs-kt--controlgroupbuilder--slider)
+- [`sliders(...)`](reference/visualization.md#outputs-kt--sliders)
+- [`vec2Control(...)`](reference/visualization.md#outputs-kt--vec2control) · [in a group](reference/visualization.md#outputs-kt--controlgroupbuilder--vec2control)
+- [`checkbox(...)`](reference/visualization.md#outputs-kt--checkbox) · [in a group](reference/visualization.md#outputs-kt--controlgroupbuilder--checkbox)
+- [`stringInput(...)`](reference/visualization.md#outputs-kt--stringinput) · [in a group](reference/visualization.md#outputs-kt--controlgroupbuilder--stringinput)
+- [`colorPicker(...)`](reference/visualization.md#outputs-kt--colorpicker) · [in a group](reference/visualization.md#outputs-kt--controlgroupbuilder--colorpicker)
+- [`controlGroup(...) { ... }`](reference/visualization.md#outputs-kt--controlgroup)
 
 `vec2Control(...)` gives you an XY pad with a vector line and readouts for its length and angle.
+
+### Help on a control
+
+Give a control optional `hoverText` to explain its label. Hold the pointer over the underlined label,
+or focus the control with the keyboard, to show the help. The popup is drawn in Field's page, so it
+also appears on the Field panel in VR. Write the help in Markdown: emphasis, code, lists and links
+work. Raw HTML is filtered before the popup is shown.
+
+```diffstatic {data-lang=kotlin}
+var size = 0.4
+var trails = false
+controlGroup("look") {
+    slider("size", initialValue = 0.4, hoverText = "Radius in **metres**.") { size = it }
+    checkbox("trails", hoverText = "Keep previous positions visible.") { trails = it }
+    button("Reset", hoverText = "Request a fresh drawing.") { down ->
+        if (down) println("reset")
+    }
+}
+```
+
+The same argument works on standalone controls, grouped sliders, XY pads, checkboxes, text inputs,
+colour pickers, buttons and meters, and on the multislider, matrix, range slider, menu and gesture
+pad. For `sliders(...)`, put it in each `SliderConfig`; for a property-bound control, pass it to
+`syncToProperty(...)`. Keyframed controls accept it too, for example
+`var size by keys.slider(0.4, 0.1..1.0, hoverText = "Radius in metres.")`.
 
 ### Handling a slider
 
@@ -2012,7 +2156,7 @@ controlGroup("flock") {
         0.0,
         5.0,
         initialValue = speed,
-        tooltip = "Top speed. Below about 0.3 the flock stalls and stops turning.",
+        hoverText = "Top speed. Below about 0.3 the flock stalls and stops turning.",
     ) {
         speed = it
     }
@@ -2020,11 +2164,11 @@ controlGroup("flock") {
         slider("align", 0.0, 2.0, initialValue = align) { align = it }
         slider("cohere", 0.0, 2.0, initialValue = cohere) { cohere = it }
     }
-    checkbox("wrap", wrap, tooltip = "Off: birds bounce off the edges instead of reappearing opposite") { wrap = it }
+    checkbox("wrap", wrap, hoverText = "Off: birds bounce off the edges instead of reappearing opposite") { wrap = it }
 }
 ```
 
-`tooltip("…") { … }` gives one text to every control declared inside it; a control's own `tooltip` argument wins over the block. The text is plain, and line breaks are kept. The standalone controls, `syncToProperty`, the sequencer controls, the keyframed `keys.slider(...)` family and the Python `slider(...)` / `checkbox(...)` take the same argument.
+`tooltip("…") { … }` gives one text to every control declared inside it; a control's own `hoverText` argument wins over the block. The text accepts Markdown, and line breaks are kept. The standalone controls, `syncToProperty`, the sequencer controls, the keyframed `keys.slider(...)` family and the Python `slider(...)` / `checkbox(...)` take the same argument.
 
 The tooltip travels with the control's record, so the touch controller shows it as a line under the label (tap for the rest), and an agent reading a box's controls sees it as `tooltip`. Write one whenever the label alone would leave you guessing which control to move.
 
@@ -2039,7 +2183,7 @@ controlGroup("input") {
         "image",
         directory = "~/Pictures",
         mask = "*.{png,jpg}",
-        tooltip = "The picture to trace; anything Field can load as an image",
+        hoverText = "The picture to trace; anything Field can load as an image",
     ) {
         image = it
         println("tracing ${it.name}")
@@ -2058,6 +2202,28 @@ The callback receives an absolute `File` when the chooser accepts a path. By def
 - `chooseDirectory = true` picks a folder instead of a file. `mustExist = false` accepts a name that does not exist yet, for something you are about to write. `showHidden = true` lists dot-files without having to type the dot.
 
 `fileUpload(...)` is the other way round: it copies a file *into* Field through the browser, which is what you want on the touch controller or when Field runs on another machine.
+
+### Picture and text slots
+
+`mediaSlots` makes a row of inputs for a box that works with pictures and text. This starts with an
+empty picture and a text description; click the picture slot or drop a file on it:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val inputs = mediaSlots {
+    image()
+    text("a reference image")
+}
+inputs.onChange { slots ->
+    markdown("chosen", "Image: ${slots[0].label.md}\n\nText: ${slots[1].text.md}")
+}
+```
+
+`onChange` runs once all slots are filled, then again when an input changes, on its own worker
+thread. `image(path)` provides an initial picture, and `tray(folder)` offers a set of pictures to
+drag onto slots. Edits survive a box re-run but not a Field restart. See the
+[media slots API](reference/output.md#mediaslots-kt) and the
+[picture-and-text comparison example](agent_transcripts.md#madp_tetra).
 
 ### Choosing the right control
 
