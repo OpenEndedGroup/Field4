@@ -489,8 +489,8 @@ val bundle = StandardRenderer.build(
     StandardRenderer.Config(environmentTexture = sky.texture, environmentStrength = 1f),
 )
 bundle.showEnvironmentBackground(true)
-sky.drive(bundle)              // uses the first directional light, or adds a shadowed one
-sky.setSun(elevation = 4.0, azimuth = 140.0)   // degrees
+sky.drive(bundle) // uses the first directional light, or adds a shadowed one
+sky.setSun(elevation = 4.0, azimuth = 140.0) // degrees
 ```
 
 Here is one scene with the sun at 45°, 4° and −3°:
