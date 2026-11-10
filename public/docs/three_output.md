@@ -800,6 +800,12 @@ change that. A scene over the limit is not sent: the call that built it throws
 what it was showing. Restyling parts with `styleParts` sends only the new styles, however large the
 scene is.
 
+Redrawing a scene whose meshes keep their shape is cheap. Each array in the download carries a hash
+of its contents, so when a slider relights a mesh and only its colours change, the viewer keeps the
+positions, normals and triangles it already has, downloads only the colours and writes them into the
+mesh on screen instead of rebuilding it. A 10,000-vertex sphere relit this way downloads 123 kB per
+redraw instead of 533 kB.
+
 Three.js ships with Field (`src/commonMain/resources/vendor/three/0.184.0/`), so the viewer works
 offline.
 

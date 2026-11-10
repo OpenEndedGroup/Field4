@@ -2039,6 +2039,10 @@ private const val controlGroupValuesProperty = "_controlGroupValues"
 private val controllerControlGroups = java.util.concurrent.ConcurrentHashMap<String, List<ControllerControl>>()
 private val controllerControlGroupBoxes = java.util.concurrent.ConcurrentHashMap<String, Box>()
 
+/** The id of the box whose control group holds the control [controlId], or null. */
+internal fun controlOwnerBoxId(controlId: String): String? =
+    controllerControlGroups.entries.firstOrNull { (_, controls) -> controls.any { it.id == controlId } }?.key?.substringBefore('\u0000')
+
 private fun controllerControlGroupKey(boxId: String, channel: String): String = "$boxId\u0000$channel"
 
 private fun controlGroupControlKey(channel: String, type: String, label: String, ordinal: Int): String =
@@ -2359,6 +2363,18 @@ class ControlValueHandle<T> internal constructor(
     }
 }
 
+/**
+ * The controls of one [controlGroup]: sliders, pads, colour pickers, checkboxes, text, buttons and keys.
+ *
+ * **Dragging skips values.** A drag sends about sixty values a second, and a callback that redraws
+ * something expensive (a shadowed mesh, a ray-traced image) can take longer than that. So a control's
+ * callback never runs twice at once, and while one call runs only the newest value is kept: the
+ * callback sees the values it can keep up with, the picture follows the hand, and the value the drag
+ * ends on always runs. A box's callbacks run one at a time, off the websocket's thread, as they always
+ * have run off the Runloop. A button's and a key's presses and releases are never skipped, since each
+ * is an event rather than a value. Pass `everyValue = true` to a slider, pad or colour picker for code
+ * that needs the whole path, such as a gesture recorder.
+ */
 class ControlGroupBuilder(private val box: Box, private val channel: String) {
     /** The box this group belongs to — for builder extensions such as `presetBar` (ControlPresets.kt). */
     internal val ownerBox: Box get() = box
@@ -2492,6 +2508,8 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      * @param significantDigits digits shown, or `0` to derive the decimal count from [step] as before;
      *   nonlinear laws default to 4, so one control can read `20.00` and `20000`
      * @param tooltip what the slider is for, shown on hover; see [tooltip] for a shared one
+     * @param everyValue run [onUpdate] for every value a drag sends, instead of the newest one
+     *   (see the class notes on dragging); for code that records the whole gesture
      * @param onUpdate callback invoked with the current value
      */
     fun slider(
@@ -2505,6 +2523,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         lawCenter: Double = (min + max) / 2,
         significantDigits: Int = defaultSignificantDigits(law),
         tooltip: String? = null,
+        everyValue: Boolean = false,
         onUpdate: (Double) -> Unit
     ): ControlValueHandle<Double> {
         val cached = cachedControl("slider", "slider", label)
@@ -2512,6 +2531,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         val value = cached.previous?.value?.coerceIn(min, max) ?: initialValue
         val spec = ControlLawSpec(law, min, max, lawExponent, lawCenter).also { it.validate(label) }
         registerSliderCallback(sliderId, onUpdate)
+        ControlCallbackLanes.everyValue(sliderId, everyValue)
         if (cached.previous?.value != null) {
             onUpdate(value)
         }
@@ -2551,12 +2571,14 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      * @param label text shown beside the picker
      * @param initialValue color used when no cached value exists
      * @param tooltip what the colour is for, shown on hover
+     * @param everyValue run [onUpdate] for every value a drag sends, not only the newest
      * @param onUpdate callback invoked with the selected RGBA color
      */
     fun colorPicker(
         label: String,
         initialValue: Vector4f = Vector4f(1.0f, 1.0f, 1.0f, 1.0f),
         tooltip: String? = null,
+        everyValue: Boolean = false,
         onUpdate: (Vector4f) -> Unit
     ): ControlValueHandle<Vector4f> {
         val cached = cachedControl("color", "color", label)
@@ -2568,6 +2590,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             (cached.previous?.a ?: initialValue.w.toDouble()).toFloat()
         )
         registerColorCallback(controlId, onUpdate)
+        ControlCallbackLanes.everyValue(controlId, everyValue)
         if (cached.previous?.r != null || cached.previous?.g != null || cached.previous?.b != null || cached.previous?.a != null) {
             onUpdate(Vector4f(value))
         }
@@ -2626,6 +2649,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      * @param yRange selectable range for the y component
      * @param step increment used for interaction and displayed precision
      * @param tooltip what the pad controls, shown on hover
+     * @param everyValue run [onUpdate] for every value a drag sends, not only the newest
      * @param onUpdate callback invoked with the selected vector
      */
     fun vec2Control(
@@ -2635,6 +2659,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         yRange: Pair<Double, Double> = -1.0 to 1.0,
         step: Double = 0.01,
         tooltip: String? = null,
+        everyValue: Boolean = false,
         onUpdate: (Vector2f) -> Unit
     ): ControlValueHandle<Vector2f> {
         val cached = cachedControl("vec2", "vec2", label)
@@ -2644,6 +2669,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             (cached.previous?.y ?: initialValue.y.toDouble()).toFloat()
         )
         registerVec2Callback(controlId, onUpdate)
+        ControlCallbackLanes.everyValue(controlId, everyValue)
         if (cached.previous?.x != null || cached.previous?.y != null) {
             onUpdate(Vector2f(value))
         }
