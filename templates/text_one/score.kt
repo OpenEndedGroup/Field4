@@ -1,12 +1,22 @@
 import afield.graphics.scene.reading.*
 
-// All six scores are separate from graph construction and native typography preparation.
+// All eight scores are separate from graph construction and native typography preparation.
 // Re-run this box to rescore the existing players; their physics and Slug buffers are retained.
-val allExamples = listOf(exampleOne, exampleTwo, exampleThree, exampleFour, exampleFive, exampleSix)
+val allExamples = listOf(exampleOne, exampleTwo, exampleThree, exampleFour, exampleFive, exampleSix, exampleSeven, exampleEight)
 for ((index, example) in allExamples.withIndex()) {
     val graph = example.player.diagram
-    example.player.playback.score = diagramScore(graph, duration = if (index == 5) 32.0 else if (index == 3) 24.0 else 20.0) {
-        if (index == 5) {
+    example.player.playback.score = diagramScore(graph, duration = if (index == 7) 30.0 else if (index == 6) 36.0 else if (index == 5) 32.0 else if (index == 3) 24.0 else 20.0) {
+        if (index == 7) {
+            for (text in graph.texts) fadeIn(text, at = 0.0, seconds = 4.0)
+            for (path in graph.paths) drawIn(path, at = 1.0, seconds = 5.0)
+            move(graph.text("aside"), vec(0f, 0f, 0f), vec(-.1f, .08f, 0f), at = 6.0, seconds = 14.0)
+            exitAll(at = 26.0, seconds = 4.0)
+        } else if (index == 6) {
+            for (text in graph.texts) fadeIn(text, at = 0.0, seconds = 2.0)
+            for (path in graph.paths) drawIn(path, at = .5, seconds = 3.0)
+            move(graph.text("light"), vec(0f, 0f, 0f), vec(.12f, -.3f, .08f), at = 4.0, seconds = 12.0)
+            move(graph.text("light"), vec(0f, 0f, 0f), vec(-.12f, .3f, -.08f), at = 18.0, seconds = 12.0)
+        } else if (index == 5) {
             for ((i, word) in graph.texts.withIndex()) {
                 blurIn(word, at = i * .7, seconds = 7.0, radius = .9f)
                 fadeIn(word, at = i * .7, seconds = 3.5)
@@ -55,7 +65,7 @@ controlGroup("reading spaces") {
 controlGroup("score") {
     checkbox("Play score", initialValue = true) { poem.current.playback.playing = it }
     checkbox("Repeat score", initialValue = true) { poem.current.playback.repeat = it }
-    slider("Score time (seconds)", initialValue = 6.0, min = 0.0, max = 32.0) {
+    slider("Score time (seconds)", initialValue = 6.0, min = 0.0, max = 36.0) {
         poem.current.playback.playing = false
         poem.current.playback.seek(it.toDouble())
     }
