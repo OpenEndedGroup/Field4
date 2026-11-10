@@ -57,15 +57,16 @@ for independent manual tuning.
 ## Independent layouts and opacity
 
 Every material box has a **screen layout** group: an angle offset, a radius override, a sector-fill
-override and screen opacity. Layout numbers are unrestricted finite numeric fields, rather than
-bounded sliders. Leave radius or fill blank to follow the global value. Overrides belong to the
+override and screen opacity. Layout sliders have broad signed ranges: radius and centre coordinates −50 to +50 metres,
+angle offsets −1440 to +1440 degrees, and sector fill −16 to +16. **Follow global radius** and
+**Follow global fill** link each screen to the ring; dragging a local slider makes an override. Overrides belong to the
 screen number, so its delayed picture and appearance move with it.
 
 Angle adds to the global ring rotation and the screen's evenly spaced sector. Radius is an
 absolute distance from the ring centre. Fill is width in units of one sector: one joins
 neighbours, values above one overlap them, and large values can wrap through multiple turns.
 Negative radius crosses to the opposite side; negative fill mirrors geometry; zero collapses
-it. Global radius, fill, angle and centre controls accept finite numbers too. Invalid or
+it. Global layout controls use the same expanded slider ranges. Invalid or
 unrepresentable geometry is rejected atomically, retaining the previous layout.
 
 For example, set one screen to radius 2 / fill 0.5, and another to radius 5 / fill 2, adjusting
