@@ -308,3 +308,47 @@ invocation, for a histogram of GPU draws.
 
 The replayable demo is `dev_docs/agents/transcripts/noiselang_distributions.yaml`: the spike, the
 die and the triangle, the questions above, the densities, and the walks, as four boxes.
+
+## Limitations and what's next
+
+What this library does not do yet, so you know where the edges are:
+
+- **No conditioning.** You can ask `P(A)`, but not `P(A | B)`. A distribution cannot be told
+  "and we observed this", so there is no inference: no posterior, no fitting to data.
+- **Exact answers only in simple cases.** `exactPmf` convolves discrete graphs whose operands are
+  independent, and gives up beyond 20 000 support points. `exactPdf` knows continuous leaves, their
+  affine images, and sums of independent normals. Anything with a shared random leaf, such as
+  `x + x` or `x * y` where `y` depends on `x`, falls back to sampling. A plot then shows a dashed
+  kernel estimate instead of the exact curve.
+- **Comparisons are words.** Kotlin's `<` has to return a `Boolean`, so a comparison that returns
+  a distribution is spelled `lt`, `le`, `gt`, `ge`, `eq` or `ne`.
+- **The GPU is single precision.** Uniforms carry 24 random bits, and the sums are fp32 (shifted so
+  they do not cancel, see the aside above). That is ample for the questions on this page. It is not
+  enough for probabilities near 10⁻⁷ or for tails that need more than about four million samples per
+  dispatch. The CPU and the GPU draw from different random streams, so their answers agree to
+  within standard error, not sample for sample.
+- **Distributions stay in their own package.** Short names like `die`, `normal`, `P` and `E` would
+  collide with other box code, so a box imports `afield.math.distribution.*` itself.
+- **Nothing makes sound yet.** Every output on this page is a number, a histogram or an FLine.
+
+Where it could go next:
+
+- **Conditioning, then inference.** `given(B)` by rejection is the simplest first step and is
+  exact in the limit. Importance weights would follow, then sequential Monte Carlo for a
+  distribution that is updated as observations arrive, such as a performer's tempo or a tracked
+  hand. Once a value can be observed, a distribution becomes a model you fit.
+- **Distributions as live inputs.** A `Param` whose next value is a draw, a rhythm whose onset
+  density is a quantile, or a pattern whose variation is `E` of something you can drag. The same
+  graph would drive the sound and the histogram beside it.
+- **The GLSL lowering as an include.** `toGlsl()` already writes a distribution as one function.
+  Shipped as a `#include` with its seed plumbing, a fragment, compute or particle shader could draw
+  from a distribution defined in a box, and the box's histogram would describe what the GPU is
+  drawing.
+- **Richer inline views.** Quantile bands, an empirical CDF beside the bars, and two distributions
+  overlaid with the distance between them, all updating as samples arrive.
+- **Gradients.** Normals and uniforms can be reparameterized, so `E(f(x; θ))` has a gradient in θ.
+  Joined to the autodiff work, you could optimize a distribution: tune a scatter of FLines or a
+  random rhythm by gradient descent instead of by hand.
+- **More exact cases.** Enumerating small discrete graphs with shared leaves would make `x + x`
+  and the birthday question exact rather than sampled. Characteristic functions would give exact
+  densities for more continuous sums.
