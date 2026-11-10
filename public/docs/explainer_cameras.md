@@ -196,7 +196,7 @@ var distance = 1.0
 var fixedExposure = false
 
 // Three points of the scene, each with its ray through the hole to the back wall.
-val marked = listOf(Triple(-0.9, 1.4, -0.8), Triple(1.0, 1.2, 1.3), Triple(0.3, 0.0, -2.0))
+val marked = [Triple(-0.9, 1.4, -0.8), Triple(1.0, 1.2, 1.3), Triple(0.3, 0.0, -2.0)]
 
 fun draw() {
     val pinhole = SensorCamera(z = -5.0, sensorDistance = distance, apertureDiameter = hole)
@@ -1110,7 +1110,7 @@ Focal length over opening. Each stop is √2 narrower and lets in half the light
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_cameras/f_stops.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-cameras-f_stops" alt="A row of circular openings shrinking from left to right, labelled f/1.4 to f/16 with f/2.8 picked out in orange, a readout that f/2.8 lets in a quarter of the light of f/1.4, and a stop slider"}
 // The opening at each full f-stop for one lens, drawn to scale. Each is √2 narrower than the
 // last, so it has half the area and lets in half the light.
-val stops = listOf("1.4", "2", "2.8", "4", "5.6", "8", "11", "16")
+val stops = ["1.4", "2", "2.8", "4", "5.6", "8", "11", "16"]
 val cyan = vec(0.4, 0.9, 1.0, 1.0)
 val orange = vec(1.0, 0.6, 0.2, 1.0)
 var chosen = 2
@@ -1265,7 +1265,7 @@ import afield.simulation.optics.*
 val cyan = vec(0.4, 0.9, 1.0, 1.0)
 var spread = 2.0
 var angle = 50.0
-val waves = listOf(410.0, 450.0, 490.0, 530.0, 570.0, 610.0, 650.0, 690.0)
+val waves = [410.0, 450.0, 490.0, 530.0, 570.0, 610.0, 650.0, 690.0]
 
 fun index(nm: Double) = Refraction.cauchyIndex(nm, b = 4200.0 * spread)
 fun colour(nm: Double) = Refraction.wavelengthColor(nm).let { vec(it[0], it[1], it[2], 0.9) }
@@ -1310,7 +1310,7 @@ fun prism() {
     for (nm in waves) {
         val n = index(nm)
         val inside = Refraction.refract(dx, dy, 0.866, 0.5, 1.0, n) ?: continue
-        val faces = listOf(a to c, b to c)
+        val faces = [a to c, b to c]
         val (t, face) =
             faces
                 .mapNotNull { (p, q) -> hit(px, py, inside[0], inside[1], p, q)?.let { it to (p to q) } }
@@ -1356,9 +1356,9 @@ fun lens() {
         },
     )
     val green = index(550.0)
-    for (nm in listOf(650.0, 550.0, 450.0)) {
+    for (nm in [650.0, 550.0, 450.0]) {
         val focal = 300.0 * (green - 1) / (index(nm) - 1)
-        for (h in listOf(-90.0, -60.0, 60.0, 90.0)) parts += fline {
+        for (h in [-90.0, -60.0, 60.0, 90.0]) parts += fline {
             moveTo(0.0, 120 + h)
             lineTo(160.0, 120 + h)
             frameExit(160.0, 120 + h, 1.0, -h / focal, 640.0, 240.0).let { lineTo(it[0], it[1]) }

@@ -45,7 +45,11 @@ val held = BooleanArray(3)
 
 // Twenty milliseconds of whatever is held, summed.
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 240.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun draw() = lines(
     frame,
@@ -108,13 +112,17 @@ val x = DoubleArray(n) { 30 + Math.random() * 580 }
 val y = DoubleArray(n) { 20 + Math.random() * 260 }
 val vx = DoubleArray(n)
 val vy = DoubleArray(n)
-n { i -> val a = Math.random() * 2 * PI; vx[i] = 2 * cos(a); vy[i] = 2 * sin(a) }
+n { i ->
+    val a = Math.random() * 2 * PI
+    vx[i] = 2 * cos(a)
+    vy[i] = 2 * sin(a)
+}
 
 var speed = 1.0
 var length = 1.0
 var follow = false
 val trail = mutableListOf<Pair<Double, Double>>()
-val flashes = mutableListOf<DoubleArray>()   // x, y, age
+val flashes = mutableListOf<DoubleArray>() // x, y, age
 val hitsPerFrame = mutableListOf<Double>()
 val rate = mutableListOf<Double>()
 
@@ -122,19 +130,29 @@ val px = IntArray(imageW * imageH)
 :::fold dot: draws a filled disc into the pixel array
 fun dot(cx: Double, cy: Double, radius: Double, argb: Int) {
     for (j in (cy - radius).toInt()..(cy + radius).toInt()) for (i in (cx - radius).toInt()..(cx + radius).toInt()) {
-        if (i in 0 until imageW && j in 0 until imageH && (i - cx) * (i - cx) + (j - cy) * (j - cy) <= radius * radius) px[j * imageW + i] = argb
+        if (i in 0 until imageW && j in 0 until imageH && (i - cx) * (i - cx) + (j - cy) * (j - cy) <= radius * radius)
+            px[j * imageW + i] = argb
     }
 }
 :::endfold
 
 // The picture, then the plot, then the controls, in that order down the output.
 display("box", PngEncoder.encode(px, imageW, imageH))
-fun plot() = showSignals("hits on the right wall" to rate.takeLast(120), channel = "rate", width = 640, height = 200, yTitle = "pressure")
+fun plot() = showSignals(
+    "hits on the right wall" to rate.takeLast(120),
+    channel = "rate",
+    width = 640,
+    height = 200,
+    yTitle = "pressure",
+)
 plot()
 controlGroup {
     slider("speed", 0.0, 2.0, step = 0.01, initialValue = 1.0) { speed = it }
     slider("length", 0.3, 1.0, step = 0.01, initialValue = 1.0) { length = it }
-    checkbox("follow one") { follow = it; trail.clear() }
+    checkbox("follow one") {
+        follow = it
+        trail.clear()
+    }
 }
 
 var frameCount = 0
@@ -153,16 +171,31 @@ fun step() {
         n { i ->
             x[i] += vx[i] * speed / steps
             y[i] += vy[i] * speed / steps
-            if (x[i] < left + r) { x[i] = left + r; vx[i] = abs(vx[i]); flashes += doubleArrayOf(left, y[i], 0.0) }
+            if (x[i] < left + r) {
+                x[i] = left + r
+                vx[i] = abs(vx[i])
+                flashes += doubleArrayOf(left, y[i], 0.0)
+            }
             if (x[i] > right - r) {
                 // A molecule the moving wall swept up is pushed back in, but that is not a hit.
                 val swept = x[i] - vx[i] * speed / steps > right - r
                 x[i] = right - r
                 vx[i] = -abs(vx[i])
-                if (!swept) { hits++; flashes += doubleArrayOf(right, y[i], 0.0) }
+                if (!swept) {
+                    hits++
+                    flashes += doubleArrayOf(right, y[i], 0.0)
+                }
             }
-            if (y[i] < top + r) { y[i] = top + r; vy[i] = abs(vy[i]); flashes += doubleArrayOf(x[i], top, 0.0) }
-            if (y[i] > bottom - r) { y[i] = bottom - r; vy[i] = -abs(vy[i]); flashes += doubleArrayOf(x[i], bottom, 0.0) }
+            if (y[i] < top + r) {
+                y[i] = top + r
+                vy[i] = abs(vy[i])
+                flashes += doubleArrayOf(x[i], top, 0.0)
+            }
+            if (y[i] > bottom - r) {
+                y[i] = bottom - r
+                vy[i] = -abs(vy[i])
+                flashes += doubleArrayOf(x[i], bottom, 0.0)
+            }
         }
         // Equal masses colliding head on swap the part of their velocities along the line between them.
         for (i in 0 until n) for (j in i + 1 until n) {
@@ -175,32 +208,44 @@ fun step() {
                 val ny = dy / d
                 val approach = (vx[i] - vx[j]) * nx + (vy[i] - vy[j]) * ny
                 if (approach > 0) {
-                    vx[i] -= approach * nx; vy[i] -= approach * ny
-                    vx[j] += approach * nx; vy[j] += approach * ny
+                    vx[i] -= approach * nx
+                    vy[i] -= approach * ny
+                    vx[j] += approach * nx
+                    vy[j] += approach * ny
                 }
             }
         }
     }
     // A moving wall heats or cools the gas; hold the average speed steady so only the squeeze shows.
     val mean = (0 until n).sumOf { sqrt(vx[it] * vx[it] + vy[it] * vy[it]) } / n
-    n { i -> vx[i] *= 2 / mean; vy[i] *= 2 / mean }
+    n { i ->
+        vx[i] *= 2 / mean
+        vy[i] *= 2 / mean
+    }
 
     if (speed > 0) {
         hitsPerFrame += hits / speed
         if (hitsPerFrame.size > 240) hitsPerFrame.removeAt(0)
     }
-    if (follow) { trail += x[0] to y[0]; if (trail.size > 1500) trail.removeAt(0) }
-
+    if (follow) {
+        trail += x[0] to y[0]
+        if (trail.size > 1500) trail.removeAt(0)
+    }
 }
 
 loop {
     val now = AnimationClock.nowSeconds()
     var caught = 0
-    while (clock < now && caught < 6) { clock += 1 / 60.0; step(); caught++ }
+    while (clock < now && caught < 6) {
+        clock += 1 / 60.0
+        step()
+        caught++
+    }
     if (clock < now) clock = now
     val right = right()
     px.fill(0xff050505.toInt())
-    for (j in top.toInt()..bottom.toInt()) for (i in left.toInt()..right.toInt()) px[j * imageW + i] = 0xff101418.toInt()
+    for (j in top.toInt()..bottom.toInt()) for (i in left.toInt()..right.toInt()) px[j * imageW + i] =
+        0xff101418.toInt()
     trail.forEach { (tx, ty) -> dot(tx, ty, 0.8, 0xffff9933.toInt()) }
     n { i -> dot(x[i], y[i], r, if (follow && i == 0) 0xffff9933.toInt() else 0xff66e6ff.toInt()) }
     flashes.forEach { f ->
@@ -235,36 +280,43 @@ shuffle.
 // Slices of air in a tube. Each line is one slice; the plate at the left end pushes on the first,
 // each slice pushes on the next, and the far end lets the disturbance out instead of echoing it.
 val n = 80
-val gap = 7.0               // pixels between slices at rest
-val u = DoubleArray(n)      // how far each slice has moved from rest, in pixels
+val gap = 7.0 // pixels between slices at rest
+val u = DoubleArray(n) // how far each slice has moved from rest, in pixels
 val v = DoubleArray(n)
 var target = 0.0
 var plate = 0.0
 var colour = false
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 260.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 260.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun draw() {
-    val slices = (1 until n - 1).map { i ->
-        val x = 50 + i * gap + u[i]
-        // Squeezed where neighbours are closer than usual, stretched where they are further apart.
-        val strain = (u[i + 1] - u[i - 1]) / (2 * gap)
-        val k = (abs(strain) * 4).coerceAtMost(1.0)
-        fline {
-            moveTo(x, 60.0)
-            lineTo(x, 200.0)
-            thickness = 2.0
-            color = when {
-                !colour -> vec(1.0, 1.0, 1.0, 0.6)
-                strain < 0 -> vec(0.55 + 0.45 * k, 0.55 - 0.35 * k, 0.55 - 0.4 * k, 1.0)
-                else -> vec(0.55 - 0.4 * k, 0.55 - 0.1 * k, 0.55 + 0.45 * k, 1.0)
+    val slices =
+        (1 until n - 1).map { i ->
+            val x = 50 + i * gap + u[i]
+            // Squeezed where neighbours are closer than usual, stretched where they are further apart.
+            val strain = (u[i + 1] - u[i - 1]) / (2 * gap)
+            val k = (abs(strain) * 4).coerceAtMost(1.0)
+            fline {
+                moveTo(x, 60.0)
+                lineTo(x, 200.0)
+                thickness = 2.0
+                color = when {
+                    !colour -> vec(1.0, 1.0, 1.0, 0.6)
+                    strain < 0 -> vec(0.55 + 0.45 * k, 0.55 - 0.35 * k, 0.55 - 0.4 * k, 1.0)
+                    else -> vec(0.55 - 0.4 * k, 0.55 - 0.1 * k, 0.55 + 0.45 * k, 1.0)
+                }
             }
         }
-    }
     val walls = fline {
-        moveTo(30.0, 50.0); lineTo(630.0, 50.0)
-        moveTo(30.0, 210.0); lineTo(630.0, 210.0)
+        moveTo(30.0, 50.0)
+        lineTo(630.0, 50.0)
+        moveTo(30.0, 210.0)
+        lineTo(630.0, 210.0)
         thickness = 1.5
         color = vec(1.0, 1.0, 1.0, 0.35)
     }
@@ -325,15 +377,19 @@ var rate = 4.0
 var held = false
 var repeat = false
 val level = Param(0f)
-val swing = Param(0f)      // how far the repeated motion goes
-val offset = Param(0f)     // where "jump" holds the plate
+val swing = Param(0f) // how far the repeated motion goes
+val offset = Param(0f) // where "jump" holds the plate
 val pace = Param(4f)
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 300.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
-fun position(t: Double) = (if (held) distance else 0.0) +
-    (if (repeat) distance * (if ((t * rate) % 1.0 < 0.5) 1.0 else -1.0) else 0.0)
+fun position(t: Double) =
+    (if (held) distance else 0.0) + (if (repeat) distance * (if ((t * rate) % 1.0 < 0.5) 1.0 else -1.0) else 0.0)
 
 fun update() {
     swing.base = if (repeat) distance.toFloat() else 0f
@@ -353,24 +409,46 @@ fun draw(now: Double) {
         stroked = false
         color = vec(1.0, 0.6, 0.2, if (blur) 0.45 else 1.0)
     }
-    val rest = fline { moveTo(126.0, 14.0); lineTo(126.0, 146.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
+    val rest = fline {
+        moveTo(126.0, 14.0)
+        lineTo(126.0, 146.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
     val trace = fline {
         moveTo(0.0, 230.0 - 60 * position(now - 0.25))
         for (i in 1..640) lineTo(i.toDouble(), 230.0 - 60 * position(now - 0.25 + 0.25 * i / 640))
         thickness = 2.0
         color = vec(0.4, 0.9, 1.0, 1.0)
     }
-    val axis = fline { moveTo(0.0, 230.0); lineTo(640.0, 230.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
+    val axis = fline {
+        moveTo(0.0, 230.0)
+        lineTo(640.0, 230.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
     lines(frame, plate, rest, axis, trace, channel = "plate", w = 640.0, h = 300.0)
 }
 
 draw(0.0)
 controlGroup {
-    keys("jump") { _, down -> held = down; update() }
-    slider("distance", 0.0, 1.0, step = 0.01, initialValue = 0.5) { distance = it; update() }
-    checkbox("repeat") { repeat = it; update() }
+    keys("jump") { _, down ->
+        held = down
+        update()
+    }
+    slider("distance", 0.0, 1.0, step = 0.01, initialValue = 0.5) {
+        distance = it
+        update()
+    }
+    checkbox("repeat") {
+        repeat = it
+        update()
+    }
     checkbox("sound") { level.base = if (it) 0.15f else 0f }
-    slider("rate", 1.0, 440.0, step = 1.0, initialValue = 4.0, law = ControlLaw.LOGARITHMIC) { rate = it; update() }
+    slider("rate", 1.0, 440.0, step = 1.0, initialValue = 4.0, law = ControlLaw.LOGARITHMIC) {
+        rate = it
+        update()
+    }
 }
 
 val start = AnimationClock.nowSeconds()
@@ -394,11 +472,17 @@ Listen: the plate jumping 4 times a second, then 30, then 220. The pops blur int
 Two keys at once: the plate makes both motions, and they add. The bottom line is what you hear.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/wave_synth.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-wave_synth" alt="Three thin grey wave shapes, a square, a triangle and a sawtooth, above a flat orange line for their sum while no key is held, and hold buttons A, B, C and A + B"}
-// Three keys, each a repeating pattern of the plate, and a fourth that plays the sum of the first two
-// as one pattern of its own. Each row is twenty milliseconds of a key;
-// the bottom row, below the line, is what you hear.
-// An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+/*
+Three keys, each a repeating pattern of the plate, and a fourth that plays the sum of the first two
+as one pattern of its own. Each row is twenty milliseconds of a key;
+the bottom row, below the line, is what you hear.
+An invisible frame the size of the figure, so its bounds, and so its scale, never change.
+*/
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 300.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun square(t: Double) = if (t - floor(t) < 0.5) 1.0 else -1.0
 fun triangle(t: Double) = 1 - 4 * abs(t - floor(t + 0.5))
@@ -415,7 +499,10 @@ val names = ["A", "B", "C", "A + B"]
 // The fourth key reads one cycle of A + B from a table: 220 and 330 Hz repeat together 110 times a second.
 val table = FloatArray(2048) { patterns[3](it / 2048.0 / 110).toFloat() }
 val voices = listOf<Signal>(
-    SquareOsc(Param(220f)) * 0.5, TriOsc(Param(330f)) * 0.5, SawOsc(Param(275f)) * 0.5, WavetableOsc(table, Param(110f)),
+    SquareOsc(Param(220f)) * 0.5,
+    TriOsc(Param(330f)) * 0.5,
+    SawOsc(Param(275f)) * 0.5,
+    WavetableOsc(table, Param(110f)),
 )
 val gates = 4 { Gate() }
 val held = BooleanArray(4)
@@ -431,9 +518,23 @@ fun row(y: Double, f: (Double) -> Double, c: Vec4, scale: Double, width: Double)
 fun draw() {
     val cyan = vec(0.4, 0.9, 1.0, 1.0)
     val idle = vec(0.4, 0.9, 1.0, 0.35)
-    val rows = 4 { i -> row(24.0 + 44 * i, patterns[i], if (held[i]) cyan else idle, if (i == 3) 19.0 else 38.0, if (held[i]) 3.0 else 2.0) }
-    val sum = row(250.0, { t -> (0..3).sumOf { if (held[it]) patterns[it](t) else 0.0 } }, vec(1.0, 0.6, 0.2, 1.0), 40.0, 3.0)
-    val rule = fline { moveTo(0.0, 198.0); lineTo(640.0, 198.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.3) }
+    val rows = 4 { i ->
+        row(
+            24.0 + 44 * i,
+            patterns[i],
+            if (held[i]) cyan else idle,
+            if (i == 3) 19.0 else 38.0,
+            if (held[i]) 3.0 else 2.0,
+        )
+    }
+    val sum =
+        row(250.0, { t -> (0..3).sumOf { if (held[it]) patterns[it](t) else 0.0 } }, vec(1.0, 0.6, 0.2, 1.0), 40.0, 3.0)
+    val rule = fline {
+        moveTo(0.0, 198.0)
+        lineTo(640.0, 198.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.3)
+    }
     lines([frame] + rows + rule + sum, channel = "patterns", w = 640.0, h = 300.0)
 }
 
@@ -469,7 +570,11 @@ val pitch = Param(220f)
 val level = Param(0f)
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 240.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun triangle(t: Double) = 1 - 4 * abs(t - floor(t + 0.5))
 
@@ -483,15 +588,34 @@ fun wave(shift: Double, c: Vec4) = fline {
 fun update() {
     pitch.base = hz.toFloat()
     level.base = if (on) (0.15 * amplitude).toFloat() else 0f
-    lines(frame, wave(0.0, vec(1.0, 1.0, 1.0, 0.35)), wave(phase, vec(0.4, 0.9, 1.0, 1.0)), channel = "wave", w = 640.0, h = 240.0)
+    lines(
+        frame,
+        wave(0.0, vec(1.0, 1.0, 1.0, 0.35)),
+        wave(phase, vec(0.4, 0.9, 1.0, 1.0)),
+        channel = "wave",
+        w = 640.0,
+        h = 240.0,
+    )
 }
 
 update()
 controlGroup {
-    slider("amplitude", 0.0, 1.0, step = 0.01, initialValue = 0.6) { amplitude = it; update() }
-    slider("frequency", 55.0, 880.0, step = 1.0, initialValue = 220.0, law = ControlLaw.LOGARITHMIC) { hz = it; update() }
-    slider("phase", 0.0, 1.0, step = 0.01, initialValue = 0.0) { phase = it; update() }
-    checkbox("sound") { on = it; update() }
+    slider("amplitude", 0.0, 1.0, step = 0.01, initialValue = 0.6) {
+        amplitude = it
+        update()
+    }
+    slider("frequency", 55.0, 880.0, step = 1.0, initialValue = 220.0, law = ControlLaw.LOGARITHMIC) {
+        hz = it
+        update()
+    }
+    slider("phase", 0.0, 1.0, step = 0.01, initialValue = 0.0) {
+        phase = it
+        update()
+    }
+    checkbox("sound") {
+        on = it
+        update()
+    }
 }
 
 audio(TriOsc(pitch), gain = level)
@@ -509,11 +633,15 @@ Two equal tones add. Shift one by half a cycle and every push meets a pull: sile
 // Two identical tones, the second slid along by "shift" (a fraction of a cycle), and their sum.
 var shift = 0.0
 var on = false
-val offset = Param(0f)     // the second tone's shift, in radians
+val offset = Param(0f) // the second tone's shift, in radians
 val level = Param(0f)
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 300.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun row(y: Double, scale: Double, f: (Double) -> Double, c: Vec4) = fline {
     moveTo(0.0, y - scale * f(0.0))
@@ -531,16 +659,29 @@ fun update() {
         frame,
         row(46.0, 38.0, first, vec(0.4, 0.9, 1.0, 1.0)),
         row(134.0, 38.0, second, vec(0.4, 0.9, 1.0, 0.6)),
-        fline { moveTo(0.0, 182.0); lineTo(640.0, 182.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) },
+        fline {
+            moveTo(0.0, 182.0)
+            lineTo(640.0, 182.0)
+            thickness = 1.0
+            color = vec(1.0, 1.0, 1.0, 0.35)
+        },
         row(240.0, 28.0, { t -> first(t) + second(t) }, vec(1.0, 0.6, 0.2, 1.0)),
-        channel = "wave", w = 640.0, h = 300.0,
+        channel = "wave",
+        w = 640.0,
+        h = 300.0,
     )
 }
 
 update()
 controlGroup {
-    slider("shift", 0.0, 1.0, step = 0.01, initialValue = 0.0) { shift = it; update() }
-    checkbox("sound") { on = it; update() }
+    slider("shift", 0.0, 1.0, step = 0.01, initialValue = 0.0) {
+        shift = it
+        update()
+    }
+    checkbox("sound") {
+        on = it
+        update()
+    }
 }
 
 audio((SineOsc(Param(220f)) + SineOsc(Param(220f), phaseMod = offset)) / 2.0, gain = level)
@@ -555,9 +696,11 @@ audio((SineOsc(Param(220f)) + SineOsc(Param(220f), phaseMod = offset)) / 2.0, ga
 Drag the points, then hold a key. Corners and jumps sound brighter.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/draw_wave.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-draw_wave" alt="One drawn period of a wave as a cyan line through draggable points, and below it orange bars for how much of each multiple the drawing holds, mostly the first, with low, middle and high hold buttons"}
-// Draw one cycle and hear it repeated. Drag the points of the curve, or draw a new stroke across the
-// box; the keys play whatever is drawn at three pitches. The bars are how much of each multiple of
-// the key's frequency the shape holds.
+/*
+Draw one cycle and hear it repeated. Drag the points of the curve, or draw a new stroke across the
+box; the keys play whatever is drawn at three pitches. The bars are how much of each multiple of
+the key's frequency the shape holds.
+*/
 val table = FloatArray(2048)
 val gates = 3 { Gate() }
 val voices = [196f, 247f, 294f].map { WavetableOsc(table, Param(it)) }
@@ -576,20 +719,21 @@ fun starter() = fline {
 // One cycle, read left to right, as samples between -1 and 1 with no offset.
 fun samples(shape: FLine): FloatArray {
     val points = shape.nodes.map { it.to.x.toDouble() to it.to.y.toDouble() }.sortedBy { it.first }
-    val raw = DoubleArray(table.size) { i ->
-        val x = 640.0 * i / table.size
-        val j = points.indexOfFirst { it.first >= x }
-        when {
-            j < 0 -> (140 - points.last().second) / 100
-            j == 0 -> (140 - points.first().second) / 100
-            else -> {
-                val (ax, ay) = points[j - 1]
-                val (bx, by) = points[j]
-                val t = if (bx > ax) (x - ax) / (bx - ax) else 0.0
-                (140 - (ay + (by - ay) * t)) / 100
+    val raw =
+        DoubleArray(table.size) { i ->
+            val x = 640.0 * i / table.size
+            val j = points.indexOfFirst { it.first >= x }
+            when {
+                j < 0 -> (140 - points.last().second) / 100
+                j == 0 -> (140 - points.first().second) / 100
+                else -> {
+                    val (ax, ay) = points[j - 1]
+                    val (bx, by) = points[j]
+                    val t = if (bx > ax) (x - ax) / (bx - ax) else 0.0
+                    (140 - (ay + (by - ay) * t)) / 100
+                }
             }
         }
-    }
     val mean = raw.average()
     val peak = raw.maxOf { abs(it - mean) }.coerceAtLeast(1e-6)
     return FloatArray(raw.size) { ((raw[it] - mean) / peak).toFloat() }
@@ -598,16 +742,30 @@ fun samples(shape: FLine): FloatArray {
 // How much of each of the first 24 multiples of the base frequency is in the cycle.
 fun partials() {
     val n = table.size
-    val amps = (1..24).map { k ->
-        var re = 0.0
-        var im = 0.0
-        for (i in 0 until n) { re += table[i] * cos(2 * PI * k * i / n); im -= table[i] * sin(2 * PI * k * i / n) }
-        2 * sqrt(re * re + im * im) / n
-    }
+    val amps =
+        (1..24).map { k ->
+            var re = 0.0
+            var im = 0.0
+            for (i in 0 until n) {
+                re += table[i] * cos(2 * PI * k * i / n)
+                im -= table[i] * sin(2 * PI * k * i / n)
+            }
+            2 * sqrt(re * re + im * im) / n
+        }
     val bars = amps.mapIndexed { i, a ->
-        fline { rect(10.0 + i * 26.0, 150 - 140 * a.coerceAtMost(1.0), 18.0, 140 * a.coerceAtMost(1.0)); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
+        fline {
+            rect(10.0 + i * 26.0, 150 - 140 * a.coerceAtMost(1.0), 18.0, 140 * a.coerceAtMost(1.0))
+            filled = true
+            stroked = false
+            color = vec(1.0, 0.6, 0.2, 1.0)
+        }
     }
-    val axis = fline { moveTo(0.0, 150.0); lineTo(640.0, 150.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
+    val axis = fline {
+        moveTo(0.0, 150.0)
+        lineTo(640.0, 150.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
     lines(bars + axis, channel = "partials", w = 640.0, h = 160.0)
 }
 
@@ -617,12 +775,23 @@ fun use(shape: FLine) {
 }
 
 fun show(shape: FLine) {
-    val axis = fline { moveTo(0.0, 140.0); lineTo(640.0, 140.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
+    val axis = fline {
+        moveTo(0.0, 140.0)
+        lineTo(640.0, 140.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
     lines(axis, shape, channel = "wave", w = 640.0, h = 280.0, editable = true, drawing = true) { edited ->
         // A new stroke replaces the shape; a dragged point reshapes it.
         val latest = edited.last()
         use(latest)
-        if (edited.size > 2) show(latest.copy().apply { thickness = 2.5; color = vec(0.4, 0.9, 1.0, 1.0) })
+        if (edited.size > 2)
+            show(
+                latest.copy().apply {
+                    thickness = 2.5
+                    color = vec(0.4, 0.9, 1.0, 1.0)
+                },
+            )
     }
 }
 
@@ -649,13 +818,17 @@ Radius is amplitude, speed of turning is frequency, starting point is phase.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/circle_sine.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-circle_sine" alt="A point on a circle at the left, its height traced to the right as a cyan sine wave, with radius, turns per second and start sliders"}
 // A point going round a circle, and its height over time. The trace scrolls left, newest at the circle.
 var radius = 0.8
-var speed = 0.5      // turns per second
-var start = 0.0      // where the point starts, as a fraction of a turn
+var speed = 0.5 // turns per second
+var start = 0.0 // where the point starts, as a fraction of a turn
 var angle = 0.0
 val heights = mutableListOf<Double>()
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 280.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 280.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun draw() {
     val cx = 110.0
@@ -665,11 +838,35 @@ fun draw() {
     val px = cx + r * cos(turn)
     val py = cy - r * sin(turn)
     val guide = vec(1.0, 1.0, 1.0, 0.35)
-    val circle = fline { circle(cx, cy, r); thickness = 1.5; color = guide }
-    val spoke = fline { moveTo(cx, cy); lineTo(px, py); thickness = 1.5; color = guide }
-    val level = fline { moveTo(px, py); lineTo(240.0, py); thickness = 1.0; color = guide }
-    val dot = fline { circle(px, py, 6.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
-    val axis = fline { moveTo(240.0, cy); lineTo(640.0, cy); thickness = 1.0; color = guide }
+    val circle = fline {
+        circle(cx, cy, r)
+        thickness = 1.5
+        color = guide
+    }
+    val spoke = fline {
+        moveTo(cx, cy)
+        lineTo(px, py)
+        thickness = 1.5
+        color = guide
+    }
+    val level = fline {
+        moveTo(px, py)
+        lineTo(240.0, py)
+        thickness = 1.0
+        color = guide
+    }
+    val dot = fline {
+        circle(px, py, 6.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    val axis = fline {
+        moveTo(240.0, cy)
+        lineTo(640.0, cy)
+        thickness = 1.0
+        color = guide
+    }
     val trace = fline {
         heights.reversed().forEachIndexed { i, h -> if (i == 0) moveTo(240.0, cy - h) else lineTo(240.0 + i, cy - h) }
         thickness = 3.0
@@ -717,7 +914,11 @@ var on = false
 
 // Twenty milliseconds of the wave, 640 pixels wide.
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 240.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun draw() = lines(
     frame,
@@ -740,9 +941,18 @@ fun update() {
 
 update()
 controlGroup {
-    slider("frequency", 20.0, 20000.0, step = 1.0, initialValue = 220.0, law = ControlLaw.LOGARITHMIC) { hz = it; update() }
-    slider("amplitude", 0.0, 1.0, step = 0.01, initialValue = 0.8) { amplitude = it; update() }
-    checkbox("sound") { on = it; update() }
+    slider("frequency", 20.0, 20000.0, step = 1.0, initialValue = 220.0, law = ControlLaw.LOGARITHMIC) {
+        hz = it
+        update()
+    }
+    slider("amplitude", 0.0, 1.0, step = 0.01, initialValue = 0.8) {
+        amplitude = it
+        update()
+    }
+    checkbox("sound") {
+        on = it
+        update()
+    }
 }
 
 audio(SineOsc(pitch), gain = level)
@@ -763,32 +973,45 @@ Listen: the tone gliding from 20 Hz to 20,000 Hz over ten seconds, as if the fre
 A few hertz apart, two sines drift in and out of step: one tone, swelling and fading.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/beats.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-beats" alt="A flat cyan line while neither key is held, two hold buttons, 220 Hz and 220 Hz + difference, and a difference slider at 3.0"}
-// Two sine tones a few hertz apart. Hold one key, then both: the sum swells and fades as the two
-// drift in and out of step. The picture is one second of what you hear; each column spans the
-// wave's highest and lowest points in a 640th of a second, so the outline is the loudness.
+/*
+Two sine tones a few hertz apart. Hold one key, then both: the sum swells and fades as the two
+drift in and out of step. The picture is one second of what you hear; each column spans the
+wave's highest and lowest points in a 640th of a second, so the outline is the loudness.
+*/
 var difference = 3.0
 val held = BooleanArray(2)
 val gates = 2 { Gate() }
 val second = Param(223f)
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 240.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun draw() {
     val f = [220.0, 220.0 + difference]
-    val columns = (0 until 640).map { x ->
-        val values = (0 until 24).map { k ->
-            val t = (x + k / 24.0) / 640
-            (0..1).sumOf { i -> if (held[i]) sin(2 * PI * f[i] * t) else 0.0 }
+    val columns =
+        (0 until 640).map { x ->
+            val values =
+                (0 until 24).map { k ->
+                    val t = (x + k / 24.0) / 640
+                    (0..1).sumOf { i -> if (held[i]) sin(2 * PI * f[i] * t) else 0.0 }
+                }
+            fline {
+                moveTo(x.toDouble(), 120 - 50 * values.max())
+                lineTo(x.toDouble(), 120 - 50 * values.min() + 0.5)
+                thickness = 1.0
+                color = vec(0.4, 0.9, 1.0, 1.0)
+            }
         }
-        fline {
-            moveTo(x.toDouble(), 120 - 50 * values.max())
-            lineTo(x.toDouble(), 120 - 50 * values.min() + 0.5)
-            thickness = 1.0
-            color = vec(0.4, 0.9, 1.0, 1.0)
-        }
+    val axis = fline {
+        moveTo(0.0, 120.0)
+        lineTo(640.0, 120.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
     }
-    val axis = fline { moveTo(0.0, 120.0); lineTo(640.0, 120.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
     lines([frame, axis] + columns, channel = "sum", w = 640.0, h = 240.0)
 }
 
@@ -806,7 +1029,7 @@ controlGroup {
     }
 }
 
-val tones = listOf(SineOsc(Param(220f)), SineOsc(second))
+val tones = [SineOsc(Param(220f)), SineOsc(second)]
 audio(2 { i -> tones[i] * adsr(0.01, 0.05, 1.0, 0.25, gates[i]) }.reduce { a, b -> a + b } / 2.0, gain = 0.15f)
 ```
 
@@ -833,9 +1056,13 @@ val level = Param(0f)
 val weights = 50 { Param(0f) }
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 260.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 260.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
-fun partial(i: Int) = 2 * i + 1                      // 1, 3, 5, …
+fun partial(i: Int) = 2 * i + 1 // 1, 3, 5, …
 fun sum(t: Double) = (0 until count).sumOf { i -> 4 / PI / partial(i) * sin(2 * PI * partial(i) * t) }
 fun square(t: Double) = if (t - floor(t) < 0.5) 1.0 else -1.0
 
@@ -849,13 +1076,26 @@ fun update() {
         thickness = width
         color = c
     }
-    lines(frame, wave(::square, vec(1.0, 1.0, 1.0, 0.35), 1.5), wave(::sum, vec(0.4, 0.9, 1.0, 1.0), 3.0), channel = "wave", w = 640.0, h = 260.0)
+    lines(
+        frame,
+        wave(::square, vec(1.0, 1.0, 1.0, 0.35), 1.5),
+        wave(::sum, vec(0.4, 0.9, 1.0, 1.0), 3.0),
+        channel = "wave",
+        w = 640.0,
+        h = 260.0,
+    )
 }
 
 update()
 controlGroup {
-    slider("sines", 1.0, 50.0, step = 1.0, initialValue = 1.0) { count = it.toInt(); update() }
-    checkbox("sound") { on = it; update() }
+    slider("sines", 1.0, 50.0, step = 1.0, initialValue = 1.0) {
+        count = it.toInt()
+        update()
+    }
+    checkbox("sound") {
+        on = it
+        update()
+    }
 }
 
 // One oscillator per odd multiple of 110 Hz, each at the weight the sum gives it.
@@ -871,9 +1111,11 @@ audio(50 { i -> SineOsc(Param(110f * partial(i))) * weights[i] }.reduce { a, b -
 Whistle: one bar. Sing a vowel: a row of them, at multiples of your note.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/microphone.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-microphone" alt="An empty spectrum, with a listen checkbox that starts the microphone"}
-// What the microphone hears, taken apart into sines. Tick "listen"; each bar is how much of one
-// frequency, 20 Hz wide, is in the last tenth of a second, from 0 to 2,500 Hz. A whistle stands up
-// as one bar; a sung vowel as a row of bars at whole multiples of the note. Nothing is played back.
+/*
+What the microphone hears, taken apart into sines. Tick "listen"; each bar is how much of one
+frequency, 20 Hz wide, is in the last tenth of a second, from 0 to 2,500 Hz. A whistle stands up
+as one bar; a sung vowel as a row of bars at whole multiples of the note. Nothing is played back.
+*/
 var listening = false
 val mic = audioIn.scope(4096)
 
@@ -882,11 +1124,27 @@ fun bars(amps: List<Double>) {
     val top = amps.maxOrNull()?.coerceAtLeast(2e-3) ?: 2e-3
     val shapes = amps.mapIndexed { i, a ->
         val h = 200 * (a / top).coerceIn(0.0, 1.0)
-        fline { rect(i * 5.0, 220 - h, 4.0, h.coerceAtLeast(0.5)); filled = true; stroked = false; color = vec(0.4, 0.9, 1.0, 1.0) }
+        fline {
+            rect(i * 5.0, 220 - h, 4.0, h.coerceAtLeast(0.5))
+            filled = true
+            stroked = false
+            color = vec(0.4, 0.9, 1.0, 1.0)
+        }
     }
     // A tick every 500 Hz along the bottom.
-    val ticks = fline { (0..5).forEach { k -> moveTo(k * 125.0, 224.0); lineTo(k * 125.0, 234.0) }; thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
-    val frame = fline { rect(0.0, 0.0, 640.0, 240.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+    val ticks = fline {
+        (0..5).forEach { k ->
+            moveTo(k * 125.0, 224.0)
+            lineTo(k * 125.0, 234.0)
+        }
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
+    val frame = fline {
+        rect(0.0, 0.0, 640.0, 240.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.0)
+    }
     lines([frame, ticks] + shapes, channel = "spectrum", w = 640.0, h = 240.0)
 }
 
@@ -903,13 +1161,18 @@ loop {
         if (n > 0) {
             // A Hann window, then the strength of each 20 Hz step: a slow Fourier transform, 128 bins.
             val windowed = DoubleArray(n) { x[it] * (0.5 - 0.5 * cos(2 * PI * it / n)) }
-            bars(List(128) { b ->
-                val f = (b + 0.5) * 20.0 / snap.sampleRate
-                var re = 0.0
-                var im = 0.0
-                for (i in 0 until n) { re += windowed[i] * cos(2 * PI * f * i); im -= windowed[i] * sin(2 * PI * f * i) }
-                sqrt(re * re + im * im) / n
-            })
+            bars(
+                List(128) { b ->
+                    val f = (b + 0.5) * 20.0 / snap.sampleRate
+                    var re = 0.0
+                    var im = 0.0
+                    for (i in 0 until n) {
+                        re += windowed[i] * cos(2 * PI * f * i)
+                        im -= windowed[i] * sin(2 * PI * f * i)
+                    }
+                    sqrt(re * re + im * im) / n
+                },
+            )
         }
     }
     delay(60)
@@ -939,7 +1202,11 @@ fun shape(k: Int, j: Int) = sin(k * PI * j / (masses + 1))
 fun rate(k: Int) = 2 * sin(k * PI / (2 * (masses + 1)))
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 300.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 
 fun spring(x0: Double, y0: Double, x1: Double, y1: Double) = fline {
     moveTo(x0, y0)
@@ -956,23 +1223,33 @@ fun draw() {
     val k = mode.coerceAtMost(masses)
     val mix = addLowest && k != 1
     val xs = (0..masses + 1).map { 8.0 + 624.0 * it / (masses + 1) }
-    val ys = (0..masses + 1).map { j ->
-        if (j == 0 || j == masses + 1) 150.0 else {
-            val main = shape(k, j) * cos(2 * PI * 0.6 * rate(k) * time)
-            val low = if (mix) shape(1, j) * cos(2 * PI * 0.6 * rate(1) * time) else 0.0
-            150 - 115 * (if (mix) (main + low) / 2 else main)
+    val ys =
+        (0..masses + 1).map { j ->
+            if (j == 0 || j == masses + 1) 150.0
+            else {
+                val main = shape(k, j) * cos(2 * PI * 0.6 * rate(k) * time)
+                val low = if (mix) shape(1, j) * cos(2 * PI * 0.6 * rate(1) * time) else 0.0
+                150 - 115 * (if (mix) (main + low) / 2 else main)
+            }
         }
-    }
     val walls = fline {
-        moveTo(8.0, 10.0); lineTo(8.0, 290.0)
-        moveTo(632.0, 10.0); lineTo(632.0, 290.0)
+        moveTo(8.0, 10.0)
+        lineTo(8.0, 290.0)
+        moveTo(632.0, 10.0)
+        lineTo(632.0, 290.0)
         thickness = 4.0
         color = vec(1.0, 1.0, 1.0, 0.5)
     }
     val springs = (0..masses).map { spring(xs[it], ys[it], xs[it + 1], ys[it + 1]) }
-    val balls = (1..masses).map { j ->
-        fline { circle(xs[j], ys[j], 22.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
-    }
+    val balls =
+        (1..masses).map { j ->
+            fline {
+                circle(xs[j], ys[j], 22.0)
+                filled = true
+                stroked = false
+                color = vec(1.0, 0.6, 0.2, 1.0)
+            }
+        }
     lines([frame, walls] + springs + balls, channel = "springs", w = 640.0, h = 300.0)
 }
 
@@ -1002,16 +1279,19 @@ A string's modes are whole numbers of half waves, at whole multiples of the lowe
 harmonics.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/pluck.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-pluck" alt="A straight string between two pegs with an orange dot marking where it will be plucked, a pluck button, and pluck at, mode and length sliders"}
-// A string held at both ends. "pluck" pulls it aside at "pluck at" (the orange dot) and lets go.
-// What follows is a sum of the string's modes, each a whole number of half waves, ringing at whole multiples of the lowest frequency, the high ones dying
-// away faster. "mode" shows one mode alone (0 shows the pluck); "length" stops the string short,
-// as a finger on a fret does.
+/*
+A string held at both ends. "pluck" pulls it aside at "pluck at" (the orange dot) and lets go.
+What follows is a sum of the string's modes, each a whole number of half waves, ringing at whole multiples of the
+lowest frequency, the high ones dying
+away faster. "mode" shows one mode alone (0 shows the pluck); "length" stops the string short,
+as a finger on a fret does.
+*/
 val n = 30
-var at = 0.25               // where the last pluck was, as a fraction of the string
-var depth = 0.8             // how far it was pulled, as a fraction of the picture's half-height
+var at = 0.25 // where the last pluck was, as a fraction of the string
+var depth = 0.8 // how far it was pulled, as a fraction of the picture's half-height
 var length = 1.0
 var mode = 0
-var plucked = -10.0         // when the pluck happened, in seconds since launch
+var plucked = -10.0 // when the pluck happened, in seconds since launch
 var time = 0.0
 
 fun weight(k: Int) = depth * 2 / (k * k * PI * PI * at * (1 - at)) * sin(k * PI * at)
@@ -1019,16 +1299,22 @@ fun decay(k: Int) = 2.5 / k.toDouble().pow(0.7)
 fun base() = 110 / length
 
 // The sound: one sine per mode, its loudness set by the pluck and its own decay.
-var audioPluck = -1f        // audio time of the latest pluck; NaN asks the audio thread to stamp it
-val partials = (1..n).map { k ->
-    SineOsc(Param { (k * base()).toFloat() }) * Param {
-        if (audioPluck.isNaN()) audioPluck = time
-        if (audioPluck < 0) 0f else (weight(k) * exp(-(time - audioPluck) / decay(k))).toFloat()
+var audioPluck = -1f // audio time of the latest pluck; NaN asks the audio thread to stamp it
+val partials =
+    (1..n).map { k ->
+        SineOsc(Param { (k * base()).toFloat() }) *
+            Param {
+                if (audioPluck.isNaN()) audioPluck = time
+                if (audioPluck < 0) 0f else (weight(k) * exp(-(time - audioPluck) / decay(k))).toFloat()
+            }
     }
-}
 
 // An invisible frame the size of the figure, so its bounds, and so its scale, never change.
-val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+val frame = fline {
+    rect(0.0, 0.0, 640.0, 300.0)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.0)
+}
 val left = 12.0
 val middle = 150.0
 fun stringEnd() = left + 616 * length
@@ -1044,8 +1330,19 @@ fun pluck(x: Double, y: Double) {
 
 :::fold scenery: the fixed ends and guide lines of the string
 fun scenery(): List<FLine> {
-    val rest = fline { moveTo(stringEnd(), middle); lineTo(628.0, middle); thickness = 1.5; color = vec(1.0, 1.0, 1.0, 0.3) }
-    val pegs = fline { circle(left, middle, 7.0); circle(stringEnd(), middle, 7.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.8) }
+    val rest = fline {
+        moveTo(stringEnd(), middle)
+        lineTo(628.0, middle)
+        thickness = 1.5
+        color = vec(1.0, 1.0, 1.0, 0.3)
+    }
+    val pegs = fline {
+        circle(left, middle, 7.0)
+        circle(stringEnd(), middle, 7.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.8)
+    }
     return [frame, rest, pegs]
 }
 :::endfold
@@ -1064,7 +1361,12 @@ fun animate() {
         if (mode > 0) sin(mode * PI * x) * cos(PI * mode * time)
         else (1..n).sumOf { k -> weight(k) * sin(k * PI * x) * cos(PI * k * since) * exp(-since / decay(k)) }
     }
-    val mark = fline { circle(left + (stringEnd() - left) * at, middle + 24, 6.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
+    val mark = fline {
+        circle(left + (stringEnd() - left) * at, middle + 24, 6.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
     lines(scenery() + string(y) + mark, channel = "string", w = 640.0, h = 300.0)
 }
 
@@ -1104,9 +1406,11 @@ Rings of high and low pressure. Their spacing is the wavelength: 343 Hz makes on
 import afield.media.image.util.PngEncoder
 :::endfold
 
-// A sphere swelling and shrinking, seen in cross-section: red is pressure above the usual, blue below.
-// The picture is four metres across, and the bar at the bottom is one metre. Time runs slowed down,
-// half a cycle a second whatever the frequency, so only the spacing of the rings changes with it.
+/*
+A sphere swelling and shrinking, seen in cross-section: red is pressure above the usual, blue below.
+The picture is four metres across, and the bar at the bottom is one metre. Time runs slowed down,
+half a cycle a second whatever the frequency, so only the spacing of the rings changes with it.
+*/
 val imageW = 640
 val imageH = 300
 val px = IntArray(imageW * imageH)
@@ -1115,19 +1419,21 @@ var phase = 0.0
 
 :::fold paint: colours the pixel array from the pressure field
 fun paint() {
-    val wavelength = 160 * 343 / hz          // pixels: 160 to the metre
+    val wavelength = 160 * 343 / hz // pixels: 160 to the metre
     val cx = 160.0
     val cy = 150.0
     val r0 = 18 + 4 * sin(2 * PI * phase)
     for (j in 0 until imageH) for (i in 0 until imageW) {
         val r = sqrt((i - cx) * (i - cx) + (j - cy) * (j - cy))
-        px[j * imageW + i] = if (r < r0) 0xff9aa4ad.toInt() else {
-            // The swing falls with distance; in a flat picture of a sphere, as one over the distance.
-            val p = (60 / r).coerceAtMost(1.0) * sin(2 * PI * ((r - r0) / wavelength - phase))
-            val red = (255 * p.coerceAtLeast(0.0)).toInt()
-            val blue = (255 * (-p).coerceAtLeast(0.0)).toInt()
-            (0xff shl 24) or (red shl 16) or (((red + blue) / 4) shl 8) or blue
-        }
+        px[j * imageW + i] =
+            if (r < r0) 0xff9aa4ad.toInt()
+            else {
+                // The swing falls with distance; in a flat picture of a sphere, as one over the distance.
+                val p = (60 / r).coerceAtMost(1.0) * sin(2 * PI * ((r - r0) / wavelength - phase))
+                val red = (255 * p.coerceAtLeast(0.0)).toInt()
+                val blue = (255 * (-p).coerceAtLeast(0.0)).toInt()
+                (0xff shl 24) or (red shl 16) or (((red + blue) / 4) shl 8) or blue
+            }
     }
     for (j in 284..287) for (i in 20..180) px[j * imageW + i] = -1
     display("field", PngEncoder.encode(px, imageW, imageH))
@@ -1164,16 +1470,18 @@ interfere and the sound is aimed ahead.
 import afield.media.image.util.PngEncoder
 :::endfold
 
-// A plate 60 cm across set in a wall on the left, pushing air back and forth: red is pressure above
-// the usual, blue below. When its waves are longer than the plate the sound spreads every way; when
-// they are shorter, the edges of the plate interfere and the sound is aimed ahead. The strip below
-// is the pressure along the plate's axis. The picture is four metres across, the bar is one metre;
-// time runs slowed, half a cycle a second, whatever the frequency.
+/*
+A plate 60 cm across set in a wall on the left, pushing air back and forth: red is pressure above
+the usual, blue below. When its waves are longer than the plate the sound spreads every way; when
+they are shorter, the edges of the plate interfere and the sound is aimed ahead. The strip below
+is the pressure along the plate's axis. The picture is four metres across, the bar is one metre;
+time runs slowed, half a cycle a second, whatever the frequency.
+*/
 val imageW = 640
 val imageH = 300
-val fieldH = 228               // the pressure field; below it, a strip plotting the axis
+val fieldH = 228 // the pressure field; below it, a strip plotting the axis
 val metre = 160.0
-val cell = 2                   // the field is solved on a 2 × 2 pixel grid and drawn up
+val cell = 2 // the field is solved on a 2 × 2 pixel grid and drawn up
 val gw = imageW / cell
 val gh = fieldH / cell
 val px = IntArray(imageW * imageH)
@@ -1231,7 +1539,10 @@ fun paint() {
 solve()
 paint()
 controlGroup {
-    slider("frequency", 150.0, 3000.0, step = 1.0, initialValue = 400.0, law = ControlLaw.LOGARITHMIC) { hz = it; solve() }
+    slider("frequency", 150.0, 3000.0, step = 1.0, initialValue = 400.0, law = ControlLaw.LOGARITHMIC) {
+        hz = it
+        solve()
+    }
 }
 
 var clock = AnimationClock.nowSeconds()
@@ -1254,11 +1565,13 @@ loop {
 About 3 ms a metre. Twice as far, half the pressure swing.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/speaker_ear.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-speaker_ear" alt="A speaker at the left sending out cyan wavefronts toward an orange listener, a short bar for one metre, and two meters for the delay in milliseconds and the level in decibels"}
-// A speaker on the left and a listener (the orange point) you drag. The rings are one metre apart,
-// fainter as the sound spreads; the meters say how late the sound arrives and how much quieter it
-// is than one metre away. The picture is ten metres across; the bar is one metre.
+/*
+A speaker on the left and a listener (the orange point) you drag. The rings are one metre apart,
+fainter as the sound spreads; the meters say how late the sound arrives and how much quieter it
+is than one metre away. The picture is ten metres across; the bar is one metre.
+*/
 val metre = 64.0
-var ear = Pair(3.0, 0.0)       // metres from the speaker
+var ear = Pair(3.0, 0.0) // metres from the speaker
 lateinit var delay: MeterHandle
 lateinit var level: MeterHandle
 
@@ -1286,14 +1599,44 @@ fun measure() {
 fun show() {
     val sx = 24.0
     val sy = 150.0
-    val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+    val frame = fline {
+        rect(0.0, 0.0, 640.0, 300.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.0)
+    }
     // Brightness falls as one over the distance, as the pressure swing does.
-    val rings = (1..10).map { m -> ring(sx, sy, metre * m).apply { thickness = 2.0; color = vec(0.4, 0.9, 1.0, 0.25 + 0.75 / m) } }
-    val speaker = fline { rect(sx - 16, sy - 22, 16.0, 44.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.9) }
-    val path = fline { moveTo(sx, sy); lineTo(sx + metre * ear.first, sy - metre * ear.second); thickness = 1.5; color = vec(1.0, 0.6, 0.2, 0.5) }
-    val scale = fline { moveTo(40.0, 285.0); lineTo(40 + metre, 285.0); thickness = 3.0; color = vec(1.0, 1.0, 1.0, 0.8) }
+    val rings =
+        (1..10).map { m ->
+            ring(sx, sy, metre * m).apply {
+                thickness = 2.0
+                color = vec(0.4, 0.9, 1.0, 0.25 + 0.75 / m)
+            }
+        }
+    val speaker = fline {
+        rect(sx - 16, sy - 22, 16.0, 44.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.9)
+    }
+    val path = fline {
+        moveTo(sx, sy)
+        lineTo(sx + metre * ear.first, sy - metre * ear.second)
+        thickness = 1.5
+        color = vec(1.0, 0.6, 0.2, 0.5)
+    }
+    val scale = fline {
+        moveTo(40.0, 285.0)
+        lineTo(40 + metre, 285.0)
+        thickness = 3.0
+        color = vec(1.0, 1.0, 1.0, 0.8)
+    }
     val scenery = ([frame, speaker, path, scale] + rings).onEach { it.fixed = true }
-    val listener = fline { moveTo(sx + metre * ear.first, sy - metre * ear.second); pointed = true; pointSize = 3.5; color = vec(1.0, 0.6, 0.2, 1.0) }
+    val listener = fline {
+        moveTo(sx + metre * ear.first, sy - metre * ear.second)
+        pointed = true
+        pointSize = 3.5
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
     lines(scenery + listener, channel = "room", w = 640.0, h = 300.0, editable = true) { edited ->
         val p = edited.last().nodes.first().to
         ear = ((p.x - sx) / metre).coerceIn(0.3, 9.6) to ((sy - p.y) / metre).coerceIn(-2.2, 2.2)
@@ -1326,7 +1669,10 @@ lateinit var bar: MeterHandle
 
 fun show(pa: Double) {
     val db = level(pa)
-    markdown("readout", "**${"%.3g".format(pa)} Pa → ${db.f1} dB**\n\n0 dB: hearing just begins · 60 dB: talking, a metre away · 120 dB: it starts to hurt")
+    markdown(
+        "readout",
+        "**${"%.3g".format(pa)} Pa → ${db.f1} dB**\n\n0 dB: hearing just begins · 60 dB: talking, a metre away · 120 dB: it starts to hurt",
+    )
     if (::bar.isInitialized) bar.set(db)
 }
 
@@ -1347,23 +1693,25 @@ Ahead of the source the rings crowd, and the pitch is higher; behind, lower. Tim
 hundred times.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/doppler.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-doppler" alt="A moving source, a white dot, inside cyan rings that crowd together ahead of it and spread out behind, an orange listener below, a speed slider and a sound checkbox"}
-// A source moving left to right past a listener (orange), sending out rings that spread at the
-// speed of sound. Time is slowed a hundred times, so a ring grows by a fraction of the gap between
-// rings in each painted frame even at fifteen frames a second. Ahead of the source the rings crowd together, behind
-// it they spread out. With "sound" on you hear a 440 Hz tone at the pitch the listener receives.
+/*
+A source moving left to right past a listener (orange), sending out rings that spread at the
+speed of sound. Time is slowed a hundred times, so a ring grows by a fraction of the gap between
+rings in each painted frame even at fifteen frames a second. Ahead of the source the rings crowd together, behind
+it they spread out. With "sound" on you hear a 440 Hz tone at the pitch the listener receives.
+*/
 val metre = 64.0
 val c = 343.0
-val slow = 100.0          // picture time runs this many times slower than real time
-val every = 0.27          // seconds of picture time between rings
-var speed = 150.0          // metres per second
+val slow = 100.0 // picture time runs this many times slower than real time
+val every = 0.27 // seconds of picture time between rings
+var speed = 150.0 // metres per second
 var on = false
 var time = 0.0
-val emitted = mutableListOf<Pair<Double, Double>>()   // (time, x in metres) of each ring
+val emitted = mutableListOf<Pair<Double, Double>>() // (time, x in metres) of each ring
 var x = 0.0
 var nextRing = 0.0
 val pitch = Param(440f)
 val level = Param(0f)
-val listener = Pair(6.0, -2.5)  // metres: right of centre, below the path
+val listener = Pair(6.0, -2.5) // metres: right of centre, below the path
 
 :::fold ring: one wavefront circle as an FLine
 fun ring(cx: Double, cy: Double, r: Double) = fline {
@@ -1382,7 +1730,11 @@ fun ring(cx: Double, cy: Double, r: Double) = fline {
 fun step(dt: Double) {
     time += dt
     x += speed / slow * dt
-    if (x > 10.5) { x = -0.5; emitted.clear(); nextRing = time }
+    if (x > 10.5) {
+        x = -0.5
+        emitted.clear()
+        nextRing = time
+    }
     // A ring every few tenths of a second of picture time, placed where the source was when it left.
     while (nextRing <= time) {
         emitted += nextRing to x - speed / slow * (time - nextRing)
@@ -1399,10 +1751,29 @@ fun step(dt: Double) {
 
 fun draw() {
     val y = 130.0
-    val rings = emitted.map { (t0, x0) -> ring(metre * x0, y, c / slow * (time - t0) * metre).apply { thickness = 1.5; color = vec(0.4, 0.9, 1.0, 0.8) } }
-    val source = fline { circle(metre * x, y, 8.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.9) }
-    val ear = fline { circle(metre * listener.first, y - metre * listener.second, 9.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
-    val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+    val rings = emitted.map { (t0, x0) ->
+        ring(metre * x0, y, c / slow * (time - t0) * metre).apply {
+            thickness = 1.5
+            color = vec(0.4, 0.9, 1.0, 0.8)
+        }
+    }
+    val source = fline {
+        circle(metre * x, y, 8.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.9)
+    }
+    val ear = fline {
+        circle(metre * listener.first, y - metre * listener.second, 9.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    val frame = fline {
+        rect(0.0, 0.0, 640.0, 300.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.0)
+    }
     lines([frame] + rings + source + ear, channel = "street", w = 640.0, h = 300.0)
 }
 
@@ -1430,17 +1801,19 @@ loop {
 On the orange lines one speaker's push meets the other's pull and the tone nearly vanishes.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/two_speakers.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-two_speakers" alt="Two speakers at the left, faint rings for the crests of each one's wave, orange curves where a crest always meets a trough, an orange listener between them, a frequency slider and a sound checkbox"}
-// Two speakers on the left play the same tone. Each faint ring is a crest of one speaker's wave, a
-// wavelength apart; the orange curves are where a crest from one always meets a trough from the
-// other, so the two cancel. Drag the listener (the orange point). With "sound" on you hear the tone
-// at the loudness it has there. The picture is ten metres across.
+/*
+Two speakers on the left play the same tone. Each faint ring is a crest of one speaker's wave, a
+wavelength apart; the orange curves are where a crest from one always meets a trough from the
+other, so the two cancel. Drag the listener (the orange point). With "sound" on you hear the tone
+at the loudness it has there. The picture is ten metres across.
+*/
 val metre = 64.0
 var hz = 343.0
-var ear = Pair(5.0, 0.6)            // metres from the midpoint between the speakers
+var ear = Pair(5.0, 0.6) // metres from the midpoint between the speakers
 var on = false
 val pitch = Param(343f)
 val level = Param(0f)
-val speakers = listOf(0.4 to -0.9, 0.4 to 0.9)    // metres
+val speakers = [0.4 to -0.9, 0.4 to 0.9] // metres
 
 :::fold px: pixel x of a point in metres
 fun px(x: Double) = metre * x
@@ -1448,7 +1821,8 @@ fun px(x: Double) = metre * x
 :::fold py: pixel y of a point in metres
 fun py(y: Double) = 150 - metre * y
 :::endfold
-fun distance(x: Double, y: Double, s: Pair<Double, Double>) = sqrt((x - s.first) * (x - s.first) + (y - s.second) * (y - s.second))
+fun distance(x: Double, y: Double, s: Pair<Double, Double>) =
+    sqrt((x - s.first) * (x - s.first) + (y - s.second) * (y - s.second))
 
 // How big the pressure swing is at (x, y): the two waves added with their phases.
 fun loudness(x: Double, y: Double): Double {
@@ -1487,8 +1861,14 @@ fun quiet(gap: Double) = fline {
         var lo = -2.4
         var hi = 2.4
         fun diff(y: Double) = distance(x, y, speakers[0]) - distance(x, y, speakers[1])
-        if ((diff(lo) - gap) * (diff(hi) - gap) > 0) { started = false; continue }
-        repeat(30) { val mid = (lo + hi) / 2; if (diff(mid) < gap) lo = mid else hi = mid }
+        if ((diff(lo) - gap) * (diff(hi) - gap) > 0) {
+            started = false
+            continue
+        }
+        repeat(30) {
+            val mid = (lo + hi) / 2
+            if (diff(mid) < gap) lo = mid else hi = mid
+        }
         if (started) lineTo(px(x), py(lo)) else moveTo(px(x), py(lo))
         started = true
     }
@@ -1501,18 +1881,43 @@ fun update() {
 
 fun show() {
     val wavelength = 343 / hz
-    val frame = fline { rect(0.0, 0.0, 640.0, 300.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+    val frame = fline {
+        rect(0.0, 0.0, 640.0, 300.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.0)
+    }
     val crests = speakers.flatMap { s ->
         (1..(11 / wavelength).toInt()).map { k ->
-            ring(px(s.first), py(s.second), metre * k * wavelength).apply { thickness = 1.0; color = vec(0.4, 0.9, 1.0, 0.35) }
+            ring(px(s.first), py(s.second), metre * k * wavelength).apply {
+                thickness = 1.0
+                color = vec(0.4, 0.9, 1.0, 0.35)
+            }
         }
     }
     // A path difference can be no larger than the 1.8 m between the speakers.
-    val quietLines = (-6..5).map { m -> (m + 0.5) * wavelength }.filter { abs(it) < 1.8 }
-        .map { quiet(it).apply { thickness = 2.5; color = vec(1.0, 0.6, 0.2, 0.7) } }
-    val boxes = fline { speakers.forEach { (x, y) -> rect(px(x) - 10, py(y) - 14, 10.0, 28.0) }; filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.9) }
+    val quietLines =
+        (-6..5)
+            .map { m -> (m + 0.5) * wavelength }
+            .filter { abs(it) < 1.8 }
+            .map {
+                quiet(it).apply {
+                    thickness = 2.5
+                    color = vec(1.0, 0.6, 0.2, 0.7)
+                }
+            }
+    val boxes = fline {
+        speakers.forEach { (x, y) -> rect(px(x) - 10, py(y) - 14, 10.0, 28.0) }
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.9)
+    }
     val scenery = ([frame] + crests + quietLines + boxes).onEach { it.fixed = true }
-    val listener = fline { moveTo(px(ear.first), py(ear.second)); pointed = true; pointSize = 3.5; color = vec(1.0, 0.6, 0.2, 1.0) }
+    val listener = fline {
+        moveTo(px(ear.first), py(ear.second))
+        pointed = true
+        pointSize = 3.5
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
     lines(scenery + listener, channel = "field", w = 640.0, h = 300.0, editable = true) { edited ->
         val p = edited.last().nodes.first().to
         ear = (p.x / metre).coerceIn(0.5, 9.9) to ((150 - p.y) / metre).coerceIn(-2.3, 2.3)
@@ -1523,8 +1928,15 @@ fun show() {
 show()
 update()
 controlGroup {
-    slider("frequency", 100.0, 1000.0, step = 1.0, initialValue = 343.0, law = ControlLaw.LOGARITHMIC) { hz = it; update(); show() }
-    checkbox("sound") { on = it; update() }
+    slider("frequency", 100.0, 1000.0, step = 1.0, initialValue = 343.0, law = ControlLaw.LOGARITHMIC) {
+        hz = it
+        update()
+        show()
+    }
+    checkbox("sound") {
+        on = it
+        update()
+    }
 }
 
 audio(SineOsc(pitch), gain = level)
@@ -1539,9 +1951,11 @@ audio(SineOsc(pitch), gain = level)
 Far from a wall, a second clap. Within about 50 ms, closer than 8 m, one sound.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/echo.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-echo" alt="You, a white dot, standing 20 m from a wall, and below a time line with the first 50 ms shaded, where the echo would be heard as part of the clap, with a clap button and a distance to the wall slider"}
-// You clap, standing "distance to the wall" metres from a wall. The pulse travels there and back at
-// 343 m/s, shown at its real speed. Below, a timeline: the clap at 0, its echo when it returns; the
-// shaded part is the first 50 ms, inside which the ear hears the two as one sound.
+/*
+You clap, standing "distance to the wall" metres from a wall. The pulse travels there and back at
+343 m/s, shown at its real speed. Below, a timeline: the clap at 0, its echo when it returns; the
+shaded part is the first 50 ms, inside which the ear hears the two as one sound.
+*/
 var distance = 20.0
 var clapped = -10.0
 var time = 0.0
@@ -1552,38 +1966,74 @@ val echoLevel = Param(0.15f)
 fun echoGain(d: Double) = (0.6 * 4 / (2 * d)).coerceAtMost(0.6)
 
 fun draw() {
-    val metre = 600 / 60.0                        // sixty metres across
+    val metre = 600 / 60.0 // sixty metres across
     val wall = 20 + metre * distance
-    val travelled = 343 * (time - clapped)        // metres the pulse has gone
+    val travelled = 343 * (time - clapped) // metres the pulse has gone
     val out = travelled <= distance
     val front = if (out) 20 + metre * travelled else wall - metre * (travelled - distance)
-    val pulse = if (travelled > 2 * distance) null else fline {
-        moveTo(front, 40.0); lineTo(front, 160.0)
-        thickness = 3.0
-        color = if (out) vec(0.4, 0.9, 1.0, 1.0) else vec(1.0, 0.6, 0.2, 1.0)
+    val pulse =
+        if (travelled > 2 * distance) null
+        else
+            fline {
+                moveTo(front, 40.0)
+                lineTo(front, 160.0)
+                thickness = 3.0
+                color = if (out) vec(0.4, 0.9, 1.0, 1.0) else vec(1.0, 0.6, 0.2, 1.0)
+            }
+    val wallLine = fline {
+        rect(wall, 30.0, 8.0, 140.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.7)
     }
-    val wallLine = fline { rect(wall, 30.0, 8.0, 140.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.7) }
-    val you = fline { circle(20.0, 100.0, 8.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.9) }
+    val you = fline {
+        circle(20.0, 100.0, 8.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.9)
+    }
     // The timeline: 0 to 400 ms across the figure.
     val ms = 600 / 400.0
     val returns = 1000 * 2 * distance / 343
-    val merged = fline { rect(20.0, 205.0, 50 * ms, 50.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.12) }
-    val axis = fline { moveTo(20.0, 255.0); lineTo(620.0, 255.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
-    val clap = fline { moveTo(20.0, 255.0); lineTo(20.0, 210.0); thickness = 3.0; color = vec(0.4, 0.9, 1.0, 1.0) }
+    val merged = fline {
+        rect(20.0, 205.0, 50 * ms, 50.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.12)
+    }
+    val axis = fline {
+        moveTo(20.0, 255.0)
+        lineTo(620.0, 255.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
+    val clap = fline {
+        moveTo(20.0, 255.0)
+        lineTo(20.0, 210.0)
+        thickness = 3.0
+        color = vec(0.4, 0.9, 1.0, 1.0)
+    }
     val echo = fline {
         moveTo(20 + ms * returns.coerceAtMost(400.0), 255.0)
         lineTo(20 + ms * returns.coerceAtMost(400.0), 255 - 45 * (echoGain(distance) / 0.6).coerceAtLeast(0.3))
         thickness = 3.0
         color = vec(1.0, 0.6, 0.2, 1.0)
     }
-    val frame = fline { rect(0.0, 0.0, 640.0, 280.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+    val frame = fline {
+        rect(0.0, 0.0, 640.0, 280.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.0)
+    }
     lines(listOfNotNull(frame, wallLine, you, pulse, merged, axis, clap, echo), channel = "wall", w = 640.0, h = 280.0)
 }
 
 draw()
 controlGroup {
     keys("clap", letters = "c") { _, down ->
-        if (down) { clapped = time; gate.open() } else gate.close()
+        if (down) {
+            clapped = time
+            gate.open()
+        } else gate.close()
     }
     slider("distance to the wall", 2.0, 60.0, step = 0.5, initialValue = 20.0) {
         distance = it
@@ -1610,10 +2060,12 @@ loop {
 Bounces pile up into a tail: reverberation. Bigger, harder rooms ring longer.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_sound/reverb.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-sound-reverb" alt="A room seen from above with a white source and an orange listener, and below it the echoes reaching the listener as a dense cyan comb of ticks that fades away, with low, middle and high hold buttons and room size and soft walls sliders"}
-// A room seen from above, and when its echoes reach the listener (orange) after a sound from the
-// source (white): each tick is one path off the walls, its height how much of the sound is left.
-// A bigger room spaces them out and stretches the tail; softer walls make each bounce lose more.
-// The keys play short notes through a reverberator set from the same two sliders.
+/*
+A room seen from above, and when its echoes reach the listener (orange) after a sound from the
+source (white): each tick is one path off the walls, its height how much of the sound is left.
+A bigger room spaces them out and stretches the tail; softer walls make each bounce lose more.
+The keys play short notes through a reverberator set from the same two sliders.
+*/
 var size = 0.4
 var soft = 0.3
 val gates = 3 { Gate() }
@@ -1621,7 +2073,7 @@ val roomSize = Param(0.6f)
 val damping = Param(0.4f)
 
 fun draw() {
-    val w = 4 + 16 * size                  // metres
+    val w = 4 + 16 * size // metres
     val h = 0.6 * w
     val reflect = 1 - 0.6 * soft
     val sx = 0.3 * w
@@ -1639,14 +2091,42 @@ fun draw() {
         if (t > 0.6) continue
         // What is left of the sound, against the direct path; drawn as a square root so the tail shows.
         val a = reflect.pow(abs(i) + abs(j)) * direct / d
-        ticks += fline { moveTo(20 + 1000 * t, 270.0); lineTo(20 + 1000 * t, 270 - 100 * sqrt(a)); thickness = 1.5; color = vec(0.4, 0.9, 1.0, 1.0) }
+        ticks += fline {
+            moveTo(20 + 1000 * t, 270.0)
+            lineTo(20 + 1000 * t, 270 - 100 * sqrt(a))
+            thickness = 1.5
+            color = vec(0.4, 0.9, 1.0, 1.0)
+        }
     }
-    val scale = 7.0                        // the plan: pixels per metre
-    val plan = fline { rect(20.0, 10.0, scale * w, scale * h); thickness = 2.0; color = vec(1.0, 1.0, 1.0, 0.35 + 0.5 * (1 - soft)) }
-    val source = fline { circle(20 + scale * sx, 10 + scale * sy, 4.0); filled = true; stroked = false; color = vec(1.0, 1.0, 1.0, 0.9) }
-    val ear = fline { circle(20 + scale * lx, 10 + scale * ly, 4.0); filled = true; stroked = false; color = vec(1.0, 0.6, 0.2, 1.0) }
-    val axis = fline { moveTo(20.0, 270.0); lineTo(620.0, 270.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.35) }
-    val frame = fline { rect(0.0, 0.0, 640.0, 280.0); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.0) }
+    val scale = 7.0 // the plan: pixels per metre
+    val plan = fline {
+        rect(20.0, 10.0, scale * w, scale * h)
+        thickness = 2.0
+        color = vec(1.0, 1.0, 1.0, 0.35 + 0.5 * (1 - soft))
+    }
+    val source = fline {
+        circle(20 + scale * sx, 10 + scale * sy, 4.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 0.9)
+    }
+    val ear = fline {
+        circle(20 + scale * lx, 10 + scale * ly, 4.0)
+        filled = true
+        stroked = false
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    val axis = fline {
+        moveTo(20.0, 270.0)
+        lineTo(620.0, 270.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
+    val frame = fline {
+        rect(0.0, 0.0, 640.0, 280.0)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.0)
+    }
     lines([frame, plan, source, ear, axis] + ticks, channel = "room", w = 640.0, h = 280.0)
     roomSize.base = (0.5 + 0.48 * size).toFloat()
     damping.base = (0.2 + 0.7 * soft).toFloat()
@@ -1655,8 +2135,14 @@ fun draw() {
 draw()
 controlGroup {
     keys("low", "middle", "high", letters = "wer") { key, down -> if (down) gates[key].open() else gates[key].close() }
-    slider("room size", 0.0, 1.0, step = 0.01, initialValue = 0.4) { size = it; draw() }
-    slider("soft walls", 0.0, 1.0, step = 0.01, initialValue = 0.3) { soft = it; draw() }
+    slider("room size", 0.0, 1.0, step = 0.01, initialValue = 0.4) {
+        size = it
+        draw()
+    }
+    slider("soft walls", 0.0, 1.0, step = 0.01, initialValue = 0.3) {
+        soft = it
+        draw()
+    }
 }
 
 val notes = [196f, 247f, 294f].mapIndexed { i, hz -> SawOsc(Param(hz)) / lpf(1800) * perc(0.25, 0.005, gates[i]) }

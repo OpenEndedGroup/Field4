@@ -39,7 +39,7 @@ class ExplainerSoundDocsTest {
     @Test
     fun `a changed figure line is caught`() {
         val code = figureLines("beats")
-        assertTrue("val tones = listOf(SineOsc(Param(221f)), SineOsc(second))" !in code)
+        assertTrue("val tones = [SineOsc(Param(221f)), SineOsc(second)]" !in code)
     }
 
     @Test

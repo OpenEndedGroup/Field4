@@ -16,7 +16,7 @@ talk's document: its code is below, then what it draws, with the slide that show
 an editable copy. Run its `deck` box in Field's desktop app to give the talk; [Live figures beside
 prose](presentation_studio.md#live-figures-beside-prose) says how a deck like this one is built.
 
-### A lamp over a floor
+## A lamp over a floor
 
 <figure class="field-margin-figure" markdown>
 ![The slide “A lamp over a floor” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/opening.png)
@@ -40,7 +40,7 @@ fun draw() {
     val lamp = RectLight(vec(across, 1.3, 0.0), width = size, height = size, power = 30.0)
     three(channel = "scene", width = 640, height = 420) {
         // Only the block casts shadows.
-        mesh(scene.lit(listOf(lamp), occluders = block, exposure = 0.5), unlit = true, wireframe = false)
+        mesh(scene.lit([lamp], occluders = block, exposure = 0.5), unlit = true, wireframe = false)
         // Frame the view on the whole set, so it holds still as the lamp changes.
         fitTo(vec(-2.0, 0.0, -2.0), vec(2.0, 1.6, 2.0))
         mesh(lamp.mesh(), unlit = true, wireframe = false, cullBackFaces = false)
@@ -52,14 +52,18 @@ fun draw() {
 
 draw()
 controlGroup {
-    slider("position", -1.2, 1.2, initialValue = across) { across = it; draw() }
-    slider("size", 0.05, 1.5, initialValue = size) { size = it; draw() }
+    slider("position", -1.2, 1.2, initialValue = across) {
+        across = it
+        draw()
+    }
+    slider("size", 0.05, 1.5, initialValue = size) {
+        size = it
+        draw()
+    }
 }
 ```
 
 ## Power
-
-### Power
 
 <figure class="field-margin-figure" markdown>
 ![The slide “Power” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/power.png)
@@ -263,7 +267,7 @@ fun draw(toward: Vec2) {
     // Φ = 4π·100² W makes the irradiance one watt per square metre where the light hits head on.
     val sun = PointLight(vec(toward.x * far, toward.y * far, z * far), power = 4 * PI * far * far)
     three(channel = "scene", width = 640, height = 420) {
-        mesh(ball.lit(listOf(sun), occluders = null, exposure = 2.0), unlit = true, wireframe = false)
+        mesh(ball.lit([sun], occluders = null, exposure = 2.0), unlit = true, wireframe = false)
         camera(yaw = 0.0, pitch = 0.0, distance = 2.4)
         background("#000000")
         hud(false)
@@ -310,10 +314,11 @@ fun draw(distance: Double) {
             color = if (hit) vec(0.4, 0.9, 1.0, 1.0) else vec(1.0, 1.0, 1.0, 0.12)
         }
     }
-    val patch = planeMesh(1, 1, 0.5, 0.5)
-        .rotated(Quat().rotateY((-PI / 2).toFloat()))
-        .translated(distance, 0.0, 0.0)
-        .withColor(1.0, 0.6, 0.2)
+    val patch =
+        planeMesh(1, 1, 0.5, 0.5)
+            .rotated(Quat().rotateY((-PI / 2).toFloat()))
+            .translated(distance, 0.0, 0.0)
+            .withColor(1.0, 0.6, 0.2)
     three(channel = "scene", width = 640, height = 380) {
         lines(rays)
         mesh(patch, unlit = true, wireframe = false, cullBackFaces = false)
@@ -456,8 +461,14 @@ fun draw() {
 
 draw()
 controlGroup {
-    slider("angle", 0.0, 360.0, step = 1.0, initialValue = degrees) { degrees = it; draw() }
-    slider("radius", 40.0, 120.0, step = 1.0, initialValue = radius) { radius = it; draw() }
+    slider("angle", 0.0, 360.0, step = 1.0, initialValue = degrees) {
+        degrees = it
+        draw()
+    }
+    slider("radius", 40.0, 120.0, step = 1.0, initialValue = radius) {
+        radius = it
+        draw()
+    }
 }
 ```
 
@@ -479,8 +490,16 @@ quarter.
 val sphere = icosphereMesh(4, 1.0)
 // Two great circles, so the sphere reads as a sphere without a wireframe in the way.
 val circles = listOf(
-    fline { moveTo(1.0, 0.0, 0.0); for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96)); color = vec(1.0, 1.0, 1.0, 0.35) },
-    fline { moveTo(1.0, 0.0, 0.0); for (k in 1..96) lineTo(cos(2 * PI * k / 96), sin(2 * PI * k / 96), 0.0); color = vec(1.0, 1.0, 1.0, 0.35) },
+    fline {
+        moveTo(1.0, 0.0, 0.0)
+        for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96))
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    },
+    fline {
+        moveTo(1.0, 0.0, 0.0)
+        for (k in 1..96) lineTo(cos(2 * PI * k / 96), sin(2 * PI * k / 96), 0.0)
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    },
 )
 
 fun draw(distance: Double) {
@@ -490,9 +509,14 @@ fun draw(distance: Double) {
     var omega = 0.0
     for (t in 0 until shadow.triangleCount) omega += shadow.triangleArea(t)
     // From the eye through each corner of the patch to the panel's corner.
-    val corners = listOf(-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4).map { (x, y) ->
-        fline { moveTo(0.0, 0.0, 0.0); lineTo(x, y, -distance); color = vec(1.0, 1.0, 1.0, 0.35) }
-    }
+    val corners =
+        listOf(-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4).map { (x, y) ->
+            fline {
+                moveTo(0.0, 0.0, 0.0)
+                lineTo(x, y, -distance)
+                color = vec(1.0, 1.0, 1.0, 0.35)
+            }
+        }
     three(channel = "scene", width = 640, height = 420) {
         mesh(sphere.withColor(0.4, 0.45, 0.5), opacity = 0.1, wireframe = false)
         lines(circles + corners)
@@ -530,12 +554,21 @@ light the point gets. The flattening is the cosine factor again.
 import afield.graphics.lighting.*
 :::endfold
 
-// What one point on the floor sees: a hemisphere of directions. The lamp, pushed onto that
-// hemisphere (orange) and then flattened straight down onto the disc beneath (cyan). The share of
-// the disc the flattened lamp covers is the share of the lamp's radiance that reaches the point.
-val dome = icosphereMesh(4, 1.0).let { ball -> ball.filterTriangles { t -> ball.triangle(t).let { (a, b, c) -> a.y + b.y + c.y > 0 } } }
+/*
+What one point on the floor sees: a hemisphere of directions. The lamp, pushed onto that
+hemisphere (orange) and then flattened straight down onto the disc beneath (cyan). The share of
+the disc the flattened lamp covers is the share of the lamp's radiance that reaches the point.
+*/
+val dome =
+    icosphereMesh(4, 1.0).let { ball ->
+        ball.filterTriangles { t -> ball.triangle(t).let { (a, b, c) -> a.y + b.y + c.y > 0 } }
+    }
 val floor = floorMesh(2.6, 2.6, divisions = 48)
-val rim = fline { moveTo(1.0, 0.0, 0.0); for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96)); color = vec(1.0, 1.0, 1.0, 0.4) }
+val rim = fline {
+    moveTo(1.0, 0.0, 0.0)
+    for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96))
+    color = vec(1.0, 1.0, 1.0, 0.4)
+}
 val side = 1.0
 
 fun draw(across: Double) {
@@ -549,11 +582,16 @@ fun draw(across: Double) {
     // radiance times the flattened area it covers.
     val radiance = lamp.power / (PI * side * side)
     val e = irradianceAt(vec(0.0, 0.0, 0.0), vec(0.0, 1.0, 0.0), lamp).x
-    val sight = listOf(-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5).map { (x, z) ->
-        fline { moveTo(0.0, 0.0, 0.0); lineTo(across + x, 1.2, z); color = vec(1.0, 1.0, 1.0, 0.3) }
-    }
+    val sight =
+        listOf(-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5).map { (x, z) ->
+            fline {
+                moveTo(0.0, 0.0, 0.0)
+                lineTo(across + x, 1.2, z)
+                color = vec(1.0, 1.0, 1.0, 0.3)
+            }
+        }
     three(channel = "scene", width = 640, height = 420) {
-        mesh(floor.lit(listOf(lamp), occluders = null, exposure = 0.35), unlit = true, wireframe = false)
+        mesh(floor.lit([lamp], occluders = null, exposure = 0.35), unlit = true, wireframe = false)
         mesh(dome.withColor(0.4, 0.45, 0.5), opacity = 0.12, wireframe = false, cullBackFaces = false)
         lines(sight + rim)
         mesh(lamp.mesh(), unlit = true, wireframe = false, cullBackFaces = false)
@@ -689,7 +727,10 @@ fun draw(degrees: Double) {
     }
     lines(drawn, channel = "side", w = 640.0, h = 280.0, framing = LinesFraming.fixed(0.0, 0.0, 640.0, 280.0))
     val c = cos(v)
-    markdown("readout", "${degrees.roundToInt()}°: ${(c * 100).roundToInt()} % of the power, ${(c * 100).roundToInt()} % of the width")
+    markdown(
+        "readout",
+        "${degrees.roundToInt()}°: ${(c * 100).roundToInt()} % of the power, ${(c * 100).roundToInt()} % of the width",
+    )
 }
 
 draw(0.0)
@@ -761,8 +802,14 @@ fun draw() {
 
 draw()
 controlGroup {
-    slider("roughness", 0.0, 1.0, step = 0.01, initialValue = roughness) { roughness = it; draw() }
-    slider("light angle", 0.0, 70.0, step = 1.0, initialValue = angle) { angle = it; draw() }
+    slider("roughness", 0.0, 1.0, step = 0.01, initialValue = roughness) {
+        roughness = it
+        draw()
+    }
+    slider("light angle", 0.0, 70.0, step = 1.0, initialValue = angle) {
+        angle = it
+        draw()
+    }
 }
 ```
 
@@ -782,9 +829,11 @@ of the lamp, and the hard edge softens into a penumbra.
 import afield.graphics.lighting.*
 :::endfold
 
-// A black wall on a white floor, lit by a ball of light. The ball always gives out 40 W;
-// make it bigger and the edge of the shadow softens.
-// The wall's faces sit on the floor's grid lines, so no floor vertex is half under it.
+/*
+A black wall on a white floor, lit by a ball of light. The ball always gives out 40 W;
+make it bigger and the edge of the shadow softens.
+The wall's faces sit on the floor's grid lines, so no floor vertex is half under it.
+*/
 val floor = floorMesh(4.0, 3.2, divisions = 80).withColor(0.8, 0.8, 0.8)
 val wall = panelBoxMesh(0.05, 0.6, 1.2, divisions = 4).translated(0.025, 0.3, 0.0).withColor(0.03, 0.03, 0.03)
 val blocker = wall.bvh()
@@ -811,7 +860,7 @@ fun draw() {
     }
     if (litFor != "$size $altitude") {
         // Only the wall casts shadows; the floor need not be tested against its own triangles.
-        litScene = scene.lit(listOf(lamp), occluders = wall, exposure = 0.6)
+        litScene = scene.lit([lamp], occluders = wall, exposure = 0.6)
         litFor = "$size $altitude"
     }
     three(channel = "scene", width = 640, height = 420) {
@@ -825,14 +874,26 @@ fun draw() {
         background("#000000")
         hud(false)
     }
-    markdown("readout", "The orange point sees ${(100.0 * sight.count { it.clear } / sight.size.coerceAtLeast(1)).roundToInt()} % of the lamp")
+    markdown(
+        "readout",
+        "The orange point sees ${(100.0 * sight.count { it.clear } / sight.size.coerceAtLeast(1)).roundToInt()} % of the lamp",
+    )
 }
 
 draw()
 controlGroup {
-    slider("size", 0.02, 0.5, step = 0.01, initialValue = size) { size = it; draw() }
-    slider("altitude", 15.0, 85.0, step = 1.0, initialValue = altitude) { altitude = it; draw() }
-    slider("point", -1.5, 1.8, step = 0.01, initialValue = probe) { probe = it; draw() }
+    slider("size", 0.02, 0.5, step = 0.01, initialValue = size) {
+        size = it
+        draw()
+    }
+    slider("altitude", 15.0, 85.0, step = 1.0, initialValue = altitude) {
+        altitude = it
+        draw()
+    }
+    slider("point", -1.5, 1.8, step = 0.01, initialValue = probe) {
+        probe = it
+        draw()
+    }
 }
 ```
 
@@ -855,18 +916,31 @@ import afield.graphics.lighting.*
 // Nine tiles of different colours under one lamp whose colour you pick. A tile can only send
 // back the colours the lamp gives it.
 val colours = listOf(
-    vec(0.8, 0.8, 0.8), vec(0.8, 0.1, 0.1), vec(0.1, 0.7, 0.1),
-    vec(0.1, 0.2, 0.8), vec(0.8, 0.7, 0.1), vec(0.1, 0.7, 0.7),
-    vec(0.7, 0.1, 0.7), vec(0.8, 0.4, 0.1), vec(0.3, 0.3, 0.3),
+    vec(0.8, 0.8, 0.8),
+    vec(0.8, 0.1, 0.1),
+    vec(0.1, 0.7, 0.1),
+    vec(0.1, 0.2, 0.8),
+    vec(0.8, 0.7, 0.1),
+    vec(0.1, 0.7, 0.7),
+    vec(0.7, 0.1, 0.7),
+    vec(0.8, 0.4, 0.1),
+    vec(0.3, 0.3, 0.3),
 )
-val tiles = colours.withIndex().map { (i, c) ->
-    floorMesh(0.5, 0.5, divisions = 8).translated((i % 3 - 1) * 0.6, 0.0, (i / 3 - 1) * 0.6).withColor(c.x, c.y, c.z)
-}.reduce { a, b -> a + b }
+val tiles =
+    colours
+        .withIndex()
+        .map { (i, c) ->
+            floorMesh(0.5, 0.5, divisions = 8)
+                .translated((i % 3 - 1) * 0.6, 0.0, (i / 3 - 1) * 0.6)
+                .withColor(c.x, c.y, c.z)
+        }
+        .reduce { a, b -> a + b }
 
 fun draw(light: Vec4) {
-    val lamp = RectLight(vec(0.0, 1.6, 0.0), width = 1.2, height = 1.2, power = 60.0, color = vec(light.x, light.y, light.z))
+    val lamp =
+        RectLight(vec(0.0, 1.6, 0.0), width = 1.2, height = 1.2, power = 60.0, color = vec(light.x, light.y, light.z))
     three(channel = "scene", width = 640, height = 420) {
-        mesh(tiles.lit(listOf(lamp), occluders = null, exposure = 0.6), unlit = true, wireframe = false)
+        mesh(tiles.lit([lamp], occluders = null, exposure = 0.6), unlit = true, wireframe = false)
         camera(yaw = 0.0, pitch = 60.0, distance = 2.0)
         background("#000000")
         hud(false)
@@ -908,10 +982,17 @@ fun draw() {
         Triple(red, 90.0, vec(1.0, 0.0, 0.0)),
         Triple(green, 210.0, vec(0.0, 1.0, 0.0)),
         Triple(blue, 330.0, vec(0.0, 0.0, 1.0)),
-    ).filter { it.first }.map { (_, degrees, colour) ->
-        val a = degrees * PI / 180
-        SphereLight(vec(spread * cos(a), 1.2, spread * sin(a)), radius = 0.04, power = 25.0, color = colour, samples = 128)
-    }
+    ).filter { it.first }
+        .map { (_, degrees, colour) ->
+            val a = degrees * PI / 180
+            SphereLight(
+                vec(spread * cos(a), 1.2, spread * sin(a)),
+                radius = 0.04,
+                power = 25.0,
+                color = colour,
+                samples = 128,
+            )
+        }
     three(channel = "scene", width = 640, height = 420) {
         mesh(scene.lit(lamps, occluders = block, exposure = 1.2), unlit = true, wireframe = false)
         lamps.forEach { mesh(it.mesh(), unlit = true, wireframe = false) }
@@ -923,10 +1004,22 @@ fun draw() {
 
 draw()
 controlGroup {
-    checkbox("red", initialValue = true) { red = it; draw() }
-    checkbox("green", initialValue = true) { green = it; draw() }
-    checkbox("blue", initialValue = true) { blue = it; draw() }
-    slider("spread", 0.0, 1.2, step = 0.01, initialValue = spread) { spread = it; draw() }
+    checkbox("red", initialValue = true) {
+        red = it
+        draw()
+    }
+    checkbox("green", initialValue = true) {
+        green = it
+        draw()
+    }
+    checkbox("blue", initialValue = true) {
+        blue = it
+        draw()
+    }
+    slider("spread", 0.0, 1.2, step = 0.01, initialValue = spread) {
+        spread = it
+        draw()
+    }
 }
 ```
 
@@ -946,21 +1039,28 @@ floor red. Each bounce is weaker than the last, and their sum is the scene's ind
 import afield.graphics.lighting.*
 :::endfold
 
-// A white floor beside a red wall, lit by one small lamp close to the wall, so the wall is lit
-// far more brightly than the floor. The solve follows the light through three bounces once,
-// when the box runs; the sliders only choose what to show.
+/*
+A white floor beside a red wall, lit by one small lamp close to the wall, so the wall is lit
+far more brightly than the floor. The solve follows the light through three bounces once,
+when the box runs; the sliders only choose what to show.
+*/
 val floor = floorMesh(2.4, 2.4, divisions = 24).withColor(0.8, 0.8, 0.8)
 val wall = panelBoxMesh(2.4, 1.4, 0.05, divisions = 16).translated(0.0, 0.7, -1.225).withColor(0.9, 0.06, 0.03)
 val lamp = SphereLight(vec(0.0, 0.9, -0.8), radius = 0.06, power = 1.0)
-val solve = Radiosity(floor + wall, listOf(lamp), bounces = 3)
+val solve = Radiosity(floor + wall, [lamp], bounces = 3)
 
 var power = 20.0
 var bounces = 0.0
 var bounceOnly = false
 
 fun draw() {
-    val shown = solve.lit(upTo = bounces.toInt(), from = if (bounceOnly) 1 else 0,
-        exposure = if (bounceOnly) 2.0 else 0.6, scale = power, toneMap = ToneMap.EXPONENTIAL)
+    val shown = solve.lit(
+        upTo = bounces.toInt(),
+        from = if (bounceOnly) 1 else 0,
+        exposure = if (bounceOnly) 2.0 else 0.6,
+        scale = power,
+        toneMap = ToneMap.EXPONENTIAL,
+    )
     three(channel = "scene", width = 640, height = 420) {
         mesh(shown, unlit = true, wireframe = false)
         mesh(lamp.mesh(), unlit = true, wireframe = false)
@@ -972,9 +1072,18 @@ fun draw() {
 
 draw()
 controlGroup {
-    slider("power", 5.0, 60.0, step = 1.0, initialValue = power) { power = it; draw() }
-    slider("bounces", 0.0, 3.0, step = 1.0, initialValue = bounces) { bounces = it; draw() }
-    checkbox("bounced light only") { bounceOnly = it; draw() }
+    slider("power", 5.0, 60.0, step = 1.0, initialValue = power) {
+        power = it
+        draw()
+    }
+    slider("bounces", 0.0, 3.0, step = 1.0, initialValue = bounces) {
+        bounces = it
+        draw()
+    }
+    checkbox("bounced light only") {
+        bounceOnly = it
+        draw()
+    }
 }
 ```
 
@@ -994,9 +1103,11 @@ shadow, yet a tile still darkens the ground just beneath it.
 import afield.graphics.lighting.*
 :::endfold
 
-// A floor under a dome of small lamps, all of them together giving out 400 W, and a black tile
-// held above the floor. With one lamp the tile casts a hard shadow; with hundreds the light comes
-// from the whole sky and only the ground right under the tile stays dark.
+/*
+A floor under a dome of small lamps, all of them together giving out 400 W, and a black tile
+held above the floor. With one lamp the tile casts a hard shadow; with hundreds the light comes
+from the whole sky and only the ground right under the tile stays dark.
+*/
 val floor = floorMesh(3.0, 3.0, divisions = 60).withColor(0.8, 0.8, 0.8)
 val golden = PI * (3 - sqrt(5.0))
 val dot = icosphereMesh(1, 0.03).withColor(1.0, 1.0, 1.0)
@@ -1027,8 +1138,14 @@ fun draw() {
 
 draw()
 controlGroup {
-    slider("lamps", 1.0, 300.0, step = 1.0, initialValue = count, law = ControlLaw.LOGARITHMIC) { count = it; draw() }
-    slider("tile height", 0.05, 0.8, step = 0.01, initialValue = height) { height = it; draw() }
+    slider("lamps", 1.0, 300.0, step = 1.0, initialValue = count, law = ControlLaw.LOGARITHMIC) {
+        count = it
+        draw()
+    }
+    slider("tile height", 0.05, 0.8, step = 0.01, initialValue = height) {
+        height = it
+        draw()
+    }
 }
 ```
 

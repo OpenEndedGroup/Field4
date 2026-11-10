@@ -59,7 +59,7 @@ object ExplainerSoundDocs {
             "audio(SineOsc(pitch), gain = level)",
         )),
         "beats" to ("beats" to listOf(
-            "val tones = listOf(SineOsc(Param(220f)), SineOsc(second))",
+            "val tones = [SineOsc(Param(220f)), SineOsc(second)]",
             "audio(2 { i -> tones[i] * adsr(0.01, 0.05, 1.0, 0.25, gates[i]) }.reduce { a, b -> a + b } / 2.0, gain = 0.15f)",
         )),
         "pluck" to ("pluck" to listOf(
@@ -67,7 +67,8 @@ object ExplainerSoundDocs {
             "fun weight(k: Int) = depth * 2 / (k * k * PI * PI * at * (1 - at)) * sin(k * PI * at)",
             "fun decay(k: Int) = 2.5 / k.toDouble().pow(0.7)",
             "fun base() = 110 / length",
-            "SineOsc(Param { (k * base()).toFloat() }) * Param {",
+            "SineOsc(Param { (k * base()).toFloat() }) *",
+            "if (audioPluck.isNaN()) audioPluck = time",
             "if (audioPluck < 0) 0f else (weight(k) * exp(-(time - audioPluck) / decay(k))).toFloat()",
             "} + audio(partials.reduce { a, b -> a + b }, gain = 0.15f)",
         )),
