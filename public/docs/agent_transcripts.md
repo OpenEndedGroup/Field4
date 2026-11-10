@@ -103,6 +103,18 @@ The glued view reports join lengths; its nearest-neighbour/2-opt route is not a 
 [Walkthrough and parameters](knight_tour_workshop.md) ·
 [Saved chat](assets/knight_tour_workshop/chat.txt)
 
+### physical_piano
+
+A physically modelled grand piano, ported from [coopiano](https://github.com/peterc/coopiano), as six
+boxes. `a4` renders A4 at velocity 0.5 for eight seconds and plots its spectrum; `string` draws one
+C3 string at five moments after the hammer leaves it; `piece` plays a short pattern; `pedal` plays
+a staccato arpeggio with the pedal up, down, and down without the sympathetic strings; `wobble`
+drives the string stiffness with a 110 Hz oscillator and the hammer hardness with a slow one;
+`live` plays it through the audio engine with sliders on the pedal, stiffness and soundboard. The
+replay runs the first five headless. See `Piano` in [Synthesis](reference/synthesis.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/physical_piano/metadata.edn)
+
 ### uncrossed_leapers
 
 **Knight paths that never cross.** The starting point for [uncrossed paths](knight_tour_workshop.md#uncrossed-paths):
