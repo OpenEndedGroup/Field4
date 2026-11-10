@@ -8,6 +8,7 @@ import kotlin.test.*
 class VideoAutoExposureSettingsTest {
     @Test fun settingsPersistAsOneValidatedObject() {
         val settings = VideoAutoExposure.Settings(enabled = true, mode = VideoAutoExposure.Mode.LINKED, mix = .8f,
+            endpointSource = VideoAutoExposure.EndpointSource.QUANTILES, lowQuantile = .1f, highQuantile = .9f,
             preExposureGamma = 1.8f, meterHz = 24.0, risingAlpha = .7f, risingBeta = .3f, fallingAlpha = .2f, fallingBeta = .05f,
             maximumVelocity = .6f, blackPadding = .02f, whitePadding = .04f,
             blackMinimum = -.1f, blackMaximum = .4f, whiteMinimum = .6f, whiteMaximum = 1.5f, minimumSpan = .02f)
@@ -15,11 +16,19 @@ class VideoAutoExposureSettingsTest {
         assertEquals(settings, json.decodeFromString<VideoAutoExposure.Settings>(json.encodeToString(settings)))
     }
 
+    @Test fun olderSettingsKeepExtremaAndNeutralGamma() {
+        val settings = Json.decodeFromString<VideoAutoExposure.Settings>("{}")
+        assertEquals(VideoAutoExposure.EndpointSource.EXTREMA, settings.endpointSource)
+        assertEquals(1f, settings.preExposureGamma)
+    }
+
     @Test fun impossibleExposureBoundsAndNonFiniteGainsAreRejected() {
         assertFailsWith<IllegalArgumentException> { VideoAutoExposure.Settings(blackMinimum = 1f, blackMaximum = .5f) }
         assertFailsWith<IllegalArgumentException> { VideoAutoExposure.Settings(whiteMinimum = 2f, whiteMaximum = 1f) }
         assertFailsWith<IllegalArgumentException> { VideoAutoExposure.Settings(blackMinimum = 1f, blackMaximum = 2f, whiteMaximum = 1f) }
         assertFailsWith<IllegalArgumentException> { VideoAutoExposure.Settings(risingBeta = Float.NaN) }
+        assertFailsWith<IllegalArgumentException> { VideoAutoExposure.Settings(lowQuantile = .9f, highQuantile = .1f) }
+        assertFailsWith<IllegalArgumentException> { VideoAutoExposure.Settings(lowQuantile = Float.NaN) }
         assertFailsWith<IllegalArgumentException> { VideoAutoExposure.Settings(preExposureGamma = 0f) }
         assertFailsWith<IllegalArgumentException> { VideoAutoExposure.Settings(preExposureGamma = Float.NaN) }
     }

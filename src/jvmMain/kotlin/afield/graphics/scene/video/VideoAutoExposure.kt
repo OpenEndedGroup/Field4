@@ -1,6 +1,9 @@
 package afield.graphics.scene.video
 
 import afield.graphics.render.*
+import afield.document.graph.Box
+import afield.graphics.shader.fieldStatsHere
+import afield.graphics.vulkan.util.*
 import afield.graphics.shader.fromViews
 import afield.graphics.texture.HasImageView
 import afield.graphics.texture.LoadedTexture
@@ -8,6 +11,7 @@ import afield.graphics.texture.TextureSampler
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.buffers.*
 import afield.graphics.vulkan.device.CommandBuffer
+import afield.graphics.vulkan.device.GpuPassProbe
 import afield.math.linalg.Rectanglef
 import afield.math.linalg.Vector4f
 import org.lwjgl.system.MemoryStack
@@ -30,6 +34,9 @@ class VideoAutoExposure(
     @Serializable
     enum class Mode { OFF, PER_SCREEN, LINKED }
 
+    @Serializable
+    enum class EndpointSource { EXTREMA, QUANTILES }
+
     /** Gains apply once per metering sample; velocity is in linear-light units per second. */
     @Serializable
     data class Settings(
@@ -37,6 +44,9 @@ class VideoAutoExposure(
         val mode: Mode = Mode.OFF,
         val mix: Float = 1f,
         val preExposureGamma: Float = 1f,
+        val endpointSource: EndpointSource = EndpointSource.EXTREMA,
+        val lowQuantile: Float = .02f,
+        val highQuantile: Float = .98f,
         val meterHz: Double = 12.0,
         val risingAlpha: Float = .25f,
         val risingBeta: Float = .05f,
@@ -54,6 +64,10 @@ class VideoAutoExposure(
         init {
             require(mix.isFinite() && mix in 0f..1f)
             require(preExposureGamma.isFinite() && preExposureGamma > 0f) { "Pre-exposure gamma must be finite and positive" }
+            require(lowQuantile.isFinite() && highQuantile.isFinite() &&
+                lowQuantile in 0f..1f && highQuantile in 0f..1f && lowQuantile < highQuantile) {
+                "Quantiles must satisfy 0 <= low < high <= 1"
+            }
             require(meterHz.isFinite() && meterHz > 0.0 && meterHz <= 240.0)
             require(listOf(risingAlpha, risingBeta, fallingAlpha, fallingBeta).all { it.isFinite() && it in 0f..1f })
             require(listOf(maximumVelocity, blackPadding, whitePadding, blackMinimum, blackMaximum,
@@ -72,6 +86,8 @@ class VideoAutoExposure(
         val minimumVelocity: List<Float>, val meanVelocity: List<Float>, val maximumVelocity: List<Float>,
         val finiteCount: List<Float>, val valid: Boolean, val predictionSeconds: Float,
         val black: Float, val white: Float,
+        val rawQuantiles: List<Float>, val quantiles: List<Float>, val quantileVelocities: List<Float>,
+        val sketchCount: Float, val sketchVariance: Float, val droppedSketchPartials: Float,
     )
 
     /** The last entry pools all valid buffers with a pixel-count-weighted mean; UI-only delayed readback. */
@@ -92,11 +108,25 @@ class VideoAutoExposure(
     var tileDispatches = 0L
         private set
     @Volatile
+    var sketchBatches = 0L
+        private set
+    @Volatile
+    var sketchSamples = 0L
+        private set
+    /** Sparse, timestamp-only timing of the extra sampling/reset/reduce passes; no invocation counters. */
+    val sketchGpuMilliseconds: Double? get() = sketchProbe?.snapshot?.milliseconds
+    private var sketchProbe: GpuPassProbe? = null
+    @Volatile
     private var closed = false
     internal var frameSettings = settings
         private set
 
-    private val recordBytes = 12L * 16
+    private val recordBytes = 16L * 16
+    private val sketchSampleBudget = 4096
+    private val sketchOwner = Box("video-exposure-sketch")
+    private val quantileStats = sketchOwner.fieldStatsHere(
+        channels = screens + 1, sketchSize = 64, maxPartials = 4096, stateSlots = 1,
+    ).also { it.cpuSnapshotsEnabled = false }
     private val resultBytes = (screens + 1) * recordBytes
     internal val statisticsParameters = buffer(name = "video-exposure-statistics") {
         size = resultBytes; storage(); source(); zeroInit(); perFrame = false
@@ -118,10 +148,18 @@ class VideoAutoExposure(
     private var tileModule: ComputeModulePointer? = null
     private var finishModule: ComputeModulePointer? = null
     private var linkedModule: ComputeModulePointer? = null
+    private var sketchModule: ComputeModulePointer? = null
+    private var sketchMesh: ComputeMesh? = null
     private var tileMesh: ComputeMesh? = null
     private var finishMesh: ComputeMesh? = null
     private var linkedMesh: ComputeMesh? = null
     private val revisions = LongArray(screens) { Long.MIN_VALUE }
+    private val sketchRevisions = LongArray(screens) { Long.MIN_VALUE }
+    private var sketchMask = 0
+    private var sketchAvailable = false
+    private var meteredEndpointSource = EndpointSource.EXTREMA
+    private var meteredLowQuantile = Float.NaN
+    private var meteredHighQuantile = Float.NaN
     private var meteredGamma = Float.NaN
     private var lastMeasurement = 0L
     private var lastReadback = 0L
@@ -158,6 +196,7 @@ class VideoAutoExposure(
         }
         dimensions = Pair(width, height)
         revisions.fill(Long.MIN_VALUE)
+        sketchRevisions.fill(Long.MIN_VALUE)
         resetRequest.set(true)
     }
 
@@ -168,22 +207,27 @@ class VideoAutoExposure(
             }
             val sampling = TextureSampler(renderer, mipLevels = 1, anisotropyEnable = false).also { sampler = it }
             fun module(stage: String): ComputeModulePointer = ComputeModule(Parameters(renderer,
-                name = "video-meter-$stage", computeSourceName = "field/stereovideo/meter_$stage.glsl", compute = resource("meter_$stage").replace("// METER_COMMON", resource("meter_common")),
+                name = "video-meter-$stage", computeSourceName = "field/stereovideo/meter_$stage.glsl", compute = resource("meter_$stage")
+                    .replace("// FIELD_STATS", quantileStats.includeSource(producer = stage == "sketch"))
+                    .replace("// METER_COMMON", resource("meter_common")),
                 ssboResolver = { request -> when (request.name) {
                     "VideoMeterTiles" -> partialParameters
                     "VideoExposureStatistics" -> statisticsParameters
+                    FIELD_STATS_PARTIAL_BUFFER_NAME -> quantileStats.partialBufferParameters(renderer)
+                    FIELD_STATS_RESULT_BUFFER_NAME -> quantileStats.resultBufferParameters(renderer)
                     else -> null
                 } },
                 textureResolver = { request -> if (request.name == "accumulationImage") fromViews(listOf(texture), request.name, sampling) else null },
                 errorHandler = { message, _ -> if (error == null) error = "$stage: $message" },
             )).pointer()
-            tileModule = module("tiles"); finishModule = module("finish"); linkedModule = module("linked")
+            tileModule = module("tiles"); finishModule = module("finish"); linkedModule = module("linked"); sketchModule = module("sketch")
         }
-        if (listOf(tileModule, finishModule, linkedModule).any { it?.current?.valid != true }) return false
+        if (listOf(tileModule, finishModule, linkedModule, sketchModule).any { it?.current?.valid != true }) return false
         if (tileMesh == null) {
             tileMesh = ComputeMesh(renderer, tileModule!!).also { tileModule!! += "tiles" to it }
             finishMesh = ComputeMesh(renderer, finishModule!!).also { finishModule!! += "finish" to it }
             linkedMesh = ComputeMesh(renderer, linkedModule!!).also { linkedModule!! += "linked" to it }
+            sketchMesh = ComputeMesh(renderer, sketchModule!!).also { sketchModule!! += "sketch" to it }
         }
         return true
     }
@@ -203,9 +247,18 @@ class VideoAutoExposure(
         if (meteredGamma != s.preExposureGamma) {
             // A new transfer curve invalidates even paused-image scans and the old filter domain.
             revisions.fill(Long.MIN_VALUE)
+            sketchRevisions.fill(Long.MIN_VALUE)
             resetRequest.set(true)
             meteredGamma = s.preExposureGamma
         }
+        val sourceMask = sources.indices.fold(0) { mask, i -> if (sources[i] == null) mask else mask or (1 shl i) }
+        if (meteredEndpointSource != s.endpointSource || meteredLowQuantile != s.lowQuantile || meteredHighQuantile != s.highQuantile) {
+            resetRequest.set(true)
+            meteredEndpointSource = s.endpointSource
+            meteredLowQuantile = s.lowQuantile
+            meteredHighQuantile = s.highQuantile
+        }
+        if (s.endpointSource == EndpointSource.QUANTILES && sourceMask != sketchMask) resetRequest.set(true)
         val interval = (1e9 / s.meterHz).toLong().coerceAtLeast(1)
         val reset = resetRequest.getAndSet(false)
         val measurement = reset || lastMeasurement == 0L || time - lastMeasurement >= interval ||
@@ -234,6 +287,10 @@ class VideoAutoExposure(
             } else revisions[i] = Long.MIN_VALUE
         }
         barrier(command)
+        if (measurement && s.endpointSource == EndpointSource.QUANTILES &&
+            (!sketchAvailable || sourceMask != sketchMask || sources.indices.any { sources[it]?.revision != sketchRevisions[it] && sources[it] != null })) {
+            recordSketch(command, sources, sourceMask)
+        }
         fun configure(mesh: ComputeMesh) {
             mesh.push["dimensions"] = Vector4f(tileCount.toFloat(), screens.toFloat(), activeMask.toFloat(), changedMask.toFloat())
             mesh.push["times"] = Vector4f(dt, prediction, if (measurement) 1f else 0f, if (reset) 1f else 0f)
@@ -241,6 +298,8 @@ class VideoAutoExposure(
             mesh.push["margins"] = Vector4f(s.blackPadding, s.whitePadding, s.minimumSpan, 0f)
             mesh.push["bounds"] = Vector4f(s.blackMinimum, s.blackMaximum, s.whiteMinimum, s.whiteMaximum)
             mesh.push["limits"] = Vector4f(s.maximumVelocity, 0f, 0f, 0f)
+            mesh.push["quantiles"] = Vector4f(if (s.endpointSource == EndpointSource.QUANTILES) 1f else 0f,
+                s.lowQuantile, s.highQuantile, if (sketchAvailable) 1f else 0f)
         }
         finishMesh!!.apply { x = screens; y = 1; z = 1; configure(this) }
         finishModule!!.render(command, Rectanglef())
@@ -251,6 +310,37 @@ class VideoAutoExposure(
         if (measurement) { lastMeasurement = time; measurements++ }
         serial++
         requestReadback(command, time)
+    }
+
+    private fun recordSketch(command: CommandBuffer, sources: List<Source?>, activeMask: Int) {
+        val probe = sketchProbe ?: GpuPassProbe(renderer, "video-exposure-quantile-sketch").also { sketchProbe = it }
+        val timed = probe.begin(command, collectStatistics = false)
+        quantileStats.beforeProducer(command, renderer)
+        val valid = sources.indices.filter { sources[it] != null }
+        valid.forEachIndexed { rank, i ->
+            val source = sources[i]!!
+            selected = source.image
+            fun dispatch(channel: Int, count: Int, seed: Int) {
+                sketchMesh!!.apply {
+                    x = count; y = 1; z = 1
+                    push["image"] = Vector4f(source.width.toFloat(), source.height.toFloat(), channel.toFloat(), count.toFloat())
+                    push["sampling"] = Vector4f(frameSettings.preExposureGamma, seed.toFloat(), 0f, 0f)
+                }
+                sketchModule!!.render(command, Rectanglef())
+                sketchSamples += count
+            }
+            dispatch(i, sketchSampleBudget, 0)
+            // Same-sized buffers: equal per-image sampling estimates the pooled pixel distribution.
+            val pooledCount = sketchSampleBudget / valid.size + if (rank < sketchSampleBudget % valid.size) 1 else 0
+            dispatch(screens, pooledCount, i + 1)
+            sketchRevisions[i] = source.revision
+        }
+        quantileStats.afterProducer(command, renderer)
+        barrier(command)
+        if (timed) probe.end(command)
+        sketchAvailable = true
+        sketchMask = activeMask
+        sketchBatches++
     }
 
     private fun requestReadback(command: CommandBuffer, time: Long) {
@@ -276,10 +366,11 @@ class VideoAutoExposure(
                     val data = FloatArray(resultBytes.toInt() / 4)
                     destination.mapAndRead { get(data) }
                     fun row(i: Int): Statistics {
-                        val base = i * 48
+                        val base = i * 64
                         fun v(record: Int) = (0..3).map { data[base + record * 4 + it] }
                         return Statistics(v(0), v(1), v(2), v(3), v(4), v(5), v(6), v(7), v(8), v(9),
-                            data[base + 40] > .5f, data[base + 41], data[base + 44], data[base + 45])
+                            data[base + 40] > .5f, data[base + 41], data[base + 44], data[base + 45],
+                            v(12), v(13), v(14), data[base + 60], data[base + 61], data[base + 63])
                     }
                     latest = Snapshot((0 until screens).map { row(it) }, row(screens), capturedSerial)
                 }
@@ -291,7 +382,8 @@ class VideoAutoExposure(
         if (!closed) {
             closed = true
             vkDeviceWaitIdle(renderer.device.vkDevice)
-            listOf(tileModule, finishModule, linkedModule).forEach { it?.current?.cleanup() }
+            listOf(tileModule, finishModule, linkedModule, sketchModule).forEach { it?.current?.cleanup() }
+            quantileStats.releaseGpuOnly()
             sampler?.cleanup()
             partials?.buffers?.forEach { it.cleanup() }
             statistics.buffers.forEach { it.cleanup() }

@@ -60,7 +60,11 @@ object VideoAutoExposureSmoke {
                 #version 450
                 layout(push_constant) uniform Fixture { vec4 data; } pc; // base, span, width, reserved
                 layout(location=0) out vec4 color;
-                void main() { color=vec4(vec3(pc.data.x+pc.data.y*(gl_FragCoord.x-.5)/(pc.data.z-1)),1); }
+                void main() {
+                    float value=pc.data.x+pc.data.y*(gl_FragCoord.x-.5)/(pc.data.z-1);
+                    if(pc.data.w>.5) value=gl_FragCoord.x<1 ? 0 : (gl_FragCoord.x>pc.data.z-1 ? 1 : pc.data.x);
+                    color=vec4(vec3(value),1);
+                }
             """.trimIndent()
         }).pointer() }
         val meshes = modules.mapIndexed { i, module -> Mesh(renderer, module).resize(3, 0).also {
@@ -152,9 +156,32 @@ object VideoAutoExposureSmoke {
             near(graded.linked.mean[3], graded.linked.rawMean[3], "gamma resets tracker domain", .00001f)
             check(meter.tileDispatches == 5L) { "Gamma edit did not rescan the held valid image" }
             near(meter.appearance(0, 1f).z, 2f, "presentation pre-gamma linkage", 0f)
+            // Narrow central mass with black/white outliers: the sketch should ignore the extreme columns.
+            meshes[1].push["data"] = Vector4f(.4f, 0f, 17f, 1f); versions[1]++
+            meter.settings = meter.settings.copy(preExposureGamma = 1f, endpointSource = VideoAutoExposure.EndpointSource.QUANTILES,
+                lowQuantile = .1f, highQuantile = .9f, blackPadding = 0f, whitePadding = 0f,
+                blackMinimum = 0f, blackMaximum = 1f, whiteMinimum = 0f, whiteMaximum = 2f)
+            time = 6_000_000_000L
+            val quantile = awaitNew(graded.serial)
+            near(quantile.linked.rawMinimum[3], 0f, "outlier black")
+            near(quantile.linked.rawMaximum[3], 1f, "outlier white")
+            for (i in 0..2) near(quantile.linked.rawQuantiles[i], .4f, "robust sampled quantile $i")
+            near(quantile.linked.black, .4f, "quantile-derived black")
+            near(quantile.linked.sketchCount, 4096f, "pooled bounded samples", 0f)
+            near(quantile.linked.droppedSketchPartials, 0f, "no dropped sketch partials", 0f)
+            check(meter.sketchBatches == 1L && meter.sketchSamples == 8192L)
+            time = 7_000_000_000L
+            val cached = awaitNew(quantile.serial)
+            near(cached.linked.rawQuantiles[1], .4f, "cached sketch median")
+            check(meter.sketchBatches == 1L) { "Paused buffer was resampled" }
+            meter.settings = meter.settings.copy(endpointSource = VideoAutoExposure.EndpointSource.EXTREMA)
+            time = 8_000_000_000L
+            val extrema = awaitNew(cached.serial)
+            near(extrema.linked.black, 0f, "extrema comparison restored")
+            check(meter.sketchBatches == 1L) { "Extrema mode dispatched a sketch" }
             val updates = meter.measurements
             meter.settings = meter.settings.copy(enabled = false)
-            time = 6_000_000_000L
+            time = 9_000_000_000L
             repeat(5) { frame() }
             check(meter.measurements == updates) { "Disabled meter kept updating" }
             println("Video auto exposure PASSED: GPU reductions, pooling, Field alpha-beta parity, prediction, bounds, cached scans, nonblocking telemetry")
