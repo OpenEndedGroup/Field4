@@ -36,7 +36,7 @@ operations:
   - create:
       box: forth_steps_chime
       name: chime
-      frame: { x: 80, y: 450, w: 760, h: 120 }
+      frame: { x: 80, y: 450, w: 560, h: 120 }
       properties:
         code: |
           : chime  tri 0.5 dur 0.5 gain ;
@@ -47,7 +47,7 @@ operations:
   - create:
       box: forth_steps_dirt
       name: dirt samples
-      frame: { x: 880, y: 160, w: 640, h: 110 }
+      frame: { x: 680, y: 160, w: 560, h: 110 }
       properties:
         code: |
           130 bpm

@@ -153,6 +153,20 @@ def _demo_input(path: str) -> bool:
     return _under(path, "dev_docs/agents/demos")
 
 
+def _transcript_layout_input(path: str) -> bool:
+    # AgentTranscriptLayoutGuard audits every create frame under dev_docs/agents/transcripts as well as
+    # the demos. Selecting it on demo paths alone let two transcripts land with a frameless box and two
+    # over-ceiling boxes (aa84996868, 5bd7b02d7a, 2026-11-10), because no landing ran the guard.
+    return (
+        _demo_input(path)
+        or _under(path, "dev_docs/agents/transcripts")
+        or path in {
+            "dev_docs/agents/transcript_layout_exceptions.yaml",
+            "src/jvmMain/kotlin/afield/tools/docs/AgentTranscriptLayoutGuard.kt",
+        }
+    )
+
+
 # The authored documents AgentDemoDriftGuard visits beside the demos: each directory directly under
 # one of these roots. Keep in step with AUTHORED_ROOTS there.
 _AUTHORED_DOCUMENT_ROOTS = ("public/docs/assets", "templates", "tools/presentation/example")
@@ -492,7 +506,7 @@ GUARDS = (
     Guard("checkDocsPublications", "published document freshness and coverage", _publication_input),
     Guard("checkTranscriptRegistration", "agent transcript registration", _transcript_registration_input),
     Guard("checkDocAssetBudget", "docs asset size budget", _doc_asset_budget_input),
-    Guard("checkAgentTranscriptLayouts", "agent transcript and demo layouts", _demo_input),
+    Guard("checkAgentTranscriptLayouts", "agent transcript and demo layouts", _transcript_layout_input),
     Guard("checkAgentDemos", "saved document inline copies", _saved_document_input),
     Guard("checkPythonTools", "Python tools and their corpus contracts", _python_tool_input),
     Guard(
