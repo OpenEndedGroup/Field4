@@ -313,8 +313,8 @@ class Piano(
     companion object {
         /** Bridge force to output: coopiano's instrument gain, then about 9 dB so mf peaks near -10 dBFS. */
         const val OUTPUT_GAIN = 0.0011 * 2.8
-        /** Close-mic signal to the soundboard output's scale: A2 at velocity 0.7 measured 5 dB under the board at 1.0. */
-        const val MIC_GAIN = 1.8
+        /** Close-mic signal to the soundboard output's scale: A2 at velocity 0.7 measured 2.2 dB over the board at 1.0. */
+        const val MIC_GAIN = 0.78
     }
 }
 
@@ -366,8 +366,9 @@ internal class PianoVoice(val key: Int, val data: PianoNoteData, private val has
         if (micW.size < data.count) micW = DoubleArray(data.count)
         for (p in 0 until data.count) {
             val n = data.na[p] + data.nb[p]
-            // displacement at x relative to the slope the bridge feels: sin(nπx)/(nπ), at 1/x_ref
-            micW[p] = data.wOut[p] * sin(n * PI * x) / (n * PI) * MIC_NORM
+            // A microphone this close hears the string's velocity at x, n·sin(nπx), where the bridge
+            // feels its slope, ∝ n: so each mode is weighted by sin(nπx), scaled to the bridge near x_ref.
+            micW[p] = data.wOut[p] * sin(n * PI * x) * MIC_NORM
         }
     }
 
@@ -457,7 +458,7 @@ internal class PianoVoice(val key: Int, val data: PianoNoteData, private val has
     }
 }
 
-private const val MIC_NORM = 1.0 / 0.12
+private const val MIC_NORM = 1.0 / (PI * 0.12)
 
 /** Replaces NaN with [default] and holds infinities at ±1e12, in place: the only clamp the inputs get. */
 internal fun pianoFinite(b: FloatArray, n: Int, default: Float) {
