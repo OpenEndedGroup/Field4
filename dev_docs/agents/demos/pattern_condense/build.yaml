@@ -69,9 +69,7 @@ operations:
               Bounds this run used: ${found.first().limits}
 
               The figure is on the **roll** channel beside this one. These rhythms are abstract — `x`,
-              `bd`, `a` — so there is nothing to play here; box 3 is the one you can listen to.
-              """
-                  .trimIndent(),
+              `bd`, `a` — so there is nothing to play here; box 3 is the one you can listen to.""".trimIndent(),
           )
   - create:
       box: condense_invents_nothing
@@ -149,9 +147,7 @@ operations:
 
               None of this rests on the search's own opinion of itself: every string it returned was
               re-parsed and re-played before it was accepted, and the namings above are recomputed from
-              the generators rather than read off the label.
-              """
-                  .trimIndent(),
+              the generators rather than read off the label.""".trimIndent(),
           )
   - create:
       box: condense_from_audio
@@ -235,9 +231,7 @@ operations:
               Four outputs, each on its own channel: **roll** draws the three lanes, **played** is the
               buffer that was actually transcribed, **condensed** is `${condensed.notation}` rendered
               back through the same voice, and this table is **main**. The two players should be the
-              same bar — that is the claim, and it is the one part of this box you can check by ear.
-              """
-                  .trimIndent(),
+              same bar — that is the claim, and it is the one part of this box you can check by ear.""".trimIndent(),
           )
   - launch: { box: condense_basics, property: code }
   - launch: { box: condense_invents_nothing, property: code }

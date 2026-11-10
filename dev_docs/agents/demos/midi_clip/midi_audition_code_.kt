@@ -39,9 +39,7 @@ val report =
     | soundbank | ${r.soundbankName} |
 
     Peak amplitude is the check that matters: a WAV of pure silence is exactly as large
-    as a loud one, so file size proves nothing. ${if (r.isSilent) "**This one is silent.**" else "This one is not silent."}
-    """
-            .trimIndent()
+    as a loud one, so file size proves nothing. ${if (r.isSilent) "**This one is silent.**" else "This one is not silent."}""".trimIndent()
     } else {
         """
     ### Offline rendering is not available in this JVM
@@ -56,9 +54,7 @@ val report =
     clip.playTo("Gervill")
     ```
 
-    Or to any other port `MidiDevices.outputs()` lists in box 3.
-    """
-            .trimIndent()
+    Or to any other port `MidiDevices.outputs()` lists in box 3.""".trimIndent()
     }
 
 showMidiRoll(clip)

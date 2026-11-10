@@ -8,7 +8,7 @@ import {createTalk} from '../new-talk.mjs';
 import {validateProject} from '../server.mjs';
 
 const require = createRequire(import.meta.url);
-const {fieldDocumentUrl, fieldActions, guestUrl, validRect, guideTarget, sameTarget} = require('../../../electron/presentation-cues.js');
+const {fieldDocumentUrl, fieldActions, guestUrl, validRect, guideTarget, sameTarget, linkTarget, linkNavigation} = require('../../../electron/presentation-cues.js');
 
 test('Field cues stay on the current local Field server and reject path-like names', () => {
   const fieldUrl = 'https://localhost:9488/index.html?file=old-document';
@@ -141,4 +141,26 @@ test('a move targets a step counted from where the talk is, so repeats retarget 
   // A held key: every repeat is measured from the confirmed step, so it names the move under way.
   assert.ok(sameTarget(guideTarget(on(1), 'next'), guideTarget(on(1), 'next')));
   assert.ok(!sameTarget(guideTarget(on(1), 'next'), guideTarget(on(1), 'goto', '3')), 'a click elsewhere retargets');
+});
+
+test('a slide link opens only web pages and local PDFs', () => {
+  const base = 'https://localhost:9771/project/deck/files/';
+  assert.equal(linkTarget('https://ciechanow.ski/cameras-and-lenses/', base), 'https://ciechanow.ski/cameras-and-lenses/');
+  assert.equal(linkTarget('http://example.org/a.pdf', base), 'http://example.org/a.pdf');
+  assert.equal(linkTarget('file:///Users/me/papers/Hecht%20Optics.pdf', base), 'file:///Users/me/papers/Hecht%20Optics.pdf');
+  assert.equal(linkTarget('papers/notes.pdf', base), 'https://localhost:9771/project/deck/files/papers/notes.pdf', 'relative links resolve against the deck');
+  for (const refused of ['javascript:alert(1)', 'data:text/html,<p>x', 'file:///etc/passwd', 'file:///Users/me/run.command',
+    'mailto:someone@example.org', 'field://box', 'vbscript:x', '', '   ', null]) {
+    assert.equal(linkTarget(refused, base), null, String(refused));
+  }
+});
+
+test('with a linked page open, the presenter goes back to the slide rather than past it', () => {
+  const state = {index: 7};
+  assert.deepEqual(linkNavigation('next', undefined, state), {close: true, navigate: null}, 'Next returns to the slide, not the one after');
+  assert.deepEqual(linkNavigation('previous', undefined, state), {close: true, navigate: null});
+  assert.deepEqual(linkNavigation('close-link', undefined, state), {close: true, navigate: null});
+  assert.deepEqual(linkNavigation('goto', '7', state), {close: true, navigate: null}, 'the highlighted slide just closes the page');
+  assert.deepEqual(linkNavigation('goto', '2', state), {close: true, navigate: {action: 'goto', id: '2'}});
+  assert.deepEqual(linkNavigation('reload', undefined, state), {close: false, navigate: {action: 'reload', id: undefined}});
 });

@@ -22,9 +22,7 @@ operations:
                 <p><code>analysis.transcribe_music</code> is one model-neutral operation with three revision-pinned worker capabilities: small, medium, and large. It retains onset, offset, MIDI pitch, instrument group, activity curves, MessagePack events, performance-timed MIDI, and optional beat-quantized MIDI.</p>
                 <p>Run box 2 from the committed real result without a server to explore the synchronized piano roll. Replace box 3's <code>sourcePattern</code> with a recording you have the rights to transcribe, then run it for asset lookup → submit → progress → durable result → source/score audition → MIDI download. Unchanged operations are cache hits.</p>
                 <p style="color:#e5bd77">The code is MIT, but the gated model weights are CC BY-NC 4.0. Accept the selected model's Hugging Face terms before starting the worker.</p>
-              </section>
-              """
-                  .trimIndent(),
+              </section>""".trimIndent(),
           )
           display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
   - create:

@@ -29,9 +29,7 @@ run {
         0.975 *
         uv 5 * 0.25t + fbm 0.62 threshold 0.05 *
         +
-        saturate
-        """
-            .trimIndent()
+        saturate""".trimIndent()
 
     val template =
         """
@@ -49,9 +47,7 @@ run {
             vec3 c = program(stackInput).rgb;
             if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
             outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
-        }
-        """
-            .trimIndent()
+        }""".trimIndent()
 
     val dim = 112
     val frames = 72

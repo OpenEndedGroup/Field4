@@ -95,9 +95,28 @@
 
   /** Moves the talk, showing where to at once rather than when the audience changes. */
   function move(action, id) {
-    showPending(targetFor(action, id), action);
+    // With a linked page open, Next, Previous and the current slide only go back to the slide.
+    const returning = link && (action !== 'goto' || Number(id) === info?.index);
+    if (!returning) showPending(targetFor(action, id), action);
     bridge.action(action, id);
   }
+
+  // A page opened from a link on the slide covers the audience; the slide waits underneath.
+  let link = null;
+  const linkBar = document.getElementById('link-bar');
+  const linkTitle = document.getElementById('link-title');
+  const back = document.getElementById('close-link');
+  back.addEventListener('click', () => bridge.action('close-link'));
+  function renderLink() {
+    linkBar.hidden = !link;
+    document.body.classList.toggle('showing-link', !!link);
+    if (!link || !info) return;
+    let where = link.url;
+    try { const url = new URL(link.url); where = url.protocol === 'file:' ? decodeURIComponent(url.pathname.split('/').pop()) : url.host; } catch {}
+    linkTitle.textContent = link.title && link.title !== link.url ? `${link.title} · ${where}` : where;
+    back.textContent = `← Back to ${String(info.index + 1).padStart(String(info.count).length, '0')} · ${info.titles[info.index]}`;
+  }
+  bridge.onLink?.(next => { link = next; renderLink(); });
 
   for (const action of ['previous', 'next']) {
     document.getElementById(action).addEventListener('click', () => move(action));
@@ -253,6 +272,7 @@
     if (!search.value && (rebuilt || previousIndex !== info.index)) rows[info.index]?.element.scrollIntoView({block: 'nearest'});
     previousIndex = info.index;
     error.textContent = '';
+    renderLink();
     if (pending && info.index === pending.index && (pending.cueIndex == null || cueIndex === pending.cueIndex)) clearPending();
     else if (pending && !pending.failed) {
       // A step landed on the way to a retargeted one: keep waiting for the rest.
@@ -276,6 +296,7 @@
         (event.key === '/' && !editing && !event.ctrlKey && !event.metaKey && !event.altKey)) {
       event.preventDefault(); search.focus(); search.select(); filterSlides(); return;
     }
+    if (event.key === 'Escape' && link && !editing) { event.preventDefault(); bridge.action('close-link'); return; }
     // Search and the native disclosure controls keep their own editing/navigation keys.
     if (event.target.closest('input, textarea, summary, [contenteditable="true"]')) return;
     if (event.target instanceof HTMLButtonElement && [' ', 'Enter'].includes(event.key)) return;

@@ -2,6 +2,7 @@ const {contextBridge, ipcRenderer} = require('electron');
 
 contextBridge.exposeInMainWorld('fieldPresentation', {
   action(action, id) { ipcRenderer.send('field-presentation-action', {action, id}); },
+  openLink(href) { ipcRenderer.send('field-presentation-open-link', String(href)); },
   beginTransition() { return ipcRenderer.invoke('field-presentation-begin-transition'); },
   state(info) { ipcRenderer.send('field-presentation-state', info); },
   error(message) { ipcRenderer.send('field-presentation-error', String(message)); },
@@ -19,6 +20,11 @@ contextBridge.exposeInMainWorld('fieldPresentation', {
     const listener = (_, pending) => callback(pending);
     ipcRenderer.on('field-presentation-pending-to-control', listener);
     return () => ipcRenderer.removeListener('field-presentation-pending-to-control', listener);
+  },
+  onLink(callback) {
+    const listener = (_, link) => callback(link);
+    ipcRenderer.on('field-presentation-link-to-control', listener);
+    return () => ipcRenderer.removeListener('field-presentation-link-to-control', listener);
   },
   onError(callback) {
     const listener = (_, message) => callback(message);

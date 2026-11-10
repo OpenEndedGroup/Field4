@@ -8,6 +8,17 @@
   }
   addEventListener('resize', fit);
   fit();
+  // Slides run no scripts, so this shell takes their link clicks: Electron opens the page inside the
+  // talk, over the slide, and the presenter can go back to it. Fragment links stay on the slide.
+  frame.addEventListener('load', () => {
+    frame.contentDocument?.addEventListener('click', event => {
+      const link = event.target.closest?.('a[href]');
+      if (!link) return;
+      // Never let the slide itself navigate: with its <base>, even "#" would load the deck's folder.
+      event.preventDefault();
+      if (!link.getAttribute('href').startsWith('#')) window.fieldPresentation?.openLink(link.href);
+    }, true);
+  });
   // Electron releases builds only after its outgoing frame has finished cross-fading.
   window.startPresentationBuild = () => {
     const root = frame.contentDocument?.documentElement;
@@ -63,7 +74,7 @@
       *{box-sizing:border-box}html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:var(--field-slide-bg,#000);color:var(--field-slide-fg,#eee)}
       body{font-family:'Iosevka Web',Iosevka;font-size:40px;line-height:1.45;padding:120px 140px;display:flex;align-items:center}
       main{width:100%}h1{font-size:112px;line-height:1.08;font-weight:400;margin:0 0 48px;letter-spacing:-.03em}
-      h2{font-size:72px;font-weight:400;line-height:1.15}p{margin:24px 0}li{margin:16px 0}a{color:inherit}code,pre{font-family:inherit}img,video,svg{max-width:100%}
+      h2{font-size:72px;font-weight:400;line-height:1.15}p{margin:24px 0}li{margin:16px 0}a{color:inherit}a[href]{cursor:pointer;text-decoration-thickness:2px;text-underline-offset:.15em}code,pre{font-family:inherit}img,video,svg{max-width:100%}
       hr{border:0;border-top:2px solid var(--field-slide-muted,#999);margin:48px 0}.muted{color:var(--field-slide-muted,#999)}.columns{display:flex;gap:80px}.columns>*{flex:1}
       .field-image-full{position:fixed;inset:0;margin:0;display:flex;flex-direction:column;background:var(--field-slide-bg,#000)}
       .field-image-full>img{width:100%;height:100%;min-height:0;flex:1;max-width:none}

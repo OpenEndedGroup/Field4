@@ -280,9 +280,7 @@ val uid =
     ui.eval(
             """
             const b = [...document.querySelectorAll(".box")].find(b => (b.textContent || "").includes("sketch"))
-            return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null
-            """
-                .trimIndent(),
+            return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -294,9 +292,7 @@ ui.eval(
     const c = document.querySelector(".monaco-editor-container")
     for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
     if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(6500)
 // Three more saved edits of sketch's code: radius 64, then a ring of points, then radius 80.
@@ -320,9 +316,7 @@ for (i in 0 until 100) {
                 """
                 const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
                 const d = f && f.contentDocument
-                return "rows=" + (d ? d.querySelectorAll("#box-story-list .box-story-item").length : 0)
-                """
-                    .trimIndent(),
+                return "rows=" + (d ? d.querySelectorAll("#box-story-list .box-story-item").length : 0)""".trimIndent(),
             )
             .toString()
     if ((Regex("rows=(\\d+)").find(story)?.groupValues?.get(1)?.toInt() ?: 0) >= 4) break
@@ -340,9 +334,7 @@ val at =
             const row = [...f.contentDocument.querySelectorAll("#box-story-list .box-story-item")].find(r => r.querySelector(".range").textContent.trim() === "#1")
             row.scrollIntoView({ block: "center" })
             const r = row.getBoundingClientRect()
-            return [fr.left + r.left + 30, fr.top + r.top + r.height / 2].join(",")
-            """
-                .trimIndent(),
+            return [fr.left + r.left + 30, fr.top + r.top + r.height / 2].join(",")""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -359,9 +351,7 @@ for (i in 0 until 60) {
                 const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
                 const d = f.contentDocument
                 return "target=" + (d.querySelector("#target-version")?.textContent?.trim() || "") +
-                    " active=" + (d.querySelector("#box-story-list .box-story-item.active .range")?.textContent?.trim() || "")
-                """
-                    .trimIndent(),
+                    " active=" + (d.querySelector("#box-story-list .box-story-item.active .range")?.textContent?.trim() || "")""".trimIndent(),
             )
             .toString()
     if (shown.contains("target=#1") && shown.contains("active=#1")) break

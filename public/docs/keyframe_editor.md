@@ -43,9 +43,7 @@ ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
 val ready =
     """
     const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-    return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
-    """
-        .trimIndent()
+    return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;""".trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "4" && tries++ < 60) ui.pause(250)
 ui.pause(200)
@@ -79,9 +77,7 @@ ui.eval(
       // The menu is drawn in this page, not in the editor's frame.
       button: title => { const r = document.querySelector('.kfm-type[title="' + title + '"]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2].join(','); }
     };
-    return 'ok';
-    """
-        .trimIndent(),
+    return 'ok';""".trimIndent(),
 )
 
 fun at(expr: String): Pair<Double, Double> {
@@ -140,9 +136,7 @@ val shown =
   const m = document.querySelector('.kfm');
   const el = d.elementFromPoint(${peak.first} - fr.left, ${peak.second} - fr.top);
   return (m ? 'menu: ' + m.textContent.slice(0, 80) : 'no menu') + ' | under pointer: ' +
-    (el ? el.tagName + '.' + (el.getAttribute('class') || '') : 'nothing') + ' | menus in frame: ' + d.querySelectorAll('.kfm').length;
-"""
-                .trimIndent(),
+    (el ? el.tagName + '.' + (el.getAttribute('class') || '') : 'nothing') + ' | menus in frame: ' + d.querySelectorAll('.kfm').length;""".trimIndent(),
         )
         .toString()
 if (!shown.contains("Continuous")) error("key menu did not open on the peak: " + shown)
@@ -213,9 +207,7 @@ ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
 val ready =
     """
     const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-    return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
-    """
-        .trimIndent()
+    return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;""".trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "4" && tries++ < 60) ui.pause(250)
 val peakScript =
@@ -223,9 +215,7 @@ val peakScript =
     const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
     const fr = f.getBoundingClientRect();
     const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[1].getBoundingClientRect();
-    return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
-    """
-        .trimIndent()
+    return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);""".trimIndent()
 // Measured only once the page has stopped moving: the panel may still be opening or panning into view.
 fun peakNow(): List<Double> {
     var last = ""
@@ -282,9 +272,7 @@ ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
 val ready =
     """
     const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-    return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
-    """
-        .trimIndent()
+    return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;""".trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "241" && tries++ < 60) ui.pause(250)
 // The plotting area, in page coordinates, once it has stopped moving.
@@ -294,9 +282,7 @@ val area =
     const fr = f.getBoundingClientRect();
     const hit = Array.from(f.contentDocument.querySelectorAll('rect')).find(r => r.style.cursor === 'crosshair');
     const r = hit.getBoundingClientRect();
-    return [fr.left + r.left, fr.top + r.top, r.width, r.height].map(Math.round).join(' ');
-    """
-        .trimIndent()
+    return [fr.left + r.left, fr.top + r.top, r.width, r.height].map(Math.round).join(' ');""".trimIndent()
 var rect = ""
 tries = 0
 while (tries++ < 40) {
@@ -319,9 +305,7 @@ fun slider(label: String): List<Double> =
             """
   const row = Array.from(document.querySelectorAll('.kfm .kfm-tool')).find(r => r.textContent.indexOf('$label') === 0);
   const r = row.querySelector('input').getBoundingClientRect();
-  return [r.left, r.top + r.height / 2, r.width].map(Math.round).join(' ');
-"""
-                .trimIndent(),
+  return [r.left, r.top + r.height / 2, r.width].map(Math.round).join(' ');""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -421,9 +405,7 @@ ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
 val ready =
     """
     const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-    return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
-    """
-        .trimIndent()
+    return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;""".trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "4" && tries++ < 60) ui.pause(250)
 val keyScript =
@@ -431,9 +413,7 @@ val keyScript =
     const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
     const fr = f.getBoundingClientRect();
     const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[0].getBoundingClientRect();
-    return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
-    """
-        .trimIndent()
+    return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);""".trimIndent()
 // Measured only once the page has stopped moving: the panel may still be opening or panning into view.
 fun keyNow(): List<Double> {
     var last = ""
@@ -462,9 +442,7 @@ val state =
   const top = document.elementFromPoint(${key[0]}, ${key[1]});
   return 'host menu ' + !!document.querySelector('.kfm') + ', frame menu ' + d.querySelectorAll('.kfm').length +
     ', under pointer in frame ' + (el ? el.tagName + '.' + (el.getAttribute('class') || '') : 'none') +
-    ', in page ' + (top ? top.tagName + '.' + (top.className || '') : 'none');
-"""
-                .trimIndent(),
+    ', in page ' + (top ? top.tagName + '.' + (top.className || '') : 'none');""".trimIndent(),
         )
         .toString()
         .replace("\"", "'")
@@ -504,9 +482,7 @@ ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
 val ready =
     """
     const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-    return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
-    """
-        .trimIndent()
+    return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;""".trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "4" && tries++ < 60) ui.pause(250)
 // Key [i] in page coordinates, measured once the page has stopped moving.
@@ -516,9 +492,7 @@ fun keyAt(i: Int): List<Double> {
       const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
       const fr = f.getBoundingClientRect();
       const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[$i].getBoundingClientRect();
-      return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
-    """
-            .trimIndent()
+      return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);""".trimIndent()
     var last = ""
     repeat(30) {
         val now = ui.eval(script).toString().trim('"')
@@ -644,9 +618,7 @@ val lanes =
       const r = hit.getBoundingClientRect();
       return [fr.left + r.left, fr.top + r.top, r.width, r.height].map(Math.round).join(' ');
     });
-    return parts.every(p => p) ? parts.join(';') : '';
-    """
-        .trimIndent()
+    return parts.every(p => p) ? parts.join(';') : '';""".trimIndent()
 var rects = ""
 var tries = 0
 while (tries++ < 60) {
@@ -707,9 +679,7 @@ val fit =
             const b = Array.from(document.querySelectorAll('.kfm .kfm-item')).find(e => e.textContent.indexOf('Frame curve') >= 0);
             if (!b) return '';
             const r = b.getBoundingClientRect();
-            return Math.round(r.left + r.width / 2) + ',' + Math.round(r.top + r.height / 2);
-            """
-                .trimIndent(),
+            return Math.round(r.left + r.width / 2) + ',' + Math.round(r.top + r.height / 2);""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -729,9 +699,7 @@ fun keyIn(lane: Int, i: Int): Pair<Double, Double> {
       const frames = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0);
       const f = frames[$lane], fr = f.getBoundingClientRect();
       const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[$i].getBoundingClientRect();
-      return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
-    """
-                    .trimIndent(),
+      return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);""".trimIndent(),
             )
             .toString()
             .trim('"')
@@ -820,9 +788,7 @@ ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
 val ready =
     """
     const frames = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0);
-    return frames.length === 2 && frames.every(f => f.contentDocument && f.contentDocument.querySelectorAll('.kf-keyframe').length > 20) ? 'yes' : '';
-    """
-        .trimIndent()
+    return frames.length === 2 && frames.every(f => f.contentDocument && f.contentDocument.querySelectorAll('.kf-keyframe').length > 20) ? 'yes' : '';""".trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "yes" && tries++ < 80) ui.pause(250)
 // The hold button in the row labelled smooth take, in page coordinates, once it has stopped moving.
@@ -835,9 +801,7 @@ val button =
     });
     if (!b) return '';
     const r = b.getBoundingClientRect();
-    return Math.round(r.left + r.width / 2) + ',' + Math.round(r.top + r.height / 2);
-    """
-        .trimIndent()
+    return Math.round(r.left + r.width / 2) + ',' + Math.round(r.top + r.height / 2);""".trimIndent()
 var at = ""
 tries = 0
 while (tries++ < 40) {
