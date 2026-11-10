@@ -79,6 +79,113 @@ class AstraBridgeContractTest {
     private val mapper = ObjectMapper()
 
     @Test
+    fun checkpointsResumeHostedIdsAndStatelessToolHistoryInFreshBridges() {
+        for (provider in listOf("openai", "openrouter", "local")) withServer(provider) { server, requests, bridge ->
+            bridge.registerTool(InspectPanel::class.java) { _, _ -> mapOf("checked" to true) }
+            var retrieved = 0
+            server.createContext("/v1/responses") { exchange ->
+                val body = if (exchange.requestMethod == "GET") {
+                    retrieved++
+                    finalResponse("resp_done")
+                } else {
+                    requests.add(mapper.readTree(exchange.requestBody))
+                    if (requests.size == 1) response("resp_tool", """[
+                        {"type":"function_call","id":"fc_probe","call_id":"call_probe","name":"InspectPanel","arguments":"{}","status":"completed"}
+                    ]""") else finalResponse("resp_done")
+                }
+                exchange.responseHeaders.add("Content-Type", "application/json")
+                exchange.sendResponseHeaders(200, body.toByteArray().size.toLong())
+                exchange.responseBody.use { it.write(body.toByteArray()) }
+            }
+            val state = if (provider == "openai")
+                OpenAiIdeCodexBridge.ThreadState("durable", "conv_durable", "test", previousResponseId = "resp_seed")
+            else bridge.startThread("test", "val roof = 731")
+            bridge.send(state, "Inspect this roof")
+            val checkpoint = bridge.checkpointThread(state)
+            val baseUrl = "http://127.0.0.1:${server.address.port}/v1"
+            val freshClient = OpenAIOkHttpClient.builder().apiKey("protocol-test").baseUrl(baseUrl).maxRetries(0).build()
+            try {
+                val fresh = OpenAiIdeCodexBridge(
+                    runtimeConfig = AiProviderRuntimeConfig(provider, "protocol-test", "test", baseUrl, AiModelSettings()),
+                    client = freshClient, model = Ai4ModelDefaults.FLAGSHIP_MODEL)
+                fresh.registerTool(InspectPanel::class.java) { _, _ -> error("Completed tool must not run again") }
+                val resumed = assertNotNull(fresh.restoreThread(checkpoint), provider)
+                fresh.send(resumed, "Continue with the result")
+                assertEquals(3, requests.size)
+                if (provider == "openai") {
+                    assertEquals(1, retrieved)
+                    assertEquals("resp_done", requests.last()["previous_response_id"].asText())
+                    assertFalse(requests.last()["input"].toString().contains("Inspect this roof"))
+                } else {
+                    assertEquals(0, retrieved)
+                    val input = requests.last()["input"].toString()
+                    assertTrue(input.contains("Inspect this roof"), provider)
+                    assertTrue(input.contains("function_call_output") && input.contains("call_probe") && input.contains("checked"), input)
+                    assertFalse(requests.last().has("conversation"))
+                    assertFalse(requests.last().has("previous_response_id"))
+                }
+                assertEquals(null, fresh.restoreThread(checkpoint.replace("\"version\":1", "\"version\":2")))
+                assertEquals(null, fresh.restoreThread(checkpoint.replace("\"provider\":\"$provider\"", "\"provider\":\"another\"")))
+                assertEquals(null, fresh.restoreThread(checkpoint.replace("\"endpointHash\":\"", "\"endpointHash\":\"changed")))
+                assertEquals(null, fresh.restoreThread(checkpoint.replace("\"model\":\"", "\"model\":\"changed")))
+            } finally { freshClient.close() }
+        }
+    }
+
+    @Test
+    fun missingHostedResponseDeclinesContinuationBeforeSendingAnyPrompt() = withServer { server, requests, bridge ->
+        server.createContext("/v1/responses") { exchange ->
+            assertEquals("GET", exchange.requestMethod)
+            val body = """{"error":{"message":"Response not found","type":"invalid_request_error","code":"not_found"}}""".toByteArray()
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(404, body.size.toLong())
+            exchange.responseBody.use { it.write(body) }
+        }
+        val state = OpenAiIdeCodexBridge.ThreadState("gone", "conv_gone", "test", previousResponseId = "resp_gone")
+        val reasons = mutableListOf<String>()
+        assertEquals(null, bridge.restoreThread(bridge.checkpointThread(state), reasons::add))
+        assertEquals(listOf("hosted_lookup_http_404"), reasons)
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun textCompletionUsesOneToolFreeRequestWithNoHostedConversationForAllResponsesProviders() {
+        for (provider in listOf("openai", "openrouter", "local")) withServer(provider) { server, requests, _ ->
+            server.createContext("/v1/responses") { exchange ->
+                requests.add(mapper.readTree(exchange.requestBody))
+                val body = finalResponse("resp_completion").toByteArray()
+                exchange.responseHeaders.add("Content-Type", "application/json")
+                exchange.sendResponseHeaders(200, body.size.toLong())
+                exchange.responseBody.use { it.write(body) }
+            }
+            val baseUrl = "http://127.0.0.1:${server.address.port}/v1"
+            val client = OpenAIOkHttpClient.builder().apiKey("protocol-test").baseUrl(baseUrl).maxRetries(0).build()
+            try {
+                val bridge = OpenAiIdeCodexBridge(runtimeConfig = AiProviderRuntimeConfig(provider, "protocol-test", "test", baseUrl, AiModelSettings()),
+                    client = client, model = Ai4ModelDefaults.FAST_MODEL)
+                assertEquals("Inspected roof.", bridge.completeText("Complete this draft", "inspect the", 256, context = "Stable box and conversation context"))
+                val request = requests.single()
+                assertFalse(request.has("tools"))
+                assertFalse(request.has("conversation"))
+                assertFalse(request.has("previous_response_id"))
+                assertEquals(false, request["store"].asBoolean())
+                assertEquals(3, request["input"].size())
+                assertTrue(request["input"][1].toString().contains("Stable box and conversation context"))
+                assertTrue(request["input"][2].toString().contains("inspect the"))
+                if (provider == "openai") {
+                    assertEquals("none", request["reasoning"]["effort"].asText())
+                    assertEquals("explicit", request["prompt_cache_options"]["mode"].asText())
+                    assertEquals("explicit", request["input"][1]["content"][0]["prompt_cache_breakpoint"]["mode"].asText())
+                } else {
+                    assertFalse(request.has("reasoning"))
+                    assertFalse(request.has("prompt_cache_options"))
+                    assertFalse(request["input"][1].toString().contains("prompt_cache_breakpoint"))
+                }
+            } finally { client.close() }
+        }
+    }
+
+    @Test
     fun localProviderKeepsHistoryAndImagesWithoutHostedConversations() = withServer("local") { server, requests, bridge ->
         server.createContext("/v1/responses") { exchange ->
             requests.add(mapper.readTree(exchange.requestBody))

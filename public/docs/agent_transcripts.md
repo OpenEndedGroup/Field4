@@ -406,6 +406,15 @@ audio an offline buffer. See [A Drawn Score, Heard](chain_drawn_score.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/drawn_score/metadata.edn)
 
+### chain_tracked_body
+
+In [A Tracked Body, Measured and Heard](chain_tracked_body.md), two boxes turn a pose recording
+from *Ballet Mécanique* into a drawing and a sound. `measured` fills WiVRn's eight body slots and
+uses `BodyGeometry` to trace the right wrist's distance from the body, drawing over film stills;
+`heard` plays that distance as a `patTimed` pattern. Both run headless, without a headset.
+
+[Open →](offline.html?file=assets/agent_transcripts/chain_tracked_body/metadata.edn)
+
 ### drawn_morph
 
 A drawn morph, heard, as five boxes. `shapes` draws a circle named "from" and a heart named "to" on
@@ -2524,6 +2533,16 @@ graph. Plain Kotlin, no optional libraries.
 These boxes are all compiled through Field's real Kotlin/preamble path, but not evaluated by CI:
 their purpose is to cross a process, audio-device or capture-device boundary that the lightweight
 build does not own.
+
+### datalog_rhythm_drawn
+
+[Rules that listen to the drawing](datalog.md#rules-that-listen-to-the-drawing): Datalog rhythm
+rules whose facts are marks in a drawn frame. Box 1 draws a frame named `drums` and seven marks in
+three lanes. Box 2, launched, reads every mark as `hit(P, Voice, Mark)` and plays the rules through
+`patSynth`; draw, move or erase a mark (Alt+D) and the next bar changes while it plays. Box 3 prints
+the grid the drawing gives now and asks `why` the snare at step 4 played, which names the mark.
+
+[Open →](offline.html?file=assets/agent_transcripts/datalog_rhythm_drawn/metadata.edn)
 
 ### rtp_midi_demo
 

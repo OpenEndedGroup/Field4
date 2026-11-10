@@ -25,6 +25,7 @@ from build_zensical_docs import (  # noqa: E402
     page_output,
     prepare_local_site_for_captures,
     process_cpu_seconds,
+    report_zensical_stall,
     run_zensical,
     run_zensical_retrying_idle_wedges,
 )
@@ -44,7 +45,8 @@ SILENT_SUCCESS = "raise SystemExit(0)"
 
 
 def fake(code: str, tmp: Path, *, stall_seconds: float = 30.0) -> ZensicalRun:
-    return run_zensical([sys.executable, "-c", code], cwd=tmp, watched=[tmp], stall_seconds=stall_seconds)
+    with patch("build_zensical_docs.report_zensical_stall"):
+        return run_zensical([sys.executable, "-c", code], cwd=tmp, watched=[tmp], stall_seconds=stall_seconds)
 
 
 class RunZensicalTests(unittest.TestCase):
@@ -140,6 +142,45 @@ class RunZensicalTests(unittest.TestCase):
         import os
 
         self.assertIsNotNone(process_cpu_seconds(os.getpid()))
+
+    def test_diagnostics_are_captured_before_stopping_the_process(self) -> None:
+        import os
+
+        alive: list[bool] = []
+        def inspect(pid: int, cwd: Path, watched: list[Path]) -> None:
+            os.kill(pid, 0)
+            alive.append(True)
+            self.assertEqual((cwd, watched), (self.tmp, [self.tmp]))
+
+        with patch("build_zensical_docs.report_zensical_stall", side_effect=inspect):
+            run_zensical([sys.executable, "-c", WEDGED_AFTER_START], cwd=self.tmp,
+                         watched=[self.tmp], stall_seconds=0.5)
+        self.assertEqual(alive, [True])
+
+    def test_diagnostics_survive_missing_tools(self) -> None:
+        from contextlib import redirect_stdout
+        from io import StringIO
+
+        out = StringIO()
+        with redirect_stdout(out), patch("build_zensical_docs.subprocess.run", side_effect=FileNotFoundError("missing")):
+            report_zensical_stall(123, self.tmp, [self.tmp])
+        self.assertIn("process unavailable", out.getvalue())
+        self.assertIn("open files unavailable", out.getvalue())
+
+    def test_macos_diagnostics_include_thread_sample_and_open_files(self) -> None:
+        from contextlib import redirect_stdout
+        from io import StringIO
+        from subprocess import CompletedProcess
+
+        out = StringIO()
+        def command(args, **_kwargs):
+            return CompletedProcess(args, 0, stdout=f"result from {args[0]}", stderr="")
+
+        with redirect_stdout(out), patch("build_zensical_docs.sys.platform", "darwin"), \
+             patch("build_zensical_docs.subprocess.run", side_effect=command):
+            report_zensical_stall(123, self.tmp, [self.tmp])
+        for tool in ("ps", "sample", "lsof"):
+            self.assertIn(f"result from {tool}", out.getvalue())
 
 
 class InstallSiteTests(unittest.TestCase):

@@ -2628,7 +2628,7 @@ in `linalg_spatial.kt`, convex hulls in `linalg_mesh.kt`.
 
 `src/jvmMain/kotlin/afield/math/linalg/linalg.kt` — [read the source](source/jvmMain/afield/math/linalg/linalg/)
 
-**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [A Drawn Morph, Heard](../chain_drawn_morph.md), [Datalog in a box](../datalog.md)
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [A Drawn Morph, Heard](../chain_drawn_morph.md), [A Tracked Body, Measured and Heard](../chain_tracked_body.md)
 
 ### Top-level functions { #linalg-kt-functions }
 

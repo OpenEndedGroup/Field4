@@ -66,6 +66,22 @@ function disclosureInterface(container) {
         const disclosures = new Map(); // id -> { wrap, hdr, cw, arr }
         const states = new Map(); // id -> { open, width, height, scrollTop, scrollLeft }
 
+        // Only chat presentation is persistent: executable output remains owned by its running box.
+        function rememberChatPanel(id, present = true) {
+                if (id !== "ai-chat" || container.__restoringAiChatPanel) return;
+                const d = disclosures.get(id);
+                const chat = d?.cw.__aiChat;
+                if (!chat) return;
+                const box = findBoxByUid(chat.uid);
+                if (!box || box.uid === "root") return;
+                const st = ensureState(id);
+                const value = JSON.stringify({present, open: !!st.open, property: chat.property || "code",
+                        ...(st.userSized ? {width: st.width, height: st.height} : {})});
+                if (box.ai4_chat_panel === value) return;
+                box.ai4_chat_panel = value;
+                send("set-string", {uid: chat.uid, property: "ai4_chat_panel", value});
+        }
+
         function clamp(value, min, max) {
                 const lo = Math.min(min, max);
                 const hi = Math.max(min, max);
@@ -1023,6 +1039,7 @@ function disclosureInterface(container) {
                 }
                 states.set(id, st);
                 d.wrap.style.width = `${st.width}px`;
+                if (changed) rememberChatPanel(id);
                 refreshConnectionLayoutForNested(id);
         }
 
@@ -1224,6 +1241,7 @@ function disclosureInterface(container) {
                 if (st.open && d.wrap.classList.contains("open") && d.cw.style.display !== "none") {
                         bindContentLoadEvents(id, d);
                         observeContentTargets(id, d);
+                        rememberChatPanel(id);
                         return;
                 }
                 if (!st.width) st.width = DEFAULT_W;
@@ -1240,6 +1258,7 @@ function disclosureInterface(container) {
                         scheduleAutoSize(id, "open");
                 }
                 refreshConnectionLayoutForNested(id);
+                rememberChatPanel(id);
         }
 
         function close(id) {
@@ -1258,6 +1277,7 @@ function disclosureInterface(container) {
                 states.set(id, st);
                 applyClosed(d);
                 refreshConnectionLayoutForNested(id);
+                rememberChatPanel(id);
         }
 
         function toggle(id) {
@@ -1290,6 +1310,7 @@ function disclosureInterface(container) {
                 if (embEditorId && window.embeddedEditors && typeof window.embeddedEditors.dispose === "function") {
                         window.embeddedEditors.dispose(embEditorId);
                 }
+                rememberChatPanel(id, false);
                 d.wrap.remove();
                 disclosures.delete(id);
                 states.delete(id);
@@ -1531,13 +1552,14 @@ function disclosureInterface(container) {
                 const d = disclosures.get(id);
                 if (!d || d.inline) return;
                 const st = ensureState(id);
-                const clamped = clampSizeForId(id, width, height);
+                const clamped = clampSizeForId(id, width, height, true);
                 st.width = clamped.width;
                 st.height = clamped.height;
                 st.userSized = true;
                 states.set(id, st);
                 if (st.open) applyOpen(id, d);
                 refreshConnectionLayoutForNested(id);
+                rememberChatPanel(id);
         }
 
         const api = { upsertDisclosure, setContent, toggle, open, close, remove, closeAll, solo, isOpen, ids, getSize, setSize };
@@ -2783,6 +2805,41 @@ function installControllerChatProjection() {
         };
         ready();
 }
+
+// Restoration is idempotent, never steals keyboard focus, and never writes its own state back.
+function restoreAiChatPanel(uid) {
+        const box = findBoxByUid(uid);
+        if (!box || uid === "root") return;
+        let state;
+        try { state = box.ai4_chat_panel ? JSON.parse(box.ai4_chat_panel) : null; }
+        catch { return; }
+        if (!state) return;
+        const group = box.querySelector(".outputArea .disclosure-group");
+        if (!group) return;
+        const inter = disclosureInterface(group);
+        group.__restoringAiChatPanel = true;
+        try {
+                if (state?.present === false) {
+                        inter.remove("ai-chat");
+                        return;
+                }
+                box.querySelector(".outputArea").style.visibility = "visible";
+                const content = inter.upsertDisclosure("ai-chat", "AI Chat", "__AFIELD_PRESERVE_DISCLOSURE_CONTENT__");
+                content.classList.add("ai-chat-content");
+                // The normal history request recovers interrupted turns and shows the current server
+                // transcript, rather than reviving a stale running indicator from disk.
+                ensureAiChat(content, uid, state?.property || "code");
+                if (Number.isFinite(state?.width) && state.width > 0 && Number.isFinite(state?.height) && state.height > 0) {
+                        inter.setSize("ai-chat", state.width, state.height);
+                }
+                if (state?.open === false) inter.close("ai-chat");
+                else inter.open("ai-chat");
+        } finally {
+                group.__restoringAiChatPanel = false;
+        }
+}
+
+window.restoreAiChatPanel = restoreAiChatPanel;
 
 function openAiChatForBox(uid, property) {
         const box = findBoxByUid(uid);

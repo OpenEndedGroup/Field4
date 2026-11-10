@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T10:41:50.411Z",
+  "capturedAt": "2026-11-10T09:22:39.671Z",
   "documentName": "control_surface_laws",
   "outputs": [
     {
@@ -32,9 +32,11 @@
       "channel": "gesture",
       "open": true,
       "warnings": [],
-      "kinds": [],
+      "kinds": [
+        "svg"
+      ],
       "width": 536,
-      "height": 90,
+      "height": 102,
       "path": "outputs/2.html"
     }
   ]
