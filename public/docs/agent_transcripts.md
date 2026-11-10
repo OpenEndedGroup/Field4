@@ -756,6 +756,16 @@ played (the proof ends in the fact `euc(20, 4, 16, 0)`) and shows that the snare
 
 [Open →](offline.html?file=assets/agent_transcripts/datalog_rhythm_rules/metadata.edn)
 
+### datalog_rhythm_drawn
+
+[Rules that listen to the drawing](datalog.md#rules-that-listen-to-the-drawing): Datalog rhythm
+rules whose facts are marks in a drawn frame. Box 1 draws a frame named `drums` and seven marks in
+three lanes. Box 2, launched, reads every mark as `hit(P, Voice, Mark)` and plays the rules through
+`patSynth`; draw, move or erase a mark (Alt+D) and the next bar changes while it plays. Box 3 prints
+the grid the drawing gives now and asks `why` the snare at step 4 played, which names the mark.
+
+[Open →](offline.html?file=assets/agent_transcripts/datalog_rhythm_drawn/metadata.edn)
+
 ### frames_lifecycle
 
 **A frame loop, from start to cleanup.** The companion to
