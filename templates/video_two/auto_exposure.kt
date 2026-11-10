@@ -3,17 +3,24 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 
-// Persist one validated settings object, so bounds and filter pairs restore atomically on relaunch.
+// The controls remain usable before the renderer exists. Bind to a new carousel on access/relaunch.
 prop<String>(videoExposureSettings) = (thisBox.getPropertyRaw("videoExposureSettings") as? String) ?: ""
 val exposureJson = Json { encodeDefaults = true; ignoreUnknownKeys = true }
 var exposureControlError = ""
+fun currentExposureMeter(): VideoAutoExposure? = runCatching { carousel.autoExposure }.getOrNull()
+var attachedExposureMeter = currentExposureMeter()
+var pendingExposureSettings = attachedExposureMeter?.settings ?: VideoAutoExposure.Settings()
+var resetExposureOnAttach = false
 if (videoExposureSettings.isNotBlank()) runCatching {
-    carousel.autoExposure.settings = exposureJson.decodeFromString<VideoAutoExposure.Settings>(videoExposureSettings)
+    pendingExposureSettings = exposureJson.decodeFromString<VideoAutoExposure.Settings>(videoExposureSettings)
+    attachedExposureMeter?.settings = pendingExposureSettings
 }.onFailure { exposureControlError = "Could not restore exposure settings: ${it.message}" }
+fun exposureSettings() = attachedExposureMeter?.settings ?: pendingExposureSettings
 fun changeExposure(change: (VideoAutoExposure.Settings) -> VideoAutoExposure.Settings) {
     runCatching {
-        val next = change(carousel.autoExposure.settings)
-        carousel.autoExposure.settings = next
+        val next = change(exposureSettings())
+        pendingExposureSettings = next
+        attachedExposureMeter?.settings = next
         videoExposureSettings = exposureJson.encodeToString(next)
         exposureControlError = ""
     }.onFailure { exposureControlError = it.message ?: it.javaClass.simpleName }
@@ -22,15 +29,15 @@ val exposureMirrors = mutableListOf<() -> Unit>()
 fun afield.ui.output.ControlGroupBuilder.exposureSlider(label: String, min: Double, max: Double, step: Double,
     get: (VideoAutoExposure.Settings) -> Double, help: String,
     set: (VideoAutoExposure.Settings, Double) -> VideoAutoExposure.Settings) {
-    val value = get(carousel.autoExposure.settings)
+    val value = get(exposureSettings())
     val handle = slider(label, min = minOf(min, value), max = maxOf(max, value), step = step,
         initialValue = value, hoverText = help) { v -> changeExposure { set(it, v) } }
-    exposureMirrors += { handle.set(get(carousel.autoExposure.settings)) }
+    exposureMirrors += { handle.set(get(exposureSettings())) }
 }
 controlGroup("meter and exposure mode") {
-    checkbox("Update GPU meter", initialValue = carousel.autoExposure.settings.enabled,
+    checkbox("Update GPU meter", initialValue = exposureSettings().enabled,
         hoverText = "Measure raw accumulation buffers, before presentation, blur cadence, flashing and opacity. Off freezes existing statistics and tracker state; an enabled auto mode can still use those frozen endpoints. With no valid buffer, auto exposure falls back to manual levels.") { v -> changeExposure { it.copy(enabled = v) } }
-        .also { h -> exposureMirrors += { h.set(carousel.autoExposure.settings.enabled) } }
+        .also { h -> exposureMirrors += { h.set(exposureSettings().enabled) } }
     button("Manual levels", hoverText = "Use each screen's manual black and white levels. Meter updates remain independently controlled by the checkbox.") { down ->
         if (down) changeExposure { it.copy(mode = VideoAutoExposure.Mode.OFF) }
     }
@@ -44,7 +51,7 @@ controlGroup("meter and exposure mode") {
         "Blend automatic endpoints with manual black/white points, multiplied by each screen's local auto mix. Zero keeps manual levels while metering may continue.") { s, v -> s.copy(mix = v.toFloat()) }
     exposureSlider("Meter samples / second", .5, 60.0, .5, { it.meterHz },
         "Alpha-beta measurement cadence, independent of headset/video rate. Only changed accumulation images are scanned; cached measurements still correct the trackers at this cadence. Between samples the GPU predicts from retained velocities. Changing cadence changes the response of the per-sample gains.") { s, v -> s.copy(meterHz = v) }
-    button("Reset exposure trackers", hoverText = "Seed min, mean and max from the next measurement and zero their velocities. Does not clear or modify the accumulation images.") { down -> if (down) carousel.autoExposure.reset() }
+    button("Reset exposure trackers", hoverText = "Seed min, mean and max from the next measurement and zero their velocities. Does not clear or modify the accumulation images.") { down -> if (down) { attachedExposureMeter?.reset(); resetExposureOnAttach = attachedExposureMeter == null } }
 }
 controlGroup("directional alpha-beta") {
     exposureSlider("Rising alpha", 0.0, 1.0, .001, { it.risingAlpha.toDouble() },
@@ -83,10 +90,16 @@ loop {
     val now = System.nanoTime()
     if (now - lastExposureUI > 250_000_000L) {
         lastExposureUI = now
+        val meter = currentExposureMeter()
+        if (meter !== attachedExposureMeter) {
+            if (meter != null && videoExposureSettings.isNotBlank()) meter.settings = pendingExposureSettings
+            if (meter != null && resetExposureOnAttach) { meter.reset(); resetExposureOnAttach = false }
+            attachedExposureMeter = meter
+        }
+        val settings = exposureSettings()
+        pendingExposureSettings = settings
         exposureMirrors.forEach { it() }
-        val meter = carousel.autoExposure
-        val settings = meter.settings
-        val snapshot = meter.latest
+        val snapshot = meter?.latest
         val rows = snapshot?.let { snap ->
             (snap.screens.mapIndexed { i, v -> "Screen ${i + 1}" to v } + ("Linked" to snap.linked)).joinToString("\n") { (name, v) ->
                 if (!v.valid) "| $name | — | — | — | — | — |"
@@ -94,16 +107,17 @@ loop {
             }
         } ?: "| No completed measurements | — | — | — | — | — |"
         markdown("meter status", """
-### ${settings.mode} · meter ${if (settings.enabled) "updating" else "frozen / off"}
+### ${if (meter == null) "Renderer stopped · settings ready" else settings.mode.toString()} · meter ${if (settings.enabled) "updating" else "frozen / off"}
 
-${exposureControlError.ifEmpty { meter.error ?: "" }}
+${exposureControlError.ifEmpty { meter?.error ?: "" }}
 
-**${meter.measurements}** measurement batches · **${meter.tileDispatches}** image scans · ${settings.meterHz.f2} samples/s.
+**${meter?.measurements ?: 0}** measurement batches · **${meter?.tileDispatches ?: 0}** image scans · ${settings.meterHz.f2} samples/s.
 
 | Source | Filtered min | Filtered mean | Filtered max | Auto black | Auto white |
 | --- | --- | --- | --- | --- | --- |
 $rows
 
+Settings can be edited while the renderer is stopped and apply when the carousel starts.
 Luminance shown; RGB statistics and velocities are also available in `carousel.autoExposure.latest`.
 Automatic endpoints include inter-sample prediction, margins and bounds, before global/local mix.
 No accumulation or a zero accumulation mix in a fresh screen means there is no buffer to meter yet.
