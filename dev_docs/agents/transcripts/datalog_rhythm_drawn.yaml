@@ -1,0 +1,54 @@
+name: datalog_rhythm_drawn
+description: >
+  Datalog rhythm rules that listen to the drawing, and play live. Three boxes. "1 · draw the bar"
+  draws a frame named "drums" (sixteen steps across, three lanes down: kick, snare, hh) and a few
+  marks in it — stand-ins for marks drawn by hand; run it again after editing its list to move them.
+  "2 · play it — launch me" reads every mark in the frame as `hit(P, Voice, Mark)` and plays the rules
+  through PatSynth and Field's audio engine; the drawing is re-read every bar, so redrawing changes
+  the next bar without restarting. "3 · why" prints the grid the drawing gives now and asks why the
+  snare at step 4 played — the answer names the mark. Open/replay into a fresh Field4, run box 1,
+  launch box 2, then draw in the "drums" frame (Alt+D) or edit and re-run box 1, and run box 3.
+docs:
+  - page: datalog.md#rules-that-listen-to-the-drawing
+    why: "The loadable version of the drawn-rhythm section."
+operations:
+  - create:
+      box: datalog_rhythm_draw
+      name: 1 · draw the bar
+      frame: { x: 60.0, y: 60.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // (step, lane): lane 0 is kick, 1 snare, 2 hh. Edit and run again to redraw.
+          val notes = [0 to 0, 6 to 0, 10 to 0, 4 to 1, 12 to 1, 2 to 2, 14 to 2]
+          notation {
+              rect(400, 60, 480, 90, name = "drums")
+              for ((step, lane) in notes) rect(400 + step * 30 + 4, 60 + lane * 30 + 8, 14, 14, name = "n$step.$lane")
+          }
+          println("drew ${notes.size} marks in 'drums'")
+  - create:
+      box: datalog_rhythm_play
+      name: 2 · play it — launch me
+      frame: { x: 60.0, y: 220.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          val drums = notation.space("drums", x = 0.0..16.0, y = 0.0..3.0)
+          val r = datalog(
+              """
+              event(V, 36, 100, T) :- hit(P, V, _), pos(T, P).
+              event(hh, 42, 40, T) :- every(T, 2, 1), pos(T, P), span(hh, A, B, _), P >= A, P < B.
+              """,
+          ).rhythm()
+              .notationHits(drums, ["kick", "snare", "hh"])
+          println(r.grid(0))
+          patSynth(r.pattern(), cps = 0.5)
+  - create:
+      box: datalog_rhythm_why_drawn
+      name: 3 · why
+      frame: { x: 60.0, y: 380.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          val drums = notation.space("drums", x = 0.0..16.0, y = 0.0..3.0)
+          val r =
+              datalog("event(V, 36, 100, T) :- hit(P, V, _), pos(T, P).").rhythm().notationHits(drums, ["kick", "snare", "hh"])
+          println(r.grid(0))
+          println(r.why("event(snare, 36, 100, 4)")?.render() ?: "no snare at step 4 — nothing drawn there")

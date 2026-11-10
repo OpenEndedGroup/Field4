@@ -611,6 +611,9 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // Box 2 returns a live patSynth launch (an audio-engine registration held while the box runs);
+        // the drawing-to-facts path and the live re-solve are covered by DatalogRhythmLiveTest.
+        "datalog_rhythm_drawn",
         // Requires a connected OpenXR runtime and real tracking; geometry math is covered by BodyGeometryTest.
         "body_one",
         "text_one_vr",

@@ -560,9 +560,9 @@ barline. This one crashes on the downbeat after a bar that ended on a snare:
 event(crash, 49, 100, T) :- pos(T, 0), P = T - 1, event(snare, _, _, P).
 ```
 
-Nothing further back than one bar is visible. Because the pattern rereads the program for each bar
-it has not played yet, adding a rule to a playing `Datalog` changes the next bar without restarting
-anything. `r.why("event(kick, 36, 100, 20)")` explains a note the way `#why` explains a fact, with
+Nothing further back than one bar is visible. The pattern rereads the program for each bar it has
+not played yet, so `r.rules("...")` swaps in new rules and the next bar plays them, without
+restarting anything. `r.why("event(kick, 36, 100, 20)")` explains a note the way `#why` explains a fact, with
 `euc(20, 4, 16, 0)` as the fact underneath it. Open the
 [starting point](agent_transcripts.md#datalog_rhythm_rules) to try the rules in a document.
 
@@ -575,6 +575,44 @@ anything. `r.why("event(kick, 36, 100, 20)")` explains a note the way `#why` exp
     `DatalogRhythmTest` pins the exact grids for the Euclidean kick, the pentatonic line, an
     arpeggio, a `within` section and the cross-bar fill, and renders a bar to check that sound lands
     on the derived steps.
+
+### Rules that listen to the drawing
+
+The facts a rhythm reads can come from the [drawing layer](drawing_and_notation.md). Draw a rectangle, name it
+`drums`, and read it as sixteen steps across and three lanes down. Every mark inside it becomes a
+fact `hit(P, Voice, Mark)`: `P` is the step its left edge starts in, `Voice` the lane it sits in, and
+`Mark` its name (or its id, if it has none). One rule turns the hits into notes; `pos(T, P)` places a
+step of the bar in every bar:
+
+```diffstatic {data-lang=kotlin}
+val drums = notation.space("drums", x = 0.0..16.0, y = 0.0..3.0)
+val r = datalog(
+    """
+    event(V, 36, 100, T) :- hit(P, V, _), pos(T, P).
+    event(hh, 42, 40, T) :- every(T, 2, 1), pos(T, P), span(hh, A, B, _), P >= A, P < B.
+    """,
+).rhythm()
+    .notationHits(drums, ["kick", "snare", "hh"])
+patSynth(r.pattern(), cps = 0.5)
+```
+
+Launch the box and it plays through Field's voices. The drawing is read again for every bar, so a
+mark drawn, moved or erased in `drums` is heard in the next bar while the box keeps playing. A mark
+wider than one step is also `span(Voice, A, B, Mark)`, covering steps `A` up to `B`; the second rule
+uses a long mark in the hat lane as a gate, playing off-beat hats wherever it reaches.
+
+`why` names the mark a note came from:
+
+```diffstatic {data-lang=text}
+event(snare, 36, 100, 4)   [event(V, 36, 100, T) :- hit(P, V, _1), pos(T, P)]
+    hit(4, snare, "n4.1")   [fact]
+    pos(4, 4)   [fact]
+```
+
+`r.facts("name") { rows }` is the general form: any relation read live, from a slider, a sensor or
+another box, compared by value so the bar is solved again only when the rows really change. The
+function runs on the thread that schedules the notes, ahead of the audio, so it should only read.
+Open the [starting point](agent_transcripts.md#datalog_rhythm_drawn) to draw a bar and play it.
 
 ## The editor knows the language
 

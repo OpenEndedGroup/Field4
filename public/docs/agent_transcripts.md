@@ -2525,6 +2525,16 @@ These boxes are all compiled through Field's real Kotlin/preamble path, but not 
 their purpose is to cross a process, audio-device or capture-device boundary that the lightweight
 build does not own.
 
+### datalog_rhythm_drawn
+
+[Rules that listen to the drawing](datalog.md#rules-that-listen-to-the-drawing): Datalog rhythm
+rules whose facts are marks in a drawn frame. Box 1 draws a frame named `drums` and seven marks in
+three lanes. Box 2, launched, reads every mark as `hit(P, Voice, Mark)` and plays the rules through
+`patSynth`; draw, move or erase a mark (Alt+D) and the next bar changes while it plays. Box 3 prints
+the grid the drawing gives now and asks `why` the snare at step 4 played, which names the mark.
+
+[Open →](offline.html?file=assets/agent_transcripts/datalog_rhythm_drawn/metadata.edn)
+
 ### rtp_midi_demo
 
 **Network MIDI** in three boxes, run in order: the first opens an RTP-MIDI session called "Field"
