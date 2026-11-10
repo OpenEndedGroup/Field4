@@ -4,14 +4,13 @@ import afield.document.graph.Box
 import afield.runtime.kotlin.FieldKtParser
 import org.jetbrains.kotlin.psi.KtLambdaExpression
 import org.jetbrains.kotlin.psi.KtProperty
-import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 
 fun Box.macro_sourceBlock(args: List<String>): Insert {
     val raw = args.joinToString("")
     val body = extractSourceBlockBody(raw)
     val lambda = synchronized(FieldKtParser) {
-        FieldKtParser.parse("val captured = {\n$body\n}")
-            .collectDescendantsOfType<KtProperty>().first().initializer as KtLambdaExpression
+        val script = FieldKtParser.parse("val captured = {\n$body\n}").script!!
+        (script.blockExpression.statements.single() as KtProperty).initializer as KtLambdaExpression
     }
     if (lambda.valueParameters.isNotEmpty()) {
         require(lambda.valueParameters.size == 1 && lambda.valueParameters.single().typeReference != null) {

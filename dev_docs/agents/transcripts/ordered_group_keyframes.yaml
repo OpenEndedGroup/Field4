@@ -30,7 +30,10 @@ operations:
                   }
                   .lane("cooling", 0.0) { it in 0.0..1.0 }
           val a = group.capture()
-          val cooling = sourceBlock { screenNo: Int -> ruleOffset + 0.04 * screenNo }
+          val cooling = sourceBlock { screenNo: Int ->
+              val ramp = 0.04 * screenNo
+              ruleOffset + ramp
+          }
           group["cooling"] = cooling
           val b = group.capture()
           val directory = FileManager.current().path("%document/keys/ordered-demo")
