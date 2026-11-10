@@ -2163,13 +2163,13 @@ Checks the first packed-image sampling, eye draw count, and eye aspect on a non-
 
 ### StereoVideoCarouselSmoke { #stereovideocarouselsmoke-kt-stereovideocarouselsmoke }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">StereoVideoCarouselSmoke</span></code>](source/jvmMain/afield/examples/four/StereoVideoCarouselSmoke/#L35)
+[<code class="highlight"><span class="k">object</span> <span class="nc">StereoVideoCarouselSmoke</span></code>](source/jvmMain/afield/examples/four/StereoVideoCarouselSmoke/#L36)
 
 Real P010 GPU copies, eight independently accumulated surfaces, and a shared decoder through seek/refill.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="stereovideocarouselsmoke-kt--stereovideocarouselsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoVideoCarouselSmoke/#L36) |  |
+| <a id="stereovideocarouselsmoke-kt--stereovideocarouselsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoVideoCarouselSmoke/#L37) |  |
 
 ## StereoVideoDecodeProbe.kt { #stereovideodecodeprobe-kt }
 
