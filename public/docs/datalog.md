@@ -591,7 +591,7 @@ val r = datalog(
     event(V, 36, 100, T) :- hit(P, V, _), pos(T, P).
     event(hh, 42, 40, T) :- every(T, 2, 1), pos(T, P), span(hh, A, B, _), P >= A, P < B.
     """,
-).rhythm().notationHits(drums, listOf("kick", "snare", "hh"))
+).rhythm().notationHits(drums, ["kick", "snare", "hh"])
 patSynth(r.pattern(), cps = 0.5)
 ```
 

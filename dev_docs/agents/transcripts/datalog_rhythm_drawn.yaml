@@ -19,7 +19,7 @@ operations:
       properties:
         code: |
           // (step, lane): lane 0 is kick, 1 snare, 2 hh. Edit and run again to redraw.
-          val notes = listOf(0 to 0, 6 to 0, 10 to 0, 4 to 1, 12 to 1, 2 to 2, 14 to 2)
+          val notes = [0 to 0, 6 to 0, 10 to 0, 4 to 1, 12 to 1, 2 to 2, 14 to 2]
           notation {
               rect(400, 60, 480, 90, name = "drums")
               for ((step, lane) in notes) rect(400 + step * 30 + 4, 60 + lane * 30 + 8, 14, 14, name = "n$step.$lane")
@@ -37,7 +37,7 @@ operations:
               event(V, 36, 100, T) :- hit(P, V, _), pos(T, P).
               event(hh, 42, 40, T) :- every(T, 2, 1), pos(T, P), span(hh, A, B, _), P >= A, P < B.
               """,
-          ).rhythm().notationHits(drums, listOf("kick", "snare", "hh"))
+          ).rhythm().notationHits(drums, ["kick", "snare", "hh"])
           println(r.grid(0))
           patSynth(r.pattern(), cps = 0.5)
   - create:
@@ -48,6 +48,6 @@ operations:
         code: |
           val drums = notation.space("drums", x = 0.0..16.0, y = 0.0..3.0)
           val r = datalog("event(V, 36, 100, T) :- hit(P, V, _), pos(T, P).")
-              .rhythm().notationHits(drums, listOf("kick", "snare", "hh"))
+              .rhythm().notationHits(drums, ["kick", "snare", "hh"])
           println(r.grid(0))
           println(r.why("event(snare, 36, 100, 4)")?.render() ?: "no snare at step 4 — nothing drawn there")
