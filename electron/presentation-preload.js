@@ -15,6 +15,11 @@ contextBridge.exposeInMainWorld('fieldPresentation', {
     ipcRenderer.on('field-presentation-state-to-control', listener);
     return () => ipcRenderer.removeListener('field-presentation-state-to-control', listener);
   },
+  onPending(callback) {
+    const listener = (_, pending) => callback(pending);
+    ipcRenderer.on('field-presentation-pending-to-control', listener);
+    return () => ipcRenderer.removeListener('field-presentation-pending-to-control', listener);
+  },
   onError(callback) {
     const listener = (_, message) => callback(message);
     ipcRenderer.on('field-presentation-error-to-control', listener);
