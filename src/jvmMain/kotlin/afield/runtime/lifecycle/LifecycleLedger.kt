@@ -21,6 +21,7 @@ import afield.media.stream.*
 import afield.media.video.*
 import afield.ui.output.templates.filter
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -50,7 +51,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * [ownerId] is the box that was executing when the registration happened, [strand] the strand of
  * the run that owned it, if any. [policy] says which box event — stop, re-run, retire — its owning
- * [RunScope] releases it on; see [ReleasePolicy].
+ * [RunScope] releases it on; see [ReleasePolicy]. [describe], when the subsystem gives one, says what
+ * the thing is doing now (an audio patch's level), and the census reports it under `details`.
  */
 class Ownership internal constructor(
     val kind: String,
@@ -61,6 +63,7 @@ class Ownership internal constructor(
     slot: Any?,
     live: (() -> Boolean)?,
     release: (() -> Unit)?,
+    describe: (() -> JsonElement?)? = null,
 ) : AutoCloseable {
     private val closed = AtomicBoolean(false)
 
@@ -70,6 +73,10 @@ class Ownership internal constructor(
     @Volatile private var slot: Any? = slot
     @Volatile private var live: (() -> Boolean)? = live
     @Volatile private var release: (() -> Unit)? = release
+    @Volatile private var describe: (() -> JsonElement?)? = describe
+
+    /** What the subsystem says this is doing now, or null; never throws. */
+    fun details(): JsonElement? = describe?.let { runCatching(it).getOrNull() }
 
     /** False once closed, superseded, or once the subsystem itself reports the thing gone. */
     val isLive: Boolean
@@ -101,6 +108,7 @@ class Ownership internal constructor(
         slot = null
         live = null
         release = null
+        describe = null
     }
 
     override fun toString(): String = "Ownership($kind/$policy '$key' owner=$ownerId strand=$strand live=$isLive)"
@@ -127,7 +135,8 @@ object LifecycleLedger {
      * [slot] identifies what the thing occupies — `(map, key)` for a keyed registry — so that a later
      * claim on the same slot supersedes this one. [live], when given, is asked at census time whether
      * the subsystem still has it (a finished Runloop sequence, a module removed by hand); [release]
-     * is what [Ownership.close] runs to take it out.
+     * is what [Ownership.close] runs to take it out; [describe], when given, is asked at census time
+     * what the thing is doing (see [Ownership.details]).
      *
      * The ownership is also handed to [scope] — by default the [RunScope] the executing run belongs
      * to — which releases it on the events [policy] names: by default the kind's
@@ -144,8 +153,9 @@ object LifecycleLedger {
         live: (() -> Boolean)? = null,
         policy: ReleasePolicy = ReleasePolicy.forKind(kind, hasSlot = slot != null),
         release: (() -> Unit)? = null,
+        describe: (() -> JsonElement?)? = null,
     ): Ownership {
-        val ownership = Ownership(kind, key, owner?.id, scope?.strand, policy, slot, live, release)
+        val ownership = Ownership(kind, key, owner?.id, scope?.strand, policy, slot, live, release, describe)
         this.live.add(ownership)
         if (slot != null) slots.put(slot, ownership)?.supersede()
         // Last, so a scope that has already ended releases this at once if the event that ended it
@@ -239,7 +249,9 @@ class OwnedCallbackRegistry<T : Any>(private val name: String) {
  * command's answer. `policies` maps every kind present (and every known kind) to its policy.
  *
  * `liveTotal` sums everything except the engine, so "a retired box leaves nothing behind" is
- * `liveTotal == 0`. `liveRunning` counts only what a stop releases — jobs, running strands, stop
+ * `liveTotal == 0`. `details` holds what an ownership's subsystem says it is doing, for those that
+ * say (an audio patch reports `rms`, `peak` and `hz` over its last rendered samples, which is how a
+ * check tells a patch that sounds from one that is registered but silent). `liveRunning` counts only what a stop releases — jobs, running strands, stop
  * hooks and [ReleasePolicy.RUNNING] ownerships — so "a stopped box is not running anything" is
  * `liveRunning == 0`, while its keyed and accumulating registrations stay. Ownerships whose box is
  * not in [boxes] are reported under `unattributed` when [includeUnattributed] is set, which is how a
@@ -276,6 +288,10 @@ fun lifecycleCensus(boxes: Collection<Box>, includeUnattributed: Boolean = true)
                     put("ownedKeys", JsonArray(owned.take(50).map {
                         JsonPrimitive("${it.kind}:${it.key} [${it.policy}]" + (it.strand?.let { s -> " @$s" } ?: ""))
                     }))
+                    // What each thing says it is doing now, for the kinds that can say (an audio
+                    // patch's level over its last rendered block), keyed like ownedKeys.
+                    val details = owned.mapNotNull { o -> o.details()?.let { "${o.kind}:${o.key}" to it } }
+                    if (details.isNotEmpty()) put("details", JsonObject(details.toMap()))
                     put("liveRunning", jobs.size + strands.size + hooks + owned.count { it.policy == ReleasePolicy.RUNNING })
                     put("liveTotal", jobs.size + strands.size + hooks + owned.size)
                 })

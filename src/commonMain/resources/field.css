@@ -2603,6 +2603,25 @@ body.field-pane-resizing-h * {
     outline-offset: 2px;
 }
 
+/* Keys (ControlGroupBuilder.keys): momentary buttons side by side, the label on the key and its
+   computer letter, if any, beneath it. */
+.field-key .field-button-hit.field-key-hit {
+    min-width: 88px;
+    min-height: 72px;
+    padding: 8px 14px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 13px;
+}
+
+.field-key .field-key-letter {
+    font-size: 10px;
+    opacity: 0.6;
+}
+
 /* Meter — a level you can see. No hitbox and no thumb: it reports, and cannot be dragged. */
 .field-meter {
     display: flex;
@@ -6349,8 +6368,9 @@ body.mode-editor-only .field-toast {
 
 /* ------------------------------------------------------------------------ */
 /* Presentation figure (?figure=<uid>, figureMode.kt): one box's output area  */
-/* fills the window above everything else, scaled to fit; its box chrome and */
-/* channel headers are hidden.                                                */
+/* fills the window above everything else. It reads as one picture with its */
+/* controls under it: no box chrome, channel headers, panel borders, resize */
+/* grips or gaps, and every piece of text in Field's own Iosevka.            */
 /* ------------------------------------------------------------------------ */
 #field-figure-host {
     position: fixed;
@@ -6362,6 +6382,11 @@ body.mode-editor-only .field-toast {
     align-items: center;
     justify-content: center;
 }
+/* A transform, as the canvas's own zoom is: Field's panel auto-sizing (outputareas2.js layoutScale)
+   divides rect sizes by the transform scale, so it keeps measuring layout pixels. CSS zoom fed
+   zoomed sizes back into panel widths, which ran away to 33 554 432 px. A static scale repaints
+   text and SVG at the final size, and the three.js viewer multiplies its pixel ratio by its frame's
+   on-screen scale, so neither is a magnified small picture. */
 #field-figure-host > .box.field-figure-box {
     position: relative !important;
     transform: scale(var(--field-figure-zoom, 1)) !important;
@@ -6387,11 +6412,102 @@ body.mode-editor-only .field-toast {
     width: auto !important;
     height: auto !important;
     max-width: none !important;
+    overflow: visible !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
 }
+/* Shown channels stack in one centred column with one even gap. No channel is stretched to the
+   column's width with a percentage: Field's panel auto-sizing measures content and writes the
+   panel width back, and a percentage of a max-content column fed that back without bound. */
+#field-figure-host .field-figure-box .disclosure-group {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: max-content !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+}
+#field-figure-host .field-figure-box .disclosure {
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    border: none !important;
+    align-items: center !important;
+}
 #field-figure-host .field-figure-box .disclosure-header { display: none !important; }
 #field-figure-host .field-figure-box .disclosure.field-figure-hidden { display: none !important; }
-#field-figure-host .field-figure-box .disclosure { border-left: none !important; }
-/* A figure is shown, not arranged: no panel resize grips on the audience display. */
-#field-figure-host .field-figure-box .disclosure-content { resize: none !important; }
+#field-figure-host .field-figure-box .disclosure-content {
+    resize: none !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: none !important;
+    font-size: 15px;
+    line-height: 1.45;
+}
+/* Text panels grow to their text; drawings and iframes keep the size their panel was given. */
+#field-figure-host .field-figure-box .disclosure-content:not(:has(.afield-lines-output-shell)):not(:has(iframe)):not(:has(.control-group)) {
+    width: max-content !important;
+    max-width: 720px !important;
+}
+#field-figure-host .field-figure-box .disclosure-content:not(:has(.afield-lines-output-shell)):not(:has(iframe)) {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+#field-figure-host .field-figure-box .afield-lines-output-viewport {
+    border: none !important;
+    background: transparent !important;
+}
+#field-figure-host .field-figure-box .field-md { font-size: 15px; color: var(--field-fg-body); }
+/* One family, Field's Iosevka, with no fallback: a family a box names in an inline `font`
+   declaration is overridden here (author !important beats an inline declaration) rather than stripped, because
+   stripping would mean rewriting every output's HTML as it arrives, and an override also covers
+   SVG text, controls and anything a later output inserts. Size, weight, colour and opacity stay
+   the box's. */
+#field-figure-host .field-figure-box .outputArea,
+#field-figure-host .field-figure-box .outputArea * {
+    font-family: "Iosevka Web", Iosevka !important;
+}
+/* Compact controls: subordinate to the picture. No row boxes, rows only as tall as the slider
+   itself (32px), smaller labels and values, and two columns once there are more than three. */
+#field-figure-host .field-figure-box .control-group {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 28px;
+    row-gap: 0;
+    width: auto !important;
+    max-width: none !important;
+}
+#field-figure-host .field-figure-box .control-group:has(> .field-control:nth-of-type(4)) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+#field-figure-host .field-figure-box .field-control {
+    padding: 0 2px !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    min-height: 0 !important;
+}
+#field-figure-host .field-figure-box .control-group { --field-slider-label-width: 72px; }
+#field-figure-host .field-figure-box .field-slider .field-label {
+    flex-basis: var(--field-slider-label-width);
+    width: var(--field-slider-label-width);
+    font-size: 10px;
+    opacity: 0.75;
+}
+#field-figure-host .field-figure-box .field-label { font-size: 10px; }
+#field-figure-host .field-figure-box .field-value { font-size: 10px; min-width: 34px; opacity: 0.85; }
+#field-figure-host .field-figure-box .field-checkbox { display: flex; align-items: center; gap: 10px; min-height: 32px; }
+/* The controls panel is exactly as wide as the picture above it (figureMode.kt measures it). Its
+   own width cannot come from its content: a slider track sizes itself to its row, and the panel
+   auto-sizing writes the row width back, so a content-sized panel grew without bound. */
+#field-figure-host .field-figure-box .disclosure-content:has(.control-group) {
+    width: var(--field-figure-width, 480px) !important;
+}
+#field-figure-host .field-figure-box .field-checkbox .checkbox-toggle { width: 22px; height: 22px; flex-basis: 22px; }

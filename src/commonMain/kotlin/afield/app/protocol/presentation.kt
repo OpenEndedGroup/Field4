@@ -33,6 +33,25 @@ data class AudienceFigure(
     val rect: List<Double>? = null
 )
 
+/**
+ * The scale a figure page (`index.html?figure=`) gives a box's output area so all of it fits a
+ * [viewWidth] × [viewHeight] view, with a small margin, between 0.2× and 4×.
+ *
+ * The area's size is the larger of its laid-out size and its content size ([scrollWidth],
+ * [scrollHeight]): an output wider than the area (an editable drawing, a wide plot) overflows it, and
+ * fitting the laid-out size alone would crop the overflow off the slide. Null while the area has no
+ * size yet.
+ */
+fun figureFitZoom(
+    offsetWidth: Double, offsetHeight: Double, scrollWidth: Double, scrollHeight: Double,
+    viewWidth: Double, viewHeight: Double
+): Double? {
+    val width = maxOf(offsetWidth, scrollWidth)
+    val height = maxOf(offsetHeight, scrollHeight)
+    if (width < 1 || height < 1) return null
+    return (minOf(viewWidth / width, viewHeight / height) * 0.96).coerceIn(0.2, 4.0)
+}
+
 @Serializable
 data class AudienceMacro(val name: String, val scope: String = "document", val project: String = "")
 
@@ -54,3 +73,17 @@ data class PresentationState(
     val checkpoint: String = "",
     val searchTexts: List<String> = emptyList()
 )
+
+/**
+ * Arrange Boxes by Presentation: the server's request to a canvas client to put [boxes] (uids, in
+ * slide order) in one row from where the first one is, each box after the previous one's footprint
+ * (its frame and every open output panel) plus [gap] world units, every frame at the first one's y.
+ * Only a client knows how big those panels are drawn. After the first box (the Presentation box)
+ * the gap is [leadGap]: the presenter's notes appear beside that box, and must not cover a figure.
+ */
+@Serializable
+data class ArrangeBoxesRequest(val id: String, val boxes: List<String>, val gap: Double = 80.0, val leadGap: Double = 440.0)
+
+/** A client's answer to an [ArrangeBoxesRequest]: the frames to give the boxes. */
+@Serializable
+data class ArrangeBoxesResult(val id: String, val frames: List<Set_rect>)
