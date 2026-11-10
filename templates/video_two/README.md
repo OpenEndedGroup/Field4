@@ -163,7 +163,9 @@ black/white −2 to +4 and gamma 0.05 to 8. The Reset button changes just these 
 **Shared auto exposure** meters every valid accumulation buffer in linear light, including both
 eyes. Choose **Auto: per screen** for independent levels or **Auto: linked screens** for shared
 levels. **Manual levels** bypasses automatic endpoints. Both the meter and automatic grading
-start off, preserving the saved look. Accumulation must have been enabled to create a buffer.
+start off, preserving the saved look. The controls also work while the renderer is stopped:
+settings remain editable and bind to the carousel when it starts. Accumulation must have been
+enabled to create a buffer.
 
 The GPU reduces RGB and luminance to min, mean and max. Linked mode pools the raw extrema and
 pixel-weighted means before filtering. Hidden screens and held/frozen buffers participate while
