@@ -101,7 +101,7 @@ Choose **Capture from screen**, enter a name and press **Store named look**. Eac
 also has **Store from this screen**. The initial look is seeded as **slow blur** once; later
 launches retain the saved key. Storing the same name adds a version.
 
-Keys contain opacity, accumulation black/white/gamma, local auto-exposure mix, mix, half-life, incoming weight, cadence enable/rate, soft-half blur
+Keys contain opacity, accumulation black/white/gamma, sharp colour transfer, local auto-exposure mix, mix, half-life, incoming weight, cadence enable/rate, soft-half blur
 sigma/mix and darkening, plus shared playback speed and, once Ring motion is launched, the six headset-flash settings. Check any collection of screens and press
 **Recall to checked screens**. **Restore playback speed** defaults off: appearance changes keep
 the current shared speed unless explicitly enabled. With no screens selected, this option
@@ -151,8 +151,8 @@ The neutral triplet bypasses this calculation exactly, including for values abov
 
 Order: accumulated/blurred image → global pre-exposure gamma → black/white levels and per-screen
 presentation gamma → paired soft-half darkening → sharp/accumulated mix
-→ headset-clock brightness envelope → opacity blend with the screens behind. The sharp branch
-is unaffected. **Accumulation mix must be above zero to see the levels.** Output transfer
+→ headset-clock brightness envelope → opacity blend with the screens behind. The levels also shape
+the colour reference when sharp colour transfer is enabled. Output transfer
 encoding and the native ten-bit video decode remain separate.
 
 All three values are stored in new screen looks, including staggered recalls. Earlier keys that
@@ -171,6 +171,44 @@ No additional RTT, readback, history image or queued frame is introduced. The GP
 checks the transfer curve, sharp bypass, inversion, equal endpoints and neutral recovery of the
 original accumulated pixels.
 
+
+## Sharp colour from accumulation
+
+Every material box has a **Sharp colour from accumulation** slider in **accumulation presentation**.
+It borrows the processed accumulation's chromaticity at each pixel while retaining the sharp
+video's original linear luminance and spatial detail. This makes sharp screens share the warm
+palette of their blurred neighbours. Zero preserves the original sharp colour; one transfers the
+reference chromaticity. Intermediate values blend colour without blending away luminance detail.
+
+The reference is the same held/blurred image used by the accumulation presentation, after global
+pre-exposure gamma, black/white exposure and per-screen presentation gamma, before soft-half
+darkening. Matching occurs before the ordinary sharp/accumulated mix, headset brightness envelope
+and opacity. **At accumulation mix 1 the display is entirely the processed accumulation, so the
+new slider changes only the sharp contribution when that mix comes down.**
+
+The operation uses linear BT.709 luminance, `Y = dot(RGB, vec3(.2126, .7152, .0722))`. It scales
+reference RGB to the original sharp Y, then compresses chroma toward the same-Y grey where needed
+to fit the SDR RGB gamut. It does not clip channels independently, which would change luminance.
+Nearly black references fade back to the sharp image smoothly because black has no reliable hue.
+Pure white remains white; adding saturation there would require either lost luminance or HDR headroom.
+
+Colour transfer keeps this screen's existing accumulation and cadence/blur caches running even
+when **Accumulation mix is zero**. A sharp-only screen can therefore borrow a continuously updated
+colour reference; the GPU meter can also read that buffer. This reuses the same passes and decoder,
+with no additional kind of RTT or headset-frame history. Turning both mixes to zero bypasses the
+accumulation work. New native look keys include the colour-transfer amount; older keys retain the
+current value when the lane is absent.
+
+```kotlin
+val screen = carousel.surfaces[0]
+screen.accumulationColourTransfer = .8f
+screen.accumulationMix = 0f // sharp luminance/detail with processed accumulation colour
+```
+
+`four.stereo-video.colour-transfer` exercises the actual decoded video and presentation shader
+with a controlled GPU accumulation: partial/full mixes preserve luminance across the ramp,
+highlights stay in gamut, black references are safe, and sharp-only accumulation stays alive.
+
 ## GPU auto exposure
 
 **Shared auto exposure** meters every valid accumulation buffer in linear light, including both
@@ -182,8 +220,8 @@ enabled to create a buffer.
 
 **Global pre-exposure gamma** is a shared power curve applied before exposure normalization:
 `RGB = max(RGB, 0)^(1/gamma)`. One is neutral, above one lifts midtones, and below one darkens
-them. It acts on every accumulated screen, including in Manual mode; the delayed sharp branch
-and stored accumulation history are untouched. Each screen's existing **Presentation gamma**
+them. It acts on every accumulated screen, including in Manual mode, and on the sharp colour
+reference when colour transfer is enabled. Stored accumulation history is untouched. Each screen's existing **Presentation gamma**
 remains a separate control after black/white normalization.
 
 The meter applies this same power curve to each RGB texel *before* reducing RGB and luminance.

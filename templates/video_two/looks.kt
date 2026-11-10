@@ -80,7 +80,7 @@ Stagger **${screenLookRecall.staggerSeconds.f2}s / selected screen** · **${scre
 
 Saved looks: **${pool.names.joinToString(", ").ifEmpty { "none" }}**.
 
-Keys contain accumulation mix, half-life, input weight, paired cadence enable/rate, blur sigma/mix, darkening, black/white/gamma presentation and local auto mix, opacity, headset flash on/off durations and levels, phase and enable and shared speed. They retain parameters rather than GPU exposure pixels. A running score can overwrite recalled parameters; stop it for manual look work.
+Keys contain accumulation mix, half-life, input weight, paired cadence enable/rate, blur sigma/mix, darkening, black/white/gamma presentation, sharp colour transfer and local auto mix, opacity, headset flash on/off durations and levels, phase and enable and shared speed. They retain parameters rather than GPU exposure pixels. A running score can overwrite recalled parameters; stop it for manual look work.
         """, open = false)
     }
     frame()

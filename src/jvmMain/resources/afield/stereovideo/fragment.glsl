@@ -5,7 +5,7 @@ layout(binding = 2) uniform sampler2D accumulatedImage; // float16 linear-light 
 layout(binding = 3) uniform sampler2D softenedImage; // held exposure after per-eye Gaussian filtering
 layout(std140, binding = 8) uniform ScreenAppearance {
     vec4 levels; // opacity, accumulation black, accumulation white, accumulation gamma
-    vec4 autoMeter; // auto/manual mix, statistics row index, global pre-exposure gamma, reserved
+    vec4 autoMeter; // auto/manual mix, statistics row index, global pre-exposure gamma, sharp colour transfer
 } appearance;
 layout(std430, binding = 9) readonly buffer VideoExposureStatistics {
     vec4 records[]; // sixteen vec4 per screen, then one linked record; GPU-owned levels and velocities
@@ -45,6 +45,22 @@ vec3 presentAccumulation(vec3 rgb) {
     return pow(clamp((rgb - black) / span, 0, 1), vec3(1 / gamma));
 }
 
+// Recolour only the sharp branch. Hue/chroma comes from the displayed accumulation, never its brightness.
+vec3 borrowAccumulationColour(vec3 original, vec3 reference) {
+    const vec3 luminance = vec3(.2126, .7152, .0722);
+    float y = dot(original, luminance), referenceY = dot(reference, luminance);
+    if (referenceY <= .000001) return original; // black has no reliable chromaticity
+    vec3 chroma = reference * (y / referenceY) - vec3(y);
+    // Desaturate toward the same-luminance grey until RGB fits SDR; channel clipping would change y.
+    float gamut = 1;
+    for (int channel = 0; channel < 3; channel++) {
+        if (chroma[channel] > 0) gamut = min(gamut, (1 - y) / chroma[channel]);
+        if (chroma[channel] < 0) gamut = min(gamut, -y / chroma[channel]);
+    }
+    vec3 tinted = vec3(y) + clamp(gamut, 0, 1) * chroma;
+    return mix(original, tinted, smoothstep(.000001, .0001, referenceY));
+}
+
 void main() {
     int sourceEye = pc.image.z > .5 ? 1 - eye : eye;
     vec2 q = vec2((float(sourceEye) + uv.x) * .5, pc.image.w > .5 ? 1 - uv.y : uv.y);
@@ -71,7 +87,11 @@ void main() {
         vec2 qSoft = clamp(q, lower + halfTexel, upper - halfTexel);
         blurred = mix(blurred, texture(softenedImage, qSoft).rgb, pc.accumulation.z);
     }
-    if (pc.accumulation.y > .5) blurred = presentAccumulation(blurred);
+    if (pc.accumulation.y > .5) {
+        blurred = presentAccumulation(blurred);
+        if (appearance.autoMeter.w > 0)
+            sharp = mix(sharp, borrowAccumulationColour(sharp, blurred), appearance.autoMeter.w);
+    }
     blurred *= 1 - pc.accumulation.w; // preserve the paired darkening after presentation levels
     color = vec4(mix(sharp, blurred, pc.accumulation.x) * max(0, 1 + pc.colorimetry.w), clamp(appearance.levels.x, 0, 1));
 }

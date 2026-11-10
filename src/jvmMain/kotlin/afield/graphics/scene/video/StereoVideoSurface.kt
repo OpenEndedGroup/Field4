@@ -63,9 +63,13 @@ class StereoVideoSurface(
     val materialUpdates get() = stream.materialUpdates
     val omittedMaterialFrames get() = stream.omittedMaterialFrames
 
-    /** Sharp/accumulated image blend. Zero bypasses the accumulation pass entirely. */
+    /** Sharp/accumulated image blend. Zero bypasses accumulation unless sharp colour transfer needs it. */
     @Volatile
     var accumulationMix = 0f
+        set(value) { require(value.isFinite() && value in 0f..1f); field = value }
+    /** Borrow processed accumulation chromaticity for sharp video while preserving its linear luminance. */
+    @Volatile
+    var accumulationColourTransfer = 0f
         set(value) { require(value.isFinite() && value in 0f..1f); field = value }
     @Volatile
     var accumulationHalfLife = .5
@@ -175,7 +179,7 @@ class StereoVideoSurface(
             val uploaded = selected.serial != previousSerial
             val changed = previousEpoch != stream.epoch || previousDelay != delayFrames
             val materialTick = stream.materialTick
-            val accumulating = accumulationMix > 0f
+            val accumulating = accumulationMix > 0f || accumulationColourTransfer > 0f
             if (accumulating && accumulator == null) {
                 accumulator = VideoFrameAccumulator(renderer, frameSource, accumulationModuleFactory)
             }
@@ -213,7 +217,7 @@ class StereoVideoSurface(
             placement.validate()
             module?.current?.liveUniformStructures?.get("ScreenAppearance")?.set("levels",
                 Vector4f(opacity, accumulationBlackLevel, accumulationWhiteLevel, accumulationGamma))
-            module?.current?.liveUniformStructures?.get("ScreenAppearance")?.set("autoMeter", autoExposure.appearance(autoExposureIndex, autoExposureMix))
+            module?.current?.liveUniformStructures?.get("ScreenAppearance")?.set("autoMeter", autoExposure.appearance(autoExposureIndex, autoExposureMix).apply { w = accumulationColourTransfer })
             mesh?.apply {
                 resize(if (hasFrame && opacity > 0f) strips * 6 else 0, 0)
                 push["model"] = placement.model()
