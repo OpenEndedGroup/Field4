@@ -5,10 +5,11 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import patch
 from pathlib import Path
 
-from tools.verification_runtime import field_instance_problem, run_with_watchdog, verification_lock, waive_execution_verdict
+from tools.verification_runtime import MissingJdkError, field_instance_problem, field_java, run_with_watchdog, verification_lock, waive_execution_verdict
 
 
 @unittest.skipIf(os.name == "nt", "POSIX wrapper selection; Windows uses the PowerShell helper")
@@ -257,6 +258,91 @@ class WaiveExecutionVerdictTests(unittest.TestCase):
             shlex.split(line),
             ["run", "@last", "--file", "/tmp/a path/snippet.kt", "--no-fail-on-error"],
         )
+
+
+def _fake_jdk(home: Path, java_version: str, graalvm_version: str | None = None) -> Path:
+    """A JDK directory whose `java` prints only the version it claims; never a real JVM."""
+    (home / "bin").mkdir(parents=True)
+    java = home / "bin" / "java"
+    java.write_text(f"#!/bin/sh\necho '    java.specification.version = {java_version.split('.')[0]}' >&2\n")
+    java.chmod(0o755)
+    release = f'JAVA_VERSION="{java_version}"\n'
+    if graalvm_version:
+        release += f'GRAALVM_VERSION="{graalvm_version}"\n'
+    (home / "release").write_text(release)
+    return java
+
+
+@unittest.skipIf(os.name == "nt", "POSIX launcher layout")
+class FieldJavaSelectionTests(unittest.TestCase):
+    """2026-11-10: with no JAVA_HOME and a JDK 22 first on PATH, the refactor engine (built for 25)
+    died with UnsupportedClassVersionError and failed 31 checkPythonTools tests."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix="field java ")
+        self.root = Path(self.tmp.name)
+        self.home = self.root / "home"
+        self.repo = self.root / "repo"
+        self.repo.mkdir()
+        (self.repo / "build.gradle.kts").write_text('val graalvmVersion = "25.4.4.1.1"\n')
+        self.path_dir = self.root / "path"
+        self.path_dir.mkdir()
+        _fake_jdk(self.root / "jdk22", "22.0.1")
+        (self.path_dir / "java").symlink_to(self.root / "jdk22" / "bin" / "java")
+        environment = {"HOME": str(self.home), "PATH": f"{self.path_dir}{os.pathsep}/usr/bin:/bin"}
+        self.env = patch.dict(os.environ, environment)
+        self.env.start()
+        os.environ.pop("JAVA_HOME", None)
+
+    def tearDown(self):
+        self.env.stop()
+        self.tmp.cleanup()
+
+    def graal(self, name="graalvm-community-25.4.4.1.1", java="25.0.4.1.1", graal="25.4.4.1.1"):
+        return _fake_jdk(self.home / ".field4/toolchains" / name / "Contents/Home", java, graal)
+
+    def test_toolchain_graalvm_beats_an_older_java_on_path(self):
+        self.assertEqual(field_java(self.repo, 25), str(self.graal()))
+
+    def test_toolchain_graalvm_beats_a_java_home_that_also_qualifies(self):
+        graal = self.graal()
+        _fake_jdk(self.root / "jdk26", "26")
+        os.environ["JAVA_HOME"] = str(self.root / "jdk26")
+        self.assertEqual(field_java(self.repo, 25), str(graal))
+
+    def test_a_toolchain_directory_whose_release_disagrees_is_skipped(self):
+        self.graal("graalvm-community-25.4.4.1.1-corrupt", "25.0.2", "25.0.2")
+        wrapper = _fake_jdk(self.home / ".field4/gradle-jvm/amazon-corretto-25-aarch64-macos-jdk-70895b"
+                            / "amazon-corretto-25.jdk/Contents/Home", "25.0.1")
+        self.assertEqual(field_java(self.repo, 25), str(wrapper))
+
+    def test_older_jdks_everywhere_fail_with_the_required_version(self):
+        _fake_jdk(self.home / ".field4/gradle-jvm/amazon-corretto-17-aarch64-macos-jdk/Contents/Home", "17.0.9")
+        with self.assertRaises(MissingJdkError) as raised:
+            field_java(self.repo, 25, "the standalone refactor engine")
+        message = str(raised.exception)
+        self.assertIn("the standalone refactor engine needs Java 25 or newer", message)
+        self.assertIn("Java 22", message)
+        self.assertIn("Java 17", message)
+
+    def test_path_java_is_used_when_it_is_new_enough_and_nothing_else_exists(self):
+        self.assertEqual(field_java(self.repo, 22), str(self.path_dir / "java"))
+
+    def test_refactor_engine_runs_on_the_toolchain_jdk_not_path_java(self):
+        from tools.refactoring.core import engine_environment, engine_java_major
+
+        graal = self.graal()
+        install = self.root / "engine"
+        (install / "bin").mkdir(parents=True)
+        (install / "lib").mkdir()
+        executable = install / "bin" / "field-refactor-engine"
+        executable.write_text("#!/bin/sh\n")
+        with zipfile.ZipFile(install / "lib" / "field-refactor-engine.jar", "w") as jar:
+            jar.writestr("afield/tools/refactor/MainKt.class", b"\xca\xfe\xba\xbe\x00\x00\x00\x45")
+        self.assertEqual(engine_java_major(executable), 25)
+        with patch("tools.refactoring.core.REPO_ROOT", self.repo):
+            env = engine_environment(executable)
+        self.assertEqual(env["JAVA_HOME"], str(graal.parent.parent))
 
 
 if __name__ == "__main__":
