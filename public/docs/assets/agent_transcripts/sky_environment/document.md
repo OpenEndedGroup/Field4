@@ -69,7 +69,7 @@ frames {
 <!-- field-box id="sky_environment_scene" index="2" -->
 
 ```edn [field-box id="sky_environment_scene" role="properties"]
-{"id" "sky_environment_scene" "index" 2 "name" "sky environment" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "sky environment" "_tombstone" false "frame" #afield/rect [40.0 180.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sky_environment_scene_code_.kt" "lines" 34 "characters" 1544 "sha256" "bbdae3a3cb791a2ec73c7912260110a88264990a9d42a906dce3a2d43cbafa33"}]}
+{"id" "sky_environment_scene" "index" 2 "name" "sky environment" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "sky environment" "_tombstone" false "frame" #afield/rect [40.0 180.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sky_environment_scene_code_.kt" "lines" 36 "characters" 1548 "sha256" "7e2d9ecb63a4a5b2e041d44cae6a172731ef8f4f2710bbe14434e58efa31ad23"}]}
 ```
 
 ```kotlin [field-property box="sky_environment_scene" name="code" path="sky_environment_scene_code_.kt"]
@@ -105,7 +105,9 @@ bundle.attachTo(renderer)
 bundle.present(renderer = renderer)
 
 slider("Sun elevation (degrees)", min = -10.0, max = 90.0, initialValue = sky.sunElevation) { sky.setSun(it) }
-slider("Sun azimuth (degrees)", min = -180.0, max = 180.0, initialValue = sky.sunAzimuth) { sky.setSun(sky.sunElevation, it) }
+slider("Sun azimuth (degrees)", min = -180.0, max = 180.0, initialValue = sky.sunAzimuth) {
+    sky.setSun(sky.sunElevation, it)
+}
 println("sky environment ready")
 ```
 

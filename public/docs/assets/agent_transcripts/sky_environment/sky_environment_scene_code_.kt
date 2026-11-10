@@ -30,5 +30,7 @@ bundle.attachTo(renderer)
 bundle.present(renderer = renderer)
 
 slider("Sun elevation (degrees)", min = -10.0, max = 90.0, initialValue = sky.sunElevation) { sky.setSun(it) }
-slider("Sun azimuth (degrees)", min = -180.0, max = 180.0, initialValue = sky.sunAzimuth) { sky.setSun(sky.sunElevation, it) }
+slider("Sun azimuth (degrees)", min = -180.0, max = 180.0, initialValue = sky.sunAzimuth) {
+    sky.setSun(sky.sunElevation, it)
+}
 println("sky environment ready")
