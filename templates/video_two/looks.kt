@@ -32,7 +32,7 @@ controlGroup("shared look pool") {
     captureControl = slider("Capture from screen", min = 1.0, max = carousel.surfaces.size.toDouble(), step = 1.0,
         initialValue = (pool.captureScreen + 1).toDouble(),
         hoverText = "Which single screen supplies the appearance for Store. Keys have no screen index, so that look can later be recalled onto any chosen screens.") { pool.captureScreen = it.toInt() - 1 }
-    button("Store named look", hoverText = "Save the capture screen's eight appearance settings and current shared playback speed as a native, versioned Field key. No screen or transport state changes.") { down ->
+    button("Store named look", hoverText = "Save the capture screen's appearance, opacity, flash envelope and current shared playback speed as a native, versioned Field key. No screen or transport state changes.") { down ->
         if (down) lookAction { pool.store(pool.selectedName) }
     }
     speedRecallControl = checkbox("Restore playback speed", initialValue = pool.restoreSpeed,
@@ -80,7 +80,7 @@ Stagger **${screenLookRecall.staggerSeconds.f2}s / selected screen** · **${scre
 
 Saved looks: **${pool.names.joinToString(", ").ifEmpty { "none" }}**.
 
-Keys contain accumulation mix, half-life, input weight, paired cadence enable/rate, blur sigma/mix, darkening, headset flash on/off durations and levels, phase and enable and shared speed. They retain parameters rather than GPU exposure pixels. A running score can overwrite recalled parameters; stop it for manual look work.
+Keys contain accumulation mix, half-life, input weight, paired cadence enable/rate, blur sigma/mix, darkening, opacity, headset flash on/off durations and levels, phase and enable and shared speed. They retain parameters rather than GPU exposure pixels. A running score can overwrite recalled parameters; stop it for manual look work.
         """, open = false)
     }
     frame()

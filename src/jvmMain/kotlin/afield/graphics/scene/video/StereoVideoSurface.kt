@@ -37,6 +37,10 @@ class StereoVideoSurface(
     @Volatile
     var brightness = 1f
         set(value) { require(value.isFinite() && value in 0f..16f); field = value }
+    /** Straight-alpha coverage, independent of the headset-clock brightness envelope. */
+    @Volatile
+    var opacity = 1f
+        set(value) { require(value.isFinite()); field = value }
     var speed: Double
         get() = stream.speed
         set(value) { stream.speed = value }
@@ -184,8 +188,9 @@ class StereoVideoSurface(
                 }
             }
             placement.validate()
+            module?.current?.liveUniformStructures?.get("ScreenAppearance")?.set("levels", Vector4f(opacity, 0f, 0f, 0f))
             mesh?.apply {
-                resize(if (hasFrame) strips * 6 else 0, 0)
+                resize(if (hasFrame && opacity > 0f) strips * 6 else 0, 0)
                 push["model"] = placement.model()
                 push["surface"] =
                     Vector4f(
@@ -227,7 +232,16 @@ class StereoVideoSurface(
         stereo.configure(parameters)
         parameters.depthTest = false
         parameters.depthWrite = false
-        parameters.blend = false
+        parameters.blend = true
+        parameters.srcColor = VK_BLEND_FACTOR_SRC_ALPHA
+        parameters.dstColor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
+        parameters.srcAlpha = VK_BLEND_FACTOR_ONE
+        parameters.dstAlpha = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
+        val previousUboResolver = parameters.uboResolver
+        parameters.uboResolver = { requested ->
+            if (requested.name == "ScreenAppearance") requested.apply { uniform(); perFrame = true; hosted() }
+            else previousUboResolver(requested)
+        }
         parameters.textureResolver = { requested ->
             val plane =
                 when (requested.name) {
@@ -274,6 +288,7 @@ class StereoVideoSurface(
         screen.push["image"] = Vector4f(2f, 2f, 0f, 0f) // packed size, eye swap, vertical flip
         screen.push["colorimetry"] = StereoVideoColorimetry.parameters(1, 1) // BT.709, limited range
         screen.push["accumulation"] = Vector4f(0f) // processed mix, valid history, spatial blur mix, darkening
+        pointer.current.liveUniformStructures["ScreenAppearance"]?.set("levels", Vector4f(opacity, 0f, 0f, 0f))
         pointer += "screen" to screen
 
         val overlays = stereo.layered.modules.filterKeys { it != name }

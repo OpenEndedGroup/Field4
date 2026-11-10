@@ -18,9 +18,9 @@ class StereoVideoPlacement {
     var bendDegrees = 35f
 
     fun validate() {
-        require(widthMeters.isFinite() && widthMeters > 0f)
+        require(widthMeters.isFinite())
         require(aspect.isFinite() && aspect > 0f)
-        require(bendDegrees.isFinite() && abs(bendDegrees) <= 180f)
+        require(bendDegrees.isFinite())
         require(
             listOf(center.x, center.y, center.z, rotationDegrees.x, rotationDegrees.y, rotationDegrees.z)
                 .all {

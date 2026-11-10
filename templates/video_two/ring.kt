@@ -36,19 +36,32 @@ fun applyRingDelayOrder() {
 }
 applyRingDelayOrder()
 
+// Finite numeric fields deliberately have no aesthetic min/max; edits publish atomically on the queue.
+val layoutMirrors = mutableListOf<() -> Unit>()
+fun afield.ui.output.ControlGroupBuilder.layoutNumber(label: String, read: () -> Float,
+    help: String, mirror: Boolean = true, write: (Float) -> Unit) {
+    var lastModel = read()
+    val handle = stringInput(label, initialValue = lastModel.toString(), hoverText = help) { raw ->
+        runCatching {
+            val value = raw.trim().toFloatOrNull()
+            require(value != null && value.isFinite()) { "Enter a finite number for $label" }
+            carousel.editLayout { write(value) }
+            lastModel = read()
+        }.onFailure { markdown("layout error", it.message ?: "Could not set $label") }
+            .onSuccess { displayClear("layout error") }
+    }
+    if (mirror) layoutMirrors += {
+        val value = read()
+        if (value != lastModel) { lastModel = value; handle.set(value.toString()) }
+    }
+}
 controlGroup("ring layout") {
-    slider("Radius (metres)", min = .75, max = 6.0, step = .01, initialValue = carousel.radius.toDouble(),
-        hoverText = "Distance from the ring centre to the middle of every screen. Width and curvature follow the radius, so each screen remains part of the same cylinder.") {
-        carousel.radius = it.toFloat(); carousel.layout()
-    }
-    slider("Screen sector fill", min = .2, max = 1.0, step = .01, initialValue = carousel.fill.toDouble(),
-        hoverText = "Fraction of each 45-degree sector occupied by its screen. One joins the screens into a cylinder; 0.9 leaves a small gap. Positive curvature faces inward.") {
-        carousel.fill = it.toFloat(); carousel.layout()
-    }
-    slider("Ring rotation (degrees)", min = -180.0, max = 180.0, step = .1, initialValue = carousel.azimuthDegrees.toDouble(),
-        hoverText = "Rotate the whole screen arrangement around gravity's up axis. The ring remains fixed in room space, rather than following each head movement.") {
-        carousel.azimuthDegrees = it.toFloat(); carousel.layout()
-    }
+    layoutNumber("Global radius (m)", { carousel.radius },
+        "Unbounded finite room-space radius. Each screen with a blank radius follows this value; overrides stay independent. Negative radii place screens on the opposite side, zero collapses them.") { carousel.radius = it }
+    layoutNumber("Global sector fill", { carousel.fill },
+        "Unbounded fraction of one angular sector. One joins neighbouring screens, above one overlaps them; zero collapses width and negative values mirror the geometry. Per-screen blank fills follow this value.") { carousel.fill = it }
+    layoutNumber("Set ring angle (degrees)", { carousel.azimuthDegrees },
+        "Set the global angle without wrapping or limiting the number entered. Each screen adds its sector and local angle offset. While spinning, motion status shows the changing angle; this field retains the last command.", mirror = false) { carousel.azimuthDegrees = it }
     slider("Delay spacing (frames)", min = 1.0, max = 16.0, step = 1.0, initialValue = carousel.spacingFrames.toDouble(),
         hoverText = "Published-picture offset between neighbouring screens. One gives ages 0–7; sixteen gives 0,16,…,112. Headset redraws do not advance this ring. A spacing edit refills it and resets exposures; warm-up holds the oldest available image.") {
         carousel.spacingFrames = it.toInt()
@@ -60,14 +73,19 @@ controlGroup("ring layout") {
         applyRingDelayOrder()
     }
     for ((axis, label) in listOf("x", "y", "z").withIndex()) {
-        slider("Ring centre $label (m)", min = -5.0, max = 5.0, step = .01, initialValue = when (axis) { 0 -> carousel.center.x.toDouble(); 1 -> carousel.center.y.toDouble(); else -> carousel.center.z.toDouble() },
-            hoverText = "World-space centre of the screen cylinder. Default zero surrounds the origin. This is independent of the optional Field browser pane.") {
-            when (axis) { 0 -> carousel.center.x = it.toFloat(); 1 -> carousel.center.y = it.toFloat(); else -> carousel.center.z = it.toFloat() }
-            carousel.layout()
+        layoutNumber("Ring centre $label (m)", {
+            when (axis) { 0 -> carousel.center.x; 1 -> carousel.center.y; else -> carousel.center.z }
+        }, "Unbounded finite world-space coordinate of the ring centre, shared by every screen. Independent of head motion and the Field browser pane.") {
+            when (axis) { 0 -> carousel.center.x = it; 1 -> carousel.center.y = it; else -> carousel.center.z = it }
         }
     }
 }
 displayOpen("ring layout")
 
 // Keep ownership with this launch; the transport box supplies the actual render loop.
-loop { frame() }.end { ownedCarousel.close() }
+var lastLayoutMirror = 0L
+loop {
+    val now = System.nanoTime()
+    if (now - lastLayoutMirror > 250_000_000L) { lastLayoutMirror = now; layoutMirrors.forEach { it() } }
+    frame()
+}.end { ownedCarousel.close() }
