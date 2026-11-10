@@ -33,6 +33,10 @@ class StereoVideoSurface(
     @Volatile
     var delayFrames = 0
         set(value) { require(value in 0..255); field = value }
+    /** Linear-light gain after sharp/accumulated mixing; one preserves the original exposure. */
+    @Volatile
+    var brightness = 1f
+        set(value) { require(value.isFinite() && value in 0f..16f); field = value }
     var speed: Double
         get() = stream.speed
         set(value) { stream.speed = value }
@@ -198,6 +202,7 @@ class StereoVideoSurface(
                         if (flipVertically) 1f else 0f,
                     )
                 push["colorimetry"] = StereoVideoColorimetry.parameters(frameSource.colorSpace, frameSource.colorRange)
+                    .apply { w = brightness - 1f } // spare component: exposure gain minus one
                 push["accumulation"] = Vector4f(accumulationMix, if (accumulator?.valid == true) 1f else 0f,
                     if (exposureActive && phase.softened && exposureBlurSigma > 0f) exposureBlurMix else 0f,
                     if (exposureActive && phase.softened) exposureDarkening else 0f)

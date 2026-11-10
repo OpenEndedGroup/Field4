@@ -96,6 +96,16 @@ object StereoVideoPrecisionSmoke {
                 val expected = if (v <= .04045f) v / 12.92f else ((v + .055f) / 1.055f).pow(2.4f)
                 check(abs(values[x] - expected) < .001f) { "Pixel $x: ${values[x]} versus $expected" }
             }
+            // Zoetrope levels multiply linear light, preserving dim ramps and gains above one.
+            for (gain in listOf(.125f, 2f, 0f)) {
+                movie.brightness = gain
+                frame()
+                val exposed = read()
+                for (x in 0..1023) check(abs(exposed[x] - values[x] * gain) < .002f) {
+                    "Linear exposure $gain failed at $x: ${exposed[x]} versus ${values[x] * gain}"
+                }
+            }
+            movie.brightness = 1f
             movie.swapEyes = true
             frame()
             val swapped = read()
