@@ -112,13 +112,14 @@ operations:
           // 120 joint draws of every node: each sample is one whole path.
           val walks = 120
           val drawn = jointSamples(*(xs + ys).toTypedArray(), n = walks, seed = 7)
-          val paths = (0 until walks).map { w ->
-              fline {
-                  moveTo(200, 150)
-                  for (k in 0 until steps) lineTo(200 + drawn[k][w], 150 - drawn[steps + k][w])
-                  color = vec(0.0, 0.67, 1.0, 0.35)
+          val paths =
+              (0 until walks).map { w ->
+                  fline {
+                      moveTo(200, 150)
+                      for (k in 0 until steps) lineTo(200 + drawn[k][w], 150 - drawn[steps + k][w])
+                      color = vec(0.0, 0.67, 1.0, 0.35)
+                  }
               }
-          }
           lines(paths, channel = "walks", w = 400.0, h = 300.0)
 
           println("E(reach) = ${E(reach, n = 50_000)}   (a straight line would be ${steps * 4})")
