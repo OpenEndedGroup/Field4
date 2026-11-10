@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-233 source file(s), 727 public symbol(s), 322 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+234 source file(s), 729 public symbol(s), 323 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2170,6 +2170,20 @@ Real P010 GPU copies, eight independently accumulated surfaces, and a shared dec
 | Declaration | Summary |
 | --- | --- |
 | <a id="stereovideocarouselsmoke-kt--stereovideocarouselsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoVideoCarouselSmoke/#L37) |  |
+
+## StereoVideoColourTransferSmoke.kt { #stereovideocolourtransfersmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/StereoVideoColourTransferSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/StereoVideoColourTransferSmoke/)
+
+### StereoVideoColourTransferSmoke { #stereovideocolourtransfersmoke-kt-stereovideocolourtransfersmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StereoVideoColourTransferSmoke</span></code>](source/jvmMain/afield/examples/four/StereoVideoColourTransferSmoke/#L37)
+
+Actual decoded sharp video plus a controlled GPU accumulation, through the production presentation shader.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="stereovideocolourtransfersmoke-kt--stereovideocolourtransfersmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoVideoColourTransferSmoke/#L39) |  |
 
 ## StereoVideoDecodeProbe.kt { #stereovideodecodeprobe-kt }
 
