@@ -7,7 +7,9 @@ each reply on stdout is ``{"id": n, "ok": true, "result": ...}`` or
 
 Ops: ``status``, ``timelines``, ``timeline`` / ``markers`` / ``clipMarkers`` / ``playhead`` (each
 takes an optional ``"timeline": name``), and ``close``. Every op takes an optional ``"host"``, another
-machine whose Resolve Studio allows network scripting. ``python -m fieldresolve markers [name]
+machine whose Resolve Studio allows network scripting. ``setPlayhead`` accepts exactly one of
+``"frame"``, ``"seconds"`` or ``"timecode"``, with the same optional timeline/host guards.
+``python -m fieldresolve markers [name]
 [--host H]`` runs one op and prints its result, which is handy from a terminal.
 """
 
@@ -17,7 +19,7 @@ import json
 import sys
 import traceback
 
-from . import ResolveUnavailable, clip_markers, connect, markers, playhead, status, timeline, timelines
+from . import ResolveUnavailable, clip_markers, connect, markers, playhead, set_playhead, status, timeline, timelines
 
 OPS = {
     "status": lambda req: status(req.get("host")),
@@ -26,6 +28,8 @@ OPS = {
     "markers": lambda req: markers(req.get("timeline"), req.get("host")),
     "clipMarkers": lambda req: clip_markers(req.get("timeline"), req.get("host")),
     "playhead": lambda req: playhead(req.get("timeline"), req.get("host")),
+    "setPlayhead": lambda req: set_playhead(req.get("frame"), req.get("timeline"), req.get("host"),
+        seconds=req.get("seconds"), timecode=req.get("timecode")),
 }
 
 

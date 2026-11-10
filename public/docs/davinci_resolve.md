@@ -81,6 +81,53 @@ print("${here.timecode}: ${under.joinToString { it.name }.ifEmpty { "no marker" 
 
 Each call asks Resolve again, so it sees the current state of the project.
 
+You can also move the playhead. Frames and seconds count from the timeline start; a timecode
+includes the timeline's own record-clock offset:
+
+```diffstatic {data-lang=kotlin}
+Resolve.setPlayhead(240)                 // frame 240 from the timeline start
+Resolve.setPlayheadSeconds(10.0)         // the same position on a 24 fps timeline
+Resolve.setPlayhead("01:00:10:00")       // absolute record timecode
+```
+
+Each setter returns the observed `ResolvePlayhead`. Seconds round to the nearest timeline frame;
+negative, nonfinite and out-of-range positions are rejected. Drop-frame conversion follows the
+timeline's settings. An optional timeline name guards against moving the wrong open edit:
+`Resolve.on("macbook-pro-2").setPlayheadSeconds(10.0, "Marked for real")`. That timeline must
+already be current; Field never switches Resolve's timeline automatically. The corresponding
+guarded getter is `other.playhead("Marked for real")`.
+
+### Following a Field movie without blocking playback
+
+`ResolvePlayheadLink` owns a single background worker. `offer(seconds)` only replaces the latest
+target; it never queues a network operation or waits for Resolve. Following runs at most four
+times a second by default, retries failures with a backoff, and checks paused positions once a
+second so a delayed or manually moved playhead can converge again.
+
+```diffstatic {data-lang=kotlin}
+import afield.io.resolve.ResolvePlayheadLink
+
+val link = ResolvePlayheadLink(Resolve.on("macbook-pro-2"), "Marked for real")
+link.enabled = true
+loop {
+    link.offer(movie.timestamp) // uploaded source-video seconds; do not multiply by playback speed
+    frame()
+}.end { link.close() }
+```
+
+Offer `null` while no movie frame is available. `link.status` reports the latest target and
+observed position, whether a call is busy, whether the target is aligned within half a frame,
+completed read/write counts and the last error. Failures and recoveries are logged under
+`resolve.playhead`. A modal dialog or disconnected machine can delay convergence, but playback
+does not wait and obsolete targets do not accumulate.
+
+For the opposite direction, `link.getPlayhead()` immediately disables following and returns a
+`CompletableFuture<ResolvePlayhead>`. Check `isDone` from Field's loop before reading the result,
+then call the movie's ordinary asynchronous `seek(position.seconds)`. This pauses playback at
+the chosen image. Re-enable following when ready. A failed Get completes exceptionally so the
+interface can report it and offer another attempt. Closing cancels pending Gets and prevents new
+writes without blocking the caller; an already-running Resolve call is allowed to finish.
+
 ## Resolve on another machine
 
 Use `Resolve.on("macbook-pro-2")` to reach Resolve on another machine, by host name or address.
@@ -111,6 +158,9 @@ for m in fr.markers("Edit 2"):
 `fr.timelines()`, `fr.timeline(name)`, `fr.clip_markers(name)`, `fr.playhead()` and `fr.status()`
 match the Kotlin calls, and each takes `host="macbook-pro-2"` for another machine. From a terminal
 in Field's `python/` directory, `python -m fieldresolve markers "Edit 2"` prints the markers as JSON.
+Use `fr.set_playhead(240)`, `fr.set_playhead(seconds=10.0)` or
+`fr.set_playhead(timecode="01:00:10:00")` to move the current timeline, with optional `name` and
+`host` arguments. These return the same playhead dict as `fr.playhead()`.
 
 ## How it connects
 

@@ -95,6 +95,42 @@ class MarkerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             fr.playhead("Edit DF")
 
+    def test_set_playhead_by_frame_seconds_and_record_timecode(self):
+        self.assertEqual(fr.set_playhead(48)["timecode"], "01:00:02:00")
+        self.assertEqual(fr.playhead()["frame"], 48)
+        self.assertEqual(fr.set_playhead(seconds=2.51)["frame"], 60)
+        self.assertEqual(fr.set_playhead(timecode="01:00:04:00")["frame"], 96)
+        reply = worker.answer({"id": 8, "op": "setPlayhead", "seconds": 3.0})
+        self.assertTrue(reply["ok"], reply)
+        self.assertEqual(reply["result"]["frame"], 72)
+
+    def test_set_playhead_checks_range_and_never_switches_timelines(self):
+        before = fr.playhead()
+        for kwargs in ({"frame": -1}, {"frame": 2400}, {"frame": True}, {"frame": 1.5},
+                       {"seconds": float("nan")}, {"seconds": float("inf")}, {"seconds": -1},
+                       {}, {"frame": 1, "seconds": 1.0}, {"timecode": "00:00:00:00"}):
+            with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                fr.set_playhead(**kwargs)
+        with self.assertRaises(ValueError):
+            fr.set_playhead(0, "Edit DF")
+        self.assertEqual(fr.playhead(), before)
+
+    def test_set_playhead_drop_frame_and_remote_host(self):
+        project = fr.connect().GetProjectManager().GetCurrentProject()
+        project.current = project.timelines[1]
+        moved = fr.set_playhead(1800, "Edit DF")
+        self.assertEqual(moved["timecode"], "01:01:00;02")
+        self.assertEqual(fr.set_playhead(timecode=moved["timecode"])["frame"], 1800)
+        fr._apps["macbook-pro-2"] = _fake.scriptapp(host="macbook-pro-2")
+        self.assertEqual(fr.set_playhead(12, host="macbook-pro-2")["frame"], 12)
+        self.assertEqual(fr.playhead()["timeline"], "Edit DF")
+
+    def test_set_playhead_reports_a_rejected_seek(self):
+        t = fr.connect().GetProjectManager().GetCurrentProject().GetCurrentTimeline()
+        t.SetCurrentTimecode = lambda tc: False
+        with self.assertRaisesRegex(fr.ResolveUnavailable, "refused playhead"):
+            fr.set_playhead(48)
+
     def test_a_host_gets_its_own_connection(self):
         import os
         os.environ["FIELDRESOLVE_FAKE"] = "1"
