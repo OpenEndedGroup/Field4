@@ -139,4 +139,15 @@ class PianoTest {
         val fm = pianoRender(1.0, Piano(sampleRate = 44_100, room = Param(0f), inharmonicity = Param(1f).modulate(SineOsc(freq = Param(220f)) * 0.8f))) { noteOn(45, 0.7, 0) }
         assertTrue(fm.left.all { it.isFinite() } && fm.peak > 0.01f)
     }
+
+    /** The demo's pattern piece and pedal example as .wav files, for listening and analysis. */
+    @Test
+    fun demoWavs() {
+        if (!dump) return
+        val tune = pat("<[c3,g3] [a2,e3] [f2,c3] [g2,d3]> [e4 g4 c5 g4]")
+        pianoRender(11.0, Piano(sampleRate = 44_100)) { play(tune, cycles = 8, cps = 0.8, startFrame = 0) }.writeWav(File(out, "piece.wav"), 0.89f)
+        val arpeggio = pat("[c2 g2 e3 c4 g4 e5 ~ ~]")
+        for ((name, pedal) in listOf("pedal_up" to 0f, "pedal_down" to 1f))
+            pianoRender(5.0, Piano(sampleRate = 44_100, pedal = Param(pedal))) { play(arpeggio, cycles = 1, cps = 0.5, legato = 0.15, startFrame = 0) }.writeWav(File(out, "$name.wav"))
+    }
 }

@@ -29,7 +29,7 @@ import kotlin.math.sqrt
  * sum frequencies. The summed bridge force drives 88 keys' worth of sympathetic string resonators,
  * then a synthesised stereo soundboard response, then a small room.
  *
- * `Piano` is a [StereoNode], so `audio(Piano())` plays it, and it is played the way a piano is:
+ * `Piano` is a [StereoNode], so `audio(Piano(), gain = 1f)` plays it, and it is played the way a piano is:
  *
  * ```kotlin
  * val piano = Piano()
@@ -37,7 +37,7 @@ import kotlin.math.sqrt
  * piano.noteOff(60)              // the damper comes down
  * piano.play(pat("c4 e4 g4 c5"), cycles = 2, cps = 0.5)
  * piano.play(readMidiClip(file))  // notes and the sustain pedal (CC 64)
- * audio(piano)
+ * audio(piano, gain = 1f)
  * ```
  *
  * # Inputs that move while it rings
@@ -66,11 +66,13 @@ import kotlin.math.sqrt
  *
  * # Against coopiano
  *
- * A4 at velocity 0.5, eight seconds, no room, rendered by this class and by coopiano's own C++:
- * the first eight partials agree within 0.3 cents and the fundamental and second partial's
- * 20–60 dB decay agree within a few percent. The numbers and the method are in `PianoTest` and
- * `dev_docs/audio/PIANO_PORT.md`. The port differs in three ways: the sample rate is a parameter,
- * the random draws are Java's, so a strike is the same instrument but not the same bits, and the
+ * A4 at velocity 0.5, eight seconds, no room, rendered here and by coopiano's own C++ with its
+ * single shared soundboard: the first eight partials land within 0.001 Hz of each other, their
+ * levels and their early and late decay rates agree to 0.01 dB, and the waveforms differ by -75 dB
+ * over the first half second. The random draws are coopiano's own (mt19937_64 and libc++'s
+ * distributions, reproduced in Kotlin). Method and numbers are in `dev_docs/PIANO_PORT.md`; `PianoTest`
+ * pins the hammer contact against the C++. The port differs in two ways: the sample rate is a
+ * parameter, and the
  * soundboard is coopiano's single shared stereo response rather than its four bridge regions.
  */
 class Piano(

@@ -18,7 +18,7 @@ operations:
   - create:
       box: piano_a4
       name: a4
-      frame: { x: 20.0, y: 40.0, w: 190.0, h: 60.0 }
+      frame: { x: 20.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // A4 at velocity 0.5 for eight seconds, without the room: `./coopiano A4 0.5 8` in coopiano.
@@ -33,7 +33,7 @@ operations:
   - create:
       box: piano_string
       name: string
-      frame: { x: 20.0, y: 140.0, w: 190.0, h: 60.0 }
+      frame: { x: 760.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // One of C3's strings, struck at velocity 0.8, drawn at five moments after the hammer
@@ -47,7 +47,7 @@ operations:
   - create:
       box: piano_piece
       name: piece
-      frame: { x: 20.0, y: 240.0, w: 190.0, h: 60.0 }
+      frame: { x: 20.0, y: 760.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // A pattern on the piano. Atoms are note names or MIDI numbers; `,` stacks a chord.
@@ -58,7 +58,7 @@ operations:
   - create:
       box: piano_pedal
       name: pedal
-      frame: { x: 20.0, y: 340.0, w: 190.0, h: 60.0 }
+      frame: { x: 760.0, y: 760.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // The same staccato arpeggio three times. With the pedal down the dampers stay off every
@@ -86,7 +86,7 @@ operations:
   - create:
       box: piano_wobble
       name: wobble
-      frame: { x: 20.0, y: 440.0, w: 190.0, h: 60.0 }
+      frame: { x: 20.0, y: 1360.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // Two of Piano's inputs driven by oscillators. The string stiffness swings by 0.9 either side
@@ -104,7 +104,7 @@ operations:
   - create:
       box: piano_live
       name: live
-      frame: { x: 20.0, y: 540.0, w: 190.0, h: 60.0 }
+      frame: { x: 760.0, y: 1360.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // The piano on the audio engine. Move the sliders while it plays: each one is a Param, read
@@ -112,13 +112,13 @@ operations:
           val pedal = Param(0f)
           val stiffness = Param(1f)
           val board = Param(1f)
-          slider("pedal", 0.0, 1.0, initialValue = 0.0, onUpdate = { pedal.base = it.toFloat() })
-          slider("string stiffness", 0.0, 6.0, initialValue = 1.0, onUpdate = { stiffness.base = it.toFloat() })
-          slider("soundboard", 0.0, 2.0, initialValue = 1.0, onUpdate = { board.base = it.toFloat() })
-          displayOpen("controls")
+          slider("pedal", 0.0, 1.0, initialValue = 0.0, channel = "pedal", onUpdate = { pedal.base = it.toFloat() })
+          slider("string stiffness", 0.0, 6.0, initialValue = 1.0, channel = "stiffness", onUpdate = { stiffness.base = it.toFloat() })
+          slider("soundboard", 0.0, 2.0, initialValue = 1.0, channel = "soundboard", onUpdate = { board.base = it.toFloat() })
+          listOf("pedal", "stiffness", "soundboard").forEach { displayOpen(it) }
           val piano = Piano(pedal = pedal, inharmonicity = stiffness, soundboard = board)
           piano.play(pat("<[c3,g3] [a2,e3] [f2,c3] [g2,d3]> [e4 g4 c5 g4]"), cycles = 32, cps = 0.8)
-          audio(piano)
+          audio(piano, gain = 1f)
   - execute:
       box: piano_a4
       property: code
