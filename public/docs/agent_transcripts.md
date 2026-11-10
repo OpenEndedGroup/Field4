@@ -2699,6 +2699,17 @@ nothing sounds until someone holds a key or ticks **sound**. Built on
 
 [Open →](offline.html?file=assets/agent_transcripts/explainer_sound/metadata.edn)
 
+### explainer_cameras
+
+**An explainer deck on cameras and lenses.** A `deck` box holds a presentation after Bartosz
+Ciechanowski's [Cameras and Lenses](https://ciechanow.ski/cameras-and-lenses/), in our own words,
+in the essay's order: a sensor counting light, a box with a hole, glass, light as a wave, lenses,
+aperture and focus, and the faults of real lenses. Each figure is its own box to the right of the
+deck; the sensor pictures are ray-traced on the CPU by `afield.simulation.optics`. Run `deck` in
+Field's Electron app; the talk starts each figure when its slide comes up.
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_cameras/metadata.edn)
+
 ### audio_ai_underfit_mancini
 
 Import a held-out excerpt, hash the completed Experiment in Terror

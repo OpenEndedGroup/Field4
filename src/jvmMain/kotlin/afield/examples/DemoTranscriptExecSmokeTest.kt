@@ -618,6 +618,9 @@ object DemoTranscriptExecSmokeTest {
         // The Sound explainer deck: the same shape at full length. The deck opens Electron audience
         // windows, its figures return audio patches and run animation loops.
         "explainer_sound",
+        // The cameras explainer deck: its deck box opens Electron audience windows. Its figures
+        // are CPU ray tracing (CameraOpticsTest) and three/lines outputs.
+        "explainer_cameras",
         "text_one_vr",
         "video_one_vr",
         // Audio curves: every box is a playback loop under a waveform player that waits for the

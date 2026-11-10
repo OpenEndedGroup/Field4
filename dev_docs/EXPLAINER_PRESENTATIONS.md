@@ -221,6 +221,30 @@ listener, and `two_speakers` plays the tone at the listener's level). The keyboa
 | 48 | `spherical_aberration`: blur by lens radius | radius slider | lines + controls |
 | 49–50 | `white_slab`, `dispersion`: white light through glass; axial chromatic aberration | angle and dispersion sliders | lines + controls |
 
+**Engine changes made while building the cameras deck** (branch `claude/explainer-cameras`):
+
+- `afield.simulation.optics` (`CameraOptics.kt`, `CameraOpticsTest`): a CPU ray tracer for sensor
+  pictures through a pinhole, a thin lens or a bladed aperture, a bare sensor, Bayer mosaic and
+  demosaic, Poisson photon counts, the thin-lens and depth-of-field relations, Snell and Fresnel,
+  Cauchy dispersion, `Refraction.crossingCrests` (wave crests joined across a surface), `frameExit`
+  for side-view rays, and `SensorImage.html` (a picture shown smooth or pixel-crisp).
+- Slider labels kept the space where a middle-ellipsis split falls (`field.css`; UI regression
+  `controls-slider-label-spaces`).
+- HTML that replaces a `lines` viewer on the same channel sizes its panel again (`outputareas.kt`;
+  UI regression `output-panel-mode-switch`).
+- `Box.setControl` runs the callback even when the control already shows the value
+  (`PresentationFiguresTest.setControlRunsTheCallbackEvenWhenTheValueIsUnchanged`).
+- A step's control waits until the relaunched figure has *shown* its control group, not just
+  registered its callbacks; otherwise the group was drawn over the value with the one it was built
+  with ("focus distance 9.999" over a picture sharp at 4.0;
+  `PresentationFiguresTest.aControlWaitsUntilTheNewRunHasShownItsControls`).
+- No panel resize grips in figure mode.
+- `tools/presentation/capture-deck.mjs` (walk and capture any deck, by Electron PID, without raising
+  the window; `CAPTURE_ONLY=` for some steps) and `tools/presentation/orbit-figure.mjs` (proves a
+  `three` figure orbits in its figure view and keeps its camera across a redraw). Electron for
+  captures needs `--disable-backgrounding-occluded-windows --disable-renderer-backgrounding`
+  (`dev_docs/testing/PRESENTATION_CAPTURES.md`).
+
 ### Lights and Shadows (document `explainer_lights`)
 
 | # | figure | what the reader does | block |
