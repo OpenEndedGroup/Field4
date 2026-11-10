@@ -4,8 +4,13 @@ layout(binding = 1) uniform sampler2D chroma; // half-resolution interleaved Cb/
 layout(binding = 2) uniform sampler2D accumulatedImage; // float16 linear-light running mean
 layout(binding = 3) uniform sampler2D softenedImage; // held exposure after per-eye Gaussian filtering
 layout(std140, binding = 8) uniform ScreenAppearance {
-    vec4 levels; // opacity, reserved, reserved, reserved; separate from the full 128-byte push block
+    vec4 levels; // opacity, accumulation black, accumulation white, accumulation gamma
+    vec4 autoMeter; // auto/manual mix, statistics row index, global pre-exposure gamma, sharp colour transfer
+    vec4 outputTone; // shadow cooling, reserved, reserved, reserved
 } appearance;
+layout(std430, binding = 9) readonly buffer VideoExposureStatistics {
+    vec4 records[]; // sixteen vec4 per screen, then one linked record; GPU-owned levels and velocities
+} meter;
 
 layout(push_constant) uniform MoviePush {
     mat4 model;       // screen-local metres to room space
@@ -21,6 +26,52 @@ layout(location = 0) out vec4 color;
 vec3 toLinear(vec3 c) {
     return mix(c / 12.92, pow((c + .055) / 1.055, vec3(2.4)), step(vec3(.04045), c));
 }
+vec3 presentAccumulation(vec3 rgb) {
+    if (appearance.levels.w <= 0) return rgb; // an uninitialized level block stays neutral
+    float preGamma = appearance.autoMeter.z;
+    if (preGamma > 0 && preGamma != 1) rgb = pow(max(rgb, vec3(0)), vec3(1 / preGamma));
+    float black = appearance.levels.y, white = appearance.levels.z;
+    if (appearance.autoMeter.x > 0) {
+        uint at=uint(appearance.autoMeter.y+.5)*16u+11u;
+        vec4 automatic=meter.records[at]; // bounded black/white endpoints, predicted mean, validity
+        if (automatic.w > .5) {
+            black=mix(black,automatic.x,appearance.autoMeter.x);
+            white=mix(white,automatic.y,appearance.autoMeter.x);
+        }
+    }
+    float gamma = max(appearance.levels.w, .0001);
+    if (black == 0 && white == 1 && gamma == 1) return rgb; // exact neutral bypass, including HDR values
+    float span = white - black;
+    if (abs(span) < .000001) span = span < 0 ? -.000001 : .000001;
+    return pow(clamp((rgb - black) / span, 0, 1), vec3(1 / gamma));
+}
+
+// Recolour only the sharp branch. Hue/chroma comes from the displayed accumulation, never its brightness.
+vec3 borrowAccumulationColour(vec3 original, vec3 reference) {
+    const vec3 luminance = vec3(.2126, .7152, .0722);
+    float y = dot(original, luminance), referenceY = dot(reference, luminance);
+    if (referenceY <= .000001) return original; // black has no reliable chromaticity
+    vec3 chroma = reference * (y / referenceY) - vec3(y);
+    // Desaturate toward the same-luminance grey until RGB fits SDR; channel clipping would change y.
+    float gamut = 1;
+    for (int channel = 0; channel < 3; channel++) {
+        if (chroma[channel] > 0) gamut = min(gamut, (1 - y) / chroma[channel]);
+        if (chroma[channel] < 0) gamut = min(gamut, -y / chroma[channel]);
+    }
+    vec3 tinted = vec3(y) + clamp(gamut, 0, 1) * chroma;
+    return mix(original, tinted, smoothstep(.000001, .0001, referenceY));
+}
+
+// Output toning follows both video branches and the brightness envelope; the exposure meter never sees it.
+vec3 coolOutputShadows(vec3 rgb) {
+    float y = dot(rgb, vec3(.2126, .7152, .0722));
+    float amount = appearance.outputTone.x * (1 - smoothstep(.015, .25, y));
+    if (amount <= 0 || y <= .000001) return rgb;
+    // This blue/cyan direction has zero luminance. Reuse the same-Y gamut compression and black guard.
+    const vec3 cool = vec3(-.4, .05, (.4 * .2126 - .05 * .7152) / .0722);
+    return borrowAccumulationColour(rgb, rgb + y * amount * cool);
+}
+
 void main() {
     int sourceEye = pc.image.z > .5 ? 1 - eye : eye;
     vec2 q = vec2((float(sourceEye) + uv.x) * .5, pc.image.w > .5 ? 1 - uv.y : uv.y);
@@ -47,6 +98,12 @@ void main() {
         vec2 qSoft = clamp(q, lower + halfTexel, upper - halfTexel);
         blurred = mix(blurred, texture(softenedImage, qSoft).rgb, pc.accumulation.z);
     }
-    blurred *= 1 - pc.accumulation.w; // darken only the exposure, in linear light
-    color = vec4(mix(sharp, blurred, pc.accumulation.x) * max(0, 1 + pc.colorimetry.w), clamp(appearance.levels.x, 0, 1));
+    if (pc.accumulation.y > .5) {
+        blurred = presentAccumulation(blurred);
+        if (appearance.autoMeter.w > 0)
+            sharp = mix(sharp, borrowAccumulationColour(sharp, blurred), appearance.autoMeter.w);
+    }
+    blurred *= 1 - pc.accumulation.w; // preserve the paired darkening after presentation levels
+    vec3 presented = mix(sharp, blurred, pc.accumulation.x) * max(0, 1 + pc.colorimetry.w);
+    color = vec4(coolOutputShadows(presented), clamp(appearance.levels.x, 0, 1));
 }

@@ -55,6 +55,7 @@ from check_staged_generated_artifacts import (  # noqa: E402
     _python_tool_input,
     _reference_input,
     _transcript_input,
+    _transcript_layout_input,
     _transcript_registration_input,
 )
 
@@ -222,7 +223,17 @@ CHECKS: tuple[Check, ...] = (
         jvm_tests=("afield.tools.docs.AgentDemoRegistrationTest",),
         # test_demo_build_scripts.py (the CORPUS that bounced both branches) runs under python-tools,
         # which the same paths select.
-        lander_guards=("checkAgentDemos", "checkAgentTranscriptLayouts"),
+        # checkAgentTranscriptLayouts also reads transcripts; "transcript-layouts" stands in for it.
+        lander_guards=("checkAgentDemos",),
+    ),
+    Check(
+        "transcript-layouts",
+        "checkAgentTranscriptLayouts on transcripts too (2026-11-10: body_one_live landed a create with no "
+        "frame and forth_step_sequencer two boxes over the ceiling, selected by nothing because only demo "
+        "paths chose the guard)",
+        lambda c: [p for p in c.paths if _transcript_layout_input(p)],
+        gradle=("checkAgentTranscriptLayouts",),
+        lander_guards=("checkAgentTranscriptLayouts",),
     ),
     Check(
         "saved-document-inlines",

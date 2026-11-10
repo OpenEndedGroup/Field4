@@ -68,7 +68,10 @@ def main():
     operations.append({'create': dict(box='video2_motion', name='Ring motion',
         frame=dict(x=-700, y=2200, w=500, h=100), properties=dict(code=(here / 'motion.kt').read_text()))})
     operations.append({'connect': dict(parent='video2_looks', child='video2_motion')})
-    launch = ['video1_context', 'video1_screen', 'video2_looks', 'video2_motion']
+    operations.append({'create': dict(box='video2_auto_exposure', name='Shared auto exposure',
+        frame=dict(x=-1400, y=0, w=500, h=100), properties=dict(code=(here / 'auto_exposure.kt').read_text()))})
+    operations.append({'connect': dict(parent='video1_screen', child='video2_auto_exposure')})
+    launch = ['video1_context', 'video1_screen', 'video2_auto_exposure', 'video2_looks', 'video2_motion']
     for index in range(8):
         x, y = 1300 + index % 4 * 650, index // 4 * 1800
         for kind, uid, name, offset in [

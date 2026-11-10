@@ -5,13 +5,30 @@ layout(binding = 1) uniform sampler2D chroma; // half-resolution interleaved Cb/
 layout(push_constant) uniform AccumulationPush {
     vec4 image;       // packed width/height, reserved, reserved
     vec4 colorimetry; // Kr, Kb, full-range flag, reserved
-    vec4 weights;     // incoming normalized weight, history valid, reserved, reserved
+    vec4 weights;     // incoming normalized weight, history valid, input shadow cooling, reserved
 } pc;
 layout(location = 0) in vec2 uv; // packed SBS coordinates, top-left origin
 layout(location = 0) out vec4 color;
 vec3 toLinear(vec3 c) {
     return mix(c / 12.92, pow((c + .055) / 1.055, vec3(2.4)), step(vec3(.04045), c));
 }
+// Input-only toning: new samples carry this colour into the running mean; history is never recoloured.
+vec3 coolInputShadows(vec3 rgb) {
+    float y = dot(rgb, vec3(.2126, .7152, .0722));
+    float amount = pc.weights.z * (1 - smoothstep(.015, .25, y));
+    if (amount <= 0 || y <= .000001) return rgb;
+    const vec3 cool = vec3(-.4, .05, (.4 * .2126 - .05 * .7152) / .0722);
+    vec3 chroma = rgb - vec3(y) + y * amount * cool;
+    // Same-luminance gamut compression, matching the output toner's policy rather than channel clipping.
+    float gamut = 1;
+    for (int channel = 0; channel < 3; channel++) {
+        if (chroma[channel] > 0) gamut = min(gamut, (1 - y) / chroma[channel]);
+        if (chroma[channel] < 0) gamut = min(gamut, -y / chroma[channel]);
+    }
+    vec3 tinted = vec3(y) + clamp(gamut, 0, 1) * chroma;
+    return mix(rgb, tinted, smoothstep(.000001, .0001, y));
+}
+
 void main() {
     vec2 q = uv;
     int sourceEye = q.x < .5 ? 0 : 1;
@@ -31,7 +48,7 @@ void main() {
                     y + 2 * (1 - kb) * cbcr.x);
     // Display-referred SDR code values -> linear; float eyes retain linear light until
     // display/stream encoding.
-    vec3 incoming = toLinear(clamp(rgb, 0, 1));
+    vec3 incoming = coolInputShadows(toLinear(clamp(rgb, 0, 1)));
     vec3 previous = pc.weights.y > .5 ? texture(previousImage, qY).rgb : incoming;
     color = vec4(mix(previous, incoming, pc.weights.x), 1);
 

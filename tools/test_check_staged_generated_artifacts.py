@@ -137,6 +137,7 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
                 "checkAgentTranscripts",
                 "checkAgentTranscriptIndex", "checkDocsPublications",
                 "checkTranscriptRegistration",
+                "checkAgentTranscriptLayouts",
                 "checkCompletionCorpusFixtures",
                 "checkBoxIdioms",
                 "checkBoxCodeFormat",
@@ -144,6 +145,21 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
                 "citationGates",
             ],
         )
+
+    def test_every_population_the_layout_guard_audits_selects_it(self) -> None:
+        # 2026-11-10: a docs_capture create with no frame (body_one_live) and two over-ceiling boxes
+        # (forth_step_sequencer) landed because only demo paths selected the layout guard.
+        for path in (
+            "dev_docs/agents/transcripts/forth_step_sequencer.yaml",
+            "dev_docs/agents/transcripts/docs_capture/body_one_live.yaml",
+            "dev_docs/agents/demos/new_demo/metadata.edn",
+            "dev_docs/agents/transcript_layout_exceptions.yaml",
+            "src/jvmMain/kotlin/afield/tools/docs/AgentTranscriptLayoutGuard.kt",
+        ):
+            with self.subTest(path=path):
+                self.assertIn("checkAgentTranscriptLayouts", task_names([path]))
+        # Negative control: an unrelated agent note still selects nothing of the kind.
+        self.assertNotIn("checkAgentTranscriptLayouts", task_names(["dev_docs/agents/notes.md"]))
 
     def test_new_demo_selects_its_registration_and_drift_guards(self) -> None:
         self.assertEqual(

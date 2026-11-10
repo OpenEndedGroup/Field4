@@ -62,15 +62,48 @@ displayOpen("screen layout")
 
 controlGroup("screen exposure") {
     checkbox("Accumulated image", initialValue = view.accumulationMix > 0f,
-        hoverText = "Enable this screen's own temporal exposure. With it off, the screen shows its delayed sharp picture; it still shares the single decoder.") { view.accumulationMix = if (it) 1f else 0f }.also { h -> controlMirrors += { h.set(view.accumulationMix > 0f) } }
+        hoverText = "Enable this screen's own temporal exposure. With it off, the screen shows its delayed sharp picture. Sharp colour transfer can still maintain the accumulation as a colour source; it still shares the single decoder.") { view.accumulationMix = if (it) 1f else 0f }.also { h -> controlMirrors += { h.set(view.accumulationMix > 0f) } }
     slider("Accumulation mix", min = 0.0, max = 1.0, step = .01, initialValue = view.accumulationMix.toDouble(),
         hoverText = "Blend this screen's delayed sharp input with its independent linear-light exposure. A global score or style button can overwrite this setting while active.") { view.accumulationMix = it.toFloat() }.also { h -> controlMirrors += { h.set(view.accumulationMix.toDouble()) } }
     slider("Half-life (seconds)", min = 0.0, max = 10.0, step = .01, initialValue = view.accumulationHalfLife,
         hoverText = "Real-time decay of this screen's accumulated history. Only new selected input pictures contribute; repeated headset draws do not add extra weight.") { view.accumulationHalfLife = it }.also { h -> controlMirrors += { h.set(view.accumulationHalfLife) } }
     slider("Incoming weight", min = 0.0, max = 4.0, step = .01, initialValue = view.accumulationInputWeight,
         hoverText = "Weight of each newly selected delayed picture in this screen's exposure. Zero holds a valid exposure. Clear starts it again without affecting the other screens.") { view.accumulationInputWeight = it }.also { h -> controlMirrors += { h.set(view.accumulationInputWeight) } }
+    slider("Input shadow cooling", min = 0.0, max = 1.0, step = .01, initialValue = view.accumulationShadowCooling.toDouble(),
+        hoverText = "Add blue/cyan to decoded shadow pixels before they enter the temporal accumulation. Preserves linear luminance; full weight below 0.015 fades to zero at 0.25. Applies to new contributions only: existing history retains its old colour and fades according to Half-life. Clear this exposure to rebuild it from the held frame when paused. The exposure meter and sharp colour transfer see the cooled accumulation; the original sharp video is unaffected. Independent of Output shadow cooling. Included in saved looks.") { view.accumulationShadowCooling = it.toFloat() }
+        .also { h -> controlMirrors += { h.set(view.accumulationShadowCooling.toDouble()) } }
     button("Clear this exposure", hoverText = "Reset only this screen's accumulated image and paired-exposure clock. The shared decoder and delay ring keep running.") { down -> if (down) view.clearAccumulation() }
 }
+// Levels grade the displayed accumulated/blurred image, never the stored running mean.
+controlGroup("accumulation presentation") {
+    slider("Black level", min = -2.0, max = 4.0, step = .001, initialValue = view.accumulationBlackLevel.toDouble(),
+        hoverText = "Input level mapped to black in the accumulated image. Values below this clip to black when white is higher. Applied after the blur and before paired darkening, zoetrope brightness and opacity; does not modify stored accumulation or the sharp input. Auto exposure mix can override this manual endpoint.") { view.accumulationBlackLevel = it.toFloat() }
+        .also { h -> controlMirrors += { h.set(view.accumulationBlackLevel.toDouble()) } }
+    slider("White level", min = -2.0, max = 4.0, step = .001, initialValue = view.accumulationWhiteLevel.toDouble(),
+        hoverText = "Input level mapped to white in the accumulated image. Lower it to expand contrast; values above it clip to white. Putting white below black reverses contrast. Equal levels form a safe near-threshold. These levels also shape the colour reference when Sharp colour from accumulation is enabled.") { view.accumulationWhiteLevel = it.toFloat() }
+        .also { h -> controlMirrors += { h.set(view.accumulationWhiteLevel.toDouble()) } }
+    slider("Presentation gamma", min = .05, max = 8.0, step = .001, initialValue = view.accumulationGamma.toDouble(),
+        hoverText = "Midtone adjustment after black/white normalization: output = normalized^(1/gamma). One is neutral; above one brightens midtones and below one darkens them. Evaluated on linear-light accumulated RGB, without changing video/output transfer encoding or accumulation history.") { view.accumulationGamma = it.toFloat() }
+        .also { h -> controlMirrors += { h.set(view.accumulationGamma.toDouble()) } }
+    slider("Auto exposure mix", min = 0.0, max = 1.0, step = .01, initialValue = view.autoExposureMix.toDouble(),
+        hoverText = "Blend this screen's manual black/white points with the GPU auto endpoints, multiplied by Global auto mix. The shared auto-exposure box selects independent or linked statistics. Zero opts this screen out; gamma remains manual. Included in saved looks.") { view.autoExposureMix = it.toFloat() }
+        .also { h -> controlMirrors += { h.set(view.autoExposureMix.toDouble()) } }
+    slider("Sharp colour from accumulation", min = 0.0, max = 1.0, step = .01, initialValue = view.accumulationColourTransfer.toDouble(),
+        hoverText = "Recolour the sharp video using the fully processed accumulation at the same pixel: after held/blur selection, global gamma, auto exposure and presentation gamma, before cadence darkening. Preserves the original sharp image's linear luminance and detail at every mix. One copies chromaticity, zero is unchanged. Out-of-gamut chroma is compressed instead of clipping brightness; black reference pixels fall back smoothly. Independent of Accumulation mix, so sharp cuts can match the warm blur. Keeps accumulation and metering running even when Accumulation mix is zero. Included in saved looks.") { view.accumulationColourTransfer = it.toFloat() }
+        .also { h -> controlMirrors += { h.set(view.accumulationColourTransfer.toDouble()) } }
+    button("Reset presentation levels", hoverText = "Reset only this screen's black/white/gamma to 0/1/1. Does not clear its exposure or change mix, cadence, brightness, opacity or other screens.") { down ->
+        if (down) { view.accumulationBlackLevel = 0f; view.accumulationWhiteLevel = 1f; view.accumulationGamma = 1f }
+    }
+}
+displayOpen("accumulation presentation")
+
+controlGroup("output colour") {
+    slider("Output shadow cooling", min = 0.0, max = 1.0, step = .01, initialValue = view.shadowCooling.toDouble(),
+        hoverText = "Add a gentle blue/cyan tone to the final dark pixels, after sharp/accumulation blending and the brightness/flash envelope, immediately before opacity/output. Zero is neutral. Full shadow weighting below 0.015 linear luminance fades smoothly to zero at 0.25; highlights stay unchanged. Preserves linear luminance, with same-luminance chroma compression to avoid RGB clipping. Does not alter accumulation history, the exposure meter or the sharp colour reference. Included in saved looks.") { view.shadowCooling = it.toFloat() }
+        .also { h -> controlMirrors += { h.set(view.shadowCooling.toDouble()) } }
+}
+displayOpen("output colour")
+
 controlGroup("screen cadence") {
     checkbox("Paired exposure cadence", initialValue = view.exposureCadenceEnabled,
         hoverText = "Hold an accumulated exposure for each soft/dark → clear pair on this screen. Current head poses still render at headset rate. Only this screen's cadence settings change.") { view.exposureCadenceEnabled = it }.also { h -> controlMirrors += { h.set(view.exposureCadenceEnabled) } }

@@ -25,9 +25,16 @@ class StereoVideoSurface(
     /** Library callers get a default pipeline; editable documents supply moduleHere via draw(). */
     private val automaticDrawing: Boolean = true,
     source: StereoVideoSource? = null,
+    sharedAutoExposure: VideoAutoExposure? = null,
+    private val autoExposureIndex: Int = 0,
 ) : AutoCloseable, ConfiguresModule {
     private val ownsStream = source == null
     val stream = source ?: StereoVideoSource(renderer, stereo, "$name-source")
+    val autoExposure = sharedAutoExposure ?: VideoAutoExposure(renderer, 1)
+    private val ownsAutoExposure = sharedAutoExposure == null
+    private var meterRevision = 0L
+    private val meterBegin = Target { command, _ -> autoExposure.beginFrame(command) }
+    private val meterFinish = Target { command, _ -> autoExposure.record(command, listOf(accumulationMeterSource())) }
 
     /** Age in published pictures, including alternate-frame selection and material caps. */
     @Volatile
@@ -56,9 +63,18 @@ class StereoVideoSurface(
     val materialUpdates get() = stream.materialUpdates
     val omittedMaterialFrames get() = stream.omittedMaterialFrames
 
-    /** Sharp/accumulated image blend. Zero bypasses the accumulation pass entirely. */
+    /** Luminance-preserving cool shadow tone after blending and brightness, immediately before output. */
+    @Volatile
+    var shadowCooling = 0f
+        set(value) { require(value.isFinite() && value in 0f..1f); field = value }
+
+    /** Sharp/accumulated image blend. Zero bypasses accumulation unless sharp colour transfer needs it. */
     @Volatile
     var accumulationMix = 0f
+        set(value) { require(value.isFinite() && value in 0f..1f); field = value }
+    /** Borrow processed accumulation chromaticity for sharp video while preserving its linear luminance. */
+    @Volatile
+    var accumulationColourTransfer = 0f
         set(value) { require(value.isFinite() && value in 0f..1f); field = value }
     @Volatile
     var accumulationHalfLife = .5
@@ -66,6 +82,26 @@ class StereoVideoSurface(
     @Volatile
     var accumulationInputWeight = 1.0
         set(value) { require(value.isFinite() && value in 0.0..100.0); field = value }
+    /** Cool new decoded contributions before temporal accumulation; existing history is retained. */
+    @Volatile
+    var accumulationShadowCooling = 0f
+        set(value) { require(value.isFinite() && value in 0f..1f); field = value }
+
+    /** Presentation-only input black/white levels; the accumulated pixels remain untouched. */
+    @Volatile
+    var accumulationBlackLevel = 0f
+        set(value) { require(value.isFinite()); field = value }
+    @Volatile
+    var accumulationWhiteLevel = 1f
+        set(value) { require(value.isFinite()); field = value }
+    /** Midtone gamma for accumulated-image presentation; values above one brighten midtones. */
+    @Volatile
+    var accumulationGamma = 1f
+        set(value) { require(value.isFinite() && value > 0f); field = value }
+    /** Per-screen auto/manual endpoint blend; the meter's global mode and mix remain independent. */
+    @Volatile
+    var autoExposureMix = 1f
+        set(value) { require(value.isFinite() && value in 0f..1f); field = value }
 
     /** Hold a movie-local exposure per pair, alternating soft/dark then clear in real time. */
     @Volatile
@@ -153,7 +189,7 @@ class StereoVideoSurface(
             val uploaded = selected.serial != previousSerial
             val changed = previousEpoch != stream.epoch || previousDelay != delayFrames
             val materialTick = stream.materialTick
-            val accumulating = accumulationMix > 0f
+            val accumulating = accumulationMix > 0f || accumulationColourTransfer > 0f
             if (accumulating && accumulator == null) {
                 accumulator = VideoFrameAccumulator(renderer, frameSource, accumulationModuleFactory)
             }
@@ -165,7 +201,8 @@ class StereoVideoSurface(
                 exposureBlur?.clear()
             }
             if (accumulating && hasFrame && (uploaded || reset)) {
-                accumulator?.render(command, index, accumulationHalfLife, accumulationInputWeight)
+                accumulator?.render(command, index, accumulationHalfLife, accumulationInputWeight, accumulationShadowCooling)
+                meterRevision++
             }
             accumulationWasEnabled = accumulating
             previousSerial = selected.serial
@@ -188,7 +225,10 @@ class StereoVideoSurface(
                 }
             }
             placement.validate()
-            module?.current?.liveUniformStructures?.get("ScreenAppearance")?.set("levels", Vector4f(opacity, 0f, 0f, 0f))
+            module?.current?.liveUniformStructures?.get("ScreenAppearance")?.set("levels",
+                Vector4f(opacity, accumulationBlackLevel, accumulationWhiteLevel, accumulationGamma))
+            module?.current?.liveUniformStructures?.get("ScreenAppearance")?.set("autoMeter", autoExposure.appearance(autoExposureIndex, autoExposureMix).apply { w = accumulationColourTransfer })
+            module?.current?.liveUniformStructures?.get("ScreenAppearance")?.set("outputTone", Vector4f(shadowCooling, 0f, 0f, 0f))
             mesh?.apply {
                 resize(if (hasFrame && opacity > 0f) strips * 6 else 0, 0)
                 push["model"] = placement.model()
@@ -220,8 +260,13 @@ class StereoVideoSurface(
         check(name !in stereo.beforeScene && name !in stereo.layered.modules) {
             "Screen '$name' already exists"
         }
+        if (ownsAutoExposure) stereo.beforeScene["$name-meter-begin"] = meterBegin
         stereo.beforeScene[name] = prepare
+        if (ownsAutoExposure) stereo.beforeScene["$name-meter-finish"] = meterFinish
     }
+
+    internal fun accumulationMeterSource(): VideoAutoExposure.Source? =
+        accumulator?.takeIf { it.valid }?.let { VideoAutoExposure.Source(it, width, height, meterRevision) }
 
     /**
      * Configure a document's moduleHere block without assigning shader source inside it. Texture providers
@@ -241,6 +286,10 @@ class StereoVideoSurface(
         parameters.uboResolver = { requested ->
             if (requested.name == "ScreenAppearance") requested.apply { uniform(); perFrame = true; hosted() }
             else previousUboResolver(requested)
+        }
+        val previousSsboResolver = parameters.ssboResolver
+        parameters.ssboResolver = { requested ->
+            if (requested.name == "VideoExposureStatistics") autoExposure.statisticsParameters else previousSsboResolver(requested)
         }
         parameters.textureResolver = { requested ->
             val plane =
@@ -288,7 +337,10 @@ class StereoVideoSurface(
         screen.push["image"] = Vector4f(2f, 2f, 0f, 0f) // packed size, eye swap, vertical flip
         screen.push["colorimetry"] = StereoVideoColorimetry.parameters(1, 1) // BT.709, limited range
         screen.push["accumulation"] = Vector4f(0f) // processed mix, valid history, spatial blur mix, darkening
-        pointer.current.liveUniformStructures["ScreenAppearance"]?.set("levels", Vector4f(opacity, 0f, 0f, 0f))
+        pointer.current.liveUniformStructures["ScreenAppearance"]?.set("levels",
+            Vector4f(opacity, accumulationBlackLevel, accumulationWhiteLevel, accumulationGamma))
+        pointer.current.liveUniformStructures["ScreenAppearance"]?.set("autoMeter", Vector4f(0f))
+        pointer.current.liveUniformStructures["ScreenAppearance"]?.set("outputTone", Vector4f(shadowCooling, 0f, 0f, 0f))
         pointer += "screen" to screen
 
         val overlays = stereo.layered.modules.filterKeys { it != name }
@@ -334,6 +386,11 @@ class StereoVideoSurface(
         if (!closed) {
             closed = true
             stereo.beforeScene.remove(name, prepare)
+            if (ownsAutoExposure) {
+                stereo.beforeScene.remove("$name-meter-begin", meterBegin)
+                stereo.beforeScene.remove("$name-meter-finish", meterFinish)
+                autoExposure.close()
+            }
             module?.let { stereo.layered.modules.remove(name, it) }
             vkDeviceWaitIdle(renderer.device.vkDevice)
             module?.current?.cleanup()
