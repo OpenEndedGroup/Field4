@@ -3672,7 +3672,50 @@ function clearDrawableSlots() {
  * in-place path still carries the frame-by-frame load, because that is the FLine geometry above and
  * it is what a slider actually drives.
  */
+/**
+ * Everything about a drawable except its colours, as a key: when the key of every drawable matches
+ * what is on screen, only colours (or other per-vertex values) changed, and they are written into the
+ * existing geometry instead of rebuilding it. Arrays are compared by the hashes the server sent.
+ */
+function drawableTopologyKey(d) {
+    const g = d && d.geometry;
+    if (!g) return null;
+    const attrs = [];
+    for (const [name, spec] of Object.entries(g.attributes || {})) {
+        if (name === 'color' || name === 'alpha') continue;
+        if (!spec || !spec.hash) return null;
+        attrs.push([name, spec.hash]);
+    }
+    if (g.index && !g.index.hash) return null;
+    return JSON.stringify([d.id, d.label, d.style, d.panel, d.group, d.pickable, d.callbackId,
+        d.transform ? Array.from(d.transform) : null, d.hoverColor ? Array.from(d.hoverColor) : null,
+        attrs, g.index ? g.index.hash : null]);
+}
+
+/** Write a drawable list whose topology matches the slots on screen into them; false when it does not match. */
+function updateDrawablesInPlace(list) {
+    const slots = payloadGeometrySlots.drawables;
+    if (!Array.isArray(list) || !list.length || slots.length !== list.length) return false;
+    const keys = list.map(drawableTopologyKey);
+    if (keys.some((k, i) => !k || !slots[i] || slots[i].topologyKey !== k)) return false;
+    list.forEach((d, i) => {
+        const geometry = slots[i].object.geometry;
+        for (const name of ['color', 'alpha']) {
+            const spec = d.geometry.attributes && d.geometry.attributes[name];
+            const attribute = geometry.getAttribute(name);
+            if (!spec || !spec.array || !attribute || attribute.array.length !== spec.array.length) continue;
+            if (spec.hash && slots[i].attributeHashes[name] === spec.hash) continue;
+            attribute.array.set(spec.array, 0);
+            markAttributeUpdated(attribute, spec.array.length);
+            slots[i].attributeHashes[name] = spec.hash || null;
+        }
+    });
+    return true;
+}
+
 function addPayloadDrawables(list) {
+    if (window.fieldThreeWireReuse !== false && updateDrawablesInPlace(list)) { window.fieldThreeWireStats.inPlace = true; return; }
+    window.fieldThreeWireStats.inPlace = false;
     clearDrawableSlots();
     if (!Array.isArray(list) || !list.length) return;
 
@@ -3719,6 +3762,8 @@ function addPayloadDrawables(list) {
         // The drawable's own kind, kept because `slot.kind` is the upsert cache key (`drawable-3`) and
         // says nothing about whether this is a surface. The section's cut outline needs to know.
         slot.kindOfDraw = kind;
+        slot.topologyKey = drawableTopologyKey(d);
+        slot.attributeHashes = {color: d.geometry.attributes?.color?.hash || null, alpha: d.geometry.attributes?.alpha?.hash || null};
         slot.fitSample = fitSampleOf(d.geometry);
         // What a shot moves: explode offsets (an `explode` attribute beside `position`) and x-ray (a solid
         // opacity to mix the authored one from). The base positions are kept so explode 0 is exact.
@@ -6190,11 +6235,14 @@ function bindWireBuffers(payload, buffer) {
         Object.values(geometry.attributes || {}).forEach((spec) => {
             if (!spec || !Number.isInteger(spec.buffer)) return;
             spec.array = view(spec.buffer);
+            // Kept so a drawable whose other arrays are unchanged can be updated in place.
+            if (table.entries[spec.buffer].hash) spec.hash = table.entries[spec.buffer].hash;
             delete spec.buffer;
         });
         const index = geometry.index;
         if (index && Number.isInteger(index.buffer)) {
             index.array = view(index.buffer);
+            if (table.entries[index.buffer].hash) index.hash = table.entries[index.buffer].hash;
             delete index.buffer;
         }
     };
@@ -6295,7 +6343,45 @@ function wireCompactQueue(state, queue) {
     const abandoned = dropped.some((m) => m && m.type === 'three/geometry');
     return {state: abandoned ? wireAbandon(state) : state, queue: queue.slice(from)};
 }
+/**
+ * Which of a description's buffers a viewer already holds, by content hash: `{reuse: Map(index ->
+ * typed array), missing: [index, ...]}`. [held] maps a hash to an array from an earlier message.
+ */
+function wireReusable(table, held) {
+    const reuse = new Map(), missing = [];
+    (table.entries || []).forEach((entry, i) => {
+        const old = entry.hash && held ? held.get(entry.hash) : null;
+        if (old && old.length === entry.count && old.constructor.name === entry.type) reuse.set(i, old);
+        else missing.push(i);
+    });
+    return {reuse, missing};
+}
+
+/**
+ * The whole buffer table rebuilt from arrays already held ([reuse]) and a `/three-buffers?only=`
+ * response holding the [missing] ones, each padded to eight bytes from its start.
+ */
+function wireAssemble(table, reuse, missing, partial) {
+    const full = new ArrayBuffer(table.bytes);
+    reuse.forEach((array, i) => {
+        const entry = table.entries[i];
+        new WIRE_BUFFER_TYPES[entry.type](full, entry.offset, entry.count).set(array);
+    });
+    let at = 0;
+    missing.forEach((i) => {
+        const entry = table.entries[i], Ctor = WIRE_BUFFER_TYPES[entry.type];
+        at = Math.ceil(at / 8) * 8;
+        new Ctor(full, entry.offset, entry.count).set(new Ctor(partial, at, entry.count));
+        at += entry.count * Ctor.BYTES_PER_ELEMENT;
+    });
+    return full;
+}
 // [viewer-region wire-payload] END
+
+/** The arrays of the last geometry drawn, by content hash, for the next message to reuse. */
+let wireHeldArrays = new Map();
+/** What the last geometry message cost: bytes fetched, buffers reused, and milliseconds to apply. */
+window.fieldThreeWireStats = {messages: 0, fetchedBytes: 0, reusedBuffers: 0, applyMs: 0, inPlace: false};
 
 let wireState = null;
 
@@ -6336,10 +6422,15 @@ async function wirePump() {
                     const controller = new AbortController();
                     wireInbox.fetching = controller;
                     let bytes = null;
+                    const table = message.buffers;
+                    // `fieldThreeWireReuse = false` (set from a debugger) measures the old path: fetch and rebuild everything.
+                    const {reuse, missing} = wireReusable(table, window.fieldThreeWireReuse === false ? null : wireHeldArrays);
                     try {
-                        const response = await fetch(wireBufferUrl(message), {signal: controller.signal});
+                        const url = wireBufferUrl(message) + (reuse.size ? '&only=' + missing.join(',') : '');
+                        const response = missing.length || !reuse.size ? await fetch(url, {signal: controller.signal}) : null;
                         // 404: superseded, and the description that replaced it is on its way.
-                        if (response.ok) bytes = await response.arrayBuffer();
+                        if (!response) bytes = new ArrayBuffer(0);
+                        else if (response.ok) bytes = await response.arrayBuffer();
                         else if (response.status !== 404) throw new Error(`geometry buffers: HTTP ${response.status}`);
                     } catch (error) {
                         if (!controller.signal.aborted) wireFailed(error);
@@ -6347,11 +6438,21 @@ async function wirePump() {
                         wireInbox.fetching = null;
                     }
                     if (!bytes) { wireState = wireAbandon(wireState); continue; }
-                    bindWireBuffers(message, bytes);
+                    window.fieldThreeWireStats.fetchedBytes = bytes.byteLength;
+                    window.fieldThreeWireStats.reusedBuffers = reuse.size;
+                    const full = reuse.size ? wireAssemble(table, reuse, missing, bytes) : bytes;
+                    const entries = table.entries || [];
+                    bindWireBuffers(message, full);
+                    wireHeldArrays = new Map(entries.filter((e) => e.hash).map((e) => [e.hash, new WIRE_BUFFER_TYPES[e.type](full, e.offset, e.count)]));
                 }
                 const received = receiveWireMessage(wireState, message);
                 wireState = received.state;
-                if (received.draw) applyGeometry(received.draw);
+                if (received.draw) {
+                    const began = performance.now();
+                    applyGeometry(received.draw);
+                    window.fieldThreeWireStats.applyMs = performance.now() - began;
+                    window.fieldThreeWireStats.messages += 1;
+                }
             } catch (error) {
                 console.error('three viewer: could not apply a message', error);
                 wireFailed(error);

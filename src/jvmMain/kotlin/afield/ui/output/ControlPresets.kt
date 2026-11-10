@@ -46,10 +46,11 @@ private val valueControlTypes = setOf("slider", "vec2", "color", "checkbox", "st
  * Applies [changes] (control key -> new record, or null to leave it) to [box]'s [channel] controls,
  * shows them, and calls each changed control's callback as if a person had moved it. Only the
  * in-memory rerun cache moves: a knob or a replay makes many changes a second. Returns the keys changed.
+ *
+ * @param always run the callback even when the control already shows the value; see [Box.setControl].
  */
 internal fun applyControlChanges(
     box: Box, channel: String, changes: Map<String, (ControllerControl) -> ControllerControl?>,
-    /** Run the callback even when the control already shows the value; see [Box.setControl]. */
     always: Boolean = false,
 ): List<String> {
     val changed = mutableListOf<String>()
@@ -69,7 +70,7 @@ internal fun applyControlChanges(
     return changed
 }
 
-private fun invokeControlCallback(control: ControllerControl) {
+private fun invokeControlCallback(control: ControllerControl) = ControlCallbackLanes.runNow(controlLane(control.id), control.id) {
     runCatching {
         when (control.type) {
             "slider" -> control.value?.let { getSliderCallback(control.id)?.invoke(it) }
