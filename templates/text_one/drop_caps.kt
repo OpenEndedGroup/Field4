@@ -2,7 +2,7 @@ import afield.graphics.scene.reading.*
 import afield.graphics.text.*
 
 // Authored line breaks are part of the poem. The first three lines sit beside the initial;
-// the fourth returns to the paragraph's left margin. Everything is one measured Slug run.
+// the fourth returns to the paragraph's left margin. Everything is one measured run, with bounded Slug atlases for its render parts.
 val body = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
 val graph = readingDiagram {
     val paragraph = text("paragraph",
@@ -11,6 +11,7 @@ val graph = readingDiagram {
     ) {
         font = body
         scale = .65f
+        blurCapacity = .8f // reserve body-em Gaussian range before Drawing builds its caches
         dropCap(lines = 3, gapEm = .2f) {
             font = body
             weight = 600.0
@@ -42,3 +43,9 @@ prop<ReadingExample>(exampleEight) = ReadingExample(
     "An ink-fitted three-line initial, body text returning to the left margin, and an elastic connection anchored to the initial itself.",
     player,
 )
+
+controlGroup("drop-cap paragraph") {
+    slider("Paragraph blur (body ems)", initialValue = 0.0, min = 0.0, max = .8) {
+        graph.text("paragraph").blur = it.toFloat()
+    }
+}

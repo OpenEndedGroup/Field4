@@ -1,8 +1,9 @@
 # Drop caps
 
 **8 · A dropped initial** is a paragraph with a three-line initial and an elastic connection
-attached to that initial. It is one Slug text run: the native curve atlas contains the large
-initial and the smaller body together. The usual colour, opacity, blur and pose apply to the
+attached to that initial. It is one logical text run. The renderer packs the large initial and each body line into
+separate Slug atlases to stay within the format’s per-path band-offset limit. All parts share
+the paragraph coordinate system and pose. The usual colour, opacity, blur and pose apply to the
 whole run. Font geometry is prepared once; it is not scaled/rasterized anew every frame.
 
 ```kotlin
@@ -59,4 +60,10 @@ Call `dropCap` while constructing the graph, before preparing the player. Change
 line count, gap or selected characters require rebuilding the player and Drawing, just like
 other font/layout changes. These settings participate in the preparation cache key. Run pose,
 scale, opacity and blur stay live. Independent animation of the initial would require a
-separate text item; the initial here deliberately remains part of its paragraph.
+separate text item; the initial here deliberately remains part of its paragraph. Gaussian blur applies to each
+render part in the same coordinates, retaining the paragraph’s shared opacity and radius.
+
+The example reserves `.8` body ems of blur and has a **Paragraph blur (body ems)** control.
+It blurs the initial and all four body lines together, while the separate italic aside and
+connecting thread remain sharp. Native atlas partitioning does not change the logical blur
+channel; each render part gets the same radius and pose.

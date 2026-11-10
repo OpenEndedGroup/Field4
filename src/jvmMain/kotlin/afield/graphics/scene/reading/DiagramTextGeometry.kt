@@ -249,8 +249,14 @@ internal fun ReadingText.prepareMetrics(start: Int, end: Int): DiagramTextMetric
     }
     // A dropped initial has its own lower baseline on line zero. Prefer the body's baseline
     // when a selection also contains body glyphs; an initial-only span keeps its real baseline.
-    val firstY = glyphs.filter { it.lineIndex == glyphs.first().lineIndex }.minOf { it.origin.y + it.offset.y }
-    val lastY = glyphs.filter { it.lineIndex == glyphs.last().lineIndex }.minOf { it.origin.y + it.offset.y }
+    fun lineBaseline(index: Int): Float {
+        val row = glyphs.filter { it.lineIndex == index }
+        val baseline = l.lines[index].baselineY.toFloat()
+        return if (row.any { abs(it.origin.y + it.offset.y - baseline) < 1e-4f }) baseline
+        else row.minOf { it.origin.y + it.offset.y }
+    }
+    val firstY = lineBaseline(glyphs.first().lineIndex)
+    val lastY = lineBaseline(glyphs.last().lineIndex)
     val baseline = -firstY
     val lastBaseline = -lastY
     val bodies = ArrayList<DiagramTextRect>()
