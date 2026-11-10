@@ -1927,7 +1927,8 @@ val strip = ArrayList<Pair<String, Img>>()
 var views: List<Pair<String, Img>> = []
 for (s in 1..30) {
     tree.step()
-    if (s in seasons) strip.add("season " + s + ": " + tree.nodeCount + " metamers" to tree.render(TreeView.STRUCTURE, 3))
+    if (s in seasons)
+        strip.add("season " + s + ": " + tree.nodeCount + " metamers" to tree.render(TreeView.STRUCTURE, 3))
     if (s == 20) {
         views = [
             "season 20: bud light" to tree.render(TreeView.LIGHT, 3),
@@ -1940,9 +1941,18 @@ println(tree)
 println("a tree (one root, n-1 edges, acyclic): " + tree.isTree())
 
 // Borchert-Honda only ever splits, so what reaches the buds is what the root was given.
-println("worst resource conservation error over 30 seasons: " + "%.1e".format(tree.history.maxOf { it.conservationError }))
+println(
+    "worst resource conservation error over 30 seasons: " + "%.1e".format(tree.history.maxOf { it.conservationError }),
+)
 val last = tree.history.last()
-println("season 30: " + last.buds + " buds read " + last.baseLight.f6 + " units of light; root gets " + last.baseResource.f6)
+println(
+    "season 30: " +
+        last.buds +
+        " buds read " +
+        last.baseLight.f6 +
+        " units of light; root gets " +
+        last.baseResource.f6,
+)
 
 // Apical control: the same seed, four values of lambda.
 val lambdas = [0.44, 0.5, 0.56, 0.62]
@@ -1951,8 +1961,15 @@ val crowns = lambdas.map { lam ->
     val xs = (0 until t.nodeCount).map { t.x(it) }
     val ys = (0 until t.nodeCount).map { t.y(it) }
     println(
-        "λ = " + lam + ": " + t.nodeCount + " metamers, crown " + "%.0f".format(xs.max() - xs.min()) + " wide, " +
-            "%.0f".format(ys.max() - ys.min()) + " tall",
+        "λ = " +
+            lam +
+            ": " +
+            t.nodeCount +
+            " metamers, crown " +
+            (xs.max() - xs.min()).f0 +
+            " wide, " +
+            (ys.max() - ys.min()).f0 +
+            " tall",
     )
     "lambda = " + lam to t.render(TreeView.STRUCTURE, 3)
 }
