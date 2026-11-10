@@ -1891,10 +1891,10 @@ comes from buds competing for that light. Chema Guerra's
 method; this is a 2-D version of it in
 [`alife_tree_growth.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/simulation/agents/alife_tree_growth.kt).
 
-One season of [`TreeGrowth.step()`](reference/simulation.md#alife-tree-growth-kt--treegrowth) does five things:
+One season of [`TreeGrowth.step()`](reference/simulation.md#alife-tree-growth-kt-treegrowth) does five things:
 
 1. **Shadow.** Every bud adds shadow to a wedge of grid cells below it, widening by one cell per row
-   and halving roughly every row and a half ([`ShadowGrid`](reference/simulation.md#alife-tree-growth-kt--shadowgrid)).
+   and halving roughly every row and a half ([`ShadowGrid`](reference/simulation.md#alife-tree-growth-kt-shadowgrid)).
    Shadows add up, so the inside of the crown goes dark.
 2. **Light.** A bud reads `Q = 1 − (shadow from everyone else)`, clamped to `0 .. 1`.
 3. **Light flows down.** `Q` is summed from the tips to the root, so every branch knows how much light
