@@ -20,13 +20,16 @@ lower arm is halfway along the forearm, a lower leg halfway along the shin. The 
 the head pose. Image coordinates become a y-up world measured in frame heights, not metres.
 
 The query is the right wrist, as in the live page's overlay, measured against limb cylinders 0.03
-frame heights thick and a head sphere of 0.07. Every 30th frame is drawn as a figure, left to right,
-with a pink line from the wrist to the closest point the geometry found. Below it is the signed
-distance over the whole clip.
+frame heights thick and a head sphere of 0.07. `videoFrames` decodes the clip with ffmpeg, and
+`drawFLines` draws onto every 30th frame: mediapipe's own skeleton in thin white, the eight body
+slots and their connections in green, and the right wrist in pink, with a line to the closest point
+the geometry found. Below the stills is the signed distance over the whole clip.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_tracked_body/measured.png" wait="3" capture="box" open-outputs="true" w="1180" h="640" padding="18" timeout="120" name="chain-tracked-body-measured" embed=true alt="Eleven green stick figures in a row, a woman on a swing every 1.2 seconds, with a pink dot at each right wrist joined to the nearest point of her body; below, a jagged pink curve of the wrist's distance to the body across the clip; below that, a summary of frames and distances"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_tracked_body/measured.png" scale="1.5" wait="3" capture="box" open-outputs="true" w="1180" h="640" padding="18" timeout="120" name="chain-tracked-body-measured" embed=true alt="Ten stills from the swing film, two rows of five, each labelled with its frame and time: a woman in a patterned dress holding the swing ropes at shoulder height, with a thin white mediapipe skeleton, green body slots and connections, and a pink dot on her right wrist joined to the nearest point of her body; below, a jagged pink curve of the wrist distance across the clip; below that, a summary of frames and distances"}
 import afield.graphics.scene.body.*
 import afield.graphics.vulkan.targets.OpenXRHmdTarget.*
+import afield.media.image.*
+import afield.media.video.*
 import java.io.File
 import kotlinx.serialization.json.*
 
@@ -70,35 +73,57 @@ val hits =
         frames[i]?.let { geometry[i]!!.closestPoint(world(it[16]), limbRadius = limb, headRadius = headR) }
     }
 
-val strip = mutableListOf<FLine>()
-val step = 30 // one figure every 1.2 s
-for (i in frames.indices step step) {
-    val g = geometry[i] ?: continue
-    val dx = i / step * 0.6f
-    fun xy(p: Vector3f) = vec((p.x + dx) * 200.0, -p.y * 200.0)
-    for ((a, b) in BodyGeometry.CONNECTIONS) {
-        val p = g.joints[a] ?: continue
-        val q = g.joints[b] ?: continue
-        strip +=
-            FLine().moveTo(xy(p)).lineTo(xy(q)).apply {
-                thickness = 2.0
-                color = vec(.55, .85, .6, 1.0)
-            }
-    }
-    val hit = hits[i]!!
-    val wrist = world(frames[i]!![16])
-    strip +=
-        FLine().moveTo(xy(wrist)).lineTo(xy(hit.point)).apply {
-            thickness = 1.5
-            color = vec(1.0, .4, .7, 1.0)
-        }
-    strip +=
-        FLine().circle(xy(wrist).x, xy(wrist).y, 3.0).apply {
-            filled = true
-            color = vec(1.0, .4, .7, 1.0)
-        }
+// The film itself, decoded by ffmpeg: every frame, in the order the detector saw them.
+val clip = "python/fieldcv/samples/ballet_mecanique_swing.mp4"
+val step = 30 // one still every 1.2 s
+val shown = frames.indices.filter { it % step == 0 && frames[it] != null }
+val stills = videoFrames(clip, width = 320).withIndex().filter { it.index in shown }.map { it.value }.toList()
+
+// Back from the world to the still's pixels; depth is dropped.
+fun px(p: Vector3f, img: Img) = vec((p.x / aspect + .5) * img.width, (1 - p.y) * img.height.toDouble())
+fun seg(a: Vec2, b: Vec2, c: Vec4, t: Double) = FLine().moveTo(a).lineTo(b).apply {
+    thickness = t
+    color = c
 }
-lines(strip, channel = "strip", w = 1100.0, h = 260.0, fitToSize = true)
+fun dot(a: Vec2, r: Double, c: Vec4) = FLine().circle(a.x, a.y, r).apply {
+    filled = true
+    color = c
+}
+val white = vec(1.0, 1.0, 1.0, .45)
+val green = vec(.45, 1.0, .55, 1.0)
+val pink = vec(1.0, .35, .7, 1.0)
+// mediapipe's own skeleton, thin: arms, shoulders, hips, legs.
+val bones = [
+    11 to 13,
+    13 to 15,
+    12 to 14,
+    14 to 16,
+    11 to 12,
+    23 to 24,
+    11 to 23,
+    12 to 24,
+    23 to 25,
+    25 to 27,
+    27 to 31,
+    24 to 26,
+    26 to 28,
+    28 to 32,
+]
+
+val panels =
+    shown.zip(stills).map { (i, img) ->
+        val pose = frames[i]!!
+        val g = geometry[i]!!
+        val over = mutableListOf<FLine>()
+        for ((a, b) in bones) over += seg(px(world(pose[a]), img), px(world(pose[b]), img), white, 1.5)
+        for ((a, b) in BodyGeometry.CONNECTIONS) over += seg(px(g.joints[a]!!, img), px(g.joints[b]!!, img), green, 3.0)
+        for (p in g.joints.values) over += dot(px(p, img), 3.0, green)
+        val wrist = px(world(pose[16]), img)
+        over += seg(wrist, px(hits[i]!!.point, img), pink, 2.5)
+        over += dot(wrist, 4.5, pink)
+        "frame $i, ${(i / 25.0).f1} s" to img.drawFLines(over, scale = 2.0)
+    }
+showImgGrid(*panels.toTypedArray(), channel = "stills", columns = 5, cellSide = 300)
 
 val curve = FLine().apply {
     thickness = 1.5
@@ -126,7 +151,9 @@ display(
 )
 ```
 
-The clip opens with no body in frame, so the curve starts where the detector first finds one.
+The clip opens with no body in frame, so the curve starts where the detector first finds one. The
+film frames her from the waist up, so the hips, legs and feet are mediapipe's guesses below the
+bottom edge: the slots are filled all the same, and `BodyGeometry` has no way to know.
 For 71 of the 308 frames the nearest thing to the wrist is the head sphere: she holds the swing's
 ropes, so her hands are up beside her head. The wrist is never inside the body. Its distance stays
 at least 0.103 frame heights, partly because a lower-arm slot sits mid-forearm, so the wrist is
@@ -215,6 +242,15 @@ showPatAudio(
     channel = "audio",
 )
 ```
+
+Here it is, rendered offline to a `.wav` from the same recording:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_tracked_body/right-wrist.wav" audio-spec="right-wrist" audio-renderer="afield.audio.synth.TrackedBodyDocs" embed=true hidden=true name="chain-tracked-body-audio"}
+// TrackedBodyDocs repeats the heard box's steps and renders one cycle at the clip's speed.
+```
+
+The rests at the start are the frames with no body. The louder notes are the frames where her head,
+not a limb, is the nearest part of her body to the wrist.
 
 ## What is not here yet
 

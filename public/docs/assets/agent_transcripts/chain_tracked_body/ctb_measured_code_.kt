@@ -1,5 +1,7 @@
 import afield.graphics.scene.body.*
 import afield.graphics.vulkan.targets.OpenXRHmdTarget.*
+import afield.media.image.*
+import afield.media.video.*
 import java.io.File
 import kotlinx.serialization.json.*
 
@@ -43,35 +45,57 @@ val hits =
         frames[i]?.let { geometry[i]!!.closestPoint(world(it[16]), limbRadius = limb, headRadius = headR) }
     }
 
-val strip = mutableListOf<FLine>()
-val step = 30 // one figure every 1.2 s
-for (i in frames.indices step step) {
-    val g = geometry[i] ?: continue
-    val dx = i / step * 0.6f
-    fun xy(p: Vector3f) = vec((p.x + dx) * 200.0, -p.y * 200.0)
-    for ((a, b) in BodyGeometry.CONNECTIONS) {
-        val p = g.joints[a] ?: continue
-        val q = g.joints[b] ?: continue
-        strip +=
-            FLine().moveTo(xy(p)).lineTo(xy(q)).apply {
-                thickness = 2.0
-                color = vec(.55, .85, .6, 1.0)
-            }
-    }
-    val hit = hits[i]!!
-    val wrist = world(frames[i]!![16])
-    strip +=
-        FLine().moveTo(xy(wrist)).lineTo(xy(hit.point)).apply {
-            thickness = 1.5
-            color = vec(1.0, .4, .7, 1.0)
-        }
-    strip +=
-        FLine().circle(xy(wrist).x, xy(wrist).y, 3.0).apply {
-            filled = true
-            color = vec(1.0, .4, .7, 1.0)
-        }
+// The film itself, decoded by ffmpeg: every frame, in the order the detector saw them.
+val clip = "python/fieldcv/samples/ballet_mecanique_swing.mp4"
+val step = 30 // one still every 1.2 s
+val shown = frames.indices.filter { it % step == 0 && frames[it] != null }
+val stills = videoFrames(clip, width = 320).withIndex().filter { it.index in shown }.map { it.value }.toList()
+
+// Back from the world to the still's pixels; depth is dropped.
+fun px(p: Vector3f, img: Img) = vec((p.x / aspect + .5) * img.width, (1 - p.y) * img.height.toDouble())
+fun seg(a: Vec2, b: Vec2, c: Vec4, t: Double) = FLine().moveTo(a).lineTo(b).apply {
+    thickness = t
+    color = c
 }
-lines(strip, channel = "strip", w = 1100.0, h = 260.0, fitToSize = true)
+fun dot(a: Vec2, r: Double, c: Vec4) = FLine().circle(a.x, a.y, r).apply {
+    filled = true
+    color = c
+}
+val white = vec(1.0, 1.0, 1.0, .45)
+val green = vec(.45, 1.0, .55, 1.0)
+val pink = vec(1.0, .35, .7, 1.0)
+// mediapipe's own skeleton, thin: arms, shoulders, hips, legs.
+val bones = [
+    11 to 13,
+    13 to 15,
+    12 to 14,
+    14 to 16,
+    11 to 12,
+    23 to 24,
+    11 to 23,
+    12 to 24,
+    23 to 25,
+    25 to 27,
+    27 to 31,
+    24 to 26,
+    26 to 28,
+    28 to 32,
+]
+
+val panels =
+    shown.zip(stills).map { (i, img) ->
+        val pose = frames[i]!!
+        val g = geometry[i]!!
+        val over = mutableListOf<FLine>()
+        for ((a, b) in bones) over += seg(px(world(pose[a]), img), px(world(pose[b]), img), white, 1.5)
+        for ((a, b) in BodyGeometry.CONNECTIONS) over += seg(px(g.joints[a]!!, img), px(g.joints[b]!!, img), green, 3.0)
+        for (p in g.joints.values) over += dot(px(p, img), 3.0, green)
+        val wrist = px(world(pose[16]), img)
+        over += seg(wrist, px(hits[i]!!.point, img), pink, 2.5)
+        over += dot(wrist, 4.5, pink)
+        "frame $i, ${(i / 25.0).f1} s" to img.drawFLines(over, scale = 2.0)
+    }
+showImgGrid(*panels.toTypedArray(), channel = "stills", columns = 5, cellSide = 300)
 
 val curve = FLine().apply {
     thickness = 1.5
