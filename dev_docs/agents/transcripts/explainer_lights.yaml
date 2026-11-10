@@ -42,8 +42,14 @@ operations:
 
           draw()
           controlGroup {
-              slider("position", -1.2, 1.2, initialValue = across) { across = it; draw() }
-              slider("size", 0.05, 1.5, initialValue = size) { size = it; draw() }
+              slider("position", -1.2, 1.2, initialValue = across) {
+                  across = it
+                  draw()
+              }
+              slider("size", 0.05, 1.5, initialValue = size) {
+                  size = it
+                  draw()
+              }
           }
   - create:
       box: el_sphere_light
@@ -262,10 +268,11 @@ operations:
                       color = if (hit) vec(0.4, 0.9, 1.0, 1.0) else vec(1.0, 1.0, 1.0, 0.12)
                   }
               }
-              val patch = planeMesh(1, 1, 0.5, 0.5)
-                  .rotated(Quat().rotateY((-PI / 2).toFloat()))
-                  .translated(distance, 0.0, 0.0)
-                  .withColor(1.0, 0.6, 0.2)
+              val patch =
+                  planeMesh(1, 1, 0.5, 0.5)
+                      .rotated(Quat().rotateY((-PI / 2).toFloat()))
+                      .translated(distance, 0.0, 0.0)
+                      .withColor(1.0, 0.6, 0.2)
               three(channel = "scene", width = 640, height = 380) {
                   lines(rays)
                   mesh(patch, unlit = true, wireframe = false, cullBackFaces = false)
@@ -394,8 +401,14 @@ operations:
 
           draw()
           controlGroup {
-              slider("angle", 0.0, 360.0, step = 1.0, initialValue = degrees) { degrees = it; draw() }
-              slider("radius", 40.0, 120.0, step = 1.0, initialValue = radius) { radius = it; draw() }
+              slider("angle", 0.0, 360.0, step = 1.0, initialValue = degrees) {
+                  degrees = it
+                  draw()
+              }
+              slider("radius", 40.0, 120.0, step = 1.0, initialValue = radius) {
+                  radius = it
+                  draw()
+              }
           }
   - create:
       box: el_projected_rect
@@ -408,8 +421,16 @@ operations:
           val sphere = icosphereMesh(4, 1.0)
           // Two great circles, so the sphere reads as a sphere without a wireframe in the way.
           val circles = listOf(
-              fline { moveTo(1.0, 0.0, 0.0); for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96)); color = vec(1.0, 1.0, 1.0, 0.35) },
-              fline { moveTo(1.0, 0.0, 0.0); for (k in 1..96) lineTo(cos(2 * PI * k / 96), sin(2 * PI * k / 96), 0.0); color = vec(1.0, 1.0, 1.0, 0.35) },
+              fline {
+                  moveTo(1.0, 0.0, 0.0)
+                  for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96))
+                  color = vec(1.0, 1.0, 1.0, 0.35)
+              },
+              fline {
+                  moveTo(1.0, 0.0, 0.0)
+                  for (k in 1..96) lineTo(cos(2 * PI * k / 96), sin(2 * PI * k / 96), 0.0)
+                  color = vec(1.0, 1.0, 1.0, 0.35)
+              },
           )
 
           fun draw(distance: Double) {
@@ -419,9 +440,14 @@ operations:
               var omega = 0.0
               for (t in 0 until shadow.triangleCount) omega += shadow.triangleArea(t)
               // From the eye through each corner of the patch to the panel's corner.
-              val corners = listOf(-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4).map { (x, y) ->
-                  fline { moveTo(0.0, 0.0, 0.0); lineTo(x, y, -distance); color = vec(1.0, 1.0, 1.0, 0.35) }
-              }
+              val corners =
+                  listOf(-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4).map { (x, y) ->
+                      fline {
+                          moveTo(0.0, 0.0, 0.0)
+                          lineTo(x, y, -distance)
+                          color = vec(1.0, 1.0, 1.0, 0.35)
+                      }
+                  }
               three(channel = "scene", width = 640, height = 420) {
                   mesh(sphere.withColor(0.4, 0.45, 0.5), opacity = 0.1, wireframe = false)
                   lines(circles + corners)
@@ -448,12 +474,21 @@ operations:
         code: |
           import afield.graphics.lighting.*
 
-          // What one point on the floor sees: a hemisphere of directions. The lamp, pushed onto that
-          // hemisphere (orange) and then flattened straight down onto the disc beneath (cyan). The share of
-          // the disc the flattened lamp covers is the share of the lamp's radiance that reaches the point.
-          val dome = icosphereMesh(4, 1.0).let { ball -> ball.filterTriangles { t -> ball.triangle(t).let { (a, b, c) -> a.y + b.y + c.y > 0 } } }
+          /*
+          What one point on the floor sees: a hemisphere of directions. The lamp, pushed onto that
+          hemisphere (orange) and then flattened straight down onto the disc beneath (cyan). The share of
+          the disc the flattened lamp covers is the share of the lamp's radiance that reaches the point.
+          */
+          val dome =
+              icosphereMesh(4, 1.0).let { ball ->
+                  ball.filterTriangles { t -> ball.triangle(t).let { (a, b, c) -> a.y + b.y + c.y > 0 } }
+              }
           val floor = floorMesh(2.6, 2.6, divisions = 48)
-          val rim = fline { moveTo(1.0, 0.0, 0.0); for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96)); color = vec(1.0, 1.0, 1.0, 0.4) }
+          val rim = fline {
+              moveTo(1.0, 0.0, 0.0)
+              for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96))
+              color = vec(1.0, 1.0, 1.0, 0.4)
+          }
           val side = 1.0
 
           fun draw(across: Double) {
@@ -467,9 +502,14 @@ operations:
               // radiance times the flattened area it covers.
               val radiance = lamp.power / (PI * side * side)
               val e = irradianceAt(vec(0.0, 0.0, 0.0), vec(0.0, 1.0, 0.0), lamp).x
-              val sight = listOf(-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5).map { (x, z) ->
-                  fline { moveTo(0.0, 0.0, 0.0); lineTo(across + x, 1.2, z); color = vec(1.0, 1.0, 1.0, 0.3) }
-              }
+              val sight =
+                  listOf(-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5).map { (x, z) ->
+                      fline {
+                          moveTo(0.0, 0.0, 0.0)
+                          lineTo(across + x, 1.2, z)
+                          color = vec(1.0, 1.0, 1.0, 0.3)
+                      }
+                  }
               three(channel = "scene", width = 640, height = 420) {
                   mesh(floor.lit(listOf(lamp), occluders = null, exposure = 0.35), unlit = true, wireframe = false)
                   mesh(dome.withColor(0.4, 0.45, 0.5), opacity = 0.12, wireframe = false, cullBackFaces = false)
@@ -591,7 +631,10 @@ operations:
               }
               lines(drawn, channel = "side", w = 640.0, h = 280.0, framing = LinesFraming.fixed(0.0, 0.0, 640.0, 280.0))
               val c = cos(v)
-              markdown("readout", "${degrees.roundToInt()}°: ${(c * 100).roundToInt()} % of the power, ${(c * 100).roundToInt()} % of the width")
+              markdown(
+                  "readout",
+                  "${degrees.roundToInt()}°: ${(c * 100).roundToInt()} % of the power, ${(c * 100).roundToInt()} % of the width",
+              )
           }
 
           draw(0.0)
@@ -654,8 +697,14 @@ operations:
 
           draw()
           controlGroup {
-              slider("roughness", 0.0, 1.0, step = 0.01, initialValue = roughness) { roughness = it; draw() }
-              slider("light angle", 0.0, 70.0, step = 1.0, initialValue = angle) { angle = it; draw() }
+              slider("roughness", 0.0, 1.0, step = 0.01, initialValue = roughness) {
+                  roughness = it
+                  draw()
+              }
+              slider("light angle", 0.0, 70.0, step = 1.0, initialValue = angle) {
+                  angle = it
+                  draw()
+              }
           }
   - create:
       box: el_soft_shadow
@@ -665,9 +714,11 @@ operations:
         code: |
           import afield.graphics.lighting.*
 
-          // A black wall on a white floor, lit by a ball of light. The ball always gives out 40 W;
-          // make it bigger and the edge of the shadow softens.
-          // The wall's faces sit on the floor's grid lines, so no floor vertex is half under it.
+          /*
+          A black wall on a white floor, lit by a ball of light. The ball always gives out 40 W;
+          make it bigger and the edge of the shadow softens.
+          The wall's faces sit on the floor's grid lines, so no floor vertex is half under it.
+          */
           val floor = floorMesh(4.0, 3.2, divisions = 80).withColor(0.8, 0.8, 0.8)
           val wall = panelBoxMesh(0.05, 0.6, 1.2, divisions = 4).translated(0.025, 0.3, 0.0).withColor(0.03, 0.03, 0.03)
           val blocker = wall.bvh()
@@ -708,14 +759,26 @@ operations:
                   background("#000000")
                   hud(false)
               }
-              markdown("readout", "The orange point sees ${(100.0 * sight.count { it.clear } / sight.size.coerceAtLeast(1)).roundToInt()} % of the lamp")
+              markdown(
+                  "readout",
+                  "The orange point sees ${(100.0 * sight.count { it.clear } / sight.size.coerceAtLeast(1)).roundToInt()} % of the lamp",
+              )
           }
 
           draw()
           controlGroup {
-              slider("size", 0.02, 0.5, step = 0.01, initialValue = size) { size = it; draw() }
-              slider("altitude", 15.0, 85.0, step = 1.0, initialValue = altitude) { altitude = it; draw() }
-              slider("point", -1.5, 1.8, step = 0.01, initialValue = probe) { probe = it; draw() }
+              slider("size", 0.02, 0.5, step = 0.01, initialValue = size) {
+                  size = it
+                  draw()
+              }
+              slider("altitude", 15.0, 85.0, step = 1.0, initialValue = altitude) {
+                  altitude = it
+                  draw()
+              }
+              slider("point", -1.5, 1.8, step = 0.01, initialValue = probe) {
+                  probe = it
+                  draw()
+              }
           }
   - create:
       box: el_light_colour
@@ -728,16 +791,29 @@ operations:
           // Nine tiles of different colours under one lamp whose colour you pick. A tile can only send
           // back the colours the lamp gives it.
           val colours = listOf(
-              vec(0.8, 0.8, 0.8), vec(0.8, 0.1, 0.1), vec(0.1, 0.7, 0.1),
-              vec(0.1, 0.2, 0.8), vec(0.8, 0.7, 0.1), vec(0.1, 0.7, 0.7),
-              vec(0.7, 0.1, 0.7), vec(0.8, 0.4, 0.1), vec(0.3, 0.3, 0.3),
+              vec(0.8, 0.8, 0.8),
+              vec(0.8, 0.1, 0.1),
+              vec(0.1, 0.7, 0.1),
+              vec(0.1, 0.2, 0.8),
+              vec(0.8, 0.7, 0.1),
+              vec(0.1, 0.7, 0.7),
+              vec(0.7, 0.1, 0.7),
+              vec(0.8, 0.4, 0.1),
+              vec(0.3, 0.3, 0.3),
           )
-          val tiles = colours.withIndex().map { (i, c) ->
-              floorMesh(0.5, 0.5, divisions = 8).translated((i % 3 - 1) * 0.6, 0.0, (i / 3 - 1) * 0.6).withColor(c.x, c.y, c.z)
-          }.reduce { a, b -> a + b }
+          val tiles =
+              colours
+                  .withIndex()
+                  .map { (i, c) ->
+                      floorMesh(0.5, 0.5, divisions = 8)
+                          .translated((i % 3 - 1) * 0.6, 0.0, (i / 3 - 1) * 0.6)
+                          .withColor(c.x, c.y, c.z)
+                  }
+                  .reduce { a, b -> a + b }
 
           fun draw(light: Vec4) {
-              val lamp = RectLight(vec(0.0, 1.6, 0.0), width = 1.2, height = 1.2, power = 60.0, color = vec(light.x, light.y, light.z))
+              val lamp =
+                  RectLight(vec(0.0, 1.6, 0.0), width = 1.2, height = 1.2, power = 60.0, color = vec(light.x, light.y, light.z))
               three(channel = "scene", width = 640, height = 420) {
                   mesh(tiles.lit(listOf(lamp), occluders = null, exposure = 0.6), unlit = true, wireframe = false)
                   camera(yaw = 0.0, pitch = 60.0, distance = 2.0)
@@ -773,10 +849,17 @@ operations:
                   Triple(red, 90.0, vec(1.0, 0.0, 0.0)),
                   Triple(green, 210.0, vec(0.0, 1.0, 0.0)),
                   Triple(blue, 330.0, vec(0.0, 0.0, 1.0)),
-              ).filter { it.first }.map { (_, degrees, colour) ->
-                  val a = degrees * PI / 180
-                  SphereLight(vec(spread * cos(a), 1.2, spread * sin(a)), radius = 0.04, power = 25.0, color = colour, samples = 128)
-              }
+              ).filter { it.first }
+                  .map { (_, degrees, colour) ->
+                      val a = degrees * PI / 180
+                      SphereLight(
+                          vec(spread * cos(a), 1.2, spread * sin(a)),
+                          radius = 0.04,
+                          power = 25.0,
+                          color = colour,
+                          samples = 128,
+                      )
+                  }
               three(channel = "scene", width = 640, height = 420) {
                   mesh(scene.lit(lamps, occluders = block, exposure = 1.2), unlit = true, wireframe = false)
                   lamps.forEach { mesh(it.mesh(), unlit = true, wireframe = false) }
@@ -788,10 +871,22 @@ operations:
 
           draw()
           controlGroup {
-              checkbox("red", initialValue = true) { red = it; draw() }
-              checkbox("green", initialValue = true) { green = it; draw() }
-              checkbox("blue", initialValue = true) { blue = it; draw() }
-              slider("spread", 0.0, 1.2, step = 0.01, initialValue = spread) { spread = it; draw() }
+              checkbox("red", initialValue = true) {
+                  red = it
+                  draw()
+              }
+              checkbox("green", initialValue = true) {
+                  green = it
+                  draw()
+              }
+              checkbox("blue", initialValue = true) {
+                  blue = it
+                  draw()
+              }
+              slider("spread", 0.0, 1.2, step = 0.01, initialValue = spread) {
+                  spread = it
+                  draw()
+              }
           }
   - create:
       box: el_red_wall
@@ -801,9 +896,11 @@ operations:
         code: |
           import afield.graphics.lighting.*
 
-          // A white floor beside a red wall, lit by one small lamp close to the wall, so the wall is lit
-          // far more brightly than the floor. The solve follows the light through three bounces once,
-          // when the box runs; the sliders only choose what to show.
+          /*
+          A white floor beside a red wall, lit by one small lamp close to the wall, so the wall is lit
+          far more brightly than the floor. The solve follows the light through three bounces once,
+          when the box runs; the sliders only choose what to show.
+          */
           val floor = floorMesh(2.4, 2.4, divisions = 24).withColor(0.8, 0.8, 0.8)
           val wall = panelBoxMesh(2.4, 1.4, 0.05, divisions = 16).translated(0.0, 0.7, -1.225).withColor(0.9, 0.06, 0.03)
           val lamp = SphereLight(vec(0.0, 0.9, -0.8), radius = 0.06, power = 1.0)
@@ -814,8 +911,13 @@ operations:
           var bounceOnly = false
 
           fun draw() {
-              val shown = solve.lit(upTo = bounces.toInt(), from = if (bounceOnly) 1 else 0,
-                  exposure = if (bounceOnly) 2.0 else 0.6, scale = power, toneMap = ToneMap.EXPONENTIAL)
+              val shown = solve.lit(
+                  upTo = bounces.toInt(),
+                  from = if (bounceOnly) 1 else 0,
+                  exposure = if (bounceOnly) 2.0 else 0.6,
+                  scale = power,
+                  toneMap = ToneMap.EXPONENTIAL,
+              )
               three(channel = "scene", width = 640, height = 420) {
                   mesh(shown, unlit = true, wireframe = false)
                   mesh(lamp.mesh(), unlit = true, wireframe = false)
@@ -827,9 +929,18 @@ operations:
 
           draw()
           controlGroup {
-              slider("power", 5.0, 60.0, step = 1.0, initialValue = power) { power = it; draw() }
-              slider("bounces", 0.0, 3.0, step = 1.0, initialValue = bounces) { bounces = it; draw() }
-              checkbox("bounced light only") { bounceOnly = it; draw() }
+              slider("power", 5.0, 60.0, step = 1.0, initialValue = power) {
+                  power = it
+                  draw()
+              }
+              slider("bounces", 0.0, 3.0, step = 1.0, initialValue = bounces) {
+                  bounces = it
+                  draw()
+              }
+              checkbox("bounced light only") {
+                  bounceOnly = it
+                  draw()
+              }
           }
   - create:
       box: el_sky_sphere
@@ -839,9 +950,11 @@ operations:
         code: |
           import afield.graphics.lighting.*
 
-          // A floor under a dome of small lamps, all of them together giving out 400 W, and a black tile
-          // held above the floor. With one lamp the tile casts a hard shadow; with hundreds the light comes
-          // from the whole sky and only the ground right under the tile stays dark.
+          /*
+          A floor under a dome of small lamps, all of them together giving out 400 W, and a black tile
+          held above the floor. With one lamp the tile casts a hard shadow; with hundreds the light comes
+          from the whole sky and only the ground right under the tile stays dark.
+          */
           val floor = floorMesh(3.0, 3.0, divisions = 60).withColor(0.8, 0.8, 0.8)
           val golden = PI * (3 - sqrt(5.0))
           val dot = icosphereMesh(1, 0.03).withColor(1.0, 1.0, 1.0)
@@ -872,8 +985,14 @@ operations:
 
           draw()
           controlGroup {
-              slider("lamps", 1.0, 300.0, step = 1.0, initialValue = count, law = ControlLaw.LOGARITHMIC) { count = it; draw() }
-              slider("tile height", 0.05, 0.8, step = 0.01, initialValue = height) { height = it; draw() }
+              slider("lamps", 1.0, 300.0, step = 1.0, initialValue = count, law = ControlLaw.LOGARITHMIC) {
+                  count = it
+                  draw()
+              }
+              slider("tile height", 0.05, 0.8, step = 0.01, initialValue = height) {
+                  height = it
+                  draw()
+              }
           }
   - create:
       box: el_deck
@@ -895,9 +1014,7 @@ operations:
                               reached an eye. This talk builds up how much light lands on a surface,
                               and why one shadow is crisp while another is soft.
 
-                              Slide the lamp across, or change its size. Drag the picture to look around.
-                          """
-                                  .md
+                              Slide the lamp across, or change its size. Drag the picture to look around.""".md
                               p(classes = "muted") {
                                   +"After “Lights and Shadows” by Bartosz Ciechanowski, ciechanow.ski/lights-and-shadows. Words and figures made in Field."
                               }
@@ -905,7 +1022,9 @@ operations:
                       }
                       control("opening_scene", "position", 0.6)
                       control("opening_scene", "size", 0.5)
-                      markdownNote("A lamp, a floor and a block. Every colour on the floor is computed from the physics in this talk. [[next]]")
+                      markdownNote(
+                          "A lamp, a floor and a block. Every colour on the floor is computed from the physics in this talk. [[next]]",
+                      )
                   }
 
                   section("Power") {
@@ -918,9 +1037,7 @@ operations:
                                   A lamp turns electrical power into light, and we measure the light the same way:
                                   in watts, the energy leaving the source each second.
 
-                                  Think of it as rays streaming outward. A stronger lamp sends more of them.
-                              """
-                                      .md
+                                  Think of it as rays streaming outward. A stronger lamp sends more of them.""".md
                               }
                           }
                           control("sphere_light", "power", 10.0)
@@ -935,14 +1052,14 @@ operations:
 
                                   Twice the power does not look twice as bright. Our eyes compress what they
                                   receive, and a screen can only show so much: once a channel is full, every
-                                  brighter value looks the same white.
-                              """
-                                      .md
+                                  brighter value looks the same white.""".md
                               }
                           }
                           control("perceived", "power", 10.0)
                           cue("Past white") { control("perceived", "power", 90.0, glideMs = 2000) }
-                          markdownNote("Next pushes the power to 90 W: past 50 W the screen has nothing brighter to show. [[back]] [[next]]")
+                          markdownNote(
+                              "Next pushes the power to 90 W: past 50 W the screen has nothing brighter to show. [[back]] [[next]]",
+                          )
                       }
                       step("Surfaces pass light on", id = "matte") {
                           audience {
@@ -952,14 +1069,14 @@ operations:
 
                                   Most things do not glow. We see them because they send back part of the light
                                   that reaches them. A matte surface scatters what it returns evenly in every
-                                  direction, so it looks the same from wherever you stand.
-                              """
-                                      .md
+                                  direction, so it looks the same from wherever you stand.""".md
                               }
                           }
                           control("opening_scene", "position", 0.6)
                           control("opening_scene", "size", 0.5)
-                          markdownNote("The opening scene again: drag it round; the floor looks the same from every side. [[back]] [[next]]")
+                          markdownNote(
+                              "The opening scene again: drag it round; the floor looks the same from every side. [[back]] [[next]]",
+                          )
                       }
                   }
 
@@ -972,14 +1089,14 @@ operations:
 
                                   Tilt a beam away from straight down and the same rays spread over more
                                   floor. The light per square metre falls as the cosine of the angle from
-                                  the surface's normal: half at 60°, nothing at 90°.
-                              """
-                                      .md
+                                  the surface's normal: half at 60°, nothing at 90°.""".md
                               }
                           }
                           control("light_angle", "angle", 0.0)
                           cue("Tilt to 60°") { control("light_angle", "angle", 60.0, glideMs = 1800) }
-                          markdownNote("Next tilts the rays to 60°: six of twelve land, and cos 60° is one half. [[back]] [[next]]")
+                          markdownNote(
+                              "Next tilts the rays to 60°: six of twelve land, and cos 60° is one half. [[back]] [[next]]",
+                          )
                       }
                       step("Shape from the cosine", id = "lit-sphere") {
                           audience {
@@ -988,12 +1105,12 @@ operations:
                                   ## Shape from the cosine
 
                                   Every point on a ball faces the lamp at a different angle. The cosine
-                                  alone draws the shading that tells us the ball is round.
-                              """
-                                      .md
+                                  alone draws the shading that tells us the ball is round.""".md
                               }
                           }
-                          markdownNote("Drag the light control round the ball; the dark side always faces away from it. [[back]] [[next]]")
+                          markdownNote(
+                              "Drag the light control round the ball; the dark side always faces away from it. [[back]] [[next]]",
+                          )
                       }
                       step("Farther away", id = "distance") {
                           audience {
@@ -1003,14 +1120,14 @@ operations:
 
                                   Light leaving a point spreads over a sphere, and a sphere's area grows with
                                   the square of its radius. Twice as far, a quarter of the light: the
-                                  inverse-square law.
-                              """
-                                      .md
+                                  inverse-square law.""".md
                               }
                           }
                           control("distance_rays", "distance", 1.0)
                           cue("Twice as far") { control("distance_rays", "distance", 2.0, glideMs = 1800) }
-                          markdownNote("Next moves the patch from 1 m to 2 m: about a quarter as many rays reach it. [[back]] [[next]]")
+                          markdownNote(
+                              "Next moves the patch from 1 m to 2 m: about a quarter as many rays reach it. [[back]] [[next]]",
+                          )
                       }
                       step("A light with a size", id = "rect-light") {
                           audience {
@@ -1019,15 +1136,15 @@ operations:
                                   ## A light with a size
 
                                   A real lamp is not a point. Each small piece of its surface behaves like a
-                                  point light of its own, and the floor adds all of them up.
-                              """
-                                      .md
+                                  point light of its own, and the floor adds all of them up.""".md
                               }
                           }
                           control("opening_scene", "position", 0.6)
                           control("opening_scene", "size", 0.1)
                           cue("A wider lamp") { control("opening_scene", "size", 1.2, glideMs = 2000) }
-                          markdownNote("Next widens the lamp from 10 cm to 1.2 m at the same power: the pool spreads and the shadow softens. [[back]] [[next]]")
+                          markdownNote(
+                              "Next widens the lamp from 10 cm to 1.2 m at the same power: the pool spreads and the shadow softens. [[back]] [[next]]",
+                          )
                       }
                   }
 
@@ -1039,14 +1156,14 @@ operations:
                                   ## How big things look
 
                                   How large something looks is the angle it takes up in front of you. Walk
-                                  away from a car and that angle shrinks, close to one over the distance.
-                              """
-                                      .md
+                                  away from a car and that angle shrinks, close to one over the distance.""".md
                               }
                           }
                           control("car_angle", "distance", 10.0)
                           cue("Twice as far") { control("car_angle", "distance", 20.0, glideMs = 1800) }
-                          markdownNote("Next drives the car from 10 m to 20 m: the angle it spans halves, near enough. [[back]] [[next]]")
+                          markdownNote(
+                              "Next drives the car from 10 m to 20 m: the angle it spans halves, near enough. [[back]] [[next]]",
+                          )
                       }
                       step("Angles as lengths", id = "radians") {
                           audience {
@@ -1056,9 +1173,7 @@ operations:
 
                                   Measure an angle by the arc it cuts from a circle: arc length over radius
                                   is the angle in radians, and a whole turn is 2π. For a small angle the arc
-                                  is nearly straight, so size ≈ angle × distance.
-                              """
-                                      .md
+                                  is nearly straight, so size ≈ angle × distance.""".md
                               }
                           }
                           control("radians", "angle", 60.0)
@@ -1077,14 +1192,14 @@ operations:
 
                                   Project a shape onto a sphere of radius one around your eye. The patch it
                                   covers is its solid angle, in steradians; the whole sphere is 4π. Move a
-                                  panel twice as far and its solid angle drops to a quarter.
-                              """
-                                      .md
+                                  panel twice as far and its solid angle drops to a quarter.""".md
                               }
                           }
                           control("projected_rect", "distance", 1.3)
                           cue("Twice as far") { control("projected_rect", "distance", 2.6, glideMs = 1800) }
-                          markdownNote("Next moves the panel from 1.3 m to 2.6 m: a quarter of the solid angle, while solid angle × distance² stays near the panel's area. [[back]] [[next]]")
+                          markdownNote(
+                              "Next moves the panel from 1.3 m to 2.6 m: a quarter of the solid angle, while solid angle × distance² stays near the panel's area. [[back]] [[next]]",
+                          )
                       }
                   }
 
@@ -1098,14 +1213,14 @@ operations:
                                   A point on a floor looks out on a hemisphere of directions. Project the lamp
                                   onto that hemisphere, then flatten it straight down onto the disc beneath:
                                   the share of the disc it covers is the share of light the point gets.
-                                  The flattening is the cosine factor again.
-                              """
-                                      .md
+                                  The flattening is the cosine factor again.""".md
                               }
                           }
                           control("hemisphere", "lamp position", 0.0)
                           cue("Lamp to one side") { control("hemisphere", "lamp position", 1.5, glideMs = 2000) }
-                          markdownNote("Next slides the lamp off to the side: its patch on the dome moves down and flattens to a smaller share of the disc. The readout checks the share against the lighting library. [[back]] [[next]]")
+                          markdownNote(
+                              "Next slides the lamp off to the side: its patch on the dome moves down and flattens to a smaller share of the disc. The readout checks the share against the lighting library. [[back]] [[next]]",
+                          )
                       }
                   }
 
@@ -1119,14 +1234,14 @@ operations:
                                   Step back from a lamp and it looks just as bright, only smaller. Each cell in
                                   the eye takes in a fixed cone of directions; farther away, that cone covers
                                   more of the lamp, and the extra area makes up for the inverse-square law
-                                  exactly. What stays the same is called radiance.
-                              """
-                                      .md
+                                  exactly. What stays the same is called radiance.""".md
                               }
                           }
                           control("constant_radiance", "distance", 1.0)
                           cue("Step back") { control("constant_radiance", "distance", 3.0, glideMs = 2000) }
-                          markdownNote("Next steps back to 3 m: the cone takes in nine times the lamp, each piece nine times fainter. [[back]] [[next]]")
+                          markdownNote(
+                              "Next steps back to 3 m: the cone takes in nine times the lamp, each piece nine times fainter. [[back]] [[next]]",
+                          )
                       }
                       step("Equally bright from every side", id = "lambert") {
                           audience {
@@ -1136,9 +1251,7 @@ operations:
 
                                   A matte emitter sends less power off to the side, in proportion to the cosine
                                   of the angle. Seen from that side its surface is foreshortened by the same
-                                  cosine, so it looks equally bright from any direction.
-                              """
-                                      .md
+                                  cosine, so it looks equally bright from any direction.""".md
                               }
                           }
                           control("lambert_lobe", "viewing angle", 0.0)
@@ -1156,15 +1269,15 @@ operations:
 
                                   A mirror sends each ray back at the angle it arrived. Roughen it and every
                                   ray meets a facet tilted its own way, so the returning rays fan out. A surface
-                                  rough enough at every scale sends light back in all directions alike: matte.
-                              """
-                                      .md
+                                  rough enough at every scale sends light back in all directions alike: matte.""".md
                               }
                           }
                           control("rough_mirror", "roughness", 0.0)
                           control("rough_mirror", "light angle", 40.0)
                           cue("Roughen it") { control("rough_mirror", "roughness", 1.0, glideMs = 2500) }
-                          markdownNote("A mirror first; Next roughens the surface until the reflected rays leave in all directions. [[back]] [[next]]")
+                          markdownNote(
+                              "A mirror first; Next roughens the surface until the reflected rays leave in all directions. [[back]] [[next]]",
+                          )
                       }
                   }
 
@@ -1177,9 +1290,7 @@ operations:
 
                                   Keep the lamp's power fixed and make it bigger. Points near the edge of the
                                   shadow can now see part of the lamp, and the hard edge softens into a
-                                  penumbra.
-                              """
-                                      .md
+                                  penumbra.""".md
                               }
                           }
                           control("soft_shadow", "size", 0.05)
@@ -1187,7 +1298,9 @@ operations:
                           control("soft_shadow", "point", 1.15)
                           cue("A bigger lamp") { control("soft_shadow", "size", 0.4, glideMs = 2000) }
                           cue("Into the shadow") { control("soft_shadow", "point", 0.3, glideMs = 2500) }
-                          markdownNote("The orange point sits at the shadow's edge; its cyan lines reach the parts of the lamp it can see. Next grows the lamp from 5 cm to 40 cm at the same 40 W, then walks the point into the shadow. [[back]] [[next]]")
+                          markdownNote(
+                              "The orange point sits at the shadow's edge; its cyan lines reach the parts of the lamp it can see. Next grows the lamp from 5 cm to 40 cm at the same 40 W, then walks the point into the shadow. [[back]] [[next]]",
+                          )
                       }
                   }
 
@@ -1199,9 +1312,7 @@ operations:
                                   ## Coloured light
 
                                   We stand in for the many wavelengths of light with three: red, green and blue
-                                  power. A surface's colour is how much of each it sends back.
-                              """
-                                      .md
+                                  power. A surface's colour is how much of each it sends back.""".md
                               }
                           }
                           markdownNote("Pick a lamp colour: under pure red, the green and blue tiles go dark. [[back]] [[next]]")
@@ -1213,16 +1324,16 @@ operations:
                                   ## Lights add up
 
                                   Two lamps on one floor simply add. Where a red and a green pool of light
-                                  overlap, the floor turns yellow.
-                              """
-                                      .md
+                                  overlap, the floor turns yellow.""".md
                               }
                           }
                           control("additive", "red", true)
                           control("additive", "green", true)
                           control("additive", "blue", false)
                           cue("Add blue") { control("additive", "blue", true) }
-                          markdownNote("Red and green first; Next turns on the blue lamp. Look at the block's coloured shadows. [[back]] [[next]]")
+                          markdownNote(
+                              "Red and green first; Next turns on the blue lamp. Look at the block's coloured shadows. [[back]] [[next]]",
+                          )
                       }
                   }
 
@@ -1235,16 +1346,16 @@ operations:
 
                                   The light a surface sends back lands on other surfaces. A red wall beside a
                                   white floor tints the floor red. Each bounce is weaker than the last, and
-                                  their sum is the scene's indirect light.
-                              """
-                                      .md
+                                  their sum is the scene's indirect light.""".md
                               }
                           }
                           control("red_wall", "bounces", 0.0)
                           control("red_wall", "bounced light only", false)
                           cue("Three bounces") { control("red_wall", "bounces", 3.0, glideMs = 1500) }
                           cue("Only the bounced light") { control("red_wall", "bounced light only", true) }
-                          markdownNote("Direct light only first. Next adds three bounces and the floor by the wall turns pink; the next shows the bounced light alone. [[back]] [[next]]")
+                          markdownNote(
+                              "Direct light only first. Next adds three bounces and the floor by the wall turns pink; the next shows the bounced light alone. [[back]] [[next]]",
+                          )
                       }
                   }
 
@@ -1257,15 +1368,15 @@ operations:
 
                                   Surround the scene with light from every direction, like an overcast sky.
                                   Nothing casts a hard shadow, yet a tile still darkens the ground just
-                                  beneath it.
-                              """
-                                      .md
+                                  beneath it.""".md
                               }
                           }
                           control("sky_sphere", "lamps", 1.0)
                           control("sky_sphere", "tile height", 0.3)
                           cue("A sky of lamps") { control("sky_sphere", "lamps", 300.0, glideMs = 3000) }
-                          markdownNote("One lamp overhead; Next spreads the same 400 W over 300 lamps. Then try the tile height. [[back]] [[next]]")
+                          markdownNote(
+                              "One lamp overhead; Next spreads the same 400 W over 300 lamps. Then try the tile height. [[back]] [[next]]",
+                          )
                       }
                   }
 
@@ -1276,9 +1387,7 @@ operations:
 
                           - Matt Pharr, Wenzel Jakob and Greg Humphreys, *Physically Based Rendering*, free at pbr-book.org.
                           - Romain Guy and Mathias Agopian, *Physically Based Rendering in Filament*, google.github.io/filament.
-                          - Michael F. Cohen and John R. Wallace, *Radiosity and Realistic Image Synthesis* (1993).
-                      """
-                              .md
+                          - Michael F. Cohen and John R. Wallace, *Radiosity and Realistic Image Synthesis* (1993).""".md
                           p(classes = "muted") {
                               +"After “Lights and Shadows” by Bartosz Ciechanowski, https://ciechanow.ski/lights-and-shadows/. Words and figures made in Field."
                           }
