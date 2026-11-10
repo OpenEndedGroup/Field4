@@ -90,19 +90,24 @@ internal fun controlKeyForLabel(box: Box, channel: String, label: String): Strin
     controlGroupControlsWithKeys(box, channel).firstOrNull { it.second.label == label && it.second.type in valueControlTypes }?.first
 
 /**
- * The callback registered now for the control labelled [label] in [box]'s [channel], or null. Each run
- * of a box registers its controls' callbacks afresh, so a changed value means a new run has drawn them.
+ * What identifies the run that drew the control labelled [label] in [box]'s [channel], or null when
+ * there is no such control: how many times the group has been shown. Each run registers its
+ * controls' callbacks and then shows the group, so a changed value means a new run has drawn them.
  */
 internal fun controlRegistration(box: Box, channel: String, label: String): Any? {
     val control = controlGroupControlsWithKeys(box, channel)
         .firstOrNull { it.second.label == label && it.second.type in valueControlTypes }?.second ?: return null
-    return when (control.type) {
+    // A control with no callback yet has not been drawn by any run.
+    when (control.type) {
         "slider" -> getSliderCallback(control.id)
         "checkbox" -> getCheckboxCallback(control.id)
         "vec2" -> getVec2Callback(control.id)
         "color" -> getColorCallback(control.id)
         else -> null
-    }
+    } ?: return null
+    // Not the callback itself: that changes while the new run is still building its group. The
+    // showing count changes once that group is on screen, which is when a value set on it stays set.
+    return controlGroupShowings(box, channel)
 }
 
 // ------------------------------------------------------------------------
