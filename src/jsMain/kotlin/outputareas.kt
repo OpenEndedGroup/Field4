@@ -369,8 +369,31 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
         null
     }
 
+    // A drawing with onDrag sends drags to its box instead of panning: the point under the pointer,
+    // in the drawing's SVG coordinates. The rect over offsetWidth is the scale it is shown at (canvas
+    // zoom, a presentation figure's transform), so a point maps the same wherever the drawing is.
+    fun dragPoint(event: org.w3c.dom.events.MouseEvent): Pair<Double, Double> {
+        val rect = viewport.getBoundingClientRect()
+        val shown = if (viewport.offsetWidth > 0) rect.width / viewport.offsetWidth else 1.0
+        val px = (event.clientX - rect.left) / shown
+        val py = (event.clientY - rect.top) / shown
+        return ((px - (view.tx as Double)) / (view.scale as Double)) to ((py - (view.ty as Double)) / (view.scale as Double))
+    }
+    fun sendDrag(phase: String, point: Pair<Double, Double>) {
+        val id = view.dragId as? String ?: return
+        send(Message("lines-drag").payload(LinesDrag(id, phase, point.first, point.second)))
+    }
+    view.dragPending = null
+
     viewport.onpointerdown = { event ->
         if (event.button.toInt() != 0 && event.button.toInt() != 1) {
+            null
+        } else if (view.dragId != null && event.button.toInt() == 0) {
+            view.dragPointerId = event.pointerId
+            viewport.setPointerCapture(event.pointerId)
+            sendDrag("start", dragPoint(event))
+            event.preventDefault()
+            event.stopPropagation()
             null
         } else {
         view.panPointerId = event.pointerId
@@ -385,7 +408,17 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
     }
 
     viewport.onpointermove = { event ->
-        if ((view.panPointerId as? Number)?.toInt() != event.pointerId) {
+        if ((view.dragPointerId as? Number)?.toInt() == event.pointerId) {
+            // At most one move per frame: the latest point wins.
+            val first = view.dragPending == null
+            view.dragPending = dragPoint(event)
+            if (first) window.requestAnimationFrame {
+                val point = view.dragPending as? Pair<Double, Double>
+                view.dragPending = null
+                if (point != null && view.dragPointerId != null) sendDrag("move", point)
+            }
+            null
+        } else if ((view.panPointerId as? Number)?.toInt() != event.pointerId) {
             null
         } else {
             val dx = event.clientX - (view.panLastX as Double)
@@ -400,6 +433,11 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
     }
 
     viewport.onpointerup = { event ->
+        if ((view.dragPointerId as? Number)?.toInt() == event.pointerId) {
+            view.dragPointerId = null
+            view.dragPending = null
+            sendDrag("end", dragPoint(event))
+        }
         if ((view.panPointerId as? Number)?.toInt() == event.pointerId) endPan()
         null
     }
@@ -628,6 +666,8 @@ private fun updatePersistentLinesOutput(contentRoot: HTMLElement, htmlString: St
     view.sourceWidth = sourceWidth
     view.sourceHeight = sourceHeight
     view.contentBounds = contentBounds
+    view.dragId = wrapper.getAttribute("data-afield-drag")?.takeIf { it.isNotBlank() }
+    (view.viewport as HTMLElement).style.cursor = if (view.dragId != null) "crosshair" else "grab"
     view.updateViewportMetrics()
 
     if (!(view.manual as Boolean)) {

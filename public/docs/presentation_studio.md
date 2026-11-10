@@ -550,6 +550,12 @@ does not rescale the whole picture; relaunching the box, or **Reset: figures**, 
 Pass `framing = LinesFraming.fixed(0.0, 0.0, 640.0, 300.0)` to choose the frame yourself, or
 `framing = LinesFraming.Fit` to refit every frame.
 
+A figure can animate and be dragged at once. `lines(..., onDrag = { e -> ... })` hands the box each
+press, move and release on the drawing as `LinesDragEvent(x, y, phase)`, in the lines' own
+coordinates, while the box goes on redrawing every frame: pull a ringing string aside and let go.
+`editable = true` is for drawings whose own points the reader moves; in a figure it shows no editing
+tools unless the box also asks for `drawing = true`, and lines marked `fixed = true` stay put.
+
 The four-slide deck this section comes from is the `explainer_sine_pitch` transcript in
 [Agent transcripts](agent_transcripts.md); it ends with the figure you can hear.
 

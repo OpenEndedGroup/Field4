@@ -191,6 +191,59 @@ class PresentationFiguresTest {
         show.command("stop")
     }
 
+    /**
+     * The Lights deck's additive figure: the slide turns "blue" off, a cue turns it on. The figure had
+     * been ticked before, so its relaunched run showed a stale tick; the step's "off" landed while the
+     * new run was building, the group was then drawn ticked over a box without blue, and the cue's "on"
+     * matched what the panel claimed and did nothing. Blue never came on. Now the step waits for the
+     * shown group, and the cue reaches the box.
+     */
+    @Test fun aLaterCueMatchingAStaleTickStillTurnsItOn() = runBlocking {
+        val (host, figures) = deck("additive")
+        val additive = figures[0]
+        var blue = false
+        additive.controlGroup("controls") { checkbox("blue") { blue = it } }
+        additive.setControl("blue", true)                     // ticked in an earlier visit
+        val runner = object : FigureRunner by FakeRunner(figures) {
+            override fun launch(boxes: List<Box>) {}
+            override fun controlRegistration(box: Box, channel: String, label: String): Any? =
+                afield.ui.output.controlRegistration(box, channel, label)
+        }
+        val show = host.presentation {
+            step("Red and green") {
+                audience { figure("additive") }
+                control("additive", "blue", false)
+                cue("Add blue") { control("additive", "blue", true) }
+            }
+        }
+        show.figureStage.runner = runner
+        show.command("start")
+        // The relaunched run: its variable starts off, the checkbox restores its remembered tick.
+        val registered = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val build = Thread {
+            blue = false
+            additive.controlGroup("controls") {
+                checkbox("blue") { blue = it }
+                registered.countDown()
+                release.await()
+            }
+        }.apply { start() }
+        registered.await()
+        kotlinx.coroutines.delay(400)
+        release.countDown()
+        build.join()
+        val deadline = System.currentTimeMillis() + 5_000
+        fun shown() = afield.ui.output.controlGroupControlsWithKeys(additive, "controls").single().second.checked
+        while ((blue || shown() != false) && System.currentTimeMillis() < deadline) kotlinx.coroutines.delay(50)
+        assertEquals(false, shown(), "the step's off is applied to the group the new run shows")
+        assertFalse(blue)
+        show.command("next")
+        assertTrue(blue, "the cue's on reaches the box")
+        assertEquals(true, shown())
+        show.command("stop")
+    }
+
     @Test fun figuresRunWhileTheirSlideIsUpAndAHandLaunchedBoxIsLeftAlone() = runBlocking {
         val (host, figures) = deck("tone", "wave", "clock")
         val runner = FakeRunner(figures)
@@ -278,5 +331,34 @@ class PresentationFiguresTest {
         assertEquals(552.0 / 699 * 0.96, wide, 1e-9, "the zoom must fit the 699 px drawing that overflows a 520 px area")
         assertNull(afield.app.protocol.figureFitZoom(0.0, 0.0, 0.0, 0.0, 552.0, 510.0), "an area with no size yet has no zoom")
         assertEquals(4.0, afield.app.protocol.figureFitZoom(10.0, 10.0, 10.0, 10.0, 1000.0, 1000.0))
+    }
+
+    /**
+     * The fit runs four times a second on a live figure page, so it must be idempotent. A layout in
+     * which content sized to its container grows with the box (the Sound deck's pluck) used to
+     * ratchet: widening the box to the overflow made the overflow wider on the next pass.
+     */
+    @Test fun theFigureFitIsIdempotentWhereWideningTheBoxRatcheted() {
+        // Area 520 wide; its drawing is 40 px wider than whatever the box is laid out at.
+        fun layout(boxMinWidth: Double): Pair<Double, Double> {
+            val area = maxOf(520.0, boxMinWidth)
+            return area to area + 40
+        }
+        var boxMinWidth = 0.0
+        val oldWay = (1..20).map {
+            val (offset, scroll) = layout(boxMinWidth)
+            if (scroll > offset) boxMinWidth = scroll
+            afield.app.protocol.figureFitZoom(offset, 382.0, scroll, 382.0, 552.0, 510.0)!!
+        }
+        assertTrue(oldWay.last() < oldWay.first() * 0.5, "the min-width approach shrinks the figure every pass")
+
+        val fits = (1..20).map {
+            val (offset, scroll) = layout(0.0)     // figureFit writes no layout
+            afield.app.protocol.figureFit(offset, 382.0, scroll, 382.0, 552.0, 510.0)!!
+        }
+        assertEquals(1, fits.distinct().size, "the same fit every pass")
+        assertEquals(552.0 / 560 * 0.96, fits.first().zoom, 1e-9)
+        assertEquals(-20.0, fits.first().shiftX, 1e-9, "centred: half the 40 px overflow")
+        assertEquals(0.0, fits.first().shiftY)
     }
 }

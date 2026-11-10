@@ -62,18 +62,18 @@ internal fun installFigureMode(params: URLSearchParams) {
             .maxOfOrNull { it.offsetWidth } ?: 480
         if (host.style.getPropertyValue("--field-figure-width") != "${pictureWidth}px") host.style.setProperty("--field-figure-width", "${pictureWidth}px")
         val area = box.querySelector(".outputArea") as? HTMLElement ?: return
-        // Content wider than the area (an editable drawing) overflows to the right; widening the box
-        // to it keeps the whole figure centred. Measured afresh each time, so it can shrink again.
+        // Measure, then write only the transform (figureFit): no layout write, so the next pass
+        // measures the same layout and the fit is idempotent.
         box.style.removeProperty("min-width")
-        if (area.scrollWidth > area.offsetWidth) box.style.setProperty("min-width", "${area.scrollWidth}px", "important")
-        // The scale is a transform, so offset and scroll sizes are the area's own layout size,
-        // overflow included (figureFitZoom).
-        val applied = host.style.getPropertyValue("--field-figure-zoom").toDoubleOrNull() ?: 1.0
-        val zoom = afield.app.protocol.figureFitZoom(
+        val fit = afield.app.protocol.figureFit(
             area.offsetWidth.toDouble(), area.offsetHeight.toDouble(),
             area.scrollWidth.toDouble(), area.scrollHeight.toDouble(),
             window.innerWidth.toDouble(), window.innerHeight.toDouble()
         ) ?: return
+        val shift = "${fit.shiftX.asDynamic().toFixed(1)}px, ${fit.shiftY.asDynamic().toFixed(1)}px"
+        if (host.style.getPropertyValue("--field-figure-shift") != shift) host.style.setProperty("--field-figure-shift", shift)
+        val applied = host.style.getPropertyValue("--field-figure-zoom").toDoubleOrNull() ?: 1.0
+        val zoom = fit.zoom
         if (kotlin.math.abs(applied - zoom) > 0.002 * zoom) {
             host.style.setProperty("--field-figure-zoom", zoom.asDynamic().toFixed(4) as String)
             // A three.js viewer scales its pixel ratio by its frame's on-screen size, but sizes its

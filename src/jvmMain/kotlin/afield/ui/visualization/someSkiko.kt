@@ -108,18 +108,22 @@ fun linesToHTML(
 ): String = linesToHTML(lines, w, h, fitToSize, frame = null)
 
 /** [linesToHTML] framed on [frame] (source coordinates) rather than on these lines' own bounds. */
-internal fun linesToHTML(lines: List<FLine>, w: Double, h: Double, fitToSize: Boolean, frame: afield.app.protocol.Rect?): String {
+internal fun linesToHTML(
+    lines: List<FLine>, w: Double, h: Double, fitToSize: Boolean, frame: afield.app.protocol.Rect?,
+    callbackKey: String? = null, dragId: String? = null
+): String {
     val renderable = lines.renderableLines()
     val fit = computeFitTransform(renderable, w, h, fitToSize, frame)
     return if (renderable.any { it.onClick != null || it.hoverColor != null }) {
         val pairs = renderable.map { it to it.applyFit(fit) }
         wrapLinesOutput(
-            buildInteractiveSVG(pairs, w, h, fit),
-            frame?.let { framedBounds(it, fit, w, h, keepOrigin = true) } ?: pairs.map { it.second }.combinedRenderableBoundsOrNull()
+            buildInteractiveSVG(pairs, w, h, fit, callbackKey),
+            frame?.let { framedBounds(it, fit, w, h, keepOrigin = true) } ?: pairs.map { it.second }.combinedRenderableBoundsOrNull(),
+            dragId
         )
     } else {
         val scaled = renderable.map { it.applyFit(fit) }
-        wrapLinesOutput(drawToSVG(scaled, w, h), frame?.let { framedBounds(it, fit, w, h) } ?: renderedSvgBoundsFor(scaled, w, h))
+        wrapLinesOutput(drawToSVG(scaled, w, h), frame?.let { framedBounds(it, fit, w, h) } ?: renderedSvgBoundsFor(scaled, w, h), dragId)
     }
 }
 
@@ -133,6 +137,10 @@ internal fun linesToHTML(lines: List<FLine>, w: Double, h: Double, fitToSize: Bo
  * @param h Output SVG height in pixels.
  * @param fitToSize If true, uniformly scales and offsets the lines to fit inside [w]x[h] with padding.
  * @param editable If true, points can be dragged; the returned state's `currentLines()` reads them.
+ * @param framing how successive displays are framed; see [LinesFraming]
+ * @param onDrag receives pointer drags across the drawing, in the lines' own coordinates. The drawing
+ *   stays an ordinary, redrawable `lines` output, so a figure can animate and be dragged at once
+ *   (pluck a string while it rings); an editable widget is for moving the drawing's own points.
  * @param onEditCommitted With [editable], receives detached copies of the lines each time a drag
  *   finishes. Keep it short; it runs on the server's message thread.
  */
@@ -147,6 +155,7 @@ fun Box.lines(
     drawing: Boolean = false,
     liveDrawing: Boolean = false,
     framing: LinesFraming = LinesFraming.Auto,
+    onDrag: ((LinesDragEvent) -> Unit)? = null,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
 ): EditableFLineViewState? {
     val lines = m.asList().renderableLines()
@@ -158,7 +167,9 @@ fun Box.lines(
         display(channel, widget.html)
         return widget.viewState
     }
-    display(channel, linesToHTML(lines, w, h, fitToSize, frame))
+    val fit = computeFitTransform(lines, w, h, fitToSize, frame)
+    display(channel, linesToHTML(lines, w, h, fitToSize, frame, callbackKey = "$id/$channel",
+        dragId = onDrag?.let { registerLinesDrag(this, channel, fit, it) }))
     return null
 }
 
@@ -172,6 +183,10 @@ fun Box.lines(
  * @param h Output SVG height in pixels.
  * @param fitToSize If true, uniformly scales and offsets the lines to fit inside [w]x[h] with padding.
  * @param editable If true, points can be dragged; the returned state's `currentLines()` reads them.
+ * @param framing how successive displays are framed; see [LinesFraming]
+ * @param onDrag receives pointer drags across the drawing, in the lines' own coordinates. The drawing
+ *   stays an ordinary, redrawable `lines` output, so a figure can animate and be dragged at once
+ *   (pluck a string while it rings); an editable widget is for moving the drawing's own points.
  * @param onEditCommitted With [editable], receives detached copies of the lines each time a drag
  *   finishes. Keep it short; it runs on the server's message thread.
  */
@@ -186,6 +201,7 @@ fun Box.lines(
     drawing: Boolean = false,
     liveDrawing: Boolean = false,
     framing: LinesFraming = LinesFraming.Auto,
+    onDrag: ((LinesDragEvent) -> Unit)? = null,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
 ): EditableFLineViewState? {
     val lines = m.renderableLines()
@@ -197,7 +213,9 @@ fun Box.lines(
         display(channel, widget.html)
         return widget.viewState
     }
-    display(channel, linesToHTML(lines, w, h, fitToSize, frame))
+    val fit = computeFitTransform(lines, w, h, fitToSize, frame)
+    display(channel, linesToHTML(lines, w, h, fitToSize, frame, callbackKey = "$id/$channel",
+        dragId = onDrag?.let { registerLinesDrag(this, channel, fit, it) }))
     return null
 }
 
@@ -242,7 +260,7 @@ fun Box.lines(
                 states[channelName] = widget.viewState
             } else if (hasInteractive) {
                 val pairs = lines.map { it to it.applyFit(fit) }
-                display(channelName, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit),
+                display(channelName, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit, "$id/$channelName"),
                     frame?.let { framedBounds(it, fit, w, h, keepOrigin = true) } ?: pairs.map { it.second }.combinedRenderableBoundsOrNull()))
             } else {
                 val scaled = lines.map { it.applyFit(fit) }
@@ -258,7 +276,7 @@ fun Box.lines(
             states[channel] = widget.viewState
         } else if (hasInteractive) {
             val pairs = allLines.map { it to it.applyFit(fit) }
-            display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit),
+            display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit, "$id/$channel"),
                 frame?.let { framedBounds(it, fit, w, h, keepOrigin = true) } ?: pairs.map { it.second }.combinedRenderableBoundsOrNull()))
         } else {
             val scaled = allLines.map { it.applyFit(fit) }
@@ -300,11 +318,45 @@ private fun emptySvg(w: Double, h: Double): String {
     return """<svg xmlns="http://www.w3.org/2000/svg" width="$width" height="$height" style="overflow:visible"/>"""
 }
 
-private fun wrapLinesOutput(svg: String, bounds: afield.app.protocol.Rect? = null): String {
+private fun wrapLinesOutput(svg: String, bounds: afield.app.protocol.Rect? = null, dragId: String? = null): String {
     val boundsAttrs = bounds?.let {
         """ data-afield-bounds-x="${jsonN(it.x)}" data-afield-bounds-y="${jsonN(it.y)}" data-afield-bounds-w="${jsonN(it.w)}" data-afield-bounds-h="${jsonN(it.h)}""""
     } ?: ""
-    return """<div class="afield-lines-output" data-afield-lines-output="true"$boundsAttrs>$svg</div>"""
+    val dragAttr = dragId?.let { """ data-afield-drag="${it.replace("&", "&amp;").replace("\"", "&quot;")}"""" } ?: ""
+    return """<div class="afield-lines-output" data-afield-lines-output="true"$boundsAttrs$dragAttr>$svg</div>"""
+}
+
+/**
+ * A pointer dragged across a `lines(...)` drawing, in the lines' own coordinates: [phase] is
+ * [Phase.START] on press, [Phase.MOVE] while the pointer moves pressed (at most once a frame), and
+ * [Phase.END] on release.
+ */
+data class LinesDragEvent(val x: Double, val y: Double, val phase: Phase) {
+    enum class Phase { START, MOVE, END }
+}
+
+private val linesDragCallbacks = afield.runtime.lifecycle.OwnedCallbackRegistry<(LinesDragEvent) -> Unit>("linesDrag")
+
+/**
+ * Register [callback] for drags on [box]'s [channel] and return the id the viewer sends back. The id
+ * is the box and channel, so a drawing redisplayed every frame replaces its callback instead of
+ * adding one; [fit] is that display's fit, undone on the way back so the callback sees the lines'
+ * own coordinates.
+ */
+internal fun registerLinesDrag(box: Box, channel: String, fit: FitTransform?, callback: (LinesDragEvent) -> Unit): String {
+    val id = "lines-drag:${box.id}:$channel"
+    linesDragCallbacks.register(id, { e ->
+        callback(if (fit == null) e else e.copy(x = e.x / fit.scale - fit.offsetX, y = e.y / fit.scale - fit.offsetY))
+    })
+    return id
+}
+
+/** Deliver a [afield.app.protocol.LinesDrag] from a viewer; false when nothing is registered under its id. */
+internal fun deliverLinesDrag(drag: afield.app.protocol.LinesDrag): Boolean {
+    val callback = linesDragCallbacks[drag.id] ?: return false
+    val phase = when (drag.phase) { "start" -> LinesDragEvent.Phase.START; "end" -> LinesDragEvent.Phase.END; else -> LinesDragEvent.Phase.MOVE }
+    callback(LinesDragEvent(drag.x, drag.y, phase))
+    return true
 }
 
 private fun renderedSvgBoundsFor(lines: Collection<FLine>, w: Double, h: Double): afield.app.protocol.Rect? {
@@ -630,7 +682,7 @@ fun outputTo(f: FLine, s: Canvas, antiAlias: Boolean = false) {
  * inverts [fit] before it picks. `__flineIntersectionFromSvg` in `sliders.js` is the consumer, and
  * `FLineHitRecordProbeTest` executes that very function against the SVG this builds.
  */
-internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: Double, fit: FitTransform? = null): String {
+internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: Double, fit: FitTransform? = null, callbackKey: String? = null): String {
     val renderablePairs = pairs.withIndex()
         .filter { (_, pair) -> pair.second.safeFast2DBoundsOrNull() != null }
         .map { (index, pair) -> Triple(index, pair.first, pair.second) }
@@ -658,7 +710,9 @@ internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: 
         val hasInteraction = onClick != null || hoverColor != null
 
         val callbackId: String? = if (onClick != null) {
-            val id = "fline-${UUID.randomUUID()}"
+            // Keyed by box, channel and line when the caller names them, so a drawing redisplayed every
+            // frame replaces its click callbacks; a fresh id per display left one per frame behind.
+            val id = callbackKey?.let { "fline-$it-$lineIndex" } ?: "fline-${UUID.randomUUID()}"
             registerFLineClickCallback(id, onClick)
             id
         } else null

@@ -15,6 +15,7 @@ import afield.graphics.render.color
 import afield.graphics.render.filled
 import afield.graphics.render.pointSize
 import afield.graphics.render.pointed
+import afield.graphics.render.fixed
 import afield.graphics.render.stroked
 import afield.graphics.render.thickness
 import kotlinx.serialization.Serializable
@@ -50,7 +51,9 @@ private data class EditableSvgLine(
     val filled: Boolean,
     val pointed: Boolean,
     val pointSize: Double,
-    val nodes: List<EditableSvgNode>
+    val nodes: List<EditableSvgNode>,
+    /** [afield.graphics.render.fixed]: drawn, but with no points, edges or faces to select. */
+    val fixed: Boolean = false
 )
 
 @Serializable
@@ -98,6 +101,7 @@ internal fun buildEditableSVGWidget(
                 filled = line.filled,
                 pointed = line.pointed,
                 pointSize = line.pointSize,
+                fixed = line.fixed,
                 nodes = line.nodes.mapIndexed { nodeIndex, node ->
                     when (node) {
                         is FLine.MoveTo -> EditableSvgNode(

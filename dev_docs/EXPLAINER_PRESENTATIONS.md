@@ -315,6 +315,11 @@ a cue moves a control). Nothing here changes the deck format.
 - **Readouts** are `markdown("readout", "text with **numbers**")`, never HTML with inline styles:
   the figure view sets readouts in Iosevka at its own size. Figure views force Iosevka on
   everything anyway (`tools/test_presentation_fonts.py` keeps sans-serif out of the path).
+- **Dragging something that animates** is `lines(..., onDrag = { e -> })`, never `editable = true`
+  redisplayed every frame (that rebuilds the editor each frame). Editable drawings are for still
+  figures; mark their scenery `fixed = true`.
+- **Helper names:** a box with `loop { }` must not declare `fun frame()`, `delay()`, `end()` or
+  `wait()` (they are `Frames` members inside the loop); `tools/check_box_idioms.py` blocks it.
 - **Animations** that redraw `lines(...)` in `loop { }` keep the first frame's framing by default
   (`LinesFraming.Auto`); give `LinesFraming.fixed(x, y, w, h)` when the extent is known. No
   invisible framing lines.
@@ -334,7 +339,10 @@ a cue moves a control). Nothing here changes the deck format.
    Run each figure box on its own first (`launch <id>`, `wait-output <id> --kind display`,
    `screenshot-box <id> <png>`, `stop <id>`) and look at the picture.
 3. `./gradlew electronInstall` once, then start this checkout's Electron with a CDP port, recording its PID:
-   `cd electron && APP_URL='https://localhost:<port>/index.html?file=<doc>' ./node_modules/electron/dist/Electron.app/Contents/MacOS/Electron --remote-debugging-port=<cdp> . &`.
+   `cd electron && APP_URL='https://localhost:<port>/index.html?file=<doc>' ./node_modules/electron/dist/Electron.app/Contents/MacOS/Electron --remote-debugging-port=<cdp> --disable-backgrounding-occluded-windows --disable-renderer-backgrounding . &`.
+   The two Chromium switches keep figure views composited and taking input while another app's
+   window (another deck's Electron) covers the audience window; without them the slot is empty and
+   synthetic input to a figure stalls.
 4. Run the deck box again (`run <deck id>` through the backdoor) so `present()` reaches the Electron window.
 5. Drive the presenter over CDP: evaluate `window.fieldPresentation.action("next")` in the
    `presentation-control.html` target. **Bring the audience forward before each capture**
