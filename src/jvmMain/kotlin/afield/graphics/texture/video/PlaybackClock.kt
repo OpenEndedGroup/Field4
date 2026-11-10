@@ -31,14 +31,22 @@ class SystemClock(private val nanoTime: () -> Long = System::nanoTime) : Playbac
     private var pausedTime: Double = 0.0
     private var isActive: Boolean = false
     
+    private var currentRate = 1.0
+
     /** Continuous rate changes re-anchor the clock; they never jump the media position. */
-    var rate: Double = 1.0
+    var rate: Double
+        get() = currentRate
         set(value) {
-            require(value.isFinite() && value > 0.0)
-            pausedTime = getCurrentTime()
-            startTime = nanoTime()
-            field = value
+            setRateAt(value, getCurrentTime())
         }
+
+    /** Change speed from an observed media position, discarding time owed to a lagging decoder. */
+    fun setRateAt(value: Double, timestamp: Double) {
+        require(value.isFinite() && value > 0.0 && timestamp.isFinite())
+        pausedTime = timestamp
+        startTime = nanoTime()
+        currentRate = value
+    }
 
     override fun getCurrentTime(): Double {
         if (!isActive) return pausedTime
