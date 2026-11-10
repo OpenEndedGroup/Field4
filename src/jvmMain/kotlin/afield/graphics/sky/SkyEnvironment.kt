@@ -50,7 +50,7 @@ class SkyEnvironment(
     /** Kilometres above the ground the scene sits. */
     var altitude: Double = 0.2,
     /** Multiplies the baked radiance, so a noon sky lands near 1 in the renderer's units. */
-    var skyScale: Double = 0.08,
+    var skyScale: Double = 0.2,
     /** Key light intensity when the sun is overhead; it falls with the transmittance's luminance. */
     var sunIntensity: Float = 3f,
 ) {

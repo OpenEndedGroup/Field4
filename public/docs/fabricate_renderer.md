@@ -476,6 +476,39 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-multi-light-skybox.png" alt="the Venice Sunset environment map drawn as the scene backdrop, not a flat colour: a blurred paved square with an ochre palazzo, a stone pine and an arcaded building under a pale evening sky. Three chrome torii stand on a checkerboard of translucent tiles laid over the paving. Their mirror surfaces carry the buildings and the sky, the middle ring takes the brightest highlight, and the tiles pick up pink and blue from the point and spot lights" source-image="/tmp/docs-fabricate-multi-light-native.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-multi-light-skybox" hidden=true fabricate-scene="multi-light-skybox"}
 ```
 
+## A sky that lights the scene
+
+`SkyEnvironment` (in `afield.graphics.sky`) bakes [the atmospheric sky](afield_four_graphics.md#atmospheric-sky) into an equirect texture you pass as `environmentTexture`, and keeps the bundle's directional key light on the sun. The light's colour is the sunlight that gets through the atmosphere, so it is near white overhead, orange at the horizon and off once the sun sets. Moving the sun re-bakes the sky on a worker thread, and the reflections, the image-based light and the backdrop all follow it.
+
+```diffstatic {data-lang=kotlin}
+import afield.graphics.sky.SkyEnvironment
+
+val sky = SkyEnvironment(renderer)
+val bundle = StandardRenderer.build(
+    renderer,
+    StandardRenderer.Config(environmentTexture = sky.texture, environmentStrength = 1f),
+)
+bundle.showEnvironmentBackground(true)
+sky.drive(bundle)              // uses the first directional light, or adds a shadowed one
+sky.setSun(elevation = 4.0, azimuth = 140.0)   // degrees
+```
+
+Here is one scene with the sun at 45°, 4° and −3°:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-sky-environment-high.png" alt="a blue daytime sky over a grey floor of tiles; a chrome sphere reflects the blue sky and grey ground, a white sphere and a red torus are lit by near-white sunlight" source-image="/tmp/docs-fabricate-sky-environment-high.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-sky-environment-high" hidden=true fabricate-scene="sky-environment-high"}
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-sky-environment-sunset.png" alt="the same scene at sunset: an orange glow on the horizon fading to dark blue above, the chrome spheres reflect the glow and the tiles catch warm light" source-image="/tmp/docs-fabricate-sky-environment-sunset.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-sky-environment-sunset" hidden=true fabricate-scene="sky-environment-sunset"}
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-sky-environment-twilight.png" alt="the same scene after sunset: a dim red band along the horizon under a near-black sky, the objects are just visible against it" source-image="/tmp/docs-fabricate-sky-environment-twilight.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-sky-environment-twilight" hidden=true fabricate-scene="sky-environment-twilight"}
+```
+
+The texture is 128 × 64 RGBA32F with a single mip level. The fabricate renderer reads rougher surfaces from lower mips, and this texture has none, so a rough surface still reflects the sky sharply. You can see it on the white sphere. The sun disc is not part of the bake, because the key light already supplies it. `sky.texels` holds the last bake, and each texel equals `Atmosphere.radiance` along `Atmosphere.equirectDirection(i, j, w, h)`; `AtmosphereTest` checks both.
+
+??? aside "How the sky captures are made"
+    The three figures come from `StandardRendererDocsHarness.renderSkyEnvironment*`. Each one calls `setSun(..., wait = true)` before it builds the scene, so the capture always shows the finished bake. The demo is `dev_docs/agents/transcripts/sky_environment.yaml`, which has a sun slider.
+
 ## Post stack
 
 The post stack is Fabricate's small EffectComposer equivalent. It starts with the transparent composite and, by default, runs motion blur then FXAA:

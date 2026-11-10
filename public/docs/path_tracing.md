@@ -304,7 +304,9 @@ art-direction/compositing control; it does not change the environment's radiance
 
 For a sky computed from the sun's position rather than a photographed one, see
 [An atmospheric sky](afield_four_graphics.md#atmospheric-sky). That sky is a fullscreen pass of its
-own and does not light the path tracer.
+own and does not light the path tracer. To light a scene with it, see
+[A sky that lights the scene](fabricate_renderer.md#a-sky-that-lights-the-scene); that works with the
+fabricate renderer, not the path tracer.
 
 ## Depth fog
 

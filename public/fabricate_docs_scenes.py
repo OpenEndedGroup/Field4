@@ -69,6 +69,9 @@ FABRICATE_DOCS_SCENES: dict[str, tuple[str, str]] = {
         "renderMultiLightSkybox",
         "fabricate multi light skybox ready",
     ),
+    "sky-environment-high": ("renderSkyEnvironmentHigh", "fabricate sky environment high ready"),
+    "sky-environment-sunset": ("renderSkyEnvironmentSunset", "fabricate sky environment sunset ready"),
+    "sky-environment-twilight": ("renderSkyEnvironmentTwilight", "fabricate sky environment twilight ready"),
     "tonemap-bloom": (
         "renderToneMapBloom",
         "fabricate tonemap bloom ready",
@@ -226,6 +229,9 @@ FABRICATE_SCENE_INPUTS: dict[str, tuple[str, ...]] = {
     "toy-car-gltf": _CAPTURE_PATH_INPUTS,
     "multi-light-skybox": _CAPTURE_PATH_INPUTS,
     "tonemap-bloom": _CAPTURE_PATH_INPUTS,
+    "sky-environment-high": _CAPTURE_PATH_INPUTS + ("src/jvmMain/kotlin/afield/graphics/sky/*.kt",),
+    "sky-environment-sunset": _CAPTURE_PATH_INPUTS + ("src/jvmMain/kotlin/afield/graphics/sky/*.kt",),
+    "sky-environment-twilight": _CAPTURE_PATH_INPUTS + ("src/jvmMain/kotlin/afield/graphics/sky/*.kt",),
 }
 
 
