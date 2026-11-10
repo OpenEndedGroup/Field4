@@ -14,6 +14,7 @@ import afield.app.server.launchBoxesInOrder
 import afield.document.graph.Box
 import afield.document.graph.nestedIn
 import afield.tools.automation.OperationTranscript
+import afield.ui.output.displayOpen
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -46,13 +47,29 @@ object PresentationArrangement {
     /** How a message reaches the document's clients; tests replace it. */
     internal var deliver: (SessionInformation, Message) -> Unit = { info, message -> info.sessions.forEach { _send(it, message) } }
 
+    /**
+     * Requests no canvas has answered yet, by document: the deck ran before any canvas had its
+     * document open (a transcript runs it headless). Each is held as its message, nothing waiting on
+     * it, and sent again to every client that attaches to that document; the first canvas to answer
+     * completes it. A later arrangement of the same document replaces it.
+     */
+    private val parked = ConcurrentHashMap<SessionInformation, Pair<String, Message>>()
+
     /** A client answered; the first answer to a request wins and later ones are ignored. */
     fun complete(result: ArrangeBoxesResult) {
-        pending.remove(result.id)?.complete(result)
+        pending.remove(result.id)?.let { it.complete(result); return }
+        val entry = parked.entries.firstOrNull { it.value.first == result.id } ?: return
+        if (!parked.remove(entry.key, entry.value)) return
+        val moved = apply(entry.key, result)
+        tell(entry.key, "Arranged ${result.frames.size} boxes in slide order; moved $moved")
     }
 
+    /** The parked request for [info], if any: what a client attaching to that document is sent. */
+    fun parkedRequestFor(info: SessionInformation): Message? = parked[info]?.second
+
     /**
-     * Arranges [show]'s document and returns how many boxes moved, or -1 when no client answered.
+     * Arranges [show]'s document and returns how many boxes moved, or -1 when no canvas answered: the
+     * request then waits, costing nothing, for the next canvas to open the document.
      *
      * @param runFigures run figure boxes that have no output yet, so that their panels can be measured.
      * @param timeoutMs how long to wait for the figures' output (at least five seconds a figure), and
@@ -65,14 +82,21 @@ object PresentationArrangement {
         val order = show.arrangementOrder()
         if (runFigures) runSilentFigures(show, order, timeoutMs)
 
+        // A deck document shows its figures: lay out the footprint each has with its panels open,
+        // and leave them open, rather than measure a collapsed header and be covered when it opens.
+        order.mapNotNull { info.boxes[it] }.forEach { box -> box.output.retainedAreas.channels().forEach { box.displayOpen(it) } }
+
         val id = UUID.randomUUID().toString()
+        val request = Message("arrange-boxes").payload(ArrangeBoxesRequest(id, order))
         val answer = CompletableDeferred<ArrangeBoxesResult>()
         pending[id] = answer
-        deliver(info, Message("arrange-boxes").payload(ArrangeBoxesRequest(id, order)))
+        parked.remove(info)
+        deliver(info, request)
         val result = withTimeoutOrNull(timeoutMs) { answer.await() }
         pending.remove(id)
         if (result == null) {
-            tell(info, "Arrange Boxes by Presentation needs the document open in a canvas; no client answered")
+            // No canvas has the document open yet; arrange it when one does.
+            parked[info] = id to request
             return -1
         }
         val moved = apply(info, result)
