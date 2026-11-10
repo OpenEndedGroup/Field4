@@ -621,6 +621,9 @@ object DemoTranscriptExecSmokeTest {
         // The cameras explainer deck: its deck box opens Electron audience windows. Its figures
         // are CPU ray tracing (CameraOpticsTest) and three/lines outputs.
         "explainer_cameras",
+        // The Lights and Shadows deck: its deck box opens Electron audience windows. Its figures are
+        // CPU lighting in three views; LightingTest checks the physics they are drawn from.
+        "explainer_lights",
         "text_one_vr",
         "video_one_vr",
         // Audio curves: every box is a playback loop under a waveform player that waits for the

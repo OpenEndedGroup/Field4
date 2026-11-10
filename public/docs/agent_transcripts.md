@@ -2710,6 +2710,18 @@ Field's Electron app; the talk starts each figure when its slide comes up.
 
 [Open →](offline.html?file=assets/agent_transcripts/explainer_cameras/metadata.edn)
 
+### explainer_lights
+
+**A talk on light and shadow, with figures lit on the CPU.** One box, `deck`, is a presentation
+after Bartosz Ciechanowski's [Lights and Shadows](https://ciechanow.ski/lights-and-shadows/), in our
+own words, section by section from power and the cosine factor to soft shadows, colour and bounced
+light. Each figure is its own box, laid out in slide order beside it. The three-dimensional figures
+compute the light at every vertex with `afield.graphics.lighting` (point, sphere and rectangle
+lights, shadow rays, a coarse radiosity solve) and draw the result unlit in a three view. Run `deck`
+in Field's Electron app; the talk starts each figure when its slide comes up.
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_lights/metadata.edn)
+
 ### audio_ai_underfit_mancini
 
 Import a held-out excerpt, hash the completed Experiment in Terror
