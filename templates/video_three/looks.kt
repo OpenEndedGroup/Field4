@@ -79,13 +79,13 @@ fun showRules() {
         val hi = descriptor?.max ?: hint!!.second
         val help = descriptor?.help ?: hint!!.third
         drafts[lane] = ruleText(value)
-        controlGroup(lane) {
+        controlGroup(lane, restoreValues = false) {
             val first = resolved[lane, 0]
             slider("Constant · $lane", min = minOf(lo, first), max = maxOf(hi, first), step = .001, initialValue = first,
                 hoverText = "$help Replaces this lane with one constant for all screens. When the rule varies, the handle shows screen index zero.") { v ->
                 lookAction { pool.cancel(); group[lane] = v; drafts[lane] = v.toString() }
             }
-            stringInput("Rule · $lane", initialValue = drafts.getValue(lane),
+            multilineText("Rule · $lane", initialValue = drafts.getValue(lane),
                 hoverText = "A number, or a complete typed lambda: { screenNo: Int -> 0.1 + 0.04 * screenNo }. Use Apply all rule drafts above. Indices are zero-based. Available inherited box properties are looked up when the expression runs.") { drafts[lane] = it }
         }
     }

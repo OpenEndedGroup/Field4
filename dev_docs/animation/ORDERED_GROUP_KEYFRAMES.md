@@ -51,3 +51,8 @@ scalar/function interpolation, persistence metadata, arbitrary member counts and
 disposable carousel: it checks function application on every real surface, native save/reload,
 complete shutter validation before writes and unchanged global speed, then restores the original
 look in a finally block. Stop with the generated `stop.json`. No headset is needed in desktop mode.
+
+Model-owned widgets use `controlGroup(channel, restoreValues = false)`: stable IDs and normal
+gestures are retained, while construction ignores old UI caches and calls no update callback.
+This prevents an inspector's old scalar from replacing a restored function. `multilineText` uses
+the same string callback/handle and preserves source line breaks; `stringInput` stays one-line.

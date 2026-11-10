@@ -2,6 +2,7 @@
 """Build video_three: video_two's renderer with source-backed whole-ring keyframes."""
 import argparse
 import json
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -49,6 +50,7 @@ def main():
                 code = code[:start] + code[end:]
                 code = code.replace('screenLooks.watchControls(screenIndex) { controlMirrors.forEach { it() } }',
                     'var lastMirror = 0L\nloop { val now = System.nanoTime(); if (now - lastMirror >= 250_000_000L) { lastMirror = now; controlMirrors.forEach { it() } }; frame() }')
+                code = re.sub(r'controlGroup\("([^"]+)"\) \{', r'controlGroup("\1", restoreValues = false) {', code)
                 box['properties']['code'] = code.replace('displayOpen("shared looks")', '')
         connection = operation.get('connect')
         if connection == {'parent': 'video2_looks', 'child': 'video2_motion'}:

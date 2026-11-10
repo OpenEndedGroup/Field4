@@ -1624,12 +1624,15 @@ internal fun getStringCallback(controlId: String): ((String) -> Unit)? {
     return stringCallbacks[controlId]
 }
 
-private fun buildStringInputHtml(controlId: String, label: String, initialValue: String, hoverText: String? = null): String {
-    val escapedValue = initialValue.replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+private fun buildStringInputHtml(controlId: String, label: String, initialValue: String, hoverText: String? = null, rows: Int = 0): String {
+    val escapedValue = initialValue.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+    val editor = if (rows > 0)
+        """<textarea class="field-text-input" id="$controlId" rows="$rows" style="height:auto;resize:vertical;" onchange="handleStringInput(this)">$escapedValue</textarea>"""
+    else """<input type="text" class="field-text-input" id="$controlId" value="$escapedValue" onchange="handleStringInput(this)" />"""
     return """
         <div class="field-control field-text">
             <label class="field-label" for="$controlId" style="flex:0 0 auto;"${controlHoverAttribute(hoverText)}>$label</label>
-            <input type="text" class="field-text-input" id="$controlId" value="$escapedValue" onchange="handleStringInput(this)" />
+            $editor
         </div>
     """.trimIndent()
 }
@@ -2362,7 +2365,7 @@ class ControlValueHandle<T> internal constructor(
     }
 }
 
-class ControlGroupBuilder(private val box: Box, private val channel: String) {
+class ControlGroupBuilder(private val box: Box, private val channel: String, private val restoreValues: Boolean = true) {
     /** The box this group belongs to — for builder extensions such as `presetBar` (ControlPresets.kt). */
     internal val ownerBox: Box get() = box
     /** The output channel this group is shown in. */
@@ -2482,7 +2485,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
 
     private fun cachedControl(type: String, prefix: String, label: String): CachedControl {
         val identity = controlIdentity(type, prefix, label)
-        return identity.copy(previous = box.cachedControlGroupValue(identity.cacheKey, identity.id))
+        return identity.copy(previous = if (restoreValues) box.cachedControlGroupValue(identity.cacheKey, identity.id) else null)
     }
 
     /**
@@ -2879,6 +2882,22 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         hoverText: String? = null,
             onUpdate: (String) -> Unit
     ): ControlValueHandle<String> {
+        return textControl(label, initialValue, hoverText, 0, onUpdate)
+    }
+
+    /**
+     * A resizable multi-line editor using the ordinary string callback, handle and tablet identity.
+     * Unlike a one-line input it preserves line breaks in source expressions. [restoreValues] on the
+     * enclosing group decides whether cached text or [initialValue] supplies its starting content.
+     */
+    fun multilineText(label: String, initialValue: String = "", rows: Int = 4,
+                      hoverText: String? = null, onUpdate: (String) -> Unit): ControlValueHandle<String> {
+        require(rows in 1..40) { "A multiline editor needs 1..40 rows" }
+        return textControl(label, initialValue, hoverText, rows, onUpdate)
+    }
+
+    private fun textControl(label: String, initialValue: String, hoverText: String?, rows: Int,
+                            onUpdate: (String) -> Unit): ControlValueHandle<String> {
         val cached = cachedControl("string", "string", label)
         val controlId = cached.id
         val value = cached.previous?.text ?: initialValue
@@ -2886,7 +2905,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         if (cached.previous?.text != null) {
             onUpdate(value)
         }
-        val html = buildStringInputHtml(controlId, label, value, hoverText)
+        val html = buildStringInputHtml(controlId, label, value, hoverText, rows)
         val control = ControllerControl(
             id = controlId,
             type = "string",
@@ -2993,8 +3012,23 @@ fun Box.controlGroup(channel: String = "controls", block: ControlGroupBuilder.()
  * Control identity, cached values, callbacks and tablet routing are unchanged.
  */
 fun Box.controlGroup(channel: String = "controls", columns: Int, block: ControlGroupBuilder.() -> Unit) {
+    controlGroup(channel, columns, restoreValues = true, block = block)
+}
+
+/**
+ * Build controls from an authoritative model when [restoreValues] is false. Cached widget values
+ * are ignored and construction never calls update callbacks; actual gestures still do. Use this
+ * for a saved key, expression or simulation that already owns its state. IDs, tablet routing and
+ * persistence of new gestures remain unchanged. The ordinary overloads keep cache-first behaviour.
+ */
+fun Box.controlGroup(channel: String = "controls", restoreValues: Boolean, block: ControlGroupBuilder.() -> Unit) {
+    controlGroup(channel, columns = 1, restoreValues = restoreValues, block = block)
+}
+
+/** The model-owned control policy with the existing responsive [columns] layout. */
+fun Box.controlGroup(channel: String = "controls", columns: Int, restoreValues: Boolean, block: ControlGroupBuilder.() -> Unit) {
     require(columns in 1..4) { "controlGroup columns must be between 1 and 4" }
-    val builder = ControlGroupBuilder(this, channel)
+    val builder = ControlGroupBuilder(this, channel, restoreValues)
     builder.apply(block)
     val grouped = builder.buildHtml()
     registerControllerControlGroup(this, channel, builder.buildControls())
