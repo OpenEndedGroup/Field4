@@ -42,7 +42,5 @@ markdown(
     Bounds this run used: ${found.first().limits}
 
     The figure is on the **roll** channel beside this one. These rhythms are abstract — `x`,
-    `bd`, `a` — so there is nothing to play here; box 3 is the one you can listen to.
-    """
-        .trimIndent(),
+    `bd`, `a` — so there is nothing to play here; box 3 is the one you can listen to.""".trimIndent(),
 )

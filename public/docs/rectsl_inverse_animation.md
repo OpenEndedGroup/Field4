@@ -149,9 +149,7 @@ markdown(
     fit.finalResidual    ${fit.finalResidual}
     fit.converged        ${fit.converged} after ${fit.steps.size} steps
     fit.fitted           ${fit.fitted.describe()}
-    ~~~
-"""
-        .trimIndent(),
+    ~~~""".trimIndent(),
 )
 ```
 
@@ -318,9 +316,7 @@ markdown(
     samples:               ${xs.size} over x in [-2, 2]
     worst difference:      $worst
     samples not bit-equal: $notBitEqual
-    ~~~
-"""
-        .trimIndent(),
+    ~~~""".trimIndent(),
 )
 ```
 
@@ -367,9 +363,7 @@ markdown(
     disagreements:     ${wrong.size}${if (wrong.isEmpty()) "" else " at " + wrong.take(6)}
     step(0.0):         ${step.eval(0.0)}
     step(-1e-16):      ${step.eval(-1e-16)}
-    ~~~
-"""
-        .trimIndent(),
+    ~~~""".trimIndent(),
 )
 ```
 

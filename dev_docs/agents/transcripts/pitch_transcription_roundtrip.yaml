@@ -37,9 +37,7 @@ operations:
                 <p style="margin:12px 0 0;color:#98a6b3">Pitch error is reported in <b>cents</b>, not in note
                 names. One of the corpus cases is exactly 50 cents from equal temperament, where the correct
                 note name genuinely does not exist — a measurement 0.1 cents out flips it a semitone.</p>
-              </section>
-              """
-                  .trimIndent(),
+              </section>""".trimIndent(),
           )
 
           display(
@@ -49,9 +47,7 @@ operations:
               so the register you admit sets the shortest note you can resolve:
                 minHz  65 Hz (the wide default) → ${patPitchFrameSpan(PatSoundDocs.SR, 65.0)} samples = ${(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 65.0) / PatSoundDocs.SR).f1} ms
                 minHz 261 Hz (a treble line)    → ${patPitchFrameSpan(PatSoundDocs.SR, 261.0)} samples = ${(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 261.0) / PatSoundDocs.SR).f1} ms
-              That ratio is what box 4 is about.
-          """
-                  .trimIndent(),
+              That ratio is what box 4 is about.""".trimIndent(),
           )
   - create:
       box: pitch_roundtrip_clean
@@ -134,9 +130,7 @@ operations:
                 ${patTallyOnsets(energy, scheduled, tolerance).describe("energy  (amplitude envelope)")}
                 ${patTallyOnsets(pitch, scheduled, tolerance).describe("pitch   (periodicity)      ")}
                 ${patTallyOnsets(merged, scheduled, tolerance).describe("merged  (the union)        ")}
-              The energy detector is not misconfigured. The evidence it consumes is not in this signal.
-          """
-                  .trimIndent(),
+              The energy detector is not misconfigured. The evidence it consumes is not in this signal.""".trimIndent(),
           )
 
           showPatTranscriptionOf(
@@ -199,9 +193,7 @@ operations:
               "resolution",
               """
               minHz ${minHz.f1} Hz → analysis window $window samples (${(1000.0 * window / PatSoundDocs.SR).f1} ms)
-              the notes are ${(1000.0 / cps / 16).f1} ms long
-          """
-                  .trimIndent(),
+              the notes are ${(1000.0 / cps / 16).f1} ms long""".trimIndent(),
           )
           display("verdict", heard.diagnosis.describe())
           display("recovered", "pat(\"${heard.miniNotation}\")")
@@ -247,7 +239,5 @@ operations:
               spectrum. The spectrum is then only asked one question — sparse or dense — which is what
               separates a chord (a few discrete partials) from a snare (a continuum).
               Compare: a sawtooth is a full harmonic stack on ONE note and is NOT refused,
-              because timbre is not polyphony.
-              """
-                  .trimIndent(),
+              because timbre is not polyphony.""".trimIndent(),
           )

@@ -58,9 +58,7 @@ ui.eval(
     frame.setAttribute("src", "/controllers?" + params.toString())
     frame.setAttribute("style", "position:fixed;left:32px;top:32px;width:390px;height:844px;border:0;outline:1px solid rgba(72,201,255,.75);background:#050505;z-index:2147483000")
     document.body.appendChild(frame)
-    return frame.getAttribute("src")
-    """
-        .trimIndent(),
+    return frame.getAttribute("src")""".trimIndent(),
 )
 ui.waitForSelector("#docs-mobile-controller-pad", 8000.0)
 ui.pause(6000)
@@ -91,9 +89,7 @@ ui.eval(
     frame.setAttribute("src", "/controllers?" + params.toString())
     frame.setAttribute("style", "position:fixed;left:32px;top:32px;width:390px;height:844px;border:0;outline:1px solid rgba(72,201,255,.75);background:#050505;z-index:2147483000")
     document.body.appendChild(frame)
-    return frame.getAttribute("src")
-    """
-        .trimIndent(),
+    return frame.getAttribute("src")""".trimIndent(),
 )
 ui.waitForSelector("#docs-mobile-controller-group", 8000.0)
 ui.pause(6000)
@@ -156,9 +152,7 @@ ui.eval(
     frame.setAttribute("src", "/controllers?" + params.toString())
     frame.setAttribute("style", "position:fixed;left:32px;top:32px;width:390px;height:844px;border:0;outline:1px solid rgba(72,201,255,.75);background:#050505;z-index:2147483000")
     document.body.appendChild(frame)
-    return frame.getAttribute("src")
-    """
-        .trimIndent(),
+    return frame.getAttribute("src")""".trimIndent(),
 )
 ui.waitForSelector("#docs-mobile-controller-sequencer", 8000.0)
 ui.pause(6000)
@@ -188,9 +182,7 @@ ui.eval(
     frame.setAttribute("src", "/controllers?" + params.toString())
     frame.setAttribute("style", "position:fixed;left:32px;top:32px;width:390px;height:844px;border:0;outline:1px solid rgba(72,201,255,.75);background:#050505;z-index:2147483000")
     document.body.appendChild(frame)
-    return frame.getAttribute("src")
-    """
-        .trimIndent(),
+    return frame.getAttribute("src")""".trimIndent(),
 )
 ui.waitForSelector("#docs-mobile-controller-outputs", 8000.0)
 ui.pause(6000)
@@ -216,9 +208,7 @@ ui.eval(
     frame.setAttribute("src", "/controllers?" + params.toString())
     frame.setAttribute("style", "position:fixed;left:32px;top:32px;width:390px;height:844px;border:0;outline:1px solid rgba(72,201,255,.75);background:#050505;z-index:2147483000")
     document.body.appendChild(frame)
-    return frame.getAttribute("src")
-    """
-        .trimIndent(),
+    return frame.getAttribute("src")""".trimIndent(),
 )
 ui.waitForSelector("#docs-mobile-controller-edit", 8000.0)
 ui.pause(10000)
@@ -260,9 +250,7 @@ ui.eval(
     frame.setAttribute("src", "/controllers?" + params.toString())
     frame.setAttribute("style", "position:fixed;left:24px;top:24px;width:360px;height:780px;border:0;outline:1px solid rgba(72,201,255,.75);background:#050505;z-index:2147483000")
     document.body.appendChild(frame)
-    return col
-    """
-        .trimIndent(),
+    return col""".trimIndent(),
 )
 ui.waitForSelector("#docs-mobile-controller-pad-scrub", 8000.0)
 ui.pause(4000)
@@ -272,9 +260,7 @@ val area =
             const frame = document.getElementById("docs-mobile-controller-pad-scrub")
             const r = frame.getBoundingClientRect()
             const a = frame.contentDocument.getElementById("touch-area").getBoundingClientRect()
-            return [r.left + a.left, r.top + a.top, a.width, a.height].join(",")
-            """
-                .trimIndent(),
+            return [r.left + a.left, r.top + a.top, a.width, a.height].join(",")""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -338,9 +324,7 @@ ui.eval(
     frame.setAttribute("src", "/controllers?" + params.toString())
     frame.setAttribute("style", "position:fixed;left:32px;top:32px;width:390px;height:844px;border:0;outline:1px solid rgba(72,201,255,.75);background:#050505;z-index:2147483000")
     document.body.appendChild(frame)
-    return frame.getAttribute("src")
-    """
-        .trimIndent(),
+    return frame.getAttribute("src")""".trimIndent(),
 )
 ui.waitForSelector("#docs-mobile-controller-chat", 8000.0)
 ui.pause(10000)
@@ -354,8 +338,7 @@ ui.eval(
         field.navigateToBoxProperty(target.uid, "code")
     }
     return target?.uid || ""
-    """
-        .trimIndent(),
+    """.trimIndent(),
 )
 ui.pause(1800)
 ```
@@ -378,9 +361,7 @@ ui.eval(
     frame.setAttribute("src", "/controllers?" + params.toString())
     frame.setAttribute("style", "position:fixed;left:32px;top:32px;width:390px;height:844px;border:0;outline:1px solid rgba(72,201,255,.75);background:#050505;z-index:2147483000")
     document.body.appendChild(frame)
-    return frame.getAttribute("src")
-    """
-        .trimIndent(),
+    return frame.getAttribute("src")""".trimIndent(),
 )
 ui.waitForSelector("#docs-mobile-controller-select", 8000.0)
 ui.pause(10000)
@@ -388,9 +369,7 @@ ui.eval(
     """
     const controller = document.getElementById("docs-mobile-controller-select")
     controller?.contentDocument?.querySelector('[data-page="select"]')?.click()
-    return controller?.contentDocument?.querySelector('[data-page="select"]')?.classList.contains("active") || false
-    """
-        .trimIndent(),
+    return controller?.contentDocument?.querySelector('[data-page="select"]')?.classList.contains("active") || false""".trimIndent(),
 )
 ui.pause(120)
 ```

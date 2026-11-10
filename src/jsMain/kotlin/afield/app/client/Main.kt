@@ -7035,6 +7035,13 @@ suspend fun main() {
                             // Send callback command to server
                             send("slideshow-command", js("{command: 'callback:' + callbackName}"))
                         }
+
+                        // A page or PDF linked from a presentation's note opens inside the talk, on
+                        // the audience display; Electron checks what it may open.
+                        !href.startsWith("#") -> {
+                            val bridge = window.asDynamic().fieldElectron
+                            if (bridge?.openPresentationLink != null) bridge.openPresentationLink(a.asDynamic().href as String)
+                        }
                     }
                 }
                 null

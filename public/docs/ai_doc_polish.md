@@ -22,9 +22,7 @@ ui.eval(
     f.src = "/welcome"
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1700px;height:2000px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 var state = ""
 for (i in 0 until 80) {
@@ -38,8 +36,7 @@ for (i in 0 until 80) {
                 if (!panel.open) panel.querySelector("summary").click()
                 const s = d.getElementById("completion-doc-polish-state")?.textContent || "checking"
                 return /checking/i.test(s) ? "pending" : "ready"
-                """
-                    .trimIndent(),
+                """.trimIndent(),
             )
             .toString()
     if (state.contains("ready")) break
@@ -59,9 +56,7 @@ ui.eval(
     m.setAttribute("style", "position:fixed;pointer-events:none;background:transparent;border:0;z-index:2147483001;" +
         "left:" + (o.left + r.left - 8) + "px;top:" + (o.top + r.top - 4) + "px;width:" + (r.width + 16) + "px;height:" + (r.height + 12) + "px")
     document.body.appendChild(m)
-    return [r.width, r.height]
-    """
-        .trimIndent(),
+    return [r.width, r.height]""".trimIndent(),
 )
 ui.pause(300)
 ```
@@ -81,9 +76,7 @@ ui.eval(
     f.src = "/docs-pass.html"
     f.setAttribute("style", "position:fixed;left:0;top:0;width:900px;height:1400px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 var state = ""
 for (i in 0 until 240) {
@@ -96,8 +89,7 @@ for (i in 0 until 240) {
                 if (/Loading/.test(d.getElementById("posture").textContent)) return "posture"
                 if (!d.getElementById("counts")?.children.length) return "counts"
                 return "ready"
-                """
-                    .trimIndent(),
+                """.trimIndent(),
             )
             .toString()
     if (state.contains("ready")) break
@@ -106,9 +98,7 @@ check(state.contains("ready")) { "the revision pass page did not finish loading:
 ui.eval(
     """
     document.getElementById("docs-pass-frame").contentDocument.getElementById("import-drafts").click()
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 for (i in 0 until 600) {
     ui.pause(250)
@@ -119,8 +109,7 @@ for (i in 0 until 600) {
                 const running = /running/.test(d.getElementById("job-panel").className)
                 const drafts = /KDoc drafts/.test(d.getElementById("counts").textContent)
                 return !running && drafts ? "imported" : "importing"
-                """
-                    .trimIndent(),
+                """.trimIndent(),
             )
             .toString()
     if (state.contains("imported")) break
@@ -141,9 +130,7 @@ ui.eval(
     m.setAttribute("style", "position:fixed;pointer-events:none;background:transparent;border:0;z-index:2147483001;" +
         "left:" + (o.left + r.left) + "px;top:" + (o.top + r.top) + "px;width:" + r.width + "px;height:" + r.height + "px")
     document.body.appendChild(m)
-    return [r.width, r.height]
-    """
-        .trimIndent(),
+    return [r.width, r.height]""".trimIndent(),
 )
 ui.pause(300)
 ```

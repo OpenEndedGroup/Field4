@@ -31,9 +31,7 @@ ui.eval(
     frame.src = "/welcome"
     frame.style.cssText = "position:fixed;left:0;top:0;width:1400px;height:1300px;border:0;background:#111;z-index:2147483000"
     document.body.appendChild(frame)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 var localReady = false
 for (i in 0 until 80) {
@@ -53,9 +51,7 @@ for (i in 0 until 80) {
                 d.getElementById("ai-fast-model").value = ""
                 d.getElementById("ai-fallback-model").value = ""
                 panel.scrollIntoView({block:"start"})
-                return !d.getElementById("local-ai-controls").hidden
-                """
-                    .trimIndent(),
+                return !d.getElementById("local-ai-controls").hidden""".trimIndent(),
             )
             .toString() == "true"
     if (localReady) break
@@ -75,9 +71,7 @@ ui.eval(
         (outer.left + panel.left) + "px;top:" + (outer.top + panel.top) + "px;width:" + panel.width +
         "px;height:" + (last.bottom - panel.top + 4) + "px"
     document.body.appendChild(crop)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ```
 
