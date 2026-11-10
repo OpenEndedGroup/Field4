@@ -2726,7 +2726,7 @@ class Server {
                     box.output.retainedAreas.snapshot(box.id) + controllerControlsForBox(box.id).map {
                         Message("control-value-update").payload(it)
                     }
-                }
+                } + listOfNotNull(afield.ui.slides.PresentationArrangement.parkedRequestFor(info))
                 if (session != null) GlobalScope.launch {
                     for (item in messages) session.send(Json.encodeToString(item))
                 }

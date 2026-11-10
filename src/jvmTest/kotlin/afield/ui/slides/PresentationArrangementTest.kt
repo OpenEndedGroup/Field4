@@ -90,14 +90,25 @@ class PresentationArrangementTest {
         assertEquals(0, PresentationArrangement.arrange(show, runFigures = false, timeoutMs = 5_000), "arranging again moves nothing")
     }
 
-    @Test fun aPresentationsNoteKeepsToTheCornerUnlessAStepAnchorsIt() {
+    @Test fun withNoCanvasTheRequestWaitsAndTheFirstCanvasToOpenTheDocumentArrangesIt() = runBlocking {
         val s = session()
         val deck = s.box("deck")
         val fig = s.box("fig")
-        val talk = deck.presentation { step("Free") { markdownNote("hi") }; step("Held") { markdownNote("there"); anchorNoteTo(fig) } }
-        assertEquals("", talk.noteAnchorUid(talk.steps[0]), "the note does not cover the boxes beside the deck")
-        assertEquals(fig.id, talk.noteAnchorUid(talk.steps[1]))
-        val guide = deck.slideShow { step("Guide") { markdownNote("hi") } }
-        assertEquals(deck.id, guide.noteAnchorUid(guide.steps[0]), "a guide's note still sits beside its box")
+        // A figure whose panel was left collapsed: it must be measured, and left, open.
+        fig.output.retainedAreas.put("scene", "<div>scene</div>")
+        fig.output.retainedAreas.control("close", "scene")
+        val show = deck.presentation(title = "Talk") { step("One") { audience { figure("fig") } } }
+        PresentationArrangement.deliver = { _, _ -> }
+        assertEquals(-1, PresentationArrangement.arrange(show, runFigures = false, timeoutMs = 200), "no canvas answered")
+        val opened = fig.output.retainedAreas.snapshot(fig.id).filter { it.name == "output-control" }
+            .map { Json.decodeFromJsonElement<afield.app.protocol.OutputControl>(it.payload!!) }
+        assertEquals(listOf("open"), opened.map { it.action }, "the collapsed panel is opened before measuring")
+
+        // A canvas attaches later: it is sent the parked request, and its answer is applied.
+        val parked = PresentationArrangement.parkedRequestFor(s)!!
+        val request = Json.decodeFromJsonElement<ArrangeBoxesRequest>(parked.payload!!)
+        PresentationArrangement.complete(ArrangeBoxesResult(request.id, listOf(Set_rect(fig.id, "frame", Rect(900.0, 0.0, 160.0, 50.0)))))
+        assertEquals(Rect(900.0, 0.0, 160.0, 50.0), fig.frame)
+        assertEquals(null, PresentationArrangement.parkedRequestFor(s), "answered once, it no longer waits")
     }
 }
