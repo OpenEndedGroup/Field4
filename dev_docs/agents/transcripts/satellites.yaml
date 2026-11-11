@@ -463,6 +463,7 @@ operations:
               uFragColor = fcol;
           }
         code: |
+          import afield.graphics.vulkan.util.Camera
           import afield.simulation.orbits.*
           import java.time.Duration
 
@@ -567,6 +568,7 @@ operations:
       property: code
       type: fragment
       code: |
+        import afield.graphics.vulkan.util.Camera
         import afield.simulation.orbits.*
         import java.time.Duration
 
