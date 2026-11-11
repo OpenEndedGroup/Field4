@@ -1,5 +1,4 @@
 import afield.simulation.orbits.*
-import afield.graphics.vulkan.util.Camera
 
 // One record per satellite: its mean elements, moved to the clock's start so the shader's time is small.
 @GpuStruct

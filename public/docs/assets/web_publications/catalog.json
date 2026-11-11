@@ -1743,6 +1743,30 @@
         "public/docs/assets/agent_transcripts/flow_islands/metadata.edn": "a5824f17cf232778d201111edde541231a59c2b50bc90ebd873f6241f6efb702"
       }
     },
+    "assets/agent_transcripts/flow_lenia/metadata.edn": {
+      "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
+      "capturedAt": "2026-11-11T19:14:51.210Z",
+      "channels": 3,
+      "file": "assets/web_publications/flow_lenia/document/metadata.edn",
+      "files": {
+        "assets/web_publications/flow_lenia/document/metadata.edn": "e4356f0e3d919d730138898c77f4093cf46864eaa51a8120e563a0416ccc3612",
+        "assets/web_publications/flow_lenia/document/outputs.json": "a9bd750306b293db73914c6695ab0c4483195906c81b5955664a0698bab9de8e",
+        "assets/web_publications/flow_lenia/outputs/0.html": "00c0c8e572037fb8ffe587d2dc5d24ce24ee564b269c5cb5905a13fac2896a03",
+        "assets/web_publications/flow_lenia/outputs/1.html": "347f7d17ac275a317a70d236e8132f61eb48b611f8e3ba12940670fd70b517d1",
+        "assets/web_publications/flow_lenia/outputs/2.html": "4102f657a5c986296d9b853ace2b9a82bca83e2d56af8f1f42cbe009904848f6"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/flow_lenia/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/flow_lenia.yaml": "bbcca14122e8ded40e6221fb4286a25eeb7f0c005f6cbcc3fbed2a78e89f4b24",
+        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_collision_code_.kt": "afcd0cd9759913f240a0990e4c8319fde04ad530d6cd25ea182fb4f74dabb2e4",
+        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_conservation_code_.kt": "748be56c87e8b46b86bb764a6543cd9de4b568c83746f1de8dad53a365af4be2",
+        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_drift_code_.kt": "82de303d1f72462c298a8dca0d1fbaf5f4351adab58a2b5774440e7c359ca92f",
+        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_species_code_.kt": "3f1d542bed4dc71635584cbccdf7fbb10ae6d0ff4855e60d93c7904fe54ea0a9",
+        "public/docs/assets/agent_transcripts/flow_lenia/guides/alife_examples.md": "0c81d131364c0fcc13bb4112f5765c864c324505a350a0cb7a4c2c770f33b6e0",
+        "public/docs/assets/agent_transcripts/flow_lenia/metadata.edn": "e1f82d192460347949cd2d8f4887ed0b67994dc6b25e3df07730be22d66db9c8"
+      }
+    },
     "assets/agent_transcripts/fn_differentiable_fit_demo/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
       "capturedAt": "2026-11-11T14:22:29.846Z",
@@ -4288,12 +4312,12 @@
     },
     "assets/agent_transcripts/satellites/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-11T18:45:12.951Z",
+      "capturedAt": "2026-11-11T19:15:02.196Z",
       "channels": 1,
       "file": "assets/web_publications/satellites/document/metadata.edn",
       "files": {
-        "assets/web_publications/satellites/document/metadata.edn": "a673ab6bae84ffb97bbbd65f6eeee76d7e8edb1d3b2326fe53d418c0fde9cd62",
-        "assets/web_publications/satellites/document/outputs.json": "9ab7e506134eb1c3a044094988d7e04924b87cf2a16cbda1c6c8ff4cb12b3e12",
+        "assets/web_publications/satellites/document/metadata.edn": "918b0b7d76268b0c864e89655e5225ac54fc877fb2ccaf113977ef996b8dd69a",
+        "assets/web_publications/satellites/document/outputs.json": "f5acbdef945992f8e9ae9157aa60195c59b8f2e7319c09d676a5345ad078e91d",
         "assets/web_publications/satellites/outputs/0.html": "2555cf246fb256298039f2839643829ea27dbf27215d7ace14af74d38cf683dc"
       },
       "kinds": [
@@ -4301,14 +4325,14 @@
       ],
       "outputs": "assets/web_publications/satellites/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/satellites.yaml": "0dd249b767ae2e60f5b4ef0d02e2be6f6243101196a47f3178d6bfd504cac8c6",
+        "dev_docs/agents/transcripts/satellites.yaml": "01c2e44e51e7b76577ebb90bb784b5a497ad4f74019f2db96bf34c561b8ae65c",
         "public/docs/assets/agent_transcripts/satellites/agent_graphics_context_code_.kt": "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2",
         "public/docs/assets/agent_transcripts/satellites/guides/satellites.md": "1bf958471e50ba53ea50382da8c80b4f8edf534606cdd98c1c36139117e6f214",
-        "public/docs/assets/agent_transcripts/satellites/metadata.edn": "1d00b823ebc54d8bf9290ad8de9bce602b7238e12caffd2c96bf1c55daa791aa",
+        "public/docs/assets/agent_transcripts/satellites/metadata.edn": "adae4bfd26841525801a613e3ba5bfb16c0792e518c39c2d0827fadb2995a2e0",
         "public/docs/assets/agent_transcripts/satellites/satellite-catalogue_code_.kt": "15ec16ee1b330da94ad7f91c499b505bdb1f5c37a3b2fa71cab232b0e5035b9e",
         "public/docs/assets/agent_transcripts/satellites/satellite-catalogue_fragment_.glsl": "7f5e44e8b47539acea1d6608689722479e611377d171dd8a3c743f84932fd4a2",
         "public/docs/assets/agent_transcripts/satellites/satellite-catalogue_vertex_.glsl": "19a892cfc217f0354c2e5647b528a187289e80e78b2cbcf0c5638b9a7c5bc1be",
-        "public/docs/assets/agent_transcripts/satellites/satellite-earth_code_.kt": "70d144ae235896e174877eaf095c09a356781a4dcac8790ad0186d2679aea5ec",
+        "public/docs/assets/agent_transcripts/satellites/satellite-earth_code_.kt": "ef6b3fa20f82ee5c71ae63c9ba437019964904064dec3efec2843f6ea147c24b",
         "public/docs/assets/agent_transcripts/satellites/satellite-earth_fragment_.glsl": "2f9d2c32dd0a21b6f98a207e7187d8c81a390cf28ef0043f3c852ec71c79c819",
         "public/docs/assets/agent_transcripts/satellites/satellite-earth_vertex_.glsl": "675baa042bf4fe92b603d7c883408edc6921f75c296b40074dfef5d9ab49a515",
         "public/docs/assets/agent_transcripts/satellites/satellite-geo_code_.kt": "6f39f2aef46cf4c73977133251a0ae4b6220a8397cfecd1af313acb30f15a1d4",

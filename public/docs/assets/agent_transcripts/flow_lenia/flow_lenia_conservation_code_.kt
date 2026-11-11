@@ -1,4 +1,9 @@
-val world = flowLeniaWorld(64, 64, [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()], seedRadius = 10.0)
+val world = flowLeniaWorld(
+    64,
+    64,
+    [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+    seedRadius = 10.0,
+)
 val m0 = world.totalMass()
 var worst = 0.0
 repeat(200) {

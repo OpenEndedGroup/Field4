@@ -44,11 +44,16 @@ animateEvolution(
 <!-- field-box id="flow_lenia_drift" index="1" -->
 
 ```edn [field-box id="flow_lenia_drift" role="properties"]
-{"id" "flow_lenia_drift" "index" 1 "name" "3 — The parameter field blending (MEAN mixing)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — The parameter field blending (MEAN mixing)" "_tombstone" false "frame" #afield/rect [560.0 240.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_lenia_drift_code_.kt" "lines" 16 "characters" 520 "sha256" "be0d1866f3e44079e47aa6b2762c948376d2454fed56029f1e656509afa907be"}]}
+{"id" "flow_lenia_drift" "index" 1 "name" "3 — The parameter field blending (MEAN mixing)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — The parameter field blending (MEAN mixing)" "_tombstone" false "frame" #afield/rect [560.0 240.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_lenia_drift_code_.kt" "lines" 22 "characters" 555 "sha256" "82de303d1f72462c298a8dca0d1fbaf5f4351adab58a2b5774440e7c359ca92f"}]}
 ```
 
 ```kotlin [field-property box="flow_lenia_drift" name="code" path="flow_lenia_drift_code_.kt"]
-val world = flowLeniaWorld(96, 64, [FlowLeniaPresets.rings(), FlowLeniaPresets.cell()], positions = [38.0 to 32.0, 58.0 to 32.0])
+val world = flowLeniaWorld(
+    96,
+    64,
+    [FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+    positions = [38.0 to 32.0, 58.0 to 32.0],
+)
 
 animateEvolution(
     world,
@@ -60,7 +65,8 @@ animateEvolution(
     panels = { w, n ->
         [
             ("step " + n) to w.speciesImg().upscaleNearest(4),
-            ("hybrid %.0f of %.0f".format(w.mixedMass(), w.totalMass())) to w.weightImg(0).colormap("viridis", 0f, 0.4f).upscaleNearest(4),
+            ("hybrid %.0f of %.0f".format(w.mixedMass(), w.totalMass())) to
+                w.weightImg(0).colormap("viridis", 0f, 0.4f).upscaleNearest(4),
         ]
     },
 )
@@ -98,11 +104,16 @@ animateEvolution(
 <!-- field-box id="flow_lenia_conservation" index="3" -->
 
 ```edn [field-box id="flow_lenia_conservation" role="properties"]
-{"id" "flow_lenia_conservation" "index" 3 "name" "0 — Flow Lenia: mass conserved over 200 steps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "0 — Flow Lenia: mass conserved over 200 steps" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_lenia_conservation_code_.kt" "lines" 9 "characters" 371 "sha256" "a74621be876e6827e6abb89547c6976d65c2a89b1d37dfda2000e9f1e2392eed"}]}
+{"id" "flow_lenia_conservation" "index" 3 "name" "0 — Flow Lenia: mass conserved over 200 steps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "0 — Flow Lenia: mass conserved over 200 steps" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_lenia_conservation_code_.kt" "lines" 14 "characters" 390 "sha256" "748be56c87e8b46b86bb764a6543cd9de4b568c83746f1de8dad53a365af4be2"}]}
 ```
 
 ```kotlin [field-property box="flow_lenia_conservation" name="code" path="flow_lenia_conservation_code_.kt"]
-val world = flowLeniaWorld(64, 64, [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()], seedRadius = 10.0)
+val world = flowLeniaWorld(
+    64,
+    64,
+    [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+    seedRadius = 10.0,
+)
 val m0 = world.totalMass()
 var worst = 0.0
 repeat(200) {

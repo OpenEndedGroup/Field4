@@ -1,5 +1,5 @@
-import afield.simulation.orbits.*
 import afield.graphics.vulkan.util.Camera
+import afield.simulation.orbits.*
 import java.time.Duration
 
 // The catalogue, a clock that runs the sky at 120× real time, and one camera, all published
