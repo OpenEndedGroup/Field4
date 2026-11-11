@@ -1200,11 +1200,11 @@ held-out seeds; it takes a few minutes. Box 7 animates the evolved glider. All s
 
 ### flow_lenia
 
-[Flow Lenia](alife_examples.md#flow-lenia-matter-that-moves-instead-of-growing) as four boxes. Box 0
-runs three species for 200 steps and prints the worst relative change in total mass (about `1e-12`).
-Boxes 1 to 3 are the page's clips: three species with a flat total-mass plot, rings meeting a cell
-with sampled mixing and the mass per species, and the same pair blending under mean mixing with the
-parameter field drawn. All four are pure CPU.
+Try [Flow Lenia](alife_examples.md#flow-lenia-matter-that-moves-instead-of-growing) in four boxes.
+Box 0 runs three species for 200 steps and prints the worst relative change in total mass (about
+`1e-12`). Boxes 1 to 3 make the page's clips: three species alongside a total-mass plot, rings
+meeting a cell with sampled mixing and a plot of each species' mass, and the same pair blending
+under mean mixing with the parameter field drawn. All four run on the CPU.
 
 [Open →](offline.html?file=assets/agent_transcripts/flow_lenia/metadata.edn)
 
