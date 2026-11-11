@@ -13,8 +13,8 @@ val points = buildList {
 }
 val window = Rect(-4.6, -4.6, 19.2, 19.2)
 
-// k-means++ seeds favour far points, so several land on strays. Revival is off by default in 2-D.
-val options = KMeansOptions(epochs = 3, randomSeed = 5L)
+// Plain k-means++ seeds favour far points, so several land on strays. Revival is off by default in 2-D.
+val options = KMeansOptions(epochs = 3, seeding = KMeansSeeding.PLUS_PLUS, randomSeed = 5L)
 val off = vec2KMeans(points, 40, options.copy(reviveThreshold = 0.0))
 val on = vec2KMeans(points, 40, options.copy(reviveThreshold = 0.1))
 fun dead(r: KMeansResult<Vec2>) = r.clusterSizes.count { it < 10 }

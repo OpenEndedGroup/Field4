@@ -2323,25 +2323,30 @@
     },
     "assets/agent_transcripts/kmeans_emeans/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-11T14:31:40.372Z",
-      "channels": 2,
+      "capturedAt": "2026-11-11T15:19:03.903Z",
+      "channels": 5,
       "file": "assets/web_publications/kmeans_emeans/document/metadata.edn",
       "files": {
-        "assets/web_publications/kmeans_emeans/document/metadata.edn": "cb8c8954e9e921af61c1607a572497d35ec96b5acf337bda3341e0e1734735cd",
-        "assets/web_publications/kmeans_emeans/document/outputs.json": "7ecba6e8b5cd2f70dab0b9866261530caea700e1ce9c7c66258c3e67f30c39c6",
-        "assets/web_publications/kmeans_emeans/outputs/0.html": "bc30ea1bac354bce7cecd27145fab3912071500d119e8279c9a563c41d90658e",
-        "assets/web_publications/kmeans_emeans/outputs/1.html": "d8d7aeefa7a1532c4fad571a51d78f444386dfeb060df667b531879d9d7182fd"
+        "assets/web_publications/kmeans_emeans/document/metadata.edn": "ed09a2917bb9dae58c9f663ff3e7697db9a035647eb76d59257b0952644e7e4a",
+        "assets/web_publications/kmeans_emeans/document/outputs.json": "04fd43b163de3fc609dd29ecc61df6ed7d900420baf6115bd058669612c11e47",
+        "assets/web_publications/kmeans_emeans/outputs/0.html": "24320e13213a617dfe93de8b832630671d71060b4202023ff6da8227e8ae27d3",
+        "assets/web_publications/kmeans_emeans/outputs/1.html": "cadabc0ead27d94582bad789fb54fc4fd576d72f04c3015092d7303d11d91c75",
+        "assets/web_publications/kmeans_emeans/outputs/2.html": "aebf8ee63750f835b43967e071350e9b3e43e699f1bbb116c7a33068b651e1ab",
+        "assets/web_publications/kmeans_emeans/outputs/3.html": "7ff3478f9a10585499762cfc2ab1010e50c9daeeff39e8b93753fb745eba213d",
+        "assets/web_publications/kmeans_emeans/outputs/4.html": "ad6f9e827f0f37f1346e7245a8f32d38b090c7e969b7c70f8b7661bc3de48c58"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/kmeans_emeans/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/kmeans_emeans.yaml": "ae8be035351254b2afd0ad0fa34063828dbd37af03a472c0bec0f2ebce4cd06b",
+        "dev_docs/agents/transcripts/kmeans_emeans.yaml": "ac6a1c94c96b75d230ae38329bc36e62a34baf3ea461c0ace7622cebd1b5dd9a",
         "public/docs/assets/agent_transcripts/kmeans_emeans/guides/spatial_geometry_examples.md": "a0d4efda38b93236a531c3a72ddce0c4b2044f689b173a68cfc4ee4e4e8450c4",
+        "public/docs/assets/agent_transcripts/kmeans_emeans/kmeans_epoch_slider_code_.kt": "551be1684200d96ec9ccd4137db27f31b9b254a47f6cae6a60a13f18ccbbb1e7",
         "public/docs/assets/agent_transcripts/kmeans_emeans/kmeans_lloyd_vs_emeans_code_.kt": "be0d956d74d10c3663f835861b84c514dac31263d8fa230ffc0581c13a002177",
-        "public/docs/assets/agent_transcripts/kmeans_emeans/kmeans_revival_code_.kt": "7b471e5096c8147dd2d52c7ac8c3ec4a53b19e310160166d58fc7b1ac793f026",
-        "public/docs/assets/agent_transcripts/kmeans_emeans/metadata.edn": "57f76d7a018d1c9ce81bf94278aa337debb140eccac22e039723a0fe559e11af"
+        "public/docs/assets/agent_transcripts/kmeans_emeans/kmeans_revival_code_.kt": "8f08f8365c68aeba8e8b36e6922c7fed8f2bf1a54701bcb45ffdc1e36b37ddbe",
+        "public/docs/assets/agent_transcripts/kmeans_emeans/kmeans_tree_code_.kt": "738a35c55fb9d655802459aaf2a479907fa4ff4437b5b6cb2052c37ed71b6642",
+        "public/docs/assets/agent_transcripts/kmeans_emeans/metadata.edn": "055a46dffbdc870261b99b6d56b9f25a5556c78384d09c8dc179b6febbe1a410"
       }
     },
     "assets/agent_transcripts/knight_tour_workshop/metadata.edn": {
@@ -4281,6 +4286,40 @@
         "public/docs/chain_rectsl_spacetime.md#capture-box=rectsl_spacetime_trace"
       ]
     },
+    "assets/agent_transcripts/satellites/metadata.edn": {
+      "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
+      "capturedAt": "2026-11-11T15:19:16.503Z",
+      "channels": 1,
+      "file": "assets/web_publications/satellites/document/metadata.edn",
+      "files": {
+        "assets/web_publications/satellites/document/metadata.edn": "67ab686809b4ca847816a9647c31a3e4fcc710c37d3fd5ec03ffc086dd3789cd",
+        "assets/web_publications/satellites/document/outputs.json": "fa74dea753091af7b12da26e4e293b20c1ba9f5113e12b80e214b17ce4aac7d0",
+        "assets/web_publications/satellites/outputs/0.html": "63e946df9ec82ceb3883be91024fcb85cb432857bc8a8016bc6ff0b5523e5188"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/satellites/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/satellites.yaml": "24b839025bd27f63a49c4cc54d35d1dc22f07c7ab65ba45c5baf6fc18ea3f2cc",
+        "public/docs/assets/agent_transcripts/satellites/agent_graphics_context_code_.kt": "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2",
+        "public/docs/assets/agent_transcripts/satellites/guides/satellites.md": "1bf958471e50ba53ea50382da8c80b4f8edf534606cdd98c1c36139117e6f214",
+        "public/docs/assets/agent_transcripts/satellites/metadata.edn": "32392fa30df8b03d8e544948adf084c233a5815b30c5461e336f282f160c5fd2",
+        "public/docs/assets/agent_transcripts/satellites/satellite-catalogue_code_.kt": "15ec16ee1b330da94ad7f91c499b505bdb1f5c37a3b2fa71cab232b0e5035b9e",
+        "public/docs/assets/agent_transcripts/satellites/satellite-catalogue_fragment_.glsl": "7f5e44e8b47539acea1d6608689722479e611377d171dd8a3c743f84932fd4a2",
+        "public/docs/assets/agent_transcripts/satellites/satellite-catalogue_vertex_.glsl": "afa42f5d7443e0f8915053f6ad9de9402a861244e6683379628228bd5dd102c3",
+        "public/docs/assets/agent_transcripts/satellites/satellite-earth_code_.kt": "70d144ae235896e174877eaf095c09a356781a4dcac8790ad0186d2679aea5ec",
+        "public/docs/assets/agent_transcripts/satellites/satellite-earth_fragment_.glsl": "2f9d2c32dd0a21b6f98a207e7187d8c81a390cf28ef0043f3c852ec71c79c819",
+        "public/docs/assets/agent_transcripts/satellites/satellite-earth_vertex_.glsl": "675baa042bf4fe92b603d7c883408edc6921f75c296b40074dfef5d9ab49a515",
+        "public/docs/assets/agent_transcripts/satellites/satellite-passes_code_.kt": "39c0253a892120ce01f827a265fb96d3080fd908056bff5de29799dae81e2180",
+        "public/docs/assets/satellites/globe.png": "482aea6ae3979ee8923b21dc2e22750875b1b465c33eb0f71306ebeed369f369",
+        "public/docs/satellites.md#capture-box=satellite-catalogue": "88d26afd1667e51f7e73203f1cd1552e01c3eac173519a74a5593ce7ba85fe4b"
+      },
+      "supplementalSources": [
+        "public/docs/assets/satellites/globe.png",
+        "public/docs/satellites.md#capture-box=satellite-catalogue"
+      ]
+    },
     "assets/agent_transcripts/sentence_diagrams/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
       "capturedAt": "2026-11-11T14:16:46.854Z",
@@ -5285,6 +5324,33 @@
         "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_plotter_code_.kt": "a58b1c7a2c3080991dcb8cf20a552173a2c69c46dd0411676ab6715b953e3a29",
         "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_sweep_code_.kt": "7b6f5e9db308ba26b7617312792ff77a496a340e20e83f8940f3fc28777ee2d3",
         "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_tours_code_.kt": "0f38e4deab1a77cad7970fd25565fe9b38c86add13526a261d6e08b47244d166"
+      }
+    },
+    "assets/agent_transcripts/variable_width_strokes/metadata.edn": {
+      "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
+      "capturedAt": "2026-11-11T15:19:14.484Z",
+      "channels": 4,
+      "file": "assets/web_publications/variable_width_strokes/document/metadata.edn",
+      "files": {
+        "assets/web_publications/variable_width_strokes/document/metadata.edn": "7eca8b88e59f4871165d618d6cd70ccb37bc7ea11dd1c920c0a62b931a67b71b",
+        "assets/web_publications/variable_width_strokes/document/outputs.json": "2c61b60214b88626e6a7c7c7ecfb36e546a0b5b54d77b6e7d198ef5bbad0f8db",
+        "assets/web_publications/variable_width_strokes/outputs/0.html": "f15330504a4fdf0b57736b41efef64f0b8754b856975daaa71ac6e8292a26015",
+        "assets/web_publications/variable_width_strokes/outputs/1.html": "99404d38462362926fea49e923be8f76f855ab76cc79b12ec3d9ed5288bc79bf",
+        "assets/web_publications/variable_width_strokes/outputs/2.html": "f4a8c814c0923e1f5873de17d6401f146f7eccf3e9343c2d68de9910526c019b",
+        "assets/web_publications/variable_width_strokes/outputs/3.html": "a4f73dd89c9c68be09b7aeddf9d8f5ed0e114139f4619f86588ed3478c003414"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/variable_width_strokes/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/variable_width_strokes.yaml": "6185fe7d206b78923c9fe5542ed24219eb708e632be8ce0d6a4ca121bb475aaf",
+        "public/docs/assets/agent_transcripts/variable_width_strokes/guides/fline_examples-variable-width-strokes-the-swept-circle-envelope.md": "0429fd8a571d032ff5b26802746fde5806fd3299e65ff19a08a4e40b0587dbe4",
+        "public/docs/assets/agent_transcripts/variable_width_strokes/metadata.edn": "72aa9678752f80cc0da45bbe9f38195e2fdb504f9599d7fc2a5f4a7dd55e2732",
+        "public/docs/assets/agent_transcripts/variable_width_strokes/swept-cubic_code_.kt": "f9a5c02f0b1131501ceaadf75e832b4c0acd212380ecaae86e09b19992861938",
+        "public/docs/assets/agent_transcripts/variable_width_strokes/swept-degenerate_code_.kt": "69d1ce8348dddf73a10587c8bea5537d8f936163ddb08269bbdb0d01a05d2fe6",
+        "public/docs/assets/agent_transcripts/variable_width_strokes/swept-notation_code_.kt": "7d8938f14699d0e4d9869db12a5c88fc1d7facba66f1cafafd1b8788adf059f8",
+        "public/docs/assets/agent_transcripts/variable_width_strokes/swept-o_code_.kt": "793076bc942d44ac4a5d6548b1bb084e28655baded6901436ea27a44e1b9491b"
       }
     },
     "assets/agent_transcripts/vector_field_explorer/metadata.edn": {
