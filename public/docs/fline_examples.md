@@ -2385,10 +2385,10 @@ fun ink(f: FLine, dx: Double) = (f + vec(dx, 0.0)).apply {
 // pill: each span at its mean radius
 val pills = knots.zipWithNext { a, b ->
     val m = (a.z + b.z) / 2
-    sweptCircleStroke(listOf(vec(a.x, a.y, m), vec(b.x, b.y, m))).shell
+    sweptCircleStroke([vec(a.x, a.y, m), vec(b.x, b.y, m)]).shell
 }
 // trapezoid pill: each span straight, radius linear from end to end
-val trapezoids = knots.zipWithNext { a, b -> sweptCircleStroke(listOf(a, b)).shell }
+val trapezoids = knots.zipWithNext { a, b -> sweptCircleStroke([a, b]).shell }
 // swept spline: cubic Béziers in (x, y, r) through every sample
 val spline = sweptCircleStroke(knots).shell
 
