@@ -618,6 +618,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - [flow](simulation.md#flowshaders-kt)
 - [kratos](simulation.md#kratosdemo-kt)
 - [optics](simulation.md#cameraoptics-kt)
+- [orbits](simulation.md#frames-kt)
 - *particles* — [Machine learning](machine-learning.md#neuralparticles-kt) · [Simulation](simulation.md#boidsketch-kt)
 - *petri* — [Audio](audio.md#petrimusic-kt) · [Simulation](simulation.md#petrieditorextension-kt) · [Visualization](visualization.md#petrianalysis-kt)
 - [physics](simulation.md#csvreader-kt)
@@ -668,7 +669,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**38732 public symbols across 1766 source files**, 22801 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**38807 public symbols across 1769 source files**, 22856 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -685,7 +686,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Renderers](renderers.md) | 46 | 801 | 431 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 514 (67%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 51 | 1634 | 932 (57%) | Making a shape behave. |
+| [Simulation](simulation.md) | 54 | 1709 | 987 (57%) | Making a shape behave. |
 | [Imaging](imaging.md) | 55 | 887 | 452 (50%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 22 | 1127 | 1030 (91%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -1265,6 +1266,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [FrameHistory.kt](graphics.md#framehistory-kt) | Graphics | 16 | 15 | Tracks the previous frame's camera for one render target, so temporal passes can reproject pixels and know when there is no usable history. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [FramePresentationLog.kt](graphics.md#framepresentationlog-kt) | Graphics | 7 | 1 | A diagnostic log of swapchain presentation timing, written to a file while enabled. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>diagnostics/<wbr></small> [FrameProfile.kt](workspace.md#frameprofile-kt) | Workspace | 9 | 6 | Explicit frame boundaries and named stages for the Profiling panel, for code that has its own frame loop. | [Profiling](../profiling_timeline.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>orbits/<wbr></small> [Frames.kt](simulation.md#frames-kt) | Simulation | 23 | 23 | From SGP4's TEME frame to the ground: Earth-fixed coordinates, latitude and longitude, look angles, and passes. | [Satellites and Orbits](../satellites.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [FrameSetBarrier.kt](graphics.md#framesetbarrier-kt) | Graphics | 7 | 5 | Holds back presentation of a frame set until every member is ready, so several textures switch frames together. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [FrameSetPacer.kt](graphics.md#framesetpacer-kt) | Graphics | 7 | 3 | Paces an asynchronous frame set so each frame gets a whole source-frame interval to prepare before it is due. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>functions/<wbr></small> [FunctionEvolve.kt](function.md#functionevolve-kt) | Function | 42 | 21 | Search over the *structure* of `Fn` graphs — the genetic counterpart to the gradient fitting of a fixed structure's numbers in FunctionFit.kt. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
@@ -2044,6 +2046,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>dmx/<wbr></small> [Sacn.kt](lighting.md#sacn-kt) | Lighting | 35 | 35 | Streaming ACN (ANSI E1.31-2016, "sACN") packet encoding and decoding — the wire format only. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>persistence/<wbr></small> [SafeSaveAtomicSmokeTest.kt](workspace.md#safesaveatomicsmoketest-kt) | Workspace · internal | 3 | 0 | Smoke for `File.safeSave`'s `atomic = true` path, which is what keeps a file readable while it is being rewritten. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Sampling.kt](synthesis.md#sampling-kt) | Synthesis | 81 | 31 | Playback of recorded audio, from reading a buffer straight through to scattering it into grains. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>orbits/<wbr></small> [SatelliteCatalogue.kt](simulation.md#satellitecatalogue-kt) | Simulation | 15 | 14 | A catalogue of satellites: element sets ready to propagate, from a bundled CelesTrak snapshot or a fresh download. | [Satellites and Orbits](../satellites.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>properties/<wbr></small> [saved.kt](data.md#saved-kt) | Data | 7 | 7 | Per-box persistence for Kotlin values, on top of kotlinx.serialization. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [SavedJsonSmokeTest.kt](examples.md#savedjsonsmoketest-kt) | Examples · internal | 3 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>diagnostics/<wbr>logging/<wbr></small> [SaveReloadLog.kt](workspace.md#savereloadlog-kt) | Workspace | 5 | 1 | A timestamped append-only log of document save and reload events, written to `~/.afield/logs/save_reload.log`. |  |
@@ -2070,6 +2073,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>notifications/<wbr></small> [Server_notifications.kt](workspace.md#server-notifications-kt) | Workspace | 1 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>protocol/<wbr></small> [Server_protocol.kt](workspace.md#server-protocol-kt) | Workspace · internal | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>diagnostics/<wbr>logging/<wbr></small> [SessionErrorLog.kt](workspace.md#sessionerrorlog-kt) | Workspace | 3 | 3 | A per-session copy of everything written to `System.err`, kept under `build/logs/` in the working directory, with stack traces also pinned on the console. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>orbits/<wbr></small> [Sgp4.kt](simulation.md#sgp4-kt) | Simulation | 37 | 18 | Two-line element sets and the SGP4 orbit propagator: where a catalogued satellite is, minutes from its epoch. | [Satellites and Orbits](../satellites.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>shader/<wbr></small> [ShaderAbi.kt](graphics.md#shaderabi-kt) | Graphics | 5 | 4 | Decides whether a recompiled shader can be swapped in without a full reload. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [ShaderBindingDocs.kt](workspace.md#shaderbindingdocs-kt) | Workspace · internal | 4 | 4 | Completion documentation for shader bindings, taken from the comments a box's preamble carries. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr></small> [ShaderBoids.kt](simulation.md#shaderboids-kt) | Simulation | 37 | 37 | Reynolds boids as a Vulkan compute shader, over a GPU neighbour grid, with the interaction rule swappable for a trained network. | [Neural particle systems](../neural_particles.md) |

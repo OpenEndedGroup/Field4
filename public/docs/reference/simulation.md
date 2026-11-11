@@ -14,7 +14,7 @@ Where the neighbours are. [Solvers](solvers.md) is Ceres, which finds the shape 
 
 The prose, with pictures: [Physics: particles, constraints and cloth](../physics.md) for the real-time stack — read it before touching `stiffness`, because it and `iterations` are not two knobs — and [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) for the meshing and the route into Kratos. Four loadable Kratos documents (thermal, flow, structural and the parameter study) and the cloth starting point are in the [Agent Transcript Gallery](../agent_transcripts.md); [Frames and the Animation Loop](../animation_time_model.md) explains why an integrator wants a fixed `dt`. `dev_docs/TETGEN.md` carries the mesher comparison that chose this route.
 
-51 source file(s), 1634 public symbol(s), 932 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+54 source file(s), 1709 public symbol(s), 987 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2198,6 +2198,265 @@ Refraction and reflection at the boundary between two transparent materials.
 [<code class="highlight"><span class="k">class</span> <span class="nf">WaveCrest</span><span class="p">(</span><span class="k">val</span> <span class="n">air</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">glass</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/optics/CameraOptics/#L754)
 
 One crest from [`Refraction.crossingCrests`](simulation.md#cameraoptics-kt--refraction--crossingcrests): its segment in air and in glass, `[x0, y0, x1, y1]` or `null`.
+
+## Frames.kt { #frames-kt }
+
+From SGP4's TEME frame to the ground: Earth-fixed coordinates, latitude and longitude, look angles, and passes.
+
+[`Frames.temeToEcef`](simulation.md#frames-kt--frames--temetoecef) turns a TEME position by Greenwich mean sidereal time (polar motion is ignored, a few
+metres); [`Frames.geodetic`](simulation.md#frames-kt--frames--geodetic) gives WGS-84 latitude, longitude and height; an [`Observer`](simulation.md#frames-kt-observer) at a place on the
+ground gives azimuth, elevation and range to a satellite, and [`Observer.passes`](simulation.md#frames-kt--observer--passes) finds every interval in
+which a satellite is above a minimum elevation:
+
+```diffstatic {data-lang=kotlin}
+import afield.simulation.orbits.*
+import java.time.*
+
+val iss = SatelliteCatalogue.bundled().byName("ISS (ZARYA)")!!
+val here = Observer(latitudeDeg = 41.88, longitudeDeg = -87.63)
+val start = iss.tle.epoch
+for (p in here.passes(iss, start, start.plus(Duration.ofDays(7)), minElevationDeg = 10.0))
+    println("${p.rise}  max ${"%.0f".format(p.maxElevationDeg)}°")
+```
+
+`src/jvmMain/kotlin/afield/simulation/orbits/Frames.kt` — [read the source](source/jvmMain/afield/simulation/orbits/Frames/)
+
+**Used in:** [Satellites and Orbits](../satellites.md)
+
+### Frames { #frames-kt-frames }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">Frames</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L34)
+
+Time scales and frame rotations for [`Sgp4`](simulation.md#sgp4-kt-sgp4) output.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="frames-kt--frames--earth-radius-km"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">EARTH&#95;RADIUS&#95;KM</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L39) | WGS-84 equatorial radius, km. |
+| <a id="frames-kt--frames--juliandate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">julianDate</span><span class="p">(</span><span class="n">year</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">month</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">day</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L43) | Julian date at 0h UTC of a calendar day (Gregorian, valid 1900–2100). |
+| <a id="frames-kt--frames--julianof"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">julianOf</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L47) | The Julian date of `time`. |
+| <a id="frames-kt--frames--instantof"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">instantOf</span><span class="p">(</span><span class="n">julian</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Instant</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L50) | The `Instant` of a Julian date, to the microsecond. |
+| <a id="frames-kt--frames--gmst"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">gmst</span><span class="p">(</span><span class="n">julian</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L56) | Greenwich mean sidereal time in radians, IAU 1982 (the form the SGP4 reference code uses). |
+| <a id="frames-kt--frames--temetoecef"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">temeToEcef</span><span class="p">(</span><span class="n">teme</span><span class="p">:</span> <span class="nc">Xyz</span><span class="p">,</span> <span class="n">julian</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Xyz</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L64) | A TEME vector at `julian` in the Earth-fixed frame (rotation by GMST; polar motion ignored). |
+| <a id="frames-kt--frames--geodetic"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">geodetic</span><span class="p">(</span><span class="n">ecef</span><span class="p">:</span> <span class="nc">Xyz</span><span class="p">)</span><span class="p">:</span> <span class="nc">Geodetic</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L71) | WGS-84 latitude and longitude (degrees) and height (km) of an Earth-fixed point, by Bowring's iteration. |
+| <a id="frames-kt--frames--ecefof"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">ecefOf</span><span class="p">(</span><span class="n">latitudeDeg</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">longitudeDeg</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">heightKm</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Xyz</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L87) | The Earth-fixed position of a place on the WGS-84 ellipsoid. |
+
+### Geodetic { #frames-kt-geodetic }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Geodetic</span><span class="p">(</span><span class="k">val</span> <span class="n">latitudeDeg</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">longitudeDeg</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">heightKm</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L102)
+
+A point given as WGS-84 latitude, longitude and height.
+
+### LookAngles { #frames-kt-lookangles }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LookAngles</span><span class="p">(</span><span class="k">val</span> <span class="n">azimuthDeg</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">elevationDeg</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">rangeKm</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L111)
+
+Where a satellite is in the sky.
+
+### Pass { #frames-kt-pass }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Pass</span><span class="p">(</span><span class="k">val</span> <span class="n">rise</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">,</span> <span class="k">val</span> <span class="n">set</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">,</span> <span class="k">val</span> <span class="n">culmination</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxElevationDeg</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L121)
+
+One interval in which a satellite is above an [`Observer`](simulation.md#frames-kt-observer)'s minimum elevation.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="frames-kt--pass--duration"></a>[<code class="highlight"><span class="k">val</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Duration</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L123) | How long it is above the minimum elevation. |
+
+### Observer { #frames-kt-observer }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Observer</span><span class="p">(</span><span class="k">val</span> <span class="n">latitudeDeg</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">longitudeDeg</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">heightKm</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L133)
+
+A place on the ground, for look angles and passes.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="frames-kt--observer--look"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">look</span><span class="p">(</span><span class="n">ecef</span><span class="p">:</span> <span class="nc">Xyz</span><span class="p">)</span><span class="p">:</span> <span class="nc">LookAngles</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L139) | Look angles to an Earth-fixed point. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">look</span><span class="p">(</span><span class="n">satellite</span><span class="p">:</span> <span class="nc">Satellite</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">)</span><span class="p">:</span> <span class="nc">LookAngles</span><span class="o">?</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L152) | Look angles to `satellite` at `time`, or `null` if its model has broken down. |
+| <a id="frames-kt--observer--passes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">passes</span><span class="p">(</span><span class="n">satellite</span><span class="p">:</span> <span class="nc">Satellite</span><span class="p">,</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">,</span> <span class="n">to</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">,</span> <span class="n">minElevationDeg</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nc">Duration</span> <span class="o">=</span> <span class="nc">Duration</span><span class="p">.</span><span class="nf">ofSeconds</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pass</span><span class="p">&gt;</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L163) | Every pass of `satellite` above `minElevationDeg` between `from` and `to`. |
+
+### SkyClock { #frames-kt-skyclock }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">SkyClock</span><span class="p">(</span><span class="k">val</span> <span class="n">reference</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">,</span> <span class="n">speed</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">60.0</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L207)
+
+A running clock for animating the sky: simulated time starting at `reference`, running [`speed`](simulation.md#frames-kt--skyclock--speed) times real time.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="frames-kt--skyclock--speed"></a>[<code class="highlight"><span class="k">var</span> <span class="n">speed</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L209) | Simulated seconds per real second; change it with [`rate`](simulation.md#frames-kt--skyclock--rate). |
+| <a id="frames-kt--skyclock--minutes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">minutes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L215) | Simulated minutes since `reference`. |
+| <a id="frames-kt--skyclock--instant"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">instant</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Instant</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L218) | The simulated time now. |
+| <a id="frames-kt--skyclock--gmst"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">gmst</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L221) | Greenwich mean sidereal time at the simulated time, radians. |
+| <a id="frames-kt--skyclock--rate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">rate</span><span class="p">(</span><span class="n">newSpeed</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/Frames/#L224) | Changes the rate without a jump in simulated time. |
+
+## SatelliteCatalogue.kt { #satellitecatalogue-kt }
+
+A catalogue of satellites: element sets ready to propagate, from a bundled CelesTrak snapshot or a fresh download.
+
+`SatelliteCatalogue.bundled` reads the snapshot of CelesTrak's "active" group that ships with Field
+(taken 2026-11-11, about 15,900 objects); `SatelliteCatalogue.fetch` downloads a current group, caches
+it under `~/.afield/cache/celestrak/` and falls back to the cache, then to the snapshot, when offline.
+Element sets age: SGP4 is good to a few kilometres for a day or two either side of the epoch and drifts
+by tens of kilometres a week out, so a demo that wants today's sky should fetch.
+
+Only near-earth objects are kept (see [`Tle.isDeepSpace`](simulation.md#sgp4-kt--tle--isdeepspace)); `SatelliteCatalogue.skippedDeepSpace` counts
+the rest. Data: CelesTrak, <https://celestrak.org>, by T. S. Kelso, which asks that it be credited.
+
+```diffstatic {data-lang=kotlin}
+import afield.simulation.orbits.*
+
+val sky = SatelliteCatalogue.bundled()
+val now = sky.epoch
+val positions = sky.positionsEcef(now)   // km, one per satellite
+```
+
+`src/jvmMain/kotlin/afield/simulation/orbits/SatelliteCatalogue.kt` — [read the source](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/)
+
+**Used in:** [Satellites and Orbits](../satellites.md)
+
+### Satellite { #satellitecatalogue-kt-satellite }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">Satellite</span><span class="p">(</span><span class="k">val</span> <span class="n">tle</span><span class="p">:</span> <span class="nc">Tle</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/#L38)
+
+One catalogued object: its element set and its initialised propagator.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="satellitecatalogue-kt--satellite--sgp4"></a>[<code class="highlight"><span class="k">val</span> <span class="n">sgp4</span></code>](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/#L40) | The propagator, initialised once. |
+| <a id="satellitecatalogue-kt--satellite--name"></a>[<code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/#L43) | The title line. |
+| <a id="satellitecatalogue-kt--satellite--ecef"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">ecef</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">)</span><span class="p">:</span> <span class="nc">Xyz</span><span class="o">?</span></code>](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/#L46) | Earth-fixed position at `time`, km, or `null` if the model has broken down. |
+| <a id="satellitecatalogue-kt--satellite--geodetic"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">geodetic</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">)</span><span class="p">:</span> <span class="nc">Geodetic</span><span class="o">?</span></code>](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/#L49) | Latitude, longitude and height at `time`. |
+| <a id="satellitecatalogue-kt--satellite--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/#L51) |  |
+
+### SatelliteCatalogue { #satellitecatalogue-kt-satellitecatalogue }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">SatelliteCatalogue</span><span class="p">(</span><span class="k">val</span> <span class="n">satellites</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Satellite</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">skippedDeepSpace</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/#L61)
+
+A list of [`Satellite`](simulation.md#satellitecatalogue-kt-satellite)s.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="satellitecatalogue-kt--satellitecatalogue--size"></a>[<code class="highlight"><span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/#L63) | Number of satellites. |
+| <a id="satellitecatalogue-kt--satellitecatalogue--epoch"></a>[<code class="highlight"><span class="k">val</span> <span class="n">epoch</span><span class="p">:</span> <span class="nc">Instant</span></code>](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/#L66) | The latest element-set epoch: a time at which the whole catalogue is fresh. |
+| <a id="satellitecatalogue-kt--satellitecatalogue--byname"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">byName</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Satellite</span><span class="o">?</span></code>](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/#L69) | The first satellite whose name is `name` (case-insensitive). |
+| <a id="satellitecatalogue-kt--satellitecatalogue--search"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">search</span><span class="p">(</span><span class="n">fragment</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Satellite</span><span class="p">&gt;</span></code>](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/#L72) | Satellites whose name contains `fragment`. |
+| <a id="satellitecatalogue-kt--satellitecatalogue--positionsecef"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">positionsEcef</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Xyz</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/#L75) | Earth-fixed positions (km) of every satellite at `time`; a broken-down one is `null`. |
+| <a id="satellitecatalogue-kt--satellitecatalogue--meanelementsat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">meanElementsAt</span><span class="p">(</span><span class="n">reference</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MeanElements</span><span class="p">&gt;</span></code>](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/#L85) | Every satellite's [`MeanElements`](simulation.md#sgp4-kt-meanelements), moved to the epoch `reference` so a shader's time can count minutes from it. |
+
+### Coastlines { #satellitecatalogue-kt-coastlines }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">Coastlines</span></code>](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/#L135)
+
+The world's coastlines, for drawing a globe: Natural Earth's 1:110m coastline (public domain, naturalearthdata.com).
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="satellitecatalogue-kt--coastlines--lines"></a>[<code class="highlight"><span class="k">val</span> <span class="n">lines</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Geodetic</span><span class="p">&gt;</span><span class="p">&gt;</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/simulation/orbits/SatelliteCatalogue/#L137) | Each coastline as a polyline of points on the ellipsoid (height 0). |
+
+## Sgp4.kt { #sgp4-kt }
+
+Two-line element sets and the SGP4 orbit propagator: where a catalogued satellite is, minutes from its epoch.
+
+A [`Tle`](simulation.md#sgp4-kt-tle) is the two-line text that NORAD and CelesTrak publish for every tracked object. [`Sgp4`](simulation.md#sgp4-kt-sgp4) turns one
+into a position and velocity in the TEME frame (true equator, mean equinox, kilometres and km/s) at any
+time, written after the reference code published with Vallado, Crawford, Hujsak and Kelso, *Revisiting
+Spacetrack Report #3*, AIAA 2006-6753 (<https://celestrak.org/publications/AIAA/2006-6753/>), with the
+WGS-72 constants and the "improved" operation mode:
+
+```diffstatic {data-lang=kotlin}
+import afield.simulation.orbits.*
+
+val iss = Tle.parse(
+    "1 25544U 98067A   26315.50000000  .00012000  00000+0  21000-3 0  9990",
+    "2 25544  51.6300 120.0000 0004000  90.0000 270.0000 15.50000000000000",
+)
+val state = Sgp4(iss).propagate(minutesSinceEpoch = 90.0)
+println(state.position)   // km, TEME
+```
+
+Only the near-earth branch is implemented: an orbit with a period of 225 minutes or more (GPS,
+geostationary, Molniya) needs the deep-space SDP4 terms, and [`Sgp4`](simulation.md#sgp4-kt-sgp4) refuses it with an
+`IllegalArgumentException` rather than returning a wrong answer; [`Tle.isDeepSpace`](simulation.md#sgp4-kt--tle--isdeepspace) says which is which.
+Of the CelesTrak "active" catalogue, about 95% of objects are near-earth.
+
+[`Frames`](simulation.md#frames-kt-frames) turns TEME into Earth-fixed and geodetic coordinates and look angles from a place on the ground.
+
+`src/jvmMain/kotlin/afield/simulation/orbits/Sgp4.kt` — [read the source](source/jvmMain/afield/simulation/orbits/Sgp4/)
+
+**Used in:** [Satellites and Orbits](../satellites.md)
+
+### Tle { #sgp4-kt-tle }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Tle</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">catalogNumber</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">epochJulian</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">bstar</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">inclination</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">raan</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">eccentricity</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">argPerigee</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">meanAnomaly</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">meanMotion</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L54)
+
+One two-line element set, with its angles in radians and its mean motion in radians per minute, as SGP4 wants them.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="sgp4-kt--tle--name"></a><code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="sgp4-kt--tle--catalognumber"></a><code class="highlight"><span class="k">val</span> <span class="n">catalogNumber</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="sgp4-kt--tle--epochjulian"></a><code class="highlight"><span class="k">val</span> <span class="n">epochJulian</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--tle--bstar"></a><code class="highlight"><span class="k">val</span> <span class="n">bstar</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--tle--inclination"></a><code class="highlight"><span class="k">val</span> <span class="n">inclination</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--tle--raan"></a><code class="highlight"><span class="k">val</span> <span class="n">raan</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--tle--eccentricity"></a><code class="highlight"><span class="k">val</span> <span class="n">eccentricity</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--tle--argperigee"></a><code class="highlight"><span class="k">val</span> <span class="n">argPerigee</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--tle--meananomaly"></a><code class="highlight"><span class="k">val</span> <span class="n">meanAnomaly</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--tle--meanmotion"></a><code class="highlight"><span class="k">val</span> <span class="n">meanMotion</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--tle--periodminutes"></a>[<code class="highlight"><span class="k">val</span> <span class="n">periodMinutes</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L67) | Orbital period in minutes, from the Kozai mean motion. |
+| <a id="sgp4-kt--tle--isdeepspace"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isDeepSpace</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L70) | True when the period is 225 minutes or more, the orbits for which SGP4 needs its deep-space terms. |
+| <a id="sgp4-kt--tle--epoch"></a>[<code class="highlight"><span class="k">val</span> <span class="n">epoch</span><span class="p">:</span> <span class="nc">Instant</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L73) | The epoch as an `Instant`. |
+| <a id="sgp4-kt--tle--minutessinceepoch"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">minutesSinceEpoch</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L76) | Minutes from the epoch to `time`. |
+
+### TemeState { #sgp4-kt-temestate }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TemeState</span><span class="p">(</span><span class="k">val</span> <span class="n">minutesSinceEpoch</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Xyz</span><span class="p">,</span> <span class="k">val</span> <span class="n">velocity</span><span class="p">:</span> <span class="nc">Xyz</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L146)
+
+A satellite's state in the TEME frame.
+
+### Sgp4 { #sgp4-kt-sgp4 }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">Sgp4</span><span class="p">(</span><span class="k">val</span> <span class="n">tle</span><span class="p">:</span> <span class="nc">Tle</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L156)
+
+The near-earth SGP4 propagator for one [`Tle`](simulation.md#sgp4-kt-tle), initialised once and then evaluated at any time.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="sgp4-kt--sgp4--meanelements"></a>[<code class="highlight"><span class="k">val</span> <span class="n">meanElements</span><span class="p">:</span> <span class="nc">MeanElements</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L298) | The secular part of this orbit: Kepler motion with SGP4's J2 drift of node, perigee and mean anomaly, no drag and no periodic terms. Cheap enough to evaluate for every catalogued object on the GPU each frame; within a few tens of km of [`propagate`](simulation.md#sgp4-kt--sgp4--propagate) for a day around the epoch of a low orbit. |
+| <a id="sgp4-kt--sgp4--propagate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">propagate</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">)</span><span class="p">:</span> <span class="nc">TemeState</span><span class="o">?</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L303) | The state at `time`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">propagate</span><span class="p">(</span><span class="n">minutesSinceEpoch</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">TemeState</span><span class="o">?</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L306) | The state `minutesSinceEpoch` minutes after the element set's epoch (negative goes back), or `null` if the model has broken down. |
+
+### Xyz { #sgp4-kt-xyz }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Xyz</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L422)
+
+A double-precision 3-vector for orbit work: a `Vec3` is single precision, about half a metre at orbital radius.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="sgp4-kt--xyz--length"></a>[<code class="highlight"><span class="k">val</span> <span class="n">length</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L424) | Euclidean length. |
+| <a id="sgp4-kt--xyz--minus"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">minus</span><span class="p">(</span><span class="n">o</span><span class="p">:</span> <span class="nc">Xyz</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L427) | Component-wise difference. |
+| <a id="sgp4-kt--xyz--times"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">times</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L430) | Scales every component. |
+| <a id="sgp4-kt--xyz--tovec3"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">toVec3</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">math</span><span class="p">.</span><span class="n">linalg</span><span class="p">.</span><span class="nc">Vec3</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L433) | Single-precision copy, for drawing. |
+
+### MeanElements { #sgp4-kt-meanelements }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">MeanElements</span><span class="p">(</span><span class="k">val</span> <span class="n">semiMajorAxisKm</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">eccentricity</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">inclination</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">raan</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">argPerigee</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">meanAnomaly</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">raanRate</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">argPerigeeRate</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">meanAnomalyRate</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L452)
+
+Secular mean elements, from [`Sgp4.meanElements`](simulation.md#sgp4-kt--sgp4--meanelements): an orbit that turns and precesses but keeps its shape.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="sgp4-kt--meanelements--semimajoraxiskm"></a><code class="highlight"><span class="k">val</span> <span class="n">semiMajorAxisKm</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--meanelements--eccentricity"></a><code class="highlight"><span class="k">val</span> <span class="n">eccentricity</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--meanelements--inclination"></a><code class="highlight"><span class="k">val</span> <span class="n">inclination</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--meanelements--raan"></a><code class="highlight"><span class="k">val</span> <span class="n">raan</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--meanelements--argperigee"></a><code class="highlight"><span class="k">val</span> <span class="n">argPerigee</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--meanelements--meananomaly"></a><code class="highlight"><span class="k">val</span> <span class="n">meanAnomaly</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--meanelements--raanrate"></a><code class="highlight"><span class="k">val</span> <span class="n">raanRate</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--meanelements--argperigeerate"></a><code class="highlight"><span class="k">val</span> <span class="n">argPerigeeRate</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--meanelements--meananomalyrate"></a><code class="highlight"><span class="k">val</span> <span class="n">meanAnomalyRate</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="sgp4-kt--meanelements--position"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">position</span><span class="p">(</span><span class="n">minutesSinceEpoch</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Xyz</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L464) | TEME position (km), `minutesSinceEpoch` after the element set's epoch. |
+| <a id="sgp4-kt--meanelements--shifted"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">shifted</span><span class="p">(</span><span class="n">minutes</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">MeanElements</span></code>](source/jvmMain/afield/simulation/orbits/Sgp4/#L481) | The same orbit with its epoch moved `minutes` later, angles wrapped: keeps single-precision shader time small. |
 
 ## BoidSketch.kt { #boidsketch-kt }
 
