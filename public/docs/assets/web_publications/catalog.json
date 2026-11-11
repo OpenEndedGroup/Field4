@@ -977,27 +977,33 @@
     },
     "assets/agent_transcripts/clothoid_spline/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-11T09:57:46.566Z",
-      "channels": 3,
+      "capturedAt": "2026-11-11T11:11:38.459Z",
+      "channels": 6,
       "file": "assets/web_publications/clothoid_spline/document/metadata.edn",
       "files": {
-        "assets/web_publications/clothoid_spline/document/metadata.edn": "14b4e37ec1e6ba2e2f6fa2db59187cedad7857a0fb49d621498c549a86114d5d",
-        "assets/web_publications/clothoid_spline/document/outputs.json": "fd8d278687922e41d8f9f0f3a067786bccd7a40a84d95eae10a242a6b8168322",
-        "assets/web_publications/clothoid_spline/outputs/0.html": "8ecba3abce63d15746ead0a2f180e429ba83513069f03ca5853bd075dc2390d8",
-        "assets/web_publications/clothoid_spline/outputs/1.html": "2d627a911a1135105e6ac8a7c3ddff4696cdfd3f70073736cde0c33839d48bf9",
-        "assets/web_publications/clothoid_spline/outputs/2.html": "2eb37ccb1fe7c6fde2f64ba25ae1965acabb7029e98801d81a4a5892fdab45b9"
+        "assets/web_publications/clothoid_spline/document/metadata.edn": "72b608258f0b9bb18c6627d8a0abea1a851986a798301f7170dab6bc989834a7",
+        "assets/web_publications/clothoid_spline/document/outputs.json": "5c8d2687d48f364aaaf81202d06890319f9a260259265ac4fe105a37d81a9b01",
+        "assets/web_publications/clothoid_spline/outputs/0.html": "8d5da53f99fa757ea85fec2fd02147f23098b3b2ce41bfec506481c7785ad79a",
+        "assets/web_publications/clothoid_spline/outputs/1.html": "6b9f44a3a9fd4559fb59cabc418992cdfe7e300ef49c08aba9d373d3de8bfec9",
+        "assets/web_publications/clothoid_spline/outputs/2.html": "cfbe15a9951f1b559b4693148ac9b5e0979316be27d11fd6aea47bbcbbd74615",
+        "assets/web_publications/clothoid_spline/outputs/3.html": "a9bbf96fafcf11dfe93bd9a3baaed9d9509fccbe9e640db3370c870edcc74da7",
+        "assets/web_publications/clothoid_spline/outputs/4.html": "ecbe0ade5333dc4b93ee8232110e38d269699454bb88a76b0c39450f606cbaca",
+        "assets/web_publications/clothoid_spline/outputs/5.html": "c189f3c0b2b78bed5a281907750ad07f4c290c5ef617ea46177c92ef360e3277"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/clothoid_spline/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/clothoid_spline.yaml": "4a4d591d71dfdd6718088399570738ee0b7100b899e2955b61b29ae7fdaef5f0",
+        "dev_docs/agents/transcripts/clothoid_spline.yaml": "67a70cf20cfe7314ad2630778f87ea20dc524ce17275e83020e07a8925d026f5",
         "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-circle_code_.kt": "f82082576d7ac113539742206e3e032181c0d05202065cec9e56b92ffb390ec5",
+        "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-corners_code_.kt": "d8f278a7688d492c31987c3da5dd27bb86446cce11855ebad0c60978ec6048b8",
+        "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-end-directions_code_.kt": "fc348920c202fde1181ddff92e4eacff2e0c15da52525b85414f3f00f738b56d",
+        "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-heights_code_.kt": "ed4b23071290f5ebc3c7a11472eb6e21dd0e3b12b59377763247f034d5fcdcd8",
         "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-shape_code_.kt": "6881872c63f8662aba669c01c4f8b9e7612a75e221acbe84e60052ecb33c4f2e",
         "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-vs-cubic_code_.kt": "5169463402a8e919386de90203a5df634f4e92e3b715e6e5c2c70dd530a615a4",
         "public/docs/assets/agent_transcripts/clothoid_spline/guides/fline_examples-curvature-continuous-splines-clothoidsplinefrom.md": "f34682720cab76cc7a7137a94fa04183256f35ba8defb0dbbbd4022825f933c0",
-        "public/docs/assets/agent_transcripts/clothoid_spline/metadata.edn": "2ec69e5887a4c7a8a7a385bcec9cf5194522e23aa65cd3285cfe0c210be77bea"
+        "public/docs/assets/agent_transcripts/clothoid_spline/metadata.edn": "1d9aaa8e78a6c19fc7dca6bbca297b872a4cb9fab9b61f972a4dfdfbca24e988"
       }
     },
     "assets/agent_transcripts/completion_rank_at_scale/metadata.edn": {
