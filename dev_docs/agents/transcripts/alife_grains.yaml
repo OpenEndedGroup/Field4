@@ -1,0 +1,110 @@
+name: alife_grains
+description: >
+  Evolved grain sets (EvoGrain, nathanho.me/posts/evograin): an L-system derivation read as a score
+  of grains -- G plays a grain and advances time, f rests, +/- step pitch, [ ] save and restore time
+  and pitch, so every branch is a voice -- measured by trapezoidal scores over count, median pitch,
+  spread, duration and polyphony, and evolved by the existing LSystemGenome on PopulationSearch.
+  Box 1 decodes one hand-written grammar and plays it. Box 2 is the automatic run, with sliders for
+  the target median pitch, the count plateau and the polyphony weight that re-run the search on
+  release. Box 3 is interactive evolution: six children with players, and a text field naming the
+  parents of the next generation. All CPU, no Window or Renderer.
+docs:
+  - page: alife_examples.md
+    why: "Section 11, 'Evolved grain sets', is the prose and captures for these boxes."
+operations:
+  - create:
+      box: grains_decode
+      name: "1 — An L-system read as grains"
+      frame:
+        x: 60.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // G plays a grain and moves on in time, f rests, + and - step the pitch,
+          // [ and ] save and restore time and pitch, so each bracket is a new voice.
+          val system = lSystem("G", 'G' to "G[+G-G]fG")
+          for ((i, s) in system.derivations(2).withIndex()) println("gen $i: $s")
+          val grains = decodeGrains(system, 3)
+          println(GrainSetStats(grains))
+          showImg(grainScoreImg(grains, 640, 220), caption = "time across, pitch up; gold trunk, blue and red branches")
+          display("audio", renderGrains(grains).wav())
+  - create:
+      box: grains_evolve
+      name: "2 — Evolving toward a statistical profile"
+      frame:
+        x: 60.0
+        y: 200.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // Fitness is a weighted mean of trapezoids over the set's statistics. The sliders move
+          // three of them; releasing one re-runs the search from the same seed.
+          var medianPitch = 62.0
+          var countCentre = 80.0
+          var polyWeight = 1.0
+
+          fun terms() = [
+              GrainFitnessTerm(GrainStat.COUNT, Trapezoid(countCentre * 0.15, countCentre * 0.5, countCentre * 1.5, countCentre * 5)),
+              GrainFitnessTerm(GrainStat.MEDIAN_PITCH, Trapezoid(medianPitch - 14, medianPitch - 4, medianPitch + 4, medianPitch + 16)),
+              GrainFitnessTerm(GrainStat.PITCH_SPREAD, Trapezoid(1.0, 4.0, 8.0, 16.0)),
+              GrainFitnessTerm(GrainStat.DURATION, Trapezoid(0.5, 2.0, 5.0, 10.0)),
+              GrainFitnessTerm(GrainStat.POLYPHONY, Trapezoid(1.0, 1.8, 3.5, 8.0), weight = polyWeight),
+          ]
+
+          fun search() {
+              val run = PopulationSearch.evolve(
+                  grainLSystemGenome(),
+                  grainSetObjective(terms()),
+                  budget = 300,
+                  seed = 7L,
+                  crossoverRate = 0.3,
+                  immigrantRate = 0.1,
+                  label = "grains",
+              )
+              val best = decodeGrains(run.best!!.genome, 3)
+              displayClear("main")
+              display("main", run.summary() + "<br>" + grainRule(run.best!!.genome) + "<br>" + GrainSetStats(best))
+              showImg(fitnessTraceImg(run.trace), caption = "best-so-far fitness, 0 to 1")
+              showImg(grainScoreImg(best, 640, 220), caption = "the best set")
+              display("audio", renderGrains(best).wav())
+          }
+
+          slider("median pitch", 40.0, 84.0, 1.0, medianPitch) { medianPitch = it; search() }
+          slider("grain count", 10.0, 300.0, 5.0, countCentre) { countCentre = it; search() }
+          slider("polyphony weight", 0.0, 4.0, 0.1, polyWeight) { polyWeight = it; search() }
+          search()
+  - create:
+      box: grains_breed
+      name: "3 — Interactive evolution: you choose the parents"
+      frame:
+        x: 60.0
+        y: 340.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // Listen to the six children, type the indices of the ones you like (e.g. "1 4"),
+          // press return: they survive and the rest are their crossovers, each mutated once.
+          val breeder = GrainBreeder(seed = 1L)
+
+          fun show() {
+              displayClearAll()
+              display("main", "generation ${breeder.generation}")
+              val scores = breeder.scores()
+              for ((i, g) in breeder.population.withIndex()) {
+                  display("child $i", "%d: %s   trapezoid fitness %.2f".format(i, grainRule(g), scores[i]))
+                  display("child $i", renderGrains(decodeGrains(g, 3)).wav())
+              }
+              stringInput("parents (e.g. 1 4)") { s ->
+                  val picks = s.split(" ", ",").mapNotNull { it.trim().toIntOrNull() }
+                  if (picks.isNotEmpty()) {
+                      breeder.breed(picks)
+                      show()
+                  }
+              }
+          }
+
+          show()
