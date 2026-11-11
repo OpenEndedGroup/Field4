@@ -1098,6 +1098,19 @@ a site, change a weight, raise an iso level or ask for a different `k` and re-ru
 
 [Open →](offline.html?file=assets/agent_transcripts/spatial_geometry_examples/metadata.edn)
 
+### kmeans_emeans
+
+The [k-means at scale](spatial_geometry_examples.md#k-means-at-scale) section as two boxes.
+*Lloyd vs e-means* clusters 48 000 points in 60 blobs from the same random seeds with Lloyd's
+algorithm at 25 epochs and e-means ([Meta FAIR](https://e-means.github.io), ported from Faiss) at 3,
+and plots both runs' mean squared error per epoch. *Revival* rings 40 blobs with 12 strays, so
+k-means++ seeds a centroid on a stray, and shows e-means moving it back into the data. Change `k`,
+`epochs` or the seeding and re-run.
+
+![Three panels: the 60-blob cloud clustered by Lloyd, the same cloud clustered by e-means, and a log-scale plot of mean squared error per epoch for both](assets/spatial_geometry_examples/kmeans_lloyd_vs_emeans.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/kmeans_emeans/metadata.edn)
+
 ### alife_evolution
 
 The other half of [spatial artificial life](alife_examples.md): four boxes that
