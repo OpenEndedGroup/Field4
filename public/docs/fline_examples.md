@@ -2627,7 +2627,7 @@ lines(outline.shell.copy().apply { filled = true; stroked = false; color = vec(0
 
 #### Tablet strokes: `thinPenSamples(...)`
 
-A tablet reports a point every pixel or two, and the pressure wobbles a little from one point to the next. Drawn as it comes, that stroke has hundreds of Bézier spans, which is slow, and where the pen moves slowly the wobble in width outruns the pen, so many short spans have no envelope. `thinPenSamples` first averages the radius over a few units of path, then keeps only the knots needed to stay within `tolerance` of the rest. Positions are not averaged, so corners stay sharp. Below, a stroke of a thousand samples is drawn as recorded (top) and thinned (bottom), with its knots marked:
+A tablet reports a point every pixel or two, with pressure that wobbles a little from one point to the next. Outline the raw stroke and you may have hundreds of Bézier spans to draw. Where the pen moves slowly, the width can change faster than the pen moves, leaving short spans with no envelope. `thinPenSamples` averages the radius over a few units of path, then keeps only the knots needed to stay within `tolerance` of the rest. It leaves positions alone, so corners stay sharp. Below, a stroke of a thousand samples is drawn as recorded (top) and thinned (bottom), with its knots marked:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/swept_circle_thinned.png" wait="1.0" capture="box" open-outputs="true" embed=true name="fline-swept-thinned"}
 :::static
@@ -2663,13 +2663,13 @@ fun dots(knots: List<Vec3>, dy: Double, size: Double) = knots.map { k ->
 lines([ink(rawOutline, 0.0), ink(thinOutline, 170.0)] + dots(raw, 0.0, 0.5) + dots(thin, 170.0, 1.2), w = 900.0, h = 380.0, fitToSize = true)
 ```
 
-The raw stroke's edge is lumpy: it is the edge of the widest circles, so it follows the peaks of the wobble. The thinned stroke has the width the pen meant, from about sixty knots. The thinned outline is also several times faster to build.
+The raw stroke's edge follows the widest circles, so the pressure wobble makes it lumpy. The thinned stroke has a smoother width and uses about sixty knots; its outline is also several times faster to build.
 
 The spline's tangents are shared out between the two spans at each knot by their lengths. A pen bunches its samples where it slows down, and thinning leaves long and short spans side by side. With an equal share, a short span next to a long one overshoots in a loop.
 
 #### Sharp turns: `penCorners(...)`
 
-The spline passes through every knot smoothly, which rounds off the point of a "v" or the corners of a "z" and overshoots them. Pass the knots that should stay sharp as `corners`: there each side takes its direction from its own span, and the stroke turns with a round join, the circle at the corner. `penCorners` finds the knots where the path turns by more than an angle. Run it on thinned samples: on raw tablet points, every small wobble is a sharp turn. Here is a "z" written quickly, smooth (left) and with its corners kept (right):
+The spline passes smoothly through every knot, rounding off the point of a "v" or the corners of a "z" and overshooting them. Pass the knots that should stay sharp as `corners`: each side takes its direction from its own span, and a circle makes the round join at the corner. `penCorners` finds knots where the path turns by more than a chosen angle. Run it on thinned samples; on raw tablet points, every small wobble can look like a sharp turn. Here is a "z" written quickly, smooth (left) and with its corners kept (right):
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/swept_circle_corners.png" wait="1.0" capture="box" open-outputs="true" embed=true name="fline-swept-corners"}
 :::static
@@ -2719,6 +2719,47 @@ This box only does something when you draw, so there is no picture of it here. R
 #### In a Vulkan scene
 
 `shell` is an ordinary filled `FLine`. To draw it in a Vulkan scene, turn it into triangles with `FLine.tessellate` (or `trianglesOut`, which writes them straight into vertex buffers) and give those to a `Mesh` with `primitiveType = triangles`, as in [Hello triangle, first attempt](afield_four_graphics.md#hello-triangle-first-attempt). The tessellation keeps holes, so the inside of an "o" stays empty. `SweptCircleEnvelopeTest` checks this on a ring-shaped stroke, whose triangles cover the ring's area and not its centre.
+
+This box sits beneath a renderer box and draws the "o" from the top of this section beside a "z" with its corners kept. Its `vertex` and `fragment` shaders are the pass-through pair from that first triangle, with the fragment shader returning `fcol` unchanged:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/swept_circle_gpu.png" alt="a hand-written o, thick on its right side and with a thin tail at the lower left, beside a z whose top bar is heavier than its bottom one, both cream on black in a native Vulkan window; the inside of the o is empty and the corners of the z are sharp" wait="0.25" timeout="30" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="fline-swept-gpu" macro-file="../../dev_docs/agents/transcripts/variable_width_strokes_gpu.yaml" capture-box="swept_gpu"}
+// A hand-written "o" and a quickly written "z", outlined as swept circles and filled on the GPU.
+val w = 20.0
+val o =
+    (0..13).map { i ->
+        val a = 2.2 + 2 * PI * i / 12.5
+        val p = 0.3 + 0.7 * sin(PI * i / 13)
+        vec(90 + 70 * cos(a) * (1 + 0.04 * i), 100 + 80 * sin(a), w * p.pow(1.75))
+    }
+val z = [vec(240.0, 30.0, 9.0), vec(400.0, 30.0, 8.0), vec(240.0, 170.0, 6.0), vec(400.0, 170.0, 4.0)]
+val shells = [sweptCircleStroke(o).shell, sweptCircleStroke(z, corners = penCorners(z)).shell]
+
+// The shells become triangles: tessellate keeps the hole inside the "o".
+val strokeVertices = ArrayList<Vec3>()
+val strokeIndices = ArrayList<Int>()
+for (s in shells) s.tessellate { v, idx ->
+    val base = strokeVertices.size
+    for (k in 0 until v.size / 3) strokeVertices += vec(v[3 * k], v[3 * k + 1], 0f)
+    idx.forEach { strokeIndices += base + it }
+}
+println("${strokeVertices.size} vertices, ${strokeIndices.size / 3} triangles")
+
+// Page coordinates have y down; clip space has y up and runs -1..1 across the window.
+val aspect = window.width.toDouble() / window.height
+renderer += moduleHere {
+    primitiveType = triangles
+
+    +Mesh("strokes") {
+        set(strokeVertices.size, strokeIndices.size) {
+            for (c in strokeVertices) {
+                pos.add((c.x - 225) / 240 / aspect, -(c.y - 100) / 240, 0)
+                col.add(0.95, 0.95, 0.9, 1)
+            }
+            for (t in strokeIndices.chunked(3)) tri.add(t[0], t[1], t[2])
+        }
+    }
+}
+```
 
 ??? aside "Where this method comes from"
     The construction follows Luther Tychonievich's post

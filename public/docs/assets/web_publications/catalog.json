@@ -1746,30 +1746,30 @@
     },
     "assets/agent_transcripts/flow_lenia/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-11T19:49:02.150Z",
+      "capturedAt": "2026-11-11T21:56:50.438Z",
       "channels": 5,
       "file": "assets/web_publications/flow_lenia/document/metadata.edn",
       "files": {
-        "assets/web_publications/flow_lenia/document/metadata.edn": "e044d7b62a3913063278098c362279e832ab81aa1cea4300c17116a9d87c6c68",
-        "assets/web_publications/flow_lenia/document/outputs.json": "20850ecc9adce2f1b6885bd6b4aa7cc73dcee565748d8875154d9c6dfdf42f6b",
-        "assets/web_publications/flow_lenia/outputs/0.html": "6e50285faa0c65fa5ff14170b5b31c9d0fdc8f7f6469d3f5e6b281a975f35a5f",
-        "assets/web_publications/flow_lenia/outputs/1.html": "0c61dd20de747f1f43705aa8ef13623fc9f45b257228a857f62c878ec0813cbf",
-        "assets/web_publications/flow_lenia/outputs/2.html": "b20024a9f69356b1924255996a275cf1a883908db75bb70ee01d43e65b210179",
-        "assets/web_publications/flow_lenia/outputs/3.html": "5760de098f00911d3b578aab052b8594f73a3d43eff95c2d570a99a82c73910a",
-        "assets/web_publications/flow_lenia/outputs/4.html": "b95e08a48337139cb5e4517c2fc2f52e53f8241a5dc4c2455a569099db645d7a"
+        "assets/web_publications/flow_lenia/document/metadata.edn": "accafc6e005c97848f1241503e3f01db70e0ba766a6c897990232847a0eb1d93",
+        "assets/web_publications/flow_lenia/document/outputs.json": "16844c7d3d881ca35a88111054d72256028291fdb5d71c15d71229d82ec4e357",
+        "assets/web_publications/flow_lenia/outputs/0.html": "a65cecbfbaeea493f9a6a37d8ffe2af7198048e78a32a88d9e94cd64d17983f9",
+        "assets/web_publications/flow_lenia/outputs/1.html": "8dd3093bef0ee497d53a2eb245baffcbfea329c9daa9d3892cef603596dda6b5",
+        "assets/web_publications/flow_lenia/outputs/2.html": "f46dbf3b1535e7d0b1be730e0d516d6a6baeb08f453941f6f86e3571eddbed56",
+        "assets/web_publications/flow_lenia/outputs/3.html": "31bc24cb9264efa6cbd7bef965e08d50912aa1c447fc3b950fb51df3068581ed",
+        "assets/web_publications/flow_lenia/outputs/4.html": "408527e84df146ec3d47b5bed5cf2ec933d5e888e1fe6a9852c6d8a043bdb88c"
       },
       "kinds": [],
       "outputs": "assets/web_publications/flow_lenia/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/flow_lenia.yaml": "ce15938e45204b6569641e930244eec69a34177298c15f549d4a7bff8a13842b",
+        "dev_docs/agents/transcripts/flow_lenia.yaml": "d05ec456f58270d3ebc412310ff2e2f566f1665e049bf9c5a9f0ec2aeefa90a8",
         "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_collision_code_.kt": "b5f23d8f5c5b1595399a94db3acefdf329fb8d73ce1420b5c8a4cdc1c132a32a",
         "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_conservation_code_.kt": "748be56c87e8b46b86bb764a6543cd9de4b568c83746f1de8dad53a365af4be2",
         "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_crescent_code_.kt": "25f2f51a0d6a46cc04ea32f40b81ee39393bcaa7ce61ae1a865611dc3a2799a0",
         "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_drift_code_.kt": "ca96a72686c97cfe4f5cec3a4f763146288e37d383e1879d7773d149d950e4ff",
-        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_mutation_code_.kt": "374cb7216c85a07a2601085d21c71483b331a923ccb677a1bcdd2052c2339640",
-        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_species_code_.kt": "252fad1d2211d8cfbcd92115b68f6f1f970889dd47b69b3668ec018b31465987",
+        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_mutation_code_.kt": "3a64632225491e70afa468654f284b204026045fc4365689b3da42be965be496",
+        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_species_code_.kt": "4d6a419e346efd120d90d4d782cb91730a380fa1622ff99fb750caf89912be12",
         "public/docs/assets/agent_transcripts/flow_lenia/guides/alife_examples.md": "0c81d131364c0fcc13bb4112f5765c864c324505a350a0cb7a4c2c770f33b6e0",
-        "public/docs/assets/agent_transcripts/flow_lenia/metadata.edn": "23224bc51459f47945cf81e49e431f2dd4ebb48e4328a8af1e96b986bd5e84ee"
+        "public/docs/assets/agent_transcripts/flow_lenia/metadata.edn": "0f7bad77162bb728f2dfa57acedd095b38ea040ac13ac0937d8b0dd8469b5840"
       }
     },
     "assets/agent_transcripts/fn_differentiable_fit_demo/metadata.edn": {
@@ -4317,12 +4317,12 @@
     },
     "assets/agent_transcripts/satellites/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-11T19:15:02.196Z",
+      "capturedAt": "2026-11-11T19:27:10.316Z",
       "channels": 1,
       "file": "assets/web_publications/satellites/document/metadata.edn",
       "files": {
         "assets/web_publications/satellites/document/metadata.edn": "918b0b7d76268b0c864e89655e5225ac54fc877fb2ccaf113977ef996b8dd69a",
-        "assets/web_publications/satellites/document/outputs.json": "f5acbdef945992f8e9ae9157aa60195c59b8f2e7319c09d676a5345ad078e91d",
+        "assets/web_publications/satellites/document/outputs.json": "5fa055110c2767b7bdad47e48450deb3877693a14352cfc9d3b592eeb512315c",
         "assets/web_publications/satellites/outputs/0.html": "2555cf246fb256298039f2839643829ea27dbf27215d7ace14af74d38cf683dc"
       },
       "kinds": [

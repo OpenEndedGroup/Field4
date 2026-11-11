@@ -80,6 +80,8 @@ object AgentTranscriptMaterializer {
      */
     internal val EXCLUDE = setOf(
         "afield_four_traditional_triangle",
+        // A child draw box like the triangle: its renderer comes from `agent_graphics_context`.
+        "variable_width_strokes_gpu",
         // A macOS receiver integration smoke, not a user-facing starting scene.
         "external_browser_surface_macos_smoke",
         // The Linux/dma-buf receiver integration smoke, likewise.
