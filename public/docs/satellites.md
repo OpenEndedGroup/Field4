@@ -146,8 +146,8 @@ The drawing takes three boxes. A renderer box opens the window. Beneath it, an E
 graticule, Natural Earth's coastlines and the ISS's ground track for the next day, bright where Chicago
 sees it above 10°, as line segments. It also makes the catalogue, a `SkyClock` that runs the sky at
 120 times real time, and the camera, and publishes all three with `prop` for the box beneath it.
-Beneath that, a satellites box writes one record per satellite into a GPU buffer through a
-[GPU schema](gpu_schema.md) and draws one point per satellite:
+Beneath that, a satellites box writes one record per satellite into a GPU buffer, laid out by a
+[GPU schema](gpu_schema.md), and draws one point per satellite:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/satellites/globe.png" capture="native-window" native-wait-frames="20" trim-native=true wait="1.0" timeout="300" embed=true name="satellites-globe" max-width="1600" alt="The Earth as a wire globe seen from above North America: white coastlines of Canada, Greenland, the United States and the Gulf of Mexico on a blue graticule, crossed by orange ISS ground tracks, with a small yellow cross at Chicago. Thousands of pale blue dots, the low satellites, crowd a shell just outside the globe, densest at its rim; orange and pink dots, the higher ones, are scattered further out, and one larger white dot marks the ISS" macro-file="../../dev_docs/agents/transcripts/satellites.yaml" capture-box="satellite-catalogue"}
 import afield.simulation.orbits.*
@@ -160,24 +160,21 @@ data class Orbit(
     val rates: Vector4f, // their drift, radians per minute, 0
 )
 
+// The schema lays the records out as std430: three vec4s each, which is how the vertex shader reads them.
 val orbitSchema = gpuSchema<Orbit>()
-shaderTemplate["Orbit"] = orbitSchema.template
-// The vertex shader solves Kepler's equation with the same few lines MeanElements.position runs on the CPU.
-shaderTemplate["orbit"] = mapOf("kepler" to Resolver { MeanElements.glsl })
 
 // `sky`, `clock` and `camera` come from the Earth box above this one.
-val orbits = sky.meanElementsAt(clock.reference).map { e ->
-    Orbit(
-        vec(e.semiMajorAxisKm, e.eccentricity, e.inclination, 0.0),
-        vec(e.raan, e.argPerigee, e.meanAnomaly, 0.0),
-        vec(e.raanRate, e.argPerigeeRate, e.meanAnomalyRate, 0.0),
-    )
-}
+val orbits =
+    sky.meanElementsAt(clock.reference).map { e ->
+        Orbit(
+            vec(e.semiMajorAxisKm, e.eccentricity, e.inclination, 0.0),
+            vec(e.raan, e.argPerigee, e.meanAnomaly, 0.0),
+            vec(e.raanRate, e.argPerigeeRate, e.meanAnomalyRate, 0.0),
+        )
+    }
 val orbitData = defaultBuffer { size = (orbits.size * orbitSchema.strideBytes).bytes }.buffer
 orbitData.mapAndWrite_bytes { orbitSchema.writeArray(orbits, this) }
 println("${orbits.size} orbits on the GPU, ${orbitSchema.strideBytes} bytes each")
-
-//%-
 
 var module = moduleHere { primitiveType = points }
 var m = Mesh()
@@ -203,11 +200,30 @@ camera:
 
 ```diffstatic {data-lang=glsl}
 #version 460
-{{ Orbit.all }}
-{{ orbit.kepler }}
+#extension GL_EXT_buffer_reference : require
+
+// Three vec4s per satellite, as the satellites box's Orbit records are laid out.
+layout(std430, buffer_reference) buffer OrbitData {
+    vec4 v[];
+};
+
+// Kepler's equation with secular drift: the GLSL twin of MeanElements.position (MeanElements.glsl).
+vec3 meanElementsPosition(vec4 shape, vec4 angles, vec3 rates, float t) {
+    float m = angles.z + rates.z * t;
+    float w = angles.y + rates.y * t;
+    float o = angles.x + rates.x * t;
+    float e = shape.y;
+    float ea = m;
+    for (int k = 0; k < 6; k++) ea -= (ea - e * sin(ea) - m) / (1.0 - e * cos(ea));
+    float px = shape.x * (cos(ea) - e);
+    float py = shape.x * sqrt(1.0 - e * e) * sin(ea);
+    float x1 = cos(w) * px - sin(w) * py;
+    float y1 = sin(w) * px + cos(w) * py;
+    return vec3(cos(o) * x1 - sin(o) * cos(shape.z) * y1, sin(o) * x1 + cos(o) * cos(shape.z) * y1, sin(shape.z) * y1);
+}
 
 layout(push_constant) uniform Push {
-    OrbitArray orbits;
+    OrbitData orbits;
     mat4 p;
     mat4 m;
     vec4 eye;
@@ -218,9 +234,9 @@ layout(location = 0) out vec4 fcol;
 
 void main()
 {
-    Orbit o = pc.orbits.elements[gl_VertexIndex];
+    int i = 3 * gl_VertexIndex;
     // TEME, in Earth radii, then into the drawing's frame (north up)
-    vec3 teme = meanElementsPosition(o.shape, o.angles, o.rates.xyz, pc.clock.x) / 6378.137;
+    vec3 teme = meanElementsPosition(pc.orbits.v[i], pc.orbits.v[i + 1], pc.orbits.v[i + 2].xyz, pc.clock.x) / 6378.137;
     vec3 w = vec3(teme.y, teme.z, teme.x);
 
     // hidden behind the globe: the ray from the eye meets the unit sphere before it reaches the satellite

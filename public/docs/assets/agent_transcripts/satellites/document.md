@@ -250,16 +250,35 @@ lines(shapes, w = 7 * dayW, h = names.size * rowH + 24, fitToSize = true)
 <!-- field-box id="satellite-catalogue" index="3" -->
 
 ```edn [field-box id="satellite-catalogue" role="properties"]
-{"id" "satellite-catalogue" "index" 3 "name" "3 - Every satellite, propagated on the GPU" "parents" ["root" "satellite-earth"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "satellite-earth"} "name" "3 - Every satellite, propagated on the GPU" "_tombstone" false "frame" #afield/rect [400.0 200.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-catalogue_vertex_.glsl" "lines" 41 "characters" 1421 "sha256" "9eb54de7e2019c5c3fa9aaeec4bcf21a042d32b7a363dba62520380512cab7d0"} {"name" "fragment" "language" "glsl" "path" "satellite-catalogue_fragment_.glsl" "lines" 10 "characters" 285 "sha256" "7f5e44e8b47539acea1d6608689722479e611377d171dd8a3c743f84932fd4a2"} {"name" "code" "language" "kotlin" "path" "satellite-catalogue_code_.kt" "lines" 45 "characters" 1854 "sha256" "30a1c534a70162f1eb5959deeb960e9b9db0f84ae812c3684a1ebd12e0e9d06c"}]}
+{"id" "satellite-catalogue" "index" 3 "name" "3 - Every satellite, propagated on the GPU" "parents" ["root" "satellite-earth"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "satellite-earth"} "name" "3 - Every satellite, propagated on the GPU" "_tombstone" false "frame" #afield/rect [400.0 200.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-catalogue_vertex_.glsl" "lines" 60 "characters" 2307 "sha256" "afa42f5d7443e0f8915053f6ad9de9402a861244e6683379628228bd5dd102c3"} {"name" "fragment" "language" "glsl" "path" "satellite-catalogue_fragment_.glsl" "lines" 10 "characters" 285 "sha256" "7f5e44e8b47539acea1d6608689722479e611377d171dd8a3c743f84932fd4a2"} {"name" "code" "language" "kotlin" "path" "satellite-catalogue_code_.kt" "lines" 41 "characters" 1723 "sha256" "15ec16ee1b330da94ad7f91c499b505bdb1f5c37a3b2fa71cab232b0e5035b9e"}]}
 ```
 
 ```glsl [field-property box="satellite-catalogue" name="vertex" path="satellite-catalogue_vertex_.glsl"]
 #version 460
-{{ Orbit.all }}
-{{ orbit.kepler }}
+#extension GL_EXT_buffer_reference : require
+
+// Three vec4s per satellite, as the satellites box's Orbit records are laid out.
+layout(std430, buffer_reference) buffer OrbitData {
+    vec4 v[];
+};
+
+// Kepler's equation with secular drift: the GLSL twin of MeanElements.position (MeanElements.glsl).
+vec3 meanElementsPosition(vec4 shape, vec4 angles, vec3 rates, float t) {
+    float m = angles.z + rates.z * t;
+    float w = angles.y + rates.y * t;
+    float o = angles.x + rates.x * t;
+    float e = shape.y;
+    float ea = m;
+    for (int k = 0; k < 6; k++) ea -= (ea - e * sin(ea) - m) / (1.0 - e * cos(ea));
+    float px = shape.x * (cos(ea) - e);
+    float py = shape.x * sqrt(1.0 - e * e) * sin(ea);
+    float x1 = cos(w) * px - sin(w) * py;
+    float y1 = sin(w) * px + cos(w) * py;
+    return vec3(cos(o) * x1 - sin(o) * cos(shape.z) * y1, sin(o) * x1 + cos(o) * cos(shape.z) * y1, sin(shape.z) * y1);
+}
 
 layout(push_constant) uniform Push {
-    OrbitArray orbits;
+    OrbitData orbits;
     mat4 p;
     mat4 m;
     vec4 eye;
@@ -270,9 +289,9 @@ layout(location = 0) out vec4 fcol;
 
 void main()
 {
-    Orbit o = pc.orbits.elements[gl_VertexIndex];
+    int i = 3 * gl_VertexIndex;
     // TEME, in Earth radii, then into the drawing's frame (north up)
-    vec3 teme = meanElementsPosition(o.shape, o.angles, o.rates.xyz, pc.clock.x) / 6378.137;
+    vec3 teme = meanElementsPosition(pc.orbits.v[i], pc.orbits.v[i + 1], pc.orbits.v[i + 2].xyz, pc.clock.x) / 6378.137;
     vec3 w = vec3(teme.y, teme.z, teme.x);
 
     // hidden behind the globe: the ray from the eye meets the unit sphere before it reaches the satellite
@@ -321,10 +340,8 @@ data class Orbit(
     val rates: Vector4f, // their drift, radians per minute, 0
 )
 
+// The schema lays the records out as std430: three vec4s each, which is how the vertex shader reads them.
 val orbitSchema = gpuSchema<Orbit>()
-shaderTemplate["Orbit"] = orbitSchema.template
-// The vertex shader solves Kepler's equation with the same few lines MeanElements.position runs on the CPU.
-shaderTemplate["orbit"] = mapOf("kepler" to Resolver { MeanElements.glsl })
 
 // `sky`, `clock` and `camera` come from the Earth box above this one.
 val orbits =
@@ -338,8 +355,6 @@ val orbits =
 val orbitData = defaultBuffer { size = (orbits.size * orbitSchema.strideBytes).bytes }.buffer
 orbitData.mapAndWrite_bytes { orbitSchema.writeArray(orbits, this) }
 println("${orbits.size} orbits on the GPU, ${orbitSchema.strideBytes} bytes each")
-
-//%-
 
 var module = moduleHere { primitiveType = points }
 var m = Mesh()

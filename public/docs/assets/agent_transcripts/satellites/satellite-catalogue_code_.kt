@@ -8,10 +8,8 @@ data class Orbit(
     val rates: Vector4f, // their drift, radians per minute, 0
 )
 
+// The schema lays the records out as std430: three vec4s each, which is how the vertex shader reads them.
 val orbitSchema = gpuSchema<Orbit>()
-shaderTemplate["Orbit"] = orbitSchema.template
-// The vertex shader solves Kepler's equation with the same few lines MeanElements.position runs on the CPU.
-shaderTemplate["orbit"] = mapOf("kepler" to Resolver { MeanElements.glsl })
 
 // `sky`, `clock` and `camera` come from the Earth box above this one.
 val orbits =
@@ -25,8 +23,6 @@ val orbits =
 val orbitData = defaultBuffer { size = (orbits.size * orbitSchema.strideBytes).bytes }.buffer
 orbitData.mapAndWrite_bytes { orbitSchema.writeArray(orbits, this) }
 println("${orbits.size} orbits on the GPU, ${orbitSchema.strideBytes} bytes each")
-
-//%-
 
 var module = moduleHere { primitiveType = points }
 var m = Mesh()
