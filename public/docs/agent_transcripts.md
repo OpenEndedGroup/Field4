@@ -1098,6 +1098,15 @@ a site, change a weight, raise an iso level or ask for a different `k` and re-ru
 
 [Open →](offline.html?file=assets/agent_transcripts/spatial_geometry_examples/metadata.edn)
 
+### alife_grains
+
+Evolved grain sets, after Nathan Ho's [EvoGrain](https://nathanho.me/posts/evograin), on the
+[ALife page](alife_examples.md): an L-system derivation read as a score of grains, where `G` plays a
+grain, `+`/`-` step the pitch and every bracket is a new voice. Box 1 decodes one grammar into a
+piano-roll and a player. Box 2 evolves the grammar toward a profile of trapezoid-scored statistics,
+with sliders for three of the targets that re-run the search. Box 3 is interactive evolution: six
+children with players, and a text field naming the parents of the next generation.
+
 ### alife_evolution
 
 The other half of [spatial artificial life](alife_examples.md): four boxes that

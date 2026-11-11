@@ -2395,6 +2395,111 @@ cannot tell the methods apart. A harder target or a finer score would be needed 
 The vehicle brains of [Braitenberg vehicles §10](braitenberg_vehicles.md) run through the same
 `compareSearch`.
 
+### Evolved grain sets: an L-system as a score
+
+The same L-system genome can be read as music instead of a drawing. In Nathan Ho's
+[EvoGrain](https://nathanho.me/posts/evograin), a derived string is a list of commands for a turtle
+whose state is a **time** and a **pitch**: `G` plays a grain and moves forward in time, `f` rests,
+`+` and `-` step the pitch, and `[` and `]` save and restore the state. Because `]` returns to the
+*time* the branch started at, every bracket is a new voice, so brackets give polyphony. A branch also
+plays quieter and quicker than its parent (`GrainTurtle.branchAmp`, `branchDuration`).
+
+`decodeGrains(system, generations)` derives the grammar and returns its grains; `GrainSetStats`
+measures the set (count, median pitch, pitch spread, duration, density, mean polyphony); and
+`renderGrains` plays it sample-accurately as Hann-windowed tones, or as grains read from a sample if
+you pass `source =`. Here is one grammar, `G → G[+G-G]fG`, at three generations:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-decode.png" wait="10.0" timeout="120" capture="box" open-outputs="true" padding="20"}
+val system = lSystem("G", 'G' to "G[+G-G]fG")
+for ((i, s) in system.derivations(2).withIndex()) println("gen $i: $s")
+val grains = decodeGrains(system, 3)
+println(GrainSetStats(grains))
+showImg(grainScoreImg(grains, 640, 220), caption = "gen 3: time across, pitch up; gold trunk, blue and red branches")
+display("audio", renderGrains(grains).wav())
+```
+
+![a dark piano-roll plot with short horizontal bars: a gold trunk line of grains along middle C, with blue grains a step above and below branching from it, and smaller red grains nested inside the blue ones](assets/alife_examples/grains-decode.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-example.wav" audio-spec="example" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" embed=true hidden=true name="alife-grains-example-audio"}
+// Offline-rendered by GrainSetSoundDocs.renderWav("example").
+```
+
+Fitness is a weighted mean of **trapezoids**, one per statistic. A trapezoid scores 0 below its first
+corner, rises to 1 at its second, stays at 1 to its third and falls to 0 at its fourth, so each term
+says "about this much, and these are the limits". `defaultGrainTerms()` asks for 40 to 120 grains over
+2 to 5 seconds, a median near middle C, a few semitones of spread and a little polyphony.
+`grainSetObjective(terms)` turns that into an `Objective` for `PopulationSearch`, and
+`grainLSystemGenome()` is the `LSystemGenome` above with the alphabet `G f + - [ ]`, so mutation,
+crossover and bracket repair are the ones the drawn L-systems already use:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-evolve.png" wait="30.0" timeout="240" capture="box" open-outputs="true" padding="20"}
+val terms = defaultGrainTerms()
+val run = PopulationSearch.evolve(
+    grainLSystemGenome(),
+    grainSetObjective(terms),
+    budget = 400,
+    seed = 7L,
+    crossoverRate = 0.3,
+    immigrantRate = 0.1,
+    label = "grains",
+)
+println(run.summary())
+for (imp in run.improvements) println("$imp   ${grainRule(imp.genome)}")
+showImg(fitnessTraceImg(run.trace), channel = "trace", caption = "best-so-far fitness against evaluations, 0 to 1")
+
+val best = decodeGrains(run.best!!.genome, 3)
+val stats = GrainSetStats(best)
+println(stats)
+val ranges = mapOf(
+    GrainStat.COUNT to (0.0 to 450.0),
+    GrainStat.MEDIAN_PITCH to (40.0 to 84.0),
+    GrainStat.PITCH_SPREAD to (0.0 to 18.0),
+    GrainStat.DURATION to (0.0 to 11.0),
+    GrainStat.POLYPHONY to (0.0 to 9.0),
+)
+val panels = terms.map { t ->
+    val (lo, hi) = ranges.getValue(t.stat)
+    "%s %.2f".format(t.stat.label, stats[t.stat]) to trapezoidImg(t.shape, lo, hi, stats[t.stat])
+}
+showImg(montage(panels, columns = 3, cellSide = 220), channel = "terms", caption = "each term's trapezoid, the best set's value marked")
+showImg(grainScoreImg(best, 640, 220), channel = "score", caption = "the best set")
+display("audio", renderGrains(best).wav())
+```
+
+![three panels: a blue best-so-far line rising in steps from about 0.3 to near 1; a grid of five yellow trapezoid curves each with a vertical marker on or near its plateau; and a dense multi-coloured piano-roll of the evolved grain set](assets/alife_examples/grains-evolve.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-evolved.wav" audio-spec="evolved" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" embed=true hidden=true name="alife-grains-evolved-audio"}
+// Offline-rendered by GrainSetSoundDocs.renderWav("evolved").
+```
+
+The automatic run optimises what the trapezoids say, which is not the same as what sounds good. The
+other half of EvoGrain is **interactive evolution**: you listen and choose the parents.
+`GrainBreeder` holds a population of six grammars; `breed([2, 4])` keeps the chosen parents and fills
+the rest with their crossovers, each mutated once. The same seed and the same choices replay the same
+lineage. In a box, give each child a player and a text field for the choice:
+
+```diffstatic {data-lang=kotlin}
+val breeder = GrainBreeder(seed = 1L)
+fun show() {
+    displayClearAll()
+    val scores = breeder.scores()
+    val listing = breeder.population.withIndex().joinToString("<br>") { (i, g) ->
+        "%d: %s &nbsp; fitness %.2f".format(i, grainRule(g), scores[i])
+    }
+    display("main", "generation ${breeder.generation}<br>" + listing)
+    for ((i, g) in breeder.population.withIndex()) display("child $i", renderGrains(decodeGrains(g, 3)).wav())
+    stringInput("parents (e.g. 1 4)") { s ->
+        val picks = s.split(" ", ",").mapNotNull { it.trim().toIntOrNull() }
+        if (picks.isNotEmpty()) { breeder.breed(picks); show() }
+    }
+}
+show()
+```
+
+Every trapezoid corner and weight is a dial. Building the terms from `slider` callbacks and
+re-running `PopulationSearch.evolve` on release moves the target while you listen; the loadable
+demo below does exactly that.
+
 ## 12. Agents with their own programs
 
 Every system above moves its whole population with one rule: `BoidFlock.step(p)` applies the same
@@ -2648,12 +2753,14 @@ Every box above is one box of a shipped starting point, so you can open the page
 edit it rather than retyping it: open it from the welcome screen. Sections 1 to 10 are
 [`alife_worked_example`](agent_transcripts.md), and section 11 is
 [`alife_evolution`](agent_transcripts.md), kept separate because its four search boxes take about
-fifty seconds between them. Every box runs on its own and prints the numbers this page quotes; none
+fifty seconds between them. The grain boxes of "Evolved grain sets" are
+[`alife_grains`](agent_transcripts.md). Every box runs on its own and prints the numbers this page quotes; none
 of them opens a `Window` or a `Renderer`. To replay them from a terminal instead:
 
 ```diffstatic {data-lang=bash}
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_worked_example.yaml
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_evolution.yaml
+python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_grains.yaml
 ```
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference:

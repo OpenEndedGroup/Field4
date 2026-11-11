@@ -65,16 +65,15 @@ operations:
                   label = "grains",
               )
               val best = decodeGrains(run.best!!.genome, 3)
-              displayClear("main")
               display("main", run.summary() + "<br>" + grainRule(run.best!!.genome) + "<br>" + GrainSetStats(best))
-              showImg(fitnessTraceImg(run.trace), caption = "best-so-far fitness, 0 to 1")
-              showImg(grainScoreImg(best, 640, 220), caption = "the best set")
+              showImg(fitnessTraceImg(run.trace), channel = "trace", caption = "best-so-far fitness against evaluations, 0 to 1")
+              showImg(grainScoreImg(best, 640, 220), channel = "score", caption = "the best set")
               display("audio", renderGrains(best).wav())
           }
 
-          slider("median pitch", 40.0, 84.0, 1.0, medianPitch) { medianPitch = it; search() }
-          slider("grain count", 10.0, 300.0, 5.0, countCentre) { countCentre = it; search() }
-          slider("polyphony weight", 0.0, 4.0, 0.1, polyWeight) { polyWeight = it; search() }
+          slider("median pitch", 40.0, 84.0, 1.0, medianPitch, channel = "pitch target") { medianPitch = it; search() }
+          slider("grain count", 10.0, 300.0, 5.0, countCentre, channel = "count target") { countCentre = it; search() }
+          slider("polyphony weight", 0.0, 4.0, 0.1, polyWeight, channel = "polyphony weight") { polyWeight = it; search() }
           search()
   - create:
       box: grains_breed
@@ -92,12 +91,12 @@ operations:
 
           fun show() {
               displayClearAll()
-              display("main", "generation ${breeder.generation}")
               val scores = breeder.scores()
-              for ((i, g) in breeder.population.withIndex()) {
-                  display("child $i", "%d: %s   trapezoid fitness %.2f".format(i, grainRule(g), scores[i]))
-                  display("child $i", renderGrains(decodeGrains(g, 3)).wav())
+              val listing = breeder.population.withIndex().joinToString("<br>") { (i, g) ->
+                  "%d: %s &nbsp; trapezoid fitness %.2f".format(i, grainRule(g), scores[i])
               }
+              display("main", "generation ${breeder.generation}<br>" + listing)
+              for ((i, g) in breeder.population.withIndex()) display("child $i", renderGrains(decodeGrains(g, 3)).wav())
               stringInput("parents (e.g. 1 4)") { s ->
                   val picks = s.split(" ", ",").mapNotNull { it.trim().toIntOrNull() }
                   if (picks.isNotEmpty()) {
