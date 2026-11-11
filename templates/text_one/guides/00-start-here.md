@@ -9,12 +9,15 @@ The layers are deliberately separate:
 | Layer | Owns | Edit when |
 | --- | --- | --- |
 | Example boxes | Particles, constraints, words, fonts, paths and markers | The composition or typography changes |
-| Scores | Opacity, stroke reveal/erasure, offsets and text/marker scale | The phrasing or timing changes |
+| Scores | Opacity fades, offsets and text/marker scale | The phrasing or timing changes |
 | Drawing | Current eye views, placement, GPU thickening, Slug and compositing | The rendering or reading distance changes |
 
 Choose an example in **Scores / example selector**. **Show complete diagram** is useful
 for inspecting the composition; **Restart entrances** restores its animated introduction.
 The score-time slider is seekable. Pausing the score does not stop physics or headset poses.
+
+Global looks can be stored, restored and blended in **23 · Global looks / keyframes**.
+See [Global keyframes](16-global-keyframes.md) for the saved values and code API.
 
 ## Read these next
 
@@ -55,7 +58,7 @@ Headset eye dimensions come from OpenXR, as in `dust_six`. The 2560 × 1600 allo
 belongs to the sharp browser surface. The 1600 × 1200 allocation is only the desktop fallback.
 The resolution output reports the actual per-eye dimensions.
 
-Both eyes use the current predicted pose. The float scene, blur cascade and final green/paint
+Both eyes use the current predicted pose. The float scene, blur cascade and final green-channel
 compositor run in the same frame and command buffer. The browser is drawn afterward and
 stays sharp. There is no previous-frame image or temporal antialiasing in this chain.
 
@@ -69,3 +72,38 @@ Extract that archive into a separate workspace to revisit it without replacing t
 - [Elastic connections](10-elastic-connections.md): multi-node threads, sliding word anchors, length and curvature forces.
 
 - [Drop caps](11-drop-caps.md): opening initials spanning authored lines, with measured anchors.
+
+- [Individual reading planes](12-individual-reading-planes.md): independent reader-facing text, endpoint dots and the source passage.
+
+## The current passage and movement
+
+All nine examples now quote only the supplied passage, retained verbatim in
+`files/source-passage.txt` in this document. Authored line breaks change layout, not wording.
+The parser-based examples use retained real CPU Stanza analyses of three sentences from it.
+Their curves remain; grammatical annotation labels are omitted from the reading space.
+All line entrances and exits fade full curves, with small dots at both ends of arcs. The dots precede their curves by about 0.7 seconds.
+
+**20 · Move through the reading space** uses the left controller stick for smooth movement:
+forward/back follows the horizontal direction of your gaze; left/right strafes. Movement
+has a radial dead zone and analog speed, initially 0.65 metres/second. The right controller
+retains browser scrolling, clicking and panel manipulation. **Recenter poem** brings the
+composition back in front of you. Physical head motion still uses the current OpenXR pose.
+
+## WiVRn body tracking and OpenXR validation
+
+The reading-space startup disables **OpenXR** validation before creating the renderer.
+The installed core API layer does not register spaces created by `XR_MNDX_xdev_space`,
+the vendor extension used for WiVRn’s body trackers. It consequently rejects those spaces
+in `xrLocateSpace`. `Options.validateOpenXR = false` avoids that failure. Vulkan validation
+has a separate switch and remains available. Changing instance layers requires a fresh Field JVM.
+
+The live Quest setup reports hips, chest, lower arms, lower legs and feet. Together with the
+head and controller endpoints these provide 11 body interaction capsules. Tracked finger
+capsules are additional and require valid hand-joint poses; controller mode does not invent them.
+
+- [Body contact and debug nodes](09-body-and-hand-interaction.md): wafting, actual SIMD contacts and force lines.
+- [Text frames](13-text-frames.md): shared border/connection standoff and additive light.
+
+- [Two readings](15-two-readings.md): the combined staggered fade/blur, frosted surrounds, elastic link and body-interaction sequence in example 9.
+
+[Mechanical text holders](17-mechanical-text-holders.md) introduces examples 10–13: eight corner extensions and two-ended frosted frusta.

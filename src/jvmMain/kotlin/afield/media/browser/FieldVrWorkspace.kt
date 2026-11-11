@@ -91,6 +91,8 @@ class FieldVrWorkspace(
     val panel: PuppetBrowserVrPanel
     val input: PuppetBrowserVrInput
     val grab: PuppetBrowserVrGrab
+    /** Reserve a hand's stick for scene navigation while retaining its pointer and grip. */
+    var controllerScrollHands: Set<Hand> = setOf(Hand.RIGHT, Hand.LEFT)
     val keyboard = FieldVrKeyboard(browser,
         recenter = { recenterRequested.set(true) },
         focusKeyboard = { keyboardFocusRequested.set(true) })
@@ -179,7 +181,14 @@ class FieldVrWorkspace(
             // Controller aim only. Tracked hands resting on a keyboard/mouse must not
             // reclaim its page cursor through hover movement or an incidental pinch.
             listOf(Hand.RIGHT, Hand.LEFT).mapNotNull { hand ->
-                input.controller("$hand-controller", xr.controllerState(hand), elapsed)
+                val state = xr.controllerState(hand)
+                if (hand !in controllerScrollHands) {
+                    state.thumbstickX = 0f
+                    state.thumbstickY = 0f
+                    state.trackpadX = 0f
+                    state.trackpadY = 0f
+                }
+                input.controller("$hand-controller", state, elapsed)
             }
         }
         val worldPress = pointers.any {

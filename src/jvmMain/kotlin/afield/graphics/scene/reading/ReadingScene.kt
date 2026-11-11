@@ -4,6 +4,7 @@ import afield.geometry.path.FLine
 import afield.graphics.text.TextLayout
 import afield.graphics.text.Typeface
 import afield.graphics.text.slug.SlugPath
+import afield.math.linalg.Quaternionf
 import afield.math.linalg.Vector3f
 import afield.math.linalg.Vector4f
 
@@ -38,6 +39,7 @@ data class ReadingLabel(
     val color: Vector4f = Vector4f(1f),
     val rotation: Float = 0f,
     val blur: Float = 0f, // Gaussian standard deviation in ems
+    val orientation: Quaternionf = Quaternionf(), // full run orientation, before local roll
 
 )
 
@@ -49,6 +51,11 @@ interface ReadingScene {
     val geometry: DiagramGeometry
     val labels: List<ReadingLabel>
     val maximumLabels: Int
+    /** Current score/physics snapshot, already updated for this render frame. */
+    val frostSurfaces: List<ReadingFrostSurface> get() = emptyList()
 
+    val individualTextFacing: Boolean get() = false
+    /** Reader position in the diagram's coordinate system; publishing it does not advance physics. */
+    fun setReaderPosition(position: Vector3f) {}
     fun update(elapsedSeconds: Double)
 }

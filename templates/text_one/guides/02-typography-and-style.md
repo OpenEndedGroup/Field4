@@ -43,11 +43,11 @@ The current shaping direction is left-to-right.
 ```kotlin
 val graph = readingDiagram {
     val p = point("sentence-point", 0, 0)
-    text("sentence", "The quiet water carries the light", p) {
+    text("sentence", "Each toe could smell the earth it touched.", p) {
         font = serif
-        word("quiet").style { italic = true }
-        word("water").style { bold = true }
-        word("light").style {
+        word("could").style { italic = true }
+        word("earth").style { bold = true }
+        word("touched").style {
             font = sans
             weight = 300.0
         }

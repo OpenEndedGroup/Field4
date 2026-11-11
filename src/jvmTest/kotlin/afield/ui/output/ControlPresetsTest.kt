@@ -4,6 +4,7 @@ import afield.animation.keyframes.KeyframeCollection
 import afield.animation.keyframes.KeyframeScope
 import afield.animation.keyframes.keyframeCheckbox
 import afield.animation.keyframes.keyframeColorPicker
+import afield.animation.keyframes.keyframeFloatSlider
 import afield.animation.keyframes.keyframeSlider
 import afield.animation.keyframes.keyframeText
 import afield.animation.keyframes.keyframeVec2Control
@@ -71,6 +72,30 @@ class ControlPresetsTest {
     }
 
     private fun live(box: Box) = controllerControlsForBox(box.id).associateBy { it.label }
+
+    @Test
+    fun keyframedSliderUnitsSurviveRecallWithoutRescalingValues() {
+        val box = newBox()
+        val scope = KeyframeScope()
+        var seconds = 1.25
+        var metres = .04f
+        box.controlGroup("look", restoreValues = false) {
+            keyframeSlider(scope, "response", "Response", min = 0.0, max = 10.0,
+                unit = "s", get = { seconds }, set = { seconds = it })
+            keyframeFloatSlider(scope, "gap", "Gap", min = 0.0, max = 1.0,
+                unit = "m", get = { metres }, set = { metres = it })
+        }
+        val key = scope.capture()
+        seconds = 4.0
+        metres = .3f
+        key()
+        assertEquals(1.25, seconds)
+        assertEquals(.04f, metres)
+        assertEquals("s", live(box).getValue("Response").unit)
+        assertEquals("m", live(box).getValue("Gap").unit)
+        assertEquals(1.25, live(box).getValue("Response").value)
+        assertEquals(.04f.toDouble(), live(box).getValue("Gap").value)
+    }
 
     @Test
     fun keysAreLabelDerivedAndStable() {

@@ -67,7 +67,13 @@ internal constructor(id: String, owner: Any, val text: String, val at: DiagramAn
     var tracking = 0.0 // font units between shaped glyphs
     internal val styles = ArrayList<Pair<DiagramTextSpan, DiagramTypography>>()
     var scale = 1f
-    var rotation = 0f // radians around the run baseline midpoint, in the diagram plane
+    var rotation = 0f // local roll, radians around the run baseline midpoint
+    val orientation = Quaternionf() // authored 3D orientation, relative to reader facing when enabled
+    var faceReader = false
+    var facingHalfLife = .7f // seconds; zero removes smoothing but retains the angular speed limit
+        set(value) { require(value.isFinite() && value >= 0f); field = value }
+    var facingMaximumTurnRate = 1.8f // radians/second
+        set(value) { require(value.isFinite() && value > 0f); field = value }
     var color = Vector4f(.82f, .88f, .98f, 1f)
     val all
         get() = characters(0, text.length)
@@ -296,6 +302,8 @@ internal constructor(
     val dots: List<DiagramDot>,
     val links: List<DiagramLink>,
     val groups: List<DiagramGroup>,
+    val textFrames: List<DiagramTextFrame>,
+    val textFrusta: List<DiagramTextFrustum> = emptyList(),
 ) {
     val connections: List<DiagramConnection> = paths.mapNotNull { it.connection }
 
@@ -313,6 +321,10 @@ internal constructor(
     fun point(id: String) = byId.getValue(id) as DiagramParticle
 
     fun group(id: String) = groups.single { it.id == id }
+
+    fun textFrame(id: String) = textFrames.single { it.path.id == id }
+
+    fun textFrustum(id: String) = textFrusta.single { it.id == id }
 }
 
 @ReadingDsl
@@ -325,6 +337,8 @@ class ReadingDiagramBuilder internal constructor() {
     private val dots = ArrayList<DiagramDot>()
     private val links = ArrayList<DiagramLink>()
     private val groups = ArrayList<DiagramGroup>()
+    internal val textFrames = ArrayList<DiagramTextFrame>()
+    internal val textFrusta = ArrayList<DiagramTextFrustum>()
 
     private fun name(id: String) {
         require(id.isNotBlank() && names.add(id)) { "Duplicate or blank diagram name '$id'" }
@@ -436,6 +450,15 @@ class ReadingDiagramBuilder internal constructor() {
         return DiagramDot(id, owner, at).apply(block).also { dots.add(it) }
     }
 
+    /** Small live markers at both ends; creating them inside a group includes them in its fades. */
+    fun endpointDots(path: DiagramPath, radius: Float = .0025f, opacity: Float = .45f): List<DiagramDot> =
+        listOf(0f, 1f).mapIndexed { index, fraction ->
+            dot("${path.id}-endpoint-$index", path.at(fraction)) {
+                this.radius = radius
+                color.set(1f, 1f, 1f, opacity)
+            }
+        }
+
     fun group(id: String, block: ReadingDiagramBuilder.() -> Unit): DiagramGroup {
         name(id)
         val before = (particles + texts + paths + dots).map { it.id }.toSet()
@@ -446,6 +469,15 @@ class ReadingDiagramBuilder internal constructor() {
                 (particles + texts + paths + dots).filter { it.id !in before },
             )
             .also { groups.add(it) }
+    }
+
+    /** A named assembly of existing material; selecting it does not create duplicate draw calls. */
+    fun group(id: String, items: Collection<DiagramItem>): DiagramGroup {
+        name(id)
+        require(items.isNotEmpty() && items.all { it.owner === owner }) {
+            "An assembly must contain material from this diagram"
+        }
+        return DiagramGroup(id, owner, items.distinct()).also { groups.add(it) }
     }
 
     internal fun build(): ReadingDiagram {
@@ -461,6 +493,8 @@ class ReadingDiagramBuilder internal constructor() {
             dots.toList(),
             links.toList(),
             groups.toList(),
+            textFrames.toList(),
+            textFrusta.toList(),
         )
     }
 }

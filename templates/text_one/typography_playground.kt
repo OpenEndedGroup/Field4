@@ -9,12 +9,12 @@ val graph = readingDiagram {
     val peg = point("peg", 0, .25, pinned = true)
     val mobile = point("mobile", 0, .12)
     link(peg, mobile, .35f)
-    val sentence = text("sentence", "The quiet water carries the light", mobile) {
+    val sentence = text("sentence", "Each toe could smell the earth it touched.", mobile) {
         font = serif
         scale = .7f
-        word("quiet").style { italic = true }
-        word("water").style { bold = true }
-        word("light").style {
+        word("could").style { italic = true }
+        word("earth").style { bold = true }
+        word("touched").style {
             font = sans
             weight = 300.0
         }
@@ -30,7 +30,7 @@ val graph = readingDiagram {
             color = vec(1f, 1f, 1f, .35f)
         }
     }
-    underline("water", sentence.word("water"), gap = .018f) {
+    underline("water", sentence.word("earth"), gap = .018f) {
         width = .0013f
         color = vec(1f, 1f, 1f, .45f)
     }
@@ -54,7 +54,7 @@ val graph = readingDiagram {
     // Equal strings with different faces must own distinct prepared outlines and GPU data.
     for (i in 0..2) {
         val p = point("face-$i", -.62 + i * .62, -.18, pinned = true)
-        val word = text("face-word-$i", "water", p) {
+        val word = text("face-word-$i", "earth", p) {
             font = if (i == 2) sans else serif
             italic = i == 1
             bold = i == 2
@@ -69,16 +69,12 @@ val graph = readingDiagram {
     // they are not a fragment-shader dilation and do not claim arbitrary variable-font axes.
     for (i in 0..4) {
         val p = point("weight-$i", -.8 + i * .4, -.46, pinned = true)
-        text("weight-word-$i", "wave", p) {
+        text("weight-word-$i", "rain", p) {
             font = serif
             weight = 300.0 + 100 * i
             scale = .48f
         }
-        text("weight-label-$i", (300 + 100 * i).toString(), p.anchor.offset(y = -.075f)) {
-            font = sans
-            scale = .16f
-            color = vec(1f, 1f, 1f, .45f)
-        }
+
     }
 }
 val progress = progressReporter("Prepare typography playground", showDelayMillis = 0)

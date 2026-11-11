@@ -202,15 +202,15 @@ runtime/headset, a fresh Field process with `val headsetMode` in the Reading spa
 surface for editing the document.
 
 The drawing first accumulates into a transparent, two-eye float texture. Half- and
-quarter-resolution blur stages feed the **Green / paint compositor**. Green selects the
+quarter-resolution blur stages feed the **Green / light compositor**. Green selects the
 blend of sharp, medium and broad images; the displayed green is reconstructed from red
 and blue. **Blur mix** starts at zero. Increase it to soften the diagram, or edit
 `blurWeights` in the compositor's fragment shader to change the response.
 
-**Additive to weighted paint** blends between light accumulation and opacity-normalized
-colour, with a soft threshold. Strokes, dots and glyphs all contribute their coverage to
-the accumulated alpha. The browser is drawn afterward and stays sharp. The entire chain
-uses the same eye views and command buffer, without a previous-frame image.
+The reading scene strictly adds opacity-weighted light: strokes, dots, glyphs and text
+frames do not attenuate existing light. Alpha still records summed coverage, but never
+normalizes RGB. The browser is drawn afterward and stays sharp. The entire chain uses
+the same eye views and command buffer, without a previous-frame image.
 
 ```diffstatic_runner {data-lang=kotlin capture="native-window" native-wait-frames="8" screenshot="assets/sentence_diagrams/reading_space.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/text_one_native.yaml" capture-box="text1_context" wait="1" timeout="240" capture-profile="linux-nvidia" embed=true hidden=true name="sentence-reading-space" alt="The desktop stereo preview: a shallow three-dimensional constituency canopy, with Slug words, curved GPU-thickened branches and ring joints against a dark background."}
 // Prepare Slug text, CPU physics and the multiview renderer.
@@ -635,3 +635,18 @@ Use `dropCap(lines = 3, gapEm = .2f) { bold = true }` inside a text block. The r
 `paragraph.initial` is a measurable span, so elastic threads can attach to its bounding box.
 Line breaks remain authored; this feature does not introduce automatic paragraph wrapping.
 The document's **Drop caps** guide covers multi-letter initials, typography and rebuilding.
+
+## Mechanical text holders
+
+The reading-space starting document includes two frames with eight outward corner
+extensions and two wireframe text frusta. Overstroke combines a fraction of each
+bounding side with a constant distance in metres. A stepped surround keeps its
+original frosted silhouette and sliding attachments; its internal rectlet seams
+never generate extension marks.
+
+`textFrustum` joins two fitted, frosted text rectangles with four rails. A common
+aspect keeps the end shapes similar, while their physics anchors and font scales
+set depth and taper. The holder can fade, blur and move as an assembly, or animate
+its end texts independently. Complete lines crossfade without drawing themselves in.
+Examples 10–13 and the document’s **Mechanical text holders** guide contain the
+builder and score recipes.
