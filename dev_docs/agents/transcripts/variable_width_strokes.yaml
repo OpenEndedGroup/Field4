@@ -1,0 +1,172 @@
+name: variable_width_strokes
+description: >
+  Variable-width strokes as the swept-circle envelope, the companion to the "Variable-width
+  strokes" section of `public/docs/fline_examples.md`. Four boxes: a hand-written "o" as pills,
+  trapezoid pills and a swept spline; one cubic against byVariableRibboning; a stroke whose radius
+  outruns its centre; and a pressure stroke written to and read back from the drawing layer.
+  Run each box; each draws into `lines`.
+docs:
+  - page: fline_examples.md#variable-width-strokes-the-swept-circle-envelope
+    why: "The section these boxes accompany."
+operations:
+  - create:
+      box: swept-o
+      name: 1 - Pill, trapezoid pill, swept spline
+      frame:
+        x: 60.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // A quick hand-written "o": fourteen pen samples, pressure rising and falling.
+          val w = 20.0
+          val knots = (0..13).map { i ->
+              val a = 2.2 + 2 * PI * i / 12.5
+              val p = 0.3 + 0.7 * sin(PI * i / 13)
+              val r = w * p.pow(1.75)
+              vec(90 + 70 * cos(a) * (1 + 0.04 * i), 100 + 80 * sin(a), r)
+          }
+
+          fun ink(f: FLine, dx: Double) = (f + vec(dx, 0.0)).apply {
+              filled = true
+              stroked = false
+              color = vec(0.95, 0.95, 0.9, 1.0)
+          }
+
+          // pill: each span at its mean radius
+          val pills = knots.zipWithNext { a, b ->
+              val m = (a.z + b.z) / 2
+              sweptCircleStroke(listOf(vec(a.x, a.y, m), vec(b.x, b.y, m))).shell
+          }
+          // trapezoid pill: each span straight, radius linear from end to end
+          val trapezoids = knots.zipWithNext { a, b -> sweptCircleStroke(listOf(a, b)).shell }
+          // swept spline: cubic Béziers in (x, y, r) through every sample
+          val spline = sweptCircleStroke(knots).shell
+
+          val samples = knots.map { k ->
+              fline { moveTo(k.x, k.y); lineTo(k.x + 0.01, k.y) }.apply {
+                  pointed = true
+                  pointSize = 1.5
+                  color = vec(1.0, 0.4, 0.3, 1.0)
+              }
+          }
+
+          lines(
+              pills.map { ink(it, 0.0) } + trapezoids.map { ink(it, 220.0) } + ink(spline, 440.0) +
+                  samples + samples.map { it + vec(220.0, 0.0) } + samples.map { it + vec(440.0, 0.0) },
+              w = 900.0, h = 300.0, fitToSize = true
+          )
+  - create:
+      box: swept-cubic
+      name: 2 - Envelope of one cubic
+      frame:
+        x: 540.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // One cubic whose radius swells from 2 to about 17 and back to 2: the envelope against the plain ribbon.
+          val centre = fline {
+              moveTo(0, 0)
+              cubicTo(40, 45, 80, -30, 120, 20)
+          }
+          val radius = parameterFromLambda { t, _ -> 2f + 26f * t * t * (1f - t) * 4f }
+
+          val swept = centre.bySweptCircleEnveloping(radius, samples = 200, flatness = 0.02)
+          val ribbon = centre.byVariableRibboning(parameterFromLambda { t, p -> 2f * radius.evaluate(t, p) }, samples = 200)
+          // reference: the union of 1500 discs along the line
+          val reference = centre.byJtsVariableBuffering(numSamples = 1500, distance = { t -> radius.evaluate(t.toFloat(), vec(0f, 0f, 0f)).toDouble() })
+
+          println("swept envelope: %.3f from the union of discs".format(swept.shell.outlineDistanceTo(reference)))
+          println("byVariableRibboning: %.3f".format(ribbon.outlineDistanceTo(reference)))
+
+          val circles = (0..16).map { i ->
+              val s = centre.sampleSeries(17)[i]
+              val r = radius.evaluate(s.t, s.point).toDouble()
+              fline { circle(s.point.x.toDouble(), s.point.y.toDouble(), r) }.apply {
+                  thickness = 0.8
+                  color = vec(1.0, 1.0, 1.0, 0.35)
+              }
+          }
+          lines(
+              circles + listOf(
+                  centre.copy().apply { color = vec(1.0, 1.0, 1.0, 0.5) },
+                  ribbon.copy().apply { color = vec(1.0, 0.45, 0.3, 1.0); thickness = 1.5 },
+                  swept.left.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
+                  swept.right.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
+              ),
+              w = 900.0, h = 380.0, fitToSize = true
+          )
+  - create:
+      box: swept-degenerate
+      name: 3 - Where there is no envelope
+      frame:
+        x: 1020.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // The pen nearly stops and presses: around the middle sample the radius changes faster than
+          // the centre moves, and the circle swallows itself.
+          val knots = listOf(
+              vec(0.0, 0.0, 4.0), vec(60.0, 20.0, 7.0), vec(66.0, 22.0, 30.0),
+              vec(72.0, 20.0, 8.0), vec(150.0, 0.0, 4.0)
+          )
+          val spans = sweptCircleDegenerateSpans(knots)
+          println("no envelope on " + spans.joinToString { "%.4f..%.4f".format(it.start, it.endInclusive) })
+
+          val outline = sweptCircleStroke(knots)
+          val beziers = sweptCircleBeziers(knots)
+          val path = fline {
+              moveTo(beziers[0][0].x, beziers[0][0].y)
+              for (b in beziers) cubicTo(b[1].x, b[1].y, b[2].x, b[2].y, b[3].x, b[3].y)
+          }
+          lines(
+              outline.shell.copy().apply { filled = true; stroked = false; color = vec(0.95, 0.95, 0.9, 0.35) },
+              outline.left.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
+              outline.right.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
+              path.copy().apply { color = vec(1.0, 1.0, 1.0, 0.6) },
+              w = 900.0, h = 320.0, fitToSize = true
+          )
+  - create:
+      box: swept-notation
+      name: 4 - A pressure stroke from the drawing layer
+      frame:
+        x: 1500.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // Write a pressure stroke onto the drawing layer, then read it back as pen samples.
+          notation {
+              stroke(
+                  (0..40).map { i -> vec(-300.0 + 9.0 * i, 420.0 + 40.0 * sin(i / 5.0)) },
+                  name = "ink",
+                  pressure = { 0.15 + 0.85 * sin(PI * it).pow(0.7) },
+              )
+          }
+          val mark = notation.named("ink")!!
+          val knots = mark.points.zip(mark.pressures) { p, pressure -> vec(p.x, p.y, 12.0 * pressure.pow(1.75)) }
+          val outline = sweptCircleStroke(knots)
+          println("${knots.size} pen samples, ${sweptCircleDegenerateSpans(knots).size} spans without an envelope")
+          lines(outline.shell.copy().apply { filled = true; stroked = false; color = vec(0.95, 0.95, 0.9, 1.0) }, w = 900.0, h = 260.0, fitToSize = true)
+  - execute:
+      box: swept-o
+      property: code
+      type: fragment
+  - execute:
+      box: swept-cubic
+      property: code
+      type: fragment
+  - execute:
+      box: swept-degenerate
+      property: code
+      type: fragment
+  - execute:
+      box: swept-notation
+      property: code
+      type: fragment

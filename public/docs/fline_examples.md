@@ -2349,6 +2349,163 @@ val right = r.apply {
 lines(base, left, right, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
+### Variable-width strokes: the swept-circle envelope
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation | Behavior |
+| --- | --- |
+| `fun FLine.bySweptCircleEnveloping(radius: ParameterFunction, samples: Int = 200, sampler: FLineSampler? = null, flatness: Double = 0.25): FLineRibbon` | The outline of a circle of radius `radius(t)` swept along the line, with round ends. `left` and `right` are the two flanks; `shell` is the filled outline. |
+| `fun sweptCircleStroke(knots: List<Vec3>, samplesPerSegment: Int = 24, flatness: Double = 0.25): FLineRibbon` | The same outline for pen samples: each knot is `(x, y, r)`, joined by cubic Béziers in all three, with tangents from the neighbouring knots. |
+| `fun sweptCircleBeziers(knots: List<Vec3>): List<List<Vec3>>` | The Bézier spans `sweptCircleStroke` uses, four `(x, y, r)` control points each. |
+| `fun sweptCircleDegenerateSpans(knots: List<Vec3>): List<ClosedFloatingPointRange<Double>>` | Where the radius changes faster than the centre moves, so there is no envelope. Span `i` covers knots `i` to `i + 1`. |
+| `fun FLine.outlineDistanceTo(other: FLine, flatness: Double = 0.1): Double` | The largest distance between two outlines' boundaries, for checking one against another. |
+
+</div>
+
+A pen stroke is a list of samples: where the pen was and how hard it pressed. Give each sample a radius, `r = w · p^1.5` to `w · p^2` for pressure `p`, and the stroke is the shape a circle of that radius sweeps as it travels through the samples. There are three ways to fill in between samples, from cheap to smooth: a *pill* per span (a fixed radius, the span's average), a *trapezoid pill* per span (the radius changes linearly, and the flanks are the straight lines touching both end circles), and a *swept spline*, where `x`, `y` and `r` are all joined by one cubic Bézier through every sample. Here is a quick hand-written "o" of fourteen samples, drawn all three ways:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/swept_circle_o.png" wait="1.0" capture="box" open-outputs="true" embed=true name="fline-swept-o"}
+:::static
+// A quick hand-written "o": fourteen pen samples, pressure rising and falling.
+val w = 20.0
+val knots = (0..13).map { i ->
+    val a = 2.2 + 2 * PI * i / 12.5
+    val p = 0.3 + 0.7 * sin(PI * i / 13)
+    val r = w * p.pow(1.75)
+    vec(90 + 70 * cos(a) * (1 + 0.04 * i), 100 + 80 * sin(a), r)
+}
+
+fun ink(f: FLine, dx: Double) = (f + vec(dx, 0.0)).apply {
+    filled = true
+    stroked = false
+    color = vec(0.95, 0.95, 0.9, 1.0)
+}
+
+// pill: each span at its mean radius
+val pills = knots.zipWithNext { a, b ->
+    val m = (a.z + b.z) / 2
+    sweptCircleStroke(listOf(vec(a.x, a.y, m), vec(b.x, b.y, m))).shell
+}
+// trapezoid pill: each span straight, radius linear from end to end
+val trapezoids = knots.zipWithNext { a, b -> sweptCircleStroke(listOf(a, b)).shell }
+// swept spline: cubic Béziers in (x, y, r) through every sample
+val spline = sweptCircleStroke(knots).shell
+
+val samples = knots.map { k ->
+    fline { moveTo(k.x, k.y); lineTo(k.x + 0.01, k.y) }.apply {
+        pointed = true
+        pointSize = 1.5
+        color = vec(1.0, 0.4, 0.3, 1.0)
+    }
+}
+
+lines(
+    pills.map { ink(it, 0.0) } + trapezoids.map { ink(it, 220.0) } + ink(spline, 440.0) +
+        samples + samples.map { it + vec(220.0, 0.0) } + samples.map { it + vec(440.0, 0.0) },
+    w = 900.0, h = 300.0, fitToSize = true
+)
+```
+
+The pills show a knuckle at every sample. The trapezoid pills are smooth in width but still a polygon in direction. The spline is smooth in both.
+
+The flanks are not where you might guess. A circle that is growing as it moves touches its neighbour behind the centre, not straight out to the side: the outline is the centre offset by `r` along the normal tilted back by an angle `θ` with `sin θ = r′ / |P′|`, the rate the radius grows over the speed of the centre. `byVariableRibboning` offsets along the untilted normal and cuts the ends square. Below, one cubic swells from a radius of 2 to about 17 and back: the faint circles are the circles being swept, blue is `bySweptCircleEnveloping`, orange is `byVariableRibboning` with the same width:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/swept_circle_cubic.png" wait="1.0" capture="box" open-outputs="true" embed=true name="fline-swept-cubic"}
+:::static
+// One cubic whose radius swells from 2 to about 17 and back to 2: the envelope against the plain ribbon.
+val centre = fline {
+    moveTo(0, 0)
+    cubicTo(40, 45, 80, -30, 120, 20)
+}
+val radius = parameterFromLambda { t, _ -> 2f + 26f * t * t * (1f - t) * 4f }
+
+val swept = centre.bySweptCircleEnveloping(radius, samples = 200, flatness = 0.02)
+val ribbon = centre.byVariableRibboning(parameterFromLambda { t, p -> 2f * radius.evaluate(t, p) }, samples = 200)
+// reference: the union of 1500 discs along the line
+val reference = centre.byJtsVariableBuffering(numSamples = 1500, distance = { t -> radius.evaluate(t.toFloat(), vec(0f, 0f, 0f)).toDouble() })
+
+println("swept envelope: %.3f from the union of discs".format(swept.shell.outlineDistanceTo(reference)))
+println("byVariableRibboning: %.3f".format(ribbon.outlineDistanceTo(reference)))
+
+val circles = (0..16).map { i ->
+    val s = centre.sampleSeries(17)[i]
+    val r = radius.evaluate(s.t, s.point).toDouble()
+    fline { circle(s.point.x.toDouble(), s.point.y.toDouble(), r) }.apply {
+        thickness = 0.8
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
+}
+lines(
+    circles + listOf(
+        centre.copy().apply { color = vec(1.0, 1.0, 1.0, 0.5) },
+        ribbon.copy().apply { color = vec(1.0, 0.45, 0.3, 1.0); thickness = 1.5 },
+        swept.left.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
+        swept.right.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
+    ),
+    w = 900.0, h = 380.0, fitToSize = true
+)
+```
+
+Against the union of 1500 circles along the line, the envelope is within 0.22 units (most of that is the reference itself, which draws each circle as a polygon); the ribbon is 2 units out, the radius at its square ends, and it falls inside the circles on the flank where the radius grows fastest.
+
+Where `|r′| ≥ |P′|`, the pen pressing harder faster than it moves, a circle contains its neighbours and there is no envelope at all. On each Bézier span `|P′|² − r′²` is a polynomial of degree four, and `sweptCircleDegenerateSpans` finds its roots. `left` and `right` stop there, and `shell` fills the span with the circles themselves, so it stays one filled shape. Here the pen nearly stops at the middle sample and presses down:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/swept_circle_degenerate.png" wait="1.0" capture="box" open-outputs="true" embed=true name="fline-swept-degenerate"}
+:::static
+// The pen nearly stops and presses: around the middle sample the radius changes faster than
+// the centre moves, and the circle swallows itself.
+val knots = listOf(
+    vec(0.0, 0.0, 4.0), vec(60.0, 20.0, 7.0), vec(66.0, 22.0, 30.0),
+    vec(72.0, 20.0, 8.0), vec(150.0, 0.0, 4.0)
+)
+val spans = sweptCircleDegenerateSpans(knots)
+println("no envelope on " + spans.joinToString { "%.4f..%.4f".format(it.start, it.endInclusive) })
+
+val outline = sweptCircleStroke(knots)
+val beziers = sweptCircleBeziers(knots)
+val path = fline {
+    moveTo(beziers[0][0].x, beziers[0][0].y)
+    for (b in beziers) cubicTo(b[1].x, b[1].y, b[2].x, b[2].y, b[3].x, b[3].y)
+}
+lines(
+    outline.shell.copy().apply { filled = true; stroked = false; color = vec(0.95, 0.95, 0.9, 0.35) },
+    outline.left.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
+    outline.right.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
+    path.copy().apply { color = vec(1.0, 1.0, 1.0, 0.6) },
+    w = 900.0, h = 320.0, fitToSize = true
+)
+```
+
+A stroke from the [drawing layer](drawing_and_notation.md) carries its pressure. `Mark.points` and `Mark.pressures` give the pen samples, so the stroke can be outlined at the width it was drawn. This box writes the stroke itself, with `pressure =`, so that the page has one to read; a stroke drawn with a tablet pen reads the same way:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/swept_circle_notation.png" wait="1.0" capture="box" open-outputs="true" embed=true name="fline-swept-notation"}
+:::static
+// Write a pressure stroke onto the drawing layer, then read it back as pen samples.
+notation {
+    stroke(
+        (0..40).map { i -> vec(-300.0 + 9.0 * i, 420.0 + 40.0 * sin(i / 5.0)) },
+        name = "ink",
+        pressure = { 0.15 + 0.85 * sin(PI * it).pow(0.7) },
+    )
+}
+val mark = notation.named("ink")!!
+val knots = mark.points.zip(mark.pressures) { p, pressure -> vec(p.x, p.y, 12.0 * pressure.pow(1.75)) }
+val outline = sweptCircleStroke(knots)
+println("${knots.size} pen samples, ${sweptCircleDegenerateSpans(knots).size} spans without an envelope")
+lines(outline.shell.copy().apply { filled = true; stroked = false; color = vec(0.95, 0.95, 0.9, 1.0) }, w = 900.0, h = 260.0, fitToSize = true)
+```
+
+??? aside "Where this method comes from"
+    The construction follows Luther Tychonievich's post
+    [Variable-width Bézier strokes](https://luthert.web.illinois.edu/blog/posts/775.html)
+    (CC BY-NC-SA): the pressure-to-radius curve, Béziers in `(x, y, r)` with neighbour tangents, the
+    tilted normal and the case where the circle swallows itself. The code and figures here are
+    Field's own. `SweptCircleEnvelopeTest` pins the analytic cases: a constant radius equals
+    `byBidirectionalOffsetting`, a linear radius on a straight line lies on the two tangent lines,
+    the degenerate span ends are roots of `|P′|² − r′²`, and the 0.025 against 2.0 outline error
+    against a finely drawn union of circles.
+
 ### Dashing
 
 Breaks a path into multiple `FLine`s representing dash segments. Both lengths are measured *along
@@ -3886,6 +4043,7 @@ Next on the Tour, [Drawing and Notation](drawing_and_notation.md) draws by hand 
   that each piece of `clothoidSplineFrom` is made from, [biarcs](#biarcs-biarcto-and-biarcbetween)
   for smooth joins out of circular arcs, and [curvature, tangents and normals](#curvature-tangentsnormals)
   and [measuring along a line](#measuring-along-a-line) for reading a curve back.
+- [Variable-width strokes](#variable-width-strokes-the-swept-circle-envelope) above outline a pen stroke from its pressure; open the [variable_width_strokes starting point](agent_transcripts.md#variable_width_strokes) to try them.
 - Open the [clothoid_spline starting point](agent_transcripts.md#clothoid_spline) to try the
   spline boxes in your own document.
 - Source: [`FLineGeometry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt)

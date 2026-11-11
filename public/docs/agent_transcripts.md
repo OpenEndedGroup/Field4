@@ -850,6 +850,19 @@ FLines](fline_examples.md#curvature-continuous-splines-clothoidsplinefrom).
 
 [Open →](offline.html?file=assets/agent_transcripts/clothoid_spline/metadata.edn)
 
+### variable_width_strokes
+
+**Variable-width strokes, outlined as a swept circle.** Four boxes: a quick hand-written "o" drawn as
+pills, trapezoid pills and a swept spline; one cubic against `byVariableRibboning`; a stroke whose
+radius grows faster than it moves; and a pressure stroke read back from the drawing layer. From
+[Drawing with FLines](fline_examples.md#variable-width-strokes-the-swept-circle-envelope).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/variable_width_strokes.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="120" padding="12" name="gallery-variable-width-strokes" alt="A hand-written o drawn three ways in cream on black: knuckled pills, straight-sided trapezoid pills, and a smooth swept spline, with the pen samples as red dots" macro-file="../../dev_docs/agents/transcripts/variable_width_strokes.yaml" capture-box="swept-o"}
+// The transcript builds and runs all four boxes; this is the "o" box.
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/variable_width_strokes/metadata.edn)
+
 ### fline_exact_booleans
 
 **Exact booleans and cubic offsets, side by side with the old paths.** Two boxes, each with a dot on every node: the union and difference of a blob and a circle through `Area` and through `booleanExact`, and a star and an S-curve offset by `byOffsetting` and by `byOffsettingExact`. From [Drawing with FLines](fline_examples.md#exact-booleans-and-offsets).
