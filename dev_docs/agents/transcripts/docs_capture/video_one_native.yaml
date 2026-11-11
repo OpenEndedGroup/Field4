@@ -11,7 +11,6 @@ operations:
       h: 100
     properties:
       code: |
-        import afield.graphics.vulkan.targets.*
         import afield.graphics.vulkan.util.Options
         import afield.media.browser.*
 
@@ -142,8 +141,6 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.video.*
-        import afield.ui.output.ControlGroupBuilder
-        import afield.ui.output.ControlValueHandle
 
         // One movie owns decoding and uploads; box 4 owns its editable graphics pipeline.
         prop<StereoVideoSurface>(movie) = StereoVideoSurface(renderer, stereo, automaticDrawing = false)
@@ -416,8 +413,6 @@ operations:
       h: 100
     properties:
       code: |
-        import afield.ui.output.ControlValueHandle
-
         // A local path, with ~ expansion; changing this field alone does not reopen the decoder.
         // The checkout ships an original stereo calibration movie; an environment override selects yours.
         var selectedFile =
@@ -605,18 +600,18 @@ operations:
     seconds: 1
 - execute:
     box: video1_playback
-    code: |-
+    code: |
       movie.pause()
       movie.seek(.75)
 - wait:
     seconds: 0.5
 - execute:
     box: video1_playback
-    code: |-
+    code: |
       check(movie.hasFrame)
       check(kotlin.math.abs(movie.timestamp - .75) < .05)
 - execute:
     box: video1_context
-    code: |-
+    code: |
       stereo.stereoCamera.base.at.set(.12f, .04f, 0f)
       stereo.stereoCamera.base.target.set(0f, 0f, -2.5f)

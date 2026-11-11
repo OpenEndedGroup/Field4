@@ -500,7 +500,6 @@ operations:
               cellHeight = 352,
               window = window,
           )
-
   - create:
       box: spatial_apollonius_sweep
       name: Sweep the weight, and watch the bisector bow

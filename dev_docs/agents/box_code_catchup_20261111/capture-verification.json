@@ -1,0 +1,119 @@
+{
+  "captures": [
+    {
+      "page": "visualizers.md",
+      "name": "vec2-gestures",
+      "status": "passed",
+      "screenshot": "assets/visualizers-vec2-gestures.png",
+      "video": null,
+      "sourceFingerprint": "e295670b30347217a3b51e8f6feae4797925d67c60a4949e10943c5641d08997"
+    },
+    {
+      "page": "visualizers.md",
+      "name": "record-toggle",
+      "status": "passed",
+      "screenshot": null,
+      "video": "assets/visualizers-record-toggle.mp4",
+      "sourceFingerprint": "88205189a6e4a4278785c8f1574ae56746483424fbdb0bdb5792d85113024230"
+    },
+    {
+      "page": "visualizers.md",
+      "name": "controls-preset-bar",
+      "status": "passed",
+      "screenshot": "assets/visualizers-preset-bar.png",
+      "video": null,
+      "sourceFingerprint": "c3fda827f67ad714aa280420def73be4519e651803acc5b0c5a0478546eeb6fa"
+    },
+    {
+      "page": "ai4_chat_archive.md",
+      "name": "chat-archive-outline",
+      "status": "passed",
+      "screenshot": "assets/ai4_chat_archive/outline.png",
+      "video": null,
+      "sourceFingerprint": "2f24833cf50fbe7a266eaeaac8929919df5de78ad5c10a71798500d1a6dff6ae"
+    },
+    {
+      "page": "graph_query.md",
+      "name": "graph-query-cost",
+      "status": "passed",
+      "screenshot": "assets/graph_query/cost.png",
+      "video": null,
+      "sourceFingerprint": "b06291fc24c3e1c6a5cbe8c10858b300acddedfd066bc1e73042286669eec654"
+    },
+    {
+      "page": "datalog.md",
+      "name": "datalog-rhythm",
+      "status": "passed",
+      "screenshot": "assets/datalog/rhythm.png",
+      "video": null,
+      "sourceFingerprint": "7e701120fde9543a71be17b6dd126bd6eeaf522b01a3def7152142042e41131f"
+    },
+    {
+      "page": "pattern_language.md",
+      "name": "pat-doc-first-query",
+      "status": "passed",
+      "screenshot": "assets/pattern_language/first-query.png",
+      "video": null,
+      "sourceFingerprint": "1915fdbabc8a9ac35fc529d241224f1be69d67717419b2b0a580b432e27eb976"
+    },
+    {
+      "page": "tour_interface.md",
+      "name": "tour-interface-document-guide",
+      "status": "passed",
+      "screenshot": "assets/tour_interface/document-guide.png",
+      "video": null,
+      "sourceFingerprint": "24d255f7c828c44411bc60295dfd632676e178f1b4ee012de9d53749c92d97b0"
+    },
+    {
+      "page": "tour_interface.md",
+      "name": "tour-interface-publish",
+      "status": "passed",
+      "screenshot": "assets/tour_interface/publish.png",
+      "video": null,
+      "sourceFingerprint": "fefd036a4deb6bfa14d9abf92323f3a7953095c5b03acd176e1266a96d3860ed"
+    },
+    {
+      "page": "smpte_timecode.md",
+      "name": "smpte-clock-freewheel",
+      "status": "passed",
+      "screenshot": "assets/smpte_timecode/clock_freewheel.png",
+      "video": null,
+      "sourceFingerprint": "679c864f0278b85c29e088916c5ecc6a4bf085ab66f9fb5822a59729c9603acc"
+    },
+    {
+      "page": "pure_data.md",
+      "name": "pure-data-kotlin-box",
+      "status": "passed",
+      "screenshot": "assets/pure_data/kotlin-box.png",
+      "video": null,
+      "sourceFingerprint": "f0a450ed66e9112c334282f835762b3776b37b105523e29e15413ed0a6776116"
+    },
+    {
+      "page": "pure_data.md",
+      "name": "pure-data-messages",
+      "status": "passed",
+      "screenshot": "assets/pure_data/messages.png",
+      "video": null,
+      "sourceFingerprint": "ebcf28c9cde9830a6bc48f8df7ddd346fc64257b002c2d8446331a07a7ec7bf2"
+    },
+    {
+      "page": "pure_data.md",
+      "name": "pure-data-offline-measure",
+      "status": "passed",
+      "screenshot": "assets/pure_data/offline-measure.png",
+      "video": null,
+      "sourceFingerprint": "02f315fc2bd41c22093e3c5ee999343090aa628a18a063f4c24ceedbca0c8d69"
+    },
+    {
+      "page": "pattern_language.md",
+      "name": "pat-doc-fn-fit",
+      "status": "passed",
+      "screenshot": "assets/pattern_language/fn-fit.png",
+      "video": null,
+      "sourceFingerprint": "b04cb91edb057069fbd6cf37377acf8759a76907146d9b307d117d0ec302f516"
+    }
+  ],
+  "method": "Normal RunnerState capture_with_environment and transactional publication; actual authored fence and transcript.",
+  "visuallyInspected": true,
+  "assetBudgetRepair": "Fit figure recaptured at explicit scale=1 through the normal runner; obsolete exception removed. Asset budget check passed."
+}

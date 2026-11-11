@@ -507,29 +507,28 @@ val rows = ["just after the hitch (600 spans in)" to withHitch, "500 spans later
 display(
     "main",
     Table(
-            ["when", "n", "p50 ms", "p99 ms", "max ms"],
-            title = "one deliberate hitch, seen through a 500-sample window",
-            note =
-                "across those 500 spans p99 moved by " +
-                    (after.p99Ms - withHitch.p99Ms).f2 +
-                    "ms while max fell by " +
-                    (withHitch.maxMs - after.maxMs).f2 +
-                    "ms. Over a full window p99 is the sixth " +
-                    "worst sample and there was only one bad one, so it never saw the hitch at all; max is now " +
-                    (if (after.maxMs > 10) "somehow still holding it" else "back among the short spans") +
-                    ". A single stutter is visible in max, for eight seconds, and nowhere else.",
-        )
-        .rows(
-            rows.map { (when_, s) ->
-                [
-                    when_,
-                    s.n,
-                    s.p50Ms.f2,
-                    s.p99Ms.f2,
-                    s.maxMs.f2,
-                ]
-            },
-        )
+        ["when", "n", "p50 ms", "p99 ms", "max ms"],
+        title = "one deliberate hitch, seen through a 500-sample window",
+        note =
+            "across those 500 spans p99 moved by " +
+                (after.p99Ms - withHitch.p99Ms).f2 +
+                "ms while max fell by " +
+                (withHitch.maxMs - after.maxMs).f2 +
+                "ms. Over a full window p99 is the sixth " +
+                "worst sample and there was only one bad one, so it never saw the hitch at all; max is now " +
+                (if (after.maxMs > 10) "somehow still holding it" else "back among the short spans") +
+                ". A single stutter is visible in max, for eight seconds, and nowhere else.",
+    ).rows(
+        rows.map { (when_, s) ->
+            [
+                when_,
+                s.n,
+                s.p50Ms.f2,
+                s.p99Ms.f2,
+                s.maxMs.f2,
+            ]
+        },
+    )
         .role("when", CellRole.ACCENT)
         .roleBy("max ms") { if ((it as String).toDouble() > 10) CellRole.WARN else CellRole.OK }
         .expect("n", because = "the window is 500, so 600 and 1100 spans both report 500") { it == 500 },

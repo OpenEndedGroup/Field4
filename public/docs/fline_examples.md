@@ -1377,7 +1377,12 @@ fun clothoidSplineFrom(points: List<Vec3>, closed: Boolean = false, samplesPerSe
 fun clothoidSplineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = false, samplesPerSegment: Int = 48): FLine
 
 fun FLine.curvatureComb(scale: Double = 2000.0, samples: Int = 120): FLine
-fun FLine.curvaturePlot(width: Double = 400.0, height: Double = 120.0, samples: Int = 300, maxCurvature: Double? = null): FLine
+fun FLine.curvaturePlot(
+    width: Double = 400.0,
+    height: Double = 120.0,
+    samples: Int = 300,
+    maxCurvature: Double? = null,
+): FLine
 ```
 
 Each piece between two points is an [Euler spiral](https://en.wikipedia.org/wiki/Euler_spiral), the curve whose curvature changes at a constant rate along its length. An Euler spiral is fixed by the direction it leaves one point and the direction it arrives at the next, so the spline only has to choose one direction per point. It turns each point's direction until the curvature arriving at the point equals the curvature leaving it. An open spline starts and ends with an arc of a circle.
@@ -2903,22 +2908,20 @@ This is the basic pattern: two contours in, one reusable interpolator out, then 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/flineinterpolator_rotation_matching.png" embed=true}
 :::static
-fun asymmetricStroke() =
-    polylineFrom(
-            [
-                vec(-150, 20),
-                vec(-80, -110),
-                vec(-10, -30),
-                vec(35, 120),
-                vec(90, 40),
-                vec(150, -60),
-            ],
-        )
-        .apply {
-            filled = false
-            stroked = true
-            thickness = 2.0
-        }
+fun asymmetricStroke() = polylineFrom(
+    [
+        vec(-150, 20),
+        vec(-80, -110),
+        vec(-10, -30),
+        vec(35, 120),
+        vec(90, 40),
+        vec(150, -60),
+    ],
+).apply {
+    filled = false
+    stroked = true
+    thickness = 2.0
+}
 
 val start = asymmetricStroke()
 val end =
@@ -2939,15 +2942,16 @@ val aligned = start.interpolatorTo(
 )
 
 // Nine in-between shapes, t = 0.1 ... 0.9, shaded from the start's blue to the end's orange.
-fun sweep(interpolator: FLineInterpolator) = (1..9).map { i ->
-    val t = i / 10f
-    interpolator.lineAt(t).apply {
-        filled = false
-        stroked = true
-        thickness = 1.6
-        color = vec(0.45 + 0.55 * t, 0.75 - 0.2 * t, 1.0 - 0.75 * t, 0.85)
+fun sweep(interpolator: FLineInterpolator) =
+    (1..9).map { i ->
+        val t = i / 10f
+        interpolator.lineAt(t).apply {
+            filled = false
+            stroked = true
+            thickness = 1.6
+            color = vec(0.45 + 0.55 * t, 0.75 - 0.2 * t, 1.0 - 0.75 * t, 0.85)
+        }
     }
-}
 
 fun ghost(line: FLine, tint: Vec4) = line.copy().apply {
     filled = false

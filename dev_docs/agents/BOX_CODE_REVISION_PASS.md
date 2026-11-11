@@ -29,6 +29,19 @@ for review, rather than silently changing their semantics.
   and touched top-level transcripts must pass the compile/replay guard. Broader execution,
   GPU work and docs captures stay with the smoke catalog and the docs runner (the nightly).
 
+## Reading and following an example
+
+Prefer inherited typed properties to `fromContext` when the graph already publishes the value.
+Keep resource ownership explicit across asynchronous boundaries. Prefer `markdown` for prose and
+measured tables, and FLines for small drawings; retain HTML when the example teaches DOM or needs
+an interactive embed. Use collection literals when their element types remain clear.
+
+A short example can legitimately delegate to a substantial helper. When it does, link the helper
+class and the method doing the work to their actual reference entries, preferably from the nearby
+explanation. Check both anchors. A class-only or source-file-only link does not explain which
+operation the example relies on. Expose useful controls and intermediate results in the example
+where they help a reader change it; avoid hiding the entire lesson behind a named demo object.
+
 ## Census and rehearsal
 
 `uv run --project . --group backdoor python tools/inventory_box_code.py --out build/box-code-revision/inventory`

@@ -271,13 +271,18 @@ val fractions = [0.01, 0.05, 0.2, 1.0]
 val profiles = fractions.map { f -> matrixProfile(series, m = 60, fraction = f, seed = 1) }
 val exact = profiles.last()
 showSignals(
-    *profiles.dropLast(1).mapIndexed { i, p ->
-        "fraction ${fractions[i]} − exact" to p.profile.zip(exact.profile) { a, b -> a - b }
-    }.toTypedArray(),
+    *profiles
+        .dropLast(1)
+        .mapIndexed { i, p ->
+            "fraction ${fractions[i]} − exact" to p.profile.zip(exact.profile) { a, b -> a - b }
+        }
+        .toTypedArray(),
     yTitle = "distance above the exact profile",
-    regions = exact.motifs(1).first().indices.map { SignalRegion("motif", it, it + 60, "#8fff9a") } +
-        SignalRegion("discord", exact.discords(1).first().index, exact.discords(1).first().index + 60, "#ff7a9e"),
-    title = "first motif index ${profiles.map { it.motifs(1).first().indices.first() }} · discord ${profiles.map { it.discords(1).first().index }}, fraction 0.01 to 1.0",
+    regions =
+        exact.motifs(1).first().indices.map { SignalRegion("motif", it, it + 60, "#8fff9a") } +
+            SignalRegion("discord", exact.discords(1).first().index, exact.discords(1).first().index + 60, "#ff7a9e"),
+    title =
+        "first motif index ${profiles.map { it.motifs(1).first().indices.first() }} · discord ${profiles.map { it.discords(1).first().index }}, fraction 0.01 to 1.0",
     channel = "anytime",
     width = 1000,
     height = 360,

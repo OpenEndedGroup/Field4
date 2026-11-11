@@ -83,7 +83,8 @@ showImg(
 showImg(
     energyPlotImg(pl.energyHistory, 720, 160),
     channel = "energy",
-    caption = "mean particle energy, steps 0 to 3000: %.3f down to %.3f".format(pl.energyHistory.first(), pl.currentEnergy()),
+    caption =
+        "mean particle energy, steps 0 to 3000: %.3f down to %.3f".format(pl.energyHistory.first(), pl.currentEnergy()),
 )
 :::endfold
 ```
@@ -509,3 +510,13 @@ animateEvolution(
 - **The article's 3-D variant**, whose 256 particles settle into a mushroom-shaped glider
   (`muK` 4.3, `sigmaK` 1.1, `muG` 0.23, `sigmaG` 0.06), and its sonification, in which every particle
   sings at a pitch set by its energy, as loud as it is fast.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`ParticleLeniaParams`](reference/alife.md#alife-particle-lenia-kt-particleleniaparams)
+- [`LeniaMapCell`](reference/alife.md#alife-particle-lenia-motion-kt-leniamapcell)
+
+- [`PopulationSearch.evolve`](reference/search.md#populationsearch-kt--populationsearch--evolve)
+- [`PopulationSearch`](reference/search.md#populationsearch-kt-populationsearch)

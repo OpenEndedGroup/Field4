@@ -128,8 +128,7 @@ println(
 )
 println("retained eigenvalues ${projection.scores.joinToString { it.f3 }}")
 println(
-    "plane vs input: r = ${projection.distanceCorrelation.f4}, " +
-        "stress-1 = ${projection.stress1.f4}",
+    "plane vs input: r = ${projection.distanceCorrelation.f4}, " + "stress-1 = ${projection.stress1.f4}",
 )
 println(
     "nearest neighbour in own family: ${ownFamily(distances)}/20 by edit distance, " +
@@ -285,8 +284,7 @@ println("coordinate 1 vs position along the spiral, Spearman rho:")
 println("  from hop counts        ${StatsDependence.spearman(t, geodesicAxis).f4}")
 println("  from straight-line d   ${StatsDependence.spearman(t, straightAxis).f4}")
 println(
-    "stress-1 against each fit's own matrix: hops ${geodesic.stress1.f4}, " +
-        "straight-line ${straight.stress1.f4}",
+    "stress-1 against each fit's own matrix: hops ${geodesic.stress1.f4}, " + "straight-line ${straight.stress1.f4}",
 )
 :::fold the spiral and the two recovered coordinates
 val normalise = { values: DoubleArray ->
@@ -450,8 +448,7 @@ println(
     "t-SNE   0-1 ${gap(tsne.coordinates, 0, 1).f3}  0-2 ${gap(tsne.coordinates, 0, 2).f3}  ratio ${ratio(tsne.coordinates).f4}",
 )
 println(
-    "10-nearest-neighbour recall: MDS ${recall(mds.coordinates, 10).f4}, " +
-        "t-SNE ${recall(tsne.coordinates, 10).f4}",
+    "10-nearest-neighbour recall: MDS ${recall(mds.coordinates, 10).f4}, " + "t-SNE ${recall(tsne.coordinates, 10).f4}",
 )
 
 // Perplexity is the dial between the two, so sweep it rather than describing it.

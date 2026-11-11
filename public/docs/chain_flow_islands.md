@@ -100,6 +100,6 @@ Datalog stores every whole number as a `Long`, so an id that went in as an `Int`
 
 ## Where each piece is documented
 
-* [Flow Matching](flow_matching.md) for `flowMatch`, `sample` and `FlowMatchOptions`.
+* [Flow Matching](flow_matching.md) for `flowMatch`, `sample` and [`FlowMatchOptions`](reference/machine-learning.md#flowmatching-kt-flowmatchoptions).
 * [Datalog in a box](datalog.md) for facts, rules, aggregates and negation.
 * [Agent transcripts](agent_transcripts.md#flow_islands) to replay the three boxes into a document.

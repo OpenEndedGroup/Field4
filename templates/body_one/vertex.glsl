@@ -24,8 +24,8 @@ layout(location = 1) flat out vec4 ink; // linear RGBA
 layout(location = 2) flat out float roundMark; // 1 = circle / 0 = strip
 
 const vec2 corners[6] = vec2[](
-    vec2(-1,-1), vec2(1,-1), vec2(1,1),
-    vec2(-1,-1), vec2(1,1), vec2(-1,1)
+vec2(-1,-1), vec2(1,-1), vec2(1,1),
+vec2(-1,-1), vec2(1,1), vec2(-1,1)
 );
 
 void main() {
@@ -39,13 +39,14 @@ void main() {
     // Expand on the GPU, independently for the current eye.
     if (pc.b.w > 0.5) {
         p = pc.a.xyz + (right * uv.x + up * uv.y) * pc.a.w;
-    } else {
+    }
+    else {
         vec3 d = pc.b.xyz - pc.a.xyz;
         vec3 side = cross(d, cross(right, up));
         side = dot(side, side) > 1e-12 ? normalize(side) : right;
         p = mix(pc.a.xyz, pc.b.xyz, uv.x * 0.5 + 0.5) + side * uv.y * pc.a.w;
     }
     gl_Position = pc.tint.a > 0.0
-        ? (gl_ViewIndex == 0 ? stereoVpL : stereoVpR) * vec4(p, 1)
-        : vec4(0, 0, -1, 1);
+    ? (gl_ViewIndex == 0 ? stereoVpL : stereoVpR) * vec4(p, 1)
+    : vec4(0, 0, -1, 1);
 }

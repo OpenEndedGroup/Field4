@@ -19,7 +19,7 @@ fun draw() {
     val endY = 360.0
     val start = frameExit(entryX, top, -sin(theta), -cos(theta), 640.0, endY)
     val guideEnd = frameExit(entryX, top, sin(theta), cos(theta), 640.0, endY)
-    val parts = listOf(
+    val parts = [
         fline {
             rect(0, top, 640, slab * unit)
             filled = true
@@ -40,7 +40,7 @@ fun draw() {
             color = cyan
             thickness = 2.5
         },
-    )
+    ]
     showPlane(
         parts,
         channel = "side",

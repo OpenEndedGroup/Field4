@@ -47,8 +47,6 @@ operations:
       frame: { x: 40.0, y: 120.0, w: 260.0, h: 50.0 }
       properties:
         code: |
-          import afield.data.query.datalog.Datalog
-
           prop<Datalog>(islandModel)
 
           val rules =

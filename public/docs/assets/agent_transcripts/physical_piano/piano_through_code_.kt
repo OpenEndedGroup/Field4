@@ -18,5 +18,5 @@ fun through(preparations: List<PianoPreparation>): PianoRender {
     return pianoRender(8.0, resonator)
 }
 showPianoAudio(through(emptyList()), "through")
-showPianoAudio(through(listOf(PianoPreparation.bolt(36..72, at = 0.28, grams = 6.0))), "through prepared")
+showPianoAudio(through([PianoPreparation.bolt(36..72, at = 0.28, grams = 6.0)]), "through prepared")
 ["through", "through prepared"].forEach { displayOpen(it) }

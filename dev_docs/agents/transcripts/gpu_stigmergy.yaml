@@ -52,11 +52,11 @@ operations:
               speciesCount = 3
               exclusive = true
               exposure = 0.06f
-              attraction = listOf(
+              attraction = [
                   vec(1f, -2f, -2f, 0f),
                   vec(-2f, 1f, -2f, 0f),
                   vec(-2f, -2f, 1f, 0f),
-              )
+              ]
           }
           physarum.trail.settings.diffusion = 0.2f
 
@@ -96,16 +96,16 @@ operations:
           mark of species 0's scent wherever it goes, and species 0 (amber) is repelled twice as
           hard by cyan as before. Re-run with other numbers: both matrices are read every frame.
           */
-          physarum.settings.depositInto = listOf(
+          physarum.settings.depositInto = [
               vec(1f, 0f, 0f, 0f),
               vec(0.5f, 1f, 0f, 0f),
               vec(0f, 0f, 1f, 0f),
-          )
-          physarum.settings.attraction = listOf(
+          ]
+          physarum.settings.attraction = [
               vec(1f, -4f, -2f, 0f),
               vec(1f, 1f, -2f, 0f),
               vec(-2f, -2f, 1f, 0f),
-          )
+          ]
           println("chase: species 1 follows species 0 and marks its channel")
   - create:
       box: stigmergy_reset
@@ -115,11 +115,11 @@ operations:
         code: |
           // empty the trail, restore the territorial matrices, and scatter the agents again
           physarum.settings.depositInto = null
-          physarum.settings.attraction = listOf(
+          physarum.settings.attraction = [
               vec(1f, -2f, -2f, 0f),
               vec(-2f, 1f, -2f, 0f),
               vec(-2f, -2f, 1f, 0f),
-          )
+          ]
           physarum.trail.clear()
           physarum.resetAgents(System.nanoTime())
           println("reset")

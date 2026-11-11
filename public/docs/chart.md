@@ -1,6 +1,6 @@
 # Charts as FLines
 
-A `Chart` is a plot made of FLines. Put one in the same drawing as your other FLines, click its
+A [`Chart`](reference/visualization.md#charts-kt-chart) is a plot made of FLines. Put one in the same drawing as your other FLines, click its
 marks, or draw an expected range and see which data falls outside it. For a general-purpose
 interactive chart, take a look at Plotly too.
 

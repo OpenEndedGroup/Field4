@@ -37,14 +37,14 @@ start(renderer::run)
 <!-- field-box id="diffusion_curves" index="1" -->
 
 ```edn [field-box id="diffusion_curves" role="properties"]
-{"id" "diffusion_curves" "index" 1 "name" "3 · spinning curves" "parents" ["root" "diffusion_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "diffusion_renderer"} "name" "3 · spinning curves" "_tombstone" false "frame" #afield/rect [440.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_curves_code_.kt" "lines" 106 "characters" 4716 "sha256" "d9a051e82e7e9e00f14acb64f63cd0bbb654759d0e88ccfc9959674f81c0791c"}]}
+{"id" "diffusion_curves" "index" 1 "name" "3 · spinning curves" "parents" ["root" "diffusion_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "diffusion_renderer"} "name" "3 · spinning curves" "_tombstone" false "frame" #afield/rect [440.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_curves_code_.kt" "lines" 106 "characters" 4701 "sha256" "83f010f1c46611e2994db0b32458e4df1537fec2a8526ab199a7437b00d2f407"}]}
 ```
 
 ```kotlin [field-property box="diffusion_curves" name="code" path="diffusion_curves_code_.kt"]
 import afield.media.video.diffusion.*
 
 // Connect this box beneath a running renderer box before launching it.
-val owner: Renderer = fromContext()
+val owner = renderer
 prop<SpinningDiffusionDemo>(diffusionDemo)
 fromContextWithNameOrNull<SpinningDiffusionDemo>("diffusionDemo")?.close()
 

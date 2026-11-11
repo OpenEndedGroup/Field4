@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T22:38:26.322Z",
+  "capturedAt": "2026-11-11T12:37:15.700Z",
   "documentName": "statistics_examples",
   "outputs": [
     {
@@ -82,7 +82,7 @@
         "svg"
       ],
       "width": 783,
-      "height": 234,
+      "height": 228,
       "path": "outputs/6.html"
     }
   ]

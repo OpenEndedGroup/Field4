@@ -35,7 +35,7 @@ val answers = [
     "%-12s %s".format(label, drums.events(arc).joinToString("  ") { "${it.value}@${it.arc.start}" })
 }
 println(answers)
-display("<pre>" + answers + "</pre>")
+markdown("```text\n$answers\n```")
 ```
 
 Time is exact rational arithmetic (`PatQ`), never floating point. A sixteenth note is
@@ -899,7 +899,7 @@ values    ${gesture.extractParameters().joinToString("  ")}
 ${gesture.graphText()}""".trimIndent()
 
 println(report)
-display("<pre>" + report + "</pre>")
+markdown("```text\n$report\n```")
 ```
 
 ![The pat node: its op, its spliced source text, its role-tagged knobs and their values](assets/pattern_language/fn-graph.png)
@@ -913,7 +913,7 @@ Below, the target is a two-bump gesture and the seed has the right *structure* w
 wrong numbers: wrong heights, wrong widths. Adam moves the leaves until the curves
 coincide, and the fitted result comes back out as **pattern text you can paste into a box**:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/fn-fit.png" wait="5" capture="box" open-outputs="true" name="pat-doc-fn-fit"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/fn-fit.png" wait="5" capture="box" open-outputs="true" name="pat-doc-fn-fit" scale="1"}
 with(Functions) {
     val target = patFn("g:(0.9,0.18) g:(0.1,0.18)", cps = 1.0, range = 0.9)
     val seed = patFn("g:(0.7,0.25) g:(0.3,0.12)", cps = 1.0, range = 0.9)
@@ -930,7 +930,7 @@ with(Functions) {
     fitted  ${run.fitted.graphNode().strings["source"]}
     RMSE    ${run.initialError.f4} -> ${run.finalError.f4}""".trimIndent()
     println(report)
-    display("<pre>" + report + "</pre>")
+    markdown("```text\n$report\n```")
 }
 ```
 
@@ -993,3 +993,9 @@ crosses bar lines plays correctly without the consumer knowing anything about cy
 - [Sound](sound.md) plays patterns through samples and synths.
 - [Audio render and analysis](audio_render_analysis.md) renders a pattern to a file and
   transcribes audio back into one.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`PatArc`](reference/patterns.md#tidalpatterns-kt-patarc)

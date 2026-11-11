@@ -1,6 +1,5 @@
 import afield.io.mocap.*
 import afield.math.oracle.*
-import kotlin.math.*
 
 // six takes of modern dance (CMU subject 05): every joint, in the dancer's own frame, at 30 Hz,
 // without the standing still before and after each take

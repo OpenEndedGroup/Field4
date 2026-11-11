@@ -39,7 +39,7 @@ operations:
           val left = 400.0
           val top = 200.0
           val side = 400.0
-          val dots = listOf(
+          val dots = [
               0.22 to 0.30,
               0.38 to 0.18,
               0.62 to 0.22,
@@ -52,7 +52,7 @@ operations:
               0.62 to 0.82,
               0.84 to 0.78,
               0.50 to 0.30,
-          )
+          ]
           notation {
               frame("network", left, top, side, side) {
                   for ((u, v) in dots) ellipse(left + u * side - 6, top + v * side - 6, 12, 12, fill = "#ffd8a8")
@@ -81,7 +81,10 @@ operations:
               exposure = 0.25f
           }
           // the square field in the middle of the window
-          physarum.installInto(previewViewport = Rect((window.width - window.height) / 2.0, 0.0, window.height.toDouble(), window.height.toDouble()))
+          physarum.installInto(
+              previewViewport =
+                  Rect((window.width - window.height) / 2.0, 0.0, window.height.toDouble(), window.height.toDouble()),
+          )
 
           // every edit to the drawing moves the food
           notation.onChange { physarum.settings.food = dots() }

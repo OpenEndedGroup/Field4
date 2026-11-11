@@ -1,6 +1,5 @@
 import afield.math.oracle.*
 import afield.math.temporal.*
-import kotlin.math.*
 
 // Needs the forecaster once: print(TimestralSession.install("mistralai/Timestral-28M"))
 print(TimestralSession.status())

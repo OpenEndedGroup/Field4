@@ -1,4 +1,3 @@
-import afield.graphics.vulkan.targets.OpenXRHmdTarget
 import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
@@ -12,7 +11,7 @@ once.renderer {
     val preview = Window("Field · headset preview", initialDimensions = Rect(1540.0, 80.0, 1000.0, 800.0))
     // Let the headset advance even when the desktop preview cannot present.
     preview.bestEffortPresentation = true
-    val created = Renderer(window, additionalWindows = listOf(preview))
+    val created = Renderer(window, additionalWindows = [preview])
     if (useHeadset) created.openXRHmdTarget = OpenXRHmdTarget(created)
     created
 }

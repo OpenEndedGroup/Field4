@@ -23,8 +23,6 @@ operations:
         code: |
           import afield.graphics.scene.body.*
           import afield.graphics.vulkan.targets.OpenXRHmdTarget.*
-          import afield.media.image.*
-          import afield.media.video.*
           import java.io.File
           import kotlinx.serialization.json.*
 
@@ -153,7 +151,6 @@ operations:
           import afield.graphics.scene.body.*
           import afield.graphics.vulkan.targets.OpenXRHmdTarget.*
           import java.io.File
-          import kotlin.math.roundToInt
           import kotlinx.serialization.json.*
 
           // The recording: per frame, null or mediapipe's 33 landmarks as [x, y, z, visibility].

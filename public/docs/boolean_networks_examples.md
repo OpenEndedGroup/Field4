@@ -117,13 +117,11 @@ val rows =
     }
 
 :::fold plot helpers: shared y scale, axes and grid, polylines, square markers
-val maxY =
-    [
-            rows.maxOf { it.attractors },
-            rows.maxOf { it.period },
-            rows.maxOf { it.fixed },
-        ]
-        .max() + 0.5
+val maxY = [
+    rows.maxOf { it.attractors },
+    rows.maxOf { it.period },
+    rows.maxOf { it.fixed },
+].max() + 0.5
 
 fun guides() = [
     fline {

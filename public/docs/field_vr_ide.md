@@ -86,7 +86,7 @@ document the panel displays.
 ## A real keyboard
 
 For a keyboard attached to the PC while OpenXR is active, set `headsetInput = false` in the
-`FieldVrWorkspace(...)` constructor in box 2, then stop and relaunch that box. This selects the
+[`FieldVrWorkspace(...)`](reference/imaging.md#fieldvrworkspace-kt-fieldvrworkspace) constructor in box 2, then stop and relaunch that box. This selects the
 desktop focus behaviour below. The default Linux/OpenXR mode uses the dedicated headset input path.
 `FIELD_VR_INPUT=desktop` selects this default for all panels in a Field process;
 `FIELD_VR_INPUT=wivrn` explicitly selects WiVRn on Linux/OpenXR. An explicit constructor argument
@@ -276,7 +276,7 @@ see [stereo video precision](stereo_video.md#colour-precision) for the stages to
 
 ## World-space audio through WiVRn
 
-Place a mono WAV in the OpenXR scene with `SpatialWavPlayer`. Steam Audio renders it as binaural
+Place a mono WAV in the OpenXR scene with [`SpatialWavPlayer`](reference/audio.md#spatialwavplayer-kt-spatialwavplayer). Steam Audio renders it as binaural
 stereo using the headset pose, through a named WiVRn output; your desktop's default output stays
 as it was. Install Steam Audio's native library first with `./gradlew fetchSteamAudioNatives`.
 
@@ -304,3 +304,12 @@ device-paced thread; the graphics Runloop reads and changes its controls.
 
 To inspect the tracking data behind headset interactions, open [body_one](body_tracking.md).
 It draws available hands, sparse body joints and controllers, with bounds and closest-point helpers.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`SpatialWavPlayer.openWiVRn`](reference/audio.md#spatialwavplayer-kt--spatialwavplayer--openwivrn)
+- [`SpatialWavPlayer.place`](reference/audio.md#spatialwavplayer-kt--spatialwavplayer--place)
+- [`SpatialWavPlayer.play`](reference/audio.md#spatialwavplayer-kt--spatialwavplayer--play)
+- [`SpatialWavPlayer.close`](reference/audio.md#spatialwavplayer-kt--spatialwavplayer--close)

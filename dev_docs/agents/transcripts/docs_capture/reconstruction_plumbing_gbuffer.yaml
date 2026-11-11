@@ -148,10 +148,12 @@ operations:
         val stripY = (window.height - stripH) / 2
         source.blitToScreen(attachment = 0, name = "gbuffer color", viewport = Rect(0.0, stripY, stripW, stripH))
         source.blitToScreen(attachment = 1, name = "gbuffer depth", viewport = Rect(stripW, stripY, stripW, stripH)) {
-            exposure = vec(-12, 0, 0, 1); offset = vec(12, 0, 0, 0)
+            exposure = vec(-12, 0, 0, 1)
+            offset = vec(12, 0, 0, 0)
         }
         source.blitToScreen(attachment = 2, name = "gbuffer motion", viewport = Rect(2 * stripW, stripY, stripW, stripH)) {
-            exposure = vec(0.3, 0.3, 0, 1); offset = vec(0.5, 0.5, 0, 0)
+            exposure = vec(0.3, 0.3, 0, 1)
+            offset = vec(0.5, 0.5, 0, 0)
         }
         // Capture this allocation, not the mutable box prop that a rerun replaces.
         val ownedTarget = source
@@ -422,10 +424,12 @@ operations:
       val stripY = (window.height - stripH) / 2
       source.blitToScreen(attachment = 0, name = "gbuffer color", viewport = Rect(0.0, stripY, stripW, stripH))
       source.blitToScreen(attachment = 1, name = "gbuffer depth", viewport = Rect(stripW, stripY, stripW, stripH)) {
-          exposure = vec(-12, 0, 0, 1); offset = vec(12, 0, 0, 0)
+          exposure = vec(-12, 0, 0, 1)
+          offset = vec(12, 0, 0, 0)
       }
       source.blitToScreen(attachment = 2, name = "gbuffer motion", viewport = Rect(2 * stripW, stripY, stripW, stripH)) {
-          exposure = vec(0.3, 0.3, 0, 1); offset = vec(0.5, 0.5, 0, 0)
+          exposure = vec(0.3, 0.3, 0, 1)
+          offset = vec(0.5, 0.5, 0, 0)
       }
       // Capture this allocation, not the mutable box prop that a rerun replaces.
       val ownedTarget = source
@@ -454,7 +458,7 @@ operations:
       }
       displayOpen("module to SR")
       println("g-buffer strip ready")
-        println(
+      println(
           "${inputSize.width} × ${inputSize.height} → 1920 × 1080. Inspect vertex / fragment: RGB, depth and motion are written together.",
       )
       frames {

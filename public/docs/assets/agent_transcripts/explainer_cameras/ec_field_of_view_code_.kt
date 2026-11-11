@@ -40,7 +40,7 @@ fun draw() {
     val tipX = 120.0
     val tipY = axis - 90.0
     val imageY = axis + 90.0 * distance * unit / (holeX - tipX)
-    val parts = listOf(
+    val parts = [
         view,
         segment(sensorX, axis + half, holeX, axis + half, guide),
         segment(sensorX, axis - half, holeX, axis - half, guide),
@@ -52,7 +52,7 @@ fun draw() {
         segment(tipX, axis + 40, tipX, tipY, orange, 4.0),
         segment(tipX, tipY, sensorX, imageY, orange, 1.0),
         segment(sensorX, axis - 40.0 * distance * unit / (holeX - tipX), sensorX, imageY, orange, 4.0),
-    )
+    ]
     showPlane(
         parts,
         channel = "side",

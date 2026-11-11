@@ -39,12 +39,10 @@ println("${moonSamples.size} generated, chamfer to target ${chamferDistance(moon
 <!-- field-box id="fi_islands" index="1" -->
 
 ```edn [field-box id="fi_islands" role="properties"]
-{"id" "fi_islands" "index" 1 "name" "islands, by Datalog" "parents" ["root" "fi_cloud"] "children" ["fi_draw"] "properties" {"children" #{#afield/box "fi_draw"} "parents" #{#afield/box "root" #afield/box "fi_cloud"} "name" "islands, by Datalog" "_tombstone" false "frame" #afield/rect [40.0 120.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fi_islands_code_.kt" "lines" 44 "characters" 1570 "sha256" "91e187d449b9a7d7d4a31ea43f45520831c1eebe3f0b86a58b1c65555a57b177"}]}
+{"id" "fi_islands" "index" 1 "name" "islands, by Datalog" "parents" ["root" "fi_cloud"] "children" ["fi_draw"] "properties" {"children" #{#afield/box "fi_draw"} "parents" #{#afield/box "root" #afield/box "fi_cloud"} "name" "islands, by Datalog" "_tombstone" false "frame" #afield/rect [40.0 120.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fi_islands_code_.kt" "lines" 42 "characters" 1528 "sha256" "c892c96536e08a5ab5e9eedddd87a5f2f904a02a6fe0ca6899e8b5691769776f"}]}
 ```
 
 ```kotlin [field-property box="fi_islands" name="code" path="fi_islands_code_.kt"]
-import afield.data.query.datalog.Datalog
-
 prop<Datalog>(islandModel)
 
 val rules =

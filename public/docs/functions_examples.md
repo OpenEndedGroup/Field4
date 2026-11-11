@@ -261,7 +261,8 @@ And the descent itself, from iteration 0 to 320, with the early iterations shown
 Iteration counts bunched where the curve moves, each held for three frames, then the last held.
 Each is its own fitGradient run, truncated at that count, so the error belongs to that run.
 */
-val steps = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 27, 30, 34, 38, 42, 48, 56, 64, 80, 96, 128, 160, 224, 320]
+val steps =
+    [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 27, 30, 34, 38, 42, 48, 56, 64, 80, 96, 128, 160, 224, 320]
 var frameIndex = 0
 loop {
     val k = steps[minOf(frameIndex / 3, steps.size - 1)]
@@ -269,8 +270,7 @@ loop {
     with(Functions) {
         val target = sin(frequency = 2.0, amplitude = 0.8, offset = 0.12)
         val seed = sin(frequency = 2.0, amplitude = 0.30, offset = -0.15)
-        val run =
-            fitGradient(target = target, seed = seed, iterations = k, lr = 0.05, samples = 160, rngSeed = 0L)
+        val run = fitGradient(target = target, seed = seed, iterations = k, lr = 0.05, samples = 160, rngSeed = 0L)
         :::fold the plot frame: 900 x 380 px, y up, values -1.1..1.1
         val x0 = 40.0
         val x1 = 940.0

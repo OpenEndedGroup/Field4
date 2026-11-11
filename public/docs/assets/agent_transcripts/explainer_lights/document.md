@@ -835,7 +835,7 @@ A square panel 0.8 m across and its shadow on a sphere of radius one around the 
 that shadow is the panel's solid angle; move the panel away and it shrinks as the square.
 
 ```edn [field-box id="el_projected_rect" role="properties"]
-{"id" "el_projected_rect" "index" 8 "name" "projected_rect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "projected_rect" "_tombstone" false "frame" #afield/rect [300.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_projected_rect_code_.kt" "lines" 50 "characters" 2232 "sha256" "e592b335557131bd9f0346715ceaf050aabc92ce9830413d70be4f702ff8bfd3"}]}
+{"id" "el_projected_rect" "index" 8 "name" "projected_rect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "projected_rect" "_tombstone" false "frame" #afield/rect [300.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_projected_rect_code_.kt" "lines" 50 "characters" 2226 "sha256" "e549bbebd6aaf46621e466076ab2201c5c16da99f47683cfafc0bc500d8c6f9f"}]}
 ```
 
 ```kotlin [field-property box="el_projected_rect" name="code" path="el_projected_rect_code_.kt"]
@@ -843,7 +843,7 @@ that shadow is the panel's solid angle; move the panel away and it shrinks as th
 // that shadow is the panel's solid angle; move the panel away and it shrinks as the square.
 val sphere = icosphereMesh(4, 1.0)
 // Two great circles, so the sphere reads as a sphere without a wireframe in the way.
-val circles = listOf(
+val circles = [
     fline {
         moveTo(1.0, 0.0, 0.0)
         for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96))
@@ -854,7 +854,7 @@ val circles = listOf(
         for (k in 1..96) lineTo(cos(2 * PI * k / 96), sin(2 * PI * k / 96), 0.0)
         color = vec(1.0, 1.0, 1.0, 0.35)
     },
-)
+]
 
 fun draw(distance: Double) {
     val panel = planeMesh(12, 12, 0.8, 0.8).translated(0.0, 0.0, -distance)
@@ -1405,7 +1405,7 @@ controlGroup {
 <!-- field-box id="el_light_colour" index="16" -->
 
 ```edn [field-box id="el_light_colour" role="properties"]
-{"id" "el_light_colour" "index" 16 "name" "light_colour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "light_colour" "_tombstone" false "frame" #afield/rect [480.0 350.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_light_colour_code_.kt" "lines" 40 "characters" 1244 "sha256" "8a7a4f2391292f04930ce3be572bb2b662d3baee0a2c61695c4ab2198e8396d5"}]}
+{"id" "el_light_colour" "index" 16 "name" "light_colour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "light_colour" "_tombstone" false "frame" #afield/rect [480.0 350.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_light_colour_code_.kt" "lines" 40 "characters" 1238 "sha256" "0cbbf2ae262f24709287defa330450dfa734947705b41aad07d4dba4da4667e6"}]}
 ```
 
 ```kotlin [field-property box="el_light_colour" name="code" path="el_light_colour_code_.kt"]
@@ -1413,7 +1413,7 @@ import afield.graphics.lighting.*
 
 // Nine tiles of different colours under one lamp whose colour you pick. A tile can only send
 // back the colours the lamp gives it.
-val colours = listOf(
+val colours = [
     vec(0.8, 0.8, 0.8),
     vec(0.8, 0.1, 0.1),
     vec(0.1, 0.7, 0.1),
@@ -1423,7 +1423,7 @@ val colours = listOf(
     vec(0.7, 0.1, 0.7),
     vec(0.8, 0.4, 0.1),
     vec(0.3, 0.3, 0.3),
-)
+]
 val tiles =
     colours
         .withIndex()

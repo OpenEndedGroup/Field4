@@ -74,21 +74,30 @@ The code needs CLoSD installed.
 :::fold imports
 import afield.animation.mocap.*
 import kotlin.time.Duration.Companion.seconds
+
 :::endfold
 
 frames {
     CLoSD.openAsync().awaitMotion().use { dancer ->
         dancer.prompt("A person walks forward.")
         fun draw(snapshot: MotionSnapshot) {
-            showMotion(snapshot.frame, dancer.skeleton, follow=true,
-                overlays=dancer.telemetry.tethers().flatMap { it.overlays() })
+            showMotion(
+                snapshot.frame,
+                dancer.skeleton,
+                follow = true,
+                overlays = dancer.telemetry.tethers().flatMap { it.overlays() },
+            )
             val foot = dancer.telemetry.tether("left-foot")
-            markdown("status", when {
-                foot?.active == true -> "**TETHERED** · ${foot.forceN.f0} N"
-                foot != null -> "**RELEASED**"
-                else -> "**WALKING**"
-            })
-            displayOpen("motion"); displayOpen("status")
+            markdown(
+                "status",
+                when {
+                    foot?.active == true -> "**TETHERED** · ${foot.forceN.f0} N"
+                    foot != null -> "**RELEASED**"
+                    else -> "**WALKING**"
+                },
+            )
+            displayOpen("motion")
+            displayOpen("status")
         }
         playMotion(dancer, 2.seconds, ::draw)
         val foot = dancer.body("L_Ankle").tether("left-foot") {
@@ -110,11 +119,13 @@ import afield.animation.mocap.*
 val take = MotionRecording("%docs/assets/motion_recordings/closd-movement-score.f4motion".path)
 val clip = take.clip()
 val events = take.events().toList()
-val attach = events.first { it.optString("type")=="applied" && it.optString("operation")=="ATTACH" }
-val release = events.first { it.optString("type")=="applied" && it.optString("operation")=="DETACH" }.getDouble("appliedTime")
+val attach = events.first { it.optString("type") == "applied" && it.optString("operation") == "ATTACH" }
+val release =
+    events.first { it.optString("type") == "applied" && it.optString("operation") == "DETACH" }.getDouble("appliedTime")
 val parameters = attach.getJSONObject("payload")
-val physics = events.filter { it.optString("type")=="tetherPhysics" }
+val physics = events.filter { it.optString("type") == "tetherPhysics" }
 val started = AnimationClock.nowSeconds()
+
 :::endfold
 
 loop {
@@ -125,20 +136,43 @@ loop {
     val active = time >= attach.getDouble("appliedTime") && time < release
     val event = physics.lastOrNull { it.getDouble("time") <= time }
     fun values(key: String) = event!!.getJSONArray(key).let { a -> (0..2).map { a.getDouble(it) } }
-    val tether = if(active && event != null) TetherObservation(
-        parameters.getString("id"), parameters.getString("body"), true, "attached", event.getDouble("time"),
-        forceN=event.getDouble("forceN"), rawForceN=event.getDouble("rawForceN"),
-        stretchMetres=event.getDouble("errorM"), maxForce=parameters.getDouble("maximumForce"),
-        point=values("point"), anchor=values("anchor"), force=values("force")) else null
+    val tether =
+        if (active && event != null)
+            TetherObservation(
+                parameters.getString("id"),
+                parameters.getString("body"),
+                true,
+                "attached",
+                event.getDouble("time"),
+                forceN = event.getDouble("forceN"),
+                rawForceN = event.getDouble("rawForceN"),
+                stretchMetres = event.getDouble("errorM"),
+                maxForce = parameters.getDouble("maximumForce"),
+                point = values("point"),
+                anchor = values("anchor"),
+                force = values("force"),
+            )
+        else null
     val body = frame.executed.bones(clip.skeleton).apply {
-        color=vec(.94,.96,1.0,1.0); thickness=3.0; pointed=true; pointSize=.8
+        color = vec(.94, .96, 1.0, 1.0)
+        thickness = 3.0
+        pointed = true
+        pointSize = .8
     }
-    val reference = frame.intended?.bones(clip.skeleton)?.apply { color=vec(.15,.7,.85,.65); thickness=1.5 }
-    three(channel="motion", height=480, width=700) {
-        lines(body); reference?.let { lines(it) }; lines(tether?.overlays() ?: emptyList())
-        camera(yaw=35.0, pitch=12.0, padding=1.5)
-        followCamera(vec(frame.executed.root[0],frame.executed.root[1],frame.executed.root[2]),
-            halfLifeSeconds=.4, epoch="${(elapsed/duration).toInt()}:${frame.episode}")
+    val reference = frame.intended?.bones(clip.skeleton)?.apply {
+        color = vec(.15, .7, .85, .65)
+        thickness = 1.5
+    }
+    three(channel = "motion", height = 480, width = 700) {
+        lines(body)
+        reference?.let { lines(it) }
+        lines(tether?.overlays() ?: emptyList())
+        camera(yaw = 35.0, pitch = 12.0, padding = 1.5)
+        followCamera(
+            vec(frame.executed.root[0], frame.executed.root[1], frame.executed.root[2]),
+            halfLifeSeconds = .4,
+            epoch = "${(elapsed/duration).toInt()}:${frame.episode}",
+        )
         title("CLoSD · movement score · ${time.f2} s")
         helpers(true)
     }
@@ -147,9 +181,13 @@ loop {
         time >= release -> "RELEASED"
         else -> "WALKING"
     }
-    markdown("status", "**$phase**\n\nRecorded execution of the Kotlin score: walk 2 s, tether 2 s, release and continue 3 s. " +
-        "White: executed · cyan: reference · red: anchor · amber: submitted force (scaled). No reset in this take.")
-    displayOpen("motion"); displayOpen("status")
+    markdown(
+        "status",
+        "**$phase**\n\nRecorded execution of the Kotlin score: walk 2 s, tether 2 s, release and continue 3 s. " +
+            "White: executed · cyan: reference · red: anchor · amber: submitted force (scaled). No reset in this take.",
+    )
+    displayOpen("motion")
+    displayOpen("status")
     delay(16)
 }
 ```
@@ -188,8 +226,10 @@ move past the body:
 ```diffstatic_runner {data-lang=kotlin capture="box" execution="launch" video="assets/motion_recordings/camera-follow.mp4" duration="9" fps="15" open-outputs="true" wait-output="true" wait-output-kind="display" wait="0.2" timeout="240" w="700" h="80" embed=true name="motion-follow-movie" alt="Recorded human motion rendered by the Kotlin code shown here, inside Field."}
 :::fold imports and recording
 import afield.animation.mocap.*
+
 val clip = MotionRecording("%docs/assets/motion_recordings/closd-resistance.f4motion".path).clip()
 val started = AnimationClock.nowSeconds()
+
 :::endfold
 
 loop {
@@ -199,11 +239,21 @@ loop {
     val snapshot = clip.sample(clip.startTime + time)
     // First two seconds: fixed camera. Then follow; the grid stays in world coordinates.
     val following = time >= 2.0
-    showMotion(snapshot.frame, clip.skeleton, reference=false,
-        follow=following, followHalfLife=.4, followEpoch="${(elapsed/duration).toInt()}:${snapshot.frame.episode}")
-    markdown("status", if(following) "**Following the body** · 0.4 s half-life · orbit and zoom remain yours"
-        else "**Fixed camera** · Follow engages at two seconds")
-    displayOpen("motion"); displayOpen("status")
+    showMotion(
+        snapshot.frame,
+        clip.skeleton,
+        reference = false,
+        follow = following,
+        followHalfLife = .4,
+        followEpoch = "${(elapsed/duration).toInt()}:${snapshot.frame.episode}",
+    )
+    markdown(
+        "status",
+        if (following) "**Following the body** · 0.4 s half-life · orbit and zoom remain yours"
+        else "**Fixed camera** · Follow engages at two seconds",
+    )
+    displayOpen("motion")
+    displayOpen("status")
     delay(16)
 }
 ```
@@ -231,8 +281,10 @@ Here is six seconds of skipping from a live session. Open [the recorded ARDY dem
 ```diffstatic_runner {data-lang=kotlin capture="box" execution="launch" video="assets/motion_recordings/ardy-live-skipping.mp4" duration="6" fps="15" open-outputs="true" wait-output="true" wait-output-kind="display" wait="0.2" timeout="240" w="700" h="80" embed=true name="motion-ardy-live-demo" alt="ARDY skipping, replayed in Field from an uninterrupted excerpt of the interactive session, with moving limbs and a following camera."}
 :::fold imports and recording
 import afield.animation.mocap.*
+
 val clip = MotionRecording("%docs/assets/motion_recordings/ardy-live-skip.f4motion".path).clip()
 val started = AnimationClock.nowSeconds()
+
 :::endfold
 
 loop {
@@ -241,21 +293,30 @@ loop {
     val snapshot = clip.sample(clip.startTime + elapsed % duration)
     val pose = snapshot.frame.executed
     val bones = pose.bones(clip.skeleton).apply {
-        color=vec(.94,.96,1.0,1.0); thickness=3.0
-        pointed=true; pointSize=.8
+        color = vec(.94, .96, 1.0, 1.0)
+        thickness = 3.0
+        pointed = true
+        pointSize = .8
     }
-    three(channel="motion", height=480, width=700) {
+    three(channel = "motion", height = 480, width = 700) {
         lines(bones)
-        camera(yaw=35.0, pitch=12.0, padding=2.6) // Room for the whole skipping gesture.
-        followCamera(vec(pose.root[0], pose.root[1], pose.root[2]), halfLifeSeconds=.4,
-            epoch="${(elapsed/duration).toInt()}:${snapshot.frame.episode}")
+        camera(yaw = 35.0, pitch = 12.0, padding = 2.6) // Room for the whole skipping gesture.
+        followCamera(
+            vec(pose.root[0], pose.root[1], pose.root[2]),
+            halfLifeSeconds = .4,
+            epoch = "${(elapsed/duration).toInt()}:${snapshot.frame.episode}",
+        )
         title("ARDY · skipping · ${snapshot.frame.time.f2} s")
         helpers(true)
     }
-    markdown("status", "**ARDY · skipping**\n\n" +
-        "Six uninterrupted seconds from the interactive session. Prompt: A person skips forward. " +
-        "Four denoising steps; original poses and session timestamps retained.")
-    displayOpen("motion"); displayOpen("status")
+    markdown(
+        "status",
+        "**ARDY · skipping**\n\n" +
+            "Six uninterrupted seconds from the interactive session. Prompt: A person skips forward. " +
+            "Four denoising steps; original poses and session timestamps retained.",
+    )
+    displayOpen("motion")
+    displayOpen("status")
     delay(16)
 }
 ```
@@ -275,19 +336,20 @@ The path scene samples an FLine by arc length. Edit its geometry, duration or he
 :::fold imports
 import afield.animation.mocap.*
 import kotlin.time.Duration.Companion.seconds
+
 :::endfold
 
 val path = fline {
     moveTo(0.0, 0.0, 0.0)
     cubicTo(0.0, 0.0, 2.0, 2.0, 0.0, 2.0, 2.0, 0.0, 4.0)
-    color=vec(.9,.7,.2,1.0)
+    color = vec(.9, .7, .2, 1.0)
 }
 frames {
     ARDY.openAsync().awaitMotion().use { dancer ->
         dancer.prompt("A person walks forward.")
         dancer.route(path, 8.seconds)
         playMotion(dancer, 8.seconds) { snapshot ->
-            showMotion(snapshot.frame, dancer.skeleton, overlays=[path], follow=true)
+            showMotion(snapshot.frame, dancer.skeleton, overlays = [path], follow = true)
             displayOpen("motion")
         }
     }
@@ -324,7 +386,12 @@ import afield.animation.mocap.*
 val experiment = "ardy"
 val sources = when (experiment) {
     "live" -> ["Skip" to "ardy-live-skip", "Run" to "ardy-live-run", "Recoil" to "ardy-live-recoil"]
-    "closd" -> ["Baseline" to "closd-baseline-seed0", "Weak tether" to "closd-weak-seed0", "Strong tether" to "closd-capped-seed0"]
+    "closd" ->
+        [
+            "Baseline" to "closd-baseline-seed0",
+            "Weak tether" to "closd-weak-seed0",
+            "Strong tether" to "closd-capped-seed0",
+        ]
     "route" -> ["4 steps" to "ardy-path", "10 steps" to "ardy-path-10steps"]
     else -> ["Run" to "ardy-run-seed0", "Jump" to "ardy-jump-seed0", "Somersault" to "ardy-somersault-seed0"]
 }
@@ -333,6 +400,7 @@ val clips = takes.map { it.clip() }
 val logs = takes.map { it.events().toList() }
 val duration = clips.minOf { it.endTime - it.startTime }
 val started = AnimationClock.nowSeconds()
+
 :::endfold
 
 loop {
@@ -341,53 +409,75 @@ loop {
         val frame = clip.sample(clip.startTime + time).frame
         val root = frame.executed.root
         // Translate each whole recording into a comparison lane. Never change joint poses.
-        val offset = vec((i - (clips.size-1)/2.0)*2.8 - root[0], 0.0, -root[2])
+        val offset = vec((i - (clips.size - 1) / 2.0) * 2.8 - root[0], 0.0, -root[2])
         val actual = (frame.executed.bones(clip.skeleton) + offset).apply {
-            color = vec(.94, .96, 1.0, 1.0); thickness = 3.0
+            color = vec(.94, .96, 1.0, 1.0)
+            thickness = 3.0
         }
-        val reference = frame.intended?.bones(clip.skeleton)?.let { (it + offset).apply {
-            color = vec(.15, .7, .85, .6); thickness = 1.5
-        } }
-        val tether = logs[i].lastOrNull { it.optString("type")=="tetherPhysics" && it.getDouble("time")<=frame.time }
+        val reference = frame.intended?.bones(clip.skeleton)?.let {
+            (it + offset).apply {
+                color = vec(.15, .7, .85, .6)
+                thickness = 1.5
+            }
+        }
+        val tether =
+            logs[i].lastOrNull { it.optString("type") == "tetherPhysics" && it.getDouble("time") <= frame.time }
         val spring = fline {
             if (tether != null && frame.time in 2.0..4.0) {
-                val a=tether.getJSONArray("anchor"); val p=tether.getJSONArray("point")
-                moveTo(a.getDouble(0)+offset.x, a.getDouble(1), a.getDouble(2)+offset.z)
-                lineTo(p.getDouble(0)+offset.x, p.getDouble(1), p.getDouble(2)+offset.z)
-                val x=a.getDouble(0)+offset.x; val y=a.getDouble(1); val z=a.getDouble(2)+offset.z
-                moveTo(x-.06,y,z); lineTo(x+.06,y,z)
-                moveTo(x,y-.06,z); lineTo(x,y+.06,z)
-                moveTo(x,y,z-.06); lineTo(x,y,z+.06)
+                val a = tether.getJSONArray("anchor")
+                val p = tether.getJSONArray("point")
+                moveTo(a.getDouble(0) + offset.x, a.getDouble(1), a.getDouble(2) + offset.z)
+                lineTo(p.getDouble(0) + offset.x, p.getDouble(1), p.getDouble(2) + offset.z)
+                val x = a.getDouble(0) + offset.x
+                val y = a.getDouble(1)
+                val z = a.getDouble(2) + offset.z
+                moveTo(x - .06, y, z)
+                lineTo(x + .06, y, z)
+                moveTo(x, y - .06, z)
+                lineTo(x, y + .06, z)
+                moveTo(x, y, z - .06)
+                lineTo(x, y, z + .06)
             }
-            color=vec(1.0,.3,.4,1.0); thickness=3.0
+            color = vec(1.0, .3, .4, 1.0)
+            thickness = 3.0
         }
         val force = fline {
             if (tether != null && frame.time in 2.0..4.0) {
-                val p=tether.getJSONArray("point"); val f=tether.getJSONArray("force")
-                val scale=minOf(.00015, .6/tether.getDouble("forceN").coerceAtLeast(1e-9))
-                moveTo(p.getDouble(0)+offset.x, p.getDouble(1), p.getDouble(2)+offset.z)
-                lineTo(p.getDouble(0)+offset.x+f.getDouble(0)*scale,
-                    p.getDouble(1)+f.getDouble(1)*scale, p.getDouble(2)+offset.z+f.getDouble(2)*scale)
+                val p = tether.getJSONArray("point")
+                val f = tether.getJSONArray("force")
+                val scale = minOf(.00015, .6 / tether.getDouble("forceN").coerceAtLeast(1e-9))
+                moveTo(p.getDouble(0) + offset.x, p.getDouble(1), p.getDouble(2) + offset.z)
+                lineTo(
+                    p.getDouble(0) + offset.x + f.getDouble(0) * scale,
+                    p.getDouble(1) + f.getDouble(1) * scale,
+                    p.getDouble(2) + offset.z + f.getDouble(2) * scale,
+                )
             }
-            color=vec(1.0,.75,.2,1.0); thickness=4.0
+            color = vec(1.0, .75, .2, 1.0)
+            thickness = 4.0
         }
         listOfNotNull(actual, reference, spring, force)
     }
-    three(channel="motion", height=460, width=900) {
+    three(channel = "motion", height = 460, width = 900) {
         lines(bodies)
-        camera(yaw=10.0, pitch=10.0, distance=2.8)
+        camera(yaw = 10.0, pitch = 10.0, distance = 2.8)
         title(sources.joinToString("                 ") { it.first })
         helpers(true)
     }
-    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${time.f2} s\n\n" +
-        "Actual recorded poses; horizontal root travel removed separately in each lane. White: executed. Cyan: reference. " +
-        when(experiment) {
-            "closd" -> "Strong: 8000 N/m, 120 N s/m, 2500 N cap. Attach at 2 s; release at 4 s. Red: anchor; amber: force (scaled)."
-            "route" -> "Both route trials slide; 10 steps is a comparison, not a fixed gait."
-            "live" -> "Uninterrupted excerpts from the interactive session; original poses retained."
-            else -> "The complete six-second batch takes include unsuccessful and nearly static output."
-        })
-    displayOpen("motion"); displayOpen("status")
+    markdown(
+        "status",
+        "**${sources.joinToString(" · ") { it.first }}** · ${time.f2} s\n\n" +
+            "Actual recorded poses; horizontal root travel removed separately in each lane. White: executed. Cyan: reference. " +
+            when (experiment) {
+                "closd" ->
+                    "Strong: 8000 N/m, 120 N s/m, 2500 N cap. Attach at 2 s; release at 4 s. Red: anchor; amber: force (scaled)."
+                "route" -> "Both route trials slide; 10 steps is a comparison, not a fixed gait."
+                "live" -> "Uninterrupted excerpts from the interactive session; original poses retained."
+                else -> "The complete six-second batch takes include unsuccessful and nearly static output."
+            },
+    )
+    displayOpen("motion")
+    displayOpen("status")
     delay(16)
 }
 ```
@@ -405,7 +495,12 @@ import afield.animation.mocap.*
 val experiment = "closd"
 val sources = when (experiment) {
     "live" -> ["Skip" to "ardy-live-skip", "Run" to "ardy-live-run", "Recoil" to "ardy-live-recoil"]
-    "closd" -> ["Baseline" to "closd-baseline-seed0", "Weak tether" to "closd-weak-seed0", "Strong tether" to "closd-capped-seed0"]
+    "closd" ->
+        [
+            "Baseline" to "closd-baseline-seed0",
+            "Weak tether" to "closd-weak-seed0",
+            "Strong tether" to "closd-capped-seed0",
+        ]
     "route" -> ["4 steps" to "ardy-path", "10 steps" to "ardy-path-10steps"]
     else -> ["Run" to "ardy-run-seed0", "Jump" to "ardy-jump-seed0", "Somersault" to "ardy-somersault-seed0"]
 }
@@ -414,6 +509,7 @@ val clips = takes.map { it.clip() }
 val logs = takes.map { it.events().toList() }
 val duration = clips.minOf { it.endTime - it.startTime }
 val started = AnimationClock.nowSeconds()
+
 :::endfold
 
 loop {
@@ -422,53 +518,75 @@ loop {
         val frame = clip.sample(clip.startTime + time).frame
         val root = frame.executed.root
         // Translate each whole recording into a comparison lane. Never change joint poses.
-        val offset = vec((i - (clips.size-1)/2.0)*2.8 - root[0], 0.0, -root[2])
+        val offset = vec((i - (clips.size - 1) / 2.0) * 2.8 - root[0], 0.0, -root[2])
         val actual = (frame.executed.bones(clip.skeleton) + offset).apply {
-            color = vec(.94, .96, 1.0, 1.0); thickness = 3.0
+            color = vec(.94, .96, 1.0, 1.0)
+            thickness = 3.0
         }
-        val reference = frame.intended?.bones(clip.skeleton)?.let { (it + offset).apply {
-            color = vec(.15, .7, .85, .6); thickness = 1.5
-        } }
-        val tether = logs[i].lastOrNull { it.optString("type")=="tetherPhysics" && it.getDouble("time")<=frame.time }
+        val reference = frame.intended?.bones(clip.skeleton)?.let {
+            (it + offset).apply {
+                color = vec(.15, .7, .85, .6)
+                thickness = 1.5
+            }
+        }
+        val tether =
+            logs[i].lastOrNull { it.optString("type") == "tetherPhysics" && it.getDouble("time") <= frame.time }
         val spring = fline {
             if (tether != null && frame.time in 2.0..4.0) {
-                val a=tether.getJSONArray("anchor"); val p=tether.getJSONArray("point")
-                moveTo(a.getDouble(0)+offset.x, a.getDouble(1), a.getDouble(2)+offset.z)
-                lineTo(p.getDouble(0)+offset.x, p.getDouble(1), p.getDouble(2)+offset.z)
-                val x=a.getDouble(0)+offset.x; val y=a.getDouble(1); val z=a.getDouble(2)+offset.z
-                moveTo(x-.06,y,z); lineTo(x+.06,y,z)
-                moveTo(x,y-.06,z); lineTo(x,y+.06,z)
-                moveTo(x,y,z-.06); lineTo(x,y,z+.06)
+                val a = tether.getJSONArray("anchor")
+                val p = tether.getJSONArray("point")
+                moveTo(a.getDouble(0) + offset.x, a.getDouble(1), a.getDouble(2) + offset.z)
+                lineTo(p.getDouble(0) + offset.x, p.getDouble(1), p.getDouble(2) + offset.z)
+                val x = a.getDouble(0) + offset.x
+                val y = a.getDouble(1)
+                val z = a.getDouble(2) + offset.z
+                moveTo(x - .06, y, z)
+                lineTo(x + .06, y, z)
+                moveTo(x, y - .06, z)
+                lineTo(x, y + .06, z)
+                moveTo(x, y, z - .06)
+                lineTo(x, y, z + .06)
             }
-            color=vec(1.0,.3,.4,1.0); thickness=3.0
+            color = vec(1.0, .3, .4, 1.0)
+            thickness = 3.0
         }
         val force = fline {
             if (tether != null && frame.time in 2.0..4.0) {
-                val p=tether.getJSONArray("point"); val f=tether.getJSONArray("force")
-                val scale=minOf(.00015, .6/tether.getDouble("forceN").coerceAtLeast(1e-9))
-                moveTo(p.getDouble(0)+offset.x, p.getDouble(1), p.getDouble(2)+offset.z)
-                lineTo(p.getDouble(0)+offset.x+f.getDouble(0)*scale,
-                    p.getDouble(1)+f.getDouble(1)*scale, p.getDouble(2)+offset.z+f.getDouble(2)*scale)
+                val p = tether.getJSONArray("point")
+                val f = tether.getJSONArray("force")
+                val scale = minOf(.00015, .6 / tether.getDouble("forceN").coerceAtLeast(1e-9))
+                moveTo(p.getDouble(0) + offset.x, p.getDouble(1), p.getDouble(2) + offset.z)
+                lineTo(
+                    p.getDouble(0) + offset.x + f.getDouble(0) * scale,
+                    p.getDouble(1) + f.getDouble(1) * scale,
+                    p.getDouble(2) + offset.z + f.getDouble(2) * scale,
+                )
             }
-            color=vec(1.0,.75,.2,1.0); thickness=4.0
+            color = vec(1.0, .75, .2, 1.0)
+            thickness = 4.0
         }
         listOfNotNull(actual, reference, spring, force)
     }
-    three(channel="motion", height=460, width=900) {
+    three(channel = "motion", height = 460, width = 900) {
         lines(bodies)
-        camera(yaw=10.0, pitch=10.0, distance=2.8)
+        camera(yaw = 10.0, pitch = 10.0, distance = 2.8)
         title(sources.joinToString("                 ") { it.first })
         helpers(true)
     }
-    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${time.f2} s\n\n" +
-        "Actual recorded poses; horizontal root travel removed separately in each lane. White: executed. Cyan: reference. " +
-        when(experiment) {
-            "closd" -> "Strong: 8000 N/m, 120 N s/m, 2500 N cap. Attach at 2 s; release at 4 s. Red: anchor; amber: force (scaled)."
-            "route" -> "Both route trials slide; 10 steps is a comparison, not a fixed gait."
-            "live" -> "Uninterrupted excerpts from the interactive session; original poses retained."
-            else -> "The complete six-second batch takes include unsuccessful and nearly static output."
-        })
-    displayOpen("motion"); displayOpen("status")
+    markdown(
+        "status",
+        "**${sources.joinToString(" · ") { it.first }}** · ${time.f2} s\n\n" +
+            "Actual recorded poses; horizontal root travel removed separately in each lane. White: executed. Cyan: reference. " +
+            when (experiment) {
+                "closd" ->
+                    "Strong: 8000 N/m, 120 N s/m, 2500 N cap. Attach at 2 s; release at 4 s. Red: anchor; amber: force (scaled)."
+                "route" -> "Both route trials slide; 10 steps is a comparison, not a fixed gait."
+                "live" -> "Uninterrupted excerpts from the interactive session; original poses retained."
+                else -> "The complete six-second batch takes include unsuccessful and nearly static output."
+            },
+    )
+    displayOpen("motion")
+    displayOpen("status")
     delay(16)
 }
 ```
@@ -485,7 +603,12 @@ import afield.animation.mocap.*
 val experiment = "route"
 val sources = when (experiment) {
     "live" -> ["Skip" to "ardy-live-skip", "Run" to "ardy-live-run", "Recoil" to "ardy-live-recoil"]
-    "closd" -> ["Baseline" to "closd-baseline-seed0", "Weak tether" to "closd-weak-seed0", "Strong tether" to "closd-capped-seed0"]
+    "closd" ->
+        [
+            "Baseline" to "closd-baseline-seed0",
+            "Weak tether" to "closd-weak-seed0",
+            "Strong tether" to "closd-capped-seed0",
+        ]
     "route" -> ["4 steps" to "ardy-path", "10 steps" to "ardy-path-10steps"]
     else -> ["Run" to "ardy-run-seed0", "Jump" to "ardy-jump-seed0", "Somersault" to "ardy-somersault-seed0"]
 }
@@ -494,6 +617,7 @@ val clips = takes.map { it.clip() }
 val logs = takes.map { it.events().toList() }
 val duration = clips.minOf { it.endTime - it.startTime }
 val started = AnimationClock.nowSeconds()
+
 :::endfold
 
 loop {
@@ -502,53 +626,75 @@ loop {
         val frame = clip.sample(clip.startTime + time).frame
         val root = frame.executed.root
         // Translate each whole recording into a comparison lane. Never change joint poses.
-        val offset = vec((i - (clips.size-1)/2.0)*2.8 - root[0], 0.0, -root[2])
+        val offset = vec((i - (clips.size - 1) / 2.0) * 2.8 - root[0], 0.0, -root[2])
         val actual = (frame.executed.bones(clip.skeleton) + offset).apply {
-            color = vec(.94, .96, 1.0, 1.0); thickness = 3.0
+            color = vec(.94, .96, 1.0, 1.0)
+            thickness = 3.0
         }
-        val reference = frame.intended?.bones(clip.skeleton)?.let { (it + offset).apply {
-            color = vec(.15, .7, .85, .6); thickness = 1.5
-        } }
-        val tether = logs[i].lastOrNull { it.optString("type")=="tetherPhysics" && it.getDouble("time")<=frame.time }
+        val reference = frame.intended?.bones(clip.skeleton)?.let {
+            (it + offset).apply {
+                color = vec(.15, .7, .85, .6)
+                thickness = 1.5
+            }
+        }
+        val tether =
+            logs[i].lastOrNull { it.optString("type") == "tetherPhysics" && it.getDouble("time") <= frame.time }
         val spring = fline {
             if (tether != null && frame.time in 2.0..4.0) {
-                val a=tether.getJSONArray("anchor"); val p=tether.getJSONArray("point")
-                moveTo(a.getDouble(0)+offset.x, a.getDouble(1), a.getDouble(2)+offset.z)
-                lineTo(p.getDouble(0)+offset.x, p.getDouble(1), p.getDouble(2)+offset.z)
-                val x=a.getDouble(0)+offset.x; val y=a.getDouble(1); val z=a.getDouble(2)+offset.z
-                moveTo(x-.06,y,z); lineTo(x+.06,y,z)
-                moveTo(x,y-.06,z); lineTo(x,y+.06,z)
-                moveTo(x,y,z-.06); lineTo(x,y,z+.06)
+                val a = tether.getJSONArray("anchor")
+                val p = tether.getJSONArray("point")
+                moveTo(a.getDouble(0) + offset.x, a.getDouble(1), a.getDouble(2) + offset.z)
+                lineTo(p.getDouble(0) + offset.x, p.getDouble(1), p.getDouble(2) + offset.z)
+                val x = a.getDouble(0) + offset.x
+                val y = a.getDouble(1)
+                val z = a.getDouble(2) + offset.z
+                moveTo(x - .06, y, z)
+                lineTo(x + .06, y, z)
+                moveTo(x, y - .06, z)
+                lineTo(x, y + .06, z)
+                moveTo(x, y, z - .06)
+                lineTo(x, y, z + .06)
             }
-            color=vec(1.0,.3,.4,1.0); thickness=3.0
+            color = vec(1.0, .3, .4, 1.0)
+            thickness = 3.0
         }
         val force = fline {
             if (tether != null && frame.time in 2.0..4.0) {
-                val p=tether.getJSONArray("point"); val f=tether.getJSONArray("force")
-                val scale=minOf(.00015, .6/tether.getDouble("forceN").coerceAtLeast(1e-9))
-                moveTo(p.getDouble(0)+offset.x, p.getDouble(1), p.getDouble(2)+offset.z)
-                lineTo(p.getDouble(0)+offset.x+f.getDouble(0)*scale,
-                    p.getDouble(1)+f.getDouble(1)*scale, p.getDouble(2)+offset.z+f.getDouble(2)*scale)
+                val p = tether.getJSONArray("point")
+                val f = tether.getJSONArray("force")
+                val scale = minOf(.00015, .6 / tether.getDouble("forceN").coerceAtLeast(1e-9))
+                moveTo(p.getDouble(0) + offset.x, p.getDouble(1), p.getDouble(2) + offset.z)
+                lineTo(
+                    p.getDouble(0) + offset.x + f.getDouble(0) * scale,
+                    p.getDouble(1) + f.getDouble(1) * scale,
+                    p.getDouble(2) + offset.z + f.getDouble(2) * scale,
+                )
             }
-            color=vec(1.0,.75,.2,1.0); thickness=4.0
+            color = vec(1.0, .75, .2, 1.0)
+            thickness = 4.0
         }
         listOfNotNull(actual, reference, spring, force)
     }
-    three(channel="motion", height=460, width=900) {
+    three(channel = "motion", height = 460, width = 900) {
         lines(bodies)
-        camera(yaw=10.0, pitch=10.0, distance=2.8)
+        camera(yaw = 10.0, pitch = 10.0, distance = 2.8)
         title(sources.joinToString("                 ") { it.first })
         helpers(true)
     }
-    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${time.f2} s\n\n" +
-        "Actual recorded poses; horizontal root travel removed separately in each lane. White: executed. Cyan: reference. " +
-        when(experiment) {
-            "closd" -> "Strong: 8000 N/m, 120 N s/m, 2500 N cap. Attach at 2 s; release at 4 s. Red: anchor; amber: force (scaled)."
-            "route" -> "Both route trials slide; 10 steps is a comparison, not a fixed gait."
-            "live" -> "Uninterrupted excerpts from the interactive session; original poses retained."
-            else -> "The complete six-second batch takes include unsuccessful and nearly static output."
-        })
-    displayOpen("motion"); displayOpen("status")
+    markdown(
+        "status",
+        "**${sources.joinToString(" · ") { it.first }}** · ${time.f2} s\n\n" +
+            "Actual recorded poses; horizontal root travel removed separately in each lane. White: executed. Cyan: reference. " +
+            when (experiment) {
+                "closd" ->
+                    "Strong: 8000 N/m, 120 N s/m, 2500 N cap. Attach at 2 s; release at 4 s. Red: anchor; amber: force (scaled)."
+                "route" -> "Both route trials slide; 10 steps is a comparison, not a fixed gait."
+                "live" -> "Uninterrupted excerpts from the interactive session; original poses retained."
+                else -> "The complete six-second batch takes include unsuccessful and nearly static output."
+            },
+    )
+    displayOpen("motion")
+    displayOpen("status")
     delay(16)
 }
 ```
@@ -563,3 +709,10 @@ keeps configuration, skeletons, commands, poses and reset events together.
 
 See also [frames and animation](animation_time_model.md), [FLine](fline_examples.md), and
 [skinned characters](chain_skinned_volume.md).
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`MotionRecording`](reference/animation.md#motionrecording-kt-motionrecording)
+- [`ARDY.openAsync`](reference/animation.md#motionprocess-kt--ardy--openasync)

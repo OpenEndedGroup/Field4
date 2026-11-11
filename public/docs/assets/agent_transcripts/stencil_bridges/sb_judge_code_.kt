@@ -1,5 +1,3 @@
-import afield.data.query.datalog.Datalog
-
 prop<List<Int>>(needsBridge)
 
 val d = Datalog()

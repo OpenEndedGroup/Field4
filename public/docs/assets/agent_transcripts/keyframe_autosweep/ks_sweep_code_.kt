@@ -1,8 +1,7 @@
 // The whole of it. Twelve renders here so the box finishes while you watch; set `count`
 // to 5000 and `maxDurationMs` to whatever "stop at 7am" is, and walk away.
-val r: Renderer = fromContext()
-val keys: KeyframeScope = fromContext()
-val bundle: afield.graphics.scene.fabricated.StandardRenderer.Bundle = fromContext()
+val r = renderer
+val ownedBundle = bundle
 val pool = "%document/looks".path
 val archive = "%document/sweep".path
 
@@ -36,13 +35,13 @@ a callable reference, `start(renderer::run)`), which is why the trap is unspent.
 frames {
     val report = sweep.run { render ->
         r.awaitFrames(6)
-        render.captureStill(r, bundle.postStack.output(), settleFrames = 0)
-        render.captureClip(r, bundle.postStack.output(), frames = 8, fps = 12, settleFrames = 0) { _, t ->
+        render.captureStill(r, ownedBundle.postStack.output(), settleFrames = 0)
+        render.captureClip(r, ownedBundle.postStack.output(), frames = 8, fps = 12, settleFrames = 0) { _, t ->
             // A small orbit *around* the blended camera, so the clip moves without
             // overwriting the lane the key set.
             val at = render.key["camera.at"] as afield.math.linalg.Vector3f
             val a = (t - 0.5) * 0.5
-            bundle.scene.camera.at.set(
+            ownedBundle.scene.camera.at.set(
                 (at.x * kotlin.math.cos(a) - at.z * kotlin.math.sin(a)).toFloat(),
                 at.y,
                 (at.x * kotlin.math.sin(a) + at.z * kotlin.math.cos(a)).toFloat(),

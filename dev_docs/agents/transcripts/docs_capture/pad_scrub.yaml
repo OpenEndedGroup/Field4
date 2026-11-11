@@ -13,7 +13,10 @@ operations:
         code: |
           val brightness = 0.50
 
-          display("main", "<div style='font:600 28px sans-serif;padding:12px;color:#fff;background:rgb(${(brightness * 255).toInt()},${(brightness * 160).toInt()},40)'>brightness $brightness</div>")
+          display(
+              "main",
+              "<div style='font:600 28px sans-serif;padding:12px;color:#fff;background:rgb(${(brightness * 255).toInt()},${(brightness * 160).toInt()},40)'>brightness $brightness</div>",
+          )
   - execute: { box: pad_box, property: code }
   - await: {}
   - wait:
