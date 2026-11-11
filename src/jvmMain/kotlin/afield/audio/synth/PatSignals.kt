@@ -148,7 +148,7 @@ fun perlin(salt: Int = 0): PatPattern<Double> = sig { t ->
 }
 
 /** Hash of an exact rational — the reduced numerator and denominator, so it is granularity-free. */
-private fun patQHash(q: PatQ): Long {
+internal fun patQHash(q: PatQ): Long {
     var h = -0x340d631b7bdddcdbL
     for (part in listOf(q.n, q.d)) {
         for (b in part.toByteArray()) {

@@ -1562,13 +1562,19 @@ packing settles instead of chattering across the contact.
 
 ### noiselang_distributions
 
-Values that are **probability distributions**, from [Distributions](distributions.md). Four
-pure-CPU boxes: a Dirac spike, a die and the triangle two dice make, drawn by the inline
+Values that are **probability distributions**, from [Distributions](distributions.md). Eleven
+pure-CPU boxes. A Dirac spike, a die and the triangle two dice make, drawn by the inline
 `ᛟ.distribution` view as the samples arrive, with the mean of `5 + d6 + d6` settling on 12 (launch
-it); the NoiseLang questions — `P(X + Y < 10)`, the 23-person birthday problem at about 0.507,
-4·P(inside the unit circle) ≈ π — each printed with its standard error beside the exact value;
-samples settling under an exact and a kernel density; and a distribution of `FLine`s, 120 random
-walks drawn from one graph.
+it). The NoiseLang questions — `P(X + Y < 10)`, the 23-person birthday problem at about 0.507,
+4·P(inside the unit circle) ≈ π — each printed with its standard error beside the exact value.
+Samples settling under an exact and a kernel density, and a distribution of `FLine`s, 120 random
+walks drawn from one graph. Then the newer half: two posteriors (`given`, `observed`) drawn over
+their priors; a weighted scale as a pattern and a rhythm conditioned to five hits in sixteen, each
+with a piano roll and a player; a sine whose pitch is drawn on the audio thread at every pulse of a
+clock (`d.param`), with the heard pitches drawn live (launch it, sound on); and a Gaussian process
+as correlated distributions, its curves drawn and the distribution of where its peak is. Last, a
+posterior that learns as data arrives (`Posterior`): a performer's tempo followed from the onsets in
+their sound, with an accompaniment on the predicted beats, and a point tracked through noise.
 
 ```diffstatic {data-lang=text}
 macro write noiselang_distributions --file dev_docs/agents/transcripts/noiselang_distributions.yaml
@@ -4445,6 +4451,24 @@ macro run atmospheric_sky
 ```
 
 [Open →](offline.html?file=assets/agent_transcripts/atmospheric_sky/metadata.edn)
+
+### noiselang_gpu
+
+**Distributions drawn inside a fragment shader.** One box defines a ring, the ring given
+x + y > 0.5, and a Gaussian process through five readings; `distHere` and `gpHere` make them
+`#include "dist/ring"`, `#include "dist/arc"` and `#include "gp/ridge"`. The shader box beneath it
+draws three panels from them: 320 draws of the ring, the arc the condition keeps (a posterior drawn
+per point on the GPU), and twenty whole curves of the process with its mean and band. See
+[Distributions in a shader](distributions.md#distributions-in-a-shader).
+
+![three panels: a blue ring of points, the orange arc of it above a diagonal line, and blue Gaussian-process curves through five orange readings](assets/distributions-gpu.png)
+
+```diffstatic {data-lang=text}
+macro write noiselang_gpu --file dev_docs/agents/transcripts/noiselang_gpu.yaml
+macro run noiselang_gpu
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/noiselang_gpu/metadata.edn)
 
 ### sky_environment
 

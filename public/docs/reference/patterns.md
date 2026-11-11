@@ -1449,7 +1449,7 @@ cycles, so this only matters if you call `events(...)` with a partial arc by han
 
 `src/jvmMain/kotlin/afield/audio/synth/PatAlgebra.kt` — [read the source](source/jvmMain/afield/audio/synth/PatAlgebra/)
 
-**Used in:** [A pattern in space: `pat` → Dough → Steam Audio](../pat_spatial.md), [A pattern as a function generator](../marf.md), [OSCQuery: controls other tools can find](../oscquery.md)
+**Used in:** [A pattern as a function generator](../marf.md), [A pattern in space: `pat` → Dough → Steam Audio](../pat_spatial.md), [Petri nets](../petri_nets.md)
 
 ### Top-level functions { #patalgebra-kt-functions }
 
@@ -2447,7 +2447,7 @@ you observe do not depend on how the caller chopped up the arc. `PatSignalsTest`
 
 `src/jvmMain/kotlin/afield/audio/synth/PatSignals.kt` — [read the source](source/jvmMain/afield/audio/synth/PatSignals/)
 
-**Used in:** [A pattern as a function generator](../marf.md), [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets](../petri_nets.md)
+**Used in:** [A pattern as a function generator](../marf.md), [Patterns: writing rhythm as a function of time](../pattern_language.md), [Distributions: values that are probability distributions](../distributions.md)
 
 ### Top-level functions { #patsignals-kt-functions }
 
@@ -2518,7 +2518,7 @@ Add a sound by appending one `Scene` to `SCENES`.
 
 `src/jvmMain/kotlin/afield/audio/synth/PatSoundDocs.kt` — [read the source](source/jvmMain/afield/audio/synth/PatSoundDocs/)
 
-**Used in:** [A Drawn Score, Heard](../chain_drawn_score.md), [Sound: from a pattern to something you can hear](../sound.md), [A Drawn Morph, Heard](../chain_drawn_morph.md)
+**Used in:** [Distributions: values that are probability distributions](../distributions.md), [A Drawn Score, Heard](../chain_drawn_score.md), [Sound: from a pattern to something you can hear](../sound.md)
 
 ### Top-level functions { #patsounddocs-kt-functions }
 

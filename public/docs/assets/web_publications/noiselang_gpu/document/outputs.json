@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-11T00:15:39.796Z",
+  "documentName": "noiselang_gpu",
+  "outputs": [
+    {
+      "uid": "noiselang_gpu",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 1600,
+      "height": 982,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

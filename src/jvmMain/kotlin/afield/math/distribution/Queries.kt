@@ -241,13 +241,22 @@ class Moments {
  * SE) and keeps up to [keep] raw samples for histograms. The [Dist] is evaluated with one RNG
  * stream for the life of this object, so successive batches are independent.
  */
-class Progressive(val dist: Dist, seed: Long = 1L, val keep: Int = 200_000) {
+class Progressive(
+    val dist: Dist,
+    seed: Long = 1L,
+    val keep: Int = 200_000,
+    /**
+     * True when the draws come from outside through [addDraws], already drawn from [dist] (a
+     * posterior's draws already resampled), so they count equally and [draw] is not used.
+     */
+    val suppliedDraws: Boolean = false,
+) {
     private val plan = Plan(listOf(dist))
     private val rng = SplittableRandom(seed)
     val moments = Moments()
 
-    /** True if [dist] carries evidence: then [weightedMoments] holds the estimate and [kept] carries weights. */
-    val weighted: Boolean = plan.hasEvidence
+    /** True if [dist] carries evidence and this draws for itself: then [weightedMoments] holds the estimate and [kept] carries weights. */
+    val weighted: Boolean = plan.hasEvidence && !suppliedDraws
 
     /** The posterior sums, when [weighted]. */
     val weightedMoments = WeightedMoments()
@@ -266,11 +275,29 @@ class Progressive(val dist: Dist, seed: Long = 1L, val keep: Int = 200_000) {
 
     /** Add [n] samples. Returns this, for chaining. */
     fun draw(n: Int): Progressive {
+        check(!suppliedDraws) { "this Progressive takes its draws from addDraws" }
         if (weighted) return drawWeighted(n)
         val s = plan.sample(n, rng)[0]
         moments.addAll(s)
         // reservoir-ish: keep the first [keep], then replace uniformly so the kept set stays a fair sample
         for (v in s) {
+            if (kn < keep) kept[kn++] = v
+            else { val j = rng.nextLong(moments.n); if (j < keep) kept[j.toInt()] = v }
+        }
+        val e = moments.mean()
+        traceN += e.n; traceMean += e.value; traceSe += e.se
+        return this
+    }
+
+    /**
+     * Add draws made elsewhere, such as the values a [DistParam] played, as if [draw] had made
+     * them. Needs [suppliedDraws].
+     */
+    fun addDraws(values: DoubleArray): Progressive {
+        check(suppliedDraws) { "construct with suppliedDraws = true to add outside draws" }
+        if (values.isEmpty()) return this
+        moments.addAll(values)
+        for (v in values) {
             if (kn < keep) kept[kn++] = v
             else { val j = rng.nextLong(moments.n); if (j < keep) kept[j.toInt()] = v }
         }
@@ -434,9 +461,10 @@ private fun enumeratedPmf(d: Dist, maxSupport: Int, maxAssignments: Long): Map<D
     val slot = HashMap<Int, Int>().apply { leaves.forEachIndexed { j, k -> put(k, j) } }
     val logW = DoubleArray(n)
     val values = plan.run(n, SplittableRandom(0), 8192, logW) { k, buf, offset, m ->
-        val j = slot[k]!!
+        val j = slot[k] ?: return@run false
         val sup = supports[j]
         for (i in 0 until m) buf[i] = sup[(((offset + i) / stride[j]) % sup.size).toInt()].first
+        true
     }[0]
     // log-probability of each assignment, plus its evidence
     for (a in 0 until n) {
