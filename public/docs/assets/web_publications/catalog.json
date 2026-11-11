@@ -5328,23 +5328,25 @@
     },
     "assets/agent_transcripts/variable_width_strokes/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-11T15:19:14.484Z",
-      "channels": 4,
+      "capturedAt": "2026-11-11T16:25:04.943Z",
+      "channels": 6,
       "file": "assets/web_publications/variable_width_strokes/document/metadata.edn",
       "files": {
-        "assets/web_publications/variable_width_strokes/document/metadata.edn": "7eca8b88e59f4871165d618d6cd70ccb37bc7ea11dd1c920c0a62b931a67b71b",
-        "assets/web_publications/variable_width_strokes/document/outputs.json": "2c61b60214b88626e6a7c7c7ecfb36e546a0b5b54d77b6e7d198ef5bbad0f8db",
-        "assets/web_publications/variable_width_strokes/outputs/0.html": "f15330504a4fdf0b57736b41efef64f0b8754b856975daaa71ac6e8292a26015",
-        "assets/web_publications/variable_width_strokes/outputs/1.html": "99404d38462362926fea49e923be8f76f855ab76cc79b12ec3d9ed5288bc79bf",
-        "assets/web_publications/variable_width_strokes/outputs/2.html": "f4a8c814c0923e1f5873de17d6401f146f7eccf3e9343c2d68de9910526c019b",
-        "assets/web_publications/variable_width_strokes/outputs/3.html": "a4f73dd89c9c68be09b7aeddf9d8f5ed0e114139f4619f86588ed3478c003414"
+        "assets/web_publications/variable_width_strokes/document/metadata.edn": "4c9b916037bda5c1e24232c6fce07115cfd6c7d2cbdec95816093cd1f6c2660a",
+        "assets/web_publications/variable_width_strokes/document/outputs.json": "636b4e16ac2eb075508a35b61dd95124bd115e65f2acdbbc6ac0666ff9c83026",
+        "assets/web_publications/variable_width_strokes/outputs/0.html": "6b986d2266eae5715d05a8991f3902ec77013d10f8f84b7557e478f5409ea269",
+        "assets/web_publications/variable_width_strokes/outputs/1.html": "2dee468324390f837a4ded74ad819804fe8fc6612e098e45574e89ada5304de3",
+        "assets/web_publications/variable_width_strokes/outputs/2.html": "491ef28a1070bb4756de909ab57f67475863a95b750f8c8d8a7faf069c274c5d",
+        "assets/web_publications/variable_width_strokes/outputs/3.html": "2bfe44ed8f7507b50d4f333986825019e37cda1ae0ea7a7e2fa60e50aded22b4",
+        "assets/web_publications/variable_width_strokes/outputs/4.html": "d85bebfe04f8c7b90530da2f5ec2e733a540891932aec24542fb4009c66ecf9b",
+        "assets/web_publications/variable_width_strokes/outputs/5.html": "a1ef588778f65ed74d178b3bfdd5e6d72e0d5a05fd11cfd50848458404ed9e16"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/variable_width_strokes/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/variable_width_strokes.yaml": "6185fe7d206b78923c9fe5542ed24219eb708e632be8ce0d6a4ca121bb475aaf",
+        "dev_docs/agents/transcripts/variable_width_strokes.yaml": "abd69851942c1e444f91948c6611ce6e20ff8173992429efc24c2c84554f506f",
         "public/docs/assets/agent_transcripts/variable_width_strokes/guides/fline_examples-variable-width-strokes-the-swept-circle-envelope.md": "0429fd8a571d032ff5b26802746fde5806fd3299e65ff19a08a4e40b0587dbe4",
         "public/docs/assets/agent_transcripts/variable_width_strokes/metadata.edn": "72aa9678752f80cc0da45bbe9f38195e2fdb504f9599d7fc2a5f4a7dd55e2732",
         "public/docs/assets/agent_transcripts/variable_width_strokes/swept-cubic_code_.kt": "f9a5c02f0b1131501ceaadf75e832b4c0acd212380ecaae86e09b19992861938",

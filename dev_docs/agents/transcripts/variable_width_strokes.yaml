@@ -211,7 +211,7 @@ operations:
       box: swept-thinned
       name: 5 - Thinning a tablet stroke
       frame:
-        x: 1980.0
+        x: 4620.0
         y: 60.0
         w: 420.0
         h: 100.0
@@ -258,7 +258,7 @@ operations:
       box: swept-corners
       name: 6 - Sharp turns
       frame:
-        x: 2460.0
+        x: 5760.0
         y: 60.0
         w: 420.0
         h: 100.0
@@ -291,7 +291,7 @@ operations:
       box: swept-onstroke
       name: 7 - Outline strokes as they are drawn
       frame:
-        x: 2940.0
+        x: 6900.0
         y: 60.0
         w: 420.0
         h: 100.0
