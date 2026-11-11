@@ -1131,7 +1131,7 @@ and plots both runs' mean squared error per epoch. *Revival* rings 40 blobs with
 plain k-means++ seeds a centroid on a stray, and shows e-means moving it back into the data.
 *Centroid trails on an epoch slider* scrubs through both algorithms' centroids epoch by epoch.
 *Spherical k-means* clusters fans of points by direction. *k-means tree of centroid paths* runs
-`vec2KMeansTree`, clustering 1 500 points into half as many centroids, then half again down to one,
+`vec2KMeansTree`, clustering 1 000 points into half as many centroids, then half again down to one,
 and draws every centroid's path as a tree of curves. Change `k`, `epochs`, `stepScale` or the
 seeding and re-run.
 

@@ -1354,7 +1354,7 @@ to 9:
 // Six directions from the origin, each a fan of points at lengths from 0.5 to 9.
 val rng = java.util.Random(6)
 val points =
-    List(6_000) { i ->
+    List(2_400) { i ->
         val angle = (i % 6) * PI / 3 + 0.3 + rng.nextGaussian() * 0.12
         val length = 0.5 + rng.nextDouble() * 8.5
         vec(length * cos(angle), length * sin(angle))
@@ -1437,9 +1437,9 @@ whole thing is a tree. `toFLines()` draws it, coloured by level with coarser lev
 joins each input to the start of its parent's path with a thin line:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/kmeans_tree.png" wait="4.0" capture="box" open-outputs="true" w="900" h="560" padding="14"}
-// 1 500 points scattered over a square, clustered into n/2, then those centroids into n/4, ... down to one.
+// 1 000 points scattered over a square, clustered into n/2, then those centroids into n/4, ... down to one.
 val rng = java.util.Random(40)
-val points = List(1_500) { vec(rng.nextDouble() * 10, rng.nextDouble() * 10) }
+val points = List(1_000) { vec(rng.nextDouble() * 10, rng.nextDouble() * 10) }
 val options = KMeansOptions(epochs = 4, randomSeed = 7L, stepScale = 0.3, closeOnMean = false)
 val halves = vec2KMeansTree(points, shrink = 2.0, options = options)
 val thirds = vec2KMeansTree(points, shrink = 3.0, options = options)
@@ -1454,7 +1454,7 @@ showPlaneGrid(
 )
 ```
 
-![Two panels of 1 500 scattered points overlaid with a tree of curves: short orange and yellow twigs between neighbouring points at the fine levels, then green, blue and violet strokes that sweep across the square at the coarse levels; with shrink 3 there are fewer levels and the coarse strokes are longer](assets/spatial_geometry_examples/kmeans_tree.png)
+![Two panels of 1 000 scattered points overlaid with a tree of curves: short orange and yellow twigs between neighbouring points at the fine levels, then green, blue and violet strokes that sweep across the square at the coarse levels; with shrink 3 there are fewer levels and the coarse strokes are longer](assets/spatial_geometry_examples/kmeans_tree.png)
 
 The fine levels are twigs: a centroid of two or three points barely has to move. The coarse levels
 sweep across the square, because a centroid of half the plane starts on one of its inputs and has

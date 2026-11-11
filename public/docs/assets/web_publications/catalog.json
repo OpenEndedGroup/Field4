@@ -2308,21 +2308,25 @@
     },
     "assets/agent_transcripts/kmeans_emeans/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-11T09:57:43.139Z",
-      "channels": 2,
+      "capturedAt": "2026-11-11T13:56:37.504Z",
+      "channels": 6,
       "file": "assets/web_publications/kmeans_emeans/document/metadata.edn",
       "files": {
-        "assets/web_publications/kmeans_emeans/document/metadata.edn": "cb8c8954e9e921af61c1607a572497d35ec96b5acf337bda3341e0e1734735cd",
-        "assets/web_publications/kmeans_emeans/document/outputs.json": "3a2db72091b71f6d2597324f65696729cd88d3c1bd789ff79a4aebda961b0521",
-        "assets/web_publications/kmeans_emeans/outputs/0.html": "5b948527b058c90005d2539074c2eb9438ee2c4121450387ab5d7eb08f8d2f61",
-        "assets/web_publications/kmeans_emeans/outputs/1.html": "5686f09fb38910c6cdf3464c22296d36b9809268f788ddb277d5190db51ab006"
+        "assets/web_publications/kmeans_emeans/document/metadata.edn": "c4c04a30b682a93594f82608ed4baacbf123a76cec7efc2cf2e8c3504425fa71",
+        "assets/web_publications/kmeans_emeans/document/outputs.json": "5ff393638d414053a7cd28e198914e0346f1f22ca426b8abf7cfa0f5cfface92",
+        "assets/web_publications/kmeans_emeans/outputs/0.html": "a9d32ceb3000666c4a983cc3786bdb11c2145d6546cc51000b2de22bac87b9a6",
+        "assets/web_publications/kmeans_emeans/outputs/1.html": "866ea289ed5e87563b7e30a2096d6528f83c9ce9b5217f4443272073f6e20917",
+        "assets/web_publications/kmeans_emeans/outputs/2.html": "978f0364c8433a154a144e857887dfd0ea25edb1d2733dab9ca3f8593aa12c24",
+        "assets/web_publications/kmeans_emeans/outputs/3.html": "13e7bf2552b70bb984dec9d94bb295b2cf36c238cf745f0d27f9dfc0816ac7de",
+        "assets/web_publications/kmeans_emeans/outputs/4.html": "2180c8cd51fe0cadffe2a8e573daefffe7a19df41cea12236b52f4c165d27e22",
+        "assets/web_publications/kmeans_emeans/outputs/5.html": "e4242ee2354e5a5d329ed55679117a42e6dd3778b9d440b4559c3e96ad7d9001"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/kmeans_emeans/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/kmeans_emeans.yaml": "ae8be035351254b2afd0ad0fa34063828dbd37af03a472c0bec0f2ebce4cd06b",
+        "dev_docs/agents/transcripts/kmeans_emeans.yaml": "5a47f1a40a85e186d41ba3c9f559a16b5eee16d957dfde6e21a7f9530e1863ba",
         "public/docs/assets/agent_transcripts/kmeans_emeans/guides/spatial_geometry_examples.md": "a0d4efda38b93236a531c3a72ddce0c4b2044f689b173a68cfc4ee4e4e8450c4",
         "public/docs/assets/agent_transcripts/kmeans_emeans/kmeans_lloyd_vs_emeans_code_.kt": "be0d956d74d10c3663f835861b84c514dac31263d8fa230ffc0581c13a002177",
         "public/docs/assets/agent_transcripts/kmeans_emeans/kmeans_revival_code_.kt": "7b471e5096c8147dd2d52c7ac8c3ec4a53b19e310160166d58fc7b1ac793f026",

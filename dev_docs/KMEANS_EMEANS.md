@@ -147,8 +147,8 @@ winner-take-all: a few centroids took everything. Lowering `stepScale` makes pat
 jittery, not curvier. Mini-batch noise is jitter, not curvature.
 
 The tree is where the curves are. Each level's targets are the previous level's centroids, so
-coarse centroids start on one input and travel across the plane; at `shrink = 2` the levels go
-1 500 → 750 → … → 1 (11 levels), at 3 they go 500 → 166 → … → 1 (7). `toFLines` draws paths
+coarse centroids start on one input and travel across the plane; on the docs figure's 1 000 points
+the levels go 500 → 250 → … → 1 at `shrink = 2` (9 levels) and 333 → 111 → … → 1 at 3 (6). `toFLines` draws paths
 as Catmull-Rom splines (`cubicSplineFrom`); on sharp reversals the spline overshoots into small
 loops, which reads as part of the drawing. `stride` thins the path first.
 
@@ -173,6 +173,15 @@ factor ≈ shrink), and the walk is e-means' EMA update. No momentum.
 - **Saddles automatically** (page list). Contour trees, not clustering; left to that page's owner.
 - **The paper's novel initialisation, fractional epochs, `max_points_per_centroid`.** Still not
   ported. Greedy k-means++ covers what initialisation was for here.
+
+### Publication budget
+
+The `kmeans_emeans` starting point is also published as an offline document, and
+`publication-capture.js` copies every computed style of every output node. With 6 000 spherical
+points, 1 500 tree leaves and the slider's cloud it timed out at 240 s twice; the docs figures
+were cut to 2 400 and 1 000 points, the slider cloud to every eighth point, and `toFLines`
+thins paths to every eighth point by default. Keep new boxes in this transcript under a few
+thousand SVG elements each.
 
 ## Where to go next
 
