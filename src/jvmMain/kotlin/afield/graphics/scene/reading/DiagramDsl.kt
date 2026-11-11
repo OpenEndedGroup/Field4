@@ -38,6 +38,32 @@ internal constructor(id: String, owner: Any, val text: String, val at: DiagramAn
     /** Reserve a larger animated range before constructing Drawing; zero infers it from the score. */
     var blurCapacity = 0f
         set(value) { require(value.isFinite() && value >= 0f); field = value }
+    internal var dropCapDefinition: DiagramDropCap? = null
+
+    /** Reserve an ink-fitted opening initial across authored lines. Preparation-time typography. */
+    fun dropCap(
+        lines: Int = 3,
+        gapEm: Float = .2f,
+        characters: Int = 1,
+        block: DiagramTypography.() -> Unit = {},
+    ): DiagramTextSpan {
+        require(lines in 1..12 && gapEm.isFinite() && gapEm in 0f..5f && characters in 1..16)
+        require(!text.first().isWhitespace()) { "A drop-cap run must begin with its initial, without leading whitespace" }
+        val breaks = java.text.BreakIterator.getCharacterInstance(java.util.Locale.ROOT).apply { setText(this@DiagramText.text) }
+        var end = 0
+        repeat(characters) {
+            end = breaks.next()
+            require(end != java.text.BreakIterator.DONE) { "Drop cap exceeds the available grapheme clusters" }
+        }
+        require('\n' !in text.substring(0, end)) { "A drop cap cannot cross a line break" }
+        dropCapDefinition = DiagramDropCap(lines, gapEm, end, DiagramTypography().apply(block))
+        return this.characters(0, end)
+    }
+
+    /** The initial remains a span of the original text, usable by measurements and attachments. */
+    val initial: DiagramTextSpan
+        get() = characters(0, requireNotNull(dropCapDefinition) { "Call dropCap() on this run first" }.end)
+
     var tracking = 0.0 // font units between shaped glyphs
     internal val styles = ArrayList<Pair<DiagramTextSpan, DiagramTypography>>()
     var scale = 1f
@@ -214,6 +240,7 @@ internal constructor(val run: DiagramText, val start: Int, val endExclusive: Int
 class DiagramPath
 internal constructor(id: String, owner: Any, internal val make: DiagramFrame.() -> FLine) :
     DiagramItem(id, owner) {
+    internal var connection: DiagramConnection? = null
     var ink = DiagramInk()
     var width: Float
         get() = ink.width
@@ -270,6 +297,10 @@ internal constructor(
     val links: List<DiagramLink>,
     val groups: List<DiagramGroup>,
 ) {
+    val connections: List<DiagramConnection> = paths.mapNotNull { it.connection }
+
+    fun connection(id: String) = requireNotNull(path(id).connection) { "Path '$id' is not a physics connection" }
+
     val items: List<DiagramItem> = particles + texts + paths + dots
     val byId = items.associateBy { it.id }
 

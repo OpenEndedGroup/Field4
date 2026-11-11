@@ -2,7 +2,7 @@ import afield.graphics.lighting.*
 
 // Nine tiles of different colours under one lamp whose colour you pick. A tile can only send
 // back the colours the lamp gives it.
-val colours = listOf(
+val colours = [
     vec(0.8, 0.8, 0.8),
     vec(0.8, 0.1, 0.1),
     vec(0.1, 0.7, 0.1),
@@ -12,7 +12,7 @@ val colours = listOf(
     vec(0.7, 0.1, 0.7),
     vec(0.8, 0.4, 0.1),
     vec(0.3, 0.3, 0.3),
-)
+]
 val tiles =
     colours
         .withIndex()

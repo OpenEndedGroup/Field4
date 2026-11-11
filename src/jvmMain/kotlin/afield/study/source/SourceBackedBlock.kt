@@ -239,14 +239,31 @@ class SourceBackedBlock<out T>(
  * as implicit receiver and Field's standard imports, separate from the box's own engine so nothing
  * there re-enters. Made on first need; dropped with the box.
  */
-private val sideEngines = java.util.WeakHashMap<Box, afield.runtime.kotlin.KotlinInterface2>()
+private val sideEngines = java.util.WeakHashMap<Box, Pair<String, afield.runtime.kotlin.KotlinInterface2>>()
 
 private fun sideEngineFor(box: Box): afield.runtime.kotlin.KotlinInterface2 = synchronized(sideEngines) {
-    sideEngines.getOrPut(box) {
-        afield.runtime.kotlin.KotlinInterface2(
+    // Source functions can refer to prop/@exported declarations. Rebuild when their declarations
+    // change; their generated accessors still resolve values dynamically from the implicit box.
+    val preamble = afield.graphics.shader.normalizePreambleText(afield.runtime.macros.gatherPreambleUpwards(box))
+    sideEngines[box]?.takeIf { it.first == preamble }?.second ?: run {
+        val engine = afield.runtime.kotlin.KotlinInterface2(
             implicitReceivers = listOf(kotlin.script.experimental.api.KotlinType(Box::class)),
             filePrefix = "SBB_${box.id.filter { it.isLetterOrDigit() }.take(12)}_",
-        ).also { it.execAndWait(afield.document.graph.intro, { }, { }, { throw it }, listOf(box)) }
+        )
+        fun setup(source: String) {
+            val errors = mutableListOf<String>()
+            val result = engine.execAndWait(source,
+                { diagnostics -> errors += diagnostics.map { it.message } },
+                { diagnostics -> errors += diagnostics.map { it.message } },
+                { throw it }, listOf(box))
+            check(errors.isEmpty() && result !is ResultValue.Error) {
+                "Could not restore source context in '${box.name}' (${box.id}): ${errors.joinToString("; ")}"
+            }
+        }
+        setup(afield.document.graph.intro)
+        if (preamble.isNotBlank()) setup(preamble)
+        sideEngines[box] = preamble to engine
+        engine
     }
 }
 

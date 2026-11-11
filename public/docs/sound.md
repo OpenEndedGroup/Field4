@@ -313,8 +313,8 @@ piano.play(pat("<[a2,e3] [f2,c3]> [e4 a4 c5 e5]"), cycles = 8, cps = 0.8)
 audio(piano, gain = 1f)
 ```
 
-`play` also takes a `MidiClip`, with its sustain pedal, and `noteOn(midi, velocity)` /
-`noteOff(midi)` start and stop single notes. None of these make a sound themselves: each one puts a
+[`play`](reference/synthesis.md#piano-kt--piano--play) also takes a `MidiClip`, with its sustain pedal, and [`noteOn(midi, velocity)`](reference/synthesis.md#piano-kt--piano--noteon) /
+[`noteOff(midi)`](reference/synthesis.md#piano-kt--piano--noteoff) start and stop single notes. None of these make a sound themselves: each one puts a
 note, stamped with the sample it should start on, into a queue the piano reads while it renders.
 
 ### Every control is a Param
@@ -376,7 +376,7 @@ modes. The bridge is split into four regions along the keyboard, and each key fe
 Each region's board starts out with the same modes but excites them differently and sits at its own
 place in the stereo image, so the bass is to the left and the treble to the right, as the player
 hears it: A1 comes out 6.6 dB louder on the left, and C7 5.6 dB louder on the right.
-`PianoVoicing(boardSpread = 0.0, boardPositionDepth = 0.0)` gives one shared board for every key. The
+[`PianoVoicing(boardSpread = 0.0, boardPositionDepth = 0.0)`](reference/synthesis.md#pianomodel-kt-pianovoicing) gives one shared board for every key. The
 force also drives 88 sympathetic strings tuned to the keyboard. With the pedal down their dampers
 lift and they ring in answer to the notes you play.
 
@@ -391,9 +391,16 @@ Every one of those stages can be heard, and the mode bank can be drawn. Here is 
 at velocity 0.8, at four moments after the hammer leaves it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sound_piano/string-shape.png" wait="2" capture="box" open-outputs="true" name="sound-doc-piano-string"}
-display("shape", [0.0, 0.0005, 0.001, 0.002].joinToString("") { t ->
-    pianoPlotSvg(pianoStringShape(48, 0.8, t, points = 300), "C3 string, %.1f ms after contact".format(t * 1000), height = 110)
-})
+display(
+    "shape",
+    [0.0, 0.0005, 0.001, 0.002].joinToString("") { t ->
+        pianoPlotSvg(
+            pianoStringShape(48, 0.8, t, points = 300),
+            "C3 string, %.1f ms after contact".format(t * 1000),
+            height = 110,
+        )
+    },
+)
 :::fold open the output pane
 displayOpen("shape")
 :::endfold
@@ -412,10 +419,26 @@ the strike:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sound_piano/stiffness-spectra.png" wait="2" capture="box" open-outputs="true" name="sound-doc-piano-stiffness"}
 fun spectrum(s: Float, pin: Float, title: String): String {
-    val r = pianoRender(1.2, Piano(sampleRate = 44_100, room = Param(0f), inharmonicity = Param(s), pinFundamental = Param(pin))) { noteOn(45, 0.7, 0) }
-    return pianoPlotSvg(pianoSpectrumDb(r.mono, startSample = 13_230, fftSize = 32_768).copyOfRange(0, 2_970), title, height = 130, xLabel = "0-4 kHz", yLabel = "dB")
+    val r = pianoRender(
+        1.2,
+        Piano(sampleRate = 44_100, room = Param(0f), inharmonicity = Param(s), pinFundamental = Param(pin)),
+    ) {
+        noteOn(45, 0.7, 0)
+    }
+    return pianoPlotSvg(
+        pianoSpectrumDb(r.mono, startSample = 13_230, fftSize = 32_768).copyOfRange(0, 2_970),
+        title,
+        height = 130,
+        xLabel = "0-4 kHz",
+        yLabel = "dB",
+    )
 }
-display("stiffness", spectrum(1f, 0f, "A2, inharmonicity x1") + spectrum(100f, 0f, "x100") + spectrum(100f, 1f, "x100, fundamental pinned"))
+display(
+    "stiffness",
+    spectrum(1f, 0f, "A2, inharmonicity x1") +
+        spectrum(100f, 0f, "x100") +
+        spectrum(100f, 1f, "x100, fundamental pinned"),
+)
 :::fold open the output pane
 displayOpen("stiffness")
 :::endfold
@@ -468,8 +491,16 @@ timbre sweeps. These spectra are A2, the microphone at 0.12 and at 0.5:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sound_piano/mic-position-spectra.png" wait="2" capture="box" open-outputs="true" name="sound-doc-piano-mic-position"}
 fun heard(x: Float): String {
-    val r = pianoRender(1.2, Piano(sampleRate = 44_100, room = Param(0f), dry = Param(1f), micPosition = Param(x))) { noteOn(45, 0.7, 0) }
-    return pianoPlotSvg(pianoSpectrumDb(r.mono, startSample = 13_230, fftSize = 32_768).copyOfRange(0, 1_485), "A2, close mic at x = $x", height = 130, xLabel = "0-2 kHz", yLabel = "dB")
+    val r = pianoRender(1.2, Piano(sampleRate = 44_100, room = Param(0f), dry = Param(1f), micPosition = Param(x))) {
+        noteOn(45, 0.7, 0)
+    }
+    return pianoPlotSvg(
+        pianoSpectrumDb(r.mono, startSample = 13_230, fftSize = 32_768).copyOfRange(0, 1_485),
+        "A2, close mic at x = $x",
+        height = 130,
+        xLabel = "0-2 kHz",
+        yLabel = "dB",
+    )
 }
 display("mic", heard(0.12f) + heard(0.5f))
 :::fold open the output pane
@@ -487,7 +518,12 @@ are the first 80 ms of A2 through the close microphone, without and then with `t
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sound_piano/close-mic-attack.png" wait="2" capture="box" open-outputs="true" name="sound-doc-piano-attack"}
 fun attack(level: Float, title: String): String {
-    val r = pianoRender(0.08, Piano(sampleRate = 44_100, room = Param(0f), dry = Param(1f), thump = Param(level), keyNoise = Param(level))) { noteOn(45, 0.9, 0) }
+    val r = pianoRender(
+        0.08,
+        Piano(sampleRate = 44_100, room = Param(0f), dry = Param(1f), thump = Param(level), keyNoise = Param(level)),
+    ) {
+        noteOn(45, 0.9, 0)
+    }
     return pianoPlotSvg(r.mono.map { it.toDouble() }.toDoubleArray(), title, height = 130, xLabel = "0-80 ms")
 }
 display("attack", attack(0f, "strings only") + attack(1f, "with thump and key noise"))
@@ -598,9 +634,18 @@ without a bolt, with 2 g and with 8 g at `x = 0.3`:
 fun spectrum(grams: Double, title: String): String {
     val bolt = PianoPreparation.bolt(69..69, at = 0.3, grams = grams)
     val r = pianoRender(1.2, Piano(sampleRate = 44_100, room = Param(0f), preparations = [bolt])) { noteOn(69, 0.7, 0) }
-    return pianoPlotSvg(pianoSpectrumDb(r.mono, startSample = 13_230, fftSize = 32_768).copyOfRange(0, 3_715), title, height = 130, xLabel = "0-5 kHz", yLabel = "dB")
+    return pianoPlotSvg(
+        pianoSpectrumDb(r.mono, startSample = 13_230, fftSize = 32_768).copyOfRange(0, 3_715),
+        title,
+        height = 130,
+        xLabel = "0-5 kHz",
+        yLabel = "dB",
+    )
 }
-display("bolt", spectrum(0.0, "A4") + spectrum(2.0, "A4, 2 g bolt at x = 0.3") + spectrum(8.0, "A4, 8 g bolt at x = 0.3"))
+display(
+    "bolt",
+    spectrum(0.0, "A4") + spectrum(2.0, "A4, 2 g bolt at x = 0.3") + spectrum(8.0, "A4, 8 g bolt at x = 0.3"),
+)
 :::fold open the output pane
 displayOpen("bolt")
 :::endfold
@@ -641,7 +686,7 @@ modes. The sympathetic strings are retuned every 256 samples.
 
 ### More than one microphone
 
-`mics` replaces the single close microphone with any number of them, each a `PianoMic` with its own
+`mics` replaces the single close microphone with any number of them, each a [`PianoMic`](reference/synthesis.md#pianopreparation-kt-pianomic) with its own
 `position`, `pan` and `gain`, all Params. A studio records a grand with a pair, one near the hammers
 and one further along the strings, panned apart:
 
@@ -693,7 +738,7 @@ piano.play(pat("[c5 e5 g5 c6]*2"), cycles = 2, cps = 0.5, legato = 0.15)
 audio(piano, gain = 1f)
 ```
 
-Both take a Param (`unaCorda = Param(1f)`) or controller events (`sostenutoEvent`,
+Both take a Param (`unaCorda = Param(1f)`) or controller events ([`sostenutoEvent`](reference/synthesis.md#piano-kt--piano--sostenutoevent),
 `unaCordaEvent`), and `play(clip)` plays a MIDI file's CC 66 and CC 67 along with its sustain pedal.
 The phrase with the soft pedal down:
 
@@ -787,3 +832,9 @@ Where it could go next:
     has to *not* match one. That shows an asset did not come from the synth; it does not show it
     came from the Tidal library specifically. `run_field_tests.py --id synth.docs.audio.provenance`
     prints the table; the method and figures are in `dev_docs/DOCS_AUDIO_PROVENANCE_AGREEMENT.md`.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`SineOsc`](reference/synthesis.md#oscillators-kt-sineosc)

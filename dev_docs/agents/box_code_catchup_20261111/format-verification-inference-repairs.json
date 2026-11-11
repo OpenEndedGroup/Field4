@@ -1,0 +1,9 @@
+{
+  "spans": 1045,
+  "uniqueBodies": 901,
+  "formattedBodies": 45,
+  "changedPaths": [],
+  "skips": [],
+  "tokenLiteralsFoldsAndFragmentMarkersVerified": true,
+  "formatter": "Actual Field editor imports, ktfmt and GLSL formatting"
+}

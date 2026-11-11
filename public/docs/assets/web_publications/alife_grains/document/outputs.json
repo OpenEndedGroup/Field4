@@ -1,0 +1,275 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-11T15:49:02.895Z",
+  "documentName": "alife_grains",
+  "outputs": [
+    {
+      "uid": "grains_evolve",
+      "channel": "pitch target",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 56,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "grains_evolve",
+      "channel": "count target",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 56,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "grains_evolve",
+      "channel": "polyphony weight",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 56,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "grains_evolve",
+      "channel": "time scale",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 56,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "grains_evolve",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 410,
+      "height": 46,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "grains_evolve",
+      "channel": "trace",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 492,
+      "height": 192,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "grains_evolve",
+      "channel": "score",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 652,
+      "height": 252,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "grains_evolve",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "grains_breed",
+      "channel": "child 4",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "grains_breed",
+      "channel": "child 5",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/9.html"
+    },
+    {
+      "uid": "grains_breed",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 254,
+      "height": 52,
+      "path": "outputs/10.html"
+    },
+    {
+      "uid": "grains_map",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 583,
+      "path": "outputs/11.html"
+    },
+    {
+      "uid": "grains_shape",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 652,
+      "height": 252,
+      "path": "outputs/12.html"
+    },
+    {
+      "uid": "grains_shape",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/13.html"
+    },
+    {
+      "uid": "grains_recording",
+      "channel": "recording",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 652,
+      "height": 192,
+      "path": "outputs/14.html"
+    },
+    {
+      "uid": "grains_recording",
+      "channel": "score",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 652,
+      "height": 192,
+      "path": "outputs/15.html"
+    },
+    {
+      "uid": "grains_recording",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/16.html"
+    },
+    {
+      "uid": "grains_decode",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 652,
+      "height": 252,
+      "path": "outputs/17.html"
+    },
+    {
+      "uid": "grains_decode",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/18.html"
+    },
+    {
+      "uid": "grains_breed",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 209,
+      "height": 98,
+      "path": "outputs/19.html"
+    },
+    {
+      "uid": "grains_breed",
+      "channel": "child 0",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/20.html"
+    },
+    {
+      "uid": "grains_breed",
+      "channel": "child 1",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/21.html"
+    },
+    {
+      "uid": "grains_breed",
+      "channel": "child 2",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/22.html"
+    },
+    {
+      "uid": "grains_breed",
+      "channel": "child 3",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/23.html"
+    }
+  ]
+}

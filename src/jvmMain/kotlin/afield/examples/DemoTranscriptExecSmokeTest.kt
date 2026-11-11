@@ -223,6 +223,9 @@ object DemoTranscriptExecSmokeTest {
         // through K2 inside its own box — which is the one part of the feature a unit test cannot
         // reach, and the reason this is EXECUTE rather than COMPILE_ONLY.
         "keyframe_code_blend",
+        // Numeric rules over an ordered group: real K2 source restoration, inherited contexts,
+        // persistent pointwise blends and complete validation before writes. No graphics required.
+        "ordered_group_keyframes",
         "linalg_thumbnails_demo",
         "knight_tour_workshop", // CPU FLine drawings; source shares results with four derived views.
         // The uncrossed half of knight_tour_workshop.md: uncrossed leaper paths (afield.geometry.leaper) drawn as
@@ -357,6 +360,7 @@ object DemoTranscriptExecSmokeTest {
         "kmeans_emeans",
         // Ten independent pure-CPU spatial-ALife boxes; nothing opens a Window or a Renderer.
         "alife_evolution",
+        "alife_grains",
         "alife_worked_example",
         // Three pure-CPU tree-growth boxes; the video box is an animateEvolution clip and the
         // third mounts a slider. No Window, no Renderer.
@@ -547,6 +551,8 @@ object DemoTranscriptExecSmokeTest {
         // fline_examples.md's curvature-continuous splines: clothoidSplineFrom vs cubicSplineFrom with
         // curvature combs, a circle, a closed shape. CPU only.
         "clothoid_spline",
+        // swept-circle stroke outlines and a notation pressure stroke: pure geometry, headless
+        "variable_width_strokes",
         // fline_examples.md's exact booleans and offsets: Area vs booleanExact, byOffsetting vs
         // byOffsettingExact, side by side through lines(). CPU only.
         "fline_exact_booleans",
@@ -631,6 +637,9 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // satellites.md: a week of SGP4 passes over Chicago (CPU), then a renderer, an Earth box and
+        // every catalogued satellite propagated in a vertex shader. Opens a Window, so compile-only.
+        "satellites",
         // The pilot explainer deck (2026-11-09): its deck box opens Electron audience windows and
         // its figure box returns an audio patch for the audio device. PresentationFiguresTest
         // covers the figure engine without either.

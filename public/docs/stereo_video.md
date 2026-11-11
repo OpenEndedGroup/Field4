@@ -77,7 +77,6 @@ hidden in the headset or omitted entirely by changing the setup flag.
 This box creates the renderer and eye targets. Set the headset and browser options before launching it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stereo_video/context-controls.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/video_one_native.yaml" capture-box="video1_context" wait=".5" timeout="240" capture-profile="linux-nvidia" embed=true name="stereo-video-context-controls" alt="The setup box controls for the stereo preview, desktop presentation and Field browser visibility."}
-import afield.graphics.vulkan.targets.*
 import afield.graphics.vulkan.util.Options
 import afield.media.browser.*
 
@@ -243,8 +242,6 @@ uses the current head pose and keeps the screen upright.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stereo_video/screen-controls.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/video_one_native.yaml" capture-box="video1_screen" wait=".5" timeout="240" capture-profile="linux-nvidia" embed=true name="stereo-video-screen-controls" alt="The live screen controls: arc width, bend, aspect, recenter distance and world position and rotation."}
 import afield.graphics.scene.video.*
-import afield.ui.output.ControlGroupBuilder
-import afield.ui.output.ControlValueHandle
 
 // One movie owns decoding and uploads; box 4 owns its editable graphics pipeline.
 prop<StereoVideoSurface>(movie) = StereoVideoSurface(renderer, stereo, automaticDrawing = false)
@@ -367,12 +364,10 @@ exposure. Its longer control and status code is folded.
 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stereo_video/transport-controls.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/video_one_native.yaml" capture-box="video1_playback" wait=".5" timeout="240" capture-profile="linux-nvidia" embed=true name="stereo-video-transport-controls" alt="The movie transport box with file selection, play and scrub controls, speed, material cadence, temporal exposure and eye selection."}
-import afield.ui.output.ControlValueHandle
-
 // A local path, with ~ expansion; changing this field alone does not reopen the decoder.
 // The checkout ships an original stereo calibration movie; an environment override selects yours.
-var selectedFile = System.getenv("FIELD_STEREO_VIDEO")
-    ?: java.io.File("public/docs/assets/stereo_video/stereo-demo.mkv").absolutePath
+var selectedFile =
+    System.getenv("FIELD_STEREO_VIDEO") ?: java.io.File("public/docs/assets/stereo_video/stereo-demo.mkv").absolutePath
 
 :::fold UI handles
 var scrubber: ControlValueHandle<Double>? = null
@@ -407,14 +402,34 @@ fun showTransport() {
         button("Material: 24 fps") { down -> if (down) movie.materialFramesPerSecond = 24 }
         button("Material: 12 fps") { down -> if (down) movie.materialFramesPerSecond = 12 }
         checkbox("Alternate frames above 4x", initialValue = movie.selectiveDecode) { movie.selectiveDecode = it }
-        checkbox("Skip non-reference pictures", initialValue = movie.skipNonReferenceFrames) { movie.skipNonReferenceFrames = it }
-        mixControl = slider("Accumulation mix", min = 0.0, max = 1.0, step = .001, initialValue = movie.accumulationMix.toDouble()) {
-            movie.accumulationMix = it.toFloat()
+        checkbox("Skip non-reference pictures", initialValue = movie.skipNonReferenceFrames) {
+            movie.skipNonReferenceFrames = it
         }
-        persistenceControl = slider("Persistence half-life (s)", min = 0.0, max = 10.0, step = .01, initialValue = movie.accumulationHalfLife) {
-            movie.accumulationHalfLife = it
-        }
-        slider("Incoming frame weight", min = 0.0, max = 4.0, step = .01, initialValue = movie.accumulationInputWeight) {
+        mixControl = slider(
+            "Accumulation mix",
+            min = 0.0,
+            max = 1.0,
+            step = .001,
+            initialValue = movie.accumulationMix.toDouble(),
+        ) {
+                movie.accumulationMix = it.toFloat()
+            }
+        persistenceControl = slider(
+            "Persistence half-life (s)",
+            min = 0.0,
+            max = 10.0,
+            step = .01,
+            initialValue = movie.accumulationHalfLife,
+        ) {
+                movie.accumulationHalfLife = it
+            }
+        slider(
+            "Incoming frame weight",
+            min = 0.0,
+            max = 4.0,
+            step = .01,
+            initialValue = movie.accumulationInputWeight,
+        ) {
             movie.accumulationInputWeight = it
         }
         button("Clear accumulation") { down -> if (down) movie.clearAccumulation() }
@@ -570,9 +585,9 @@ layout(binding = 0) uniform sampler2D luma; // full-resolution packed SBS P010 l
 layout(binding = 1) uniform sampler2D chroma; // half-resolution interleaved Cb/Cr, R16G16_UNORM
 layout(binding = 2) uniform sampler2D accumulatedImage; // float16 linear-light running mean
 layout(push_constant) uniform MoviePush {
-    mat4 model;       // screen-local metres to room space
-    vec4 surface;     // arc width, height, bend radians, strip count
-    vec4 image;       // packed source width/height, swap eyes, vertical flip
+    mat4 model; // screen-local metres to room space
+    vec4 surface; // arc width, height, bend radians, strip count
+    vec4 image; // packed source width/height, swap eyes, vertical flip
     vec4 colorimetry; // Kr, Kb, full-range flag, reserved
     vec4 accumulation; // processed mix, valid image, reserved, reserved
 }
@@ -598,8 +613,8 @@ void main() {
     vec2 cbcr = (codeUV - 512.0) / (full ? 1023.0 : 896.0);
     float kr = pc.colorimetry.x, kb = pc.colorimetry.y, kg = 1 - kr - kb;
     vec3 rgb = vec3(y + 2 * (1 - kr) * cbcr.y,
-                    y - 2 * kb * (1 - kb) / kg * cbcr.x - 2 * kr * (1 - kr) / kg * cbcr.y,
-                    y + 2 * (1 - kb) * cbcr.x);
+    y - 2 * kb * (1 - kb) / kg * cbcr.x - 2 * kr * (1 - kr) / kg * cbcr.y,
+    y + 2 * (1 - kb) * cbcr.x);
     // Display-referred SDR code values -> linear; float eyes retain linear light until
     // display/stream encoding.
     vec3 sharp = toLinear(clamp(rgb, 0, 1));

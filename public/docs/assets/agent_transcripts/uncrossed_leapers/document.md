@@ -134,13 +134,11 @@ markdown(
 <!-- field-box id="ul_tours" index="2" -->
 
 ```edn [field-box id="ul_tours" role="properties"]
-{"id" "ul_tours" "index" 2 "name" "6 - uncrossed paths into the workshop views" "parents" ["root"] "children" ["ul_lines" "ul_arcs"] "properties" {"children" #{#afield/box "ul_lines" #afield/box "ul_arcs"} "parents" #{#afield/box "root"} "name" "6 - uncrossed paths into the workshop views" "_tombstone" false "frame" #afield/rect [60.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ul_tours_code_.kt" "lines" 87 "characters" 3558 "sha256" "9993e86fe66e5d8fc839ac4dd3296b28e218b1f9266706619857c3c8802a57d3"} {"name" "preamble" "language" "text" "lines" 15 "characters" 818 "sha256" "09c867bc9bfcc70225ff505869ec5376a2aba697d306780ce2ef86693c146d7b"}]}
+{"id" "ul_tours" "index" 2 "name" "6 - uncrossed paths into the workshop views" "parents" ["root"] "children" ["ul_lines" "ul_arcs"] "properties" {"children" #{#afield/box "ul_lines" #afield/box "ul_arcs"} "parents" #{#afield/box "root"} "name" "6 - uncrossed paths into the workshop views" "_tombstone" false "frame" #afield/rect [60.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ul_tours_code_.kt" "lines" 85 "characters" 3493 "sha256" "0f38e4deab1a77cad7970fd25565fe9b38c86add13526a261d6e08b47244d166"} {"name" "preamble" "language" "text" "lines" 15 "characters" 818 "sha256" "09c867bc9bfcc70225ff505869ec5376a2aba697d306780ce2ef86693c146d7b"}]}
 ```
 
 ```kotlin [field-property box="ul_tours" name="code" path="ul_tours_code_.kt"]
 import afield.geometry.leaper.*
-import afield.runtime.execution.begin
-import kotlin.math.*
 import kotlin.random.Random
 
 // Longest uncrossed knight paths and the longest closed one on 7×7, published under the knight-tour workshop's
@@ -176,7 +174,7 @@ fun threePointArc(
     val cx = c.first - ax
     val cy = c.second - ay
     val cross = bx * cy - by * cx
-    if (abs(cross) < 1e-9) return listOf(a, b, c)
+    if (abs(cross) < 1e-9) return [a, b, c]
     val bb = bx * bx + by * by
     val cc = cx * cx + cy * cy
     val ux = (bb * cy - cc * by) / (2 * cross)
@@ -249,13 +247,17 @@ val Why.knightCellSize by Whying() /**/
 
 <!-- field-box id="ul_arcs" index="3" -->
 
+### Narrative
+
+From `code`
+
+Uniform scale about each triple's original B. 1.0 restores the source arcs.
+
 ```edn [field-box id="ul_arcs" role="properties"]
-{"id" "ul_arcs" "index" 3 "name" "6b - workshop perpendicular arcs" "parents" ["root" "ul_tours"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ul_tours"} "name" "6b - workshop perpendicular arcs" "_tombstone" false "frame" #afield/rect [1460.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ul_arcs_code_.kt" "lines" 120 "characters" 4168 "sha256" "06b47968ce2c0067a35b8eb1cc8b589db602996370148bef38fd43b56d734485"} {"name" "preamble" "language" "text" "lines" 15 "characters" 1088 "sha256" "a62fc5f26344432de7425a68fdd0de7f6c331dadafd8cb8e8441949915ffb4f3"}]}
+{"id" "ul_arcs" "index" 3 "name" "6b - workshop perpendicular arcs" "parents" ["root" "ul_tours"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ul_tours"} "name" "6b - workshop perpendicular arcs" "_tombstone" false "frame" #afield/rect [1460.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ul_arcs_code_.kt" "lines" 118 "characters" 4147 "sha256" "f1c17ff13721782dd3c791010d6c035fa30466b15958821b6123e8a27c5b1a2a"} {"name" "preamble" "language" "text" "lines" 15 "characters" 1088 "sha256" "a62fc5f26344432de7425a68fdd0de7f6c331dadafd8cb8e8441949915ffb4f3"}]}
 ```
 
 ```kotlin [field-property box="ul_arcs" name="code" path="ul_arcs_code_.kt"]
-import kotlin.math.*
-
 // Uniform scale about each triple's original B. 1.0 restores the source arcs.
 val arcScale = 0.5
 // Signed shift along the original A-to-C normal, applied after scaling.
@@ -554,14 +556,19 @@ lines(tiles, w = 700.0, h = 360.0, fitToSize = true)
 
 <!-- field-box id="ul_lines" index="7" -->
 
+### Narrative
+
+From `code`
+
+Zipped layers: use [a, b, c] or a scalar. Short lists hold their last value.
+All geometry parameters are deliberately UNCLAMPED.
+Trims are fractions of the original move removed from each end.
+
 ```edn [field-box id="ul_lines" role="properties"]
-{"id" "ul_lines" "index" 7 "name" "6a - workshop line experiments" "parents" ["root" "ul_tours"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ul_tours"} "name" "6a - workshop line experiments" "_tombstone" false "frame" #afield/rect [760.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ul_lines_code_.kt" "lines" 157 "characters" 6794 "sha256" "645ee0ef34f39da89fb585af98c43214844af98ab927fcc8f6e0edb95b6fe8f5"} {"name" "preamble" "language" "text" "lines" 15 "characters" 1088 "sha256" "a62fc5f26344432de7425a68fdd0de7f6c331dadafd8cb8e8441949915ffb4f3"}]}
+{"id" "ul_lines" "index" 7 "name" "6a - workshop line experiments" "parents" ["root" "ul_tours"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ul_tours"} "name" "6a - workshop line experiments" "_tombstone" false "frame" #afield/rect [760.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ul_lines_code_.kt" "lines" 154 "characters" 6745 "sha256" "0f9ee3f919259df6df3a1b8db8543c1cb9e229e603083368c4040905d5e075d8"} {"name" "preamble" "language" "text" "lines" 15 "characters" 1088 "sha256" "a62fc5f26344432de7425a68fdd0de7f6c331dadafd8cb8e8441949915ffb4f3"}]}
 ```
 
 ```kotlin [field-property box="ul_lines" name="code" path="ul_lines_code_.kt"]
-import afield.math.linalg.*
-import kotlin.math.*
-
 /*
 Zipped layers: use [a, b, c] or a scalar. Short lists hold their last value.
 All geometry parameters are deliberately UNCLAMPED.

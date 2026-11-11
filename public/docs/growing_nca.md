@@ -407,8 +407,6 @@ are what the box uses to tell the outcomes apart. The 52 runs are independent, s
 in parallel:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/growing_nca/damage_sweep.png" capture="box" scale="2" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="only the seed left:" timeout="600" padding="16" embed=true name="growing-nca-damage-sweep" alt="Thirteen pairs of pictures in three rows, each pair a flower just after its cut and the same flower 1,600 steps later, captioned with how its four runs ended. The small discs, the stem, the left, right and top halves and the seed alone healed in every run or nearly so; the larger discs through the top and the centre are scarred, moved, or grow a second flower. Below them a chart of error against steps since the cut, both axes logarithmic, for six of the cuts: the small disc and the stem fall fastest, to 2e-05 within 200 steps; the seed alone takes about 800 steps and the bottom half 1,600; the disc of radius 12 through the top levels off near 8e-04; and the disc of radius 12 through the centre falls to 1e-02 at 100 steps and then rises again"}
-import afield.ui.output.FieldMarkdown
-import afield.ui.visualization.ScaleKind
 import java.util.Base64
 
 /*
@@ -699,3 +697,10 @@ Open the [Growing NCA starting point](agent_transcripts.md#growing_nca) to try t
 strip at the top, a live CPU version (launch it), the turning, angle-field, damage and fish boxes,
 and two renderers, each with a GPU box beneath it. See [Spatial artificial life](alife_examples.md)
 for cellular automata whose rules are written by hand.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`WindowBrush.install`](reference/alife.md#growing-nca-kt--windowbrush--install)
+- [`WindowBrush`](reference/alife.md#growing-nca-kt-windowbrush)

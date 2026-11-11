@@ -11,10 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pat_fn_fit" index="0" -->
 
 ```edn [field-box id="pat_fn_fit" role="properties"]
-{"id" "pat_fn_fit" "index" 0 "name" "2 · fit the rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · fit the rhythm" "_tombstone" false "frame" #afield/rect [60.0 390.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_fit_code_.kt" "lines" 21 "characters" 914 "sha256" "325dbd5c036dbc639fc1706cec7370ed46c2a702ceb521ed042471838d4cb697"}]}
+{"id" "pat_fn_fit" "index" 0 "name" "2 · fit the rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · fit the rhythm" "_tombstone" false "frame" #afield/rect [60.0 390.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_fit_code_.kt" "lines" 21 "characters" 911 "sha256" "99ac015055efaea0913a2164b24c8f716e00f6f6d17f4e82daa3afdd2cebf11c"}]}
 ```
 
-```kotlin [field-property box="pat_fn_fit" name="code" path="pat_fn_fit_code_.kt"]
+````kotlin [field-property box="pat_fn_fit" name="code" path="pat_fn_fit_code_.kt"]
 with(Functions) {
     val target = patFn("g:(0.9,0.18) g:(0.1,0.18)", cps = 1.0, range = 0.9)
     // Right structure, wrong numbers — wrong heights and wrong widths.
@@ -32,11 +32,11 @@ with(Functions) {
     fitted  ${run.fitted.graphNode().strings["source"]}
     RMSE    ${run.initialError.f4} -> ${run.finalError.f4}""".trimIndent()
     println(report)
-    display("<pre>" + report + "</pre>")
+    markdown("```text\n$report\n```")
 
     run // Field renders the FnFitRun: RMSE before -> after + a loss sparkline
 }
-```
+````
 
 ## 2. 1 · the pat node
 
@@ -50,10 +50,10 @@ Each atom is a kernel: g = Gaussian, adsr = a full envelope. The numbers in the
 text are the gesture; `cps` is how fast the pattern runs in seconds.
 
 ```edn [field-box id="pat_fn_inspect" role="properties"]
-{"id" "pat_fn_inspect" "index" 1 "name" "1 · the pat node" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · the pat node" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_inspect_code_.kt" "lines" 16 "characters" 566 "sha256" "743e75bcff262a3717d6ceaee44a00b5bf749d18bdb08fd8cc11a49d45039064"}]}
+{"id" "pat_fn_inspect" "index" 1 "name" "1 · the pat node" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · the pat node" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_inspect_code_.kt" "lines" 16 "characters" 563 "sha256" "d958e117bb02382b07b9e802e5844097bba2763e993800342b668408ef527f59"}]}
 ```
 
-```kotlin [field-property box="pat_fn_inspect" name="code" path="pat_fn_inspect_code_.kt"]
+````kotlin [field-property box="pat_fn_inspect" name="code" path="pat_fn_inspect_code_.kt"]
 // Each atom is a kernel: g = Gaussian, adsr = a full envelope. The numbers in the
 // text are the gesture; `cps` is how fast the pattern runs in seconds.
 val gesture = patFn("g:(0.3,0.12) adsr:(0.8,0.01,0.08,0.4,0.2)", cps = 2.0, range = 0.9)
@@ -69,18 +69,18 @@ values    ${gesture.extractParameters().joinToString("  ")}
 ${gesture.graphText()}""".trimIndent()
 
 println(report)
-display("<pre>" + report + "</pre>")
-```
+markdown("```text\n$report\n```")
+````
 
 ## 3. 3 · what it cannot do
 
 <!-- field-box id="pat_fn_permute" index="2" -->
 
 ```edn [field-box id="pat_fn_permute" role="properties"]
-{"id" "pat_fn_permute" "index" 2 "name" "3 · what it cannot do" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · what it cannot do" "_tombstone" false "frame" #afield/rect [620.0 390.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_permute_code_.kt" "lines" 23 "characters" 1104 "sha256" "c783f3bbba7dbdf197beed1f51633b0077af561a0c392a92dd8baaf8a37cb728"}]}
+{"id" "pat_fn_permute" "index" 2 "name" "3 · what it cannot do" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · what it cannot do" "_tombstone" false "frame" #afield/rect [620.0 390.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_permute_code_.kt" "lines" 23 "characters" 1101 "sha256" "cb306718def196ce623380d2a2c52c05028ae3bf74de089f4033a8317c323d1b"}]}
 ```
 
-```kotlin [field-property box="pat_fn_permute" name="code" path="pat_fn_permute_code_.kt"]
+````kotlin [field-property box="pat_fn_permute" name="code" path="pat_fn_permute_code_.kt"]
 with(Functions) {
     val target = patFn("g:(0.9,0.18) g:(0.1,0.18)", cps = 1.0, range = 0.9)
     // The high/low arrangement is reversed, and the amplitudes differ too.
@@ -102,7 +102,7 @@ with(Functions) {
     normalised blend flattens toward the mean of its atom values. Structure search
     (evolve) is the tool for re-assigning values between atoms.""".trimIndent()
     println(report)
-    display("<pre>" + report + "</pre>")
+    markdown("```text\n$report\n```")
 }
-```
+````
 

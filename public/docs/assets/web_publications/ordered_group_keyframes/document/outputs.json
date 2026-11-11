@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-11T15:35:17.335Z",
+  "documentName": "ordered_group_keyframes",
+  "outputs": [
+    {
+      "uid": "ordered_group_demo",
+      "channel": "result",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 474,
+      "height": 67,
+      "path": "outputs/0.html"
+    }
+  ]
+}

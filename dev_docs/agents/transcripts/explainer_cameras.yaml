@@ -251,7 +251,7 @@ operations:
               val tipX = 120.0
               val tipY = axis - 90.0
               val imageY = axis + 90.0 * distance * unit / (holeX - tipX)
-              val parts = listOf(
+              val parts = [
                   view,
                   segment(sensorX, axis + half, holeX, axis + half, guide),
                   segment(sensorX, axis - half, holeX, axis - half, guide),
@@ -263,7 +263,7 @@ operations:
                   segment(tipX, axis + 40, tipX, tipY, orange, 4.0),
                   segment(tipX, tipY, sensorX, imageY, orange, 1.0),
                   segment(sensorX, axis - 40.0 * distance * unit / (holeX - tipX), sensorX, imageY, orange, 4.0),
-              )
+              ]
               showPlane(
                   parts,
                   channel = "side",
@@ -330,7 +330,7 @@ operations:
                   thickness = 1.0
               }
               showPlane(
-                  listOf(
+                  [
                       fline {
                           moveTo(0, 230)
                           lineTo(640, 230)
@@ -339,7 +339,7 @@ operations:
                       },
                       measured,
                       predicted,
-                  ),
+                  ],
                   channel = "brightness",
                   width = 600,
                   height = 225,
@@ -385,7 +385,7 @@ operations:
               val endY = 360.0
               val start = frameExit(entryX, top, -sin(theta), -cos(theta), 640.0, endY)
               val guideEnd = frameExit(entryX, top, sin(theta), cos(theta), 640.0, endY)
-              val parts = listOf(
+              val parts = [
                   fline {
                       rect(0, top, 640, slab * unit)
                       filled = true
@@ -406,7 +406,7 @@ operations:
                       color = cyan
                       thickness = 2.5
                   },
-              )
+              ]
               showPlane(
                   parts,
                   channel = "side",

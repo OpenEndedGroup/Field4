@@ -1,6 +1,4 @@
 import afield.animation.mocap.*
-import afield.math.linalg.vec
-import afield.ui.output.ControlValueHandle
 import java.nio.file.Files
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.CompletableFuture
@@ -52,7 +50,7 @@ controlGroup(columns = 2) {
 
 frames {
     // Longer observation window; stock fall/termination logic and executed feedback remain enabled.
-    val worker = CLoSD.openAsync(MotionProcessConfig(overrides = listOf("env.episode_length=1800"))).awaitMotion()
+    val worker = CLoSD.openAsync(MotionProcessConfig(overrides = ["env.episode_length=1800"])).awaitMotion()
     worker.use { dancer ->
         val root = "motion-recordings".path
         Files.createDirectories(root)

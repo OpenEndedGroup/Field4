@@ -491,3 +491,9 @@ exactly what a fresh `keybindings.yaml` says.
 - [Survival Guide](survivalGuide.md) — the shortcuts worth learning first.
 - [Feature Overview](funFeatures.md) — what the commands in that table actually do.
 - [Layers](layers.md) — the layer commands (++alt+l++, ++alt+bracket-right++, ++alt+bracket-left++) in use.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`UserKeybindingsManager.watchFile`](reference/workspace.md#userkeybindingsmanager-kt--userkeybindingsmanager--watchfile)

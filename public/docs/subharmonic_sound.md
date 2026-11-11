@@ -719,17 +719,18 @@ val output =
 
 :::fold measure and draw both spectra
 // Magnitude at each frequency from 20 to 700 Hz over the second second, once tracking has settled.
-fun spectrum(signal: FloatArray) = (4..140).map { k ->
-    val hz = k * 5.0
-    var re = 0.0
-    var im = 0.0
-    for (n in 48_000 until 96_000) {
-        val a = 2 * kotlin.math.PI * hz * n / 48_000.0
-        re += signal[n] * kotlin.math.cos(a)
-        im -= signal[n] * kotlin.math.sin(a)
+fun spectrum(signal: FloatArray) =
+    (4..140).map { k ->
+        val hz = k * 5.0
+        var re = 0.0
+        var im = 0.0
+        for (n in 48_000 until 96_000) {
+            val a = 2 * kotlin.math.PI * hz * n / 48_000.0
+            re += signal[n] * kotlin.math.cos(a)
+            im -= signal[n] * kotlin.math.sin(a)
+        }
+        hz to 2 * kotlin.math.hypot(re, im) / 48_000.0
     }
-    hz to 2 * kotlin.math.hypot(re, im) / 48_000.0
-}
 // One short chart per signal, with the five frequencies that matter ruled and labelled.
 fun spectrumChart(title: String, signal: FloatArray, tint: Vec4) = Chart(title = title, xLabel = "Hz").apply {
     val spec = spectrum(signal)
@@ -742,7 +743,10 @@ fun spectrumChart(title: String, signal: FloatArray, tint: Vec4) = Chart(title =
     line("magnitude", spec.map { it.first }, spec.map { it.second }, color = tint, thickness = 3.0)
 }
 display("tracked", "tracked fundamental: ${tracker.state.hz.f1} Hz")
-display("input", spectrumChart("input: peaks at 220, 330 and 550 Hz, nothing at 110 (orange)", input, vec(0.7, 0.7, 0.7, 1.0)))
+display(
+    "input",
+    spectrumChart("input: peaks at 220, 330 and 550 Hz, nothing at 110 (orange)", input, vec(0.7, 0.7, 0.7, 1.0)),
+)
 display("output", spectrumChart("the bank's output: one peak at 55 Hz", output, vec(0.3, 0.8, 1.0, 1.0)))
 ```
 

@@ -892,39 +892,29 @@ operations:
       h: 100.0
     properties:
       code: |
-        // Dependencies are explicit graph exports; resources stay in their parent box.
-        val resetFlow = requireNotNull(fromContextWithNameOrNull<afield.runtime.lifecycle.SimulationReset>("resetFlow")) {
-            "Missing resetFlow; run Resources first"
-        }
-        val travel = requireNotNull(fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")) {
-            "Missing travel; run Resources first"
-        }
-        val settings =
-            ["force", "grainCell", "strokeTime", "flowWidth"].map { parameterName ->
-                requireNotNull(fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>(parameterName)) {
-                        "Run Resources first: missing parameter $parameterName"
-                    }
-                    .snapshot()
-            }
+        // Capture the parent's resources so cleanup still owns this run's state.
+        val reset = resetFlow
+        val travelFlag = travel
+        val settings = [force, grainCell, strokeTime, flowWidth].map { it.snapshot() }
 
         // Compare a deterministic 180-frame path with identical settings after a reset.
-        // Stop Box also ends this capture and restores the previous travel setting.
+        // Stop Box also ends this capture and restores the previous travelFlag setting.
         frames {
-            val wasTravelling = travel.getAndSet(true)
+            val wasTravelling = travelFlag.getAndSet(true)
             var recording = false
             try {
-                val ticket = resetFlow.request()
+                val ticket = reset.request()
                 val resetStarted = System.nanoTime()
                 val resetTimeoutNanos = 30_000_000_000L
-                while (resetFlow.completed < ticket) {
+                while (reset.completed < ticket) {
                     // Ignore a prior failure while this new request is still pending.
-                    if (!resetFlow.pending) check(resetFlow.failure == null) { "Reset failed: ${resetFlow.failure}" }
+                    if (!reset.pending) check(reset.failure == null) { "Reset failed: ${reset.failure}" }
                     check(System.nanoTime() - resetStarted < resetTimeoutNanos) {
-                        "Timed out waiting for reset $ticket: ${resetFlow.failure ?: "no frame-boundary consumer"}"
+                        "Timed out waiting for reset $ticket: ${reset.failure ?: "no frame-boundary consumer"}"
                     }
                     if (!frame()) return@frames
                 }
-                println("Profile settings: $settings; reset ticket=${resetFlow.completed}")
+                println("Profile settings: $settings; reset ticket=${reset.completed}")
                 val start = renderer.frameCounter
                 while (frame() && renderer.frameCounter - start < 60) {} // Warm shaders and caches.
                 CoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest("start", 30.0, stacks = true))
@@ -939,7 +929,7 @@ operations:
                 )
             } finally {
                 if (recording) CoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest("stop"))
-                travel.set(wasTravelling)
+                travelFlag.set(wasTravelling)
             }
         }
 - connect:

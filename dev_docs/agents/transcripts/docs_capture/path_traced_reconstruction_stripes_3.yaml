@@ -88,7 +88,7 @@ operations:
           frames {
               repeat(60) { frame() }
               println("rr stripes 3 ready")
-              }
+          }
   - connect: { parent: agent_graphics_context, child: rr_stripes_3 }
   - launch: { box: rr_stripes_3, property: code }
   - await: { wait: pending }

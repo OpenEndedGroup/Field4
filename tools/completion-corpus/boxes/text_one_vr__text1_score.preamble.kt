@@ -24,6 +24,12 @@ val Why.exampleFive by Whying() /*from:text1_typography*/ /**/
 var Box.exampleSix by Inheritance<ReadingExample>() /*from:text1_word_blur*/ /**/
 val Once.exampleSix by Onceing<ReadingExample>() /*from:text1_word_blur*/ /**/
 val Why.exampleSix by Whying() /*from:text1_word_blur*/ /**/
+var Box.exampleSeven by Inheritance<ReadingExample>() /*from:text1_elastic*/ /**/
+val Once.exampleSeven by Onceing<ReadingExample>() /*from:text1_elastic*/ /**/
+val Why.exampleSeven by Whying() /*from:text1_elastic*/ /**/
+var Box.exampleEight by Inheritance<ReadingExample>() /*from:text1_drop_caps*/ /**/
+val Once.exampleEight by Onceing<ReadingExample>() /*from:text1_drop_caps*/ /**/
+val Why.exampleEight by Whying() /*from:text1_drop_caps*/ /**/
 var Box.window by Inheritance<Window>() /*from:text1_context*/ /**/
 val Once.window by Onceing<Window>() /*from:text1_context*/ /**/
 val Why.window by Whying() /*from:text1_context*/ /**/

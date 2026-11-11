@@ -65,3 +65,7 @@ The white-ink composition, smaller grammatical labels and Noto Serif Light treat
 checkpointed in source commit `fc33fd4b2`. A complete document archive is retained at
 `../.checkpoints/text_one-v1-20261107.tar.gz`, relative to this document's directory.
 Extract that archive into a separate workspace to revisit it without replacing this document.
+
+- [Elastic connections](10-elastic-connections.md): multi-node threads, sliding word anchors, length and curvature forces.
+
+- [Drop caps](11-drop-caps.md): opening initials spanning authored lines, with measured anchors.

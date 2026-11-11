@@ -1,5 +1,3 @@
-import kotlin.math.*
-
 val arcScale = 0.33
 val cell = knightCellSize
 val boardW = knightBoardWidth * cell
@@ -20,7 +18,7 @@ fun shortRoute(arcs: List<List<Pair<Double, Double>>>): List<Int> {
     if (n == 0) return emptyList()
     var best = (1..n).toList()
     var bestLength = joinLength(arcs, best)
-    for (start in 1..n) for (direction in listOf(1, -1)) {
+    for (start in 1..n) for (direction in [1, -1]) {
         val route = mutableListOf(start * direction)
         val used = BooleanArray(n)
         used[start - 1] = true
@@ -29,7 +27,7 @@ fun shortRoute(arcs: List<List<Pair<Double, Double>>>): List<Int> {
             var choice = 0
             var shortest = Double.POSITIVE_INFINITY
             for (k in 1..n) if (!used[k - 1])
-                for (sign in listOf(1, -1)) {
+                for (sign in [1, -1]) {
                     val d = distance(p, entry(arcs, k * sign))
                     if (d < shortest) {
                         shortest = d

@@ -138,7 +138,7 @@ val lab = ClusterGeometryDemo(
 ).install()
 ```
 
-`ClusterGeometryDemo` is the terrain viewer. `ClusterGeometry` is the reusable builder: its inputs need not resemble terrain, use the sample's patch counts, or originate in GLSL. A Slang producer can write the same buffers. The builder's returned address can be instanced with ordinary TLAS transforms.
+[`ClusterGeometryDemo`](reference/graphics.md#clustergeometrydemo-kt-clustergeometrydemo) is the terrain viewer. `ClusterGeometry` is the reusable builder: its inputs need not resemble terrain, use the sample's patch counts, or originate in GLSL. A Slang producer can write the same buffers. The builder's returned address can be instanced with ordinary TLAS transforms.
 
 ## Builds, validation and ownership
 

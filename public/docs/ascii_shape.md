@@ -3,7 +3,7 @@
 Most ASCII art picks each character by brightness alone: a dark cell gets a space, a bright one
 `@`, and everything between comes from a ramp of characters sorted by how much ink they hold. The
 picture's tones come through but its edges do not, because a ramp cannot tell a cell lit along its
-top from one lit along its bottom. `ShapeAscii` picks characters by *where* the light falls in
+top from one lit along its bottom. [`ShapeAscii`](reference/visualization.md#shapeascii-kt-shapeascii) picks characters by *where* the light falls in
 each cell as well, following Alex Harri's essay
 [ASCII characters are not pixels](https://alexharri.com/blog/ascii-rendering), so a circle's rim
 comes out as `_`, `/`, `'` and `[` running along the curve.
@@ -35,7 +35,7 @@ showAscii(
 ```
 
 `ShapeAscii()` rasterises the printable ASCII characters in a monospaced font once; keep it in a
-`val` and call `convert(img, cols)` as often as you like. `convert` reads bright pixels as ink,
+`val` and call [`convert(img, cols)`](reference/visualization.md#shapeascii-kt--shapeascii--convert) as often as you like. `convert` reads bright pixels as ink,
 the right way round for light characters on a dark panel; pass `invert = true` for a dark drawing
 on white. `shape = false` gives the brightness ramp. `showAscii` draws each result in the font it
 was matched against, side by side. The result is an `AsciiFrame`: `frame.text()` gives it as
@@ -419,9 +419,9 @@ layout(location = 0) out vec4 outColor;
 // The six sampling circles, in cell units: two columns of three, the right one a little higher.
 // The glyph vectors were measured with these circles, so change them together.
 const vec2 CENTRES[6] = vec2[6](
-    vec2(0.28, 0.20), vec2(0.72, 0.13),
-    vec2(0.28, 0.53), vec2(0.72, 0.47),
-    vec2(0.28, 0.87), vec2(0.72, 0.80)
+vec2(0.28, 0.20), vec2(0.72, 0.13),
+vec2(0.28, 0.53), vec2(0.72, 0.47),
+vec2(0.28, 0.87), vec2(0.72, 0.80)
 );
 // The circles' radius, as a share of the cell's width.
 const float RADIUS = 0.24;

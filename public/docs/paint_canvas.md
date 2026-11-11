@@ -1,6 +1,6 @@
 # Paint and pencil from FLines
 
-`PaintCanvas` turns any [FLine](fline_examples.md) into a brushstroke of simulated oil paint, a
+[`PaintCanvas`](reference/graphics.md#paintcanvas-kt-paintcanvas) turns any [FLine](fline_examples.md) into a brushstroke of simulated oil paint, a
 pencil line, hatching, a stippled area or a hand-drawn outline. The
 simulation is the `paint` crate from [claude-paint](https://github.com/aliceisjustplaying/claude-paint),
 by alice ([@aliceisjustplaying](https://github.com/aliceisjustplaying)), MIT licensed. It models
@@ -44,7 +44,7 @@ A few things in that box apply everywhere on this page:
 - **One stroke per subpath.** Each `moveTo` starts a new movement of the hand. The brush is not
   reloaded between subpaths, so a line with many pieces uses up its paint the way a real brush would.
 - **Colours** are `rgb(...)` values, the same sRGB colours as everywhere else in Field.
-- **`png()`** renders the canvas and encodes it, and `display` shows the bytes as an image. Its
+- **[`png()`](reference/graphics.md#paintcanvas-kt--paintcanvas--png)** renders the canvas and encodes it, and `display` shows the bytes as an image. Its
   `relief` argument (0.6 by default) lights the thickness of the paint from the upper left, which is
   what makes the bristle ridges visible.
 
@@ -65,7 +65,7 @@ display("main", canvas.png())
 ```
 
 `width` is the brush's width at full pressure, in canvas units. A brush gets wider when pressed
-harder, so `stroke(..., pressure = 0.3..0.9)` gives a stroke that starts thin and swells.
+harder, so [`stroke(..., pressure = 0.3..0.9)`](reference/graphics.md#paintcanvas-kt--paintcanvas--stroke) gives a stroke that starts thin and swells.
 `point = 1.0` gives a round or rigger brush a fine tip. Pressed lightly, only the tip touches, and
 the mark draws down to a point as the brush lifts.
 
@@ -417,7 +417,7 @@ display("main", canvas.png())
 
 A brush keeps what it picks up. Stroked through wet paint, it carries some of that colour into its
 next stroke, and `load` mixes new paint into what is left unless `wipe` takes it out first. To come
-back to the same brush later, keep it: a `PaintToolbox` holds brushes, knives, rags and pencils by
+back to the same brush later, keep it: a [`PaintToolbox`](reference/graphics.md#painttoolbox-kt-painttoolbox) holds brushes, knives, rags and pencils by
 name.
 
 ```diffstatic {data-lang=kotlin}
@@ -512,7 +512,7 @@ Looking at it, and keeping it:
   in mm³.
 - `copy()` is an independent copy, wet paint included, for trying something out.
   `saveState(path)` writes the whole canvas to a file and `PaintCanvas.load(path)` carries on from
-  it. `save(path)` writes a PNG.
+  it. [`save(path)`](reference/graphics.md#painttoolbox-kt--painttoolbox--save) writes a PNG.
 
 A canvas and its brushes hold native memory. It is freed when they are garbage-collected, or straight
 away with `close()` (both are `AutoCloseable`, so `use { }` works).
@@ -536,7 +536,8 @@ fun paintOn(ground: PaintGround): PaintCanvas {
 fun cell(label: String, png: ByteArray) =
     "<figure style='margin:0'><img width='300' src='data:image/png;base64,${java.util.Base64.getEncoder().encodeToString(png)}'/>" +
         "<figcaption style='font:12px monospace;color:#ccc'>$label</figcaption></figure>"
-fun grid(cells: List<String>) = "<div style='display:grid;grid-template-columns:repeat(3,300px);gap:10px'>${cells.joinToString("")}</div>"
+fun grid(cells: List<String>) =
+    "<div style='display:grid;grid-template-columns:repeat(3,300px);gap:10px'>${cells.joinToString("")}</div>"
 
 display("grounds", grid(PaintGround.entries.map { cell(it.name, paintOn(it).png()) }))
 
@@ -582,3 +583,10 @@ gestures of the hand, [Drawing with FLines](fline_examples.md), [Colors](colors_
 [Drawn Strokes Become Paint](chain_drawn_paint.md), which paints strokes drawn on the drawing
 layer with the pen's pressure, and [AI4 paints](ai4_painting.md), where the AI chat paints on this
 canvas.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`PaintCanvas.brush`](reference/graphics.md#paintcanvas-kt--paintcanvas--brush)
+- [`PaintToolbox.brush`](reference/graphics.md#painttoolbox-kt--painttoolbox--brush)

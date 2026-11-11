@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Lloyd vs e-means
@@ -80,9 +80,100 @@ showPlaneGrid(
 )
 ```
 
-## 2. e-means revival
+## 2. k-means tree of centroid paths
 
-<!-- field-box id="kmeans_revival" index="1" -->
+<!-- field-box id="kmeans_tree" index="1" -->
+
+### Narrative
+
+From `code`
+
+1 000 points scattered over a square, clustered into n/2, then those centroids into n/4, ... down to one.
+
+```edn [field-box id="kmeans_tree" role="properties"]
+{"id" "kmeans_tree" "index" 1 "name" "k-means tree of centroid paths" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "k-means tree of centroid paths" "_tombstone" false "frame" #afield/rect [80.0 2320.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kmeans_tree_code_.kt" "lines" 15 "characters" 797 "sha256" "738a35c55fb9d655802459aaf2a479907fa4ff4437b5b6cb2052c37ed71b6642"}]}
+```
+
+```kotlin [field-property box="kmeans_tree" name="code" path="kmeans_tree_code_.kt"]
+// 1 000 points scattered over a square, clustered into n/2, then those centroids into n/4, ... down to one.
+val rng = java.util.Random(40)
+val points = List(1_000) { vec(rng.nextDouble() * 10, rng.nextDouble() * 10) }
+val options = KMeansOptions(epochs = 4, randomSeed = 7L, stepScale = 0.3, closeOnMean = false)
+val halves = vec2KMeansTree(points, shrink = 2.0, options = options)
+val thirds = vec2KMeansTree(points, shrink = 3.0, options = options)
+
+showPlaneGrid(
+    "shrink = 2\n${halves.levels.joinToString(" → ") { "${it.result.k}" }}" to halves.toFLines(leafSize = 0.8),
+    "shrink = 3\n${thirds.levels.joinToString(" → ") { "${it.result.k}" }}" to thirds.toFLines(leafSize = 0.8),
+    columns = 2,
+    cellWidth = 420,
+    cellHeight = 420,
+    window = Rect(-0.4, -0.4, 10.8, 10.8),
+)
+```
+
+## 3. Centroid trails on an epoch slider
+
+<!-- field-box id="kmeans_epoch_slider" index="2" -->
+
+### Narrative
+
+From `code`
+
+The centroid-trails cloud, on a slider: drag through the epochs and watch Lloyd crawl while e-means jumps.
+
+```edn [field-box id="kmeans_epoch_slider" role="properties"]
+{"id" "kmeans_epoch_slider" "index" 2 "name" "Centroid trails on an epoch slider" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Centroid trails on an epoch slider" "_tombstone" false "frame" #afield/rect [80.0 1200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kmeans_epoch_slider_code_.kt" "lines" 42 "characters" 1934 "sha256" "551be1684200d96ec9ccd4137db27f31b9b254a47f6cae6a60a13f18ccbbb1e7"}]}
+```
+
+```kotlin [field-property box="kmeans_epoch_slider" name="code" path="kmeans_epoch_slider_code_.kt"]
+// The centroid-trails cloud, on a slider: drag through the epochs and watch Lloyd crawl while e-means jumps.
+val rng = java.util.Random(12)
+val centres = List(30) { vec(rng.nextDouble() * 10, rng.nextDouble() * 10) }
+val points =
+    List(12_000) { i ->
+        val c = i % 30
+        vec(centres[c].x + rng.nextGaussian() * 0.25, centres[c].y + rng.nextGaussian() * 0.25)
+    }
+val seeds = KMeansOptions(seeding = KMeansSeeding.RANDOM, randomSeed = 2L, recordCentroids = true)
+val lloyd = vec2KMeans(points, 30, seeds.copy(algorithm = KMeansAlgorithm.LLOYD, epochs = 25))
+val emeans = vec2KMeans(points, 30, seeds.copy(epochs = 3))
+val cloud =
+    pointCloudFLine(points.filterIndexed { i, _ -> i % 16 == 0 }, color = vec(0.55, 0.65, 0.78, 0.35), pointSize = 0.8)
+
+// The trails up to epoch e, and the centroids at e; a run that has finished stays where it ended.
+fun upTo(r: KMeansResult<Vec2>, e: Int): List<FLine> {
+    val last = minOf(e, r.centroidHistory.size - 1)
+    val trails =
+        (0 until r.k).map { c ->
+            polylineFrom(r.centroidHistory.take(last + 1).map { it[c] }).also {
+                it.color = vec(1.0, 0.85, 0.45, 0.9)
+                it.thickness = 1.2
+            }
+        }
+    return listOf(cloud) +
+        trails +
+        pointCloudFLine(r.centroidHistory[last], color = vec(1.0, 1.0, 1.0, 0.95), pointSize = 2.2)
+}
+
+fun show(e: Int) = showPlaneGrid(
+    "Lloyd, epoch ${minOf(e, lloyd.epochs)} of ${lloyd.epochs}\nMSE %.4f"
+        .format(lloyd.mseHistory[minOf(e, lloyd.epochs)]) to upTo(lloyd, e),
+    "e-means, epoch ${minOf(e, emeans.epochs)} of ${emeans.epochs}\nMSE %.4f"
+        .format(emeans.mseHistory[minOf(e, emeans.epochs)]) to upTo(emeans, e),
+    columns = 2,
+    cellWidth = 420,
+    cellHeight = 420,
+    window = Rect(-0.8, -0.8, 11.6, 11.6),
+)
+slider("epoch", min = 0.0, max = 25.0, step = 1.0, initialValue = 1.0) { show(it.toInt()) }
+displayOpen("controls")
+show(1)
+```
+
+## 4. e-means revival
+
+<!-- field-box id="kmeans_revival" index="3" -->
 
 ### Narrative
 
@@ -91,7 +182,7 @@ From `code`
 40 blobs of 400 points, and 12 strays on a circle far outside them.
 
 ```edn [field-box id="kmeans_revival" role="properties"]
-{"id" "kmeans_revival" "index" 1 "name" "e-means revival" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "e-means revival" "_tombstone" false "frame" #afield/rect [80.0 640.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kmeans_revival_code_.kt" "lines" 40 "characters" 1589 "sha256" "7b471e5096c8147dd2d52c7ac8c3ec4a53b19e310160166d58fc7b1ac793f026"}]}
+{"id" "kmeans_revival" "index" 3 "name" "e-means revival" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "e-means revival" "_tombstone" false "frame" #afield/rect [80.0 640.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kmeans_revival_code_.kt" "lines" 40 "characters" 1630 "sha256" "8f08f8365c68aeba8e8b36e6922c7fed8f2bf1a54701bcb45ffdc1e36b37ddbe"}]}
 ```
 
 ```kotlin [field-property box="kmeans_revival" name="code" path="kmeans_revival_code_.kt"]
@@ -110,8 +201,8 @@ val points = buildList {
 }
 val window = Rect(-4.6, -4.6, 19.2, 19.2)
 
-// k-means++ seeds favour far points, so several land on strays. Revival is off by default in 2-D.
-val options = KMeansOptions(epochs = 3, randomSeed = 5L)
+// Plain k-means++ seeds favour far points, so several land on strays. Revival is off by default in 2-D.
+val options = KMeansOptions(epochs = 3, seeding = KMeansSeeding.PLUS_PLUS, randomSeed = 5L)
 val off = vec2KMeans(points, 40, options.copy(reviveThreshold = 0.0))
 val on = vec2KMeans(points, 40, options.copy(reviveThreshold = 0.1))
 fun dead(r: KMeansResult<Vec2>) = r.clusterSizes.count { it < 10 }

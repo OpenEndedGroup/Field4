@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T22:27:36.223Z",
+  "capturedAt": "2026-11-11T15:43:24.669Z",
   "documentName": "audio_ai_speech_embeddings",
   "outputs": [
     {
@@ -9,8 +9,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 458,
-      "height": 348,
+      "width": 1056,
+      "height": 133,
       "path": "outputs/0.html"
     },
     {

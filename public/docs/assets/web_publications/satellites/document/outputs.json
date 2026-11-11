@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-11T16:19:04.597Z",
+  "documentName": "satellites",
+  "outputs": [
+    {
+      "uid": "satellite-catalogue",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 1600,
+      "height": 982,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

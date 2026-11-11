@@ -105,9 +105,8 @@ def _reference_source_roots() -> tuple[str, ...]:
     agent was made to commit regenerated pages was decided by whether it touched a ``.md``, not by
     whether it changed the API.
 
-    The same argument, and nearly the same sentence, is already written above
-    :func:`_macro_producer`: keeping a second hand-written path list is how ``stdlib/shaders.kt``
-    escaped that guard. One list, read from the thing that owns it.
+    Keeping a second hand-written path list is how ``stdlib/shaders.kt`` once escaped the
+    completion-corpus guard. One list, read from the thing that owns it.
 
     Deliberately *not* derived: the generator's ``EXCLUDE_PREFIXES``. Selecting an excluded file
     over-runs one gate, which costs time; failing to select an included one is the defect. The
@@ -214,62 +213,19 @@ def _compiled_transcript(path: str) -> bool:
 
 
 def _completion_input(path: str) -> bool:
-    return (
-        # Authored transcripts regenerate the starting-point boxes harvested below. Select
-        # both generators up front, before those generated changes exist in the diff.
-        _compiled_transcript(path)
-        or _under(path, "public/docs/assets/agent_transcripts")
-        or _under(path, "templates")
-        or _under(path, "tools/completion-corpus/boxes")
-        or _under(path, "src/jvmMain/kotlin/afield/runtime/macros")
-        or path
-        in {
-            "src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt",
-            "src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpusHarvest.kt",
-            "src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface.kt",
-            "src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface2.kt",
-            "src/jvmMain/kotlin/afield/runtime/kotlin/KotlinScriptEngine.kt",
-            "src/jvmMain/kotlin/afield/graphics/shader/shaders.kt",
-        }
-        or _macro_producer(path)
-    )
+    """Whether a landing must re-harvest ``tools/completion-corpus/boxes``.
 
-
-_MACRO_REGISTRATION = re.compile(
-    r"(?:MacroRegistry\s*\.\s*)?callRewrite(?:WithContext)?\s*\["
-)
-
-
-@functools.lru_cache(maxsize=None)
-def _macro_producer(path: str) -> bool:
-    """Whether ``path`` registers code that changes completion-corpus expansion.
-
-    The corpus runs snippets through Field's real macro expansion. Its producers are therefore
-    the Kotlin sources that register into ``callRewrite`` / ``callRewriteWithContext``; keeping a
-    second hand-written path list is exactly how ``stdlib/shaders.kt`` escaped the guard. Read both
-    the working tree and HEAD so additions, edits, and deletions all select the producer's guard.
+    Only when the harvester or its committed output changes. A transcript, template, macro or
+    compiler change also moves the harvest, but those were most landings, and the harvest cost
+    each of them one to three minutes (ten on 2026-11-11, on a loaded machine) for fixtures that
+    feed only ``jvmTest``, which no landing runs. The ``completion-corpus`` routine
+    (``routines/completion-corpus/``) re-harvests ``main`` nightly and lands the refresh before
+    nightly CI's ``docsGates`` checks it, so the corpus trails the transcripts by at most a day.
     """
-    if not (_under(path, "src/jvmMain/kotlin") and path.endswith(".kt")):
-        return False
-    repo = Path(__file__).resolve().parents[1]
-    texts: list[str] = []
-    working = repo / path
-    if working.is_file():
-        try:
-            texts.append(working.read_text())
-        except OSError:
-            pass
-    previous = subprocess.run(
-        ["git", "show", f"HEAD:{path}"],
-        cwd=repo,
-        check=False,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        text=True,
-    )
-    if previous.returncode == 0:
-        texts.append(previous.stdout)
-    return any(_MACRO_REGISTRATION.search(text) for text in texts)
+    return _under(path, "tools/completion-corpus/boxes") or path in {
+        "src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt",
+        "src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpusHarvest.kt",
+    }
 
 
 _CITATION_TEST_SOURCES = {

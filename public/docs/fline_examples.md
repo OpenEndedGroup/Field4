@@ -1373,16 +1373,37 @@ Negative continuity pulls the green `tcbTo` curve toward a corner at each point;
 
 ```diffstatic {data-lang=kotlin}
 :::static
-fun clothoidSplineFrom(points: List<Vec3>, closed: Boolean = false, samplesPerSegment: Int = 48): FLine
-fun clothoidSplineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = false, samplesPerSegment: Int = 48): FLine
+fun clothoidSplineFrom(
+    points: List<Vec2>,
+    z: Number = 0,
+    closed: Boolean = false,
+    samplesPerSegment: Int = 48,
+    corners: Collection<Int> = emptyList(),
+    startDirection: Vec2? = null,
+    endDirection: Vec2? = null,
+): FLine
+fun clothoidSplineFrom(
+    points: List<Vec3>,
+    closed: Boolean = false,
+    samplesPerSegment: Int = 48,
+    corners: Collection<Int> = emptyList(),
+    startDirection: Vec3? = null,
+    endDirection: Vec3? = null,
+    planeNormal: Vec3? = vec(0, 0, 1),
+): FLine
 
 fun FLine.curvatureComb(scale: Double = 2000.0, samples: Int = 120): FLine
-fun FLine.curvaturePlot(width: Double = 400.0, height: Double = 120.0, samples: Int = 300, maxCurvature: Double? = null): FLine
+fun FLine.curvaturePlot(
+    width: Double = 400.0,
+    height: Double = 120.0,
+    samples: Int = 300,
+    maxCurvature: Double? = null,
+): FLine
 ```
 
 Each piece between two points is an [Euler spiral](https://en.wikipedia.org/wiki/Euler_spiral), the curve whose curvature changes at a constant rate along its length. An Euler spiral is fixed by the direction it leaves one point and the direction it arrives at the next, so the spline only has to choose one direction per point. It turns each point's direction until the curvature arriving at the point equals the curvature leaving it. An open spline starts and ends with an arc of a circle.
 
-Two tools make the difference visible on any line. `curvatureComb` draws a tooth along the normal at each sample, as long as the curvature there, and joins the tips; the teeth swap sides where the line changes from turning left to turning right. `curvaturePlot` draws curvature against distance along the line, in a box `width` by `height` with zero on the middle row.
+Two tools make the difference visible on any line. `curvatureComb` draws a tooth along the normal at each sample, as long as the curvature there, and joins the tips; the teeth swap sides where the line changes from turning left to turning right. `curvaturePlot` draws curvature against distance along the line, in a box `width` by `height` with zero on the middle row. A spline from `clothoidSplineFrom` carries its exact curvature, and both tools read that, still correctly after you scale, rotate, move or mirror the line.
 
 The comparison below puts both splines through the same eight points. The plots underneath share one vertical scale. The cubic's curvature (orange) steps at every point; the clothoid's (blue) is a chain of straight runs that meet without steps, and its comb tips run on without a break.
 
@@ -1470,6 +1491,108 @@ val dots = polylineFrom(knots).apply {
 
 lines(fill, comb, shape, dots, w = 420.0, h = 320.0, fitToSize = true)
 ```
+
+#### Corners: `corners = ...`
+
+Letters and outlines mix smooth stretches with corners. Pass the indices of the corner points as `corners` and the curve may change direction there; each stretch between corners is solved on its own, starting and ending in an arc of a circle, and two corners next to each other are joined by a straight line. A closed shape with corners starts at its first corner.
+
+The "D" below is one call: points 0 and 1 are the corners at the bottom and top of the straight back, and the bowl runs smoothly through the other three. The "S" is open, with no corners, and its ends are left free.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/clothoid_spline_corners.png" embed=true}
+:::static
+val d = clothoidSplineFrom(
+    [vec(40, 280), vec(40, 40), vec(130, 50), vec(190, 160), vec(130, 270)],
+    closed = true,
+    corners = [0, 1],
+).apply {
+    thickness = 4.0
+    color = vec(0.5, 0.8, 1.0, 1.0)
+}
+val s = clothoidSplineFrom(
+    [vec(370, 70), vec(300, 40), vec(250, 100), vec(320, 160), vec(370, 230), vec(310, 280), vec(240, 250)],
+).apply {
+    thickness = 4.0
+    color = vec(1.0, 0.7, 0.3, 1.0)
+}
+val dComb = d.curvatureComb(scale = 800.0, samples = 160).apply { color = vec(1.0, 1.0, 1.0, 0.35) }
+val sComb = s.curvatureComb(scale = 800.0, samples = 160).apply { color = vec(1.0, 1.0, 1.0, 0.35) }
+
+lines(dComb, sComb, d, s, w = 420.0, h = 320.0, fitToSize = true)
+```
+
+#### Fixed end directions: `startDirection`, `endDirection`
+
+An open spline normally ends in an arc, leaving the direction at its ends to the solve. To join the spline to something else without a kink, give the direction it should leave its first point (`startDirection`) or arrive at its last (`endDirection`). The rest of the spline stays curvature-continuous; at a fixed end the direction matches, but the curvature need not.
+
+Here a spline picks up the white straight line coming in from the left and hands over to the one going down to the right; `endDirection` is the direction of that second line, from its first point to its last.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/clothoid_spline_end_directions.png" embed=true}
+:::static
+val knots = [vec(100, 200), vec(180, 80), vec(260, 60), vec(330, 140)]
+
+val free = clothoidSplineFrom(knots).apply {
+    thickness = 1.5
+    color = vec(1.0, 0.7, 0.3, 0.9)
+}
+val joined = clothoidSplineFrom(knots, startDirection = vec(1, 0), endDirection = vec(70, 140)).apply {
+    thickness = 3.0
+    color = vec(0.5, 0.8, 1.0, 1.0)
+}
+
+// the straight lines the spline joins
+val leadIn = polylineFrom([vec(20, 200), vec(100, 200)]).apply { thickness = 3.0 }
+val leadOut = polylineFrom([vec(330, 140), vec(400, 280)]).apply { thickness = 3.0 }
+
+lines(leadIn, leadOut, free, joined, w = 420.0, h = 320.0, fitToSize = true)
+```
+
+The thin orange spline through the same points, with free ends, meets both straights at an angle.
+
+#### Heights and other planes: 3D points, `planeNormal`
+
+Give the points different Z values and the spline climbs between them. It is solved in the XY plane, where it is exactly the flat spline through the same points, and each point's height is carried along a smooth curve against distance travelled. The result passes through every point and its curvature stays continuous in 3D, so points on a helix give back that helix.
+
+The picture views a winding, climbing path from above and to the side. The grey line on the ground is the flat spline through the same points; the orange posts are the points' heights.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/clothoid_spline_heights.png" embed=true}
+:::static
+// a path that climbs as it winds: x and y on the ground, z up
+val knots = [
+    vec(0, 0, 0), vec(140, -30, 10), vec(240, 40, 30), vec(220, 150, 50),
+    vec(100, 180, 60), vec(20, 120, 75), vec(70, 60, 95), vec(170, 80, 120),
+]
+val path = clothoidSplineFrom(knots, samplesPerSegment = 64)
+// its shadow on the ground is the flat spline through the same points
+val shadow = clothoidSplineFrom(knots.map { vec(it.x, it.y, 0) }, samplesPerSegment = 64)
+
+// a slanted view from above and to the side: x across, y going back, z up
+fun view(p: Vec3) = vec(p.x + 0.3 * p.y, 240 - 0.6 * p.y - p.z, 0)
+
+val drawnPath = path.transform { view(it) }.apply {
+    thickness = 3.0
+    color = vec(0.5, 0.8, 1.0, 1.0)
+}
+val drawnShadow = shadow.transform { view(it) }.apply {
+    thickness = 1.5
+    color = vec(1.0, 1.0, 1.0, 0.35)
+}
+val posts = knots.map { k ->
+    polylineFrom([view(vec(k.x, k.y, 0)), view(k)]).apply { color = vec(1.0, 0.7, 0.3, 0.8) }
+}
+
+val curves: List<FLine> = [drawnShadow, drawnPath]
+lines(posts + curves, w = 420.0, h = 320.0, fitToSize = true)
+```
+
+A 3D `startDirection` or `endDirection` sets the climb at that end as well as the heading: `vec(1, 0, 1)` leaves along X rising at 45 degrees.
+
+`planeNormal` picks a different plane to solve in, with heights measured along that normal: `vec(0, 1, 0)` treats Y as up. `planeNormal = null` fits the plane to the points, which suits a nearly flat curve drawn in space, such as a stroke from a VR controller; seven points on a tilted circle give back that circle. `curvatureComb` and `curvaturePlot` read the line from above (plan curvature in XY), so they are for splines solved in the XY plane.
+
+#### Many points
+
+The time the solve takes grows in proportion to the number of points, so a spline through hundreds of them, such as a traced outline or a stroke read back from the drawing layer, is cheap: a closed spline through 600 points takes about a fifth of a second, and through 5,000 a second or two. Most of that is fitting the pieces, so a lower `samplesPerSegment` saves drawing time but not solving time.
+
+The solve can fail where the curve has to double back on itself between neighbouring points, as in a path that runs out and back along nearly the same line, or a zigzag with tall, narrow teeth. That stretch is then drawn as `cubicSplineFrom` would draw it, and the comb and plot measure it from its shape. A corner at each sharp turn usually fixes it.
 
 This spline is the simplest member of Aurimas Gasiulis's [S9 spline](https://gasiulis.name/new-spline) family, the one where both of a piece's weights are 1. S9 also lets each piece sharpen its turn near its ends, with weights computed from the end directions; that is not implemented here. The Euler-spiral spline itself is Raph Levien's, from his thesis [*From Spiral to Spline*](https://levien.com/phd/thesis.pdf) (2009); Henry Moreton's [*Minimum Curvature Variation Curves*](https://www2.eecs.berkeley.edu/Pubs/TechRpts/1993/CSD-93-732.pdf) (1992) is the background on why curves like this look fair.
 
@@ -2349,6 +2472,163 @@ val right = r.apply {
 lines(base, left, right, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
+### Variable-width strokes: the swept-circle envelope
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation | Behavior |
+| --- | --- |
+| `fun FLine.bySweptCircleEnveloping(radius: ParameterFunction, samples: Int = 200, sampler: FLineSampler? = null, flatness: Double = 0.25): FLineRibbon` | The outline of a circle of radius `radius(t)` swept along the line, with round ends. `left` and `right` are the two flanks; `shell` is the filled outline. |
+| `fun sweptCircleStroke(knots: List<Vec3>, samplesPerSegment: Int = 24, flatness: Double = 0.25): FLineRibbon` | The same outline for pen samples: each knot is `(x, y, r)`, joined by cubic Béziers in all three, with tangents from the neighbouring knots. |
+| `fun sweptCircleBeziers(knots: List<Vec3>): List<List<Vec3>>` | The Bézier spans `sweptCircleStroke` uses, four `(x, y, r)` control points each. |
+| `fun sweptCircleDegenerateSpans(knots: List<Vec3>): List<ClosedFloatingPointRange<Double>>` | Where the radius changes faster than the centre moves, so there is no envelope. Span `i` covers knots `i` to `i + 1`. |
+| `fun FLine.outlineDistanceTo(other: FLine, flatness: Double = 0.1): Double` | The largest distance between two outlines' boundaries, for checking one against another. |
+
+</div>
+
+A pen stroke is a list of samples: where the pen was and how hard it pressed. Give each sample a radius, `r = w · p^1.5` to `w · p^2` for pressure `p`, and the stroke is the shape a circle of that radius sweeps as it travels through the samples. There are three ways to fill in between samples, from cheap to smooth: a *pill* per span (a fixed radius, the span's average), a *trapezoid pill* per span (the radius changes linearly, and the flanks are the straight lines touching both end circles), and a *swept spline*, where `x`, `y` and `r` are all joined by one cubic Bézier through every sample. Here is a quick hand-written "o" of fourteen samples, drawn all three ways:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/swept_circle_o.png" wait="1.0" capture="box" open-outputs="true" embed=true name="fline-swept-o"}
+:::static
+// A quick hand-written "o": fourteen pen samples, pressure rising and falling.
+val w = 20.0
+val knots = (0..13).map { i ->
+    val a = 2.2 + 2 * PI * i / 12.5
+    val p = 0.3 + 0.7 * sin(PI * i / 13)
+    val r = w * p.pow(1.75)
+    vec(90 + 70 * cos(a) * (1 + 0.04 * i), 100 + 80 * sin(a), r)
+}
+
+fun ink(f: FLine, dx: Double) = (f + vec(dx, 0.0)).apply {
+    filled = true
+    stroked = false
+    color = vec(0.95, 0.95, 0.9, 1.0)
+}
+
+// pill: each span at its mean radius
+val pills = knots.zipWithNext { a, b ->
+    val m = (a.z + b.z) / 2
+    sweptCircleStroke([vec(a.x, a.y, m), vec(b.x, b.y, m)]).shell
+}
+// trapezoid pill: each span straight, radius linear from end to end
+val trapezoids = knots.zipWithNext { a, b -> sweptCircleStroke([a, b]).shell }
+// swept spline: cubic Béziers in (x, y, r) through every sample
+val spline = sweptCircleStroke(knots).shell
+
+val samples = knots.map { k ->
+    fline { moveTo(k.x, k.y); lineTo(k.x + 0.01, k.y) }.apply {
+        pointed = true
+        pointSize = 1.5
+        color = vec(1.0, 0.4, 0.3, 1.0)
+    }
+}
+
+lines(
+    pills.map { ink(it, 0.0) } + trapezoids.map { ink(it, 220.0) } + ink(spline, 440.0) +
+        samples + samples.map { it + vec(220.0, 0.0) } + samples.map { it + vec(440.0, 0.0) },
+    w = 900.0, h = 300.0, fitToSize = true
+)
+```
+
+The pills show a knuckle at every sample. The trapezoid pills are smooth in width but still a polygon in direction. The spline is smooth in both.
+
+The flanks are not where you might guess. A circle that is growing as it moves touches its neighbour behind the centre, not straight out to the side: the outline is the centre offset by `r` along the normal tilted back by an angle `θ` with `sin θ = r′ / |P′|`, the rate the radius grows over the speed of the centre. `byVariableRibboning` offsets along the untilted normal and cuts the ends square. Below, one cubic swells from a radius of 2 to about 17 and back: the faint circles are the circles being swept, blue is `bySweptCircleEnveloping`, orange is `byVariableRibboning` with the same width:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/swept_circle_cubic.png" wait="1.0" capture="box" open-outputs="true" embed=true name="fline-swept-cubic"}
+:::static
+// One cubic whose radius swells from 2 to about 17 and back to 2: the envelope against the plain ribbon.
+val centre = fline {
+    moveTo(0, 0)
+    cubicTo(40, 45, 80, -30, 120, 20)
+}
+val radius = parameterFromLambda { t, _ -> 2f + 26f * t * t * (1f - t) * 4f }
+
+val swept = centre.bySweptCircleEnveloping(radius, samples = 200, flatness = 0.02)
+val ribbon = centre.byVariableRibboning(parameterFromLambda { t, p -> 2f * radius.evaluate(t, p) }, samples = 200)
+// reference: the union of 1500 discs along the line
+val reference = centre.byJtsVariableBuffering(numSamples = 1500, distance = { t -> radius.evaluate(t.toFloat(), vec(0f, 0f, 0f)).toDouble() })
+
+println("swept envelope: %.3f from the union of discs".format(swept.shell.outlineDistanceTo(reference)))
+println("byVariableRibboning: %.3f".format(ribbon.outlineDistanceTo(reference)))
+
+val circles = (0..16).map { i ->
+    val s = centre.sampleSeries(17)[i]
+    val r = radius.evaluate(s.t, s.point).toDouble()
+    fline { circle(s.point.x.toDouble(), s.point.y.toDouble(), r) }.apply {
+        thickness = 0.8
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
+}
+lines(
+    circles + listOf(
+        centre.copy().apply { color = vec(1.0, 1.0, 1.0, 0.5) },
+        ribbon.copy().apply { color = vec(1.0, 0.45, 0.3, 1.0); thickness = 1.5 },
+        swept.left.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
+        swept.right.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
+    ),
+    w = 900.0, h = 380.0, fitToSize = true
+)
+```
+
+Against the union of 1500 circles along the line, the envelope is within 0.22 units (most of that is the reference itself, which draws each circle as a polygon); the ribbon is 2 units out, the radius at its square ends, and it falls inside the circles on the flank where the radius grows fastest.
+
+Where `|r′| ≥ |P′|`, the pen pressing harder faster than it moves, a circle contains its neighbours and there is no envelope at all. On each Bézier span `|P′|² − r′²` is a polynomial of degree four, and `sweptCircleDegenerateSpans` finds its roots. `left` and `right` stop there, and `shell` fills the span with the circles themselves, so it stays one filled shape. Here the pen nearly stops at the middle sample and presses down:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/swept_circle_degenerate.png" wait="1.0" capture="box" open-outputs="true" embed=true name="fline-swept-degenerate"}
+:::static
+// The pen nearly stops and presses: around the middle sample the radius changes faster than
+// the centre moves, and the circle swallows itself.
+val knots = listOf(
+    vec(0.0, 0.0, 4.0), vec(60.0, 20.0, 7.0), vec(66.0, 22.0, 30.0),
+    vec(72.0, 20.0, 8.0), vec(150.0, 0.0, 4.0)
+)
+val spans = sweptCircleDegenerateSpans(knots)
+println("no envelope on " + spans.joinToString { "%.4f..%.4f".format(it.start, it.endInclusive) })
+
+val outline = sweptCircleStroke(knots)
+val beziers = sweptCircleBeziers(knots)
+val path = fline {
+    moveTo(beziers[0][0].x, beziers[0][0].y)
+    for (b in beziers) cubicTo(b[1].x, b[1].y, b[2].x, b[2].y, b[3].x, b[3].y)
+}
+lines(
+    outline.shell.copy().apply { filled = true; stroked = false; color = vec(0.95, 0.95, 0.9, 0.35) },
+    outline.left.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
+    outline.right.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
+    path.copy().apply { color = vec(1.0, 1.0, 1.0, 0.6) },
+    w = 900.0, h = 320.0, fitToSize = true
+)
+```
+
+A stroke from the [drawing layer](drawing_and_notation.md) carries its pressure. `Mark.points` and `Mark.pressures` give the pen samples, so the stroke can be outlined at the width it was drawn. This box writes the stroke itself, with `pressure =`, so that the page has one to read; a stroke drawn with a tablet pen reads the same way:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/swept_circle_notation.png" wait="1.0" capture="box" open-outputs="true" embed=true name="fline-swept-notation"}
+:::static
+// Write a pressure stroke onto the drawing layer, then read it back as pen samples.
+notation {
+    stroke(
+        (0..40).map { i -> vec(-300.0 + 9.0 * i, 420.0 + 40.0 * sin(i / 5.0)) },
+        name = "ink",
+        pressure = { 0.15 + 0.85 * sin(PI * it).pow(0.7) },
+    )
+}
+val mark = notation.named("ink")!!
+val knots = mark.points.zip(mark.pressures) { p, pressure -> vec(p.x, p.y, 12.0 * pressure.pow(1.75)) }
+val outline = sweptCircleStroke(knots)
+println("${knots.size} pen samples, ${sweptCircleDegenerateSpans(knots).size} spans without an envelope")
+lines(outline.shell.copy().apply { filled = true; stroked = false; color = vec(0.95, 0.95, 0.9, 1.0) }, w = 900.0, h = 260.0, fitToSize = true)
+```
+
+??? aside "Where this method comes from"
+    The construction follows Luther Tychonievich's post
+    [Variable-width Bézier strokes](https://luthert.web.illinois.edu/blog/posts/775.html)
+    (CC BY-NC-SA): the pressure-to-radius curve, Béziers in `(x, y, r)` with neighbour tangents, the
+    tilted normal and the case where the circle swallows itself. The code and figures here are
+    Field's own. `SweptCircleEnvelopeTest` pins the analytic cases: a constant radius equals
+    `byBidirectionalOffsetting`, a linear radius on a straight line lies on the two tangent lines,
+    the degenerate span ends are roots of `|P′|² − r′²`, and the 0.025 against 2.0 outline error
+    against a finely drawn union of circles.
+
 ### Dashing
 
 Breaks a path into multiple `FLine`s representing dash segments. Both lengths are measured *along
@@ -2903,22 +3183,20 @@ This is the basic pattern: two contours in, one reusable interpolator out, then 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/flineinterpolator_rotation_matching.png" embed=true}
 :::static
-fun asymmetricStroke() =
-    polylineFrom(
-            [
-                vec(-150, 20),
-                vec(-80, -110),
-                vec(-10, -30),
-                vec(35, 120),
-                vec(90, 40),
-                vec(150, -60),
-            ],
-        )
-        .apply {
-            filled = false
-            stroked = true
-            thickness = 2.0
-        }
+fun asymmetricStroke() = polylineFrom(
+    [
+        vec(-150, 20),
+        vec(-80, -110),
+        vec(-10, -30),
+        vec(35, 120),
+        vec(90, 40),
+        vec(150, -60),
+    ],
+).apply {
+    filled = false
+    stroked = true
+    thickness = 2.0
+}
 
 val start = asymmetricStroke()
 val end =
@@ -2939,15 +3217,16 @@ val aligned = start.interpolatorTo(
 )
 
 // Nine in-between shapes, t = 0.1 ... 0.9, shaded from the start's blue to the end's orange.
-fun sweep(interpolator: FLineInterpolator) = (1..9).map { i ->
-    val t = i / 10f
-    interpolator.lineAt(t).apply {
-        filled = false
-        stroked = true
-        thickness = 1.6
-        color = vec(0.45 + 0.55 * t, 0.75 - 0.2 * t, 1.0 - 0.75 * t, 0.85)
+fun sweep(interpolator: FLineInterpolator) =
+    (1..9).map { i ->
+        val t = i / 10f
+        interpolator.lineAt(t).apply {
+            filled = false
+            stroked = true
+            thickness = 1.6
+            color = vec(0.45 + 0.55 * t, 0.75 - 0.2 * t, 1.0 - 0.75 * t, 0.85)
+        }
     }
-}
 
 fun ghost(line: FLine, tint: Vec4) = line.copy().apply {
     filled = false
@@ -3886,6 +4165,7 @@ Next on the Tour, [Drawing and Notation](drawing_and_notation.md) draws by hand 
   that each piece of `clothoidSplineFrom` is made from, [biarcs](#biarcs-biarcto-and-biarcbetween)
   for smooth joins out of circular arcs, and [curvature, tangents and normals](#curvature-tangentsnormals)
   and [measuring along a line](#measuring-along-a-line) for reading a curve back.
+- [Variable-width strokes](#variable-width-strokes-the-swept-circle-envelope) above outline a pen stroke from its pressure; open the [variable_width_strokes starting point](agent_transcripts.md#variable_width_strokes) to try them.
 - Open the [clothoid_spline starting point](agent_transcripts.md#clothoid_spline) to try the
   spline boxes in your own document.
 - Source: [`FLineGeometry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt)
@@ -3894,6 +4174,12 @@ Next on the Tour, [Drawing and Notation](drawing_and_notation.md) draws by hand 
 
 Open questions and next builds:
 
+- **A true 3D member of the family.** In space this spline is a flat Euler-spiral spline with heights
+  carried along it, so it bends in one plane and only climbs out of it. A 3D curve whose curvature
+  and torsion both change linearly with arc length would bend in any direction; each piece would be
+  fixed by its two end directions in 3D (the 3D version of the per-piece fit), and the knot solve
+  would match the curvature vector rather than one number. [`eulerSpiralBetween3D`](#euler-spiral-in-3d-clothoid-ish-connection)
+  is the two-point version with a ramp, the place such a piece would start.
 - **The S9 weights.** Each S9 piece has two weights; below 1 they sharpen the turn near the piece's
   ends, and S9 computes them from the end directions. A piece family with that behaviour
   (curvature against arc length with two weights, reducing to the Euler spiral at 1) and a weight
@@ -3903,8 +4189,8 @@ Open questions and next builds:
   from its two end directions, but as a cubic with a closed-form solve. Drawn through the same
   knots with combs, it would show what curvature continuity costs and buys.
 - **Draggable knots.** Read the knots from the drawing layer through `notation` and redraw on
-  `notation.onChange`, so the spline follows the points as they move.
-- **Mixed corners and smooth points.** Fonts mix corners with smooth points. A per-knot flag that
-  splits the solve at a corner would let one call draw a whole glyph outline.
-- **Larger knot counts.** The solve uses a dense linear system; past a few dozen knots a banded
-  (cyclic tridiagonal) solve is the right shape.
+  `notation.onChange`, so the spline follows the points as they move. Corners could come from the
+  drawing too, as points marked differently.
+- **Curvature-matched ends.** A fixed end direction matches the direction of what it joins but not
+  its curvature. Fixing the end curvature as well (zero, to run on smoothly from a straight line)
+  takes one more unknown at that end, such as an extra piece whose length the solve chooses.

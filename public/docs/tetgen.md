@@ -6,7 +6,7 @@ can use for those calculations.
 
 [Manifold](manifold.md) gives Field closed surfaces to start from. [TetGen](https://wias-berlin.de/software/tetgen/)
 takes the closed triangle surface and fills the volume it bounds with tetrahedra whose faces match
-that surface exactly. In a box, `Tetgen.tetrahedralize` takes a closed `TriMesh` and returns a
+that surface exactly. In a box, [`Tetgen.tetrahedralize`](reference/simulation.md#tetgen-kt--tetgen--tetrahedralize) takes a closed `TriMesh` and returns a
 `TetMesh`. This one fills an L-shaped part built with Manifold:
 
 ```diffstatic {data-lang=kotlin}
@@ -169,7 +169,9 @@ import java.util.concurrent.TimeUnit
 // A 1 m cantilever, 0.1 m square, clamped at x = 0 and bending under its own weight.
 val beam = SimulationBox("beam", SimulationBounds(0.0, -0.05, -0.05, 1.0, 0.05, 0.05))
 val parameters = StructuralParameters(
-    youngModulus = 2.0e9, poissonRatio = 0.3, density = 1000.0,
+    youngModulus = 2.0e9,
+    poissonRatio = 0.3,
+    density = 1000.0,
     gravity = Triple(0.0, 0.0, -9.81),
     clamp = SimulationBounds(-1e-9, -1.0, -1.0, 1e-9, 1.0, 1.0),
 )
@@ -177,21 +179,28 @@ val parameters = StructuralParameters(
 val analytic = 1000.0 * 9.81 * 0.01 / (8 * 2.0e9 * 0.1.pow(4) / 12.0)
 :::fold solve at order 1 and order 2, then draw both
 val config = Kratos.probeAny().get(900, TimeUnit.SECONDS).config
-val views = [1, 2].map { order ->
-    val mesh = Tetgen.tetrahedralize(beam.surface(), targetEdgeLength = 0.06, order = order)
-    KratosSession.openMeshAsync(mesh, config).get(600, TimeUnit.SECONDS).use { session ->
-        val result = session.solveAsync(parameters).get(600, TimeUnit.SECONDS)!!
-        val displacement = result.named("displacement")
-        val tip = (0 until result.domain.nodeCount).filter { result.domain.positions[3 * it] > 1.0 - 1e-9 }
-        val reached = tip.sumOf { abs(displacement[3 * it + 2]) } / tip.size / analytic
-        val name = if (order == 1) "linear" else "quadratic"
-        println("$name  ${mesh.nodesPerCell}-node, ${mesh.cellCount} elements: tip at ${(100 * reached).f1}% of beam theory")
-        "${mesh.nodesPerCell}-node · ${mesh.cellCount} elements · ${(100 * reached).f1}% of theory" to
-            result.deformedMesh(displacementScale = 500.0, field = "displacement")
+val views =
+    [1, 2].map { order ->
+        val mesh = Tetgen.tetrahedralize(beam.surface(), targetEdgeLength = 0.06, order = order)
+        KratosSession.openMeshAsync(mesh, config).get(600, TimeUnit.SECONDS).use { session ->
+            val result = session.solveAsync(parameters).get(600, TimeUnit.SECONDS)!!
+            val displacement = result.named("displacement")
+            val tip = (0 until result.domain.nodeCount).filter { result.domain.positions[3 * it] > 1.0 - 1e-9 }
+            val reached = tip.sumOf { abs(displacement[3 * it + 2]) } / tip.size / analytic
+            val name = if (order == 1) "linear" else "quadratic"
+            println(
+                "$name  ${mesh.nodesPerCell}-node, ${mesh.cellCount} elements: tip at ${(100 * reached).f1}% of beam theory",
+            )
+            "${mesh.nodesPerCell}-node · ${mesh.cellCount} elements · ${(100 * reached).f1}% of theory" to
+                result.deformedMesh(displacementScale = 500.0, field = "displacement")
+        }
     }
-}
-showMeshGrid(*views.toTypedArray(), columns = 2, cellWidth = 420,
-    view = MeshView(yawDegrees = 0.0, pitchDegrees = -90.0, distance = 2.2, width = 420, height = 260))
+showMeshGrid(
+    *views.toTypedArray(),
+    columns = 2,
+    cellWidth = 420,
+    view = MeshView(yawDegrees = 0.0, pitchDegrees = -90.0, distance = 2.2, width = 420, height = 260),
+)
 ```
 
 ### Asking for 10-node elements
@@ -326,11 +335,10 @@ println(
 
 showChart(
     Chart(
-            title = "radius ratio over ${mesh.cellCount} elements",
-            xLabel = "3 r_in / r_circ",
-            yLabel = "elements",
-        )
-        .histogram("elements", quality.toList(), bins = 40),
+        title = "radius ratio over ${mesh.cellCount} elements",
+        xLabel = "3 r_in / r_circ",
+        yLabel = "elements",
+    ).histogram("elements", quality.toList(), bins = 40),
 )
 showMesh(
     slivers.boundary(),

@@ -1,0 +1,1030 @@
+{
+  "changes": [
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "links": [
+        {
+          "symbol": "KeyCamera",
+          "target": "reference/graphics.md#keycamera-kt-keycamera",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "SkyView",
+          "target": "reference/graphics.md#atmosphere-kt-skyview",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/ai4_chat_archive.md",
+      "links": [
+        {
+          "symbol": "ChatArchive.tree",
+          "target": "reference/ai4.md#chatarchive-kt--chatarchive--tree",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "ChatArchive.chats",
+          "target": "reference/ai4.md#chatarchive-kt--chatarchive--chats",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "ChatLogViews.outline",
+          "target": "reference/ai4.md#chatlogviews-kt--chatlogviews--outline",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/alife_examples.md",
+      "links": [
+        {
+          "symbol": "PhysarumParams",
+          "target": "reference/alife.md#alife-agents-kt-physarumparams",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "ShaderPhysarumSystem",
+          "target": "reference/alife.md#alife-physarum-gpu-kt-shaderphysarumsystem",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "ShaderPhysarumSystem.installInto",
+          "target": "reference/alife.md#alife-physarum-gpu-kt--shaderphysarumsystem--installinto",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "TrailFollowers",
+          "target": "reference/alife.md#alife-trail-followers-kt-trailfollowers",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "TrailFollowers.installInto",
+          "target": "reference/alife.md#alife-trail-followers-kt--trailfollowers--installinto",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "LifeRuleGenome",
+          "target": "reference/alife.md#alife-evolve-kt-liferulegenome",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "GrainSetStats",
+          "target": "reference/alife.md#alife-grains-kt-grainsetstats",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "PopulationSearch.evolve",
+          "target": "reference/search.md#populationsearch-kt--populationsearch--evolve",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "PopulationSearch",
+          "target": "reference/search.md#populationsearch-kt-populationsearch",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/ascii_shape.md",
+      "links": [
+        {
+          "symbol": "ShapeAscii",
+          "target": "reference/visualization.md#shapeascii-kt-shapeascii",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "ShapeAscii.convert",
+          "target": "reference/visualization.md#shapeascii-kt--shapeascii--convert",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/audio_curves.md",
+      "links": [
+        {
+          "symbol": "AudioCurveSettings",
+          "target": "reference/audio.md#audiocurves-kt-audiocurvesettings",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "AudioCurveFrame",
+          "target": "reference/audio.md#audiocurvefile-kt-audiocurveframe",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/braitenberg_vehicles.md",
+      "links": [
+        {
+          "symbol": "NeuronParams",
+          "target": "reference/simulation.md#alife-vehicles-kt-neuronparams",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "Light",
+          "target": "reference/simulation.md#alife-vehicles-kt-light",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "VehicleParams",
+          "target": "reference/simulation.md#alife-vehicles-kt-vehicleparams",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "VehicleCanvas",
+          "target": "reference/simulation.md#alife-vehicles-kt-vehiclecanvas",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "LightVisits",
+          "target": "reference/simulation.md#alife-vehicles-kt-lightvisits",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "LightVisits.observe",
+          "target": "reference/simulation.md#alife-vehicles-kt--lightvisits--observe",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "VehicleCanvas.record",
+          "target": "reference/simulation.md#alife-vehicles-kt--vehiclecanvas--record",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "LightVisits.mean",
+          "target": "reference/simulation.md#alife-vehicles-kt--lightvisits--mean",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "VehicleCanvas.image",
+          "target": "reference/simulation.md#alife-vehicles-kt--vehiclecanvas--image",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "PopulationSearch.evolve",
+          "target": "reference/search.md#populationsearch-kt--populationsearch--evolve",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "PopulationSearch",
+          "target": "reference/search.md#populationsearch-kt-populationsearch",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/chain_ca_sound.md",
+      "links": [
+        {
+          "symbol": "CaSoundDocs.centreColumnBar",
+          "target": "reference/patterns.md#casounddocs-kt--casounddocs--centrecolumnbar",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/chain_flow_islands.md",
+      "links": [
+        {
+          "symbol": "FlowMatchOptions",
+          "target": "reference/machine-learning.md#flowmatching-kt-flowmatchoptions",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/chain_scene_to_light.md",
+      "links": [
+        {
+          "symbol": "RectSLImager",
+          "target": "reference/languages.md#rectslimg-kt-rectslimager",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "RectSLImager.frame",
+          "target": "reference/languages.md#rectslimg-kt--rectslimager--frame",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/chart.md",
+      "links": [
+        {
+          "symbol": "Chart",
+          "target": "reference/visualization.md#charts-kt-chart",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/computed_ray_geometry.md",
+      "links": [
+        {
+          "symbol": "ClusterGeometryDemo",
+          "target": "reference/graphics.md#clustergeometrydemo-kt-clustergeometrydemo",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/davinci_resolve.md",
+      "links": [
+        {
+          "symbol": "ResolvePlayheadLink",
+          "target": "reference/networking.md#resolveplayheadlink-kt-resolveplayheadlink",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "Resolve.on",
+          "target": "reference/networking.md#resolve-kt--resolve--on",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "ResolvePlayheadLink.offer",
+          "target": "reference/networking.md#resolveplayheadlink-kt--resolveplayheadlink--offer",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "ResolvePlayheadLink.close",
+          "target": "reference/networking.md#resolveplayheadlink-kt--resolveplayheadlink--close",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/debruijn_tilings.md",
+      "links": [
+        {
+          "symbol": "DeBruijnLine",
+          "target": "reference/graphics.md#debruijntiling-kt-debruijnline",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "MeshView",
+          "target": "reference/graphics.md#mesh-field-kt-meshview",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "ModalDrum",
+          "target": "reference/audio.md#modaldrum-kt-modaldrum",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/direct_lighting.md",
+      "links": [
+        {
+          "symbol": "DirectLightingDemo",
+          "target": "reference/graphics.md#directlightingdemo-kt-directlightingdemo",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/distributions.md",
+      "links": [
+        {
+          "symbol": "PulseOsc",
+          "target": "reference/synthesis.md#oscillators-kt-pulseosc",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "ADSR",
+          "target": "reference/synthesis.md#envelopes-kt-adsr",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "SineOsc",
+          "target": "reference/synthesis.md#oscillators-kt-sineosc",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "WavFloatArrayWriter.encodeMono16",
+          "target": "reference/audio.md#wavfloatarraywriter-kt--wavfloatarraywriter--encodemono16",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "Progressive",
+          "target": "reference/math.md#queries-kt-progressive",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "GpuMonteCarlo",
+          "target": "reference/math.md#distglsl-kt-gpumontecarlo",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "GpuMonteCarlo.arm",
+          "target": "reference/math.md#distglsl-kt--gpumontecarlo--arm",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "GpuMonteCarlo.stillWaiting",
+          "target": "reference/math.md#distglsl-kt--gpumontecarlo--stillwaiting",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "GpuMonteCarlo.result",
+          "target": "reference/math.md#distglsl-kt--gpumontecarlo--result",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "GpuMonteCarlo.close",
+          "target": "reference/math.md#distglsl-kt--gpumontecarlo--close",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/dmx_lighting.md",
+      "links": [
+        {
+          "symbol": "Patch.stripAlong",
+          "target": "reference/lighting.md#patch-kt--patch--stripalong",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "Patch.animate",
+          "target": "reference/lighting.md#patch-kt--patch--animate",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/eigendrum.md",
+      "links": [
+        {
+          "symbol": "ModalDrum",
+          "target": "reference/audio.md#modaldrum-kt-modaldrum",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/euclid_elements.md",
+      "links": [
+        {
+          "symbol": "Segment2",
+          "target": "reference/graphics.md#euclid-kt-segment2",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "Elements.solutions",
+          "target": "reference/graphics.md#elements-kt--elements--solutions",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "Elements.prop46",
+          "target": "reference/graphics.md#elements-kt--elements--prop46",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/explainer_cameras.md",
+      "links": [
+        {
+          "symbol": "SensorCamera",
+          "target": "reference/simulation.md#cameraoptics-kt-sensorcamera",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/explainer_lights.md",
+      "links": [
+        {
+          "symbol": "PointLight",
+          "target": "reference/graphics.md#lighting-kt-pointlight",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/fabricate_renderer.md",
+      "links": [
+        {
+          "symbol": "SkyEnvironment",
+          "target": "reference/graphics.md#skyenvironment-kt-skyenvironment",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "StandardRenderer.build",
+          "target": "reference/renderers.md#standardrenderer-kt--standardrenderer--build",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "StandardRenderer.Config",
+          "target": "reference/renderers.md#standardrenderer-kt--standardrenderer--config",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "SkyEnvironment.drive",
+          "target": "reference/graphics.md#skyenvironment-kt--skyenvironment--drive",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "SkyEnvironment.setSun",
+          "target": "reference/graphics.md#skyenvironment-kt--skyenvironment--setsun",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/field_vr_ide.md",
+      "links": [
+        {
+          "symbol": "FieldVrWorkspace",
+          "target": "reference/imaging.md#fieldvrworkspace-kt-fieldvrworkspace",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "SpatialWavPlayer",
+          "target": "reference/audio.md#spatialwavplayer-kt-spatialwavplayer",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "SpatialWavPlayer.openWiVRn",
+          "target": "reference/audio.md#spatialwavplayer-kt--spatialwavplayer--openwivrn",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "SpatialWavPlayer.place",
+          "target": "reference/audio.md#spatialwavplayer-kt--spatialwavplayer--place",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "SpatialWavPlayer.play",
+          "target": "reference/audio.md#spatialwavplayer-kt--spatialwavplayer--play",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "SpatialWavPlayer.close",
+          "target": "reference/audio.md#spatialwavplayer-kt--spatialwavplayer--close",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/keybindings.md",
+      "links": [
+        {
+          "symbol": "UserKeybindingsManager.watchFile",
+          "target": "reference/workspace.md#userkeybindingsmanager-kt--userkeybindingsmanager--watchfile",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/keyframer_examples.md",
+      "links": [
+        {
+          "symbol": "KeyframeScope",
+          "target": "reference/graphics.md#keyframer-kt-keyframescope",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "KeyframeScope.capture",
+          "target": "reference/graphics.md#keyframer-kt--keyframescope--capture",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "KeyframeScope.Key",
+          "target": "reference/graphics.md#keyframer-kt--keyframescope--key",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "CodeBlendOptions",
+          "target": "reference/graphics.md#keyframecodeblend-kt-codeblendoptions",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "KeyframeScope.interpolate",
+          "target": "reference/graphics.md#keyframer-kt--keyframescope--interpolate",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "KeyframeScope.codeBlendPlans",
+          "target": "reference/graphics.md#keyframer-kt--keyframescope--codeblendplans",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/knight_tour_workshop.md",
+      "links": [
+        {
+          "symbol": "LeaperBoard",
+          "target": "reference/graphics.md#uncrossedleapers-kt-leaperboard",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/marf.md",
+      "links": [
+        {
+          "symbol": "MarfCurve.Exp",
+          "target": "reference/patterns.md#marf-kt--marfcurve--exp",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "MarfCurve.Osc",
+          "target": "reference/patterns.md#marf-kt--marfcurve--osc",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/motion_recordings.md",
+      "links": [
+        {
+          "symbol": "MotionRecording",
+          "target": "reference/animation.md#motionrecording-kt-motionrecording",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "ARDY.openAsync",
+          "target": "reference/animation.md#motionprocess-kt--ardy--openasync",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/orca.md",
+      "links": [
+        {
+          "symbol": "PatSynthBank",
+          "target": "reference/patterns.md#patsynth-kt-patsynthbank",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "OrcaSoundDocs.render",
+          "target": "reference/patterns.md#orcasounddocs-kt--orcasounddocs--render",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "OrcaSoundDocs",
+          "target": "reference/patterns.md#orcasounddocs-kt-orcasounddocs",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/paint_canvas.md",
+      "links": [
+        {
+          "symbol": "PaintCanvas",
+          "target": "reference/graphics.md#paintcanvas-kt-paintcanvas",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "PaintToolbox",
+          "target": "reference/graphics.md#painttoolbox-kt-painttoolbox",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "PaintCanvas.brush",
+          "target": "reference/graphics.md#paintcanvas-kt--paintcanvas--brush",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "PaintToolbox.brush",
+          "target": "reference/graphics.md#painttoolbox-kt--painttoolbox--brush",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "PaintCanvas.stroke",
+          "target": "reference/graphics.md#paintcanvas-kt--paintcanvas--stroke",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "PaintToolbox.save",
+          "target": "reference/graphics.md#painttoolbox-kt--painttoolbox--save",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "PaintCanvas.png",
+          "target": "reference/graphics.md#paintcanvas-kt--paintcanvas--png",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/particle_lenia.md",
+      "links": [
+        {
+          "symbol": "ParticleLeniaParams",
+          "target": "reference/alife.md#alife-particle-lenia-kt-particleleniaparams",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "LeniaMapCell",
+          "target": "reference/alife.md#alife-particle-lenia-motion-kt-leniamapcell",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "PopulationSearch.evolve",
+          "target": "reference/search.md#populationsearch-kt--populationsearch--evolve",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "PopulationSearch",
+          "target": "reference/search.md#populationsearch-kt-populationsearch",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/path_tracing.md",
+      "links": [
+        {
+          "symbol": "PathTraceScene",
+          "target": "reference/renderers.md#pathtracescene-kt-pathtracescene",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "PathTraceScene.material",
+          "target": "reference/renderers.md#pathtracescene-kt--pathtracescene--material",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "PathTraceScene.sphere",
+          "target": "reference/renderers.md#pathtracescene-kt--pathtracescene--sphere",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "PathTraceDemo.install",
+          "target": "reference/renderers.md#pathtracegpusmoke-kt--pathtracedemo--install",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "PathTraceDemo",
+          "target": "reference/renderers.md#pathtracegpusmoke-kt-pathtracedemo",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/pattern_language.md",
+      "links": [
+        {
+          "symbol": "PatArc",
+          "target": "reference/patterns.md#tidalpatterns-kt-patarc",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/puppet_browser.md",
+      "links": [
+        {
+          "symbol": "MultiviewStereoTarget",
+          "target": "reference/graphics.md#multiviewstereotarget-kt-multiviewstereotarget",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "PuppetBrowserVrPanel",
+          "target": "reference/imaging.md#puppetbrowservrpanel-kt-puppetbrowservrpanel",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "PuppetBrowserVrPanel.build",
+          "target": "reference/imaging.md#puppetbrowservrpanel-kt--puppetbrowservrpanel--build",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "PuppetBrowserVrPanel.enableDesktopInteraction",
+          "target": "reference/imaging.md#puppetbrowservrpanel-kt--puppetbrowservrpanel--enabledesktopinteraction",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/pure_data.md",
+      "links": [
+        {
+          "symbol": "SawOsc",
+          "target": "reference/synthesis.md#oscillators-kt-sawosc",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "PdInstance",
+          "target": "reference/synthesis.md#pdinstance-kt-pdinstance",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/ray_tracing_examples.md",
+      "links": [
+        {
+          "symbol": "RayTracingModule",
+          "target": "reference/graphics.md#raytracingmodule-kt-raytracingmodule",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "Parameters",
+          "target": "reference/graphics.md#module-kt-parameters",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "RayTracingDispatch",
+          "target": "reference/graphics.md#raytracingmodule-kt-raytracingdispatch",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/rectsl_inverse_animation.md",
+      "links": [
+        {
+          "symbol": "BinaryDoubleTrack",
+          "target": "reference/languages.md#rectsl-kt-binarydoubletrack",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "LinearScalarTrack",
+          "target": "reference/languages.md#rectsl-kt-linearscalartrack",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "TcbKey",
+          "target": "reference/languages.md#rectsl-kt-tcbkey",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "FreeParamTrack",
+          "target": "reference/languages.md#rectsl-kt-freeparamtrack",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "TrackFitTarget",
+          "target": "reference/languages.md#rectslfit-kt-trackfittarget",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/sentence_diagrams.md",
+      "links": [
+        {
+          "symbol": "SentenceDiagram",
+          "target": "reference/graphics.md#sentencediagram-kt-sentencediagram",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "Sentences.example",
+          "target": "reference/graphics.md#sentence-kt--sentences--example",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "Heights.Flat",
+          "target": "reference/graphics.md#sentencediagram-kt--heights--flat",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "Heights.ByTreeDepth",
+          "target": "reference/graphics.md#sentencediagram-kt--heights--bytreedepth",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "KelloggConfig",
+          "target": "reference/graphics.md#kellogg-kt-kelloggconfig",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "Java2DMetrics",
+          "target": "reference/graphics.md#layout-kt-java2dmetrics",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "Typefaces.named",
+          "target": "reference/graphics.md#typography-kt--typefaces--named",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "SentenceTexts.load",
+          "target": "reference/graphics.md#dependencylength-kt--sentencetexts--load",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "SentenceTexts.all",
+          "target": "reference/graphics.md#dependencylength-kt--sentencetexts--all",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/sound.md",
+      "links": [
+        {
+          "symbol": "Piano.play",
+          "target": "reference/synthesis.md#piano-kt--piano--play",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "SineOsc",
+          "target": "reference/synthesis.md#oscillators-kt-sineosc",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "PianoVoicing",
+          "target": "reference/synthesis.md#pianomodel-kt-pianovoicing",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "PianoMic",
+          "target": "reference/synthesis.md#pianopreparation-kt-pianomic",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "Piano.noteOn",
+          "target": "reference/synthesis.md#piano-kt--piano--noteon",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "Piano.sostenutoEvent",
+          "target": "reference/synthesis.md#piano-kt--piano--sostenutoevent",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "Piano.noteOff",
+          "target": "reference/synthesis.md#piano-kt--piano--noteoff",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/spatial_geometry_examples.md",
+      "links": [
+        {
+          "symbol": "KMeansOptions",
+          "target": "reference/data.md#clustering-kt-kmeansoptions",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/statistics_examples.md",
+      "links": [
+        {
+          "symbol": "SummaryStatsBuffer",
+          "target": "reference/math.md#stats-kt-summarystatsbuffer",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "SummaryStatsBuffer.addAll",
+          "target": "reference/math.md#stats-kt--summarystatsbuffer--addall",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "SummaryStatsBuffer.add",
+          "target": "reference/math.md#stats-kt--summarystatsbuffer--add",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "SummaryStatsBuffer.snapshot",
+          "target": "reference/math.md#stats-kt--summarystatsbuffer--snapshot",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "SummaryStatsBuffer.summaryHtml",
+          "target": "reference/math.md#stats-kt--summarystatsbuffer--summaryhtml",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/studies.md",
+      "links": [
+        {
+          "symbol": "StudyBuildNotice",
+          "target": "reference/workspace.md#studybuilds-kt-studybuildnotice",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "StudyBuildView",
+          "target": "reference/workspace.md#studybuilds-kt-studybuildview",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/syphon.md",
+      "links": [
+        {
+          "symbol": "Syphon.describe",
+          "target": "reference/graphics.md#syphon-kt--syphon--describe",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/tetgen.md",
+      "links": [
+        {
+          "symbol": "Tetgen.tetrahedralize",
+          "target": "reference/simulation.md#tetgen-kt--tetgen--tetrahedralize",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/visualizers.md",
+      "links": [
+        {
+          "symbol": "GltfSupport.loadModel",
+          "target": "reference/graphics.md#simplegltfsupport-kt--gltfsupport--loadmodel",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "AudioVisualizerOptions",
+          "target": "reference/visualization.md#audiovisualizer-kt-audiovisualizeroptions",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "GltfSupport",
+          "target": "reference/graphics.md#simplegltfsupport-kt-gltfsupport",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/growing_nca.md",
+      "links": [
+        {
+          "symbol": "WindowBrush.install",
+          "target": "reference/alife.md#growing-nca-kt--windowbrush--install",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "WindowBrush",
+          "target": "reference/alife.md#growing-nca-kt-windowbrush",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/keyframe_autosweep.md",
+      "links": [
+        {
+          "symbol": "StandardRenderer.build",
+          "target": "reference/renderers.md#standardrenderer-kt--standardrenderer--build",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "StandardRenderer",
+          "target": "reference/renderers.md#standardrenderer-kt-standardrenderer",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/pressure_membranes.md",
+      "links": [
+        {
+          "symbol": "InflationSolver.solve",
+          "target": "reference/simulation.md#solver-kt--inflationsolver--solve",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "InflationSolver",
+          "target": "reference/simulation.md#solver-kt-inflationsolver",
+          "placement": "API reference section"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/smpte_timecode.md",
+      "links": [
+        {
+          "symbol": "Chart",
+          "target": "reference/visualization.md#charts-kt-chart",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "Chart.points",
+          "target": "reference/visualization.md#charts-kt--chart--points",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "Chart.vrule",
+          "target": "reference/visualization.md#charts-kt--chart--vrule",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "Chart.toFLines",
+          "target": "reference/visualization.md#charts-kt--chart--toflines",
+          "placement": "API reference section"
+        }
+      ]
+    }
+  ],
+  "policy": "Only symbols called in the frozen changed short examples; unique real reference anchors; executable fences untouched."
+}

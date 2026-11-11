@@ -24,6 +24,6 @@ slider("una corda", 0.0, 1.0, initialValue = 0.0, channel = "soft", onUpdate = {
 slider("sostenuto", 0.0, 1.0, initialValue = 0.0, channel = "sost", onUpdate = { sost.base = it.toFloat() })
 ["at", "grams", "rubber", "rattle", "gap", "soft", "sost"].forEach { displayOpen(it) }
 val prep = PianoPreparation(21..108, position = at, mass = grams, damping = rubber, rattle = rattle, gap = gap)
-val piano = Piano(preparations = listOf(prep), unaCorda = soft, sostenuto = sost)
+val piano = Piano(preparations = [prep], unaCorda = soft, sostenuto = sost)
 piano.play(pat("<[a2,e3] [f2,c3]> [e4 a4 c5 e5]"), cycles = 32, cps = 0.8)
 audio(piano, gain = 1f)

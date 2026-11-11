@@ -345,7 +345,7 @@ val instances = [
 val tlas = AccelerationStructure(renderer, "mirror-balls-tlas").buildTopLevelNow(instances = instances)
 ```
 
-Because there are two hit groups, the module uses explicit `RayTracingGroups` instead of the single-hit-group shortcut in `Parameters`:
+Because there are two hit groups, the module uses explicit `RayTracingGroups` instead of the single-hit-group shortcut in [`Parameters`](reference/graphics.md#module-kt-parameters):
 
 ```diffstatic {data-lang=kotlin}
 val groups = RayTracingGroups(
@@ -492,3 +492,10 @@ scene. Changed instance transforms build a fresh small TLAS while retaining the 
 old GPU resources remain alive until earlier frames finish. This example does not deform geometry.
 
 For geometry generated entirely by your own GPU compute shader, see [Computed ray geometry](computed_ray_geometry.md).
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`RayTracingModule`](reference/graphics.md#raytracingmodule-kt-raytracingmodule)
+- [`RayTracingDispatch`](reference/graphics.md#raytracingmodule-kt-raytracingdispatch)

@@ -544,7 +544,7 @@ The original six, and what each failure usually means:
 |---|---|
 | `checkCodebaseReference` | a `src/` change moved a generated page under `public/docs/reference/`; regenerate with `./gradlew generateCodebaseReference` **in the same commit** |
 | `checkKDocAttachment` | a KDoc block no longer sits directly above a declaration, so its prose is dropped or published under the wrong symbol |
-| `checkCompletionCorpusFixtures` | a document/box was added or changed without re-harvesting; regenerate with `AFIELD_HARVEST_WRITE=1` |
+| `checkCompletionCorpusFixtures` | the 04:15 `completion-corpus` routine did not land a refresh (check its `CORPUS:` line in `~/.afield/routines/completion-corpus/`), or something landed after it; landings no longer re-harvest for transcripts. Regenerate with `AFIELD_HARVEST_WRITE=1` |
 | `checkAgentTranscripts` / `checkAgentTranscriptIndex` | a transcript changed without the committed bundle being materialized |
 | `checkPythonTools` | the `tools/test_*.py` suites; runs through `uv run --project . --frozen` since 2026-08-21 |
 | `checkExpectedTestFailures` | the accepted-reds register disagrees with reality, in **either** direction (see Step 5) |

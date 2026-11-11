@@ -18,11 +18,11 @@ frames {
         val food = physarum.settings.food
         val decay = physarum.trail.decayFactors().x
         val network = TransportNetwork.extract(trail, food, threshold = 0.25 / (1.0 - decay))
-        val scores = listOf(
+        val scores = [
             network.score("physarum"),
             TransportNetwork.mst(food).score("MST"),
             TransportNetwork.delaunay(food).score("Delaunay"),
-        )
+        ]
         display("scores", "<pre>" + NetworkScore.table(scores) + "</pre>")
         // flipped, so it reads the same way up as the drawing and the window
         showImg(
