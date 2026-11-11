@@ -177,6 +177,8 @@ guess:
 5. The completion-corpus fixtures, `AFIELD_HARVEST_WRITE=1 ./gradlew
    checkCompletionCorpusFixtures`. This is the one nobody expects: the fixtures are harvested *from*
    the transcript corpus, so a new box with a preamble is a new fixture file and a changed manifest.
+   Since 2026-11-11 you need not do it in the same change: the landing no longer re-harvests for a
+   transcript, and the nightly `completion-corpus` routine catches the corpus up before nightly CI.
 6. Possibly `DocumentedApiEvaluationTest.COMPILE_ONLY_REMAINDER`. A published page can teach an API
    that no transcript reached, in which case that API is invisible to the census; promoting a demo
    into the corpus makes it visible **for the first time**, as "compiled but never run", and the
