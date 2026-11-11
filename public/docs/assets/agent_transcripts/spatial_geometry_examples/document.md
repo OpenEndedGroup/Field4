@@ -592,22 +592,22 @@ showPlaneGrid(
 
 From `code`
 
-There is no k-means in Field, on purpose. Every algorithm here returns either a hierarchy
-or a centre that is meaningful for the data it summarises: a medoid is one of your own
-samples, a median is coordinate-wise robust. A k-means centroid is neither.
+Each algorithm here returns either a hierarchy or a centre that is meaningful for the
+data it summarises: a medoid is one of your own samples, a median is coordinate-wise
+robust. A k-means centroid (vec2KMeans) is neither, which is why it is not used here.
 
 Well-separated blobs make all four look identical, so this cloud has exactly ONE thing
 wrong with it: three tight blobs of 28, and a single 85th point nine units out.
 
 ```edn [field-box id="spatial_clustering" role="properties"]
-{"id" "spatial_clustering" "index" 6 "name" "Partitioning the cloud instead of the plane" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Partitioning the cloud instead of the plane" "_tombstone" false "frame" #afield/rect [550.0 920.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_clustering_code_.kt" "lines" 88 "characters" 4305 "sha256" "689cf0fba392f1353df269b4271f4822c1ebe9008cce7148f9040d5e355eb909"}]}
+{"id" "spatial_clustering" "index" 6 "name" "Partitioning the cloud instead of the plane" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Partitioning the cloud instead of the plane" "_tombstone" false "frame" #afield/rect [550.0 920.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_clustering_code_.kt" "lines" 88 "characters" 4309 "sha256" "902f4c2687e0b1ffec56291b7facdf9bde01cf5be19faf35187a846641b66418"}]}
 ```
 
 ```kotlin [field-property box="spatial_clustering" name="code" path="spatial_clustering_code_.kt"]
 /*
-There is no k-means in Field, on purpose. Every algorithm here returns either a hierarchy
-or a centre that is meaningful for the data it summarises: a medoid is one of your own
-samples, a median is coordinate-wise robust. A k-means centroid is neither.
+Each algorithm here returns either a hierarchy or a centre that is meaningful for the
+data it summarises: a medoid is one of your own samples, a median is coordinate-wise
+robust. A k-means centroid (vec2KMeans) is neither, which is why it is not used here.
 
 Well-separated blobs make all four look identical, so this cloud has exactly ONE thing
 wrong with it: three tight blobs of 28, and a single 85th point nine units out.

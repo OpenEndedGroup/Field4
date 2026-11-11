@@ -4960,3 +4960,309 @@ fun FLine.byTransformingTo(start: Vec2, end: Vec2): FLine {
         vec(start.x + (dx * c - dy * s) * scale, start.y + (dx * s + dy * c) * scale, p.z)
     }
 }
+
+// ==================== G2 CLOTHOID SPLINE ====================
+
+/** One fitted segment of [clothoidSplineFrom]: start heading, start curvature, curvature slope, length. */
+private class ClothoidPiece(val theta: Double, val kappa: Double, val kappaPrime: Double, val length: Double) {
+    val endKappa get() = kappa + kappaPrime * length
+}
+
+private fun fitClothoidPiece(ax: Double, ay: Double, bx: Double, by: Double, thetaA: Double, thetaB: Double): ClothoidPiece? {
+    val dx = bx - ax
+    val dy = by - ay
+    val chord = atan2(dy, dx)
+    val phi0 = wrapToPi(thetaA - chord)
+    val phi1 = wrapToPi(thetaB - chord)
+    val fit = fitClothoidG1(dx, dy, phi0, phi1, 60) ?: return null
+    return ClothoidPiece(thetaA, fit.first, fit.second, fit.third)
+}
+
+/**
+ * Tangent angles at the knots such that neighbouring clothoid segments meet with equal curvature.
+ * Open curves add "the end segments are circular arcs" (κ' = 0) as the two end conditions.
+ * Returns the fitted pieces, or null when Newton fails (the caller then falls back to a cubic).
+ */
+private fun solveClothoidSpline(xs: DoubleArray, ys: DoubleArray, closed: Boolean, iterations: Int): List<ClothoidPiece>? {
+    val n = xs.size
+    val segs = if (closed) n else n - 1
+    fun nxt(i: Int) = (i + 1) % n
+
+    // Initial headings: Catmull-Rom directions, unwrapped so that consecutive headings differ by < π.
+    val theta = DoubleArray(n) { i ->
+        val p = if (closed) (i - 1 + n) % n else max(i - 1, 0)
+        val q = if (closed) nxt(i) else min(i + 1, n - 1)
+        atan2(ys[q] - ys[p], xs[q] - xs[p])
+    }
+    if (!closed && n >= 3) {
+        // reflect the neighbouring direction about the end chord, the circle-through-three-points guess
+        val c0 = atan2(ys[1] - ys[0], xs[1] - xs[0])
+        theta[0] = 2 * c0 - theta[1]
+        val c1 = atan2(ys[n - 1] - ys[n - 2], xs[n - 1] - xs[n - 2])
+        theta[n - 1] = 2 * c1 - theta[n - 2]
+    }
+    val scale = DoubleArray(segs) { hypot(xs[nxt(it)] - xs[it], ys[nxt(it)] - ys[it]) }
+
+    fun fitSeg(j: Int, th: DoubleArray) = fitClothoidPiece(xs[j], ys[j], xs[nxt(j)], ys[nxt(j)], th[j], th[nxt(j)])
+
+    fun residual(pieces: Array<ClothoidPiece?>): DoubleArray? {
+        if (pieces.any { it == null }) return null
+        val r = DoubleArray(n)
+        val knots = if (closed) 0 until n else 1 until n - 1
+        for (i in knots) {
+            val a = pieces[(i - 1 + segs) % segs]!!
+            val b = pieces[i % segs]!!
+            r[i] = (a.endKappa - b.kappa) * 0.5 * (a.length + b.length)
+        }
+        if (!closed) {
+            r[0] = pieces[0]!!.kappaPrime * pieces[0]!!.length * pieces[0]!!.length
+            val last = pieces[segs - 1]!!
+            r[n - 1] = last.kappaPrime * last.length * last.length
+        }
+        return r
+    }
+    fun norm(r: DoubleArray) = sqrt(r.sumOf { it * it })
+
+    var pieces = Array(segs) { fitSeg(it, theta) }
+    var r = residual(pieces) ?: return null
+    for (iter in 0 until iterations) {
+        if (norm(r) < 1e-9) break
+        val jac = Array(n) { DoubleArray(n) }
+        val h = 1e-6
+        for (j in 0 until n) {
+            val th = theta.copyOf()
+            th[j] += h
+            val trial = pieces.copyOf()
+            val before = if (closed) (j - 1 + segs) % segs else j - 1
+            if (before >= 0) trial[before] = fitSeg(before, th)
+            if (closed || j < segs) trial[j % segs] = fitSeg(j % segs, th)
+            val rj = residual(trial) ?: return null
+            for (i in 0 until n) jac[i][j] = (rj[i] - r[i]) / h
+        }
+        val step = solveDense(jac, DoubleArray(n) { -r[it] }) ?: return null
+        var lambda = 1.0
+        var accepted = false
+        while (lambda > 1e-4) {
+            val th = DoubleArray(n) { theta[it] + lambda * step[it] }
+            val trial = Array(segs) { fitSeg(it, th) }
+            val rt = residual(trial)
+            if (rt != null && norm(rt) < norm(r)) {
+                th.copyInto(theta); pieces = trial; r = rt; accepted = true
+                break
+            }
+            lambda *= 0.5
+        }
+        if (!accepted) break
+    }
+    // Tolerance against the shape's size: 1e-6 of a curvature-times-length is invisible.
+    if (norm(r) > 1e-6 * n) return null
+    return pieces.map { it!! }
+}
+
+/** Gaussian elimination with partial pivoting; null when singular. */
+private fun solveDense(a: Array<DoubleArray>, b: DoubleArray): DoubleArray? {
+    val n = b.size
+    val m = Array(n) { a[it].copyOf() }
+    val v = b.copyOf()
+    for (c in 0 until n) {
+        var p = c
+        for (rr in c + 1 until n) if (abs(m[rr][c]) > abs(m[p][c])) p = rr
+        if (abs(m[p][c]) < 1e-14) return null
+        val tmp = m[p]; m[p] = m[c]; m[c] = tmp
+        val tv = v[p]; v[p] = v[c]; v[c] = tv
+        for (rr in c + 1 until n) {
+            val f = m[rr][c] / m[c][c]
+            if (f == 0.0) continue
+            for (k in c until n) m[rr][k] -= f * m[c][k]
+            v[rr] -= f * v[c]
+        }
+    }
+    val x = DoubleArray(n)
+    for (rr in n - 1 downTo 0) {
+        var s = v[rr]
+        for (k in rr + 1 until n) s -= m[rr][k] * x[k]
+        x[rr] = s / m[rr][rr]
+    }
+    return x
+}
+
+/**
+ * Curvature-continuous (G2) interpolating spline through [points], built from Euler-spiral
+ * (clothoid) segments.
+ *
+ * Each segment is the clothoid fixed by its two end tangent angles; a global Newton solve turns
+ * the angle at every knot until the curvature arriving equals the curvature leaving. Curvature
+ * therefore changes linearly with arc length inside each segment and has no jumps at the knots,
+ * so a round shape reads as round: points on a circle give that circle exactly. Open curves end
+ * in circular arcs (the first and last segments have constant curvature).
+ *
+ * This is the weight-1 member of Aurimas Gasiulis's S9 family (https://gasiulis.name/new-spline);
+ * it is also Levien's Euler-spiral spline ("From Spiral to Spline", 2009). Points are taken in
+ * the XY plane; the first point's Z is kept. If the solve fails (for example a hairpin the
+ * clothoid fit cannot reach) the result falls back to [cubicSplineFrom].
+ *
+ * @param points the knots, in order
+ * @param closed join the last knot back to the first, with G2 continuity there too
+ * @param samplesPerSegment polyline points drawn per segment
+ */
+fun clothoidSplineFrom(points: List<Vec3>, closed: Boolean = false, samplesPerSegment: Int = 48): FLine {
+    val pts = points.filterIndexed { i, p -> i == 0 || Vec3(p).sub(points[i - 1]).length() > 1e-6f }
+        .let { if (closed && it.size > 1 && Vec3(it.first()).sub(it.last()).length() < 1e-6f) it.dropLast(1) else it }
+    val line = FLine()
+    if (pts.isEmpty()) return line
+    line.moveTo(pts[0])
+    if (pts.size == 2 || (pts.size < 3 && closed)) {
+        line.lineTo(pts.last()); return line
+    }
+    if (pts.size < 3) return line
+    val xs = DoubleArray(pts.size) { pts[it].x.toDouble() }
+    val ys = DoubleArray(pts.size) { pts[it].y.toDouble() }
+    val z = pts[0].z
+    val pieces = solveClothoidSpline(xs, ys, closed, 40) ?: return cubicSplineFrom(pts, closed)
+    val steps = max(samplesPerSegment, 2)
+    line.nodes.last().properties[CURVATURE_PROPERTY] = pieces[0].kappa
+    for ((j, piece) in pieces.withIndex()) {
+        val ds = piece.length / steps
+        var x = xs[j]
+        var y = ys[j]
+        for (i in 1..steps) {
+            val s0 = (i - 1) * ds
+            var cx = 0.0
+            var cy = 0.0
+            val panels = 8
+            val hh = ds / panels
+            for (k in 0..panels) {
+                val w = if (k == 0 || k == panels) 1.0 else if (k % 2 == 1) 4.0 else 2.0
+                val s = s0 + k * hh
+                val th = piece.theta + piece.kappa * s + 0.5 * piece.kappaPrime * s * s
+                cx += w * cos(th); cy += w * sin(th)
+            }
+            x += cx * hh / 3.0
+            y += cy * hh / 3.0
+            if (i == steps) {
+                val e = (j + 1) % pts.size
+                x = xs[e]; y = ys[e]
+            }
+            line.lineTo(vec(x.toFloat(), y.toFloat(), z))
+            line.nodes.last().properties[CURVATURE_PROPERTY] = piece.kappa + piece.kappaPrime * i * ds
+        }
+    }
+    if (closed) line.close()
+    return line
+}
+
+/**
+ * 2D overload of [clothoidSplineFrom], with an optional constant Z value.
+ */
+fun clothoidSplineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = false, samplesPerSegment: Int = 48): FLine =
+    clothoidSplineFrom(points.map { vec(it.x, it.y, z) }, closed, samplesPerSegment)
+
+/** Node property where [clothoidSplineFrom] records the exact signed curvature at each drawn point. */
+private const val CURVATURE_PROPERTY = "curvature"
+
+/**
+ * Points along [line], their unit normals (tangent turned left), arc length, and signed curvature.
+ *
+ * A line from [clothoidSplineFrom] carries exact curvature on its nodes and is read from them.
+ * Any other line is sampled evenly by arc length, and curvature is the circle through points a
+ * fixed distance either side, so the answer does not depend on how the line was flattened.
+ */
+private class CurvatureSamples(val points: List<Vec3>, val nx: DoubleArray, val ny: DoubleArray, val along: DoubleArray, val kappa: DoubleArray)
+
+private fun signedCurvatureSamples(line: FLine, samples: Int): CurvatureSamples {
+    val drawn = line.nodes.filter { it !is FLine.Close }
+    if (drawn.size >= 3 && drawn.all { it.properties[CURVATURE_PROPERTY] is Double }) {
+        val all = drawn.map { Vec3(it.to) }
+        val ks = drawn.map { it.properties[CURVATURE_PROPERTY] as Double }
+        val along = DoubleArray(all.size)
+        for (i in 1 until all.size) along[i] = along[i - 1] + all[i].distance(all[i - 1])
+        val pick = (0 until max(samples, 3)).map { (it.toDouble() * all.lastIndex / (max(samples, 3) - 1)).roundToInt() }.distinct()
+        val nx = DoubleArray(pick.size)
+        val ny = DoubleArray(pick.size)
+        for ((j, i) in pick.withIndex()) {
+            val o = all[max(i - 1, 0)]; val q = all[min(i + 1, all.lastIndex)]
+            val tx = (q.x - o.x).toDouble(); val ty = (q.y - o.y).toDouble()
+            val tl = max(hypot(tx, ty), 1e-12)
+            nx[j] = -ty / tl; ny[j] = tx / tl
+        }
+        return CurvatureSamples(pick.map { all[it] }, nx, ny, DoubleArray(pick.size) { along[pick[it]] }, DoubleArray(pick.size) { ks[pick[it]] })
+    }
+    val n = max(samples, 3)
+    val c = line.cursor()
+    val total = c.lengthD().toDouble()
+    val h = total / (n - 1) * 1.5
+    val pts = ArrayList<Vec3>(n)
+    val nx = DoubleArray(n); val ny = DoubleArray(n); val along = DoubleArray(n); val k = DoubleArray(n)
+    fun at(d: Double): Vec3 { c.setD(d.coerceIn(0.0, total).toFloat()); return c.position() }
+    for (i in 0 until n) {
+        val d = total * i / (n - 1)
+        val b = at(d)
+        val a = at(d - h); val e = at(d + h)
+        pts.add(b); along[i] = d
+        val tx = (e.x - a.x).toDouble(); val ty = (e.y - a.y).toDouble()
+        val tl = max(hypot(tx, ty), 1e-12)
+        nx[i] = -ty / tl; ny[i] = tx / tl
+        val abx = (b.x - a.x).toDouble(); val aby = (b.y - a.y).toDouble()
+        val bcx = (e.x - b.x).toDouble(); val bcy = (e.y - b.y).toDouble()
+        val cross = abx * bcy - aby * bcx
+        val denom = hypot(abx, aby) * hypot(bcx, bcy) * hypot(tx, ty)
+        k[i] = if (denom > 1e-18) 2 * cross / denom else 0.0
+    }
+    // the ends see a one-sided neighbourhood; copy their inside neighbour
+    k[0] = k[1]; k[n - 1] = k[n - 2]
+    return CurvatureSamples(pts, nx, ny, along, k)
+}
+
+/**
+ * A curvature comb for this line: a tooth along the normal at each sample, of length
+ * curvature × [scale], plus the line joining the tooth tips.
+ *
+ * Teeth point toward the centre of curvature, so they flip sides at an inflection; a
+ * smooth envelope means smoothly varying curvature, a step in it is a curvature jump.
+ * A line made by [clothoidSplineFrom] carries its exact curvature and is read from that
+ * (scale such a line after building it and the teeth keep the unscaled lengths). Any other line,
+ * a cubic spline or a hand-drawn stroke, is measured from its shape.
+ *
+ * @param scale tooth length per unit curvature (world units squared)
+ * @param samples teeth along the whole line
+ */
+fun FLine.curvatureComb(scale: Double = 2000.0, samples: Int = 120): FLine {
+    val cs = signedCurvatureSamples(this, samples)
+    val comb = FLine()
+    val tips = cs.points.indices.map { i ->
+        val p = cs.points[i]
+        val len = cs.kappa[i] * scale
+        vec((p.x + cs.nx[i] * len).toFloat(), (p.y + cs.ny[i] * len).toFloat(), p.z)
+    }
+    for (i in tips.indices) {
+        comb.moveTo(cs.points[i]); comb.lineTo(tips[i])
+    }
+    if (tips.size > 1) {
+        comb.moveTo(tips[0])
+        for (t in tips.drop(1)) comb.lineTo(t)
+    }
+    return comb
+}
+
+/**
+ * Curvature of this line plotted against arc length, as a new line in a [width] × [height] box
+ * whose top-left is the origin (y grows downward, zero curvature on the middle row).
+ *
+ * The vertical scale is set by the largest |curvature| unless [maxCurvature] is given; pass the
+ * same value to plots you want to compare.
+ *
+ * @param samples points along the line
+ */
+fun FLine.curvaturePlot(width: Double = 400.0, height: Double = 120.0, samples: Int = 300, maxCurvature: Double? = null): FLine {
+    val cs = signedCurvatureSamples(this, samples)
+    val k = cs.kappa
+    val total = max(cs.along.last(), 1e-12)
+    val top = maxCurvature ?: max(k.maxOf { abs(it) }, 1e-9)
+    val plot = FLine()
+    for (i in k.indices) {
+        val x = width * cs.along[i] / total
+        val y = height / 2 - (k[i] / top).coerceIn(-1.0, 1.0) * height / 2
+        if (i == 0) plot.moveTo(vec(x, y, 0.0)) else plot.lineTo(vec(x, y, 0.0))
+    }
+    return plot
+}

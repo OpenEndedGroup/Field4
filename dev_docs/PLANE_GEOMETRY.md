@@ -14,7 +14,7 @@ The counterpart for meshes is [MESH_GEOMETRY.md](MESH_GEOMETRY.md); the public w
 | `graph_connectivity.kt` | **this is where 2D Delaunay and 2D Voronoi live.** `vec2DelaunayGraph`, `vec2DelaunayTriangles`, `vec2VoronoiDiagram`, `vec2VoronoiDualGraph`, `vec2ConvexHull`. JTS-backed, exact | — |
 | `voronoi.kt` | **3D only.** `voronoi3d` clips half-spaces into `VoronoiCell3` polyhedra (`Vec3` throughout), plus a 3D Apollonius `CircularDirichlet3d` | not 2D anything; **contains no Delaunay at all** |
 | `dirichlet.kt` | 2D **multiplicatively weighted Voronoi (Apollonius)** — `CircularDirichlet`. Cells are bounded by *circular arcs*. Pure Kotlin | not Dirichlet-process anything, and **not Poisson-disc sampling**; it does no sampling of any kind |
-| `clustering.kt` | agglomerative (Smile, 7 linkages), k-medoids, k-medians | **there is no k-means anywhere in Field**, on purpose. `grep -ri kmeans src/jvmMain` = 0 hits |
+| `clustering.kt` | agglomerative (Smile, 7 linkages), k-medoids, k-medians, k-means (`…KMeans`, Lloyd or e-means) | k-means added 2026-11-11; see `dev_docs/KMEANS_EMEANS.md` |
 | `contours.kt` | 2D marching squares. `generateIsoContours` and friends, plus `pointEdgeScalarField2D` | — |
 | `spatial_field.kt` | the `FLine` bridges for all of the above, plus `showPlane` / `showPlaneGrid` | — |
 

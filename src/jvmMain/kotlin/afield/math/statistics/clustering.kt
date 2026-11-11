@@ -86,9 +86,12 @@ import kotlin.random.Random
 /**
  * Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`.
  *
- * Every algorithm here returns either a *hierarchy* or a centre drawn from the data it summarises: a
+ * Most algorithms here return either a *hierarchy* or a centre drawn from the data it summarises: a
  * medoid is one of your own samples, and a median is coordinate-wise robust against an outlier.
- * **There is no k-means**, whose centroid is neither.
+ * k-means ([floatKMeans], [vec2KMeans], [vec3KMeans], [vec4KMeans]) is the exception — its centroid
+ * is a mean, which a single far sample pulls — and the one that scales: linear per epoch, with
+ * [KMeansOptions.algorithm] switching between Lloyd's algorithm and e-means (mini-batch k-means with
+ * scaling-law batch and step, ported from Faiss `contrib/e_means`; see [KMeansAlgorithm]).
  *
  * Hierarchical clustering — [floatAgglomerative], [vec2Agglomerative], [vec3Agglomerative],
  * [vec4Agglomerative], which wrap Smile's `HierarchicalClustering` over the seven
@@ -444,6 +447,118 @@ data class KMediansResult<T>(
 }
 
 /**
+ * Which k-means the `…KMeans` functions run. Both minimise the same thing — the sum of squared
+ * distances from each sample to its cluster's mean — and differ in how they get there.
+ *
+ * `LLOYD` is the classical algorithm: assign every sample, move every centroid to its cluster's
+ * exact mean, repeat. Each epoch is one full pass and one update.
+ *
+ * `EMEANS` is mini-batch k-means as described in "E-Means: Scaling Laws for Mini-Batch K-Means"
+ * (Bessa et al., Meta FAIR, [arXiv:2611.09501](https://arxiv.org/abs/2611.09501),
+ * <https://e-means.github.io>), ported from the MIT-licensed Faiss reference
+ * `faiss/contrib/e_means`. Each mini-batch updates an exponential moving average of every
+ * cluster's count and sum; the centroid is their ratio. The batch size and the initial step come
+ * from fitted scaling laws in `n`, `k` and the epoch budget, the step anneals on a cosine from
+ * `alpha0` to `0.1 * alpha0`, clusters whose mass falls below a threshold are revived by splitting a
+ * large one, and the run closes on each cluster's exact mean over the last epoch. It makes many
+ * updates per pass where Lloyd makes one, so it usually reaches a lower loss in fewer epochs.
+ */
+enum class KMeansAlgorithm {
+    /** Full-batch assign / exact re-mean, one update per epoch. */
+    LLOYD,
+    /** Mini-batch EMA updates with scaling-law batch and step, cosine annealing and revival. */
+    EMEANS
+}
+
+/** How the `…KMeans` functions pick their starting centroids. */
+enum class KMeansSeeding {
+    /** D²-weighted sampling (k-means++), the rule k-medoids and k-medians also seed with. */
+    PLUS_PLUS,
+    /** `k` distinct samples drawn uniformly — what the Faiss e-means reference does by default. */
+    RANDOM
+}
+
+/**
+ * How the `…KMeans` functions run.
+ *
+ * Only [algorithm] and [epochs] usually matter. The e-means knobs default to `null`, which means
+ * "use the published scaling law"; set them only to reproduce or ablate a run.
+ *
+ * @param algorithm Lloyd or e-means; see [KMeansAlgorithm].
+ * @param epochs Full passes over the data. `null` is 25 for Lloyd and 5 for e-means (the Faiss
+ * default). Lloyd may stop earlier when no label changes.
+ * @param seeding How the starting centroids are chosen.
+ * @param randomSeed Fixes seeding, shuffling and revival for reproducibility; `null` uses
+ * [Random.Default].
+ * @param batchSize e-means only: rows per mini-batch. `null` uses the batch law.
+ * @param alpha0 e-means only: the initial EMA step. `null` uses the step law at the chosen batch.
+ * @param reviveThreshold e-means only: a cluster whose EMA mass is below this fraction of the mean
+ * mass is revived by splitting a donor. `0.0` disables revival. `null` follows the Faiss default:
+ * `0.1`, or `0.0` when the data has two or fewer dimensions.
+ * @param recordHistory Compute the exact mean squared error after every epoch into
+ * [KMeansResult.mseHistory]. Costs one extra assignment pass per e-means epoch.
+ */
+data class KMeansOptions(
+    val algorithm: KMeansAlgorithm = KMeansAlgorithm.EMEANS,
+    val epochs: Int? = null,
+    val seeding: KMeansSeeding = KMeansSeeding.PLUS_PLUS,
+    val randomSeed: Long? = null,
+    val batchSize: Int? = null,
+    val alpha0: Double? = null,
+    val reviveThreshold: Double? = null,
+    val recordHistory: Boolean = true
+)
+
+/**
+ * What a `…KMeans` call found.
+ *
+ * [centroids] are cluster *means*, so unlike a medoid they are generally not one of your samples, and
+ * unlike a median a single far sample pulls them. [labels] are the exact nearest-centroid assignment
+ * to the final [centroids], whichever algorithm ran.
+ *
+ * @param labels One cluster index per input sample, in input order, each in `0 until k`.
+ * @param centroids The mean of each cluster.
+ * @param inertia Sum of squared Euclidean distances from every sample to its centroid.
+ * @param mseHistory Mean squared error (`inertia / n`) of the seeds at index 0 and after each epoch
+ * after that, so its last entry equals `inertia / n`. Empty when
+ * [KMeansOptions.recordHistory] is off.
+ * @param epochs Epochs actually run.
+ * @param converged Lloyd: `true` if it stopped because no label changed. e-means: always `false`,
+ * since it runs its whole budget.
+ * @param revivals e-means: how many dead clusters were revived by splitting. Lloyd: how many emptied
+ * clusters were re-seeded from the worst-fit sample.
+ * @param batchSize Rows per update: the mini-batch for e-means, the whole set for Lloyd.
+ * @param alpha0 e-means: the initial EMA step used. Lloyd: `null`.
+ * @param clusterSizes How many samples each cluster holds.
+ * @param options The options this run used.
+ */
+data class KMeansResult<T>(
+    val labels: IntArray,
+    val centroids: List<T>,
+    val inertia: Double,
+    val mseHistory: DoubleArray,
+    val epochs: Int,
+    val converged: Boolean,
+    val revivals: Int,
+    val batchSize: Int,
+    val alpha0: Double?,
+    val clusterSizes: IntArray,
+    val options: KMeansOptions
+) {
+    /** How many clusters this result has. */
+    val k: Int
+        get() = centroids.size
+
+    /** `inertia` divided by the sample count. */
+    val mse: Double
+        get() = inertia / labels.size
+
+    /** This result as a [ClusterLayer], so it can be stacked and drawn beside other cuts. */
+    fun asLayer(name: String = "${options.algorithm.name.lowercase()}(k=$k)"): ClusterLayer =
+        ClusterLayer(name, labels)
+}
+
+/**
  * How a stack of [ClusterLayer]s is laid out and drawn.
  *
  * Sizes are in the units the `FLine` renderer uses for point size and thickness, alphas are 0..1, and
@@ -781,6 +896,70 @@ fun vec4KMedians(
         clusterSizes = core.clusterSizes,
         options = options
     )
+}
+
+/**
+ * Partition one-dimensional values into [k] clusters around their means (k-means).
+ *
+ * [KMeansOptions.algorithm] switches between Lloyd's algorithm and e-means; the default is e-means.
+ * Linear in the sample count per epoch, so this is the clustering to reach for at hundreds of
+ * thousands of samples.
+ */
+fun floatKMeans(
+    values: List<Float>,
+    k: Int,
+    options: KMeansOptions = KMeansOptions()
+): KMeansResult<Float> {
+    val core = kMeans(floatRows(values, "floatKMeans"), k, options, "floatKMeans")
+    return core.toResult(options) { it[0].toFloat() }
+}
+
+/**
+ * Partition 2-D points into [k] clusters around their means (k-means).
+ *
+ * [KMeansOptions.algorithm] switches between Lloyd's algorithm and e-means; the default is e-means.
+ * Linear in the sample count per epoch, so this is the clustering to reach for at hundreds of
+ * thousands of samples.
+ */
+fun vec2KMeans(
+    points: List<Vec2>,
+    k: Int,
+    options: KMeansOptions = KMeansOptions()
+): KMeansResult<Vec2> {
+    val core = kMeans(vec2Rows(points, "vec2KMeans"), k, options, "vec2KMeans")
+    return core.toResult(options) { v -> vec(v[0], v[1]) }
+}
+
+/**
+ * Partition 3-D points into [k] clusters around their means (k-means).
+ *
+ * [KMeansOptions.algorithm] switches between Lloyd's algorithm and e-means; the default is e-means.
+ * Linear in the sample count per epoch, so this is the clustering to reach for at hundreds of
+ * thousands of samples.
+ */
+fun vec3KMeans(
+    points: List<Vec3>,
+    k: Int,
+    options: KMeansOptions = KMeansOptions()
+): KMeansResult<Vec3> {
+    val core = kMeans(vec3Rows(points, "vec3KMeans"), k, options, "vec3KMeans")
+    return core.toResult(options) { v -> vec(v[0], v[1], v[2]) }
+}
+
+/**
+ * Partition 4-D points into [k] clusters around their means (k-means).
+ *
+ * [KMeansOptions.algorithm] switches between Lloyd's algorithm and e-means; the default is e-means.
+ * Linear in the sample count per epoch, so this is the clustering to reach for at hundreds of
+ * thousands of samples.
+ */
+fun vec4KMeans(
+    points: List<Vec4>,
+    k: Int,
+    options: KMeansOptions = KMeansOptions()
+): KMeansResult<Vec4> {
+    val core = kMeans(vec4Rows(points, "vec4KMeans"), k, options, "vec4KMeans")
+    return core.toResult(options) { v -> vec(v[0], v[1], v[2], v[3]) }
 }
 
 /**
@@ -1354,7 +1533,7 @@ private fun runKMedians(
 ): KMediansCoreResult {
     val n = rows.size
     val d = rows[0].size
-    var centers = initKMediansCenters(rows, k, rng)
+    var centers = initD2Centers(rows, k, rng, ::l1)
     val labels = IntArray(n)
     val distances = DoubleArray(n)
     var prevObjective = Double.POSITIVE_INFINITY
@@ -1404,10 +1583,16 @@ private fun runKMedians(
     )
 }
 
-private fun initKMediansCenters(
+/**
+ * D²-weighted seeding (the k-means++ rule) over [rows], with [distance] as the metric: each next
+ * centre is drawn with probability proportional to the squared [distance] to its nearest chosen one.
+ * k-medians seeds with `l1`, k-means with `l2`.
+ */
+private fun initD2Centers(
     rows: Array<DoubleArray>,
     k: Int,
-    rng: Random
+    rng: Random,
+    distance: (DoubleArray, DoubleArray) -> Double
 ): Array<DoubleArray> {
     if (k == rows.size) return Array(k) { i -> rows[i].copyOf() }
 
@@ -1415,7 +1600,7 @@ private fun initKMediansCenters(
     val first = rng.nextInt(rows.size)
     chosen.add(first)
 
-    val minDist = DoubleArray(rows.size) { i -> l1(rows[i], rows[first]) }
+    val minDist = DoubleArray(rows.size) { i -> distance(rows[i], rows[first]) }
     while (chosen.size < k) {
         var total = 0.0
         for (i in rows.indices) {
@@ -1452,7 +1637,7 @@ private fun initKMediansCenters(
 
         chosen.add(next)
         for (i in rows.indices) {
-            val d = l1(rows[i], rows[next])
+            val d = distance(rows[i], rows[next])
             if (d < minDist[i]) minDist[i] = d
         }
     }
@@ -1762,4 +1947,343 @@ private fun clusteredLineMap(
     if (links.nodes.isNotEmpty()) out["cluster-links"] = listOf(links)
     if (guides != null && guides.nodes.isNotEmpty()) out["cluster-guides"] = listOf(guides)
     return out
+}
+
+// ---- k-means: Lloyd and e-means ---------------------------------------------------------------
+//
+// The e-means constants below are those shipped in Faiss `contrib/e_means/base.py` (MIT, Meta
+// Platforms), which its comments say differ from the paper's Table 2 because they were refitted.
+
+/** Cosine floor: the step anneals from alpha0 to this fraction of it (paper Eq. 5). */
+private const val EMEANS_ALPHA_MIN_FACTOR = 0.1
+
+/** Batch updates between revival checks (Algorithm 1, line 9). */
+private const val EMEANS_CHECK_UNUSED_EVERY = 5
+
+/** Initial EMA mass N_j. Faiss uses 2^-16; the paper 1e-10. */
+private const val EMEANS_INIT_USAGE = 1.0 / 65536.0
+
+/** Relative coordinate perturbation of a split (Appendix J, Eq. 8). */
+private const val EMEANS_SPLIT_EPSILON = 1e-4
+
+/** Revival threshold tau: revive N_j < tau * mean(N). */
+private const val EMEANS_UNUSED_THRESHOLD = 0.1
+
+/** At or below this dimension the default threshold is 0: Faiss measured revival hurting 2-D data. */
+private const val EMEANS_NO_REVIVAL_MAX_D = 2
+
+/** At or below this dimension the "quality" batch law is used, above it "throughput". */
+private const val EMEANS_AUTO_QUALITY_MAX_D = 16
+
+/** Batch law B = C * k^bk * n^bn * T^bT, as (C, bk, bn, bT). */
+private val EMEANS_THROUGHPUT_LAW = doubleArrayOf(0.035134, 0.134749, 0.876473, 0.813344)
+private val EMEANS_QUALITY_LAW = doubleArrayOf(0.00439175, 0.134749, 0.876473, 0.813344)
+
+/** Step law alpha0 = C * k^ak * B^aB * n^an * T^aT, as (C, ak, aB, an, aT), clamped to [1e-4, 1]. */
+private val EMEANS_ALPHA_LAW = doubleArrayOf(0.8244, -0.4617, 0.9003, -0.4498, -0.1057)
+
+private class KMeansCore(
+    val labels: IntArray,
+    val centroids: Array<DoubleArray>,
+    val inertia: Double,
+    val mseHistory: DoubleArray,
+    val epochs: Int,
+    val converged: Boolean,
+    val revivals: Int,
+    val batchSize: Int,
+    val alpha0: Double?
+) {
+    fun <T> toResult(options: KMeansOptions, convert: (DoubleArray) -> T): KMeansResult<T> =
+        KMeansResult(
+            labels = labels,
+            centroids = centroids.map(convert),
+            inertia = inertia,
+            mseHistory = mseHistory,
+            epochs = epochs,
+            converged = converged,
+            revivals = revivals,
+            batchSize = batchSize,
+            alpha0 = alpha0,
+            clusterSizes = clusterSizes(labels, centroids.size),
+            options = options
+        )
+}
+
+private fun kMeans(rows: Array<DoubleArray>, k: Int, options: KMeansOptions, fn: String): KMeansCore {
+    validateRows(rows, fn, minSamples = 1)
+    require(k in 1..rows.size) { "$fn: k must be in [1, ${rows.size}], found $k" }
+    options.epochs?.let { require(it > 0) { "$fn: epochs must be > 0, found $it" } }
+    options.batchSize?.let { require(it > 0) { "$fn: batchSize must be > 0, found $it" } }
+    options.alpha0?.let { require(it > 0.0 && it <= 1.0) { "$fn: alpha0 must be in (0, 1], found $it" } }
+    options.reviveThreshold?.let {
+        require(it.isFinite() && it >= 0.0) { "$fn: reviveThreshold must be finite and >= 0, found $it" }
+    }
+    val rng = options.randomSeed?.let { Random(it) } ?: Random.Default
+    val seeds = when (options.seeding) {
+        KMeansSeeding.PLUS_PLUS -> initD2Centers(rows, k, rng, ::l2)
+        KMeansSeeding.RANDOM -> randomCenters(rows, k, rng)
+    }
+    return when (options.algorithm) {
+        KMeansAlgorithm.LLOYD -> runLloyd(rows, seeds, options.epochs ?: 25, options.recordHistory)
+        KMeansAlgorithm.EMEANS -> runEmeans(rows, seeds, options.epochs ?: 5, options, rng)
+    }
+}
+
+private fun randomCenters(rows: Array<DoubleArray>, k: Int, rng: Random): Array<DoubleArray> {
+    val order = IntArray(rows.size) { it }
+    shuffleInPlace(order, rng)
+    return Array(k) { rows[order[it]].copyOf() }
+}
+
+private fun shuffleInPlace(a: IntArray, rng: Random) {
+    for (i in a.size - 1 downTo 1) {
+        val j = rng.nextInt(i + 1)
+        val t = a[i]
+        a[i] = a[j]
+        a[j] = t
+    }
+}
+
+private fun squaredL2(a: DoubleArray, b: DoubleArray): Double {
+    var s = 0.0
+    for (i in a.indices) {
+        val d = a[i] - b[i]
+        s += d * d
+    }
+    return s
+}
+
+/** Nearest centroid of [row] by squared L2; writes the squared distance into [out] at [slot]. */
+private fun nearestL2(row: DoubleArray, centroids: Array<DoubleArray>, out: DoubleArray, slot: Int): Int {
+    var best = 0
+    var bestD = Double.POSITIVE_INFINITY
+    for (c in centroids.indices) {
+        val d = squaredL2(row, centroids[c])
+        if (d < bestD) {
+            bestD = d
+            best = c
+        }
+    }
+    out[slot] = bestD
+    return best
+}
+
+/** Exact assignment; returns the inertia. */
+private fun assignL2(rows: Array<DoubleArray>, centroids: Array<DoubleArray>, labels: IntArray, d2: DoubleArray): Double {
+    var total = 0.0
+    for (i in rows.indices) {
+        labels[i] = nearestL2(rows[i], centroids, d2, i)
+        total += d2[i]
+    }
+    return total
+}
+
+private fun runLloyd(rows: Array<DoubleArray>, seeds: Array<DoubleArray>, epochs: Int, recordHistory: Boolean): KMeansCore {
+    val n = rows.size
+    val d = rows[0].size
+    val k = seeds.size
+    val centroids = Array(k) { seeds[it].copyOf() }
+    val labels = IntArray(n)
+    val d2 = DoubleArray(n)
+    var inertia = assignL2(rows, centroids, labels, d2)
+    val history = ArrayList<Double>()
+    if (recordHistory) history.add(inertia / n)
+    var converged = false
+    var revivals = 0
+    var epoch = 0
+    val previous = IntArray(n)
+    while (epoch < epochs) {
+        epoch++
+        val counts = IntArray(k)
+        val sums = Array(k) { DoubleArray(d) }
+        for (i in 0 until n) {
+            val c = labels[i]
+            counts[c]++
+            val row = rows[i]
+            val s = sums[c]
+            for (j in 0 until d) s[j] += row[j]
+        }
+        var replacements: IntArray? = null
+        var cursor = 0
+        for (c in 0 until k) {
+            if (counts[c] > 0) {
+                for (j in 0 until d) centroids[c][j] = sums[c][j] / counts[c]
+            } else {
+                val order = replacements ?: farthestReplacementOrder(d2).also { replacements = it }
+                centroids[c] = rows[order[cursor % order.size]].copyOf()
+                cursor++
+                revivals++
+            }
+        }
+        labels.copyInto(previous)
+        inertia = assignL2(rows, centroids, labels, d2)
+        if (recordHistory) history.add(inertia / n)
+        if (previous.contentEquals(labels)) {
+            converged = true
+            break
+        }
+    }
+    return KMeansCore(labels, centroids, inertia, history.toDoubleArray(), epoch, converged, revivals, n, null)
+}
+
+private fun roundPowerOfTwo(value: Double): Int {
+    if (value <= 1.0) return 1
+    val low = 1 shl kotlin.math.floor(kotlin.math.log2(value)).toInt()
+    val high = 2 * low
+    return if (value / low < high / value) low else high
+}
+
+/** The Faiss `_resolve_recipe`: batch size from the batch law, then alpha0 from the step law. */
+private fun emeansRecipe(n: Int, k: Int, d: Int, epochs: Int, options: KMeansOptions): Pair<Int, Double> {
+    val batch = options.batchSize?.let { min(it, n) } ?: run {
+        val quality = d <= EMEANS_AUTO_QUALITY_MAX_D
+        val law = if (quality) EMEANS_QUALITY_LAW else EMEANS_THROUGHPUT_LAW
+        val raw = law[0] * Math.pow(k.toDouble(), law[1]) * Math.pow(n.toDouble(), law[2]) *
+            Math.pow(epochs.toDouble(), law[3])
+        var b = roundPowerOfTwo(raw)
+        b = if (quality) min(b, n / 2) else min(b, roundPowerOfTwo(n / 2.0))
+        max(1, min(b, n))
+    }
+    val alpha0 = options.alpha0 ?: run {
+        val law = EMEANS_ALPHA_LAW
+        val a = law[0] * Math.pow(k.toDouble(), law[1]) * Math.pow(batch.toDouble(), law[2]) *
+            Math.pow(n.toDouble(), law[3]) * Math.pow(epochs.toDouble(), law[4])
+        min(max(a, 1e-4), 1.0)
+    }
+    return batch to alpha0
+}
+
+private fun scheduledAlpha(alpha0: Double, step: Int, totalSteps: Int): Double {
+    val fraction = min(step, totalSteps).toDouble() / max(1, totalSteps)
+    val cosine = 0.5 * (1.0 + kotlin.math.cos(Math.PI * fraction))
+    return alpha0 * (EMEANS_ALPHA_MIN_FACTOR + (1.0 - EMEANS_ALPHA_MIN_FACTOR) * cosine)
+}
+
+private fun runEmeans(
+    rows: Array<DoubleArray>,
+    seeds: Array<DoubleArray>,
+    epochs: Int,
+    options: KMeansOptions,
+    rng: Random
+): KMeansCore {
+    val n = rows.size
+    val d = rows[0].size
+    val k = seeds.size
+    val (batch, alpha0) = emeansRecipe(n, k, d, epochs, options)
+    val tau = options.reviveThreshold ?: if (d <= EMEANS_NO_REVIVAL_MAX_D) 0.0 else EMEANS_UNUSED_THRESHOLD
+    val stepsPerEpoch = (n + batch - 1) / batch
+    val totalSteps = stepsPerEpoch * epochs
+
+    val centroids = Array(k) { seeds[it].copyOf() }
+    val usage = DoubleArray(k) { EMEANS_INIT_USAGE }
+    val labels = IntArray(n)
+    val d2 = DoubleArray(n)
+    val history = ArrayList<Double>()
+    if (options.recordHistory) history.add(assignL2(rows, centroids, labels, d2) / n)
+
+    val order = IntArray(n) { it }
+    val batchCounts = IntArray(k)
+    val batchSums = Array(k) { DoubleArray(d) }
+    val scratch = DoubleArray(1)
+    var step = 0
+    var revivals = 0
+    for (epoch in 0 until epochs) {
+        shuffleInPlace(order, rng)
+        val last = epoch == epochs - 1
+        val passCounts = if (last) LongArray(k) else null
+        val passSums = if (last) Array(k) { DoubleArray(d) } else null
+        var start = 0
+        while (start < n) {
+            val end = min(start + batch, n)
+            batchCounts.fill(0)
+            for (s in batchSums) s.fill(0.0)
+            // Algorithm 1, lines 6-7: assign the batch against one snapshot, collect n_j and s_j.
+            for (p in start until end) {
+                val row = rows[order[p]]
+                val c = nearestL2(row, centroids, scratch, 0)
+                batchCounts[c]++
+                val s = batchSums[c]
+                for (j in 0 until d) s[j] += row[j]
+            }
+            if (passCounts != null && passSums != null) {
+                for (c in 0 until k) {
+                    passCounts[c] += batchCounts[c].toLong()
+                    val ps = passSums[c]
+                    val bs = batchSums[c]
+                    for (j in 0 until d) ps[j] += bs[j]
+                }
+            }
+            // Line 8: S_j <- (1-a) S_j + a s_j, N_j <- (1-a) N_j + a n_j, c_j = S_j / N_j.
+            val alpha = scheduledAlpha(alpha0, step, totalSteps)
+            val decay = 1.0 - alpha
+            for (c in 0 until k) {
+                val nj = batchCounts[c]
+                if (nj == 0) {
+                    usage[c] *= decay
+                    continue
+                }
+                val mass = if (alpha >= 1.0) nj.toDouble() else decay * usage[c] + alpha * nj
+                val w = alpha * nj / mass
+                val cc = centroids[c]
+                val bs = batchSums[c]
+                for (j in 0 until d) cc[j] += w * (bs[j] / nj - cc[j])
+                usage[c] = mass
+            }
+            // Line 9: every few updates, revive clusters whose mass has collapsed.
+            if (tau > 0.0 && (step + 1) % EMEANS_CHECK_UNUSED_EVERY == 0) {
+                revivals += reviveUnused(centroids, usage, tau, rng)
+            }
+            step++
+            start = end
+        }
+        if (passCounts != null && passSums != null) {
+            // Line 12: close on each cluster's exact mean over the last epoch.
+            for (c in 0 until k) {
+                if (passCounts[c] == 0L) continue
+                for (j in 0 until d) centroids[c][j] = passSums[c][j] / passCounts[c]
+            }
+        }
+        if (options.recordHistory && !last) history.add(assignL2(rows, centroids, labels, d2) / n)
+    }
+    val inertia = assignL2(rows, centroids, labels, d2)
+    if (options.recordHistory) history.add(inertia / n)
+    return KMeansCore(labels, centroids, inertia, history.toDoubleArray(), epochs, false, revivals, batch, alpha0)
+}
+
+/**
+ * Faiss `_choose_splits` + `_apply_splits`: donors are sampled without replacement in proportion
+ * to their mass (Gumbel top-k), each split in two along an alternating-sign relative offset, and
+ * the halves share the donor's mass. Returns the number of clusters revived.
+ */
+private fun reviveUnused(centroids: Array<DoubleArray>, usage: DoubleArray, tau: Double, rng: Random): Int {
+    val k = usage.size
+    val threshold = usage.sum() * tau / k
+    val unused = (0 until k).filter { usage[it] < threshold }
+    val donors = (0 until k).filter { usage[it] >= threshold && usage[it] > 0.0 }
+    val count = min(unused.size, donors.size)
+    if (count == 0) return 0
+    val keys = donors.associateWith { j ->
+        val u = max(rng.nextDouble(), Double.MIN_VALUE)
+        kotlin.math.ln(usage[j]) - kotlin.math.ln(-kotlin.math.ln(u))
+    }
+    val sources = donors.sortedByDescending { keys.getValue(it) }.take(count)
+    for (i in 0 until count) {
+        val src = sources[i]
+        val dst = unused[i]
+        val c = centroids[src]
+        val donor = DoubleArray(c.size)
+        val child = DoubleArray(c.size)
+        for (j in c.indices) {
+            val offset = EMEANS_SPLIT_EPSILON * (if (j % 2 == 0) 1.0 else -1.0)
+            donor[j] = c[j] * (1.0 - offset)
+            child[j] = c[j] * (1.0 + offset)
+        }
+        if (donor.contentEquals(child)) child[0] = Math.nextUp(child[0])
+        val half = usage[src] / 2.0
+        centroids[src] = donor
+        centroids[dst] = child
+        usage[src] = half
+        usage[dst] = half
+    }
+    return count
 }

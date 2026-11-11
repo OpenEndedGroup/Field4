@@ -353,6 +353,8 @@ object DemoTranscriptExecSmokeTest {
         // Five independent pure-CPU plane-geometry boxes; showPlaneGrid is drawToSVG -> display,
         // so no AWT, no GPU and nothing to launch.
         "spatial_geometry_examples",
+        // Two independent pure-CPU k-means boxes (Lloyd vs e-means), drawn with showPlaneGrid.
+        "kmeans_emeans",
         // Ten independent pure-CPU spatial-ALife boxes; nothing opens a Window or a Renderer.
         "alife_evolution",
         "alife_grains",
@@ -541,6 +543,9 @@ object DemoTranscriptExecSmokeTest {
         "fline_hit_records",
         // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
         "fline_measure",
+        // fline_examples.md's curvature-continuous splines: clothoidSplineFrom vs cubicSplineFrom with
+        // curvature combs, a circle, a closed shape. CPU only.
+        "clothoid_spline",
         // fline_examples.md's exact booleans and offsets: Area vs booleanExact, byOffsetting vs
         // byOffsettingExact, side by side through lines(). CPU only.
         "fline_exact_booleans",

@@ -1367,6 +1367,115 @@ lines(knots, s1, s2, w = 420.0, h = 260.0, fitToSize = true)
 
 Negative continuity pulls the green `tcbTo` curve toward a corner at each point; `smoothTo` (orange) stays rounded.
 
+### Curvature-continuous splines: `clothoidSplineFrom(...)`
+
+`cubicSplineFrom` passes through its points, but its curvature jumps at every one of them, and a reader sees those jumps as slight flats and kinks in a shape that should be round. `clothoidSplineFrom` draws a spline whose curvature is continuous everywhere, including at the points it passes through. Reach for it when the curve is the drawing: lettering, outlines, rounded shapes.
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun clothoidSplineFrom(points: List<Vec3>, closed: Boolean = false, samplesPerSegment: Int = 48): FLine
+fun clothoidSplineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = false, samplesPerSegment: Int = 48): FLine
+
+fun FLine.curvatureComb(scale: Double = 2000.0, samples: Int = 120): FLine
+fun FLine.curvaturePlot(width: Double = 400.0, height: Double = 120.0, samples: Int = 300, maxCurvature: Double? = null): FLine
+```
+
+Each piece between two points is an [Euler spiral](https://en.wikipedia.org/wiki/Euler_spiral), the curve whose curvature changes at a constant rate along its length. An Euler spiral is fixed by the direction it leaves one point and the direction it arrives at the next, so the spline only has to choose one direction per point. It turns each point's direction until the curvature arriving at the point equals the curvature leaving it. An open spline starts and ends with an arc of a circle.
+
+Two tools make the difference visible on any line. `curvatureComb` draws a tooth along the normal at each sample, as long as the curvature there, and joins the tips; the teeth swap sides where the line changes from turning left to turning right. `curvaturePlot` draws curvature against distance along the line, in a box `width` by `height` with zero on the middle row.
+
+The comparison below puts both splines through the same eight points. The plots underneath share one vertical scale. The cubic's curvature (orange) steps at every point; the clothoid's (blue) is a chain of straight runs that meet without steps, and its comb tips run on without a break.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/clothoid_spline_vs_cubic.png" embed=true}
+:::static
+val knots = (0..7).map { i -> vec(40 + i * 50, 130 + 70 * kotlin.math.sin(i * 0.9)) }
+
+val cubic = cubicSplineFrom(knots).apply {
+    thickness = 3.0
+    color = vec(1.0, 0.7, 0.3, 1.0)
+}
+val clothoid = clothoidSplineFrom(knots).apply {
+    thickness = 3.0
+    color = vec(0.5, 0.8, 1.0, 1.0)
+}
+
+val cubicComb = cubic.curvatureComb(scale = 1500.0).apply { color = vec(1.0, 0.7, 0.3, 0.5) }
+val clothoidComb = clothoid.curvatureComb(scale = 1500.0).apply { color = vec(0.5, 0.8, 1.0, 0.5) }
+
+// curvature against distance, cubic above, clothoid below
+val cubicPlot = (cubic.curvaturePlot(400.0, 70.0, maxCurvature = 0.05) + vec(20, 240)).apply {
+    thickness = 2.0
+    color = vec(1.0, 0.7, 0.3, 1.0)
+}
+val clothoidPlot = (clothoid.curvaturePlot(400.0, 70.0, maxCurvature = 0.05) + vec(20, 320)).apply {
+    thickness = 2.0
+    color = vec(0.5, 0.8, 1.0, 1.0)
+}
+
+val dots = polylineFrom(knots).apply {
+    stroked = false
+    pointed = true
+    pointSize = 2.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+lines(cubicComb, clothoidComb, cubic, clothoid, dots, cubicPlot, clothoidPlot, w = 420.0, h = 400.0, fitToSize = true)
+```
+
+Points on a circle give back the circle: every piece is then an arc with the same curvature, and the comb's tips form a second, larger circle. Seven unevenly spaced points on a radius-100 circle, closed:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/clothoid_spline_circle.png" embed=true}
+:::static
+val knots =
+    (0 until 7).map { i ->
+        val a = 2 * kotlin.math.PI * i / 7 + 0.3 * kotlin.math.sin(i * 1.7)
+        vec(200 + 100 * kotlin.math.cos(a), 150 + 100 * kotlin.math.sin(a))
+    }
+
+val round = clothoidSplineFrom(knots, closed = true).apply {
+    thickness = 3.0
+    color = vec(0.5, 0.8, 1.0, 1.0)
+}
+val cubic = cubicSplineFrom(knots, closed = true).apply {
+    thickness = 1.5
+    color = vec(1.0, 0.7, 0.3, 0.9)
+}
+val comb = round.curvatureComb(scale = 2000.0, samples = 140).apply { color = vec(0.5, 0.8, 1.0, 0.4) }
+
+lines(comb, cubic, round, w = 420.0, h = 320.0, fitToSize = true)
+```
+
+The thin orange cubic through the same points bulges between them. On a closed shape of your own, the clothoid spline gives the round version: curvature peaks only near the points, and each piece turns from left to right at most once.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/clothoid_spline_closed_shape.png" embed=true}
+:::static
+val knots = [vec(60, 80), vec(200, 40), vec(330, 110), vec(300, 240), vec(170, 200), vec(80, 260)]
+
+val shape = clothoidSplineFrom(knots, closed = true).apply {
+    thickness = 3.0
+    color = vec(0.5, 0.8, 1.0, 1.0)
+}
+val fill = shape.copy().apply {
+    stroked = false
+    filled = true
+    color = vec(0.5, 0.8, 1.0, 0.15)
+}
+val comb = shape.curvatureComb(scale = 1200.0, samples = 200).apply { color = vec(1.0, 1.0, 1.0, 0.35) }
+val dots = polylineFrom(knots).apply {
+    stroked = false
+    pointed = true
+    pointSize = 2.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+lines(fill, comb, shape, dots, w = 420.0, h = 320.0, fitToSize = true)
+```
+
+This spline is the simplest member of Aurimas Gasiulis's [S9 spline](https://gasiulis.name/new-spline) family, the one where both of a piece's weights are 1. S9 also lets each piece sharpen its turn near its ends, with weights computed from the end directions; that is not implemented here. The Euler-spiral spline itself is Raph Levien's, from his thesis [*From Spiral to Spline*](https://levien.com/phd/thesis.pdf) (2009); Henry Moreton's [*Minimum Curvature Variation Curves*](https://www2.eecs.berkeley.edu/Pubs/TechRpts/1993/CSD-93-732.pdf) (1992) is the background on why curves like this look fair.
+
+??? aside "How the captures were checked"
+    `src/jvmTest/kotlin/afield/geometry/path/ClothoidSplineTest.kt` measures the drawn polylines: the curvature jump at each point is under 1% of the peak, circle points stay within 0.1% of the radius, and no piece of the test shapes has more than one inflection.
+
 ### Biarcs: `biarcTo(...)` and `biarcBetween(...)`
 
 A biarc is two circular arcs joined together. Use one when you want the smoothness of circular arcs without a cubic Bézier.
@@ -1526,7 +1635,7 @@ val f = fline {
 val defining = polylineFrom([vec(60, 200), vec(220, 40), vec(360, 200)]).apply {
     stroked = false
     pointed = true
-    pointSize = 5.0
+    pointSize = 2.0
     color = vec(1.0, 1.0, 1.0, 1.0)
 }
 
@@ -3764,3 +3873,38 @@ lines(circle, diag, hitPts, w = 420.0, h = 320.0, fitToSize = true)
 Every public declaration used on this page is listed, with its KDoc, in the codebase reference under [`StandardDrawing.kt`](reference/graphics.md#standarddrawing-kt). The rest of the standard library is in [what's already in the box](reference/index.md).
 
 Next on the Tour, [Drawing and Notation](drawing_and_notation.md) draws by hand on the canvas and has a box read each stroke back as an `FLine`.
+
+## Where to go next
+
+- [Drawing and Notation](drawing_and_notation.md) draws by hand on the canvas; a box can
+  [read each stroke](drawing_and_notation.md#reading-the-drawing) as an `FLine` and pass its
+  points to `clothoidSplineFrom`, `cubicSplineFrom` or the [stroke smoothing](#filters-and-gp)
+  above.
+- [Functions](functions_examples.md#piecewiselinear-catmullromspline-monotonecubic) has the 1-D
+  splines (`catmullRomSpline`, `monotoneCubic`) for curves of a single variable.
+- On this page: the single [Euler spiral between two directions](#euler-spiral-in-3d-clothoid-ish-connection)
+  that each piece of `clothoidSplineFrom` is made from, [biarcs](#biarcs-biarcto-and-biarcbetween)
+  for smooth joins out of circular arcs, and [curvature, tangents and normals](#curvature-tangentsnormals)
+  and [measuring along a line](#measuring-along-a-line) for reading a curve back.
+- Open the [clothoid_spline starting point](agent_transcripts.md#clothoid_spline) to try the
+  spline boxes in your own document.
+- Source: [`FLineGeometry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt)
+  (`clothoidSplineFrom`, `curvatureComb`, `curvaturePlot`, `eulerSpiralBetween3D`) and its test,
+  [`ClothoidSplineTest.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmTest/kotlin/afield/geometry/path/ClothoidSplineTest.kt).
+
+Open questions and next builds:
+
+- **The S9 weights.** Each S9 piece has two weights; below 1 they sharpen the turn near the piece's
+  ends, and S9 computes them from the end directions. A piece family with that behaviour
+  (curvature against arc length with two weights, reducing to the Euler spiral at 1) and a weight
+  rule would replace the per-piece clothoid fit; the knot solve stays as it is. Whether the
+  sharper ends help lettering, where S9 is aimed, is the thing to look at.
+- **A Hobby comparison.** Hobby's spline (the one in METAFONT and MetaPost) also picks each piece
+  from its two end directions, but as a cubic with a closed-form solve. Drawn through the same
+  knots with combs, it would show what curvature continuity costs and buys.
+- **Draggable knots.** Read the knots from the drawing layer through `notation` and redraw on
+  `notation.onChange`, so the spline follows the points as they move.
+- **Mixed corners and smooth points.** Fonts mix corners with smooth points. A per-knot flag that
+  splits the solve at a corner would let one call draw a whole glyph outline.
+- **Larger knot counts.** The solve uses a dense linear system; past a few dozen knots a banded
+  (cyclic tridiagonal) solve is the right shape.

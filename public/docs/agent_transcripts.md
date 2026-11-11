@@ -837,6 +837,19 @@ rules side by side on a ring. From the measuring sections of [Drawing with FLine
 
 [Open →](offline.html?file=assets/agent_transcripts/fline_measure/metadata.edn)
 
+### clothoid_spline
+
+**Curvature-continuous splines.** Three boxes: `clothoidSplineFrom` and `cubicSplineFrom` through the
+same eight points, with curvature combs and curvature plotted against distance; seven points on a
+circle giving the circle back; and a closed round shape with its comb. From [Drawing with
+FLines](fline_examples.md#curvature-continuous-splines-clothoidsplinefrom).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/clothoid_spline.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="120" padding="12" name="gallery-clothoid-spline" alt="A rounded closed shape in blue through six white points, with grey curvature teeth along its inside" macro-file="../../dev_docs/agents/transcripts/clothoid_spline.yaml" capture-box="clothoid-spline-shape"}
+// The transcript builds and runs all three boxes; this is the closed-shape box.
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/clothoid_spline/metadata.edn)
+
 ### fline_exact_booleans
 
 **Exact booleans and cubic offsets, side by side with the old paths.** Two boxes, each with a dot on every node: the union and difference of a blob and a circle through `Area` and through `booleanExact`, and a star and an S-curve offset by `byOffsetting` and by `byOffsettingExact`. From [Drawing with FLines](fline_examples.md#exact-booleans-and-offsets).
@@ -1106,6 +1119,21 @@ grain, `+`/`-` step the pitch and every bracket is a new voice. Box 1 decodes on
 piano-roll and a player. Box 2 evolves the grammar toward a profile of trapezoid-scored statistics,
 with sliders for three of the targets that re-run the search. Box 3 is interactive evolution: six
 children with players, and a text field naming the parents of the next generation.
+
+[Open →](offline.html?file=assets/agent_transcripts/alife_grains/metadata.edn)
+
+### kmeans_emeans
+
+The [k-means at scale](spatial_geometry_examples.md#k-means-at-scale) section as two boxes.
+*Lloyd vs e-means* clusters 48 000 points in 60 blobs from the same random seeds with Lloyd's
+algorithm at 25 epochs and e-means ([Meta FAIR](https://e-means.github.io), ported from Faiss) at 3,
+and plots both runs' mean squared error per epoch. *Revival* rings 40 blobs with 12 strays, so
+k-means++ seeds a centroid on a stray, and shows e-means moving it back into the data. Change `k`,
+`epochs` or the seeding and re-run.
+
+![Three panels: the 60-blob cloud clustered by Lloyd, the same cloud clustered by e-means, and a log-scale plot of mean squared error per epoch for both](assets/spatial_geometry_examples/kmeans_lloyd_vs_emeans.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/kmeans_emeans/metadata.edn)
 
 ### alife_evolution
 
