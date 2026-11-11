@@ -1,23 +1,21 @@
 # Distributions: values that are probability distributions
 
-`afield.math.distribution` lets a box compute with random variables as if they were numbers. A die
-is a value, two dice added together is a value, and "the chance that two of 23 people share a
-birthday" is a question you ask of a value. Field answers by sampling, and every answer comes with
-its standard error, so you can see how far to trust it.
+`afield.math.distribution` lets you compute with random variables as if they were numbers. Add two
+dice, ask for the chance that two of 23 people share a birthday, or draw a whole family of curves.
+Field answers by sampling and reports the standard error alongside the result.
 
 The idea comes from [NoiseLang](https://manualmeida.dev/articles/noiselang), a small language in
-which every value is a distribution. This is the same idea written as Kotlin, plus two things a box
-gets for free: the samples draw themselves next to your code as they arrive, and the same
-expression can be run on the GPU.
+which every value is a distribution. In Field you can write those expressions in Kotlin, watch the
+samples appear beside your code and run the same expressions on the GPU.
 
-It then goes past NoiseLang in several directions. A distribution can be
+There's more you can do with a distribution. It can be
 [conditioned on what you saw](#conditioning-on-what-you-saw), which turns a model into a posterior,
 and a posterior can [learn as data arrives](#learning-as-data-arrives).
 It can be [played](#patterns-from-a-distribution), as a pattern or as a
 [sound parameter](#distributions-as-sound). And a fitted
 [Gaussian process](#gaussian-processes-as-distributions) can be turned into distributions, so you
 can ask questions about whole curves. All of it can be
-[drawn inside a shader](#distributions-in-a-shader).
+[drawn inside a shader](#distributions-in-a-shader). To start, here are two dice and two questions:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -57,8 +55,8 @@ for every sample. That is how you write a model whose parameters you want to lea
 
 ### A name is one variable
 
-A `val` names one variable, not a recipe for drawing a new one. Every sample computes each node
-once, so wherever `x` appears it has the same value:
+A `val` names one variable. Every sample computes each node once, so wherever `x` appears it has the
+same value:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -81,9 +79,10 @@ Four questions sample the graph and return an `Estimate`, which prints as `value
 - `Var(x)`: its variance.
 - `quantile(x, q)`: the value below which a fraction `q` of `x` falls.
 
-Each takes `n = ` (200 000 by default) and `seed = `. Read `0.507 ± 0.002` as "the true value is
-within about two of those of 0.507, nineteen times in twenty". `estimate.within(exact)` is that
-test, and `estimate.zFrom(exact)` is how many standard errors away an estimate is.
+Each takes `n = ` (200 000 by default) and `seed = `. For an estimate of `0.507 ± 0.002`, a rough
+95% interval is 0.507 plus or minus twice the standard error. `estimate.within(exact, k = 2.0)`
+checks that interval (`within` defaults to four standard errors); `estimate.zFrom(exact)` gives the
+signed difference in standard errors.
 
 The questions from the NoiseLang article, with the answers you can check by hand:
 
@@ -559,8 +558,7 @@ settle onto them.
 ```
 
 Played live, the box returns the sound and a loop that watches it. `ᛟ.distribution(param)` draws the
-pitches as they are heard, not a separate sample, so you watch the sound settle onto the
-distribution you wrote:
+pitches as they are heard, so you can watch the sound settle onto the distribution you wrote:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -581,10 +579,9 @@ every point. `gp.dists(xs)` hands you the curve at `xs` as distributions, one pe
 correlated the way the curve is: neighbouring points move together, so `jointSamples` of them draws
 whole, smooth curves. Each one on its own is a normal with the GP's own mean and variance.
 
-With the curve as distributions, you can ask it the questions a Gaussian process has no closed form
-for. Where is its highest point? How likely is it to go above a line anywhere? Here a curve is
-fitted through five readings, forty draws of it are drawn as FLines, and the distribution of where
-its peak lies is drawn beneath it:
+With the curve as distributions, you can ask questions such as: where is its highest point? How
+likely is it to go above a line anywhere? Here we fit a curve through five readings, draw forty
+samples as FLines and plot the distribution of their peaks underneath:
 
 <!--
 FIELD_TEST
@@ -634,10 +631,9 @@ println("E(where the peak is)  = ${E(peakAt)}")
 display("peak", distributionSvg(Progressive(peakAt).draw(20_000), title = "x of the curve's highest point"))
 ```
 
-The peak is in one of two places, near the second reading or near the fourth, and the histogram
-shows both. Its mean, about 3.2, lies in the gap between them, where the peak almost never is. That is
-a question a mean and a variance per point cannot answer, and the distribution answers it at a
-glance.
+The peaks gather in two places, near the second and fourth readings. Their mean, about 3.2, lies in
+the gap between them, where a peak almost never falls. The histogram shows both possibilities at
+once; a mean and variance at each point of the curve cannot tell you where its peak is likely to be.
 
 `maximum(ds)`, `minimum(ds)` and `argmax(ds)` work on any list of distributions; on a curve they
 are its peak, its trough and where the peak is. `gp.dist(x)` is the GP at one point, and

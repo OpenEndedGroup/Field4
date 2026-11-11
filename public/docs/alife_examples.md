@@ -2047,10 +2047,9 @@ One season of [`TreeGrowth.step()`](reference/simulation.md#alife-tree-growth-kt
    brightest part of the cone ahead of it and toward the sky. A side branch whose light per metamer
    falls under a threshold is dropped.
 
-Three properties of the model are checked every season rather than taken from a picture. The structure
-is a tree (`isTree()`, the same check `ColonizationTree` makes, here also run after every shed). The
-resource that reaches the buds equals the resource handed to the root, since the rule only ever splits
-it. And adding shadow never makes a bud brighter.
+Each season checks that the structure is still a tree (`isTree()`, also run after every shed), and
+that all the resource handed to the root reaches the buds. The allocation rule only splits it; it
+doesn't create or discard any. Adding shadow never makes a bud brighter.
 
 The figure grows one tree for 30 seasons. The top row shows it at seasons 2, 5, 10, 20 and 30. The
 middle row shows the season-20 tree three ways: every bud coloured by the light it read, every
@@ -2119,7 +2118,7 @@ showImg(montage(strip + views + crowns, columns = 5, cellSide = 300))
 
 ![a strip of five frames of one tree growing from a two-metamer sprout to a broad crown at season 30; then the season-20 tree three ways — buds glowing yellow on the crown's upper edge and dark inside it, internodes coloured from a bright trunk to dim twigs, and a dark shadow mass under the crown; then four trees from the same seed going from wide and spreading at λ 0.44 to narrow and columnar at λ 0.62](assets/alife_examples/tree_growth.png)
 
-The light view shows why the crown has the outline it has. Only the buds on its upper and outer surface
+The light view shows how the crown takes shape. Only the buds on its upper and outer surface
 read much light. The resource follows them, so the tree grows at its edge, and the shaded branches
 inside lose their resource and are shed. By season 30 the tree has shed more metamers than it keeps.
 The bottom row shows what `λ` does. At 0.44 the resource spreads into side branches and the crown is
@@ -2620,10 +2619,10 @@ display("audio", renderGrains(best).wav())
 // Offline-rendered by GrainSetSoundDocs.renderWav("evolved").
 ```
 
-The automatic run optimises what the trapezoids say, which is not the same as what sounds good. Without
-the last term the winners were one long overlapping trunk at a single pitch, a drone that counts as
-polyphony; the term was added for that, and the next thing the search games will need another. The
-other half of EvoGrain is **interactive evolution**: you listen and choose the parents.
+The automatic run optimises the trapezoids. Whether the result sounds good is up to you. Without
+the last term, the winners were a long overlapping trunk at a single pitch: a drone that counts as
+polyphony. The term discourages that result, though the search can still find other ways to satisfy
+the numbers. EvoGrain also offers **interactive evolution**: you listen and choose the parents.
 `GrainBreeder` holds a population of six grammars; `breed([2, 4])` keeps the chosen parents and fills
 the rest with their crossovers, each mutated once. The same seed and the same choices replay the same
 lineage. In a box, give each child a player and a text field for the choice:
@@ -2688,7 +2687,7 @@ from all twelve symbols, and `nonterminals = "X"` adds a rule for `X` to every g
 
 #### A target taken from a recording
 
-Writing trapezoids by hand says what you want in numbers. The other way is to point at a sound.
+You can write the trapezoids by hand, or take their target from a sound.
 `grainsFromAudio(samples, sampleRate)` reads a monophonic recording as a grain set: one grain per
 note Field's pitch detector can name, at its onset, length and pitch, with its loudness as the
 amplitude. `grainTermsAround(stats)` then puts a trapezoid on each of that set's statistics, with a

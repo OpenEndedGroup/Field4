@@ -1289,10 +1289,10 @@ subsequent calls reuse it. Inherited `prop` and `@exported` accessors stay dynam
 variables are not durable captures: put those values in the expression or an inherited property.
 Rules evaluate when applied, rather than running an implicit animation loop of their own.
 
-The loadable [ordered-group transcript](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/transcripts/ordered_group_keyframes.yaml)
-exercises native save/reload, changing inherited properties, a saved midpoint and invalid-value
-rejection without a graphics device. `video_three` uses this same API for whole-carousel looks;
-its single decoder's speed remains a separate global lane.
+Open the [ordered-group starting point](agent_transcripts.md#ordered_group_keyframes) to try saving
+and restoring rules, changing inherited properties and saving a midpoint. It also shows what happens
+when a value is invalid. `video_three` uses the same API for whole-carousel looks; its single
+decoder's speed remains a separate global lane.
 
 ## API reference
 

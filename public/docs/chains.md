@@ -236,12 +236,12 @@ every box in the document does.
 
 ## Explainers
 
-Three timeless internet classics as shooting practice: Bartosz Ciechanowski's
+Three talks inspired by Bartosz Ciechanowski's
 [Sound](https://ciechanow.ski/sound/), [Cameras and Lenses](https://ciechanow.ski/cameras-and-lenses/)
-and [Lights and Shadows](https://ciechanow.ski/lights-and-shadows/), each rebuilt in our own words
-and figures as a Field talk. Each one works the [presentation engine](presentation_studio.md#live-figures-beside-prose):
-live figures beside the slides, slides that move the figures' controls, and sound. More will join
-them.
+and [Lights and Shadows](https://ciechanow.ski/lights-and-shadows/), rebuilt in our own words and
+figures as Field presentations. Open one to explore the figures, or use the
+[presentation engine](presentation_studio.md#live-figures-beside-prose) to give the talk yourself.
+The slides can move a figure's controls, and the sound examples are ready to play.
 
 <div class="grid cards" markdown>
 

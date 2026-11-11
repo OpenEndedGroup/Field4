@@ -1,16 +1,17 @@
 # Satellites and Orbits
 
-Field can say where any catalogued satellite is, at any time, from the two-line element sets that
-[CelesTrak](https://celestrak.org) publishes for every tracked object, and can draw the whole catalogue
-moving round the Earth on the GPU. The propagator is SGP4, the model the element sets are fitted to,
+Give Field a two-line element set from [CelesTrak](https://celestrak.org) and it can tell you where
+that satellite will be. You can find passes over a place on Earth, or draw thousands of satellites
+moving around the planet on the GPU. The propagator is SGP4, the model the element sets are fitted to,
 written in Kotlin after the reference code in Vallado, Crawford, Hujsak and Kelso,
 [*Revisiting Spacetrack Report #3*](https://celestrak.org/publications/AIAA/2006-6753/) (AIAA 2006-6753).
-Everything lives in `afield.simulation.orbits`.
+The code lives in `afield.simulation.orbits` and covers near-Earth orbits; deep-space orbits need
+additional terms, described below. Element sets age, so for the current sky you'll want a fresh one.
 
 ## Where a satellite is
 
-A `Tle` is one element set. `Sgp4` takes it and gives a position and velocity in kilometres and
-km/s, in the TEME frame SGP4 works in, any number of minutes from the element set's epoch:
+A `Tle` is one element set. Give it to `Sgp4` to find a position and velocity at a time measured in
+minutes from the set's epoch. The result is in kilometres and km/s, in SGP4's TEME frame:
 
 ```diffstatic {data-lang=kotlin}
 import afield.simulation.orbits.*
@@ -54,7 +55,7 @@ caches it under `~/.afield/cache/celestrak/` for six hours, and falls back to th
 the snapshot when there is no network. Any CelesTrak group name works: `"stations"`, `"visual"`,
 `"starlink"`, `"weather"`.
 
-`byName` and `search` find satellites, `epoch` is the time at which the whole catalogue is fresh,
+`byName` and `search` find satellites, `epoch` is the time for which the catalogue is fresh,
 and `positionsEcef(time)` propagates every object at once.
 
 ## A week of passes over one place
@@ -135,8 +136,8 @@ every day: two pairs of passes, morning and evening. Hubble's orbit is inclined 
 
 ## The whole catalogue on the GPU
 
-Running SGP4 on fifteen thousand objects every frame is work the CPU does not need to do for a
-picture. `Sgp4.meanElements` is the secular part of the orbit: a Kepler ellipse whose node, perigee
+To draw fifteen thousand objects every frame, we can use a cheaper approximation on the GPU.
+`Sgp4.meanElements` is the secular part of the orbit: a Kepler ellipse whose node, perigee
 and mean anomaly drift at SGP4's rates, with no drag and no periodic terms. It stays within about 10
 km of full SGP4 for the hour after the catalogue's epoch (median over every twentieth object; 15 km
 at the 90th percentile), which is less than a pixel here. `MeanElements.glsl` is the same few lines
@@ -145,7 +146,7 @@ in GLSL, so a vertex shader can solve Kepler's equation for every satellite, eve
 The drawing takes three boxes. A renderer box opens the window. Beneath it, an Earth box draws the
 graticule, Natural Earth's coastlines and the ISS's ground track for the next day, bright where Chicago
 sees it above 10°, as line segments. It also makes the catalogue, a `SkyClock` that runs the sky at
-120 times real time, and the camera, and publishes all three with `prop` for the box beneath it.
+120 times real time, and the camera. It publishes all three with `prop` for the box beneath it.
 Beneath that, a satellites box writes one record per satellite into a GPU buffer, laid out by a
 [GPU schema](gpu_schema.md), and draws one point per satellite:
 
