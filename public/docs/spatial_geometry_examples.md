@@ -1676,3 +1676,48 @@ and `clustering.kt`, and the JTS-backed corner of `afield/data/graph/graph_conne
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference:
 [Graphics](reference/graphics.md) and [Data](reference/data.md).*
+
+## Where to go next
+
+- [Neighbours and graphs on a point cloud](graph_connectivity_examples.md) uses the same Delaunay
+  graph for k-nearest-neighbour and proximity graphs.
+- [Meshes and 3D geometry](mesh_examples.md) is the 3-D counterpart of `spatial_field.kt`.
+- [Merge trees and contour trees](contour_trees.md) follows the [contours of a field](#contours-of-a-field)
+  as the level moves, tracking where components are born and where they merge.
+- [Stipple transport](stipple_transport.md) places dots by optimal transport rather than by the
+  Lloyd relaxation in `stippling.kt`.
+- Open the starting points to try these boxes in your own document:
+  [the plane-geometry boxes](agent_transcripts.md#spatial_geometry_examples) and
+  [Lloyd vs e-means](agent_transcripts.md#kmeans_emeans).
+- Source: [`clustering.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/statistics/clustering.kt),
+  [`dirichlet.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/statistics/dirichlet.kt),
+  [`voronoi.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/spatial/voronoi.kt),
+  [`spatial_field.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/spatial/spatial_field.kt),
+  [`graph_connectivity.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/data/graph/graph_connectivity.kt).
+
+Open questions and next builds:
+
+- **Where Lloyd wins in 2-D.** On the [k-means at scale](#k-means-at-scale) cloud with k-means++
+  seeds, and on 12 000 points from random seeds, Lloyd finishes up to 6% lower than e-means. The
+  scaling laws were fitted mostly on higher-dimensional data. A sweep over `n`, `k` and the
+  batch size on 2-D mixtures would show whether the "quality" batch law needs a 2-D correction, or
+  whether 2-D should just default to Lloyd.
+- **Revival that raises the error.** Reviving a centroid that sat on a stray moves the stray into
+  a real cluster, and the mean squared error goes up. A variant that revives only clusters that are
+  dead *and* far from every sample would keep stray clusters as outlier detectors. Or report a
+  trimmed error beside the plain one.
+- **An epoch slider.** A live box that keeps every epoch's centroids from both algorithms and
+  scrubs through them with a `slider`, so you can watch Lloyd crawl while e-means jumps.
+  `KMeansResult` would need an optional per-epoch centroid history.
+- **Move the private k-means onto the new one.** `StudyEvidence.kt` has its own k = 5 palette
+  k-means, and `stippling.kt` runs a Lloyd relaxation. Moving either onto `vec3KMeans` /
+  `vec2KMeans` changes their committed outputs, so each needs a before/after comparison first.
+- **Weighted Voronoi from clusters.** Feed a k-means result's centroids and cluster sizes into
+  [`CircularDirichlet`](#when-the-bisector-is-a-circle) as sites and weights, so the plane is
+  divided in proportion to how much data each cluster holds.
+- **Saddles automatically.** [Sweep the level through the saddle](#sweep-the-level-through-the-saddle)
+  finds the merge level by eye. The contour tree finds it exactly, and could place the iso values
+  for `generateIsoContours`.
+- **Higher-dimensional k-means.** The `…KMeans` entry points stop at `Vec4`. A
+  `List<DoubleArray>` overload would reach embeddings, where e-means' "throughput" batch law
+  (d > 16) applies and the paper's speedups are largest.
