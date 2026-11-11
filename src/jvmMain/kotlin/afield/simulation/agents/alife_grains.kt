@@ -143,7 +143,9 @@ enum class GrainStat(
     /** Grains per second over [DURATION]. */
     DENSITY("density (grains/s)"),
     /** Mean number of grains sounding at once, sampled over the set's duration. */
-    POLYPHONY("mean polyphony")
+    POLYPHONY("mean polyphony"),
+    /** Share of the grains on the single most common pitch: 1 for a one-pitch drone. */
+    MODE_SHARE("share on one pitch")
 }
 
 /** The [GrainStat] values of one set. All zero for an empty set. */
@@ -163,10 +165,12 @@ class GrainSetStats(
     val density: Double
     /** Mean grains sounding at once. */
     val polyphony: Double
+    /** Fraction of the grains on the most common pitch. */
+    val modeShare: Double
 
     init {
         if (grains.isEmpty()) {
-            medianPitch = 0.0; pitchSpread = 0.0; duration = 0.0; density = 0.0; polyphony = 0.0
+            medianPitch = 0.0; pitchSpread = 0.0; duration = 0.0; density = 0.0; polyphony = 0.0; modeShare = 0.0
         } else {
             val ps = grains.map { it.pitch }.sorted()
             medianPitch = if (ps.size % 2 == 1) ps[ps.size / 2] else 0.5 * (ps[ps.size / 2 - 1] + ps[ps.size / 2])
@@ -177,6 +181,7 @@ class GrainSetStats(
             density = if (duration > 0) count / duration else 0.0
             // Total sounding time over the span is exactly the mean number of grains sounding at once.
             polyphony = if (duration > 0) grains.sumOf { it.duration } / duration else 0.0
+            modeShare = grains.groupingBy { Math.round(it.pitch * 1000) }.eachCount().values.max().toDouble() / count
         }
     }
 
@@ -188,6 +193,7 @@ class GrainSetStats(
         GrainStat.DURATION -> duration
         GrainStat.DENSITY -> density
         GrainStat.POLYPHONY -> polyphony
+        GrainStat.MODE_SHARE -> modeShare
     }
 
     /** Every statistic, in [GrainStat] order: the behaviour descriptor a novelty search would use. */
@@ -195,8 +201,8 @@ class GrainSetStats(
 
     /** One line, every statistic. */
     override fun toString(): String =
-        "%d grains, median %.1f, spread %.2f st, %.2f s, %.1f/s, polyphony %.2f"
-            .format(count, medianPitch, pitchSpread, duration, density, polyphony)
+        "%d grains, median %.1f, spread %.2f st, %.2f s, %.1f/s, polyphony %.2f, %.0f%% on one pitch"
+            .format(count, medianPitch, pitchSpread, duration, density, polyphony, 100 * modeShare)
 }
 
 /**
@@ -255,14 +261,17 @@ fun grainSetFitness(stats: GrainSetStats, terms: List<GrainFitnessTerm>): Double
 
 /**
  * A default target: about 40–120 grains over 2–5 s, a median near middle C, a few semitones of spread
- * and a little polyphony. Every term is a dial; this is a starting profile, not a rule.
+ * and a little polyphony, with at most about a third of the grains on any one pitch (without that
+ * term the search settles on a one-pitch drone of overlapping trunk grains, which counts as
+ * polyphony). Every term is a dial; this is a starting profile, not a rule.
  */
 fun defaultGrainTerms(): List<GrainFitnessTerm> = listOf(
     GrainFitnessTerm(GrainStat.COUNT, Trapezoid(10.0, 40.0, 120.0, 400.0)),
     GrainFitnessTerm(GrainStat.MEDIAN_PITCH, Trapezoid(48.0, 58.0, 66.0, 78.0)),
     GrainFitnessTerm(GrainStat.PITCH_SPREAD, Trapezoid(1.0, 4.0, 8.0, 16.0)),
     GrainFitnessTerm(GrainStat.DURATION, Trapezoid(0.5, 2.0, 5.0, 10.0)),
-    GrainFitnessTerm(GrainStat.POLYPHONY, Trapezoid(1.0, 1.8, 3.5, 8.0))
+    GrainFitnessTerm(GrainStat.POLYPHONY, Trapezoid(1.0, 1.8, 3.5, 8.0)),
+    GrainFitnessTerm(GrainStat.MODE_SHARE, Trapezoid(0.0, 0.0, 0.3, 0.6))
 )
 
 /**

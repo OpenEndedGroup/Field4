@@ -85,6 +85,12 @@ class GrainLSystemTest {
         assertEquals(run.trace.toList(), run.trace.toList().sorted(), "best-so-far is monotone")
     }
 
+    @Test fun aOnePitchDroneNoLongerScoresTop() {
+        val drone = GrainSetStats(decodeGrains(lSystem("G", 'G' to "GGG[---G]G"), 3))
+        assertTrue(drone.modeShare > 0.4, "drone share ${drone.modeShare}")
+        assertTrue(grainSetFitness(drone, defaultGrainTerms()) < 0.9)
+    }
+
     @Test fun breederKeepsParentsAndReplays() {
         val a = GrainBreeder(seed = 5L); val b = GrainBreeder(seed = 5L)
         val p = a.population[2]

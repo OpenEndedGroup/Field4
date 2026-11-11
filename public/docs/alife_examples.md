@@ -2427,7 +2427,8 @@ display("audio", renderGrains(grains).wav())
 Fitness is a weighted mean of **trapezoids**, one per statistic. A trapezoid scores 0 below its first
 corner, rises to 1 at its second, stays at 1 to its third and falls to 0 at its fourth, so each term
 says "about this much, and these are the limits". `defaultGrainTerms()` asks for 40 to 120 grains over
-2 to 5 seconds, a median near middle C, a few semitones of spread and a little polyphony.
+2 to 5 seconds, a median near middle C, a few semitones of spread, a little polyphony, and no more
+than about a third of the grains on any one pitch.
 `grainSetObjective(terms)` turns that into an `Objective` for `PopulationSearch`, and
 `grainLSystemGenome()` is the `LSystemGenome` above with the alphabet `G f + - [ ]`, so mutation,
 crossover and bracket repair are the ones the drawn L-systems already use:
@@ -2456,6 +2457,7 @@ val ranges = mapOf(
     GrainStat.PITCH_SPREAD to (0.0 to 18.0),
     GrainStat.DURATION to (0.0 to 11.0),
     GrainStat.POLYPHONY to (0.0 to 9.0),
+    GrainStat.MODE_SHARE to (0.0 to 1.0),
 )
 val panels = terms.map { t ->
     val (lo, hi) = ranges.getValue(t.stat)
@@ -2466,15 +2468,15 @@ showImg(grainScoreImg(best, 640, 220), channel = "score", caption = "the best se
 display("audio", renderGrains(best).wav())
 ```
 
-![three panels: a blue best-so-far line rising in steps toward 1; a grid of five yellow trapezoid curves each with a vertical marker on or near its plateau; and a dense multi-coloured piano-roll of the evolved grain set](assets/alife_examples/grains-evolve.png)
+![three panels: a blue best-so-far line rising in steps toward 1; a grid of six yellow trapezoid curves each with a vertical marker on or near its plateau; and a dense multi-coloured piano-roll of the evolved grain set](assets/alife_examples/grains-evolve.png)
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-evolved.wav" audio-spec="evolved" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" embed=true hidden=true name="alife-grains-evolved-audio"}
 // Offline-rendered by GrainSetSoundDocs.renderWav("evolved").
 ```
 
-The automatic run optimises what the trapezoids say, which is not the same as what sounds good: with
-the default terms the winners tend toward one long overlapping trunk at a single pitch, a drone that
-counts as polyphony. Add a term against it, or listen instead. The
+The automatic run optimises what the trapezoids say, which is not the same as what sounds good. Without
+the last term the winners were one long overlapping trunk at a single pitch, a drone that counts as
+polyphony; the term was added for that, and the next thing the search games will need another. The
 other half of EvoGrain is **interactive evolution**: you listen and choose the parents.
 `GrainBreeder` holds a population of six grammars; `breed([2, 4])` keeps the chosen parents and fills
 the rest with their crossovers, each mutated once. The same seed and the same choices replay the same
