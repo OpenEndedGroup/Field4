@@ -195,10 +195,13 @@ Items sort by a nanosecond `seq`.
    conflict on the first member bounces it; on a later member, defers it.
 3. Run `tools/merge_regen.py --regen-since <main>` once for the batch: regenerate
    (`generateCodebaseReference`, `regenerateAgentTranscriptStartingPoints`, the completion corpus
-   with `AFIELD_HARVEST_WRITE=1`, derived prose counts via `ProseNumeralContractTest` with
+   with `AFIELD_HARVEST_WRITE=1` when the batch touched the harvester or the fixtures themselves,
+   derived prose counts via `ProseNumeralContractTest` with
    `AFIELD_WRITE_DERIVED_COUNTS=1`, and `tools/guard_corpora.py --write`), commit
    `Regenerate generated artifacts after landing N branch(es)`, then run the guards the batch's
-   paths select, skipping the pure drift checks it just regenerated.
+   paths select, skipping the pure drift checks it just regenerated. A transcript or template
+   change no longer re-harvests the completion corpus here; the nightly `completion-corpus`
+   routine (`routines/completion-corpus/`) does, and lands the result before nightly CI.
 4. **Green:** fast-forward `main` with `FIELD_LANDER=1` (via `merge --ff-only` in whichever
    worktree holds `main`, which refuses rather than overwrite dirty files), then push if any member
    asked. **Red:** a single item bounces with the failing test's message from the JUnit XML; a
