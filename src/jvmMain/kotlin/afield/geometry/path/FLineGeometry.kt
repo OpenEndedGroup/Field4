@@ -5158,9 +5158,14 @@ fun clothoidSplineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = fals
 /** Signed curvature (XY plane) at each of [samples] arc-length-even points, from circles through neighbours. */
 private fun signedCurvatureSamples(line: FLine, samples: Int): Pair<List<Vec3>, DoubleArray> {
     val pts = line.sampleByNumber(max(samples, 3))
+    // Each circle goes through samples a few steps apart: neighbouring float samples on a fine
+    // polyline turn rounding into visible teeth.
+    val sub = line.sampleByNumber(max(samples, 3) * 4 - 3)
+    val w = 4
     val k = DoubleArray(pts.size)
     for (i in 1 until pts.size - 1) {
-        val a = pts[i - 1]; val b = pts[i]; val c = pts[i + 1]
+        val j = i * 4
+        val a = sub[max(j - w, 0)]; val b = sub[j]; val c = sub[min(j + w, sub.lastIndex)]
         val abx = (b.x - a.x).toDouble(); val aby = (b.y - a.y).toDouble()
         val bcx = (c.x - b.x).toDouble(); val bcy = (c.y - b.y).toDouble()
         val acx = (c.x - a.x).toDouble(); val acy = (c.y - a.y).toDouble()
