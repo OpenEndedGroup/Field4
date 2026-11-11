@@ -64,21 +64,24 @@ data class Grain(val onset: Double, val duration: Double, val pitch: Double, val
  *
  * @param basePitch MIDI pitch the turtle starts at
  * @param pitchStep semitones per `+` or `-`
- * @param timeStep seconds advanced by a `G` or an `f` on the trunk
- * @param grainDuration length of a trunk grain in seconds
+ * @param timeStep seconds advanced by a `G` or an `f` on the trunk, before [timeScale]
+ * @param grainDuration length of a trunk grain in seconds, before [timeScale]
  * @param branchAmp amplitude multiplier on entering a branch
  * @param branchDuration multiplier on grain length *and* time step on entering a branch, so deeper
  *   branches are quicker and shorter
  * @param maxGrains decoding stops after this many grains; a cap, not a range
+ * @param timeScale multiplies [timeStep] and [grainDuration] together: 0.5 plays a set twice as fast,
+ *   2 half as fast. The defaults put a trunk grain about every 0.7 s, so a set unfolds over seconds.
  */
 data class GrainTurtle(
     val basePitch: Double = 60.0,
     val pitchStep: Double = 2.0,
-    val timeStep: Double = 0.09,
-    val grainDuration: Double = 0.12,
+    val timeStep: Double = 0.72,
+    val grainDuration: Double = 0.96,
     val branchAmp: Double = 0.8,
     val branchDuration: Double = 0.75,
-    val maxGrains: Int = 4000
+    val maxGrains: Int = 4000,
+    val timeScale: Double = 1.0
 )
 
 /**
@@ -95,10 +98,10 @@ fun decodeGrainString(string: String, turtle: GrainTurtle = GrainTurtle()): List
         when (c) {
             'G' -> {
                 if (out.size >= turtle.maxGrains) return out
-                out.add(Grain(t, turtle.grainDuration * scale, p, amp, depth))
-                t += turtle.timeStep * scale
+                out.add(Grain(t, turtle.grainDuration * turtle.timeScale * scale, p, amp, depth))
+                t += turtle.timeStep * turtle.timeScale * scale
             }
-            'f' -> t += turtle.timeStep * scale
+            'f' -> t += turtle.timeStep * turtle.timeScale * scale
             '+' -> p += turtle.pitchStep
             '-' -> p -= turtle.pitchStep
             '[' -> {
@@ -259,7 +262,7 @@ fun grainSetFitness(stats: GrainSetStats, terms: List<GrainFitnessTerm>): Double
 }
 
 /**
- * A default target: about 40–120 grains over 2–5 s, a median near middle C, a few semitones of spread
+ * A default target: about 40–120 grains over 12–30 s, a median near middle C, a few semitones of spread
  * and a little polyphony, with at most about a third of the grains on any one pitch (without that
  * term the search settles on a one-pitch drone of overlapping trunk grains, which counts as
  * polyphony). Every term is a dial; this is a starting profile, not a rule.
@@ -268,7 +271,7 @@ fun defaultGrainTerms(): List<GrainFitnessTerm> = listOf(
     GrainFitnessTerm(GrainStat.COUNT, Trapezoid(10.0, 40.0, 120.0, 400.0)),
     GrainFitnessTerm(GrainStat.MEDIAN_PITCH, Trapezoid(48.0, 58.0, 66.0, 78.0)),
     GrainFitnessTerm(GrainStat.PITCH_SPREAD, Trapezoid(1.0, 4.0, 8.0, 16.0)),
-    GrainFitnessTerm(GrainStat.DURATION, Trapezoid(0.5, 2.0, 5.0, 10.0)),
+    GrainFitnessTerm(GrainStat.DURATION, Trapezoid(4.0, 12.0, 30.0, 60.0)),
     GrainFitnessTerm(GrainStat.POLYPHONY, Trapezoid(1.0, 1.8, 3.5, 8.0)),
     GrainFitnessTerm(GrainStat.MODE_SHARE, Trapezoid(0.0, 0.0, 0.3, 0.6))
 )
@@ -332,15 +335,17 @@ class GrainAudio(
  * density and position parameters; a decoded set is a fixed list of grains at fixed onsets.
  *
  * @param tail seconds of silence kept after the last grain ends
+ * @param minSeconds the shortest render, so a one-grain set still gives a player something to play
  */
 fun renderGrains(
     grains: List<Grain>,
     sampleRate: Int = 44_100,
     source: FloatArray? = null,
     sourceRate: Int = sampleRate,
-    tail: Double = 0.2
+    tail: Double = 0.5,
+    minSeconds: Double = 2.0
 ): GrainAudio {
-    val end = (grains.maxOfOrNull { it.end } ?: 0.0) + tail
+    val end = max(minSeconds, (grains.maxOfOrNull { it.end } ?: 0.0) + tail)
     val n = max(1, (end * sampleRate).roundToInt())
     val left = FloatArray(n); val right = FloatArray(n)
     val span = max(1e-9, grains.maxOfOrNull { it.onset } ?: 1.0)

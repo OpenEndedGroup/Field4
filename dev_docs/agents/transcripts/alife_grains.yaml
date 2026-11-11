@@ -5,7 +5,7 @@ description: >
   and pitch, so every branch is a voice -- measured by trapezoidal scores over count, median pitch,
   spread, duration and polyphony, and evolved by the existing LSystemGenome on PopulationSearch.
   Box 1 decodes one hand-written grammar and plays it. Box 2 is the automatic run, with sliders for
-  the target median pitch, the count plateau and the polyphony weight that re-run the search on
+  the target median pitch, the count plateau, the polyphony weight and the time scale that re-run the search on
   release. Box 3 is interactive evolution: six children with players, and a text field naming the
   parents of the next generation. All CPU, no Window or Renderer.
 docs:
@@ -41,10 +41,12 @@ operations:
       properties:
         code: |
           // Fitness is a weighted mean of trapezoids over the set's statistics. The sliders move
-          // three of them; releasing one re-runs the search from the same seed.
+          // three of them and the time scale; releasing one re-runs the search from the same seed.
+          // The duration target stretches with the time scale, so the same grammars win, slower or faster.
           var medianPitch = 62.0
           var countCentre = 80.0
           var polyWeight = 1.0
+          var timeScale = 1.0
 
           fun terms() = [
               GrainFitnessTerm(
@@ -56,7 +58,7 @@ operations:
                   Trapezoid(medianPitch - 14, medianPitch - 4, medianPitch + 4, medianPitch + 16),
               ),
               GrainFitnessTerm(GrainStat.PITCH_SPREAD, Trapezoid(1.0, 4.0, 8.0, 16.0)),
-              GrainFitnessTerm(GrainStat.DURATION, Trapezoid(0.5, 2.0, 5.0, 10.0)),
+              GrainFitnessTerm(GrainStat.DURATION, Trapezoid(4.0 * timeScale, 12.0 * timeScale, 30.0 * timeScale, 60.0 * timeScale)),
               GrainFitnessTerm(GrainStat.POLYPHONY, Trapezoid(1.0, 1.8, 3.5, 8.0), weight = polyWeight),
               GrainFitnessTerm(GrainStat.MODE_SHARE, Trapezoid(0.0, 0.0, 0.3, 0.6)),
           ]
@@ -64,14 +66,14 @@ operations:
           fun search() {
               val run = PopulationSearch.evolve(
                   grainLSystemGenome(),
-                  grainSetObjective(terms()),
+                  grainSetObjective(terms(), turtle = GrainTurtle(timeScale = timeScale)),
                   budget = 300,
                   seed = 7L,
                   crossoverRate = 0.3,
                   immigrantRate = 0.1,
                   label = "grains",
               )
-              val best = decodeGrains(run.best!!.genome, 3)
+              val best = decodeGrains(run.best!!.genome, 3, GrainTurtle(timeScale = timeScale))
               display("main", run.summary() + "<br>" + grainRule(run.best!!.genome) + "<br>" + GrainSetStats(best))
               showImg(fitnessTraceImg(run.trace), channel = "trace", caption = "best-so-far fitness against evaluations, 0 to 1")
               showImg(grainScoreImg(best, 640, 220), channel = "score", caption = "the best set")
@@ -88,6 +90,10 @@ operations:
           }
           slider("polyphony weight", 0.0, 4.0, 0.1, polyWeight, channel = "polyphony weight") {
               polyWeight = it
+              search()
+          }
+          slider("time scale", 0.125, 2.0, 0.025, timeScale, channel = "time scale") {
+              timeScale = it
               search()
           }
           search()

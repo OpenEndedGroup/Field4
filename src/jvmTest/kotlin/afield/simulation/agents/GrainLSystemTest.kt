@@ -69,7 +69,7 @@ class GrainLSystemTest {
     }
 
     @Test fun renderIsSampleAccurateAndNotSilent() {
-        val a = renderGrains(listOf(Grain(0.5, 0.1, 69.0, 1.0, 0)), sampleRate = 1000, tail = 0.0)
+        val a = renderGrains(listOf(Grain(0.5, 0.1, 69.0, 1.0, 0)), sampleRate = 1000, tail = 0.0, minSeconds = 0.0)
         assertEquals(600, a.left.size)
         assertTrue(a.left.take(500).all { it == 0f }, "nothing before the onset")
         assertTrue(a.left.drop(500).any { it != 0f })
@@ -83,6 +83,13 @@ class GrainLSystemTest {
         assertTrue(run.improvements.size >= 2)
         assertTrue(run.recombined > 0)
         assertEquals(run.trace.toList(), run.trace.toList().sorted(), "best-so-far is monotone")
+    }
+
+    @Test fun timeScaleStretchesTimeAndRenderHasAFloor() {
+        val slow = decodeGrainString("GG", t.copy(timeScale = 8.0))
+        assertTrue(abs(slow[1].onset - 0.8) < 1e-9 && abs(slow[0].duration - 0.8) < 1e-9)
+        assertTrue(abs(GrainTurtle().timeStep - 0.72) < 1e-12)
+        assertTrue(renderGrains(listOf(Grain(0.0, 0.1, 60.0, 1.0, 0))).seconds >= 2.0)
     }
 
     @Test fun aOnePitchDroneNoLongerScoresTop() {

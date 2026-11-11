@@ -2402,7 +2402,9 @@ The same L-system genome can be read as music instead of a drawing. In Nathan Ho
 whose state is a **time** and a **pitch**: `G` plays a grain and moves forward in time, `f` rests,
 `+` and `-` step the pitch, and `[` and `]` save and restore the state. Because `]` returns to the
 *time* the branch started at, every bracket is a new voice, so brackets give polyphony. A branch also
-plays quieter and quicker than its parent (`GrainTurtle.branchAmp`, `branchDuration`).
+plays quieter and quicker than its parent (`GrainTurtle.branchAmp`, `branchDuration`). A trunk
+grain lasts about a second and the next starts 0.72 s later; `GrainTurtle(timeScale = 0.5)` plays
+the same set twice as fast.
 
 `decodeGrains(system, generations)` derives the grammar and returns its grains; `GrainSetStats`
 measures the set (count, median pitch, pitch spread, duration, density, mean polyphony); and
@@ -2427,7 +2429,7 @@ display("audio", renderGrains(grains).wav())
 Fitness is a weighted mean of **trapezoids**, one per statistic. A trapezoid scores 0 below its first
 corner, rises to 1 at its second, stays at 1 to its third and falls to 0 at its fourth, so each term
 says "about this much, and these are the limits". `defaultGrainTerms()` asks for 40 to 120 grains over
-2 to 5 seconds, a median near middle C, a few semitones of spread, a little polyphony, and no more
+12 to 30 seconds, a median near middle C, a few semitones of spread, a little polyphony, and no more
 than about a third of the grains on any one pitch.
 `grainSetObjective(terms)` turns that into an `Objective` for `PopulationSearch`, and
 `grainLSystemGenome()` is the `LSystemGenome` above with the alphabet `G f + - [ ]`, so mutation,
