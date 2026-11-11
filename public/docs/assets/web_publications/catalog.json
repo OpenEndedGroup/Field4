@@ -4288,12 +4288,12 @@
     },
     "assets/agent_transcripts/satellites/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-11T16:29:40.158Z",
+      "capturedAt": "2026-11-11T17:02:39.682Z",
       "channels": 1,
       "file": "assets/web_publications/satellites/document/metadata.edn",
       "files": {
-        "assets/web_publications/satellites/document/metadata.edn": "67ab686809b4ca847816a9647c31a3e4fcc710c37d3fd5ec03ffc086dd3789cd",
-        "assets/web_publications/satellites/document/outputs.json": "68df6ae3123f247f8fbb6abd815f5ac6888b971cd081f8f4255a2079f7811c39",
+        "assets/web_publications/satellites/document/metadata.edn": "73226c3316c1f7fb45bff5bb44defa5b364ef82d3867f64a216eb076576926d6",
+        "assets/web_publications/satellites/document/outputs.json": "561cba705cd5d96f2851f0333bba5bef0f88b0c6d59c202ceac328d2260c69a2",
         "assets/web_publications/satellites/outputs/0.html": "167d6fb8daea80ab7a15f33d00b6dc9d56d940f76db428112b2ade8d50196c7e"
       },
       "kinds": [
@@ -4301,17 +4301,18 @@
       ],
       "outputs": "assets/web_publications/satellites/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/satellites.yaml": "f939ec6128a43b3b1cf8b7cd0579dd3ef3050dfa15d8d47b2d78e4307a55ef11",
+        "dev_docs/agents/transcripts/satellites.yaml": "d6f9447c75431429dbd555a2b1b3057f968d8874b4b8ff049a32e690dac40dfc",
         "public/docs/assets/agent_transcripts/satellites/agent_graphics_context_code_.kt": "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2",
         "public/docs/assets/agent_transcripts/satellites/guides/satellites.md": "1bf958471e50ba53ea50382da8c80b4f8edf534606cdd98c1c36139117e6f214",
-        "public/docs/assets/agent_transcripts/satellites/metadata.edn": "32392fa30df8b03d8e544948adf084c233a5815b30c5461e336f282f160c5fd2",
+        "public/docs/assets/agent_transcripts/satellites/metadata.edn": "dbfe227ca49981629428ac86c5f0cb4a69504d1d65262c5ece9bd84abacaa6d2",
         "public/docs/assets/agent_transcripts/satellites/satellite-catalogue_code_.kt": "15ec16ee1b330da94ad7f91c499b505bdb1f5c37a3b2fa71cab232b0e5035b9e",
         "public/docs/assets/agent_transcripts/satellites/satellite-catalogue_fragment_.glsl": "7f5e44e8b47539acea1d6608689722479e611377d171dd8a3c743f84932fd4a2",
         "public/docs/assets/agent_transcripts/satellites/satellite-catalogue_vertex_.glsl": "afa42f5d7443e0f8915053f6ad9de9402a861244e6683379628228bd5dd102c3",
         "public/docs/assets/agent_transcripts/satellites/satellite-earth_code_.kt": "70d144ae235896e174877eaf095c09a356781a4dcac8790ad0186d2679aea5ec",
         "public/docs/assets/agent_transcripts/satellites/satellite-earth_fragment_.glsl": "2f9d2c32dd0a21b6f98a207e7187d8c81a390cf28ef0043f3c852ec71c79c819",
         "public/docs/assets/agent_transcripts/satellites/satellite-earth_vertex_.glsl": "675baa042bf4fe92b603d7c883408edc6921f75c296b40074dfef5d9ab49a515",
-        "public/docs/assets/agent_transcripts/satellites/satellite-passes_code_.kt": "39c0253a892120ce01f827a265fb96d3080fd908056bff5de29799dae81e2180",
+        "public/docs/assets/agent_transcripts/satellites/satellite-geo_code_.kt": "6f39f2aef46cf4c73977133251a0ae4b6220a8397cfecd1af313acb30f15a1d4",
+        "public/docs/assets/agent_transcripts/satellites/satellite-passes_code_.kt": "de1c1e4db5a561fa0a8c63ae6fe09b8c0be10981e62679e45c484c0d326ef36f",
         "public/docs/assets/satellites/globe.png": "ff7fac3852a12f0e6478c09de010d8302124665be293e1c25ef2c49fd61d7af3",
         "public/docs/satellites.md#capture-box=satellite-catalogue": "88d26afd1667e51f7e73203f1cd1552e01c3eac173519a74a5593ce7ba85fe4b"
       },
@@ -5328,25 +5329,25 @@
     },
     "assets/agent_transcripts/variable_width_strokes/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-11T15:19:14.484Z",
+      "capturedAt": "2026-11-11T17:02:36.900Z",
       "channels": 4,
       "file": "assets/web_publications/variable_width_strokes/document/metadata.edn",
       "files": {
-        "assets/web_publications/variable_width_strokes/document/metadata.edn": "7eca8b88e59f4871165d618d6cd70ccb37bc7ea11dd1c920c0a62b931a67b71b",
-        "assets/web_publications/variable_width_strokes/document/outputs.json": "2c61b60214b88626e6a7c7c7ecfb36e546a0b5b54d77b6e7d198ef5bbad0f8db",
-        "assets/web_publications/variable_width_strokes/outputs/0.html": "f15330504a4fdf0b57736b41efef64f0b8754b856975daaa71ac6e8292a26015",
-        "assets/web_publications/variable_width_strokes/outputs/1.html": "99404d38462362926fea49e923be8f76f855ab76cc79b12ec3d9ed5288bc79bf",
-        "assets/web_publications/variable_width_strokes/outputs/2.html": "f4a8c814c0923e1f5873de17d6401f146f7eccf3e9343c2d68de9910526c019b",
-        "assets/web_publications/variable_width_strokes/outputs/3.html": "a4f73dd89c9c68be09b7aeddf9d8f5ed0e114139f4619f86588ed3478c003414"
+        "assets/web_publications/variable_width_strokes/document/metadata.edn": "a77d698b861448e1465324652ef7659c57796cb866905a607e9c59af7341b615",
+        "assets/web_publications/variable_width_strokes/document/outputs.json": "fefc46c731187be5bfb867d06943c1d8d934eb77972df64a62f1ae7bfd5f022b",
+        "assets/web_publications/variable_width_strokes/outputs/0.html": "23cc4d1b7ca126b6ac9b8b7f5ba1d1a7dc2d7bc2f41a6f83c907a0cc1d270236",
+        "assets/web_publications/variable_width_strokes/outputs/1.html": "15765533a40a7eff01c07c8c34b54d8ed641d1817331311957d8c11a619fe696",
+        "assets/web_publications/variable_width_strokes/outputs/2.html": "cda7f9880348b182746291d64480bd9e677e54b405f67820290f359f17902bd6",
+        "assets/web_publications/variable_width_strokes/outputs/3.html": "0d38e97b2fb18da35a9c4759124bebf4e654a436c54c1e837fdd26efe030ea3a"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/variable_width_strokes/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/variable_width_strokes.yaml": "6185fe7d206b78923c9fe5542ed24219eb708e632be8ce0d6a4ca121bb475aaf",
+        "dev_docs/agents/transcripts/variable_width_strokes.yaml": "42574cce1de5b138bf70d491261850194b2bc0eaa27bff9d8e3f1bf132f95f2c",
         "public/docs/assets/agent_transcripts/variable_width_strokes/guides/fline_examples-variable-width-strokes-the-swept-circle-envelope.md": "0429fd8a571d032ff5b26802746fde5806fd3299e65ff19a08a4e40b0587dbe4",
-        "public/docs/assets/agent_transcripts/variable_width_strokes/metadata.edn": "72aa9678752f80cc0da45bbe9f38195e2fdb504f9599d7fc2a5f4a7dd55e2732",
+        "public/docs/assets/agent_transcripts/variable_width_strokes/metadata.edn": "24394d388d153f0f1fb09aea1e0e1b1f912163f055e322e7d300ba956e253ec6",
         "public/docs/assets/agent_transcripts/variable_width_strokes/swept-cubic_code_.kt": "f9a5c02f0b1131501ceaadf75e832b4c0acd212380ecaae86e09b19992861938",
         "public/docs/assets/agent_transcripts/variable_width_strokes/swept-degenerate_code_.kt": "69d1ce8348dddf73a10587c8bea5537d8f936163ddb08269bbdb0d01a05d2fe6",
         "public/docs/assets/agent_transcripts/variable_width_strokes/swept-notation_code_.kt": "7d8938f14699d0e4d9869db12a5c88fc1d7facba66f1cafafd1b8788adf059f8",

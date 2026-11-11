@@ -83,7 +83,7 @@ From `code`
 One cubic whose radius swells from 2 to about 17 and back to 2: the envelope against the plain ribbon.
 
 ```edn [field-box id="swept-cubic" role="properties"]
-{"id" "swept-cubic" "index" 1 "name" "2 - Envelope of one cubic" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Envelope of one cubic" "_tombstone" false "frame" #afield/rect [540.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "swept-cubic_code_.kt" "lines" 49 "characters" 1755 "sha256" "f9a5c02f0b1131501ceaadf75e832b4c0acd212380ecaae86e09b19992861938"}]}
+{"id" "swept-cubic" "index" 1 "name" "2 - Envelope of one cubic" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Envelope of one cubic" "_tombstone" false "frame" #afield/rect [1200.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "swept-cubic_code_.kt" "lines" 49 "characters" 1755 "sha256" "f9a5c02f0b1131501ceaadf75e832b4c0acd212380ecaae86e09b19992861938"}]}
 ```
 
 ```kotlin [field-property box="swept-cubic" name="code" path="swept-cubic_code_.kt"]
@@ -149,7 +149,7 @@ From `code`
 Write a pressure stroke onto the drawing layer, then read it back as pen samples.
 
 ```edn [field-box id="swept-notation" role="properties"]
-{"id" "swept-notation" "index" 2 "name" "4 - A pressure stroke from the drawing layer" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - A pressure stroke from the drawing layer" "_tombstone" false "frame" #afield/rect [1500.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "swept-notation_code_.kt" "lines" 22 "characters" 752 "sha256" "7d8938f14699d0e4d9869db12a5c88fc1d7facba66f1cafafd1b8788adf059f8"}]}
+{"id" "swept-notation" "index" 2 "name" "4 - A pressure stroke from the drawing layer" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - A pressure stroke from the drawing layer" "_tombstone" false "frame" #afield/rect [3480.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "swept-notation_code_.kt" "lines" 22 "characters" 752 "sha256" "7d8938f14699d0e4d9869db12a5c88fc1d7facba66f1cafafd1b8788adf059f8"}]}
 ```
 
 ```kotlin [field-property box="swept-notation" name="code" path="swept-notation_code_.kt"]
@@ -189,7 +189,7 @@ The pen nearly stops and presses: around the middle sample the radius changes fa
 the centre moves, and the circle swallows itself.
 
 ```edn [field-box id="swept-degenerate" role="properties"]
-{"id" "swept-degenerate" "index" 3 "name" "3 - Where there is no envelope" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Where there is no envelope" "_tombstone" false "frame" #afield/rect [1020.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "swept-degenerate_code_.kt" "lines" 37 "characters" 1123 "sha256" "69d1ce8348dddf73a10587c8bea5537d8f936163ddb08269bbdb0d01a05d2fe6"}]}
+{"id" "swept-degenerate" "index" 3 "name" "3 - Where there is no envelope" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Where there is no envelope" "_tombstone" false "frame" #afield/rect [2340.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "swept-degenerate_code_.kt" "lines" 37 "characters" 1123 "sha256" "69d1ce8348dddf73a10587c8bea5537d8f936163ddb08269bbdb0d01a05d2fe6"}]}
 ```
 
 ```kotlin [field-property box="swept-degenerate" name="code" path="swept-degenerate_code_.kt"]

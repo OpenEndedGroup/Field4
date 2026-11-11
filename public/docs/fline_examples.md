@@ -1369,7 +1369,7 @@ Negative continuity pulls the green `tcbTo` curve toward a corner at each point;
 
 ### Curvature-continuous splines: `clothoidSplineFrom(...)`
 
-`cubicSplineFrom` passes through its points, but its curvature jumps at every one of them, and a reader sees those jumps as slight flats and kinks in a shape that should be round. `clothoidSplineFrom` draws a spline whose curvature is continuous everywhere, including at the points it passes through. Reach for it when the curve is the drawing: lettering, outlines, rounded shapes.
+`cubicSplineFrom` passes through its points, but its curvature jumps at each one. On a shape that should be round, those jumps can show up as slight flats and kinks. `clothoidSplineFrom` keeps the curvature continuous, even at the points it passes through. Try it for lettering, outlines and other shapes where the curve itself is the drawing.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -2474,6 +2474,9 @@ lines(base, left, right, w = 420.0, h = 260.0, fitToSize = true)
 
 ### Variable-width strokes: the swept-circle envelope
 
+Turn a pen's path and pressure into a filled stroke. These functions build the outline and let you
+compare it with another one.
+
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
 | Operation | Behavior |
@@ -2532,7 +2535,7 @@ lines(
 
 The pills show a knuckle at every sample. The trapezoid pills are smooth in width but still a polygon in direction. The spline is smooth in both.
 
-The flanks are not where you might guess. A circle that is growing as it moves touches its neighbour behind the centre, not straight out to the side: the outline is the centre offset by `r` along the normal tilted back by an angle `θ` with `sin θ = r′ / |P′|`, the rate the radius grows over the speed of the centre. `byVariableRibboning` offsets along the untilted normal and cuts the ends square. Below, one cubic swells from a radius of 2 to about 17 and back: the faint circles are the circles being swept, blue is `bySweptCircleEnveloping`, orange is `byVariableRibboning` with the same width:
+A circle growing as it moves touches its neighbour behind the centre. To find the flank, offset the centre by `r` along a normal tilted back by an angle `θ`, where `sin θ = r′ / |P′|`: the rate the radius grows divided by the speed of the centre. `byVariableRibboning` offsets along the untilted normal and cuts the ends square. Below, one cubic swells from a radius of 2 to about 17 and back. The faint circles show the sweep, blue is `bySweptCircleEnveloping`, and orange is `byVariableRibboning` at the same width:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/swept_circle_cubic.png" wait="1.0" capture="box" open-outputs="true" embed=true name="fline-swept-cubic"}
 :::static

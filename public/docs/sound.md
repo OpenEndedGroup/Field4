@@ -295,12 +295,12 @@ wrong one:
 
 ## A physically modelled piano
 
-`Piano` is a grand piano built from physics rather than recordings: a felt hammer strikes a set of
-stiff strings, the strings push on a bridge, and the bridge drives a soundboard and a room. It is a
+`Piano` is a physically modelled grand piano: a felt hammer strikes a set of stiff strings, the
+strings push on a bridge, and the bridge drives a soundboard and a room. It is a
 port of Peter Cooper's [coopiano](https://github.com/peterc/coopiano) (MIT licence), and the
 reference entry is [`Piano`](reference/synthesis.md#piano-kt-piano). This section follows one
-phrase through it, from the pattern that starts the notes to the speaker, and then takes the
-microphone off the soundboard and puts it right on the strings.
+phrase through it, from the pattern that starts the notes to the speaker. Then we'll move the
+microphone close to the strings, prepare the piano and play other sounds through it.
 
 ### Starting notes: patterns and MIDI
 
@@ -358,8 +358,8 @@ piano2.play(pat("~ [e5 a5]"), cycles = 8, cps = 0.5)
 audio(piano + piano2, gain = 0.7f)
 ```
 
-`piano + piano2` is a launch bundle, not a mix: `audio(...)` turns each piano in it into its own
-patch on the engine, so each keeps its own strings and soundboard.
+`piano + piano2` makes a launch bundle. `audio(...)` turns each piano into its own patch on the
+engine, so each keeps its own strings and soundboard.
 
 ### Inside: hammer, strings, soundboard
 
@@ -470,9 +470,9 @@ as the control's default; anything else is used as given.
 
 ### A close-mic'd piano
 
-The soundboard is what a piano sounds like from the audience. Put a microphone a few centimetres
-above the strings and it hears something else: the strings themselves, the felt hitting them, the
-keys knocking on the keybed. Six controls give you that piano, and each is a Param:
+From the audience you hear the soundboard. Put a microphone a few centimetres above the strings and
+you also hear the strings themselves, the felt hitting them and the keys knocking on the keybed.
+These six controls shape that close sound; each is a Param:
 
 | control | what it does | default |
 | --- | --- | --- |
