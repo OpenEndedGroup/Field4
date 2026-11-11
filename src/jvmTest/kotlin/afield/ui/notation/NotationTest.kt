@@ -324,6 +324,20 @@ class NotationTest {
     }
 
     @Test
+    fun penKnotsCarryTheRadiusFromPressure() {
+        a.notation {
+            stroke(listOf(vec(0, 0), vec(10, 0), vec(20, 0)), name = "pen", pressure = { 0.25 + 0.75 * it })
+            stroke(listOf(vec(0, 0), vec(10, 5)), name = "mouse")
+        }
+        val pen = a.notation.named("pen")!!.penKnots(8.0, exponent = 2.0)
+        assertEquals(3, pen.size)
+        assertTrue(abs(pen[1].x - 10f) < 1e-4 && abs(pen[0].z - 8 * 0.25 * 0.25) < 1e-4 && abs(pen[2].z - 8f) < 1e-4, "$pen")
+        // no recorded pressure reads as full pressure
+        val mouse = a.notation.named("mouse")!!.penKnots(3.0)
+        assertTrue(mouse.all { abs(it.z - 3f) < 1e-6 } && abs(mouse[1].y - 5f) < 1e-4, "$mouse")
+    }
+
+    @Test
     fun cubicStrokeFollowsTheCurve() {
         // the end point is the cubic's end, and the middle sample is the curve's midpoint, not a control
         a.notation { stroke(FLine().moveTo(0, 0).cubicTo(0, 100, 100, 100, 100, 0), name = "arch") }

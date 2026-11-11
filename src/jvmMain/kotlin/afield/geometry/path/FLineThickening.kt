@@ -353,12 +353,23 @@ fun FLine.bySweptCircleEnveloping(
  * exact swept-circle envelope of that spline, as in [bySweptCircleEnveloping]. For a pen, a radius
  * of `w · p^1.5` to `w · p^2` from pressure `p` reads as natural ink.
  *
+ * A pen stroke with a sharp turn in it (the point of a "v", the corners of a "z") is rounded off
+ * by the spline, and overshoots. List those knots in [corners]: there the path keeps its corner,
+ * each side taking its tangent from its own span, and the stroke turns it with a round join, the
+ * circle at the corner. [penCorners] finds them by angle.
+ *
  * @param knots pen samples, `z` = radius.
  * @param samplesPerSegment stations on each Bézier span.
  * @param flatness tolerance for the round caps and disc polygons.
+ * @param corners indices into [knots] where the path has a corner instead of passing smoothly.
  */
-fun sweptCircleStroke(knots: List<Vec3>, samplesPerSegment: Int = 24, flatness: Double = 0.25): FLineRibbon {
-    val segs = sweptCircleSegments(knots)
+fun sweptCircleStroke(
+    knots: List<Vec3>,
+    samplesPerSegment: Int = 24,
+    flatness: Double = 0.25,
+    corners: Collection<Int> = emptyList(),
+): FLineRibbon {
+    val segs = sweptCircleSegments(knots, corners)
     if (segs.isEmpty()) {
         if (knots.size == 1) {
             val k = knots[0]
@@ -369,19 +380,24 @@ fun sweptCircleStroke(knots: List<Vec3>, samplesPerSegment: Int = 24, flatness: 
     }
     val m = samplesPerSegment.coerceAtLeast(2)
     val stations = ArrayList<SweptStation>()
+    val joins = HashSet<Int>()
+    val sharp = corners.toSet()
     for ((si, s) in segs.withIndex()) {
-        for (j in (if (si == 0) 0 else 1)..m) stations += s.station(j.toDouble() / m)
+        // a corner keeps both of its stations (one per tangent) and is joined by its disc
+        val first = if (si == 0) 0 else if (si in sharp) { joins += stations.size; 0 } else 1
+        for (j in first..m) stations += s.station(j.toDouble() / m)
     }
-    return sweptEnvelope(stations, flatness)
+    return sweptEnvelope(stations, flatness, joins)
 }
 
 /**
  * The Bézier spans of [sweptCircleStroke] in `(x, y, r)`: four control points each, `z` = radius.
  *
  * @param knots pen samples, `z` = radius.
+ * @param corners knots where the path has a corner, as for [sweptCircleStroke].
  */
-fun sweptCircleBeziers(knots: List<Vec3>): List<List<Vec3>> =
-    sweptCircleSegments(knots).map { s -> s.c.map { vec(it[0].toFloat(), it[1].toFloat(), it[2].toFloat()) } }
+fun sweptCircleBeziers(knots: List<Vec3>, corners: Collection<Int> = emptyList()): List<List<Vec3>> =
+    sweptCircleSegments(knots, corners).map { s -> s.c.map { vec(it[0].toFloat(), it[1].toFloat(), it[2].toFloat()) } }
 
 /**
  * Where the stroke of [knots] has no envelope: parameter spans on which `|r′| ≥ |P′|`, so the
@@ -393,9 +409,10 @@ fun sweptCircleBeziers(knots: List<Vec3>): List<List<Vec3>> =
  * stationary instant) is reported as a zero-length range.
  *
  * @param knots pen samples, `z` = radius.
+ * @param corners knots where the path has a corner, as for [sweptCircleStroke].
  */
-fun sweptCircleDegenerateSpans(knots: List<Vec3>): List<ClosedFloatingPointRange<Double>> {
-    val segs = sweptCircleSegments(knots)
+fun sweptCircleDegenerateSpans(knots: List<Vec3>, corners: Collection<Int> = emptyList()): List<ClosedFloatingPointRange<Double>> {
+    val segs = sweptCircleSegments(knots, corners)
     val out = ArrayList<ClosedFloatingPointRange<Double>>()
     var open: Double? = null
     val grid = 64
@@ -427,6 +444,104 @@ fun sweptCircleDegenerateSpans(knots: List<Vec3>): List<ClosedFloatingPointRange
     }
     open?.let { out += it..segs.size.toDouble() }
     return out
+}
+
+/**
+ * Fewer pen samples, drawing the same stroke.
+ *
+ * A tablet reports a point every pixel or two, and its pressure wobbles from one to the next. Fed
+ * to [sweptCircleStroke] directly, that is slow (hundreds of Bézier spans), and the wobble, where
+ * the pen moves slowly, outruns the pen and makes spans with no envelope. This first averages the
+ * radius over [widthSmoothing] units of path either side of each knot (positions are left alone, so
+ * corners stay sharp), then drops each knot that lies within [tolerance] of the straight run between
+ * the knots kept either side of it (Ramer-Douglas-Peucker in `(x, y, r)`, so a change in width counts
+ * as much as a change in position). The first and last knots are always kept, and repeats are
+ * dropped.
+ *
+ * @param knots pen samples, `z` = radius.
+ * @param tolerance largest distance, in `(x, y, r)`, a dropped knot may lie from what replaces it.
+ * @param widthSmoothing half-width, in path length, of the window the radius is averaged over; 0
+ * keeps the radii as they are.
+ */
+fun thinPenSamples(knots: List<Vec3>, tolerance: Double = 0.5, widthSmoothing: Double = 3.0): List<Vec3> {
+    val p = ArrayList<Vec3>(knots.size)
+    for (k in knots) if (p.isEmpty() || p.last().distance(k) > 1e-9) p += Vec3(k)
+    if (widthSmoothing > 0 && p.size > 2) {
+        val arc = DoubleArray(p.size)
+        for (i in 1 until p.size) arc[i] = arc[i - 1] + kotlin.math.hypot((p[i].x - p[i - 1].x).toDouble(), (p[i].y - p[i - 1].y).toDouble())
+        val r = DoubleArray(p.size) { p[it].z.toDouble() }
+        var lo = 0
+        var hi = 0
+        for (i in p.indices) {
+            while (arc[i] - arc[lo] > widthSmoothing) lo++
+            while (hi + 1 < p.size && arc[hi + 1] - arc[i] <= widthSmoothing) hi++
+            var sum = 0.0
+            var weight = 0.0
+            for (j in lo..hi) {
+                val w = 1 - abs(arc[j] - arc[i]) / (widthSmoothing * 1.0001)
+                sum += w * r[j]
+                weight += w
+            }
+            p[i].z = (sum / weight).toFloat()
+        }
+    }
+    if (p.size <= 2) return p
+    val keep = BooleanArray(p.size)
+    keep[0] = true
+    keep[p.lastIndex] = true
+    val stack = ArrayDeque<Pair<Int, Int>>()
+    stack.addLast(0 to p.lastIndex)
+    while (stack.isNotEmpty()) {
+        val (a, b) = stack.removeLast()
+        if (b - a < 2) continue
+        val ax = p[a].x.toDouble()
+        val ay = p[a].y.toDouble()
+        val az = p[a].z.toDouble()
+        val dx = p[b].x - ax
+        val dy = p[b].y - ay
+        val dz = p[b].z - az
+        val len2 = dx * dx + dy * dy + dz * dz
+        var worst = -1.0
+        var at = -1
+        for (k in a + 1 until b) {
+            val qx = p[k].x - ax
+            val qy = p[k].y - ay
+            val qz = p[k].z - az
+            val u = if (len2 > 1e-18) ((qx * dx + qy * dy + qz * dz) / len2).coerceIn(0.0, 1.0) else 0.0
+            val ex = qx - u * dx
+            val ey = qy - u * dy
+            val ez = qz - u * dz
+            val d = ex * ex + ey * ey + ez * ez
+            if (d > worst) { worst = d; at = k }
+        }
+        if (worst > tolerance * tolerance) {
+            keep[at] = true
+            stack.addLast(a to at)
+            stack.addLast(at to b)
+        }
+    }
+    return p.filterIndexed { i, _ -> keep[i] }
+}
+
+/**
+ * The knots where the pen turns more sharply than [degrees], for the `corners` of
+ * [sweptCircleStroke]. Measure on thinned samples ([thinPenSamples]): on raw tablet points every
+ * small wobble is a sharp turn.
+ *
+ * @param knots pen samples, `z` = radius.
+ * @param degrees turn, between the span arriving at a knot and the span leaving it, above which
+ * the knot is a corner.
+ */
+fun penCorners(knots: List<Vec3>, degrees: Double = 60.0): List<Int> {
+    val limit = Math.toRadians(degrees)
+    return (1 until knots.lastIndex).filter { i ->
+        val ax = (knots[i].x - knots[i - 1].x).toDouble()
+        val ay = (knots[i].y - knots[i - 1].y).toDouble()
+        val bx = (knots[i + 1].x - knots[i].x).toDouble()
+        val by = (knots[i + 1].y - knots[i].y).toDouble()
+        if (ax * ax + ay * ay < 1e-18 || bx * bx + by * by < 1e-18) false
+        else abs(kotlin.math.atan2(ax * by - ay * bx, ax * bx + ay * by)) > limit
+    }
 }
 
 /**
@@ -468,14 +583,35 @@ private class SweptSegment(val c: Array<DoubleArray>) {
     }
 }
 
-private fun sweptCircleSegments(knots: List<Vec3>): List<SweptSegment> {
+private fun sweptCircleSegments(knots: List<Vec3>, corners: Collection<Int> = emptyList()): List<SweptSegment> {
     if (knots.size < 2) return emptyList()
     val p = knots.map { doubleArrayOf(it.x.toDouble(), it.y.toDouble(), it.z.toDouble()) }
     val n = p.lastIndex
-    fun tangent(i: Int) = DoubleArray(3) { k -> (p[(i + 1).coerceAtMost(n)][k] - p[(i - 1).coerceAtLeast(0)][k]) / (if (i == 0 || i == n) 1.0 else 2.0) }
+    val sharp = corners.toSet()
+    // span lengths in the plane; a span on which only the radius changes counts by that
+    val len = DoubleArray(n) { i ->
+        val d = kotlin.math.hypot(p[i + 1][0] - p[i][0], p[i + 1][1] - p[i][1])
+        if (d > 1e-12) d else abs(p[i + 1][2] - p[i][2])
+    }
+    // The tangent at an interior knot is the neighbours' difference shared out by span length, so
+    // each side gets a tangent as long as its own span. Pen samples bunch up where the pen slows, and
+    // with the plain Catmull-Rom tangent a short span next to a long one overshoots by a loop; with
+    // evenly spaced knots the two are the same. At a corner, and at the ends, each side takes its
+    // tangent from its own span only.
+    fun tangent(i: Int, span: Int): DoubleArray {
+        if (i == 0 || i == n || i in sharp) {
+            val a = if (span < i) i - 1 else i
+            return DoubleArray(3) { k -> p[a + 1][k] - p[a][k] }
+        }
+        val total = len[i - 1] + len[i]
+        val scale = if (total > 1e-12) len[span] / total else 0.5
+        return DoubleArray(3) { k -> (p[i + 1][k] - p[i - 1][k]) * scale }
+    }
+    fun incoming(i: Int) = tangent(i, i - 1)
+    fun outgoing(i: Int) = tangent(i, i)
     return (0 until n).map { i ->
-        val t0 = tangent(i)
-        val t1 = tangent(i + 1)
+        val t0 = outgoing(i)
+        val t1 = incoming(i + 1)
         SweptSegment(
             arrayOf(
                 p[i],
@@ -492,7 +628,21 @@ private fun discPolygon(x: Double, y: Double, r: Double, flatness: Double): Geom
     return JtsCurveSplitter.GF.createPoint(Coordinate(x, y)).buffer(r, quadrant)
 }
 
-private fun sweptEnvelope(st: List<SweptStation>, flatness: Double): FLineRibbon {
+/** [g] without the zero-area rings a union of touching pieces can leave behind. */
+private fun withoutSlivers(g: Geometry, minArea: Double): Geometry {
+    val gf = JtsCurveSplitter.GF
+    val kept = ArrayList<org.locationtech.jts.geom.Polygon>()
+    for (k in 0 until g.numGeometries) {
+        val poly = g.getGeometryN(k) as? org.locationtech.jts.geom.Polygon ?: continue
+        if (poly.area < minArea) continue
+        val holes = (0 until poly.numInteriorRing).map { poly.getInteriorRingN(it) }
+            .filter { abs(org.locationtech.jts.algorithm.Area.ofRing(it.coordinateSequence)) >= minArea }
+        kept += gf.createPolygon(poly.exteriorRing, holes.toTypedArray())
+    }
+    return gf.createMultiPolygon(kept.toTypedArray())
+}
+
+private fun sweptEnvelope(st: List<SweptStation>, flatness: Double, joins: Set<Int> = emptySet()): FLineRibbon {
     val gf = JtsCurveSplitter.GF
     val n = st.size
     val left = arrayOfNulls<Coordinate>(n)
@@ -513,29 +663,50 @@ private fun sweptEnvelope(st: List<SweptStation>, flatness: Double): FLineRibbon
     fun disc(i: Int) = discPolygon(st[i].x, st[i].y, st[i].r, flatness)
     parts += disc(0)
     parts += disc(n - 1)
-    for (i in 0 until n - 1) {
-        val l0 = left[i]
-        val l1 = left[i + 1]
-        val r0 = right[i]
-        val r1 = right[i + 1]
-        if (l0 != null && l1 != null && r0 != null && r1 != null) {
-            parts += gf.createMultiPointFromCoords(arrayOf(l0, l1, r1, r0)).convexHull()
-            // where an edge runs backwards against the centre (an inner cusp), keep the discs
-            val cx = st[i + 1].x - st[i].x
-            val cy = st[i + 1].y - st[i].y
-            if ((l1.x - l0.x) * cx + (l1.y - l0.y) * cy < 0 || (r1.x - r0.x) * cx + (r1.y - r0.y) * cy < 0) {
-                parts += UnaryUnionOp.union(listOf(disc(i), disc(i + 1))).convexHull()
-            }
-        } else {
-            parts += UnaryUnionOp.union(listOf(disc(i), disc(i + 1))).convexHull()
-        }
+    // the two stations of a corner (j - 1 and j) sit on one centre; its disc is the join
+    for (j in joins) parts += disc(j)
+    // An interval is plain when both flanks exist at both ends and neither runs backwards against
+    // the centre (an inner cusp). Runs of plain intervals go in as one strip polygon each, which
+    // is what keeps a stroke of hundreds of knots fast; a strip that crosses itself falls back to
+    // one hull per interval, as does every interval that is not plain.
+    fun plain(i: Int): Boolean {
+        if (i + 1 in joins) return false
+        val l0 = left[i] ?: return false
+        val l1 = left[i + 1] ?: return false
+        val r0 = right[i] ?: return false
+        val r1 = right[i + 1] ?: return false
+        val cx = st[i + 1].x - st[i].x
+        val cy = st[i + 1].y - st[i].y
+        return (l1.x - l0.x) * cx + (l1.y - l0.y) * cy >= 0 && (r1.x - r0.x) * cx + (r1.y - r0.y) * cy >= 0
     }
-    val shell = JtsCurveSplitter(flatness).geometryToFLine(UnaryUnionOp.union(parts))
+    fun quad(i: Int) = gf.createMultiPointFromCoords(arrayOf(left[i], left[i + 1], right[i + 1], right[i])).convexHull()
+    fun bridge(i: Int) = UnaryUnionOp.union(listOf(disc(i), disc(i + 1))).convexHull()
+    var i = 0
+    while (i < n - 1) {
+        if (!plain(i)) {
+            if (i + 1 in joins) { i++; continue }
+            if (left[i] != null && left[i + 1] != null && right[i] != null && right[i + 1] != null) parts += quad(i)
+            parts += bridge(i)
+            i++
+            continue
+        }
+        var end = i
+        while (end + 1 < n - 1 && end - i < 31 && plain(end + 1)) end++
+        val ring = ArrayList<Coordinate>(2 * (end - i) + 5)
+        for (k in i..end + 1) ring += left[k]!!
+        for (k in end + 1 downTo i) ring += right[k]!!
+        ring += left[i]!!
+        val strip = runCatching { gf.createPolygon(ring.toTypedArray()) }.getOrNull()
+        if (strip != null && strip.isValid) parts += strip else for (k in i..end) parts += quad(k)
+        i = end + 1
+    }
+    val shell = JtsCurveSplitter(flatness).geometryToFLine(withoutSlivers(UnaryUnionOp.union(parts), flatness * flatness * 1e-2))
 
     fun edge(pts: Array<Coordinate?>): FLine {
         val f = FLine()
         var pen = false
-        for (c in pts) {
+        for ((k, c) in pts.withIndex()) {
+            if (k in joins) pen = false
             if (c == null) { pen = false; continue }
             if (pen) f.lineTo(c.x.toFloat(), c.y.toFloat()) else f.moveTo(c.x.toFloat(), c.y.toFloat())
             pen = true
