@@ -170,6 +170,46 @@
         "public/docs/assets/agent_transcripts/alife_evolution/shared_core_code_.kt": "4b0468d44244cb3c8a5f1594c14c40cc9776ab4e6ae622e0867493ca797b1b28"
       }
     },
+    "assets/agent_transcripts/alife_grains/metadata.edn": {
+      "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
+      "capturedAt": "2026-11-11T10:04:27.659Z",
+      "channels": 18,
+      "file": "assets/web_publications/alife_grains/document/metadata.edn",
+      "files": {
+        "assets/web_publications/alife_grains/document/metadata.edn": "a627ed1c3b4c62d67151b5c9d3da8df5adab9afc60e99cf3a0e0c6e0dc8aea5d",
+        "assets/web_publications/alife_grains/document/outputs.json": "b8be36e3393f8b8d1c8121a6f6a1852b208ada2a24720a91142d88741bfdd09a",
+        "assets/web_publications/alife_grains/outputs/0.html": "466245909fcf8c93bf5ee3506513f01b55dd680b5f53b0d0bf98b2d5ec907e36",
+        "assets/web_publications/alife_grains/outputs/1.html": "c36dd96d7eea72e6bd755648baf375cbe799267b271420d52aa3b588ab872002",
+        "assets/web_publications/alife_grains/outputs/10.html": "08ff49a3d22527ad05b8fc5d868a43bbd0f70950313b1c6427fe7c06a442b057",
+        "assets/web_publications/alife_grains/outputs/11.html": "5d5b01fec14215fa0000fded16d1a78fe846384cab62da1749a501a4e8d22a5d",
+        "assets/web_publications/alife_grains/outputs/12.html": "f44e9c1eb57e10d07dc80d02e3323e61987ac25e1301325e66382590a32e1f0c",
+        "assets/web_publications/alife_grains/outputs/13.html": "78ddc1448294e9708da16d1ba0db8fe75f58c6b85fc2e1c8ed62e8c99e5011b2",
+        "assets/web_publications/alife_grains/outputs/14.html": "f44e9c1eb57e10d07dc80d02e3323e61987ac25e1301325e66382590a32e1f0c",
+        "assets/web_publications/alife_grains/outputs/15.html": "f44e9c1eb57e10d07dc80d02e3323e61987ac25e1301325e66382590a32e1f0c",
+        "assets/web_publications/alife_grains/outputs/16.html": "f44e9c1eb57e10d07dc80d02e3323e61987ac25e1301325e66382590a32e1f0c",
+        "assets/web_publications/alife_grains/outputs/17.html": "f44e9c1eb57e10d07dc80d02e3323e61987ac25e1301325e66382590a32e1f0c",
+        "assets/web_publications/alife_grains/outputs/2.html": "45d3c4f77f7d2c296ce0997c3acec922e68e39d7165e8e03e6ec85ecfa5feb7a",
+        "assets/web_publications/alife_grains/outputs/3.html": "744555094518981cbc9ca0bd19bc13097084e5d7dfb47b222fdc67e5bd2b8f4a",
+        "assets/web_publications/alife_grains/outputs/4.html": "e85616ca1aa6fe34f444cace08a92b4a081b0ea339dc9e2caee4263dd2dd6063",
+        "assets/web_publications/alife_grains/outputs/5.html": "a63178c7d3b0fe1377f0ef8ba435a54e73bd00af07b0aeec640f067a7c7052fb",
+        "assets/web_publications/alife_grains/outputs/6.html": "5b8bfe650686d97225fe79c433aa9df98a424ceab72def02241599e62a33eabe",
+        "assets/web_publications/alife_grains/outputs/7.html": "f44e9c1eb57e10d07dc80d02e3323e61987ac25e1301325e66382590a32e1f0c",
+        "assets/web_publications/alife_grains/outputs/8.html": "f44e9c1eb57e10d07dc80d02e3323e61987ac25e1301325e66382590a32e1f0c",
+        "assets/web_publications/alife_grains/outputs/9.html": "f377f344eff08a533f6972af020e958013fce1dd42dbc155ba6f816b42c6f11b"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/alife_grains/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/alife_grains.yaml": "546e4afc56518e1f0c84c0916b8e30c4b90dbfc9149af37ce1d499b7e6fff394",
+        "public/docs/assets/agent_transcripts/alife_grains/grains_breed_code_.kt": "466082eb72b03366755e09b067ca4b2f568ada40a7a5764936438d9c03326c00",
+        "public/docs/assets/agent_transcripts/alife_grains/grains_decode_code_.kt": "8187a82358e1e82627976ee77a66ee204be9e5878d0c3a42abb9bdf81cde3b5f",
+        "public/docs/assets/agent_transcripts/alife_grains/grains_evolve_code_.kt": "ed7d6ee34434e820130792251292738438cb154d669dcd6f37f4876354052e5a",
+        "public/docs/assets/agent_transcripts/alife_grains/guides/alife_examples.md": "9bc7d6445648fcdb2aab02a591a0d7348c1105dda2df0c9377c7b4cb2b83b3d7",
+        "public/docs/assets/agent_transcripts/alife_grains/metadata.edn": "aef913d0a0dd87358d916ea615a80b364f56036758ac40b1fe6cf186aba9bc9b"
+      }
+    },
     "assets/agent_transcripts/alife_script/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
       "capturedAt": "2026-11-10T22:42:07.648Z",

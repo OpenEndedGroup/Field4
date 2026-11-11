@@ -357,6 +357,7 @@ object DemoTranscriptExecSmokeTest {
         "kmeans_emeans",
         // Ten independent pure-CPU spatial-ALife boxes; nothing opens a Window or a Renderer.
         "alife_evolution",
+        "alife_grains",
         "alife_worked_example",
         // Three pure-CPU tree-growth boxes; the video box is an animateEvolution clip and the
         // third mounts a slider. No Window, no Renderer.
