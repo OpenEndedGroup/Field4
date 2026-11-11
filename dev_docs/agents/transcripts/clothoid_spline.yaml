@@ -60,10 +60,11 @@ operations:
         h: 100.0
       properties:
         code: |
-          val knots = (0 until 7).map { i ->
-              val a = 2 * kotlin.math.PI * i / 7 + 0.3 * kotlin.math.sin(i * 1.7)
-              vec(200 + 100 * kotlin.math.cos(a), 150 + 100 * kotlin.math.sin(a))
-          }
+          val knots =
+              (0 until 7).map { i ->
+                  val a = 2 * kotlin.math.PI * i / 7 + 0.3 * kotlin.math.sin(i * 1.7)
+                  vec(200 + 100 * kotlin.math.cos(a), 150 + 100 * kotlin.math.sin(a))
+              }
 
           val round = clothoidSplineFrom(knots, closed = true).apply {
               thickness = 3.0
@@ -106,3 +107,15 @@ operations:
           }
 
           lines(fill, comb, shape, dots, w = 420.0, h = 320.0, fitToSize = true)
+  - execute:
+      box: clothoid-spline-vs-cubic
+      property: code
+      type: fragment
+  - execute:
+      box: clothoid-spline-circle
+      property: code
+      type: fragment
+  - execute:
+      box: clothoid-spline-shape
+      property: code
+      type: fragment

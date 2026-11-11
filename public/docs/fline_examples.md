@@ -1426,10 +1426,11 @@ Points on a circle give back the circle: every piece is then an arc with the sam
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/clothoid_spline_circle.png" embed=true}
 :::static
-val knots = (0 until 7).map { i ->
-    val a = 2 * kotlin.math.PI * i / 7 + 0.3 * kotlin.math.sin(i * 1.7)
-    vec(200 + 100 * kotlin.math.cos(a), 150 + 100 * kotlin.math.sin(a))
-}
+val knots =
+    (0 until 7).map { i ->
+        val a = 2 * kotlin.math.PI * i / 7 + 0.3 * kotlin.math.sin(i * 1.7)
+        vec(200 + 100 * kotlin.math.cos(a), 150 + 100 * kotlin.math.sin(a))
+    }
 
 val round = clothoidSplineFrom(knots, closed = true).apply {
     thickness = 3.0
@@ -3872,3 +3873,38 @@ lines(circle, diag, hitPts, w = 420.0, h = 320.0, fitToSize = true)
 Every public declaration used on this page is listed, with its KDoc, in the codebase reference under [`StandardDrawing.kt`](reference/graphics.md#standarddrawing-kt). The rest of the standard library is in [what's already in the box](reference/index.md).
 
 Next on the Tour, [Drawing and Notation](drawing_and_notation.md) draws by hand on the canvas and has a box read each stroke back as an `FLine`.
+
+## Where to go next
+
+- [Drawing and Notation](drawing_and_notation.md) draws by hand on the canvas; a box can
+  [read each stroke](drawing_and_notation.md#reading-the-drawing) as an `FLine` and pass its
+  points to `clothoidSplineFrom`, `cubicSplineFrom` or the [stroke smoothing](#filters-and-gp)
+  above.
+- [Functions](functions_examples.md#piecewiselinear-catmullromspline-monotonecubic) has the 1-D
+  splines (`catmullRomSpline`, `monotoneCubic`) for curves of a single variable.
+- On this page: the single [Euler spiral between two directions](#euler-spiral-in-3d-clothoid-ish-connection)
+  that each piece of `clothoidSplineFrom` is made from, [biarcs](#biarcs-biarcto-and-biarcbetween)
+  for smooth joins out of circular arcs, and [curvature, tangents and normals](#curvature-tangentsnormals)
+  and [measuring along a line](#measuring-along-a-line) for reading a curve back.
+- Open the [clothoid_spline starting point](agent_transcripts.md#clothoid_spline) to try the
+  spline boxes in your own document.
+- Source: [`FLineGeometry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt)
+  (`clothoidSplineFrom`, `curvatureComb`, `curvaturePlot`, `eulerSpiralBetween3D`) and its test,
+  [`ClothoidSplineTest.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmTest/kotlin/afield/geometry/path/ClothoidSplineTest.kt).
+
+Open questions and next builds:
+
+- **The S9 weights.** Each S9 piece has two weights; below 1 they sharpen the turn near the piece's
+  ends, and S9 computes them from the end directions. A piece family with that behaviour
+  (curvature against arc length with two weights, reducing to the Euler spiral at 1) and a weight
+  rule would replace the per-piece clothoid fit; the knot solve stays as it is. Whether the
+  sharper ends help lettering, where S9 is aimed, is the thing to look at.
+- **A Hobby comparison.** Hobby's spline (the one in METAFONT and MetaPost) also picks each piece
+  from its two end directions, but as a cubic with a closed-form solve. Drawn through the same
+  knots with combs, it would show what curvature continuity costs and buys.
+- **Draggable knots.** Read the knots from the drawing layer through `notation` and redraw on
+  `notation.onChange`, so the spline follows the points as they move.
+- **Mixed corners and smooth points.** Fonts mix corners with smooth points. A per-knot flag that
+  splits the solve at a corner would let one call draw a whole glyph outline.
+- **Larger knot counts.** The solve uses a dense linear system; past a few dozen knots a banded
+  (cyclic tridiagonal) solve is the right shape.

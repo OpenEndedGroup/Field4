@@ -935,6 +935,31 @@
         "public/docs/assets/agent_transcripts/cloth_simdverlet_start/metadata.edn": "1eb6d207830087ee66afe80c5dbbb9f60609ab09456c4e30f8fa12482ede8f71"
       }
     },
+    "assets/agent_transcripts/clothoid_spline/metadata.edn": {
+      "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
+      "capturedAt": "2026-11-11T09:32:17.844Z",
+      "channels": 3,
+      "file": "assets/web_publications/clothoid_spline/document/metadata.edn",
+      "files": {
+        "assets/web_publications/clothoid_spline/document/metadata.edn": "14b4e37ec1e6ba2e2f6fa2db59187cedad7857a0fb49d621498c549a86114d5d",
+        "assets/web_publications/clothoid_spline/document/outputs.json": "ea8071ceb9234dc837439750d8db4e3aeacd600e1d4503dade1889ac70cd5a30",
+        "assets/web_publications/clothoid_spline/outputs/0.html": "bc65d29c96468d168f3b2248fdb4f6a33cb7e8f1125f7643ada95e635b0e021e",
+        "assets/web_publications/clothoid_spline/outputs/1.html": "5ed2653691bce205b664187a0f096180f4d3c8a49918ca997404ddf192cba350",
+        "assets/web_publications/clothoid_spline/outputs/2.html": "ff5fa2ead0972fc8b58c6c169d25c761c16372b197d4ff311267b3af9fb89e07"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/clothoid_spline/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/clothoid_spline.yaml": "4a4d591d71dfdd6718088399570738ee0b7100b899e2955b61b29ae7fdaef5f0",
+        "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-circle_code_.kt": "f82082576d7ac113539742206e3e032181c0d05202065cec9e56b92ffb390ec5",
+        "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-shape_code_.kt": "6881872c63f8662aba669c01c4f8b9e7612a75e221acbe84e60052ecb33c4f2e",
+        "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-vs-cubic_code_.kt": "5169463402a8e919386de90203a5df634f4e92e3b715e6e5c2c70dd530a615a4",
+        "public/docs/assets/agent_transcripts/clothoid_spline/guides/fline_examples-curvature-continuous-splines-clothoidsplinefrom.md": "f34682720cab76cc7a7137a94fa04183256f35ba8defb0dbbbd4022825f933c0",
+        "public/docs/assets/agent_transcripts/clothoid_spline/metadata.edn": "2ec69e5887a4c7a8a7a385bcec9cf5194522e23aa65cd3285cfe0c210be77bea"
+      }
+    },
     "assets/agent_transcripts/completion_rank_at_scale/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
       "capturedAt": "2026-11-10T22:44:55.062Z",
