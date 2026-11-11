@@ -28,13 +28,14 @@ import kotlin.math.sqrt
  * them exactly as the finite-feature posterior does.
  *
  * [cpu] is the same model on the CPU, a [GpFeatureModel], for histograms, means and checks.
+ *
+ * @param points where the readings are, one array of [dimensions] coordinates each (1 to 3 dimensions)
+ * @param values the reading at each point
+ * @param lengthScales the RBF length scale along each coordinate
  */
 class GpShaderModel(
-    /** Where the readings are, one array of [dimensions] coordinates each (1 to 3 dimensions). */
     points: Array<DoubleArray>,
-    /** The reading at each point. */
     values: DoubleArray,
-    /** The RBF length scale along each coordinate. */
     lengthScales: DoubleArray,
     /** The prior variance of the function (its spread, squared, far from the data). */
     val variance: Double = 1.0,
