@@ -75,6 +75,8 @@ import afield.math.linalg.set
 import afield.math.linalg.vec
 import afield.math.linalg.x
 import afield.geometry.path.FLine
+import afield.geometry.path.cubicSplineFrom
+import afield.geometry.path.polylineFrom
 import smile.clustering.HierarchicalClustering
 import smile.clustering.linkage.*
 import kotlin.math.abs
@@ -475,7 +477,15 @@ enum class KMeansSeeding {
     /** D²-weighted sampling (k-means++), the rule k-medoids and k-medians also seed with. */
     PLUS_PLUS,
     /** `k` distinct samples drawn uniformly — what the Faiss e-means reference does by default. */
-    RANDOM
+    RANDOM,
+    /**
+     * Greedy k-means++, scikit-learn's default: each step draws `2 + ln k` D²-weighted candidates
+     * and keeps the one that lowers the total squared distance most. Plain k-means++ with many
+     * clusters in many dimensions often leaves a blob unseeded, because the spread inside the
+     * blobs it has already covered outweighs the blob it missed; the greedy choice rarely does.
+     * Costs `2 + ln k` times the seeding pass of [PLUS_PLUS].
+     */
+    GREEDY_PLUS_PLUS
 }
 
 /**
@@ -487,7 +497,8 @@ enum class KMeansSeeding {
  * @param algorithm Lloyd or e-means; see [KMeansAlgorithm].
  * @param epochs Full passes over the data. `null` is 25 for Lloyd and 5 for e-means (the Faiss
  * default). Lloyd may stop earlier when no label changes.
- * @param seeding How the starting centroids are chosen.
+ * @param seeding How the starting centroids are chosen. The default, greedy k-means++, costs a
+ * few seeding passes and avoids the commonest local minimum; see [KMeansSeeding].
  * @param randomSeed Fixes seeding, shuffling and revival for reproducibility; `null` uses
  * [Random.Default].
  * @param batchSize e-means only: rows per mini-batch. `null` uses the batch law.
@@ -497,16 +508,42 @@ enum class KMeansSeeding {
  * `0.1`, or `0.0` when the data has two or fewer dimensions.
  * @param recordHistory Compute the exact mean squared error after every epoch into
  * [KMeansResult.mseHistory]. Costs one extra assignment pass per e-means epoch.
+ * @param spherical Cluster by direction (spherical k-means): every sample is scaled to unit length
+ * before clustering and every centroid is put back on the unit sphere after each update, so
+ * nearest-centroid is largest cosine similarity. Use it for embeddings and surface normals. A
+ * zero-length sample is an error. [KMeansResult.inertia] is then measured on the unit vectors.
+ * @param recordCentroids Keep a copy of the centroids at the seeds and after every epoch in
+ * [KMeansResult.centroidHistory], to draw how they moved. Costs `k` copies per epoch.
+ * @param runs Restarts from fresh seeds, keeping the run with the lowest inertia. k-means stops in
+ * whichever local minimum its seeds lead to (two blobs sharing a centroid while another blob is
+ * split in two); a few restarts usually escape it. Each run costs a whole clustering. Unlike
+ * k-medoids and k-medians the default is 1, since k-means is the one used at scale.
+ * @param recordPaths Keep every centroid's position after every update in
+ * [KMeansResult.centroidPaths]: every mini-batch for e-means, every epoch for Lloyd. These are the
+ * curves the centroids draw, for plotting rather than for measuring. Costs `k` points per update.
+ * @param stepScale e-means only: multiplies the initial step, whether it came from the step law or
+ * from [alpha0]; the result is capped at 1. Below 1 the centroids walk more slowly and more
+ * smoothly, which with [recordPaths] and more [epochs] turns each path into a long drifting curve;
+ * the clustering is then worse for the same number of epochs.
+ * @param closeOnMean e-means only: end by moving each centroid to the exact mean of the samples it
+ * collected in the last epoch (the reference algorithm's last step). Turn it off to keep a slowed
+ * path smooth to its end instead of jumping there.
  */
 data class KMeansOptions(
     val algorithm: KMeansAlgorithm = KMeansAlgorithm.EMEANS,
     val epochs: Int? = null,
-    val seeding: KMeansSeeding = KMeansSeeding.PLUS_PLUS,
+    val seeding: KMeansSeeding = KMeansSeeding.GREEDY_PLUS_PLUS,
     val randomSeed: Long? = null,
     val batchSize: Int? = null,
     val alpha0: Double? = null,
     val reviveThreshold: Double? = null,
-    val recordHistory: Boolean = true
+    val recordHistory: Boolean = true,
+    val spherical: Boolean = false,
+    val recordCentroids: Boolean = false,
+    val runs: Int = 1,
+    val recordPaths: Boolean = false,
+    val stepScale: Double = 1.0,
+    val closeOnMean: Boolean = true
 )
 
 /**
@@ -531,6 +568,14 @@ data class KMeansOptions(
  * @param alpha0 e-means: the initial EMA step used. Lloyd: `null`.
  * @param clusterSizes How many samples each cluster holds.
  * @param options The options this run used.
+ * @param centroidHistory The centroids of the seeds at index 0 and after each epoch after that, so
+ * entry `e` is what [mseHistory] entry `e` measured and the last entry equals [centroids]. Cluster
+ * `c` is at index `c` in every entry, so a centroid's path is `centroidHistory.map { it[c] }`. Empty
+ * unless [KMeansOptions.recordCentroids] is on.
+ * @param centroidPaths One path per centroid, from its seed through its position after every update
+ * to where it ended: `centroidPaths[c]` is the curve centroid `c` drew. Every path has the same
+ * length, one point per update, so they are aligned in time; a centroid a batch did not touch
+ * repeats its point. A revived centroid jumps. Empty unless [KMeansOptions.recordPaths] is on.
  */
 data class KMeansResult<T>(
     val labels: IntArray,
@@ -543,7 +588,9 @@ data class KMeansResult<T>(
     val batchSize: Int,
     val alpha0: Double?,
     val clusterSizes: IntArray,
-    val options: KMeansOptions
+    val options: KMeansOptions,
+    val centroidHistory: List<List<T>> = emptyList(),
+    val centroidPaths: List<List<T>> = emptyList()
 ) {
     /** How many clusters this result has. */
     val k: Int
@@ -904,13 +951,20 @@ fun vec4KMedians(
  * [KMeansOptions.algorithm] switches between Lloyd's algorithm and e-means; the default is e-means.
  * Linear in the sample count per epoch, so this is the clustering to reach for at hundreds of
  * thousands of samples.
+ *
+ * @param values The values to cluster.
+ * @param k How many clusters.
+ * @param options How to run; see [KMeansOptions].
+ * @param seeds Where the centroids start, instead of [KMeansOptions.seeding]; `k` must equal
+ * `seeds.size`. Every one of [KMeansOptions.runs] starts here.
  */
 fun floatKMeans(
     values: List<Float>,
     k: Int,
-    options: KMeansOptions = KMeansOptions()
+    options: KMeansOptions = KMeansOptions(),
+    seeds: List<Float>? = null
 ): KMeansResult<Float> {
-    val core = kMeans(floatRows(values, "floatKMeans"), k, options, "floatKMeans")
+    val core = kMeans(floatRows(values, "floatKMeans"), k, options, "floatKMeans", seeds?.let { floatRows(seeds, "floatKMeans seeds") })
     return core.toResult(options) { it[0].toFloat() }
 }
 
@@ -920,13 +974,20 @@ fun floatKMeans(
  * [KMeansOptions.algorithm] switches between Lloyd's algorithm and e-means; the default is e-means.
  * Linear in the sample count per epoch, so this is the clustering to reach for at hundreds of
  * thousands of samples.
+ *
+ * @param points The points to cluster.
+ * @param k How many clusters.
+ * @param options How to run; see [KMeansOptions].
+ * @param seeds Where the centroids start, instead of [KMeansOptions.seeding]; `k` must equal
+ * `seeds.size`. Every one of [KMeansOptions.runs] starts here.
  */
 fun vec2KMeans(
     points: List<Vec2>,
     k: Int,
-    options: KMeansOptions = KMeansOptions()
+    options: KMeansOptions = KMeansOptions(),
+    seeds: List<Vec2>? = null
 ): KMeansResult<Vec2> {
-    val core = kMeans(vec2Rows(points, "vec2KMeans"), k, options, "vec2KMeans")
+    val core = kMeans(vec2Rows(points, "vec2KMeans"), k, options, "vec2KMeans", seeds?.let { vec2Rows(seeds, "vec2KMeans seeds") })
     return core.toResult(options) { v -> vec(v[0], v[1]) }
 }
 
@@ -936,13 +997,20 @@ fun vec2KMeans(
  * [KMeansOptions.algorithm] switches between Lloyd's algorithm and e-means; the default is e-means.
  * Linear in the sample count per epoch, so this is the clustering to reach for at hundreds of
  * thousands of samples.
+ *
+ * @param points The points to cluster.
+ * @param k How many clusters.
+ * @param options How to run; see [KMeansOptions].
+ * @param seeds Where the centroids start, instead of [KMeansOptions.seeding]; `k` must equal
+ * `seeds.size`. Every one of [KMeansOptions.runs] starts here.
  */
 fun vec3KMeans(
     points: List<Vec3>,
     k: Int,
-    options: KMeansOptions = KMeansOptions()
+    options: KMeansOptions = KMeansOptions(),
+    seeds: List<Vec3>? = null
 ): KMeansResult<Vec3> {
-    val core = kMeans(vec3Rows(points, "vec3KMeans"), k, options, "vec3KMeans")
+    val core = kMeans(vec3Rows(points, "vec3KMeans"), k, options, "vec3KMeans", seeds?.let { vec3Rows(seeds, "vec3KMeans seeds") })
     return core.toResult(options) { v -> vec(v[0], v[1], v[2]) }
 }
 
@@ -952,14 +1020,194 @@ fun vec3KMeans(
  * [KMeansOptions.algorithm] switches between Lloyd's algorithm and e-means; the default is e-means.
  * Linear in the sample count per epoch, so this is the clustering to reach for at hundreds of
  * thousands of samples.
+ *
+ * @param points The points to cluster.
+ * @param k How many clusters.
+ * @param options How to run; see [KMeansOptions].
+ * @param seeds Where the centroids start, instead of [KMeansOptions.seeding]; `k` must equal
+ * `seeds.size`. Every one of [KMeansOptions.runs] starts here.
  */
 fun vec4KMeans(
     points: List<Vec4>,
     k: Int,
-    options: KMeansOptions = KMeansOptions()
+    options: KMeansOptions = KMeansOptions(),
+    seeds: List<Vec4>? = null
 ): KMeansResult<Vec4> {
-    val core = kMeans(vec4Rows(points, "vec4KMeans"), k, options, "vec4KMeans")
+    val core = kMeans(vec4Rows(points, "vec4KMeans"), k, options, "vec4KMeans", seeds?.let { vec4Rows(seeds, "vec4KMeans seeds") })
     return core.toResult(options) { v -> vec(v[0], v[1], v[2], v[3]) }
+}
+
+/**
+ * Partition vectors of any length into [k] clusters around their means (k-means).
+ *
+ * The entry point for more than four dimensions: embeddings, feature vectors, colour histograms.
+ * Every vector must have the same length. Above 16 dimensions e-means picks larger batches (the
+ * "throughput" batch law; see [KMeansAlgorithm]). For embeddings compared by cosine similarity, set
+ * [KMeansOptions.spherical]. The returned centroids are new arrays; [vectors] is not modified.
+ *
+ * @param vectors The vectors to cluster, all the same length.
+ * @param k How many clusters.
+ * @param options How to run; see [KMeansOptions].
+ * @param seeds Where the centroids start, instead of [KMeansOptions.seeding]; `k` must equal
+ * `seeds.size`. Every one of [KMeansOptions.runs] starts here.
+ */
+fun vectorKMeans(
+    vectors: List<DoubleArray>,
+    k: Int,
+    options: KMeansOptions = KMeansOptions(),
+    seeds: List<DoubleArray>? = null
+): KMeansResult<DoubleArray> {
+    require(vectors.isNotEmpty()) { "vectorKMeans: vectors must not be empty" }
+    val start = seeds?.let { list -> Array(list.size) { list[it].copyOf() } }
+    val core = kMeans(Array(vectors.size) { vectors[it].copyOf() }, k, options, "vectorKMeans", start)
+    return core.toResult(options) { it.copyOf() }
+}
+
+/**
+ * One level of a [KMeansTree]: the points that were clustered and what clustering them found.
+ *
+ * Level 0's [inputs] are your points. Every later level's [inputs] are the previous level's
+ * centroids, so input `i` here is centroid `i` there, and its parent is centroid
+ * `result.labels[i]` of this level.
+ *
+ * @param inputs The points this level clustered.
+ * @param result The clustering, with [KMeansResult.centroidPaths] recorded.
+ */
+data class KMeansTreeLevel(val inputs: List<Vec2>, val result: KMeansResult<Vec2>)
+
+/**
+ * k-means applied to its own answer, level after level: cluster the points into `n / shrink`
+ * centroids, cluster those centroids into `n / shrink²`, and so on down to one. Every centroid's
+ * path from its seed to where it settled is kept, so the whole thing is a tree of curves: each
+ * level's paths end at the points the next level starts from. Build it with [vec2KMeansTree] and
+ * draw it with [toFLines].
+ *
+ * @param levels From the finest (your points) to the coarsest (a single centroid, unless the
+ * level cap stopped it first).
+ */
+class KMeansTree(val levels: List<KMeansTreeLevel>) {
+    /** How many clusterings were run. */
+    val depth: Int
+        get() = levels.size
+
+    /**
+     * The tree as `FLine`s: every centroid's path, plus thin connectors from each input to the
+     * start of its parent's path (an input that seeded its parent connects to itself, so it draws
+     * nothing). Paths are coloured by level, finest first in [palette], and thicken from
+     * [thickness] by [thicknessGrowth] per level.
+     *
+     * @param smooth Draw each path as a Catmull-Rom spline through every [stride]-th point instead
+     * of as a polyline through all of them.
+     * @param stride Keep every `stride`-th point of a path (always keeping both ends).
+     * @param connectors Draw the input-to-parent connectors.
+     * @param connectorColor Colour of the connectors.
+     * @param leaves Draw level 0's inputs (your points) as dots of [leafSize].
+     * @param leafColor Colour of those dots.
+     * @param palette One colour per level, reused cyclically.
+     */
+    fun toFLines(
+        smooth: Boolean = true,
+        stride: Int = 1,
+        connectors: Boolean = true,
+        connectorColor: Vec4 = vec(0.75, 0.8, 0.9, 0.35),
+        leaves: Boolean = true,
+        leafSize: Double = 1.0,
+        leafColor: Vec4 = vec(0.75, 0.8, 0.9, 0.6),
+        palette: List<Vec4> = okhslSet(maxOf(1, levels.size), saturation = 0.75, lightness = 0.66),
+        thickness: Double = 0.8,
+        thicknessGrowth: Double = 0.35,
+    ): List<FLine> {
+        require(stride >= 1) { "KMeansTree.toFLines: stride must be >= 1, found $stride" }
+        val out = ArrayList<FLine>()
+        if (leaves && levels.isNotEmpty()) {
+            out += fline {
+                levels[0].inputs.forEach { p -> moveTo(p.x.toDouble(), p.y.toDouble(), 0.0) }
+                this.color = vec(leafColor.x, leafColor.y, leafColor.z, leafColor.w)
+                this.pointed = true
+                this.pointSize = leafSize
+                this.stroked = false
+                this.filled = false
+            }
+        }
+        levels.forEachIndexed { level, (inputs, result) ->
+            if (connectors) {
+                out += fline {
+                    inputs.forEachIndexed { i, p ->
+                        val start = result.centroidPaths[result.labels[i]].first()
+                        if (start.x != p.x || start.y != p.y) {
+                            moveTo(p.x.toDouble(), p.y.toDouble(), 0.0)
+                            lineTo(start.x.toDouble(), start.y.toDouble(), 0.0)
+                        }
+                    }
+                    this.color = vec(connectorColor.x, connectorColor.y, connectorColor.z, connectorColor.w)
+                    this.thickness = 0.5
+                    this.stroked = true
+                    this.filled = false
+                }
+            }
+            val tint = palette[level % palette.size]
+            for (path in result.centroidPaths) {
+                val points = thinPath(path, stride)
+                if (points.size < 2) continue
+                out += (if (smooth && points.size > 2) cubicSplineFrom(points) else polylineFrom(points)).also {
+                    it.color = vec(tint.x, tint.y, tint.z, tint.w)
+                    it.thickness = thickness + thicknessGrowth * level
+                    it.stroked = true
+                    it.filled = false
+                }
+            }
+        }
+        return out
+    }
+}
+
+/** [path] without repeated points, keeping every [stride]-th of the rest and always its last. */
+private fun thinPath(path: List<Vec2>, stride: Int): List<Vec2> {
+    val distinct = ArrayList<Vec2>(path.size)
+    for (p in path) {
+        val last = distinct.lastOrNull()
+        if (last == null || last.x != p.x || last.y != p.y) distinct.add(p)
+    }
+    if (stride == 1 || distinct.size <= 2) return distinct
+    val kept = distinct.filterIndexed { i, _ -> i % stride == 0 }.toMutableList()
+    if (kept.last() !== distinct.last()) kept.add(distinct.last())
+    return kept
+}
+
+/**
+ * Cluster [points] into `n / shrink` clusters, then those centroids into `n / shrink²`, and so on
+ * until one is left (or [maxLevels] clusterings have run), keeping every centroid's path. The
+ * result is a [KMeansTree] of curves: draw it with [KMeansTree.toFLines].
+ *
+ * [options] apply at every level, with [KMeansOptions.recordPaths] forced on and the random seed
+ * advanced by one per level. The defaults use e-means for 3 epochs. For slower, longer curves lower
+ * [KMeansOptions.stepScale] and raise [KMeansOptions.epochs]; with [KMeansOptions.closeOnMean]
+ * off each path ends smoothly instead of jumping to its cluster's mean. Every level weighs each
+ * centroid below it equally, however many points it holds.
+ *
+ * @param shrink How many inputs per cluster at each level: 2 halves the count every level, 3 cuts
+ * it to a third. Must be more than 1.
+ * @param maxLevels At most this many clusterings.
+ */
+fun vec2KMeansTree(
+    points: List<Vec2>,
+    shrink: Double = 2.0,
+    options: KMeansOptions = KMeansOptions(epochs = 3),
+    maxLevels: Int = 64,
+): KMeansTree {
+    require(points.isNotEmpty()) { "vec2KMeansTree: points must not be empty" }
+    require(shrink.isFinite() && shrink > 1.0) { "vec2KMeansTree: shrink must be finite and > 1, found $shrink" }
+    require(maxLevels >= 1) { "vec2KMeansTree: maxLevels must be >= 1, found $maxLevels" }
+    val levels = ArrayList<KMeansTreeLevel>()
+    var inputs = points
+    while (levels.size < maxLevels && inputs.size > 1) {
+        val k = maxOf(1, (inputs.size / shrink).toInt())
+        val seed = options.randomSeed?.plus(levels.size)
+        val result = vec2KMeans(inputs, k, options.copy(recordPaths = true, randomSeed = seed))
+        levels += KMeansTreeLevel(inputs, result)
+        inputs = result.centroids
+    }
+    return KMeansTree(levels)
 }
 
 /**
@@ -1991,7 +2239,9 @@ private class KMeansCore(
     val converged: Boolean,
     val revivals: Int,
     val batchSize: Int,
-    val alpha0: Double?
+    val alpha0: Double?,
+    val centroidHistory: List<Array<DoubleArray>>,
+    val paths: List<List<DoubleArray>>
 ) {
     fun <T> toResult(options: KMeansOptions, convert: (DoubleArray) -> T): KMeansResult<T> =
         KMeansResult(
@@ -2005,28 +2255,142 @@ private class KMeansCore(
             batchSize = batchSize,
             alpha0 = alpha0,
             clusterSizes = clusterSizes(labels, centroids.size),
-            options = options
+            options = options,
+            centroidHistory = centroidHistory.map { epoch -> epoch.map(convert) },
+            centroidPaths = paths.map { path -> path.map(convert) }
         )
 }
 
-private fun kMeans(rows: Array<DoubleArray>, k: Int, options: KMeansOptions, fn: String): KMeansCore {
+private fun kMeans(
+    rows: Array<DoubleArray>,
+    k: Int,
+    options: KMeansOptions,
+    fn: String,
+    givenSeeds: Array<DoubleArray>? = null
+): KMeansCore {
     validateRows(rows, fn, minSamples = 1)
     require(k in 1..rows.size) { "$fn: k must be in [1, ${rows.size}], found $k" }
+    if (givenSeeds != null) {
+        require(givenSeeds.size == k) { "$fn: k is $k but ${givenSeeds.size} seeds were given" }
+        validateRows(givenSeeds, "$fn seeds", minSamples = 1)
+        require(givenSeeds[0].size == rows[0].size) {
+            "$fn: seeds have ${givenSeeds[0].size} dimensions, samples have ${rows[0].size}"
+        }
+        if (options.spherical) {
+            givenSeeds.forEachIndexed { i, seed ->
+                require(normalizeInPlace(seed)) { "$fn: spherical needs non-zero seeds, seed $i has length 0" }
+            }
+        }
+    }
     options.epochs?.let { require(it > 0) { "$fn: epochs must be > 0, found $it" } }
     options.batchSize?.let { require(it > 0) { "$fn: batchSize must be > 0, found $it" } }
     options.alpha0?.let { require(it > 0.0 && it <= 1.0) { "$fn: alpha0 must be in (0, 1], found $it" } }
+    require(options.stepScale.isFinite() && options.stepScale > 0.0) {
+        "$fn: stepScale must be finite and > 0, found ${options.stepScale}"
+    }
     options.reviveThreshold?.let {
         require(it.isFinite() && it >= 0.0) { "$fn: reviveThreshold must be finite and >= 0, found $it" }
     }
+    if (options.spherical) {
+        rows.forEachIndexed { i, row ->
+            require(normalizeInPlace(row)) { "$fn: spherical needs non-zero samples, row $i has length 0" }
+        }
+    }
+    require(options.runs > 0) { "$fn: runs must be > 0, found ${options.runs}" }
     val rng = options.randomSeed?.let { Random(it) } ?: Random.Default
-    val seeds = when (options.seeding) {
-        KMeansSeeding.PLUS_PLUS -> initD2Centers(rows, k, rng, ::l2)
-        KMeansSeeding.RANDOM -> randomCenters(rows, k, rng)
+    var best: KMeansCore? = null
+    repeat(options.runs) {
+        val seeds = if (givenSeeds != null) snapshot(givenSeeds) else when (options.seeding) {
+            KMeansSeeding.PLUS_PLUS -> initD2Centers(rows, k, rng, ::l2)
+            KMeansSeeding.RANDOM -> randomCenters(rows, k, rng)
+            KMeansSeeding.GREEDY_PLUS_PLUS -> greedyPlusPlusCenters(rows, k, rng)
+        }
+        val run = when (options.algorithm) {
+            KMeansAlgorithm.LLOYD -> runLloyd(rows, seeds, options.epochs ?: 25, options)
+            KMeansAlgorithm.EMEANS -> runEmeans(rows, seeds, options.epochs ?: 5, options, rng)
+        }
+        if (best == null || run.inertia < best!!.inertia) best = run
     }
-    return when (options.algorithm) {
-        KMeansAlgorithm.LLOYD -> runLloyd(rows, seeds, options.epochs ?: 25, options.recordHistory)
-        KMeansAlgorithm.EMEANS -> runEmeans(rows, seeds, options.epochs ?: 5, options, rng)
+    return best!!
+}
+
+/**
+ * Scale [v] to unit length; returns `false` (leaving it unchanged) when it has length 0. Spherical
+ * k-means calls this on every sample once and on every centroid after each update.
+ */
+private fun normalizeInPlace(v: DoubleArray): Boolean {
+    var s = 0.0
+    for (x in v) s += x * x
+    if (s <= 0.0 || !s.isFinite()) return false
+    val inv = 1.0 / sqrt(s)
+    for (j in v.indices) v[j] *= inv
+    return true
+}
+
+private fun snapshot(centroids: Array<DoubleArray>): Array<DoubleArray> = Array(centroids.size) { centroids[it].copyOf() }
+
+/** One growing path per centroid, for [KMeansOptions.recordPaths]; `null` when off. */
+private fun newPaths(centroids: Array<DoubleArray>, on: Boolean): List<ArrayList<DoubleArray>>? =
+    if (!on) null else centroids.map { arrayListOf(it.copyOf()) }
+
+private fun extend(paths: List<ArrayList<DoubleArray>>?, centroids: Array<DoubleArray>) {
+    if (paths == null) return
+    for (c in centroids.indices) paths[c].add(centroids[c].copyOf())
+}
+
+/**
+ * Greedy k-means++ (Arthur & Vassilvitskii's D² sampling with local trials, as in scikit-learn):
+ * at each step sample `2 + floor(ln k)` candidates with probability proportional to the squared
+ * distance to the nearest chosen centre, and keep the candidate whose addition leaves the smallest
+ * total squared distance.
+ */
+private fun greedyPlusPlusCenters(rows: Array<DoubleArray>, k: Int, rng: Random): Array<DoubleArray> {
+    val n = rows.size
+    if (k == n) return Array(k) { rows[it].copyOf() }
+    val trials = 2 + kotlin.math.ln(k.toDouble()).toInt()
+    val chosen = ArrayList<Int>(k)
+    val first = rng.nextInt(n)
+    chosen.add(first)
+    val minD2 = DoubleArray(n) { squaredL2(rows[it], rows[first]) }
+    var potential = minD2.sum()
+    val candidateD2 = DoubleArray(n)
+    val bestD2 = DoubleArray(n)
+    while (chosen.size < k) {
+        var bestIndex = -1
+        var bestPotential = Double.POSITIVE_INFINITY
+        repeat(trials) {
+            val candidate = if (potential <= 0.0) {
+                rng.nextInt(n)
+            } else {
+                var r = rng.nextDouble() * potential
+                var pick = n - 1
+                for (i in 0 until n) {
+                    r -= minD2[i]
+                    if (r <= 0.0) {
+                        pick = i
+                        break
+                    }
+                }
+                pick
+            }
+            var total = 0.0
+            for (i in 0 until n) {
+                val d = min(minD2[i], squaredL2(rows[i], rows[candidate]))
+                candidateD2[i] = d
+                total += d
+            }
+            if (total < bestPotential) {
+                bestPotential = total
+                bestIndex = candidate
+                candidateD2.copyInto(bestD2)
+            }
+        }
+        chosen.add(bestIndex)
+        bestD2.copyInto(minD2)
+        potential = bestPotential
     }
+    // Duplicate picks are possible only when every remaining sample coincides with a centre already.
+    return Array(k) { rows[chosen[it]].copyOf() }
 }
 
 private fun randomCenters(rows: Array<DoubleArray>, k: Int, rng: Random): Array<DoubleArray> {
@@ -2078,7 +2442,9 @@ private fun assignL2(rows: Array<DoubleArray>, centroids: Array<DoubleArray>, la
     return total
 }
 
-private fun runLloyd(rows: Array<DoubleArray>, seeds: Array<DoubleArray>, epochs: Int, recordHistory: Boolean): KMeansCore {
+private fun runLloyd(rows: Array<DoubleArray>, seeds: Array<DoubleArray>, epochs: Int, options: KMeansOptions): KMeansCore {
+    val recordHistory = options.recordHistory
+    val spherical = options.spherical
     val n = rows.size
     val d = rows[0].size
     val k = seeds.size
@@ -2088,6 +2454,9 @@ private fun runLloyd(rows: Array<DoubleArray>, seeds: Array<DoubleArray>, epochs
     var inertia = assignL2(rows, centroids, labels, d2)
     val history = ArrayList<Double>()
     if (recordHistory) history.add(inertia / n)
+    val trail = ArrayList<Array<DoubleArray>>()
+    if (options.recordCentroids) trail.add(snapshot(centroids))
+    val paths = newPaths(centroids, options.recordPaths)
     var converged = false
     var revivals = 0
     var epoch = 0
@@ -2108,6 +2477,8 @@ private fun runLloyd(rows: Array<DoubleArray>, seeds: Array<DoubleArray>, epochs
         for (c in 0 until k) {
             if (counts[c] > 0) {
                 for (j in 0 until d) centroids[c][j] = sums[c][j] / counts[c]
+                // A cluster of opposite directions can average to zero; keep it where it was then.
+                if (spherical && !normalizeInPlace(centroids[c])) centroids[c] = rows[labelsOf(labels, c)].copyOf()
             } else {
                 val order = replacements ?: farthestReplacementOrder(d2).also { replacements = it }
                 centroids[c] = rows[order[cursor % order.size]].copyOf()
@@ -2118,13 +2489,18 @@ private fun runLloyd(rows: Array<DoubleArray>, seeds: Array<DoubleArray>, epochs
         labels.copyInto(previous)
         inertia = assignL2(rows, centroids, labels, d2)
         if (recordHistory) history.add(inertia / n)
+        if (options.recordCentroids) trail.add(snapshot(centroids))
+        extend(paths, centroids)
         if (previous.contentEquals(labels)) {
             converged = true
             break
         }
     }
-    return KMeansCore(labels, centroids, inertia, history.toDoubleArray(), epoch, converged, revivals, n, null)
+    return KMeansCore(labels, centroids, inertia, history.toDoubleArray(), epoch, converged, revivals, n, null, trail, paths.orEmpty())
 }
+
+/** The first sample labelled [c]; only called for a cluster known to be non-empty. */
+private fun labelsOf(labels: IntArray, c: Int): Int = labels.indexOfFirst { it == c }
 
 private fun roundPowerOfTwo(value: Double): Int {
     if (value <= 1.0) return 1
@@ -2169,7 +2545,8 @@ private fun runEmeans(
     val n = rows.size
     val d = rows[0].size
     val k = seeds.size
-    val (batch, alpha0) = emeansRecipe(n, k, d, epochs, options)
+    val (batch, lawAlpha0) = emeansRecipe(n, k, d, epochs, options)
+    val alpha0 = min(1.0, lawAlpha0 * options.stepScale)
     val tau = options.reviveThreshold ?: if (d <= EMEANS_NO_REVIVAL_MAX_D) 0.0 else EMEANS_UNUSED_THRESHOLD
     val stepsPerEpoch = (n + batch - 1) / batch
     val totalSteps = stepsPerEpoch * epochs
@@ -2180,6 +2557,10 @@ private fun runEmeans(
     val d2 = DoubleArray(n)
     val history = ArrayList<Double>()
     if (options.recordHistory) history.add(assignL2(rows, centroids, labels, d2) / n)
+    val trail = ArrayList<Array<DoubleArray>>()
+    if (options.recordCentroids) trail.add(snapshot(centroids))
+    val paths = newPaths(centroids, options.recordPaths)
+    val spherical = options.spherical
 
     val order = IntArray(n) { it }
     val batchCounts = IntArray(k)
@@ -2227,27 +2608,39 @@ private fun runEmeans(
                 val cc = centroids[c]
                 val bs = batchSums[c]
                 for (j in 0 until d) cc[j] += w * (bs[j] / nj - cc[j])
+                if (spherical && !normalizeInPlace(cc)) {
+                    // Exactly cancelling directions: fall back to the direction of the batch mean.
+                    for (j in 0 until d) cc[j] = bs[j]
+                    if (!normalizeInPlace(cc)) cc[0] = 1.0
+                }
                 usage[c] = mass
             }
             // Line 9: every few updates, revive clusters whose mass has collapsed.
             if (tau > 0.0 && (step + 1) % EMEANS_CHECK_UNUSED_EVERY == 0) {
-                revivals += reviveUnused(centroids, usage, tau, rng)
+                val revived = reviveUnused(centroids, usage, tau, rng)
+                if (spherical && revived > 0) centroids.forEach { normalizeInPlace(it) }
+                revivals += revived
             }
+            extend(paths, centroids)
             step++
             start = end
         }
-        if (passCounts != null && passSums != null) {
+        if (options.closeOnMean && passCounts != null && passSums != null) {
             // Line 12: close on each cluster's exact mean over the last epoch.
             for (c in 0 until k) {
                 if (passCounts[c] == 0L) continue
-                for (j in 0 until d) centroids[c][j] = passSums[c][j] / passCounts[c]
+                val mean = DoubleArray(d) { j -> passSums[c][j] / passCounts[c] }
+                if (spherical && !normalizeInPlace(mean)) continue
+                centroids[c] = mean
             }
+            extend(paths, centroids)
         }
         if (options.recordHistory && !last) history.add(assignL2(rows, centroids, labels, d2) / n)
+        if (options.recordCentroids) trail.add(snapshot(centroids))
     }
     val inertia = assignL2(rows, centroids, labels, d2)
     if (options.recordHistory) history.add(inertia / n)
-    return KMeansCore(labels, centroids, inertia, history.toDoubleArray(), epochs, false, revivals, batch, alpha0)
+    return KMeansCore(labels, centroids, inertia, history.toDoubleArray(), epochs, false, revivals, batch, alpha0, trail, paths.orEmpty())
 }
 
 /**

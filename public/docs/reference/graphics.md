@@ -3816,7 +3816,7 @@ Functions that return new FLine instances use a "by" prefix to indicate non-muta
 
 `src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt` — [read the source](source/jvmMain/afield/geometry/path/FLineGeometry/)
 
-**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Vectorizing line drawings: polyvector fields](../polyvector.md), [Field 4 Graphics](../afield_four_graphics.md)
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Vectorizing line drawings: polyvector fields](../polyvector.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
 
 ### Top-level functions { #flinegeometry-kt-functions }
 
