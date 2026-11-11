@@ -5112,7 +5112,7 @@ callbacks; everything else goes through Skia's SVG canvas.
 
 `src/jvmMain/kotlin/afield/ui/visualization/someSkiko.kt` — [read the source](source/jvmMain/afield/ui/visualization/someSkiko/)
 
-**Used in:** [Presenting with Field](../presentation_studio.md), [Lights and Shadows](../explainer_lights.md)
+**Used in:** [Presenting with Field](../presentation_studio.md), [Lights and Shadows](../explainer_lights.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
 
 ### Top-level functions { #someskiko-kt-functions }
 
