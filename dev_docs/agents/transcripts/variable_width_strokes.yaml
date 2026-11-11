@@ -73,7 +73,7 @@ operations:
       box: swept-cubic
       name: 2 - Envelope of one cubic
       frame:
-        x: 540.0
+        x: 1200.0
         y: 60.0
         w: 420.0
         h: 100.0
@@ -132,7 +132,7 @@ operations:
       box: swept-degenerate
       name: 3 - Where there is no envelope
       frame:
-        x: 1020.0
+        x: 2340.0
         y: 60.0
         w: 420.0
         h: 100.0
@@ -179,7 +179,7 @@ operations:
       box: swept-notation
       name: 4 - A pressure stroke from the drawing layer
       frame:
-        x: 1500.0
+        x: 3480.0
         y: 60.0
         w: 420.0
         h: 100.0

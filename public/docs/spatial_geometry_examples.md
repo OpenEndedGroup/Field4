@@ -868,11 +868,11 @@ animate {
 The last family asks the question the other way round: not "which part of the plane belongs to which
 point" but "which points belong together".
 
-Most algorithms in `clustering.kt` return either a *hierarchy* or a centre that is meaningful for
-the data it summarises. A **medoid** is one of your own samples: the actual document, the actual
-frame, the actual brush mark. A **median** is coordinate-wise robust. A k-means centroid is neither,
-and on a cloud with one outlier it is the one that moves, so on small, dirty clouds start with these
-three. k-means earns its place at scale, and has [its own section below](#k-means-at-scale). The three entry points:
+Most algorithms in `clustering.kt` return a *hierarchy* or a centre that summarises your data. A
+**medoid** is one of your own samples: an actual document, frame or brush mark. A **median** is
+robust in each coordinate. A k-means centroid is a mean, so an outlier can pull it away from the
+rest of the cloud. For smaller, messy datasets, start with the three methods here; for large clouds,
+see [k-means at scale](#k-means-at-scale). The three entry points:
 
 ```diffstatic {data-lang=kotlin}
 val tree = vec2Agglomerative(points, AgglomerativeLinkage.WARD) // the whole merge hierarchy
@@ -1203,13 +1203,12 @@ showPlaneGrid(
 
 ![Three panels: the 60-blob cloud coloured by Lloyd's 25-epoch clustering, the same cloud coloured by e-means after 3 epochs, and a log-scale plot of mean squared error per epoch in which the blue e-means curve drops below the whole orange Lloyd curve after its first epoch](assets/spatial_geometry_examples/kmeans_lloyd_vs_emeans.png)
 
-e-means after one epoch is already below Lloyd after 25. That is the page's headline claim, and the
-3-D test in `KMeansTest` reproduces it on 100 000 points in 200 blobs (e-means ends 1.2% below Lloyd
-from k-means++ seeds and 2.2% below from random seeds). In 2-D it is not a sure win on every cloud:
-there are clouds where Lloyd finishes up to 6% lower. On average it is. Over 2-D mixtures of 5 000
-to 80 000 points in 10 to 160 blobs, three clouds each, e-means at 3 epochs ended between 20% below
-and 1.4% above Lloyd at 25, two to five times faster. Measure your own data: `mseHistory` from both
-is one line each.
+Here e-means after one epoch is already below Lloyd after 25. A 3-D test on 100 000 points in 200
+blobs also finishes lower: by 1.2% from k-means++ seeds and 2.2% from random seeds. The result depends
+on the cloud. Over 2-D mixtures of 5 000 to 80 000 points in 10 to 160 blobs, three clouds each,
+e-means at 3 epochs ended between 20% below and 1.4% above Lloyd at 25, two to five times faster.
+Some 2-D clouds favoured Lloyd by up to 6%. Measure your own data: `mseHistory` gives you a line for
+each run.
 
 **Seeding.** The default is greedy k-means++ (`KMeansSeeding.GREEDY_PLUS_PLUS`, scikit-learn's
 default). Plain k-means++ (`PLUS_PLUS`, the D²-weighted rule k-medoids and k-medians use) draws each

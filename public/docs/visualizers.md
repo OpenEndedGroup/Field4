@@ -951,8 +951,8 @@ loop {
 
 ### Piano rolls in the editor
 
-The piano-roll visualizer is the same idea, but for scheduled notes rather than scalar values. It
-also hangs off a [marker](#markers).
+The piano-roll visualizer shows scheduled notes. Like the scalar views above, it hangs off a
+[marker](#markers).
 
 <!--
 FIELD_TEST
