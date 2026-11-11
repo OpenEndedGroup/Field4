@@ -62,7 +62,13 @@ Done:
    registers).
 6. **Vulkan versus SVG.** Vulkan fills an `FLine` through `FLine.tessellate` (earcut, holes kept),
    which is CPU code: `shellTessellatesWithItsHole` checks a ring stroke's triangles cover the
-   annulus to 1 % and not the centre. No GPU capture: it would show the same tessellation.
+   annulus to 1 % and not the centre. Confirmed on the GPU afterwards (2026-11-11, backdoor,
+   `graphics_renderer_launch` parent): the "o" and a cornered "z" tessellated into one `Mesh`
+   (`primitiveType = triangles`, passthrough shaders from lesson 0), 804 vertices / 800 triangles.
+   The native-window capture shows the hole empty, the corners sharp and the "z" upright, with the
+   clip mapping `(x, -y)` from page coordinates. There is no automatic Vulkan fill for a filled
+   `FLine`: the route is `tessellate` / `trianglesOut` into a mesh. No docs figure yet: a
+   `capture="native-window"` fence on the page would be the next step.
 
 Also pinned: a turn tighter than the radius (inner flank folds) is still the union of discs (< 0.3).
 

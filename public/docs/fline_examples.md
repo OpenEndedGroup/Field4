@@ -2718,7 +2718,7 @@ This box only does something when you draw, so there is no picture of it here. R
 
 #### In a Vulkan scene
 
-`shell` is an ordinary filled `FLine`, so it draws in a Vulkan scene as well as in `lines`. There the fill goes through `FLine.tessellate`, which keeps holes: the inside of an "o" stays empty. `SweptCircleEnvelopeTest` checks this on a ring-shaped stroke, whose triangles cover the ring's area and not its centre.
+`shell` is an ordinary filled `FLine`. To draw it in a Vulkan scene, turn it into triangles with `FLine.tessellate` (or `trianglesOut`, which writes them straight into vertex buffers) and give those to a `Mesh` with `primitiveType = triangles`, as in [Hello triangle, first attempt](afield_four_graphics.md#hello-triangle-first-attempt). The tessellation keeps holes, so the inside of an "o" stays empty. `SweptCircleEnvelopeTest` checks this on a ring-shaped stroke, whose triangles cover the ring's area and not its centre.
 
 ??? aside "Where this method comes from"
     The construction follows Luther Tychonievich's post
