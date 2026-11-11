@@ -2479,9 +2479,12 @@ lines(base, left, right, w = 420.0, h = 260.0, fitToSize = true)
 | Operation | Behavior |
 | --- | --- |
 | `fun FLine.bySweptCircleEnveloping(radius: ParameterFunction, samples: Int = 200, sampler: FLineSampler? = null, flatness: Double = 0.25): FLineRibbon` | The outline of a circle of radius `radius(t)` swept along the line, with round ends. `left` and `right` are the two flanks; `shell` is the filled outline. |
-| `fun sweptCircleStroke(knots: List<Vec3>, samplesPerSegment: Int = 24, flatness: Double = 0.25): FLineRibbon` | The same outline for pen samples: each knot is `(x, y, r)`, joined by cubic Béziers in all three, with tangents from the neighbouring knots. |
-| `fun sweptCircleBeziers(knots: List<Vec3>): List<List<Vec3>>` | The Bézier spans `sweptCircleStroke` uses, four `(x, y, r)` control points each. |
-| `fun sweptCircleDegenerateSpans(knots: List<Vec3>): List<ClosedFloatingPointRange<Double>>` | Where the radius changes faster than the centre moves, so there is no envelope. Span `i` covers knots `i` to `i + 1`. |
+| `fun sweptCircleStroke(knots: List<Vec3>, samplesPerSegment: Int = 24, flatness: Double = 0.25, corners: Collection<Int> = emptyList()): FLineRibbon` | The same outline for pen samples: each knot is `(x, y, r)`, joined by cubic Béziers in all three, with tangents from the neighbouring knots. At the knots listed in `corners` the path turns sharply, with a round join. |
+| `fun sweptCircleBeziers(knots: List<Vec3>, corners: Collection<Int> = emptyList()): List<List<Vec3>>` | The Bézier spans `sweptCircleStroke` uses, four `(x, y, r)` control points each. |
+| `fun sweptCircleDegenerateSpans(knots: List<Vec3>, corners: Collection<Int> = emptyList()): List<ClosedFloatingPointRange<Double>>` | Where the radius changes faster than the centre moves, so there is no envelope. Span `i` covers knots `i` to `i + 1`. |
+| `fun thinPenSamples(knots: List<Vec3>, tolerance: Double = 0.5, widthSmoothing: Double = 3.0): List<Vec3>` | Fewer pen samples for the same stroke: averages the radius over `widthSmoothing` units of path, then drops every knot within `tolerance` of the line between its kept neighbours. |
+| `fun penCorners(knots: List<Vec3>, degrees: Double = 60.0): List<Int>` | The knots where the path turns by more than `degrees`, for `corners`. |
+| `fun Mark.penKnots(width: Double, exponent: Double = 1.75): List<Vec3>` | A drawing-layer stroke as pen samples, radius `width · pressure^exponent`. |
 | `fun FLine.outlineDistanceTo(other: FLine, flatness: Double = 0.1): Double` | The largest distance between two outlines' boundaries, for checking one against another. |
 
 </div>
@@ -2619,6 +2622,101 @@ println("${knots.size} pen samples, ${sweptCircleDegenerateSpans(knots).size} sp
 lines(outline.shell.copy().apply { filled = true; stroked = false; color = vec(0.95, 0.95, 0.9, 1.0) }, w = 900.0, h = 260.0, fitToSize = true)
 ```
 
+#### Tablet strokes: `thinPenSamples(...)`
+
+A tablet reports a point every pixel or two, and the pressure wobbles a little from one point to the next. Drawn as it comes, that stroke has hundreds of Bézier spans, which is slow, and where the pen moves slowly the wobble in width outruns the pen, so many short spans have no envelope. `thinPenSamples` first averages the radius over a few units of path, then keeps only the knots needed to stay within `tolerance` of the rest. Positions are not averaged, so corners stay sharp. Below, a stroke of a thousand samples is drawn as recorded (top) and thinned (bottom), with its knots marked:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/swept_circle_thinned.png" wait="1.0" capture="box" open-outputs="true" embed=true name="fline-swept-thinned"}
+:::static
+// A tablet-like stroke: a point every 0.6 units, and pressure with a little sensor wobble.
+val rnd = java.util.Random(1)
+val raw = (0 until 1000).map { i ->
+    val s = i / 999.0
+    val p = (0.15 + 0.85 * sin(PI * s).pow(0.7) + 0.03 * rnd.nextGaussian()).coerceIn(0.0, 1.0)
+    vec(600 * s, 60 * sin(9 * s) + 0.1 * rnd.nextGaussian(), 12 * p.pow(1.75))
+}
+val thin = thinPenSamples(raw, tolerance = 0.5)
+
+val rawOutline = sweptCircleStroke(raw, samplesPerSegment = 4).shell
+val thinOutline = sweptCircleStroke(thin).shell
+println("raw: ${raw.size} samples, ${sweptCircleDegenerateSpans(raw).size} spans without an envelope")
+println("thinned: ${thin.size} samples, ${sweptCircleDegenerateSpans(thin).size} spans without an envelope")
+
+fun ink(f: FLine, dy: Double) = (f + vec(0.0, dy)).apply {
+    filled = true
+    stroked = false
+    color = vec(0.95, 0.95, 0.9, 1.0)
+}
+fun dots(knots: List<Vec3>, dy: Double, size: Double) = knots.map { k ->
+    fline {
+        moveTo(k.x, k.y + dy)
+        lineTo(k.x + 0.01, k.y + dy)
+    }.apply {
+        pointed = true
+        pointSize = size
+        color = vec(1.0, 0.4, 0.3, 1.0)
+    }
+}
+lines([ink(rawOutline, 0.0), ink(thinOutline, 170.0)] + dots(raw, 0.0, 0.5) + dots(thin, 170.0, 1.2), w = 900.0, h = 380.0, fitToSize = true)
+```
+
+The raw stroke's edge is lumpy: it is the edge of the widest circles, so it follows the peaks of the wobble. The thinned stroke has the width the pen meant, from about sixty knots. The thinned outline is also several times faster to build.
+
+The spline's tangents are shared out between the two spans at each knot by their lengths. A pen bunches its samples where it slows down, and thinning leaves long and short spans side by side. With an equal share, a short span next to a long one overshoots in a loop.
+
+#### Sharp turns: `penCorners(...)`
+
+The spline passes through every knot smoothly, which rounds off the point of a "v" or the corners of a "z" and overshoots them. Pass the knots that should stay sharp as `corners`: there each side takes its direction from its own span, and the stroke turns with a round join, the circle at the corner. `penCorners` finds the knots where the path turns by more than an angle. Run it on thinned samples: on raw tablet points, every small wobble is a sharp turn. Here is a "z" written quickly, smooth (left) and with its corners kept (right):
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/swept_circle_corners.png" wait="1.0" capture="box" open-outputs="true" embed=true name="fline-swept-corners"}
+:::static
+// A "z" written quickly: a sample every 1.5 units along three strokes, pressing less as it goes.
+val turns = [vec(0.0, 0.0), vec(160.0, 0.0), vec(0.0, 140.0), vec(160.0, 140.0)]
+val path = turns.zipWithNext { a, b ->
+    val n = (a.distance(b) / 1.5).toInt()
+    (0 until n).map { j -> a + (b - a) * (j.toDouble() / n) }
+}.flatten() + turns.last()
+val raw = path.mapIndexed { i, p -> vec(p.x, p.y, 9.0 * (0.95 - 0.5 * i / path.size).pow(1.75)) }
+
+val knots = thinPenSamples(raw)
+val corners = penCorners(knots)
+println("${raw.size} samples thin to ${knots.size}; corners at $corners")
+
+fun ink(f: FLine, dx: Double) = (f + vec(dx, 0.0)).apply {
+    filled = true
+    stroked = false
+    color = vec(0.95, 0.95, 0.9, 1.0)
+}
+val smooth = sweptCircleStroke(knots).shell
+val sharp = sweptCircleStroke(knots, corners = corners).shell
+lines(ink(smooth, 0.0), ink(sharp, 260.0), w = 900.0, h = 320.0, fitToSize = true)
+```
+
+#### Outlining strokes as they are drawn
+
+`Mark.penKnots(width)` reads a drawing-layer stroke as pen samples, radius `width · pressure^1.75`. A stroke drawn with a mouse has no pressure, and reads at full width. Together with `notation.onStroke` this outlines each stroke when you lift the pen, at the width it was drawn:
+
+```diffstatic {data-lang=kotlin}
+// Outline every stroke drawn by hand from now on, at the width the pen pressed.
+val inked = mutableListOf<FLine>()
+notation.onStroke { mark ->
+    val knots = thinPenSamples(mark.penKnots(10.0))
+    inked +=
+        sweptCircleStroke(knots, corners = penCorners(knots)).shell.apply {
+            filled = true
+            stroked = false
+            color = vec(0.95, 0.95, 0.9, 1.0)
+        }
+    lines(inked, w = 900.0, h = 400.0, fitToSize = true)
+}
+```
+
+This box only does something when you draw, so there is no picture of it here. Run it, open the drawing layer (Alt+D) and draw with a pen.
+
+#### In a Vulkan scene
+
+`shell` is an ordinary filled `FLine`, so it draws in a Vulkan scene as well as in `lines`. There the fill goes through `FLine.tessellate`, which keeps holes: the inside of an "o" stays empty. `SweptCircleEnvelopeTest` checks this on a ring-shaped stroke, whose triangles cover the ring's area and not its centre.
+
 ??? aside "Where this method comes from"
     The construction follows Luther Tychonievich's post
     [Variable-width Bézier strokes](https://luthert.web.illinois.edu/blog/posts/775.html)
@@ -2627,7 +2725,11 @@ lines(outline.shell.copy().apply { filled = true; stroked = false; color = vec(0
     Field's own. `SweptCircleEnvelopeTest` pins the analytic cases: a constant radius equals
     `byBidirectionalOffsetting`, a linear radius on a straight line lies on the two tangent lines,
     the degenerate span ends are roots of `|P′|² − r′²`, and the 0.025 against 2.0 outline error
-    against a finely drawn union of circles.
+    against a finely drawn union of circles. Later additions pin a kept corner at constant radius
+    (it equals the round-joined buffer of the polyline, to 0.03), a turn tighter than the radius
+    (the shell is still the union of the circles), the thinned thousand-sample stroke (61 knots, no
+    span without an envelope, closer to the noise-free stroke than the raw one) and the ring that
+    tessellates with its hole.
 
 ### Dashing
 
@@ -4165,7 +4267,7 @@ Next on the Tour, [Drawing and Notation](drawing_and_notation.md) draws by hand 
   that each piece of `clothoidSplineFrom` is made from, [biarcs](#biarcs-biarcto-and-biarcbetween)
   for smooth joins out of circular arcs, and [curvature, tangents and normals](#curvature-tangentsnormals)
   and [measuring along a line](#measuring-along-a-line) for reading a curve back.
-- [Variable-width strokes](#variable-width-strokes-the-swept-circle-envelope) above outline a pen stroke from its pressure; open the [variable_width_strokes starting point](agent_transcripts.md#variable_width_strokes) to try them.
+- [Variable-width strokes](#variable-width-strokes-the-swept-circle-envelope) above outline a pen stroke from its pressure, with [thinning for tablet strokes](#tablet-strokes-thinpensamples), [sharp turns](#sharp-turns-pencorners) and [outlining strokes as they are drawn](#outlining-strokes-as-they-are-drawn); open the [variable_width_strokes starting point](agent_transcripts.md#variable_width_strokes) to try them. Source: [`FLineThickening.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/path/FLineThickening.kt) and [`SweptCircleEnvelopeTest.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmTest/kotlin/afield/geometry/path/SweptCircleEnvelopeTest.kt).
 - Open the [clothoid_spline starting point](agent_transcripts.md#clothoid_spline) to try the
   spline boxes in your own document.
 - Source: [`FLineGeometry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt)
@@ -4194,3 +4296,19 @@ Open questions and next builds:
 - **Curvature-matched ends.** A fixed end direction matches the direction of what it joins but not
   its curvature. Fixing the end curvature as well (zero, to run on smoothly from a straight line)
   takes one more unknown at that end, such as an extra piece whose length the solve chooses.
+- **Strokes as curves, not polygons.** A stroke's `shell` is a polygon of thousands of points, which
+  makes a heavy SVG. Fitting cubic Béziers to each flank, within the flatness, would give a few
+  dozen curves per stroke, the form a font or a plotter wants.
+- **Fewer stations where nothing happens.** `samplesPerSegment` is the same on every span. Placing
+  stations by how fast the direction and the radius change would make long, gentle strokes cheaper
+  still; a stroke of a few hundred thinned knots still takes a fraction of a second.
+- **Width from speed for mouse strokes.** A stroke with no pressure reads at full width. Excalidraw
+  thins a mouse stroke where it moves fast; reading the same speed into the radius would give mouse
+  strokes some life.
+- **Ink back on the drawing layer.** The outline is drawn into the box's output. Writing it onto
+  the drawing layer as a filled shape, beside the stroke it came from, would let the ink sit on the
+  canvas.
+- **Other nibs.** A circle is a round nib. An ellipse at a fixed angle is a calligraphy pen, whose
+  width depends on the direction of travel; its envelope comes from the same tangency condition.
+- **Tubes in 3D.** The same construction with spheres gives a tube whose radius varies, for
+  `threeLines` and the Vulkan scene.

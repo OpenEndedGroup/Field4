@@ -1,10 +1,11 @@
 name: variable_width_strokes
 description: >
   Variable-width strokes as the swept-circle envelope, the companion to the "Variable-width
-  strokes" section of `public/docs/fline_examples.md`. Four boxes: a hand-written "o" as pills,
+  strokes" section of `public/docs/fline_examples.md`. Seven boxes: a hand-written "o" as pills,
   trapezoid pills and a swept spline; one cubic against byVariableRibboning; a stroke whose radius
-  outruns its centre; and a pressure stroke written to and read back from the drawing layer.
-  Run each box; each draws into `lines`.
+  outruns its centre; a pressure stroke written to and read back from the drawing layer; a
+  thousand-sample tablet stroke thinned; a "z" with and without its corners; and a box that
+  outlines each stroke you draw by hand. Run each box; each draws into `lines`.
 docs:
   - page: fline_examples.md#variable-width-strokes-the-swept-circle-envelope
     why: "The section these boxes accompany."
@@ -206,6 +207,108 @@ operations:
               h = 260.0,
               fitToSize = true,
           )
+  - create:
+      box: swept-thinned
+      name: 5 - Thinning a tablet stroke
+      frame:
+        x: 1980.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // A tablet-like stroke: a point every 0.6 units, and pressure with a little sensor wobble.
+          val rnd = java.util.Random(1)
+          val raw =
+              (0 until 1000).map { i ->
+                  val s = i / 999.0
+                  val p = (0.15 + 0.85 * sin(PI * s).pow(0.7) + 0.03 * rnd.nextGaussian()).coerceIn(0.0, 1.0)
+                  vec(600 * s, 60 * sin(9 * s) + 0.1 * rnd.nextGaussian(), 12 * p.pow(1.75))
+              }
+          val thin = thinPenSamples(raw, tolerance = 0.5)
+
+          val rawOutline = sweptCircleStroke(raw, samplesPerSegment = 4).shell
+          val thinOutline = sweptCircleStroke(thin).shell
+          println("raw: ${raw.size} samples, ${sweptCircleDegenerateSpans(raw).size} spans without an envelope")
+          println("thinned: ${thin.size} samples, ${sweptCircleDegenerateSpans(thin).size} spans without an envelope")
+
+          fun ink(f: FLine, dy: Double) = (f + vec(0.0, dy)).apply {
+              filled = true
+              stroked = false
+              color = vec(0.95, 0.95, 0.9, 1.0)
+          }
+          fun dots(knots: List<Vec3>, dy: Double, size: Double) = knots.map { k ->
+              fline {
+                  moveTo(k.x, k.y + dy)
+                  lineTo(k.x + 0.01, k.y + dy)
+              }
+                  .apply {
+                      pointed = true
+                      pointSize = size
+                      color = vec(1.0, 0.4, 0.3, 1.0)
+                  }
+          }
+          lines(
+              [ink(rawOutline, 0.0), ink(thinOutline, 170.0)] + dots(raw, 0.0, 0.5) + dots(thin, 170.0, 1.2),
+              w = 900.0,
+              h = 380.0,
+              fitToSize = true,
+          )
+  - create:
+      box: swept-corners
+      name: 6 - Sharp turns
+      frame:
+        x: 2460.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // A "z" written quickly: a sample every 1.5 units along three strokes, pressing less as it goes.
+          val turns = [vec(0.0, 0.0), vec(160.0, 0.0), vec(0.0, 140.0), vec(160.0, 140.0)]
+          val path =
+              turns
+                  .zipWithNext { a, b ->
+                      val n = (a.distance(b) / 1.5).toInt()
+                      (0 until n).map { j -> a + (b - a) * (j.toDouble() / n) }
+                  }
+                  .flatten() + turns.last()
+          val raw = path.mapIndexed { i, p -> vec(p.x, p.y, 9.0 * (0.95 - 0.5 * i / path.size).pow(1.75)) }
+
+          val knots = thinPenSamples(raw)
+          val corners = penCorners(knots)
+          println("${raw.size} samples thin to ${knots.size}; corners at $corners")
+
+          fun ink(f: FLine, dx: Double) = (f + vec(dx, 0.0)).apply {
+              filled = true
+              stroked = false
+              color = vec(0.95, 0.95, 0.9, 1.0)
+          }
+          val smooth = sweptCircleStroke(knots).shell
+          val sharp = sweptCircleStroke(knots, corners = corners).shell
+          lines(ink(smooth, 0.0), ink(sharp, 260.0), w = 900.0, h = 320.0, fitToSize = true)
+  - create:
+      box: swept-onstroke
+      name: 7 - Outline strokes as they are drawn
+      frame:
+        x: 2940.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // Outline every stroke drawn by hand from now on, at the width the pen pressed.
+          val inked = mutableListOf<FLine>()
+          notation.onStroke { mark ->
+              val knots = thinPenSamples(mark.penKnots(10.0))
+              inked +=
+                  sweptCircleStroke(knots, corners = penCorners(knots)).shell.apply {
+                      filled = true
+                      stroked = false
+                      color = vec(0.95, 0.95, 0.9, 1.0)
+                  }
+              lines(inked, w = 900.0, h = 400.0, fitToSize = true)
+          }
   - execute:
       box: swept-o
       property: code
@@ -220,5 +323,17 @@ operations:
       type: fragment
   - execute:
       box: swept-notation
+      property: code
+      type: fragment
+  - execute:
+      box: swept-thinned
+      property: code
+      type: fragment
+  - execute:
+      box: swept-corners
+      property: code
+      type: fragment
+  - execute:
+      box: swept-onstroke
       property: code
       type: fragment
