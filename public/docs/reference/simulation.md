@@ -2216,7 +2216,7 @@ val iss = SatelliteCatalogue.bundled().byName("ISS (ZARYA)")!!
 val here = Observer(latitudeDeg = 41.88, longitudeDeg = -87.63)
 val start = iss.tle.epoch
 for (p in here.passes(iss, start, start.plus(Duration.ofDays(7)), minElevationDeg = 10.0))
-    println("${p.rise}  max ${"%.0f".format(p.maxElevationDeg)}°")
+    println("${p.rise}  max ${p.maxElevationDeg.f0}°")
 ```
 
 `src/jvmMain/kotlin/afield/simulation/orbits/Frames.kt` — [read the source](source/jvmMain/afield/simulation/orbits/Frames/)

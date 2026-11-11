@@ -140,5 +140,7 @@ class Sgp4Test {
         val p90 = errs[errs.size * 9 / 10]
         println("mean elements vs SGP4 over ${errs.size} states: median ${"%.1f".format(median)} km, p90 ${"%.1f".format(p90)} km")
         assertTrue(median < 50.0, "median $median km")
+        assertEquals(sky.size, sky.meanElementsAt(sky.epoch).size)
+        assertEquals(3600L, Duration.ofHours(1).toSeconds())
     }
 }
