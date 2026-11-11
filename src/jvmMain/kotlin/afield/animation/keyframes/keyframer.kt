@@ -82,6 +82,7 @@ import afield.math.linalg.set
 import afield.math.linalg.x
 import afield.simulation.agents.step
 import afield.simulation.automata.step
+import afield.study.source.SourceBackedFunction
 import afield.study.source.SourceBackedBlock
 import afield.study.source.sourceBackedBlockBox
 import afield.ui.output.ControlGroupBuilder
@@ -267,6 +268,10 @@ sealed interface KValue {
     @Serializable @SerialName("sourceBlock")
     data class SourceBlock(val boxId: String, val source: String) : KValue
 
+    /** A typed one-argument function, including its complete lambda source and owning box. */
+    @Serializable @SerialName("sourceFunction")
+    data class SourceFunction(val boxId: String, val source: String) : KValue
+
     /**
      * Rebuild the live Kotlin value this entry stands for — the load half of the round trip.
      * A [DualQuat] and a [CameraPoseValue] are re-normalised on the way out, because a rigid transform that
@@ -303,6 +308,7 @@ sealed interface KValue {
         is StackSL -> StackSLString(value)
         is Str -> value
         is SourceBlock -> SourceBackedBlock<Any?>(boxId, source)
+        is SourceFunction -> SourceBackedFunction<Any?, Any?>(boxId, source)
     }
 
     companion object {
@@ -352,6 +358,7 @@ sealed interface KValue {
             is StackSLString -> StackSL(v.value)
             is String -> Str(v)
             is SourceBackedBlock<*> -> SourceBlock(v.boxId, v.source)
+            is SourceBackedFunction<*, *> -> SourceFunction(v.boxId, v.source)
 
             else -> null
         }
@@ -475,6 +482,25 @@ class KeyframeScope(val schemaVersion: Int = 0) {
     private val globalMissingKeys = mutableMapOf<String, () -> Any?>()
     private val schemaMissingKeys = mutableMapOf<Int, MutableMap<String, () -> Any?>>()
 
+    private data class BatchTarget(val names: Set<String>, val prepare: (Map<String, Any?>) -> (() -> Unit))
+    private val batchTargets = linkedMapOf<String, BatchTarget>()
+
+    /**
+     * Register a batch whose [prepare] validates incoming lanes without mutation, returning a commit.
+     * All batches prepare before any target writes. Their lanes bypass individual setters on apply.
+     * Re-registering [id] replaces its previous batch, which makes live-code reloads safe.
+     * Commit callbacks must not fail: validation and allocation belong in [prepare].
+     */
+    fun applicationBatch(id: String, names: Set<String>, prepare: (Map<String, Any?>) -> (() -> Unit)) {
+        require(batchTargets.filterKeys { it != id }.values.none { it.names.intersect(names).isNotEmpty() }) {
+            "Keyframe application batches cannot share lanes"
+        }
+        batchTargets[id] = BatchTarget(names.toSet(), prepare)
+    }
+
+    /** Per-lane interpolation for domains whose values have richer semantics than their Kotlin type. */
+    val interpolators = mutableMapOf<String, (Any, Any, Double) -> Any>()
+
     /**
      * Per-key re-timing for [interpolate]: `remap["gain"] = { t -> t * t * (3 - 2 * t) }` eases that one
      * value on a smoothstep while everything else stays linear.
@@ -593,7 +619,14 @@ class KeyframeScope(val schemaVersion: Int = 0) {
          * replacing its shader source with the empty program.
          */
         operator fun invoke() {
-            values.forEach { (k, v) ->
+            val remaining = if (batchTargets.isEmpty()) values else {
+                val active = batchTargets.values.filter { batch -> batch.names.any { it in values } }
+                val commits = active.map { batch -> batch.prepare(values.filterKeys { it in batch.names }) }
+                val handled = active.flatMap { it.names }.toSet()
+                commits.forEach { it() }
+                values.filterKeys { it !in handled }
+            }
+            remaining.forEach { (k, v) ->
                 val target = targetFor(k)
                 if (target != null) {
                     val binding = bindingForValue(v)
@@ -749,6 +782,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
 
     private fun coerceEditedValue(previous: Any?, next: Any?): Any? =
         when {
+            previous is SourceBackedFunction<*, *> && next is String -> SourceBackedFunction<Any?, Any?>(previous.boxId, next)
             previous is StackSLString && next is String -> StackSLString(next)
             previous is SourceBackedBlock<*> && next is String -> SourceBackedBlock<Any?>(previous.boxId, next)
             else -> next
@@ -1192,6 +1226,11 @@ class KeyframeScope(val schemaVersion: Int = 0) {
             if (va == null || vb == null) continue
 
             val tEffective = remap[key]?.invoke(t) ?: t
+            val customInterpolator = interpolators[key]
+            if (customInterpolator != null) {
+                out[key] = customInterpolator(va, vb, tEffective)
+                continue
+            }
             val tf = tEffective.toFloat()
 
             val interpolated: Any = when {
@@ -1217,6 +1256,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
                 va is String && vb is String -> if (tEffective >= 1.0) vb else va
                 va is SourceBackedBlock<*> && vb is SourceBackedBlock<*> -> blendBlockValue(va, vb, tEffective)
 
+                va is SourceBackedFunction<*, *> || vb is SourceBackedFunction<*, *> -> if (tEffective >= 1.0) vb else va
                 else -> continue
             }
 
@@ -1890,6 +1930,7 @@ private fun diffEntries(left: Map<String, Any?>, right: Map<String, Any?>): List
 
 private fun keyValuesEqual(a: Any?, b: Any?): Boolean =
     when {
+        a is SourceBackedFunction<*, *> && b is SourceBackedFunction<*, *> -> a.boxId == b.boxId && a.source == b.source
         a is SourceBackedBlock<*> && b is SourceBackedBlock<*> -> a.boxId == b.boxId && a.source == b.source
         a is Vector2f && b is Vector2f -> a.x == b.x && a.y == b.y
         a is Vector3f && b is Vector3f -> a.x == b.x && a.y == b.y && a.z == b.z
@@ -1962,6 +2003,7 @@ private fun kotlinValueLiteral(value: Any?): String =
     when (value) {
         null -> "null"
         is StackSLString -> "stackSLString(${kotlinStringLiteral(value.value)})"
+        is SourceBackedFunction<*, *> -> kotlinRawStringLiteral(value.source)
         is SourceBackedBlock<*> -> kotlinRawStringLiteral(value.source)
         is String -> kotlinStringLiteral(value)
         is Byte, is Short, is Int, is Long, is Float, is Double -> kotlinNumberLiteral(value as Number)
@@ -2005,6 +2047,7 @@ private fun keyframeSourceBlockHtml(v: SourceBackedBlock<*>): String {
 }
 
 private fun keyframeValueHtml(v: Any?): String = when (v) {
+    is SourceBackedFunction<*, *> -> keyframeSourceBlockHtml(SourceBackedBlock<Any?>(v.boxId, v.source))
     is SourceBackedBlock<*> -> keyframeSourceBlockHtml(v)
     is StackSLString -> v.value.h
     else -> v.h
@@ -2013,6 +2056,7 @@ private fun keyframeValueHtml(v: Any?): String = when (v) {
 private fun keyframeValueText(v: Any?): String = when (v) {
     null -> "null"
     is StackSLString -> v.value
+    is SourceBackedFunction<*, *> -> "sourceFunction@${v.boxId} ${v.source}"
     is SourceBackedBlock<*> -> "sourceBlock@${v.boxId} { ${v.source.replace('\n', ' ')} }"
     is Vector2f -> "vec(${v.x}, ${v.y})"
     is Vector3f -> "vec(${v.x}, ${v.y}, ${v.z})"

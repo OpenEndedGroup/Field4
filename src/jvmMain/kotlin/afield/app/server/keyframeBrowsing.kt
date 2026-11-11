@@ -12,6 +12,7 @@ import afield.animation.keyframes.KeyframeCollection
 import afield.animation.keyframes.KeyframeScope
 import afield.animation.keyframes.SkippedFile
 import afield.animation.keyframes.SlotSummary
+import afield.study.source.SourceBackedFunction
 import afield.study.source.SourceBackedBlock
 import afield.animation.keyframes.StackSLString
 import afield.graphics.vulkan.util.CameraPose
@@ -237,6 +238,7 @@ private fun valueHtml(v: KValue): String {
     }
     return when (any) {
         is StackSLString -> "<pre class='kb-src'>${esc(any.value)}</pre>"
+        is SourceBackedFunction<*, *> -> "<pre class='kb-src'>${esc(any.source)}</pre>"
         is SourceBackedBlock<*> ->
             "<div class='kb-block'><span class='kb-dim'>sourceBlock in ${esc(any.boxId)}</span>" +
                 "<pre class='kb-src'>${esc(any.source)}</pre></div>"
@@ -324,6 +326,7 @@ private fun shortValue(v: KValue): String = when (v) {
     is KValue.Str -> v.value.lineSequence().firstOrNull()?.take(48).orEmpty()
     is KValue.StackSL -> v.value.lineSequence().firstOrNull()?.take(48).orEmpty()
     is KValue.SourceBlock -> "sourceBlock@${v.boxId}"
+    is KValue.SourceFunction -> "sourceFunction@${v.boxId}"
 }
 
 /**

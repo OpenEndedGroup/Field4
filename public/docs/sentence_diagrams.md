@@ -180,7 +180,7 @@ displayOpen("diagram")
 
 ## From geometry to a shallow-3D reading space
 
-[Open text_one](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn) for six
+[Open text_one](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn) for eight
 related reading spaces: **Marked breath**, **Constituency canopy**, **Dependency undertow**,
 **Sentence furniture**, **A room for words**, and **Words becoming weather**. Sentence furniture
 crossfades its structural drawing into a complete reading line; the typography playground
@@ -599,6 +599,38 @@ Stanza takes the capital at the start of each line as a new sentence. Add the ke
 - Futrell, Mahowald and Gibson, [Large-scale evidence of dependency length minimization in 37
   languages](https://doi.org/10.1073/pnas.1502134112), PNAS 112(33), 2015, for the corpora,
   regressions and the other baselines.
+
+
+## Elastic sentence threads
+
+The seventh `text_one` playground, **Elastic sentences**, connects words with multi-node CPU
+SIMD Verlet threads. Endpoints stay constrained to current text geometry while interior nodes
+follow slowly. Attachments can be fixed centres/sides, nearest points, sliding underlines,
+per-line margins or bounding-box perimeters. They follow the same prepared font measurements,
+rotation and score transforms as the glyphs, including shorter lines in a multiline run.
+
+Layout response time and damping, length stabilization or minimization, and curvature
+minimization are independent physical controls. TCB tension/continuity/bias shape the FLine
+through those nodes separately. The connection's `.path` supports the ordinary draw-in/out,
+opacity, dashes, arrows and arclength anchors. Headset views continue to use the current poses.
+
+The source is `templates/text_one/elastic_sentences.kt`; the complete API, parameter units and
+examples are in the document's **Elastic connections** guide. Resetting physics resets thread
+history; pausing or seeking the score alone lets the existing thread motion continue.
+
+
+## Drop caps
+
+**A dropped initial**, the eighth `text_one` playground, gives a paragraph an enlarged opening
+initial spanning a chosen number of authored lines. Those lines are indented beside it; later
+lines return to the left margin. Font, bold, italic and weight can be chosen for the initial.
+Its actual ink is fitted between the first line's cap-height and the final dropped baseline.
+The paragraph remains one Slug run, with its original text and character indices intact.
+
+Use `dropCap(lines = 3, gapEm = .2f) { bold = true }` inside a text block. The resulting
+`paragraph.initial` is a measurable span, so elastic threads can attach to its bounding box.
+Line breaks remain authored; this feature does not introduce automatic paragraph wrapping.
+The document's **Drop caps** guide covers multi-letter initials, typography and rebuilding.
 
 ## API reference
 

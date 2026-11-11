@@ -223,6 +223,9 @@ object DemoTranscriptExecSmokeTest {
         // through K2 inside its own box — which is the one part of the feature a unit test cannot
         // reach, and the reason this is EXECUTE rather than COMPILE_ONLY.
         "keyframe_code_blend",
+        // Numeric rules over an ordered group: real K2 source restoration, inherited contexts,
+        // persistent pointwise blends and complete validation before writes. No graphics required.
+        "ordered_group_keyframes",
         "linalg_thumbnails_demo",
         "knight_tour_workshop", // CPU FLine drawings; source shares results with four derived views.
         // The uncrossed half of knight_tour_workshop.md: uncrossed leaper paths (afield.geometry.leaper) drawn as

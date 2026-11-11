@@ -6,7 +6,7 @@ The example passages are original placeholders. Replace them freely.
 
 The document separates three jobs:
 
-1. **Four example boxes** author named material and prepare distinct text runs once.
+1. **Eight example boxes** author named material and prepare distinct text runs once.
 2. **Scores / example selector** controls that material over time, without rebuilding it.
 3. **Drawing** uploads one CPU scene snapshot and renders it with the current matrices for both eyes.
 
@@ -322,3 +322,14 @@ Radii are Gaussian standard deviations in ems. For a live slider, reserve
 `word.blurCapacity` before Drawing, then change `word.blur`. Opacity stays independent.
 The sixth example, **Words becoming weather**, demonstrates it;
 [the word-blur guide](guides/07-word-blur.md) covers reservations, quality and cost.
+
+
+## Elastic sentence threads
+
+**18 · Elastic sentences** is the seventh reading space. `connection(...)` adds a SIMD-driven
+chain between fixed or sliding word/run attachments, with independent layout response,
+length stabilization/minimization, curvature minimization and TCB shape controls. Its `.path`
+uses the existing FLine renderer and score. See [Elastic connections](guides/10-elastic-connections.md)
+for multiline margins, boundary/underline projection, physical units and reset behaviour.
+
+**19 · A dropped initial** adds an ink-fitted drop cap across authored lines, custom initial typography and normal span anchors. See [Drop caps](guides/11-drop-caps.md).

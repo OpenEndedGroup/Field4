@@ -35,6 +35,7 @@ internal data class ReadingPreparationKey(
     val face: Typeface,
     val tracking: Double,
     val ranges: List<ReadingStyleRange>,
+    val dropCap: ReadingDropCapKey? = null,
 )
 
 internal fun readingPreparationKey(run: DiagramText, fallback: Typeface): ReadingPreparationKey {
@@ -48,10 +49,23 @@ internal fun readingPreparationKey(run: DiagramText, fallback: Typeface): Readin
                 style.resolve(run.font ?: fallback, run.bold, run.italic, run.weight),
             )
         }
-    return ReadingPreparationKey(run.text, base, run.tracking, ranges)
+    val cap = run.dropCapDefinition?.let { definition ->
+        val face = definition.typography.resolve(base, base.awtFont.isBold, base.awtFont.isItalic, null)
+        val initial = run.text.substring(0, definition.end)
+        require(face.canDisplay(initial)) { "${face.fontName} cannot display '$initial'" }
+        val source = layoutText(initial, face).bounds
+        require(source.h > 0) { "A drop cap needs visible ink" }
+        val bodyCapHeight = layoutText("H", base).bounds.h
+        val height = bodyCapHeight + (definition.lines - 1) * base.lineHeight
+        ReadingDropCapKey(definition.lines, definition.gapEm, definition.end,
+            face.atSize(face.size * height / source.h))
+    }
+    val resolvedRanges = if (cap == null) ranges else ranges + ReadingStyleRange(0, cap.end, cap.face)
+    return ReadingPreparationKey(run.text, base, run.tracking, resolvedRanges, cap)
 }
 
 internal fun prepareReadingLayout(run: DiagramText, key: ReadingPreparationKey): TextLayout {
+    if (key.dropCap != null) return prepareDropCapLayout(run, key)
     if (key.ranges.isEmpty()) {
         require(key.face.canDisplay(run.text)) {
             "${key.face.fontName} cannot display '${run.text}'"
