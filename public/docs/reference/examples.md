@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-234 source file(s), 729 public symbol(s), 323 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+236 source file(s), 733 public symbol(s), 325 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -323,7 +323,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1041) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1074) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -1887,6 +1887,34 @@ Step two of the neural-particle pilot: that a buffer of particles integrated on 
 | <a id="newmain8-writetoimage-kt--newmain8-writetoimage--running"></a>[<code class="highlight"><span class="k">var</span> <span class="n">running</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L196) |  |
 | <a id="newmain8-writetoimage-kt--newmain8-writetoimage--run"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L198) |  |
 
+## NoiseLangGpuIncludes.kt { #noiselanggpuincludes-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/NoiseLangGpuIncludes.kt` — [read the source](source/jvmMain/afield/examples/four/NoiseLangGpuIncludes/)
+
+### NoiseLangGpuIncludes { #noiselanggpuincludes-kt-noiselanggpuincludes }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">NoiseLangGpuIncludes</span></code>](source/jvmMain/afield/examples/four/NoiseLangGpuIncludes/#L38)
+
+`#include "dist/…"` and `#include "gp/…"` on the GPU: compute shaders that include the GLSL a box's `distHere` and `gpHere` would serve, draw 65 536 values, and are checked against exact answers: the moments of a mixture, a posterior drawn by weighted reservoir sampling, a joint ring and the arc of it a condition keeps, and draws of a Gaussian process against its exact finite-feature posterior mean and variance.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="noiselanggpuincludes-kt--noiselanggpuincludes--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NoiseLangGpuIncludes/#L69) |  |
+
+## NoiseLangGpuParity.kt { #noiselanggpuparity-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/NoiseLangGpuParity.kt` — [read the source](source/jvmMain/afield/examples/four/NoiseLangGpuParity/)
+
+### NoiseLangGpuParity { #noiselanggpuparity-kt-noiselanggpuparity }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">NoiseLangGpuParity</span></code>](source/jvmMain/afield/examples/four/NoiseLangGpuParity/#L49)
+
+The same [`Dist`](math.md#dist-kt-dist) graphs estimated on the CPU and, lowered to GLSL, on the GPU; each pair must agree within four combined standard errors, and each must agree with the exact answer.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="noiselanggpuparity-kt--noiselanggpuparity--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NoiseLangGpuParity/#L51) |  |
+
 ## OpenDlssNrLiveEditSmoke.kt { #opendlssnrliveeditsmoke-kt }
 
 `src/jvmMain/kotlin/afield/examples/four/OpenDlssNrLiveEditSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/OpenDlssNrLiveEditSmoke/)
@@ -2880,13 +2908,13 @@ Renders — and *verifies* — the claim that evolution beats chance on ALife ru
 
 ### AlifeGallery { #alifegallery-kt-alifegallery }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">AlifeGallery</span></code>](source/jvmMain/afield/examples/stdlib/AlifeGallery/#L184)
+[<code class="highlight"><span class="k">object</span> <span class="nc">AlifeGallery</span></code>](source/jvmMain/afield/examples/stdlib/AlifeGallery/#L187)
 
 Renders — and *verifies* — the figures behind `public/docs/alife_examples.md`.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="alifegallery-kt--alifegallery--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/AlifeGallery/#L2377) |  |
+| <a id="alifegallery-kt--alifegallery--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/AlifeGallery/#L2416) |  |
 
 ## AlifeScriptGallery.kt { #alifescriptgallery-kt }
 

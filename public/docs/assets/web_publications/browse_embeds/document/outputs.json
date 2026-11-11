@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T22:46:26.381Z",
+  "capturedAt": "2026-11-11T14:42:56.607Z",
   "documentName": "browse_embeds",
   "outputs": [
     {
@@ -22,7 +22,7 @@
       "warnings": [],
       "kinds": [],
       "width": 200,
-      "height": 311,
+      "height": 268,
       "path": "outputs/1.html"
     },
     {

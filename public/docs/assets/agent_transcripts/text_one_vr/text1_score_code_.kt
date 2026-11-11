@@ -3,7 +3,7 @@ import afield.graphics.scene.reading.*
 // All eight scores are separate from graph construction and native typography preparation.
 // Re-run this box to rescore the existing players; their physics and Slug buffers are retained.
 val allExamples =
-    listOf(exampleOne, exampleTwo, exampleThree, exampleFour, exampleFive, exampleSix, exampleSeven, exampleEight)
+    [exampleOne, exampleTwo, exampleThree, exampleFour, exampleFive, exampleSix, exampleSeven, exampleEight]
 for ((index, example) in allExamples.withIndex()) {
     val graph = example.player.diagram
     example.player.playback.score = diagramScore(
