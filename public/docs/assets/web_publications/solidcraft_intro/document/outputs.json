@@ -1,16 +1,16 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-11T14:53:56.954Z",
+  "capturedAt": "2026-11-11T16:45:48.799Z",
   "documentName": "solidcraft_intro",
   "outputs": [
     {
       "uid": "solidcraft_compare",
       "channel": "main",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
       "width": 439,
-      "height": 57,
+      "height": 82,
       "path": "outputs/0.html"
     }
   ]

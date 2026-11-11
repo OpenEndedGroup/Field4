@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-11T14:22:05.046Z",
+  "capturedAt": "2026-11-11T15:50:45.148Z",
   "documentName": "gesture_paint_replay",
   "outputs": [
     {
@@ -68,7 +68,7 @@
       "warnings": [],
       "kinds": [],
       "width": 469,
-      "height": 82,
+      "height": 45,
       "path": "outputs/5.html"
     }
   ]

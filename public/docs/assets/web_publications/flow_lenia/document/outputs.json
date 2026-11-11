@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-11T19:27:08.187Z",
+  "capturedAt": "2026-11-11T21:56:50.438Z",
   "documentName": "flow_lenia",
   "outputs": [
     {
@@ -9,8 +9,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 810,
-      "height": 306,
+      "width": 912,
+      "height": 337,
       "path": "outputs/0.html"
     },
     {
@@ -19,8 +19,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 810,
-      "height": 306,
+      "width": 912,
+      "height": 337,
       "path": "outputs/1.html"
     },
     {
@@ -29,9 +29,29 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 810,
-      "height": 434,
+      "width": 912,
+      "height": 483,
       "path": "outputs/2.html"
+    },
+    {
+      "uid": "flow_lenia_mutation",
+      "channel": "main",
+      "open": false,
+      "warnings": [],
+      "kinds": [],
+      "width": 610,
+      "height": 40,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "flow_lenia_crescent",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 483,
+      "path": "outputs/4.html"
     }
   ]
 }
