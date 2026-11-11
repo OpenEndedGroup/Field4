@@ -2782,3 +2782,48 @@ python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife
 [`alife_lsystem.kt`](reference/alife.md#alife-lsystem-kt) and
 [`alife_field.kt`](reference/alife.md#alife-field-kt). Start from
 [what's already in the box](reference/index.md).*
+
+## Where to go next
+
+- [Evolving creatures](evolving_creatures.md) runs the same kind of search on bodies that move,
+  and [Braitenberg vehicles](braitenberg_vehicles.md) evolves vehicle wirings on `PopulationSearch`.
+- [Cellular automata as sound](chain_ca_sound.md) and
+  [Boolean network music](boolean_network_music_examples.md) read rule systems as rhythm and
+  pitch, as the grain sets above do; [granular](functions_examples.md#granular) is Field's live
+  `GrainCloud`, which plays a sample rather than a decoded list of grains.
+- [Imaging](imaging_examples.md) supplies the `Img` operations every figure here is built from.
+- Open the starting points: [`alife_worked_example`](agent_transcripts.md#alife_worked_example)
+  (sections 1 to 10), [`alife_evolution`](agent_transcripts.md#alife_evolution),
+  [`alife_search_comparison`](agent_transcripts.md#alife_search_comparison),
+  [`alife_tree_growth`](agent_transcripts.md#alife_tree_growth) and
+  [`alife_grains`](agent_transcripts.md#alife_grains).
+- Source: [`alife_lsystem.kt`](reference/alife.md#alife-lsystem-kt),
+  [`alife_evolve.kt`](reference/alife.md#alife-evolve-kt) and
+  [`alife_grains.kt`](reference/alife.md#alife-grains-kt).
+
+Open questions and next builds for the grain sets:
+
+- **A target taken from a recording.** Decode a sample into onsets and pitches, compute its
+  `GrainSetStats`, and centre each trapezoid on the sample's value, so the search evolves toward a
+  sound you already have.
+- **Grains from a sample.** `renderGrains(source = ...)` already reads grains from a sample; a
+  figure comparing the tone and sample renderings of one evolved grammar is still missing.
+- **More symbols.** EvoGrain's grammars also change grain length and density. Adding `<` and `>`
+  (shorter and longer grains) and a pan symbol to `GrainTurtle` would widen what a grammar can say.
+- **Several productions.** `grainLSystemGenome` rewrites only `G`. A second nonterminal `X`, which
+  steers the grammar without sounding, would let the search find structure that one rule cannot.
+- **Novelty instead of fitness.** `GrainSetStats.vector()` is already a behaviour descriptor, so
+  `PopulationSearch.novelty` or `mapElites` over (pitch spread, polyphony) would show the range of
+  sets instead of one winner.
+- **A breeder you can drive live.** The interactive box replaces all its players after every
+  choice; keeping past generations in a column would let you hear a lineage.
+
+Open questions for the rest of the page:
+
+- **Search beyond the saturated L-system objective.** The dimension target in
+  [Does search beat random?](#does-search-beat-random) cannot separate the search methods. A
+  harder drawn target, such as matching a given silhouette, would.
+- **Lenia solitons in three dimensions.** The Lenia genome and soliton objective are 2-D; the
+  3-D life-like automaton shows the grid side of that extension already exists.
+- **Trees that compete for sound.** The light-competition trees could be read with the grain
+  decoder, each branch a voice, so a forest's growth becomes a score.
