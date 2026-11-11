@@ -1099,8 +1099,8 @@ class KMeansTree(val levels: List<KMeansTreeLevel>) {
      * @param smooth Draw each path as a Catmull-Rom spline through every [stride]-th point instead
      * of as a polyline through all of them.
      * @param stride Keep every `stride`-th point of a path (always keeping both ends). An e-means
-     * path has a point per mini-batch, often hundreds; the default of 8 keeps a tree of thousands of
-     * paths light enough to draw, and 1 draws every update.
+     * path has a point per mini-batch, often hundreds; 1 draws every update, and larger values
+     * straighten the strokes.
      * @param connectors Draw the input-to-parent connectors.
      * @param connectorColor Colour of the connectors.
      * @param leaves Draw level 0's inputs (your points) as dots of [leafSize].
@@ -1109,7 +1109,7 @@ class KMeansTree(val levels: List<KMeansTreeLevel>) {
      */
     fun toFLines(
         smooth: Boolean = true,
-        stride: Int = 8,
+        stride: Int = 1,
         connectors: Boolean = true,
         connectorColor: Vec4 = vec(0.75, 0.8, 0.9, 0.35),
         leaves: Boolean = true,

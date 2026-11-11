@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-11T13:56:37.504Z",
+  "capturedAt": "2026-11-11T14:09:30.268Z",
   "documentName": "kmeans_emeans",
   "outputs": [
     {
@@ -28,18 +28,6 @@
       "path": "outputs/1.html"
     },
     {
-      "uid": "kmeans_spherical",
-      "channel": "main",
-      "open": true,
-      "warnings": [],
-      "kinds": [
-        "svg"
-      ],
-      "width": 878,
-      "height": 485,
-      "path": "outputs/2.html"
-    },
-    {
       "uid": "kmeans_epoch_slider",
       "channel": "controls",
       "open": true,
@@ -49,7 +37,7 @@
       ],
       "width": 473,
       "height": 56,
-      "path": "outputs/3.html"
+      "path": "outputs/2.html"
     },
     {
       "uid": "kmeans_epoch_slider",
@@ -61,7 +49,7 @@
       ],
       "width": 918,
       "height": 505,
-      "path": "outputs/4.html"
+      "path": "outputs/3.html"
     },
     {
       "uid": "kmeans_revival",
@@ -73,7 +61,7 @@
       ],
       "width": 878,
       "height": 485,
-      "path": "outputs/5.html"
+      "path": "outputs/4.html"
     }
   ]
 }

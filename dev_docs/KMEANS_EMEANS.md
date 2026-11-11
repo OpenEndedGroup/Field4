@@ -177,11 +177,13 @@ factor ≈ shrink), and the walk is e-means' EMA update. No momentum.
 ### Publication budget
 
 The `kmeans_emeans` starting point is also published as an offline document, and
-`publication-capture.js` copies every computed style of every output node. With 6 000 spherical
-points, 1 500 tree leaves and the slider's cloud it timed out at 240 s twice; the docs figures
-were cut to 2 400 and 1 000 points, the slider cloud to every eighth point, and `toFLines`
-thins paths to every eighth point by default. Keep new boxes in this transcript under a few
-thousand SVG elements each.
+`publication-capture.js` copies every computed style of every output node: about 8 ms per node
+here, against a 240 s limit. The cost is the element count, not the path length (a path's points
+are one attribute). With every new box in it the document had ~24 000 nodes, and the capture timed
+out, then took 195 s. So the spherical box is only on the docs page, the slider's cloud is every
+sixteenth point, and the docs figures use 2 400 (spherical) and 1 000 (tree) points. The original
+two boxes alone are ~12 400 nodes. After the cut the publish took 145 s. Keep this transcript
+under ~17 000 nodes.
 
 ## Where to go next
 

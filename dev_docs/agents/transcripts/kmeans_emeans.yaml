@@ -2,7 +2,7 @@ name: kmeans_emeans
 description: >
   Loadable demo of k-means in clustering.kt, with KMeansOptions.algorithm switching between Lloyd's
   algorithm and e-means (mini-batch k-means with scaling-law batch and step, ported from Faiss
-  contrib/e_means; Bessa et al., Meta FAIR, https://e-means.github.io). Five pure-compute boxes that
+  contrib/e_means; Bessa et al., Meta FAIR, https://e-means.github.io). Four pure-compute boxes that
   draw with showPlaneGrid:
     1. lloyd_vs_emeans — 48 000 points in 60 blobs from the same random seeds: Lloyd at 25 epochs,
                     e-means at 3, and the MSE per epoch of both on a log scale.
@@ -10,9 +10,7 @@ description: >
                     e-means with revival on moves it back into the data.
     3. epoch_slider — recordCentroids on 30 blobs: drag an epoch slider and watch Lloyd's centroids
                     crawl while e-means' jump.
-    4. spherical   — six fans of points from the origin: plain k-means cuts by distance, spherical by
-                    direction.
-    5. tree        — vec2KMeansTree: 1 000 points clustered into n/2, then n/4, ... down to one,
+    4. tree        — vec2KMeansTree: 1 000 points clustered into n/2, then n/4, ... down to one,
                     drawn as a tree of centroid paths for shrink 2 and 3.
   Replay into a fresh Field (field_run_transcript) and change k, epochs or the seeding and re-run.
 docs:
@@ -146,7 +144,7 @@ operations:
           val lloyd = vec2KMeans(points, 30, seeds.copy(algorithm = KMeansAlgorithm.LLOYD, epochs = 25))
           val emeans = vec2KMeans(points, 30, seeds.copy(epochs = 3))
           val cloud =
-              pointCloudFLine(points.filterIndexed { i, _ -> i % 8 == 0 }, color = vec(0.55, 0.65, 0.78, 0.35), pointSize = 0.8)
+              pointCloudFLine(points.filterIndexed { i, _ -> i % 16 == 0 }, color = vec(0.55, 0.65, 0.78, 0.35), pointSize = 0.8)
 
           // The trails up to epoch e, and the centroids at e; a run that has finished stays where it ended.
           fun upTo(r: KMeansResult<Vec2>, e: Int): List<FLine> {
@@ -177,39 +175,6 @@ operations:
           displayOpen("controls")
           show(1)
   - create:
-      box: kmeans_spherical
-      name: Spherical k-means
-      frame: { x: 80.0, y: 1760.0, w: 320.0, h: 100.0 }
-      properties:
-        code: |
-          // Six directions from the origin, each a fan of points at lengths from 0.5 to 9.
-          val rng = java.util.Random(6)
-          val points =
-              List(2_400) { i ->
-                  val angle = (i % 6) * PI / 3 + 0.3 + rng.nextGaussian() * 0.12
-                  val length = 0.5 + rng.nextDouble() * 8.5
-                  vec(length * cos(angle), length * sin(angle))
-              }
-          val plain = vec2KMeans(points, 6, KMeansOptions(randomSeed = 1L))
-          val byDirection = vec2KMeans(points, 6, KMeansOptions(randomSeed = 1L, spherical = true))
-
-          fun drawn(r: KMeansResult<Vec2>) =
-              r.asLayer().toFLines(points, centers = r.centroids, drawSpokes = false, pointSize = 1.0, centerSize = 2.0)
-          // Spherical centroids are unit vectors, so they sit on the unit circle.
-          val unit = polylineFrom(List(97) { i -> vec(cos(i * PI / 48), sin(i * PI / 48)) }).also {
-              it.color = vec(0.6, 0.7, 0.85, 0.7)
-              it.thickness = 1.0
-          }
-
-          showPlaneGrid(
-              "k-means\nclusters by distance: MSE %.2f".format(plain.mse) to drawn(plain),
-              "k-means, spherical = true\nclusters by direction; centroids on the unit circle" to drawn(byDirection) + unit,
-              columns = 2,
-              cellWidth = 400,
-              cellHeight = 400,
-              window = Rect(-9.6, -9.6, 19.2, 19.2),
-          )
-  - create:
       box: kmeans_tree
       name: k-means tree of centroid paths
       frame: { x: 80.0, y: 2320.0, w: 320.0, h: 100.0 }
@@ -236,7 +201,5 @@ operations:
       box: kmeans_revival
   - execute:
       box: kmeans_epoch_slider
-  - execute:
-      box: kmeans_spherical
   - execute:
       box: kmeans_tree

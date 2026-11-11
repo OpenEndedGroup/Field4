@@ -1464,9 +1464,9 @@ coarse strokes find the middle of the *centroids*, not of the points. Lower `ste
 `epochs` for longer, slower strokes, and pass `stride` and `smooth` to `toFLines` to change how
 each path is drawn.
 
-All of these boxes are in the [Lloyd vs e-means starting point](agent_transcripts.md#kmeans_emeans):
-open it, change `k` or the epoch counts, and run them again. Its centroid-trails box has an epoch
-slider.
+The [Lloyd vs e-means starting point](agent_transcripts.md#kmeans_emeans) has the Lloyd vs e-means,
+revival and tree boxes, and the centroid trails on an epoch slider: open it, change `k`, the epoch
+counts or `stepScale`, and run them again.
 
 ## Up one dimension
 
