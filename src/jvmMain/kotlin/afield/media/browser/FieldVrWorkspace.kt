@@ -70,6 +70,7 @@ class FieldVrWorkspace(
     var headsetDevices: WiVRnBrowserInput? = null
         private set
     private var previousPresses = emptySet<String>()
+    private var previousResets = emptySet<String>()
     private var previousGrips = emptySet<String>()
     private val rayAnchors = mutableMapOf<String, Pair<Vector3f, Vector3f>>()
     @Volatile var keyboardReady = false
@@ -182,7 +183,8 @@ class FieldVrWorkspace(
             }
         }
         val worldPress = pointers.any {
-            ((it.pressed && it.id !in previousPresses) || (it.gripPressed && it.id !in previousGrips)) &&
+            ((it.pressed && it.id !in previousPresses) || (it.gripPressed && it.id !in previousGrips) ||
+                (it.resetPressed && it.id !in previousResets)) &&
                 panel.panel.raycast(it.origin, it.direction)?.onPanel == true
         }
         val worldMotion = pointers.any { pointer ->
@@ -201,6 +203,7 @@ class FieldVrWorkspace(
             headsetPointer = false
         }
         previousPresses = pointers.filter { it.pressed }.map { it.id }.toSet()
+        previousResets = pointers.filter { it.resetPressed }.map { it.id }.toSet()
         previousGrips = pointers.filter { it.gripPressed }.map { it.id }.toSet()
         val worldPointer = !desktopPointer && !headsetPointer
         val dragging = grab.update(pointers, enabled = worldPointer)

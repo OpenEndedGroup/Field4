@@ -166,7 +166,7 @@ def is_excluded(kt: pathlib.Path) -> bool:
 def overviews(src_root: pathlib.Path, ref_root: pathlib.Path):
     pages = {p: p.read_text().splitlines() for p in sorted(ref_root.glob("*.md"))}
     for kt in sorted(src_root.rglob("*.kt")):
-        if is_excluded(kt):
+        if kt.name.startswith("._") or is_excluded(kt):
             continue
         block = km.file_overview(kt)
         if not block:
@@ -213,7 +213,7 @@ def report(src_root: pathlib.Path, ref_root: pathlib.Path) -> int:
     # `overviews=` here plus this number is the census a pre-exclusion board printed.
     local = 0
     for kt in src_root.rglob("*.kt"):
-        if not is_excluded(kt):
+        if kt.name.startswith("._") or not is_excluded(kt):
             continue
         block = km.file_overview(kt)
         if block and len("\n".join(km._body(block)).split()) >= MIN_WORDS:

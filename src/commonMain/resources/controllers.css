@@ -387,6 +387,9 @@ button {
   text-align: right;
 }
 
+/* SI unit symbols are case-sensitive. */
+.phone-control-slider .phone-control-value { text-transform: none; }
+
 .phone-range {
   -webkit-appearance: none;
   appearance: none;

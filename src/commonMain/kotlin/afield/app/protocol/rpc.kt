@@ -1912,7 +1912,9 @@ data class ControllerControl(
     val polar: Boolean = false,
     val options: List<String> = emptyList(),
     val hoverText: String? = null,
-    val hoverHtml: String? = null
+    val hoverHtml: String? = null,
+    /** Display-only unit symbol; values remain numeric in this unit. */
+    val unit: String? = null
 )
 
 /**

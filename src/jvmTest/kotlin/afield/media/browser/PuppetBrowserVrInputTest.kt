@@ -12,6 +12,7 @@ class PuppetBrowserVrInputTest {
     private val events = mutableListOf<BrowserPointerEvent>()
     private val keys = mutableListOf<BrowserKeyEvent>()
     private val text = mutableListOf<String>()
+    private val evaluations = mutableListOf<String>()
     private val browser = Proxy.newProxyInstance(PuppetBrowser::class.java.classLoader,
         arrayOf(PuppetBrowser::class.java)) { _, method, args ->
         when (method.name) {
@@ -19,6 +20,7 @@ class PuppetBrowserVrInputTest {
             "pointer" -> { events += args[0] as BrowserPointerEvent; Unit }
             "key" -> { keys += args[0] as BrowserKeyEvent; Unit }
             "insertText" -> { text += args[0] as String; Unit }
+            "evaluate" -> { evaluations += args[0] as String; CompletableFuture.completedFuture(null) }
             "focus", "flushInput" -> CompletableFuture.completedFuture(Unit)
             "onPageRequest" -> ({ Unit })
             else -> error("Unexpected browser call: ${method.name}")
@@ -216,6 +218,25 @@ class PuppetBrowserVrInputTest {
         input.update(listOf(assertNotNull(input.controller("right", state, 0.01))))
         assertEquals(listOf(BrowserPointerEventType.DOWN, BrowserPointerEventType.UP),
             events.filter { it.type != BrowserPointerEventType.MOVE }.map { it.type })
+    }
+
+    @Test fun `B resets only on a fresh press over the panel without clicking`() {
+        val state = ControllerState(active = true, poseValid = true, bPressed = true)
+        val pointer = assertNotNull(input.controller("right", state, 0.01))
+        input.update(listOf(pointer))
+        input.update(listOf(pointer))
+        assertEquals(1, evaluations.size)
+        assertTrue(evaluations.single().contains("field-controller-reset"))
+        assertTrue(events.none { it.type == BrowserPointerEventType.DOWN })
+        state.bPressed = false
+        input.update(listOf(assertNotNull(input.controller("right", state, 0.01))))
+        state.bPressed = true
+        input.update(listOf(pointer), enabled = false)
+        input.update(listOf(pointer))
+        assertEquals(1, evaluations.size, "A held B must not fire on re-enabling input")
+        input.update(listOf(pointer.copy(resetPressed = false)))
+        input.update(listOf(pointer.copy(origin = Vector3f(5f, 0f, 0f))))
+        assertEquals(1, evaluations.size, "B outside the panel must not reset anything")
     }
 
     @Test fun `pinch has hysteresis and rejects missing joints`() {
