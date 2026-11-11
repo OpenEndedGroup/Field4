@@ -2714,7 +2714,7 @@ notation.onStroke { mark ->
 }
 ```
 
-This box only does something when you draw, so there is no picture of it here. Run it, open the drawing layer (Alt+D) and draw with a pen.
+This box only does something when you draw, so there is no picture of it here. Run it, open the drawing layer (++alt+d++) and draw with a pen.
 
 #### In a Vulkan scene
 
