@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-11T16:06:09.792Z",
+  "capturedAt": "2026-11-11T14:48:41.658Z",
   "documentName": "typography_worked_example",
   "outputs": [
     {
@@ -50,13 +50,13 @@
     {
       "uid": "typo_points",
       "channel": "main",
-      "open": true,
+      "open": false,
       "warnings": [],
       "kinds": [
         "svg"
       ],
-      "width": 878,
-      "height": 606,
+      "width": 874,
+      "height": 340,
       "path": "outputs/4.html"
     },
     {

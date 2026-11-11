@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-11T15:43:37.554Z",
+  "capturedAt": "2026-11-11T14:29:38.153Z",
   "documentName": "audio_ai_corpus_microscope",
   "outputs": [
     {
@@ -16,11 +16,11 @@
     {
       "uid": "corpus_microscope_guide",
       "channel": "all durable jobs",
-      "open": true,
+      "open": false,
       "warnings": [],
       "kinds": [],
-      "width": 768,
-      "height": 418,
+      "width": 200,
+      "height": 40,
       "path": "outputs/1.html"
     }
   ]

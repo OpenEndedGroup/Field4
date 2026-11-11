@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-11T16:00:33.492Z",
+  "capturedAt": "2026-11-11T14:42:30.330Z",
   "documentName": "midi_clip",
   "outputs": [
     {
@@ -54,7 +54,7 @@
       "warnings": [],
       "kinds": [],
       "width": 447,
-      "height": 180,
+      "height": 181,
       "path": "outputs/4.html"
     },
     {

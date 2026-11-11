@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-11T16:02:05.817Z",
+  "capturedAt": "2026-11-11T14:43:52.200Z",
   "documentName": "certified_envelope",
   "outputs": [
     {
@@ -29,11 +29,10 @@
       "open": true,
       "warnings": [],
       "kinds": [
-        "plotly",
         "svg"
       ],
       "width": 1108,
-      "height": 295,
+      "height": 171,
       "path": "outputs/2.html"
     },
     {
@@ -72,11 +71,10 @@
       "open": true,
       "warnings": [],
       "kinds": [
-        "plotly",
         "svg"
       ],
       "width": 1108,
-      "height": 295,
+      "height": 171,
       "path": "outputs/6.html"
     },
     {
