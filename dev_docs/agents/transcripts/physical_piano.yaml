@@ -228,7 +228,9 @@ operations:
           showPianoAudio(take(Piano(sampleRate = 44_100, preparations = preparations)), "prepared")
           fun spectrum(grams: Double, title: String): String {
               val bolt = PianoPreparation.bolt(69..69, at = 0.3, grams = grams)
-              val r = pianoRender(1.2, Piano(sampleRate = 44_100, room = Param(0f), preparations = listOf(bolt))) { noteOn(69, 0.7, 0) }
+              val r = pianoRender(1.2, Piano(sampleRate = 44_100, room = Param(0f), preparations = listOf(bolt))) {
+                  noteOn(69, 0.7, 0)
+              }
               return pianoPlotSvg(
                   pianoSpectrumDb(r.mono, startSample = 13_230, fftSize = 32_768).copyOfRange(0, 3_715),
                   title,
@@ -256,7 +258,14 @@ operations:
           val sost = Param(0f)
           slider("bolt position", 0.0, 1.0, initialValue = 0.3, channel = "at", onUpdate = { at.base = it.toFloat() })
           // grams are exponential: the slider runs -1..2, the bolt 0.1 g..100 g
-          slider("bolt grams (log10)", -1.0, 2.0, initialValue = 0.48, channel = "grams", onUpdate = { grams.base = Math.pow(10.0, it).toFloat() })
+          slider(
+              "bolt grams (log10)",
+              -1.0,
+              2.0,
+              initialValue = 0.48,
+              channel = "grams",
+              onUpdate = { grams.base = Math.pow(10.0, it).toFloat() },
+          )
           slider("rubber", 0.0, 100.0, initialValue = 0.0, channel = "rubber", onUpdate = { rubber.base = it.toFloat() })
           slider("rattle", 0.0, 4.0, initialValue = 0.0, channel = "rattle", onUpdate = { rattle.base = it.toFloat() })
           slider("rattle gap (mm)", 0.0, 3.0, initialValue = 0.1, channel = "gap", onUpdate = { gap.base = it.toFloat() })
@@ -277,10 +286,17 @@ operations:
           // on single strings of each note, so the unison strings beat between the speakers.
           val tune = pat("<[a2,e3] [f2,c3]> [e4 a4 c5 e5]")
           fun take(p: Piano) = pianoRender(6.0, p) { play(tune, cycles = 4, cps = 0.8, startFrame = 0) }
-          val pair = listOf(PianoMic(position = Param(0.08f), pan = Param(-0.8f)), PianoMic(position = Param(0.33f), pan = Param(0.8f)))
-          val strings = listOf(PianoMic(position = Param(0.12f), pan = Param(-1f), string = 0), PianoMic(position = Param(0.12f), pan = Param(1f), string = 2))
+          val pair =
+              listOf(PianoMic(position = Param(0.08f), pan = Param(-0.8f)), PianoMic(position = Param(0.33f), pan = Param(0.8f)))
+          val strings = listOf(
+              PianoMic(position = Param(0.12f), pan = Param(-1f), string = 0),
+              PianoMic(position = Param(0.12f), pan = Param(1f), string = 2),
+          )
           showPianoAudio(take(Piano(sampleRate = 44_100, dry = Param(1f), room = Param(0.12f), mics = pair)), "pair")
-          showPianoAudio(take(Piano(sampleRate = 44_100, dry = Param(1f), room = Param(0.12f), mics = strings)), "strings 0 and 2")
+          showPianoAudio(
+              take(Piano(sampleRate = 44_100, dry = Param(1f), room = Param(0.12f), mics = strings)),
+              "strings 0 and 2",
+          )
           ["pair", "strings 0 and 2"].forEach { displayOpen(it) }
   - create:
       box: piano_through
@@ -288,9 +304,11 @@ operations:
       frame: { x: 760.0, y: 3160.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // One piano played into the bridge of another whose pedal is down: the second piano's
-          // strings answer every chord. Then into a prepared piano, whose strings answer in its own
-          // tuning. `toMono()` turns any stereo source into a signal.
+          /*
+          One piano played into the bridge of another whose pedal is down: the second piano's
+          strings answer every chord. Then into a prepared piano, whose strings answer in its own
+          tuning. `toMono()` turns any stereo source into a signal.
+          */
           fun through(preparations: List<PianoPreparation>): PianoRender {
               val player = Piano(sampleRate = 44_100, room = Param(0f), dry = Param(1f), micPosition = Param(0.1f))
               player.play(pat("<[a2,e3] [f2,c3]> [e4 a4 c5 e5]"), cycles = 4, cps = 0.8, startFrame = 0)
@@ -315,12 +333,22 @@ operations:
       properties:
         code: |
           // A MIDI clip written in code, with the sustain pedal, rendered to a WAV in one call.
-          val notes = listOf(48, 55, 60, 64, 67, 72).mapIndexed { i, p -> MidiNote(p, startBeats = i * 0.5, durationBeats = 0.4, velocity = 80) }
-          val pedal = listOf(MidiControlChange(controller = 64, value = 127, beats = 0.0), MidiControlChange(controller = 64, value = 0, beats = 3.5))
+          val notes =
+              listOf(48, 55, 60, 64, 67, 72).mapIndexed { i, p ->
+                  MidiNote(p, startBeats = i * 0.5, durationBeats = 0.4, velocity = 80)
+              }
+          val pedal = listOf(
+              MidiControlChange(controller = 64, value = 127, beats = 0.0),
+              MidiControlChange(controller = 64, value = 0, beats = 3.5),
+          )
           val clip = MidiClip(tracks = listOf(MidiTrackData(notes = notes, controlChanges = pedal)))
           val wav = java.io.File.createTempFile("piano-midi", ".wav")
-          val r = pianoRenderMidi(clip, wav, piano = Piano(sampleRate = 44_100, preparations = listOf(PianoPreparation.bolt(60..72, at = 0.3, grams = 3.0))))
-          println("wrote ${wav.path}: ${"%.1f".format(r.seconds)} s")
+          val r = pianoRenderMidi(
+              clip,
+              wav,
+              piano = Piano(sampleRate = 44_100, preparations = listOf(PianoPreparation.bolt(60..72, at = 0.3, grams = 3.0))),
+          )
+          println("wrote ${wav.path}: ${r.seconds.f1} s")
           showPianoAudio(r, "midi")
           displayOpen("midi")
   - execute:

@@ -558,11 +558,13 @@ along the strings, and it acts on each mode by how much that mode moves there, t
 microphone uses:
 
 ```diffstatic {data-lang=kotlin}
-val piano = Piano(preparations = listOf(
-    PianoPreparation.bolt(52..72, at = 0.28, grams = 4.0),
-    PianoPreparation.rubber(36..51, at = 0.13, amount = 25.0),
-    PianoPreparation.rattle(73..88, at = 0.2, level = 0.8, gapMm = 0.1),
-))
+val piano = Piano(
+    preparations = [
+        PianoPreparation.bolt(52..72, at = 0.28, grams = 4.0),
+        PianoPreparation.rubber(36..51, at = 0.13, amount = 25.0),
+        PianoPreparation.rattle(73..88, at = 0.2, level = 0.8, gapMm = 0.1),
+    ],
+)
 piano.play(pat("<[a2,e3] [f2,c3]> [e4 a4 c5 e5]"), cycles = 8, cps = 0.8)
 audio(piano, gain = 1f)
 ```
@@ -595,7 +597,7 @@ without a bolt, with 2 g and with 8 g at `x = 0.3`:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sound_piano/bolt-spectra.png" wait="2" capture="box" open-outputs="true" name="sound-doc-piano-bolt"}
 fun spectrum(grams: Double, title: String): String {
     val bolt = PianoPreparation.bolt(69..69, at = 0.3, grams = grams)
-    val r = pianoRender(1.2, Piano(sampleRate = 44_100, room = Param(0f), preparations = listOf(bolt))) { noteOn(69, 0.7, 0) }
+    val r = pianoRender(1.2, Piano(sampleRate = 44_100, room = Param(0f), preparations = [bolt])) { noteOn(69, 0.7, 0) }
     return pianoPlotSvg(pianoSpectrumDb(r.mono, startSample = 13_230, fftSize = 32_768).copyOfRange(0, 3_715), title, height = 130, xLabel = "0-5 kHz", yLabel = "dB")
 }
 display("bolt", spectrum(0.0, "A4") + spectrum(2.0, "A4, 2 g bolt at x = 0.3") + spectrum(8.0, "A4, 8 g bolt at x = 0.3"))
@@ -644,10 +646,14 @@ modes. The sympathetic strings are retuned every 256 samples.
 and one further along the strings, panned apart:
 
 ```diffstatic {data-lang=kotlin}
-val piano = Piano(dry = Param(1f), room = Param(0.12f), mics = listOf(
-    PianoMic(position = Param(0.08f), pan = Param(-0.8f)),
-    PianoMic(position = Param(0.33f), pan = Param(0.8f)),
-))
+val piano = Piano(
+    dry = Param(1f),
+    room = Param(0.12f),
+    mics = [
+        PianoMic(position = Param(0.08f), pan = Param(-0.8f)),
+        PianoMic(position = Param(0.33f), pan = Param(0.8f)),
+    ],
+)
 ```
 
 The two hear different partials: with one microphone at 0.5 and one at 0.12, partial 2 of A2 is
@@ -659,7 +665,7 @@ and 2, panned apart, send each string to its own speaker, and the two strings be
 rather than in one channel. The pair above, on the phrase:
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/sound_piano/piano-mic-pair.wav" audio-spec="piano-mic-pair" audio-renderer="afield.audio.synth.PianoDocs" embed=true hidden=true name="sound-doc-piano-mic-pair"}
-// mics = listOf(PianoMic(Param(0.08f), pan = Param(-0.8f)), PianoMic(Param(0.33f), pan = Param(0.8f)))
+// mics = [PianoMic(Param(0.08f), pan = Param(-0.8f)), PianoMic(Param(0.33f), pan = Param(0.8f))]
 ```
 
 The close microphones also hear the sympathetic strings, so with the pedal down, the strings that
@@ -678,9 +684,11 @@ are released. Hold a bass chord, press it, and play staccato above it:
 
 ```diffstatic {data-lang=kotlin}
 val piano = Piano()
-piano.noteOn(36, 0.7, atFrame = 0); piano.noteOn(43, 0.7, atFrame = 0)
+piano.noteOn(36, 0.7, atFrame = 0)
+piano.noteOn(43, 0.7, atFrame = 0)
 piano.sostenutoEvent(1.0, atFrame = 4_800)
-piano.noteOff(36, atFrame = 9_600); piano.noteOff(43, atFrame = 9_600)
+piano.noteOff(36, atFrame = 9_600)
+piano.noteOff(43, atFrame = 9_600)
 piano.play(pat("[c5 e5 g5 c6]*2"), cycles = 2, cps = 0.5, legato = 0.15)
 audio(piano, gain = 1f)
 ```
@@ -706,8 +714,13 @@ Faust patch or another piano, into one:
 ```diffstatic {data-lang=kotlin}
 val player = Piano(dry = Param(1f), room = Param(0f))
 player.play(pat("<[a2,e3] [f2,c3]> [e4 a4 c5 e5]"), cycles = 8, cps = 0.8)
-val resonator = Piano(pedal = Param(1f), coupling = Param(6f), soundboard = Param(0.5f), room = Param(0.35f),
-    bridgeInput = Param(0f).modulate(player.toMono() * 4f))
+val resonator = Piano(
+    pedal = Param(1f),
+    coupling = Param(6f),
+    soundboard = Param(0.5f),
+    room = Param(0.35f),
+    bridgeInput = Param(0f).modulate(player.toMono() * 4f),
+)
 audio(resonator, gain = 1f)
 ```
 
@@ -725,7 +738,8 @@ answers at all. A prepared piano with its pedal down rings in its own tuning. Th
 into the prepared piano from the start of this section with its pedal down:
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/sound_piano/piano-through-prepared.wav" audio-spec="piano-through-prepared" audio-renderer="afield.audio.synth.PianoDocs" embed=true hidden=true name="sound-doc-piano-through-prepared"}
-// Piano(pedal = Param(1f), coupling = Param(6f), preparations = PREPARED, bridgeInput = Param(0f).modulate(player.toMono() * 4f))
+// Piano(pedal = Param(1f), coupling = Param(6f), preparations = PREPARED, bridgeInput =
+// Param(0f).modulate(player.toMono() * 4f))
 ```
 
 ### Rendering a MIDI file
@@ -736,8 +750,11 @@ call, with three seconds afterwards for the strings and room to ring out:
 ```diffstatic {data-lang=kotlin}
 val midi = java.io.File("/tmp/prelude.mid")
 pianoRenderMidi(midi, java.io.File("/tmp/prelude.wav"))
-pianoRenderMidi(readMidiClip(midi), java.io.File("/tmp/prelude-prepared.wav"),
-    piano = Piano(sampleRate = 48_000, preparations = listOf(PianoPreparation.bolt(48..72, at = 0.3, grams = 3.0))))
+pianoRenderMidi(
+    readMidiClip(midi),
+    java.io.File("/tmp/prelude-prepared.wav"),
+    piano = Piano(sampleRate = 48_000, preparations = [PianoPreparation.bolt(48..72, at = 0.3, grams = 3.0)]),
+)
 ```
 
 The sustain, sostenuto and soft pedals in the file are played. It renders as fast as the machine
