@@ -549,6 +549,8 @@ object DemoTranscriptExecSmokeTest {
         // fline_examples.md's curvature-continuous splines: clothoidSplineFrom vs cubicSplineFrom with
         // curvature combs, a circle, a closed shape. CPU only.
         "clothoid_spline",
+        // swept-circle stroke outlines and a notation pressure stroke: pure geometry, headless
+        "variable_width_strokes",
         // fline_examples.md's exact booleans and offsets: Area vs booleanExact, byOffsetting vs
         // byOffsettingExact, side by side through lines(). CPU only.
         "fline_exact_booleans",
