@@ -1,5 +1,3 @@
-import afield.graphics.vulkan.targets.SideBySideStereoTarget
-
 val xr = renderer.openXRHmdTarget
 check(xr == null || xr.hasEyeViews) { "Connect and wear the headset, then launch box 1 first" }
 val eye = xr?.let { renderer.runOnQueueThread { it.sideBySideRTTParameters() } }
@@ -54,7 +52,7 @@ stereo +=
                         )
                     }
                 val edges = mutableListOf<Vec3>()
-                for (i in 0..7) for (bit in listOf(1, 2, 4)) if (i and bit == 0) {
+                for (i in 0..7) for (bit in [1, 2, 4]) if (i and bit == 0) {
                     edges.add(corners[i])
                     edges.add(corners[i or bit])
                 }

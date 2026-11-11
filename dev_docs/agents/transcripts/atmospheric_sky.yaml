@@ -113,19 +113,19 @@ operations:
           // Run this property to move the sky box (its `code`) to sunset.
           import afield.graphics.sky.SkyView
 
-          fromContext<SkyView>().set(SkyView(sunElevation = 2.0, altitude = 3.5, pitch = 5.0, exposure = 4.0))
+          skyView.set(SkyView(sunElevation = 2.0, altitude = 3.5, pitch = 5.0, exposure = 4.0))
           println("sky preset: sunset")
         twilight: |
           // Run this property to move the sky box (its `code`) to twilight.
           import afield.graphics.sky.SkyView
 
-          fromContext<SkyView>().set(SkyView(sunElevation = -4.0, altitude = 3.5, pitch = 5.0, exposure = 40.0))
+          skyView.set(SkyView(sunElevation = -4.0, altitude = 3.5, pitch = 5.0, exposure = 40.0))
           println("sky preset: twilight")
         space: |
           // Run this property to move the sky box (its `code`) to space.
           import afield.graphics.sky.SkyView
 
-          fromContext<SkyView>().set(SkyView(sunElevation = 20.0, altitude = 20000.0, pitch = -90.0, exposure = 0.4, fieldOfView = 40.0))
+          skyView.set(SkyView(sunElevation = 20.0, altitude = 20000.0, pitch = -90.0, exposure = 0.4, fieldOfView = 40.0))
           println("sky preset: space")
         vertex: |
           #version 450

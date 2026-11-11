@@ -298,7 +298,7 @@ window ray, intersect its own geometry, and return whichever UV belongs under th
 
 ## Then put the browser in VR
 
-`PuppetBrowserVrPanel` places the same browser texture on a correctly proportioned world-space
+[`PuppetBrowserVrPanel`](reference/imaging.md#puppetbrowservrpanel-kt-puppetbrowservrpanel) places the same browser texture on a correctly proportioned world-space
 quad. This path requires Vulkan multiview support. One multiview draw writes both eye layers, with a shared eye-uniform buffer and
 `gl_ViewIndex` selecting the view. The panel has actual stereo distance.
 
@@ -406,3 +406,11 @@ Starting points:
 Run the renderer box first and then its connected browser box. Every example publishes
 `browserControl`, so another box can immediately navigate it, listen to events, evaluate JavaScript
 or send CDP commands.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`MultiviewStereoTarget`](reference/graphics.md#multiviewstereotarget-kt-multiviewstereotarget)
+- [`PuppetBrowserVrPanel.build`](reference/imaging.md#puppetbrowservrpanel-kt--puppetbrowservrpanel--build)
+- [`PuppetBrowserVrPanel.enableDesktopInteraction`](reference/imaging.md#puppetbrowservrpanel-kt--puppetbrowservrpanel--enabledesktopinteraction)

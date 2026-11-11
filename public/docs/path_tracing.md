@@ -262,7 +262,7 @@ Colour, texture-channel and coverage conventions follow the
 
 ## Scene ownership and render-to-texture
 
-`install()` registers under `name = "path-tracer"` by default. Installing another
+[`install()`](reference/renderers.md#pathtracegpusmoke-kt--pathtracedemo--install) registers under `name = "path-tracer"` by default. Installing another
 tracer with that name detaches and retires the old one, including its presentation
 pass. An old handle's `close()` cannot remove its replacement. Use distinct names
 for independent tracers. A setup box can finish immediately; the scene keeps
@@ -1395,3 +1395,13 @@ A successful reload sets `samples` back to 0 at once, so waiting on a sample cou
 for the new integrator's samples.
 
 The opaque path tracer can also feed [Ray Reconstruction](path_traced_reconstruction.md), with raw and progressive views retained.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`PathTraceScene`](reference/renderers.md#pathtracescene-kt-pathtracescene)
+- [`PathTraceScene.material`](reference/renderers.md#pathtracescene-kt--pathtracescene--material)
+- [`PathTraceScene.sphere`](reference/renderers.md#pathtracescene-kt--pathtracescene--sphere)
+
+- [`PathTraceDemo`](reference/renderers.md#pathtracegpusmoke-kt-pathtracedemo)

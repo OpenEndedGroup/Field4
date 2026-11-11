@@ -11,14 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="ctb_measured" index="0" -->
 
 ```edn [field-box id="ctb_measured" role="properties"]
-{"id" "ctb_measured" "index" 0 "name" "measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "measured" "_tombstone" false "frame" #afield/rect [20.0 40.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ctb_measured_code_.kt" "lines" 123 "characters" 4812 "sha256" "411e8588711111327e259d02e7c491bdda1e58307a91454de0dddba315aab49f"}]}
+{"id" "ctb_measured" "index" 0 "name" "measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "measured" "_tombstone" false "frame" #afield/rect [20.0 40.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ctb_measured_code_.kt" "lines" 121 "characters" 4756 "sha256" "0e04851efb2649d716cbf0372e169318d9378dd70ecd50d18176034e9107895b"}]}
 ```
 
 ```kotlin [field-property box="ctb_measured" name="code" path="ctb_measured_code_.kt"]
 import afield.graphics.scene.body.*
 import afield.graphics.vulkan.targets.OpenXRHmdTarget.*
-import afield.media.image.*
-import afield.media.video.*
 import java.io.File
 import kotlinx.serialization.json.*
 
@@ -145,14 +143,13 @@ display(
 <!-- field-box id="ctb_heard" index="1" -->
 
 ```edn [field-box id="ctb_heard" role="properties"]
-{"id" "ctb_heard" "index" 1 "name" "heard" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "heard" "_tombstone" false "frame" #afield/rect [20.0 500.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ctb_heard_code_.kt" "lines" 71 "characters" 2954 "sha256" "e93c3349a252127e6829118e17b6dfccd5b4e30531e74edcf4b9df8c93b60fb4"}]}
+{"id" "ctb_heard" "index" 1 "name" "heard" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "heard" "_tombstone" false "frame" #afield/rect [20.0 500.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ctb_heard_code_.kt" "lines" 70 "characters" 2924 "sha256" "cab3b9c2543d3bfcd49739fc26d142aaad41288e1a06858f0335f986e4533f14"}]}
 ```
 
 ```kotlin [field-property box="ctb_heard" name="code" path="ctb_heard_code_.kt"]
 import afield.graphics.scene.body.*
 import afield.graphics.vulkan.targets.OpenXRHmdTarget.*
 import java.io.File
-import kotlin.math.roundToInt
 import kotlinx.serialization.json.*
 
 // The recording: per frame, null or mediapipe's 33 landmarks as [x, y, z, visibility].

@@ -13,4 +13,4 @@ values    ${gesture.extractParameters().joinToString("  ")}
 ${gesture.graphText()}""".trimIndent()
 
 println(report)
-display("<pre>" + report + "</pre>")
+markdown("```text\n$report\n```")

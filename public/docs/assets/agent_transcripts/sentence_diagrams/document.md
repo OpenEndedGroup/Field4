@@ -51,11 +51,10 @@ displayOpen("diagram")
 <!-- field-box id="sentence_undertow" index="1" -->
 
 ```edn [field-box id="sentence_undertow" role="properties"]
-{"id" "sentence_undertow" "index" 1 "name" "3 · Dependency arcs and decorations" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · Dependency arcs and decorations" "_tombstone" false "frame" #afield/rect [1800.0 0.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sentence_undertow_code_.kt" "lines" 38 "characters" 1305 "sha256" "4d9db1e179513ff95c1b1a42234c838b703a54728ef603e5a8f79a9ab587a35a"}]}
+{"id" "sentence_undertow" "index" 1 "name" "3 · Dependency arcs and decorations" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · Dependency arcs and decorations" "_tombstone" false "frame" #afield/rect [1800.0 0.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sentence_undertow_code_.kt" "lines" 37 "characters" 1269 "sha256" "f16bb73ac0a70cd58e009be2c9637c0f7a7c5be857a87a26798e357b48652d81"}]}
 ```
 
 ```kotlin [field-property box="sentence_undertow" name="code" path="sentence_undertow_code_.kt"]
-import afield.graphics.render.color
 import afield.graphics.text.sentences.*
 
 val d = SentenceDiagram().use(Sentences.example(3))
@@ -100,11 +99,10 @@ displayOpen("diagram")
 <!-- field-box id="sentence_canopy" index="2" -->
 
 ```edn [field-box id="sentence_canopy" role="properties"]
-{"id" "sentence_canopy" "index" 2 "name" "2 · The constituency canopy" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · The constituency canopy" "_tombstone" false "frame" #afield/rect [900.0 0.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sentence_canopy_code_.kt" "lines" 33 "characters" 1191 "sha256" "82be5dea6efd9528d272da1d2166718cf49995bde8b5460dfc8da1aebf09876c"}]}
+{"id" "sentence_canopy" "index" 2 "name" "2 · The constituency canopy" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · The constituency canopy" "_tombstone" false "frame" #afield/rect [900.0 0.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sentence_canopy_code_.kt" "lines" 32 "characters" 1155 "sha256" "62f928a395b932e78c64ebc08ef682b843e103695743432f13984a90e8d2ce91"}]}
 ```
 
 ```kotlin [field-property box="sentence_canopy" name="code" path="sentence_canopy_code_.kt"]
-import afield.graphics.render.color
 import afield.graphics.text.sentences.*
 
 val d = SentenceDiagram().use(Sentences.example(2))

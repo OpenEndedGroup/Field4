@@ -70,11 +70,14 @@ Dots have their own opacity and cues, so they can outlive or precede the materia
 Inside the same `readingDiagram` block, arbitrary centreline geometry is straightforward:
 
 ```kotlin
-path("swoop", shape = {
-    val a = position(sentence.left)
-    val b = position(sentence.right.offset(y = -.15f))
-    FLine().moveTo(a).cubicTo(a + vec(0f, .2f, 0f), b + vec(0f, .2f, 0f), b)
-}) {
+path(
+    "swoop",
+    shape = {
+        val a = position(sentence.left)
+        val b = position(sentence.right.offset(y = -.15f))
+        FLine().moveTo(a).cubicTo(a + vec(0f, .2f, 0f), b + vec(0f, .2f, 0f), b)
+    },
+) {
     width = .0015f
 }
 ```
@@ -256,9 +259,13 @@ rectangle("ink", title.inkBounds, padding = .008f) { width = .001f }
 rectangle("no-descenders", title.bodyBounds) { dashed(.02f) }
 underline("under-water", title.word("water"), gap = .015f)
 dot("after-word", title.word("quiet").baselineRight.alongText(title, x = .01f))
-textPath("ruler", title, shape = {
-    FLine().moveTo(advance.left, capHeight).lineTo(advance.right, capHeight)
-})
+textPath(
+    "ruler",
+    title,
+    shape = {
+        FLine().moveTo(advance.left, capHeight).lineTo(advance.right, capHeight)
+    },
+)
 ```
 
 `font` accepts any `Typeface`, including `Typefaces.fromFile(...)`. A run also has `bold`,

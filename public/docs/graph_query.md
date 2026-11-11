@@ -188,14 +188,14 @@ reads = 0
 val all = root.graphPaths("**")
 val everything = reads
 
-display(
+markdown(
     "main",
     """
-    <table style="font-size:20px;border-spacing:24px 8px">
-      <tr><td>naming a path</td><td style="text-align:right">$named edge reads</td></tr>
-      <tr><td>walking all ${all.size} slots</td><td style="text-align:right">$everything edge reads</td></tr>
-    </table>
-    """,
+| Query | Edge reads |
+| --- | ---: |
+| naming a path | $named |
+| walking all ${all.size} slots | $everything |
+""".trimIndent(),
 )
 ```
 

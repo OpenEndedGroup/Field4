@@ -44,14 +44,15 @@ operations:
               speciesCount = species
               exclusive = true
               exposure = 0.12f
-              attraction = (0 until species).map { s ->
-                  vec(
-                      if (s == 0) 1f else -2f,
-                      if (s == 1) 1f else if (species > 1) -2f else 0f,
-                      if (s == 2) 1f else if (species > 2) -2f else 0f,
-                      0f,
-                  )
-              }
+              attraction =
+                  (0 until species).map { s ->
+                      vec(
+                          if (s == 0) 1f else -2f,
+                          if (s == 1) 1f else if (species > 1) -2f else 0f,
+                          if (s == 2) 1f else if (species > 2) -2f else 0f,
+                          0f,
+                      )
+                  }
           }
 
           var one = slime("one-species", 1)

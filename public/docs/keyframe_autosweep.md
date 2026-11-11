@@ -594,14 +594,16 @@ frames {
 
 :::fold show each still with the weights and gain its manifest recorded
     val cells =
-        readSweepArchive(archive).sortedBy { it.index }.joinToString("") { m ->
-            val still = archive.resolve("renders/${m.id}/still.png")
-            val weights = m.parents.joinToString("<br>") { "${it.key} ${it.weight.f2}" }
-            val gain = m.extrapolationGain?.let { "extrapolationGain ${it.f2}" } ?: "convex"
-            "<div style='display:inline-block;vertical-align:top;margin:4px;font:11px Iosevka,monospace;color:#aaa'>" +
-                "<img src='data:image/png;base64,${Base64.getEncoder().encodeToString(still.readBytes())}' " +
-                "width='260' style='border:1px solid #333;display:block'/><b>$gain</b><br>$weights</div>"
-        }
+        readSweepArchive(archive)
+            .sortedBy { it.index }
+            .joinToString("") { m ->
+                val still = archive.resolve("renders/${m.id}/still.png")
+                val weights = m.parents.joinToString("<br>") { "${it.key} ${it.weight.f2}" }
+                val gain = m.extrapolationGain?.let { "extrapolationGain ${it.f2}" } ?: "convex"
+                "<div style='display:inline-block;vertical-align:top;margin:4px;font:11px Iosevka,monospace;color:#aaa'>" +
+                    "<img src='data:image/png;base64,${Base64.getEncoder().encodeToString(still.readBytes())}' " +
+                    "width='260' style='border:1px solid #333;display:block'/><b>$gain</b><br>$weights</div>"
+            }
     display("past the hull", "<div style='width:820px'>$cells</div>")
 :::endfold
 }
@@ -717,3 +719,10 @@ to start a real sweep against it. Its entry in
     distribution; `tools/run_field_tests.py --id keyframe.sweep.smoke` runs a real six-render sweep on a
     GPU and pins that the picture actually follows the blend. Which claim belongs to which, and the gap
     between them, is in `dev_docs/KEYFRAME_SWEEP_AGREEMENT.md`.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`StandardRenderer.build`](reference/renderers.md#standardrenderer-kt--standardrenderer--build)
+- [`StandardRenderer`](reference/renderers.md#standardrenderer-kt-standardrenderer)

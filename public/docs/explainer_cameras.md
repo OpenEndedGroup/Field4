@@ -310,7 +310,7 @@ fun draw() {
     val tipX = 120.0
     val tipY = axis - 90.0
     val imageY = axis + 90.0 * distance * unit / (holeX - tipX)
-    val parts = listOf(
+    val parts = [
         view,
         segment(sensorX, axis + half, holeX, axis + half, guide),
         segment(sensorX, axis - half, holeX, axis - half, guide),
@@ -322,7 +322,7 @@ fun draw() {
         segment(tipX, axis + 40, tipX, tipY, orange, 4.0),
         segment(tipX, tipY, sensorX, imageY, orange, 1.0),
         segment(sensorX, axis - 40.0 * distance * unit / (holeX - tipX), sensorX, imageY, orange, 4.0),
-    )
+    ]
     showPlane(
         parts,
         channel = "side",
@@ -397,7 +397,7 @@ fun draw() {
         thickness = 1.0
     }
     showPlane(
-        listOf(
+        [
             fline {
                 moveTo(0, 230)
                 lineTo(640, 230)
@@ -406,7 +406,7 @@ fun draw() {
             },
             measured,
             predicted,
-        ),
+        ],
         channel = "brightness",
         width = 600,
         height = 225,
@@ -461,7 +461,7 @@ fun draw() {
     val endY = 360.0
     val start = frameExit(entryX, top, -sin(theta), -cos(theta), 640.0, endY)
     val guideEnd = frameExit(entryX, top, sin(theta), cos(theta), 640.0, endY)
-    val parts = listOf(
+    val parts = [
         fline {
             rect(0, top, 640, slab * unit)
             filled = true
@@ -482,7 +482,7 @@ fun draw() {
             color = cyan
             thickness = 2.5
         },
-    )
+    ]
     showPlane(
         parts,
         channel = "side",
@@ -1409,3 +1409,9 @@ controlGroup {
 The talk follows Bartosz Ciechanowski's [Cameras and Lenses](https://ciechanow.ski/cameras-and-lenses/), read for its order of ideas; every word and figure here was made in Field.
 
 See also: [Sound](explainer_sound.md), [Lights and Shadows](explainer_lights.md), the other two talks in this series, and [Presenting with Field](presentation_studio.md).
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`SensorCamera`](reference/simulation.md#cameraoptics-kt-sensorcamera)

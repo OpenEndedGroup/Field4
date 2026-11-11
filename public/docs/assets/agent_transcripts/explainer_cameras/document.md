@@ -61,7 +61,7 @@ controlGroup {
 <!-- field-box id="ec_slab_ray" index="1" -->
 
 ```edn [field-box id="ec_slab_ray" role="properties"]
-{"id" "ec_slab_ray" "index" 1 "name" "slab_ray" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "slab_ray" "_tombstone" false "frame" #afield/rect [870.0 220.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_slab_ray_code_.kt" "lines" 68 "characters" 2087 "sha256" "ed6226ce8cd92b4b43d7369fbcb3c7e69b2f22e164a577701015e7740fc85603"}]}
+{"id" "ec_slab_ray" "index" 1 "name" "slab_ray" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "slab_ray" "_tombstone" false "frame" #afield/rect [870.0 220.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_slab_ray_code_.kt" "lines" 68 "characters" 2081 "sha256" "085423aa970e9b3824d5ff4f9592519d0a06f6a5e4c98c62499c57332a680921"}]}
 ```
 
 ```kotlin [field-property box="ec_slab_ray" name="code" path="ec_slab_ray_code_.kt"]
@@ -86,7 +86,7 @@ fun draw() {
     val endY = 360.0
     val start = frameExit(entryX, top, -sin(theta), -cos(theta), 640.0, endY)
     val guideEnd = frameExit(entryX, top, sin(theta), cos(theta), 640.0, endY)
-    val parts = listOf(
+    val parts = [
         fline {
             rect(0, top, 640, slab * unit)
             filled = true
@@ -107,7 +107,7 @@ fun draw() {
             color = cyan
             thickness = 2.5
         },
-    )
+    ]
     showPlane(
         parts,
         channel = "side",
@@ -793,7 +793,7 @@ presentation(title = "Cameras and lenses") {
 <!-- field-box id="ec_off_axis" index="7" -->
 
 ```edn [field-box id="ec_off_axis" role="properties"]
-{"id" "ec_off_axis" "index" 7 "name" "off_axis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "off_axis" "_tombstone" false "frame" #afield/rect [680.0 220.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_off_axis_code_.kt" "lines" 68 "characters" 2066 "sha256" "be826c50182d9b4b0257183a8ed28422cf91678ae532b4b385bd7ae2eabaa89e"}]}
+{"id" "ec_off_axis" "index" 7 "name" "off_axis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "off_axis" "_tombstone" false "frame" #afield/rect [680.0 220.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_off_axis_code_.kt" "lines" 68 "characters" 2060 "sha256" "faec865c049052c77f22abf941d65009ccb51b68d52573f48595d629adc5b556"}]}
 ```
 
 ```kotlin [field-property box="ec_off_axis" name="code" path="ec_off_axis_code_.kt"]
@@ -837,7 +837,7 @@ fun draw() {
         thickness = 1.0
     }
     showPlane(
-        listOf(
+        [
             fline {
                 moveTo(0, 230)
                 lineTo(640, 230)
@@ -846,7 +846,7 @@ fun draw() {
             },
             measured,
             predicted,
-        ),
+        ],
         channel = "brightness",
         width = 600,
         height = 225,
@@ -1387,7 +1387,7 @@ controlGroup {
 <!-- field-box id="ec_field_of_view" index="15" -->
 
 ```edn [field-box id="ec_field_of_view" role="properties"]
-{"id" "ec_field_of_view" "index" 15 "name" "field_of_view" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "field_of_view" "_tombstone" false "frame" #afield/rect [490.0 220.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_field_of_view_code_.kt" "lines" 75 "characters" 2603 "sha256" "efcedd54235af45db701484378be344a294e65263399df8322835f85b13e13cd"}]}
+{"id" "ec_field_of_view" "index" 15 "name" "field_of_view" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "field_of_view" "_tombstone" false "frame" #afield/rect [490.0 220.0 170.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ec_field_of_view_code_.kt" "lines" 75 "characters" 2597 "sha256" "7eb49ae946eea89a173f6f7ee2b3bc83d6c76e9ec2ad79c248d3d9ffaea55cf5"}]}
 ```
 
 ```kotlin [field-property box="ec_field_of_view" name="code" path="ec_field_of_view_code_.kt"]
@@ -1433,7 +1433,7 @@ fun draw() {
     val tipX = 120.0
     val tipY = axis - 90.0
     val imageY = axis + 90.0 * distance * unit / (holeX - tipX)
-    val parts = listOf(
+    val parts = [
         view,
         segment(sensorX, axis + half, holeX, axis + half, guide),
         segment(sensorX, axis - half, holeX, axis - half, guide),
@@ -1445,7 +1445,7 @@ fun draw() {
         segment(tipX, axis + 40, tipX, tipY, orange, 4.0),
         segment(tipX, tipY, sensorX, imageY, orange, 1.0),
         segment(sensorX, axis - 40.0 * distance * unit / (holeX - tipX), sensorX, imageY, orange, 4.0),
-    )
+    ]
     showPlane(
         parts,
         channel = "side",

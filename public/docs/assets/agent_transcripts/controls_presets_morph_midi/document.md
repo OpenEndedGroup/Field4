@@ -17,7 +17,7 @@ From `code`
 Each control is a local delegated to `keys`, so a preset is a key of that scope.
 
 ```edn [field-box id="controls_presets_demo" role="properties"]
-{"id" "controls_presets_demo" "index" 0 "name" "Presets · morph · record · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Presets · morph · record · run me" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "controls_presets_demo_code_.kt" "lines" 43 "characters" 1520 "sha256" "99de693c0b6271f9bb0aa3394f745b1502e1faa4c577b574f7f89399519aab00"}]}
+{"id" "controls_presets_demo" "index" 0 "name" "Presets · morph · record · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Presets · morph · record · run me" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "controls_presets_demo_code_.kt" "lines" 57 "characters" 1748 "sha256" "10baf7a25041fea37a499c89d5eb402968151454c5861a8eee78d984cbf96e4d"}]}
 ```
 
 ```kotlin [field-property box="controls_presets_demo" name="code" path="controls_presets_demo_code_.kt"]
@@ -29,14 +29,28 @@ var tint by keys.color(Vector4f(0.2f, 0.6f, 1f, 1f))
 var ring by keys.checkbox(false)
 
 fun draw() {
-    val r = (20 + size * 60).toInt()
+    val radius = (20 + size * 60).toInt()
     val cx = 110 + (offset.x * 60).toInt()
     val cy = 90 - (offset.y * 50).toInt()
-    val fill = "rgba(${(tint.x * 255).toInt()},${(tint.y * 255).toInt()},${(tint.z * 255).toInt()},${tint.w})"
-    val stroke = if (ring) "stroke='white' stroke-width='6'" else ""
-    display(
-        "main",
-        "<svg width='220' height='180' style='background:#222'><circle cx='$cx' cy='$cy' r='$r' fill='$fill' $stroke/></svg>",
+    val disc = fline {
+        circle(cx, cy, radius)
+        filled = true
+        stroked = false
+        color = Vector4f(tint)
+    }
+    val outline = fline {
+        circle(cx, cy, radius)
+        thickness = 6.0
+        color = vec(1.0, 1.0, 1.0, 1.0)
+    }
+    // Keep the frame fixed while the controls move or resize the circle.
+    val figure: List<FLine> = if (ring) [disc, outline] else [disc]
+    lines(
+        figure,
+        channel = "main",
+        w = 220.0,
+        h = 180.0,
+        framing = LinesFraming.fixed(0.0, 0.0, 220.0, 180.0),
     )
 }
 

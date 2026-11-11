@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_ardy_path" index="0" -->
 
 ```edn [field-box id="motion_ardy_path" role="properties"]
-{"id" "motion_ardy_path" "index" 0 "name" "ARDY — timed Field routes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ARDY — timed Field routes" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_ardy_path_code_.kt" "lines" 262 "characters" 13237 "sha256" "0fd14aa7c1f2c0ccc024c18429d30c7e82724d8f9d996beca04b5c917a6995ec"}]}
+{"id" "motion_ardy_path" "index" 0 "name" "ARDY — timed Field routes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ARDY — timed Field routes" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_ardy_path_code_.kt" "lines" 262 "characters" 13284 "sha256" "c4f27d75ae4e2a53130d49a38ea6cc2675ab964e88caf643c9e8cf94c39b3c5c"}]}
 ```
 
 ```kotlin [field-property box="motion_ardy_path" name="code" path="motion_ardy_path_code_.kt"]
@@ -21,10 +21,10 @@ import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.math.*
 import org.json.JSONObject
 
 val experiment = "path" // Starting-point presets: path, intentions, foot.
+// UI callbacks enqueue commands; the frame loop applies them to the worker in order.
 val actions = ArrayBlockingQueue<String>(8)
 val prompt = AtomicReference(if (experiment == "intentions") "A person skips forward." else "A person walks forward.")
 val routeName = AtomicReference("line")
@@ -132,7 +132,7 @@ frames {
                             worker.setPrompt(text, nextTime)
                         }
                         "route" -> {
-                            val origin = latest?.executed?.root ?: listOf(0.0, 0.0, 0.0)
+                            val origin = latest?.executed?.root ?: [0.0, 0.0, 0.0]
                             val kind = routeName.get().trim()
                             check(kind in setOf("line", "arc", "figure8", "sharp", "stop", "reversal")) {
                                 "Unknown route type"
@@ -175,7 +175,7 @@ frames {
                             worker.setJointTargets(emptyList(), nextTime)
                             anchor = null
                             worker.setRootPlan(activeRoute, nextTime)
-                            pathOverlay = listOf(path)
+                            pathOverlay = [path]
                         }
                         "clear" -> {
                             worker.setJointTargets(emptyList(), nextTime)
@@ -201,7 +201,7 @@ frames {
                                     world.add(if (parent < 0) r else afield.math.linalg.Quat(world[parent]).mul(r))
                                 }
                                 val r = world[index]
-                                rotation = listOf(r.x.toDouble(), r.y.toDouble(), r.z.toDouble(), r.w.toDouble())
+                                rotation = [r.x.toDouble(), r.y.toDouble(), r.z.toDouble(), r.w.toDouble()]
                             }
                             worker.setJointTargets(
                                 (0 until (pinDuration.get() * fps).toInt()).map {

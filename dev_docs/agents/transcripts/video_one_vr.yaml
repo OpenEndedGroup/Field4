@@ -16,7 +16,6 @@ operations:
       h: 100
     properties:
       code: |
-        import afield.graphics.vulkan.targets.*
         import afield.graphics.vulkan.util.Options
         import afield.media.browser.*
 
@@ -147,8 +146,6 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.video.*
-        import afield.ui.output.ControlGroupBuilder
-        import afield.ui.output.ControlValueHandle
 
         // One movie owns decoding and uploads; box 4 owns its editable graphics pipeline.
         prop<StereoVideoSurface>(movie) = StereoVideoSurface(renderer, stereo, automaticDrawing = false)
@@ -428,8 +425,6 @@ operations:
       h: 100
     properties:
       code: |
-        import afield.ui.output.ControlValueHandle
-
         // A local path, with ~ expansion; changing this field alone does not reopen the decoder.
         // The checkout ships an original stereo calibration movie; an environment override selects yours.
         var selectedFile =

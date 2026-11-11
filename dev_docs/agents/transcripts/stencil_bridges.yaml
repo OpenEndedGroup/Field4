@@ -77,8 +77,6 @@ operations:
       frame: { x: 1240.0, y: 40.0, w: 260.0, h: 50.0 }
       properties:
         code: |
-          import afield.data.query.datalog.Datalog
-
           prop<List<Int>>(needsBridge)
 
           val d = Datalog()

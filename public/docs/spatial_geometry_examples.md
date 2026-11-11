@@ -1635,7 +1635,7 @@ Partition observations into groups. Hierarchical linkage gives nested cuts; medo
 | `fun vec2KMedians(points: List<Vec2>, k: Int, options: KMediansOptions = KMediansOptions()): KMediansResult<Vec2>` | Partition 2-D points into `k` clusters around coordinate-wise medians (Lloyd's algorithm on L1). [API](reference/data.md#clustering-kt). |
 | `fun vec3KMedians(points: List<Vec3>, k: Int, options: KMediansOptions = KMediansOptions()): KMediansResult<Vec3>` | Partition 3-D points into `k` clusters around coordinate-wise medians (Lloyd's algorithm on L1). [API](reference/data.md#clustering-kt). |
 | `fun vec4KMedians(points: List<Vec4>, k: Int, options: KMediansOptions = KMediansOptions()): KMediansResult<Vec4>` | Partition 4-D points into `k` clusters around coordinate-wise medians (Lloyd's algorithm on L1). [API](reference/data.md#clustering-kt). |
-| `KMeansAlgorithm` | `LLOYD` or `EMEANS`, the switch in `KMeansOptions`. [API](reference/data.md#clustering-kt). |
+| `KMeansAlgorithm` | `LLOYD` or `EMEANS`, the switch in [`KMeansOptions`](reference/data.md#clustering-kt-kmeansoptions). [API](reference/data.md#clustering-kt). |
 | `KMeansOptions` | How the `…KMeans` functions run: algorithm, epochs, seeding, and the e-means overrides. [API](reference/data.md#clustering-kt). |
 | `KMeansResult` | Labels, centroids, inertia and `mseHistory` per epoch; `asLayer()` gives a `ClusterLayer`. [API](reference/data.md#clustering-kt). |
 | `fun vec2KMeans(points: List<Vec2>, k: Int, options: KMeansOptions = KMeansOptions()): KMeansResult<Vec2>` | Partition 2-D points into `k` clusters around their means (k-means); also `floatKMeans`, `vec3KMeans`, `vec4KMeans`. [API](reference/data.md#clustering-kt). |

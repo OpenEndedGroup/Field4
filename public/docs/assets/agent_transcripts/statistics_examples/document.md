@@ -214,7 +214,7 @@ buildSummaryStats hands back seventeen numbers. Three of them are routinely misr
 pin each one as arithmetic rather than trusting the label on the card.
 
 ```edn [field-box id="stats_summary" role="properties"]
-{"id" "stats_summary" "index" 2 "name" "Summary stats, and exactly how boring they are" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Summary stats, and exactly how boring they are" "_tombstone" false "frame" #afield/rect [80.0 80.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_summary_code_.kt" "lines" 54 "characters" 2596 "sha256" "9bd92e27c261d13ab047c62dc9eb5eeb532eee5c53abbe9915b1455340ffd140"}]}
+{"id" "stats_summary" "index" 2 "name" "Summary stats, and exactly how boring they are" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Summary stats, and exactly how boring they are" "_tombstone" false "frame" #afield/rect [80.0 80.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_summary_code_.kt" "lines" 54 "characters" 2578 "sha256" "b39229a0cb055f271c853ec07f28c2b257fc479a1bed02a0d0f9c109104be488"}]}
 ```
 
 ```kotlin [field-property box="stats_summary" name="code" path="stats_summary_code_.kt"]
@@ -260,9 +260,9 @@ println(
 )
 
 // The guarded small-sample returns: zeros, not NaNs.
-println("n=1 sampleVariance=${buildSummaryStats(listOf(4.0)).sampleVariance} (not NaN)")
-println("n=2 skewness=${buildSummaryStats(listOf(1.0, 3.0)).skewness} (needs n>2)")
-println("n=3 kurtosisExcess=${buildSummaryStats(listOf(1.0, 3.0, 10.0)).kurtosisExcess} (needs n>3)")
+println("n=1 sampleVariance=${buildSummaryStats([4.0]).sampleVariance} (not NaN)")
+println("n=2 skewness=${buildSummaryStats([1.0, 3.0]).skewness} (needs n>2)")
+println("n=3 kurtosisExcess=${buildSummaryStats([1.0, 3.0, 10.0]).kurtosisExcess} (needs n>3)")
 
 // And the one field that is a genuine footgun: cv = sd/mean.
 val centred = signal.map { it - s.mean }

@@ -16,10 +16,9 @@ operations:
       w: 330
       h: 100
     properties:
-      code: |-
+      code: |
         // Launch 1, 2, 2b, 3, 4 in order; stop box 4 to pause.
         // Desktop preview first. For OpenXR: connect the headset, set true, restart Field.
-        import afield.graphics.vulkan.targets.OpenXRHmdTarget
         import afield.graphics.vulkan.util.Options
 
         prop<Window>(window)
@@ -59,8 +58,6 @@ operations:
       h: 100
     properties:
       code: |
-        import afield.graphics.vulkan.targets.SideBySideStereoTarget
-
         val xr = renderer.openXRHmdTarget
         check(xr == null || xr.hasEyeViews) { "Connect and wear the headset, then launch box 1 first" }
         val eye = xr?.let { renderer.runOnQueueThread { it.sideBySideRTTParameters() } }
@@ -115,7 +112,7 @@ operations:
                                 )
                             }
                         val edges = mutableListOf<Vec3>()
-                        for (i in 0..7) for (bit in listOf(1, 2, 4)) if (i and bit == 0) {
+                        for (i in 0..7) for (bit in [1, 2, 4]) if (i and bit == 0) {
                             edges.add(corners[i])
                             edges.add(corners[i or bit])
                         }
@@ -157,8 +154,6 @@ operations:
       h: 100
     properties:
       code: |
-        import afield.graphics.vulkan.targets.SideBySideStereoTarget
-
         val qualityStereo = fromContext<SideBySideStereoTarget>()
         val qualityXr = renderer.openXRHmdTarget
         val qualityOrigin = Vec3()
@@ -179,16 +174,16 @@ operations:
                     module += "chart" to mesh
                     mesh.set(4, 2) {
                         for ((x, y, u, v) in
-                            listOf(
+                            [
                                 floatArrayOf(-0.8f, -0.85f, 0f, 0f),
                                 floatArrayOf(0.8f, -0.85f, 1f, 0f),
                                 floatArrayOf(0.8f, -0.15f, 1f, 1f),
                                 floatArrayOf(-0.8f, -0.15f, 0f, 1f),
-                            )) {
+                            ]) {
                             pos.add(qualityOrigin.x + x, qualityOrigin.y + y, qualityOrigin.z - 1.6f)
                             col.add(u, v, 0f, 0f)
                         }
-                        for (i in listOf(0, 1, 2, 0, 2, 3)) tri.add(i)
+                        for (i in [0, 1, 2, 0, 2, 3]) tri.add(i)
                     }
                     mesh.p = { qualityStereo.currentEyeProjectionMatrix() }
                     mesh.m = { qualityStereo.currentEyeViewMatrix() }
@@ -247,10 +242,6 @@ operations:
         Toggle FXAA below to compare at the same render resolution. No temporal history is used.
         */
         import afield.graphics.scene.fabricated.StandardRenderer
-        import afield.graphics.shader.fromViews
-        import afield.graphics.texture.TextureSampler
-        import afield.graphics.vulkan.targets.RenderToTexture
-        import afield.graphics.vulkan.targets.SideBySideStereoTarget
         import java.util.concurrent.atomic.AtomicBoolean
 
         val sourceStereo = fromContext<SideBySideStereoTarget>()
@@ -268,14 +259,14 @@ operations:
         val pass = moduleHere {
             name = "stereo-fxaa-composite"
             color = 1
-            colorFormats = listOf(composite.parameters.format)
+            colorFormats = [composite.parameters.format]
             imageFormat = composite.parameters.format
             depth = 0
             depthTest = false
             depthWrite = false
             blend = false
             textureResolver = { tex ->
-                if (tex.name == "sourceTex") fromViews(listOf(rawStereo), tex.name, sourceSampler) else null
+                if (tex.name == "sourceTex") fromViews([rawStereo], tex.name, sourceSampler) else null
             }
         }
         composite += "fxaa" to pass
@@ -400,11 +391,8 @@ operations:
       w: 330
       h: 100
     properties:
-      code: |-
+      code: |
         // The parent graph supplies both the renderer and the composite RTT.
-        import afield.document.context.fromContextWithNameOrNull
-        import afield.graphics.vulkan.targets.RenderToTexture
-
         val presentedTexture: RenderToTexture =
             fromContextWithNameOrNull<RenderToTexture>("composite")
                 ?: throw IllegalStateException("Launch the FXAA composite parent (3) first")

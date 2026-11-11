@@ -1,6 +1,5 @@
 // Launch 1, 2, 2b, 3, 4 in order; stop box 4 to pause.
 // Desktop preview first. For OpenXR: connect the headset, set true, restart Field.
-import afield.graphics.vulkan.targets.OpenXRHmdTarget
 import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)

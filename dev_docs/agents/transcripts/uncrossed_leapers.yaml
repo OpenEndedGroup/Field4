@@ -243,8 +243,6 @@ operations:
     properties:
       code: |
         import afield.geometry.leaper.*
-        import afield.runtime.execution.begin
-        import kotlin.math.*
         import kotlin.random.Random
 
         // Longest uncrossed knight paths and the longest closed one on 7×7, published under the knight-tour workshop's
@@ -280,7 +278,7 @@ operations:
             val cx = c.first - ax
             val cy = c.second - ay
             val cross = bx * cy - by * cx
-            if (abs(cross) < 1e-9) return listOf(a, b, c)
+            if (abs(cross) < 1e-9) return [a, b, c]
             val bb = bx * bx + by * by
             val cc = cx * cx + cy * cy
             val ux = (bb * cy - cc * by) / (2 * cross)
@@ -354,10 +352,7 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: |-
-        import afield.math.linalg.*
-        import kotlin.math.*
-
+      code: |
         /*
         Zipped layers: use [a, b, c] or a scalar. Short lists hold their last value.
         All geometry parameters are deliberately UNCLAMPED.
@@ -537,9 +532,7 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: |-
-        import kotlin.math.*
-
+      code: |
         // Uniform scale about each triple's original B. 1.0 restores the source arcs.
         val arcScale = 0.5
         // Signed shift along the original A-to-C normal, applied after scaling.

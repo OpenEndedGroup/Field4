@@ -116,7 +116,7 @@ track, with its scale and offset left for the fitter:
 Until you fit it, a `free-param` is just its current value, so a scene with unknowns in it plays and
 renders exactly as written.
 
-From Kotlin, any track with `FreeParamTrack` leaves in it can be solved with `fitParameters`. It
+From Kotlin, any track with [`FreeParamTrack`](reference/languages.md#rectsl-kt-freeparamtrack) leaves in it can be solved with `fitParameters`. It
 steps until the residual stops changing, up to `iterations = 5000` at `lr = 0.05`, and `converged`
 says whether it got there before the bound; when it is false, give it more iterations or a larger
 `lr` before trusting `parameters`. The box below builds the same sweep track and fits it with the
@@ -421,3 +421,12 @@ or the last bit, and a signed zero can turn a `->face-travel` rect half a turn.
 
 A key's value is itself a track, so it can be a free parameter too. TCB tracks recompute their
 tangents from the fitted key values, so a moved key bends the spline the way the sampler would.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`BinaryDoubleTrack`](reference/languages.md#rectsl-kt-binarydoubletrack)
+- [`LinearScalarTrack`](reference/languages.md#rectsl-kt-linearscalartrack)
+- [`TcbKey`](reference/languages.md#rectsl-kt-tcbkey)
+- [`TrackFitTarget`](reference/languages.md#rectslfit-kt-trackfittarget)

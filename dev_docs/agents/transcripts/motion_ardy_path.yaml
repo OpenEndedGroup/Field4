@@ -14,10 +14,10 @@ operations:
           import java.util.concurrent.CompletableFuture
           import java.util.concurrent.atomic.AtomicBoolean
           import java.util.concurrent.atomic.AtomicReference
-          import kotlin.math.*
           import org.json.JSONObject
 
           val experiment = "path" // Starting-point presets: path, intentions, foot.
+          // UI callbacks enqueue commands; the frame loop applies them to the worker in order.
           val actions = ArrayBlockingQueue<String>(8)
           val prompt = AtomicReference(if (experiment == "intentions") "A person skips forward." else "A person walks forward.")
           val routeName = AtomicReference("line")
@@ -125,7 +125,7 @@ operations:
                                       worker.setPrompt(text, nextTime)
                                   }
                                   "route" -> {
-                                      val origin = latest?.executed?.root ?: listOf(0.0, 0.0, 0.0)
+                                      val origin = latest?.executed?.root ?: [0.0, 0.0, 0.0]
                                       val kind = routeName.get().trim()
                                       check(kind in setOf("line", "arc", "figure8", "sharp", "stop", "reversal")) {
                                           "Unknown route type"
@@ -168,7 +168,7 @@ operations:
                                       worker.setJointTargets(emptyList(), nextTime)
                                       anchor = null
                                       worker.setRootPlan(activeRoute, nextTime)
-                                      pathOverlay = listOf(path)
+                                      pathOverlay = [path]
                                   }
                                   "clear" -> {
                                       worker.setJointTargets(emptyList(), nextTime)
@@ -194,7 +194,7 @@ operations:
                                               world.add(if (parent < 0) r else afield.math.linalg.Quat(world[parent]).mul(r))
                                           }
                                           val r = world[index]
-                                          rotation = listOf(r.x.toDouble(), r.y.toDouble(), r.z.toDouble(), r.w.toDouble())
+                                          rotation = [r.x.toDouble(), r.y.toDouble(), r.z.toDouble(), r.w.toDouble()]
                                       }
                                       worker.setJointTargets(
                                           (0 until (pinDuration.get() * fps).toInt()).map {

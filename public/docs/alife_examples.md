@@ -865,10 +865,7 @@ val noSep = start.copy()
 noSep.stepTimes(params.copy(separationWeight = 0.0), 900)
 
 println(
-    "flock polarization " +
-        flock.order().f3 +
-        ", CONTROL with no alignment " +
-        noAlign.order().f3,
+    "flock polarization " + flock.order().f3 + ", CONTROL with no alignment " + noAlign.order().f3,
 )
 println(
     "5th-percentile nearest neighbour: flock " +
@@ -1090,9 +1087,9 @@ animateEvolution(
 
 ### A million agents on the GPU
 
-The same rule runs on the GPU as `ShaderPhysarumSystem`: a million agents on a trail 512 pixels high, each
+The same rule runs on the GPU as [`ShaderPhysarumSystem`](reference/alife.md#alife-physarum-gpu-kt-shaderphysarumsystem): a million agents on a trail 512 pixels high, each
 one a single vertex-shader invocation per frame that senses, turns, steps and deposits. The defaults are
-the `PhysarumParams` defaults above. The trail is a [`TrailField`](reference/alife.md#alife-trail-kt-trailfield), a stigmergy
+the [`PhysarumParams`](reference/alife.md#alife-agents-kt-physarumparams) defaults above. The trail is a [`TrailField`](reference/alife.md#alife-trail-kt-trailfield), a stigmergy
 field you can use on its own: four channels, each with its own half-life, plus diffusion and wind. Any
 module can deposit into it, and any shader can read it with `#include "trail/sample"`. Here there are
 two species, one per channel. Each follows its own trail and avoids the other's:
@@ -1169,7 +1166,7 @@ shifting as one species pushes into another's ground.
 // The transcript builds a renderer and two systems, one and three species, each drawn into half the window.
 ```
 
-Any other particle system can steer by the same field. `TrailFollowers` climbs the gradient of
+Any other particle system can steer by the same field. [`TrailFollowers`](reference/alife.md#alife-trail-followers-kt-trailfollowers) climbs the gradient of
 `dot(trail, weights)`, so these 20,000 particles ride the amber roads and keep off the cyan ones:
 
 ```diffstatic {data-lang=kotlin}
@@ -1252,7 +1249,9 @@ val p = PhysarumParams()
 val road = 0.25 * p.deposit / (1 - p.decay)
 
 fun grow(label: String, agents: Int, params: PhysarumParams) =
-    label to PhysarumSwarm.random(200, 200, agents, seed = 5L).meanTrail(params, 3000, averageOver = 300, seed = 5L, food = food)
+    label to
+        PhysarumSwarm.random(200, 200, agents, seed = 5L)
+            .meanTrail(params, 3000, averageOver = 300, seed = 5L, food = food)
 
 val trails = [
     grow("1600 agents", 1600, p),
@@ -1265,12 +1264,18 @@ val controls: List<NetworkScore> = [
     TransportNetwork.mst(food.points).score("MST"),
     TransportNetwork.delaunay(food.points).score("Delaunay"),
 ]
-markdown("scores", "```\n" + NetworkScore.table(networks.map { (label, net) -> net.score(label) } + controls) + "\n```", width = 560)
+markdown(
+    "scores",
+    "```\n" + NetworkScore.table(networks.map { (label, net) -> net.score(label) } + controls) + "\n```",
+    width = 560,
+)
 
 :::fold draw each network over its trail
 showImg(
     montage(
-        networks.zip(trails).map { (n, t) -> n.first to n.second.drawOver(t.second.colormap("magma", 0f, (road * 4).toFloat())) },
+        networks.zip(trails).map { (n, t) ->
+            n.first to n.second.drawOver(t.second.colormap("magma", 0f, (road * 4).toFloat()))
+        },
         columns = 3,
         cellSide = 300,
     ),
@@ -1301,9 +1306,11 @@ dot on the plane; the table lists every run, including the ones that break apart
 val food = PhysarumFood.scattered(200, 200, 8, seed = 3L)
 
 fun run(label: String, agents: Int, p: PhysarumParams): NetworkScore {
-    val trail = PhysarumSwarm.random(200, 200, agents, seed = 5L).meanTrail(p, 3000, averageOver = 300, seed = 5L, food = food)
+    val trail =
+        PhysarumSwarm.random(200, 200, agents, seed = 5L).meanTrail(p, 3000, averageOver = 300, seed = 5L, food = food)
     return TransportNetwork.extract(trail, food.points, 0.25 * p.deposit / (1 - p.decay)).score(label)
 }
+
 :::endfold
 
 val base = PhysarumParams()
@@ -2334,7 +2341,7 @@ showImg(
 
 ![a contact sheet of twenty small greyscale automaton boards laid out in a six-column grid, each labelled with its two bin indices and score: the top-left cells are near-empty, the bottom-right cells are dense static, and the middle band holds boards with visible structure](assets/alife_examples/evolve-mapelites.png)
 
-All three searches run on one engine, `PopulationSearch`, and each is a genome (a `GenomeOps`: how to
+All three searches run on one engine, [`PopulationSearch`](reference/search.md#populationsearch-kt-populationsearch), and each is a genome (a `GenomeOps`: how to
 make, mutate and recombine one) plus an `Objective` that scores it. Evolving the shape of a function
 for animation runs on the same engine; see [evolving and optimizing
 functions](functions_examples.md#evolving-and-optimizing-functions).
@@ -2406,7 +2413,7 @@ plays quieter and quicker than its parent (`GrainTurtle.branchAmp`, `branchDurat
 grain lasts about a second and the next starts 0.72 s later; `GrainTurtle(timeScale = 0.5)` plays
 the same set twice as fast.
 
-`decodeGrains(system, generations)` derives the grammar and returns its grains; `GrainSetStats`
+`decodeGrains(system, generations)` derives the grammar and returns its grains; [`GrainSetStats`](reference/alife.md#alife-grains-kt-grainsetstats)
 measures the set (count, median pitch, pitch spread, duration, density, mean polyphony); and
 `renderGrains` plays it sample-accurately as Hann-windowed tones, or as grains read from a sample if
 you pass `source =`. Here is one grammar, `G → G[+G-G]fG`, at three generations:
@@ -2511,7 +2518,7 @@ show()
 ```
 
 Every trapezoid corner and weight is a dial. Building the terms from `slider` callbacks and
-re-running `PopulationSearch.evolve` on release moves the target while you listen; the loadable
+re-running [`PopulationSearch.evolve`](reference/search.md#populationsearch-kt--populationsearch--evolve) on release moves the target while you listen; the loadable
 demo below does exactly that.
 
 ## 12. Agents with their own programs
@@ -2829,3 +2836,11 @@ Open questions for the rest of the page:
   3-D life-like automaton shows the grid side of that extension already exists.
 - **Trees that compete for sound.** The light-competition trees could be read with the grain
   decoder, each branch a voice, so a forest's growth becomes a score.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`ShaderPhysarumSystem.installInto`](reference/alife.md#alife-physarum-gpu-kt--shaderphysarumsystem--installinto)
+- [`TrailFollowers.installInto`](reference/alife.md#alife-trail-followers-kt--trailfollowers--installinto)
+- [`LifeRuleGenome`](reference/alife.md#alife-evolve-kt-liferulegenome)

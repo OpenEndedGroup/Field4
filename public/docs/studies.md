@@ -358,7 +358,9 @@ showStudyBuilds("reports")
 :::fold press Build once, and wait for the attempt to finish
 val stage = builds.stages().single()
 val done = builds.await(builds.start("summary", stage.fingerprint!!).id, 60.0)
-println("${done.status}: " + builds.currentFile("summary", "summary.txt").readText())
+println(
+    "${done.status}: " + builds.currentFile("summary", "summary.txt").readText(),
+)
 
 :::endfold
 ```
@@ -437,7 +439,7 @@ implying a problem. The same notes appear in native agent inspection and the com
 The adapter must be fast and pure: read the supplied record's retained facts, never the live
 design, and perform no build work.
 
-A note can also name a picture of the result: `StudyBuildNotice(message, view = StudyBuildView(box, caption) { draw() })`.
+A note can also name a picture of the result: [`StudyBuildNotice(message, view = StudyBuildView(box, caption) { draw() })`](reference/workspace.md#studybuilds-kt-studybuildnotice).
 `box` is the box (uid or name) that shows it, and `draw` displays the result there; nothing runs while
 the notes are read. An [AI4 chat that waited for the build](ai4_long_builds.md) is shown the
 picture when it resumes: Field runs `draw`, captures the box's output and attaches it to the
@@ -912,3 +914,9 @@ without starting Field.
     no model. The design notes are in
     [`dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/ai/AGENT_TOOL_EXTENSIONS.md), under "Studies: one
     registrar for the standard verbs".
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`StudyBuildView`](reference/workspace.md#studybuilds-kt-studybuildview)

@@ -15,9 +15,8 @@ operations:
       w: 480
       h: 100
     properties:
-      code: |-
+      code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.vulkan.targets.*
         import afield.graphics.vulkan.util.Options
         import afield.media.browser.*
 
@@ -88,9 +87,8 @@ operations:
       w: 480
       h: 100
     properties:
-      code: |-
+      code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
         import afield.graphics.text.sentences.Sentences
 
         // 1 · Marked breath. Whole runs, two selected words and an arclength bead.
@@ -166,11 +164,9 @@ operations:
       w: 480
       h: 100
     properties:
-      code: |-
+      code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
         import afield.graphics.text.sentences.*
-        import kotlin.math.*
 
         // 2 · Complete canopy. Preserve the parser's tree, POS labels, word stems and dependency arcs.
         val parsed = Sentences.example(2)
@@ -338,11 +334,9 @@ operations:
       w: 480
       h: 100
     properties:
-      code: |-
+      code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
         import afield.graphics.text.sentences.*
-        import kotlin.math.*
 
         // 3 · Undertow. Nested dependency arcs, with independently scored labels and beads.
         val parsed = Sentences.example(3)
@@ -437,11 +431,9 @@ operations:
       w: 480
       h: 100
     properties:
-      code: |-
+      code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
         import afield.graphics.text.sentences.*
-        import kotlin.math.*
 
         // 4 · Sentence furniture. Reed-Kellogg shelves become a shallow spatial mobile, then a reading line.
         val parsed = Sentences.example(4)
@@ -527,10 +519,8 @@ operations:
       w: 480
       h: 100
     properties:
-      code: |-
-        import afield.geometry.path.FLine
+      code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
 
         // 5 · A room for words. One Slug run can contain multiple real faces and inline styles.
         val serif = Typefaces.named("Noto Serif", 100, strict = true)
@@ -638,7 +628,7 @@ operations:
 
         // All five scores are separate from graph construction and native typography preparation.
         // Re-run this box to rescore the existing players; their physics and Slug buffers are retained.
-        val allExamples = listOf(exampleOne, exampleTwo, exampleThree, exampleFour, exampleFive)
+        val allExamples = [exampleOne, exampleTwo, exampleThree, exampleFour, exampleFive]
         for ((index, example) in allExamples.withIndex()) {
             val graph = example.player.diagram
             example.player.playback.score = diagramScore(graph, duration = if (index == 3) 24.0 else 20.0) {
@@ -1552,21 +1542,20 @@ operations:
       w: 480
       h: 100
     properties:
-      code: |-
+      code: |
         import afield.graphics.scene.reading.*
 
-        fun source(box: Box, property: String) = checkNotNull(box.getPropertyRaw(property) as? String)
         fun shaders() = DiagramShaderSet(
-            source(strokeSource, "vertex"),
-            source(strokeSource, "fragment"),
-            source(pointSource, "vertex"),
-            source(pointSource, "fragment"),
-            source(textSource, "vertex"),
-            source(textSource, "fragment"),
-            source(blurSource, "vertex"),
-            source(blurSource, "fragment"),
-            source(compositeSource, "vertex"),
-            source(compositeSource, "fragment"),
+            strokeSource.vertex,
+            strokeSource.fragment,
+            pointSource.vertex,
+            pointSource.fragment,
+            textSource.vertex,
+            textSource.fragment,
+            blurSource.vertex,
+            blurSource.fragment,
+            compositeSource.vertex,
+            compositeSource.fragment,
         )
         prop<StereoDiagramRenderer>(drawing) = StereoDiagramRenderer(renderer, stereo, poem, shaders())
         val ownedDrawing = drawing
@@ -1753,7 +1742,7 @@ operations:
     wait: pending
 - execute:
     box: text1_score
-    code: |-
+    code: |
       poem.select(1)
       poem.current.playback.playing = false
       poem.current.playback.seek(6.0)

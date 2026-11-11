@@ -14,6 +14,7 @@ display("all jobs", fieldAudioJobMonitor(heightPixels = 340))
 
 go {
     try {
+        // Resolve one source before submitting either model request.
         val matches = client.assetsByFilename("*near_drowning*").await()
         val source = when {
             matches.size == 1 -> matches.single()

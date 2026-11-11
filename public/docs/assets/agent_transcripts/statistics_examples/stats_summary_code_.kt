@@ -40,9 +40,9 @@ println(
 )
 
 // The guarded small-sample returns: zeros, not NaNs.
-println("n=1 sampleVariance=${buildSummaryStats(listOf(4.0)).sampleVariance} (not NaN)")
-println("n=2 skewness=${buildSummaryStats(listOf(1.0, 3.0)).skewness} (needs n>2)")
-println("n=3 kurtosisExcess=${buildSummaryStats(listOf(1.0, 3.0, 10.0)).kurtosisExcess} (needs n>3)")
+println("n=1 sampleVariance=${buildSummaryStats([4.0]).sampleVariance} (not NaN)")
+println("n=2 skewness=${buildSummaryStats([1.0, 3.0]).skewness} (needs n>2)")
+println("n=3 kurtosisExcess=${buildSummaryStats([1.0, 3.0, 10.0]).kurtosisExcess} (needs n>3)")
 
 // And the one field that is a genuine footgun: cv = sd/mean.
 val centred = signal.map { it - s.mean }

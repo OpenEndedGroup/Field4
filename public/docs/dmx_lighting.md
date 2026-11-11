@@ -63,7 +63,7 @@ strip.forEach { it.rgb(1.0, 0.3, 0.0) }
 patch.render(out)
 ```
 
-The run builders (`strip`, `grid`, `stripAlong`) allocate addresses one after another and move to
+The run builders (`strip`, `grid`, [`stripAlong`](reference/lighting.md#patch-kt--patch--stripalong)) allocate addresses one after another and move to
 the next universe whenever a fixture would straddle slot 512. That is how pixel controllers expect
 long runs: 170 RGB pixels to a universe (the last two slots unused), 128 RGBW. The 200-pixel strip
 above takes all of universe 1 and 30 pixels of universe 2, and the pars start after it.
@@ -308,3 +308,9 @@ from a rendered scene, and [OSC and TUIO](osc.md) for show-control messages.
 ??? aside "How the wire formats were checked"
     The protocol claims were checked against a decoder written separately from the encoder, in
     Python, and against the third-party `sacn` package; the record is [dev_docs/dmx_lighting.md](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/dmx_lighting.md).
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`Patch.animate`](reference/lighting.md#patch-kt--patch--animate)

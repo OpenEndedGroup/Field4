@@ -11,12 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="text1_context" index="0" -->
 
 ```edn [field-box id="text1_context" role="properties"]
-{"id" "text1_context" "index" 0 "name" "1 · Reading space" "parents" ["root"] "children" ["text1_poem" "text1_example2" "text1_example3" "text1_example4" "text1_typography" "text1_word_blur" "text1_stroke" "text1_point" "text1_text" "text1_blur" "text1_blur_medium_v" "text1_blur_broad_h" "text1_blur_broad_v" "text1_composite"] "properties" {"children" #{#afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4" #afield/box "text1_typography" #afield/box "text1_word_blur" #afield/box "text1_stroke" #afield/box "text1_point" #afield/box "text1_text" #afield/box "text1_blur" #afield/box "text1_blur_medium_v" #afield/box "text1_blur_broad_h" #afield/box "text1_blur_broad_v" #afield/box "text1_composite"} "parents" #{#afield/box "root"} "name" "1 · Reading space" "_tombstone" false "frame" #afield/rect [0.0 150.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_context_code_.kt" "lines" 63 "characters" 2990 "sha256" "e16489605862e9ac18d86e1858ab2eacf81bb3f3b976199093af3eca61294e34"}]}
+{"id" "text1_context" "index" 0 "name" "1 · Reading space" "parents" ["root"] "children" ["text1_poem" "text1_example2" "text1_example3" "text1_example4" "text1_typography" "text1_word_blur" "text1_stroke" "text1_point" "text1_text" "text1_blur" "text1_blur_medium_v" "text1_blur_broad_h" "text1_blur_broad_v" "text1_composite"] "properties" {"children" #{#afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4" #afield/box "text1_typography" #afield/box "text1_word_blur" #afield/box "text1_stroke" #afield/box "text1_point" #afield/box "text1_text" #afield/box "text1_blur" #afield/box "text1_blur_medium_v" #afield/box "text1_blur_broad_h" #afield/box "text1_blur_broad_v" #afield/box "text1_composite"} "parents" #{#afield/box "root"} "name" "1 · Reading space" "_tombstone" false "frame" #afield/rect [0.0 150.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_context_code_.kt" "lines" 62 "characters" 2950 "sha256" "be96fea6e88832ca4951f678991d5dbc734d38b63c5937e6d6b882773ef0d6b2"}]}
 ```
 
 ```kotlin [field-property box="text1_context" name="code" path="text1_context_code_.kt"]
 import afield.graphics.scene.reading.*
-import afield.graphics.vulkan.targets.*
 import afield.graphics.vulkan.util.Options
 import afield.media.browser.*
 
@@ -85,12 +84,11 @@ loop { frame() }
 <!-- field-box id="text1_word_blur" index="1" -->
 
 ```edn [field-box id="text1_word_blur" role="properties"]
-{"id" "text1_word_blur" "index" 1 "name" "14 · Words becoming weather" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "14 · Words becoming weather" "_tombstone" false "frame" #afield/rect [650.0 550.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_word_blur_code_.kt" "lines" 30 "characters" 1308 "sha256" "6d66ce5dba49725da11e638532ed693da5ad16903245404b7450b523199c3f5d"}]}
+{"id" "text1_word_blur" "index" 1 "name" "14 · Words becoming weather" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "14 · Words becoming weather" "_tombstone" false "frame" #afield/rect [650.0 550.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_word_blur_code_.kt" "lines" 29 "characters" 1278 "sha256" "d4b63e34c35253740ea88aff3adad6c964ee216fc8719bcb0524b8acd914329c"}]}
 ```
 
 ```kotlin [field-property box="text1_word_blur" name="code" path="text1_word_blur_code_.kt"]
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // Separate words can breathe on separate clocks. The blur radius is measured in ems;
 // opacity is independent, so a word can stay bright while its outline dissolves.
@@ -384,13 +382,11 @@ void main() {
 <!-- field-box id="text1_typography" index="3" -->
 
 ```edn [field-box id="text1_typography" role="properties"]
-{"id" "text1_typography" "index" 3 "name" "13 · Typography playground" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "13 · Typography playground" "_tombstone" false "frame" #afield/rect [650.0 440.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_typography_code_.kt" "lines" 96 "characters" 3656 "sha256" "a418dc87b5635d979b6116117771978c64836ea359800bbddabd7a0990200824"}]}
+{"id" "text1_typography" "index" 3 "name" "13 · Typography playground" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "13 · Typography playground" "_tombstone" false "frame" #afield/rect [650.0 440.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_typography_code_.kt" "lines" 94 "characters" 3592 "sha256" "763e39563fa0940bcff330e7d13939a0110acf1045fbcbbcd30aaeef5678a80b"}]}
 ```
 
 ```kotlin [field-property box="text1_typography" name="code" path="text1_typography_code_.kt"]
-import afield.geometry.path.FLine
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // 5 · A room for words. One Slug run can contain multiple real faces and inline styles.
 val serif = Typefaces.named("Noto Serif", 100, strict = true)
@@ -548,14 +544,12 @@ void main() {
 <!-- field-box id="text1_example2" index="5" -->
 
 ```edn [field-box id="text1_example2" role="properties"]
-{"id" "text1_example2" "index" 5 "name" "3 · Constituency canopy" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "3 · Constituency canopy" "_tombstone" false "frame" #afield/rect [650.0 110.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example2_code_.kt" "lines" 162 "characters" 7208 "sha256" "508b402751019e19cb77aa99267be3c0a433957c9c41d65111b28af84cbdec1a"}]}
+{"id" "text1_example2" "index" 5 "name" "3 · Constituency canopy" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "3 · Constituency canopy" "_tombstone" false "frame" #afield/rect [650.0 110.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example2_code_.kt" "lines" 160 "characters" 7157 "sha256" "067c92752d8716bf5be50b28b07b57684572e13c81b65ecfdf0e098a177ea261"}]}
 ```
 
 ```kotlin [field-property box="text1_example2" name="code" path="text1_example2_code_.kt"]
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 import afield.graphics.text.sentences.*
-import kotlin.math.*
 
 // 2 · Complete canopy. Preserve the parser's tree, POS labels, word stems and dependency arcs.
 val parsed = Sentences.example(2)
@@ -721,14 +715,12 @@ prop<ReadingExample>(exampleTwo) = ReadingExample(
 <!-- field-box id="text1_example3" index="6" -->
 
 ```edn [field-box id="text1_example3" role="properties"]
-{"id" "text1_example3" "index" 6 "name" "4 · Dependency undertow" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "4 · Dependency undertow" "_tombstone" false "frame" #afield/rect [650.0 220.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example3_code_.kt" "lines" 89 "characters" 3957 "sha256" "24fda071c676682a7e43fdcba393d188f911e02e4c47d15ad7854380628daddc"}]}
+{"id" "text1_example3" "index" 6 "name" "4 · Dependency undertow" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "4 · Dependency undertow" "_tombstone" false "frame" #afield/rect [650.0 220.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example3_code_.kt" "lines" 87 "characters" 3906 "sha256" "7ea13930e3bdb564e73f8932897a48e565962c616dc7b39581ec457b2a08d1f9"}]}
 ```
 
 ```kotlin [field-property box="text1_example3" name="code" path="text1_example3_code_.kt"]
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 import afield.graphics.text.sentences.*
-import kotlin.math.*
 
 // 3 · Undertow. Nested dependency arcs, with independently scored labels and beads.
 val parsed = Sentences.example(3)
@@ -821,14 +813,12 @@ prop<ReadingExample>(exampleThree) = ReadingExample(
 <!-- field-box id="text1_example4" index="7" -->
 
 ```edn [field-box id="text1_example4" role="properties"]
-{"id" "text1_example4" "index" 7 "name" "5 · Sentence furniture" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "5 · Sentence furniture" "_tombstone" false "frame" #afield/rect [650.0 330.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example4_code_.kt" "lines" 80 "characters" 3948 "sha256" "a4c7ee172c124060c1525276e80d9c1db4ab6bbb2d6af66adeee288c5a84ce8c"}]}
+{"id" "text1_example4" "index" 7 "name" "5 · Sentence furniture" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "5 · Sentence furniture" "_tombstone" false "frame" #afield/rect [650.0 330.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example4_code_.kt" "lines" 78 "characters" 3897 "sha256" "abe428d27d8038aa48af48c54427a979468f49faa25b684a3bb34f849be9ca05"}]}
 ```
 
 ```kotlin [field-property box="text1_example4" name="code" path="text1_example4_code_.kt"]
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 import afield.graphics.text.sentences.*
-import kotlin.math.*
 
 // 4 · Sentence furniture. Reed-Kellogg shelves become a shallow spatial mobile, then a reading line.
 val parsed = Sentences.example(4)
@@ -969,12 +959,11 @@ void main() {
 <!-- field-box id="text1_poem" index="9" -->
 
 ```edn [field-box id="text1_poem" role="properties"]
-{"id" "text1_poem" "index" 9 "name" "2 · Marked breath" "parents" ["root" "text1_context"] "children" ["text1_score" "text1_drawing"] "properties" {"children" #{#afield/box "text1_score" #afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "2 · Marked breath" "_tombstone" false "frame" #afield/rect [650.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_poem_code_.kt" "lines" 68 "characters" 2842 "sha256" "d70a49bf9a0eb95e82d5ba5cd148e6421ca2a2f58f652777738832d41ff157ea"}]}
+{"id" "text1_poem" "index" 9 "name" "2 · Marked breath" "parents" ["root" "text1_context"] "children" ["text1_score" "text1_drawing"] "properties" {"children" #{#afield/box "text1_score" #afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "2 · Marked breath" "_tombstone" false "frame" #afield/rect [650.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_poem_code_.kt" "lines" 67 "characters" 2812 "sha256" "bcaa063d7525f83ae83f61c0b9f881b64f952d9bd86a468202fb40c8cfbd4952"}]}
 ```
 
 ```kotlin [field-property box="text1_poem" name="code" path="text1_poem_code_.kt"]
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 import afield.graphics.text.sentences.Sentences
 
 // 1 · Marked breath. Whole runs, two selected words and an arclength bead.
@@ -1048,7 +1037,7 @@ prop<ReadingExample>(exampleOne) = ReadingExample(
 <!-- field-box id="text1_score" index="10" -->
 
 ```edn [field-box id="text1_score" role="properties"]
-{"id" "text1_score" "index" 10 "name" "6 · Scores / example selector" "parents" ["root" "text1_poem" "text1_example2" "text1_example3" "text1_example4" "text1_typography" "text1_word_blur"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4" #afield/box "text1_typography" #afield/box "text1_word_blur"} "name" "6 · Scores / example selector" "_tombstone" false "frame" #afield/rect [1200.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_score_code_.kt" "lines" 98 "characters" 4238 "sha256" "3d2932494d7703b8465f4de769a080d3989bba70d6a91eafbc7726372d405ed8"}]}
+{"id" "text1_score" "index" 10 "name" "6 · Scores / example selector" "parents" ["root" "text1_poem" "text1_example2" "text1_example3" "text1_example4" "text1_typography" "text1_word_blur"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4" #afield/box "text1_typography" #afield/box "text1_word_blur"} "name" "6 · Scores / example selector" "_tombstone" false "frame" #afield/rect [1200.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_score_code_.kt" "lines" 98 "characters" 4232 "sha256" "963ad76f2b0094227e4f597e254ed71ffa3a3dc6e18883cf47af1f9afa9eb69c"}]}
 ```
 
 ```kotlin [field-property box="text1_score" name="code" path="text1_score_code_.kt"]
@@ -1056,7 +1045,7 @@ import afield.graphics.scene.reading.*
 
 // All six scores are separate from graph construction and native typography preparation.
 // Re-run this box to rescore the existing players; their physics and Slug buffers are retained.
-val allExamples = listOf(exampleOne, exampleTwo, exampleThree, exampleFour, exampleFive, exampleSix)
+val allExamples = [exampleOne, exampleTwo, exampleThree, exampleFour, exampleFive, exampleSix]
 for ((index, example) in allExamples.withIndex()) {
     val graph = example.player.diagram
     example.player.playback.score = diagramScore(graph, duration = if (index == 5) 32.0 else if (index == 3) 24.0 else 20.0) {

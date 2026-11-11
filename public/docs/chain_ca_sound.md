@@ -171,8 +171,7 @@ val rows =
     CaSoundDocs.CONDENSATION_SURVEY.zip(bars)
         .sortedByDescending { (_, bar) -> bar.compression }
         .joinToString("\n") { (rule, bar) ->
-            "| $rule | ${bar.onsets} of ${bar.steps} | ${bar.compression.f2} | " +
-                "`${bar.condensation.notation}` |"
+            "| $rule | ${bar.onsets} of ${bar.steps} | ${bar.compression.f2} | " + "`${bar.condensation.notation}` |"
         }
 markdown(
     "survey",
@@ -208,3 +207,9 @@ notation ends up sorting the rules the same way the usual classification does.
 * [Boolean Network Music Examples](boolean_network_music_examples.md) is the neighbouring chain: a
   different discrete dynamical system, into `NoteProcess` and live Dirt triggers rather than into
   notation.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`CaSoundDocs.centreColumnBar`](reference/patterns.md#casounddocs-kt--casounddocs--centrecolumnbar)

@@ -11,11 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="video1_context" index="0" -->
 
 ```edn [field-box id="video1_context" role="properties"]
-{"id" "video1_context" "index" 0 "name" "1 · Headset / preview / Field pane" "parents" ["root"] "children" ["video1_screen"] "properties" {"children" #{#afield/box "video1_screen"} "parents" #{#afield/box "root"} "name" "1 · Headset / preview / Field pane" "_tombstone" false "frame" #afield/rect [0.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "video1_context_code_.kt" "lines" 120 "characters" 5121 "sha256" "86e8f77e3a2b9ebbe44dcf751aa6f8fbb5dd505b1ee69d617f432108a10c9e86"}]}
+{"id" "video1_context" "index" 0 "name" "1 · Headset / preview / Field pane" "parents" ["root"] "children" ["video1_screen"] "properties" {"children" #{#afield/box "video1_screen"} "parents" #{#afield/box "root"} "name" "1 · Headset / preview / Field pane" "_tombstone" false "frame" #afield/rect [0.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "video1_context_code_.kt" "lines" 119 "characters" 5081 "sha256" "9b8969e4ea3e516c46cfda41b87af770125e414b2823a408d55d858e1a0d934c"}]}
 ```
 
 ```kotlin [field-property box="video1_context" name="code" path="video1_context_code_.kt"]
-import afield.graphics.vulkan.targets.*
 import afield.graphics.vulkan.util.Options
 import afield.media.browser.*
 
@@ -142,13 +141,11 @@ loop { frame() }
 <!-- field-box id="video1_screen" index="1" -->
 
 ```edn [field-box id="video1_screen" role="properties"]
-{"id" "video1_screen" "index" 1 "name" "2 · Stereo screen placement" "parents" ["root" "video1_context"] "children" ["video1_shader" "video1_playback" "video1_accumulation"] "properties" {"children" #{#afield/box "video1_shader" #afield/box "video1_playback" #afield/box "video1_accumulation"} "parents" #{#afield/box "root" #afield/box "video1_context"} "name" "2 · Stereo screen placement" "_tombstone" false "frame" #afield/rect [600.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "video1_screen_code_.kt" "lines" 90 "characters" 3559 "sha256" "1b2ec479108c145df5b0241db0b606791441fa2a7cf70c8fd5b4baa197b27612"}]}
+{"id" "video1_screen" "index" 1 "name" "2 · Stereo screen placement" "parents" ["root" "video1_context"] "children" ["video1_shader" "video1_playback" "video1_accumulation"] "properties" {"children" #{#afield/box "video1_shader" #afield/box "video1_playback" #afield/box "video1_accumulation"} "parents" #{#afield/box "root" #afield/box "video1_context"} "name" "2 · Stereo screen placement" "_tombstone" false "frame" #afield/rect [600.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "video1_screen_code_.kt" "lines" 88 "characters" 3472 "sha256" "c3139ba6efcb73b0e5171a33dc6b05f74d2877f68a973a43709a67bf946aa7f3"}]}
 ```
 
 ```kotlin [field-property box="video1_screen" name="code" path="video1_screen_code_.kt"]
 import afield.graphics.scene.video.*
-import afield.ui.output.ControlGroupBuilder
-import afield.ui.output.ControlValueHandle
 
 // One movie owns decoding and uploads; box 4 owns its editable graphics pipeline.
 prop<StereoVideoSurface>(movie) = StereoVideoSurface(renderer, stereo, automaticDrawing = false)
@@ -448,13 +445,18 @@ void main() {
 
 <!-- field-box id="video1_playback" index="4" -->
 
+### Narrative
+
+From `code`
+
+A local path, with ~ expansion; changing this field alone does not reopen the decoder.
+The checkout ships an original stereo calibration movie; an environment override selects yours.
+
 ```edn [field-box id="video1_playback" role="properties"]
-{"id" "video1_playback" "index" 4 "name" "3 · Movie / transport" "parents" ["root" "video1_shader" "video1_screen"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "video1_shader" #afield/box "video1_screen"} "name" "3 · Movie / transport" "_tombstone" false "frame" #afield/rect [1200.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "video1_playback_code_.kt" "lines" 221 "characters" 9218 "sha256" "026424cd3abadfd045a7f1af41791054e8c6768d9d8a85d746935cb140580966"}]}
+{"id" "video1_playback" "index" 4 "name" "3 · Movie / transport" "parents" ["root" "video1_shader" "video1_screen"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "video1_shader" #afield/box "video1_screen"} "name" "3 · Movie / transport" "_tombstone" false "frame" #afield/rect [1200.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "video1_playback_code_.kt" "lines" 219 "characters" 9174 "sha256" "b92ec2fd9f8dbe77e8eaf9085d45103ccd87b3f3c3c4288811354ae1663e64f5"}]}
 ```
 
 ```kotlin [field-property box="video1_playback" name="code" path="video1_playback_code_.kt"]
-import afield.ui.output.ControlValueHandle
-
 // A local path, with ~ expansion; changing this field alone does not reopen the decoder.
 // The checkout ships an original stereo calibration movie; an environment override selects yours.
 var selectedFile =

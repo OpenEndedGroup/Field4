@@ -89,11 +89,7 @@ comes back unturned, and going round a knot turns it, so SolidCraft refuses the 
 surface: a loft through three spline sections, which leaves an open, wavy sheet rather than a solid.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/building-three-parts.png" alt="An output panel of three grey triangle meshes side by side, each with a fact line beneath it. Left, 'sweep with a flaring rail': a square-sectioned solid that widens evenly from 8 to 24 mm as it rises 60 mm, extent 24 × 24 × 60, volume 16640. Middle, 'trefoil knot from an FLine': a round tube tied in a three-lobed knot, passing over and under itself, its two capped ends almost touching at the bottom; watertight, genus 0, volume 4479.4. Right, 'surface loft': a single wavy open sheet." wait="4" capture="box" open-outputs="true" padding="20" requires="solidcraft" name="building-three-parts" embed=true}
-import afield.geometry.path.FLine
 import afield.geometry.solid.solidcraft.solidCraft
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 val flared = solidCraft("Flared") {
     val section = sketch("XY") { rectangle(-4.0, -4.0, 4.0, 4.0) }
@@ -154,9 +150,6 @@ knot's freeform halves.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/sweep-profile.png" alt="three meshes with fact lines. Left, an 8 mm square swept square to a 60 mm path: extent 8 × 8 × 60, volume 3840. Middle, the same square with the path 27° off: a sheared prism, volume 3421, which is 3840 × cos 27°. Right, a ring of two joined half sweeps: watertight, genus 1." wait="4" capture="box" open-outputs="true" padding="20" requires="solidcraft" name="solidcraft-sweep-profile" embed=true}
 import afield.geometry.solid.solidcraft.SolidCraftOperation
 import afield.geometry.solid.solidcraft.solidCraft
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 // The same 8 mm square swept 60 mm, once square to the path and once with the path 27° off.
 val square = solidCraft("Square") {

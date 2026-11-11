@@ -1,7 +1,7 @@
 import afield.media.video.diffusion.*
 
 // Connect this box beneath a running renderer box before launching it.
-val owner: Renderer = fromContext()
+val owner = renderer
 prop<SpinningDiffusionDemo>(diffusionDemo)
 fromContextWithNameOrNull<SpinningDiffusionDemo>("diffusionDemo")?.close()
 

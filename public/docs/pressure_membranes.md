@@ -74,12 +74,22 @@ import afield.simulation.physics.pressure.*
 
 // An octahedron with each face cut into n x n flat triangles, so the pressure has facets to round out.
 val n = 6
-val corners = [P3(1.0, 0.0, 0.0), P3(-1.0, 0.0, 0.0), P3(0.0, 1.0, 0.0), P3(0.0, -1.0, 0.0), P3(0.0, 0.0, 1.0), P3(0.0, 0.0, -1.0)]
+val corners = [
+    P3(1.0, 0.0, 0.0),
+    P3(-1.0, 0.0, 0.0),
+    P3(0.0, 1.0, 0.0),
+    P3(0.0, -1.0, 0.0),
+    P3(0.0, 0.0, 1.0),
+    P3(0.0, 0.0, -1.0),
+]
 val points = mutableListOf<P3>()
 val index = mutableMapOf<String, Int>()
 fun node(p: P3): Int {
     val key = [p.x, p.y, p.z].map { Math.round(it * 1e6) }.toString()
-    return index.getOrPut(key) { points.add(p); points.size - 1 }
+    return index.getOrPut(key) {
+        points.add(p)
+        points.size - 1
+    }
 }
 val film = Film(young = 1e6, poisson = .3, thickness = 1e-3, density = 100.0)
 val triangles = mutableListOf<PanelTriangle>()
@@ -90,8 +100,16 @@ fun face(a: P3, b: P3, c: P3) {
     fun tri(i0: Int, i1: Int, i2: Int) {
         val e = points[i1] - points[i0]
         val f = points[i2] - points[i0]
-        triangles.add(PanelTriangle(i0, i1, i2, "skin",
-            doubleArrayOf(0.0, 0.0, e.norm(), 0.0, f.dot(e.unit()), f.cross(e.unit()).norm()), film))
+        triangles.add(
+            PanelTriangle(
+                i0,
+                i1,
+                i2,
+                "skin",
+                doubleArrayOf(0.0, 0.0, e.norm(), 0.0, f.dot(e.unit()), f.cross(e.unit()).norm()),
+                film,
+            ),
+        )
     }
     for (i in 0 until n) for (j in 0 until n - i) {
         tri(at(i, j), at(i + 1, j), at(i, j + 1))
@@ -105,16 +123,15 @@ val solution = InflationSolver.solve(envelope, LoadCase(pressure = 200.0))
 markdown("${points.size} nodes, ${triangles.size} triangles: ${solution.reason}; residual ${solution.residualN} N")
 
 :::fold draw the mesh before and after, side on
-fun wire(xyz: DoubleArray, dx: Double) =
-    triangles.map { t ->
-        FLine().apply {
-            [t.a, t.b, t.c, t.a].forEachIndexed { k, i ->
-                val x = dx + (xyz[3 * i] - xyz[3 * i + 2] * 0.35) * 120.0
-                val y = (xyz[3 * i + 2] * 0.2 - xyz[3 * i + 1]) * 120.0
-                if (k == 0) moveTo(x, y) else lineTo(x, y)
-            }
+fun wire(xyz: DoubleArray, dx: Double) = triangles.map { t ->
+    FLine().apply {
+        [t.a, t.b, t.c, t.a].forEachIndexed { k, i ->
+            val x = dx + (xyz[3 * i] - xyz[3 * i + 2] * 0.35) * 120.0
+            val y = (xyz[3 * i + 2] * 0.2 - xyz[3 * i + 1]) * 120.0
+            if (k == 0) moveTo(x, y) else lineTo(x, y)
         }
     }
+}
 
 :::endfold
 lines(wire(envelope.initial, 0.0) + wire(solution.positions, 340.0), w = 680.0, h = 300.0, fitToSize = true)
@@ -162,3 +179,10 @@ trusting a visually smooth result.
     Independent tests cover analytic force derivatives, packed/reference agreement across
     material branches, sealed gas, translation invariance, mesh validation, cancellation,
     and convergence toward the spherical Laplace pressure law under mesh refinement.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`InflationSolver.solve`](reference/simulation.md#solver-kt--inflationsolver--solve)
+- [`InflationSolver`](reference/simulation.md#solver-kt-inflationsolver)

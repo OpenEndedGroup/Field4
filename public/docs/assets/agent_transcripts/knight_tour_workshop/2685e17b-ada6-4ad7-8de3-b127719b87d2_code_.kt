@@ -1,6 +1,3 @@
-import afield.ui.output.displayClear
-import kotlin.math.*
-
 // Selection in the parent's computed rows (0: exhaustive, 1: rotation, 2: random).
 // Change either selector and rerun this box; no tour search or arc sampling is repeated.
 val sourceRow = 0
