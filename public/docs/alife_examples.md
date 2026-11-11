@@ -2466,13 +2466,15 @@ showImg(grainScoreImg(best, 640, 220), channel = "score", caption = "the best se
 display("audio", renderGrains(best).wav())
 ```
 
-![three panels: a blue best-so-far line rising in steps from about 0.3 to near 1; a grid of five yellow trapezoid curves each with a vertical marker on or near its plateau; and a dense multi-coloured piano-roll of the evolved grain set](assets/alife_examples/grains-evolve.png)
+![three panels: a blue best-so-far line rising in steps toward 1; a grid of five yellow trapezoid curves each with a vertical marker on or near its plateau; and a dense multi-coloured piano-roll of the evolved grain set](assets/alife_examples/grains-evolve.png)
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-evolved.wav" audio-spec="evolved" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" embed=true hidden=true name="alife-grains-evolved-audio"}
 // Offline-rendered by GrainSetSoundDocs.renderWav("evolved").
 ```
 
-The automatic run optimises what the trapezoids say, which is not the same as what sounds good. The
+The automatic run optimises what the trapezoids say, which is not the same as what sounds good: with
+the default terms the winners tend toward one long overlapping trunk at a single pitch, a drone that
+counts as polyphony. Add a term against it, or listen instead. The
 other half of EvoGrain is **interactive evolution**: you listen and choose the parents.
 `GrainBreeder` holds a population of six grammars; `breed([2, 4])` keeps the chosen parents and fills
 the rest with their crossovers, each mutated once. The same seed and the same choices replay the same
