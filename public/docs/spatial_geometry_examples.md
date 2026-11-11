@@ -1268,6 +1268,9 @@ goes *up* slightly. The stray now belongs to a real cluster, its squared distanc
 is the outlier argument from the start of this section. Revival gives you `k` useful clusters, not
 a lower error.
 
+Both boxes are in the [Lloyd vs e-means starting point](agent_transcripts.md#kmeans_emeans): open
+it, change `k` or the epoch counts, and run them again.
+
 ## Up one dimension
 
 `voronoi.kt` does the exact unweighted construction in **3D**, by half-space clipping: for each site,
