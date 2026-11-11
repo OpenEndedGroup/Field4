@@ -314,13 +314,19 @@ def _took(item: dict) -> float | None:
     return (end - start).total_seconds() if start and end else None
 
 
+_ATTEMPT_HEADER = re.compile(r"=== \d{4}-\d\d-\d\dT")
+
+
 def _log_lines(item: dict) -> list[str]:
     try:
         text = Path(item["log"]).read_text(errors="replace").splitlines()
     except (KeyError, OSError):
         return []
-    # Only the latest attempt: a landing that restarted after main moved begins again at "===".
-    starts = [i for i, line in enumerate(text) if line.startswith("=== ")]
+    # Only the latest attempt: a landing that restarted after main moved begins again at the dated
+    # "=== <ISO time> <batch>" header. Only that header: tools/run_python_tests.py prints
+    # "=== tools.test_x" before each suite, which once made every Gradle line look like an
+    # earlier attempt, so `status` said "(no Gradle)" for a landing whose guard build ran.
+    starts = [i for i, line in enumerate(text) if _ATTEMPT_HEADER.match(line)]
     return [line for line in text[starts[-1] if starts else 0 :] if line.strip()]
 
 

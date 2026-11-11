@@ -732,5 +732,29 @@ class StatusFramesStayCheap(unittest.TestCase):
                 self.assertTrue(land._ran_gradle(item), "a log that grew must be read again")
                 self.assertEqual(read.call_count, 2)
 
+
+class LogAttemptsStartAtTheLanderHeader(unittest.TestCase):
+    """Only the lander's dated header starts an attempt, not a suite header in the guard output."""
+
+    def test_python_suite_headers_do_not_hide_the_gradle_build(self):
+        from unittest import mock
+        from tools import land
+        with tempfile.TemporaryDirectory() as tmp:
+            log = Path(tmp, "batch.log")
+            log.write_text(
+                "=== 2026-11-10T23:00:00+01:00 batch-1: 1 branch(es) onto main aaa\n"
+                "first attempt\n"
+                "=== 2026-11-11T01:56:43+01:00 batch-1: 1 branch(es) onto main bbb\n"
+                "> Task :checkPythonTools\n"
+                "=== tools.test_run_python_tests\n"
+                "ok\n")
+            item = {"id": "x", "branch": "b", "log": str(log)}
+            lines = land._log_lines(item)
+            self.assertNotIn("first attempt", lines, "the earlier attempt leaked in")
+            self.assertIn("> Task :checkPythonTools", lines)
+            with mock.patch.object(land, "_RAN_GRADLE", {}):
+                self.assertTrue(land._ran_gradle(item))
+
+
 if __name__ == "__main__":
     unittest.main()
