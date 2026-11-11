@@ -837,6 +837,19 @@ rules side by side on a ring. From the measuring sections of [Drawing with FLine
 
 [Open →](offline.html?file=assets/agent_transcripts/fline_measure/metadata.edn)
 
+### clothoid_spline
+
+**Curvature-continuous splines.** Three boxes: `clothoidSplineFrom` and `cubicSplineFrom` through the
+same eight points, with curvature combs and curvature plotted against distance; seven points on a
+circle giving the circle back; and a closed round shape with its comb. From [Drawing with
+FLines](fline_examples.md#curvature-continuous-splines-clothoidsplinefrom).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/clothoid_spline.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="120" padding="12" name="gallery-clothoid-spline" alt="A rounded closed shape in blue through six white points, with grey curvature teeth along its inside" macro-file="../../dev_docs/agents/transcripts/clothoid_spline.yaml" capture-box="clothoid-spline-shape"}
+// The transcript builds and runs all three boxes; this is the closed-shape box.
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/clothoid_spline/metadata.edn)
+
 ### fline_exact_booleans
 
 **Exact booleans and cubic offsets, side by side with the old paths.** Two boxes, each with a dot on every node: the union and difference of a blob and a circle through `Area` and through `booleanExact`, and a star and an S-curve offset by `byOffsetting` and by `byOffsettingExact`. From [Drawing with FLines](fline_examples.md#exact-booleans-and-offsets).

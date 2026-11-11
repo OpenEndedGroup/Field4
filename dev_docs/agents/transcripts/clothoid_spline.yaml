@@ -1,0 +1,121 @@
+name: clothoid_spline
+description: >
+  Curvature-continuous splines through points, the companion to the "Curvature-continuous
+  splines" section of `public/docs/fline_examples.md`. Three boxes: clothoidSplineFrom against
+  cubicSplineFrom on the same eight points with curvature combs and plots; seven points on a
+  circle giving the circle back; and a closed round shape with its comb. Run each box; each draws into `lines`.
+docs:
+  - page: fline_examples.md#curvature-continuous-splines-clothoidsplinefrom
+    why: "The section these boxes accompany."
+operations:
+  - create:
+      box: clothoid-spline-vs-cubic
+      name: 1 - Clothoid vs cubic, with combs
+      frame:
+        x: 60.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val knots = (0..7).map { i -> vec(40 + i * 50, 130 + 70 * kotlin.math.sin(i * 0.9)) }
+
+          val cubic = cubicSplineFrom(knots).apply {
+              thickness = 3.0
+              color = vec(1.0, 0.7, 0.3, 1.0)
+          }
+          val clothoid = clothoidSplineFrom(knots).apply {
+              thickness = 3.0
+              color = vec(0.5, 0.8, 1.0, 1.0)
+          }
+
+          val cubicComb = cubic.curvatureComb(scale = 1500.0).apply { color = vec(1.0, 0.7, 0.3, 0.5) }
+          val clothoidComb = clothoid.curvatureComb(scale = 1500.0).apply { color = vec(0.5, 0.8, 1.0, 0.5) }
+
+          // curvature against distance, cubic above, clothoid below
+          val cubicPlot = (cubic.curvaturePlot(400.0, 70.0, maxCurvature = 0.05) + vec(20, 240)).apply {
+              thickness = 2.0
+              color = vec(1.0, 0.7, 0.3, 1.0)
+          }
+          val clothoidPlot = (clothoid.curvaturePlot(400.0, 70.0, maxCurvature = 0.05) + vec(20, 320)).apply {
+              thickness = 2.0
+              color = vec(0.5, 0.8, 1.0, 1.0)
+          }
+
+          val dots = polylineFrom(knots).apply {
+              stroked = false
+              pointed = true
+              pointSize = 2.0
+              color = vec(1.0, 1.0, 1.0, 1.0)
+          }
+
+          lines(cubicComb, clothoidComb, cubic, clothoid, dots, cubicPlot, clothoidPlot, w = 420.0, h = 400.0, fitToSize = true)
+  - create:
+      box: clothoid-spline-circle
+      name: 2 - Points on a circle
+      frame:
+        x: 540.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val knots =
+              (0 until 7).map { i ->
+                  val a = 2 * kotlin.math.PI * i / 7 + 0.3 * kotlin.math.sin(i * 1.7)
+                  vec(200 + 100 * kotlin.math.cos(a), 150 + 100 * kotlin.math.sin(a))
+              }
+
+          val round = clothoidSplineFrom(knots, closed = true).apply {
+              thickness = 3.0
+              color = vec(0.5, 0.8, 1.0, 1.0)
+          }
+          val cubic = cubicSplineFrom(knots, closed = true).apply {
+              thickness = 1.5
+              color = vec(1.0, 0.7, 0.3, 0.9)
+          }
+          val comb = round.curvatureComb(scale = 2000.0, samples = 140).apply { color = vec(0.5, 0.8, 1.0, 0.4) }
+
+          lines(comb, cubic, round, w = 420.0, h = 320.0, fitToSize = true)
+  - create:
+      box: clothoid-spline-shape
+      name: 3 - A closed round shape
+      frame:
+        x: 1020.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val knots = [vec(60, 80), vec(200, 40), vec(330, 110), vec(300, 240), vec(170, 200), vec(80, 260)]
+
+          val shape = clothoidSplineFrom(knots, closed = true).apply {
+              thickness = 3.0
+              color = vec(0.5, 0.8, 1.0, 1.0)
+          }
+          val fill = shape.copy().apply {
+              stroked = false
+              filled = true
+              color = vec(0.5, 0.8, 1.0, 0.15)
+          }
+          val comb = shape.curvatureComb(scale = 1200.0, samples = 200).apply { color = vec(1.0, 1.0, 1.0, 0.35) }
+          val dots = polylineFrom(knots).apply {
+              stroked = false
+              pointed = true
+              pointSize = 2.0
+              color = vec(1.0, 1.0, 1.0, 1.0)
+          }
+
+          lines(fill, comb, shape, dots, w = 420.0, h = 320.0, fitToSize = true)
+  - execute:
+      box: clothoid-spline-vs-cubic
+      property: code
+      type: fragment
+  - execute:
+      box: clothoid-spline-circle
+      property: code
+      type: fragment
+  - execute:
+      box: clothoid-spline-shape
+      property: code
+      type: fragment
