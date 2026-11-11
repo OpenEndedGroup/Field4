@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 2 — Evolving toward a statistical profile
@@ -128,9 +128,136 @@ fun show() {
 show()
 ```
 
-## 3. 1 — An L-system read as grains
+## 3. 6 — A map of grain sets: MAP-Elites
 
-<!-- field-box id="grains_decode" index="2" -->
+<!-- field-box id="grains_map" index="2" -->
+
+### Narrative
+
+From `code`
+
+MAP-Elites over pitch spread and polyphony: the best set of each kind, not one winner.
+
+```edn [field-box id="grains_map" role="properties"]
+{"id" "grains_map" "index" 2 "name" "6 — A map of grain sets: MAP-Elites" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — A map of grain sets: MAP-Elites" "_tombstone" false "frame" #afield/rect [540.0 340.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "grains_map_code_.kt" "lines" 31 "characters" 1090 "sha256" "e66394bd150c021ebd742290c70d89c6a1ab7bb626f75c492bb2b11b10467374"}]}
+```
+
+```kotlin [field-property box="grains_map" name="code" path="grains_map_code_.kt"]
+// MAP-Elites over pitch spread and polyphony: the best set of each kind, not one winner.
+val axes = [GrainStat.PITCH_SPREAD, GrainStat.POLYPHONY]
+val map = PopulationSearch.mapElites(
+    grainLSystemGenome(),
+    grainSetObjective(behaviour = axes),
+    budget = 800,
+    axes = [0.0..12.0, 0.0..6.0],
+    bins = [4, 4],
+    seed = 1L,
+)
+println(map)
+
+// One score per cell: spread grows to the right, polyphony upward.
+val panels =
+    (3 downTo 0).flatMap { row ->
+        (0..3).map { col ->
+            val elite = map.elites[[col, row]]
+            if (elite == null) {
+                "empty" to Img.zeros(240, 120, 3)
+            } else {
+                val grains = decodeGrains(elite.genome, 3)
+                val st = GrainSetStats(grains)
+                "%.1f st  x%.1f  %.2f".format(st.pitchSpread, st.polyphony, elite.fitness) to
+                    grainScoreImg(grains, 240, 120)
+            }
+        }
+    }
+showImg(
+    montage(panels, columns = 4, cellSide = 240, textScale = 2),
+    caption = "pitch spread across, polyphony up; trapezoid fitness in each label",
+)
+```
+
+## 4. 4 — Shaping grains: length, density, pan, and a silent X
+
+<!-- field-box id="grains_shape" index="3" -->
+
+### Narrative
+
+From `code`
+
+< and > make the grains that follow shorter or longer, * and / denser or sparser,
+l and r move them left or right. X is rewritten like G but never plays.
+
+```edn [field-box id="grains_shape" role="properties"]
+{"id" "grains_shape" "index" 3 "name" "4 — Shaping grains: length, density, pan, and a silent X" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — Shaping grains: length, density, pan, and a silent X" "_tombstone" false "frame" #afield/rect [540.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "grains_shape_code_.kt" "lines" 8 "characters" 527 "sha256" "5249478f1709158cf466fd1fbb3a4c21fc2cb4fc135923a6e616e571abfe3ce9"}]}
+```
+
+```kotlin [field-property box="grains_shape" name="code" path="grains_shape_code_.kt"]
+// < and > make the grains that follow shorter or longer, * and / denser or sparser,
+// l and r move them left or right. X is rewritten like G but never plays.
+val system = lSystem("G", 'G' to "G[lX]-*<G", 'X' to "+>G/X")
+for ((i, s) in system.derivations(2).withIndex()) println("gen $i: $s")
+val grains = decodeGrains(system, 4)
+println(GrainSetStats(grains))
+showImg(grainScoreImg(grains, 640, 220), caption = "gen 4: the trunk falls and quickens; each branch climbs and slows")
+display("audio", renderGrains(grains).wav())
+```
+
+## 5. 5 — A target taken from a recording
+
+<!-- field-box id="grains_recording" index="4" -->
+
+### Narrative
+
+From `code`
+
+The recording: Tidal's eleven arpy samples back to back, a rising scale.
+
+```edn [field-box id="grains_recording" role="properties"]
+{"id" "grains_recording" "index" 4 "name" "5 — A target taken from a recording" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — A target taken from a recording" "_tombstone" false "frame" #afield/rect [540.0 200.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "grains_recording_code_.kt" "lines" 36 "characters" 1659 "sha256" "e7b44f52aac9d23f41e306bfe1a1f778c73d73295594e5c97d7ac1c86c1d53c1"}]}
+```
+
+```kotlin [field-property box="grains_recording" name="code" path="grains_recording_code_.kt"]
+// The recording: Tidal's eleven arpy samples back to back, a rising scale.
+val arpy = DirtRender.requirePinnedLibrary().family("arpy")!!
+val notes = (0 until arpy.size).map { arpy.sample(it)!! }
+val rate = notes[0].sampleRate.toInt()
+val recording = notes.flatMap { it.left.asList() }.toFloatArray()
+
+// Read it as grains, and centre a trapezoid on each of its statistics.
+val heard = grainsFromAudio(recording, rate, minHz = 100.0)
+val target = GrainSetStats(heard)
+println("recording: $target")
+val terms = grainTermsAround(target)
+
+fun search(alphabet: String, seed: Long) = PopulationSearch.evolve(
+    grainLSystemGenome(alphabet = alphabet),
+    grainSetObjective(terms),
+    budget = 600,
+    seed = seed,
+    crossoverRate = 0.3,
+    immigrantRate = 0.1,
+    label = "toward arpy",
+)
+
+// The plain alphabet against the one with < > * / l r, over eight seeds each.
+for (alphabet in [GRAIN_ALPHABET, GRAIN_ALPHABET_EXTENDED]) {
+    val bests = (1L..8L).map { search(alphabet, it).bestFitness }
+    println("%-14s mean best %.3f, worst %.3f".format(alphabet, bests.average(), bests.min()))
+}
+
+val run = search(GRAIN_ALPHABET_EXTENDED, 7L)
+val best = decodeGrains(run.best!!.genome, 3)
+println(grainRule(run.best!!.genome))
+println("evolved:   " + GrainSetStats(best))
+showImg(grainScoreImg(heard, 640, 160), channel = "recording", caption = "the recording, read as grains")
+showImg(grainScoreImg(best, 640, 160), channel = "score", caption = "the evolved set")
+// Played from the first arpy note, which the detector heard at this pitch.
+display("audio", renderGrains(best, source = notes[0].left, sourceRate = rate, sourcePitch = heard[0].pitch).wav())
+```
+
+## 6. 1 — An L-system read as grains
+
+<!-- field-box id="grains_decode" index="5" -->
 
 ### Narrative
 
@@ -140,7 +267,7 @@ G plays a grain and moves on in time, f rests, + and - step the pitch,
 [ and ] save and restore time and pitch, so each bracket is a new voice.
 
 ```edn [field-box id="grains_decode" role="properties"]
-{"id" "grains_decode" "index" 2 "name" "1 — An L-system read as grains" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — An L-system read as grains" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "grains_decode_code_.kt" "lines" 8 "characters" 492 "sha256" "8187a82358e1e82627976ee77a66ee204be9e5878d0c3a42abb9bdf81cde3b5f"}]}
+{"id" "grains_decode" "index" 5 "name" "1 — An L-system read as grains" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — An L-system read as grains" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "grains_decode_code_.kt" "lines" 8 "characters" 492 "sha256" "8187a82358e1e82627976ee77a66ee204be9e5878d0c3a42abb9bdf81cde3b5f"}]}
 ```
 
 ```kotlin [field-property box="grains_decode" name="code" path="grains_decode_code_.kt"]
