@@ -8,7 +8,7 @@ compile an atlas, read GPU pixels or wait for a GPU fence.
 val frame = player.frame()
 val run = player.diagram.text("sentence")
 val whole = frame.measure(run)
-val water = frame.measure(run.word("water"))
+val water = frame.measure(run.word("earth"))
 ```
 
 `player.frame(time)` evaluates the score at the supplied time while using the particle
@@ -46,7 +46,7 @@ Runs and selections expose:
 
 ```kotlin
 val ink = run.inkBounds
-val body = run.word("water").bodyBounds
+val body = run.word("earth").bodyBounds
 val em = run.emBounds
 val caps = run.capBounds
 val lowercase = run.xHeightBounds
@@ -62,8 +62,8 @@ the run and follow item/score scale. A box is a rectangle in the text's own axes
 axis-aligned bounding box enclosing a rotated rectangle.
 
 ```kotlin
-val top = frame.position(run.word("water").inkBounds.top)
-val baseline = frame.position(run.word("water").baseline)
+val top = frame.position(run.word("earth").inkBounds.top)
+val baseline = frame.position(run.word("earth").baseline)
 ```
 
 The older convenience anchors `left`, `right` and `center` sit 35% up the font ascent;
@@ -74,9 +74,9 @@ The older convenience anchors `left`, `right` and `center` sit 35% up the font a
 ## Words, carets and multiple lines
 
 ```kotlin
-val firstWater = run.word("water")
-val secondWater = run.word("water", occurrence = 1) // only if that word occurs twice
-val literal = run.span("quiet water")
+val firstWater = run.word("earth")
+val secondWater = run.word("earth", occurrence = 1) // only if that word occurs twice
+val literal = run.span("the earth")
 val tokens = run.words
 val caret = run.caret(4)
 ```
@@ -92,9 +92,9 @@ for one line's own metrics and anchors. Empty lines do not contain a selectable 
 ## Font units and metre offsets
 
 ```kotlin
-val local = run.word("water").local(x = 10, y = 20)
-val spaced = run.word("water").baselineRight.alongText(run, x = .012f)
-val worldUp = run.word("water").baselineRight.offset(y = .012f)
+val local = run.word("earth").local(x = 10, y = 20)
+val spaced = run.word("earth").baselineRight.alongText(run, x = .012f)
+val worldUp = run.word("earth").baselineRight.offset(y = .012f)
 ```
 
 `local` uses font units from the selection's baseline-left. `alongText` uses metres in the

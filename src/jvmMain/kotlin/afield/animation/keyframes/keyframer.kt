@@ -1630,6 +1630,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
 /**
  * Put one `Double` local in a scope and on a visible slider, with either direction keeping the other
  * two in step. UI gestures call [set]; applying a key calls [set] and moves the visible control.
+ * [unit] is the displayed unit symbol or KotUniL expression; key values stay in that unit.
  */
 fun ControlGroupBuilder.keyframeSlider(
     scope: KeyframeScope,
@@ -1643,6 +1644,7 @@ fun ControlGroupBuilder.keyframeSlider(
     lawCenter: Double = (min + max) / 2,
     significantDigits: Int = defaultSignificantDigits(law),
     hoverText: String? = null,
+    unit: Any? = null,
     get: () -> Double,
     set: (Double) -> Unit
 ): ControlValueHandle<Double> {
@@ -1657,6 +1659,7 @@ fun ControlGroupBuilder.keyframeSlider(
         lawCenter = lawCenter,
         significantDigits = significantDigits,
         hoverText = hoverText,
+        unit = unit,
         onUpdate = set
     )
     scope.doubleTarget(name, get) { value ->
@@ -1679,6 +1682,7 @@ fun ControlGroupBuilder.keyframeFloatSlider(
     lawCenter: Double = (min + max) / 2,
     significantDigits: Int = defaultSignificantDigits(law),
     hoverText: String? = null,
+    unit: Any? = null,
     get: () -> Float,
     set: (Float) -> Unit
 ): ControlValueHandle<Double> {
@@ -1693,6 +1697,7 @@ fun ControlGroupBuilder.keyframeFloatSlider(
         lawCenter = lawCenter,
         significantDigits = significantDigits,
         hoverText = hoverText,
+        unit = unit,
         onUpdate = { set(it.toFloat()) }
     )
     scope.floatTarget(name, get) { value ->

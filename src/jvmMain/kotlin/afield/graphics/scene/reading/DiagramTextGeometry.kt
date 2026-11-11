@@ -33,6 +33,8 @@ data class DiagramTextRect(val left: Float, val bottom: Float, val right: Float,
 
 enum class DiagramBoundsKind {
     INK,
+    /** Actual ink plus the final baseline: descent is reserved only where glyphs use it. */
+    FRAME,
     NO_DESCENDERS,
     EM,
     CAPS,
@@ -66,6 +68,7 @@ data class DiagramTextMetrics(
     fun bounds(kind: DiagramBoundsKind): DiagramTextRect =
         when (kind) {
             DiagramBoundsKind.INK -> ink
+            DiagramBoundsKind.FRAME -> DiagramTextRect(ink.left, min(ink.bottom, lastBaseline), ink.right, ink.top)
             DiagramBoundsKind.NO_DESCENDERS -> noDescenders
             DiagramBoundsKind.EM ->
                 DiagramTextRect(

@@ -4,7 +4,7 @@ import afield.graphics.text.sentences.*
 import kotlin.math.*
 
 // 4 · Sentence furniture. Reed-Kellogg shelves become a shallow spatial mobile, then a reading line.
-val parsed = Sentences.example(4)
+val parsed = ReadingPassage.sentence(4)
 check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
 val face = Typefaces.named("Noto Serif Light", 100, strict = true)
 val config = KelloggConfig(
@@ -30,7 +30,14 @@ val graph = readingDiagram {
             val p = world(midpoint, if (w.role == Role.MODIFIER) -.035f else .02f)
             val particle = point("word-point-$i", p.x, p.y, p.z, pinned = w.role == Role.PREDICATE)
             points.add(w to particle)
-            text("word-$i", w.text, particle) {
+            // Kellogg can merge detached clause punctuation into a predicate ("could smell .").
+            // Keep a verbatim phrase here; the complete reading run retains the original punctuation.
+            val quote = w.text.trim().let { label ->
+                if (ReadingPassage.text.contains(label)) label
+                else label.trimEnd { it.isWhitespace() || it in ".,;:!?…" }
+            }
+            check(ReadingPassage.text.contains(quote)) { "Layout changed the source phrase: $quote" }
+            text("word-$i", quote, particle) {
                 scale = (w.size * metres / .09).toFloat()
                 rotation = -angle.toFloat()
             }
@@ -55,9 +62,9 @@ val graph = readingDiagram {
     }
     group("reading") {
         val p = point("reading-point", 0, 0, .07, pinned = true)
-        val sentence = text("reading-run", parsed.tokens.joinToString(" ") { it.word }, p) { scale = .78f }
-        val wind = underline("reading-wind", sentence.word("wind"), gap = .018f) { color = vec(.8f, .42f, .12f, 1f) }
-        underline("reading-weather", sentence.word("weather"), gap = .018f) { color = vec(.8f, .42f, .12f, 1f) }
+        val sentence = text("reading-run", parsed.text, p) { scale = .66f }
+        val wind = underline("reading-wind", sentence.word("toe"), gap = .018f) { color = vec(.8f, .42f, .12f, 1f) }
+        underline("reading-weather", sentence.word("earth"), gap = .018f) { color = vec(.8f, .42f, .12f, 1f) }
         dot("reading-bead", wind.at(.5f)) { radius = .004f }
     }
 }

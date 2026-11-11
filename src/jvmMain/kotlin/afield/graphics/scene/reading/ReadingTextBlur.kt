@@ -1,16 +1,39 @@
 package afield.graphics.scene.reading
 
 import kotlin.math.*
+import afield.math.linalg.Vector4f
 
 /** Cached text masks are local to the word, never a previous-eye image. */
 data class ReadingTextBlurConfig(
     val width: Int = 2048,
     val height: Int = 1024,
     val minimumSize: Int = 128,
+    val levelsPerHalving: Int = 2,
+    val maximumRadius: Int = 128,
+    val sigmaCutoff: Float = 4f,
 ) {
+    /** Linear light gain and post-blur coverage exponent; (1,1) preserves the normalized masks. */
+    val appearance = Vector4f(1f, 1f, 0f, 0f)
+
     init {
         require(width >= minimumSize && height >= minimumSize && minimumSize >= 32)
         require(width <= 8192 && height <= 8192)
+        require(levelsPerHalving in 1..8 && maximumRadius in 4..512)
+        require(sigmaCutoff.isFinite() && sigmaCutoff in 2f..6f)
+    }
+
+    /** Two R16F array layers, including the base and both separable axes at every cached level. */
+    fun estimatedBytes(shapeCount: Int): Long {
+        require(shapeCount >= 0)
+        var pixels = width.toLong() * height
+        var previousHeight = height
+        for (level in 1 until ReadingBlurLevels.count) {
+            val w = ReadingBlurLevels.size(width, level, minimumSize, levelsPerHalving)
+            val h = ReadingBlurLevels.size(height, level, minimumSize, levelsPerHalving)
+            pixels += w.toLong() * (previousHeight + h)
+            previousHeight = h
+        }
+        return pixels * 4L * ((shapeCount + 1L) / 2L)
     }
 }
 
@@ -42,7 +65,8 @@ internal object ReadingBlurLevels {
         return Mix(low, high, if (b > a) ((r * r - a) / (b - a)).coerceIn(0f, 1f) else 0f, 1f)
     }
 
-    fun size(base: Int, level: Int, minimum: Int) = max(minimum, base / (1 shl ((level + 1) / 2)))
+    fun size(base: Int, level: Int, minimum: Int, levelsPerHalving: Int = 2) =
+        max(minimum, base / (1 shl ((level + 1) / levelsPerHalving)))
 
     fun increment(level: Int) = sqrt(max(0f, sigma(level).pow(2) - sigma(level - 1).pow(2)))
 }

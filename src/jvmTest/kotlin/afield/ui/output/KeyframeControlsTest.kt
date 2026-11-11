@@ -53,6 +53,25 @@ class KeyframeControlsTest {
     }
 
     @Test
+    fun delegatedSlidersForwardUnitsAndKeepTheirNumericValues() {
+        val box = newBox()
+        kotlinx.coroutines.runBlocking { Box.withBoxContext(box) {
+            val scope = KeyframeScope()
+            var seconds by scope.slider(1.25, 0.0..10.0, unit = "s")
+            var gap by scope.slider(.04f, 0.0..1.0, unit = "m")
+            box.controlGroup("look", restoreValues = false) { scope.controls() }
+            val saved = scope.capture()
+            seconds = 2.5
+            gap = .2f
+            saved()
+            assertEquals(1.25, seconds)
+            assertEquals(.04f, gap)
+            assertEquals("s", live(box).getValue("seconds").unit)
+            assertEquals("m", live(box).getValue("gap").unit)
+        } }
+    }
+
+    @Test
     fun propertyNameIsKeyAndLabelUnlessOverridden() {
         val box = newBox()
         val run = Run(box)

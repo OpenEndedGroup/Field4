@@ -100,8 +100,7 @@ colour; score entrances can add opacity, offset and scale independently.
 
 The current text_one shader treatment makes all ink white. Structure comes from opacity,
 coverage and thickness. Stored RGB values are still useful if you later change the fragment
-shaders back to colour. The green/paint compositor can also change the apparent translucency:
-use additive mode while diagnosing whether an opacity change is reaching the source image.
+shaders back to colour. The scene strictly adds opacity-weighted light: overlapping strokes never attenuate the light beneath them.
 
 Unrevealed tessellation segments are rejected in the vertex shader. Rounded reveal caps are
 antialiased at the active boundary; the rest of the curve must not appear as anticipatory dots.

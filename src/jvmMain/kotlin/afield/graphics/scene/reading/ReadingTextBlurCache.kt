@@ -25,7 +25,7 @@ internal class ReadingTextBlurCache(
     requested: List<Pair<ReadingText, Float>>,
     private val slugData: Map<ReadingText, SlugBuffer>,
     maximumLabels: Int,
-    config: ReadingTextBlurConfig,
+    private val config: ReadingTextBlurConfig,
 ) : AutoCloseable {
     init {
         require(requested.size in 1..2)
@@ -38,10 +38,10 @@ internal class ReadingTextBlurCache(
         val sigma = capacity[i] * (shape.layout?.typeface?.size?.toFloat() ?: 100f)
         require(sigma.isFinite()) { "Text blur reservation is too large" }
         Vector4f(
-            Float.fromBits(w[8]) - 4 * sigma,
-            Float.fromBits(w[9]) - 4 * sigma,
-            Float.fromBits(w[10]) + 4 * sigma,
-            Float.fromBits(w[11]) + 4 * sigma,
+            Float.fromBits(w[8]) - max(4f, config.sigmaCutoff) * sigma,
+            Float.fromBits(w[9]) - max(4f, config.sigmaCutoff) * sigma,
+            Float.fromBits(w[10]) + max(4f, config.sigmaCutoff) * sigma,
+            Float.fromBits(w[11]) + max(4f, config.sigmaCutoff) * sigma,
         ).also { b -> require(listOf(b.x,b.y,b.z,b.w).all { it.isFinite() } && b.z > b.x && b.w > b.y) }
     }
     private val entries =
@@ -107,6 +107,9 @@ internal class ReadingTextBlurCache(
 
     val drawModule: ModulePointer
     private val meshes: List<Mesh>
+    private val clipPlane = Vector4f()
+    private val meshLevels = Array(maximumLabels) { Vector4f(1f, 1f, 0f, 0f) }
+    private val meshInfo = Array(maximumLabels) { Vector4f() }
     private var prepared = false
     private var closed = false
     var preparationCount = 0
@@ -125,8 +128,8 @@ internal class ReadingTextBlurCache(
         )
         var previous = base
         for (level in 1 until ReadingBlurLevels.count) {
-            val width = ReadingBlurLevels.size(config.width, level, config.minimumSize)
-            val height = ReadingBlurLevels.size(config.height, level, config.minimumSize)
+            val width = ReadingBlurLevels.size(config.width, level, config.minimumSize, config.levelsPerHalving)
+            val height = ReadingBlurLevels.size(config.height, level, config.minimumSize, config.levelsPerHalving)
             val horizontal = target(width, previous.height, "reading-text-gaussian-$level-h")
             val vertical = target(width, height, "reading-text-gaussian-$level-v")
             val sigma = ReadingBlurLevels.increment(level)
@@ -162,7 +165,7 @@ internal class ReadingTextBlurCache(
                         depthTest = false
                         depthWrite = false
                         blend = true
-                        srcColor = VK_BLEND_FACTOR_SRC_ALPHA
+                        srcColor = VK_BLEND_FACTOR_ONE
                         dstColor = VK_BLEND_FACTOR_ONE
                         srcAlpha = VK_BLEND_FACTOR_ONE
                         dstAlpha = VK_BLEND_FACTOR_ONE
@@ -176,6 +179,7 @@ internal class ReadingTextBlurCache(
                 )
                 .pointer()
         check(drawModule.current.valid) { "Cannot build the cached text blur drawing module" }
+        drawModule.current.liveUniformStructures.getValue("TextBlurTone").bind("appearance") { config.appearance }
         meshes = List(maximumLabels) { Mesh(renderer, drawModule) }
 
         for ((i, mesh) in meshes.withIndex()) {
@@ -213,8 +217,8 @@ internal class ReadingTextBlurCache(
                 putFloat(b.z)
                 putFloat(b.w)
                 putFloat(capacity[i] * (item.first.layout?.typeface?.size?.toFloat() ?: 100f))
-                putFloat(0f)
-                putFloat(0f)
+                putFloat(config.maximumRadius.toFloat())
+                putFloat(config.sigmaCutoff)
                 putFloat(0f)
             }
         }
@@ -235,21 +239,37 @@ internal class ReadingTextBlurCache(
                 ReadingBlurLevels.mix(word.blur.coerceAtMost(capacity[layer]), capacity[layer])
             mesh.resize(6, 0)
             mesh.push["model"] =
-                Matrix4f(model).translate(word.position).rotateZ(word.rotation).scale(word.scale)
+                Matrix4f(model).translate(word.position).rotate(word.orientation).rotateZ(word.rotation).scale(word.scale)
             mesh.push["bounds"] = bounds[layer]
-            mesh.push["levels"] = Vector4f(mix.low.toFloat(), mix.high.toFloat(), mix.fraction, 0f)
+            meshLevels[i].set(mix.low.toFloat(), mix.high.toFloat(), mix.fraction, clipPlane.w)
+            mesh.push["levels"] = meshLevels[i]
             mesh.push["tint"] =
                 Vector4f(colour).mul(word.color).apply { w *= word.opacity * mix.cached }
-            mesh.push["info"] = Vector4f(layer.toFloat(), 0f, 0f, 0f)
+            meshInfo[i].set(layer.toFloat(), clipPlane.x, clipPlane.y, clipPlane.z)
+            mesh.push["info"] = meshInfo[i]
+        }
+    }
+
+    /** Keep the existing 128-byte ABI by using the four previously reserved components. */
+    fun setClipPlane(plane: Vector4f) {
+        clipPlane.set(plane)
+        meshes.forEachIndexed { i, mesh ->
+            meshLevels[i].w = plane.w
+            meshInfo[i].y = plane.x
+            meshInfo[i].z = plane.y
+            meshInfo[i].w = plane.z
+            mesh.push["levels"] = meshLevels[i]
+            mesh.push["info"] = meshInfo[i]
         }
     }
 
     override fun close() {
         if (closed) return
         closed = true
-        preparationModules.forEach { it.current.cleanup() }
-        drawModule.current.cleanup()
+        // The retired draw pipeline and descriptors can still be used by submitted eye frames.
         renderer.cleanup.add {
+            preparationModules.forEach { it.current.cleanup() }
+            drawModule.current.cleanup()
             entries.buffers.forEach { it.cleanup() }
             sampler.cleanup()
             targets.forEach { target ->

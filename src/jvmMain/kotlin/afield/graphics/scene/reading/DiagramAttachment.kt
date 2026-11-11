@@ -12,20 +12,33 @@ enum class DiagramTextSite {
 class DiagramAttachment internal constructor(
     internal val owner: Any,
     private val center: (DiagramFrame) -> Vector3f,
-    private val project: (DiagramFrame, Vector3f) -> Vector3f,
+    private val project: (DiagramFrame, Vector3f, Float) -> Vector3f,
 ) {
+    /** Fixed clearance in text-local metres, unaffected by font scale. */
+    var standoff: Float = 0f
+        set(value) {
+            require(value.isFinite() && value >= 0f)
+            field = value
+        }
+
     internal fun center(frame: DiagramFrame) = center.invoke(frame)
-    internal fun resolve(frame: DiagramFrame, toward: Vector3f) = project(frame, toward)
+    internal fun resolve(frame: DiagramFrame, toward: Vector3f) = project(frame, toward, standoff)
 }
 
 /** Any existing text, particle, caret or path anchor can serve as a fixed endpoint. */
-fun DiagramAnchor.attachment() = DiagramAttachment(owner, { it.position(this) }) { f, _ -> f.position(this) }
+fun DiagramAnchor.attachment(standoff: Float = 0f) =
+    DiagramAttachment(owner, { it.position(this) }) { f, toward, gap ->
+        val p = f.position(this)
+        val direction = Vector3f(toward).sub(p)
+        if (direction.lengthSquared() > 1e-12f) p.fma(gap, direction.normalize()) else p
+    }.also { it.standoff = standoff }
 
 fun DiagramText.attach(
     site: DiagramTextSite = DiagramTextSite.CLOSEST,
     bounds: DiagramBoundsKind = DiagramBoundsKind.INK,
     underlineGap: Float = .014f,
-) = all.attach(site, bounds, underlineGap)
+    standoff: Float = 0f,
+) = all.attach(site, bounds, underlineGap, standoff)
 
 /**
  * Works on a word, a literal span or an entire multiline run. Sliding boundaries use per-line boxes,
@@ -36,24 +49,35 @@ fun DiagramTextSpan.attach(
     site: DiagramTextSite = DiagramTextSite.CLOSEST,
     bounds: DiagramBoundsKind = DiagramBoundsKind.INK,
     underlineGap: Float = .014f,
+    standoff: Float = 0f,
+): DiagramAttachment = textAttachment(site, bounds, underlineGap, standoff, perLine = true)
+
+internal fun DiagramTextSpan.textAttachment(
+    site: DiagramTextSite,
+    bounds: DiagramBoundsKind,
+    underlineGap: Float,
+    standoff: Float,
+    perLine: Boolean,
 ): DiagramAttachment {
     require(underlineGap.isFinite() && underlineGap >= 0f)
     val box = DiagramTextBox(this, bounds)
-    when (site) {
-        DiagramTextSite.CENTER -> return box.center.attachment()
-        DiagramTextSite.LEFT -> return box.left.attachment()
-        DiagramTextSite.RIGHT -> return box.right.attachment()
-        else -> Unit
+    if (site == DiagramTextSite.CENTER) return box.center.attachment(standoff)
+    if (site == DiagramTextSite.LEFT || site == DiagramTextSite.RIGHT) {
+        val side = if (site == DiagramTextSite.LEFT) -1f else 1f
+        val anchor = if (side < 0f) box.left else box.right
+        return DiagramAttachment(run.owner, { it.position(anchor) }) { f, _, gap ->
+            f.position(anchor).add(f.textDirection(run, side * gap, 0f, 0f))
+        }.also { it.standoff = standoff }
     }
     // Text is immutable. Cache span boundaries here; measuring them reuses ReadingText's CPU cache.
     var start = 0
-    val lines = run.text.split('\n').mapNotNull { line ->
+    val lines = if (!perLine) listOf(this) else run.text.split('\n').mapNotNull { line ->
         val a = max(start, this.start)
         val b = min(start + line.length, endExclusive)
         start += line.length + 1
         if (a < b) run.characters(a, b) else null
     }
-    return DiagramAttachment(run.owner, { it.position(box.center) }) { frame, toward ->
+    return DiagramAttachment(run.owner, { it.position(box.center) }) { frame, toward, gap ->
         var closest: Vector3f? = null
         var distance = Float.POSITIVE_INFINITY
         fun candidate(a: Vector3f, b: Vector3f) {
@@ -68,13 +92,13 @@ fun DiagramTextSpan.attach(
             val metrics = frame.measure(line)
             val r = metrics.bounds(bounds)
             fun point(x: Float, y: Float) = frame.textPoint(run, x, y)
-            val bl = point(r.left, r.bottom)
-            val br = point(r.right, r.bottom)
-            val tl = point(r.left, r.top)
-            val tr = point(r.right, r.top)
+            val bl = point(r.left, r.bottom).add(frame.textDirection(run, -gap, -gap, 0f))
+            val br = point(r.right, r.bottom).add(frame.textDirection(run, gap, -gap, 0f))
+            val tl = point(r.left, r.top).add(frame.textDirection(run, -gap, gap, 0f))
+            val tr = point(r.right, r.top).add(frame.textDirection(run, gap, gap, 0f))
             when (site) {
                 DiagramTextSite.UNDERLINE -> {
-                    val offset = frame.textDirection(run, 0f, -underlineGap, 0f)
+                    val offset = frame.textDirection(run, 0f, -(underlineGap + gap), 0f)
                     candidate(point(metrics.advance.left, metrics.baseline).add(offset),
                         point(metrics.advance.right, metrics.baseline).add(offset))
                 }
@@ -94,5 +118,5 @@ fun DiagramTextSpan.attach(
             }
         }
         closest ?: frame.position(box.center)
-    }
+    }.also { it.standoff = standoff }
 }

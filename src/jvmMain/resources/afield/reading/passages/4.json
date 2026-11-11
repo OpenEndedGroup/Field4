@@ -1,0 +1,539 @@
+[
+  {
+    "schema": 2,
+    "backend": "stanza",
+    "text": "Each toe could smell the earth it touched.",
+    "tokens": [
+      {
+        "id": 1,
+        "word": "Each",
+        "lemma": "each",
+        "pos": "DT",
+        "upos": "DET",
+        "feats": "PronType=Tot",
+        "start": 0,
+        "end": 4,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 2,
+        "word": "toe",
+        "lemma": "toe",
+        "pos": "NN",
+        "upos": "NOUN",
+        "feats": "Number=Sing",
+        "start": 5,
+        "end": 8,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 3,
+        "word": "could",
+        "lemma": "could",
+        "pos": "MD",
+        "upos": "AUX",
+        "feats": "VerbForm=Fin",
+        "start": 9,
+        "end": 14,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 4,
+        "word": "smell",
+        "lemma": "smell",
+        "pos": "VB",
+        "upos": "VERB",
+        "feats": "VerbForm=Inf",
+        "start": 15,
+        "end": 20,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 5,
+        "word": "the",
+        "lemma": "the",
+        "pos": "DT",
+        "upos": "DET",
+        "feats": "Definite=Def|PronType=Art",
+        "start": 21,
+        "end": 24,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 6,
+        "word": "earth",
+        "lemma": "earth",
+        "pos": "NN",
+        "upos": "NOUN",
+        "feats": "Number=Sing",
+        "start": 25,
+        "end": 30,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 7,
+        "word": "it",
+        "lemma": "it",
+        "pos": "PRP",
+        "upos": "PRON",
+        "feats": "Case=Nom|Gender=Neut|Number=Sing|Person=3|PronType=Prs",
+        "start": 31,
+        "end": 33,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 8,
+        "word": "touched",
+        "lemma": "touch",
+        "pos": "VBD",
+        "upos": "VERB",
+        "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin",
+        "start": 34,
+        "end": 41,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 9,
+        "word": ".",
+        "lemma": ".",
+        "pos": ".",
+        "upos": "PUNCT",
+        "feats": null,
+        "start": 41,
+        "end": 42,
+        "in_graph": true,
+        "absorbed": false
+      }
+    ],
+    "constituency": {
+      "id": 0,
+      "label": "ROOT",
+      "leaf": false,
+      "children": [
+        {
+          "id": 1,
+          "label": "S",
+          "leaf": false,
+          "children": [
+            {
+              "id": 2,
+              "label": "NP",
+              "leaf": false,
+              "children": [
+                {
+                  "id": 3,
+                  "label": "DT",
+                  "leaf": true,
+                  "word": "Each",
+                  "token": 1,
+                  "children": [],
+                  "depth": 3
+                },
+                {
+                  "id": 4,
+                  "label": "NN",
+                  "leaf": true,
+                  "word": "toe",
+                  "token": 2,
+                  "children": [],
+                  "depth": 3
+                }
+              ],
+              "depth": 2
+            },
+            {
+              "id": 5,
+              "label": "VP",
+              "leaf": false,
+              "children": [
+                {
+                  "id": 6,
+                  "label": "MD",
+                  "leaf": true,
+                  "word": "could",
+                  "token": 3,
+                  "children": [],
+                  "depth": 3
+                },
+                {
+                  "id": 7,
+                  "label": "VP",
+                  "leaf": false,
+                  "children": [
+                    {
+                      "id": 8,
+                      "label": "VB",
+                      "leaf": true,
+                      "word": "smell",
+                      "token": 4,
+                      "children": [],
+                      "depth": 4
+                    },
+                    {
+                      "id": 9,
+                      "label": "NP",
+                      "leaf": false,
+                      "children": [
+                        {
+                          "id": 10,
+                          "label": "NP",
+                          "leaf": false,
+                          "children": [
+                            {
+                              "id": 11,
+                              "label": "DT",
+                              "leaf": true,
+                              "word": "the",
+                              "token": 5,
+                              "children": [],
+                              "depth": 6
+                            },
+                            {
+                              "id": 12,
+                              "label": "NN",
+                              "leaf": true,
+                              "word": "earth",
+                              "token": 6,
+                              "children": [],
+                              "depth": 6
+                            }
+                          ],
+                          "depth": 5
+                        },
+                        {
+                          "id": 13,
+                          "label": "SBAR",
+                          "leaf": false,
+                          "children": [
+                            {
+                              "id": 14,
+                              "label": "S",
+                              "leaf": false,
+                              "children": [
+                                {
+                                  "id": 15,
+                                  "label": "NP",
+                                  "leaf": false,
+                                  "children": [
+                                    {
+                                      "id": 16,
+                                      "label": "PRP",
+                                      "leaf": true,
+                                      "word": "it",
+                                      "token": 7,
+                                      "children": [],
+                                      "depth": 8
+                                    }
+                                  ],
+                                  "depth": 7
+                                },
+                                {
+                                  "id": 17,
+                                  "label": "VP",
+                                  "leaf": false,
+                                  "children": [
+                                    {
+                                      "id": 18,
+                                      "label": "VBD",
+                                      "leaf": true,
+                                      "word": "touched",
+                                      "token": 8,
+                                      "children": [],
+                                      "depth": 8
+                                    }
+                                  ],
+                                  "depth": 7
+                                }
+                              ],
+                              "depth": 6
+                            }
+                          ],
+                          "depth": 5
+                        }
+                      ],
+                      "depth": 4
+                    }
+                  ],
+                  "depth": 3
+                }
+              ],
+              "depth": 2
+            },
+            {
+              "id": 19,
+              "label": ".",
+              "leaf": true,
+              "word": ".",
+              "token": 9,
+              "children": [],
+              "depth": 2
+            }
+          ],
+          "depth": 1
+        }
+      ],
+      "depth": 0
+    },
+    "constituency_bracketed": "(ROOT (S (NP (DT Each) (NN toe)) (VP (MD could) (VP (VB smell) (NP (NP (DT the) (NN earth)) (SBAR (S (NP (PRP it)) (VP (VBD touched))))))) (. .)))",
+    "constituency_depth": 8,
+    "dependencies": {
+      "ud": [
+        {
+          "gov": 2,
+          "dep": 1,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 2,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 4,
+          "dep": 3,
+          "rel": "aux",
+          "base": "aux",
+          "label": "auxiliary",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 0,
+          "dep": 4,
+          "rel": "root",
+          "base": "root",
+          "label": "root",
+          "direction": "right",
+          "distance": 4
+        },
+        {
+          "gov": 6,
+          "dep": 5,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 6,
+          "rel": "obj",
+          "base": "obj",
+          "label": "direct object",
+          "direction": "right",
+          "distance": 2
+        },
+        {
+          "gov": 8,
+          "dep": 7,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 6,
+          "dep": 8,
+          "rel": "acl:relcl",
+          "base": "acl",
+          "label": "relative clause modifier",
+          "direction": "right",
+          "distance": 2
+        },
+        {
+          "gov": 4,
+          "dep": 9,
+          "rel": "punct",
+          "base": "punct",
+          "label": "punctuation",
+          "direction": "right",
+          "distance": 5
+        }
+      ],
+      "sd_basic": [
+        {
+          "gov": 2,
+          "dep": 1,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 2,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 4,
+          "dep": 3,
+          "rel": "aux",
+          "base": "aux",
+          "label": "auxiliary",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 0,
+          "dep": 4,
+          "rel": "root",
+          "base": "root",
+          "label": "root",
+          "direction": "right",
+          "distance": 4
+        },
+        {
+          "gov": 6,
+          "dep": 5,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 6,
+          "rel": "dobj",
+          "base": "dobj",
+          "label": "direct object",
+          "direction": "right",
+          "distance": 2
+        },
+        {
+          "gov": 8,
+          "dep": 7,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 6,
+          "dep": 8,
+          "rel": "rcmod",
+          "base": "rcmod",
+          "label": "relative clause modifier",
+          "direction": "right",
+          "distance": 2
+        },
+        {
+          "gov": 4,
+          "dep": 9,
+          "rel": "punct",
+          "base": "punct",
+          "label": "punctuation",
+          "direction": "right",
+          "distance": 5
+        }
+      ],
+      "sd_collapsed": [
+        {
+          "gov": 2,
+          "dep": 1,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 2,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 4,
+          "dep": 3,
+          "rel": "aux",
+          "base": "aux",
+          "label": "auxiliary",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 0,
+          "dep": 4,
+          "rel": "root",
+          "base": "root",
+          "label": "root",
+          "direction": "right",
+          "distance": 4
+        },
+        {
+          "gov": 6,
+          "dep": 5,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 6,
+          "rel": "dobj",
+          "base": "dobj",
+          "label": "direct object",
+          "direction": "right",
+          "distance": 2
+        },
+        {
+          "gov": 8,
+          "dep": 7,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 6,
+          "dep": 8,
+          "rel": "rcmod",
+          "base": "rcmod",
+          "label": "relative clause modifier",
+          "direction": "right",
+          "distance": 2
+        },
+        {
+          "gov": 4,
+          "dep": 9,
+          "rel": "punct",
+          "base": "punct",
+          "label": "punctuation",
+          "direction": "right",
+          "distance": 5
+        }
+      ]
+    }
+  }
+]

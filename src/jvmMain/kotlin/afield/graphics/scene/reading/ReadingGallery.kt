@@ -45,5 +45,10 @@ class ReadingGallery(val examples: List<ReadingExample>) : ReadingScene {
         if (restart) current.restart()
     }
 
+    override val frostSurfaces get() = current.frostSurfaces
+
+    override val individualTextFacing get() = current.individualTextFacing
+    override fun setReaderPosition(position: afield.math.linalg.Vector3f) = current.setReaderPosition(position)
+
     override fun update(elapsedSeconds: Double) = current.update(elapsedSeconds)
 }

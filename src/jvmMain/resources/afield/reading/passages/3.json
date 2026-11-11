@@ -1,0 +1,827 @@
+[
+  {
+    "schema": 2,
+    "backend": "stanza",
+    "text": "My words found a few last handholds of their own once my body collapsed.",
+    "tokens": [
+      {
+        "id": 1,
+        "word": "My",
+        "lemma": "my",
+        "pos": "PRP$",
+        "upos": "PRON",
+        "feats": "Case=Gen|Number=Sing|Person=1|Poss=Yes|PronType=Prs",
+        "start": 0,
+        "end": 2,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 2,
+        "word": "words",
+        "lemma": "word",
+        "pos": "NNS",
+        "upos": "NOUN",
+        "feats": "Number=Plur",
+        "start": 3,
+        "end": 8,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 3,
+        "word": "found",
+        "lemma": "find",
+        "pos": "VBD",
+        "upos": "VERB",
+        "feats": "Mood=Ind|Number=Plur|Person=3|Tense=Past|VerbForm=Fin",
+        "start": 9,
+        "end": 14,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 4,
+        "word": "a",
+        "lemma": "a",
+        "pos": "DT",
+        "upos": "DET",
+        "feats": "Definite=Ind|PronType=Art",
+        "start": 15,
+        "end": 16,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 5,
+        "word": "few",
+        "lemma": "few",
+        "pos": "JJ",
+        "upos": "ADJ",
+        "feats": "Degree=Pos",
+        "start": 17,
+        "end": 20,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 6,
+        "word": "last",
+        "lemma": "last",
+        "pos": "JJ",
+        "upos": "ADJ",
+        "feats": "Degree=Pos",
+        "start": 21,
+        "end": 25,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 7,
+        "word": "handholds",
+        "lemma": "handhold",
+        "pos": "NNS",
+        "upos": "NOUN",
+        "feats": "Number=Plur",
+        "start": 26,
+        "end": 35,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 8,
+        "word": "of",
+        "lemma": "of",
+        "pos": "IN",
+        "upos": "ADP",
+        "feats": null,
+        "start": 36,
+        "end": 38,
+        "in_graph": false,
+        "absorbed": true
+      },
+      {
+        "id": 9,
+        "word": "their",
+        "lemma": "their",
+        "pos": "PRP$",
+        "upos": "PRON",
+        "feats": "Case=Gen|Number=Plur|Person=3|Poss=Yes|PronType=Prs",
+        "start": 39,
+        "end": 44,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 10,
+        "word": "own",
+        "lemma": "own",
+        "pos": "JJ",
+        "upos": "ADJ",
+        "feats": "Degree=Pos",
+        "start": 45,
+        "end": 48,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 11,
+        "word": "once",
+        "lemma": "once",
+        "pos": "IN",
+        "upos": "SCONJ",
+        "feats": null,
+        "start": 49,
+        "end": 53,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 12,
+        "word": "my",
+        "lemma": "my",
+        "pos": "PRP$",
+        "upos": "PRON",
+        "feats": "Case=Gen|Number=Sing|Person=1|Poss=Yes|PronType=Prs",
+        "start": 54,
+        "end": 56,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 13,
+        "word": "body",
+        "lemma": "body",
+        "pos": "NN",
+        "upos": "NOUN",
+        "feats": "Number=Sing",
+        "start": 57,
+        "end": 61,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 14,
+        "word": "collapsed",
+        "lemma": "collapse",
+        "pos": "VBD",
+        "upos": "VERB",
+        "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin",
+        "start": 62,
+        "end": 71,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 15,
+        "word": ".",
+        "lemma": ".",
+        "pos": ".",
+        "upos": "PUNCT",
+        "feats": null,
+        "start": 71,
+        "end": 72,
+        "in_graph": true,
+        "absorbed": false
+      }
+    ],
+    "constituency": {
+      "id": 0,
+      "label": "ROOT",
+      "leaf": false,
+      "children": [
+        {
+          "id": 1,
+          "label": "S",
+          "leaf": false,
+          "children": [
+            {
+              "id": 2,
+              "label": "NP",
+              "leaf": false,
+              "children": [
+                {
+                  "id": 3,
+                  "label": "PRP$",
+                  "leaf": true,
+                  "word": "My",
+                  "token": 1,
+                  "children": [],
+                  "depth": 3
+                },
+                {
+                  "id": 4,
+                  "label": "NNS",
+                  "leaf": true,
+                  "word": "words",
+                  "token": 2,
+                  "children": [],
+                  "depth": 3
+                }
+              ],
+              "depth": 2
+            },
+            {
+              "id": 5,
+              "label": "VP",
+              "leaf": false,
+              "children": [
+                {
+                  "id": 6,
+                  "label": "VBD",
+                  "leaf": true,
+                  "word": "found",
+                  "token": 3,
+                  "children": [],
+                  "depth": 3
+                },
+                {
+                  "id": 7,
+                  "label": "NP",
+                  "leaf": false,
+                  "children": [
+                    {
+                      "id": 8,
+                      "label": "NP",
+                      "leaf": false,
+                      "children": [
+                        {
+                          "id": 9,
+                          "label": "DT",
+                          "leaf": true,
+                          "word": "a",
+                          "token": 4,
+                          "children": [],
+                          "depth": 5
+                        },
+                        {
+                          "id": 10,
+                          "label": "JJ",
+                          "leaf": true,
+                          "word": "few",
+                          "token": 5,
+                          "children": [],
+                          "depth": 5
+                        },
+                        {
+                          "id": 11,
+                          "label": "JJ",
+                          "leaf": true,
+                          "word": "last",
+                          "token": 6,
+                          "children": [],
+                          "depth": 5
+                        },
+                        {
+                          "id": 12,
+                          "label": "NNS",
+                          "leaf": true,
+                          "word": "handholds",
+                          "token": 7,
+                          "children": [],
+                          "depth": 5
+                        }
+                      ],
+                      "depth": 4
+                    },
+                    {
+                      "id": 13,
+                      "label": "PP",
+                      "leaf": false,
+                      "children": [
+                        {
+                          "id": 14,
+                          "label": "IN",
+                          "leaf": true,
+                          "word": "of",
+                          "token": 8,
+                          "children": [],
+                          "depth": 5
+                        },
+                        {
+                          "id": 15,
+                          "label": "NP",
+                          "leaf": false,
+                          "children": [
+                            {
+                              "id": 16,
+                              "label": "PRP$",
+                              "leaf": true,
+                              "word": "their",
+                              "token": 9,
+                              "children": [],
+                              "depth": 6
+                            },
+                            {
+                              "id": 17,
+                              "label": "JJ",
+                              "leaf": true,
+                              "word": "own",
+                              "token": 10,
+                              "children": [],
+                              "depth": 6
+                            }
+                          ],
+                          "depth": 5
+                        }
+                      ],
+                      "depth": 4
+                    }
+                  ],
+                  "depth": 3
+                },
+                {
+                  "id": 18,
+                  "label": "SBAR",
+                  "leaf": false,
+                  "children": [
+                    {
+                      "id": 19,
+                      "label": "IN",
+                      "leaf": true,
+                      "word": "once",
+                      "token": 11,
+                      "children": [],
+                      "depth": 4
+                    },
+                    {
+                      "id": 20,
+                      "label": "S",
+                      "leaf": false,
+                      "children": [
+                        {
+                          "id": 21,
+                          "label": "NP",
+                          "leaf": false,
+                          "children": [
+                            {
+                              "id": 22,
+                              "label": "PRP$",
+                              "leaf": true,
+                              "word": "my",
+                              "token": 12,
+                              "children": [],
+                              "depth": 6
+                            },
+                            {
+                              "id": 23,
+                              "label": "NN",
+                              "leaf": true,
+                              "word": "body",
+                              "token": 13,
+                              "children": [],
+                              "depth": 6
+                            }
+                          ],
+                          "depth": 5
+                        },
+                        {
+                          "id": 24,
+                          "label": "VP",
+                          "leaf": false,
+                          "children": [
+                            {
+                              "id": 25,
+                              "label": "VBD",
+                              "leaf": true,
+                              "word": "collapsed",
+                              "token": 14,
+                              "children": [],
+                              "depth": 6
+                            }
+                          ],
+                          "depth": 5
+                        }
+                      ],
+                      "depth": 4
+                    }
+                  ],
+                  "depth": 3
+                }
+              ],
+              "depth": 2
+            },
+            {
+              "id": 26,
+              "label": ".",
+              "leaf": true,
+              "word": ".",
+              "token": 15,
+              "children": [],
+              "depth": 2
+            }
+          ],
+          "depth": 1
+        }
+      ],
+      "depth": 0
+    },
+    "constituency_bracketed": "(ROOT (S (NP (PRP$ My) (NNS words)) (VP (VBD found) (NP (NP (DT a) (JJ few) (JJ last) (NNS handholds)) (PP (IN of) (NP (PRP$ their) (JJ own)))) (SBAR (IN once) (S (NP (PRP$ my) (NN body)) (VP (VBD collapsed))))) (. .)))",
+    "constituency_depth": 6,
+    "dependencies": {
+      "ud": [
+        {
+          "gov": 2,
+          "dep": 1,
+          "rel": "nmod:poss",
+          "base": "nmod",
+          "label": "possession modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 3,
+          "dep": 2,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 0,
+          "dep": 3,
+          "rel": "root",
+          "base": "root",
+          "label": "root",
+          "direction": "right",
+          "distance": 3
+        },
+        {
+          "gov": 7,
+          "dep": 4,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 3
+        },
+        {
+          "gov": 7,
+          "dep": 5,
+          "rel": "amod",
+          "base": "amod",
+          "label": "adjectival modifier",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 7,
+          "dep": 6,
+          "rel": "amod",
+          "base": "amod",
+          "label": "adjectival modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 3,
+          "dep": 7,
+          "rel": "obj",
+          "base": "obj",
+          "label": "direct object",
+          "direction": "right",
+          "distance": 4
+        },
+        {
+          "gov": 10,
+          "dep": 8,
+          "rel": "case",
+          "base": "case",
+          "label": "case marking",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 10,
+          "dep": 9,
+          "rel": "nmod:poss",
+          "base": "nmod",
+          "label": "possession modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 7,
+          "dep": 10,
+          "rel": "nmod",
+          "base": "nmod",
+          "label": "nominal modifier",
+          "direction": "right",
+          "distance": 3
+        },
+        {
+          "gov": 14,
+          "dep": 11,
+          "rel": "mark",
+          "base": "mark",
+          "label": "marker",
+          "direction": "left",
+          "distance": 3
+        },
+        {
+          "gov": 13,
+          "dep": 12,
+          "rel": "nmod:poss",
+          "base": "nmod",
+          "label": "possession modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 14,
+          "dep": 13,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 3,
+          "dep": 14,
+          "rel": "advcl",
+          "base": "advcl",
+          "label": "adverbial clause modifier",
+          "direction": "right",
+          "distance": 11
+        },
+        {
+          "gov": 3,
+          "dep": 15,
+          "rel": "punct",
+          "base": "punct",
+          "label": "punctuation",
+          "direction": "right",
+          "distance": 12
+        }
+      ],
+      "sd_basic": [
+        {
+          "gov": 2,
+          "dep": 1,
+          "rel": "poss",
+          "base": "poss",
+          "label": "possession modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 3,
+          "dep": 2,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 0,
+          "dep": 3,
+          "rel": "root",
+          "base": "root",
+          "label": "root",
+          "direction": "right",
+          "distance": 3
+        },
+        {
+          "gov": 7,
+          "dep": 4,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 3
+        },
+        {
+          "gov": 7,
+          "dep": 5,
+          "rel": "amod",
+          "base": "amod",
+          "label": "adjectival modifier",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 7,
+          "dep": 6,
+          "rel": "amod",
+          "base": "amod",
+          "label": "adjectival modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 3,
+          "dep": 7,
+          "rel": "dobj",
+          "base": "dobj",
+          "label": "direct object",
+          "direction": "right",
+          "distance": 4
+        },
+        {
+          "gov": 7,
+          "dep": 8,
+          "rel": "prep",
+          "base": "prep",
+          "label": "prepositional modifier",
+          "direction": "right",
+          "distance": 1
+        },
+        {
+          "gov": 10,
+          "dep": 9,
+          "rel": "poss",
+          "base": "poss",
+          "label": "possession modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 8,
+          "dep": 10,
+          "rel": "pobj",
+          "base": "pobj",
+          "label": "object of a preposition",
+          "direction": "right",
+          "distance": 2
+        },
+        {
+          "gov": 14,
+          "dep": 11,
+          "rel": "mark",
+          "base": "mark",
+          "label": "marker",
+          "direction": "left",
+          "distance": 3
+        },
+        {
+          "gov": 13,
+          "dep": 12,
+          "rel": "poss",
+          "base": "poss",
+          "label": "possession modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 14,
+          "dep": 13,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 3,
+          "dep": 14,
+          "rel": "advcl",
+          "base": "advcl",
+          "label": "adverbial clause modifier",
+          "direction": "right",
+          "distance": 11
+        },
+        {
+          "gov": 3,
+          "dep": 15,
+          "rel": "punct",
+          "base": "punct",
+          "label": "punctuation",
+          "direction": "right",
+          "distance": 12
+        }
+      ],
+      "sd_collapsed": [
+        {
+          "gov": 2,
+          "dep": 1,
+          "rel": "poss",
+          "base": "poss",
+          "label": "possession modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 3,
+          "dep": 2,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 0,
+          "dep": 3,
+          "rel": "root",
+          "base": "root",
+          "label": "root",
+          "direction": "right",
+          "distance": 3
+        },
+        {
+          "gov": 7,
+          "dep": 4,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 3
+        },
+        {
+          "gov": 7,
+          "dep": 5,
+          "rel": "amod",
+          "base": "amod",
+          "label": "adjectival modifier",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 7,
+          "dep": 6,
+          "rel": "amod",
+          "base": "amod",
+          "label": "adjectival modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 3,
+          "dep": 7,
+          "rel": "dobj",
+          "base": "dobj",
+          "label": "direct object",
+          "direction": "right",
+          "distance": 4
+        },
+        {
+          "gov": 10,
+          "dep": 9,
+          "rel": "poss",
+          "base": "poss",
+          "label": "possession modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 7,
+          "dep": 10,
+          "rel": "prep_of",
+          "base": "prep",
+          "label": "prep collapsed",
+          "direction": "right",
+          "distance": 3,
+          "marker": "of"
+        },
+        {
+          "gov": 14,
+          "dep": 11,
+          "rel": "mark",
+          "base": "mark",
+          "label": "marker",
+          "direction": "left",
+          "distance": 3
+        },
+        {
+          "gov": 13,
+          "dep": 12,
+          "rel": "poss",
+          "base": "poss",
+          "label": "possession modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 14,
+          "dep": 13,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 3,
+          "dep": 14,
+          "rel": "advcl",
+          "base": "advcl",
+          "label": "adverbial clause modifier",
+          "direction": "right",
+          "distance": 11
+        },
+        {
+          "gov": 3,
+          "dep": 15,
+          "rel": "punct",
+          "base": "punct",
+          "label": "punctuation",
+          "direction": "right",
+          "distance": 12
+        }
+      ]
+    }
+  }
+]

@@ -10,6 +10,9 @@ The browser texture size below is independent of the headset render resolution.
 */
 val headsetMode = false // true for WiVRn / OpenXR; false for desktop preview
 Options.enableVR = headsetMode
+// The core OpenXR validator does not register spaces created by WiVRn's vendor extension.
+// Disable that layer for body tracking; Vulkan validation remains independently available.
+if (headsetMode) Options.validateOpenXR = false
 Options.enableHDR = false
 prop<Window>(window) = Window("text_one · a reading space", initialDimensions = Rect(60.0, 60.0, 1440.0, 1000.0))
 prop<Renderer>(renderer) = Renderer(window)
@@ -29,6 +32,7 @@ if (headsetMode) {
         widthMeters = 1.8f,
         distanceMeters = 1.7f,
     )
+    workspace?.controllerScrollHands = setOf(OpenXRHmdTarget.Hand.RIGHT)
 }
 // FieldVrWorkspace takes eye dimensions from OpenXR, exactly as dust_six does.
 // Only the disconnected desktop preview uses this fixed fallback.
@@ -46,13 +50,10 @@ display(
 )
 prop<Boolean>(showStereoPair) = false
 val mirror = stereo.mirrorToScreen(name = "reading-preview", stereoPair = { showStereoPair })
-controlGroup("reading space") {
-    checkbox("Show both eyes side by side", initialValue = false) { showStereoPair = it }
-    checkbox("Desktop preview", initialValue = true) { renderer.desktopPresentationEnabled = it }
-}
+
 display(
     "mode",
-    "<div style='padding:12px;width:440px'>${if(headsetMode)"OpenXR: current predicted pose in both eyes + sharp Field browser" else "Desktop stereo preview: the same two-eye scene, without a headset"}. No motion history or temporal antialiasing. Launch the five example boxes, Scores, the shaders, then Drawing.</div>",
+    "<div style='padding:12px;width:440px'>${if(headsetMode)"OpenXR: current predicted pose in both eyes + sharp Field browser" else "Desktop stereo preview: the same two-eye scene, without a headset"}. No motion history or temporal antialiasing. Launch the example boxes, Scores, the shaders, then Drawing.</div>",
 )
 loop { frame() }
     .end {

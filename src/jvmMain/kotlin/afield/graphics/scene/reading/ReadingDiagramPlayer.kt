@@ -85,11 +85,13 @@ internal constructor(private val player: ReadingDiagramPlayer, private val time:
             )
     }
 
+    internal fun textOrientation(run: DiagramText) = player.textOrientation(run, this)
+
     /** Metres in the text's rotated axes. Use for padding that should not change with font size. */
     fun textDirection(run: DiagramText, x: Float, y: Float, z: Float): Vector3f {
         val c = cos(run.rotation)
         val s = sin(run.rotation)
-        return Vector3f(c * x - s * y, s * x + c * y, z)
+        return textOrientation(run).transform(Vector3f(c * x - s * y, s * x + c * y, z))
     }
 
     /** Transform any locally-authored FLine in font units, including cubic controls. */
@@ -121,7 +123,11 @@ internal constructor(private val player: ReadingDiagramPlayer, private val time:
     }
 
     internal fun pathPoint(path: DiagramPath, fraction: Float): Vector3f {
-        val cursor = path(path).cursor(.0002f)
+        val line = path(path)
+        // Endpoint markers need the exact endpoint, without flattening a whole curve each frame.
+        if (fraction == 0f) line.nodes.firstOrNull()?.toOrNull?.let { return Vector3f(it) }
+        if (fraction == 1f) line.currentPoint?.let { return Vector3f(it) }
+        val cursor = line.cursor(.0002f)
         cursor.setD(cursor.lengthD() * fraction)
         return Vector3f(cursor.position())
     }
@@ -182,6 +188,39 @@ class ReadingDiagramPlayer(
     var physicsSteps = 0L
         private set
 
+    private val readerPosition = Vector3f(0f, 0f, 2.35f)
+    private val textFacing = HashMap<DiagramText, Quaternionf>()
+    override val frostSurfaces: List<ReadingFrostSurface>
+        get() {
+            val f = frame()
+            return diagram.textFrames.mapNotNull { border ->
+                val opacity = f.pose(border.path).opacity * f.pose(border.span.run).opacity
+                if (!border.frost.enabled || opacity <= 0f || border.frost.opacity <= 0f) null
+                else ReadingFrostSurface(border, f, opacity)
+            }
+        }
+
+    override val individualTextFacing get() = diagram.texts.any { it.faceReader }
+    override fun setReaderPosition(position: Vector3f) {
+        require(position.isFinite())
+        readerPosition.set(position)
+    }
+
+    internal fun textOrientation(run: DiagramText, frame: DiagramFrame): Quaternionf {
+        val facing = if (run.faceReader) textFacing[run] ?: readingFacingTarget(frame.textPosition(run), readerPosition, null)
+            else Quaternionf()
+        return Quaternionf(facing).mul(run.orientation)
+    }
+
+    private fun updateTextFacing(frame: DiagramFrame, dt: Float) {
+        for (run in diagram.texts) if (run.faceReader) {
+            val current = textFacing[run]
+            val target = readingFacingTarget(frame.textPosition(run), readerPosition, current)
+            if (current == null) textFacing[run] = target
+            else readingTurn(current, target, dt, run.facingHalfLife, run.facingMaximumTurnRate)
+        }
+    }
+
     private val connectionPhysics by lazy { DiagramConnectionPhysics(this) }
 
     internal fun connectionNodes(connection: DiagramConnection, frame: DiagramFrame) =
@@ -227,10 +266,10 @@ class ReadingDiagramPlayer(
                         val glyphFaces = layout.glyphs.associate { g ->
                             g.charIndex to (key.ranges.lastOrNull { g.charIndex in it.start until it.end }?.face ?: key.face)
                         }
-                        val parts = if (key.dropCap == null) emptyList() else {
+                        val parts = if (key.dropCap == null && layout.lines.size <= 1) emptyList() else {
                             // Slug's per-path band offsets are 16-bit. Keep the large initial and
                             // each body line in separate atlases, in the SAME paragraph coordinates.
-                            layout.glyphs.groupBy { if (it.charIndex < key.dropCap.end) -1 else it.lineIndex }
+                            layout.glyphs.groupBy { if (key.dropCap != null && it.charIndex < key.dropCap.end) -1 else it.lineIndex }
                                 .values.filter { glyphs -> glyphs.any { !it.glyph.isBlank } }.map { glyphs ->
                                     val partLayout = TextLayout(layout.text, layout.typeface, glyphs, layout.lines,
                                         layout.tracking, layout.lineHeight, layout.align)
@@ -278,6 +317,7 @@ class ReadingDiagramPlayer(
         }
         accumulator = 0.0
         connectionPhysics.reset()
+        textFacing.clear()
     }
 
     fun restart() {
@@ -341,7 +381,9 @@ class ReadingDiagramPlayer(
                     }
                 }
             }
-            connectionPhysics.step(DiagramFrame(this, playback.sampleTime), fixedStep.toFloat())
+            val physicsFrame = DiagramFrame(this, playback.sampleTime)
+            updateTextFacing(physicsFrame, fixedStep.toFloat())
+            connectionPhysics.step(physicsFrame, fixedStep.toFloat())
             accumulator -= fixedStep
             physicsTime += fixedStep
             physicsSteps++
@@ -361,6 +403,7 @@ class ReadingDiagramPlayer(
                         Vector4f(text.color),
                         text.rotation,
                         text.blur + p.blur,
+                        frame.textOrientation(text),
                     ),
                 )
         }

@@ -17,8 +17,8 @@ val graph = readingDiagram {
     val second = point("second", .25, -.1, -.02)
     link(peg, first, strength = .4f)
     link(first, second, strength = .35f)
-    text("first-line", "a held breath", first)
-    text("second-line", "a small release", second)
+    text("first-line", "Then let go,", first)
+    text("second-line", "hands lifting", second)
 }
 ```
 
@@ -35,9 +35,9 @@ Verlet displacement; it does not recompile text or reset the compositor.
 
 ```kotlin
 val score = diagramScore(graph, duration = 12.0) {
-    enter(graph.text("first-line"), at = 0.0, seconds = 1.2)
-    enter(graph.text("second-line"), at = .4, seconds = 1.2)
-    exitAll(at = 9.0, seconds = 2.0)
+    fadeIn(graph.text("first-line"), at = 0.0, seconds = 1.2)
+    fadeIn(graph.text("second-line"), at = .4, seconds = 1.2)
+    exitAll(at = 9.0, seconds = 2.0, erasePaths = false)
 }
 player.playback.score = score
 ```
@@ -46,9 +46,9 @@ The graph may also have named paths and dots:
 
 ```kotlin
 val score = diagramScore(graph, duration = 12.0) {
-    drawIn(graph.path("rule"), at = .6, seconds = 1.5)
-    enter(graph.dot("bead"), at = 2.1, rise = 0f)
-    drawOut(graph.path("rule"), at = 8.0, seconds = 1.5)
+    fadeIn(graph.path("rule"), at = .6, seconds = 1.5)
+    fadeIn(graph.dot("bead"), at = 2.1, seconds = 1.0)
+    fadeOut(graph.path("rule"), at = 8.0, seconds = 1.5)
 }
 ```
 
@@ -72,8 +72,9 @@ baseline rule should not need a second, manually matched animation.
 ## Groups and transitions
 
 Create groups while constructing the diagram. They are named selections, not extra transforms
-or physics objects. A score can call `transition(fromGroup, toGroup, at, seconds)` to crossfade
-between structural furniture and a reading line, as the fourth example does.
+or physics objects. The fourth example pairs `fadeOut(fromGroup, ...)` with `fadeIn(toGroup, ...)` to
+crossfade between its structure and a reading line without drawing either curve in.
+Use `endpointDots(path)` inside the group so the arc’s two small markers share its fade.
 
 Do not turn off the render loop to create a hold. Pause the score or hold its sampled time;
 head motion still needs fresh stereo views. Score time is absolute and seekable, while physics

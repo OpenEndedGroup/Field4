@@ -1,9 +1,10 @@
 name: text_one_vr
-description: 'Eight shallow-3D reading spaces: marked breath, constituency canopy, dependency undertow,
+description: 'Thirteen shallow-3D reading spaces: marked breath, constituency canopy, dependency undertow,
   Reed-Kellogg sentence furniture, a mixed-font typography playground slow word-local Gaussian blur elastic
-  sentence threads and dropped paragraph initials. CPU SIMDVerlet, per-eye FLine thickening and Slug text,
-  with independent scores. Starts in desktop preview; OpenXR is an explicit fresh-process mode. Generated
-  from templates/text_one by build_transcript.py.'
+  sentence threads dropped paragraph initials a composed frosted reading duet, two overstroked frames
+  and two mechanical text frusta. CPU SIMDVerlet, per-eye FLine thickening and Slug text, with independent
+  scores. Starts in desktop preview; OpenXR is an explicit fresh-process mode. Generated from templates/text_one
+  by build_transcript.py.'
 docs:
 - page: sentence_diagrams.md
   why: Parser setup, four diagrams, mixed-font typography and the reading-space DSL.
@@ -30,6 +31,9 @@ operations:
         */
         val headsetMode = false // true for WiVRn / OpenXR; false for desktop preview
         Options.enableVR = headsetMode
+        // The core OpenXR validator does not register spaces created by WiVRn's vendor extension.
+        // Disable that layer for body tracking; Vulkan validation remains independently available.
+        if (headsetMode) Options.validateOpenXR = false
         Options.enableHDR = false
         prop<Window>(window) = Window("text_one · a reading space", initialDimensions = Rect(60.0, 60.0, 1440.0, 1000.0))
         prop<Renderer>(renderer) = Renderer(window)
@@ -49,6 +53,7 @@ operations:
                 widthMeters = 1.8f,
                 distanceMeters = 1.7f,
             )
+            workspace?.controllerScrollHands = setOf(OpenXRHmdTarget.Hand.RIGHT)
         }
         // FieldVrWorkspace takes eye dimensions from OpenXR, exactly as dust_six does.
         // Only the disconnected desktop preview uses this fixed fallback.
@@ -66,13 +71,10 @@ operations:
         )
         prop<Boolean>(showStereoPair) = false
         val mirror = stereo.mirrorToScreen(name = "reading-preview", stereoPair = { showStereoPair })
-        controlGroup("reading space") {
-            checkbox("Show both eyes side by side", initialValue = false) { showStereoPair = it }
-            checkbox("Desktop preview", initialValue = true) { renderer.desktopPresentationEnabled = it }
-        }
+
         display(
             "mode",
-            "<div style='padding:12px;width:440px'>${if(headsetMode)"OpenXR: current predicted pose in both eyes + sharp Field browser" else "Desktop stereo preview: the same two-eye scene, without a headset"}. No motion history or temporal antialiasing. Launch the five example boxes, Scores, the shaders, then Drawing.</div>",
+            "<div style='padding:12px;width:440px'>${if(headsetMode)"OpenXR: current predicted pose in both eyes + sharp Field browser" else "Desktop stereo preview: the same two-eye scene, without a headset"}. No motion history or temporal antialiasing. Launch the example boxes, Scores, the shaders, then Drawing.</div>",
         )
         loop { frame() }
             .end {
@@ -93,12 +95,9 @@ operations:
       code: |
         import afield.graphics.scene.reading.*
         import afield.graphics.text.*
-        import afield.graphics.text.sentences.Sentences
 
         // 1 · Marked breath. Whole runs, two selected words and an arclength bead.
-        // Cached real parser output: no network request or font preparation in the frame loop.
-        val parsed = Sentences.example(1)
-        check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
+        // Verbatim fragments of the supplied passage; font preparation happens before playback.
         val graph = readingDiagram {
             val peg = point("peg", -.78, .52, pinned = true)
             dot("peg-marker", peg.anchor) {
@@ -110,37 +109,30 @@ operations:
             val second = point("second", 0, -.08, -.025)
             link(peg, first)
             link(first, second)
-            val opening = text("opening", parsed.tokens.take(4).joinToString(" ") { it.word }, first)
-            val sentence = text("sentence", parsed.tokens.drop(4).joinToString(" ") { it.word }, second)
-            arc("hanging", peg.anchor, opening.above, rise = .09f) { dashed(.025f) }
-            val birds = underline("birdsong", sentence.word("birdsong"), gap = .018f) {
+            val opening = text("opening", "Then let go,", first)
+            val sentence = text("sentence", "hands lifting—feeling around\nin front of me.", second)
+            endpointDots(arc("hanging", peg.anchor, opening.above, rise = .09f) { dashed(.025f) })
+            val birds = underline("birdsong", sentence.word("hands"), gap = .018f) {
                 width = .002f
                 color = vec(.8f, .43f, .13f, 1f)
             }
-            underline("walls", sentence.word("walls"), gap = .018f) { color = vec(.8f, .43f, .13f, 1f) }
-            dot("beside-word", opening.word("Listen").left.offset(x = -.028f)) {
+            underline("walls", sentence.word("me"), gap = .018f) { color = vec(.8f, .43f, .13f, 1f) }
+            dot("beside-word", opening.word("Then").left.offset(x = -.028f)) {
                 shape = DiagramPointShape.RING
                 radius = .005f
             }
             dot("on-underline", birds.at(.65f)) { radius = .0045f }
             val relation = arc(
                 "reflection",
-                sentence.word("birdsong").below.offset(y = -.055f),
-                sentence.word("walls").below.offset(y = -.055f),
+                sentence.word("hands").below.offset(y = -.055f),
+                sentence.word("me").below.offset(y = -.055f),
                 rise = -.23f,
             ) {
                 width = .0012f
                 arrow = .013f
             }
+            endpointDots(relation)
             dot("bead", relation.at(.50f)) { radius = .003f }
-            text(
-                "relation-label",
-                parsed.dependencies.sdCollapsed.first { it.rel == "prep_off" }.label,
-                relation.at(.55f).offset(y = -.045f),
-            ) {
-                scale = .304f
-                color = vec(1f, 1f, 1f, .55f)
-            }
         }
         val face = Typefaces.named("Noto Serif Light", 100, strict = true)
         // Let the words lead: structural strokes and markers are more translucent.
@@ -174,8 +166,8 @@ operations:
         import afield.graphics.text.sentences.*
         import kotlin.math.*
 
-        // 2 · Complete canopy. Preserve the parser's tree, POS labels, word stems and dependency arcs.
-        val parsed = Sentences.example(2)
+        // 2 · Complete canopy. Preserve the parser's geometry, while the visible words come from the passage.
+        val parsed = ReadingPassage.sentence(2)
         check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
         val face = Typefaces.named("Noto Serif Light", 100, strict = true)
         val layout =
@@ -196,7 +188,6 @@ operations:
         val cx = bounds.centre.x
         val cy = bounds.centre.y
         val metres = min(2.15 / bounds.width, 1.7 / bounds.height)
-        val tagMetrics = Java2DMetrics(face.awtFont.deriveFont(13f))
         fun world(p: P, z: Double = 0.0) = vec(((p.x - cx) * metres).toFloat(), (-(p.y - cy) * metres).toFloat(), z.toFloat())
         fun direction(p: P) = vec((p.x * metres).toFloat(), (-p.y * metres).toFloat(), 0f)
         val graph = readingDiagram {
@@ -217,7 +208,7 @@ operations:
                 val b = nodes.getValue(edge.child).anchor
                 val c1 = direction(edge.curve.c1 - edge.curve.a)
                 val c2 = direction(edge.curve.c2 - edge.curve.b)
-                path(
+                val branch = path(
                     "branch-${edge.parent}-${edge.child}",
                     shape = {
                         val from = position(a)
@@ -228,18 +219,13 @@ operations:
                     width = .0013f
                     color = vec(1f, 1f, 1f, .7f)
                 }
+                endpointDots(branch)
             }
             for (n in layout.nodes) {
                 val anchor = nodes.getValue(n.id).anchor
                 dot("joint-${n.id}", anchor) {
                     radius = if (n.leaf) .0025f else .004f
                     shape = DiagramPointShape.RING
-                }
-                // Every label is drawn, including the POS leaves. Centred runs need half their width added.
-                val gap = max(.012, layout.config.tagOffset.x * metres)
-                text("tag-${n.id}", n.label, anchor.offset(x = gap + tagMetrics.width(n.label) * metres * .4)) {
-                    scale = (10.4 * metres / .09).toFloat()
-                    color = vec(1f, 1f, 1f, .65f)
                 }
             }
             val particles = mutableMapOf<Int, DiagramParticle>()
@@ -266,7 +252,7 @@ operations:
                 val b = wordAnchor(edge.token, edge.curve.b)
                 val c1 = direction(edge.curve.c1 - edge.curve.a)
                 val c2 = direction(edge.curve.c2 - edge.curve.b)
-                path(
+                val stem = path(
                     "stem-${edge.token}",
                     shape = {
                         val from = position(a)
@@ -277,6 +263,7 @@ operations:
                     width = .0010f
                     color = vec(1f, 1f, 1f, .6f)
                 }
+                endpointDots(stem)
             }
             for (w in layout.words) if (w.underlined)
                 underline("mark-${w.token}", words.getValue(w.token).all, gap = .010f) {
@@ -300,18 +287,7 @@ operations:
                     width = .0012f
                     color = vec(1f, 1f, 1f, .45f)
                 }
-                // Convert the layout's label position to an arclength anchor that stays on a moving arc.
-                val samples = (0..128).map { dep.curve.pointAt(it / 128.0) }
-                val lengths = samples.zipWithNext().map { (a, b) -> (b - a).length }
-                val labelOnCurve = dep.labelAt - P(0.0, layout.config.arcLabelDrop)
-                val nearest = samples.indices.minBy { (samples[it] - labelOnCurve).length }
-                val fraction = (lengths.take(nearest).sum() / lengths.sum()).toFloat()
-                val offset = direction(dep.labelAt - samples[nearest])
-                text("dependency-label-$i", dep.label, arc.at(fraction).offset(x = offset.x, y = offset.y)) {
-                    scale = (8.8 * metres / .09).toFloat()
-                    rotation = -Math.toRadians(dep.labelAngle).toFloat()
-                    color = vec(1f, 1f, 1f, .55f)
-                }
+                endpointDots(arc)
             }
         }
         // Let the words lead: structural strokes and markers are more translucent.
@@ -328,7 +304,7 @@ operations:
         player.wind = .012f
         prop<ReadingExample>(exampleTwo) = ReadingExample(
             "2 · Constituency canopy",
-            "The complete constituent tree, POS labels and word stems, with collapsed dependencies beneath the words. Curves follow their moving anchors.",
+            "The complete constituent tree and word stems, with collapsed dependencies beneath the passage’s words. Curves follow their moving anchors.",
             player,
         )
 - create:
@@ -347,7 +323,7 @@ operations:
         import kotlin.math.*
 
         // 3 · Undertow. Nested dependency arcs, with independently scored labels and beads.
-        val parsed = Sentences.example(3)
+        val parsed = ReadingPassage.sentence(3)
         check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
         val face = Typefaces.named("Noto Serif Light", 100, strict = true)
         val layout =
@@ -407,10 +383,7 @@ operations:
                     radius = .004f
                     color = vec(.85f, .48f, .15f, 1f)
                 }
-                text("label-$i", dep.label, path.at(.52f).offset(y = -.027f)) {
-                    scale = (8.8 * metres / .09).toFloat()
-                    color = vec(1f, 1f, 1f, .55f)
-                }
+                endpointDots(path)
             }
         }
         // Let the words lead: structural strokes and markers are more translucent.
@@ -427,7 +400,7 @@ operations:
         player.wind = .010f
         prop<ReadingExample>(exampleThree) = ReadingExample(
             "3 · Dependency undertow",
-            "The real collapsed dependencies form nested undercurrents. Beads and relation labels follow each moving arc's arclength.",
+            "The real collapsed dependencies form nested undercurrents. Beads and small endpoint dots follow the moving arcs.",
             player,
         )
 - create:
@@ -446,7 +419,7 @@ operations:
         import kotlin.math.*
 
         // 4 · Sentence furniture. Reed-Kellogg shelves become a shallow spatial mobile, then a reading line.
-        val parsed = Sentences.example(4)
+        val parsed = ReadingPassage.sentence(4)
         check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
         val face = Typefaces.named("Noto Serif Light", 100, strict = true)
         val config = KelloggConfig(
@@ -472,7 +445,15 @@ operations:
                     val p = world(midpoint, if (w.role == Role.MODIFIER) -.035f else .02f)
                     val particle = point("word-point-$i", p.x, p.y, p.z, pinned = w.role == Role.PREDICATE)
                     points.add(w to particle)
-                    text("word-$i", w.text, particle) {
+                    // Kellogg can merge detached clause punctuation into a predicate ("could smell .").
+                    // Keep a verbatim phrase here; the complete reading run retains the original punctuation.
+                    val quote =
+                        w.text.trim().let { label ->
+                            if (ReadingPassage.text.contains(label)) label
+                            else label.trimEnd { it.isWhitespace() || it in ".,;:!?…" }
+                        }
+                    check(ReadingPassage.text.contains(quote)) { "Layout changed the source phrase: $quote" }
+                    text("word-$i", quote, particle) {
                         scale = (w.size * metres / .09).toFloat()
                         rotation = -angle.toFloat()
                     }
@@ -497,9 +478,9 @@ operations:
             }
             group("reading") {
                 val p = point("reading-point", 0, 0, .07, pinned = true)
-                val sentence = text("reading-run", parsed.tokens.joinToString(" ") { it.word }, p) { scale = .78f }
-                val wind = underline("reading-wind", sentence.word("wind"), gap = .018f) { color = vec(.8f, .42f, .12f, 1f) }
-                underline("reading-weather", sentence.word("weather"), gap = .018f) { color = vec(.8f, .42f, .12f, 1f) }
+                val sentence = text("reading-run", parsed.text, p) { scale = .66f }
+                val wind = underline("reading-wind", sentence.word("toe"), gap = .018f) { color = vec(.8f, .42f, .12f, 1f) }
+                underline("reading-weather", sentence.word("earth"), gap = .018f) { color = vec(.8f, .42f, .12f, 1f) }
                 dot("reading-bead", wind.at(.5f)) { radius = .004f }
             }
         }
@@ -541,12 +522,12 @@ operations:
             val peg = point("peg", 0, .25, pinned = true)
             val mobile = point("mobile", 0, .12)
             link(peg, mobile, .35f)
-            val sentence = text("sentence", "The quiet water carries the light", mobile) {
+            val sentence = text("sentence", "Each toe could smell the earth it touched.", mobile) {
                 font = serif
                 scale = .7f
-                word("quiet").style { italic = true }
-                word("water").style { bold = true }
-                word("light").style {
+                word("could").style { italic = true }
+                word("earth").style { bold = true }
+                word("touched").style {
                     font = sans
                     weight = 300.0
                 }
@@ -562,7 +543,7 @@ operations:
                     color = vec(1f, 1f, 1f, .35f)
                 }
             }
-            underline("water", sentence.word("water"), gap = .018f) {
+            underline("water", sentence.word("earth"), gap = .018f) {
                 width = .0013f
                 color = vec(1f, 1f, 1f, .45f)
             }
@@ -586,7 +567,7 @@ operations:
             // Equal strings with different faces must own distinct prepared outlines and GPU data.
             for (i in 0..2) {
                 val p = point("face-$i", -.62 + i * .62, -.18, pinned = true)
-                val word = text("face-word-$i", "water", p) {
+                val word = text("face-word-$i", "earth", p) {
                     font = if (i == 2) sans else serif
                     italic = i == 1
                     bold = i == 2
@@ -601,15 +582,10 @@ operations:
             // they are not a fragment-shader dilation and do not claim arbitrary variable-font axes.
             for (i in 0..4) {
                 val p = point("weight-$i", -.8 + i * .4, -.46, pinned = true)
-                text("weight-word-$i", "wave", p) {
+                text("weight-word-$i", "rain", p) {
                     font = serif
                     weight = 300.0 + 100 * i
                     scale = .48f
-                }
-                text("weight-label-$i", (300 + 100 * i).toString(), p.anchor.offset(y = -.075f)) {
-                    font = sans
-                    scale = .16f
-                    color = vec(1f, 1f, 1f, .45f)
                 }
             }
         }
@@ -643,7 +619,7 @@ operations:
         // opacity is independent, so a word can stay bright while its outline dissolves.
         val serif = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
         val graph = readingDiagram {
-            for ((i, word) in listOf("words", "becoming", "weather").withIndex()) {
+            for ((i, word) in listOf("a land", "of vague", "promise.").withIndex()) {
                 val p = point("word-$i", (i - 1) * .65f, .04f, pinned = true)
                 text("blur-word-$i", word, p) {
                     font = serif
@@ -679,26 +655,51 @@ operations:
         import afield.graphics.scene.reading.*
         import afield.graphics.text.*
 
-        // Fixed landmarks and sliding constraints share one small connection helper. Only the
-        // interior nodes have inertia: the two visible endpoints always stay on the measured text.
+        /*
+        Verbatim excerpts from texts/source-passage.txt; line breaks are the only layout edits.
+        Fixed landmarks and sliding constraints share one small connection helper. Only the
+        interior nodes have inertia: the two visible endpoints always stay on the measured text.
+        */
         val face = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
+        val readingFrames = mutableListOf<DiagramTextFrame>()
         val graph = readingDiagram {
-            val water = text("water", "the river remembers\nsmall things", point("water-point", -.62, .22)) {
+            val door = text("door", "When the door closed\nbehind me", point("door-point", -.62, .22)) {
                 font = face
                 scale = .55f
             }
-            val light = text("light", "a changing light", point("light-point", .65, .28, .035)) {
+            val eyes = text("eyes", "my eyes were going\nto be useless in the dark", point("eyes-point", .65, .28, .35)) {
                 font = face
                 scale = .55f
             }
-            val breath = text("breath", "between breaths", point("breath-point", .15, -.45, -.02)) {
+            val hands = text("hands", "hands lifting—feeling around\nin front of me.", point("hands-point", .15, -.45, -.3)) {
                 font = face
                 scale = .55f
             }
+            val nonexistence = text("nonexistence", "nonexistence.", point("nonexistence-point", -.8, -.38, .65)) {
+                font = Typefaces.firstAvailable("Noto Serif Thin", "Noto Serif Light", "Noto Serif", size = 100)
+                scale = .62f
+            }
+            val sipping = text("sipping", "sipping.", point("sipping-point", 1.4, .05, -.7)) {
+                font = face
+                italic = true
+                scale = .58f
+            }
+            val taut = text("taut", "this sentence,\npulled taut, goes nowhere:", point("taut-point", -.15, .65, -.5)) {
+                font = face
+                scale = .52f
+            }
+            val frames =
+                listOf(door, eyes, hands, nonexistence, sipping, taut).associateWith { run ->
+                    textFrame("${run.id}-frame", run, standoff = .025f, mode = DiagramTextFrameMode.LINE_UNION) {
+                            width = .0008f
+                            color = vec(1f, 1f, 1f, .22f)
+                        }
+                        .also { readingFrames.add(it) }
+                }
             val thread = connection(
-                "river-thread",
-                water.word("river").attach(DiagramTextSite.UNDERLINE),
-                light.word("light").attach(DiagramTextSite.BOUNDARY),
+                "door-thread",
+                frames.getValue(door).attach(),
+                frames.getValue(eyes).attach(),
                 interiorNodes = 8,
             ) {
                 responseSeconds = 1.0f
@@ -710,10 +711,10 @@ operations:
                 width = .0015f
                 color = vec(1f, 1f, 1f, .3f)
             }
-            connection(
+            val marginThread = connection(
                 "margin-thread",
-                water.attach(DiagramTextSite.RIGHT_MARGIN),
-                breath.attach(DiagramTextSite.BOUNDARY),
+                frames.getValue(door).attach(DiagramTextSite.RIGHT_MARGIN),
+                frames.getValue(hands).attach(),
                 interiorNodes = 6,
             ) {
                 responseSeconds = 1.7f
@@ -723,12 +724,41 @@ operations:
                 color = vec(1f, 1f, 1f, .2f)
                 dashed(.025f)
             }
-            // Connections are physics descriptors; their .path is the usual scoreable/drawable FLine.
-            dot("thread-bead", thread.path.at(.5f)) {
-                radius = .003f
-                color = vec(1f, 1f, 1f, .35f)
+            val silenceThread = connection(
+                "nonexistence-thread",
+                frames.getValue(hands).attach(),
+                frames.getValue(nonexistence).attach(),
+            ) {
+                responseSeconds = 1.4f
+                bow.set(0f, -.08f, .06f)
+                width = .001f
+                color = vec(1f, 1f, 1f, .25f)
             }
+            val elsewhereThread = connection(
+                "sipping-thread",
+                frames.getValue(eyes).attach(DiagramTextSite.RIGHT_MARGIN),
+                frames.getValue(sipping).attach(),
+            ) {
+                responseSeconds = 1.1f
+                bow.set(.05f, 0f, .04f)
+                width = .001f
+                color = vec(1f, 1f, 1f, .25f)
+            }
+            val tideThread = connection(
+                "taut-thread",
+                frames.getValue(door).attach(),
+                frames.getValue(taut).attach(),
+            ) {
+                responseSeconds = 1.8f
+                bow.set(0f, .1f, -.06f)
+                width = .001f
+                color = vec(1f, 1f, 1f, .25f)
+            }
+            // Endpoints use the same live path anchors, including sliding attachments.
+            for (line in listOf(thread, marginThread, silenceThread, elsewhereThread, tideThread)) endpointDots(line.path)
         }
+        // Each text plane turns about its own physics point. The stage itself stays fixed in the room.
+        graph.texts.forEach { it.faceReader = true }
         val preparation = progressReporter("Prepare elastic sentences", showDelayMillis = 0)
         val player = try {
             ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, diagramScore(graph, 36.0) {}) { n, total, text ->
@@ -739,11 +769,11 @@ operations:
             }
         prop<ReadingExample>(exampleSeven) = ReadingExample(
             "7 · Elastic sentences",
-            "Slowly following SIMD threads: sliding word boundaries and multiline margins, with independent length, curvature and spline controls.",
+            "Six independently facing text planes in a shallow volume, endpoint dots and fading elastic links. The passage’s nonexistence is lighter; sipping is italic.",
             player,
         )
         controlGroup("elastic threads") {
-            slider("Response (seconds)", initialValue = 1.0, min = .1, max = 6.0) {
+            slider("Response", unit = "s", initialValue = 1.0, min = .1, max = 6.0) {
                 graph.connections.forEach { c -> c.responseSeconds = it.toFloat() }
             }
             slider("Length stiffness", initialValue = 35.0, min = 0.0, max = 300.0) {
@@ -770,6 +800,35 @@ operations:
                 graph.connections.forEach { c -> c.bias = it.toFloat() }
             }
         }
+
+        controlGroup("individual text planes") {
+            checkbox("Each run faces the reader", initialValue = true) {
+                graph.texts.forEach { run -> run.faceReader = it }
+            }
+            slider("Facing half-life", unit = "s", initialValue = .7, min = 0.0, max = 3.0) {
+                graph.texts.forEach { run -> run.facingHalfLife = it.toFloat() }
+            }
+        }
+
+        controlGroup("text frames") {
+            checkbox("Per-line rectangle union", initialValue = true) { enabled ->
+                readingFrames.forEach { frame ->
+                    frame.mode = if (enabled) DiagramTextFrameMode.LINE_UNION else DiagramTextFrameMode.BOUNDS
+                }
+            }
+            checkbox("Merge small steps", initialValue = true) { enabled ->
+                readingFrames.forEach { frame -> frame.mergeSmallSteps = enabled }
+            }
+            slider("Frame standoff", unit = "m", initialValue = .025, min = 0.0, max = .15) {
+                readingFrames.forEach { frame -> frame.standoff = it.toFloat() }
+            }
+            slider("Frame opacity", initialValue = .22, min = 0.0, max = 1.0) {
+                readingFrames.forEach { frame -> frame.path.color.w = it.toFloat() }
+            }
+            slider("Frame width", unit = "mm", initialValue = .8, min = .1, max = 3.0) {
+                readingFrames.forEach { frame -> frame.path.width = it.toFloat() * .001f }
+            }
+        }
 - create:
     box: text1_drop_caps
     name: 19 · A dropped initial
@@ -789,10 +848,11 @@ operations:
         render parts.
         */
         val body = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
+        val readingFrames = mutableListOf<DiagramTextFrame>()
         val graph = readingDiagram {
             val paragraph = text(
                 "paragraph",
-                "The river carries\nsmall things toward\nthe edge of light\nand brings them home.",
+                "When the door closed behind me\nand I saw my eyes were going\nto be useless in the dark,\nI took myself in hand.",
                 point("paragraph-point", -.15, .25),
             ) {
                 font = body
@@ -803,22 +863,31 @@ operations:
                     weight = 600.0
                 }
             }
-            val aside = text("aside", "remember this", point("aside-point", .5, -.4, .03)) {
+            val aside = text("aside", "Then let go,", point("aside-point", .5, -.4, .03)) {
                 font = body
                 italic = true
                 scale = .45f
             }
-            connection(
+            val paragraphFrame = textFrame("paragraph-frame", paragraph, standoff = .025f, mode = DiagramTextFrameMode.LINE_UNION) {
+                color = vec(1f, 1f, 1f, .22f)
+            }
+            val asideFrame = textFrame("aside-frame", aside, standoff = .025f, mode = DiagramTextFrameMode.LINE_UNION) {
+                color = vec(1f, 1f, 1f, .22f)
+            }
+            readingFrames.addAll(listOf(paragraphFrame, asideFrame))
+            val thread = connection(
                 "initial-thread",
-                paragraph.initial.attach(DiagramTextSite.BOUNDARY),
-                aside.attach(DiagramTextSite.LEFT_MARGIN),
+                paragraphFrame.attach(),
+                asideFrame.attach(DiagramTextSite.LEFT_MARGIN),
             ) {
                 responseSeconds = 1.2f
                 bow.set(0f, -.07f, .025f)
                 width = .001f
                 color = vec(1f, 1f, 1f, .2f)
             }
+            endpointDots(thread.path)
         }
+        graph.texts.forEach { it.faceReader = true }
         val progress = progressReporter("Prepare a dropped initial", showDelayMillis = 0)
         val player = try {
             ReadingDiagramPlayer.prepare(graph, body, "field-slug".file, diagramScore(graph, 30.0) {}) { n, total, text ->
@@ -834,10 +903,420 @@ operations:
         )
 
         controlGroup("drop-cap paragraph") {
-            slider("Paragraph blur (body ems)", initialValue = 0.0, min = 0.0, max = .8) {
+            slider("Paragraph blur", unit = "body em", initialValue = 0.0, min = 0.0, max = .8) {
                 graph.text("paragraph").blur = it.toFloat()
             }
         }
+
+        controlGroup("text frames") {
+            checkbox("Per-line rectangle union", initialValue = true) { enabled ->
+                readingFrames.forEach { frame ->
+                    frame.mode = if (enabled) DiagramTextFrameMode.LINE_UNION else DiagramTextFrameMode.BOUNDS
+                }
+            }
+            checkbox("Merge small steps", initialValue = true) { enabled ->
+                readingFrames.forEach { frame -> frame.mergeSmallSteps = enabled }
+            }
+            slider("Frame standoff", unit = "m", initialValue = .025, min = 0.0, max = .15) {
+                readingFrames.forEach { frame -> frame.standoff = it.toFloat() }
+            }
+        }
+- create:
+    box: text1_two_readings
+    name: 22 · Two readings / composed sequence
+    frame:
+      x: 650
+      y: 880
+      w: 480
+      h: 100
+    properties:
+      code: |
+        import afield.graphics.scene.reading.*
+        import afield.graphics.text.*
+
+        // Two verbatim excerpts, with authored line breaks. These are independent physical runs,
+        // not a single billboard: the near surround can frost part of the later, more distant run.
+        val face = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
+        val graph = readingDiagram {
+            val near = text(
+                "near-reading",
+                "My words found a few\nlast handholds of their own\nonce my body collapsed.",
+                point("near-point", -.14, -.04, .28),
+            ) {
+                font = face
+                scale = .58f
+                orientation.rotateY(-.10f)
+                blurCapacity = 1.5f // both entrance and exit tracks reserve their Gaussian range before Drawing
+            }
+            val far = text(
+                "far-reading",
+                "A whole school of ideas\nswam before me,\nbut I could hook only one:\ndon’t believe what you see.",
+                point("far-point", .14, .11, -.24),
+            ) {
+                font = face
+                scale = .56f
+                orientation.rotateY(.12f)
+                blurCapacity = 1.5f
+            }
+            val nearFrame = textFrame("near-frame", near, .025f, DiagramTextFrameMode.LINE_UNION) {
+                width = .0007f
+                color = vec(1f, 1f, 1f, .10f)
+            }
+            val farFrame = textFrame("far-frame", far, .025f, DiagramTextFrameMode.LINE_UNION) {
+                width = .0007f
+                color = vec(1f, 1f, 1f, .10f)
+            }
+            val thread = connection("reading-thread", nearFrame.attach(), farFrame.attach(), interiorNodes = 8) {
+                responseSeconds = 1.6f
+                dampingRatio = .9f
+                lengthStiffness = 25f
+                curvatureStiffness = 18f
+                bow.set(0f, -.19f, .10f)
+                tension = .15f
+                width = .001f
+                color = vec(1f, 1f, 1f, .25f)
+            }
+            endpointDots(thread.path, radius = .002f, opacity = .4f)
+        }
+
+        // This example owns its score. Box 6 deliberately leaves it alone when re-scoring other examples.
+        // All visible paths fade; none draw themselves in. Dots lead the connecting thread by .7 seconds.
+        val score = diagramScore(graph, 36.0) {
+            val near = graph.text("near-reading")
+            val far = graph.text("far-reading")
+            fadeIn(near, at = 0.0, seconds = 5.0)
+            blurIn(near, at = 0.0, seconds = 8.0, radius = .75f)
+            fadeIn(graph.path("near-frame"), at = .7, seconds = 5.0)
+            fadeIn(far, at = 5.0, seconds = 5.5)
+            blurIn(far, at = 5.0, seconds = 9.0, radius = .75f)
+            fadeIn(graph.path("far-frame"), at = 6.0, seconds = 5.0)
+            for (dot in graph.dots) fadeIn(dot, at = 6.4, seconds = 1.0)
+            fadeIn(graph.path("reading-thread"), at = 7.1, seconds = 2.9)
+
+            // Let the room stay readable, then release the two runs on different clocks.
+            blurOut(near, at = 22.0, seconds = 7.0, radius = .75f)
+            fadeOut(near, at = 22.0, seconds = 6.0)
+            fadeOut(graph.path("near-frame"), at = 24.0, seconds = 5.0)
+            blurOut(far, at = 26.0, seconds = 8.0, radius = .75f)
+            fadeOut(far, at = 27.0, seconds = 6.0)
+            fadeOut(graph.path("far-frame"), at = 28.0, seconds = 6.0)
+            fadeOut(graph.path("reading-thread"), at = 25.0, seconds = 6.0)
+            for (dot in graph.dots) fadeOut(dot, at = 26.0, seconds = 5.0)
+        }
+        val progress = progressReporter("Prepare two readings", showDelayMillis = 0)
+        val player = try {
+            ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, score) { n, total, text ->
+                progress.update(n.toDouble() / total, "$n / $total: $text")
+            }
+        } finally {
+                progress.close()
+            }
+        player.spring = 3f
+        player.dampingRate = 3f
+        player.wind = 0f
+        player.gravity = 0f
+        prop<ReadingExample>(exampleNine) = ReadingExample(
+            "9 · Two readings",
+            "Staggered blur/fade entrances, overlapping frosted rectlet surrounds, a dotted elastic thread and body-responsive text. Both runs sharpen by 14 seconds; they dissolve separately from 22 seconds.",
+            player,
+        )
+
+        controlGroup("sequence") {
+            button("Replay this sequence") { down ->
+                if (down) {
+                    player.restart()
+                    player.playback.playing = true
+                }
+            }
+            button("Hold both readings") { down ->
+                if (down) {
+                    player.playback.seek(16.0)
+                    player.playback.playing = false
+                }
+            }
+        }
+        display(
+            "timing",
+            "<div style='padding:12px;width:440px'>Near reading: enter 0–8s, dissolve 22–29s.<br>Far reading: enter 5–14s, dissolve 26–34s.<br>Dots lead the thread; the thread fades at 7.1s. Both text anchors are unpinned, so the body can waft them and their surrounds away.</div>",
+        )
+- create:
+    box: text1_overstroke_rectangle
+    name: 24 · Extended rectangle
+    frame:
+      x: -1300
+      y: 150
+      w: 480
+      h: 100
+    properties:
+      code: |
+        import afield.graphics.scene.reading.*
+        import afield.graphics.text.*
+
+        // Verbatim excerpts from the source passage; only the line breaks are authored here.
+        val face = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
+        val graph = readingDiagram {
+            val words = text("words", "And now this sentence,\npulled taut, goes nowhere:", point("p", 0, 0)) {
+                font = face
+                scale = .7f
+                blurCapacity = .8f
+            }
+            textFrame(
+                "holder",
+                words,
+                standoff = .028f,
+                overstrokeFraction = .08f,
+                overstrokeDistance = .012f,
+            ) {
+                width = .0007f
+                color = vec(1f, 1f, 1f, .2f)
+            }.frost
+                .apply {
+                    enabled = true
+                    blurPixels = 7f
+                }
+        }
+        val score = diagramScore(graph, 28.0) {
+            val holder = graph.textFrame("holder")
+            fadeIn(graph.text("words"), at = 0.0, seconds = 4.0)
+            blurIn(graph.text("words"), at = 0.0, seconds = 6.0, radius = .6f)
+            fadeIn(holder, at = .7, seconds = 4.0)
+            // Eight outward corner extensions change length gently; the rectangle itself stays complete.
+            overstroke(holder, .08f, .2f, at = 7.0, seconds = 7.0, fromDistance = .012f, toDistance = .025f)
+            blurOut(graph.text("words"), at = 19.0, seconds = 7.0, radius = .6f)
+            fadeOut(graph.text("words"), at = 23.0, seconds = 4.0)
+            fadeOut(holder, at = 22.0, seconds = 5.0)
+        }
+
+        val progress = progressReporter("Prepare 10 · Extended rectangle", showDelayMillis = 0)
+        val player = try {
+            ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, score) { n, total, text ->
+                progress.update(n.toDouble() / total, "$n / $total: $text")
+            }
+        } finally {
+                progress.close()
+            }
+        player.spring = 8f
+        player.dampingRate = 4f
+        player.gravity = 0f
+        player.wind = 0f
+        prop<ReadingExample>(exampleTen) = ReadingExample(
+            "10 · Extended rectangle",
+            "Eight outward corner extensions of a rectangular frame; a seekable score lengthens these mechanical marks.",
+            player,
+        )
+- create:
+    box: text1_overstroke_union
+    name: 25 · Union with corner extensions
+    frame:
+      x: -1300
+      y: 260
+      w: 480
+      h: 100
+    properties:
+      code: |
+        import afield.graphics.scene.reading.*
+        import afield.graphics.text.*
+
+        // Verbatim excerpts from the source passage; only the line breaks are authored here.
+        val face = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
+        val graph = readingDiagram {
+            val words = text("words", "Each toe\ncould smell the earth\nit touched.", point("p", 0, 0)) {
+                font = face
+                italic = true
+                scale = .78f
+                orientation.rotateY(.13f)
+                blurCapacity = .8f
+            }
+            textFrame(
+                "holder",
+                words,
+                standoff = .024f,
+                mode = DiagramTextFrameMode.LINE_UNION,
+                overstrokeFraction = .12f,
+                overstrokeDistance = .015f,
+            ) {
+                width = .0007f
+                color = vec(1f, 1f, 1f, .18f)
+            }.frost
+                .apply {
+                    enabled = true
+                    blurPixels = 8f
+                }
+        }
+        val score = diagramScore(graph, 28.0) {
+            val holder = graph.textFrame("holder")
+            fadeIn(graph.text("words"), at = 0.0, seconds = 4.0)
+            blurIn(graph.text("words"), at = 0.0, seconds = 6.0, radius = .6f)
+            fadeIn(holder, at = 1.0, seconds = 3.0)
+            // Eight extensions belong to the overall bounds; no rectlet seam is prolonged.
+            overstroke(holder, .12f, .25f, at = 7.0, seconds = 8.0)
+            move(graph.text("words"), vec(0f, 0f, 0f), vec(.045f, .025f, .035f), at = 8.0, seconds = 8.0)
+            blurOut(graph.text("words"), at = 19.0, seconds = 7.0, radius = .6f)
+            fadeOut(graph.text("words"), at = 23.0, seconds = 4.0)
+            fadeOut(holder, at = 22.0, seconds = 5.0)
+        }
+
+        val progress = progressReporter("Prepare 11 · Union with corner extensions", showDelayMillis = 0)
+        val player = try {
+            ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, score) { n, total, text ->
+                progress.update(n.toDouble() / total, "$n / $total: $text")
+            }
+        } finally {
+                progress.close()
+            }
+        player.spring = 8f
+        player.dampingRate = 4f
+        player.gravity = 0f
+        player.wind = 0f
+        prop<ReadingExample>(exampleEleven) = ReadingExample(
+            "11 · Union with corner extensions",
+            "Eight outer extensions surround a frosted rectlet union; the union and sliding boundary remain unchanged.",
+            player,
+        )
+- create:
+    box: text1_frustum_readings
+    name: 26 · Transparent text frustum
+    frame:
+      x: -1300
+      y: 370
+      w: 480
+      h: 100
+    properties:
+      code: |
+        import afield.graphics.scene.reading.*
+        import afield.graphics.text.*
+
+        // Verbatim excerpts from the source passage; only the line breaks are authored here.
+        val face = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
+        val graph = readingDiagram {
+            val near = point("near", -.04, -.02, .18)
+            val far = point("far", .22, .15, -.25)
+            link(near, far)
+            val front = text("front", "Marble.\nGoing back to antiquity.", near) {
+                font = face
+                scale = .72f
+                blurCapacity = .8f
+            }
+            val back = text("back", "Faintly hinted,\nthe heady scent of a rose.", far) {
+                font = face
+                scale = .44f
+                blurCapacity = .8f
+            }
+            textFrustum("holder", front, back, standoff = .025f) {
+                width = .0007f
+                color = vec(1f, 1f, 1f, .17f)
+                aspectRatio = 3.2f
+                frost {
+                    enabled = true
+                    blurPixels = 7f
+                    brightness = 1.1f
+                }
+            }
+        }
+        val score = diagramScore(graph, 30.0) {
+            val holder = graph.textFrustum("holder")
+            fadeIn(holder, at = 0.0, seconds = 4.0)
+            blurIn(holder, at = 0.0, seconds = 7.0, radius = .6f)
+            // Move the end texts once; both fitted frames, frosting and rails follow those poses.
+            move(holder, vec(0f, 0f, 0f), vec(.06f, .03f, .02f), at = 8.0, seconds = 8.0)
+            blurOut(holder, at = 21.0, seconds = 7.0, radius = .6f)
+            fadeOut(holder, at = 24.0, seconds = 5.0)
+        }
+
+        val progress = progressReporter("Prepare 12 · A transparent text frustum", showDelayMillis = 0)
+        val player = try {
+            ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, score) { n, total, text ->
+                progress.update(n.toDouble() / total, "$n / $total: $text")
+            }
+        } finally {
+                progress.close()
+            }
+        player.spring = 8f
+        player.dampingRate = 4f
+        player.gravity = 0f
+        player.wind = 0f
+        prop<ReadingExample>(exampleTwelve) = ReadingExample(
+            "12 · A transparent text frustum",
+            "Two frosted, text-fitted rectangular ends share an aspect and four rails; a whole-holder cue moves both ends.",
+            player,
+        )
+- create:
+    box: text1_frustum_two_faces
+    name: 27 · A holder with two faces
+    frame:
+      x: -1300
+      y: 480
+      w: 480
+      h: 100
+    properties:
+      code: |
+        import afield.graphics.scene.reading.*
+        import afield.graphics.text.*
+
+        // Verbatim excerpts from the source passage; only the line breaks are authored here.
+        val face = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
+        val graph = readingDiagram {
+            val near = point("near", -.04, -.02, .22)
+            val far = point("far", .12, .08, -.28)
+            link(near, far)
+            val front = text("front", "How hard it is for a butterfly\nflitting around in the air\nto pronounce itself…", near) {
+                font = face
+                scale = .56f
+                orientation.rotateY(-.12f)
+                blurCapacity = .9f
+            }
+            val back = text("back", "until it alights\non a flower—", far) {
+                font = face
+                italic = true
+                scale = .4f
+                // The second end reads from outside the back. Corner matching keeps the cage untwisted.
+                orientation.rotateY(-.12f + kotlin.math.PI.toFloat())
+                blurCapacity = .9f
+            }
+            textFrustum("holder", front, back, standoff = .025f) {
+                width = .0007f
+                color = vec(1f, 1f, 1f, .15f)
+                frontFrame.overstrokeFraction = .08f
+                frontFrame.overstrokeDistance = .01f
+                backFrame.overstrokeFraction = .08f
+                backFrame.overstrokeDistance = .01f
+                frost {
+                    enabled = true
+                    blurPixels = 8f
+                    brightness = 1.1f
+                }
+            }
+        }
+        val score = diagramScore(graph, 34.0) {
+            val holder = graph.textFrustum("holder")
+            fadeIn(holder, at = 0.0, seconds = 5.0)
+            blurIn(holder.front, at = 0.0, seconds = 8.0, radius = .65f)
+            blurIn(holder.back, at = 2.0, seconds = 8.0, radius = .65f)
+            // Ordinary text cues change depth and taper, while the frame fit and rail endpoints stay exact.
+            move(holder.back, vec(0f, 0f, 0f), vec(.04f, .03f, -.14f), at = 10.0, seconds = 8.0)
+            resize(holder.back, 1f, .72f, at = 10.0, seconds = 8.0)
+            overstroke(holder.frontFrame, .08f, .18f, at = 10.0, seconds = 8.0)
+            blurOut(holder, at = 24.0, seconds = 8.0, radius = .65f)
+            fadeOut(holder, at = 28.0, seconds = 5.0)
+        }
+
+        val progress = progressReporter("Prepare 13 · A holder with two faces", showDelayMillis = 0)
+        val player = try {
+            ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, score) { n, total, text ->
+                progress.update(n.toDouble() / total, "$n / $total: $text")
+            }
+        } finally {
+                progress.close()
+            }
+        player.spring = 8f
+        player.dampingRate = 4f
+        player.gravity = 0f
+        player.wind = 0f
+        prop<ReadingExample>(exampleThirteen) = ReadingExample(
+            "13 · A holder with two faces",
+            "Walk around to read the outward-facing back; its scored movement and scale open and taper the device.",
+            player,
+        )
 - create:
     box: text1_score
     name: 6 · Scores / example selector
@@ -850,11 +1329,28 @@ operations:
       code: |
         import afield.graphics.scene.reading.*
 
-        // All eight scores are separate from graph construction and native typography preparation.
-        // Re-run this box to rescore the existing players; their physics and Slug buffers are retained.
-        val allExamples =
-            listOf(exampleOne, exampleTwo, exampleThree, exampleFour, exampleFive, exampleSix, exampleSeven, exampleEight)
+        /*
+        The gallery scores are separate from graph construction and native typography preparation.
+        Endpoint dots lead their curves by about .7 seconds; curves only change opacity.
+        Re-run this box to rescore the existing players; their physics and Slug buffers are retained.
+        */
+        val allExamples = listOf(
+            exampleOne,
+            exampleTwo,
+            exampleThree,
+            exampleFour,
+            exampleFive,
+            exampleSix,
+            exampleSeven,
+            exampleEight,
+            exampleNine,
+            exampleTen,
+            exampleEleven,
+            exampleTwelve,
+            exampleThirteen,
+        )
         for ((index, example) in allExamples.withIndex()) {
+            if (index >= 8) continue // Two readings and the mechanical holders own their complete scores.
             val graph = example.player.diagram
             example.player.playback.score = diagramScore(
                 graph,
@@ -864,14 +1360,16 @@ operations:
             ) {
                     if (index == 7) {
                         for (text in graph.texts) fadeIn(text, at = 0.0, seconds = 4.0)
-                        for (path in graph.paths) drawIn(path, at = 1.0, seconds = 5.0)
+                        for (path in graph.paths) fadeIn(path, at = 1.0, seconds = 5.0)
+                        for (dot in graph.dots) fadeIn(dot, at = .3, seconds = 1.0)
                         move(graph.text("aside"), vec(0f, 0f, 0f), vec(-.1f, .08f, 0f), at = 6.0, seconds = 14.0)
-                        exitAll(at = 26.0, seconds = 4.0)
+                        exitAll(at = 26.0, seconds = 4.0, erasePaths = false)
                     } else if (index == 6) {
                         for (text in graph.texts) fadeIn(text, at = 0.0, seconds = 2.0)
-                        for (path in graph.paths) drawIn(path, at = .5, seconds = 3.0)
-                        move(graph.text("light"), vec(0f, 0f, 0f), vec(.12f, -.3f, .08f), at = 4.0, seconds = 12.0)
-                        move(graph.text("light"), vec(0f, 0f, 0f), vec(-.12f, .3f, -.08f), at = 18.0, seconds = 12.0)
+                        for (path in graph.paths) fadeIn(path, at = .7, seconds = 3.0)
+                        for (dot in graph.dots) fadeIn(dot, at = 0.0, seconds = .7)
+                        move(graph.text("eyes"), vec(0f, 0f, 0f), vec(.12f, -.3f, .08f), at = 4.0, seconds = 12.0)
+                        move(graph.text("eyes"), vec(0f, 0f, 0f), vec(-.12f, .3f, -.08f), at = 18.0, seconds = 12.0)
                     } else if (index == 5) {
                         for ((i, word) in graph.texts.withIndex()) {
                             blurIn(word, at = i * .7, seconds = 7.0, radius = .9f)
@@ -882,19 +1380,23 @@ operations:
                     } else if (index == 3) {
                         val furniture = graph.group("furniture")
                         val reading = graph.group("reading")
-                        fadeIn(furniture, at = 0.0, seconds = 1.0)
-                        for ((i, path) in furniture.items.filterIsInstance<DiagramPath>().withIndex()) drawIn(
+                        for (text in furniture.items.filterIsInstance<DiagramText>()) fadeIn(text, at = 0.0, seconds = 1.0)
+                        for (dot in furniture.items.filterIsInstance<DiagramDot>()) fadeIn(dot, at = 0.0, seconds = .7)
+                        for ((i, path) in furniture.items.filterIsInstance<DiagramPath>().withIndex()) fadeIn(
                             path,
-                            at = .15 + i * .06,
+                            at = .7 + i * .06,
                             seconds = 1.2,
                         )
-                        transition(furniture, reading, at = 9.0, seconds = 2.4)
-                        exitAll(at = 20.0, seconds = 2.5)
+                        fadeOut(furniture, at = 9.0, seconds = 2.4)
+                        for (text in reading.items.filterIsInstance<DiagramText>()) fadeIn(text, at = 9.0, seconds = 2.4)
+                        for (dot in reading.items.filterIsInstance<DiagramDot>()) fadeIn(dot, at = 8.3, seconds = .7)
+                        for (path in reading.items.filterIsInstance<DiagramPath>()) fadeIn(path, at = 9.0, seconds = 2.4)
+                        exitAll(at = 20.0, seconds = 2.5, erasePaths = false)
                     } else {
-                        for ((i, text) in graph.texts.withIndex()) enter(text, at = i * .16, seconds = 1.0)
-                        for ((i, path) in graph.paths.withIndex()) drawIn(path, at = .2 + i * .10, seconds = 1.2)
-                        for ((i, dot) in graph.dots.withIndex()) enter(dot, at = .8 + i * .08, rise = 0f)
-                        exitAll(at = 17.0, seconds = 2.5)
+                        for ((i, text) in graph.texts.withIndex()) fadeIn(text, at = i * .16, seconds = 1.0)
+                        for (path in graph.paths) fadeIn(path, at = .7, seconds = 1.2)
+                        for (dot in graph.dots) fadeIn(dot, at = 0.0, seconds = .7)
+                        exitAll(at = 17.0, seconds = 2.5, erasePaths = false)
                     }
                 }
             example.player.playback.seek(6.0)
@@ -913,7 +1415,8 @@ operations:
             for ((i, e) in allExamples.withIndex()) button(e.title) { down ->
                 if (down) {
                     poem.select(i)
-                    poem.current.playback.seek(6.0)
+                    poem.current.playback.seek(if (i >= 8) 0.0 else 6.0)
+                    if (i >= 8) poem.current.playback.playing = true
                     describe()
                 }
             }
@@ -921,7 +1424,7 @@ operations:
         controlGroup("score") {
             checkbox("Play score", initialValue = true) { poem.current.playback.playing = it }
             checkbox("Repeat score", initialValue = true) { poem.current.playback.repeat = it }
-            slider("Score time (seconds)", initialValue = 6.0, min = 0.0, max = 36.0) {
+            slider("Score time", unit = "s", initialValue = 6.0, min = 0.0, max = 36.0) {
                 poem.current.playback.playing = false
                 poem.current.playback.seek(it.toDouble())
             }
@@ -934,33 +1437,11 @@ operations:
             button("Show complete diagram") { down ->
                 if (down) {
                     poem.current.playback.playing = false
-                    poem.current.playback.seek(6.0)
+                    poem.current.playback.seek(if (poem.selected >= 8) 16.0 else 6.0)
                 }
             }
         }
-        controlGroup("gentle physics") {
-            slider("Layout spring", initialValue = 28.0, min = 0.0, max = 100.0) {
-                allExamples.forEach { e -> e.player.spring = it.toFloat() }
-            }
-            slider("Link stiffness", initialValue = 18.0, min = 0.0, max = 80.0) {
-                allExamples.forEach { e -> e.player.constraintStrength = it.toFloat() }
-            }
-            slider("Gravity", initialValue = -.025, min = -.3, max = .1) {
-                allExamples.forEach { e -> e.player.gravity = it.toFloat() }
-            }
-            slider("Air movement", initialValue = .012, min = 0.0, max = .3) {
-                allExamples.forEach { e -> e.player.wind = it.toFloat() }
-            }
-            button("Still proof / reset") { down ->
-                if (down) {
-                    poem.current.gravity = 0f
-                    poem.current.wind = 0f
-                    poem.current.resetPositions()
-                    poem.current.playback.playing = false
-                    poem.current.playback.seek(6.0)
-                }
-            }
-        }
+
         describe()
 - create:
     box: text1_stroke
@@ -997,6 +1478,7 @@ operations:
             mat4 model; // diagram-local to world, shared by both eyes
             DiagramSegments diagramData; // CPU-authored centreline samples, never eye-dependent triangles
             vec4 options; // viewport width/height, minimum stroke/marker radius in pixels
+            vec4 clipPlane; // world-space backdrop clipping, zero for the main scene
         } pc;
         #extension GL_EXT_multiview : require
         layout(std140, set=0, binding=7) uniform StereoViews {
@@ -1035,7 +1517,9 @@ operations:
             return dot(p,p)>1e-10?normalize(p):fallback;
         }
         const vec2 corners[6]=vec2[6](vec2(0,-1),vec2(1,-1),vec2(1,1),vec2(0,-1),vec2(1,1),vec2(0,1));
+        layout(location=6) out float backdropDistance;
         void main() {
+            backdropDistance=0;
             Segment s=pc.diagramData.item[gl_VertexIndex/6];
             // Do not rasterize unrevealed tessellation segments. Clamped arclength derivatives
             // at their joins can otherwise turn distant AA tails into a dotted preview.
@@ -1087,6 +1571,7 @@ operations:
             if(atEnd&&((flags&2u)!=0u||leave<1))p+=axis*(rb+1.5);
             clip.xy=vec2(p.x/pc.options.x*2-1,1-p.y/pc.options.y*2)*clip.w;
             gl_Position=clip;
+            backdropDistance=dot(pc.clipPlane,inverse(vp)*clip);
             endpoints=vec4(pa,pb);
             widthsArc=vec4(ra,rb,mix(s.a.w,s.b.w,enter),mix(s.a.w,s.b.w,leave));
             colorA=mix(s.colorA,s.colorB,enter);
@@ -1103,7 +1588,9 @@ operations:
         layout(location=4) flat in vec4 ink;
         layout(location=5) flat in vec4 limits;
         layout(location=0) out vec4 outColor;
+        layout(location=6) in float backdropDistance;
         void main() {
+            if(backdropDistance<0)discard;
             // Empty reveal intervals must never leave a rounded cap behind.
             if(limits.y<=limits.x)discard;
             vec2 delta=endpoints.zw-endpoints.xy;
@@ -1169,6 +1656,7 @@ operations:
             mat4 model; // diagram-local to world, shared by both eyes
             DiagramMarkers diagramData; // position/radius, linear RGBA and SDF parameters
             vec4 options; // viewport width/height, minimum stroke/marker radius in pixels
+            vec4 clipPlane; // world-space backdrop clipping, zero for the main scene
         } pc;
         #extension GL_EXT_multiview : require
         layout(std140, set=0, binding=7) uniform StereoViews {
@@ -1198,7 +1686,9 @@ operations:
         layout(location=1) flat out vec4 tint;
         layout(location=2) flat out vec4 shape;
         const vec2 corners[6]=vec2[6](vec2(-1,-1),vec2(1,-1),vec2(1,1),vec2(-1,-1),vec2(1,1),vec2(-1,1));
+        layout(location=3) out float backdropDistance;
         void main() {
+            backdropDistance=0;
             Marker p=pc.diagramData.item[gl_VertexIndex/6];
             mat4 vp=gl_ViewIndex==0?stereoVpL:stereoVpR;
             vec4 projection=gl_ViewIndex==0?stereoProjectionL:stereoProjectionR;
@@ -1211,6 +1701,7 @@ operations:
             uv=corners[gl_VertexIndex%6]*(1+2/max(radius,1e-5));
             clip.xy+=uv*radius*vec2(2,-2)/pc.options.xy*clip.w;
             gl_Position=clip;
+            backdropDistance=dot(pc.clipPlane,inverse(vp)*clip);
             tint=p.color;
             shape=p.shape;
         }
@@ -1220,7 +1711,9 @@ operations:
         layout(location=1) flat in vec4 tint;
         layout(location=2) flat in vec4 shape;
         layout(location=0) out vec4 outColor;
+        layout(location=3) in float backdropDistance;
         void main() {
+            if(backdropDistance<0)discard;
             float c=cos(shape.z),s=sin(shape.z);
             vec2 p=mat2(c,-s,s,c)*uv;
             p.x/=max(shape.w,.1);
@@ -1287,6 +1780,7 @@ operations:
             SlugData slugData; // immutable word-outline atlas
             vec2 viewport; // dimensions of this eye, for perspective-dependent quad dilation
             vec4 tint; // linear RGBA, with score-driven word opacity
+            vec4 clipPlane; // world-space backdrop clipping, zero for the main scene
         } pc;
         vec4 data4(uint at) {
             return uintBitsToFloat(uvec4(pc.slugData.words[at], pc.slugData.words[at+1],
@@ -1294,7 +1788,9 @@ operations:
         }
         layout(location=0) out vec2 emCoord;
         const vec2 corners[6] = vec2[6](vec2(0,0), vec2(1,0), vec2(1,1), vec2(0,0), vec2(1,1), vec2(0,1));
+        layout(location=1) out float backdropDistance;
         void main() {
+            backdropDistance=0;
             vec4 bounds = data4(8u);
             // A closed SlugBuffer's empty atlas: nothing to cover, so put every corner outside the clip volume.
             if (!(bounds.z > bounds.x && bounds.w > bounds.y)) {
@@ -1328,6 +1824,7 @@ operations:
             q += distance * normal;
             emCoord = q;
             gl_Position = matrix * vec4(q, 0.0, 1.0);
+            backdropDistance=dot(pc.clipPlane,pc.model*vec4(q,0,1));
         }
       fragment: |
         #version 450
@@ -1341,6 +1838,7 @@ operations:
             SlugData slugData; // immutable word-outline atlas
             vec2 viewport; // dimensions of this eye
             vec4 tint; // linear RGBA and score-driven opacity
+            vec4 clipPlane; // world-space backdrop plane, shared with the vertex stage
         } pc;
         vec4 data4(uint at) {
             return uintBitsToFloat(uvec4(pc.slugData.words[at], pc.slugData.words[at+1],
@@ -1508,7 +2006,9 @@ operations:
             // White ink; glyph coverage and score-driven opacity remain independent.
             return vec3(1.0);
         }
+        layout(location=1) in float backdropDistance;
         void main() {
+            if(backdropDistance<0)discard;
             ivec2 loc = ivec2(pc.slugData.words[16], pc.slugData.words[17]);
             ivec2 bandMax = ivec2(pc.slugData.words[18], pc.slugData.words[19]);
             float coverage = slug_Render(emCoord, data4(12u), loc, bandMax);
@@ -1703,7 +2203,7 @@ operations:
         }
 - create:
     box: text1_composite
-    name: 11 · Green / paint compositor
+    name: 11 · Green / light compositor
     frame:
       x: 1800
       y: 770
@@ -1742,7 +2242,7 @@ operations:
         layout(std140,set=0,binding=3) uniform CompositeGrade {
             vec4 selectorRange; // selector minimum/maximum, cubic fold strength, reserved
             vec4 selectorSource; // sharp/medium/broad green weights, reserved
-            vec4 paint; // opacity threshold, smooth knee width, normalization mix, reserved
+            vec4 paint; // reserved legacy layout; accumulated light is never normalized
             vec4 colorFold; // red/green/blue fold gains, overall fold mix
             vec4 foldLimits; // red/green/blue fold caps, fold scale
             vec4 alphaFold; // fold gain, cap, strength, reserved
@@ -1768,11 +2268,6 @@ operations:
         }
         float luminance(vec3 c) {
             return dot(c,vec3(0.2126,0.7152,0.0722));
-        }
-        float smoothMaximum(float a,float b,float width) {
-            if(width<=1e-6)return max(a,b);
-            float h=clamp(0.5+0.5*(a-b)/width,0.0,1.0);
-            return mix(b,a,h)+width*h*(1.0-h);
         }
         vec3 signedGamma(vec3 c,vec3 gamma_) {
             return sign(c)*pow(abs(c),1.0/max(gamma_,vec3(0.001)));
@@ -1853,17 +2348,14 @@ operations:
             c.rgb=mix(c.rgb,folded,clamp(grade.colorFold.w,0.0,1.0));
             c.a*=1.0-clamp(grade.alphaFold.z,0.0,1.0)*clamp(g*broad.g*grade.alphaFold.x,0.0,max(grade.alphaFold.y,0.0));
 
-            // C1 knee from additive light below the threshold to opacity-weighted paint above it.
-            float denominator=max(smoothMaximum(max(c.a,0.0),max(grade.paint.x,0.0001),max(grade.paint.y,0.0)),0.0001);
-            c.rgb*=mix(1.0,1.0/denominator,clamp(grade.paint.z,0.0,1.0));
+            // Additive light: opacity weights deposition, never divides accumulated RGB.
             float energy=dot(abs(c.rgb),vec3(1.0/3.0));
             c.rgb=mix(vec3(luminance(c.rgb)),c.rgb,max(grade.saturation.x,0.0));
             float desaturate=clamp(grade.saturation.y*max(grade.saturation.z-energy,0.0)*grade.saturation.w,0.0,1.0);
             c.rgb=mix(c.rgb,vec3(energy),desaturate);
 
-            // Signed foreground can darken the background. Neither is clipped before artistic gamma.
-            float coverage=clamp(max(c.a,0.0)/denominator,0.0,1.0);
-            vec3 color=c.rgb+grade.background.rgb*grade.background.a*(1.0-coverage);
+            // Background is another light contribution, without coverage-based darkening.
+            vec3 color=c.rgb+grade.background.rgb*grade.background.a;
             color*=grade.gain.rgb*pc.reconstruction.z;
             // Toning operates on final display-linear colour, after artistic gamma.
             // This makes its luminance invariant survive per-channel gamma and gamut limits.
@@ -1960,6 +2452,22 @@ operations:
       code: |
         import afield.graphics.scene.reading.*
 
+        // Staged cache quality. Apply changes at an acquired frame, without replacing the renderer or XR session.
+        rootProp<Int>(textCacheWidth, 2048)
+        rootProp<Int>(textCacheHeight, 1024)
+        rootProp<Int>(textCacheMinimum, 512)
+        rootProp<Int>(textCacheHalving, 2)
+        rootProp<Int>(textCacheTaps, 513)
+        rootProp<Float>(textCacheCutoff, 4f)
+        fun pendingTextCacheQuality() = ReadingTextBlurConfig(
+            width = root.textCacheWidth,
+            height = root.textCacheHeight,
+            minimumSize = root.textCacheMinimum,
+            levelsPerHalving = root.textCacheHalving,
+            maximumRadius = (root.textCacheTaps - 1) / 2,
+            sigmaCutoff = root.textCacheCutoff,
+        )
+
         // Each shader box owns its moduleHere pipeline and its standard Alt+R action.
         // The renderer supplies pass-specific targets/resources without copying shader properties.
         val passes = mapOf(
@@ -1973,85 +2481,49 @@ operations:
             "reading-composite" to compositeModuleFactory,
         )
 
-        prop<StereoDiagramRenderer>(drawing) = StereoDiagramRenderer(renderer, stereo, poem, moduleFactories = passes)
+        prop<StereoDiagramRenderer>(drawing) =
+            StereoDiagramRenderer(renderer, stereo, poem, textBlurConfig = pendingTextCacheQuality(), moduleFactories = passes)
         val ownedDrawing = drawing
-        controlGroup("drawing") {
-            button("Recenter poem") { down -> if (down) drawing.recenter() }
-            checkbox("Gently face the reader", initialValue = true) { drawing.followReader = it }
-            slider("Turning half-life (seconds)", initialValue = 2.0, min = .1, max = 10.0) {
-                drawing.turnHalfLife = it.toFloat()
+
+        rootProp<Boolean>(showSkeleton, false)
+        rootProp<Boolean>(showPhysicsNodes, true)
+        rootProp<Boolean>(showBodyForces, true)
+
+        // The uniform has its own document-wide floor; panel-local black levels remain available in the DSL.
+        rootProp<Float>(frostBlackLevel, .012f)
+        rootProp<Float>(frostBlurGamma, 1f)
+        val frostScenePreparation = drawing.compositor.beforeScene
+        val frostFloorValue: () -> Float = { root.frostBlackLevel }
+        drawing.compositor.beforeScene =
+            afield.graphics.vulkan.Target { command, index ->
+                drawing.frost.blurGamma = root.frostBlurGamma
+                frostScenePreparation?.render(command, index)
+                drawing.compositor.sharp.modules
+                    .filterKeys { it.startsWith("reading-frost-") }
+                    .values
+                    .forEach { pass ->
+                        pass.current.liveUniformStructures.getValue("FrostTone").bind("globalBlackLevel", frostFloorValue)
+                    }
             }
-            slider("Stroke width multiplier", initialValue = 1.0, min = .2, max = 4.0) {
-                poem.examples.forEach { e -> e.player.strokeWidthScale = it.toFloat() }
+
+        // These controls shape already-filtered text coverage; neither changes its cache nor its timing.
+        rootProp<Float>(textBlurGain, 1f)
+        rootProp<Float>(textBlurContrast, 1f)
+        val textBlurToneValue: () -> Vector4f = { vec(root.textBlurGain, root.textBlurContrast, 0f, 0f) }
+        val prepareTextAndFrost = drawing.compositor.beforeScene
+        drawing.compositor.beforeScene =
+            afield.graphics.vulkan.Target { command, index ->
+                drawing.compositor.sharp.modules
+                    .filterKeys { it.startsWith("reading-local-blur-") }
+                    .values
+                    .forEach { pass ->
+                        pass.current.liveUniformStructures.getValue("TextBlurTone").bind("appearance", textBlurToneValue)
+                    }
+                prepareTextAndFrost?.render(command, index)
             }
-            slider("Point radius multiplier", initialValue = 1.0, min = .2, max = 4.0) {
-                poem.examples.forEach { e -> e.player.dotRadiusScale = it.toFloat() }
-            }
-            checkbox("Show diagram dots", initialValue = true) { poem.examples.forEach { e -> e.player.showDots = it } }
-        }
-        val grade = drawing.compositor.settings
-        controlGroup("blur cascade") {
-            slider("Medium blur radius", initialValue = grade.mediumRadius.toDouble(), min = 0.0, max = 8.0) {
-                grade.mediumRadius = it.toFloat()
-            }
-            slider("Broad blur radius", initialValue = grade.broadRadius.toDouble(), min = 0.0, max = 8.0) {
-                grade.broadRadius = it.toFloat()
-            }
-        }
-        controlGroup("green compositor") {
-            slider("Blur mix", initialValue = grade.selection.z.toDouble(), min = 0.0, max = 1.0) {
-                grade.selection.z = it.toFloat()
-            }
-            slider("Green selector gain", initialValue = grade.selection.x.toDouble(), min = 0.0, max = 8.0) {
-                grade.selection.x = it.toFloat()
-            }
-            slider("Green selector offset", initialValue = grade.selection.y.toDouble(), min = -1.0, max = 1.0) {
-                grade.selection.y = it.toFloat()
-            }
-            slider("Source green scale", initialValue = grade.selection.w.toDouble(), min = 0.0, max = 4.0) {
-                grade.selection.w = it.toFloat()
-            }
-            slider("Selector sharp weight", initialValue = grade.selectorSource.x.toDouble(), min = 0.0, max = 1.0) {
-                grade.selectorSource.x = it.toFloat()
-            }
-            slider("Selector medium weight", initialValue = grade.selectorSource.y.toDouble(), min = 0.0, max = 1.0) {
-                grade.selectorSource.y = it.toFloat()
-            }
-            slider("Selector broad weight", initialValue = grade.selectorSource.z.toDouble(), min = 0.0, max = 1.0) {
-                grade.selectorSource.z = it.toFloat()
-            }
-            slider("Green from red / blue", initialValue = grade.reconstruction.x.toDouble(), min = 0.0, max = 1.0) {
-                grade.reconstruction.x = it.toFloat()
-                grade.reconstruction.y = 1f - it.toFloat()
-            }
-        }
-        controlGroup("paint and colour") {
-            slider("Additive to weighted paint", initialValue = grade.paint.z.toDouble(), min = 0.0, max = 1.0) {
-                grade.paint.z = it.toFloat()
-            }
-            slider("Paint opacity threshold", initialValue = grade.paint.x.toDouble(), min = .001, max = 4.0) {
-                grade.paint.x = it.toFloat()
-            }
-            slider("Paint knee width", initialValue = grade.paint.y.toDouble(), min = 0.0, max = 2.0) {
-                grade.paint.y = it.toFloat()
-            }
-            slider("Exposure", initialValue = grade.reconstruction.z.toDouble(), min = 0.0, max = 4.0) {
-                grade.reconstruction.z = it.toFloat()
-            }
-            slider("Saturation", initialValue = grade.saturation.x.toDouble(), min = 0.0, max = 3.0) {
-                grade.saturation.x = it.toFloat()
-            }
-            slider("FXAA mix", initialValue = grade.fxaa.x.toDouble(), min = 0.0, max = 1.0) { grade.fxaa.x = it.toFloat() }
-            colorPicker("Background", initialValue = grade.background) { grade.background.set(it) }
-            colorPicker("Shadow tone (alpha = strength)", initialValue = grade.shadowTone) { grade.shadowTone.set(it) }
-            colorPicker("Highlight tone (alpha = strength)", initialValue = grade.highlightTone) { grade.highlightTone.set(it) }
-        }
+
         // Optional perceptual dither for downstream display quantization; zero keeps it disabled.
-        controlGroup("display dither") {
-            slider("Dither (8-bit code steps)", initialValue = grade.supersampling.w.toDouble(), min = 0.0, max = 2.0) {
-                grade.supersampling.w = it.toFloat()
-            }
-        }
+
         var lastStats = 0L
         loop {
             renderer.windows.forEach { it.pollEvents() }
@@ -2061,12 +2533,1186 @@ operations:
                 lastStats = now
                 display(
                     "frame",
-                    "<div style='padding:12px;width:440px'>${if (drawing.textBlurNeedsRebuild) "Blur capacity changed: rebuild Drawing. " else ""}Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.</div>",
+                    "<div style='padding:12px;width:440px'>${if (drawing.textBlurNeedsRebuild) "Blur capacity changed: rebuild Drawing. " else ""}Frost: ${drawing.frost.activeSurfaces} active / ${drawing.frost.allocatedSurfaces} cached · ${drawing.frost.allocatedBytes / (1024 * 1024)} MiB · ${drawing.frost.omittedSurfaces} over budget. Text caches: ${drawing.textBlurConfig.width}×${drawing.textBlurConfig.height}, minimum ${drawing.textBlurConfig.minimumSize}px, max ${2*drawing.textBlurConfig.maximumRadius+1} taps, ${drawing.textBlurCacheBytes/(1024*1024)} MiB. Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.</div>",
                 )
             }
             frame()
         }
             .end { ownedDrawing.close() }
+- create:
+    box: text1_body
+    name: 21 · Body interaction / diagnostics
+    frame:
+      x: 2350
+      y: 220
+      w: 480
+      h: 100
+    properties:
+      code: |
+        import afield.graphics.scene.body.*
+        import afield.graphics.vulkan.Target
+        import kotlin.math.*
+
+        // These are persistent, inherited Field properties. Re-running this box keeps the controls' values.
+        prop<Boolean>(readingBodyEnabled, true)
+        prop<Boolean>(readingBodyHands, true)
+        prop<Boolean>(readingBodyHead, true)
+        prop<Boolean>(readingBodyWaft, true)
+        prop<Float>(readingBodyWaftStrength, 4f) // outward acceleration at the capsule surface, m/s²
+        prop<Float>(readingBodyPull, 0f) // gathering gain in the optional classic standoff mode
+        prop<Float>(readingBodyPush, 14f) // additional acceleration per metre of penetration
+        prop<Float>(readingBodyReach, .4f) // outside influence band, metres
+        prop<Float>(readingBodyInsideReach, 0f) // classic mode only; zero covers the whole interior
+        prop<Float>(readingBodyGap, .018f) // extra clearance beyond each capsule radius, metres
+        prop<Float>(readingBodyFalloff, 1f)
+        prop<Float>(readingBodyMaximum, 4.5f) // acceleration cap, m/s²; zero disables the cap
+        prop<Float>(readingBodyRadiusScale, 1f)
+        rootProp<Boolean>(showSkeleton, false)
+        rootProp<Boolean>(showPhysicsNodes, true)
+        rootProp<Boolean>(showBodyForces, true)
+        prop<Map<String, Float>>(bodyInteractionStats) = emptyMap()
+
+        val readingBodyDrawing = drawing
+        val readingBodyExamples = poem.examples.toList()
+        val previousReadingUpdate = drawing.beforeUpdate
+        val readingBodyRadii = mutableMapOf<String, Float>() // optional bone name -> radius in world metres
+        var readingBodySnapshot = BodySegments.from(null)
+        val readingBodyInverse = Matrix4f()
+        var readingBodyModelFrame = -1L
+        val readingBodyWorld = Vector3f()
+        val nodeCapacity = readingBodyExamples.maxOf { it.player.state.size }
+        val contactNodes = Array(nodeCapacity) { Vector3f() } // exact world point tested by the solver
+        val contactBones = Array(nodeCapacity) { Vector3f() } // closest point on the selected bone's centreline
+        val contactForces = FloatArray(nodeCapacity) // actual applied world acceleration magnitude
+        val contactFrames = LongArray(nodeCapacity) { -100L }
+        var contactPlayer = poem.current
+
+        // Input: signed capsule-surface distance and outward normal, in world metres.
+        // Output: world acceleration. Wafting never attracts: its smooth outside band fades to zero.
+        fun readingBodyForce(hit: BodySegmentHit): Vector3f {
+            if (!readingBodyWaft)
+                return hit.force(
+                    readingBodyPull,
+                    readingBodyPush,
+                    readingBodyReach,
+                    readingBodyFalloff,
+                    readingBodyMaximum,
+                    readingBodyInsideReach,
+                )
+            val outside = max(hit.distance, 0f)
+            val t =
+                if (outside == 0f) 1f else if (readingBodyReach > 0f) (1f - outside / readingBodyReach).coerceIn(0f, 1f) else 0f
+            val smooth = t * t * (3f - 2f * t)
+            val envelope = if (smooth == 0f) 0f else smooth.pow(readingBodyFalloff)
+            var strength = readingBodyWaftStrength * envelope + readingBodyPush * max(-hit.distance, 0f)
+            if (readingBodyMaximum > 0f) strength = min(strength, readingBodyMaximum)
+            return Vector3f(hit.normal).mul(strength)
+        }
+
+        // Also available to small CPU probes without substituting a different force implementation.
+        prop<(Float) -> Float>(bodyForceAtDistance) = { distance ->
+            readingBodyForce(BodySegmentHit(0, Vector3f(), Vector3f(1f, 0f, 0f), distance)).x
+        }
+
+        // These records come from the REAL force callback, rather than a second diagnostic distance test.
+        val readingBodyAcceleration: (Int, Vector3f, Vector3f) -> Unit = { index, local, output ->
+            contactForces[index] = 0f
+            contactFrames[index] = renderer.frameCounter
+            if (readingBodyEnabled) {
+                if (readingBodyModelFrame != renderer.frameCounter) {
+                    readingBodyInverse.set(drawing.model).invert()
+                    readingBodyModelFrame = renderer.frameCounter
+                }
+                drawing.model.transformPosition(local, readingBodyWorld)
+                val hit = readingBodySnapshot.closest(readingBodyWorld, readingBodyGap)
+                if (hit != null) {
+                    output.set(readingBodyForce(hit))
+                    contactForces[index] = output.length()
+                    contactNodes[index].set(readingBodyWorld)
+                    val radius = readingBodySnapshot[hit.segment]!!.radius + readingBodyGap
+                    contactBones[index].set(hit.point).fma(-max(radius, 0f), hit.normal)
+                    readingBodyInverse.transformDirection(output)
+                }
+            }
+        }
+
+        // One small debug module for skeleton lines, SIMD points and active force connections.
+        // Expansion uses the current stereo eyes; green stays zero so the debug ink remains sharp.
+        val readingBodyTarget = drawing.compositor.sharp
+        val readingBodyModule = moduleHere {
+            stereo.configure(this)
+            +readingBodyTarget
+            depthTest = false
+            depthWrite = false
+            blend = true
+            srcColor = org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_SRC_ALPHA
+            dstColor = org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE
+            srcAlpha = org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE
+            dstAlpha = org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE
+        }
+        val readingBodyMarks = List(BodySegments.CAPACITY + nodeCapacity * 2) {
+            arrayOf(Vector4f(), Vector4f(), Vector4f(1f, 0f, 1f, 0f))
+        }
+        for ((id, mark) in readingBodyMarks.withIndex()) {
+            val geometry = Mesh(renderer, readingBodyModule)
+            geometry.resize(6, 0)
+            geometry.push.bind("a") { mark[0] } // world start/centre, radius or half-width in metres
+            geometry.push.bind("b") { mark[1] } // world end, 1 = circular marker / 0 = line
+            geometry.push.bind("tint") { mark[2] } // red/blue ink; alpha controls diagnostic opacity
+            readingBodyModule += "body diagnostic $id" to geometry
+        }
+        readingBodyTarget += "tracked-body" to readingBodyModule
+
+        val readingBodyUpdate: () -> Unit = {
+            previousReadingUpdate()
+            readingBodyModelFrame = -1L
+            if (contactPlayer !== poem.current) {
+                contactPlayer = poem.current
+                contactForces.fill(0f)
+                contactFrames.fill(-100L)
+            }
+            readingBodySnapshot =
+                if (readingBodyEnabled || root.showSkeleton)
+                    renderer.openXRHmdTarget?.bodySegments(readingBodyHands, readingBodyHead) { name, radius ->
+                        (readingBodyRadii[name] ?: radius) * readingBodyRadiusScale
+                    } ?: BodySegments.from(null)
+                else BodySegments.from(null)
+            for (example in readingBodyExamples) {
+                if (readingBodyEnabled && readingBodySnapshot.active.isNotEmpty())
+                    example.player.externalAccelerations["tracked-body"] = readingBodyAcceleration
+                else example.player.externalAccelerations.remove("tracked-body", readingBodyAcceleration)
+            }
+            readingBodyModule.current.enabled = root.showSkeleton || root.showPhysicsNodes || root.showBodyForces
+        }
+        drawing.beforeUpdate = readingBodyUpdate
+
+        // This runs AFTER the reading renderer has updated model and advanced the fixed-step solver.
+        // Node dots use current SIMD state; force lines retain the exact point sampled by that step.
+        readingBodyModule.current.before["body-debug"] = Target { _, _ ->
+            readingBodyMarks.forEach { it[2].w = 0f }
+            if (root.showSkeleton)
+                for (segment in readingBodySnapshot.active) {
+                    val mark = readingBodyMarks[segment.id]
+                    mark[0].set(segment.start.x, segment.start.y, segment.start.z, if (segment.id == 8) .015f else .002f)
+                    mark[1].set(segment.end.x, segment.end.y, segment.end.z, if (segment.id == 8) 1f else 0f)
+                    mark[2].set(.5f, 0f, .5f, .35f)
+                }
+            val player = poem.current
+            var active = 0
+            var maximum = 0f
+            for ((index, node) in player.diagram.particles.withIndex()) {
+                val pushing =
+                    readingBodyEnabled &&
+                        readingBodySnapshot.active.isNotEmpty() &&
+                        renderer.frameCounter - contactFrames[index] <= 3L &&
+                        contactForces[index] > .01f
+                if (pushing) {
+                    active++
+                    maximum = max(maximum, contactForces[index])
+                }
+                if (root.showPhysicsNodes) {
+                    val p = drawing.model.transformPosition(
+                        vec(player.state.x[index], player.state.y[index], player.state.z[index]),
+                    )
+                    val mark = readingBodyMarks[BodySegments.CAPACITY + index]
+                    mark[0].set(p.x, p.y, p.z, if (pushing) .010f else .006f)
+                    mark[1].w = 1f
+                    mark[2].set(1f, 0f, 1f, if (node.pinned) .18f else if (pushing) 1f else .55f)
+                }
+                if (root.showBodyForces && pushing) {
+                    val mark = readingBodyMarks[BodySegments.CAPACITY + nodeCapacity + index]
+                    val from = contactBones[index]
+                    val to = contactNodes[index]
+                    mark[0].set(from.x, from.y, from.z, .0015f)
+                    mark[1].set(to.x, to.y, to.z, 0f)
+                    mark[2].set(1f, 0f, 1f, .25f + .6f * min(contactForces[index] / 4f, 1f))
+                }
+            }
+            bodyInteractionStats = mapOf(
+                "nodes" to player.state.size.toFloat(),
+                "pushing" to active.toFloat(),
+                "maxAcceleration" to maximum,
+                "bones" to readingBodySnapshot.active.size.toFloat(),
+            )
+        }
+
+        // Apply this preset without moving the scene, resetting particles or changing text orientations.
+        prop<() -> Unit>(bodyWaftPreset) = {
+            readingBodyEnabled = true
+            readingBodyWaft = true
+            readingBodyWaftStrength = 4f
+            readingBodyReach = .4f
+            readingBodyMaximum = 4.5f
+            poem.current.spring = 3f
+            poem.current.dampingRate = 3f
+            poem.current.gravity = 0f
+            poem.current.wind = 0f
+        }
+        prop<() -> Unit>(bodyInteractionDemo) = {
+            poem.select(6, restart = true)
+            bodyWaftPreset()
+            poem.current.playback.seek(6.0)
+            poem.current.playback.playing = false
+            drawing.recenter()
+        }
+
+        var lastBodyStats = 0L
+        loop {
+            val now = System.nanoTime()
+            if (now - lastBodyStats > 1_000_000_000L) {
+                lastBodyStats = now
+                val stats = bodyInteractionStats
+                display(
+                    "body diagnostics",
+                    "<div style='padding:12px;width:440px'>${stats["bones"]?.toInt() ?: 0} tracked bones · ${stats["nodes"]?.toInt() ?: 0} SIMD nodes · ${stats["pushing"]?.toInt() ?: 0} pushing. Bright dots and bone-to-node lines mark applied force. Dim dots are pinned. Contact uses these nodes; thread interior nodes and glyph outlines are not tested.</div>",
+                )
+            }
+            frame()
+        }
+            .end {
+                if (drawing.beforeUpdate === readingBodyUpdate) drawing.beforeUpdate = previousReadingUpdate
+                for (example in readingBodyExamples) example.player.externalAccelerations.remove(
+                    "tracked-body",
+                    readingBodyAcceleration,
+                )
+                readingBodyModule.disable()
+                readingBodyTarget.modules.remove("tracked-body", readingBodyModule)
+            }
+      vertex: |
+        #version 460
+        #extension GL_EXT_multiview : require
+
+        // The shared eye buffer is supplied by MultiviewStereoTarget.configure.
+        layout(std140, set = 0, binding = 7) uniform StereoViews {
+            mat4 stereoVpL; // left-eye view/projection
+            mat4 stereoVpR; // right-eye view/projection
+            vec4 stereoRightL; // left-eye world right
+            vec4 stereoRightR; // right-eye world right
+            vec4 stereoUpL; // left-eye world up
+            vec4 stereoUpR; // right-eye world up
+            vec4 stereoProjectionL; // left projection scale and raster size
+            vec4 stereoProjectionR; // right projection scale and raster size
+        };
+
+        layout(push_constant) uniform Mark {
+            vec4 a; // world start/centre, radius or half-width in metres
+            vec4 b; // world end, 1 = circular joint / 0 = segment
+            vec4 tint; // linear RGBA; zero alpha hides unavailable observations
+        } pc;
+
+        layout(location = 0) out vec2 uv; // local square coordinates for analytic coverage
+        layout(location = 1) flat out vec4 ink; // linear RGBA
+        layout(location = 2) flat out float roundMark; // 1 = circle / 0 = strip
+
+        const vec2 corners[6] = vec2[](
+        vec2(-1,-1), vec2(1,-1), vec2(1,1),
+        vec2(-1,-1), vec2(1,1), vec2(-1,1)
+        );
+
+        void main() {
+            uv = corners[gl_VertexIndex];
+            ink = pc.tint;
+            roundMark = pc.b.w;
+            vec3 right = (gl_ViewIndex == 0 ? stereoRightL : stereoRightR).xyz;
+            vec3 up = (gl_ViewIndex == 0 ? stereoUpL : stereoUpR).xyz;
+            vec3 p;
+
+            // Expand on the GPU, independently for the current eye.
+            if (pc.b.w > 0.5) {
+                p = pc.a.xyz + (right * uv.x + up * uv.y) * pc.a.w;
+            }
+            else {
+                vec3 d = pc.b.xyz - pc.a.xyz;
+                vec3 side = cross(d, cross(right, up));
+                side = dot(side, side) > 1e-12 ? normalize(side) : right;
+                p = mix(pc.a.xyz, pc.b.xyz, uv.x * 0.5 + 0.5) + side * uv.y * pc.a.w;
+            }
+            gl_Position = pc.tint.a > 0.0
+            ? (gl_ViewIndex == 0 ? stereoVpL : stereoVpR) * vec4(p, 1)
+            : vec4(0, 0, -1, 1);
+        }
+      fragment: |
+        #version 460
+
+        layout(location = 0) in vec2 uv; // local square coordinates
+        layout(location = 1) flat in vec4 ink; // linear RGBA
+        layout(location = 2) flat in float roundMark; // circle or strip coverage
+        layout(location = 0) out vec4 outColor; // straight alpha for the module's blend mode
+
+        void main() {
+            float d = roundMark > 0.5 ? length(uv) : abs(uv.y);
+            float aa = max(fwidth(d), 1e-5);
+            float coverage = 1.0 - smoothstep(1.0 - aa, 1.0, d);
+            outColor = vec4(ink.rgb, ink.a * coverage);
+        }
+- create:
+    box: text1_navigation
+    name: 20 · Move through the reading space
+    frame:
+      x: 2350
+      y: 110
+      w: 480
+      h: 100
+    properties:
+      code: |
+        import afield.graphics.scene.reading.readingWalk
+        import afield.graphics.vulkan.targets.OpenXRHmdTarget.Hand
+
+        // Translate the reading world opposite the virtual reader; the room and browser remain tracked.
+        val navigationDrawing = drawing
+        val previousNavigationUpdate = navigationDrawing.beforeUpdate
+        prop<Boolean>(readingWalkEnabled, true)
+        prop<Float>(readingWalkSpeed, .65f) // metres per second at full deflection
+        var navigationLastTime = System.nanoTime()
+        var navigationPlaced = renderer.openXRHmdTarget?.headPose() == true
+        val navigationUpdate: () -> Unit = {
+            previousNavigationUpdate()
+            val now = System.nanoTime()
+            val dt = ((now - navigationLastTime) / 1e9).coerceIn(0.0, .05).toFloat()
+            navigationLastTime = now
+            val xr = renderer.openXRHmdTarget
+            // A synchronized OpenXR session can precede its first visible, located head pose.
+            // Place the poem on that first real pose, rather than around an identity eye matrix.
+            if (!navigationPlaced && xr?.headPose() == true) {
+                navigationDrawing.recenter()
+                navigationPlaced = true
+            }
+            if (readingWalkEnabled && xr != null) {
+                val stick = xr.controllerState(Hand.LEFT)
+                if (stick.active) {
+                    val eye = stereo.eyeViewMatrix(0).invert()
+                    val movement = readingWalk(
+                        stick.thumbstickX,
+                        stick.thumbstickY,
+                        vec(-eye.m20, -eye.m21, -eye.m22),
+                        dt.toDouble(),
+                        readingWalkSpeed,
+                    )
+                    navigationDrawing.origin.sub(movement)
+                }
+            }
+        }
+        navigationDrawing.beforeUpdate = navigationUpdate
+
+        loop { frame() }
+            .end {
+                if (navigationDrawing.beforeUpdate === navigationUpdate)
+                    navigationDrawing.beforeUpdate = previousNavigationUpdate
+            }
+- create:
+    box: text1_global_keys
+    name: 23 · Global looks / keyframes
+    frame:
+      x: -650
+      y: 150
+      w: 480
+      h: 100
+    properties:
+      code: |
+        import afield.animation.keyframes.*
+        import afield.graphics.scene.reading.*
+        import afield.ui.output.*
+        import java.nio.file.Files
+
+        /*
+        One document-wide scope. Re-running this box replaces registrations and reads the LIVE models;
+        restoreValues=false prevents stale slider caches from overwriting the look while building the UI.
+        Stable target names and native key JSON keep saved looks usable as controls are added.
+        */
+        rootProp<KeyframeScope>(readingKeyframes) = KeyframeScope(schemaVersion = 1)
+        val keys = root.readingKeyframes
+        val drawingBox = thisBox.inside.boxes.getValue("text1_drawing")
+        val bodyBox = thisBox.inside.boxes.getValue("text1_body")
+        val scoreBox = thisBox.inside.boxes.getValue("text1_score")
+        val spaceBox = thisBox.inside.boxes.getValue("text1_context")
+        val navigationBox = thisBox.inside.boxes.getValue("text1_navigation")
+        fun frames() = poem.examples.flatMap { it.player.diagram.textFrames }
+        fun grade() = drawing.compositor.settings
+        fun pendingTextCacheQuality() = ReadingTextBlurConfig(
+            root.textCacheWidth,
+            root.textCacheHeight,
+            root.textCacheMinimum,
+            root.textCacheHalving,
+            (root.textCacheTaps - 1) / 2,
+            root.textCacheCutoff,
+        )
+
+        drawingBox.controlGroup("text blur quality", restoreValues = false) {
+            keyframeSlider(
+                keys,
+                "drawing.cache-width-pixels",
+                "Cache width",
+                unit = "px",
+                get = { root.textCacheWidth.toDouble() },
+                min = 512.0,
+                max = 8192.0,
+                step = 512.0,
+            ) {
+                root.textCacheWidth = it.toInt()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.cache-height-pixels",
+                "Cache height",
+                unit = "px",
+                get = { root.textCacheHeight.toDouble() },
+                min = 256.0,
+                max = 8192.0,
+                step = 256.0,
+            ) {
+                root.textCacheHeight = it.toInt()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.broad-level-minimum-pixels",
+                "Broad level minimum",
+                unit = "px",
+                get = { root.textCacheMinimum.toDouble() },
+                min = 64.0,
+                max = 2048.0,
+                step = 64.0,
+            ) {
+                root.textCacheMinimum = it.toInt()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.levels-per-size-halving",
+                "Levels per size halving",
+                get = { root.textCacheHalving.toDouble() },
+                min = 1.0,
+                max = 8.0,
+                step = 1.0,
+            ) {
+                root.textCacheHalving = it.toInt()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.maximum-taps-per-axis",
+                "Maximum taps per axis",
+                get = { root.textCacheTaps.toDouble() },
+                min = 33.0,
+                max = 1025.0,
+                step = 16.0,
+            ) {
+                root.textCacheTaps = it.toInt()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.gaussian-support-sigma",
+                "Gaussian support",
+                unit = "σ",
+                get = { root.textCacheCutoff.toDouble() },
+                min = 2.0,
+                max = 6.0,
+                step = .25,
+            ) {
+                root.textCacheCutoff = it.toFloat()
+            }
+            button(
+                "Apply text blur quality",
+                hoverText =
+                    "Rebuild just the cached masks. Pose, physics, score and the headset session continue. Higher resolutions use more VRAM and take longer to prepare.",
+            ) { down ->
+                if (down) {
+                    runCatching {
+                        require(root.textCacheMinimum <= minOf(root.textCacheWidth, root.textCacheHeight)) {
+                            "Broad minimum must fit within both base dimensions"
+                        }
+                        val quality = pendingTextCacheQuality()
+                        drawing.requestTextBlurRebuild(quality)
+                        display(
+                            "text blur quality status",
+                            "<div style='padding:12px'>Queued ${quality.estimatedBytes(poem.blurRequests.size) / (1024 * 1024)} MiB of text masks. Current settings appear in the frame output after preparation.</div>",
+                        )
+                    }
+                        .onFailure {
+                            display("text blur quality status", "<div style='padding:12px'>${it.message}</div>")
+                        }
+                }
+            }
+        }
+
+        drawingBox.controlGroup("drawing", restoreValues = false) {
+            button("Recenter poem") { down -> if (down) drawing.recenter() }
+            keyframeCheckbox(keys, "drawing.gently-face-the-reader", "Gently face the reader", get = { drawing.followReader }) {
+                drawing.followReader = it
+            }
+            keyframeSlider(
+                keys,
+                "drawing.turning-half-life-seconds",
+                "Turning half-life",
+                unit = "s",
+                get = { drawing.turnHalfLife.toDouble() },
+                min = .1,
+                max = 10.0,
+            ) {
+                drawing.turnHalfLife = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.stroke-width-multiplier",
+                "Stroke width multiplier",
+                get = { poem.current.strokeWidthScale.toDouble() },
+                min = .2,
+                max = 4.0,
+            ) {
+                poem.examples.forEach { e -> e.player.strokeWidthScale = it.toFloat() }
+            }
+            keyframeSlider(
+                keys,
+                "drawing.point-radius-multiplier",
+                "Point radius multiplier",
+                get = { poem.current.dotRadiusScale.toDouble() },
+                min = .2,
+                max = 4.0,
+            ) {
+                poem.examples.forEach { e -> e.player.dotRadiusScale = it.toFloat() }
+            }
+            keyframeCheckbox(keys, "drawing.show-diagram-dots", "Show diagram dots", get = { poem.current.showDots }) {
+                poem.examples.forEach { e -> e.player.showDots = it }
+            }
+        }
+
+        drawingBox.controlGroup("skeleton", restoreValues = false) {
+            keyframeCheckbox(keys, "drawing.show-skeleton", "Show skeleton", get = { root.showSkeleton }) {
+                root.showSkeleton = it
+            }
+            keyframeCheckbox(
+                keys,
+                "drawing.show-simd-nodes",
+                "Show SIMD nodes",
+                get = { root.showPhysicsNodes },
+                hoverText = "Exact SIMD positions tested against the body. Bright = receiving force; dim = pinned.",
+            ) {
+                root.showPhysicsNodes = it
+            }
+            keyframeCheckbox(
+                keys,
+                "drawing.show-body-force-lines",
+                "Show body force lines",
+                get = { root.showBodyForces },
+                hoverText = "Connect the selected bone centreline to the node when the solver applies a body force.",
+            ) {
+                root.showBodyForces = it
+            }
+        }
+
+        drawingBox.controlGroup("frosted frames", restoreValues = false) {
+            keyframeCheckbox(
+                keys,
+                "drawing.frost-behind-text-frames",
+                "Frost behind text frames",
+                get = { frames().firstOrNull()?.frost?.enabled ?: true },
+            ) { enabled ->
+                frames().forEach { it.frost.enabled = enabled }
+            }
+            keyframeSlider(
+                keys,
+                "drawing.frost-opacity",
+                "Frost opacity",
+                get = { (frames().firstOrNull()?.frost?.opacity ?: 1f).toDouble() },
+                min = 0.0,
+                max = 1.0,
+            ) { value ->
+                frames().forEach { it.frost.opacity = value.toFloat() }
+            }
+            keyframeSlider(
+                keys,
+                "drawing.frost-blur-scene-pixels",
+                "Frost blur",
+                unit = "scene px",
+                get = { (frames().firstOrNull()?.frost?.blurPixels ?: 5f).toDouble() },
+                min = 0.0,
+                max = 32.0,
+            ) { value ->
+                frames().forEach { it.frost.blurPixels = value.toFloat() }
+            }
+            keyframeSlider(
+                keys,
+                "drawing.frost-brightness",
+                "Frost brightness",
+                get = { (frames().firstOrNull()?.frost?.brightness ?: 1.1f).toDouble() },
+                min = 0.0,
+                max = 2.0,
+            ) { value ->
+                frames().forEach { it.frost.brightness = value.toFloat() }
+            }
+        }
+
+        drawingBox.controlGroup("frost gamma", restoreValues = false) {
+            keyframeSlider(
+                keys,
+                "drawing.frost-blur-gamma",
+                "Frost blur gamma",
+                get = { root.frostBlurGamma.toDouble() },
+                min = .25,
+                max = 4.0,
+                step = .01,
+            ) {
+                root.frostBlurGamma = it.toFloat()
+            }
+        }
+
+        drawingBox.controlGroup("frost black level", restoreValues = false) {
+            keyframeSlider(
+                keys,
+                "drawing.frost-black-level",
+                "Frost black level",
+                get = { root.frostBlackLevel.toDouble() },
+                min = 0.0,
+                max = .1,
+                step = .001,
+            ) {
+                root.frostBlackLevel = it.toFloat()
+            }
+        }
+
+        drawingBox.controlGroup("text blur appearance", restoreValues = false) {
+            keyframeSlider(
+                keys,
+                "drawing.final-contrast-power",
+                "Final contrast",
+                unit = "power",
+                get = { (1f / grade().gamma.w).toDouble() },
+                min = .25,
+                max = 4.0,
+                step = .01,
+            ) {
+                grade().gamma.w = 1f / it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.text-blur-contrast-power",
+                "Text blur contrast",
+                unit = "power",
+                get = { root.textBlurContrast.toDouble() },
+                min = .25,
+                max = 4.0,
+                step = .01,
+            ) {
+                root.textBlurContrast = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.text-blur-gain",
+                "Text blur gain",
+                get = { root.textBlurGain.toDouble() },
+                min = 0.0,
+                max = 4.0,
+                step = .01,
+            ) {
+                root.textBlurGain = it.toFloat()
+            }
+        }
+
+        drawingBox.controlGroup("blur cascade", restoreValues = false) {
+            keyframeSlider(
+                keys,
+                "drawing.medium-blur-radius",
+                "Medium blur radius",
+                get = { grade().mediumRadius.toDouble() },
+                min = 0.0,
+                max = 8.0,
+            ) {
+                grade().mediumRadius = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.broad-blur-radius",
+                "Broad blur radius",
+                get = { grade().broadRadius.toDouble() },
+                min = 0.0,
+                max = 8.0,
+            ) {
+                grade().broadRadius = it.toFloat()
+            }
+        }
+
+        drawingBox.controlGroup("green compositor", restoreValues = false) {
+            keyframeSlider(
+                keys,
+                "drawing.blur-mix",
+                "Blur mix",
+                get = { grade().selection.z.toDouble() },
+                min = 0.0,
+                max = 1.0,
+            ) {
+                grade().selection.z = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.green-selector-gain",
+                "Green selector gain",
+                get = { grade().selection.x.toDouble() },
+                min = 0.0,
+                max = 8.0,
+            ) {
+                grade().selection.x = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.green-selector-offset",
+                "Green selector offset",
+                get = { grade().selection.y.toDouble() },
+                min = -1.0,
+                max = 1.0,
+            ) {
+                grade().selection.y = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.source-green-scale",
+                "Source green scale",
+                get = { grade().selection.w.toDouble() },
+                min = 0.0,
+                max = 4.0,
+            ) {
+                grade().selection.w = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.selector-sharp-weight",
+                "Selector sharp weight",
+                get = { grade().selectorSource.x.toDouble() },
+                min = 0.0,
+                max = 1.0,
+            ) {
+                grade().selectorSource.x = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.selector-medium-weight",
+                "Selector medium weight",
+                get = { grade().selectorSource.y.toDouble() },
+                min = 0.0,
+                max = 1.0,
+            ) {
+                grade().selectorSource.y = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.selector-broad-weight",
+                "Selector broad weight",
+                get = { grade().selectorSource.z.toDouble() },
+                min = 0.0,
+                max = 1.0,
+            ) {
+                grade().selectorSource.z = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.green-from-red-blue",
+                "Green from red / blue",
+                get = { grade().reconstruction.x.toDouble() },
+                min = 0.0,
+                max = 1.0,
+            ) {
+                grade().reconstruction.x = it.toFloat()
+                grade().reconstruction.y = 1f - it.toFloat()
+            }
+        }
+
+        drawingBox.controlGroup("light and colour", restoreValues = false) {
+            keyframeSlider(
+                keys,
+                "drawing.exposure",
+                "Exposure",
+                get = { grade().reconstruction.z.toDouble() },
+                min = 0.0,
+                max = 4.0,
+            ) {
+                grade().reconstruction.z = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "drawing.saturation",
+                "Saturation",
+                get = { grade().saturation.x.toDouble() },
+                min = 0.0,
+                max = 3.0,
+            ) {
+                grade().saturation.x = it.toFloat()
+            }
+            keyframeSlider(keys, "drawing.fxaa-mix", "FXAA mix", get = { grade().fxaa.x.toDouble() }, min = 0.0, max = 1.0) {
+                grade().fxaa.x = it.toFloat()
+            }
+            keyframeColorPicker(keys, "drawing.background", "Background", get = { grade().background }) {
+                grade().background.set(it)
+            }
+            keyframeColorPicker(
+                keys,
+                "drawing.shadow-tone-alpha-strength",
+                "Shadow tone (alpha = strength)",
+                get = { grade().shadowTone },
+            ) {
+                grade().shadowTone.set(it)
+            }
+            keyframeColorPicker(
+                keys,
+                "drawing.highlight-tone-alpha-strength",
+                "Highlight tone (alpha = strength)",
+                get = { grade().highlightTone },
+            ) {
+                grade().highlightTone.set(it)
+            }
+        }
+
+        drawingBox.controlGroup("display dither", restoreValues = false) {
+            keyframeSlider(
+                keys,
+                "drawing.dither-8-bit-code-steps",
+                "Dither",
+                unit = "8-bit steps",
+                get = { grade().supersampling.w.toDouble() },
+                min = 0.0,
+                max = 2.0,
+            ) {
+                grade().supersampling.w = it.toFloat()
+            }
+        }
+
+        bodyBox.controlGroup("body interaction", restoreValues = false) {
+            keyframeCheckbox(keys, "body.body-interaction", "Body interaction", get = { bodyBox.readingBodyEnabled }) {
+                bodyBox.readingBodyEnabled = it
+            }
+            keyframeCheckbox(
+                keys,
+                "body.waft-away-outward-band",
+                "Waft away (outward band)",
+                get = { bodyBox.readingBodyWaft },
+            ) {
+                bodyBox.readingBodyWaft = it
+            }
+            button("Waft away and settle") { down -> if (down) bodyWaftPreset() }
+            keyframeSlider(
+                keys,
+                "body.waft-acceleration-m-s",
+                "Waft acceleration",
+                unit = "m/s²",
+                get = { bodyBox.readingBodyWaftStrength.toDouble() },
+                min = 0.0,
+                max = 15.0,
+            ) {
+                bodyBox.readingBodyWaftStrength = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "body.outside-reach-m",
+                "Outside reach",
+                unit = "m",
+                get = { bodyBox.readingBodyReach.toDouble() },
+                min = 0.0,
+                max = 1.5,
+            ) {
+                bodyBox.readingBodyReach = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "body.push-inside-capsule",
+                "Push inside capsule",
+                get = { bodyBox.readingBodyPush.toDouble() },
+                min = 0.0,
+                max = 80.0,
+            ) {
+                bodyBox.readingBodyPush = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "body.standoff-gap-m",
+                "Standoff gap",
+                unit = "m",
+                get = { bodyBox.readingBodyGap.toDouble() },
+                min = 0.0,
+                max = .5,
+            ) {
+                bodyBox.readingBodyGap = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "body.range-falloff",
+                "Range falloff",
+                get = { bodyBox.readingBodyFalloff.toDouble() },
+                min = 0.0,
+                max = 8.0,
+            ) {
+                bodyBox.readingBodyFalloff = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "body.body-acceleration-cap-0-off",
+                "Body acceleration cap (0 off)",
+                unit = "m/s²",
+                get = { bodyBox.readingBodyMaximum.toDouble() },
+                min = 0.0,
+                max = 20.0,
+            ) {
+                bodyBox.readingBodyMaximum = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "body.body-radius-scale",
+                "Body radius scale",
+                get = { bodyBox.readingBodyRadiusScale.toDouble() },
+                min = .1,
+                max = 3.0,
+            ) {
+                bodyBox.readingBodyRadiusScale = it.toFloat()
+            }
+            keyframeCheckbox(
+                keys,
+                "body.include-finger-segments",
+                "Include finger segments",
+                get = { bodyBox.readingBodyHands },
+            ) {
+                bodyBox.readingBodyHands = it
+            }
+            keyframeCheckbox(keys, "body.include-head", "Include head", get = { bodyBox.readingBodyHead }) {
+                bodyBox.readingBodyHead = it
+            }
+            keyframeSlider(
+                keys,
+                "body.classic-gathering-gain",
+                "Classic gathering gain",
+                get = { bodyBox.readingBodyPull.toDouble() },
+                min = 0.0,
+                max = 40.0,
+                hoverText = "Used only when Waft away is off. Positive values gather anchors toward the standoff surface.",
+            ) {
+                bodyBox.readingBodyPull = it.toFloat()
+            }
+            keyframeSlider(
+                keys,
+                "body.classic-inside-reach-0-all",
+                "Classic inside reach (0 = all)",
+                unit = "m",
+                get = { bodyBox.readingBodyInsideReach.toDouble() },
+                min = 0.0,
+                max = 1.0,
+            ) {
+                bodyBox.readingBodyInsideReach = it.toFloat()
+            }
+        }
+
+        scoreBox.controlGroup("gentle physics", restoreValues = false) {
+            keyframeSlider(
+                keys,
+                "score.layout-spring",
+                "Layout spring",
+                get = { poem.current.spring.toDouble() },
+                min = 0.0,
+                max = 100.0,
+            ) {
+                poem.examples.forEach { e -> e.player.spring = it.toFloat() }
+            }
+            keyframeSlider(
+                keys,
+                "score.link-stiffness",
+                "Link stiffness",
+                get = { poem.current.constraintStrength.toDouble() },
+                min = 0.0,
+                max = 80.0,
+            ) {
+                poem.examples.forEach { e -> e.player.constraintStrength = it.toFloat() }
+            }
+            keyframeSlider(keys, "score.gravity", "Gravity", get = { poem.current.gravity.toDouble() }, min = -.3, max = .1) {
+                poem.examples.forEach { e -> e.player.gravity = it.toFloat() }
+            }
+            keyframeSlider(
+                keys,
+                "score.air-movement",
+                "Air movement",
+                get = { poem.current.wind.toDouble() },
+                min = 0.0,
+                max = .3,
+            ) {
+                poem.examples.forEach { e -> e.player.wind = it.toFloat() }
+            }
+            button("Still proof / reset") { down ->
+                if (down) {
+                    poem.current.gravity = 0f
+                    poem.current.wind = 0f
+                    poem.current.resetPositions()
+                    poem.current.playback.playing = false
+                    poem.current.playback.seek(6.0)
+                }
+            }
+        }
+
+        spaceBox.controlGroup("reading space", restoreValues = false) {
+            keyframeCheckbox(
+                keys,
+                "context.show-both-eyes-side-by-side",
+                "Show both eyes side by side",
+                get = { spaceBox.showStereoPair },
+            ) {
+                spaceBox.showStereoPair = it
+            }
+            keyframeCheckbox(
+                keys,
+                "context.desktop-preview",
+                "Desktop preview",
+                get = { renderer.desktopPresentationEnabled },
+            ) {
+                renderer.desktopPresentationEnabled = it
+            }
+        }
+
+        navigationBox.controlGroup("move through the reading space", restoreValues = false) {
+            keyframeCheckbox(
+                keys,
+                "navigation.left-stick-movement",
+                "Left stick movement",
+                get = { navigationBox.readingWalkEnabled },
+            ) {
+                navigationBox.readingWalkEnabled = it
+            }
+            keyframeSlider(
+                keys,
+                "navigation.walking-speed-m-s",
+                "Walking speed",
+                unit = "m/s",
+                get = { navigationBox.readingWalkSpeed.toDouble() },
+                min = .05,
+                max = 2.0,
+            ) {
+                navigationBox.readingWalkSpeed = it.toFloat()
+            }
+        }
+
+        // Capture individual values after the aggregate controls: a recall preserves intentional differences
+        // between examples and frosted panels. Getters resolve inherited props on every use, including reloads.
+        for (i in poem.examples.indices) {
+            fun player() = poem.examples[i].player
+            val prefix = "example.$i"
+            keys.floatTarget("$prefix.spring", { player().spring }) { player().spring = it }
+            keys.floatTarget("$prefix.links", { player().constraintStrength }) { player().constraintStrength = it }
+            keys.floatTarget("$prefix.gravity", { player().gravity }) { player().gravity = it }
+            keys.floatTarget("$prefix.wind", { player().wind }) { player().wind = it }
+            keys.floatTarget("$prefix.damping", { player().dampingRate }) { player().dampingRate = it }
+            keys.floatTarget("$prefix.textScale", { player().textScale }) { player().textScale = it }
+            keys.floatTarget("$prefix.strokes", { player().strokeWidthScale }) { player().strokeWidthScale = it }
+            keys.floatTarget("$prefix.dots", { player().dotRadiusScale }) { player().dotRadiusScale = it }
+            keys.booleanTarget("$prefix.showDots", { player().showDots }) { player().showDots = it }
+            for (j in player().diagram.textFrames.indices) {
+                fun frost() = player().diagram.textFrames[j].frost
+                keys.booleanTarget("$prefix.frame.$j.enabled", { frost().enabled }) { frost().enabled = it }
+                keys.floatTarget("$prefix.frame.$j.opacity", { frost().opacity }) { frost().opacity = it }
+                keys.floatTarget("$prefix.frame.$j.blur", { frost().blurPixels }) { frost().blurPixels = it }
+                keys.floatTarget("$prefix.frame.$j.brightness", { frost().brightness }) { frost().brightness = it }
+                keys.floatTarget("$prefix.frame.$j.black", { frost().blackLevel }) { frost().blackLevel = it }
+                fun frame() = player().diagram.textFrames[j]
+                keys.floatTarget("$prefix.frame.$j.standoff", { frame().standoff }) { frame().standoff = it }
+                keys.floatTarget("$prefix.frame.$j.overstrokeFraction", { frame().overstrokeFraction }) {
+                    frame().overstrokeFraction = it
+                }
+                keys.floatTarget("$prefix.frame.$j.overstrokeDistance", { frame().overstrokeDistance }) {
+                    frame().overstrokeDistance = it
+                }
+            }
+            for (j in player().diagram.textFrusta.indices) {
+                fun holder() = player().diagram.textFrusta[j]
+                val lane = "$prefix.frustum.$j.aspect"
+                keys.floatTarget(lane, { holder().aspectRatio ?: 0f }) {
+                    holder().aspectRatio = it.takeIf { value -> value > 0f }
+                }
+                // Zero means automatic fit, not a very narrow rectangle: step when either end is automatic.
+                keys.interpolators[lane] = { a, b, t ->
+                    val x = (a as Number).toFloat()
+                    val y = (b as Number).toFloat()
+                    if (x == 0f || y == 0f) {
+                        if (t < 1.0) x else y
+                    } else x + (y - x) * t.toFloat()
+                }
+            }
+        }
+
+        // Include shader-only colour controls too. Visible controls above own their lanes and UI mirrors;
+        // only unrepresented vector components are registered here, avoiding two setters for one field.
+        val vectors = linkedMapOf<String, () -> Vector4f>(
+            "selection" to { grade().selection },
+            "reconstruction" to { grade().reconstruction },
+            "selectorRange" to { grade().selectorRange },
+            "selectorSource" to { grade().selectorSource },
+            "paint" to { grade().paint },
+            "colorFold" to { grade().colorFold },
+            "foldLimits" to { grade().foldLimits },
+            "alphaFold" to { grade().alphaFold },
+            "saturation" to { grade().saturation },
+            "gain" to { grade().gain },
+            "gamma" to { grade().gamma },
+            "toneRange" to { grade().toneRange },
+            "fxaa" to { grade().fxaa },
+            "subpixel" to { grade().subpixel },
+            "supersampling" to { grade().supersampling },
+        )
+        val visibleComponents = setOf(
+            "selection.x",
+            "selection.y",
+            "selection.z",
+            "selection.w",
+            "reconstruction.x",
+            "reconstruction.z",
+            "selectorSource.x",
+            "selectorSource.y",
+            "selectorSource.z",
+            "saturation.x",
+            "gamma.w",
+            "fxaa.x",
+            "supersampling.w",
+        )
+        for ((name, vector) in vectors) for ((axis, suffix) in listOf("x", "y", "z", "w").withIndex()) {
+            if ("$name.$suffix" !in visibleComponents)
+                keys.floatTarget(
+                    "compositor.$name.$suffix",
+                    { vector().get(axis) },
+                    { value ->
+                        when (axis) {
+                            0 -> vector().x = value
+                            1 -> vector().y = value
+                            2 -> vector().z = value
+                            3 -> vector().w = value
+                        }
+                    },
+                )
+        }
+        keys.floatTarget("drawing.distance", { drawing.distance }) { drawing.distance = it }
+        keys.floatTarget("drawing.minimumStrokePixels", { drawing.minimumStrokePixels }) { drawing.minimumStrokePixels = it }
+        keys.floatTarget("drawing.minimumPointPixels", { drawing.minimumPointPixels }) { drawing.minimumPointPixels = it }
+
+        // Cache dimensions are staged, discrete choices. Morphing never reallocates a GPU image;
+        // recall restores these controls, and Apply text blur quality performs the rebuild explicitly.
+        keys.interpolators["drawing.cache-width-pixels"] = { a, b, t ->
+            if (t < 1.0) a else b
+        }
+        keys.interpolators["drawing.cache-height-pixels"] = { a, b, t ->
+            if (t < 1.0) a else b
+        }
+        keys.interpolators["drawing.broad-level-minimum-pixels"] = { a, b, t ->
+            if (t < 1.0) a else b
+        }
+        keys.interpolators["drawing.levels-per-size-halving"] = { a, b, t ->
+            if (t < 1.0) a else b
+        }
+        keys.interpolators["drawing.maximum-taps-per-axis"] = { a, b, t ->
+            if (t < 1.0) a else b
+        }
+        keys.interpolators["drawing.gaussian-support-sigma"] = { a, b, t ->
+            if (t < 1.0) a else b
+        }
+
+        val keyDirectory = "global-keys".path
+        Files.createDirectories(keyDirectory)
+        val startingLook = keyDirectory.resolve("starting-look")
+        if (!Files.exists(startingLook))
+            keys.saveKey(startingLook, keys.capture(), "Live look before enabling global keyframes")
+        controlGroup("global looks", restoreValues = false) {
+            presetBar(keys, directory = keyDirectory)
+        }
+        keyframeBrowser(keyDirectory, channel = "saved global looks", scope = keys, width = 620, height = 420)
+        display(
+            "keyframe guide",
+            "<div style='padding:12px;width:560px'>Store saves every global control, including colour, blur, frosting, physics, body interaction and navigation. Recall restores a named look and its sliders. Preset morph blends saved looks in name order. Cache quality is staged; use Apply text blur quality to rebuild. Score time, node positions and headset pose are independent. See guide 16.</div>",
+        )
 - connect:
     parent: text1_context
     child: text1_poem
@@ -2091,6 +3737,21 @@ operations:
 - connect:
     parent: text1_context
     child: text1_drop_caps
+- connect:
+    parent: text1_context
+    child: text1_two_readings
+- connect:
+    parent: text1_context
+    child: text1_overstroke_rectangle
+- connect:
+    parent: text1_context
+    child: text1_overstroke_union
+- connect:
+    parent: text1_context
+    child: text1_frustum_readings
+- connect:
+    parent: text1_context
+    child: text1_frustum_two_faces
 - connect:
     parent: text1_context
     child: text1_stroke
@@ -2140,6 +3801,21 @@ operations:
     parent: text1_drop_caps
     child: text1_score
 - connect:
+    parent: text1_two_readings
+    child: text1_score
+- connect:
+    parent: text1_overstroke_rectangle
+    child: text1_score
+- connect:
+    parent: text1_overstroke_union
+    child: text1_score
+- connect:
+    parent: text1_frustum_readings
+    child: text1_score
+- connect:
+    parent: text1_frustum_two_faces
+    child: text1_score
+- connect:
     parent: text1_poem
     child: text1_drawing
 - connect:
@@ -2169,6 +3845,18 @@ operations:
 - connect:
     parent: text1_composite
     child: text1_drawing
+- connect:
+    parent: text1_drawing
+    child: text1_body
+- connect:
+    parent: text1_drawing
+    child: text1_navigation
+- connect:
+    parent: text1_body
+    child: text1_global_keys
+- connect:
+    parent: text1_navigation
+    child: text1_global_keys
 - launch:
     box: text1_context
 - launch:
@@ -2187,6 +3875,16 @@ operations:
     box: text1_elastic
 - launch:
     box: text1_drop_caps
+- launch:
+    box: text1_two_readings
+- launch:
+    box: text1_overstroke_rectangle
+- launch:
+    box: text1_overstroke_union
+- launch:
+    box: text1_frustum_readings
+- launch:
+    box: text1_frustum_two_faces
 - launch:
     box: text1_score
 - launch:
@@ -2207,5 +3905,11 @@ operations:
     box: text1_composite
 - launch:
     box: text1_drawing
+- launch:
+    box: text1_body
+- launch:
+    box: text1_navigation
+- launch:
+    box: text1_global_keys
 - await:
     wait: pending
