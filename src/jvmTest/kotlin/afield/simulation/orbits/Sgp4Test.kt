@@ -121,4 +121,24 @@ class Sgp4Test {
         assertTrue(passes.size in 5..60, "passes ${passes.size}")
         assertTrue(passes.all { abs(it.duration.toMinutes()) < 15 })
     }
+
+    /** The GPU's secular model stays close to full SGP4 over an hour from the catalogue epoch. */
+    @Test
+    fun meanElementsTrackSgp4() {
+        val sky = SatelliteCatalogue.bundled()
+        val errs = ArrayList<Double>()
+        for (sat in sky.satellites.filterIndexed { i, _ -> i % 20 == 0 }) {
+            val dt = sat.tle.minutesSinceEpoch(sky.epoch)
+            val me = sat.sgp4.meanElements.shifted(dt)
+            for (t in listOf(0.0, 30.0, 60.0)) {
+                val s = sat.sgp4.propagate(dt + t) ?: continue
+                errs.add((me.position(t) - s.position).length)
+            }
+        }
+        errs.sort()
+        val median = errs[errs.size / 2]
+        val p90 = errs[errs.size * 9 / 10]
+        println("mean elements vs SGP4 over ${errs.size} states: median ${"%.1f".format(median)} km, p90 ${"%.1f".format(p90)} km")
+        assertTrue(median < 50.0, "median $median km")
+    }
 }

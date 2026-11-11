@@ -175,6 +175,7 @@ class Sgp4(val tle: Tle) {
     private val bstar = tle.bstar
 
     private val noUnkozai: Double
+    private val semiMajorAxisRadii: Double
     private var isimp = false
     private val con41: Double
     private val x1mth2: Double
@@ -218,6 +219,7 @@ class Sgp4(val tle: Tle) {
         del = d1 / (adel * adel)
         noUnkozai = tle.meanMotion / (1.0 + del)
         val ao = (XKE / noUnkozai).pow(X2O3)
+        semiMajorAxisRadii = ao
         val sinio = sin(inclo)
         val po = ao * omeosq
         val con42 = 1.0 - 5.0 * cosio2
@@ -286,6 +288,15 @@ class Sgp4(val tle: Tle) {
         } else {
             d2 = 0.0; d3 = 0.0; d4 = 0.0; t3cof = 0.0; t4cof = 0.0; t5cof = 0.0
         }
+    }
+
+    /**
+     * The secular part of this orbit: Kepler motion with SGP4's J2 drift of node, perigee and mean anomaly, no drag and
+     * no periodic terms. Cheap enough to evaluate for every catalogued object on the GPU each frame; within a
+     * few tens of km of [propagate] for a day around the epoch of a low orbit.
+     */
+    val meanElements: MeanElements by lazy {
+        MeanElements(semiMajorAxisRadii * RE, ecco, inclo, nodeo, argpo, mo, nodedot, argpdot, mdot)
     }
 
     /** The state at [time]. */
@@ -420,4 +431,78 @@ data class Xyz(val x: Double, val y: Double, val z: Double) {
 
     /** Single-precision copy, for drawing. */
     fun toVec3(): afield.math.linalg.Vec3 = afield.math.linalg.Vec3(x.toFloat(), y.toFloat(), z.toFloat())
+}
+
+/**
+ * Secular mean elements, from [Sgp4.meanElements]: an orbit that turns and precesses but keeps its shape.
+ *
+ * The same few lines evaluate on the GPU ([glsl] is the shader twin of [position]), which is how a box draws
+ * a whole catalogue every frame without running SGP4 on each object.
+ *
+ * @param semiMajorAxisKm Brouwer mean semi-major axis, km.
+ * @param eccentricity eccentricity.
+ * @param inclination radians.
+ * @param raan right ascension of the node at epoch, radians.
+ * @param argPerigee argument of perigee at epoch, radians.
+ * @param meanAnomaly mean anomaly at epoch, radians.
+ * @param raanRate node drift, radians per minute.
+ * @param argPerigeeRate perigee drift, radians per minute.
+ * @param meanAnomalyRate mean motion including J2, radians per minute.
+ */
+data class MeanElements(
+    val semiMajorAxisKm: Double,
+    val eccentricity: Double,
+    val inclination: Double,
+    val raan: Double,
+    val argPerigee: Double,
+    val meanAnomaly: Double,
+    val raanRate: Double,
+    val argPerigeeRate: Double,
+    val meanAnomalyRate: Double,
+) {
+    /** TEME position (km), [minutesSinceEpoch] after the element set's epoch. */
+    fun position(minutesSinceEpoch: Double): Xyz {
+        val t = minutesSinceEpoch
+        val m = meanAnomaly + meanAnomalyRate * t
+        val w = argPerigee + argPerigeeRate * t
+        val o = raan + raanRate * t
+        val e = eccentricity
+        var ea = m
+        repeat(6) { ea -= (ea - e * sin(ea) - m) / (1 - e * cos(ea)) }
+        val px = semiMajorAxisKm * (cos(ea) - e)
+        val py = semiMajorAxisKm * sqrt(1 - e * e) * sin(ea)
+        val cw = cos(w); val sw = sin(w); val co = cos(o); val so = sin(o); val ci = cos(inclination); val si = sin(inclination)
+        val x1 = cw * px - sw * py
+        val y1 = sw * px + cw * py
+        return Xyz(co * x1 - so * ci * y1, so * x1 + co * ci * y1, si * y1)
+    }
+
+    /** The same orbit with its epoch moved [minutes] later, angles wrapped: keeps single-precision shader time small. */
+    fun shifted(minutes: Double): MeanElements = copy(
+        raan = (raan + raanRate * minutes).rem(2 * PI),
+        argPerigee = (argPerigee + argPerigeeRate * minutes).rem(2 * PI),
+        meanAnomaly = (meanAnomaly + meanAnomalyRate * minutes).rem(2 * PI),
+    )
+
+    companion object {
+        /**
+         * GLSL for [position]: `vec3 meanElementsPosition(vec4 shape, vec4 angles, vec3 rates, float t)` with
+         * `shape = (a, e, i, 0)`, `angles = (raan, argp, M, 0)`, `rates = (raanRate, argpRate, mRate)`.
+         */
+        const val glsl = """
+vec3 meanElementsPosition(vec4 shape, vec4 angles, vec3 rates, float t) {
+    float m = angles.z + rates.z * t;
+    float w = angles.y + rates.y * t;
+    float o = angles.x + rates.x * t;
+    float e = shape.y;
+    float ea = m;
+    for (int k = 0; k < 6; k++) ea -= (ea - e * sin(ea) - m) / (1.0 - e * cos(ea));
+    float px = shape.x * (cos(ea) - e);
+    float py = shape.x * sqrt(1.0 - e * e) * sin(ea);
+    float x1 = cos(w) * px - sin(w) * py;
+    float y1 = sin(w) * px + cos(w) * py;
+    return vec3(cos(o) * x1 - sin(o) * cos(shape.z) * y1, sin(o) * x1 + cos(o) * cos(shape.z) * y1, sin(shape.z) * y1);
+}
+"""
+    }
 }
