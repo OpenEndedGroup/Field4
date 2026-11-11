@@ -4,7 +4,7 @@
 
 Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. `SoundPathMap.kt` is the one to read first: the declared, re-derived-from-the-code map of every route Field has from a box to something audible, which [Making a sound in Field: every path there is](../sound_paths.md) renders as a page. [Sonic Pi](../sonic_pi.md) covers owned mode in full.
 
-92 source file(s), 2363 public symbol(s), 1229 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+92 source file(s), 2364 public symbol(s), 1230 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -4212,6 +4212,8 @@ numbers and the percussion channel as named constants.
 
 `src/jvmMain/kotlin/afield/audio/synth/Midi.kt` — [read the source](source/jvmMain/afield/audio/synth/Midi/)
 
+**Used in:** [Sound: from a pattern to something you can hear](../sound.md)
+
 ### Top-level functions { #midi-kt-functions }
 
 | Declaration | Summary |
@@ -4745,7 +4747,8 @@ The piano clips on `public/docs/sound.md`, rendered offline for the docs runner'
 | Declaration | Summary |
 | --- | --- |
 | <a id="pianodocs-kt--pianodocs--scenes"></a>[<code class="highlight"><span class="k">val</span> <span class="n">scenes</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">PianoRender</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/PianoDocs/#L18) | Every scene by name: the piano it plays through. |
-| <a id="pianodocs-kt--pianodocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PianoDocs/#L41) | Offline-renders scene `name` to a stereo 16-bit WAV at `outPath`, peak-normalised to 0.89. |
+| <a id="pianodocs-kt--pianodocs--prepared"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">PREPARED</span></code>](source/jvmMain/afield/audio/synth/PianoDocs/#L83) | The table of preparations the prepared scenes share: bolts in the middle, rubber in the bass, a loose nut above. |
+| <a id="pianodocs-kt--pianodocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PianoDocs/#L90) | Offline-renders scene `name` to a stereo 16-bit WAV at `outPath`, peak-normalised to 0.89. |
 
 ## PrettyPrint.kt { #prettyprint-kt }
 
