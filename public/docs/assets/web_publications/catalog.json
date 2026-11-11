@@ -172,42 +172,51 @@
     },
     "assets/agent_transcripts/alife_grains/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-11T10:04:27.659Z",
-      "channels": 18,
+      "capturedAt": "2026-11-11T13:53:22.546Z",
+      "channels": 24,
       "file": "assets/web_publications/alife_grains/document/metadata.edn",
       "files": {
-        "assets/web_publications/alife_grains/document/metadata.edn": "a627ed1c3b4c62d67151b5c9d3da8df5adab9afc60e99cf3a0e0c6e0dc8aea5d",
-        "assets/web_publications/alife_grains/document/outputs.json": "b8be36e3393f8b8d1c8121a6f6a1852b208ada2a24720a91142d88741bfdd09a",
-        "assets/web_publications/alife_grains/outputs/0.html": "466245909fcf8c93bf5ee3506513f01b55dd680b5f53b0d0bf98b2d5ec907e36",
-        "assets/web_publications/alife_grains/outputs/1.html": "c36dd96d7eea72e6bd755648baf375cbe799267b271420d52aa3b588ab872002",
-        "assets/web_publications/alife_grains/outputs/10.html": "08ff49a3d22527ad05b8fc5d868a43bbd0f70950313b1c6427fe7c06a442b057",
-        "assets/web_publications/alife_grains/outputs/11.html": "5d5b01fec14215fa0000fded16d1a78fe846384cab62da1749a501a4e8d22a5d",
-        "assets/web_publications/alife_grains/outputs/12.html": "f44e9c1eb57e10d07dc80d02e3323e61987ac25e1301325e66382590a32e1f0c",
-        "assets/web_publications/alife_grains/outputs/13.html": "78ddc1448294e9708da16d1ba0db8fe75f58c6b85fc2e1c8ed62e8c99e5011b2",
-        "assets/web_publications/alife_grains/outputs/14.html": "f44e9c1eb57e10d07dc80d02e3323e61987ac25e1301325e66382590a32e1f0c",
-        "assets/web_publications/alife_grains/outputs/15.html": "f44e9c1eb57e10d07dc80d02e3323e61987ac25e1301325e66382590a32e1f0c",
-        "assets/web_publications/alife_grains/outputs/16.html": "f44e9c1eb57e10d07dc80d02e3323e61987ac25e1301325e66382590a32e1f0c",
-        "assets/web_publications/alife_grains/outputs/17.html": "f44e9c1eb57e10d07dc80d02e3323e61987ac25e1301325e66382590a32e1f0c",
-        "assets/web_publications/alife_grains/outputs/2.html": "45d3c4f77f7d2c296ce0997c3acec922e68e39d7165e8e03e6ec85ecfa5feb7a",
-        "assets/web_publications/alife_grains/outputs/3.html": "744555094518981cbc9ca0bd19bc13097084e5d7dfb47b222fdc67e5bd2b8f4a",
-        "assets/web_publications/alife_grains/outputs/4.html": "e85616ca1aa6fe34f444cace08a92b4a081b0ea339dc9e2caee4263dd2dd6063",
-        "assets/web_publications/alife_grains/outputs/5.html": "a63178c7d3b0fe1377f0ef8ba435a54e73bd00af07b0aeec640f067a7c7052fb",
-        "assets/web_publications/alife_grains/outputs/6.html": "5b8bfe650686d97225fe79c433aa9df98a424ceab72def02241599e62a33eabe",
-        "assets/web_publications/alife_grains/outputs/7.html": "f44e9c1eb57e10d07dc80d02e3323e61987ac25e1301325e66382590a32e1f0c",
-        "assets/web_publications/alife_grains/outputs/8.html": "f44e9c1eb57e10d07dc80d02e3323e61987ac25e1301325e66382590a32e1f0c",
-        "assets/web_publications/alife_grains/outputs/9.html": "f377f344eff08a533f6972af020e958013fce1dd42dbc155ba6f816b42c6f11b"
+        "assets/web_publications/alife_grains/document/metadata.edn": "64b4adf56c1bb4bbf35596df02081aadc760377a301f1867dfd543da2b05cff9",
+        "assets/web_publications/alife_grains/document/outputs.json": "9d18ead431d426f569e6f826f35427900d2432f4b051917e7d5bffd9e4f07c9b",
+        "assets/web_publications/alife_grains/outputs/0.html": "a871ab96b71a4b6b67f01556603b752de59d26cd63c0c31c294784d4a2a6bb1b",
+        "assets/web_publications/alife_grains/outputs/1.html": "29b03af03f26022ae5fa1e4f2f3fe88bdec4b8936291a879789420684836a71c",
+        "assets/web_publications/alife_grains/outputs/10.html": "4f1576467620b235da3befd5e8d11cbcbcc860c622616d7753d9210e0ce3f260",
+        "assets/web_publications/alife_grains/outputs/11.html": "e871bd2bd16b1cae1186fcf42d359446447abb2d4d75c79ef4d4c45cb59b3329",
+        "assets/web_publications/alife_grains/outputs/12.html": "b390fbe460527f81b79bc42a6685ec5e098a5e50d055458446050e070cd65683",
+        "assets/web_publications/alife_grains/outputs/13.html": "ab90683146da814960e737e8f5e62f16ebcfb6ad7699824c866fe9e89fbd003c",
+        "assets/web_publications/alife_grains/outputs/14.html": "bdcb5307bb62d723d5d6fc6dc31e1d93a3ca746f9af45233ba71aedb22f86ac2",
+        "assets/web_publications/alife_grains/outputs/15.html": "ba613a3c253830f251605f6d4bc02db2066c446cf9dbd803a72adc524e89ffde",
+        "assets/web_publications/alife_grains/outputs/16.html": "ab90683146da814960e737e8f5e62f16ebcfb6ad7699824c866fe9e89fbd003c",
+        "assets/web_publications/alife_grains/outputs/17.html": "993df2ad629c76b973f517d72c956d92ac291f651cff18cb6fa7e320cb5a3117",
+        "assets/web_publications/alife_grains/outputs/18.html": "ab90683146da814960e737e8f5e62f16ebcfb6ad7699824c866fe9e89fbd003c",
+        "assets/web_publications/alife_grains/outputs/19.html": "63e28157595f60d641a77b4d069f8eee318a84248030283a157ff5ec7b377d0f",
+        "assets/web_publications/alife_grains/outputs/2.html": "2e448060dfc8cc4baa5db7569ccbb4e0b63631c4507ac96077501c47805b8e99",
+        "assets/web_publications/alife_grains/outputs/20.html": "ab90683146da814960e737e8f5e62f16ebcfb6ad7699824c866fe9e89fbd003c",
+        "assets/web_publications/alife_grains/outputs/21.html": "ab90683146da814960e737e8f5e62f16ebcfb6ad7699824c866fe9e89fbd003c",
+        "assets/web_publications/alife_grains/outputs/22.html": "ab90683146da814960e737e8f5e62f16ebcfb6ad7699824c866fe9e89fbd003c",
+        "assets/web_publications/alife_grains/outputs/23.html": "ab90683146da814960e737e8f5e62f16ebcfb6ad7699824c866fe9e89fbd003c",
+        "assets/web_publications/alife_grains/outputs/3.html": "1b57f4a4f028f7c8e822753df3930f37647fc646589db4801ce101350aea8d14",
+        "assets/web_publications/alife_grains/outputs/4.html": "729432fc2e4250c20d621d7d4d6637d882dd6619715f20df99ec23aebc46e496",
+        "assets/web_publications/alife_grains/outputs/5.html": "cf866b83c07ce4d13c0b087515481c200f3726d2bb45cdecfe39462aa10e58e4",
+        "assets/web_publications/alife_grains/outputs/6.html": "2efe23a6951f05e5ecd7c80488bc43f7dfab7e4134402d091caaa54841049981",
+        "assets/web_publications/alife_grains/outputs/7.html": "ab90683146da814960e737e8f5e62f16ebcfb6ad7699824c866fe9e89fbd003c",
+        "assets/web_publications/alife_grains/outputs/8.html": "ab90683146da814960e737e8f5e62f16ebcfb6ad7699824c866fe9e89fbd003c",
+        "assets/web_publications/alife_grains/outputs/9.html": "ab90683146da814960e737e8f5e62f16ebcfb6ad7699824c866fe9e89fbd003c"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/alife_grains/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/alife_grains.yaml": "546e4afc56518e1f0c84c0916b8e30c4b90dbfc9149af37ce1d499b7e6fff394",
+        "dev_docs/agents/transcripts/alife_grains.yaml": "55c4138a10d644d030fe7bb82ff0e5cdc80ef726936fec31c1d9320a8fdca2b7",
         "public/docs/assets/agent_transcripts/alife_grains/grains_breed_code_.kt": "466082eb72b03366755e09b067ca4b2f568ada40a7a5764936438d9c03326c00",
         "public/docs/assets/agent_transcripts/alife_grains/grains_decode_code_.kt": "8187a82358e1e82627976ee77a66ee204be9e5878d0c3a42abb9bdf81cde3b5f",
         "public/docs/assets/agent_transcripts/alife_grains/grains_evolve_code_.kt": "ed7d6ee34434e820130792251292738438cb154d669dcd6f37f4876354052e5a",
+        "public/docs/assets/agent_transcripts/alife_grains/grains_map_code_.kt": "e66394bd150c021ebd742290c70d89c6a1ab7bb626f75c492bb2b11b10467374",
+        "public/docs/assets/agent_transcripts/alife_grains/grains_recording_code_.kt": "e7b44f52aac9d23f41e306bfe1a1f778c73d73295594e5c97d7ac1c86c1d53c1",
+        "public/docs/assets/agent_transcripts/alife_grains/grains_shape_code_.kt": "5249478f1709158cf466fd1fbb3a4c21fc2cb4fc135923a6e616e571abfe3ce9",
         "public/docs/assets/agent_transcripts/alife_grains/guides/alife_examples.md": "9bc7d6445648fcdb2aab02a591a0d7348c1105dda2df0c9377c7b4cb2b83b3d7",
-        "public/docs/assets/agent_transcripts/alife_grains/metadata.edn": "aef913d0a0dd87358d916ea615a80b364f56036758ac40b1fe6cf186aba9bc9b"
+        "public/docs/assets/agent_transcripts/alife_grains/metadata.edn": "29eb8277c5983dd56eabc2832a7d6505097f16d3a977ee58856cc597dc4f17fb"
       }
     },
     "assets/agent_transcripts/alife_script/metadata.edn": {
@@ -977,27 +986,33 @@
     },
     "assets/agent_transcripts/clothoid_spline/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-11T09:57:46.566Z",
-      "channels": 3,
+      "capturedAt": "2026-11-11T13:53:27.967Z",
+      "channels": 6,
       "file": "assets/web_publications/clothoid_spline/document/metadata.edn",
       "files": {
-        "assets/web_publications/clothoid_spline/document/metadata.edn": "14b4e37ec1e6ba2e2f6fa2db59187cedad7857a0fb49d621498c549a86114d5d",
-        "assets/web_publications/clothoid_spline/document/outputs.json": "fd8d278687922e41d8f9f0f3a067786bccd7a40a84d95eae10a242a6b8168322",
-        "assets/web_publications/clothoid_spline/outputs/0.html": "8ecba3abce63d15746ead0a2f180e429ba83513069f03ca5853bd075dc2390d8",
-        "assets/web_publications/clothoid_spline/outputs/1.html": "2d627a911a1135105e6ac8a7c3ddff4696cdfd3f70073736cde0c33839d48bf9",
-        "assets/web_publications/clothoid_spline/outputs/2.html": "2eb37ccb1fe7c6fde2f64ba25ae1965acabb7029e98801d81a4a5892fdab45b9"
+        "assets/web_publications/clothoid_spline/document/metadata.edn": "72b608258f0b9bb18c6627d8a0abea1a851986a798301f7170dab6bc989834a7",
+        "assets/web_publications/clothoid_spline/document/outputs.json": "a2f9d60deda6b3d727770a8a3d6c53bdcc66965ac397249a6a9ec936d094030c",
+        "assets/web_publications/clothoid_spline/outputs/0.html": "059f05fc052807a9b923c7f95baeb83e298abd5adbf16e7de9da804fa5267d0a",
+        "assets/web_publications/clothoid_spline/outputs/1.html": "a41bb3567ebb6d8055c68b84cdee85b26ce7320d33fcbc6f7bdeb985b8d83a78",
+        "assets/web_publications/clothoid_spline/outputs/2.html": "d4bcfd39d4d8fe746e96a62620f9f98f3de52f5d377b481a2d2f7675a246485d",
+        "assets/web_publications/clothoid_spline/outputs/3.html": "f16919507c06b6629a262f46d05f961016f70b33fd51e50e4df06cc411fdfe3a",
+        "assets/web_publications/clothoid_spline/outputs/4.html": "2fbb88711a1ec012f8c1508451ab56c8440230f6e8bcf9a9576dc56381893914",
+        "assets/web_publications/clothoid_spline/outputs/5.html": "dffdfe8d34669e7e908b77f96cc5a4caa0451da3bd8321883adcf101690c0c8f"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/clothoid_spline/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/clothoid_spline.yaml": "4a4d591d71dfdd6718088399570738ee0b7100b899e2955b61b29ae7fdaef5f0",
+        "dev_docs/agents/transcripts/clothoid_spline.yaml": "67a70cf20cfe7314ad2630778f87ea20dc524ce17275e83020e07a8925d026f5",
         "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-circle_code_.kt": "f82082576d7ac113539742206e3e032181c0d05202065cec9e56b92ffb390ec5",
+        "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-corners_code_.kt": "d8f278a7688d492c31987c3da5dd27bb86446cce11855ebad0c60978ec6048b8",
+        "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-end-directions_code_.kt": "fc348920c202fde1181ddff92e4eacff2e0c15da52525b85414f3f00f738b56d",
+        "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-heights_code_.kt": "ed4b23071290f5ebc3c7a11472eb6e21dd0e3b12b59377763247f034d5fcdcd8",
         "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-shape_code_.kt": "6881872c63f8662aba669c01c4f8b9e7612a75e221acbe84e60052ecb33c4f2e",
         "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-vs-cubic_code_.kt": "5169463402a8e919386de90203a5df634f4e92e3b715e6e5c2c70dd530a615a4",
         "public/docs/assets/agent_transcripts/clothoid_spline/guides/fline_examples-curvature-continuous-splines-clothoidsplinefrom.md": "f34682720cab76cc7a7137a94fa04183256f35ba8defb0dbbbd4022825f933c0",
-        "public/docs/assets/agent_transcripts/clothoid_spline/metadata.edn": "2ec69e5887a4c7a8a7a385bcec9cf5194522e23aa65cd3285cfe0c210be77bea"
+        "public/docs/assets/agent_transcripts/clothoid_spline/metadata.edn": "1d9aaa8e78a6c19fc7dca6bbca297b872a4cb9fab9b61f972a4dfdfbca24e988"
       }
     },
     "assets/agent_transcripts/completion_rank_at_scale/metadata.edn": {
