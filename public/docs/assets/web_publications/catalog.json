@@ -935,6 +935,31 @@
         "public/docs/assets/agent_transcripts/cloth_simdverlet_start/metadata.edn": "1eb6d207830087ee66afe80c5dbbb9f60609ab09456c4e30f8fa12482ede8f71"
       }
     },
+    "assets/agent_transcripts/clothoid_spline/metadata.edn": {
+      "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
+      "capturedAt": "2026-11-11T09:57:46.566Z",
+      "channels": 3,
+      "file": "assets/web_publications/clothoid_spline/document/metadata.edn",
+      "files": {
+        "assets/web_publications/clothoid_spline/document/metadata.edn": "14b4e37ec1e6ba2e2f6fa2db59187cedad7857a0fb49d621498c549a86114d5d",
+        "assets/web_publications/clothoid_spline/document/outputs.json": "fd8d278687922e41d8f9f0f3a067786bccd7a40a84d95eae10a242a6b8168322",
+        "assets/web_publications/clothoid_spline/outputs/0.html": "8ecba3abce63d15746ead0a2f180e429ba83513069f03ca5853bd075dc2390d8",
+        "assets/web_publications/clothoid_spline/outputs/1.html": "2d627a911a1135105e6ac8a7c3ddff4696cdfd3f70073736cde0c33839d48bf9",
+        "assets/web_publications/clothoid_spline/outputs/2.html": "2eb37ccb1fe7c6fde2f64ba25ae1965acabb7029e98801d81a4a5892fdab45b9"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/clothoid_spline/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/clothoid_spline.yaml": "4a4d591d71dfdd6718088399570738ee0b7100b899e2955b61b29ae7fdaef5f0",
+        "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-circle_code_.kt": "f82082576d7ac113539742206e3e032181c0d05202065cec9e56b92ffb390ec5",
+        "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-shape_code_.kt": "6881872c63f8662aba669c01c4f8b9e7612a75e221acbe84e60052ecb33c4f2e",
+        "public/docs/assets/agent_transcripts/clothoid_spline/clothoid-spline-vs-cubic_code_.kt": "5169463402a8e919386de90203a5df634f4e92e3b715e6e5c2c70dd530a615a4",
+        "public/docs/assets/agent_transcripts/clothoid_spline/guides/fline_examples-curvature-continuous-splines-clothoidsplinefrom.md": "f34682720cab76cc7a7137a94fa04183256f35ba8defb0dbbbd4022825f933c0",
+        "public/docs/assets/agent_transcripts/clothoid_spline/metadata.edn": "2ec69e5887a4c7a8a7a385bcec9cf5194522e23aa65cd3285cfe0c210be77bea"
+      }
+    },
     "assets/agent_transcripts/completion_rank_at_scale/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
       "capturedAt": "2026-11-10T22:44:55.062Z",
@@ -2239,6 +2264,29 @@
         "public/docs/assets/agent_transcripts/keyframer_worked_example/keyframe_targets_code_.kt": "f700b7811c1caa0ca068cb9ab2157e4d288fffd8d157cddc1a4ece464880f0ad",
         "public/docs/assets/agent_transcripts/keyframer_worked_example/keyframe_updatecode_code_.kt": "039958d95c92df04be873ac5f55ec63466ee7a24b731b42979157f242e4b4c4d",
         "public/docs/assets/agent_transcripts/keyframer_worked_example/metadata.edn": "09347460dc8a7f9c4866cf11ab2f4615a8c3280c4084c2a815e28eb41ec4707f"
+      }
+    },
+    "assets/agent_transcripts/kmeans_emeans/metadata.edn": {
+      "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
+      "capturedAt": "2026-11-11T09:57:43.139Z",
+      "channels": 2,
+      "file": "assets/web_publications/kmeans_emeans/document/metadata.edn",
+      "files": {
+        "assets/web_publications/kmeans_emeans/document/metadata.edn": "cb8c8954e9e921af61c1607a572497d35ec96b5acf337bda3341e0e1734735cd",
+        "assets/web_publications/kmeans_emeans/document/outputs.json": "3a2db72091b71f6d2597324f65696729cd88d3c1bd789ff79a4aebda961b0521",
+        "assets/web_publications/kmeans_emeans/outputs/0.html": "5b948527b058c90005d2539074c2eb9438ee2c4121450387ab5d7eb08f8d2f61",
+        "assets/web_publications/kmeans_emeans/outputs/1.html": "5686f09fb38910c6cdf3464c22296d36b9809268f788ddb277d5190db51ab006"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/kmeans_emeans/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/kmeans_emeans.yaml": "ae8be035351254b2afd0ad0fa34063828dbd37af03a472c0bec0f2ebce4cd06b",
+        "public/docs/assets/agent_transcripts/kmeans_emeans/guides/spatial_geometry_examples.md": "a0d4efda38b93236a531c3a72ddce0c4b2044f689b173a68cfc4ee4e4e8450c4",
+        "public/docs/assets/agent_transcripts/kmeans_emeans/kmeans_lloyd_vs_emeans_code_.kt": "be0d956d74d10c3663f835861b84c514dac31263d8fa230ffc0581c13a002177",
+        "public/docs/assets/agent_transcripts/kmeans_emeans/kmeans_revival_code_.kt": "7b471e5096c8147dd2d52c7ac8c3ec4a53b19e310160166d58fc7b1ac793f026",
+        "public/docs/assets/agent_transcripts/kmeans_emeans/metadata.edn": "57f76d7a018d1c9ce81bf94278aa337debb140eccac22e039723a0fe559e11af"
       }
     },
     "assets/agent_transcripts/knight_tour_workshop/metadata.edn": {
@@ -4545,17 +4593,17 @@
     },
     "assets/agent_transcripts/spatial_geometry_examples/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-11T03:33:59.191Z",
+      "capturedAt": "2026-11-11T09:55:59.758Z",
       "channels": 5,
       "file": "assets/web_publications/spatial_geometry_examples/document/metadata.edn",
       "files": {
         "assets/web_publications/spatial_geometry_examples/document/metadata.edn": "91aabc8c2b28d86411d564f9f1d7fd0707786d906e8dcabeef1b8d843139cfd0",
-        "assets/web_publications/spatial_geometry_examples/document/outputs.json": "179c63c743053176e13ba6b3f7f34453b37034a5d68f70c4b06ada6f05a336cf",
-        "assets/web_publications/spatial_geometry_examples/outputs/0.html": "de60f84a87d84a8cae32e6e4aba54cc07d148e72ba491c22ff1df84de7253b3b",
-        "assets/web_publications/spatial_geometry_examples/outputs/1.html": "4539d5c9172a090708af7eb8de5f2777d910e6fe8356d64fac32c45a9c5c42ca",
-        "assets/web_publications/spatial_geometry_examples/outputs/2.html": "86b71eb2d91a3262e8b799701fd63daf2c95af391bcaba4956e617ee46ced554",
-        "assets/web_publications/spatial_geometry_examples/outputs/3.html": "3d536e97357e17f8e9a9983653921bdd404b9875f193466411a6d5ceb4512b71",
-        "assets/web_publications/spatial_geometry_examples/outputs/4.html": "f972701b36035b694d2878f44a440f7cc07baeda923e0687b140cdf538f5c8a9"
+        "assets/web_publications/spatial_geometry_examples/document/outputs.json": "7f3c192fbc528a8a99e82538024040f3eaec7a9cea1e89e4672d09eb8c92c114",
+        "assets/web_publications/spatial_geometry_examples/outputs/0.html": "f94e8de0593a599ac739472dfeb71c3eb54d3cf2c732d14edf14c0987b12cd21",
+        "assets/web_publications/spatial_geometry_examples/outputs/1.html": "c7d54518b1e33201e49de3b368f6a8e65d87182ed65ad468ce83e968c610d82c",
+        "assets/web_publications/spatial_geometry_examples/outputs/2.html": "c989d4a73c9549006ccf5a9814c6d3d0fd74d1290b57191080e63d356bee6e96",
+        "assets/web_publications/spatial_geometry_examples/outputs/3.html": "0e4580186242d06301760aabd2bfa6ba69a926046473a4565241a10e7d0a2ce2",
+        "assets/web_publications/spatial_geometry_examples/outputs/4.html": "d3e724e1dccaa02ee96f80c2a18d82ed82aa4ffa7232fed0cddb0c3e62b9aa5a"
       },
       "kinds": [
         "svg"
@@ -4564,10 +4612,10 @@
       "sources": {
         "dev_docs/agents/transcripts/spatial_geometry_examples.yaml": "1a02933b82e9b4a52937a55a8cb6a61ae7eadaecb17ac3be910b59c58bac7e30",
         "public/docs/assets/agent_transcripts/spatial_geometry_examples/guides/spatial_geometry_examples.md": "96c1520089a3845007c176a3772e36e9a63b9c168dc75e4dba8c9b6ff3dd691b",
-        "public/docs/assets/agent_transcripts/spatial_geometry_examples/metadata.edn": "35d788539c1b575bcaa01d4cd0bd76e8641c256766b2df5473c40ffaf3063354",
+        "public/docs/assets/agent_transcripts/spatial_geometry_examples/metadata.edn": "66368df93ef38e85586be9f5de9c4ba886b1b985ed59bcd3f017890f3cf0238b",
         "public/docs/assets/agent_transcripts/spatial_geometry_examples/spatial_apollonius_code_.kt": "f36dd8402e415fb1cb2cd5c3202d2363637b2ae40049d294093e1f7fc7f29a6b",
         "public/docs/assets/agent_transcripts/spatial_geometry_examples/spatial_apollonius_sweep_code_.kt": "7052684086ad4af3df6e2e1825f02081b736d8f5830bafbd83ac9262742df7de",
-        "public/docs/assets/agent_transcripts/spatial_geometry_examples/spatial_clustering_code_.kt": "689cf0fba392f1353df269b4271f4822c1ebe9008cce7148f9040d5e355eb909",
+        "public/docs/assets/agent_transcripts/spatial_geometry_examples/spatial_clustering_code_.kt": "902f4c2687e0b1ffec56291b7facdf9bde01cf5be19faf35187a846641b66418",
         "public/docs/assets/agent_transcripts/spatial_geometry_examples/spatial_contours_code_.kt": "615ec7e9e83fc1242f4d06df0fb133a316ebe30281d57d4d151fbad54fc503d0",
         "public/docs/assets/agent_transcripts/spatial_geometry_examples/spatial_delaunay_code_.kt": "3222346ad7e54c986e5b573398dc49e87fae4db7fb5f853c4037552fb7379b93",
         "public/docs/assets/agent_transcripts/spatial_geometry_examples/spatial_iso_sweep_code_.kt": "fd4cdf8efb42ea156ea22a99707c382535167e951d808dea4906c8e0df824584",
