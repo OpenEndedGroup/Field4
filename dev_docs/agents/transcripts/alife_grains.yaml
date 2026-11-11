@@ -7,7 +7,10 @@ description: >
   Box 1 decodes one hand-written grammar and plays it. Box 2 is the automatic run, with sliders for
   the target median pitch, the count plateau, the polyphony weight and the time scale that re-run the search on
   release. Box 3 is interactive evolution: six children with players, and a text field naming the
-  parents of the next generation. All CPU, no Window or Renderer.
+  parents of the next generation. Box 4 shapes grains with the length, density and pan symbols and a
+  silent nonterminal X. Box 5 reads a recording (Tidal's arpy samples, from the pinned Dirt-Samples
+  subset) as grains, centres the trapezoids on its statistics and evolves toward it. Box 6 is
+  MAP-Elites over pitch spread and polyphony, a 4x4 map of grain sets. All CPU, no Window or Renderer.
 docs:
   - page: alife_examples.md
     why: "Section 11, 'Evolved grain sets', is the prose and captures for these boxes."
@@ -135,3 +138,108 @@ operations:
           }
 
           show()
+  - create:
+      box: grains_shape
+      name: "4 — Shaping grains: length, density, pan, and a silent X"
+      frame:
+        x: 540.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // < and > make the grains that follow shorter or longer, * and / denser or sparser,
+          // l and r move them left or right. X is rewritten like G but never plays.
+          val system = lSystem("G", 'G' to "G[lX]-*<G", 'X' to "+>G/X")
+          for ((i, s) in system.derivations(2).withIndex()) println("gen $i: $s")
+          val grains = decodeGrains(system, 4)
+          println(GrainSetStats(grains))
+          showImg(grainScoreImg(grains, 640, 220), caption = "gen 4: the trunk falls and quickens; each branch climbs and slows")
+          display("audio", renderGrains(grains).wav())
+  - create:
+      box: grains_recording
+      name: "5 — A target taken from a recording"
+      frame:
+        x: 540.0
+        y: 200.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // The recording: Tidal's eleven arpy samples back to back, a rising scale.
+          val arpy = DirtRender.requirePinnedLibrary().family("arpy")!!
+          val notes = (0 until arpy.size).map { arpy.sample(it)!! }
+          val rate = notes[0].sampleRate.toInt()
+          val recording = notes.flatMap { it.left.asList() }.toFloatArray()
+
+          // Read it as grains, and centre a trapezoid on each of its statistics.
+          val heard = grainsFromAudio(recording, rate, minHz = 100.0)
+          val target = GrainSetStats(heard)
+          println("recording: $target")
+          val terms = grainTermsAround(target)
+
+          fun search(alphabet: String, seed: Long) = PopulationSearch.evolve(
+              grainLSystemGenome(alphabet = alphabet),
+              grainSetObjective(terms),
+              budget = 600,
+              seed = seed,
+              crossoverRate = 0.3,
+              immigrantRate = 0.1,
+              label = "toward arpy",
+          )
+
+          // The plain alphabet against the one with < > * / l r, over eight seeds each.
+          for (alphabet in [GRAIN_ALPHABET, GRAIN_ALPHABET_EXTENDED]) {
+              val bests = (1L..8L).map { search(alphabet, it).bestFitness }
+              println("%-14s mean best %.3f, worst %.3f".format(alphabet, bests.average(), bests.min()))
+          }
+
+          val run = search(GRAIN_ALPHABET_EXTENDED, 7L)
+          val best = decodeGrains(run.best!!.genome, 3)
+          println(grainRule(run.best!!.genome))
+          println("evolved:   " + GrainSetStats(best))
+          showImg(grainScoreImg(heard, 640, 160), channel = "recording", caption = "the recording, read as grains")
+          showImg(grainScoreImg(best, 640, 160), channel = "score", caption = "the evolved set")
+          // Played from the first arpy note, which the detector heard at this pitch.
+          display("audio", renderGrains(best, source = notes[0].left, sourceRate = rate, sourcePitch = heard[0].pitch).wav())
+  - create:
+      box: grains_map
+      name: "6 — A map of grain sets: MAP-Elites"
+      frame:
+        x: 540.0
+        y: 340.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // MAP-Elites over pitch spread and polyphony: the best set of each kind, not one winner.
+          val axes = [GrainStat.PITCH_SPREAD, GrainStat.POLYPHONY]
+          val map = PopulationSearch.mapElites(
+              grainLSystemGenome(),
+              grainSetObjective(behaviour = axes),
+              budget = 800,
+              axes = [0.0..12.0, 0.0..6.0],
+              bins = [4, 4],
+              seed = 1L,
+          )
+          println(map)
+
+          // One score per cell: spread grows to the right, polyphony upward.
+          val panels =
+              (3 downTo 0).flatMap { row ->
+                  (0..3).map { col ->
+                      val elite = map.elites[[col, row]]
+                      if (elite == null) {
+                          "empty" to Img.zeros(240, 120, 3)
+                      } else {
+                          val grains = decodeGrains(elite.genome, 3)
+                          val st = GrainSetStats(grains)
+                          "%.1f st  x%.1f  %.2f".format(st.pitchSpread, st.polyphony, elite.fitness) to
+                              grainScoreImg(grains, 240, 120)
+                      }
+                  }
+              }
+          showImg(
+              montage(panels, columns = 4, cellSide = 240, textScale = 2),
+              caption = "pitch spread across, polyphony up; trapezoid fitness in each label",
+          )

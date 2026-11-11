@@ -106,4 +106,74 @@ class GrainLSystemTest {
         assertEquals(a.population.map { it.productions }, b.population.map { it.productions })
         assertEquals(1, a.generation); assertEquals(6, a.scores().size)
     }
+
+    @Test fun lengthDensityAndPanSymbolsShapeTheGrainsThatFollow() {
+        val g = decodeGrainString("G>G*GG[lG]rG", t.copy(lengthStep = 2.0, densityStep = 2.0, panStep = 0.5))
+        assertEquals(6, g.size)
+        assertTrue(abs(g[0].duration - 0.1) < 1e-9 && abs(g[1].duration - 0.2) < 1e-9, "> doubles length")
+        // `>` leaves the time step alone; `*` halves it, so the last three onsets close up
+        assertEquals(listOf(0.0, 0.1, 0.2, 0.25), g.take(4).map { Math.round(it.onset * 1000) / 1000.0 })
+        assertEquals(-0.5, g[4].pan, "l inside the branch")
+        assertEquals(0.5, g[5].pan, "the branch's l is undone by ], then r")
+        assertTrue(abs(g[5].onset - 0.3) < 1e-9, "the trunk resumes at its own (denser) step")
+        assertEquals(decodeGrainString("G+G", t), decodeGrainString("G+G", t.copy(lengthStep = 9.0)), "unused symbols change nothing")
+    }
+
+    @Test fun renderSurvivesARunawayGrammar() {
+        // 200 `>`s make the last grain about 1.5^200 seconds long: the render stops at maxSeconds.
+        val g = decodeGrainString("G" + ">".repeat(200) + "G" + "/".repeat(200) + "GG", GrainTurtle())
+        val a = renderGrains(g, sampleRate = 1000, maxSeconds = 30.0)
+        assertTrue(a.seconds <= 30.0 + 1e-9, "render ${a.seconds} s")
+        assertTrue(a.left.all { it.isFinite() } && a.left.any { it != 0f })
+        val panned = renderGrains(decodeGrainString("l".repeat(40) + "G", GrainTurtle()), sampleRate = 1000)
+        assertTrue(panned.left.all { it.isFinite() } && panned.right.all { abs(it) < 1e-6f }, "hard left, no NaN")
+    }
+
+    @Test fun nonterminalsAreRewrittenButSilent() {
+        val ops = grainLSystemGenome(alphabet = GRAIN_ALPHABET_EXTENDED, nonterminals = "X")
+        val g = ops.random(kotlin.random.Random(4))
+        assertEquals(listOf('G', 'X'), g.productions.map { it.symbol })
+        // G → G[X], X → +GX: each generation the branch climbs one more step
+        val climb = lSystem("G", 'G' to "G[X]", 'X' to "+GX")
+        val grains = decodeGrains(climb, 4, t)
+        assertEquals(listOf(62.0, 64.0, 66.0), grains.filter { it.depth == 1 }.map { it.pitch }.distinct().sorted().take(3))
+        assertTrue(decodeGrainString("XXX", t).isEmpty())
+        val run = PopulationSearch.evolve(ops, grainSetObjective(), budget = 120, seed = 2L, crossoverRate = 0.3)
+        assertTrue(run.bestFitness > run.initialFitness)
+        assertTrue(kotlin.runCatching { grainLSystemGenome(nonterminals = "f") }.isFailure)
+    }
+
+    @Test fun behaviourCanBeChosenForMapElites() {
+        val axes = listOf(GrainStat.PITCH_SPREAD, GrainStat.POLYPHONY)
+        val objective = grainSetObjective(behaviour = axes)
+        val e = objective.evaluate(lSystem("G", 'G' to "G[+G-G]fG"))
+        val st = GrainSetStats(decodeGrains(lSystem("G", 'G' to "G[+G-G]fG"), 3))
+        assertEquals(listOf(st.pitchSpread, st.polyphony), e.behaviour.toList())
+        val map = PopulationSearch.mapElites(grainLSystemGenome(), objective, budget = 200, axes = listOf(0.0..12.0, 0.0..6.0), bins = listOf(4, 4), seed = 1L)
+        println(map)
+        assertTrue(map.elites.size >= 4, "map-elites filled ${map.elites.size} cells")
+    }
+
+    @Test fun aRecordedLineReadsBackAsItsNotes() {
+        // A monophonic line rendered as tones, then read back by the pitch detector.
+        val line = listOf(Grain(0.0, 0.3, 57.0, 1.0, 0), Grain(0.4, 0.3, 60.0, 1.0, 0), Grain(0.8, 0.3, 64.0, 0.5, 0), Grain(1.2, 0.3, 62.0, 1.0, 0))
+        val audio = renderGrains(line, tail = 0.3, minSeconds = 0.0)
+        val read = grainsFromAudio(audio.left, audio.sampleRate, minHz = 150.0, maxHz = 1000.0)
+        println(read.joinToString("\n"))
+        assertEquals(line.map { it.pitch }, read.map { Math.round(it.pitch).toDouble() })
+        for ((a, b) in line.zip(read)) assertTrue(abs(a.onset - b.onset) < 0.06, "onset ${a.onset} read as ${b.onset}")
+        assertTrue(read[2].amp < read[1].amp, "the quieter note reads quieter")
+    }
+
+    @Test fun termsAroundATargetScoreTheTargetOne() {
+        val target = GrainSetStats(decodeGrains(lSystem("G", 'G' to "G[+G-G]fG"), 3))
+        val terms = grainTermsAround(target)
+        assertEquals(6, terms.size)
+        assertEquals(1.0, grainSetFitness(target, terms))
+        val other = GrainSetStats(decodeGrains(lSystem("G", 'G' to "GG"), 3))
+        assertTrue(grainSetFitness(other, terms) < 0.6, "a different set scores ${grainSetFitness(other, terms)}")
+        // a zero statistic still has a plateau
+        val mono = GrainSetStats(decodeGrainString("G+G+G", t))
+        assertEquals(1.0, grainSetFitness(mono, grainTermsAround(mono, width = 0.0)))
+    }
 }
