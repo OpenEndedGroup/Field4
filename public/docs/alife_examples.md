@@ -2463,7 +2463,11 @@ val panels = terms.map { t ->
     val (lo, hi) = ranges.getValue(t.stat)
     "%s %.2f".format(t.stat.label, stats[t.stat]) to trapezoidImg(t.shape, lo, hi, stats[t.stat])
 }
-showImg(montage(panels, columns = 3, cellSide = 220), channel = "terms", caption = "each term's trapezoid, the best set's value marked")
+showImg(
+    montage(panels, columns = 3, cellSide = 220),
+    channel = "terms",
+    caption = "each term's trapezoid, the best set's value marked",
+)
 showImg(grainScoreImg(best, 640, 220), channel = "score", caption = "the best set")
 display("audio", renderGrains(best).wav())
 ```
@@ -2487,14 +2491,18 @@ val breeder = GrainBreeder(seed = 1L)
 fun show() {
     displayClearAll()
     val scores = breeder.scores()
-    val listing = breeder.population.withIndex().joinToString("<br>") { (i, g) ->
-        "%d: %s &nbsp; fitness %.2f".format(i, grainRule(g), scores[i])
-    }
+    val listing =
+        breeder.population.withIndex().joinToString("<br>") { (i, g) ->
+            "%d: %s &nbsp; fitness %.2f".format(i, grainRule(g), scores[i])
+        }
     display("main", "generation ${breeder.generation}<br>" + listing)
     for ((i, g) in breeder.population.withIndex()) display("child $i", renderGrains(decodeGrains(g, 3)).wav())
     stringInput("parents (e.g. 1 4)") { s ->
         val picks = s.split(" ", ",").mapNotNull { it.trim().toIntOrNull() }
-        if (picks.isNotEmpty()) { breeder.breed(picks); show() }
+        if (picks.isNotEmpty()) {
+            breeder.breed(picks)
+            show()
+        }
     }
 }
 show()

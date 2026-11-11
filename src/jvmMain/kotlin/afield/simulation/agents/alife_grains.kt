@@ -226,7 +226,6 @@ data class Trapezoid(val a: Double, val b: Double, val c: Double, val d: Double)
         else -> 0.0
     }
 
-    /** Builders. */
     companion object {
         /** A trapezoid from four corners in any order, so four independent sliders can never make it invalid. */
         fun sorted(vararg corners: Double): Trapezoid {
