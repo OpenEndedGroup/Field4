@@ -367,6 +367,8 @@ object DemoTranscriptExecSmokeTest {
         "alife_tree_growth",
         // Three pure-CPU Particle Lenia boxes; the two animated ones are animateEvolution clips and are launched.
         "particle_lenia",
+        // Four pure-CPU Flow Lenia boxes; the three clips are animateEvolution and are launched.
+        "flow_lenia",
         // Five pure-CPU Braitenberg-vehicle boxes (braitenberg_vehicles.md sections 5-9); the
         // moving-lights box is an animateEvolution clip and is launched. No Window, no Renderer.
         "braitenberg_where_next",

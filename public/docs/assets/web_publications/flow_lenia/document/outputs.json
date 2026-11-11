@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-11T19:27:08.187Z",
+  "documentName": "flow_lenia",
+  "outputs": [
+    {
+      "uid": "flow_lenia_collision",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 810,
+      "height": 306,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "flow_lenia_drift",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 810,
+      "height": 306,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "flow_lenia_species",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 810,
+      "height": 434,
+      "path": "outputs/2.html"
+    }
+  ]
+}

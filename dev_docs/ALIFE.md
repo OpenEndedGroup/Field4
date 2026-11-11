@@ -270,6 +270,27 @@ toroidal centroid, because a plain centroid jumps when the creature straddles th
 values shuffled die, and that it lives for `mu` 0.13 to 0.16. Noise seeds under Orbium's `mu` and `sigma`
 never found it. The `DEATH` / `BOUNDED` / `SATURATION` trichotomy via `leniaRun` is still measured.
 
+### Flow Lenia (`alife_flow_lenia.kt`)
+
+After Plantec et al., ALIFE 2023 (arXiv 2212.07906), written from the paper, no code copied.
+`FlowLeniaWorld` holds matter (unclamped `DoubleArray`), per-cell kernel weights `h` and per-species
+tracers; `step()` is affinity -> Sobel gradients -> reintegration tracking. Measured facts and traps:
+
+- **Gradient scale decides whether anything moves.** With halved central differences every creature
+  from a random rule sat still (numpy search, ~500 rules). The paper's unnormalised 3x3 Sobel (8x larger)
+  gives compact bodies in roughly one rule in ten, a few drifting. Speeds stayed well below Orbium's
+  0.62 cells/step; no long-lived glider was found.
+- **Conservation:** relative total-mass drift ~1e-12 over 300 steps, both mixing rules (`FlowLeniaTest`).
+  Under `MEAN` each species' tracer mass is conserved too; under `SAMPLED` it is not, which is what
+  makes it a competition measure.
+- **Cost:** the convolution is scattered from occupied cells, `U` evaluated only on occupied cells
+  dilated by one, kernels on parallel threads: ~24 ms/step at 96x64 with two species (11 kernels).
+  A box `run` stalls the runloop watchdog at 30 s, so docs/demo boxes use `animateEvolution` + launch.
+- **Empty cells keep a stale `h`** (from their last occupant). It enters `U` next to matter, as in the
+  paper's formulation; `weightImg` masks cells under 0.01 matter for that reason.
+- Presets came from a numpy prototype of the same step (random rules: 3-7 kernels, R 3..12,
+  mu 0.05..0.5, sigma 0.01..0.18, h 0.01..1, noise disc on 64x64, 400 steps), parameters copied exactly.
+
 ### Boids
 
 `BoidParams.minSpeedFraction` is not cosmetic. The three steering terms are all written as
