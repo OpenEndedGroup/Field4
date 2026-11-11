@@ -2457,7 +2457,7 @@ val ranges = mapOf(
     GrainStat.COUNT to (0.0 to 450.0),
     GrainStat.MEDIAN_PITCH to (40.0 to 84.0),
     GrainStat.PITCH_SPREAD to (0.0 to 18.0),
-    GrainStat.DURATION to (0.0 to 11.0),
+    GrainStat.DURATION to (0.0 to 70.0),
     GrainStat.POLYPHONY to (0.0 to 9.0),
     GrainStat.MODE_SHARE to (0.0 to 1.0),
 )

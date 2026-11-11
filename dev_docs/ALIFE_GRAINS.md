@@ -27,7 +27,7 @@ the method description; nothing copied.
 - Without a `MODE_SHARE` term the search was gamed by a one-pitch trunk drone (`G → GGG[---G]G`
   scored 0.965). `MODE_SHARE` (share of grains on the most common pitch, trapezoid 0,0,0.3,0.6) is
   now in `defaultGrainTerms()`; the drone scores < 0.9 (test), and the page's seeded run (budget 400,
-  seed 7) ends at 125 grains, median 56, 22% on one pitch.
+  seed 7) ends at 125 grains, median 56, 22% on one pitch (before the 8x slow-down; after it: 64 grains, median 66, 12.4 s, 19% on one pitch, G → GG+[---G-G]).
 - Seeded test run after the change: 0.832 → 0.847 → 0.947 → 0.969 → 0.997 → 1.000 (gens 1,2,3,6,7,12).
 - `display(channel, …)` and `showImg` REPLACE a channel's content: sliders/plots/players each need
   their own channel.
