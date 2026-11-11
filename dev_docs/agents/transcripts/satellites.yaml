@@ -234,8 +234,8 @@ operations:
               uFragColor = fcol;
           }
         code: |
-          import afield.simulation.orbits.*
           import afield.graphics.vulkan.util.Camera
+          import afield.simulation.orbits.*
           import java.time.Duration
 
           // The catalogue, a clock that runs the sky at 120× real time, and one camera, all published
@@ -339,8 +339,8 @@ operations:
       property: code
       type: fragment
       code: |
-        import afield.simulation.orbits.*
         import afield.graphics.vulkan.util.Camera
+        import afield.simulation.orbits.*
         import java.time.Duration
 
         // The catalogue, a clock that runs the sky at 120× real time, and one camera, all published
@@ -519,7 +519,6 @@ operations:
           }
         code: |
           import afield.simulation.orbits.*
-          import afield.graphics.vulkan.util.Camera
 
           // One record per satellite: its mean elements, moved to the clock's start so the shader's time is small.
           @GpuStruct
@@ -569,7 +568,6 @@ operations:
       type: fragment
       code: |
         import afield.simulation.orbits.*
-        import afield.graphics.vulkan.util.Camera
 
         // One record per satellite: its mean elements, moved to the clock's start so the shader's time is small.
         @GpuStruct
