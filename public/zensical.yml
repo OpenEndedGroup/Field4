@@ -411,6 +411,10 @@ nav:
       - Graphics in an Output Area: four_in_output_areas.md
       - WebRTC Streams: webrtc.md
       - GPU Schemas: gpu_schema.md
+      # Directly after GPU schemas, its worked example at catalogue scale: SGP4 propagation and pass
+      # prediction on the CPU, then every catalogued satellite written through a schema and moved
+      # by a Kepler solve in the vertex shader.
+      - Satellites & Orbits (SGP4): satellites.md
       - Slug Filled Paths: slug_paths.md
       # Directly after the graphics contract and before the probes page, because it is the sequel
       # to one and the setup for the other: afield_four_graphics teaches the stateless compute

@@ -3498,6 +3498,16 @@ here are captures of that window, taken by the docs capture pipeline from these 
 carries none, there is no such capture: run the scene yourself and grab its window with a follow-on
 `native-screenshot` backdoor command (with `--with-playwright`).
 
+### satellites
+
+**SGP4 passes and the whole satellite catalogue on the GPU.** Four boxes: a week of passes over
+Chicago for five satellites, charted on the CPU; a renderer; an Earth box drawing coastlines, a
+graticule and the ISS's ground track, bright where Chicago sees it; and about 15,000 satellites
+from the bundled CelesTrak snapshot, each moved by a Kepler solve in the vertex shader every frame.
+Fly the camera with the keyboard in the window. See [Satellites and Orbits](satellites.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/satellites/metadata.edn)
+
 ### renderer_browsing
 
 **The Vulkan renderer opened in `column(...)` and `tree(...)`**, in three boxes: a renderer and its

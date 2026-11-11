@@ -1,0 +1,375 @@
+# Field Document: satellites
+
+This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
+
+```edn [field-document version="1" source="metadata.edn"]
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+```
+
+## 1. renderer
+
+<!-- field-box id="agent_graphics_context" index="0" -->
+
+```edn [field-box id="agent_graphics_context" role="properties"]
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["satellite-earth"] "properties" {"children" #{#afield/box "satellite-earth"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 15 "characters" 275 "sha256" "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2"}]}
+```
+
+```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
+import afield.graphics.vulkan.util.Options
+
+prop<Window>(window)
+prop<Renderer>(renderer)
+
+Options.enableHDR = false
+Options.profiling = false
+
+once.renderer {
+    window = Window("Field")
+    Renderer(window)
+}
+
+println("agent graphics renderer ready")
+start(renderer::run)
+```
+
+## 2. 2 - Earth, coastlines, ISS ground track
+
+<!-- field-box id="satellite-earth" index="1" -->
+
+```edn [field-box id="satellite-earth" role="properties"]
+{"id" "satellite-earth" "index" 1 "name" "2 - Earth, coastlines, ISS ground track" "parents" ["root" "agent_graphics_context"] "children" ["satellite-catalogue"] "properties" {"children" #{#afield/box "satellite-catalogue"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "2 - Earth, coastlines, ISS ground track" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-earth_vertex_.glsl" "lines" 22 "characters" 647 "sha256" "675baa042bf4fe92b603d7c883408edc6921f75c296b40074dfef5d9ab49a515"} {"name" "fragment" "language" "glsl" "path" "satellite-earth_fragment_.glsl" "lines" 7 "characters" 129 "sha256" "2f9d2c32dd0a21b6f98a207e7187d8c81a390cf28ef0043f3c852ec71c79c819"} {"name" "code" "language" "kotlin" "path" "satellite-earth_code_.kt" "lines" 96 "characters" 3789 "sha256" "70d144ae235896e174877eaf095c09a356781a4dcac8790ad0186d2679aea5ec"}]}
+```
+
+```glsl [field-property box="satellite-earth" name="vertex" path="satellite-earth_vertex_.glsl"]
+#version 450
+layout (location = 0) in vec3 pos;
+layout (location = 1) in vec4 col;
+layout (location = 0) out vec4 fcol;
+
+layout(push_constant) uniform matrices {
+    mat4 p;
+    mat4 m;
+    vec4 eye;
+    vec4 spin;
+} pc;
+
+void main()
+{
+    // Earth-fixed to inertial: turn about north (+y) by Greenwich sidereal time
+    float c = cos(pc.spin.x), s = sin(pc.spin.x);
+    vec3 w = vec3(c * pos.x + s * pos.z, pos.y, -s * pos.x + c * pos.z);
+    // points on the far side of the globe are drawn faintly
+    float facing = dot(normalize(w), pc.eye.xyz - w);
+    fcol = col * (facing > 0.0 ? 1.0 : 0.15);
+    gl_Position = pc.p * pc.m * vec4(w, 1);
+}
+```
+
+```glsl [field-property box="satellite-earth" name="fragment" path="satellite-earth_fragment_.glsl"]
+#version 450
+layout(location = 0) in vec4 fcol;
+layout(location = 0) out vec4 uFragColor;
+void main()
+{
+    uFragColor = fcol;
+}
+```
+
+```kotlin [field-property box="satellite-earth" name="code" path="satellite-earth_code_.kt"]
+import afield.simulation.orbits.*
+import java.time.Duration
+
+// The catalogue, a clock that runs the sky at 120× real time, and one camera, all published
+// with `prop` so the satellite box beneath this one shares them.
+prop<SatelliteCatalogue>(sky)
+prop<SkyClock>(clock)
+prop<Camera>(camera)
+
+sky = SatelliteCatalogue.bundled()
+clock = SkyClock(sky.epoch, speed = 120.0)
+camera = Camera()
+camera.target = vec(0, 0, 0)
+camera.p.fov = 0.9 // radians: narrow enough that the globe fills the window
+
+// Earth-fixed km to the drawing's frame: north is up (+y), units are Earth radii.
+fun world(e: Xyz) = (e * (1.0 / Frames.EARTH_RADIUS_KM)).let { vec(it.y, it.z, it.x) }
+fun world(g: Geodetic) = world(Frames.ecefOf(g.latitudeDeg, g.longitudeDeg, g.heightKm))
+
+// Everything here is line segments: pairs of points, each with a colour.
+val points = ArrayList<Vec3>()
+val colors = ArrayList<Vec4>()
+fun segment(a: Vec3, b: Vec3, c: Vec4) {
+    points += a
+    points += b
+    colors += c
+    colors += c
+}
+fun polyline(line: List<Geodetic>, c: Vec4) {
+    for (i in 0 until line.size - 1) segment(world(line[i]), world(line[i + 1]), c)
+}
+
+// A graticule every 30°, then the coastlines.
+for (lon in -180 until 180 step 30) polyline(
+    (-90..90 step 3).map { Geodetic(it.toDouble(), lon.toDouble(), 0.0) },
+    vec(0.4, 0.55, 0.8, 0.35),
+)
+for (lat in -60..60 step 30) polyline(
+    (-180..180 step 3).map { Geodetic(lat.toDouble(), it.toDouble(), 0.0) },
+    vec(0.4, 0.55, 0.8, 0.35),
+)
+for (coast in Coastlines.lines) polyline(coast, vec(0.75, 0.9, 1.0, 0.9))
+
+// The ISS's ground track for the next day: faint everywhere, bright where Chicago sees it above 10°.
+val here = Observer(latitudeDeg = 41.88, longitudeDeg = -87.63)
+val iss = sky.byName("ISS (ZARYA)")!!
+val day = (0..1440).map { clock.reference.plus(Duration.ofMinutes(it.toLong())) }
+for (i in 0 until day.size - 1) {
+    val a = iss.geodetic(day[i])!!.copy(heightKm = 20.0)
+    val b = iss.geodetic(day[i + 1])!!.copy(heightKm = 20.0)
+    if (kotlin.math.abs(a.longitudeDeg - b.longitudeDeg) > 180) continue // wrapped round the date line
+    val seen = here.look(iss, day[i])!!.elevationDeg >= 10.0
+    segment(world(a), world(b), if (seen) vec(1.0, 0.6, 0.2, 1.0) else vec(1.0, 0.6, 0.2, 0.18))
+}
+// Chicago, as a small cross.
+val c = Frames.ecefOf(41.88, -87.63, 30.0)
+for (d in listOf(Xyz(120.0, 0.0, 0.0), Xyz(0.0, 120.0, 0.0), Xyz(0.0, 0.0, 120.0))) segment(
+    world(Xyz(c.x - d.x, c.y - d.y, c.z - d.z)),
+    world(Xyz(c.x + d.x, c.y + d.y, c.z + d.z)),
+    vec(1.0, 0.85, 0.3, 1.0),
+)
+// Start the camera 2.6 Earth radii out, above Chicago as it is when the clock starts.
+val g0 = clock.gmst()
+val c0 = Xyz(
+    kotlin.math.cos(g0) * c.x - kotlin.math.sin(g0) * c.y,
+    kotlin.math.sin(g0) * c.x + kotlin.math.cos(g0) * c.y,
+    c.z,
+) * (2.6 / c.length)
+camera.at = vec(c0.y, c0.z + 0.5, c0.x) // one unit is one Earth radius
+
+println(
+    "${points.size / 2} segments; ISS seen from Chicago ${here.passes(iss, clock.reference, clock.reference.plus(Duration.ofDays(1))).size} times in the day drawn",
+)
+
+var module = moduleHere { primitiveType = lines }
+var m = Mesh()
+module += m named "earth"
+renderer += module
+
+m.p = camera.p
+m.m = camera.m
+// The vertex shader dims what is on the far side of the globe, so it needs the eye.
+m.eye = { vec(camera.at.x, camera.at.y, camera.at.z, 1.0) }
+// The drawing is the inertial TEME frame, so the Earth turns: by the clock's sidereal angle.
+m.spin = { vec(clock.gmst(), 0.0, 0.0, 0.0) }
+
+// one line per pair of vertices, indexed
+m.set(points.size, points.size / 2) {
+    for ((i, p) in points.withIndex()) {
+        pos.add(p.x, p.y, p.z)
+        col.add(colors[i].x, colors[i].y, colors[i].z, colors[i].w)
+        tri.add(i)
+    }
+}
+
+var kc by keyCamera(camera = camera)
+```
+
+## 3. 1 - A week of passes over Chicago
+
+<!-- field-box id="satellite-passes" index="2" -->
+
+```edn [field-box id="satellite-passes" role="properties"]
+{"id" "satellite-passes" "index" 2 "name" "1 - A week of passes over Chicago" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A week of passes over Chicago" "_tombstone" false "frame" #afield/rect [40.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "satellite-passes_code_.kt" "lines" 60 "characters" 2202 "sha256" "39c0253a892120ce01f827a265fb96d3080fd908056bff5de29799dae81e2180"}]}
+```
+
+```kotlin [field-property box="satellite-passes" name="code" path="satellite-passes_code_.kt"]
+import afield.simulation.orbits.*
+import java.time.Duration
+
+// The bundled CelesTrak snapshot: about 15,000 near-earth objects, each with its SGP4 propagator.
+val sky = SatelliteCatalogue.bundled()
+println("${sky.size} satellites, ${sky.skippedDeepSpace} deep-space left out, elements fresh at ${sky.epoch}")
+
+// One place on the ground, and the week after the snapshot.
+val here = Observer(latitudeDeg = 41.88, longitudeDeg = -87.63) // Chicago
+val start = sky.epoch
+val end = start.plus(Duration.ofDays(7))
+
+val names = ["ISS (ZARYA)", "CSS (TIANHE)", "HST", "TERRA", "LANDSAT 9"]
+val font = afield.ai.learning.pen.HersheyFont.load("futural")
+val dayW = 90.0
+val rowH = 56.0
+val shapes = ArrayList<FLine>()
+
+for (d in 0..7) {
+    shapes += fline {
+        moveTo(d * dayW, 0)
+        lineTo(d * dayW, names.size * rowH)
+        thickness = 0.5
+        color = vec(1.0, 1.0, 1.0, 0.2)
+    }
+    if (d < 7)
+        shapes +=
+            font.text("day ${d + 1}", size = 9.0, at = vec(d * dayW + 4, names.size * rowH + 14, 0)).apply {
+                color = vec(1.0, 1.0, 1.0, 0.6)
+            }
+}
+
+names.forEachIndexed { row, name ->
+    val sat = sky.byName(name)!!
+    val passes = here.passes(sat, start, end, minElevationDeg = 10.0)
+    println("$name: ${passes.size} passes above 10° in a week, highest ${passes.maxOf { it.maxElevationDeg }.f0}°")
+    val base = (row + 1) * rowH
+    // one stalk per pass, at its culmination, as tall as its highest elevation (90° fills the row)
+    shapes += fline {
+        for (p in passes) {
+            val x = Duration.between(start, p.culmination).toSeconds() / 86400.0 * dayW
+            moveTo(x, base)
+            lineTo(x, base - (rowH - 18) * p.maxElevationDeg / 90.0)
+        }
+        thickness = 2.0
+        color = vec(0.45, 0.8, 1.0, 1.0)
+    }
+    shapes += fline {
+        moveTo(0, base)
+        lineTo(7 * dayW, base)
+        thickness = 0.5
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
+    shapes +=
+        font.text("$name   ${passes.size} passes", size = 9.0, at = vec(4, base - rowH + 12, 0)).apply {
+            color = vec(1.0, 1.0, 1.0, 0.85)
+        }
+}
+
+lines(shapes, w = 7 * dayW, h = names.size * rowH + 24, fitToSize = true)
+```
+
+## 4. 3 - Every satellite, propagated on the GPU
+
+<!-- field-box id="satellite-catalogue" index="3" -->
+
+```edn [field-box id="satellite-catalogue" role="properties"]
+{"id" "satellite-catalogue" "index" 3 "name" "3 - Every satellite, propagated on the GPU" "parents" ["root" "satellite-earth"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "satellite-earth"} "name" "3 - Every satellite, propagated on the GPU" "_tombstone" false "frame" #afield/rect [400.0 200.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-catalogue_vertex_.glsl" "lines" 60 "characters" 2307 "sha256" "afa42f5d7443e0f8915053f6ad9de9402a861244e6683379628228bd5dd102c3"} {"name" "fragment" "language" "glsl" "path" "satellite-catalogue_fragment_.glsl" "lines" 10 "characters" 285 "sha256" "7f5e44e8b47539acea1d6608689722479e611377d171dd8a3c743f84932fd4a2"} {"name" "code" "language" "kotlin" "path" "satellite-catalogue_code_.kt" "lines" 41 "characters" 1723 "sha256" "15ec16ee1b330da94ad7f91c499b505bdb1f5c37a3b2fa71cab232b0e5035b9e"}]}
+```
+
+```glsl [field-property box="satellite-catalogue" name="vertex" path="satellite-catalogue_vertex_.glsl"]
+#version 460
+#extension GL_EXT_buffer_reference : require
+
+// Three vec4s per satellite, as the satellites box's Orbit records are laid out.
+layout(std430, buffer_reference) buffer OrbitData {
+    vec4 v[];
+};
+
+// Kepler's equation with secular drift: the GLSL twin of MeanElements.position (MeanElements.glsl).
+vec3 meanElementsPosition(vec4 shape, vec4 angles, vec3 rates, float t) {
+    float m = angles.z + rates.z * t;
+    float w = angles.y + rates.y * t;
+    float o = angles.x + rates.x * t;
+    float e = shape.y;
+    float ea = m;
+    for (int k = 0; k < 6; k++) ea -= (ea - e * sin(ea) - m) / (1.0 - e * cos(ea));
+    float px = shape.x * (cos(ea) - e);
+    float py = shape.x * sqrt(1.0 - e * e) * sin(ea);
+    float x1 = cos(w) * px - sin(w) * py;
+    float y1 = sin(w) * px + cos(w) * py;
+    return vec3(cos(o) * x1 - sin(o) * cos(shape.z) * y1, sin(o) * x1 + cos(o) * cos(shape.z) * y1, sin(shape.z) * y1);
+}
+
+layout(push_constant) uniform Push {
+    OrbitData orbits;
+    mat4 p;
+    mat4 m;
+    vec4 eye;
+    vec4 clock;
+} pc;
+
+layout(location = 0) out vec4 fcol;
+
+void main()
+{
+    int i = 3 * gl_VertexIndex;
+    // TEME, in Earth radii, then into the drawing's frame (north up)
+    vec3 teme = meanElementsPosition(pc.orbits.v[i], pc.orbits.v[i + 1], pc.orbits.v[i + 2].xyz, pc.clock.x) / 6378.137;
+    vec3 w = vec3(teme.y, teme.z, teme.x);
+
+    // hidden behind the globe: the ray from the eye meets the unit sphere before it reaches the satellite
+    vec3 d = w - pc.eye.xyz;
+    float dist = length(d);
+    d /= dist;
+    float b = dot(pc.eye.xyz, d);
+    float disc = b * b - (dot(pc.eye.xyz, pc.eye.xyz) - 1.0);
+    float hit = -b - sqrt(max(disc, 0.0));
+    bool hidden = disc > 0.0 && hit > 0.0 && hit < dist;
+
+    // colour by height: below 600 km, 600 to 1,000 km, above
+    float alt = (length(teme) - 1.0) * 6378.137;
+    vec3 c = alt < 600.0 ? vec3(0.45, 0.8, 1.0) : (alt < 1000.0 ? vec3(1.0, 0.78, 0.35) : vec3(1.0, 0.45, 0.6));
+    fcol = vec4(c, hidden ? 0.06 : 0.9);
+    bool picked = gl_VertexIndex == int(pc.clock.z);
+    if (picked) fcol = vec4(1.0, 0.95, 0.8, 1.0);
+
+    gl_Position = pc.p * pc.m * vec4(w, 1);
+    // level of detail by distance: a satellite near the camera is drawn larger
+    gl_PointSize = picked ? 16.0 : clamp(pc.clock.y / dist, 1.5, 12.0);
+}
+```
+
+```glsl [field-property box="satellite-catalogue" name="fragment" path="satellite-catalogue_fragment_.glsl"]
+#version 450
+layout(location = 0) in vec4 fcol;
+layout(location = 0) out vec4 uFragColor;
+void main()
+{
+    // a round dot with a soft edge
+    float r = length(gl_PointCoord - vec2(0.5));
+    if (r > 0.5) discard;
+    uFragColor = vec4(fcol.rgb, fcol.a * smoothstep(0.5, 0.25, r));
+}
+```
+
+```kotlin [field-property box="satellite-catalogue" name="code" path="satellite-catalogue_code_.kt"]
+import afield.simulation.orbits.*
+
+// One record per satellite: its mean elements, moved to the clock's start so the shader's time is small.
+@GpuStruct
+data class Orbit(
+    val shape: Vector4f, // semi-major axis (km), eccentricity, inclination, 0
+    val angles: Vector4f, // node, perigee, mean anomaly at the clock's start (radians), 0
+    val rates: Vector4f, // their drift, radians per minute, 0
+)
+
+// The schema lays the records out as std430: three vec4s each, which is how the vertex shader reads them.
+val orbitSchema = gpuSchema<Orbit>()
+
+// `sky`, `clock` and `camera` come from the Earth box above this one.
+val orbits =
+    sky.meanElementsAt(clock.reference).map { e ->
+        Orbit(
+            vec(e.semiMajorAxisKm, e.eccentricity, e.inclination, 0.0),
+            vec(e.raan, e.argPerigee, e.meanAnomaly, 0.0),
+            vec(e.raanRate, e.argPerigeeRate, e.meanAnomalyRate, 0.0),
+        )
+    }
+val orbitData = defaultBuffer { size = (orbits.size * orbitSchema.strideBytes).bytes }.buffer
+orbitData.mapAndWrite_bytes { orbitSchema.writeArray(orbits, this) }
+println("${orbits.size} orbits on the GPU, ${orbitSchema.strideBytes} bytes each")
+
+var module = moduleHere { primitiveType = points }
+var m = Mesh()
+module += m named "satellites"
+renderer += module
+
+m.orbits = { orbitData }
+m.p = camera.p
+m.m = camera.m
+m.eye = { vec(camera.at.x, camera.at.y, camera.at.z, 1.0) }
+// minutes since the clock started, the point size scale, and which satellite to pick out (the ISS)
+val picked = sky.satellites.indexOf(sky.byName("ISS (ZARYA)"))
+m.clock = { vec(clock.minutes(), 10.0, picked.toDouble(), 0.0) }
+
+// one vertex per satellite; the shader fetches its orbit from the buffer
+m.resize(orbits.size)
+```
+
