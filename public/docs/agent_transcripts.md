@@ -4785,6 +4785,15 @@ context, and one triangle arrives.
 
 ![A right triangle filling a native Vulkan window against black, filled with a smooth interpolated gradient from deep blue at its lower-left corner to green at its upper-right](assets/afield_four_graphics/00-traditional-triangle.png)
 
+### variable_width_strokes_gpu
+
+Another draw box for the `agent_graphics_context` parent: a hand-written "o" and a "z" with its
+corners kept, outlined with `sweptCircleStroke`, tessellated and filled as one `Mesh`. Replayed alone
+it has no renderer; the figure in [variable-width strokes in a Vulkan scene](fline_examples.md#in-a-vulkan-scene)
+is this box given that parent.
+
+![A hand-written o, thick on its right side and with a thin tail at the lower left, beside a z whose top bar is heavier than its bottom one, both cream on black in a native Vulkan window; the inside of the o is empty and the corners of the z are sharp](assets/swept_circle_gpu.png)
+
 ### path_traced_reconstruction
 
 Multi-bounce path tracing with raw, progressive and Ray Reconstruction views at 1080p.

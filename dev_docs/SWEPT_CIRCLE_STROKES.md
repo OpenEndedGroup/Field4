@@ -67,8 +67,11 @@ Done:
    (`primitiveType = triangles`, passthrough shaders from lesson 0), 804 vertices / 800 triangles.
    The native-window capture shows the hole empty, the corners sharp and the "z" upright, with the
    clip mapping `(x, -y)` from page coordinates. There is no automatic Vulkan fill for a filled
-   `FLine`: the route is `tessellate` / `trianglesOut` into a mesh. No docs figure yet: a
-   `capture="native-window"` fence on the page would be the next step.
+   `FLine`: the route is `tessellate` / `trianglesOut` into a mesh. The page figure
+   (`swept_circle_gpu.png`, fence `fline-swept-gpu`) comes from the child transcript
+   `variable_width_strokes_gpu.yaml` under the docs runner's graphics context, aspect-corrected
+   from `window.width / window.height`. In that box the lists cannot be called `triangles` or
+   `points`: inside `moduleHere { }` those names are the primitive-type constants.
 
 Also pinned: a turn tighter than the radius (inner flank folds) is still the union of discs (< 0.3).
 

@@ -797,6 +797,8 @@ object DemoTranscriptExecSmokeTest {
         // Real Vulkan/OpenXR rendering; binocular depth additionally requires HTC eye hardware.
         "openxr_eye_intersection",
         "afield_four_traditional_triangle",
+        // A child draw box beneath `agent_graphics_context`; captured by fline_examples.md (graphics context).
+        "variable_width_strokes_gpu",
         // Two ShaderBoids flocks on their own native Window + Renderer; captured by neural_particles.md.
         "shader_boids_separation",
         // ShaderParticleLenia on its own native Window + Renderer; captured by particle_lenia.md.
