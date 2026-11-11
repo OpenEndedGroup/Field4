@@ -1533,7 +1533,7 @@ import eu.sirotin.kotunil.base.mm
 var radius = 3.0
 controlGroup("size") {
     slider("radius", min = 0.0, max = 10.0, initialValue = radius, unit = mm) { radius = it }
-    slider("acceleration", min = 0.0, max = 20.0, unit = "m/s2") { }
+    slider("acceleration", min = 0.0, max = 20.0, unit = "m/s2") {}
 }
 ```
 
