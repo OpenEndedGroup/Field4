@@ -1,6 +1,10 @@
 # Presenting with Field
 
-With a few lines of Kotlin, Field can produce presentations that combine HTML slides, real webpages, YouTube video, live Field documents ([show a live document](#bring-the-working-material-on-screen)) and live figures placed beside the prose ([live figures](#live-figures-beside-prose)). A presentation is itself a document you can teach from. The audience gets a separate window; your Field document keeps the source and guide notes. Saved macros and interactive guides work inside the live document on the audience display.
+With a few lines of Kotlin, you can make a presentation in Field with HTML slides, webpages,
+YouTube video, [live documents](#bring-the-working-material-on-screen) and
+[live figures beside the prose](#live-figures-beside-prose). Teach from the Field document while
+your audience watches in a separate window. Your document keeps the source and guide notes, and
+saved macros and interactive guides work in the live document on the audience display.
 
 ## Start a presentation
 
@@ -473,10 +477,10 @@ F8/F9 return to the slide.
 
 ## Live figures beside prose
 
-A slide can hold a live figure: the output of a box in the talk's own document, with its sliders,
-drawing and sound, placed beside the text that explains it. The audience can drag the figure's
-controls, and each step can set them. This is how an explainer is built in Field: the figures are
-boxes, and the slides are the words between them.
+A slide can hold a live figure beside the text that explains it. The figure is the output of a box
+in the talk's own document, complete with its sliders, drawing and sound. The audience can drag
+its controls, and each step can set them. Build an explainer by making figures in boxes, then
+placing them alongside the words on your slides.
 
 The figure here is an ordinary box called `sine`. It draws twenty milliseconds of a sine wave,
 shows a frequency slider and a sound checkbox, and plays the tone:
@@ -589,9 +593,9 @@ tools unless the box also asks for `drawing = true`, and lines marked `fixed = t
 The four-slide deck this section comes from is the `explainer_sine_pitch` transcript in
 [Agent transcripts](agent_transcripts.md); it ends with the figure you can hear.
 
-For worked examples, three whole talks are built this way, each page going through its talk figure
-by figure: [Sound](explainer_sound.md), [Cameras and Lenses](explainer_cameras.md) and
-[Lights and Shadows](explainer_lights.md).
+For worked examples, see three talks built this way: [Sound](explainer_sound.md),
+[Cameras and Lenses](explainer_cameras.md) and [Lights and Shadows](explainer_lights.md). Each page
+walks through the talk figure by figure.
 
 !!! note "Figures need the Electron app"
     A figure is a separate live view laid over its slot on the audience display, so it appears in

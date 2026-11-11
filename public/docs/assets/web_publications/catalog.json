@@ -5328,25 +5328,25 @@
     },
     "assets/agent_transcripts/variable_width_strokes/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-11T15:19:14.484Z",
+      "capturedAt": "2026-11-11T16:18:47.775Z",
       "channels": 4,
       "file": "assets/web_publications/variable_width_strokes/document/metadata.edn",
       "files": {
-        "assets/web_publications/variable_width_strokes/document/metadata.edn": "7eca8b88e59f4871165d618d6cd70ccb37bc7ea11dd1c920c0a62b931a67b71b",
-        "assets/web_publications/variable_width_strokes/document/outputs.json": "2c61b60214b88626e6a7c7c7ecfb36e546a0b5b54d77b6e7d198ef5bbad0f8db",
-        "assets/web_publications/variable_width_strokes/outputs/0.html": "f15330504a4fdf0b57736b41efef64f0b8754b856975daaa71ac6e8292a26015",
-        "assets/web_publications/variable_width_strokes/outputs/1.html": "99404d38462362926fea49e923be8f76f855ab76cc79b12ec3d9ed5288bc79bf",
-        "assets/web_publications/variable_width_strokes/outputs/2.html": "f4a8c814c0923e1f5873de17d6401f146f7eccf3e9343c2d68de9910526c019b",
-        "assets/web_publications/variable_width_strokes/outputs/3.html": "a4f73dd89c9c68be09b7aeddf9d8f5ed0e114139f4619f86588ed3478c003414"
+        "assets/web_publications/variable_width_strokes/document/metadata.edn": "9e01ab87279ee8bd8d6dc986a8a5ef17c2cbfb69a9614b9705684aab278488e4",
+        "assets/web_publications/variable_width_strokes/document/outputs.json": "96e302b63bb6b4e748249530cfd9fe2de2bfcdc8efe723e22cc0afd896cc7674",
+        "assets/web_publications/variable_width_strokes/outputs/0.html": "ebf0c278867deb291eba342e230fac52dc03232cfab10da6c5b730994f1ad564",
+        "assets/web_publications/variable_width_strokes/outputs/1.html": "7ac5eaee9d4a1bbd14aed1b17399abc47b036f653c791464d8bf43ad82b33fe9",
+        "assets/web_publications/variable_width_strokes/outputs/2.html": "cc9c237040e6b5a8822a05b26b4fcf6015780c1a794e08d8240d3d5ff40c8b08",
+        "assets/web_publications/variable_width_strokes/outputs/3.html": "c39a6869f9242ddd85a6758226a3ca13c1e9ba6db82b19831ccb782e034ea58f"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/variable_width_strokes/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/variable_width_strokes.yaml": "6185fe7d206b78923c9fe5542ed24219eb708e632be8ce0d6a4ca121bb475aaf",
+        "dev_docs/agents/transcripts/variable_width_strokes.yaml": "42574cce1de5b138bf70d491261850194b2bc0eaa27bff9d8e3f1bf132f95f2c",
         "public/docs/assets/agent_transcripts/variable_width_strokes/guides/fline_examples-variable-width-strokes-the-swept-circle-envelope.md": "0429fd8a571d032ff5b26802746fde5806fd3299e65ff19a08a4e40b0587dbe4",
-        "public/docs/assets/agent_transcripts/variable_width_strokes/metadata.edn": "72aa9678752f80cc0da45bbe9f38195e2fdb504f9599d7fc2a5f4a7dd55e2732",
+        "public/docs/assets/agent_transcripts/variable_width_strokes/metadata.edn": "24394d388d153f0f1fb09aea1e0e1b1f912163f055e322e7d300ba956e253ec6",
         "public/docs/assets/agent_transcripts/variable_width_strokes/swept-cubic_code_.kt": "f9a5c02f0b1131501ceaadf75e832b4c0acd212380ecaae86e09b19992861938",
         "public/docs/assets/agent_transcripts/variable_width_strokes/swept-degenerate_code_.kt": "69d1ce8348dddf73a10587c8bea5537d8f936163ddb08269bbdb0d01a05d2fe6",
         "public/docs/assets/agent_transcripts/variable_width_strokes/swept-notation_code_.kt": "7d8938f14699d0e4d9869db12a5c88fc1d7facba66f1cafafd1b8788adf059f8",
