@@ -37,7 +37,7 @@ start(renderer::run)
 <!-- field-box id="satellite-earth" index="1" -->
 
 ```edn [field-box id="satellite-earth" role="properties"]
-{"id" "satellite-earth" "index" 1 "name" "2 - Earth, coastlines, ISS ground track" "parents" ["root" "agent_graphics_context"] "children" ["satellite-catalogue" "satellite-tour"] "properties" {"children" #{#afield/box "satellite-catalogue" #afield/box "satellite-tour"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "2 - Earth, coastlines, ISS ground track" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-earth_vertex_.glsl" "lines" 22 "characters" 647 "sha256" "675baa042bf4fe92b603d7c883408edc6921f75c296b40074dfef5d9ab49a515"} {"name" "fragment" "language" "glsl" "path" "satellite-earth_fragment_.glsl" "lines" 7 "characters" 129 "sha256" "2f9d2c32dd0a21b6f98a207e7187d8c81a390cf28ef0043f3c852ec71c79c819"} {"name" "code" "language" "kotlin" "path" "satellite-earth_code_.kt" "lines" 96 "characters" 3789 "sha256" "70d144ae235896e174877eaf095c09a356781a4dcac8790ad0186d2679aea5ec"}]}
+{"id" "satellite-earth" "index" 1 "name" "2 - Earth, coastlines, ISS ground track" "parents" ["root" "agent_graphics_context"] "children" ["satellite-catalogue" "satellite-tour"] "properties" {"children" #{#afield/box "satellite-catalogue" #afield/box "satellite-tour"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "2 - Earth, coastlines, ISS ground track" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-earth_vertex_.glsl" "lines" 22 "characters" 647 "sha256" "675baa042bf4fe92b603d7c883408edc6921f75c296b40074dfef5d9ab49a515"} {"name" "fragment" "language" "glsl" "path" "satellite-earth_fragment_.glsl" "lines" 7 "characters" 129 "sha256" "2f9d2c32dd0a21b6f98a207e7187d8c81a390cf28ef0043f3c852ec71c79c819"} {"name" "code" "language" "kotlin" "path" "satellite-earth_code_.kt" "lines" 97 "characters" 3831 "sha256" "ef6b3fa20f82ee5c71ae63c9ba437019964904064dec3efec2843f6ea147c24b"}]}
 ```
 
 ```glsl [field-property box="satellite-earth" name="vertex" path="satellite-earth_vertex_.glsl"]
@@ -76,6 +76,7 @@ void main()
 ```
 
 ```kotlin [field-property box="satellite-earth" name="code" path="satellite-earth_code_.kt"]
+import afield.graphics.vulkan.util.Camera
 import afield.simulation.orbits.*
 import java.time.Duration
 
