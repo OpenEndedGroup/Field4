@@ -4545,24 +4545,24 @@
     },
     "assets/agent_transcripts/spatial_geometry_examples/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-10T22:28:35.511Z",
+      "capturedAt": "2026-11-11T03:33:59.191Z",
       "channels": 5,
       "file": "assets/web_publications/spatial_geometry_examples/document/metadata.edn",
       "files": {
-        "assets/web_publications/spatial_geometry_examples/document/metadata.edn": "225aea88b95aef87f0f39c73a183e317120f3ecbb84d12f934a6f4143f4dbba1",
-        "assets/web_publications/spatial_geometry_examples/document/outputs.json": "9b25a885c504d6d83731f7945e276366503732d0317d056caf8a844b0d01b9d4",
-        "assets/web_publications/spatial_geometry_examples/outputs/0.html": "76e6fe0d586b87462dcc0efaf419f9b902a024e515dea8bfd9d7738e0efa3ea7",
-        "assets/web_publications/spatial_geometry_examples/outputs/1.html": "fa9d651be0114c83a9a9f88fd53ae2420dbcc8bebefd55439a72cb8a3703051f",
-        "assets/web_publications/spatial_geometry_examples/outputs/2.html": "e1f36b3ba99d9dfdf970be73505059c3b4ca3de0bfa0664fa3d064f91442f758",
-        "assets/web_publications/spatial_geometry_examples/outputs/3.html": "d0f1f5a8d021ea38c049aebbc8c2eb5037a80503725558d022c44f2ee72bc436",
-        "assets/web_publications/spatial_geometry_examples/outputs/4.html": "db0c89fd5368e19477a135739580a614051f9ada0f090a54ce62bb684d9ad5a8"
+        "assets/web_publications/spatial_geometry_examples/document/metadata.edn": "91aabc8c2b28d86411d564f9f1d7fd0707786d906e8dcabeef1b8d843139cfd0",
+        "assets/web_publications/spatial_geometry_examples/document/outputs.json": "179c63c743053176e13ba6b3f7f34453b37034a5d68f70c4b06ada6f05a336cf",
+        "assets/web_publications/spatial_geometry_examples/outputs/0.html": "de60f84a87d84a8cae32e6e4aba54cc07d148e72ba491c22ff1df84de7253b3b",
+        "assets/web_publications/spatial_geometry_examples/outputs/1.html": "4539d5c9172a090708af7eb8de5f2777d910e6fe8356d64fac32c45a9c5c42ca",
+        "assets/web_publications/spatial_geometry_examples/outputs/2.html": "86b71eb2d91a3262e8b799701fd63daf2c95af391bcaba4956e617ee46ced554",
+        "assets/web_publications/spatial_geometry_examples/outputs/3.html": "3d536e97357e17f8e9a9983653921bdd404b9875f193466411a6d5ceb4512b71",
+        "assets/web_publications/spatial_geometry_examples/outputs/4.html": "f972701b36035b694d2878f44a440f7cc07baeda923e0687b140cdf538f5c8a9"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/spatial_geometry_examples/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/spatial_geometry_examples.yaml": "94c38e10582e1c07c138f22305b123c40cfc1de017899c83f099cf2998ca2785",
+        "dev_docs/agents/transcripts/spatial_geometry_examples.yaml": "1a02933b82e9b4a52937a55a8cb6a61ae7eadaecb17ac3be910b59c58bac7e30",
         "public/docs/assets/agent_transcripts/spatial_geometry_examples/guides/spatial_geometry_examples.md": "96c1520089a3845007c176a3772e36e9a63b9c168dc75e4dba8c9b6ff3dd691b",
         "public/docs/assets/agent_transcripts/spatial_geometry_examples/metadata.edn": "35d788539c1b575bcaa01d4cd0bd76e8641c256766b2df5473c40ffaf3063354",
         "public/docs/assets/agent_transcripts/spatial_geometry_examples/spatial_apollonius_code_.kt": "f36dd8402e415fb1cb2cd5c3202d2363637b2ae40049d294093e1f7fc7f29a6b",

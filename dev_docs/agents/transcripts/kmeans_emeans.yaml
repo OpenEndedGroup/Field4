@@ -1,0 +1,107 @@
+name: kmeans_emeans
+description: >
+  Loadable demo of k-means in clustering.kt, with KMeansOptions.algorithm switching between Lloyd's
+  algorithm and e-means (mini-batch k-means with scaling-law batch and step, ported from Faiss
+  contrib/e_means; Bessa et al., Meta FAIR, https://e-means.github.io). Two pure-compute boxes that
+  draw with showPlaneGrid:
+    1. lloyd_vs_emeans — 48 000 points in 60 blobs from the same random seeds: Lloyd at 25 epochs,
+                    e-means at 3, and the MSE per epoch of both on a log scale.
+    2. revival     — 40 blobs ringed by 12 strays; k-means++ seeds a centroid on a stray, and
+                    e-means with revival on moves it back into the data.
+  Replay into a fresh Field (field_run_transcript) and change k, epochs or the seeding and re-run.
+docs:
+  - page: spatial_geometry_examples.md
+    why: "The k-means at scale section of the clustering examples."
+operations:
+  - create:
+      box: kmeans_lloyd_vs_emeans
+      name: Lloyd vs e-means
+      frame: { x: 80.0, y: 80.0, w: 320.0, h: 100.0 }
+      properties:
+        code: |
+          // 60 Gaussian blobs of uneven width, 800 points each: 48 000 points.
+          val rng = java.util.Random(4)
+          val centres = List(60) { vec(rng.nextDouble() * 10, rng.nextDouble() * 10) }
+          val widths = List(60) { 0.08 + rng.nextDouble() * 0.22 }
+          val points = List(48_000) { i ->
+              val c = i % 60
+              vec(centres[c].x + rng.nextGaussian() * widths[c], centres[c].y + rng.nextGaussian() * widths[c])
+          }
+          val window = Rect(-0.6, -0.6, 11.2, 11.2)
+          // Same random seeds for both, so the only difference is the algorithm.
+          val seeds = KMeansOptions(seeding = KMeansSeeding.RANDOM, randomSeed = 3L)
+          val lloyd = vec2KMeans(points, 60, seeds.copy(algorithm = KMeansAlgorithm.LLOYD, epochs = 25))
+          val emeans = vec2KMeans(points, 60, seeds.copy(algorithm = KMeansAlgorithm.EMEANS, epochs = 3))
+
+          // Draw one point in thirteen (coprime with 60, so every blob shows): the clustering saw all 48 000.
+          val shown = points.indices.filter { it % 13 == 0 }
+          fun drawn(r: KMeansResult<Vec2>) =
+              ClusterLayer("shown", IntArray(shown.size) { r.labels[shown[it]] })
+                  .toFLines(shown.map { points[it] }, centers = r.centroids, drawSpokes = false, pointSize = 0.9, centerSize = 1.6)
+
+          // MSE per epoch on a log axis, laid out inside the same window as the clouds.
+          val lo = ln(0.05)
+          val hi = ln(maxOf(lloyd.mseHistory.max(), emeans.mseHistory.max()))
+          fun curve(history: DoubleArray, color: Vec4) =
+              polylineFrom(
+                  history.indices.map { e -> vec(0.4 + e / 25.0 * 9.2, 9.6 - (ln(history[e]) - lo) / (hi - lo) * 9.2) },
+                  0,
+                  closed = false,
+              ).also {
+                  it.color = color
+                  it.thickness = 2.0
+                  it.pointed = true
+                  it.pointSize = 2.4
+              }
+          val axes = Rect(0.0, 0.0, 10.0, 10.0).toFLine(color = vec(0.35, 0.44, 0.56, 0.55), thickness = 1.0)
+
+          showPlaneGrid(
+              "Lloyd, 25 epochs\nMSE %.4f, converged: ${lloyd.converged}".format(lloyd.mse) to drawn(lloyd),
+              "e-means, 3 epochs\nMSE %.4f, batch ${emeans.batchSize}, alpha0 %.3f".format(emeans.mse, emeans.alpha0) to drawn(emeans),
+              "MSE per epoch, log scale\norange Lloyd, blue e-means; e-means 1 epoch %.4f".format(emeans.mseHistory[1]) to
+                  listOf(axes, curve(lloyd.mseHistory, vec(1.0, 0.62, 0.30, 0.95)), curve(emeans.mseHistory, vec(0.45, 0.80, 1.0, 0.95))),
+              columns = 3,
+              cellWidth = 340,
+              cellHeight = 340,
+              window = window,
+          )
+  - create:
+      box: kmeans_revival
+      name: e-means revival
+      frame: { x: 80.0, y: 640.0, w: 320.0, h: 100.0 }
+      properties:
+        code: |
+          // 40 blobs of 400 points, and 12 strays on a circle far outside them.
+          val rng = java.util.Random(8)
+          val centres = List(40) { vec(rng.nextDouble() * 10, rng.nextDouble() * 10) }
+          val blobs = List(16_000) { i ->
+              val c = i % 40
+              vec(centres[c].x + rng.nextGaussian() * 0.2, centres[c].y + rng.nextGaussian() * 0.2)
+          }
+          val strays = List(12) { j -> vec(5.0 + 9.0 * cos(j * PI / 6), 5.0 + 9.0 * sin(j * PI / 6)) }
+          val points = buildList { addAll(blobs); addAll(strays) }
+          val window = Rect(-4.6, -4.6, 19.2, 19.2)
+
+          // k-means++ seeds favour far points, so several land on strays. Revival is off by default in 2-D.
+          val options = KMeansOptions(epochs = 3, randomSeed = 5L)
+          val off = vec2KMeans(points, 40, options.copy(reviveThreshold = 0.0))
+          val on = vec2KMeans(points, 40, options.copy(reviveThreshold = 0.1))
+          fun dead(r: KMeansResult<Vec2>) = r.clusterSizes.count { it < 10 }
+
+          val shown = points.indices.filter { it % 7 == 0 || it >= blobs.size }
+          fun drawn(r: KMeansResult<Vec2>) =
+              ClusterLayer("shown", IntArray(shown.size) { r.labels[shown[it]] })
+                  .toFLines(shown.map { points[it] }, centers = r.centroids, drawSpokes = false, pointSize = 1.0, centerSize = 1.6)
+
+          showPlaneGrid(
+              "e-means, revival off\n${dead(off)} clusters under 10 members, MSE %.3f".format(off.mse) to drawn(off),
+              "e-means, revival on\n${dead(on)} under 10, ${on.revivals} revivals, MSE %.3f".format(on.mse) to drawn(on),
+              columns = 2,
+              cellWidth = 400,
+              cellHeight = 400,
+              window = window,
+          )
+  - execute:
+      box: kmeans_lloyd_vs_emeans
+  - execute:
+      box: kmeans_revival
