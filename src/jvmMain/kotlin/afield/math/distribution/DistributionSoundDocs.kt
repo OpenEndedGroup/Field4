@@ -98,6 +98,47 @@ object DistributionSoundDocs {
         return renderSignalsOffline(seconds, voice, sampleRate = PatSoundDocs.SR)[0] to pitch
     }
 
+    /** The page's performance: 48 beats from 84 up to 132 bpm and back to 108, each about 12 ms early or late. */
+    fun performanceBpm(k: Int): Double = when {
+        k < 24 -> 84.0 + 48.0 * k / 24
+        k < 36 -> 132.0 - 24.0 * (k - 24) / 12
+        else -> 108.0
+    }
+
+    /**
+     * The tempo-following box, step for step: render the performance, find its onsets in the sound,
+     * follow the beat with a [Posterior], and play an accompaniment on the predicted beats.
+     * Returns the mix and the predictions.
+     */
+    fun tempoFollow(): Pair<PatSoundDocs.Stereo, List<Double>> {
+        val beats = 48
+        val late = normal(0, 0.012).samples(beats, seed = 4)
+        val beatTimes = DoubleArray(beats)
+        var at = 0.5
+        for (k in 0 until beats) { beatTimes[k] = at + late[k]; at += 60.0 / performanceBpm(k) }
+        val length = beatTimes.last() + 1.0
+        val performance = afield.audio.synth.patTimed(beatTimes.mapIndexed { k, t -> afield.audio.synth.TimedNote(t, t + 0.1, if (k % 4 == 0) 45.0 else 52.0) }, beats = length)
+        val heard = patRenderStereo(performance, cycles = 1, cps = 1 / length, voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.05, sustain = 0.3))
+        val onsets = afield.audio.synth.patDetectOnsetSamples(heard.mono, PatSoundDocs.SR, minGapSeconds = 0.3).map { it.toDouble() / PatSoundDocs.SR }
+        val period = uniform(0.3, 1.0)
+        val beat = known(onsets[0])
+        val post = Posterior(period, beat, particles = 3000)
+        val predicted = ArrayList<Double>()
+        for (t in onsets.drop(1)) {
+            predicted += post.E(beat + period).value
+            post.evolve(beat to beat + period + normal(0, 0.004), period to period * normal(0, 0.03).exp())
+            post.observe(normal(beat, 0.015), t)
+        }
+        val accompaniment = afield.audio.synth.patTimed(predicted.map { p -> afield.audio.synth.TimedNote(p, p + 0.05, 76.0, gain = 0.45) }, beats = length)
+        val reply = patRenderStereo(accompaniment, cycles = 1, cps = 1 / length, voice = patVoice(wave = PatWave.SINE, decay = 0.03, sustain = 0.2))
+        val n = minOf(heard.frames, reply.frames)
+        val mix = PatSoundDocs.Stereo(
+            FloatArray(n) { heard.left[it] * 0.8f + reply.left[it] * 0.5f },
+            FloatArray(n) { heard.right[it] * 0.8f + reply.right[it] * 0.5f },
+        )
+        return mix to predicted
+    }
+
     private fun pattern(p: PatPattern<String>, cycles: Int, cps: Double, wave: PatWave = PatWave.TRIANGLE, decay: Double = 0.05, sustain: Double = 0.7) =
         patRenderStereo(p, cycles = cycles, cps = cps, voice = patVoice(wave = wave, decay = decay, sustain = sustain))
 
@@ -115,6 +156,11 @@ object DistributionSoundDocs {
             }
         },
         Scene("gp-melody", { pattern(gpMelody(), 4, 0.35, decay = 0.04, sustain = 0.8) }),
+        Scene("tempo-follow", { tempoFollow().first }) { audio ->
+            check(audio.frames > PatSoundDocs.SR * 20) { "the performance is over twenty seconds long" }
+            val (_, predicted) = tempoFollow()
+            check(predicted.size == 47) { "48 onsets, so 47 predictions; got ${predicted.size}" }
+        },
         Scene("held-pitch", {
             val (mono, _) = heldPitch()
             PatSoundDocs.Stereo(mono, mono.copyOf())

@@ -11,4 +11,3 @@ val shader = moduleHere {
 val quad = fullscreenTriangle(shader)
 shader += "quad" to quad
 renderer += "noiselang-gpu" to shader
-quad.viewport = { vec(window.width.toFloat(), window.height.toFloat(), 0f, 0f) }

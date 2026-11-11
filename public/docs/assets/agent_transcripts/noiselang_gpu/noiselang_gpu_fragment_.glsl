@@ -3,10 +3,8 @@
 #include "dist/arc"
 #include "gp/ridge"
 
+layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 color;
-layout(push_constant) uniform pcs {
-    vec4 viewport; // width, height
-} pc;
 
 const int POINTS = 320;
 const vec3 BLUE = vec3(0.0, 0.67, 1.0);
@@ -18,7 +16,10 @@ float splats(vec2 p, bool conditioned, float r) {
     for (int k = 0; k < POINTS; k++) {
         uint s = nlSeed(uint(k), conditioned ? 23u : 11u);
         float v[2];
-        if (conditioned) { if (!arc_try(s, v)) continue; } else ring(s, v);
+        if (conditioned) {
+            if (!arc_try(s, v)) continue;
+        }
+        else ring(s, v);
         vec2 d = p - vec2(v[0], v[1]);
         acc += exp(-dot(d, d) / (2.0 * r * r));
     }
@@ -26,7 +27,9 @@ float splats(vec2 p, bool conditioned, float r) {
 }
 
 void main() {
-    float W = pc.viewport.x, H = pc.viewport.y, panelW = W / 3.0;
+    // the window's size in pixels, from how fast uv changes across one pixel
+    vec2 size = 1.0 / fwidth(uv);
+    float W = size.x, H = size.y, panelW = W / 3.0;
     int panel = int(gl_FragCoord.x / panelW);
     vec2 local = vec2(gl_FragCoord.x - float(panel) * panelW, gl_FragCoord.y);
     float scale = min(panelW, H);
@@ -38,7 +41,8 @@ void main() {
         float px = 3.0 / scale; // one pixel, in data units
         if (panel == 1 && abs(p.x + p.y - 0.5) < 0.7 * px * 1.4142) c = vec3(0.35); // the line x + y = 0.5
         c = max(c, (panel == 0 ? BLUE : ORANGE) * splats(p, panel == 1, 2.2 * px));
-    } else {
+    }
+    else {
         // the Gaussian process on x in [0, 8], y in [-1.5, 2.5]
         vec2 lo = vec2(0.0, -1.5), hi = vec2(8.0, 2.5);
         vec2 q = lo + (vec2(local.x, H - local.y) / vec2(panelW, H)) * (hi - lo);

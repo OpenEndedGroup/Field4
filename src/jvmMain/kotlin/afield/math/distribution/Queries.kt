@@ -461,9 +461,10 @@ private fun enumeratedPmf(d: Dist, maxSupport: Int, maxAssignments: Long): Map<D
     val slot = HashMap<Int, Int>().apply { leaves.forEachIndexed { j, k -> put(k, j) } }
     val logW = DoubleArray(n)
     val values = plan.run(n, SplittableRandom(0), 8192, logW) { k, buf, offset, m ->
-        val j = slot[k]!!
+        val j = slot[k] ?: return@run false
         val sup = supports[j]
         for (i in 0 until m) buf[i] = sup[(((offset + i) / stride[j]) % sup.size).toInt()].first
+        true
     }[0]
     // log-probability of each assignment, plus its evidence
     for (a in 0 until n) {

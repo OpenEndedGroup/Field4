@@ -10,12 +10,14 @@ which every value is a distribution. This is the same idea written as Kotlin, pl
 gets for free: the samples draw themselves next to your code as they arrive, and the same
 expression can be run on the GPU.
 
-It then goes past NoiseLang in three directions. A distribution can be
-[conditioned on what you saw](#conditioning-on-what-you-saw), which turns a model into a posterior.
+It then goes past NoiseLang in several directions. A distribution can be
+[conditioned on what you saw](#conditioning-on-what-you-saw), which turns a model into a posterior,
+and a posterior can [learn as data arrives](#learning-as-data-arrives).
 It can be [played](#patterns-from-a-distribution), as a pattern or as a
 [sound parameter](#distributions-as-sound). And a fitted
 [Gaussian process](#gaussian-processes-as-distributions) can be turned into distributions, so you
-can ask questions about whole curves.
+can ask questions about whole curves. All of it can be
+[drawn inside a shader](#distributions-in-a-shader).
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -404,7 +406,7 @@ expect:
 :::static
 import afield.math.distribution.*
 
-val scale = categorical(listOf(0, 3, 5, 7, 10, 12), listOf(4, 1, 2, 3, 1, 2))
+val scale = categorical([0, 3, 5, 7, 10, 12], [4, 1, 2, 3, 1, 2])
 val tune = (60 + scale).pat().segment(8).texts()
 
 showPatRollOf("60 + scale" to tune, title = "eight draws a cycle from a weighted pentatonic", cycles = 4, pitched = true)
@@ -412,7 +414,8 @@ showPatAudio(tune, cycles = 4, cps = 0.5, voice = patVoice(wave = PatWave.TRIANG
 ```
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/distributions/weighted-scale.wav" audio-spec="weighted-scale" audio-renderer="afield.math.distribution.DistributionSoundDocs" embed=true hidden=true name="distributions-weighted-scale-audio"}
-// Offline-rendered by DistributionSoundDocs.renderWav("weighted-scale"): the box above, four cycles at 0.5 cycles per second.
+// Offline-rendered by DistributionSoundDocs.renderWav("weighted-scale"): the box above, four cycles at 0.5 cycles per
+// second.
 ```
 
 `segment(8)` is what makes eight notes: `d.pat()` is continuous, like `sine()`, and is drawn wherever
@@ -514,7 +517,7 @@ expect:
 :::static
 import afield.math.distribution.*
 
-val scale = categorical(listOf(0, 3, 5, 7, 10, 12), listOf(4, 1, 2, 3, 1, 2))
+val scale = categorical([0, 3, 5, 7, 10, 12], [4, 1, 2, 3, 1, 2])
 val hz = 220 * (scale * (kotlin.math.ln(2.0) / 12)).exp()
 
 val clock = PulseOsc(freq = Param(8f), width = Param(0.35f))
@@ -623,8 +626,264 @@ near the notes it was fitted to, a different one each cycle. Here the five ancho
 69, 65, 72 and 64 at steps 0, 4, 8, 12 and 15:
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/distributions/gp-melody.wav" audio-spec="gp-melody" audio-renderer="afield.math.distribution.DistributionSoundDocs" embed=true hidden=true name="distributions-gp-melody-audio"}
-// Offline-rendered by DistributionSoundDocs.renderWav("gp-melody"): sixteen steps of a GP posterior through five anchor notes, drawn once per cycle, four cycles.
+// Offline-rendered by DistributionSoundDocs.renderWav("gp-melody"): sixteen steps of a GP posterior through five anchor
+// notes, drawn once per cycle, four cycles.
 ```
+
+## Learning as data arrives
+
+`given` and `observed` condition on everything at once. Often the data comes one piece at a time:
+a performer's next note, the next reading from a sensor, the next position of a tracked hand. A
+`Posterior` keeps a population of particles, each a guess at the unknowns, and updates them as each
+observation arrives (sequential Monte Carlo):
+
+| | |
+| --- | --- |
+| `Posterior(a, b, …, particles = 2000)` | start from the priors of the unknowns `a`, `b`, … |
+| `post.evolve(a to expression, …)` | how the unknowns move between observations; noise in the expression spreads the guesses |
+| `post.observe(model, value)` | weigh each guess by how likely `value` is under `model`, which may use the unknowns |
+| `post.observe(condition)` | keep the guesses for which the condition holds |
+| `post.E(d)`, `Var`, `quantile`, `P` | ask about any expression of the unknowns, now |
+| `post.ess`, `post.logEvidence` | how many guesses are still in play, and how well the model has explained the data so far |
+| `post.dist(d)`, `post.dists(a, b)`, `post.live(d)` | the posterior as a distribution, to play, draw or put in a shader |
+
+When too few guesses carry the weight, the population is resampled: guesses that explain the data
+are copied and the rest are dropped. An unknown that does not move between observations collapses
+onto a few repeated values after many resamples. Set `rejuvenateAfterResample = 0.95` to spread
+them again.
+
+### Following a performer
+
+Here the data is a performance. Forty-eight notes speed up from 84 to 132 beats per minute, then
+ease back to 108, each note early or late by about 12 ms. The box renders them and finds where each
+note starts in the sound itself. It knows only those onset times, not the tempo. The unknowns are
+the period between beats, anywhere from 0.3 to 1 second, and the time of the last beat. At each onset
+the beat moves on by a period, the period drifts by about 3%, and the onset is the beat, give or
+take 15 ms. Before each onset the box asks where the next beat should fall. An accompaniment plays
+on those predictions, so it can only follow what it has already heard:
+
+<!--
+FIELD_TEST
+id: docs.distributions.tempo-follow
+runner: backdoor-box
+tags: [docs, distributions, sequential, patterns, audio]
+timeoutSec: 180
+expect:
+  outputContains:
+    - "onsets heard; tempo now"
+    - "log evidence with 3.0% drift"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/distributions-tempo-follow.png" alt="an audio player above a plot of tempo against time: a grey line, the tempo played, rises from 84 to 132 bpm and falls back to 108; a blue line, the tempo the posterior heard, follows it closely inside a pale blue band two standard deviations wide; small orange ticks along the bottom mark the 48 onsets found in the sound" wait="3" capture="box" open-outputs="true" w="860" h="560" padding="18" timeout="180" embed=true name="distributions-tempo-follow"}
+:::static
+import afield.math.distribution.*
+
+// 1. A performance whose tempo we know: 48 beats speeding up from 84 to 132 bpm and easing back to
+//    108, every beat early or late by about 12 ms; a low note on each bar, a higher one between.
+val beats = 48
+fun bpm(k: Int) = when {
+    k < 24 -> 84.0 + 48.0 * k / 24
+    k < 36 -> 132.0 - 24.0 * (k - 24) / 12
+    else -> 108.0
+}
+val late = normal(0, 0.012).samples(beats, seed = 4)
+val beatTimes = DoubleArray(beats)
+var at = 0.5
+for (k in 0 until beats) {
+    beatTimes[k] = at + late[k]
+    at += 60.0 / bpm(k)
+}
+val length = beatTimes.last() + 1.0
+val performance = patTimed(beatTimes.mapIndexed { k, t -> TimedNote(t, t + 0.1, if (k % 4 == 0) 45.0 else 52.0) }, beats = length)
+val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.05, sustain = 0.3)
+val heard = patRenderStereo(performance, cycles = 1, cps = 1 / length, voice = voice)
+
+// 2. Where the notes start, found in the sound itself
+val onsets = patDetectOnsetSamples(heard.mono, PatSoundDocs.SR, minGapSeconds = 0.3).map { it.toDouble() / PatSoundDocs.SR }
+
+// 3. Follow the beat. Two unknowns: the period, and when the last beat fell. At each onset the beat
+//    moves on by a period, the period drifts by about 3%, and the onset is the beat, give or take 15 ms.
+val period = uniform(0.3, 1.0)              // 60 to 200 bpm: we do not know the tempo
+val beat = known(onsets[0])                 // the first onset was a beat
+val post = Posterior(period, beat, particles = 3000)
+val predicted = ArrayList<Double>()         // where each next beat should fall, before it is heard
+val tempo = ArrayList<Triple<Double, Double, Double>>() // time, mean bpm, sd
+for (t in onsets.drop(1)) {
+    predicted += post.E(beat + period).value
+    post.evolve(beat to beat + period + normal(0, 0.004), period to period * normal(0, 0.03).exp())
+    post.observe(normal(beat, 0.015), t)
+    tempo += Triple(t, post.E(60 / period).value, kotlin.math.sqrt(post.Var(60 / period).value))
+}
+
+// 4. An accompaniment on the predicted beats: it can only follow what it has already heard
+val accompaniment = patTimed(predicted.map { p -> TimedNote(p, p + 0.05, 76.0, gain = 0.45) }, beats = length)
+val reply = patRenderStereo(accompaniment, cycles = 1, cps = 1 / length, voice = patVoice(wave = PatWave.SINE, decay = 0.03, sustain = 0.2))
+val n = minOf(heard.frames, reply.frames)
+display("audio", afield.audio.engine.WavFloatArrayWriter.encodeStereo16(
+    FloatArray(n) { heard.left[it] * 0.8f + reply.left[it] * 0.5f }, FloatArray(n) { heard.right[it] * 0.8f + reply.right[it] * 0.5f },
+    PatSoundDocs.SR, normalizePeak = 0.9f))
+
+// 5. The tempo it heard, against the tempo that was played
+fun px(t: Double) = 30 + t / length * 600
+fun py(b: Double) = 230 - (b - 60) / 110 * 210
+val truth = fline {
+    moveTo(px(beatTimes[0]), py(bpm(0)))
+    for (k in 1 until beats) lineTo(px(beatTimes[k]), py(bpm(k - 1)))
+    color = vec(1.0, 1.0, 1.0, 0.5)
+}
+val followed = fline {
+    moveTo(px(tempo[0].first), py(tempo[0].second))
+    for ((t, m, _) in tempo) lineTo(px(t), py(m))
+    color = vec(0.0, 0.67, 1.0, 1.0)
+}
+val band = fline {
+    moveTo(px(tempo[0].first), py(minOf(170.0, tempo[0].second + 2 * tempo[0].third)))
+    for ((t, m, sd) in tempo) lineTo(px(t), py(minOf(170.0, m + 2 * sd)))
+    for ((t, m, sd) in tempo.reversed()) lineTo(px(t), py(maxOf(60.0, m - 2 * sd)))
+    filled = true
+    stroked = false
+    color = vec(0.0, 0.67, 1.0, 0.25)
+}
+val heardAt = onsets.map { t -> fline { moveTo(px(t), 236.0); lineTo(px(t), 242.0); color = vec(1.0, 0.67, 0.0, 1.0) } }
+val grid = listOf(80, 100, 120, 140, 160).map { b -> fline { moveTo(30.0, py(b.toDouble())); lineTo(630.0, py(b.toDouble())); color = vec(1.0, 1.0, 1.0, 0.12) } }
+lines(grid + band + truth + followed + heardAt, channel = "tempo", w = 660.0, h = 250.0)
+
+val errors = onsets.drop(1).indices.map { kotlin.math.abs(predicted[it] - onsets[it + 1]) * 1000 }
+val now = tempo.last()
+println("${onsets.size} onsets heard; tempo now ${now.second.f1} bpm, give or take ${now.third.f1} (played: 108)")
+fun median(xs: List<Double>) = xs.sorted()[xs.size / 2].toInt()
+println("prediction error, first 8 beats: median ${median(errors.take(8))} ms; after them: median ${median(errors.drop(8))} ms")
+
+// 6. How much does the tempo drift? Ask the evidence: the same filter with three drift rates
+fun evidenceFor(drift: Double): Double {
+    val p = uniform(0.3, 1.0)
+    val b = known(onsets[0])
+    val f = Posterior(p, b, particles = 3000)
+    for (t in onsets.drop(1)) {
+        f.evolve(b to b + p + normal(0, 0.004), p to p * normal(0, drift).exp())
+        f.observe(normal(b, 0.015), t)
+    }
+    return f.logEvidence
+}
+for (drift in [0.01, 0.03, 0.1]) println("log evidence with ${drift * 100}% drift per beat: ${evidenceFor(drift).f1}")
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/distributions/tempo-follow.wav" audio-spec="tempo-follow" audio-renderer="afield.math.distribution.DistributionSoundDocs" embed=true hidden=true name="distributions-tempo-follow-audio"}
+// Offline-rendered by DistributionSoundDocs.renderWav("tempo-follow"): the performance, low, with the accompaniment's
+// high notes on the predicted beats.
+```
+
+It prints:
+
+```diffstatic {data-lang=text}
+:::static
+48 onsets heard; tempo now 108.7 bpm, give or take 4.2 (played: 108)
+prediction error, first 8 beats: median 28 ms; after them: median 18 ms
+log evidence with 1.0% drift per beat: 8.2
+log evidence with 3.0% drift per beat: 103.7
+log evidence with 10.0% drift per beat: 81.3
+```
+
+The first beats are a guess: before the second onset the period could be anything from 0.3 to 1
+second. After a few beats the predictions fall within about 20 ms of the notes, close enough for
+the accompaniment to sound together with the player, even through the accelerando.
+
+The log evidence answers a different question: how much drift should the model expect? Each of
+the three filters is the same except for its drift. With 1% per beat the filter cannot keep up with
+the accelerando, and with 10% it believes in changes that never happen. 3% explains the onsets best,
+by a log-evidence margin of about 22 over 10%: odds of billions to one. Use it the same way to
+choose between any two models of the same data.
+
+### Tracking a point through noise
+
+Two unknowns can be a position. A point wanders, moving about 3 units a step and drifting slowly
+right, and is seen 60 times through noise of about 12 units. The posterior's path stays much closer
+to the truth than the sightings do. At the end, 300 joint draws of the position (`post.samples(x, y)`)
+show where it could be now:
+
+<!--
+FIELD_TEST
+id: docs.distributions.track
+runner: backdoor-box
+tags: [docs, distributions, sequential, fline]
+timeoutSec: 120
+expect:
+  outputContains:
+    - "distance from the truth"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/distributions-track.png" alt="a wandering grey path, the truth, with orange dots scattered widely around it, the noisy sightings; a blue path, the posterior's mean, follows the grey one closely; at its right-hand end, a small cloud of pale blue dots shows where the point could be now" wait="2" capture="box" open-outputs="true" w="760" h="460" padding="18" timeout="120" embed=true name="distributions-track"}
+:::static
+import afield.math.distribution.*
+
+// A point wanders, moving about 3 units a step, and is seen only through noise of about 12 units.
+val steps = 60
+val moves = normal(0, 3).samples(2 * steps, seed = 8)
+val noise = normal(0, 12).samples(2 * steps, seed = 9)
+val truth = ArrayList<Pair<Double, Double>>()
+var tx = 200.0
+var ty = 150.0
+for (k in 0 until steps) {
+    tx += moves[2 * k] + 1.5           // a slow drift to the right
+    ty += moves[2 * k + 1]
+    truth += tx to ty
+}
+val seen = truth.mapIndexed { k, (a, b) -> (a + noise[2 * k]) to (b + noise[2 * k + 1]) }
+
+// Where is it? Two unknowns, a position. Between sightings it moves; each sighting is it, ±12.
+val x = normal(200, 20)
+val y = normal(150, 20)
+val post = Posterior(x, y, particles = 2000)
+val path = ArrayList<Pair<Double, Double>>()
+for ((sx, sy) in seen) {
+    post.evolve(x to x + 1.5 + normal(0, 3), y to y + normal(0, 3))
+    post.observe(normal(x, 12), sx)
+    post.observe(normal(y, 12), sy)
+    path += post.E(x).value to post.E(y).value
+}
+
+// The truth, what was seen, the posterior's path, and 300 draws of where it is now
+val drawn = post.samples(x, y, n = 300)
+val pictures = [
+    fline { moveTo(truth[0].first, truth[0].second); for ((a, b) in truth) lineTo(a, b); color = vec(1.0, 1.0, 1.0, 0.6) },
+    fline { moveTo(path[0].first, path[0].second); for ((a, b) in path) lineTo(a, b); color = vec(0.0, 0.67, 1.0, 1.0) },
+] + seen.map { (a, b) -> fline { circle(a, b, 0.8) }.apply { filled = true; color = vec(1.0, 0.67, 0.0, 0.8) } } +
+    (0 until 300).map { i -> fline { circle(drawn[0][i], drawn[1][i], 0.45) }.apply { filled = true; color = vec(0.0, 0.67, 1.0, 0.35) } }
+lines(pictures, channel = "track", w = 480.0, h = 300.0)
+
+fun rms(ps: List<Pair<Double, Double>>) = kotlin.math.sqrt(ps.indices.sumOf { k ->
+    val dx = ps[k].first - truth[k].first; val dy = ps[k].second - truth[k].second; dx * dx + dy * dy
+} / ps.size)
+println("distance from the truth: sightings ${rms(seen).f1}, posterior ${rms(path).f1}")
+```
+
+It prints `distance from the truth: sightings 17.1, posterior 7.1`. This model is linear and
+Gaussian, so a Kalman filter would get the same answer exactly. `SequentialTest` checks that against
+one. The particles are worth having when the model is not linear or Gaussian: a period that
+multiplies, a condition, a count, a sighting that is sometimes missing.
+
+### Playing a posterior
+
+A posterior is still a distribution. `post.dist(60 / period)` is the tempo as the posterior has it
+now, ready for `ᛟ.distribution`, `pat()`, `param()` or a shader. `post.live(d)` reads the posterior
+at the moment it is drawn, so a pattern or a parameter built from it follows the posterior as
+observations arrive:
+
+```diffstatic {data-lang=kotlin}
+:::static
+// a pulse at the beat rate the posterior believes, redrawn four times a second as onsets come in
+val beatRate = (1 / post.live(period)).param(everySeconds = 0.25)
+val pulse = PulseOsc(freq = beatRate, width = Param(0.1f))
+// a posterior over a point, drawn in a fragment shader: one particle by weight, x and y together
+distHere("where", post.dists(x, y))
+```
+
+??? aside "How the particles are checked"
+    `SequentialTest` holds the filter to what is known exactly. Five normal readings arriving one at a
+    time give the conjugate posterior. Ten coin flips give Beta(8, 4). The log evidence of three readings
+    matches their marginal likelihood, a multivariate normal with covariance `100·11ᵀ + I`, to within 0.1.
+    And a random walk seen through noise matches the Kalman filter's mean and variance after 40
+    steps. Resampling is systematic. `rejuvenate` is Liu and West's shrinkage kernel, which keeps each
+    variable's weighted mean and variance. The log evidence adds, at every observation, the log of
+    the weighted mean likelihood.
 
 ## On the GPU
 
@@ -735,7 +994,7 @@ import afield.math.distribution.*
 // a ring: radius about 1, any angle; drawn jointly, so x and y share the same radius and angle
 val radius = normal(1, 0.08)
 val angle = uniform(0, 2 * Math.PI)
-val ring = listOf(radius * angle.cos(), radius * angle.sin())
+val ring = [radius * angle.cos(), radius * angle.sin()]
 distHere("ring", ring)
 
 // the same ring, given x + y > 0.5: a posterior the shader draws by weighted reservoir sampling
@@ -803,8 +1062,8 @@ model on the CPU, so a box can plot or question what the shader draws.
     `GlslIncludeTest` compiles fragment and compute shaders that include several distributions and
     processes together, so the guards that keep shared helpers to one copy are tested.
 
-The replayable demos are `dev_docs/agents/transcripts/noiselang_distributions.yaml`, nine boxes
-that need no renderer (every section above, from the spike to the Gaussian process), and
+The replayable demos are `dev_docs/agents/transcripts/noiselang_distributions.yaml`, eleven boxes
+that need no renderer (every section above, from the spike to the tracked point), and
 `noiselang_gpu.yaml`, the shader scene. Both are [starting points](agent_transcripts.md#noiselang_distributions).
 
 ## Limitations and what's next
@@ -813,8 +1072,8 @@ What this library does not do yet, so you know where the edges are:
 
 - **Conditioning is by weighting, so a vague prior is expensive.** `given` weighs samples drawn
   from the prior. When the evidence is sharp and the prior is wide, most samples weigh almost
-  nothing. The effective sample size reports this, but nothing moves the samples towards the data
-  yet. There is no MCMC and no sequential Monte Carlo.
+  nothing. The effective sample size reports this. A `Posterior` that takes the data a piece at a
+  time, resampling as it goes, wastes far fewer. There is no MCMC.
 - **Exact answers only in simple cases.** `exactPmf` handles graphs of discrete leaves, by
   convolution or by visiting up to a million joint values, and gives up beyond 20 000 support
   points. `exactPdf` knows continuous leaves, their affine images, and sums of independent normals.
@@ -844,9 +1103,11 @@ What this library does not do yet, so you know where the edges are:
 
 Where it could go next:
 
-- **Sequential inference.** A posterior updated as observations arrive, by resampling and moving
-  its samples (sequential Monte Carlo): a performer's tempo from onsets, or a tracked hand. This
-  would also fix the wasted samples of a vague prior.
+- **Moves that use the model.** A `Posterior` spreads collapsed particles by jitter (`rejuvenate`),
+  which does not look at the data. A Metropolis move would, and would let a static parameter be
+  learned with fewer particles.
+- **Live onsets.** The performer example detects onsets in a rendered clip. Feeding it a microphone
+  needs an onset detector on the audio input, observing into the posterior as notes arrive.
 - **Observations from live inputs.** Patterns and parameters draw from distributions now; the other
   direction is open. Onsets from a pattern or a microphone, or positions from a tracked hand, could
   arrive as `observed` data and update a posterior that another pattern plays.

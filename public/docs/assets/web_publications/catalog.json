@@ -2872,63 +2872,68 @@
     },
     "assets/agent_transcripts/noiselang_distributions/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
-      "capturedAt": "2026-11-10T22:53:21.678Z",
-      "channels": 7,
+      "capturedAt": "2026-11-11T00:15:36.984Z",
+      "channels": 10,
       "file": "assets/web_publications/noiselang_distributions/document/metadata.edn",
       "files": {
-        "assets/web_publications/noiselang_distributions/document/metadata.edn": "8feba5ca22289fe5092d9c37b44de192175c4fd7bfbe3fd7c45ee2638940372b",
-        "assets/web_publications/noiselang_distributions/document/outputs.json": "b9c1decd9f703414e734995f61a5c2b64d5f661cc8f9f8878c76439620f7de36",
-        "assets/web_publications/noiselang_distributions/outputs/0.html": "4f183d137f6749d50b5fb2c2f11ab2552d765e0baa0656ca266d0931b476a02c",
-        "assets/web_publications/noiselang_distributions/outputs/1.html": "70bf64e6e2cf256f067db671ff4dc784e2d44181cd011c34b64819401afb5d84",
-        "assets/web_publications/noiselang_distributions/outputs/2.html": "c8d39f1e4f9c0153a7953a304cf956565e314c498b7a406b3f8c2cc734d1ada0",
-        "assets/web_publications/noiselang_distributions/outputs/3.html": "2d0b248f73e3bed089e5e9ac191913222dd7a97d3f6ccb91ab8665f4bebe47c2",
-        "assets/web_publications/noiselang_distributions/outputs/4.html": "c8d39f1e4f9c0153a7953a304cf956565e314c498b7a406b3f8c2cc734d1ada0",
-        "assets/web_publications/noiselang_distributions/outputs/5.html": "671b809059481a86d2140981a5ab4b0c97ea283b344b2f38ed4609451b21e32b",
-        "assets/web_publications/noiselang_distributions/outputs/6.html": "c330b74ade31b684ade4a7ba7a3f3c6dcc7a216583a852f319230549d600e59f"
+        "assets/web_publications/noiselang_distributions/document/metadata.edn": "c891b59d8b605c9cd3cd4dcaf9f3800947df702ecffce74ecc56fb8d0a9cd3a8",
+        "assets/web_publications/noiselang_distributions/document/outputs.json": "9f48828280cf855074ffa7ad48c2bc2696a6524c31ba1c4ecccd53aab6430497",
+        "assets/web_publications/noiselang_distributions/outputs/0.html": "1e3c42c0e1ce1b2086343b2834c65e5a81be8ccf349c4b58bd3aaa4a85329d29",
+        "assets/web_publications/noiselang_distributions/outputs/1.html": "f8dc38840a7c774f02679ae4c6f9e5451ea063c40ba92d0c62efe3c910976a32",
+        "assets/web_publications/noiselang_distributions/outputs/2.html": "6ff87f0b243b0841de85aefe4d50b224c34d87fafedba6a35528fc9cf5efa568",
+        "assets/web_publications/noiselang_distributions/outputs/3.html": "5fafa2d4a9a854755394e6c7ca9536d110ee0dd2101cdf5a62bba16dca62a601",
+        "assets/web_publications/noiselang_distributions/outputs/4.html": "18eafcadf0fe9332fbe24219d2c82ec6a5c9ec1d7e1f47f04e3fc653c54757ab",
+        "assets/web_publications/noiselang_distributions/outputs/5.html": "f8dc38840a7c774f02679ae4c6f9e5451ea063c40ba92d0c62efe3c910976a32",
+        "assets/web_publications/noiselang_distributions/outputs/6.html": "18f9f3cfcb7a56f73a17f1b20cb3518b574d05bd6191185796147aeeb8a419d0",
+        "assets/web_publications/noiselang_distributions/outputs/7.html": "f8dc38840a7c774f02679ae4c6f9e5451ea063c40ba92d0c62efe3c910976a32",
+        "assets/web_publications/noiselang_distributions/outputs/8.html": "688bf64a2021fc8f33401da4a2451c7e6e34ba04b3f2519c7694c183fce4409a",
+        "assets/web_publications/noiselang_distributions/outputs/9.html": "2692b3f2a1c47c4f62f5775c82fc23181934c6499804469b0f47915d34b0ccfc"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/noiselang_distributions/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/noiselang_distributions.yaml": "3bbef2c6eccd9c3a7bf9166f5ccd9ae8da56714009eb77db8677d944d18fcb24",
+        "dev_docs/agents/transcripts/noiselang_distributions.yaml": "44c0ceeda3e2542ed9f47a81afbcd13bf1ca08abe07afcc7099002602ffe6884",
         "public/docs/assets/agent_transcripts/noiselang_distributions/guides/distributions.md": "da1f2d77ff7eb8353197fee50688c85504e9304bc1c1f2fc6fdde2eb2a6b824b",
-        "public/docs/assets/agent_transcripts/noiselang_distributions/metadata.edn": "0b88084ea8789bb06022c47f296be462ac112fff4c031ba15989f91981234d07",
+        "public/docs/assets/agent_transcripts/noiselang_distributions/metadata.edn": "2bb1e40477d5b08ce7e61daba56bf4b727cd0288ab55b8c8af9e3f573aa75507",
         "public/docs/assets/agent_transcripts/noiselang_distributions/noise_density_code_.kt": "597a3efa3d95f8e6905d9d543be1f6943c83363b3b0ba8ece609a3146f95b897",
-        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_five_in_sixteen_code_.kt": "d178f206df6ac7d7929fc674ee9d02034c9a9568d9d1bbe7b0b6603e4281f8d1",
-        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_gp_curves_code_.kt": "377e6a5f8219d87ee9fd0ded2fff5c134d8f3903f6e8c42160fad66541de1b1f",
-        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_live_pitch_code_.kt": "9ebf7474bb8e72f3ce99aed9e2d928d87c78e3d3bb19df6bf449248f78592d41",
+        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_five_in_sixteen_code_.kt": "14913a706832fe7550d903d01165afdab862d4bd170680b76b2fb0bba64f84b0",
+        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_gp_curves_code_.kt": "6a443cd1f389310d99b35ba43b186870e14392524d42ddd71a4455d516797ed8",
+        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_live_pitch_code_.kt": "436ae6bbfd0e69027739b4ba514df8e9742621ef1a86a2fd0e01c216d4b28c6f",
         "public/docs/assets/agent_transcripts/noiselang_distributions/noise_posterior_code_.kt": "ac23af72b9b85076ac2700fb87c412e6d46c888b54132ec008faf0dca6213fdb",
         "public/docs/assets/agent_transcripts/noiselang_distributions/noise_queries_code_.kt": "7823faaeef227f49f83123b9299d6a17767c8aea428e11370c940ac1f08ea10d",
         "public/docs/assets/agent_transcripts/noiselang_distributions/noise_spike_to_triangle_code_.kt": "f175368cb641f43424446b4d4cba3671b7981b95b32c7dfd0308f4255399385a",
+        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_tempo_follow_code_.kt": "6237d3c5632d6bd1f539a75abe45b8ec360f3ef33f7705b51df6e57bebcb5146",
+        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_track_point_code_.kt": "d071413ccf1ce0fc607b4a1a2d171d096f332202c87d9d156337137694df9cc5",
         "public/docs/assets/agent_transcripts/noiselang_distributions/noise_walks_code_.kt": "48276aaf40bef0d14a89620d5af66403d1d695d0e371583c4364dd88f8b5d769",
-        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_weighted_scale_code_.kt": "c56c9e76e748972ec69785ee1911683d18d07843673875e2a53e76c62e048053"
+        "public/docs/assets/agent_transcripts/noiselang_distributions/noise_weighted_scale_code_.kt": "c62ae98232bc79590f4ef96b0646a6be099f7472105853f6e2845ea4ffd2fe61"
       }
     },
     "assets/agent_transcripts/noiselang_gpu/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
-      "capturedAt": "2026-11-10T23:29:39.535Z",
+      "capturedAt": "2026-11-11T00:15:39.796Z",
       "channels": 1,
       "file": "assets/web_publications/noiselang_gpu/document/metadata.edn",
       "files": {
-        "assets/web_publications/noiselang_gpu/document/metadata.edn": "0597b05a84deec25e661080d65e546b1428d0c38eb5cf2da7d5ee281a9a47025",
-        "assets/web_publications/noiselang_gpu/document/outputs.json": "77210aca76eaee295ae0f7bf3e196488b14e029373276dbe2f010f7d625d6114",
-        "assets/web_publications/noiselang_gpu/outputs/0.html": "db08039da203a92ea3129701dfdfb4ba4a1fa840cff3f7cf04f0a5c9cda3c7ce"
+        "assets/web_publications/noiselang_gpu/document/metadata.edn": "87ba596caf9248cf1d8d3c3c7801f8fca29053884c8276cae4f429af10aa4edf",
+        "assets/web_publications/noiselang_gpu/document/outputs.json": "830f69eb469e2f06b8f7536ea587202c14a5f7d6b9c6934b0893eb44618c8d64",
+        "assets/web_publications/noiselang_gpu/outputs/0.html": "2b701e1164e032e2aeacedb196ed636096b0a65537ba915849507f664c59c185"
       },
       "kinds": [
         "native-image"
       ],
       "outputs": "assets/web_publications/noiselang_gpu/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/noiselang_gpu.yaml": "2b2174305dab86d2a9752ab19629f1f16bd89f39aac1e3927f128eb860fcceab",
+        "dev_docs/agents/transcripts/noiselang_gpu.yaml": "f05ab83e48bfdc12a5bde13289261ac2d9235fe752de114064774a0f6cd64871",
         "public/docs/assets/agent_transcripts/noiselang_gpu/agent_graphics_context_code_.kt": "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2",
         "public/docs/assets/agent_transcripts/noiselang_gpu/guides/distributions.md": "b108cdf237f4431ee00c84d91a4f416b15e8a31f7aa650ac4195392bba2da53c",
-        "public/docs/assets/agent_transcripts/noiselang_gpu/metadata.edn": "7b11104fb792d07a6376fdd2b1130e6eb47c6d1f19fc634db66a943cb5b13879",
-        "public/docs/assets/agent_transcripts/noiselang_gpu/noiselang_gpu_code_.kt": "d7b7382f2cf041aac87bc5c7cf31df608cb51195ff8dd41c6c7f9138dffe821b",
+        "public/docs/assets/agent_transcripts/noiselang_gpu/metadata.edn": "433d999bdbcf0ae8203f8a47905d0a7d953cc528e3df4ccf66fd226d5e11d640",
+        "public/docs/assets/agent_transcripts/noiselang_gpu/noiselang_gpu_code_.kt": "c94e1715efb0c1b9a1a26776d6b527610b44e6cc843c4ae76b44319d6b2ec9de",
         "public/docs/assets/agent_transcripts/noiselang_gpu/noiselang_gpu_dists_code_.kt": "d73c0ace1b3ebb19821c73920b301325e99a0008fe5d08946facb74f9ab7064a",
-        "public/docs/assets/agent_transcripts/noiselang_gpu/noiselang_gpu_fragment_.glsl": "43af486c22c99598b0897d36b7c058a0ed5d847835561083034ea732d2156db5",
-        "public/docs/assets/agent_transcripts/noiselang_gpu/noiselang_gpu_vertex_.glsl": "79bb3964ee2fc6971421d619a6d4019b66a4f08a7f60983ecb528d79e1abd1f2",
-        "public/docs/assets/distributions-gpu.png": "1ad1679d672442a23a0df40a858de82905d37f38fd0ca328f5bb34786778987d",
+        "public/docs/assets/agent_transcripts/noiselang_gpu/noiselang_gpu_fragment_.glsl": "9c2692e4d8720635a1ab909b730c26a3f31823a1a234b3ad650401639e42878b",
+        "public/docs/assets/agent_transcripts/noiselang_gpu/noiselang_gpu_vertex_.glsl": "5e1454a95ae92889d518e7fe40701f239953bc9cca43d2160eda79632fbae195",
+        "public/docs/assets/distributions-gpu.png": "6a8b7d6a95ffd099aa1048567e7dae7adba22f742357c93c01cbb1af795b3dd0",
         "public/docs/distributions.md#capture-box=noiselang_gpu": "76c3296322fc8050294b0aac04e598884d7b12c2a28c43aec2bf52c2232e2262"
       },
       "supplementalSources": [
