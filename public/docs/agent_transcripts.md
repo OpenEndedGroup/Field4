@@ -1168,6 +1168,16 @@ held-out seeds; it takes a few minutes. Box 7 animates the evolved glider. All s
 
 [Open →](offline.html?file=assets/agent_transcripts/particle_lenia/metadata.edn)
 
+### flow_lenia
+
+[Flow Lenia](alife_examples.md#flow-lenia-matter-that-moves-instead-of-growing) as four boxes. Box 0
+runs three species for 200 steps and prints the worst relative change in total mass (about `1e-12`).
+Boxes 1 to 3 are the page's clips: three species with a flat total-mass plot, rings meeting a cell
+with sampled mixing and the mass per species, and the same pair blending under mean mixing with the
+parameter field drawn. All four are pure CPU.
+
+[Open →](offline.html?file=assets/agent_transcripts/flow_lenia/metadata.edn)
+
 ### alife_search_comparison
 
 The "Does search beat random?" part of [spatial artificial life](alife_examples.md#does-search-beat-random)

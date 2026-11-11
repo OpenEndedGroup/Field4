@@ -70,4 +70,26 @@ class FlowLeniaTest {
         val worst = alone.matter.indices.maxOf { abs(alone.matter[it] - shared.matter[it]) }
         assertEquals(0.0, worst, 1e-9, "same rule with zero-weighted extra kernels")
     }
+
+    @Test fun sparseAffinityMatchesADenseGather() {
+        val w = threeSpecies(FlowLeniaMixing.MEAN).steps(20)
+        val u = w.affinity()
+        val n = w.width * w.height
+        var worst = 0.0
+        for (c in 0 until n) {
+            val x = c % w.width; val y = c / w.width
+            // only cells next to matter are evaluated
+            val near = (-1..1).any { j -> (-1..1).any { i -> w.matter[Math.floorMod(y + j, w.height) * w.width + Math.floorMod(x + i, w.width)] > 0.0 } }
+            if (!near) continue
+            var dense = 0.0
+            for ((k, kernel) in w.rule.kernels.withIndex()) {
+                val t = kernel.taps
+                var acc = 0.0
+                for (i in 0 until t.size) acc += w.matter[Math.floorMod(y + t.dy[i], w.height) * w.width + Math.floorMod(x + t.dx[i], w.width)] * t.weight[i]
+                dense += w.weights[k * n + c] * kernel.growth(acc)
+            }
+            worst = maxOf(worst, abs(dense - u[c]))
+        }
+        assertTrue(worst < 1e-9, "sparse vs dense affinity: $worst")
+    }
 }

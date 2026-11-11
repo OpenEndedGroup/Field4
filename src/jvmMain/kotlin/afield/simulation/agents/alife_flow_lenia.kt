@@ -223,28 +223,73 @@ class FlowLeniaWorld(
         return acc
     }
 
+    /**
+     * Matter in cells where no species holds more than `1 − margin` of the matter: the hybrid fraction.
+     * Under [FlowLeniaMixing.MEAN] this is the matter whose parameters have blended; under
+     * [FlowLeniaMixing.SAMPLED] it stays at zero, because a cell always takes one parcel's parameters whole.
+     */
+    fun mixedMass(margin: Double = 0.1): Double {
+        var acc = 0.0
+        for (c in 0 until n) {
+            val m = matter[c]
+            if (m <= 0.0) continue
+            var top = 0.0
+            for (s in 0 until speciesCount) top = max(top, species[s * n + c])
+            if (top < 1.0 - margin) acc += m
+        }
+        return acc
+    }
+
     /** Mass of every species, in order. */
     fun speciesMasses(): DoubleArray = DoubleArray(speciesCount) { speciesMass(it) }
 
-    /** The affinity `U = Σ h_k G_k(K_k * A)` of the current state, as computed by [step]. */
+    /**
+     * The affinity `U = Σ h_k G_k(K_k * A)` of the current state, as computed by [step].
+     *
+     * Computed where it can matter: [step] only reads `U` through its 3x3 gradient at cells holding
+     * matter, so `U` is evaluated on the occupied cells dilated by one, and is `0` elsewhere. The
+     * convolution is scattered from occupied cells rather than gathered at every cell, which costs the
+     * occupied fraction of a dense pass; a sparse world (most Flow Lenia worlds) runs several times
+     * faster for the same result.
+     */
     fun affinity(): DoubleArray {
-        val u = DoubleArray(n)
-        for ((k, kernel) in rule.kernels.withIndex()) {
+        val occupied = IntArray(n)
+        var count = 0
+        for (c in 0 until n) if (matter[c] > 0.0) occupied[count++] = c
+        val need = BooleanArray(n)
+        for (q in 0 until count) {
+            val c = occupied[q]
+            val x = c % width; val y = c / width
+            for (j in -1..1) for (i in -1..1) need[Math.floorMod(y + j, height) * width + Math.floorMod(x + i, width)] = true
+        }
+        // Kernels are independent, so each is convolved on its own thread into its own buffer.
+        val parts = arrayOfNulls<DoubleArray>(kCount)
+        java.util.stream.IntStream.range(0, kCount).parallel().forEach { k ->
+            val kernel = rule.kernels[k]
             val t = kernel.taps
             val m = t.size
-            val ko = k * n
-            for (y in 0 until height) for (x in 0 until width) {
-                var acc = 0.0
+            val conv = DoubleArray(n)
+            for (q in 0 until count) {
+                val c = occupied[q]
+                val a = matter[c]
+                val x = c % width; val y = c / width
+                // (K * A)(p) = Σ_i w_i A(p + d_i): the source at c reaches p = c − d_i.
                 for (i in 0 until m) {
-                    val sx = x + t.dx[i]
-                    val sy = y + t.dy[i]
-                    val wx = if (sx in 0 until width) sx else Math.floorMod(sx, width)
-                    val wy = if (sy in 0 until height) sy else Math.floorMod(sy, height)
-                    acc += matter[wy * width + wx] * t.weight[i]
+                    val px = x - t.dx[i]
+                    val py = y - t.dy[i]
+                    val wx = if (px in 0 until width) px else Math.floorMod(px, width)
+                    val wy = if (py in 0 until height) py else Math.floorMod(py, height)
+                    conv[wy * width + wx] += a * t.weight[i]
                 }
-                val c = y * width + x
-                u[c] += weights[ko + c] * kernel.growth(acc)
             }
+            val ko = k * n
+            for (c in 0 until n) conv[c] = if (need[c]) weights[ko + c] * kernel.growth(conv[c]) else 0.0
+            parts[k] = conv
+        }
+        val u = DoubleArray(n)
+        for (k in 0 until kCount) {
+            val part = parts[k]!!
+            for (c in 0 until n) u[c] += part[c]
         }
         return u
     }
@@ -350,7 +395,7 @@ class FlowLeniaWorld(
     /** Kernel weight [k] at every cell, as a 1-channel [Img]; 0 where there is no matter. */
     fun weightImg(k: Int): Img {
         require(k in 0 until kCount) { "kernel $k outside 0 until $kCount" }
-        return Img(width, height, 1, FloatArray(n) { if (matter[it] > 1e-6) weights[k * n + it].toFloat() else 0f })
+        return Img(width, height, 1, FloatArray(n) { if (matter[it] > 0.01) weights[k * n + it].toFloat() else 0f })
     }
 
     /**
@@ -484,7 +529,7 @@ fun flowLeniaWorld(
 object FlowLeniaPresets {
     private fun k(r: Int, peaks: DoubleArray, mu: Double, sigma: Double) = FlowLeniaKernel.ring(r, peaks, mu, sigma)
 
-    /** Breaks into a handful of compact bodies, some of which travel. */
+    /** Breaks into about a dozen compact round bodies that drift slowly. */
     fun wanderers(): FlowLeniaSpecies = FlowLeniaSpecies(
         "wanderers",
         listOf(
