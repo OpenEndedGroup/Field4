@@ -2,9 +2,10 @@ name: satellites
 description: >
   SGP4 satellite passes and the whole CelesTrak catalogue on the GPU, the companion to
   `public/docs/satellites.md`. A CPU box charts a week of passes
-  over Chicago for five satellites; beneath a renderer, an Earth box draws coastlines, a graticule
-  and the ISS's ground track (bright where Chicago sees it), and a satellites box draws all ~15,000
-  near-earth objects as points, each propagated by a Kepler solve in the vertex shader every frame.
+  over Chicago for five satellites, the visible ones picked out, and another the geosynchronous belt
+  for a day; beneath a renderer, an Earth box draws coastlines, a graticule
+  and the ISS's ground track (bright where Chicago sees it), and a satellites box draws all ~15,900
+  catalogued objects as points, each propagated by a Kepler solve in the vertex shader every frame.
   Fly with the keyboard in the renderer window (R resets).
 docs:
   - page: satellites.md
@@ -23,9 +24,9 @@ operations:
           import afield.simulation.orbits.*
           import java.time.Duration
 
-          // The bundled CelesTrak snapshot: about 15,000 near-earth objects, each with its SGP4 propagator.
+          // The bundled CelesTrak snapshot: about 15,900 objects, each with its SGP4 propagator.
           val sky = SatelliteCatalogue.bundled()
-          println("${sky.size} satellites, ${sky.skippedDeepSpace} deep-space left out, elements fresh at ${sky.epoch}")
+          println("${sky.size} satellites, elements fresh at ${sky.epoch}")
 
           // One place on the ground, and the week after the snapshot.
           val here = Observer(latitudeDeg = 41.88, longitudeDeg = -87.63) // Chicago
@@ -55,18 +56,26 @@ operations:
           names.forEachIndexed { row, name ->
               val sat = sky.byName(name)!!
               val passes = here.passes(sat, start, end, minElevationDeg = 10.0)
-              println("$name: ${passes.size} passes above 10° in a week, highest ${passes.maxOf { it.maxElevationDeg }.f0}°")
+              // the parts of those passes with the satellite in sunlight and the sky dark: the ones you can see
+              val seen = here.visiblePasses(sat, start, end, minElevationDeg = 10.0)
+              println(
+                  "$name: ${passes.size} passes above 10° in a week, ${seen.size} visible, highest ${passes.maxOf { it.maxElevationDeg }.f0}°",
+              )
               val base = (row + 1) * rowH
               // one stalk per pass, at its culmination, as tall as its highest elevation (90° fills the row)
-              shapes += fline {
-                  for (p in passes) {
-                      val x = Duration.between(start, p.culmination).toSeconds() / 86400.0 * dayW
-                      moveTo(x, base)
-                      lineTo(x, base - (rowH - 18) * p.maxElevationDeg / 90.0)
+              fun stalks(list: List<Pass>, width: Double, c: Vec4) {
+                  shapes += fline {
+                      for (p in list) {
+                          val x = Duration.between(start, p.culmination).toSeconds() / 86400.0 * dayW
+                          moveTo(x, base)
+                          lineTo(x, base - (rowH - 18) * p.maxElevationDeg / 90.0)
+                      }
+                      thickness = width
+                      color = c
                   }
-                  thickness = 2.0
-                  color = vec(0.45, 0.8, 1.0, 1.0)
               }
+              stalks(passes, 2.0, vec(0.45, 0.8, 1.0, 0.45))
+              stalks(seen, 2.5, vec(1.0, 0.85, 0.35, 1.0))
               shapes += fline {
                   moveTo(0, base)
                   lineTo(7 * dayW, base)
@@ -74,9 +83,11 @@ operations:
                   color = vec(1.0, 1.0, 1.0, 0.35)
               }
               shapes +=
-                  font.text("$name   ${passes.size} passes", size = 9.0, at = vec(4, base - rowH + 12, 0)).apply {
-                      color = vec(1.0, 1.0, 1.0, 0.85)
-                  }
+                  font
+                      .text("$name   ${passes.size} passes, ${seen.size} visible", size = 9.0, at = vec(4, base - rowH + 12, 0))
+                      .apply {
+                          color = vec(1.0, 1.0, 1.0, 0.85)
+                      }
           }
 
           lines(shapes, w = 7 * dayW, h = names.size * rowH + 24, fitToSize = true)
@@ -88,9 +99,9 @@ operations:
         import afield.simulation.orbits.*
         import java.time.Duration
 
-        // The bundled CelesTrak snapshot: about 15,000 near-earth objects, each with its SGP4 propagator.
+        // The bundled CelesTrak snapshot: about 15,900 objects, each with its SGP4 propagator.
         val sky = SatelliteCatalogue.bundled()
-        println("${sky.size} satellites, ${sky.skippedDeepSpace} deep-space left out, elements fresh at ${sky.epoch}")
+        println("${sky.size} satellites, elements fresh at ${sky.epoch}")
 
         // One place on the ground, and the week after the snapshot.
         val here = Observer(latitudeDeg = 41.88, longitudeDeg = -87.63) // Chicago
@@ -120,18 +131,26 @@ operations:
         names.forEachIndexed { row, name ->
             val sat = sky.byName(name)!!
             val passes = here.passes(sat, start, end, minElevationDeg = 10.0)
-            println("$name: ${passes.size} passes above 10° in a week, highest ${passes.maxOf { it.maxElevationDeg }.f0}°")
+            // the parts of those passes with the satellite in sunlight and the sky dark: the ones you can see
+            val seen = here.visiblePasses(sat, start, end, minElevationDeg = 10.0)
+            println(
+                "$name: ${passes.size} passes above 10° in a week, ${seen.size} visible, highest ${passes.maxOf { it.maxElevationDeg }.f0}°",
+            )
             val base = (row + 1) * rowH
             // one stalk per pass, at its culmination, as tall as its highest elevation (90° fills the row)
-            shapes += fline {
-                for (p in passes) {
-                    val x = Duration.between(start, p.culmination).toSeconds() / 86400.0 * dayW
-                    moveTo(x, base)
-                    lineTo(x, base - (rowH - 18) * p.maxElevationDeg / 90.0)
+            fun stalks(list: List<Pass>, width: Double, c: Vec4) {
+                shapes += fline {
+                    for (p in list) {
+                        val x = Duration.between(start, p.culmination).toSeconds() / 86400.0 * dayW
+                        moveTo(x, base)
+                        lineTo(x, base - (rowH - 18) * p.maxElevationDeg / 90.0)
+                    }
+                    thickness = width
+                    color = c
                 }
-                thickness = 2.0
-                color = vec(0.45, 0.8, 1.0, 1.0)
             }
+            stalks(passes, 2.0, vec(0.45, 0.8, 1.0, 0.45))
+            stalks(seen, 2.5, vec(1.0, 0.85, 0.35, 1.0))
             shapes += fline {
                 moveTo(0, base)
                 lineTo(7 * dayW, base)
@@ -139,12 +158,221 @@ operations:
                 color = vec(1.0, 1.0, 1.0, 0.35)
             }
             shapes +=
-                font.text("$name   ${passes.size} passes", size = 9.0, at = vec(4, base - rowH + 12, 0)).apply {
-                    color = vec(1.0, 1.0, 1.0, 0.85)
-                }
+                font
+                    .text("$name   ${passes.size} passes, ${seen.size} visible", size = 9.0, at = vec(4, base - rowH + 12, 0))
+                    .apply {
+                        color = vec(1.0, 1.0, 1.0, 0.85)
+                    }
         }
 
         lines(shapes, w = 7 * dayW, h = names.size * rowH + 24, fitToSize = true)
+  - create:
+      box: satellite-geo
+      name: 4 - The geosynchronous belt
+      frame:
+        x: 40.0
+        y: 1000.0
+        w: 320.0
+        h: 100.0
+      properties:
+        code: |
+          import afield.simulation.orbits.*
+          import java.time.Duration
+          import kotlin.math.abs
+
+          // Every object in the snapshot, near-earth and deep-space.
+          val sky = SatelliteCatalogue.bundled()
+          val deep = sky.satellites.filter { it.tle.isDeepSpace }
+          println("${sky.size} satellites, ${deep.size} of them deep-space")
+
+          // Geosynchronous orbits go round once a sidereal day, 1,436 minutes; the navigation constellations take 12 to 14 hours.
+          val geo = deep.filter { it.tle.periodMinutes in 1426.0..1446.0 }
+          val navigation = deep.filter { it.tle.periodMinutes in 700.0..850.0 }
+          println("${geo.size} geosynchronous, ${navigation.size} in 12 to 14 hour orbits (GPS, GLONASS, Galileo, BeiDou)")
+
+          // Longitude across, latitude up: ±15° fills the height, so the figure-eights of inclined orbits show.
+          val mapW = 720.0
+          val mapH = 200.0
+          fun lonX(lon: Double) = (lon + 180.0) / 360.0 * mapW
+          fun latY(lat: Double) = mapH / 2 - lat / 15.0 * mapH / 2
+          val font = afield.ai.learning.pen.HersheyFont.load("futural")
+          val shapes = ArrayList<FLine>()
+
+          // The coastlines inside the band, to show where on Earth each satellite hangs.
+          for (coast in Coastlines.lines) shapes += fline {
+              var pen = false
+              for (g in coast) {
+                  if (abs(g.latitudeDeg) > 15.0) {
+                      pen = false
+                      continue
+                  }
+                  if (pen) lineTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+                  else moveTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+                  pen = true
+              }
+              thickness = 1.0
+              color = vec(0.75, 0.9, 1.0, 0.8)
+          }
+          for (lon in -180..180 step 60) {
+              shapes += fline {
+                  moveTo(lonX(lon.toDouble()), 0)
+                  lineTo(lonX(lon.toDouble()), mapH)
+                  thickness = 0.5
+                  color = vec(1.0, 1.0, 1.0, 0.2)
+              }
+              shapes +=
+                  font.text("$lon°", size = 9.0, at = vec(lonX(lon.toDouble()) + 3, mapH + 12, 0)).apply {
+                      color = vec(1.0, 1.0, 1.0, 0.6)
+                  }
+          }
+          shapes += fline {
+              moveTo(0, mapH / 2)
+              lineTo(mapW, mapH / 2)
+              thickness = 0.5
+              color = vec(1.0, 1.0, 1.0, 0.35)
+          }
+
+          // Each satellite's point under it, every 20 minutes for a day from the snapshot, drawn where it is within 15° of the
+          // equator.
+          val start = sky.epoch
+          var drifting = 0
+          for (sat in geo) {
+              val day = (0..72).mapNotNull { sat.geodetic(start.plus(Duration.ofMinutes(20L * it))) }
+              if (day.isEmpty()) continue
+              var travel = 0.0
+              for (i in 1 until day.size) travel +=
+                  abs((day[i].longitudeDeg - day[i - 1].longitudeDeg + 540.0).rem(360.0) - 180.0)
+              val drifts = travel > 2.0 // more than 2° of longitude in a day: not held on station
+              if (drifts) drifting++
+              val c = if (drifts) vec(1.0, 0.45, 0.6, 0.8) else vec(0.45, 0.8, 1.0, 0.9)
+              shapes += fline {
+                  for (i in day.indices) {
+                      val g = day[i]
+                      if (abs(g.latitudeDeg) > 15.0) continue
+                      val prev = day.getOrNull(i - 1)
+                      val jump = prev == null || abs(prev.latitudeDeg) > 15.0 || abs(g.longitudeDeg - prev.longitudeDeg) > 180.0
+                      if (jump) moveTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+                      else lineTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+                  }
+                  thickness = 1.0
+                  color = c
+              }
+              // a satellite held on station barely moves, so mark where it starts
+              val g = day[0]
+              if (abs(g.latitudeDeg) <= 15.0)
+                  shapes += fline {
+                      moveTo(lonX(g.longitudeDeg) - 1.2, latY(g.latitudeDeg))
+                      lineTo(lonX(g.longitudeDeg) + 1.2, latY(g.latitudeDeg))
+                      thickness = 2.5
+                      color = c
+                  }
+          }
+          println("$drifting of them drift more than 2° of longitude in a day")
+          shapes += font.text("15°N", size = 9.0, at = vec(4, 12, 0)).apply { color = vec(1.0, 1.0, 1.0, 0.6) }
+          shapes += font.text("15°S", size = 9.0, at = vec(4, mapH - 4, 0)).apply { color = vec(1.0, 1.0, 1.0, 0.6) }
+
+          lines(shapes, w = mapW, h = mapH + 18, fitToSize = true)
+  - execute:
+      box: satellite-geo
+      property: code
+      type: fragment
+      code: |
+        import afield.simulation.orbits.*
+        import java.time.Duration
+        import kotlin.math.abs
+
+        // Every object in the snapshot, near-earth and deep-space.
+        val sky = SatelliteCatalogue.bundled()
+        val deep = sky.satellites.filter { it.tle.isDeepSpace }
+        println("${sky.size} satellites, ${deep.size} of them deep-space")
+
+        // Geosynchronous orbits go round once a sidereal day, 1,436 minutes; the navigation constellations take 12 to 14 hours.
+        val geo = deep.filter { it.tle.periodMinutes in 1426.0..1446.0 }
+        val navigation = deep.filter { it.tle.periodMinutes in 700.0..850.0 }
+        println("${geo.size} geosynchronous, ${navigation.size} in 12 to 14 hour orbits (GPS, GLONASS, Galileo, BeiDou)")
+
+        // Longitude across, latitude up: ±15° fills the height, so the figure-eights of inclined orbits show.
+        val mapW = 720.0
+        val mapH = 200.0
+        fun lonX(lon: Double) = (lon + 180.0) / 360.0 * mapW
+        fun latY(lat: Double) = mapH / 2 - lat / 15.0 * mapH / 2
+        val font = afield.ai.learning.pen.HersheyFont.load("futural")
+        val shapes = ArrayList<FLine>()
+
+        // The coastlines inside the band, to show where on Earth each satellite hangs.
+        for (coast in Coastlines.lines) shapes += fline {
+            var pen = false
+            for (g in coast) {
+                if (abs(g.latitudeDeg) > 15.0) {
+                    pen = false
+                    continue
+                }
+                if (pen) lineTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+                else moveTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+                pen = true
+            }
+            thickness = 1.0
+            color = vec(0.75, 0.9, 1.0, 0.8)
+        }
+        for (lon in -180..180 step 60) {
+            shapes += fline {
+                moveTo(lonX(lon.toDouble()), 0)
+                lineTo(lonX(lon.toDouble()), mapH)
+                thickness = 0.5
+                color = vec(1.0, 1.0, 1.0, 0.2)
+            }
+            shapes +=
+                font.text("$lon°", size = 9.0, at = vec(lonX(lon.toDouble()) + 3, mapH + 12, 0)).apply {
+                    color = vec(1.0, 1.0, 1.0, 0.6)
+                }
+        }
+        shapes += fline {
+            moveTo(0, mapH / 2)
+            lineTo(mapW, mapH / 2)
+            thickness = 0.5
+            color = vec(1.0, 1.0, 1.0, 0.35)
+        }
+
+        // Each satellite's point under it, every 20 minutes for a day from the snapshot, drawn where it is within 15° of the
+        // equator.
+        val start = sky.epoch
+        var drifting = 0
+        for (sat in geo) {
+            val day = (0..72).mapNotNull { sat.geodetic(start.plus(Duration.ofMinutes(20L * it))) }
+            if (day.isEmpty()) continue
+            var travel = 0.0
+            for (i in 1 until day.size) travel +=
+                abs((day[i].longitudeDeg - day[i - 1].longitudeDeg + 540.0).rem(360.0) - 180.0)
+            val drifts = travel > 2.0 // more than 2° of longitude in a day: not held on station
+            if (drifts) drifting++
+            val c = if (drifts) vec(1.0, 0.45, 0.6, 0.8) else vec(0.45, 0.8, 1.0, 0.9)
+            shapes += fline {
+                for (i in day.indices) {
+                    val g = day[i]
+                    if (abs(g.latitudeDeg) > 15.0) continue
+                    val prev = day.getOrNull(i - 1)
+                    val jump = prev == null || abs(prev.latitudeDeg) > 15.0 || abs(g.longitudeDeg - prev.longitudeDeg) > 180.0
+                    if (jump) moveTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+                    else lineTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+                }
+                thickness = 1.0
+                color = c
+            }
+            // a satellite held on station barely moves, so mark where it starts
+            val g = day[0]
+            if (abs(g.latitudeDeg) <= 15.0)
+                shapes += fline {
+                    moveTo(lonX(g.longitudeDeg) - 1.2, latY(g.latitudeDeg))
+                    lineTo(lonX(g.longitudeDeg) + 1.2, latY(g.latitudeDeg))
+                    thickness = 2.5
+                    color = c
+                }
+        }
+        println("$drifting of them drift more than 2° of longitude in a day")
+        shapes += font.text("15°N", size = 9.0, at = vec(4, 12, 0)).apply { color = vec(1.0, 1.0, 1.0, 0.6) }
+        shapes += font.text("15°S", size = 9.0, at = vec(4, mapH - 4, 0)).apply { color = vec(1.0, 1.0, 1.0, 0.6) }
+
+        lines(shapes, w = mapW, h = mapH + 18, fitToSize = true)
   - create:
       box: agent_graphics_context
       name: renderer

@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 22960 of 38977 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 22970 of 38987 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2036 undocumented entry points** (types, top-level functions and values) and 13284 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -152,7 +152,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PrincipalCurves.kt](../src/jvmMain/kotlin/afield/geometry/curves/principal/PrincipalCurves.kt) | Graphics | principal_curves, geometry_chains | 0 | 19 | 65% |
 | [Transforms.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Transforms.kt) | Polytopes | polytope_examples | 0 | 19 | 76% |
 | [FunctionEvolve.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionEvolve.kt) | Function | functions_examples | 0 | 19 | 50% |
-| [Sgp4.kt](../src/jvmMain/kotlin/afield/simulation/orbits/Sgp4.kt) | Simulation | satellites | 0 | 19 | 48% |
+| [Sgp4.kt](../src/jvmMain/kotlin/afield/simulation/orbits/Sgp4.kt) | Simulation | satellites | 0 | 19 | 51% |
 | [MorseSmale.kt](../src/jvmMain/kotlin/afield/geometry/topology/morsesmale/MorseSmale.kt) | Graphics | morse_smale, topology_tracking | 0 | 18 | 58% |
 | [DirectLighting.kt](../src/jvmMain/kotlin/afield/graphics/render/lighting/DirectLighting.kt) | Graphics | direct_lighting | 0 | 18 | 28% |
 | [SolidInverse.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidInverse.kt) | Graphics | solid_notation | 0 | 18 | 60% |

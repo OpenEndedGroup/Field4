@@ -4,13 +4,14 @@
  * A catalogue of satellites: element sets ready to propagate, from a bundled CelesTrak snapshot or a fresh download.
  *
  * [SatelliteCatalogue.bundled] reads the snapshot of CelesTrak's "active" group that ships with Field
- * (taken 2026-11-11, about 15,900 objects); [SatelliteCatalogue.fetch] downloads a current group, caches
+ * (taken 2026-11-11, 15,884 objects); [SatelliteCatalogue.fetch] downloads a current group, caches
  * it under `~/.afield/cache/celestrak/` and falls back to the cache, then to the snapshot, when offline.
  * Element sets age: SGP4 is good to a few kilometres for a day or two either side of the epoch and drifts
  * by tens of kilometres a week out, so a demo that wants today's sky should fetch.
  *
- * Only near-earth objects are kept (see [Tle.isDeepSpace]); [SatelliteCatalogue.skippedDeepSpace] counts
- * the rest. Data: CelesTrak, <https://celestrak.org>, by T. S. Kelso, which asks that it be credited.
+ * Every object is kept, near-earth and deep-space (see [Tle.isDeepSpace]); pass `includeDeepSpace = false` for
+ * the low orbits alone, and [SatelliteCatalogue.skippedDeepSpace] counts what was left out. Data: CelesTrak,
+ * <https://celestrak.org>, by T. S. Kelso, which asks that it be credited.
  *
  *     import afield.simulation.orbits.*
  *
@@ -48,13 +49,16 @@ class Satellite(val tle: Tle) {
     /** Latitude, longitude and height at [time]. */
     fun geodetic(time: Instant): Geodetic? = ecef(time)?.let { Frames.geodetic(it) }
 
+    /** True when the satellite is in sunlight at [time], false in the Earth's shadow, `null` if its model has broken down. */
+    fun isSunlit(time: Instant): Boolean? = sgp4.propagate(time)?.let { Frames.isSunlit(it.position, Frames.julianOf(time)) }
+
     override fun toString() = "Satellite($name)"
 }
 
 /**
  * A list of [Satellite]s.
  *
- * @param satellites the near-earth objects.
+ * @param satellites the objects.
  * @param skippedDeepSpace how many deep-space element sets were left out.
  * @param source where the element sets came from.
  */
@@ -62,8 +66,14 @@ class SatelliteCatalogue(val satellites: List<Satellite>, val skippedDeepSpace: 
     /** Number of satellites. */
     val size: Int get() = satellites.size
 
-    /** The latest element-set epoch: a time at which the whole catalogue is fresh. */
-    val epoch: Instant get() = Frames.instantOf(satellites.maxOf { it.tle.epochJulian })
+    /**
+     * A time at which the whole catalogue is fresh: the latest near-earth element-set epoch. Deep-space objects are
+     * left out of it because CelesTrak publishes a few of their sets with predicted epochs days ahead (Chandra and
+     * XMM-Newton in the bundled snapshot); a catalogue with no near-earth objects uses its latest epoch of all.
+     */
+    val epoch: Instant get() = Frames.instantOf(
+        (satellites.filter { !it.tle.isDeepSpace }.ifEmpty { satellites }).maxOf { it.tle.epochJulian },
+    )
 
     /** The first satellite whose name is [name] (case-insensitive). */
     fun byName(name: String): Satellite? = satellites.firstOrNull { it.name.equals(name, ignoreCase = true) }
@@ -91,27 +101,28 @@ class SatelliteCatalogue(val satellites: List<Satellite>, val skippedDeepSpace: 
 
         private val cacheDir = File(System.getProperty("user.home"), ".afield/cache/celestrak")
 
-        /** Builds a catalogue from TLE text, keeping only near-earth objects. */
-        fun parse(text: String, source: String = "text"): SatelliteCatalogue {
+        /** Builds a catalogue from TLE text; [includeDeepSpace] `false` keeps only the near-earth objects. */
+        fun parse(text: String, source: String = "text", includeDeepSpace: Boolean = true): SatelliteCatalogue {
             val all = Tle.parseAll(text)
-            val near = all.filter { !it.isDeepSpace }
-            return SatelliteCatalogue(near.map { Satellite(it) }, all.size - near.size, source)
+            val kept = if (includeDeepSpace) all else all.filter { !it.isDeepSpace }
+            return SatelliteCatalogue(kept.map { Satellite(it) }, all.size - kept.size, source)
         }
 
-        /** The snapshot of CelesTrak's "active" group bundled with Field. */
-        fun bundled(): SatelliteCatalogue {
+        /** The snapshot of CelesTrak's "active" group bundled with Field; [includeDeepSpace] `false` keeps only the near-earth objects. */
+        fun bundled(includeDeepSpace: Boolean = true): SatelliteCatalogue {
             val stream = SatelliteCatalogue::class.java.getResourceAsStream(BUNDLED_RESOURCE)
                 ?: error("bundled TLE snapshot $BUNDLED_RESOURCE missing")
             val text = GZIPInputStream(stream).bufferedReader().use { it.readText() }
-            return parse(text, "bundled CelesTrak active, 2026-11-11")
+            return parse(text, "bundled CelesTrak active, 2026-11-11", includeDeepSpace)
         }
 
         /**
          * A CelesTrak group ("active", "stations", "visual", "starlink", ...), downloaded at most every [maxAge].
          *
-         * A failed download falls back to the last cached copy, then to [bundled].
+         * A failed download falls back to the last cached copy, then to [bundled]. [includeDeepSpace] `false` keeps only
+         * the near-earth objects.
          */
-        fun fetch(group: String = "active", maxAge: Duration = Duration.ofHours(6)): SatelliteCatalogue {
+        fun fetch(group: String = "active", maxAge: Duration = Duration.ofHours(6), includeDeepSpace: Boolean = true): SatelliteCatalogue {
             val cache = File(cacheDir, "$group.tle")
             val fresh = cache.exists() && System.currentTimeMillis() - cache.lastModified() < maxAge.toMillis()
             if (!fresh) {
@@ -125,8 +136,8 @@ class SatelliteCatalogue(val satellites: List<Satellite>, val skippedDeepSpace: 
                     cache.writeText(res.body())
                 }
             }
-            if (cache.exists()) return parse(cache.readText(), "CelesTrak $group, cached ${Instant.ofEpochMilli(cache.lastModified())}")
-            return bundled()
+            if (cache.exists()) return parse(cache.readText(), "CelesTrak $group, cached ${Instant.ofEpochMilli(cache.lastModified())}", includeDeepSpace)
+            return bundled(includeDeepSpace)
         }
     }
 }

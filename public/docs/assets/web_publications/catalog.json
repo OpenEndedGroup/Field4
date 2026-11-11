@@ -4288,20 +4288,20 @@
     },
     "assets/agent_transcripts/satellites/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-11T15:19:16.503Z",
+      "capturedAt": "2026-11-11T16:29:40.158Z",
       "channels": 1,
       "file": "assets/web_publications/satellites/document/metadata.edn",
       "files": {
         "assets/web_publications/satellites/document/metadata.edn": "67ab686809b4ca847816a9647c31a3e4fcc710c37d3fd5ec03ffc086dd3789cd",
-        "assets/web_publications/satellites/document/outputs.json": "fa74dea753091af7b12da26e4e293b20c1ba9f5113e12b80e214b17ce4aac7d0",
-        "assets/web_publications/satellites/outputs/0.html": "63e946df9ec82ceb3883be91024fcb85cb432857bc8a8016bc6ff0b5523e5188"
+        "assets/web_publications/satellites/document/outputs.json": "68df6ae3123f247f8fbb6abd815f5ac6888b971cd081f8f4255a2079f7811c39",
+        "assets/web_publications/satellites/outputs/0.html": "167d6fb8daea80ab7a15f33d00b6dc9d56d940f76db428112b2ade8d50196c7e"
       },
       "kinds": [
         "native-image"
       ],
       "outputs": "assets/web_publications/satellites/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/satellites.yaml": "24b839025bd27f63a49c4cc54d35d1dc22f07c7ab65ba45c5baf6fc18ea3f2cc",
+        "dev_docs/agents/transcripts/satellites.yaml": "f939ec6128a43b3b1cf8b7cd0579dd3ef3050dfa15d8d47b2d78e4307a55ef11",
         "public/docs/assets/agent_transcripts/satellites/agent_graphics_context_code_.kt": "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2",
         "public/docs/assets/agent_transcripts/satellites/guides/satellites.md": "1bf958471e50ba53ea50382da8c80b4f8edf534606cdd98c1c36139117e6f214",
         "public/docs/assets/agent_transcripts/satellites/metadata.edn": "32392fa30df8b03d8e544948adf084c233a5815b30c5461e336f282f160c5fd2",
@@ -4312,7 +4312,7 @@
         "public/docs/assets/agent_transcripts/satellites/satellite-earth_fragment_.glsl": "2f9d2c32dd0a21b6f98a207e7187d8c81a390cf28ef0043f3c852ec71c79c819",
         "public/docs/assets/agent_transcripts/satellites/satellite-earth_vertex_.glsl": "675baa042bf4fe92b603d7c883408edc6921f75c296b40074dfef5d9ab49a515",
         "public/docs/assets/agent_transcripts/satellites/satellite-passes_code_.kt": "39c0253a892120ce01f827a265fb96d3080fd908056bff5de29799dae81e2180",
-        "public/docs/assets/satellites/globe.png": "482aea6ae3979ee8923b21dc2e22750875b1b465c33eb0f71306ebeed369f369",
+        "public/docs/assets/satellites/globe.png": "ff7fac3852a12f0e6478c09de010d8302124665be293e1c25ef2c49fd61d7af3",
         "public/docs/satellites.md#capture-box=satellite-catalogue": "88d26afd1667e51f7e73203f1cd1552e01c3eac173519a74a5593ce7ba85fe4b"
       },
       "supplementalSources": [
