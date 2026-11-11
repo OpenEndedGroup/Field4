@@ -399,8 +399,9 @@ void main()
     if (picked) fcol = vec4(1.0, 0.95, 0.8, 1.0);
 
     gl_Position = pc.p * pc.m * vec4(w, 1);
-    // level of detail by distance: a satellite near the camera is drawn larger
-    gl_PointSize = picked ? 16.0 : clamp(pc.clock.y / dist, 1.5, 12.0);
+    // level of detail by distance: a satellite near the camera is drawn larger, and the high, sparse ones
+    // never smaller than 3 pixels, so the navigation shell and the geostationary ring show from far out
+    gl_PointSize = picked ? 16.0 : clamp(pc.clock.y / dist, alt > 2000.0 ? 3.0 : 1.5, 12.0);
 }
 ```
 
@@ -410,6 +411,56 @@ the renderer window focused, the [camera keys](afield_four_graphics.md#keyboard-
 in and out, Shift with Left and Right orbits the globe, R puts the camera back. A satellite drawn
 larger is a nearer one, so flying out to the shell shows it in more detail. Flying further out, past
 four Earth radii, brings in the navigation satellites, and at six and a half the geostationary ring.
+
+### A flight out to the geostationary ring
+
+One more box, beneath the Earth box, flies the camera for you. It is a `frames { }` loop that moves
+`camera.at` every frame: out from Chicago through the low shell, past the navigation satellites, to
+eleven Earth radii, where the whole geostationary ring is in view, turning round the north axis and
+coming down to 20° above the equator on the way. Launch it and it has the camera for 40 seconds; then
+the keyboard has it back. The satellites move at the clock's 120 times real time throughout, so the
+low ones swirl round the globe while the ring, turning with the Earth, keeps its place over the
+continents beneath it:
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" video="assets/satellites/tour.mp4" duration="22" fps="15" wait="0.5" timeout="420" embed=true name="satellites-tour" alt="The wire globe seen from above North America, wrapped in the pale shell of low satellites streaming round it. The camera pulls away and turns: the globe shrinks, scattered pink dots of the navigation satellites appear around it, and a thin ring of dots opens out round the equator, tilted towards the viewer, until it spans the frame with the small globe at its centre; the view then circles slowly while the low shell keeps moving and the ring holds its place" macro-file="../../dev_docs/agents/transcripts/satellites.yaml" capture-box="satellite-tour"}
+import kotlin.math.asin
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
+
+/*
+`camera` comes from the Earth box above. The flight starts where that box put the camera, 2.6 Earth
+radii above Chicago, and pulls out through the low shell, past the navigation satellites at four
+radii, to eleven, where the geostationary ring at six and a half is seen whole, and circles there
+for the rest of 40 seconds; after that the keyboard has the camera again.
+*/
+val cam = camera
+val a = cam.at
+val r0 = sqrt(a.x * a.x + a.y * a.y + a.z * a.z).toDouble()
+val azimuth0 = atan2(a.x.toDouble(), a.z.toDouble())
+val elevation0 = asin(a.y / r0)
+val far = 11.0
+val outSeconds = 14.0
+
+fun smooth(s: Double) = s * s * (3 - 2 * s)
+
+val t0 = System.nanoTime()
+var t = 0.0
+frames {
+    while (frame() && t < 40.0) {
+        t = (System.nanoTime() - t0) / 1e9
+        val s = smooth((t / outSeconds).coerceIn(0.0, 1.0))
+        // distance grows geometrically, so each doubling takes the same time
+        val r = r0 * (far / r0).pow(s)
+        // turn 70° round the north axis on the way out, then 4° a second; come down to 20° above the equator
+        val azimuth = azimuth0 + Math.toRadians(70.0) * s + Math.toRadians(4.0) * maxOf(0.0, t - outSeconds)
+        val elevation = elevation0 + (Math.toRadians(20.0) - elevation0) * s
+        cam.at = vec(r * cos(elevation) * sin(azimuth), r * sin(elevation), r * cos(elevation) * cos(azimuth))
+    }
+}
+```
 
 ## Where to go next
 
@@ -435,4 +486,4 @@ four Earth radii, brings in the navigation satellites, and at six and a half the
   nearby object as a model; on a Mac without mesh shaders, an instanced quad per object within a
   distance is the way.
 - **The running document.** The [satellites transcript](agent_transcripts.md#satellites) builds all
-  five boxes.
+  six boxes.

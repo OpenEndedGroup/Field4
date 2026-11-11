@@ -6,7 +6,8 @@ description: >
   for a day; beneath a renderer, an Earth box draws coastlines, a graticule
   and the ISS's ground track (bright where Chicago sees it), and a satellites box draws all ~15,900
   catalogued objects as points, each propagated by a Kepler solve in the vertex shader every frame.
-  Fly with the keyboard in the renderer window (R resets).
+  A last box flies the camera out to the geostationary ring for 40 seconds; after that, fly with the
+  keyboard in the renderer window (R resets).
 docs:
   - page: satellites.md
     why: "The page these boxes accompany."
@@ -729,8 +730,9 @@ operations:
               if (picked) fcol = vec4(1.0, 0.95, 0.8, 1.0);
 
               gl_Position = pc.p * pc.m * vec4(w, 1);
-              // level of detail by distance: a satellite near the camera is drawn larger
-              gl_PointSize = picked ? 16.0 : clamp(pc.clock.y / dist, 1.5, 12.0);
+              // level of detail by distance: a satellite near the camera is drawn larger, and the high, sparse ones
+              // never smaller than 3 pixels, so the navigation shell and the geostationary ring show from far out
+              gl_PointSize = picked ? 16.0 : clamp(pc.clock.y / dist, alt > 2000.0 ? 3.0 : 1.5, 12.0);
           }
         fragment: |
           #version 450
@@ -836,3 +838,98 @@ operations:
         m.resize(orbits.size)
   - wait:
       seconds: 2
+  - create:
+      box: satellite-tour
+      name: 5 - A flight out to the geostationary ring
+      frame:
+        x: 760.0
+        y: 40.0
+        w: 320.0
+        h: 100.0
+      properties:
+        code: |
+          import kotlin.math.asin
+          import kotlin.math.atan2
+          import kotlin.math.cos
+          import kotlin.math.pow
+          import kotlin.math.sin
+          import kotlin.math.sqrt
+
+          /*
+          `camera` comes from the Earth box above. The flight starts where that box put the camera, 2.6 Earth
+          radii above Chicago, and pulls out through the low shell, past the navigation satellites at four
+          radii, to eleven, where the geostationary ring at six and a half is seen whole, and circles there
+          for the rest of 40 seconds; after that the keyboard has the camera again.
+          */
+          val cam = camera
+          val a = cam.at
+          val r0 = sqrt(a.x * a.x + a.y * a.y + a.z * a.z).toDouble()
+          val azimuth0 = atan2(a.x.toDouble(), a.z.toDouble())
+          val elevation0 = asin(a.y / r0)
+          val far = 11.0
+          val outSeconds = 14.0
+
+          fun smooth(s: Double) = s * s * (3 - 2 * s)
+
+          val t0 = System.nanoTime()
+          var t = 0.0
+          frames {
+              while (frame() && t < 40.0) {
+                  t = (System.nanoTime() - t0) / 1e9
+                  val s = smooth((t / outSeconds).coerceIn(0.0, 1.0))
+                  // distance grows geometrically, so each doubling takes the same time
+                  val r = r0 * (far / r0).pow(s)
+                  // turn 70° round the north axis on the way out, then 4° a second; come down to 20° above the equator
+                  val azimuth = azimuth0 + Math.toRadians(70.0) * s + Math.toRadians(4.0) * maxOf(0.0, t - outSeconds)
+                  val elevation = elevation0 + (Math.toRadians(20.0) - elevation0) * s
+                  cam.at = vec(r * cos(elevation) * sin(azimuth), r * sin(elevation), r * cos(elevation) * cos(azimuth))
+              }
+          }
+  - connect:
+      parent: satellite-earth
+      child: satellite-tour
+  - launch:
+      box: satellite-tour
+      property: code
+      type: code
+      strand: tour
+      code: |
+        import kotlin.math.asin
+        import kotlin.math.atan2
+        import kotlin.math.cos
+        import kotlin.math.pow
+        import kotlin.math.sin
+        import kotlin.math.sqrt
+
+        /*
+        `camera` comes from the Earth box above. The flight starts where that box put the camera, 2.6 Earth
+        radii above Chicago, and pulls out through the low shell, past the navigation satellites at four
+        radii, to eleven, where the geostationary ring at six and a half is seen whole, and circles there
+        for the rest of 40 seconds; after that the keyboard has the camera again.
+        */
+        val cam = camera
+        val a = cam.at
+        val r0 = sqrt(a.x * a.x + a.y * a.y + a.z * a.z).toDouble()
+        val azimuth0 = atan2(a.x.toDouble(), a.z.toDouble())
+        val elevation0 = asin(a.y / r0)
+        val far = 11.0
+        val outSeconds = 14.0
+
+        fun smooth(s: Double) = s * s * (3 - 2 * s)
+
+        val t0 = System.nanoTime()
+        var t = 0.0
+        frames {
+            while (frame() && t < 40.0) {
+                t = (System.nanoTime() - t0) / 1e9
+                val s = smooth((t / outSeconds).coerceIn(0.0, 1.0))
+                // distance grows geometrically, so each doubling takes the same time
+                val r = r0 * (far / r0).pow(s)
+                // turn 70° round the north axis on the way out, then 4° a second; come down to 20° above the equator
+                val azimuth = azimuth0 + Math.toRadians(70.0) * s + Math.toRadians(4.0) * maxOf(0.0, t - outSeconds)
+                val elevation = elevation0 + (Math.toRadians(20.0) - elevation0) * s
+                cam.at = vec(r * cos(elevation) * sin(azimuth), r * sin(elevation), r * cos(elevation) * cos(azimuth))
+            }
+        }
+  - wait:
+      seconds: 1

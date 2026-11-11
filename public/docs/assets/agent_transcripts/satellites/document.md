@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -37,7 +37,7 @@ start(renderer::run)
 <!-- field-box id="satellite-earth" index="1" -->
 
 ```edn [field-box id="satellite-earth" role="properties"]
-{"id" "satellite-earth" "index" 1 "name" "2 - Earth, coastlines, ISS ground track" "parents" ["root" "agent_graphics_context"] "children" ["satellite-catalogue"] "properties" {"children" #{#afield/box "satellite-catalogue"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "2 - Earth, coastlines, ISS ground track" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-earth_vertex_.glsl" "lines" 22 "characters" 647 "sha256" "675baa042bf4fe92b603d7c883408edc6921f75c296b40074dfef5d9ab49a515"} {"name" "fragment" "language" "glsl" "path" "satellite-earth_fragment_.glsl" "lines" 7 "characters" 129 "sha256" "2f9d2c32dd0a21b6f98a207e7187d8c81a390cf28ef0043f3c852ec71c79c819"} {"name" "code" "language" "kotlin" "path" "satellite-earth_code_.kt" "lines" 96 "characters" 3789 "sha256" "70d144ae235896e174877eaf095c09a356781a4dcac8790ad0186d2679aea5ec"}]}
+{"id" "satellite-earth" "index" 1 "name" "2 - Earth, coastlines, ISS ground track" "parents" ["root" "agent_graphics_context"] "children" ["satellite-catalogue" "satellite-tour"] "properties" {"children" #{#afield/box "satellite-catalogue" #afield/box "satellite-tour"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "2 - Earth, coastlines, ISS ground track" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-earth_vertex_.glsl" "lines" 22 "characters" 647 "sha256" "675baa042bf4fe92b603d7c883408edc6921f75c296b40074dfef5d9ab49a515"} {"name" "fragment" "language" "glsl" "path" "satellite-earth_fragment_.glsl" "lines" 7 "characters" 129 "sha256" "2f9d2c32dd0a21b6f98a207e7187d8c81a390cf28ef0043f3c852ec71c79c819"} {"name" "code" "language" "kotlin" "path" "satellite-earth_code_.kt" "lines" 96 "characters" 3789 "sha256" "70d144ae235896e174877eaf095c09a356781a4dcac8790ad0186d2679aea5ec"}]}
 ```
 
 ```glsl [field-property box="satellite-earth" name="vertex" path="satellite-earth_vertex_.glsl"]
@@ -367,7 +367,7 @@ lines(shapes, w = mapW, h = mapH + 18, fitToSize = true)
 <!-- field-box id="satellite-catalogue" index="4" -->
 
 ```edn [field-box id="satellite-catalogue" role="properties"]
-{"id" "satellite-catalogue" "index" 4 "name" "3 - Every satellite, propagated on the GPU" "parents" ["root" "satellite-earth"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "satellite-earth"} "name" "3 - Every satellite, propagated on the GPU" "_tombstone" false "frame" #afield/rect [400.0 200.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-catalogue_vertex_.glsl" "lines" 60 "characters" 2307 "sha256" "afa42f5d7443e0f8915053f6ad9de9402a861244e6683379628228bd5dd102c3"} {"name" "fragment" "language" "glsl" "path" "satellite-catalogue_fragment_.glsl" "lines" 10 "characters" 285 "sha256" "7f5e44e8b47539acea1d6608689722479e611377d171dd8a3c743f84932fd4a2"} {"name" "code" "language" "kotlin" "path" "satellite-catalogue_code_.kt" "lines" 41 "characters" 1723 "sha256" "15ec16ee1b330da94ad7f91c499b505bdb1f5c37a3b2fa71cab232b0e5035b9e"}]}
+{"id" "satellite-catalogue" "index" 4 "name" "3 - Every satellite, propagated on the GPU" "parents" ["root" "satellite-earth"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "satellite-earth"} "name" "3 - Every satellite, propagated on the GPU" "_tombstone" false "frame" #afield/rect [400.0 200.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-catalogue_vertex_.glsl" "lines" 61 "characters" 2460 "sha256" "19a892cfc217f0354c2e5647b528a187289e80e78b2cbcf0c5638b9a7c5bc1be"} {"name" "fragment" "language" "glsl" "path" "satellite-catalogue_fragment_.glsl" "lines" 10 "characters" 285 "sha256" "7f5e44e8b47539acea1d6608689722479e611377d171dd8a3c743f84932fd4a2"} {"name" "code" "language" "kotlin" "path" "satellite-catalogue_code_.kt" "lines" 41 "characters" 1723 "sha256" "15ec16ee1b330da94ad7f91c499b505bdb1f5c37a3b2fa71cab232b0e5035b9e"}]}
 ```
 
 ```glsl [field-property box="satellite-catalogue" name="vertex" path="satellite-catalogue_vertex_.glsl"]
@@ -428,8 +428,9 @@ void main()
     if (picked) fcol = vec4(1.0, 0.95, 0.8, 1.0);
 
     gl_Position = pc.p * pc.m * vec4(w, 1);
-    // level of detail by distance: a satellite near the camera is drawn larger
-    gl_PointSize = picked ? 16.0 : clamp(pc.clock.y / dist, 1.5, 12.0);
+    // level of detail by distance: a satellite near the camera is drawn larger, and the high, sparse ones
+    // never smaller than 3 pixels, so the navigation shell and the geostationary ring show from far out
+    gl_PointSize = picked ? 16.0 : clamp(pc.clock.y / dist, alt > 2000.0 ? 3.0 : 1.5, 12.0);
 }
 ```
 
@@ -488,5 +489,53 @@ m.clock = { vec(clock.minutes(), 10.0, picked.toDouble(), 0.0) }
 
 // one vertex per satellite; the shader fetches its orbit from the buffer
 m.resize(orbits.size)
+```
+
+## 6. 5 - A flight out to the geostationary ring
+
+<!-- field-box id="satellite-tour" index="5" -->
+
+```edn [field-box id="satellite-tour" role="properties"]
+{"id" "satellite-tour" "index" 5 "name" "5 - A flight out to the geostationary ring" "parents" ["root" "satellite-earth"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "satellite-earth"} "name" "5 - A flight out to the geostationary ring" "_tombstone" false "frame" #afield/rect [760.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "satellite-tour_code_.kt" "lines" 37 "characters" 1495 "sha256" "0e74a2455f428c8b75776a6912f60afb89aa8ea3ee2326a5509bf548a46541ff"}]}
+```
+
+```kotlin [field-property box="satellite-tour" name="code" path="satellite-tour_code_.kt"]
+import kotlin.math.asin
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
+
+/*
+`camera` comes from the Earth box above. The flight starts where that box put the camera, 2.6 Earth
+radii above Chicago, and pulls out through the low shell, past the navigation satellites at four
+radii, to eleven, where the geostationary ring at six and a half is seen whole, and circles there
+for the rest of 40 seconds; after that the keyboard has the camera again.
+*/
+val cam = camera
+val a = cam.at
+val r0 = sqrt(a.x * a.x + a.y * a.y + a.z * a.z).toDouble()
+val azimuth0 = atan2(a.x.toDouble(), a.z.toDouble())
+val elevation0 = asin(a.y / r0)
+val far = 11.0
+val outSeconds = 14.0
+
+fun smooth(s: Double) = s * s * (3 - 2 * s)
+
+val t0 = System.nanoTime()
+var t = 0.0
+frames {
+    while (frame() && t < 40.0) {
+        t = (System.nanoTime() - t0) / 1e9
+        val s = smooth((t / outSeconds).coerceIn(0.0, 1.0))
+        // distance grows geometrically, so each doubling takes the same time
+        val r = r0 * (far / r0).pow(s)
+        // turn 70° round the north axis on the way out, then 4° a second; come down to 20° above the equator
+        val azimuth = azimuth0 + Math.toRadians(70.0) * s + Math.toRadians(4.0) * maxOf(0.0, t - outSeconds)
+        val elevation = elevation0 + (Math.toRadians(20.0) - elevation0) * s
+        cam.at = vec(r * cos(elevation) * sin(azimuth), r * sin(elevation), r * cos(elevation) * cos(azimuth))
+    }
+}
 ```
 
