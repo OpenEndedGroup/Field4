@@ -11,11 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="body1_context" index="0" -->
 
 ```edn [field-box id="body1_context" role="properties"]
-{"id" "body1_context" "index" 0 "name" "1 · Headset / preview / Field pane" "parents" ["root"] "children" ["body1_drawing"] "properties" {"children" #{#afield/box "body1_drawing"} "parents" #{#afield/box "root"} "name" "1 · Headset / preview / Field pane" "_tombstone" false "frame" #afield/rect [0.0 0.0 500.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "body1_context_code_.kt" "lines" 117 "characters" 4724 "sha256" "62205bd5dda49de1db9c9254b0eb2f7e5169e406c3972a633800398111ddb3e8"}]}
+{"id" "body1_context" "index" 0 "name" "1 · Headset / preview / Field pane" "parents" ["root"] "children" ["body1_drawing"] "properties" {"children" #{#afield/box "body1_drawing"} "parents" #{#afield/box "root"} "name" "1 · Headset / preview / Field pane" "_tombstone" false "frame" #afield/rect [0.0 0.0 500.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "body1_context_code_.kt" "lines" 116 "characters" 4684 "sha256" "7f0483b54240b1ffe74ccd5904428beafaba626b0708177b503e48b6367bdf17"}]}
 ```
 
 ```kotlin [field-property box="body1_context" name="code" path="body1_context_code_.kt"]
-import afield.graphics.vulkan.targets.*
 import afield.graphics.vulkan.util.Options
 import afield.media.browser.*
 

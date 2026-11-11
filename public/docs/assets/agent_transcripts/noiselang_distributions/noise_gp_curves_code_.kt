@@ -1,5 +1,4 @@
 import afield.math.distribution.*
-import afield.math.gp.*
 
 val xs = doubleArrayOf(0.5, 2.0, 3.5, 6.0, 7.5)
 val ys = doubleArrayOf(0.2, 1.1, 0.4, 0.9, -0.3)

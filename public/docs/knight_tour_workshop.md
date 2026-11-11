@@ -61,7 +61,7 @@ Recreational Mathematics* in 1969. The answers are OEIS
 Each move rules out every move it would cross. As the path grows, the picture itself starts to
 decide where the knight can go.
 
-`afield.geometry.leaper` has the search. `LeaperBoard(w, h, leaper, topology)` is the board's
+`afield.geometry.leaper` has the search. [`LeaperBoard(w, h, leaper, topology)`](reference/graphics.md#uncrossedleapers-kt-leaperboard) is the board's
 move graph, with every pair of moves that cross worked out in advance.
 `board.longestUncrossedPath()` returns the longest path, with `exhaustive` saying whether the search
 finished and so proved it longest. `path.uncrossedTile(cell, x, y)` draws the board and the path.

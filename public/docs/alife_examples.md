@@ -998,10 +998,7 @@ val noSep = start.copy()
 noSep.stepTimes(params.copy(separationWeight = 0.0), 900)
 
 println(
-    "flock polarization " +
-        flock.order().f3 +
-        ", CONTROL with no alignment " +
-        noAlign.order().f3,
+    "flock polarization " + flock.order().f3 + ", CONTROL with no alignment " + noAlign.order().f3,
 )
 println(
     "5th-percentile nearest neighbour: flock " +
@@ -1223,9 +1220,9 @@ animateEvolution(
 
 ### A million agents on the GPU
 
-The same rule runs on the GPU as `ShaderPhysarumSystem`: a million agents on a trail 512 pixels high, each
+The same rule runs on the GPU as [`ShaderPhysarumSystem`](reference/alife.md#alife-physarum-gpu-kt-shaderphysarumsystem): a million agents on a trail 512 pixels high, each
 one a single vertex-shader invocation per frame that senses, turns, steps and deposits. The defaults are
-the `PhysarumParams` defaults above. The trail is a [`TrailField`](reference/alife.md#alife-trail-kt-trailfield), a stigmergy
+the [`PhysarumParams`](reference/alife.md#alife-agents-kt-physarumparams) defaults above. The trail is a [`TrailField`](reference/alife.md#alife-trail-kt-trailfield), a stigmergy
 field you can use on its own: four channels, each with its own half-life, plus diffusion and wind. Any
 module can deposit into it, and any shader can read it with `#include "trail/sample"`. Here there are
 two species, one per channel. Each follows its own trail and avoids the other's:
@@ -1302,7 +1299,7 @@ shifting as one species pushes into another's ground.
 // The transcript builds a renderer and two systems, one and three species, each drawn into half the window.
 ```
 
-Any other particle system can steer by the same field. `TrailFollowers` climbs the gradient of
+Any other particle system can steer by the same field. [`TrailFollowers`](reference/alife.md#alife-trail-followers-kt-trailfollowers) climbs the gradient of
 `dot(trail, weights)`, so these 20,000 particles ride the amber roads and keep off the cyan ones:
 
 ```diffstatic {data-lang=kotlin}
@@ -1385,7 +1382,9 @@ val p = PhysarumParams()
 val road = 0.25 * p.deposit / (1 - p.decay)
 
 fun grow(label: String, agents: Int, params: PhysarumParams) =
-    label to PhysarumSwarm.random(200, 200, agents, seed = 5L).meanTrail(params, 3000, averageOver = 300, seed = 5L, food = food)
+    label to
+        PhysarumSwarm.random(200, 200, agents, seed = 5L)
+            .meanTrail(params, 3000, averageOver = 300, seed = 5L, food = food)
 
 val trails = [
     grow("1600 agents", 1600, p),
@@ -1398,12 +1397,18 @@ val controls: List<NetworkScore> = [
     TransportNetwork.mst(food.points).score("MST"),
     TransportNetwork.delaunay(food.points).score("Delaunay"),
 ]
-markdown("scores", "```\n" + NetworkScore.table(networks.map { (label, net) -> net.score(label) } + controls) + "\n```", width = 560)
+markdown(
+    "scores",
+    "```\n" + NetworkScore.table(networks.map { (label, net) -> net.score(label) } + controls) + "\n```",
+    width = 560,
+)
 
 :::fold draw each network over its trail
 showImg(
     montage(
-        networks.zip(trails).map { (n, t) -> n.first to n.second.drawOver(t.second.colormap("magma", 0f, (road * 4).toFloat())) },
+        networks.zip(trails).map { (n, t) ->
+            n.first to n.second.drawOver(t.second.colormap("magma", 0f, (road * 4).toFloat()))
+        },
         columns = 3,
         cellSide = 300,
     ),
@@ -1434,9 +1439,11 @@ dot on the plane; the table lists every run, including the ones that break apart
 val food = PhysarumFood.scattered(200, 200, 8, seed = 3L)
 
 fun run(label: String, agents: Int, p: PhysarumParams): NetworkScore {
-    val trail = PhysarumSwarm.random(200, 200, agents, seed = 5L).meanTrail(p, 3000, averageOver = 300, seed = 5L, food = food)
+    val trail =
+        PhysarumSwarm.random(200, 200, agents, seed = 5L).meanTrail(p, 3000, averageOver = 300, seed = 5L, food = food)
     return TransportNetwork.extract(trail, food.points, 0.25 * p.deposit / (1 - p.decay)).score(label)
 }
+
 :::endfold
 
 val base = PhysarumParams()
@@ -2467,7 +2474,7 @@ showImg(
 
 ![a contact sheet of twenty small greyscale automaton boards laid out in a six-column grid, each labelled with its two bin indices and score: the top-left cells are near-empty, the bottom-right cells are dense static, and the middle band holds boards with visible structure](assets/alife_examples/evolve-mapelites.png)
 
-All three searches run on one engine, `PopulationSearch`, and each is a genome (a `GenomeOps`: how to
+All three searches run on one engine, [`PopulationSearch`](reference/search.md#populationsearch-kt-populationsearch), and each is a genome (a `GenomeOps`: how to
 make, mutate and recombine one) plus an `Objective` that scores it. Evolving the shape of a function
 for animation runs on the same engine; see [evolving and optimizing
 functions](functions_examples.md#evolving-and-optimizing-functions).
@@ -2527,6 +2534,271 @@ of 0.25, its practical ceiling (an exact dimension plus the straightness bonus),
 cannot tell the methods apart. A harder target or a finer score would be needed before it could.
 The vehicle brains of [Braitenberg vehicles §10](braitenberg_vehicles.md) run through the same
 `compareSearch`.
+
+### Evolved grain sets: an L-system as a score
+
+The same L-system genome can be read as music instead of a drawing. In Nathan Ho's
+[EvoGrain](https://nathanho.me/posts/evograin), a derived string is a list of commands for a turtle
+whose state is a **time** and a **pitch**: `G` plays a grain and moves forward in time, `f` rests,
+`+` and `-` step the pitch, and `[` and `]` save and restore the state. Because `]` returns to the
+*time* the branch started at, every bracket is a new voice, so brackets give polyphony. A branch also
+plays quieter and quicker than its parent (`GrainTurtle.branchAmp`, `branchDuration`). A trunk
+grain lasts about a second and the next starts 0.72 s later; `GrainTurtle(timeScale = 0.5)` plays
+the same set twice as fast.
+
+`decodeGrains(system, generations)` derives the grammar and returns its grains; [`GrainSetStats`](reference/alife.md#alife-grains-kt-grainsetstats)
+measures the set (count, median pitch, pitch spread, duration, density, mean polyphony); and
+`renderGrains` plays it sample-accurately as Hann-windowed tones, or as grains read from a sample if
+you pass `source =`. Here is one grammar, `G → G[+G-G]fG`, at three generations:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-decode.png" wait="10.0" timeout="120" capture="box" open-outputs="true" padding="20"}
+val system = lSystem("G", 'G' to "G[+G-G]fG")
+for ((i, s) in system.derivations(2).withIndex()) println("gen $i: $s")
+val grains = decodeGrains(system, 3)
+println(GrainSetStats(grains))
+showImg(grainScoreImg(grains, 640, 220), caption = "gen 3: time across, pitch up; gold trunk, blue and red branches")
+display("audio", renderGrains(grains).wav())
+```
+
+![a dark piano-roll plot with short horizontal bars: a gold trunk line of grains along middle C, with blue grains a step above and below branching from it, and smaller red grains nested inside the blue ones](assets/alife_examples/grains-decode.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-example.wav" audio-spec="example" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" embed=true hidden=true name="alife-grains-example-audio"}
+// Offline-rendered by GrainSetSoundDocs.renderWav("example").
+```
+
+Fitness is a weighted mean of **trapezoids**, one per statistic. A trapezoid scores 0 below its first
+corner, rises to 1 at its second, stays at 1 to its third and falls to 0 at its fourth, so each term
+says "about this much, and these are the limits". `defaultGrainTerms()` asks for 40 to 120 grains over
+12 to 30 seconds, a median near middle C, a few semitones of spread, a little polyphony, and no more
+than about a third of the grains on any one pitch.
+`grainSetObjective(terms)` turns that into an `Objective` for `PopulationSearch`, and
+`grainLSystemGenome()` is the `LSystemGenome` above with the alphabet `G f + - [ ]`, so mutation,
+crossover and bracket repair are the ones the drawn L-systems already use:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-evolve.png" wait="30.0" timeout="240" capture="box" open-outputs="true" padding="20"}
+val terms = defaultGrainTerms()
+val run = PopulationSearch.evolve(
+    grainLSystemGenome(),
+    grainSetObjective(terms),
+    budget = 400,
+    seed = 7L,
+    crossoverRate = 0.3,
+    immigrantRate = 0.1,
+    label = "grains",
+)
+println(run.summary())
+for (imp in run.improvements) println("$imp   ${grainRule(imp.genome)}")
+showImg(fitnessTraceImg(run.trace), channel = "trace", caption = "best-so-far fitness against evaluations, 0 to 1")
+
+val best = decodeGrains(run.best!!.genome, 3)
+val stats = GrainSetStats(best)
+println(stats)
+val ranges = mapOf(
+    GrainStat.COUNT to (0.0 to 450.0),
+    GrainStat.MEDIAN_PITCH to (40.0 to 84.0),
+    GrainStat.PITCH_SPREAD to (0.0 to 18.0),
+    GrainStat.DURATION to (0.0 to 70.0),
+    GrainStat.POLYPHONY to (0.0 to 9.0),
+    GrainStat.MODE_SHARE to (0.0 to 1.0),
+)
+val panels = terms.map { t ->
+    val (lo, hi) = ranges.getValue(t.stat)
+    "%s %.2f".format(t.stat.label, stats[t.stat]) to trapezoidImg(t.shape, lo, hi, stats[t.stat])
+}
+showImg(
+    montage(panels, columns = 3, cellSide = 220),
+    channel = "terms",
+    caption = "each term's trapezoid, the best set's value marked",
+)
+showImg(grainScoreImg(best, 640, 220), channel = "score", caption = "the best set")
+display("audio", renderGrains(best).wav())
+```
+
+![three panels: a blue best-so-far line rising in steps toward 1; a grid of six yellow trapezoid curves each with a vertical marker on or near its plateau; and a dense multi-coloured piano-roll of the evolved grain set](assets/alife_examples/grains-evolve.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-evolved.wav" audio-spec="evolved" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" embed=true hidden=true name="alife-grains-evolved-audio"}
+// Offline-rendered by GrainSetSoundDocs.renderWav("evolved").
+```
+
+The automatic run optimises what the trapezoids say, which is not the same as what sounds good. Without
+the last term the winners were one long overlapping trunk at a single pitch, a drone that counts as
+polyphony; the term was added for that, and the next thing the search games will need another. The
+other half of EvoGrain is **interactive evolution**: you listen and choose the parents.
+`GrainBreeder` holds a population of six grammars; `breed([2, 4])` keeps the chosen parents and fills
+the rest with their crossovers, each mutated once. The same seed and the same choices replay the same
+lineage. In a box, give each child a player and a text field for the choice:
+
+```diffstatic {data-lang=kotlin}
+val breeder = GrainBreeder(seed = 1L)
+fun show() {
+    displayClearAll()
+    val scores = breeder.scores()
+    val listing =
+        breeder.population.withIndex().joinToString("<br>") { (i, g) ->
+            "%d: %s &nbsp; fitness %.2f".format(i, grainRule(g), scores[i])
+        }
+    display("main", "generation ${breeder.generation}<br>" + listing)
+    for ((i, g) in breeder.population.withIndex()) display("child $i", renderGrains(decodeGrains(g, 3)).wav())
+    stringInput("parents (e.g. 1 4)") { s ->
+        val picks = s.split(" ", ",").mapNotNull { it.trim().toIntOrNull() }
+        if (picks.isNotEmpty()) {
+            breeder.breed(picks)
+            show()
+        }
+    }
+}
+show()
+```
+
+Every trapezoid corner and weight is a dial. Building the terms from `slider` callbacks and
+re-running [`PopulationSearch.evolve`](reference/search.md#populationsearch-kt--populationsearch--evolve) on release moves the target while you listen; the loadable
+demo below does exactly that.
+
+#### Shaping the grains: length, density, pan and a silent symbol
+
+The six symbols above place grains; three more pairs shape them. `<` and `>` make the grains that
+follow shorter or longer by `GrainTurtle.lengthStep` (1.5) without moving the time step, so they
+change how much the grains overlap. `*` and `/` make the time step shorter or longer by
+`densityStep` (1.5), so the grains that follow come denser or sparser. `l` and `r` move the pan by
+`panStep` (a quarter of the way to one side). Brackets save and restore all three, so a branch can
+change them without touching the trunk. A grammar may also have a second rule, for a symbol such as
+`X` that is rewritten like `G` but never plays; it carries structure from one generation to the
+next. Here the trunk steps down and speeds up, and every branch is an `X` that steps up and slows
+down a little more each generation:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-shaped.png" wait="10.0" timeout="120" capture="box" open-outputs="true" padding="20"}
+// < and > make the grains that follow shorter or longer, * and / denser or sparser,
+// l and r move them left or right. X is rewritten like G but never plays.
+val system = lSystem("G", 'G' to "G[lX]-*<G", 'X' to "+>G/X")
+for ((i, s) in system.derivations(2).withIndex()) println("gen $i: $s")
+val grains = decodeGrains(system, 4)
+println(GrainSetStats(grains))
+showImg(grainScoreImg(grains, 640, 220), caption = "gen 4: the trunk falls and quickens; each branch climbs and slows")
+display("audio", renderGrains(grains).wav())
+```
+
+![a piano-roll plot: gold trunk grains that start long at the top left and fall in pitch while getting shorter and closer together until they are slivers at the bottom right; above each of them a blue branch grain, longer than the trunk grain beside it](assets/alife_examples/grains-shaped.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-shaped.wav" audio-spec="shaped" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" embed=true hidden=true name="alife-grains-shaped-audio"}
+// Offline-rendered by GrainSetSoundDocs.renderWav("shaped").
+```
+
+The search can use them too. `grainLSystemGenome(alphabet = GRAIN_ALPHABET_EXTENDED)` builds rules
+from all twelve symbols, and `nonterminals = "X"` adds a rule for `X` to every genome.
+
+#### A target taken from a recording
+
+Writing trapezoids by hand says what you want in numbers. The other way is to point at a sound.
+`grainsFromAudio(samples, sampleRate)` reads a monophonic recording as a grain set: one grain per
+note Field's pitch detector can name, at its onset, length and pitch, with its loudness as the
+amplitude. `grainTermsAround(stats)` then puts a trapezoid on each of that set's statistics, with a
+plateau a quarter of the value either side (two semitones for the median pitch) and feet four times
+as far out. The recording here is Tidal's eleven `arpy` samples played one after another, a rising
+scale of plucked notes from middle C up two octaves in a second and a half. Its notes are about
+0.13 s apart, five times closer than a trunk grain's 0.72 s. The plain alphabet can only get that
+close with deep branches, which are quicker; `*` gives the search a second way. The box compares the
+two alphabets over eight seeds, then plays the winner from the first `arpy` note:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-recording.png" wait="20.0" timeout="240" capture="box" open-outputs="true" padding="20" requires="dirt-samples"}
+// The recording: Tidal's eleven arpy samples back to back, a rising scale.
+val arpy = DirtRender.requirePinnedLibrary().family("arpy")!!
+val notes = (0 until arpy.size).map { arpy.sample(it)!! }
+val rate = notes[0].sampleRate.toInt()
+val recording = notes.flatMap { it.left.asList() }.toFloatArray()
+
+// Read it as grains, and centre a trapezoid on each of its statistics.
+val heard = grainsFromAudio(recording, rate, minHz = 100.0)
+val target = GrainSetStats(heard)
+println("recording: $target")
+val terms = grainTermsAround(target)
+
+fun search(alphabet: String, seed: Long) = PopulationSearch.evolve(
+    grainLSystemGenome(alphabet = alphabet),
+    grainSetObjective(terms),
+    budget = 600,
+    seed = seed,
+    crossoverRate = 0.3,
+    immigrantRate = 0.1,
+    label = "toward arpy",
+)
+
+// The plain alphabet against the one with < > * / l r, over eight seeds each.
+for (alphabet in [GRAIN_ALPHABET, GRAIN_ALPHABET_EXTENDED]) {
+    val bests = (1L..8L).map { search(alphabet, it).bestFitness }
+    println("%-14s mean best %.3f, worst %.3f".format(alphabet, bests.average(), bests.min()))
+}
+
+val run = search(GRAIN_ALPHABET_EXTENDED, 7L)
+val best = decodeGrains(run.best!!.genome, 3)
+println(grainRule(run.best!!.genome))
+println("evolved:   " + GrainSetStats(best))
+showImg(grainScoreImg(heard, 640, 160), channel = "recording", caption = "the recording, read as grains")
+showImg(grainScoreImg(best, 640, 160), channel = "score", caption = "the evolved set")
+// Played from the first arpy note, which the detector heard at this pitch.
+display("audio", renderGrains(best, source = notes[0].left, sourceRate = rate, sourcePitch = heard[0].pitch).wav())
+```
+
+![two piano-roll plots: above, eleven gold grains climbing evenly from bottom left to top right, the recording; below, the evolved set, one long low grain, a second higher one, then a quick cluster of shorter grains climbing at the right](assets/alife_examples/grains-recording.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-matched.wav" audio-spec="matched" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" requires="dirt-samples" embed=true hidden=true name="alife-grains-matched-audio"}
+// Offline-rendered by GrainSetSoundDocs.renderWav("matched").
+```
+
+Over the eight seeds the extended alphabet's mean best is higher (0.871 against 0.823) and its worst
+is lower (0.634 against 0.801): twelve symbols make a larger space, and some seeds get lost in it.
+The statistics are also a coarse description: a set can match the count, span, spread and median of a
+rising scale and still not rise evenly, as the evolved set shows. Nothing in `GrainSetStats` says
+which way the pitch moves over time, so nothing in the search pushes toward it. `grainsFromAudio`
+names one note at a time; a chord or a drum hit gives it nothing to read, so polyphony in a target
+taken from a recording is always about 1.
+
+#### A map of grain sets instead of one winner
+
+`PopulationSearch.evolve` returns the one set that scores best. `PopulationSearch.mapElites` keeps
+the best set of each *kind*: it divides two statistics into a grid and keeps the highest-scoring set
+in every cell. `grainSetObjective(behaviour = [...])` chooses the two statistics, here pitch spread
+across and polyphony up, so the grid runs from narrow, thin sets at the bottom left to wide, thick
+ones at the top right:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-map.png" wait="20.0" timeout="240" capture="box" open-outputs="true" padding="20"}
+// MAP-Elites over pitch spread and polyphony: the best set of each kind, not one winner.
+val axes = [GrainStat.PITCH_SPREAD, GrainStat.POLYPHONY]
+val map = PopulationSearch.mapElites(
+    grainLSystemGenome(),
+    grainSetObjective(behaviour = axes),
+    budget = 800,
+    axes = [0.0..12.0, 0.0..6.0],
+    bins = [4, 4],
+    seed = 1L,
+)
+println(map)
+
+// One score per cell: spread grows to the right, polyphony upward.
+val panels =
+    (3 downTo 0).flatMap { row ->
+        (0..3).map { col ->
+            val elite = map.elites[[col, row]]
+            if (elite == null) {
+                "empty" to Img.zeros(240, 120, 3)
+            } else {
+                val grains = decodeGrains(elite.genome, 3)
+                val st = GrainSetStats(grains)
+                "%.1f st  x%.1f  %.2f".format(st.pitchSpread, st.polyphony, elite.fitness) to
+                    grainScoreImg(grains, 240, 120)
+            }
+        }
+    }
+showImg(
+    montage(panels, columns = 4, cellSide = 240, textScale = 2),
+    caption = "pitch spread across, polyphony up; trapezoid fitness in each label",
+)
+```
+
+![a four by four grid of small piano-roll plots: the left column holds narrow sets that stay near one pitch, the right column wide sets that sweep up or down several octaves; the bottom row has sparse single-voice sets and the top row dense stacks of overlapping blue, red and green branch grains](assets/alife_examples/grains-map.png)
+
+All sixteen cells fill in 800 evaluations. Every cell is still scored by `defaultGrainTerms()`, so
+the corners, which ask for more spread or polyphony than those terms like, score lower; the map
+shows what each kind of set costs against the target.
 
 ## 12. Agents with their own programs
 
@@ -2781,12 +3053,14 @@ Every box above is one box of a shipped starting point, so you can open the page
 edit it rather than retyping it: open it from the welcome screen. Sections 1 to 10 are
 [`alife_worked_example`](agent_transcripts.md), and section 11 is
 [`alife_evolution`](agent_transcripts.md), kept separate because its four search boxes take about
-fifty seconds between them. Every box runs on its own and prints the numbers this page quotes; none
+fifty seconds between them. The grain boxes of "Evolved grain sets" are
+[`alife_grains`](agent_transcripts.md). Every box runs on its own and prints the numbers this page quotes; none
 of them opens a `Window` or a `Renderer`. To replay them from a terminal instead:
 
 ```diffstatic {data-lang=bash}
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_worked_example.yaml
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_evolution.yaml
+python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_grains.yaml
 ```
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference:
@@ -2799,6 +3073,46 @@ python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife
 
 ## Where to go next
 
+- [Evolving creatures](evolving_creatures.md) runs the same kind of search on bodies that move,
+  and [Braitenberg vehicles](braitenberg_vehicles.md) evolves vehicle wirings on `PopulationSearch`.
+- [Cellular automata as sound](chain_ca_sound.md) and
+  [Boolean network music](boolean_network_music_examples.md) read rule systems as rhythm and
+  pitch, as the grain sets above do; [granular](functions_examples.md#granular) is Field's live
+  `GrainCloud`, which plays a sample rather than a decoded list of grains.
+- [Imaging](imaging_examples.md) supplies the `Img` operations every figure here is built from.
+- Open the starting points: [`alife_worked_example`](agent_transcripts.md#alife_worked_example)
+  (sections 1 to 10), [`alife_evolution`](agent_transcripts.md#alife_evolution),
+  [`alife_search_comparison`](agent_transcripts.md#alife_search_comparison),
+  [`alife_tree_growth`](agent_transcripts.md#alife_tree_growth) and
+  [`alife_grains`](agent_transcripts.md#alife_grains).
+- Source: [`alife_lsystem.kt`](reference/alife.md#alife-lsystem-kt),
+  [`alife_evolve.kt`](reference/alife.md#alife-evolve-kt) and
+  [`alife_grains.kt`](reference/alife.md#alife-grains-kt).
+
+Open questions and next builds for the grain sets:
+
+- **A statistic for contour.** The [recording target](#a-target-taken-from-a-recording) matches
+  count, span, spread and median and still does not rise evenly, because no `GrainStat` says which
+  way pitch moves over time. A slope of pitch against onset, or the share of steps that go up, would
+  let a target ask for a shape.
+- **Polyphonic targets.** `grainsFromAudio` is monophonic, so a recorded target always has a
+  polyphony of about 1. Reading a chordal recording needs a multi-pitch detector, which Field does
+  not have yet.
+- **A target that needs a second rule.** `nonterminals = "X"` works, but on the arpy target, at
+  the same budget and two seeds, it did not raise the best score with either alphabet. A target that rewards
+  growth that changes from one generation to the next, such as a voice that gets one note longer
+  each time, is the experiment that would show whether it helps.
+- **Statistics for the new symbols.** `<`, `>`, `l` and `r` change grain length and pan, and
+  nothing in `GrainSetStats` measures either, so the search uses them only for their side effects
+  on duration and polyphony. A length-spread and a pan-width statistic would make them targets.
+- **A breeder you can drive live.** The interactive box replaces all its players after every
+  choice; keeping past generations in a column would let you hear a lineage. `GrainBreeder.history`
+  already holds every generation and the parents chosen from it.
+- **Listening to the map.** The [map](#a-map-of-grain-sets-instead-of-one-winner) shows sixteen
+  scores; a player per cell would let you choose a parent for `GrainBreeder` from it.
+
+Open questions and next builds for Flow Lenia:
+
 - Flow Lenia on the GPU: the step is a convolution, a gradient and a scatter, the shape of the
   ping-pong compute lessons in `public/docs/assets/canonical_graphics/LESSONS.md`; check it against
   `FlowLeniaWorld` the way `FlowLeniaTest` checks the sparse convolution.
@@ -2806,3 +3120,21 @@ python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife
   and mutation of `h` so the drift in "When species meet" can select rather than only blend.
 - Per-species mass from `speciesMasses()` driving sound, or `h` painted onto the world through
   `notation`.
+
+Open questions for the rest of the page:
+
+- **Search beyond the saturated L-system objective.** The dimension target in
+  [Does search beat random?](#does-search-beat-random) cannot separate the search methods. A
+  harder drawn target, such as matching a given silhouette, would.
+- **Lenia solitons in three dimensions.** The Lenia genome and soliton objective are 2-D; the
+  3-D life-like automaton shows the grid side of that extension already exists.
+- **Trees that compete for sound.** The light-competition trees could be read with the grain
+  decoder, each branch a voice, so a forest's growth becomes a score.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`ShaderPhysarumSystem.installInto`](reference/alife.md#alife-physarum-gpu-kt--shaderphysarumsystem--installinto)
+- [`TrailFollowers.installInto`](reference/alife.md#alife-trail-followers-kt--trailfollowers--installinto)
+- [`LifeRuleGenome`](reference/alife.md#alife-evolve-kt-liferulegenome)

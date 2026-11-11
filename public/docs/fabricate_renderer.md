@@ -156,7 +156,7 @@ Style rule: keep user intent on `FabricateMaterial` and `FabricateRenderable`; l
 
 ## Default scene
 
-The default scene is a plain one: three colored torii, the standard camera, and the stock lighting setup. It is what `StandardRenderer.build(...)` gives you before you have chosen anything, so it is also the shortest route to a picture.
+The default scene is a plain one: three colored torii, the standard camera, and the stock lighting setup. It is what [`StandardRenderer.build(...)`](reference/renderers.md#standardrenderer-kt--standardrenderer--build) gives you before you have chosen anything, so it is also the shortest route to a picture.
 
 The scene is node/material creation plus mesh binding, and nothing else:
 
@@ -478,7 +478,7 @@ expect:
 
 ## A sky that lights the scene
 
-`SkyEnvironment` (in `afield.graphics.sky`) bakes [the atmospheric sky](afield_four_graphics.md#atmospheric-sky) into an equirect texture you pass as `environmentTexture`, and keeps the bundle's directional key light on the sun. The light's colour is the sunlight that gets through the atmosphere, so it is near white overhead, orange at the horizon and off once the sun sets. Moving the sun re-bakes the sky on a worker thread, and the reflections, the image-based light and the backdrop all follow it.
+[`SkyEnvironment`](reference/graphics.md#skyenvironment-kt-skyenvironment) (in `afield.graphics.sky`) bakes [the atmospheric sky](afield_four_graphics.md#atmospheric-sky) into an equirect texture you pass as `environmentTexture`, and keeps the bundle's directional key light on the sun. The light's colour is the sunlight that gets through the atmosphere, so it is near white overhead, orange at the horizon and off once the sun sets. Moving the sun re-bakes the sky on a worker thread, and the reflections, the image-based light and the backdrop all follow it.
 
 ```diffstatic {data-lang=kotlin}
 import afield.graphics.sky.SkyEnvironment
@@ -507,7 +507,7 @@ Here is one scene with the sun at 45°, 4° and −3°:
 The texture is 128 × 64 RGBA32F with a single mip level. The fabricate renderer reads rougher surfaces from lower mips, and this texture has none, so a rough surface still reflects the sky sharply. You can see it on the white sphere. The sun disc is not part of the bake, because the key light already supplies it. `sky.texels` holds the last bake, and each texel equals `Atmosphere.radiance` along `Atmosphere.equirectDirection(i, j, w, h)`; `AtmosphereTest` checks both.
 
 ??? aside "How the sky captures are made"
-    The three figures come from `StandardRendererDocsHarness.renderSkyEnvironment*`. Each one calls `setSun(..., wait = true)` before it builds the scene, so the capture always shows the finished bake. The demo is `dev_docs/agents/transcripts/sky_environment.yaml`, which has a sun slider.
+    The three figures come from `StandardRendererDocsHarness.renderSkyEnvironment*`. Each one calls [`setSun(..., wait = true)`](reference/graphics.md#skyenvironment-kt--skyenvironment--setsun) before it builds the scene, so the capture always shows the finished bake. The demo is `dev_docs/agents/transcripts/sky_environment.yaml`, which has a sun slider.
 
 ## Post stack
 
@@ -836,3 +836,10 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-ao.png" alt="six matte grey spheres resting together in two rows on a large pale dome, rendered twice side by side. Without ambient occlusion the spheres cast soft drop shadows onto the dome but the seams where they touch each other stay the same grey as the rest of them. With it, those contact valleys darken to firm creases while the lit tops of the spheres are unchanged" source-image="/tmp/docs-fabricate-ao-native.png" wait="30.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-ao" hidden=true fabricate-scene="ambient-occlusion"}
 ```
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`StandardRenderer.Config`](reference/renderers.md#standardrenderer-kt--standardrenderer--config)
+- [`SkyEnvironment.drive`](reference/graphics.md#skyenvironment-kt--skyenvironment--drive)

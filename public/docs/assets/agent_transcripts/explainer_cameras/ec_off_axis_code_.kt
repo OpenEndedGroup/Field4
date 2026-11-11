@@ -38,7 +38,7 @@ fun draw() {
         thickness = 1.0
     }
     showPlane(
-        listOf(
+        [
             fline {
                 moveTo(0, 230)
                 lineTo(640, 230)
@@ -47,7 +47,7 @@ fun draw() {
             },
             measured,
             predicted,
-        ),
+        ],
         channel = "brightness",
         width = 600,
         height = 225,

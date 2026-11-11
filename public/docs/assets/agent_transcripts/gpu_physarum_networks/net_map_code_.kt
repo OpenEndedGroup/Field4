@@ -8,7 +8,7 @@ drew and leaves yours alone.
 val left = 400.0
 val top = 200.0
 val side = 400.0
-val dots = listOf(
+val dots = [
     0.22 to 0.30,
     0.38 to 0.18,
     0.62 to 0.22,
@@ -21,7 +21,7 @@ val dots = listOf(
     0.62 to 0.82,
     0.84 to 0.78,
     0.50 to 0.30,
-)
+]
 notation {
     frame("network", left, top, side, side) {
         for ((u, v) in dots) ellipse(left + u * side - 6, top + v * side - 6, 12, 12, fill = "#ffd8a8")

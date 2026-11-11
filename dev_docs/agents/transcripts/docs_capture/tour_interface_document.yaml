@@ -17,11 +17,22 @@ operations:
           val radius = 64.0
           val count = 12
           println("radius $radius, $count points")
-          val dots = (0 until count).joinToString("") {
-              val a = it * 2 * Math.PI / count
-              "<circle cx='${80 + radius * Math.cos(a)}' cy='${80 + radius * Math.sin(a)}' r='5' fill='#4dabf7'/>"
+          val dots = fline {
+              for (i in 0 until count) {
+                  val angle = i * 2 * PI / count
+                  circle(80 + radius * cos(angle), 80 + radius * sin(angle), 5)
+              }
+              filled = true
+              stroked = false
+              color = vec(0.30, 0.67, 0.97, 1.0)
           }
-          display("ring", "<svg width='160' height='160'>$dots</svg>")
+          lines(
+              dots,
+              channel = "ring",
+              w = 160.0,
+              h = 160.0,
+              framing = LinesFraming.fixed(0.0, 0.0, 160.0, 160.0),
+          )
         notes: |
           # Ring sketch
 

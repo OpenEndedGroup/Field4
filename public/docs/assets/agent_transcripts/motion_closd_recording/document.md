@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_closd_recording" index="0" -->
 
 ```edn [field-box id="motion_closd_recording" role="properties"]
-{"id" "motion_closd_recording" "index" 0 "name" "CLoSD — a recorded foot tether" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — a recorded foot tether" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_closd_recording_code_.kt" "lines" 59 "characters" 2489 "sha256" "727a1266db6fd9bd7043c42991112fe217b053d10a7454690ba4b08b2fd67819"}]}
+{"id" "motion_closd_recording" "index" 0 "name" "CLoSD — a recorded foot tether" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — a recorded foot tether" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_closd_recording_code_.kt" "lines" 59 "characters" 2483 "sha256" "67745b5ece271829d2d9ab716fa2b4f8eee15f1ddcd64b25b53919647acb3002"}]}
 ```
 
 ```kotlin [field-property box="motion_closd_recording" name="code" path="motion_closd_recording_code_.kt"]
@@ -45,7 +45,7 @@ loop {
     val tether = events.lastOrNull { it.optString("type") == "tetherPhysics" && it.getDouble("time") <= seconds }
     val overlays =
         if (tether != null && seconds < 4.0)
-            listOf(
+            [
                 fline {
                     val a = tether.getJSONArray("anchor")
                     val p = tether.getJSONArray("point")
@@ -54,7 +54,7 @@ loop {
                     color = vec(1.0, 0.3, 0.4, 1.0)
                     thickness = 3.0
                 },
-            )
+            ]
         else emptyList()
     showMotion(
         snapshot.frame,

@@ -11,11 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="vr_ide_renderer" index="0" -->
 
 ```edn [field-box id="vr_ide_renderer" role="properties"]
-{"id" "vr_ide_renderer" "index" 0 "name" "1 - VR IDE renderer" "parents" ["root"] "children" ["vr_ide_panel"] "properties" {"children" #{#afield/box "vr_ide_panel"} "parents" #{#afield/box "root"} "name" "1 - VR IDE renderer" "_tombstone" false "frame" #afield/rect [60.0 60.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vr_ide_renderer_code_.kt" "lines" 41 "characters" 2110 "sha256" "9f04b1aca21f4c45968de0c493eeac4206698b903b091eb8a2ac70c526a75c4d"}]}
+{"id" "vr_ide_renderer" "index" 0 "name" "1 - VR IDE renderer" "parents" ["root"] "children" ["vr_ide_panel"] "properties" {"children" #{#afield/box "vr_ide_panel"} "parents" #{#afield/box "root"} "name" "1 - VR IDE renderer" "_tombstone" false "frame" #afield/rect [60.0 60.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vr_ide_renderer_code_.kt" "lines" 40 "characters" 2050 "sha256" "78f709edcc6597699a9a4e84ea7004b3edcea376b07fee6d8df166a50f9bf262"}]}
 ```
 
 ```kotlin [field-property box="vr_ide_renderer" name="code" path="vr_ide_renderer_code_.kt"]
-import afield.graphics.vulkan.targets.OpenXRHmdTarget
 import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
@@ -29,7 +28,7 @@ once.renderer {
     val preview = Window("Field · headset preview", initialDimensions = Rect(1540.0, 80.0, 1000.0, 800.0))
     // Let the headset advance even when the desktop preview cannot present.
     preview.bestEffortPresentation = true
-    val created = Renderer(window, additionalWindows = listOf(preview))
+    val created = Renderer(window, additionalWindows = [preview])
     if (useHeadset) created.openXRHmdTarget = OpenXRHmdTarget(created)
     created
 }

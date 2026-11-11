@@ -92,16 +92,15 @@ tree — a good way to label several related values at once:
 display(
     "transforms",
     linkedMapOf(
-            "scale (mat3)" to Matrix3f().set(2f, 0f, 0f, 0f, 3f, 0f, 0f, 0f, 1f),
-            "translate (mat4)" to
-                Matrix4f().identity().apply {
-                    set(3, 0, 5f)
-                    set(3, 1, -2f)
-                    set(3, 2, 1f)
-                },
-            "spin (quat)" to Quaternionf().rotateY(0.6f),
-        )
-        .h,
+        "scale (mat3)" to Matrix3f().set(2f, 0f, 0f, 0f, 3f, 0f, 0f, 0f, 1f),
+        "translate (mat4)" to
+            Matrix4f().identity().apply {
+                set(3, 0, 5f)
+                set(3, 1, -2f)
+                set(3, 2, 1f)
+            },
+        "spin (quat)" to Quaternionf().rotateY(0.6f),
+    ).h,
 )
 ```
 
@@ -1140,9 +1139,10 @@ keeps the numbers and labels visible in cells:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val grid = Array(24) { row ->
-    DoubleArray(32) { col -> sin(col * 0.25) * cos(row * 0.3) }
-}
+val grid =
+    Array(24) { row ->
+        DoubleArray(32) { col -> sin(col * 0.25) * cos(row * 0.3) }
+    }
 showHeatmap(grid, channel = "field", colormap = "coolwarm", width = 480, smooth = false)
 ```
 
@@ -1425,14 +1425,12 @@ check("shaders" in inFrame("return d.body.innerText")) { inFrame("return d.body.
 
 ### Browsing a glTF scene
 
-A scene file opens the same way. `GltfSupport.loadModel` gives Assimp's own view of a glTF (or any
+A scene file opens the same way. [`GltfSupport.loadModel`](reference/graphics.md#simplegltfsupport-kt--gltfsupport--loadmodel) gives Assimp's own view of a glTF (or any
 file Assimp reads), and `column(...)` or `tree(...)` lists its root node with its transform and
 children, then its meshes, materials and animations. A `GltfModel` loaded for drawing browses as its
 meshes, each with its buffers, material, texture slots and transform.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-gltf-browse.png" capture="box" open-outputs="true" wait="3.0" w="1300" embed=true name="gltf-browse" alt="Two output panels browsing a glTF scene loaded with GltfSupport.loadModel: a column browser listing the Assimp scene's root node, its meshes (1 entry), materials (2) and animations (0), and below it the same four entries as a collapsible tree"}
-import afield.graphics.scene.GltfSupport
-
 val scene = GltfSupport.loadModel("dev_docs/agents/fixtures/path_tracing/transforms.gltf")!!
 column("columns", scene, width = 1300)
 tree("tree", scene, width = 700)
@@ -2120,12 +2118,29 @@ var tint by keys.color(Vector4f(0.2f, 0.6f, 1f, 1f))
 var ring by keys.checkbox(false)
 
 fun draw() {
-    val r = (20 + size * 60).toInt()
+    val radius = (20 + size * 60).toInt()
     val cx = 110 + (offset.x * 60).toInt()
     val cy = 90 - (offset.y * 50).toInt()
-    val fill = "rgba(${(tint.x * 255).toInt()},${(tint.y * 255).toInt()},${(tint.z * 255).toInt()},${tint.w})"
-    val stroke = if (ring) "stroke='white' stroke-width='6'" else ""
-    display("main", "<svg width='220' height='180' style='background:#222'><circle cx='$cx' cy='$cy' r='$r' fill='$fill' $stroke/></svg>")
+    val disc = fline {
+        circle(cx, cy, radius)
+        filled = true
+        stroked = false
+        color = Vector4f(tint)
+    }
+    val outline = fline {
+        circle(cx, cy, radius)
+        thickness = 6.0
+        color = vec(1.0, 1.0, 1.0, 1.0)
+    }
+    // Keep the frame fixed while the controls move or resize the circle.
+    val figure: List<FLine> = if (ring) [disc, outline] else [disc]
+    lines(
+        figure,
+        channel = "main",
+        w = 220.0,
+        h = 180.0,
+        framing = LinesFraming.fixed(0.0, 0.0, 220.0, 180.0),
+    )
 }
 keys.onChange { draw() }
 
@@ -2133,9 +2148,11 @@ val dir = presetDirectory("look")
 
 // Two keys to start from, written once; after that the stored ones are used.
 if (keys.savedKeyNames(dir).isEmpty()) {
-    keys.Key("size" to 0.25, "offset" to Vector2f(-0.5f, 0.3f), "tint" to Vector4f(0.2f, 0.6f, 1f, 1f), "ring" to 0f)
+    keys
+        .Key("size" to 0.25, "offset" to Vector2f(-0.5f, 0.3f), "tint" to Vector4f(0.2f, 0.6f, 1f, 1f), "ring" to 0f)
         .save(dir.resolve("calm"))
-    keys.Key("size" to 0.95, "offset" to Vector2f(0.6f, -0.4f), "tint" to Vector4f(1f, 0.25f, 0.1f, 1f), "ring" to 1f)
+    keys
+        .Key("size" to 0.95, "offset" to Vector2f(0.6f, -0.4f), "tint" to Vector4f(1f, 0.25f, 0.1f, 1f), "ring" to 1f)
         .save(dir.resolve("storm"))
 }
 
@@ -2304,7 +2321,7 @@ move the playhead on screen. A completion-style spinner remains over the wavefor
 zoomed or panned min/max envelope is loading, so the old waveform cannot be mistaken for the new
 view. During playback, crossing the right edge advances the visible interval and places the playhead
 slightly inside the new window; crossing the left edge after a backward seek mirrors that behavior.
-Set `followPlayhead = false` in `AudioVisualizerOptions` to keep a zoomed interval stationary.
+Set `followPlayhead = false` in [`AudioVisualizerOptions`](reference/visualization.md#audiovisualizer-kt-audiovisualizeroptions) to keep a zoomed interval stationary.
 Waveform-envelope requests have a 15-second browser deadline; a stalled service clears the spinner
 and reports a timeout instead of leaving the view permanently busy. Any subsequent pan, zoom, or
 resize retries normally.
@@ -2884,3 +2901,9 @@ Here is the practical rule of thumb:
 All of these tools compose. One box can have a little inline history, a piano roll, a browser in one output channel, and a control surface in another. Field is very happy when code is also an interface.
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`ValueVisualizer.kt`](reference/visualization.md#valuevisualizer-kt), [`ImagingVisualizer.kt`](reference/visualization.md#imagingvisualizer-kt), [`plotly.kt`](reference/visualization.md#plotly-kt). Start from [what's already in the box](reference/index.md).*
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`GltfSupport`](reference/graphics.md#simplegltfsupport-kt-gltfsupport)

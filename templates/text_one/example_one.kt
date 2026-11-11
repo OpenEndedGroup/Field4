@@ -1,5 +1,4 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 import afield.graphics.text.sentences.Sentences
 
 // 1 · Marked breath. Whole runs, two selected words and an arclength bead.

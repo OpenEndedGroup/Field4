@@ -208,7 +208,7 @@ loop {
 <!-- field-box id="noise_live_pitch" index="3" -->
 
 ```edn [field-box id="noise_live_pitch" role="properties"]
-{"id" "noise_live_pitch" "index" 3 "name" "8 · a sine whose pitch is a distribution — launch me, sound on" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 · a sine whose pitch is a distribution — launch me, sound on" "_tombstone" false "frame" #afield/rect [500.0 460.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "noise_live_pitch_code_.kt" "lines" 22 "characters" 881 "sha256" "436ae6bbfd0e69027739b4ba514df8e9742621ef1a86a2fd0e01c216d4b28c6f"}]}
+{"id" "noise_live_pitch" "index" 3 "name" "8 · a sine whose pitch is a distribution — launch me, sound on" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 · a sine whose pitch is a distribution — launch me, sound on" "_tombstone" false "frame" #afield/rect [500.0 460.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "noise_live_pitch_code_.kt" "lines" 22 "characters" 869 "sha256" "b680837964a734bb16482e31bc4156a212099b99951da040ed288e290670ef68"}]}
 ```
 
 ```kotlin [field-property box="noise_live_pitch" name="code" path="noise_live_pitch_code_.kt"]
@@ -220,7 +220,7 @@ at every rising edge of an 8 Hz pulse; the same pulse gates the envelope. The vi
 is the pitches you are hearing, settling onto the scale's exact probabilities. Change the weights
 or the clock and re-launch.
 */
-val scale = categorical(listOf(0, 3, 5, 7, 10, 12), listOf(4, 1, 2, 3, 1, 2))
+val scale = categorical([0, 3, 5, 7, 10, 12], [4, 1, 2, 3, 1, 2])
 val hz = 220 * (scale * (kotlin.math.ln(2.0) / 12)).exp()
 
 val clock = PulseOsc(freq = Param(8f), width = Param(0.35f))
@@ -449,12 +449,11 @@ showPatAudio(
 <!-- field-box id="noise_gp_curves" index="10" -->
 
 ```edn [field-box id="noise_gp_curves" role="properties"]
-{"id" "noise_gp_curves" "index" 10 "name" "9 · a Gaussian process as distributions — where is its peak?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "9 · a Gaussian process as distributions — where is its peak?" "_tombstone" false "frame" #afield/rect [40.0 600.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "noise_gp_curves_code_.kt" "lines" 35 "characters" 1192 "sha256" "6a443cd1f389310d99b35ba43b186870e14392524d42ddd71a4455d516797ed8"}]}
+{"id" "noise_gp_curves" "index" 10 "name" "9 · a Gaussian process as distributions — where is its peak?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "9 · a Gaussian process as distributions — where is its peak?" "_tombstone" false "frame" #afield/rect [40.0 600.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "noise_gp_curves_code_.kt" "lines" 34 "characters" 1168 "sha256" "c6f96582a771b57fdbf3eda82a030fbfe9cbdc1c9a23126b94ff52bf94d49adb"}]}
 ```
 
 ```kotlin [field-property box="noise_gp_curves" name="code" path="noise_gp_curves_code_.kt"]
 import afield.math.distribution.*
-import afield.math.gp.*
 
 val xs = doubleArrayOf(0.5, 2.0, 3.5, 6.0, 7.5)
 val ys = doubleArrayOf(0.2, 1.1, 0.4, 0.9, -0.3)

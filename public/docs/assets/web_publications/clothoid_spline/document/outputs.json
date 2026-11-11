@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-11T09:57:46.566Z",
+  "capturedAt": "2026-11-11T16:45:01.274Z",
   "documentName": "clothoid_spline",
   "outputs": [
     {
-      "uid": "clothoid-spline-shape",
+      "uid": "clothoid-spline-end-directions",
       "channel": "lines",
       "open": true,
       "warnings": [],
@@ -16,7 +16,7 @@
       "path": "outputs/0.html"
     },
     {
-      "uid": "clothoid-spline-vs-cubic",
+      "uid": "clothoid-spline-shape",
       "channel": "lines",
       "open": true,
       "warnings": [],
@@ -28,7 +28,7 @@
       "path": "outputs/1.html"
     },
     {
-      "uid": "clothoid-spline-circle",
+      "uid": "clothoid-spline-vs-cubic",
       "channel": "lines",
       "open": true,
       "warnings": [],
@@ -38,6 +38,42 @@
       "width": 480,
       "height": 150,
       "path": "outputs/2.html"
+    },
+    {
+      "uid": "clothoid-spline-corners",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "clothoid-spline-circle",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "clothoid-spline-heights",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/5.html"
     }
   ]
 }

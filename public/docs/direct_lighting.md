@@ -102,7 +102,7 @@ frames {
     .end { study.close() }
 ```
 
-Stopping the box closes its study. Re-running the box replaces the study: a new `DirectLightingDemo` closes the one the same box made before.
+Stopping the box closes its study. Re-running the box replaces the study: a new [`DirectLightingDemo`](reference/graphics.md#directlightingdemo-kt-directlightingdemo) closes the one the same box made before.
 The camera lives at `study.bundle.scene.camera`. Call `study.moveObject(index, matrix)` to
 move one of its opaque objects and update both raster geometry and shadow visibility.
 The resolution belongs to the study; resizing the native window scales its presentation.

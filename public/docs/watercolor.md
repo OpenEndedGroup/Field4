@@ -336,8 +336,7 @@ markdown(
 
 | pigment, µg | added | run off | glued | bound | deposited | imbalance |
 | --- | --- | --- | --- | --- | --- | --- |
-"""
-        .trimIndent() +
+""".trimIndent() +
         "\n" +
         w.pigments.joinToString("\n") { p ->
             "| ${p.name} | ${f(p.added)} | ${f(p.runoff)} | ${f(p.glued)} | ${f(p.bound)} | ${f(p.deposited)} | ${"%.1e".format(p.imbalance)} |"

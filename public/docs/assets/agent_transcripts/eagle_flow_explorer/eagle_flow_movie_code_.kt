@@ -1,5 +1,4 @@
 import afield.geometry.topology.vectorfield.*
-import afield.tools.docs.FFMPEG
 import java.io.File
 
 // Launch this one: every frame drawn in the raw look, encoded at the film's 18 frames per second.

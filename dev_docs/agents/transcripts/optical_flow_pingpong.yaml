@@ -14,7 +14,7 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: |-
+      code: |
         import afield.graphics.vulkan.util.Options
 
         prop<Window>(window)
@@ -36,7 +36,7 @@ operations:
     property: code
     type: code
     strand: renderer
-    code: |-
+    code: |
       import afield.graphics.vulkan.util.Options
 
       prop<Window>(window)
@@ -184,7 +184,7 @@ operations:
             }
         }
             .end { ownedSession.close() }
-      vertex: |-
+      vertex: |
         #version 460
         layout(location=0) out vec2 uv;
         void main() {
@@ -361,7 +361,7 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: |-
+      code: |
         // The parent publishes these three props: previousImage, currentImage, motion.
         // moduleHere() resolves the samplers by those names, just like any other texture.
         val view = moduleHere {
@@ -378,14 +378,14 @@ operations:
                 owner.renderList.modules.remove("pingpong flow texture", view)
                 if (!owner.isClosed) owner.cleanup += Runnable { view.current.cleanup() }
             }
-      vertex: |-
+      vertex: |
         #version 460
         layout(location=0) out vec2 uv;
         void main() {
             uv=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);
             gl_Position=vec4(uv*2-1,0,1);
         }
-      fragment: |-
+      fragment: |
         #version 460
         layout(location=0) in vec2 uv;
         layout(location=0) out vec4 color;
@@ -417,7 +417,7 @@ operations:
     property: code
     type: code
     strand: scene
-    code: |-
+    code: |
       // The parent publishes these three props: previousImage, currentImage, motion.
       // moduleHere() resolves the samplers by those names, just like any other texture.
       val view = moduleHere {

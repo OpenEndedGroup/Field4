@@ -28,7 +28,7 @@ loop {
     val tether = events.lastOrNull { it.optString("type") == "tetherPhysics" && it.getDouble("time") <= seconds }
     val overlays =
         if (tether != null && seconds < 4.0)
-            listOf(
+            [
                 fline {
                     val a = tether.getJSONArray("anchor")
                     val p = tether.getJSONArray("point")
@@ -37,7 +37,7 @@ loop {
                     color = vec(1.0, 0.3, 0.4, 1.0)
                     thickness = 3.0
                 },
-            )
+            ]
         else emptyList()
     showMotion(
         snapshot.frame,

@@ -16,7 +16,12 @@ data class ReadingText(
     val layout: TextLayout? = null,
     val faces: List<Typeface> = listOfNotNull(layout?.typeface),
     val glyphFaces: Map<Int, Typeface> = emptyMap(),
+    /** Render-only partitions; the logical run retains its complete layout, outline and measurements. */
+    val renderParts: List<ReadingText> = emptyList(),
 ) {
+    /** A partitioned run's slug is its first part; renderers draw these leaves, not that atlas alone. */
+    val renderShapes: List<ReadingText> get() = renderParts.ifEmpty { listOf(this) }
+
     private val measurements =
         java.util.concurrent.ConcurrentHashMap<Pair<Int, Int>, DiagramTextMetrics>()
 

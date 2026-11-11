@@ -91,7 +91,6 @@ operations:
                   xTitle = "frame",
               )
           }
-
   - create:
       box: movement_playground
       name: movement model — a character chasing a pad

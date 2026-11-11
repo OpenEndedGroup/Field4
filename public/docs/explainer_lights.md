@@ -489,7 +489,7 @@ quarter.
 // that shadow is the panel's solid angle; move the panel away and it shrinks as the square.
 val sphere = icosphereMesh(4, 1.0)
 // Two great circles, so the sphere reads as a sphere without a wireframe in the way.
-val circles = listOf(
+val circles = [
     fline {
         moveTo(1.0, 0.0, 0.0)
         for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96))
@@ -500,7 +500,7 @@ val circles = listOf(
         for (k in 1..96) lineTo(cos(2 * PI * k / 96), sin(2 * PI * k / 96), 0.0)
         color = vec(1.0, 1.0, 1.0, 0.35)
     },
-)
+]
 
 fun draw(distance: Double) {
     val panel = planeMesh(12, 12, 0.8, 0.8).translated(0.0, 0.0, -distance)
@@ -915,7 +915,7 @@ import afield.graphics.lighting.*
 
 // Nine tiles of different colours under one lamp whose colour you pick. A tile can only send
 // back the colours the lamp gives it.
-val colours = listOf(
+val colours = [
     vec(0.8, 0.8, 0.8),
     vec(0.8, 0.1, 0.1),
     vec(0.1, 0.7, 0.1),
@@ -925,7 +925,7 @@ val colours = listOf(
     vec(0.7, 0.1, 0.7),
     vec(0.8, 0.4, 0.1),
     vec(0.3, 0.3, 0.3),
-)
+]
 val tiles =
     colours
         .withIndex()
@@ -1162,3 +1162,9 @@ controlGroup {
 The talk follows Bartosz Ciechanowski's [Lights and Shadows](https://ciechanow.ski/lights-and-shadows/), read for its order of ideas; every word and figure here was made in Field.
 
 See also: [Sound](explainer_sound.md), [Cameras and Lenses](explainer_cameras.md), the other two talks in this series, and [Presenting with Field](presentation_studio.md).
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`PointLight`](reference/graphics.md#lighting-kt-pointlight)

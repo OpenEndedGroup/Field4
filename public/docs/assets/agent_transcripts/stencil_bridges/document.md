@@ -68,12 +68,10 @@ println("cut: ${stencilPieces.size} pieces")
 <!-- field-box id="sb_judge" index="1" -->
 
 ```edn [field-box id="sb_judge" role="properties"]
-{"id" "sb_judge" "index" 1 "name" "which letters fall out, by Datalog" "parents" ["root" "sb_cut"] "children" ["sb_bridge"] "properties" {"children" #{#afield/box "sb_bridge"} "parents" #{#afield/box "root" #afield/box "sb_cut"} "name" "which letters fall out, by Datalog" "_tombstone" false "frame" #afield/rect [1240.0 40.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sb_judge_code_.kt" "lines" 39 "characters" 1171 "sha256" "1cf856787ee2c47258db9d1d0c8a4129cf21dcdca4def586cad3075b483fbedb"}]}
+{"id" "sb_judge" "index" 1 "name" "which letters fall out, by Datalog" "parents" ["root" "sb_cut"] "children" ["sb_bridge"] "properties" {"children" #{#afield/box "sb_bridge"} "parents" #{#afield/box "root" #afield/box "sb_cut"} "name" "which letters fall out, by Datalog" "_tombstone" false "frame" #afield/rect [1240.0 40.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sb_judge_code_.kt" "lines" 37 "characters" 1129 "sha256" "46f79b95c5acf01953d7f994d512940cebbbe97c4e70261d11c8f427d54c0b29"}]}
 ```
 
 ```kotlin [field-property box="sb_judge" name="code" path="sb_judge_code_.kt"]
-import afield.data.query.datalog.Datalog
-
 prop<List<Int>>(needsBridge)
 
 val d = Datalog()

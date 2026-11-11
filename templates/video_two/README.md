@@ -123,8 +123,12 @@ From code, indices are zero-based and the exported properties resolve through th
 
 ```kotlin
 screenLooks.store("slow blur", screen = 0)
-screenLookRecall.recall("slow blur", screens = setOf(0, 2, 7),
-    withSpeed = false, delaySeconds = .2)
+screenLookRecall.recall(
+    "slow blur",
+    screens = setOf(0, 2, 7),
+    withSpeed = false,
+    delaySeconds = .2,
+)
 screenLookRecall.cancel()
 ```
 
@@ -237,7 +241,7 @@ colour from the accumulation.
 ```kotlin
 val screen = carousel.surfaces[0]
 screen.accumulationShadowCooling = .4f // new contributions; previous history remains
-screen.shadowCooling = .25f           // final output, immediately
+screen.shadowCooling = .25f // final output, immediately
 ```
 
 Input uses the spare `weights.z` push-constant component in the accumulation shader. Output
@@ -309,12 +313,16 @@ counters disabled. Compare it in the live scene rather than inferring cost from 
 ```kotlin
 carousel.autoExposure.settings = carousel.autoExposure.settings.copy(
     endpointSource = VideoAutoExposure.EndpointSource.QUANTILES,
-    lowQuantile = .05f, highQuantile = .95f,
+    lowQuantile = .05f,
+    highQuantile = .95f,
 )
 val comparison = carousel.autoExposure.latest?.linked
-// rawQuantiles / quantiles contain low, median, high, validity.
-// quantileVelocities.xyz contains the corresponding rates (w is reserved).
-// sketchCount and droppedSketchPartials describe the sampled distribution, not the full image.
+
+/*
+rawQuantiles / quantiles contain low, median, high, validity.
+quantileVelocities.xyz contains the corresponding rates (w is reserved).
+sketchCount and droppedSketchPartials describe the sampled distribution, not the full image.
+*/
 ```
 
 ### Directional tracking and bounds
@@ -350,10 +358,15 @@ levels** to stop applying them. Missing/invalid measurements fall back to manual
 import afield.graphics.scene.video.VideoAutoExposure
 
 carousel.autoExposure.settings = carousel.autoExposure.settings.copy(
-    enabled = true, mode = VideoAutoExposure.Mode.LINKED, preExposureGamma = 1.25f,
-    risingAlpha = .25f, risingBeta = .05f,
-    fallingAlpha = .1f, fallingBeta = .01f,
-    blackPadding = .01f, whitePadding = .02f,
+    enabled = true,
+    mode = VideoAutoExposure.Mode.LINKED,
+    preExposureGamma = 1.25f,
+    risingAlpha = .25f,
+    risingBeta = .05f,
+    fallingAlpha = .1f,
+    fallingBeta = .01f,
+    blackPadding = .01f,
+    whitePadding = .02f,
     minimumSpan = .05f, // maximum contrast gain = 20
 )
 carousel.surfaces[0].autoExposureMix = .5f

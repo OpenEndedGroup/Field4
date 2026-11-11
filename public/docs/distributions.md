@@ -25,8 +25,8 @@ import afield.math.distribution.*
 
 val x = die(6)
 val y = die(6)
-println(P(x + y lt 10))      // 0.8327 ± 0.0008345 (n=200000)
-println(E(5 + x + y))        // 12.01 ± 0.005401 (n=200000)
+println(P(x + y lt 10)) // 0.8327 ± 0.0008345 (n=200000)
+println(E(5 + x + y)) // 12.01 ± 0.005401 (n=200000)
 ```
 
 ## Building a distribution
@@ -63,8 +63,8 @@ once, so wherever `x` appears it has the same value:
 ```diffstatic {data-lang=kotlin}
 :::static
 val x = normal(3, 2)
-E(x - x)        // exactly 0, with SE 0
-E(x + x)        // the same as E(2 * x)
+E(x - x) // exactly 0, with SE 0
+E(x + x) // the same as E(2 * x)
 ```
 
 For a second, independent variable with the same distribution, ask for a copy: `x.iid()`. For a
@@ -212,7 +212,7 @@ visits every joint value of the dice and coins, up to a million of them. `exactP
 `exactPdf(d)` return the answer, or `null` when the graph is outside what they can do (a continuous
 leaf, or too many joint values, as with 23 birthdays).
 
-For your own plots, `Progressive(d)` is the accumulator the visualizer uses: `draw(n)` adds a batch,
+For your own plots, [`Progressive(d)`](reference/math.md#queries-kt-progressive) is the accumulator the visualizer uses: `draw(n)` adds a batch,
 `estimate` is the running answer, `trace` the history of (n, mean, SE), and `kept()` the samples.
 `distributionSvg(progressive)` draws it.
 
@@ -227,8 +227,8 @@ import afield.math.distribution.*
 
 val x = die(6)
 val y = die(6)
-P((x eq 6) given (x + y ge 10))       // 0.5042 ± 0.002734 (n=200000, ess=33455)
-exactPmf(x given (x + y ge 10))       // {4.0=0.1666…, 5.0=0.3333…, 6.0=0.5}
+P((x eq 6) given (x + y ge 10)) // 0.5042 ± 0.002734 (n=200000, ess=33455)
+exactPmf(x given (x + y ge 10)) // {4.0=0.1666…, 5.0=0.3333…, 6.0=0.5}
 ```
 
 Six of the 36 rolls make 10 or more, and three of those six start with a 6, so the answer is 1/2.
@@ -247,8 +247,8 @@ import afield.math.distribution.*
 
 val p = uniform(0, 1)
 val coin = p given observed(bernoulli(p), 1, 1, 0, 1, 1, 1, 0, 1, 1, 0)
-E(coin)                         // 0.6674 ± 0.0003210 (n=200000, ess=93637); exactly 8/12
-quantile(coin, 0.05)            // about 0.436: the bias is above this nineteen times in twenty
+E(coin) // 0.6674 ± 0.0003210 (n=200000, ess=93637); exactly 8/12
+quantile(coin, 0.05) // about 0.436: the bias is above this nineteen times in twenty
 ```
 
 Each sample of `p` is weighed by how likely the seven heads are for that bias, `p⁷(1 − p)³`, and
@@ -367,13 +367,14 @@ val reach = (x * x + y * y).sqrt()
 
 val walks = 120
 val drawn = jointSamples(*(xs + ys).toTypedArray(), n = walks, seed = 7)
-val paths = (0 until walks).map { w ->
-    fline {
-        moveTo(200, 150)
-        for (k in 0 until steps) lineTo(200 + drawn[k][w], 150 - drawn[steps + k][w])
-        color = vec(0.0, 0.67, 1.0, 0.35)
+val paths =
+    (0 until walks).map { w ->
+        fline {
+            moveTo(200, 150)
+            for (k in 0 until steps) lineTo(200 + drawn[k][w], 150 - drawn[steps + k][w])
+            color = vec(0.0, 0.67, 1.0, 0.35)
+        }
     }
-}
 lines(paths, channel = "walks", w = 400.0, h = 300.0)
 println("E(reach) = ${E(reach, n = 50_000)}   (a straight line would be ${steps * 4})")
 ```
@@ -409,8 +410,19 @@ import afield.math.distribution.*
 val scale = categorical([0, 3, 5, 7, 10, 12], [4, 1, 2, 3, 1, 2])
 val tune = (60 + scale).pat().segment(8).texts()
 
-showPatRollOf("60 + scale" to tune, title = "eight draws a cycle from a weighted pentatonic", cycles = 4, pitched = true)
-showPatAudio(tune, cycles = 4, cps = 0.5, voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.05, sustain = 0.7), channel = "audio")
+showPatRollOf(
+    "60 + scale" to tune,
+    title = "eight draws a cycle from a weighted pentatonic",
+    cycles = 4,
+    pitched = true,
+)
+showPatAudio(
+    tune,
+    cycles = 4,
+    cps = 0.5,
+    voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.05, sustain = 0.7),
+    channel = "audio",
+)
 ```
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/distributions/weighted-scale.wav" audio-spec="weighted-scale" audio-renderer="afield.math.distribution.DistributionSoundDocs" embed=true hidden=true name="distributions-weighted-scale-audio"}
@@ -471,7 +483,13 @@ val hats = struct(rhythm.pat().map { it != 0.0 }, pat("hh"))
 val beat = stack(hats, pat("bd"))
 
 showPatRollOf("kick" to pat("bd"), "hats" to hats, title = "five hits in sixteen, a new five each cycle", cycles = 4)
-showPatAudio(beat, cycles = 4, cps = 0.5, voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.03, sustain = 0.3), channel = "audio")
+showPatAudio(
+    beat,
+    cycles = 4,
+    cps = 0.5,
+    voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.03, sustain = 0.3),
+    channel = "audio",
+)
 ```
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/distributions/five-in-sixteen.wav" audio-spec="five-in-sixteen" audio-renderer="afield.math.distribution.DistributionSoundDocs" embed=true hidden=true name="distributions-five-in-sixteen-audio"}
@@ -522,7 +540,8 @@ val hz = 220 * (scale * (kotlin.math.ln(2.0) / 12)).exp()
 
 val clock = PulseOsc(freq = Param(8f), width = Param(0.35f))
 val pitch = hz.param(trigger = clock)
-val env = ADSR(gate = clock, attack = Param(0.004f), decay = Param(0.06f), sustain = Param(0.35f), release = Param(0.08f))
+val env =
+    ADSR(gate = clock, attack = Param(0.004f), decay = Param(0.06f), sustain = Param(0.35f), release = Param(0.08f))
 val voice = SineOsc(freq = pitch) * env * 0.5f
 
 val sound = renderSignalsOffline(4.0, voice, sampleRate = 44_100)[0]
@@ -545,10 +564,11 @@ distribution you wrote:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-audio(voice) + loop {
-    __m("heard").distribution(pitch, title = "heard")
-    frame()
-}
+audio(voice) +
+    loop {
+        __m("heard").distribution(pitch, title = "heard")
+        frame()
+    }
 ```
 
 A posterior works here too. `(mu given observed(normal(mu, 1), readings)).param()` plays draws
@@ -579,7 +599,6 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/distributions-gp.png" alt="forty pale blue curves threaded through five orange readings, spreading apart between them and beyond the ends; beneath, a histogram of where each curve's highest point lies, in two separate humps, one near the second reading and one near the fourth, with the dashed mean in the empty gap between them" wait="3" capture="box" open-outputs="true" w="760" h="560" padding="18" timeout="120" embed=true name="distributions-gp"}
 :::static
 import afield.math.distribution.*
-import afield.math.gp.*
 
 val xs = doubleArrayOf(0.5, 2.0, 3.5, 6.0, 7.5)
 val ys = doubleArrayOf(0.2, 1.1, 0.4, 0.9, -0.3)
@@ -591,16 +610,22 @@ val f = gp.dists(grid)
 fun px(x: Double) = 20 + x * 45
 fun py(y: Double) = 150 - y * 70
 val curves = jointSamples(*f.toTypedArray(), n = 40, seed = 3)
-val drawn = (0 until 40).map { c ->
-    fline {
-        moveTo(px(grid[0]), py(curves[0][c]))
-        for (i in 1 until grid.size) lineTo(px(grid[i]), py(curves[i][c]))
-        color = vec(0.0, 0.67, 1.0, 0.3)
+val drawn =
+    (0 until 40).map { c ->
+        fline {
+            moveTo(px(grid[0]), py(curves[0][c]))
+            for (i in 1 until grid.size) lineTo(px(grid[i]), py(curves[i][c]))
+            color = vec(0.0, 0.67, 1.0, 0.3)
+        }
     }
-}
-val readings = xs.indices.map { i ->
-    fline { circle(px(xs[i]), py(ys[i]), 4.0) }.apply { filled = true; color = vec(1.0, 0.67, 0.0, 1.0) }
-}
+val readings =
+    xs.indices.map { i ->
+        fline { circle(px(xs[i]), py(ys[i]), 4.0) }
+            .apply {
+                filled = true
+                color = vec(1.0, 0.67, 0.0, 1.0)
+            }
+    }
 lines(drawn + readings, channel = "curves", w = 400.0, h = 260.0)
 
 val peakAt = argmax(f) * 0.2
@@ -693,19 +718,21 @@ for (k in 0 until beats) {
     at += 60.0 / bpm(k)
 }
 val length = beatTimes.last() + 1.0
-val performance = patTimed(beatTimes.mapIndexed { k, t -> TimedNote(t, t + 0.1, if (k % 4 == 0) 45.0 else 52.0) }, beats = length)
+val performance =
+    patTimed(beatTimes.mapIndexed { k, t -> TimedNote(t, t + 0.1, if (k % 4 == 0) 45.0 else 52.0) }, beats = length)
 val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.05, sustain = 0.3)
 val heard = patRenderStereo(performance, cycles = 1, cps = 1 / length, voice = voice)
 
 // 2. Where the notes start, found in the sound itself
-val onsets = patDetectOnsetSamples(heard.mono, PatSoundDocs.SR, minGapSeconds = 0.3).map { it.toDouble() / PatSoundDocs.SR }
+val onsets =
+    patDetectOnsetSamples(heard.mono, PatSoundDocs.SR, minGapSeconds = 0.3).map { it.toDouble() / PatSoundDocs.SR }
 
 // 3. Follow the beat. Two unknowns: the period, and when the last beat fell. At each onset the beat
 //    moves on by a period, the period drifts by about 3%, and the onset is the beat, give or take 15 ms.
-val period = uniform(0.3, 1.0)              // 60 to 200 bpm: we do not know the tempo
-val beat = known(onsets[0])                 // the first onset was a beat
+val period = uniform(0.3, 1.0) // 60 to 200 bpm: we do not know the tempo
+val beat = known(onsets[0]) // the first onset was a beat
 val post = Posterior(period, beat, particles = 3000)
-val predicted = ArrayList<Double>()         // where each next beat should fall, before it is heard
+val predicted = ArrayList<Double>() // where each next beat should fall, before it is heard
 val tempo = ArrayList<Triple<Double, Double, Double>>() // time, mean bpm, sd
 for (t in onsets.drop(1)) {
     predicted += post.E(beat + period).value
@@ -716,11 +743,22 @@ for (t in onsets.drop(1)) {
 
 // 4. An accompaniment on the predicted beats: it can only follow what it has already heard
 val accompaniment = patTimed(predicted.map { p -> TimedNote(p, p + 0.05, 76.0, gain = 0.45) }, beats = length)
-val reply = patRenderStereo(accompaniment, cycles = 1, cps = 1 / length, voice = patVoice(wave = PatWave.SINE, decay = 0.03, sustain = 0.2))
+val reply = patRenderStereo(
+    accompaniment,
+    cycles = 1,
+    cps = 1 / length,
+    voice = patVoice(wave = PatWave.SINE, decay = 0.03, sustain = 0.2),
+)
 val n = minOf(heard.frames, reply.frames)
-display("audio", afield.audio.engine.WavFloatArrayWriter.encodeStereo16(
-    FloatArray(n) { heard.left[it] * 0.8f + reply.left[it] * 0.5f }, FloatArray(n) { heard.right[it] * 0.8f + reply.right[it] * 0.5f },
-    PatSoundDocs.SR, normalizePeak = 0.9f))
+display(
+    "audio",
+    afield.audio.engine.WavFloatArrayWriter.encodeStereo16(
+        FloatArray(n) { heard.left[it] * 0.8f + reply.left[it] * 0.5f },
+        FloatArray(n) { heard.right[it] * 0.8f + reply.right[it] * 0.5f },
+        PatSoundDocs.SR,
+        normalizePeak = 0.9f,
+    ),
+)
 
 // 5. The tempo it heard, against the tempo that was played
 fun px(t: Double) = 30 + t / length * 600
@@ -743,15 +781,30 @@ val band = fline {
     stroked = false
     color = vec(0.0, 0.67, 1.0, 0.25)
 }
-val heardAt = onsets.map { t -> fline { moveTo(px(t), 236.0); lineTo(px(t), 242.0); color = vec(1.0, 0.67, 0.0, 1.0) } }
-val grid = listOf(80, 100, 120, 140, 160).map { b -> fline { moveTo(30.0, py(b.toDouble())); lineTo(630.0, py(b.toDouble())); color = vec(1.0, 1.0, 1.0, 0.12) } }
+val heardAt = onsets.map { t ->
+    fline {
+        moveTo(px(t), 236.0)
+        lineTo(px(t), 242.0)
+        color = vec(1.0, 0.67, 0.0, 1.0)
+    }
+}
+val grid =
+    listOf(80, 100, 120, 140, 160).map { b ->
+        fline {
+            moveTo(30.0, py(b.toDouble()))
+            lineTo(630.0, py(b.toDouble()))
+            color = vec(1.0, 1.0, 1.0, 0.12)
+        }
+    }
 lines(grid + band + truth + followed + heardAt, channel = "tempo", w = 660.0, h = 250.0)
 
 val errors = onsets.drop(1).indices.map { kotlin.math.abs(predicted[it] - onsets[it + 1]) * 1000 }
 val now = tempo.last()
 println("${onsets.size} onsets heard; tempo now ${now.second.f1} bpm, give or take ${now.third.f1} (played: 108)")
 fun median(xs: List<Double>) = xs.sorted()[xs.size / 2].toInt()
-println("prediction error, first 8 beats: median ${median(errors.take(8))} ms; after them: median ${median(errors.drop(8))} ms")
+println(
+    "prediction error, first 8 beats: median ${median(errors.take(8))} ms; after them: median ${median(errors.drop(8))} ms",
+)
 
 // 6. How much does the tempo drift? Ask the evidence: the same filter with three drift rates
 fun evidenceFor(drift: Double): Double {
@@ -822,7 +875,7 @@ val truth = ArrayList<Pair<Double, Double>>()
 var tx = 200.0
 var ty = 150.0
 for (k in 0 until steps) {
-    tx += moves[2 * k] + 1.5           // a slow drift to the right
+    tx += moves[2 * k] + 1.5 // a slow drift to the right
     ty += moves[2 * k + 1]
     truth += tx to ty
 }
@@ -843,15 +896,40 @@ for ((sx, sy) in seen) {
 // The truth, what was seen, the posterior's path, and 300 draws of where it is now
 val drawn = post.samples(x, y, n = 300)
 val pictures = [
-    fline { moveTo(truth[0].first, truth[0].second); for ((a, b) in truth) lineTo(a, b); color = vec(1.0, 1.0, 1.0, 0.6) },
-    fline { moveTo(path[0].first, path[0].second); for ((a, b) in path) lineTo(a, b); color = vec(0.0, 0.67, 1.0, 1.0) },
-] + seen.map { (a, b) -> fline { circle(a, b, 0.8) }.apply { filled = true; color = vec(1.0, 0.67, 0.0, 0.8) } } +
-    (0 until 300).map { i -> fline { circle(drawn[0][i], drawn[1][i], 0.45) }.apply { filled = true; color = vec(0.0, 0.67, 1.0, 0.35) } }
+    fline {
+        moveTo(truth[0].first, truth[0].second)
+        for ((a, b) in truth) lineTo(a, b)
+        color = vec(1.0, 1.0, 1.0, 0.6)
+    },
+    fline {
+        moveTo(path[0].first, path[0].second)
+        for ((a, b) in path) lineTo(a, b)
+        color = vec(0.0, 0.67, 1.0, 1.0)
+    },
+] +
+        seen.map { (a, b) ->
+            fline { circle(a, b, 0.8) }
+                .apply {
+                    filled = true
+                    color = vec(1.0, 0.67, 0.0, 0.8)
+                }
+        } +
+        (0 until 300).map { i ->
+            fline { circle(drawn[0][i], drawn[1][i], 0.45) }
+                .apply {
+                    filled = true
+                    color = vec(0.0, 0.67, 1.0, 0.35)
+                }
+        }
 lines(pictures, channel = "track", w = 480.0, h = 300.0)
 
-fun rms(ps: List<Pair<Double, Double>>) = kotlin.math.sqrt(ps.indices.sumOf { k ->
-    val dx = ps[k].first - truth[k].first; val dy = ps[k].second - truth[k].second; dx * dx + dy * dy
-} / ps.size)
+fun rms(ps: List<Pair<Double, Double>>) = kotlin.math.sqrt(
+    ps.indices.sumOf { k ->
+        val dx = ps[k].first - truth[k].first
+        val dy = ps[k].second - truth[k].second
+        dx * dx + dy * dy
+    } / ps.size,
+)
 println("distance from the truth: sightings ${rms(seen).f1}, posterior ${rms(path).f1}")
 ```
 
@@ -892,7 +970,7 @@ GLSL function, `float nlSample(inout uint s)`, with one local per node, so a nam
 variable on the GPU and `x - x` is still exactly 0. `map { }` runs arbitrary Kotlin per sample and
 stays on the CPU; `toGlsl` names the node that stopped it.
 
-`GpuMonteCarlo(renderer, d)` runs that function in a compute shader, 256 samples in each of 16 384
+[`GpuMonteCarlo(renderer, d)`](reference/math.md#distglsl-kt-gpumontecarlo) runs that function in a compute shader, 256 samples in each of 16 384
 invocations, so one dispatch draws about 4.2 million samples, and returns the same `Estimate` as
 `E(d)`. Give it a 0–1 variable for a probability. From a box beneath a renderer it waits inside
 `frames { }`:
@@ -906,7 +984,7 @@ frames {
     try {
         gpu.arm()
         while (gpu.stillWaiting()) frame()
-        println(gpu.result())        // 0.5071 ± 0.0002441 (n=4194304)
+        println(gpu.result()) // 0.5071 ± 0.0002441 (n=4194304)
     } finally {
         gpu.close()
     }
@@ -1022,7 +1100,10 @@ float splats(vec2 p, bool conditioned, float r) {
     for (int k = 0; k < 320; k++) {
         uint s = nlSeed(uint(k), conditioned ? 23u : 11u);
         float v[2];
-        if (conditioned) { if (!arc_try(s, v)) continue; } else ring(s, v);
+        if (conditioned) {
+            if (!arc_try(s, v)) continue;
+        }
+        else ring(s, v);
         vec2 d = p - vec2(v[0], v[1]);
         acc += exp(-dot(d, d) / (2.0 * r * r));
     }
@@ -1030,9 +1111,9 @@ float splats(vec2 p, bool conditioned, float r) {
 }
 
 // and in the third panel, at the pixel's x and y:
-float m = ridge_mean(x), sd = ridge_sd(x);   // the band
+float m = ridge_mean(x), sd = ridge_sd(x); // the band
 for (int k = 0; k < 20; k++) {
-    float f = ridge(x, uint(k));               // curve k at this x
+    float f = ridge(x, uint(k)); // curve k at this x
     ...
 }
 ```
@@ -1119,3 +1200,16 @@ Where it could go next:
 - **More exact cases.** Symmetry would make the birthday question exact, where enumerating 365²³
   joint values cannot. Characteristic functions would give exact densities for more continuous
   sums, and conjugate pairs (a Beta prior with coin flips) exact posteriors.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`PulseOsc`](reference/synthesis.md#oscillators-kt-pulseosc)
+- [`ADSR`](reference/synthesis.md#envelopes-kt-adsr)
+- [`SineOsc`](reference/synthesis.md#oscillators-kt-sineosc)
+- [`WavFloatArrayWriter.encodeMono16`](reference/audio.md#wavfloatarraywriter-kt--wavfloatarraywriter--encodemono16)
+- [`GpuMonteCarlo.arm`](reference/math.md#distglsl-kt--gpumontecarlo--arm)
+- [`GpuMonteCarlo.stillWaiting`](reference/math.md#distglsl-kt--gpumontecarlo--stillwaiting)
+- [`GpuMonteCarlo.result`](reference/math.md#distglsl-kt--gpumontecarlo--result)
+- [`GpuMonteCarlo.close`](reference/math.md#distglsl-kt--gpumontecarlo--close)

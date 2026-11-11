@@ -91,7 +91,7 @@ class StereoDiagramRenderer(
     private val strokeMesh = Mesh(renderer, strokeModule)
     private val pointMesh = Mesh(renderer, pointModule)
     private val slugData =
-        scene.shapes.values.distinct().associateWith { SlugBuffer(renderer, it.slug) }
+        scene.shapes.values.flatMap { it.renderShapes }.distinct().associateWith { SlugBuffer(renderer, it.slug) }
     internal val localBlurCaches = scene.blurRequests.entries.map { it.key to it.value }.chunked(2).map {
         ReadingTextBlurCache(renderer, stereo, compositor.sharp, it, slugData, scene.maximumLabels, textBlurConfig)
     }

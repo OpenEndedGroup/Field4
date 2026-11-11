@@ -6,11 +6,11 @@ to the next. A look you saved can also be turned back into Kotlin source and pas
 
 ## The words on this page
 
-- A **scope** (`KeyframeScope`) is the list of things you want a look to remember. You tell it which
+- A **scope** ([`KeyframeScope`](reference/graphics.md#keyframer-kt-keyframescope)) is the list of things you want a look to remember. You tell it which
   live values to watch, and it reads and writes them for you.
 - A **target** is one of those things: a uniform on a shader `Structure`, a Kotlin local, a slider,
   a camera.
-- A **key** (`Key`) is one saved look: a snapshot of every target in the scope, by name.
+- A **key** ([`Key`](reference/graphics.md#keyframer-kt--keyframescope--key)) is one saved look: a snapshot of every target in the scope, by name.
   `scope.capture()` makes one. Calling the key, `key()`, writes every value back.
 - A **slot** is one named value inside a key, such as `glow@radius`. Some APIs call a slot a
   **lane**, for example a class that adds several slots at once.
@@ -225,7 +225,7 @@ one member of a module's block, use `target(module, "key@block.member")`; there 
 compute and mesh modules as well. [The same thing, driving a live GPU uniform](#the-same-thing-driving-a-live-gpu-uniform)
 shows a key writing a shader's uniform.
 
-??? aside "`capture()` reads and writes back either kind of property"
+??? aside "[`capture()`](reference/graphics.md#keyframer-kt--keyframescope--capture) reads and writes back either kind of property"
 
     A `Structure` can hold a property two ways: `structure.bind("radius") { 4f }` installs a
     binding, and `structure["radius"] = 4f` stores a value (and removes any binding). `capture()`
@@ -648,8 +648,7 @@ markdown(
     """
     worst-case aiming error along the sclerp path: **%.6f** world units —
     {muted:the subject never leaves the centre of frame.}
-"""
-        .format(worstAim),
+""".format(worstAim),
 )
 :::endfold
 ```
@@ -966,7 +965,7 @@ A slot can hold code as well as numbers. Two kinds of code can go in a key:
   [Running code](running_code.md#sourceblock-and-interpolant-code-that-keeps-its-own-source)
   describes it.
 
-By default `interpolate` **steps** code: it keeps the first key's code until `t` reaches 1, then
+By default [`interpolate`](reference/graphics.md#keyframer-kt--keyframescope--interpolate) **steps** code: it keeps the first key's code until `t` reaches 1, then
 switches to the second. There is no halfway point between two unrelated programs.
 
 Often the two programs are two looks for one patch, and they differ only in their numbers. Then the
@@ -1045,8 +1044,6 @@ both; only the numbers differ. The figure draws the blended wave at five values 
 each curve sits between its neighbours: the frequencies, the decay and the offset all move together.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/source_block_curves.png" wait="3.0" capture="box" open-outputs="true" w="820" h="560" padding="16"}
-import kotlin.math.*
-
 // Two looks for one wave, each sampled across one turn: the same terms, different numbers.
 val scope = KeyframeScope()
 val calm = scope.Key(
@@ -1225,3 +1222,81 @@ runtime program at five values of the push constant, and compares both ends agai
 ??? aside "Agents: test coverage"
     [`dev_docs/KEYFRAMER_COVERAGE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/KEYFRAMER_COVERAGE.md) has the public surface of `keyframer.kt` against its ledger, and
     the calls a headless test cannot reach.
+
+## Ordered groups: one rule for a whole look
+
+An `OrderedKeyframeGroup` makes one key describe a whole ordered collection. A lane can be a
+constant, such as `0.2`, or a source-backed function of the member's zero-based index:
+
+```diffstatic {data-lang=kotlin}
+val cooling = sourceBlock { screenNo: Int ->
+    0.1 + 0.04 * screenNo
+}
+```
+
+Use the flat lambda form, with its parameter type. Field retains both the callable and its source.
+A saved key stores the expression and its owning box, so reopening it does not turn the rule into
+eight unrelated sliders. Constants remain ordinary numbers.
+
+```diffstatic {data-lang=kotlin}
+val group = OrderedKeyframeGroup(
+    count = { 8 },
+    sourceBoxId = thisBox.id,
+) { resolved ->
+    // This callback receives every validated value together.
+    println(resolved.values("cooling"))
+}.lane("cooling", initial = 0.0) { it in 0.0..1.0 }
+
+val quiet = group.capture()
+group["cooling"] = cooling
+val wave = group.capture()
+val saved = FileManager.current().path("%document/keys/cooling-wave")
+wave.save(saved)
+
+group.apply(group.scope.loadKey(saved))
+group.apply(group.blend(quiet, wave) { index -> index / 7.0 })
+```
+
+The group uses the ordinary `KeyframeScope` store, versions and keyframe browser. Apply evaluates
+all lanes at all member indices, checks finite values and lane domains, then invokes the one commit
+callback. A rule that fails at index 7 leaves the previous working rules untouched. Put coupled
+checks in `group.validate { resolved -> ... }`. The commit callback should only install already
+validated data; it must not throw after partially writing the sketch.
+
+Blending mixes the **outputs** of two rules at each member. The programs can be completely
+different. `group.scope.interpolate(a, b, t)` uses this pointwise interpretation for registered
+group lanes, while ordinary code lanes retain their existing code-blend semantics.
+
+For a travelling transition, call this from a control loop with elapsed seconds:
+
+```diffstatic {data-lang=kotlin}
+val key = group.transition(
+    quiet,
+    wave,
+    seconds = elapsed,
+    durationSeconds = 1.5,
+    staggerSeconds = 0.12,
+)
+group.apply(key)
+```
+
+Each member starts `index * staggerSeconds` later. Zero duration gives staggered cuts. Intermediate
+rules remain saveable, including a transition held halfway through. Their progress samples retain
+the group size at capture; adding members to a sampled rule requires rebuilding that rule.
+
+Hydrate saved expressions during setup or on a control thread. A restored function compiles once;
+subsequent calls reuse it. Inherited `prop` and `@exported` accessors stay dynamic. Unexported local
+variables are not durable captures: put those values in the expression or an inherited property.
+Rules evaluate when applied, rather than running an implicit animation loop of their own.
+
+The loadable [ordered-group transcript](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/transcripts/ordered_group_keyframes.yaml)
+exercises native save/reload, changing inherited properties, a saved midpoint and invalid-value
+rejection without a graphics device. `video_three` uses this same API for whole-carousel looks;
+its single decoder's speed remains a separate global lane.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`CodeBlendOptions`](reference/graphics.md#keyframecodeblend-kt-codeblendoptions)
+- [`KeyframeScope.codeBlendPlans`](reference/graphics.md#keyframer-kt--keyframescope--codeblendplans)

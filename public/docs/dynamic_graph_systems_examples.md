@@ -128,11 +128,19 @@ val panels = systems.map { (name, system) ->
                 100.0 * wmax / ceiling,
             ),
     )
-    // One FLine per edge, drawn as vector graphics. Weight sets both colour and stroke width,
-    // against `ceiling`. A weight near zero starts 40% up the ramp, so the low-weight systems stay
-    // visible on the dark card.
+    /*
+    One FLine per edge, drawn as vector graphics. Weight sets both colour and stroke width,
+    against `ceiling`. A weight near zero starts 40% up the ramp, so the low-weight systems stay
+    visible on the dark card.
+    */
     "%s: %de %d%%tri".format(name, edges.values().size, Math.round(100.0 * fraction)) to
-        dynamicGraphFLines(state.points, edges.values(), maxWeight = ceiling, colormap = "magma", minEdgeIntensity = 0.4)
+        dynamicGraphFLines(
+            state.points,
+            edges.values(),
+            maxWeight = ceiling,
+            colormap = "magma",
+            minEdgeIntensity = 0.4,
+        )
 }
 
 // One shared window for all six panels, so nothing but the topology differs between them.

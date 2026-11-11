@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T22:27:25.667Z",
+  "capturedAt": "2026-11-11T15:59:39.695Z",
   "documentName": "audio_ai_gesture_board",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 1146,
-      "height": 692,
+      "height": 706,
       "path": "outputs/0.html"
     }
   ]

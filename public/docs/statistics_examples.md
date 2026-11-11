@@ -22,7 +22,7 @@ choose, for when a signal has the wrong shape to work with.
 | what you want | where it is | notes |
 |---|---|---|
 | count, quartiles, IQR, MAD, variance, skew, excess kurtosis | `stats.kt` | `buildSummaryStats` → `SummaryStats`. Non-finite input is dropped *and counted* |
-| a streaming window of all of that | `stats.kt` | `SummaryStatsBuffer`, plus `Vec2`/`Vec3`/`Vec4SummaryStatsBuffer` which add per-component stats, vector length and the pairwise component correlations |
+| a streaming window of all of that | `stats.kt` | [`SummaryStatsBuffer`](reference/math.md#stats-kt-summarystatsbuffer), plus `Vec2`/`Vec3`/`Vec4SummaryStatsBuffer` which add per-component stats, vector length and the pairwise component correlations |
 | histograms | `stats.kt` | `buildHistogram` → `Histogram` / `HistogramBin` |
 | those, rendered | `stats.kt` | `histogramToSvg`, `seriesPlotToSvg`, `summaryStatsBoxToHtml` — string-interpolated SVG/HTML, no drawing library, cyan-on-black by default |
 | **the dependence coefficients** | `correlations.kt` | `StatsDependence.pearson` / `spearman` / `kendallTauB` / `chatterjeeXi` (aliased `xi`) / `distanceCorrelation` / `micTicNaive` |
@@ -43,8 +43,8 @@ next to the interpolants.
 ## Summary statistics
 
 `buildSummaryStats` takes any `Iterable<Double>` and hands back seventeen numbers.
-`SummaryStatsBuffer` wraps it in a synchronized, capped sliding window you can `add` to sample by
-sample, and `summaryHtml()` renders the whole thing (metrics, histogram and series plot) as one
+`SummaryStatsBuffer` wraps it in a synchronized, capped sliding window you can [`add`](reference/math.md#stats-kt--summarystatsbuffer--add) to sample by
+sample, and [`summaryHtml()`](reference/math.md#stats-kt--summarystatsbuffer--summaryhtml) renders the whole thing (metrics, histogram and series plot) as one
 self-contained HTML card.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/summary_card.png" wait="1.5" capture="box" open-outputs="true" w="760" h="640" padding="16"}
@@ -774,3 +774,10 @@ distribution over whole functions, curves and fields — means, uncertainty and 
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference:
 [Math](reference/math.md) and [Data](reference/data.md).*
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`SummaryStatsBuffer.addAll`](reference/math.md#stats-kt--summarystatsbuffer--addall)
+- [`SummaryStatsBuffer.snapshot`](reference/math.md#stats-kt--summarystatsbuffer--snapshot)

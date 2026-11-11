@@ -66,7 +66,7 @@ driving keeps driving through a brief dip in the light.
 `VehicleWorld.random(count, lights, wiring = ...)` places vehicles at random on a torus among some
 lights. The four companion wirings are Braitenberg's: `AGGRESSOR` (crossed, excitatory), `COWARD`
 (uncrossed, excitatory), `LOVER` (uncrossed, inhibitory) and `EXPLORER` (crossed, inhibitory).
-`VehicleCanvas` draws a fading trail behind each vehicle, red for the left motor neuron's rate and green
+[`VehicleCanvas`](reference/simulation.md#alife-vehicles-kt-vehiclecanvas) draws a fading trail behind each vehicle, red for the left motor neuron's rate and green
 for the right, so a vehicle driving flat out is yellow and a turning one is red or green.
 
 The inhibitory pair use `bias = −1.0`, so their neurons are on in the dark and switched off by light.
@@ -150,7 +150,7 @@ held below its `targetRate` for long enough lowers its own threshold, and the pa
 creep back on until it drives away to find another light. Its neurons then run hot in the dark, the
 thresholds climb again, and it arrives at the next light able to be stopped by it.
 
-`LightVisits` counts arrivals at a light other than the last one.
+[`LightVisits`](reference/simulation.md#alife-vehicles-kt-lightvisits) counts arrivals at a light other than the last one.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/braitenberg_vehicles/bored.png" embed=true wait="20.0" timeout="240" capture="box" open-outputs="true" padding="20"}
 val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
@@ -386,7 +386,7 @@ the stopping for them.
 
 ## 8. Moving lights
 
-A `Light` takes a velocity, `vx` and `vy` in units per step; `VehicleWorld.step` moves it across the
+A [`Light`](reference/simulation.md#alife-vehicles-kt-light) takes a velocity, `vx` and `vy` in units per step; `VehicleWorld.step` moves it across the
 torus. Use `withLights` to move a population onto a different set of lamps. The box below trains the
 section 4 population on still lamps for 15 000 steps, freezes its
 weights, then sets every lamp drifting at 0.1 units per step in a different direction. Beside it are
@@ -589,3 +589,17 @@ Random sampling gains only 0.15 from ten times the budget.
     random and hill-climb arms are identical in both runs (same seeds, same genome). The box's six
     seeds reproduce the first six rows of the twelve-seed per-seed table exactly; the seeds run in
     parallel and `theComparisonIsDeterministic` pins that this changes nothing.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`NeuronParams`](reference/simulation.md#alife-vehicles-kt-neuronparams)
+- [`VehicleParams`](reference/simulation.md#alife-vehicles-kt-vehicleparams)
+- [`LightVisits.observe`](reference/simulation.md#alife-vehicles-kt--lightvisits--observe)
+- [`VehicleCanvas.record`](reference/simulation.md#alife-vehicles-kt--vehiclecanvas--record)
+- [`LightVisits.mean`](reference/simulation.md#alife-vehicles-kt--lightvisits--mean)
+- [`VehicleCanvas.image`](reference/simulation.md#alife-vehicles-kt--vehiclecanvas--image)
+
+- [`PopulationSearch.evolve`](reference/search.md#populationsearch-kt--populationsearch--evolve)
+- [`PopulationSearch`](reference/search.md#populationsearch-kt-populationsearch)

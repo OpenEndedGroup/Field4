@@ -116,7 +116,7 @@ thousand of them might change every frame. Add `fieldProbe` to the shader to rec
 ```diffstatic {data-lang=glsl}
 :::static
 vec2 delta = moved - seed.xy; // moved: the particle's new position; seed: where it started
-fieldProbe(length(delta));    // record how far it is from its start
+fieldProbe(length(delta)); // record how far it is from its start
 ```
 
 Then turn the probe on from the box and show what it recorded:

@@ -850,6 +850,19 @@ FLines](fline_examples.md#curvature-continuous-splines-clothoidsplinefrom).
 
 [Open →](offline.html?file=assets/agent_transcripts/clothoid_spline/metadata.edn)
 
+### variable_width_strokes
+
+**Variable-width strokes, outlined as a swept circle.** Four boxes: a quick hand-written "o" drawn as
+pills, trapezoid pills and a swept spline; one cubic against `byVariableRibboning`; a stroke whose
+radius grows faster than it moves; and a pressure stroke read back from the drawing layer. From
+[Drawing with FLines](fline_examples.md#variable-width-strokes-the-swept-circle-envelope).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/variable_width_strokes.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="120" padding="12" name="gallery-variable-width-strokes" alt="A hand-written o drawn three ways in cream on black: knuckled pills, straight-sided trapezoid pills, and a smooth swept spline, with the pen samples as red dots" macro-file="../../dev_docs/agents/transcripts/variable_width_strokes.yaml" capture-box="swept-o"}
+// The transcript builds and runs all four boxes; this is the "o" box.
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/variable_width_strokes/metadata.edn)
+
 ### fline_exact_booleans
 
 **Exact booleans and cubic offsets, side by side with the old paths.** Two boxes, each with a dot on every node: the union and difference of a blob and a circle through `Area` and through `booleanExact`, and a star and an S-curve offset by `byOffsetting` and by `byOffsettingExact`. From [Drawing with FLines](fline_examples.md#exact-booleans-and-offsets).
@@ -1111,14 +1124,29 @@ a site, change a weight, raise an iso level or ask for a different `k` and re-ru
 
 [Open →](offline.html?file=assets/agent_transcripts/spatial_geometry_examples/metadata.edn)
 
+### alife_grains
+
+Evolved grain sets, after Nathan Ho's [EvoGrain](https://nathanho.me/posts/evograin), on the
+[ALife page](alife_examples.md): an L-system derivation read as a score of grains, where `G` plays a
+grain, `+`/`-` step the pitch and every bracket is a new voice. Box 1 decodes one grammar into a
+piano-roll and a player. Box 2 evolves the grammar toward a profile of trapezoid-scored statistics,
+with sliders for three of the targets that re-run the search. Box 3 is interactive evolution: six
+children with players, and a text field naming the parents of the next generation.
+
+[Open →](offline.html?file=assets/agent_transcripts/alife_grains/metadata.edn)
+
 ### kmeans_emeans
 
 The [k-means at scale](spatial_geometry_examples.md#k-means-at-scale) section as two boxes.
 *Lloyd vs e-means* clusters 48 000 points in 60 blobs from the same random seeds with Lloyd's
 algorithm at 25 epochs and e-means ([Meta FAIR](https://e-means.github.io), ported from Faiss) at 3,
 and plots both runs' mean squared error per epoch. *Revival* rings 40 blobs with 12 strays, so
-k-means++ seeds a centroid on a stray, and shows e-means moving it back into the data. Change `k`,
-`epochs` or the seeding and re-run.
+plain k-means++ seeds a centroid on a stray, and shows e-means moving it back into the data.
+*Centroid trails on an epoch slider* scrubs through both algorithms' centroids epoch by epoch.
+*k-means tree of centroid paths* runs
+`vec2KMeansTree`, clustering 1 000 points into half as many centroids, then half again down to one,
+and draws every centroid's path as a tree of curves. Change `k`, `epochs`, `stepScale` or the
+seeding and re-run.
 
 ![Three panels: the 60-blob cloud clustered by Lloyd, the same cloud clustered by e-means, and a log-scale plot of mean squared error per epoch for both](assets/spatial_geometry_examples/kmeans_lloyd_vs_emeans.png)
 
@@ -1783,6 +1811,19 @@ is what the split does, runs it once.
 Walkthrough: [Blending two programs](keyframer_examples.md#blending-two-programs-not-just-two-numbers).
 
 [Open →](offline.html?file=assets/agent_transcripts/keyframe_code_blend/metadata.edn)
+
+### ordered_group_keyframes
+
+One look describes a whole ordered collection: each lane is a constant or a source-backed
+function of the member index. This five-member example saves and restores a cooling rule,
+changes an inherited property, blends outputs with staggered progress, and saves a midpoint.
+A second rule comes from a different box, retaining its own context through the saved blend.
+An invalid value at the final member leaves the previous rules intact. The example uses CPU
+values and the real Kotlin compiler, so it needs no renderer or headset.
+
+Walkthrough: [Ordered groups](keyframer_examples.md#ordered-groups-one-rule-for-a-whole-look).
+
+[Open →](offline.html?file=assets/agent_transcripts/ordered_group_keyframes/metadata.edn)
 
 ### fn_rewrite_kotlin_boxes
 
@@ -3479,6 +3520,16 @@ here are captures of that window, taken by the docs capture pipeline from these 
 (`capture="native-window"`). Where an entry
 carries none, there is no such capture: run the scene yourself and grab its window with a follow-on
 `native-screenshot` backdoor command (with `--with-playwright`).
+
+### satellites
+
+**SGP4 passes and the whole satellite catalogue on the GPU.** Four boxes: a week of passes over
+Chicago for five satellites, charted on the CPU; a renderer; an Earth box drawing coastlines, a
+graticule and the ISS's ground track, bright where Chicago sees it; and about 15,000 satellites
+from the bundled CelesTrak snapshot, each moved by a Kepler solve in the vertex shader every frame.
+Fly the camera with the keyboard in the window. See [Satellites and Orbits](satellites.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/satellites/metadata.edn)
 
 ### renderer_browsing
 

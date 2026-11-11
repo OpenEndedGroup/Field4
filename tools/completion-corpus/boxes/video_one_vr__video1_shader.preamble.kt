@@ -1,3 +1,4 @@
+import afield.ui.output.ControlValueHandle
 import afield.graphics.vulkan.buffers.*
 import afield.document.context.*
 import afield.graphics.render.*
@@ -7,7 +8,6 @@ import arrow.core.left
 import arrow.core.right
 import java.nio.*
 import afield.graphics.scene.video.StereoVideoSurface
-import afield.ui.output.ControlValueHandle
 import afield.graphics.vulkan.util.Window
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.targets.MultiviewStereoTarget

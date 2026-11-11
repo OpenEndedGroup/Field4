@@ -1,7 +1,4 @@
 // The parent graph supplies both the renderer and the composite RTT.
-import afield.document.context.fromContextWithNameOrNull
-import afield.graphics.vulkan.targets.RenderToTexture
-
 val presentedTexture: RenderToTexture =
     fromContextWithNameOrNull<RenderToTexture>("composite")
         ?: throw IllegalStateException("Launch the FXAA composite parent (3) first")

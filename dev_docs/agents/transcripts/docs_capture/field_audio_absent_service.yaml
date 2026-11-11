@@ -54,8 +54,7 @@ operations:
           )
           display(
               "render",
-              "rendered ${render.path} · ${render.channels}ch @ ${render.sampleRate} Hz · " +
-                  "${render.durationSeconds?.f3} s",
+              "rendered ${render.path} · ${render.channels}ch @ ${render.sampleRate} Hz · " + "${render.durationSeconds?.f3} s",
           )
 
           // The default address. Nothing is listening on it unless you started the Python service.

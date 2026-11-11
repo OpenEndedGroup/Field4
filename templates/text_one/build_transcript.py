@@ -41,6 +41,8 @@ def main():
         ('text1_example4', '5 · Sentence furniture', 650, 330, {'code': (here/'example_four.kt').read_text()}),
         ('text1_typography', '13 · Typography playground', 650, 440, {'code': (here/'typography_playground.kt').read_text()}),
         ('text1_word_blur', '14 · Words becoming weather', 650, 550, {'code': (here/'word_blur.kt').read_text()}),
+        ('text1_elastic', '18 · Elastic sentences', 650, 660, {'code': (here/'elastic_sentences.kt').read_text()}),
+        ('text1_drop_caps', '19 · A dropped initial', 650, 770, {'code': (here/'drop_caps.kt').read_text()}),
         ('text1_score', '6 · Scores / example selector', 1200, 0, {'code': (here/'score.kt').read_text()}),
         ('text1_stroke', '7 · FLine strokes', 1800, 0, {'code': shader_box('strokeModuleFactory'), 'vertex': shader('stroke_vertex'), 'fragment': shader('stroke_fragment')}),
         ('text1_point', '8 · SDF markers', 1800, 110, {'code': shader_box('pointModuleFactory'), 'vertex': shader('point_vertex'), 'fragment': shader('point_fragment')}),
@@ -56,9 +58,9 @@ def main():
         {'create': {'box': uid, 'name': name, 'frame': {'x': x, 'y': y, 'w': 480, 'h': 100}, 'properties': props}}
         for uid, name, x, y, props in boxes
     ]
-    for child in ['text1_poem', 'text1_example2', 'text1_example3', 'text1_example4', 'text1_typography', 'text1_word_blur', 'text1_stroke', 'text1_point', 'text1_text', 'text1_blur', 'text1_blur_medium_v', 'text1_blur_broad_h', 'text1_blur_broad_v', 'text1_composite']:
+    for child in ['text1_poem', 'text1_example2', 'text1_example3', 'text1_example4', 'text1_typography', 'text1_word_blur', 'text1_elastic', 'text1_drop_caps', 'text1_stroke', 'text1_point', 'text1_text', 'text1_blur', 'text1_blur_medium_v', 'text1_blur_broad_h', 'text1_blur_broad_v', 'text1_composite']:
         create.append({'connect': {'parent': 'text1_context', 'child': child}})
-    for parent in ['text1_poem', 'text1_example2', 'text1_example3', 'text1_example4', 'text1_typography', 'text1_word_blur']:
+    for parent in ['text1_poem', 'text1_example2', 'text1_example3', 'text1_example4', 'text1_typography', 'text1_word_blur', 'text1_elastic', 'text1_drop_caps']:
         create.append({'connect': {'parent': parent, 'child': 'text1_score'}})
     for parent in ['text1_poem', 'text1_score', 'text1_stroke', 'text1_point', 'text1_text', 'text1_blur', 'text1_blur_medium_v', 'text1_blur_broad_h', 'text1_blur_broad_v', 'text1_composite']:
         create.append({'connect': {'parent': parent, 'child': 'text1_drawing'}})
@@ -77,7 +79,7 @@ def main():
         args.transcript.parent.mkdir(parents=True, exist_ok=True)
         args.transcript.write_text(yaml.dump({
             'name': 'text_one_vr',
-            'description': 'Six shallow-3D reading spaces: marked breath, constituency canopy, dependency undertow, Reed-Kellogg sentence furniture, a mixed-font typography playground and slow word-local Gaussian blur. CPU SIMDVerlet, per-eye FLine thickening and Slug text, with independent scores. Starts in desktop preview; OpenXR is an explicit fresh-process mode. Generated from templates/text_one by build_transcript.py.',
+            'description': 'Eight shallow-3D reading spaces: marked breath, constituency canopy, dependency undertow, Reed-Kellogg sentence furniture, a mixed-font typography playground slow word-local Gaussian blur elastic sentence threads and dropped paragraph initials. CPU SIMDVerlet, per-eye FLine thickening and Slug text, with independent scores. Starts in desktop preview; OpenXR is an explicit fresh-process mode. Generated from templates/text_one by build_transcript.py.',
             'docs': [{'page': 'sentence_diagrams.md', 'why': 'Parser setup, four diagrams, mixed-font typography and the reading-space DSL.'}],
             'operations': create + launch,
         }, Dumper=SourceDumper, allow_unicode=True, sort_keys=False, width=100))

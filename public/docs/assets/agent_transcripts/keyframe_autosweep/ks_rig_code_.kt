@@ -11,7 +11,7 @@ import kotlin.io.path.writeText
 prop<StandardRenderer.Bundle>(bundle)
 prop<afield.animation.keyframes.KeyframeScope>(keys)
 
-val r: Renderer = fromContext()
+val r = renderer
 val dim = 512
 
 // Plain locals rather than `prop<>`s: a `Path` in a document property would have to

@@ -1,7 +1,5 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 import afield.graphics.text.sentences.*
-import kotlin.math.*
 
 // 2 · Complete canopy. Preserve the parser's tree, POS labels, word stems and dependency arcs.
 val parsed = Sentences.example(2)

@@ -47,7 +47,7 @@ interlocking labyrinth whose colours do not cross; one species alone, at the sam
 density, closes into a net of cells instead.
 
 ```edn [field-box id="stigmergy_slime" role="properties"]
-{"id" "stigmergy_slime" "index" 1 "name" "three species" "parents" ["root" "stigmergy_renderer"] "children" ["stigmergy_followers" "stigmergy_chase" "stigmergy_reset"] "properties" {"children" #{#afield/box "stigmergy_followers" #afield/box "stigmergy_chase" #afield/box "stigmergy_reset"} "parents" #{#afield/box "root" #afield/box "stigmergy_renderer"} "name" "three species" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stigmergy_slime_code_.kt" "lines" 26 "characters" 1016 "sha256" "f01aa3f0015a2f8716fc2279fdd8fe50b4f9a5cd0628b9cd2963eba1c33a6012"}]}
+{"id" "stigmergy_slime" "index" 1 "name" "three species" "parents" ["root" "stigmergy_renderer"] "children" ["stigmergy_followers" "stigmergy_chase" "stigmergy_reset"] "properties" {"children" #{#afield/box "stigmergy_followers" #afield/box "stigmergy_chase" #afield/box "stigmergy_reset"} "parents" #{#afield/box "root" #afield/box "stigmergy_renderer"} "name" "three species" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stigmergy_slime_code_.kt" "lines" 26 "characters" 1010 "sha256" "8bd71849e3f9f3da5089f2e866cd0933a96634f20bfa59dbc82cbb6b3126a63e"}]}
 ```
 
 ```kotlin [field-property box="stigmergy_slime" name="code" path="stigmergy_slime_code_.kt"]
@@ -66,11 +66,11 @@ prop<ShaderPhysarumSystem>(physarum) = ShaderPhysarumSystem() {
     speciesCount = 3
     exclusive = true
     exposure = 0.06f
-    attraction = listOf(
+    attraction = [
         vec(1f, -2f, -2f, 0f),
         vec(-2f, 1f, -2f, 0f),
         vec(-2f, -2f, 1f, 0f),
-    )
+    ]
 }
 physarum.trail.settings.diffusion = 0.2f
 
@@ -125,17 +125,17 @@ From `code`
 empty the trail, restore the territorial matrices, and scatter the agents again
 
 ```edn [field-box id="stigmergy_reset" role="properties"]
-{"id" "stigmergy_reset" "index" 3 "name" "reset" "parents" ["root" "stigmergy_slime"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "stigmergy_slime"} "name" "reset" "_tombstone" false "frame" #afield/rect [340.0 400.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stigmergy_reset_code_.kt" "lines" 10 "characters" 322 "sha256" "a59b1ec6b3d3efa594a5f1d01f14c8856ca18740a592d5ea03a798bea0e2fb78"}]}
+{"id" "stigmergy_reset" "index" 3 "name" "reset" "parents" ["root" "stigmergy_slime"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "stigmergy_slime"} "name" "reset" "_tombstone" false "frame" #afield/rect [340.0 400.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stigmergy_reset_code_.kt" "lines" 10 "characters" 316 "sha256" "44135776ce0f7f16dfde4a4600e976b1b68912c93b8446f153f2a2343368cdc7"}]}
 ```
 
 ```kotlin [field-property box="stigmergy_reset" name="code" path="stigmergy_reset_code_.kt"]
 // empty the trail, restore the territorial matrices, and scatter the agents again
 physarum.settings.depositInto = null
-physarum.settings.attraction = listOf(
+physarum.settings.attraction = [
     vec(1f, -2f, -2f, 0f),
     vec(-2f, 1f, -2f, 0f),
     vec(-2f, -2f, 1f, 0f),
-)
+]
 physarum.trail.clear()
 physarum.resetAgents(System.nanoTime())
 println("reset")
@@ -154,7 +154,7 @@ mark of species 0's scent wherever it goes, and species 0 (amber) is repelled tw
 hard by cyan as before. Re-run with other numbers: both matrices are read every frame.
 
 ```edn [field-box id="stigmergy_chase" role="properties"]
-{"id" "stigmergy_chase" "index" 4 "name" "chase" "parents" ["root" "stigmergy_slime"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "stigmergy_slime"} "name" "chase" "_tombstone" false "frame" #afield/rect [340.0 160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stigmergy_chase_code_.kt" "lines" 16 "characters" 573 "sha256" "407ba9a1fea12713995e7284cf7348fcb6edff203b0f8090e09f4cafa6a78b2f"}]}
+{"id" "stigmergy_chase" "index" 4 "name" "chase" "parents" ["root" "stigmergy_slime"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "stigmergy_slime"} "name" "chase" "_tombstone" false "frame" #afield/rect [340.0 160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stigmergy_chase_code_.kt" "lines" 16 "characters" 561 "sha256" "b8cf5971ced92cad3646283f988e8b87d0290bcbe6337bef0d9f0d8b0356652f"}]}
 ```
 
 ```kotlin [field-property box="stigmergy_chase" name="code" path="stigmergy_chase_code_.kt"]
@@ -163,16 +163,16 @@ Species may write into each other's channels. Here species 1 (cyan) also lays ha
 mark of species 0's scent wherever it goes, and species 0 (amber) is repelled twice as
 hard by cyan as before. Re-run with other numbers: both matrices are read every frame.
 */
-physarum.settings.depositInto = listOf(
+physarum.settings.depositInto = [
     vec(1f, 0f, 0f, 0f),
     vec(0.5f, 1f, 0f, 0f),
     vec(0f, 0f, 1f, 0f),
-)
-physarum.settings.attraction = listOf(
+]
+physarum.settings.attraction = [
     vec(1f, -4f, -2f, 0f),
     vec(1f, 1f, -2f, 0f),
     vec(-2f, -2f, 1f, 0f),
-)
+]
 println("chase: species 1 follows species 0 and marks its channel")
 ```
 

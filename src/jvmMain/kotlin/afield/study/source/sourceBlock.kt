@@ -46,10 +46,14 @@ import afield.document.graph.Box
  * box it came from, the first time it is called. So a saved block works before (or without) the box
  * that wrote it running again.
  *
- * A block made by this call carries its lambda and is safe to call at once. A block loaded back from
- * saved text is not safe to call from inside its own box's running code: compiling it runs that box's
- * code again, which calls the block again. Call it from another box, a frame loop or a control
- * callback; [SourceBackedBlockSelfBoxReentry] stops the loop and says so if you do.
+ * A typed one-argument lambda uses the same flat spelling:
+ * `sourceBlock { screenNo: Int -> 0.1 + 0.04 * screenNo }`. It produces a
+ * [SourceBackedFunction] retaining the complete lambda, including its parameter type. This form
+ * is a Field box macro; compiled Kotlin can construct [SourceBackedFunction] explicitly.
+ *
+ * Restored blocks compile once. During their owner's body they use a separate engine with the
+ * inherited preamble, avoiding recursive body execution. Inherited properties remain available;
+ * unexported local variables are not durable captures and must be written into the source instead.
  *
  * Should the macro not run (code that reaches this function some other way), the result still works,
  * with an empty [SourceBackedBlock.source].

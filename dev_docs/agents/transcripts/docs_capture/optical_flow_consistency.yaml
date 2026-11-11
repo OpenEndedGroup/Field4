@@ -13,7 +13,7 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: |-
+      code: |
         import afield.graphics.vulkan.util.Options
 
         prop<Window>(window)
@@ -35,7 +35,7 @@ operations:
     property: code
     type: code
     strand: renderer
-    code: |-
+    code: |
       import afield.graphics.vulkan.util.Options
 
       prop<Window>(window)
@@ -66,7 +66,6 @@ operations:
       code: |
         import afield.graphics.vulkan.device.CommandBuffer
         import afield.graphics.vulkan.device.Fence
-        import afield.media.vision.opticalFlow
         import org.lwjgl.system.MemoryStack
         import org.lwjgl.vulkan.VK13.*
 
@@ -96,7 +95,8 @@ operations:
         propDown<HasImageView>(currentImage) = history.latestImageView
         // The NV hardware engine where the device has one; portable pyramidal Lucas–Kanade everywhere else.
         // Fully qualified: prop<T> finds T's import in a classpath index that lists classes, not interfaces.
-        prop<afield.media.vision.PyramidOpticalFlow>(flow) = afield.media.vision.PyramidOpticalFlow(renderer, previousImage, currentImage, consistency = true)
+        prop<afield.media.vision.PyramidOpticalFlow>(flow) =
+            afield.media.vision.PyramidOpticalFlow(renderer, previousImage, currentImage, consistency = true)
         println("Optical flow backend: ${flow.backend}")
         propDown<RenderToTexture>(motion) = flow.output
         propDown<RenderToTexture>(motionConfidence) = flow.consistencyMap!!
@@ -184,7 +184,7 @@ operations:
             }
         }
             .end { ownedSession.close() }
-      vertex: |-
+      vertex: |
         #version 460
         layout(location=0) out vec2 uv;
         void main() {
@@ -235,7 +235,6 @@ operations:
     code: |
       import afield.graphics.vulkan.device.CommandBuffer
       import afield.graphics.vulkan.device.Fence
-      import afield.media.vision.opticalFlow
       import org.lwjgl.system.MemoryStack
       import org.lwjgl.vulkan.VK13.*
 
@@ -265,7 +264,8 @@ operations:
       propDown<HasImageView>(currentImage) = history.latestImageView
       // The NV hardware engine where the device has one; portable pyramidal Lucas–Kanade everywhere else.
       // Fully qualified: prop<T> finds T's import in a classpath index that lists classes, not interfaces.
-      prop<afield.media.vision.PyramidOpticalFlow>(flow) = afield.media.vision.PyramidOpticalFlow(renderer, previousImage, currentImage, consistency = true)
+      prop<afield.media.vision.PyramidOpticalFlow>(flow) =
+          afield.media.vision.PyramidOpticalFlow(renderer, previousImage, currentImage, consistency = true)
       println("Optical flow backend: ${flow.backend}")
       propDown<RenderToTexture>(motion) = flow.output
       propDown<RenderToTexture>(motionConfidence) = flow.consistencyMap!!
@@ -362,7 +362,7 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: |-
+      code: |
         // The parent publishes these three props: previousImage, currentImage, motion.
         // moduleHere() resolves the samplers by those names, just like any other texture.
         val view = moduleHere {
@@ -379,14 +379,14 @@ operations:
                 owner.renderList.modules.remove("pingpong flow texture", view)
                 if (!owner.isClosed) owner.cleanup += Runnable { view.current.cleanup() }
             }
-      vertex: |-
+      vertex: |
         #version 460
         layout(location=0) out vec2 uv;
         void main() {
             uv=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);
             gl_Position=vec4(uv*2-1,0,1);
         }
-      fragment: |-
+      fragment: |
         #version 460
         layout(location=0) in vec2 uv;
         layout(location=0) out vec4 color;
@@ -419,7 +419,7 @@ operations:
     property: code
     type: code
     strand: scene
-    code: |-
+    code: |
       // The parent publishes these three props: previousImage, currentImage, motion.
       // moduleHere() resolves the samplers by those names, just like any other texture.
       val view = moduleHere {

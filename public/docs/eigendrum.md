@@ -237,7 +237,7 @@ println(
 
 ## A live drum
 
-`render` makes a finished sound. For a drum you play, `ModalDrum(modes)` is a voice in Field's
+`render` makes a finished sound. For a drum you play, [`ModalDrum(modes)`](reference/audio.md#modaldrum-kt-modaldrum) is a voice in Field's
 audio engine: return it from a box and launch the box (it is a `Signal`, like `SineOsc`). Each
 mode is a decaying oscillator running on the audio thread. `drum.strike(x, y)` can be called from
 any box or callback; it computes the mallet's projection where it is called and hands it to the

@@ -222,7 +222,7 @@ operations:
           is the pitches you are hearing, settling onto the scale's exact probabilities. Change the weights
           or the clock and re-launch.
           */
-          val scale = categorical(listOf(0, 3, 5, 7, 10, 12), listOf(4, 1, 2, 3, 1, 2))
+          val scale = categorical([0, 3, 5, 7, 10, 12], [4, 1, 2, 3, 1, 2])
           val hz = 220 * (scale * (kotlin.math.ln(2.0) / 12)).exp()
 
           val clock = PulseOsc(freq = Param(8f), width = Param(0.35f))
@@ -243,7 +243,6 @@ operations:
       properties:
         code: |
           import afield.math.distribution.*
-          import afield.math.gp.*
 
           val xs = doubleArrayOf(0.5, 2.0, 3.5, 6.0, 7.5)
           val ys = doubleArrayOf(0.2, 1.1, 0.4, 0.9, -0.3)

@@ -4,10 +4,6 @@ The fragment property reuses Fabricate's FXAA shader, adding per-eye sample clam
 Toggle FXAA below to compare at the same render resolution. No temporal history is used.
 */
 import afield.graphics.scene.fabricated.StandardRenderer
-import afield.graphics.shader.fromViews
-import afield.graphics.texture.TextureSampler
-import afield.graphics.vulkan.targets.RenderToTexture
-import afield.graphics.vulkan.targets.SideBySideStereoTarget
 import java.util.concurrent.atomic.AtomicBoolean
 
 val sourceStereo = fromContext<SideBySideStereoTarget>()
@@ -25,14 +21,14 @@ val sourceSampler = TextureSampler(renderer, mipLevels = 1, anisotropyEnable = f
 val pass = moduleHere {
     name = "stereo-fxaa-composite"
     color = 1
-    colorFormats = listOf(composite.parameters.format)
+    colorFormats = [composite.parameters.format]
     imageFormat = composite.parameters.format
     depth = 0
     depthTest = false
     depthWrite = false
     blend = false
     textureResolver = { tex ->
-        if (tex.name == "sourceTex") fromViews(listOf(rawStereo), tex.name, sourceSampler) else null
+        if (tex.name == "sourceTex") fromViews([rawStereo], tex.name, sourceSampler) else null
     }
 }
 composite += "fxaa" to pass

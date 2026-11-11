@@ -3,7 +3,7 @@
 An LED matrix is a screen with very few pixels. Let's play a RectSL animation on one, then read
 the signal back to see what the lights received.
 
-`RectSLImager` draws the scene into an `Img`, and `Patch.mapImage` uses it to colour 128 RGB pixels
+[`RectSLImager`](reference/languages.md#rectslimg-kt-rectslimager) draws the scene into an `Img`, and `Patch.mapImage` uses it to colour 128 RGB pixels
 and four RGBWA washes (wide lights with red, green, blue, white and amber channels). `DmxOutput`
 sends those colours as DMX, the standard lighting-control protocol, carried over the network by
 sACN; here it goes to this machine, where `DmxInput`
@@ -87,7 +87,7 @@ fixture per unit, and the frame is drawn at 16 pixels per unit, so each fixture 
 ## From a scene to an image
 
 `RectSLImager(source)` compiles the scene once, including any `{{ … }}` Kotlin escapes, and
-`frame(t, width, height)` draws it with the CPU reference rasterizer that the RectSL study tools
+[`frame(t, width, height)`](reference/languages.md#rectslimg-kt--rectslimager--frame) draws it with the CPU reference rasterizer that the RectSL study tools
 use. That rasterizer draws the background, blends the rectangles the way the GPU blends them into
 an 8-bit target, and runs StackSL materials through the StackSL interpreter. No window or graphics
 context is involved, so the lights keep running on a machine whose display is asleep.

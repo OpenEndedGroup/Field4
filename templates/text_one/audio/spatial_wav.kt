@@ -1,5 +1,3 @@
-import afield.audio.synth.*
-
 // Launch Reading space first, with the Quest connected and headset audio enabled.
 // A mono resonant percussion WAV already shipped with Field: loop it as a fixed world emitter.
 val sound = SpatialWavPlayer(
@@ -29,14 +27,25 @@ controlGroup("head-tracked WAV") {
         if (down) {
             val p = Vec3()
             if (renderer.openXRHmdTarget!!.headPose(p, Quat())) {
-                x = p.x.toDouble(); y = p.y.toDouble(); z = p.z.toDouble()
-                sound.place(x,y,z)
+                x = p.x.toDouble()
+                y = p.y.toDouble()
+                z = p.z.toDouble()
+                sound.place(x, y, z)
             }
         }
     }
-    slider("Source X (m)", initialValue = -.6, min = -3.0, max = 3.0) { x = it; sound.place(x,y,z) }
-    slider("Source Y (m)", initialValue = 1.5, min = 0.0, max = 3.0) { y = it; sound.place(x,y,z) }
-    slider("Source Z (m)", initialValue = -1.5, min = -4.0, max = 2.0) { z = it; sound.place(x,y,z) }
+    slider("Source X (m)", initialValue = -.6, min = -3.0, max = 3.0) {
+        x = it
+        sound.place(x, y, z)
+    }
+    slider("Source Y (m)", initialValue = 1.5, min = 0.0, max = 3.0) {
+        y = it
+        sound.place(x, y, z)
+    }
+    slider("Source Z (m)", initialValue = -1.5, min = -4.0, max = 2.0) {
+        z = it
+        sound.place(x, y, z)
+    }
     slider("Gain", initialValue = .2, min = 0.0, max = 1.0) { sound.gain = it.toFloat() }
     checkbox("Loop WAV", initialValue = true) { sound.looping = it }
 }
@@ -45,7 +54,11 @@ loop {
     val now = System.nanoTime()
     if (now - reported > 500_000_000L) {
         reported = now
-        display("audio status", "<div style='padding:12px;width:430px'>${if(sound.playing) "Playing" else "Paused"} · ${sound.positionSeconds.f2} / ${sound.durationSeconds.f2} s<br>Output: ${sound.outputDevice} · ${sound.sampleRate} Hz<br>Source: ($x, $y, $z) m · ${sound.renderedBlocks} binaural blocks</div>")
+        display(
+            "audio status",
+            "<div style='padding:12px;width:430px'>${if(sound.playing) "Playing" else "Paused"} · ${sound.positionSeconds.f2} / ${sound.durationSeconds.f2} s<br>Output: ${sound.outputDevice} · ${sound.sampleRate} Hz<br>Source: ($x, $y, $z) m · ${sound.renderedBlocks} binaural blocks</div>",
+        )
     }
     frame()
-}.end { sound.close() }
+}
+    .end { sound.close() }
