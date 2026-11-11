@@ -65,11 +65,11 @@ An `Observer` is a place on the ground. `look` gives azimuth, elevation and rang
 `passes` finds every interval in which the satellite is above a minimum elevation, sampling every 30
 seconds and refining each rise, set and highest moment to about a second.
 
-Most of those passes cannot be seen. A satellite shines by reflected sunlight, so it is visible to the
-eye only when it is lit and the sky is dark: in the hours after sunset and before sunrise, when the
-ground is in darkness and the satellite, high above it, is not yet in the Earth's shadow.
-`visiblePasses` keeps those parts of each pass, using `Sun.position` for the sun, `Frames.isSunlit`
-for the shadow and a sun at least 6° below the horizon for the dark (`maxSunElevationDeg`).
+To see a satellite by its reflected sunlight, you need a dark sky while the satellite is still lit:
+often in the hours after sunset or before sunrise. `visiblePasses` finds those parts of each pass,
+using `Sun.position` for the sun and `Frames.isSunlit` for the Earth's shadow. By default it asks
+for the sun to be at least 6° below the horizon; change that with `maxSunElevationDeg`. The test
+does not estimate the satellite's brightness.
 
 This box finds a week of passes over Chicago for five satellites and draws one stalk per pass, at its
 highest moment, as tall as its highest elevation; the visible ones are drawn again in yellow, as high as
@@ -153,16 +153,16 @@ Terra and Landsat 9 are in sun-synchronous orbits, which cross any latitude at t
 every day: two pairs of passes, morning and evening. Hubble's orbit is inclined at 28.5°, so from
 42° north it never gets more than a few degrees above the minimum.
 
-Only the ISS can be seen this week, 11 times, always in the early passes of its evening cluster: by the
-later passes the station, 400 km up, has followed the ground into the Earth's shadow. The Chinese
-station comes over in the middle of the day this week, and Terra and Landsat 9 cross at about 10:30 in
+Only the ISS has passes meeting those conditions this week: 11, all in the early passes of its evening
+cluster. By the later passes the station, 400 km up, has followed the ground into the Earth's shadow.
+The Chinese station comes over in the middle of the day this week, and Terra and Landsat 9 cross at about 10:30 in
 the morning and at night, local time, in daylight or in the shadow, so none of the three is visible.
 
 ## The geosynchronous belt
 
-A satellite with a period of one sidereal day, 1,436 minutes, keeps pace with the turning Earth. Over
-the equator, with a circular orbit, it stays above one point: a geostationary satellite. With some
-inclination it traces a figure-eight about that point once a day, north and south by the inclination.
+A satellite with a period of one sidereal day, 1,436 minutes, keeps pace with the turning Earth. In
+a circular orbit over the equator it stays above one point: a geostationary satellite. Incline the
+orbit and it traces a figure-eight about that point once a day, north and south by the inclination.
 This box draws the point beneath each of the snapshot's geosynchronous satellites, every 20 minutes for a
 day, over the coastlines near the equator, with latitude stretched about three times. Satellites held on
 station are blue; the ones drifting more than 2° of longitude a day, retired or never controlled, are

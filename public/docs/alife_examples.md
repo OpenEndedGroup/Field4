@@ -816,12 +816,14 @@ showImg(
 
 ### Flow Lenia: matter that moves instead of growing
 
-Lenia adds growth to the field and clips it to 0..1, so its total mass goes up and down with the
-growth curve: the classic step above changes the total on every step. Particle Lenia keeps mass fixed
-by making it out of particles. Flow Lenia, from Plantec, Hamon, Etcheverry, Oudeyer, Moulin-Frier and
-Chan ("Flow-Lenia: Towards open-ended evolution in cellular automata through mass conservation and
-parameter localization", ALIFE 2023, [arXiv 2212.07906](https://arxiv.org/abs/2212.07906)), keeps the
-grid and keeps the mass. It adds two things the rest of this section does not have:
+Flow Lenia gives the matter in a cellular automaton somewhere to go. Ordinary Lenia adds growth to
+the field, so its total mass changes at each step; Particle Lenia keeps mass fixed by using
+particles. Flow Lenia keeps the grid and moves its mass from cell to cell. The matter carries its
+own rule with it, so different species can meet and mix in one world.
+
+The model comes from Plantec, Hamon, Etcheverry, Oudeyer, Moulin-Frier and Chan's
+["Flow-Lenia: Towards open-ended evolution in cellular automata through mass conservation and
+parameter localization"](https://arxiv.org/abs/2212.07906) (ALIFE 2023). Here is how it works:
 
 - **The mass is conserved exactly.** Growth is no longer added to the field. The same kernels and
   growth curves make an *affinity* `U = Σ h_k G_k(K_k * A)`, and the matter flows uphill on it,
@@ -833,15 +835,15 @@ grid and keeps the mass. It adds two things the rest of this section does not ha
 - **The rule travels with the matter.** The kernel weights `h` are stored per cell, not per world.
   When matter moves, its `h` moves with it. When matter from two places lands in one cell, the cell's
   `h` becomes their mass-weighted mean, or (the paper's rule) the `h` of one arriving parcel drawn in
-  proportion to its mass. So several species, each just a different `h`, can share one world and one
-  set of kernels, push into each other, and blend.
+  proportion to its mass. Several species, each with a different `h`, can share one world and one
+  set of kernels, push into each other and blend.
 
 A species is a list of ring kernels, each with its own `mu` and `sigma`, and a weight on each.
 [`FlowLeniaPresets`](reference/alife.md#alife-flow-lenia-kt) holds three found by random search over
-the paper's rule space (three to seven kernels of radius 3 to 12) and kept for what they did from a
-disc of noise: `wanderers` breaks into a dozen round bodies that drift slowly, `rings` settles into
-small hollow rings that keep apart, and `cell` grows one large body with a membrane. Seeded side by
-side in a 96 x 96 world, each keeps its own form, and the white line, the total mass, does not move:
+the paper's rule space (three to seven kernels of radius 3 to 12). Starting from a disc of noise,
+`wanderers` breaks into a dozen round bodies that drift slowly, `rings` settles into small hollow
+rings that keep apart, and `cell` grows one large body with a membrane. Seed them side by side in a
+96 x 96 world and each keeps its own form. The white line tracks total mass; it stays flat:
 
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-species.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="600" w="1000" embed=true name="alife-flow-lenia-species" alt="left, a dark field where an orange cloud of a dozen round bodies, a cluster of cyan hollow rings and one large pink body with a ragged membrane form from three discs of noise and keep apart; right, a plot whose white line, the total mass, stays perfectly flat while the orange, cyan and pink lines, each species' mass, stay level beneath it"}
 :::static
@@ -930,10 +932,9 @@ animateEvolution(
 )
 ```
 
-So what Flow Lenia adds to the Lenia already on this page is a world rather than a creature: mass
-that is a budget the species compete for, and a rule that is a property of the matter, so the rule
-space is explored by the creatures themselves as they collide and mix, with no outer search loop
-like the one in [section 11](#a-lenia-rule-that-travels).
+Here the species share a fixed supply of mass and carry their rules with them. As they collide and
+mix, the creatures explore the rule space themselves. Compare this with the outer search loop in
+[section 11](#a-lenia-rule-that-travels).
 
 ??? aside "How the species were found, and what did not work"
     The first version used the ordinary Lenia gradient scale (central differences halved) and a single
