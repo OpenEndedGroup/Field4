@@ -1,4 +1,9 @@
-val world = flowLeniaWorld(288, 288, [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()], scale = 3)
+val world = flowLeniaWorld(
+    288,
+    288,
+    [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+    scale = 3,
+)
 
 animateEvolution(
     world,
@@ -10,7 +15,7 @@ animateEvolution(
     panels = { w, n ->
         [
             ("step " + n) to w.speciesImg().resize(480, 480),
-            ("total mass %.3f".format(w.totalMass())) to w.massPlot(480, 480),
+            ("total mass " + w.totalMass().f3) to w.massPlot(480, 480),
         ]
     },
 )

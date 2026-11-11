@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -37,7 +37,7 @@ start(renderer::run)
 <!-- field-box id="satellite-earth" index="1" -->
 
 ```edn [field-box id="satellite-earth" role="properties"]
-{"id" "satellite-earth" "index" 1 "name" "2 - Earth, coastlines, ISS ground track" "parents" ["root" "agent_graphics_context"] "children" ["satellite-catalogue"] "properties" {"children" #{#afield/box "satellite-catalogue"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "2 - Earth, coastlines, ISS ground track" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-earth_vertex_.glsl" "lines" 22 "characters" 647 "sha256" "675baa042bf4fe92b603d7c883408edc6921f75c296b40074dfef5d9ab49a515"} {"name" "fragment" "language" "glsl" "path" "satellite-earth_fragment_.glsl" "lines" 7 "characters" 129 "sha256" "2f9d2c32dd0a21b6f98a207e7187d8c81a390cf28ef0043f3c852ec71c79c819"} {"name" "code" "language" "kotlin" "path" "satellite-earth_code_.kt" "lines" 96 "characters" 3789 "sha256" "70d144ae235896e174877eaf095c09a356781a4dcac8790ad0186d2679aea5ec"}]}
+{"id" "satellite-earth" "index" 1 "name" "2 - Earth, coastlines, ISS ground track" "parents" ["root" "agent_graphics_context"] "children" ["satellite-catalogue" "satellite-tour"] "properties" {"children" #{#afield/box "satellite-catalogue" #afield/box "satellite-tour"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "2 - Earth, coastlines, ISS ground track" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-earth_vertex_.glsl" "lines" 22 "characters" 647 "sha256" "675baa042bf4fe92b603d7c883408edc6921f75c296b40074dfef5d9ab49a515"} {"name" "fragment" "language" "glsl" "path" "satellite-earth_fragment_.glsl" "lines" 7 "characters" 129 "sha256" "2f9d2c32dd0a21b6f98a207e7187d8c81a390cf28ef0043f3c852ec71c79c819"} {"name" "code" "language" "kotlin" "path" "satellite-earth_code_.kt" "lines" 97 "characters" 3831 "sha256" "ef6b3fa20f82ee5c71ae63c9ba437019964904064dec3efec2843f6ea147c24b"}]}
 ```
 
 ```glsl [field-property box="satellite-earth" name="vertex" path="satellite-earth_vertex_.glsl"]
@@ -76,6 +76,7 @@ void main()
 ```
 
 ```kotlin [field-property box="satellite-earth" name="code" path="satellite-earth_code_.kt"]
+import afield.graphics.vulkan.util.Camera
 import afield.simulation.orbits.*
 import java.time.Duration
 
@@ -179,16 +180,16 @@ var kc by keyCamera(camera = camera)
 <!-- field-box id="satellite-passes" index="2" -->
 
 ```edn [field-box id="satellite-passes" role="properties"]
-{"id" "satellite-passes" "index" 2 "name" "1 - A week of passes over Chicago" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A week of passes over Chicago" "_tombstone" false "frame" #afield/rect [40.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "satellite-passes_code_.kt" "lines" 60 "characters" 2202 "sha256" "39c0253a892120ce01f827a265fb96d3080fd908056bff5de29799dae81e2180"}]}
+{"id" "satellite-passes" "index" 2 "name" "1 - A week of passes over Chicago" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A week of passes over Chicago" "_tombstone" false "frame" #afield/rect [40.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "satellite-passes_code_.kt" "lines" 70 "characters" 2595 "sha256" "de1c1e4db5a561fa0a8c63ae6fe09b8c0be10981e62679e45c484c0d326ef36f"}]}
 ```
 
 ```kotlin [field-property box="satellite-passes" name="code" path="satellite-passes_code_.kt"]
 import afield.simulation.orbits.*
 import java.time.Duration
 
-// The bundled CelesTrak snapshot: about 15,000 near-earth objects, each with its SGP4 propagator.
+// The bundled CelesTrak snapshot: about 15,900 objects, each with its SGP4 propagator.
 val sky = SatelliteCatalogue.bundled()
-println("${sky.size} satellites, ${sky.skippedDeepSpace} deep-space left out, elements fresh at ${sky.epoch}")
+println("${sky.size} satellites, elements fresh at ${sky.epoch}")
 
 // One place on the ground, and the week after the snapshot.
 val here = Observer(latitudeDeg = 41.88, longitudeDeg = -87.63) // Chicago
@@ -218,18 +219,26 @@ for (d in 0..7) {
 names.forEachIndexed { row, name ->
     val sat = sky.byName(name)!!
     val passes = here.passes(sat, start, end, minElevationDeg = 10.0)
-    println("$name: ${passes.size} passes above 10° in a week, highest ${passes.maxOf { it.maxElevationDeg }.f0}°")
+    // the parts of those passes with the satellite in sunlight and the sky dark: the ones you can see
+    val seen = here.visiblePasses(sat, start, end, minElevationDeg = 10.0)
+    println(
+        "$name: ${passes.size} passes above 10° in a week, ${seen.size} visible, highest ${passes.maxOf { it.maxElevationDeg }.f0}°",
+    )
     val base = (row + 1) * rowH
     // one stalk per pass, at its culmination, as tall as its highest elevation (90° fills the row)
-    shapes += fline {
-        for (p in passes) {
-            val x = Duration.between(start, p.culmination).toSeconds() / 86400.0 * dayW
-            moveTo(x, base)
-            lineTo(x, base - (rowH - 18) * p.maxElevationDeg / 90.0)
+    fun stalks(list: List<Pass>, width: Double, c: Vec4) {
+        shapes += fline {
+            for (p in list) {
+                val x = Duration.between(start, p.culmination).toSeconds() / 86400.0 * dayW
+                moveTo(x, base)
+                lineTo(x, base - (rowH - 18) * p.maxElevationDeg / 90.0)
+            }
+            thickness = width
+            color = c
         }
-        thickness = 2.0
-        color = vec(0.45, 0.8, 1.0, 1.0)
     }
+    stalks(passes, 2.0, vec(0.45, 0.8, 1.0, 0.45))
+    stalks(seen, 2.5, vec(1.0, 0.85, 0.35, 1.0))
     shapes += fline {
         moveTo(0, base)
         lineTo(7 * dayW, base)
@@ -237,20 +246,129 @@ names.forEachIndexed { row, name ->
         color = vec(1.0, 1.0, 1.0, 0.35)
     }
     shapes +=
-        font.text("$name   ${passes.size} passes", size = 9.0, at = vec(4, base - rowH + 12, 0)).apply {
-            color = vec(1.0, 1.0, 1.0, 0.85)
-        }
+        font
+            .text("$name   ${passes.size} passes, ${seen.size} visible", size = 9.0, at = vec(4, base - rowH + 12, 0))
+            .apply {
+                color = vec(1.0, 1.0, 1.0, 0.85)
+            }
 }
 
 lines(shapes, w = 7 * dayW, h = names.size * rowH + 24, fitToSize = true)
 ```
 
-## 4. 3 - Every satellite, propagated on the GPU
+## 4. 4 - The geosynchronous belt
 
-<!-- field-box id="satellite-catalogue" index="3" -->
+<!-- field-box id="satellite-geo" index="3" -->
+
+```edn [field-box id="satellite-geo" role="properties"]
+{"id" "satellite-geo" "index" 3 "name" "4 - The geosynchronous belt" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - The geosynchronous belt" "_tombstone" false "frame" #afield/rect [40.0 1000.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "satellite-geo_code_.kt" "lines" 96 "characters" 3849 "sha256" "6f39f2aef46cf4c73977133251a0ae4b6220a8397cfecd1af313acb30f15a1d4"}]}
+```
+
+```kotlin [field-property box="satellite-geo" name="code" path="satellite-geo_code_.kt"]
+import afield.simulation.orbits.*
+import java.time.Duration
+import kotlin.math.abs
+
+// Every object in the snapshot, near-earth and deep-space.
+val sky = SatelliteCatalogue.bundled()
+val deep = sky.satellites.filter { it.tle.isDeepSpace }
+println("${sky.size} satellites, ${deep.size} of them deep-space")
+
+// Geosynchronous orbits go round once a sidereal day, 1,436 minutes; the navigation constellations take 12 to 14 hours.
+val geo = deep.filter { it.tle.periodMinutes in 1426.0..1446.0 }
+val navigation = deep.filter { it.tle.periodMinutes in 700.0..850.0 }
+println("${geo.size} geosynchronous, ${navigation.size} in 12 to 14 hour orbits (GPS, GLONASS, Galileo, BeiDou)")
+
+// Longitude across, latitude up: ±15° fills the height, so the figure-eights of inclined orbits show.
+val mapW = 720.0
+val mapH = 200.0
+fun lonX(lon: Double) = (lon + 180.0) / 360.0 * mapW
+fun latY(lat: Double) = mapH / 2 - lat / 15.0 * mapH / 2
+val font = afield.ai.learning.pen.HersheyFont.load("futural")
+val shapes = ArrayList<FLine>()
+
+// The coastlines inside the band, to show where on Earth each satellite hangs.
+for (coast in Coastlines.lines) shapes += fline {
+    var pen = false
+    for (g in coast) {
+        if (abs(g.latitudeDeg) > 15.0) {
+            pen = false
+            continue
+        }
+        if (pen) lineTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+        else moveTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+        pen = true
+    }
+    thickness = 1.0
+    color = vec(0.75, 0.9, 1.0, 0.8)
+}
+for (lon in -180..180 step 60) {
+    shapes += fline {
+        moveTo(lonX(lon.toDouble()), 0)
+        lineTo(lonX(lon.toDouble()), mapH)
+        thickness = 0.5
+        color = vec(1.0, 1.0, 1.0, 0.2)
+    }
+    shapes +=
+        font.text("$lon°", size = 9.0, at = vec(lonX(lon.toDouble()) + 3, mapH + 12, 0)).apply {
+            color = vec(1.0, 1.0, 1.0, 0.6)
+        }
+}
+shapes += fline {
+    moveTo(0, mapH / 2)
+    lineTo(mapW, mapH / 2)
+    thickness = 0.5
+    color = vec(1.0, 1.0, 1.0, 0.35)
+}
+
+// Each satellite's point under it, every 20 minutes for a day from the snapshot, drawn where it is within 15° of the
+// equator.
+val start = sky.epoch
+var drifting = 0
+for (sat in geo) {
+    val day = (0..72).mapNotNull { sat.geodetic(start.plus(Duration.ofMinutes(20L * it))) }
+    if (day.isEmpty()) continue
+    var travel = 0.0
+    for (i in 1 until day.size) travel +=
+        abs((day[i].longitudeDeg - day[i - 1].longitudeDeg + 540.0).rem(360.0) - 180.0)
+    val drifts = travel > 2.0 // more than 2° of longitude in a day: not held on station
+    if (drifts) drifting++
+    val c = if (drifts) vec(1.0, 0.45, 0.6, 0.8) else vec(0.45, 0.8, 1.0, 0.9)
+    shapes += fline {
+        for (i in day.indices) {
+            val g = day[i]
+            if (abs(g.latitudeDeg) > 15.0) continue
+            val prev = day.getOrNull(i - 1)
+            val jump = prev == null || abs(prev.latitudeDeg) > 15.0 || abs(g.longitudeDeg - prev.longitudeDeg) > 180.0
+            if (jump) moveTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+            else lineTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+        }
+        thickness = 1.0
+        color = c
+    }
+    // a satellite held on station barely moves, so mark where it starts
+    val g = day[0]
+    if (abs(g.latitudeDeg) <= 15.0)
+        shapes += fline {
+            moveTo(lonX(g.longitudeDeg) - 1.2, latY(g.latitudeDeg))
+            lineTo(lonX(g.longitudeDeg) + 1.2, latY(g.latitudeDeg))
+            thickness = 2.5
+            color = c
+        }
+}
+println("$drifting of them drift more than 2° of longitude in a day")
+shapes += font.text("15°N", size = 9.0, at = vec(4, 12, 0)).apply { color = vec(1.0, 1.0, 1.0, 0.6) }
+shapes += font.text("15°S", size = 9.0, at = vec(4, mapH - 4, 0)).apply { color = vec(1.0, 1.0, 1.0, 0.6) }
+
+lines(shapes, w = mapW, h = mapH + 18, fitToSize = true)
+```
+
+## 5. 3 - Every satellite, propagated on the GPU
+
+<!-- field-box id="satellite-catalogue" index="4" -->
 
 ```edn [field-box id="satellite-catalogue" role="properties"]
-{"id" "satellite-catalogue" "index" 3 "name" "3 - Every satellite, propagated on the GPU" "parents" ["root" "satellite-earth"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "satellite-earth"} "name" "3 - Every satellite, propagated on the GPU" "_tombstone" false "frame" #afield/rect [400.0 200.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-catalogue_vertex_.glsl" "lines" 60 "characters" 2307 "sha256" "afa42f5d7443e0f8915053f6ad9de9402a861244e6683379628228bd5dd102c3"} {"name" "fragment" "language" "glsl" "path" "satellite-catalogue_fragment_.glsl" "lines" 10 "characters" 285 "sha256" "7f5e44e8b47539acea1d6608689722479e611377d171dd8a3c743f84932fd4a2"} {"name" "code" "language" "kotlin" "path" "satellite-catalogue_code_.kt" "lines" 41 "characters" 1723 "sha256" "15ec16ee1b330da94ad7f91c499b505bdb1f5c37a3b2fa71cab232b0e5035b9e"}]}
+{"id" "satellite-catalogue" "index" 4 "name" "3 - Every satellite, propagated on the GPU" "parents" ["root" "satellite-earth"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "satellite-earth"} "name" "3 - Every satellite, propagated on the GPU" "_tombstone" false "frame" #afield/rect [400.0 200.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-catalogue_vertex_.glsl" "lines" 61 "characters" 2460 "sha256" "19a892cfc217f0354c2e5647b528a187289e80e78b2cbcf0c5638b9a7c5bc1be"} {"name" "fragment" "language" "glsl" "path" "satellite-catalogue_fragment_.glsl" "lines" 10 "characters" 285 "sha256" "7f5e44e8b47539acea1d6608689722479e611377d171dd8a3c743f84932fd4a2"} {"name" "code" "language" "kotlin" "path" "satellite-catalogue_code_.kt" "lines" 41 "characters" 1723 "sha256" "15ec16ee1b330da94ad7f91c499b505bdb1f5c37a3b2fa71cab232b0e5035b9e"}]}
 ```
 
 ```glsl [field-property box="satellite-catalogue" name="vertex" path="satellite-catalogue_vertex_.glsl"]
@@ -311,8 +429,9 @@ void main()
     if (picked) fcol = vec4(1.0, 0.95, 0.8, 1.0);
 
     gl_Position = pc.p * pc.m * vec4(w, 1);
-    // level of detail by distance: a satellite near the camera is drawn larger
-    gl_PointSize = picked ? 16.0 : clamp(pc.clock.y / dist, 1.5, 12.0);
+    // level of detail by distance: a satellite near the camera is drawn larger, and the high, sparse ones
+    // never smaller than 3 pixels, so the navigation shell and the geostationary ring show from far out
+    gl_PointSize = picked ? 16.0 : clamp(pc.clock.y / dist, alt > 2000.0 ? 3.0 : 1.5, 12.0);
 }
 ```
 
@@ -371,5 +490,53 @@ m.clock = { vec(clock.minutes(), 10.0, picked.toDouble(), 0.0) }
 
 // one vertex per satellite; the shader fetches its orbit from the buffer
 m.resize(orbits.size)
+```
+
+## 6. 5 - A flight out to the geostationary ring
+
+<!-- field-box id="satellite-tour" index="5" -->
+
+```edn [field-box id="satellite-tour" role="properties"]
+{"id" "satellite-tour" "index" 5 "name" "5 - A flight out to the geostationary ring" "parents" ["root" "satellite-earth"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "satellite-earth"} "name" "5 - A flight out to the geostationary ring" "_tombstone" false "frame" #afield/rect [760.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "satellite-tour_code_.kt" "lines" 37 "characters" 1495 "sha256" "0e74a2455f428c8b75776a6912f60afb89aa8ea3ee2326a5509bf548a46541ff"}]}
+```
+
+```kotlin [field-property box="satellite-tour" name="code" path="satellite-tour_code_.kt"]
+import kotlin.math.asin
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
+
+/*
+`camera` comes from the Earth box above. The flight starts where that box put the camera, 2.6 Earth
+radii above Chicago, and pulls out through the low shell, past the navigation satellites at four
+radii, to eleven, where the geostationary ring at six and a half is seen whole, and circles there
+for the rest of 40 seconds; after that the keyboard has the camera again.
+*/
+val cam = camera
+val a = cam.at
+val r0 = sqrt(a.x * a.x + a.y * a.y + a.z * a.z).toDouble()
+val azimuth0 = atan2(a.x.toDouble(), a.z.toDouble())
+val elevation0 = asin(a.y / r0)
+val far = 11.0
+val outSeconds = 14.0
+
+fun smooth(s: Double) = s * s * (3 - 2 * s)
+
+val t0 = System.nanoTime()
+var t = 0.0
+frames {
+    while (frame() && t < 40.0) {
+        t = (System.nanoTime() - t0) / 1e9
+        val s = smooth((t / outSeconds).coerceIn(0.0, 1.0))
+        // distance grows geometrically, so each doubling takes the same time
+        val r = r0 * (far / r0).pow(s)
+        // turn 70° round the north axis on the way out, then 4° a second; come down to 20° above the equator
+        val azimuth = azimuth0 + Math.toRadians(70.0) * s + Math.toRadians(4.0) * maxOf(0.0, t - outSeconds)
+        val elevation = elevation0 + (Math.toRadians(20.0) - elevation0) * s
+        cam.at = vec(r * cos(elevation) * sin(azimuth), r * sin(elevation), r * cos(elevation) * cos(azimuth))
+    }
+}
 ```
 

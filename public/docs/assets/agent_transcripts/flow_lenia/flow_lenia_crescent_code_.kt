@@ -1,5 +1,6 @@
 // Noise seed 2 folds into the crescent; grow it to three times the resolution once it has formed.
-val world = flowLeniaWorld(64, 64, [FlowLeniaPresets.crescent()], seedRadius = 6.0, randomSeed = 2L).steps(200).scaledCopy(3)
+val world =
+    flowLeniaWorld(64, 64, [FlowLeniaPresets.crescent()], seedRadius = 6.0, randomSeed = 2L).steps(200).scaledCopy(3)
 val trail = FloatArray(world.width * world.height)
 
 animateEvolution(

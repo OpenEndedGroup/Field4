@@ -603,19 +603,19 @@ Stanza takes the capital at the start of each line as a new sentence. Add the ke
 
 ## Elastic sentence threads
 
-The seventh `text_one` playground, **Elastic sentences**, connects words with multi-node CPU
-SIMD Verlet threads. Endpoints stay constrained to current text geometry while interior nodes
-follow slowly. Attachments can be fixed centres/sides, nearest points, sliding underlines,
-per-line margins or bounding-box perimeters. They follow the same prepared font measurements,
-rotation and score transforms as the glyphs, including shorter lines in a multiline run.
+In the seventh `text_one` playground, **Elastic sentences**, threads connect the words and move as
+the text moves. Their ends stay attached to the current text geometry while the points between them
+follow more slowly. Attach them to centres or sides, nearest points, sliding underlines, line margins
+or bounding-box perimeters. The attachments follow the glyphs' font measurements, rotation and score
+transforms, including shorter lines in a multiline run. The threads use a CPU SIMD Verlet solver.
 
 Layout response time and damping, length stabilization or minimization, and curvature
 minimization are independent physical controls. TCB tension/continuity/bias shape the FLine
 through those nodes separately. The connection's `.path` supports the ordinary draw-in/out,
 opacity, dashes, arrows and arclength anchors. Headset views continue to use the current poses.
 
-The source is `templates/text_one/elastic_sentences.kt`; the complete API, parameter units and
-examples are in the document's **Elastic connections** guide. Resetting physics resets thread
+The [source](https://github.com/OpenEndedGroup/Field4/blob/main/templates/text_one/elastic_sentences.kt) is in the template; the document's **Elastic connections** guide has the complete API,
+parameter units and examples. Resetting physics resets thread
 history; pausing or seeking the score alone lets the existing thread motion continue.
 
 

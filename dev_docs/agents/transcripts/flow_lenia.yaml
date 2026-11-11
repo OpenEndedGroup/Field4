@@ -21,7 +21,12 @@ operations:
         h: 100.0
       properties:
         code: |
-          val world = flowLeniaWorld(64, 64, [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()], seedRadius = 10.0)
+          val world = flowLeniaWorld(
+              64,
+              64,
+              [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+              seedRadius = 10.0,
+          )
           val m0 = world.totalMass()
           var worst = 0.0
           repeat(200) {
@@ -40,7 +45,12 @@ operations:
         h: 100.0
       properties:
         code: |
-          val world = flowLeniaWorld(288, 288, [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()], scale = 3)
+          val world = flowLeniaWorld(
+              288,
+              288,
+              [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+              scale = 3,
+          )
 
           animateEvolution(
               world,
@@ -52,7 +62,7 @@ operations:
               panels = { w, n ->
                   [
                       ("step " + n) to w.speciesImg().resize(480, 480),
-                      ("total mass %.3f".format(w.totalMass())) to w.massPlot(480, 480),
+                      ("total mass " + w.totalMass().f3) to w.massPlot(480, 480),
                   ]
               },
           )
@@ -99,7 +109,13 @@ operations:
         h: 100.0
       properties:
         code: |
-          val world = flowLeniaWorld(288, 192, [FlowLeniaPresets.rings(), FlowLeniaPresets.cell()], positions = [38.0 to 32.0, 58.0 to 32.0], scale = 3)
+          val world = flowLeniaWorld(
+              288,
+              192,
+              [FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+              positions = [38.0 to 32.0, 58.0 to 32.0],
+              scale = 3,
+          )
 
           animateEvolution(
               world,
@@ -111,7 +127,8 @@ operations:
               panels = { w, n ->
                   [
                       ("step " + n) to w.speciesImg().resize(480, 320),
-                      ("hybrid %.0f of %.0f".format(w.mixedMass(), w.totalMass())) to w.weightImg(0).colormap("viridis", 0f, 0.4f).resize(480, 320),
+                      ("hybrid %.0f of %.0f".format(w.mixedMass(), w.totalMass())) to
+                          w.weightImg(0).colormap("viridis", 0f, 0.4f).resize(480, 320),
                   ]
               },
           )
@@ -126,7 +143,8 @@ operations:
       properties:
         code: |
           // Noise seed 2 folds into the crescent; grow it to three times the resolution once it has formed.
-          val world = flowLeniaWorld(64, 64, [FlowLeniaPresets.crescent()], seedRadius = 6.0, randomSeed = 2L).steps(200).scaledCopy(3)
+          val world =
+              flowLeniaWorld(64, 64, [FlowLeniaPresets.crescent()], seedRadius = 6.0, randomSeed = 2L).steps(200).scaledCopy(3)
           val trail = FloatArray(world.width * world.height)
 
           animateEvolution(
@@ -161,7 +179,7 @@ operations:
           val mutating = flowLeniaWorld(192, 192, species, mixing = FlowLeniaMixing.SAMPLED, scale = 2)
           mutating.mutation = FlowLeniaMutation(rate = 0.05, radius = 12.0, scale = 0.3)
 
-          fun masses(w: FlowLeniaWorld) = w.speciesMasses().joinToString(" ") { "%.0f".format(it) }
+          fun masses(w: FlowLeniaWorld) = w.speciesMasses().joinToString(" ") { it.f0 }
 
           animateEvolution(
               neutral to mutating,

@@ -1,16 +1,16 @@
 # Satellites and Orbits
 
-Field can say where any catalogued satellite is, at any time, from the two-line element sets that
-[CelesTrak](https://celestrak.org) publishes for every tracked object, and can draw the whole catalogue
-moving round the Earth on the GPU. The propagator is SGP4, the model the element sets are fitted to,
+Give Field a two-line element set from [CelesTrak](https://celestrak.org) and it can tell you where
+that satellite will be. You can find passes over a place on Earth, or draw thousands of satellites
+moving around the planet on the GPU. The propagator is SGP4, the model the element sets are fitted to,
 written in Kotlin after the reference code in Vallado, Crawford, Hujsak and Kelso,
 [*Revisiting Spacetrack Report #3*](https://celestrak.org/publications/AIAA/2006-6753/) (AIAA 2006-6753).
-Everything lives in `afield.simulation.orbits`.
+The code lives in `afield.simulation.orbits` and covers near-Earth and deep-space orbits. Element sets age, so for the current sky you'll want a fresh one.
 
 ## Where a satellite is
 
-A `Tle` is one element set. `Sgp4` takes it and gives a position and velocity in kilometres and
-km/s, in the TEME frame SGP4 works in, any number of minutes from the element set's epoch:
+A `Tle` is one element set. Give it to `Sgp4` to find a position and velocity at a time measured in
+minutes from the set's epoch. The result is in kilometres and km/s, in SGP4's TEME frame:
 
 ```diffstatic {data-lang=kotlin}
 import afield.simulation.orbits.*
@@ -31,47 +31,57 @@ about half a metre at orbital radius.
 `Frames.geodetic` gives latitude, longitude and height on the WGS-84 ellipsoid. A `Satellite` (an
 element set with its propagator already set up) does both: `iss.geodetic(time)`.
 
-!!! note "Near-earth orbits only"
-    SGP4 needs extra deep-space terms (SDP4) for orbits of 225 minutes or longer: GPS, Galileo,
-    geostationary and Molniya orbits. `Sgp4` refuses those with an `IllegalArgumentException` rather
-    than giving a wrong answer, and `Tle.isDeepSpace` says which is which. Of CelesTrak's active
-    catalogue, 795 of about 15,900 objects are deep-space; `SatelliteCatalogue` leaves them out, so
-    the geostationary ring is missing from the pictures below.
+Orbits of 225 minutes or longer (GPS, Galileo, geostationary, Molniya) take SGP4's deep-space branch,
+which adds the pull of the moon and the sun and the resonances of 12- and 24-hour orbits.
+`Tle.isDeepSpace` says which branch an element set takes; nothing else changes, and `propagate` works
+the same way for both.
 
 ??? aside "How the propagator is checked"
     `Sgp4Test` runs the verification element sets published with the paper (`SGP4-VER.TLE`) and
-    compares every state against the reference C++ output (`tcppver.out`): 9 near-earth satellites,
-    158 states, worst position error 7 µm, worst velocity error under a µm/s. The deep-space cases in
-    the same file are skipped.
+    compares every state against the reference C++ output (`tcppver.out`). The 9 near-earth cases
+    agree to 7 µm (158 states) and the 24 deep-space cases to 0.12 mm and 0.9 µm/s (508 states),
+    including the Molniya and geostationary resonances, the switch to Lyddane's form below 11° of
+    inclination, and a run 3.5 years past the epoch. Where the reference propagator stops with an
+    error, the test checks that `propagate` returns `null` at the same step.
 
 ## The catalogue
 
 `SatelliteCatalogue.bundled()` reads the snapshot of CelesTrak's "active" group that ships with
-Field, taken on 2026-11-11: 15,089 near-earth objects. Element sets age. SGP4 is good to a few
+Field, taken on 2026-11-11: 15,884 objects, 795 of them deep-space (`bundled(includeDeepSpace = false)`
+keeps the low ones alone). Element sets age. SGP4 is good to a few
 kilometres for a day or two either side of an element set's epoch and drifts by tens of kilometres a
 week out, so for today's sky use `SatelliteCatalogue.fetch("active")`, which downloads the group,
 caches it under `~/.afield/cache/celestrak/` for six hours, and falls back to the cache and then to
 the snapshot when there is no network. Any CelesTrak group name works: `"stations"`, `"visual"`,
 `"starlink"`, `"weather"`.
 
-`byName` and `search` find satellites, `epoch` is the time at which the whole catalogue is fresh,
-and `positionsEcef(time)` propagates every object at once.
+`byName` and `search` find satellites, `epoch` is the time for which the catalogue is fresh (the
+latest near-earth epoch: CelesTrak dates a few high orbits days ahead), and `positionsEcef(time)`
+propagates every object at once.
 
 ## A week of passes over one place
 
 An `Observer` is a place on the ground. `look` gives azimuth, elevation and range to a satellite, and
 `passes` finds every interval in which the satellite is above a minimum elevation, sampling every 30
-seconds and refining each rise and set to about a second. This box finds a week of passes over
-Chicago for five satellites and draws one stalk per pass, at its highest moment, as tall as its
-highest elevation:
+seconds and refining each rise, set and highest moment to about a second.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/satellites/passes.png" capture="box" open-outputs="true" wait="3.0" timeout="300" padding="12" embed=true name="satellites-passes" alt="Five rows, one per satellite, across seven days. ISS and the Chinese station show clusters of four to six passes once a day, tallest in the middle of each cluster; Hubble shows three low stalks; Terra and Landsat 9 show two pairs of passes a day, morning and evening, at almost the same times each day" macro-file="../../dev_docs/agents/transcripts/satellites.yaml" capture-box="satellite-passes"}
+Most of those passes cannot be seen. A satellite shines by reflected sunlight, so it is visible to the
+eye only when it is lit and the sky is dark: in the hours after sunset and before sunrise, when the
+ground is in darkness and the satellite, high above it, is not yet in the Earth's shadow.
+`visiblePasses` keeps those parts of each pass, using `Sun.position` for the sun, `Frames.isSunlit`
+for the shadow and a sun at least 6° below the horizon for the dark (`maxSunElevationDeg`).
+
+This box finds a week of passes over Chicago for five satellites and draws one stalk per pass, at its
+highest moment, as tall as its highest elevation; the visible ones are drawn again in yellow, as high as
+they are while visible:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/satellites/passes.png" capture="box" open-outputs="true" wait="3.0" timeout="300" padding="12" embed=true name="satellites-passes" alt="Five rows, one per satellite, across seven days. ISS and the Chinese station show clusters of four to six passes once a day, tallest in the middle of each cluster, and one or two of the early passes in each ISS cluster are drawn again in yellow as visible; Hubble shows three low stalks; Terra and Landsat 9 show two pairs of passes a day, morning and evening, at almost the same times each day, none of them visible" macro-file="../../dev_docs/agents/transcripts/satellites.yaml" capture-box="satellite-passes"}
 import afield.simulation.orbits.*
 import java.time.Duration
 
-// The bundled CelesTrak snapshot: about 15,000 near-earth objects, each with its SGP4 propagator.
+// The bundled CelesTrak snapshot: about 15,900 objects, each with its SGP4 propagator.
 val sky = SatelliteCatalogue.bundled()
-println("${sky.size} satellites, ${sky.skippedDeepSpace} deep-space left out, elements fresh at ${sky.epoch}")
+println("${sky.size} satellites, elements fresh at ${sky.epoch}")
 
 // One place on the ground, and the week after the snapshot.
 val here = Observer(latitudeDeg = 41.88, longitudeDeg = -87.63) // Chicago
@@ -101,18 +111,26 @@ for (d in 0..7) {
 names.forEachIndexed { row, name ->
     val sat = sky.byName(name)!!
     val passes = here.passes(sat, start, end, minElevationDeg = 10.0)
-    println("$name: ${passes.size} passes above 10° in a week, highest ${passes.maxOf { it.maxElevationDeg }.f0}°")
+    // the parts of those passes with the satellite in sunlight and the sky dark: the ones you can see
+    val seen = here.visiblePasses(sat, start, end, minElevationDeg = 10.0)
+    println(
+        "$name: ${passes.size} passes above 10° in a week, ${seen.size} visible, highest ${passes.maxOf { it.maxElevationDeg }.f0}°",
+    )
     val base = (row + 1) * rowH
     // one stalk per pass, at its culmination, as tall as its highest elevation (90° fills the row)
-    shapes += fline {
-        for (p in passes) {
-            val x = Duration.between(start, p.culmination).toSeconds() / 86400.0 * dayW
-            moveTo(x, base)
-            lineTo(x, base - (rowH - 18) * p.maxElevationDeg / 90.0)
+    fun stalks(list: List<Pass>, width: Double, c: Vec4) {
+        shapes += fline {
+            for (p in list) {
+                val x = Duration.between(start, p.culmination).toSeconds() / 86400.0 * dayW
+                moveTo(x, base)
+                lineTo(x, base - (rowH - 18) * p.maxElevationDeg / 90.0)
+            }
+            thickness = width
+            color = c
         }
-        thickness = 2.0
-        color = vec(0.45, 0.8, 1.0, 1.0)
     }
+    stalks(passes, 2.0, vec(0.45, 0.8, 1.0, 0.45))
+    stalks(seen, 2.5, vec(1.0, 0.85, 0.35, 1.0))
     shapes += fline {
         moveTo(0, base)
         lineTo(7 * dayW, base)
@@ -120,9 +138,11 @@ names.forEachIndexed { row, name ->
         color = vec(1.0, 1.0, 1.0, 0.35)
     }
     shapes +=
-        font.text("$name   ${passes.size} passes", size = 9.0, at = vec(4, base - rowH + 12, 0)).apply {
-            color = vec(1.0, 1.0, 1.0, 0.85)
-        }
+        font
+            .text("$name   ${passes.size} passes, ${seen.size} visible", size = 9.0, at = vec(4, base - rowH + 12, 0))
+            .apply {
+                color = vec(1.0, 1.0, 1.0, 0.85)
+            }
 }
 
 lines(shapes, w = 7 * dayW, h = names.size * rowH + 24, fitToSize = true)
@@ -133,19 +153,142 @@ Terra and Landsat 9 are in sun-synchronous orbits, which cross any latitude at t
 every day: two pairs of passes, morning and evening. Hubble's orbit is inclined at 28.5°, so from
 42° north it never gets more than a few degrees above the minimum.
 
+Only the ISS can be seen this week, 11 times, always in the early passes of its evening cluster: by the
+later passes the station, 400 km up, has followed the ground into the Earth's shadow. The Chinese
+station comes over in the middle of the day this week, and Terra and Landsat 9 cross at about 10:30 in
+the morning and at night, local time, in daylight or in the shadow, so none of the three is visible.
+
+## The geosynchronous belt
+
+A satellite with a period of one sidereal day, 1,436 minutes, keeps pace with the turning Earth. Over
+the equator, with a circular orbit, it stays above one point: a geostationary satellite. With some
+inclination it traces a figure-eight about that point once a day, north and south by the inclination.
+This box draws the point beneath each of the snapshot's geosynchronous satellites, every 20 minutes for a
+day, over the coastlines near the equator, with latitude stretched about three times. Satellites held on
+station are blue; the ones drifting more than 2° of longitude a day, retired or never controlled, are
+pink:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/satellites/geo.png" capture="box" open-outputs="true" wait="3.0" timeout="300" padding="12" embed=true name="satellites-geo" alt="A strip map of the equatorial band from 180° west to 180° east, latitude 15° south to 15° north, over faint coastlines of the Americas, Africa and Asia. Hundreds of blue dots and short blue vertical figure-eights crowd the equator, densest over Asia and the Americas; pink tracks of drifting satellites cross the band as long slanted lines and tall loops, most of them between 60° and 150° east, and one wide pink ellipse spans from 130° west to 60° east" macro-file="../../dev_docs/agents/transcripts/satellites.yaml" capture-box="satellite-geo"}
+import afield.simulation.orbits.*
+import java.time.Duration
+import kotlin.math.abs
+
+// Every object in the snapshot, near-earth and deep-space.
+val sky = SatelliteCatalogue.bundled()
+val deep = sky.satellites.filter { it.tle.isDeepSpace }
+println("${sky.size} satellites, ${deep.size} of them deep-space")
+
+// Geosynchronous orbits go round once a sidereal day, 1,436 minutes; the navigation constellations take 12 to 14 hours.
+val geo = deep.filter { it.tle.periodMinutes in 1426.0..1446.0 }
+val navigation = deep.filter { it.tle.periodMinutes in 700.0..850.0 }
+println("${geo.size} geosynchronous, ${navigation.size} in 12 to 14 hour orbits (GPS, GLONASS, Galileo, BeiDou)")
+
+// Longitude across, latitude up: ±15° fills the height, so the figure-eights of inclined orbits show.
+val mapW = 720.0
+val mapH = 200.0
+fun lonX(lon: Double) = (lon + 180.0) / 360.0 * mapW
+fun latY(lat: Double) = mapH / 2 - lat / 15.0 * mapH / 2
+val font = afield.ai.learning.pen.HersheyFont.load("futural")
+val shapes = ArrayList<FLine>()
+
+// The coastlines inside the band, to show where on Earth each satellite hangs.
+for (coast in Coastlines.lines) shapes += fline {
+    var pen = false
+    for (g in coast) {
+        if (abs(g.latitudeDeg) > 15.0) {
+            pen = false
+            continue
+        }
+        if (pen) lineTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+        else moveTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+        pen = true
+    }
+    thickness = 1.0
+    color = vec(0.75, 0.9, 1.0, 0.8)
+}
+for (lon in -180..180 step 60) {
+    shapes += fline {
+        moveTo(lonX(lon.toDouble()), 0)
+        lineTo(lonX(lon.toDouble()), mapH)
+        thickness = 0.5
+        color = vec(1.0, 1.0, 1.0, 0.2)
+    }
+    shapes +=
+        font.text("$lon°", size = 9.0, at = vec(lonX(lon.toDouble()) + 3, mapH + 12, 0)).apply {
+            color = vec(1.0, 1.0, 1.0, 0.6)
+        }
+}
+shapes += fline {
+    moveTo(0, mapH / 2)
+    lineTo(mapW, mapH / 2)
+    thickness = 0.5
+    color = vec(1.0, 1.0, 1.0, 0.35)
+}
+
+// Each satellite's point under it, every 20 minutes for a day from the snapshot, drawn where it is within 15° of the
+// equator.
+val start = sky.epoch
+var drifting = 0
+for (sat in geo) {
+    val day = (0..72).mapNotNull { sat.geodetic(start.plus(Duration.ofMinutes(20L * it))) }
+    if (day.isEmpty()) continue
+    var travel = 0.0
+    for (i in 1 until day.size) travel +=
+        abs((day[i].longitudeDeg - day[i - 1].longitudeDeg + 540.0).rem(360.0) - 180.0)
+    val drifts = travel > 2.0 // more than 2° of longitude in a day: not held on station
+    if (drifts) drifting++
+    val c = if (drifts) vec(1.0, 0.45, 0.6, 0.8) else vec(0.45, 0.8, 1.0, 0.9)
+    shapes += fline {
+        for (i in day.indices) {
+            val g = day[i]
+            if (abs(g.latitudeDeg) > 15.0) continue
+            val prev = day.getOrNull(i - 1)
+            val jump = prev == null || abs(prev.latitudeDeg) > 15.0 || abs(g.longitudeDeg - prev.longitudeDeg) > 180.0
+            if (jump) moveTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+            else lineTo(lonX(g.longitudeDeg), latY(g.latitudeDeg))
+        }
+        thickness = 1.0
+        color = c
+    }
+    // a satellite held on station barely moves, so mark where it starts
+    val g = day[0]
+    if (abs(g.latitudeDeg) <= 15.0)
+        shapes += fline {
+            moveTo(lonX(g.longitudeDeg) - 1.2, latY(g.latitudeDeg))
+            lineTo(lonX(g.longitudeDeg) + 1.2, latY(g.latitudeDeg))
+            thickness = 2.5
+            color = c
+        }
+}
+println("$drifting of them drift more than 2° of longitude in a day")
+shapes += font.text("15°N", size = 9.0, at = vec(4, 12, 0)).apply { color = vec(1.0, 1.0, 1.0, 0.6) }
+shapes += font.text("15°S", size = 9.0, at = vec(4, mapH - 4, 0)).apply { color = vec(1.0, 1.0, 1.0, 0.6) }
+
+lines(shapes, w = mapW, h = mapH + 18, fitToSize = true)
+```
+
+Of the 564 geosynchronous objects in the snapshot, 68 drift. The rest sit in two crowds, over the
+Americas and over Asia, where most of the people they serve are. Many of the station-kept ones draw
+short vertical figure-eights: holding latitude costs most of a satellite's fuel, so operators often let
+the inclination grow and keep only the longitude. The other deep-space objects are the navigation
+constellations, 124 of them in 12- to 14-hour orbits (GPS, GLONASS, Galileo, BeiDou), and the
+eccentric orbits of Molniya satellites and astronomy missions.
+
 ## The whole catalogue on the GPU
 
-Running SGP4 on fifteen thousand objects every frame is work the CPU does not need to do for a
-picture. `Sgp4.meanElements` is the secular part of the orbit: a Kepler ellipse whose node, perigee
-and mean anomaly drift at SGP4's rates, with no drag and no periodic terms. It stays within about 10
-km of full SGP4 for the hour after the catalogue's epoch (median over every twentieth object; 15 km
-at the 90th percentile), which is less than a pixel here. `MeanElements.glsl` is the same few lines
+To draw sixteen thousand objects every frame, we can use a cheaper approximation on the GPU.
+`Sgp4.meanElements` is the secular part of the orbit: a Kepler ellipse whose node, perigee
+and mean anomaly drift at SGP4's rates (with the moon's and sun's for a deep-space orbit), with no drag
+and no periodic terms. It stays within about 10 km of full SGP4 for the hour after the catalogue's
+epoch (median over every twentieth low orbit; 15 km at the 90th percentile), and about 23 km for the
+deep-space ones, at ten to forty thousand kilometres, which is less than a pixel here.
+`MeanElements.glsl` is the same few lines
 in GLSL, so a vertex shader can solve Kepler's equation for every satellite, every frame.
 
 The drawing takes three boxes. A renderer box opens the window. Beneath it, an Earth box draws the
 graticule, Natural Earth's coastlines and the ISS's ground track for the next day, bright where Chicago
 sees it above 10°, as line segments. It also makes the catalogue, a `SkyClock` that runs the sky at
-120 times real time, and the camera, and publishes all three with `prop` for the box beneath it.
+120 times real time, and the camera. It publishes all three with `prop` for the box beneath it.
 Beneath that, a satellites box writes one record per satellite into a GPU buffer, laid out by a
 [GPU schema](gpu_schema.md), and draws one point per satellite:
 
@@ -256,8 +399,9 @@ void main()
     if (picked) fcol = vec4(1.0, 0.95, 0.8, 1.0);
 
     gl_Position = pc.p * pc.m * vec4(w, 1);
-    // level of detail by distance: a satellite near the camera is drawn larger
-    gl_PointSize = picked ? 16.0 : clamp(pc.clock.y / dist, 1.5, 12.0);
+    // level of detail by distance: a satellite near the camera is drawn larger, and the high, sparse ones
+    // never smaller than 3 pixels, so the navigation shell and the geostationary ring show from far out
+    gl_PointSize = picked ? 16.0 : clamp(pc.clock.y / dist, alt > 2000.0 ? 3.0 : 1.5, 12.0);
 }
 ```
 
@@ -265,23 +409,81 @@ The Earth box draws in the same inertial frame, turning the Earth-fixed coastlin
 sidereal time each frame (`m.spin` in its `vertex` shader), so the Earth turns under the orbits. With
 the renderer window focused, the [camera keys](afield_four_graphics.md#keyboard-camera) fly the camera: W and S move
 in and out, Shift with Left and Right orbits the globe, R puts the camera back. A satellite drawn
-larger is a nearer one, so flying out to the shell shows it in more detail.
+larger is a nearer one, so flying out to the shell shows it in more detail. Flying further out, past
+four Earth radii, brings in the navigation satellites, and at six and a half the geostationary ring.
+
+### A flight out to the geostationary ring
+
+One more box, beneath the Earth box, flies the camera for you. It is a `frames { }` loop that moves
+`camera.at` every frame: out from Chicago through the low shell, past the navigation satellites, to
+eleven Earth radii, where the whole geostationary ring is in view, turning round the north axis and
+coming down to 20° above the equator on the way. Launch it and it has the camera for 40 seconds; then
+the keyboard has it back. The satellites move at the clock's 120 times real time throughout, so the
+low ones swirl round the globe while the ring, turning with the Earth, keeps its place over the
+continents beneath it:
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" video="assets/satellites/tour.mp4" duration="22" fps="15" wait="0.5" timeout="420" embed=true name="satellites-tour" alt="The wire globe seen from above North America, wrapped in the pale shell of low satellites streaming round it. The camera pulls away and turns: the globe shrinks, scattered pink dots of the navigation satellites appear around it, and a thin ring of dots opens out round the equator, tilted towards the viewer, until it spans the frame with the small globe at its centre; the view then circles slowly while the low shell keeps moving and the ring holds its place" macro-file="../../dev_docs/agents/transcripts/satellites.yaml" capture-box="satellite-tour"}
+import kotlin.math.asin
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
+
+/*
+`camera` comes from the Earth box above. The flight starts where that box put the camera, 2.6 Earth
+radii above Chicago, and pulls out through the low shell, past the navigation satellites at four
+radii, to eleven, where the geostationary ring at six and a half is seen whole, and circles there
+for the rest of 40 seconds; after that the keyboard has the camera again.
+*/
+val cam = camera
+val a = cam.at
+val r0 = sqrt(a.x * a.x + a.y * a.y + a.z * a.z).toDouble()
+val azimuth0 = atan2(a.x.toDouble(), a.z.toDouble())
+val elevation0 = asin(a.y / r0)
+val far = 11.0
+val outSeconds = 14.0
+
+fun smooth(s: Double) = s * s * (3 - 2 * s)
+
+val t0 = System.nanoTime()
+var t = 0.0
+frames {
+    while (frame() && t < 40.0) {
+        t = (System.nanoTime() - t0) / 1e9
+        val s = smooth((t / outSeconds).coerceIn(0.0, 1.0))
+        // distance grows geometrically, so each doubling takes the same time
+        val r = r0 * (far / r0).pow(s)
+        // turn 70° round the north axis on the way out, then 4° a second; come down to 20° above the equator
+        val azimuth = azimuth0 + Math.toRadians(70.0) * s + Math.toRadians(4.0) * maxOf(0.0, t - outSeconds)
+        val elevation = elevation0 + (Math.toRadians(20.0) - elevation0) * s
+        cam.at = vec(r * cos(elevation) * sin(azimuth), r * sin(elevation), r * cos(elevation) * cos(azimuth))
+    }
+}
+```
 
 ## Where to go next
 
-- **Deep space.** SDP4's lunar-solar and resonance terms are in the same paper; with them the
-  catalogue gains its 795 GPS, geostationary and Molniya objects, and the picture gains the
-  geostationary ring. The SGP4-VER deep-space cases in `Sgp4Test`'s resources are ready to check
-  it against.
+- **Lit and dark on the globe.** The globe's points are coloured by height. Pass the sun's direction
+  (`Sun.position`) to the satellites box's vertex shader and dim the points inside the Earth's shadow
+  cylinder, the test `Frames.isSunlit` makes, and the globe shows which satellites are catching the
+  light at dusk.
+- **How bright.** `visiblePasses` says when a satellite can be seen, not how easily. A brightness
+  estimate needs a standard magnitude per object (published for the brighter ones) and the
+  phase angle between sun, satellite and observer, which `Sun.position` and `look` already give.
 - **Flying to a satellite.** The ISS is picked out by index (`m.clock.z`); pick by name from
   `search`, then ease the camera to the satellite's position from `Satellite.ecef` (see
   [Springs & Character Movement](movement_examples.md)), and draw the picked one's full SGP4 orbit as
   a line.
+- **Six-digit catalogue numbers.** The two-line format has five columns for the catalogue number; the
+  newest object in the snapshot is 69998, and the format runs out at 99999. CelesTrak also publishes
+  every group as OMM (`FORMAT=csv` or `json`), the same elements as named fields; an OMM parser
+  beside `Tle.parseAll` would keep `fetch` working past that point.
+- **Passes for the whole catalogue.** `passes` propagates every 30 seconds, which is fine for a few
+  satellites and slow for all 15,900 over a week. A first pass that drops every orbit whose perigee
+  and inclination can never bring it above the observer's horizon would leave far fewer to search.
 - **Level of detail.** Points scale with distance. Close up, a mesh or task shader could draw each
   nearby object as a model; on a Mac without mesh shaders, an instanced quad per object within a
   distance is the way.
-- **Visible passes.** A pass is only visible to the eye when the satellite is sunlit and the observer
-  is in darkness; a sun direction and the Earth's shadow cylinder would sort the passes chart into
-  the ones worth going outside for.
 - **The running document.** The [satellites transcript](agent_transcripts.md#satellites) builds all
-  four boxes.
+  six boxes.

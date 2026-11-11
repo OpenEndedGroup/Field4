@@ -45,11 +45,17 @@ animateEvolution(
 <!-- field-box id="flow_lenia_drift" index="1" -->
 
 ```edn [field-box id="flow_lenia_drift" role="properties"]
-{"id" "flow_lenia_drift" "index" 1 "name" "3 — The parameter field blending (MEAN mixing)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — The parameter field blending (MEAN mixing)" "_tombstone" false "frame" #afield/rect [560.0 240.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_lenia_drift_code_.kt" "lines" 16 "characters" 531 "sha256" "518162bcbabf5144ecc510e3d83e40523c7743b974ceabc378ba70554f1a3997"}]}
+{"id" "flow_lenia_drift" "index" 1 "name" "3 — The parameter field blending (MEAN mixing)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — The parameter field blending (MEAN mixing)" "_tombstone" false "frame" #afield/rect [560.0 240.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_lenia_drift_code_.kt" "lines" 23 "characters" 570 "sha256" "ca96a72686c97cfe4f5cec3a4f763146288e37d383e1879d7773d149d950e4ff"}]}
 ```
 
 ```kotlin [field-property box="flow_lenia_drift" name="code" path="flow_lenia_drift_code_.kt"]
-val world = flowLeniaWorld(288, 192, [FlowLeniaPresets.rings(), FlowLeniaPresets.cell()], positions = [38.0 to 32.0, 58.0 to 32.0], scale = 3)
+val world = flowLeniaWorld(
+    288,
+    192,
+    [FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+    positions = [38.0 to 32.0, 58.0 to 32.0],
+    scale = 3,
+)
 
 animateEvolution(
     world,
@@ -61,7 +67,8 @@ animateEvolution(
     panels = { w, n ->
         [
             ("step " + n) to w.speciesImg().resize(480, 320),
-            ("hybrid %.0f of %.0f".format(w.mixedMass(), w.totalMass())) to w.weightImg(0).colormap("viridis", 0f, 0.4f).resize(480, 320),
+            ("hybrid %.0f of %.0f".format(w.mixedMass(), w.totalMass())) to
+                w.weightImg(0).colormap("viridis", 0f, 0.4f).resize(480, 320),
         ]
     },
 )
@@ -72,11 +79,16 @@ animateEvolution(
 <!-- field-box id="flow_lenia_species" index="2" -->
 
 ```edn [field-box id="flow_lenia_species" role="properties"]
-{"id" "flow_lenia_species" "index" 2 "name" "1 — Flow Lenia: three species, total mass flat" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — Flow Lenia: three species, total mass flat" "_tombstone" false "frame" #afield/rect [560.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_lenia_species_code_.kt" "lines" 16 "characters" 459 "sha256" "e4e719dc258d50477717611128cd33afd5023a5a36adc1764e86eae38c6ddb14"}]}
+{"id" "flow_lenia_species" "index" 2 "name" "1 — Flow Lenia: three species, total mass flat" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — Flow Lenia: three species, total mass flat" "_tombstone" false "frame" #afield/rect [560.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_lenia_species_code_.kt" "lines" 21 "characters" 471 "sha256" "4d6a419e346efd120d90d4d782cb91730a380fa1622ff99fb750caf89912be12"}]}
 ```
 
 ```kotlin [field-property box="flow_lenia_species" name="code" path="flow_lenia_species_code_.kt"]
-val world = flowLeniaWorld(288, 288, [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()], scale = 3)
+val world = flowLeniaWorld(
+    288,
+    288,
+    [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+    scale = 3,
+)
 
 animateEvolution(
     world,
@@ -88,7 +100,7 @@ animateEvolution(
     panels = { w, n ->
         [
             ("step " + n) to w.speciesImg().resize(480, 480),
-            ("total mass %.3f".format(w.totalMass())) to w.massPlot(480, 480),
+            ("total mass " + w.totalMass().f3) to w.massPlot(480, 480),
         ]
     },
 )
@@ -99,11 +111,16 @@ animateEvolution(
 <!-- field-box id="flow_lenia_conservation" index="3" -->
 
 ```edn [field-box id="flow_lenia_conservation" role="properties"]
-{"id" "flow_lenia_conservation" "index" 3 "name" "0 — Flow Lenia: mass conserved over 200 steps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "0 — Flow Lenia: mass conserved over 200 steps" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_lenia_conservation_code_.kt" "lines" 9 "characters" 371 "sha256" "a74621be876e6827e6abb89547c6976d65c2a89b1d37dfda2000e9f1e2392eed"}]}
+{"id" "flow_lenia_conservation" "index" 3 "name" "0 — Flow Lenia: mass conserved over 200 steps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "0 — Flow Lenia: mass conserved over 200 steps" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_lenia_conservation_code_.kt" "lines" 14 "characters" 390 "sha256" "748be56c87e8b46b86bb764a6543cd9de4b568c83746f1de8dad53a365af4be2"}]}
 ```
 
 ```kotlin [field-property box="flow_lenia_conservation" name="code" path="flow_lenia_conservation_code_.kt"]
-val world = flowLeniaWorld(64, 64, [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()], seedRadius = 10.0)
+val world = flowLeniaWorld(
+    64,
+    64,
+    [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+    seedRadius = 10.0,
+)
 val m0 = world.totalMass()
 var worst = 0.0
 repeat(200) {
@@ -119,7 +136,7 @@ println("worst relative change in total mass over 200 steps: " + worst)
 <!-- field-box id="flow_lenia_mutation" index="4" -->
 
 ```edn [field-box id="flow_lenia_mutation" role="properties"]
-{"id" "flow_lenia_mutation" "index" 4 "name" "5 — Mutation inside the world, against a neutral control" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Mutation inside the world, against a neutral control" "_tombstone" false "frame" #afield/rect [560.0 420.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_lenia_mutation_code_.kt" "lines" 26 "characters" 997 "sha256" "374cb7216c85a07a2601085d21c71483b331a923ccb677a1bcdd2052c2339640"}]}
+{"id" "flow_lenia_mutation" "index" 4 "name" "5 — Mutation inside the world, against a neutral control" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Mutation inside the world, against a neutral control" "_tombstone" false "frame" #afield/rect [560.0 420.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_lenia_mutation_code_.kt" "lines" 26 "characters" 985 "sha256" "3a64632225491e70afa468654f284b204026045fc4365689b3da42be965be496"}]}
 ```
 
 ```kotlin [field-property box="flow_lenia_mutation" name="code" path="flow_lenia_mutation_code_.kt"]
@@ -129,7 +146,7 @@ neutral.mutation = FlowLeniaMutation(rate = 0.05, radius = 12.0, scale = 0.0)
 val mutating = flowLeniaWorld(192, 192, species, mixing = FlowLeniaMixing.SAMPLED, scale = 2)
 mutating.mutation = FlowLeniaMutation(rate = 0.05, radius = 12.0, scale = 0.3)
 
-fun masses(w: FlowLeniaWorld) = w.speciesMasses().joinToString(" ") { "%.0f".format(it) }
+fun masses(w: FlowLeniaWorld) = w.speciesMasses().joinToString(" ") { it.f0 }
 
 animateEvolution(
     neutral to mutating,
@@ -162,12 +179,13 @@ From `code`
 Noise seed 2 folds into the crescent; grow it to three times the resolution once it has formed.
 
 ```edn [field-box id="flow_lenia_crescent" role="properties"]
-{"id" "flow_lenia_crescent" "index" 5 "name" "4 — A crescent that travels, at three times the resolution" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — A crescent that travels, at three times the resolution" "_tombstone" false "frame" #afield/rect [60.0 420.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_lenia_crescent_code_.kt" "lines" 20 "characters" 818 "sha256" "8e4007f842aab322e2e746462ea5015de16a606b708ff3640812c0c57df6f924"}]}
+{"id" "flow_lenia_crescent" "index" 5 "name" "4 — A crescent that travels, at three times the resolution" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — A crescent that travels, at three times the resolution" "_tombstone" false "frame" #afield/rect [60.0 420.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_lenia_crescent_code_.kt" "lines" 21 "characters" 822 "sha256" "25f2f51a0d6a46cc04ea32f40b81ee39393bcaa7ce61ae1a865611dc3a2799a0"}]}
 ```
 
 ```kotlin [field-property box="flow_lenia_crescent" name="code" path="flow_lenia_crescent_code_.kt"]
 // Noise seed 2 folds into the crescent; grow it to three times the resolution once it has formed.
-val world = flowLeniaWorld(64, 64, [FlowLeniaPresets.crescent()], seedRadius = 6.0, randomSeed = 2L).steps(200).scaledCopy(3)
+val world =
+    flowLeniaWorld(64, 64, [FlowLeniaPresets.crescent()], seedRadius = 6.0, randomSeed = 2L).steps(200).scaledCopy(3)
 val trail = FloatArray(world.width * world.height)
 
 animateEvolution(

@@ -8,6 +8,7 @@ import arrow.core.right
 import java.nio.*
 import afield.simulation.orbits.SatelliteCatalogue
 import afield.simulation.orbits.SkyClock
+import afield.graphics.vulkan.util.Camera
 import afield.graphics.vulkan.util.Window
 import afield.graphics.vulkan.Renderer
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }

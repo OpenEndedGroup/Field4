@@ -105,13 +105,12 @@ The glued view reports join lengths; its nearest-neighbour/2-opt route is not a 
 
 ### physical_piano
 
-A physically modelled grand piano, ported from [coopiano](https://github.com/peterc/coopiano), as six
-boxes. `a4` renders A4 at velocity 0.5 for eight seconds and plots its spectrum; `string` draws one
-C3 string at five moments after the hammer leaves it; `piece` plays a short pattern; `pedal` plays
-a staccato arpeggio with the pedal up, down, and down without the sympathetic strings; `wobble`
-drives the string stiffness with a 110 Hz oscillator and the hammer hardness with a slow one;
-`live` plays it through the audio engine with sliders on the pedal, stiffness and soundboard. The
-replay runs the first five headless. See `Piano` in [Synthesis](reference/synthesis.md).
+A physically modelled grand piano, ported from [coopiano](https://github.com/peterc/coopiano).
+Start with `a4` for a rendered note and its spectrum, `string` for the shape of a vibrating string,
+or `piece` for a short phrase. The other boxes explore pedals, moving stiffness, close microphones,
+prepared strings and playing sound through the piano. `live`, `close live` and `prepared live` put
+controls on an instrument you can play. See `Piano` in [Synthesis](reference/synthesis.md) and the
+[piano tour](sound.md#a-physically-modelled-piano).
 
 [Open →](offline.html?file=assets/agent_transcripts/physical_piano/metadata.edn)
 
@@ -852,13 +851,15 @@ FLines](fline_examples.md#curvature-continuous-splines-clothoidsplinefrom).
 
 ### variable_width_strokes
 
-**Variable-width strokes, outlined as a swept circle.** Four boxes: a quick hand-written "o" drawn as
+**Variable-width strokes, outlined as a swept circle.** Seven boxes: a quick hand-written "o" drawn as
 pills, trapezoid pills and a swept spline; one cubic against `byVariableRibboning`; a stroke whose
-radius grows faster than it moves; and a pressure stroke read back from the drawing layer. From
+radius grows faster than it moves; a pressure stroke read back from the drawing layer; a
+thousand-sample tablet stroke thinned to sixty knots; a "z" with and without its corners; and a box
+that outlines each stroke you draw. From
 [Drawing with FLines](fline_examples.md#variable-width-strokes-the-swept-circle-envelope).
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/variable_width_strokes.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="120" padding="12" name="gallery-variable-width-strokes" alt="A hand-written o drawn three ways in cream on black: knuckled pills, straight-sided trapezoid pills, and a smooth swept spline, with the pen samples as red dots" macro-file="../../dev_docs/agents/transcripts/variable_width_strokes.yaml" capture-box="swept-o"}
-// The transcript builds and runs all four boxes; this is the "o" box.
+// The transcript builds and runs all seven boxes; this is the "o" box.
 ```
 
 [Open →](offline.html?file=assets/agent_transcripts/variable_width_strokes/metadata.edn)
@@ -1131,13 +1132,14 @@ Evolved grain sets, after Nathan Ho's [EvoGrain](https://nathanho.me/posts/evogr
 grain, `+`/`-` step the pitch and every bracket is a new voice. Box 1 decodes one grammar into a
 piano-roll and a player. Box 2 evolves the grammar toward a profile of trapezoid-scored statistics,
 with sliders for three of the targets that re-run the search. Box 3 is interactive evolution: six
-children with players, and a text field naming the parents of the next generation.
+children with players, and a text field naming the parents of the next generation. The remaining
+boxes shape grains, take a target from a recording and map a range of evolved sets.
 
 [Open →](offline.html?file=assets/agent_transcripts/alife_grains/metadata.edn)
 
 ### kmeans_emeans
 
-The [k-means at scale](spatial_geometry_examples.md#k-means-at-scale) section as two boxes.
+The [k-means at scale](spatial_geometry_examples.md#k-means-at-scale) section as four boxes.
 *Lloyd vs e-means* clusters 48 000 points in 60 blobs from the same random seeds with Lloyd's
 algorithm at 25 epochs and e-means ([Meta FAIR](https://e-means.github.io), ported from Faiss) at 3,
 and plots both runs' mean squared error per epoch. *Revival* rings 40 blobs with 12 strays, so

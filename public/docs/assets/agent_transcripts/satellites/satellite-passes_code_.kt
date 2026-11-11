@@ -1,9 +1,9 @@
 import afield.simulation.orbits.*
 import java.time.Duration
 
-// The bundled CelesTrak snapshot: about 15,000 near-earth objects, each with its SGP4 propagator.
+// The bundled CelesTrak snapshot: about 15,900 objects, each with its SGP4 propagator.
 val sky = SatelliteCatalogue.bundled()
-println("${sky.size} satellites, ${sky.skippedDeepSpace} deep-space left out, elements fresh at ${sky.epoch}")
+println("${sky.size} satellites, elements fresh at ${sky.epoch}")
 
 // One place on the ground, and the week after the snapshot.
 val here = Observer(latitudeDeg = 41.88, longitudeDeg = -87.63) // Chicago
@@ -33,18 +33,26 @@ for (d in 0..7) {
 names.forEachIndexed { row, name ->
     val sat = sky.byName(name)!!
     val passes = here.passes(sat, start, end, minElevationDeg = 10.0)
-    println("$name: ${passes.size} passes above 10° in a week, highest ${passes.maxOf { it.maxElevationDeg }.f0}°")
+    // the parts of those passes with the satellite in sunlight and the sky dark: the ones you can see
+    val seen = here.visiblePasses(sat, start, end, minElevationDeg = 10.0)
+    println(
+        "$name: ${passes.size} passes above 10° in a week, ${seen.size} visible, highest ${passes.maxOf { it.maxElevationDeg }.f0}°",
+    )
     val base = (row + 1) * rowH
     // one stalk per pass, at its culmination, as tall as its highest elevation (90° fills the row)
-    shapes += fline {
-        for (p in passes) {
-            val x = Duration.between(start, p.culmination).toSeconds() / 86400.0 * dayW
-            moveTo(x, base)
-            lineTo(x, base - (rowH - 18) * p.maxElevationDeg / 90.0)
+    fun stalks(list: List<Pass>, width: Double, c: Vec4) {
+        shapes += fline {
+            for (p in list) {
+                val x = Duration.between(start, p.culmination).toSeconds() / 86400.0 * dayW
+                moveTo(x, base)
+                lineTo(x, base - (rowH - 18) * p.maxElevationDeg / 90.0)
+            }
+            thickness = width
+            color = c
         }
-        thickness = 2.0
-        color = vec(0.45, 0.8, 1.0, 1.0)
     }
+    stalks(passes, 2.0, vec(0.45, 0.8, 1.0, 0.45))
+    stalks(seen, 2.5, vec(1.0, 0.85, 0.35, 1.0))
     shapes += fline {
         moveTo(0, base)
         lineTo(7 * dayW, base)
@@ -52,9 +60,11 @@ names.forEachIndexed { row, name ->
         color = vec(1.0, 1.0, 1.0, 0.35)
     }
     shapes +=
-        font.text("$name   ${passes.size} passes", size = 9.0, at = vec(4, base - rowH + 12, 0)).apply {
-            color = vec(1.0, 1.0, 1.0, 0.85)
-        }
+        font
+            .text("$name   ${passes.size} passes, ${seen.size} visible", size = 9.0, at = vec(4, base - rowH + 12, 0))
+            .apply {
+                color = vec(1.0, 1.0, 1.0, 0.85)
+            }
 }
 
 lines(shapes, w = 7 * dayW, h = names.size * rowH + 24, fitToSize = true)

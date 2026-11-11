@@ -1,5 +1,6 @@
 import afield.simulation.orbits.SatelliteCatalogue
 import afield.simulation.orbits.SkyClock
+import afield.graphics.vulkan.util.Camera
 import afield.graphics.vulkan.buffers.*
 import afield.document.context.*
 import afield.graphics.render.*

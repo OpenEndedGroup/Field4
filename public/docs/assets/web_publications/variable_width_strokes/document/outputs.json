@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-11T16:45:10.312Z",
+  "capturedAt": "2026-11-11T17:01:55.576Z",
   "documentName": "variable_width_strokes",
   "outputs": [
     {
-      "uid": "swept-o",
+      "uid": "swept-thinned",
       "channel": "lines",
       "open": true,
       "warnings": [],
@@ -16,7 +16,7 @@
       "path": "outputs/0.html"
     },
     {
-      "uid": "swept-cubic",
+      "uid": "swept-o",
       "channel": "lines",
       "open": true,
       "warnings": [],
@@ -28,7 +28,7 @@
       "path": "outputs/1.html"
     },
     {
-      "uid": "swept-notation",
+      "uid": "swept-corners",
       "channel": "lines",
       "open": true,
       "warnings": [],
@@ -40,7 +40,7 @@
       "path": "outputs/2.html"
     },
     {
-      "uid": "swept-degenerate",
+      "uid": "swept-cubic",
       "channel": "lines",
       "open": true,
       "warnings": [],
@@ -50,6 +50,30 @@
       "width": 480,
       "height": 150,
       "path": "outputs/3.html"
+    },
+    {
+      "uid": "swept-notation",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "swept-degenerate",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/5.html"
     }
   ]
 }

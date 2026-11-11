@@ -4,7 +4,7 @@ neutral.mutation = FlowLeniaMutation(rate = 0.05, radius = 12.0, scale = 0.0)
 val mutating = flowLeniaWorld(192, 192, species, mixing = FlowLeniaMixing.SAMPLED, scale = 2)
 mutating.mutation = FlowLeniaMutation(rate = 0.05, radius = 12.0, scale = 0.3)
 
-fun masses(w: FlowLeniaWorld) = w.speciesMasses().joinToString(" ") { "%.0f".format(it) }
+fun masses(w: FlowLeniaWorld) = w.speciesMasses().joinToString(" ") { it.f0 }
 
 animateEvolution(
     neutral to mutating,
