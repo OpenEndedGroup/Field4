@@ -14,13 +14,14 @@ shaderTemplate["Orbit"] = orbitSchema.template
 shaderTemplate["orbit"] = mapOf("kepler" to Resolver { MeanElements.glsl })
 
 // `sky`, `clock` and `camera` come from the Earth box above this one.
-val orbits = sky.meanElementsAt(clock.reference).map { e ->
-    Orbit(
-        vec(e.semiMajorAxisKm, e.eccentricity, e.inclination, 0.0),
-        vec(e.raan, e.argPerigee, e.meanAnomaly, 0.0),
-        vec(e.raanRate, e.argPerigeeRate, e.meanAnomalyRate, 0.0),
-    )
-}
+val orbits =
+    sky.meanElementsAt(clock.reference).map { e ->
+        Orbit(
+            vec(e.semiMajorAxisKm, e.eccentricity, e.inclination, 0.0),
+            vec(e.raan, e.argPerigee, e.meanAnomaly, 0.0),
+            vec(e.raanRate, e.argPerigeeRate, e.meanAnomalyRate, 0.0),
+        )
+    }
 val orbitData = defaultBuffer { size = (orbits.size * orbitSchema.strideBytes).bytes }.buffer
 orbitData.mapAndWrite_bytes { orbitSchema.writeArray(orbits, this) }
 println("${orbits.size} orbits on the GPU, ${orbitSchema.strideBytes} bytes each")

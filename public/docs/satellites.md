@@ -91,15 +91,17 @@ for (d in 0..7) {
         thickness = 0.5
         color = vec(1.0, 1.0, 1.0, 0.2)
     }
-    if (d < 7) shapes += font.text("day ${d + 1}", size = 9.0, at = vec(d * dayW + 4, names.size * rowH + 14, 0)).apply {
-        color = vec(1.0, 1.0, 1.0, 0.6)
-    }
+    if (d < 7)
+        shapes +=
+            font.text("day ${d + 1}", size = 9.0, at = vec(d * dayW + 4, names.size * rowH + 14, 0)).apply {
+                color = vec(1.0, 1.0, 1.0, 0.6)
+            }
 }
 
 names.forEachIndexed { row, name ->
     val sat = sky.byName(name)!!
     val passes = here.passes(sat, start, end, minElevationDeg = 10.0)
-    println("$name: ${passes.size} passes above 10° in a week, highest ${"%.0f".format(passes.maxOf { it.maxElevationDeg })}°")
+    println("$name: ${passes.size} passes above 10° in a week, highest ${passes.maxOf { it.maxElevationDeg }.f0}°")
     val base = (row + 1) * rowH
     // one stalk per pass, at its culmination, as tall as its highest elevation (90° fills the row)
     shapes += fline {
@@ -117,9 +119,10 @@ names.forEachIndexed { row, name ->
         thickness = 0.5
         color = vec(1.0, 1.0, 1.0, 0.35)
     }
-    shapes += font.text("$name   ${passes.size} passes", size = 9.0, at = vec(4, base - rowH + 12, 0)).apply {
-        color = vec(1.0, 1.0, 1.0, 0.85)
-    }
+    shapes +=
+        font.text("$name   ${passes.size} passes", size = 9.0, at = vec(4, base - rowH + 12, 0)).apply {
+            color = vec(1.0, 1.0, 1.0, 0.85)
+        }
 }
 
 lines(shapes, w = 7 * dayW, h = names.size * rowH + 24, fitToSize = true)
@@ -146,7 +149,7 @@ sees it above 10°, as line segments. It also makes the catalogue, a `SkyClock` 
 Beneath that, a satellites box writes one record per satellite into a GPU buffer through a
 [GPU schema](gpu_schema.md) and draws one point per satellite:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/satellites/globe.png" capture="native-window" native-wait-frames="20" trim-native=true wait="1.0" timeout="300" embed=true name="satellites-globe" alt="The Earth as a wire globe seen from above North America: white coastlines of Canada, Greenland, the United States and the Gulf of Mexico on a blue graticule, crossed by orange ISS ground tracks, with a small yellow cross at Chicago. Thousands of pale blue dots, the low satellites, crowd a shell just outside the globe, densest at its rim; orange and pink dots, the higher ones, are scattered further out, and one larger white dot marks the ISS" macro-file="../../dev_docs/agents/transcripts/satellites.yaml" capture-box="satellite-catalogue"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/satellites/globe.png" capture="native-window" native-wait-frames="20" trim-native=true wait="1.0" timeout="300" embed=true name="satellites-globe" max-width="1600" alt="The Earth as a wire globe seen from above North America: white coastlines of Canada, Greenland, the United States and the Gulf of Mexico on a blue graticule, crossed by orange ISS ground tracks, with a small yellow cross at Chicago. Thousands of pale blue dots, the low satellites, crowd a shell just outside the globe, densest at its rim; orange and pink dots, the higher ones, are scattered further out, and one larger white dot marks the ISS" macro-file="../../dev_docs/agents/transcripts/satellites.yaml" capture-box="satellite-catalogue"}
 import afield.simulation.orbits.*
 
 // One record per satellite: its mean elements, moved to the clock's start so the shader's time is small.

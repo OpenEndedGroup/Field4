@@ -23,15 +23,17 @@ for (d in 0..7) {
         thickness = 0.5
         color = vec(1.0, 1.0, 1.0, 0.2)
     }
-    if (d < 7) shapes += font.text("day ${d + 1}", size = 9.0, at = vec(d * dayW + 4, names.size * rowH + 14, 0)).apply {
-        color = vec(1.0, 1.0, 1.0, 0.6)
-    }
+    if (d < 7)
+        shapes +=
+            font.text("day ${d + 1}", size = 9.0, at = vec(d * dayW + 4, names.size * rowH + 14, 0)).apply {
+                color = vec(1.0, 1.0, 1.0, 0.6)
+            }
 }
 
 names.forEachIndexed { row, name ->
     val sat = sky.byName(name)!!
     val passes = here.passes(sat, start, end, minElevationDeg = 10.0)
-    println("$name: ${passes.size} passes above 10° in a week, highest ${"%.0f".format(passes.maxOf { it.maxElevationDeg })}°")
+    println("$name: ${passes.size} passes above 10° in a week, highest ${passes.maxOf { it.maxElevationDeg }.f0}°")
     val base = (row + 1) * rowH
     // one stalk per pass, at its culmination, as tall as its highest elevation (90° fills the row)
     shapes += fline {
@@ -49,9 +51,10 @@ names.forEachIndexed { row, name ->
         thickness = 0.5
         color = vec(1.0, 1.0, 1.0, 0.35)
     }
-    shapes += font.text("$name   ${passes.size} passes", size = 9.0, at = vec(4, base - rowH + 12, 0)).apply {
-        color = vec(1.0, 1.0, 1.0, 0.85)
-    }
+    shapes +=
+        font.text("$name   ${passes.size} passes", size = 9.0, at = vec(4, base - rowH + 12, 0)).apply {
+            color = vec(1.0, 1.0, 1.0, 0.85)
+        }
 }
 
 lines(shapes, w = 7 * dayW, h = names.size * rowH + 24, fitToSize = true)

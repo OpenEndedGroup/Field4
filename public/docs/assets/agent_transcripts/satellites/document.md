@@ -37,7 +37,7 @@ start(renderer::run)
 <!-- field-box id="satellite-earth" index="1" -->
 
 ```edn [field-box id="satellite-earth" role="properties"]
-{"id" "satellite-earth" "index" 1 "name" "2 - Earth, coastlines, ISS ground track" "parents" ["root" "agent_graphics_context"] "children" ["satellite-catalogue"] "properties" {"children" #{#afield/box "satellite-catalogue"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "2 - Earth, coastlines, ISS ground track" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-earth_vertex_.glsl" "lines" 22 "characters" 647 "sha256" "675baa042bf4fe92b603d7c883408edc6921f75c296b40074dfef5d9ab49a515"} {"name" "fragment" "language" "glsl" "path" "satellite-earth_fragment_.glsl" "lines" 7 "characters" 129 "sha256" "2f9d2c32dd0a21b6f98a207e7187d8c81a390cf28ef0043f3c852ec71c79c819"} {"name" "code" "language" "kotlin" "path" "satellite-earth_code_.kt" "lines" 78 "characters" 3725 "sha256" "de13a287f076acceb113c99ee95a86bfbb76fcbbdc914949a156de81b2f6f3b7"}]}
+{"id" "satellite-earth" "index" 1 "name" "2 - Earth, coastlines, ISS ground track" "parents" ["root" "agent_graphics_context"] "children" ["satellite-catalogue"] "properties" {"children" #{#afield/box "satellite-catalogue"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "2 - Earth, coastlines, ISS ground track" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-earth_vertex_.glsl" "lines" 22 "characters" 647 "sha256" "675baa042bf4fe92b603d7c883408edc6921f75c296b40074dfef5d9ab49a515"} {"name" "fragment" "language" "glsl" "path" "satellite-earth_fragment_.glsl" "lines" 7 "characters" 129 "sha256" "2f9d2c32dd0a21b6f98a207e7187d8c81a390cf28ef0043f3c852ec71c79c819"} {"name" "code" "language" "kotlin" "path" "satellite-earth_code_.kt" "lines" 96 "characters" 3789 "sha256" "70d144ae235896e174877eaf095c09a356781a4dcac8790ad0186d2679aea5ec"}]}
 ```
 
 ```glsl [field-property box="satellite-earth" name="vertex" path="satellite-earth_vertex_.glsl"]
@@ -99,15 +99,24 @@ fun world(g: Geodetic) = world(Frames.ecefOf(g.latitudeDeg, g.longitudeDeg, g.he
 val points = ArrayList<Vec3>()
 val colors = ArrayList<Vec4>()
 fun segment(a: Vec3, b: Vec3, c: Vec4) {
-    points += a; points += b; colors += c; colors += c
+    points += a
+    points += b
+    colors += c
+    colors += c
 }
 fun polyline(line: List<Geodetic>, c: Vec4) {
     for (i in 0 until line.size - 1) segment(world(line[i]), world(line[i + 1]), c)
 }
 
 // A graticule every 30°, then the coastlines.
-for (lon in -180 until 180 step 30) polyline((-90..90 step 3).map { Geodetic(it.toDouble(), lon.toDouble(), 0.0) }, vec(0.4, 0.55, 0.8, 0.35))
-for (lat in -60..60 step 30) polyline((-180..180 step 3).map { Geodetic(lat.toDouble(), it.toDouble(), 0.0) }, vec(0.4, 0.55, 0.8, 0.35))
+for (lon in -180 until 180 step 30) polyline(
+    (-90..90 step 3).map { Geodetic(it.toDouble(), lon.toDouble(), 0.0) },
+    vec(0.4, 0.55, 0.8, 0.35),
+)
+for (lat in -60..60 step 30) polyline(
+    (-180..180 step 3).map { Geodetic(lat.toDouble(), it.toDouble(), 0.0) },
+    vec(0.4, 0.55, 0.8, 0.35),
+)
 for (coast in Coastlines.lines) polyline(coast, vec(0.75, 0.9, 1.0, 0.9))
 
 // The ISS's ground track for the next day: faint everywhere, bright where Chicago sees it above 10°.
@@ -123,14 +132,23 @@ for (i in 0 until day.size - 1) {
 }
 // Chicago, as a small cross.
 val c = Frames.ecefOf(41.88, -87.63, 30.0)
-for (d in listOf(Xyz(120.0, 0.0, 0.0), Xyz(0.0, 120.0, 0.0), Xyz(0.0, 0.0, 120.0)))
-    segment(world(Xyz(c.x - d.x, c.y - d.y, c.z - d.z)), world(Xyz(c.x + d.x, c.y + d.y, c.z + d.z)), vec(1.0, 0.85, 0.3, 1.0))
+for (d in listOf(Xyz(120.0, 0.0, 0.0), Xyz(0.0, 120.0, 0.0), Xyz(0.0, 0.0, 120.0))) segment(
+    world(Xyz(c.x - d.x, c.y - d.y, c.z - d.z)),
+    world(Xyz(c.x + d.x, c.y + d.y, c.z + d.z)),
+    vec(1.0, 0.85, 0.3, 1.0),
+)
 // Start the camera 2.6 Earth radii out, above Chicago as it is when the clock starts.
 val g0 = clock.gmst()
-val c0 = Xyz(kotlin.math.cos(g0) * c.x - kotlin.math.sin(g0) * c.y, kotlin.math.sin(g0) * c.x + kotlin.math.cos(g0) * c.y, c.z) * (2.6 / c.length)
+val c0 = Xyz(
+    kotlin.math.cos(g0) * c.x - kotlin.math.sin(g0) * c.y,
+    kotlin.math.sin(g0) * c.x + kotlin.math.cos(g0) * c.y,
+    c.z,
+) * (2.6 / c.length)
 camera.at = vec(c0.y, c0.z + 0.5, c0.x) // one unit is one Earth radius
 
-println("${points.size / 2} segments; ISS seen from Chicago ${here.passes(iss, clock.reference, clock.reference.plus(Duration.ofDays(1))).size} times in the day drawn")
+println(
+    "${points.size / 2} segments; ISS seen from Chicago ${here.passes(iss, clock.reference, clock.reference.plus(Duration.ofDays(1))).size} times in the day drawn",
+)
 
 var module = moduleHere { primitiveType = lines }
 var m = Mesh()
@@ -161,7 +179,7 @@ var kc by keyCamera(camera = camera)
 <!-- field-box id="satellite-passes" index="2" -->
 
 ```edn [field-box id="satellite-passes" role="properties"]
-{"id" "satellite-passes" "index" 2 "name" "1 - A week of passes over Chicago" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A week of passes over Chicago" "_tombstone" false "frame" #afield/rect [40.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "satellite-passes_code_.kt" "lines" 57 "characters" 2162 "sha256" "60a5b8d352231fe6234cef6e2925600578971beb7c22822902fbeed36838adac"}]}
+{"id" "satellite-passes" "index" 2 "name" "1 - A week of passes over Chicago" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A week of passes over Chicago" "_tombstone" false "frame" #afield/rect [40.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "satellite-passes_code_.kt" "lines" 60 "characters" 2202 "sha256" "39c0253a892120ce01f827a265fb96d3080fd908056bff5de29799dae81e2180"}]}
 ```
 
 ```kotlin [field-property box="satellite-passes" name="code" path="satellite-passes_code_.kt"]
@@ -190,15 +208,17 @@ for (d in 0..7) {
         thickness = 0.5
         color = vec(1.0, 1.0, 1.0, 0.2)
     }
-    if (d < 7) shapes += font.text("day ${d + 1}", size = 9.0, at = vec(d * dayW + 4, names.size * rowH + 14, 0)).apply {
-        color = vec(1.0, 1.0, 1.0, 0.6)
-    }
+    if (d < 7)
+        shapes +=
+            font.text("day ${d + 1}", size = 9.0, at = vec(d * dayW + 4, names.size * rowH + 14, 0)).apply {
+                color = vec(1.0, 1.0, 1.0, 0.6)
+            }
 }
 
 names.forEachIndexed { row, name ->
     val sat = sky.byName(name)!!
     val passes = here.passes(sat, start, end, minElevationDeg = 10.0)
-    println("$name: ${passes.size} passes above 10° in a week, highest ${"%.0f".format(passes.maxOf { it.maxElevationDeg })}°")
+    println("$name: ${passes.size} passes above 10° in a week, highest ${passes.maxOf { it.maxElevationDeg }.f0}°")
     val base = (row + 1) * rowH
     // one stalk per pass, at its culmination, as tall as its highest elevation (90° fills the row)
     shapes += fline {
@@ -216,9 +236,10 @@ names.forEachIndexed { row, name ->
         thickness = 0.5
         color = vec(1.0, 1.0, 1.0, 0.35)
     }
-    shapes += font.text("$name   ${passes.size} passes", size = 9.0, at = vec(4, base - rowH + 12, 0)).apply {
-        color = vec(1.0, 1.0, 1.0, 0.85)
-    }
+    shapes +=
+        font.text("$name   ${passes.size} passes", size = 9.0, at = vec(4, base - rowH + 12, 0)).apply {
+            color = vec(1.0, 1.0, 1.0, 0.85)
+        }
 }
 
 lines(shapes, w = 7 * dayW, h = names.size * rowH + 24, fitToSize = true)
@@ -229,7 +250,7 @@ lines(shapes, w = 7 * dayW, h = names.size * rowH + 24, fitToSize = true)
 <!-- field-box id="satellite-catalogue" index="3" -->
 
 ```edn [field-box id="satellite-catalogue" role="properties"]
-{"id" "satellite-catalogue" "index" 3 "name" "3 - Every satellite, propagated on the GPU" "parents" ["root" "satellite-earth"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "satellite-earth"} "name" "3 - Every satellite, propagated on the GPU" "_tombstone" false "frame" #afield/rect [400.0 200.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-catalogue_vertex_.glsl" "lines" 41 "characters" 1421 "sha256" "9eb54de7e2019c5c3fa9aaeec4bcf21a042d32b7a363dba62520380512cab7d0"} {"name" "fragment" "language" "glsl" "path" "satellite-catalogue_fragment_.glsl" "lines" 10 "characters" 285 "sha256" "7f5e44e8b47539acea1d6608689722479e611377d171dd8a3c743f84932fd4a2"} {"name" "code" "language" "kotlin" "path" "satellite-catalogue_code_.kt" "lines" 44 "characters" 1826 "sha256" "5624c3c2bdc317e987e0292cbe41ebd2d8a4c6a1fde413207fe9699395218cef"}]}
+{"id" "satellite-catalogue" "index" 3 "name" "3 - Every satellite, propagated on the GPU" "parents" ["root" "satellite-earth"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "satellite-earth"} "name" "3 - Every satellite, propagated on the GPU" "_tombstone" false "frame" #afield/rect [400.0 200.0 320.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "satellite-catalogue_vertex_.glsl" "lines" 41 "characters" 1421 "sha256" "9eb54de7e2019c5c3fa9aaeec4bcf21a042d32b7a363dba62520380512cab7d0"} {"name" "fragment" "language" "glsl" "path" "satellite-catalogue_fragment_.glsl" "lines" 10 "characters" 285 "sha256" "7f5e44e8b47539acea1d6608689722479e611377d171dd8a3c743f84932fd4a2"} {"name" "code" "language" "kotlin" "path" "satellite-catalogue_code_.kt" "lines" 45 "characters" 1854 "sha256" "30a1c534a70162f1eb5959deeb960e9b9db0f84ae812c3684a1ebd12e0e9d06c"}]}
 ```
 
 ```glsl [field-property box="satellite-catalogue" name="vertex" path="satellite-catalogue_vertex_.glsl"]
@@ -306,13 +327,14 @@ shaderTemplate["Orbit"] = orbitSchema.template
 shaderTemplate["orbit"] = mapOf("kepler" to Resolver { MeanElements.glsl })
 
 // `sky`, `clock` and `camera` come from the Earth box above this one.
-val orbits = sky.meanElementsAt(clock.reference).map { e ->
-    Orbit(
-        vec(e.semiMajorAxisKm, e.eccentricity, e.inclination, 0.0),
-        vec(e.raan, e.argPerigee, e.meanAnomaly, 0.0),
-        vec(e.raanRate, e.argPerigeeRate, e.meanAnomalyRate, 0.0),
-    )
-}
+val orbits =
+    sky.meanElementsAt(clock.reference).map { e ->
+        Orbit(
+            vec(e.semiMajorAxisKm, e.eccentricity, e.inclination, 0.0),
+            vec(e.raan, e.argPerigee, e.meanAnomaly, 0.0),
+            vec(e.raanRate, e.argPerigeeRate, e.meanAnomalyRate, 0.0),
+        )
+    }
 val orbitData = defaultBuffer { size = (orbits.size * orbitSchema.strideBytes).bytes }.buffer
 orbitData.mapAndWrite_bytes { orbitSchema.writeArray(orbits, this) }
 println("${orbits.size} orbits on the GPU, ${orbitSchema.strideBytes} bytes each")
