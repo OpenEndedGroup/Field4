@@ -1373,8 +1373,24 @@ Negative continuity pulls the green `tcbTo` curve toward a corner at each point;
 
 ```diffstatic {data-lang=kotlin}
 :::static
-fun clothoidSplineFrom(points: List<Vec3>, closed: Boolean = false, samplesPerSegment: Int = 48): FLine
-fun clothoidSplineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = false, samplesPerSegment: Int = 48): FLine
+fun clothoidSplineFrom(
+    points: List<Vec2>,
+    z: Number = 0,
+    closed: Boolean = false,
+    samplesPerSegment: Int = 48,
+    corners: Collection<Int> = emptyList(),
+    startDirection: Vec2? = null,
+    endDirection: Vec2? = null,
+): FLine
+fun clothoidSplineFrom(
+    points: List<Vec3>,
+    closed: Boolean = false,
+    samplesPerSegment: Int = 48,
+    corners: Collection<Int> = emptyList(),
+    startDirection: Vec3? = null,
+    endDirection: Vec3? = null,
+    planeNormal: Vec3? = vec(0, 0, 1),
+): FLine
 
 fun FLine.curvatureComb(scale: Double = 2000.0, samples: Int = 120): FLine
 fun FLine.curvaturePlot(width: Double = 400.0, height: Double = 120.0, samples: Int = 300, maxCurvature: Double? = null): FLine
@@ -1382,7 +1398,7 @@ fun FLine.curvaturePlot(width: Double = 400.0, height: Double = 120.0, samples: 
 
 Each piece between two points is an [Euler spiral](https://en.wikipedia.org/wiki/Euler_spiral), the curve whose curvature changes at a constant rate along its length. An Euler spiral is fixed by the direction it leaves one point and the direction it arrives at the next, so the spline only has to choose one direction per point. It turns each point's direction until the curvature arriving at the point equals the curvature leaving it. An open spline starts and ends with an arc of a circle.
 
-Two tools make the difference visible on any line. `curvatureComb` draws a tooth along the normal at each sample, as long as the curvature there, and joins the tips; the teeth swap sides where the line changes from turning left to turning right. `curvaturePlot` draws curvature against distance along the line, in a box `width` by `height` with zero on the middle row.
+Two tools make the difference visible on any line. `curvatureComb` draws a tooth along the normal at each sample, as long as the curvature there, and joins the tips; the teeth swap sides where the line changes from turning left to turning right. `curvaturePlot` draws curvature against distance along the line, in a box `width` by `height` with zero on the middle row. A spline from `clothoidSplineFrom` carries its exact curvature, and both tools read that, still correctly after you scale, rotate, move or mirror the line.
 
 The comparison below puts both splines through the same eight points. The plots underneath share one vertical scale. The cubic's curvature (orange) steps at every point; the clothoid's (blue) is a chain of straight runs that meet without steps, and its comb tips run on without a break.
 
@@ -1470,6 +1486,108 @@ val dots = polylineFrom(knots).apply {
 
 lines(fill, comb, shape, dots, w = 420.0, h = 320.0, fitToSize = true)
 ```
+
+#### Corners: `corners = ...`
+
+Letters and outlines mix smooth stretches with corners. Pass the indices of the corner points as `corners` and the curve may change direction there; each stretch between corners is solved on its own, starting and ending in an arc of a circle, and two corners next to each other are joined by a straight line. A closed shape with corners starts at its first corner.
+
+The "D" below is one call: points 0 and 1 are the corners at the bottom and top of the straight back, and the bowl runs smoothly through the other three. The "S" is open, with no corners, and its ends are left free.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/clothoid_spline_corners.png" embed=true}
+:::static
+val d = clothoidSplineFrom(
+    [vec(40, 280), vec(40, 40), vec(130, 50), vec(190, 160), vec(130, 270)],
+    closed = true,
+    corners = [0, 1],
+).apply {
+    thickness = 4.0
+    color = vec(0.5, 0.8, 1.0, 1.0)
+}
+val s = clothoidSplineFrom(
+    [vec(370, 70), vec(300, 40), vec(250, 100), vec(320, 160), vec(370, 230), vec(310, 280), vec(240, 250)],
+).apply {
+    thickness = 4.0
+    color = vec(1.0, 0.7, 0.3, 1.0)
+}
+val dComb = d.curvatureComb(scale = 800.0, samples = 160).apply { color = vec(1.0, 1.0, 1.0, 0.35) }
+val sComb = s.curvatureComb(scale = 800.0, samples = 160).apply { color = vec(1.0, 1.0, 1.0, 0.35) }
+
+lines(dComb, sComb, d, s, w = 420.0, h = 320.0, fitToSize = true)
+```
+
+#### Fixed end directions: `startDirection`, `endDirection`
+
+An open spline normally ends in an arc, leaving the direction at its ends to the solve. To join the spline to something else without a kink, give the direction it should leave its first point (`startDirection`) or arrive at its last (`endDirection`). The rest of the spline stays curvature-continuous; at a fixed end the direction matches, but the curvature need not.
+
+Here a spline picks up the white straight line coming in from the left and hands over to the one going down to the right; `endDirection` is the direction of that second line, from its first point to its last.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/clothoid_spline_end_directions.png" embed=true}
+:::static
+val knots = [vec(100, 200), vec(180, 80), vec(260, 60), vec(330, 140)]
+
+val free = clothoidSplineFrom(knots).apply {
+    thickness = 1.5
+    color = vec(1.0, 0.7, 0.3, 0.9)
+}
+val joined = clothoidSplineFrom(knots, startDirection = vec(1, 0), endDirection = vec(70, 140)).apply {
+    thickness = 3.0
+    color = vec(0.5, 0.8, 1.0, 1.0)
+}
+
+// the straight lines the spline joins
+val leadIn = polylineFrom([vec(20, 200), vec(100, 200)]).apply { thickness = 3.0 }
+val leadOut = polylineFrom([vec(330, 140), vec(400, 280)]).apply { thickness = 3.0 }
+
+lines(leadIn, leadOut, free, joined, w = 420.0, h = 320.0, fitToSize = true)
+```
+
+The thin orange spline through the same points, with free ends, meets both straights at an angle.
+
+#### Heights and other planes: 3D points, `planeNormal`
+
+Give the points different Z values and the spline climbs between them. It is solved in the XY plane, where it is exactly the flat spline through the same points, and each point's height is carried along a smooth curve against distance travelled. The result passes through every point and its curvature stays continuous in 3D, so points on a helix give back that helix.
+
+The picture views a winding, climbing path from above and to the side. The grey line on the ground is the flat spline through the same points; the orange posts are the points' heights.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/clothoid_spline_heights.png" embed=true}
+:::static
+// a path that climbs as it winds: x and y on the ground, z up
+val knots = [
+    vec(0, 0, 0), vec(140, -30, 10), vec(240, 40, 30), vec(220, 150, 50),
+    vec(100, 180, 60), vec(20, 120, 75), vec(70, 60, 95), vec(170, 80, 120),
+]
+val path = clothoidSplineFrom(knots, samplesPerSegment = 64)
+// its shadow on the ground is the flat spline through the same points
+val shadow = clothoidSplineFrom(knots.map { vec(it.x, it.y, 0) }, samplesPerSegment = 64)
+
+// a slanted view from above and to the side: x across, y going back, z up
+fun view(p: Vec3) = vec(p.x + 0.3 * p.y, 240 - 0.6 * p.y - p.z, 0)
+
+val drawnPath = path.transform { view(it) }.apply {
+    thickness = 3.0
+    color = vec(0.5, 0.8, 1.0, 1.0)
+}
+val drawnShadow = shadow.transform { view(it) }.apply {
+    thickness = 1.5
+    color = vec(1.0, 1.0, 1.0, 0.35)
+}
+val posts = knots.map { k ->
+    polylineFrom([view(vec(k.x, k.y, 0)), view(k)]).apply { color = vec(1.0, 0.7, 0.3, 0.8) }
+}
+
+val curves: List<FLine> = [drawnShadow, drawnPath]
+lines(posts + curves, w = 420.0, h = 320.0, fitToSize = true)
+```
+
+A 3D `startDirection` or `endDirection` sets the climb at that end as well as the heading: `vec(1, 0, 1)` leaves along X rising at 45 degrees.
+
+`planeNormal` picks a different plane to solve in, with heights measured along that normal: `vec(0, 1, 0)` treats Y as up. `planeNormal = null` fits the plane to the points, which suits a nearly flat curve drawn in space, such as a stroke from a VR controller; seven points on a tilted circle give back that circle. `curvatureComb` and `curvaturePlot` read the line from above (plan curvature in XY), so they are for splines solved in the XY plane.
+
+#### Many points
+
+The time the solve takes grows in proportion to the number of points, so a spline through hundreds of them, such as a traced outline or a stroke read back from the drawing layer, is cheap: a closed spline through 600 points takes about a fifth of a second, and through 5,000 a second or two. Most of that is fitting the pieces, so a lower `samplesPerSegment` saves drawing time but not solving time.
+
+The solve can fail where the curve has to double back on itself between neighbouring points, as in a path that runs out and back along nearly the same line, or a zigzag with tall, narrow teeth. That stretch is then drawn as `cubicSplineFrom` would draw it, and the comb and plot measure it from its shape. A corner at each sharp turn usually fixes it.
 
 This spline is the simplest member of Aurimas Gasiulis's [S9 spline](https://gasiulis.name/new-spline) family, the one where both of a piece's weights are 1. S9 also lets each piece sharpen its turn near its ends, with weights computed from the end directions; that is not implemented here. The Euler-spiral spline itself is Raph Levien's, from his thesis [*From Spiral to Spline*](https://levien.com/phd/thesis.pdf) (2009); Henry Moreton's [*Minimum Curvature Variation Curves*](https://www2.eecs.berkeley.edu/Pubs/TechRpts/1993/CSD-93-732.pdf) (1992) is the background on why curves like this look fair.
 
@@ -3894,6 +4012,12 @@ Next on the Tour, [Drawing and Notation](drawing_and_notation.md) draws by hand 
 
 Open questions and next builds:
 
+- **A true 3D member of the family.** In space this spline is a flat Euler-spiral spline with heights
+  carried along it, so it bends in one plane and only climbs out of it. A 3D curve whose curvature
+  and torsion both change linearly with arc length would bend in any direction; each piece would be
+  fixed by its two end directions in 3D (the 3D version of the per-piece fit), and the knot solve
+  would match the curvature vector rather than one number. [`eulerSpiralBetween3D`](#euler-spiral-in-3d-clothoid-ish-connection)
+  is the two-point version with a ramp, the place such a piece would start.
 - **The S9 weights.** Each S9 piece has two weights; below 1 they sharpen the turn near the piece's
   ends, and S9 computes them from the end directions. A piece family with that behaviour
   (curvature against arc length with two weights, reducing to the Euler spiral at 1) and a weight
@@ -3903,8 +4027,8 @@ Open questions and next builds:
   from its two end directions, but as a cubic with a closed-form solve. Drawn through the same
   knots with combs, it would show what curvature continuity costs and buys.
 - **Draggable knots.** Read the knots from the drawing layer through `notation` and redraw on
-  `notation.onChange`, so the spline follows the points as they move.
-- **Mixed corners and smooth points.** Fonts mix corners with smooth points. A per-knot flag that
-  splits the solve at a corner would let one call draw a whole glyph outline.
-- **Larger knot counts.** The solve uses a dense linear system; past a few dozen knots a banded
-  (cyclic tridiagonal) solve is the right shape.
+  `notation.onChange`, so the spline follows the points as they move. Corners could come from the
+  drawing too, as points marked differently.
+- **Curvature-matched ends.** A fixed end direction matches the direction of what it joins but not
+  its curvature. Fixing the end curvature as well (zero, to run on smoothly from a straight line)
+  takes one more unknown at that end, such as an extra piece whose length the solve chooses.
