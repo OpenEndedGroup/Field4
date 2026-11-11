@@ -111,6 +111,37 @@ class RunZensicalTests(unittest.TestCase):
         self.assertIsNone(result.failure())
         self.assertEqual(cleared, [True])
 
+    def test_the_retry_runs_the_alternative_when_one_is_given(self) -> None:
+        # 2026-11-11: a wedge and its identical retry both stuck; the retry now changes the watcher.
+        first: list[int] = []
+        second: list[int] = []
+
+        def run() -> ZensicalRun:
+            first.append(1)
+            return ZensicalRun(returncode=None, stalled="no output", changed=0)
+
+        def retry() -> ZensicalRun:
+            second.append(1)
+            return ZensicalRun(returncode=0, finished=True)
+
+        result = run_zensical_retrying_idle_wedges(run, before_retry=lambda: True, retry=retry, pause=0)
+        self.assertEqual((len(first), len(second)), (1, 1))
+        self.assertIsNone(result.failure())
+
+    def test_the_environment_given_reaches_zensical(self) -> None:
+        import os
+        from contextlib import redirect_stdout
+        from io import StringIO
+
+        code = ("import os; print('Build started'); print('No issues found'); "
+                "print('Build finished in 0.10s' if os.environ.get('ZENSICAL_POLL_WATCHER') == '1' else 'no env')")
+        out = StringIO()
+        with patch("build_zensical_docs.report_zensical_stall"), redirect_stdout(out):
+            result = run_zensical([sys.executable, "-c", code], cwd=self.tmp, watched=[self.tmp], stall_seconds=30.0,
+                                  env={**os.environ, "ZENSICAL_POLL_WATCHER": "1"})
+        self.assertIsNone(result.failure())
+        self.assertIn("file watcher=polling", out.getvalue())
+
     def test_a_wedge_with_files_changing_is_a_writer_and_not_retried(self) -> None:
         calls: list[int] = []
 
