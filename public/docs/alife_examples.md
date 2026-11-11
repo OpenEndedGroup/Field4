@@ -2521,6 +2521,152 @@ Every trapezoid corner and weight is a dial. Building the terms from `slider` ca
 re-running [`PopulationSearch.evolve`](reference/search.md#populationsearch-kt--populationsearch--evolve) on release moves the target while you listen; the loadable
 demo below does exactly that.
 
+#### Shaping the grains: length, density, pan and a silent symbol
+
+The six symbols above place grains; three more pairs shape them. `<` and `>` make the grains that
+follow shorter or longer by `GrainTurtle.lengthStep` (1.5) without moving the time step, so they
+change how much the grains overlap. `*` and `/` make the time step shorter or longer by
+`densityStep` (1.5), so the grains that follow come denser or sparser. `l` and `r` move the pan by
+`panStep` (a quarter of the way to one side). Brackets save and restore all three, so a branch can
+change them without touching the trunk. A grammar may also have a second rule, for a symbol such as
+`X` that is rewritten like `G` but never plays; it carries structure from one generation to the
+next. Here the trunk steps down and speeds up, and every branch is an `X` that steps up and slows
+down a little more each generation:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-shaped.png" wait="10.0" timeout="120" capture="box" open-outputs="true" padding="20"}
+// < and > make the grains that follow shorter or longer, * and / denser or sparser,
+// l and r move them left or right. X is rewritten like G but never plays.
+val system = lSystem("G", 'G' to "G[lX]-*<G", 'X' to "+>G/X")
+for ((i, s) in system.derivations(2).withIndex()) println("gen $i: $s")
+val grains = decodeGrains(system, 4)
+println(GrainSetStats(grains))
+showImg(grainScoreImg(grains, 640, 220), caption = "gen 4: the trunk falls and quickens; each branch climbs and slows")
+display("audio", renderGrains(grains).wav())
+```
+
+![a piano-roll plot: gold trunk grains that start long at the top left and fall in pitch while getting shorter and closer together until they are slivers at the bottom right; above each of them a blue branch grain, longer than the trunk grain beside it](assets/alife_examples/grains-shaped.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-shaped.wav" audio-spec="shaped" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" embed=true hidden=true name="alife-grains-shaped-audio"}
+// Offline-rendered by GrainSetSoundDocs.renderWav("shaped").
+```
+
+The search can use them too. `grainLSystemGenome(alphabet = GRAIN_ALPHABET_EXTENDED)` builds rules
+from all twelve symbols, and `nonterminals = "X"` adds a rule for `X` to every genome.
+
+#### A target taken from a recording
+
+Writing trapezoids by hand says what you want in numbers. The other way is to point at a sound.
+`grainsFromAudio(samples, sampleRate)` reads a monophonic recording as a grain set: one grain per
+note Field's pitch detector can name, at its onset, length and pitch, with its loudness as the
+amplitude. `grainTermsAround(stats)` then puts a trapezoid on each of that set's statistics, with a
+plateau a quarter of the value either side (two semitones for the median pitch) and feet four times
+as far out. The recording here is Tidal's eleven `arpy` samples played one after another, a rising
+scale of plucked notes from middle C up two octaves in a second and a half. Its notes are about
+0.13 s apart, five times closer than a trunk grain's 0.72 s. The plain alphabet can only get that
+close with deep branches, which are quicker; `*` gives the search a second way. The box compares the
+two alphabets over eight seeds, then plays the winner from the first `arpy` note:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-recording.png" wait="20.0" timeout="240" capture="box" open-outputs="true" padding="20" requires="dirt-samples"}
+// The recording: Tidal's eleven arpy samples back to back, a rising scale.
+val arpy = DirtRender.requirePinnedLibrary().family("arpy")!!
+val notes = (0 until arpy.size).map { arpy.sample(it)!! }
+val rate = notes[0].sampleRate.toInt()
+val recording = notes.flatMap { it.left.asList() }.toFloatArray()
+
+// Read it as grains, and centre a trapezoid on each of its statistics.
+val heard = grainsFromAudio(recording, rate, minHz = 100.0)
+val target = GrainSetStats(heard)
+println("recording: $target")
+val terms = grainTermsAround(target)
+
+fun search(alphabet: String, seed: Long) = PopulationSearch.evolve(
+    grainLSystemGenome(alphabet = alphabet),
+    grainSetObjective(terms),
+    budget = 600,
+    seed = seed,
+    crossoverRate = 0.3,
+    immigrantRate = 0.1,
+    label = "toward arpy",
+)
+
+// The plain alphabet against the one with < > * / l r, over eight seeds each.
+for (alphabet in [GRAIN_ALPHABET, GRAIN_ALPHABET_EXTENDED]) {
+    val bests = (1L..8L).map { search(alphabet, it).bestFitness }
+    println("%-14s mean best %.3f, worst %.3f".format(alphabet, bests.average(), bests.min()))
+}
+
+val run = search(GRAIN_ALPHABET_EXTENDED, 7L)
+val best = decodeGrains(run.best!!.genome, 3)
+println(grainRule(run.best!!.genome))
+println("evolved:   " + GrainSetStats(best))
+showImg(grainScoreImg(heard, 640, 160), channel = "recording", caption = "the recording, read as grains")
+showImg(grainScoreImg(best, 640, 160), channel = "score", caption = "the evolved set")
+// Played from the first arpy note, which the detector heard at this pitch.
+display("audio", renderGrains(best, source = notes[0].left, sourceRate = rate, sourcePitch = heard[0].pitch).wav())
+```
+
+![two piano-roll plots: above, eleven gold grains climbing evenly from bottom left to top right, the recording; below, the evolved set, one long low grain, a second higher one, then a quick cluster of shorter grains climbing at the right](assets/alife_examples/grains-recording.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-matched.wav" audio-spec="matched" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" requires="dirt-samples" embed=true hidden=true name="alife-grains-matched-audio"}
+// Offline-rendered by GrainSetSoundDocs.renderWav("matched").
+```
+
+Over the eight seeds the extended alphabet's mean best is higher (0.871 against 0.823) and its worst
+is lower (0.634 against 0.801): twelve symbols make a larger space, and some seeds get lost in it.
+The statistics are also a coarse description: a set can match the count, span, spread and median of a
+rising scale and still not rise evenly, as the evolved set shows. Nothing in `GrainSetStats` says
+which way the pitch moves over time, so nothing in the search pushes toward it. `grainsFromAudio`
+names one note at a time; a chord or a drum hit gives it nothing to read, so polyphony in a target
+taken from a recording is always about 1.
+
+#### A map of grain sets instead of one winner
+
+`PopulationSearch.evolve` returns the one set that scores best. `PopulationSearch.mapElites` keeps
+the best set of each *kind*: it divides two statistics into a grid and keeps the highest-scoring set
+in every cell. `grainSetObjective(behaviour = [...])` chooses the two statistics, here pitch spread
+across and polyphony up, so the grid runs from narrow, thin sets at the bottom left to wide, thick
+ones at the top right:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-map.png" wait="20.0" timeout="240" capture="box" open-outputs="true" padding="20"}
+// MAP-Elites over pitch spread and polyphony: the best set of each kind, not one winner.
+val axes = [GrainStat.PITCH_SPREAD, GrainStat.POLYPHONY]
+val map = PopulationSearch.mapElites(
+    grainLSystemGenome(),
+    grainSetObjective(behaviour = axes),
+    budget = 800,
+    axes = [0.0..12.0, 0.0..6.0],
+    bins = [4, 4],
+    seed = 1L,
+)
+println(map)
+
+// One score per cell: spread grows to the right, polyphony upward.
+val panels =
+    (3 downTo 0).flatMap { row ->
+        (0..3).map { col ->
+            val elite = map.elites[[col, row]]
+            if (elite == null) {
+                "empty" to Img.zeros(240, 120, 3)
+            } else {
+                val grains = decodeGrains(elite.genome, 3)
+                val st = GrainSetStats(grains)
+                "%.1f st  x%.1f  %.2f".format(st.pitchSpread, st.polyphony, elite.fitness) to
+                    grainScoreImg(grains, 240, 120)
+            }
+        }
+    }
+showImg(
+    montage(panels, columns = 4, cellSide = 240, textScale = 2),
+    caption = "pitch spread across, polyphony up; trapezoid fitness in each label",
+)
+```
+
+![a four by four grid of small piano-roll plots: the left column holds narrow sets that stay near one pitch, the right column wide sets that sweep up or down several octaves; the bottom row has sparse single-voice sets and the top row dense stacks of overlapping blue, red and green branch grains](assets/alife_examples/grains-map.png)
+
+All sixteen cells fill in 800 evaluations. Every cell is still scored by `defaultGrainTerms()`, so
+the corners, which ask for more spread or polyphony than those terms like, score lower; the map
+shows what each kind of set costs against the target.
+
 ## 12. Agents with their own programs
 
 Every system above moves its whole population with one rule: `BoidFlock.step(p)` applies the same
@@ -2812,20 +2958,25 @@ python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife
 
 Open questions and next builds for the grain sets:
 
-- **A target taken from a recording.** Decode a sample into onsets and pitches, compute its
-  `GrainSetStats`, and centre each trapezoid on the sample's value, so the search evolves toward a
-  sound you already have.
-- **Grains from a sample.** `renderGrains(source = ...)` already reads grains from a sample; a
-  figure comparing the tone and sample renderings of one evolved grammar is still missing.
-- **More symbols.** EvoGrain's grammars also change grain length and density. Adding `<` and `>`
-  (shorter and longer grains) and a pan symbol to `GrainTurtle` would widen what a grammar can say.
-- **Several productions.** `grainLSystemGenome` rewrites only `G`. A second nonterminal `X`, which
-  steers the grammar without sounding, would let the search find structure that one rule cannot.
-- **Novelty instead of fitness.** `GrainSetStats.vector()` is already a behaviour descriptor, so
-  `PopulationSearch.novelty` or `mapElites` over (pitch spread, polyphony) would show the range of
-  sets instead of one winner.
+- **A statistic for contour.** The [recording target](#a-target-taken-from-a-recording) matches
+  count, span, spread and median and still does not rise evenly, because no `GrainStat` says which
+  way pitch moves over time. A slope of pitch against onset, or the share of steps that go up, would
+  let a target ask for a shape.
+- **Polyphonic targets.** `grainsFromAudio` is monophonic, so a recorded target always has a
+  polyphony of about 1. Reading a chordal recording needs a multi-pitch detector, which Field does
+  not have yet.
+- **A target that needs a second rule.** `nonterminals = "X"` works, but on the arpy target, at
+  the same budget and two seeds, it did not raise the best score with either alphabet. A target that rewards
+  growth that changes from one generation to the next, such as a voice that gets one note longer
+  each time, is the experiment that would show whether it helps.
+- **Statistics for the new symbols.** `<`, `>`, `l` and `r` change grain length and pan, and
+  nothing in `GrainSetStats` measures either, so the search uses them only for their side effects
+  on duration and polyphony. A length-spread and a pan-width statistic would make them targets.
 - **A breeder you can drive live.** The interactive box replaces all its players after every
-  choice; keeping past generations in a column would let you hear a lineage.
+  choice; keeping past generations in a column would let you hear a lineage. `GrainBreeder.history`
+  already holds every generation and the parents chosen from it.
+- **Listening to the map.** The [map](#a-map-of-grain-sets-instead-of-one-winner) shows sixteen
+  scores; a player per cell would let you choose a parent for `GrainBreeder` from it.
 
 Open questions for the rest of the page:
 

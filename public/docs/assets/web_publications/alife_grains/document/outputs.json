@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-11T10:04:27.659Z",
+  "capturedAt": "2026-11-11T11:47:09.667Z",
   "documentName": "alife_grains",
   "outputs": [
     {
@@ -108,24 +108,88 @@
     {
       "uid": "grains_breed",
       "channel": "child 5",
-      "open": false,
+      "open": true,
       "warnings": [
         "Live media omitted"
       ],
       "kinds": [],
-      "width": 200,
-      "height": 40,
+      "width": 428,
+      "height": 62,
       "path": "outputs/9.html"
     },
     {
       "uid": "grains_breed",
       "channel": "controls",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 200,
-      "height": 40,
+      "width": 254,
+      "height": 52,
       "path": "outputs/10.html"
+    },
+    {
+      "uid": "grains_map",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 583,
+      "path": "outputs/11.html"
+    },
+    {
+      "uid": "grains_shape",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 652,
+      "height": 252,
+      "path": "outputs/12.html"
+    },
+    {
+      "uid": "grains_shape",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/13.html"
+    },
+    {
+      "uid": "grains_recording",
+      "channel": "recording",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 652,
+      "height": 192,
+      "path": "outputs/14.html"
+    },
+    {
+      "uid": "grains_recording",
+      "channel": "score",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 652,
+      "height": 192,
+      "path": "outputs/15.html"
+    },
+    {
+      "uid": "grains_recording",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/16.html"
     },
     {
       "uid": "grains_decode",
@@ -135,7 +199,7 @@
       "kinds": [],
       "width": 652,
       "height": 252,
-      "path": "outputs/11.html"
+      "path": "outputs/17.html"
     },
     {
       "uid": "grains_decode",
@@ -147,7 +211,7 @@
       "kinds": [],
       "width": 428,
       "height": 62,
-      "path": "outputs/12.html"
+      "path": "outputs/18.html"
     },
     {
       "uid": "grains_breed",
@@ -157,7 +221,7 @@
       "kinds": [],
       "width": 209,
       "height": 98,
-      "path": "outputs/13.html"
+      "path": "outputs/19.html"
     },
     {
       "uid": "grains_breed",
@@ -169,7 +233,7 @@
       "kinds": [],
       "width": 428,
       "height": 62,
-      "path": "outputs/14.html"
+      "path": "outputs/20.html"
     },
     {
       "uid": "grains_breed",
@@ -181,7 +245,7 @@
       "kinds": [],
       "width": 428,
       "height": 62,
-      "path": "outputs/15.html"
+      "path": "outputs/21.html"
     },
     {
       "uid": "grains_breed",
@@ -193,7 +257,7 @@
       "kinds": [],
       "width": 428,
       "height": 62,
-      "path": "outputs/16.html"
+      "path": "outputs/22.html"
     },
     {
       "uid": "grains_breed",
@@ -205,7 +269,7 @@
       "kinds": [],
       "width": 428,
       "height": 62,
-      "path": "outputs/17.html"
+      "path": "outputs/23.html"
     }
   ]
 }
