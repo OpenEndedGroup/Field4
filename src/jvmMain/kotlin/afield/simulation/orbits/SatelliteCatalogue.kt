@@ -81,6 +81,10 @@ class SatelliteCatalogue(val satellites: List<Satellite>, val skippedDeepSpace: 
         }
     }
 
+    /** Every satellite's [MeanElements], moved to the epoch [reference] so a shader's time can count minutes from it. */
+    fun meanElementsAt(reference: Instant): List<MeanElements> =
+        satellites.map { it.sgp4.meanElements.shifted(it.tle.minutesSinceEpoch(reference)) }
+
     companion object {
         /** The resource holding the bundled snapshot. */
         const val BUNDLED_RESOURCE = "/afield/orbits/celestrak_active_2026-11-11.tle.gz"
@@ -123,6 +127,20 @@ class SatelliteCatalogue(val satellites: List<Satellite>, val skippedDeepSpace: 
             }
             if (cache.exists()) return parse(cache.readText(), "CelesTrak $group, cached ${Instant.ofEpochMilli(cache.lastModified())}")
             return bundled()
+        }
+    }
+}
+
+/** The world's coastlines, for drawing a globe: Natural Earth's 1:110m coastline (public domain, naturalearthdata.com). */
+object Coastlines {
+    /** Each coastline as a polyline of points on the ellipsoid (height 0). */
+    val lines: List<List<Geodetic>> by lazy {
+        val text = Coastlines::class.java.getResourceAsStream("/afield/orbits/ne_110m_coastline.txt")!!.bufferedReader().use { it.readText() }
+        text.lines().filter { it.isNotBlank() && !it.startsWith("#") }.map { line ->
+            line.split(' ').map { p ->
+                val (lon, lat) = p.split(',')
+                Geodetic(lat.toDouble(), lon.toDouble(), 0.0)
+            }
         }
     }
 }

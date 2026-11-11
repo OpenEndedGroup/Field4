@@ -1,0 +1,553 @@
+name: satellites
+description: >
+  SGP4 satellite passes and the whole CelesTrak catalogue on the GPU, the companion to
+  `public/docs/satellites.md`. A CPU box charts a week of passes
+  over Chicago for five satellites; beneath a renderer, an Earth box draws coastlines, a graticule
+  and the ISS's ground track (bright where Chicago sees it), and a satellites box draws all ~15,000
+  near-earth objects as points, each propagated by a Kepler solve in the vertex shader every frame.
+  Fly with the keyboard in the renderer window (R resets).
+docs:
+  - page: satellites.md
+    why: "The page these boxes accompany."
+operations:
+  - create:
+      box: satellite-passes
+      name: 1 - A week of passes over Chicago
+      frame:
+        x: 40.0
+        y: 200.0
+        w: 320.0
+        h: 100.0
+      properties:
+        code: |
+          import afield.simulation.orbits.*
+          import java.time.Duration
+
+          // The bundled CelesTrak snapshot: about 15,000 near-earth objects, each with its SGP4 propagator.
+          val sky = SatelliteCatalogue.bundled()
+          println("${sky.size} satellites, ${sky.skippedDeepSpace} deep-space left out, elements fresh at ${sky.epoch}")
+
+          // One place on the ground, and the week after the snapshot.
+          val here = Observer(latitudeDeg = 41.88, longitudeDeg = -87.63) // Chicago
+          val start = sky.epoch
+          val end = start.plus(Duration.ofDays(7))
+
+          val names = ["ISS (ZARYA)", "CSS (TIANHE)", "HST", "TERRA", "LANDSAT 9"]
+          val font = afield.ai.learning.pen.HersheyFont.load("futural")
+          val dayW = 90.0
+          val rowH = 56.0
+          val shapes = ArrayList<FLine>()
+
+          for (d in 0..7) {
+              shapes += fline {
+                  moveTo(d * dayW, 0)
+                  lineTo(d * dayW, names.size * rowH)
+                  thickness = 0.5
+                  color = vec(1.0, 1.0, 1.0, 0.2)
+              }
+              if (d < 7) shapes += font.text("day ${d + 1}", size = 9.0, at = vec(d * dayW + 4, names.size * rowH + 14, 0)).apply {
+                  color = vec(1.0, 1.0, 1.0, 0.6)
+              }
+          }
+
+          names.forEachIndexed { row, name ->
+              val sat = sky.byName(name)!!
+              val passes = here.passes(sat, start, end, minElevationDeg = 10.0)
+              println("$name: ${passes.size} passes above 10° in a week, highest ${"%.0f".format(passes.maxOf { it.maxElevationDeg })}°")
+              val base = (row + 1) * rowH
+              // one stalk per pass, at its culmination, as tall as its highest elevation (90° fills the row)
+              shapes += fline {
+                  for (p in passes) {
+                      val x = Duration.between(start, p.culmination).toSeconds() / 86400.0 * dayW
+                      moveTo(x, base)
+                      lineTo(x, base - (rowH - 18) * p.maxElevationDeg / 90.0)
+                  }
+                  thickness = 2.0
+                  color = vec(0.45, 0.8, 1.0, 1.0)
+              }
+              shapes += fline {
+                  moveTo(0, base)
+                  lineTo(7 * dayW, base)
+                  thickness = 0.5
+                  color = vec(1.0, 1.0, 1.0, 0.35)
+              }
+              shapes += font.text("$name   ${passes.size} passes", size = 9.0, at = vec(4, base - rowH + 12, 0)).apply {
+                  color = vec(1.0, 1.0, 1.0, 0.85)
+              }
+          }
+
+          lines(shapes, w = 7 * dayW, h = names.size * rowH + 24, fitToSize = true)
+  - execute:
+      box: satellite-passes
+      property: code
+      type: fragment
+      code: |
+        import afield.simulation.orbits.*
+        import java.time.Duration
+
+        // The bundled CelesTrak snapshot: about 15,000 near-earth objects, each with its SGP4 propagator.
+        val sky = SatelliteCatalogue.bundled()
+        println("${sky.size} satellites, ${sky.skippedDeepSpace} deep-space left out, elements fresh at ${sky.epoch}")
+
+        // One place on the ground, and the week after the snapshot.
+        val here = Observer(latitudeDeg = 41.88, longitudeDeg = -87.63) // Chicago
+        val start = sky.epoch
+        val end = start.plus(Duration.ofDays(7))
+
+        val names = ["ISS (ZARYA)", "CSS (TIANHE)", "HST", "TERRA", "LANDSAT 9"]
+        val font = afield.ai.learning.pen.HersheyFont.load("futural")
+        val dayW = 90.0
+        val rowH = 56.0
+        val shapes = ArrayList<FLine>()
+
+        for (d in 0..7) {
+            shapes += fline {
+                moveTo(d * dayW, 0)
+                lineTo(d * dayW, names.size * rowH)
+                thickness = 0.5
+                color = vec(1.0, 1.0, 1.0, 0.2)
+            }
+            if (d < 7) shapes += font.text("day ${d + 1}", size = 9.0, at = vec(d * dayW + 4, names.size * rowH + 14, 0)).apply {
+                color = vec(1.0, 1.0, 1.0, 0.6)
+            }
+        }
+
+        names.forEachIndexed { row, name ->
+            val sat = sky.byName(name)!!
+            val passes = here.passes(sat, start, end, minElevationDeg = 10.0)
+            println("$name: ${passes.size} passes above 10° in a week, highest ${"%.0f".format(passes.maxOf { it.maxElevationDeg })}°")
+            val base = (row + 1) * rowH
+            // one stalk per pass, at its culmination, as tall as its highest elevation (90° fills the row)
+            shapes += fline {
+                for (p in passes) {
+                    val x = Duration.between(start, p.culmination).toSeconds() / 86400.0 * dayW
+                    moveTo(x, base)
+                    lineTo(x, base - (rowH - 18) * p.maxElevationDeg / 90.0)
+                }
+                thickness = 2.0
+                color = vec(0.45, 0.8, 1.0, 1.0)
+            }
+            shapes += fline {
+                moveTo(0, base)
+                lineTo(7 * dayW, base)
+                thickness = 0.5
+                color = vec(1.0, 1.0, 1.0, 0.35)
+            }
+            shapes += font.text("$name   ${passes.size} passes", size = 9.0, at = vec(4, base - rowH + 12, 0)).apply {
+                color = vec(1.0, 1.0, 1.0, 0.85)
+            }
+        }
+
+        lines(shapes, w = 7 * dayW, h = names.size * rowH + 24, fitToSize = true)
+  - create:
+      box: agent_graphics_context
+      name: renderer
+      frame:
+        x: 40.0
+        y: 40.0
+        w: 300.0
+        h: 100.0
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+
+          Options.enableHDR = false
+          Options.profiling = false
+
+          once.renderer {
+              window = Window("Field")
+              Renderer(window)
+          }
+
+          println("agent graphics renderer ready")
+          start(renderer::run)
+  - launch:
+      box: agent_graphics_context
+      property: code
+      type: code
+      strand: renderer
+      code: |
+        import afield.graphics.vulkan.util.Options
+
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+
+        Options.enableHDR = false
+        Options.profiling = false
+
+        once.renderer {
+            window = Window("Field")
+            Renderer(window)
+        }
+
+        println("agent graphics renderer ready")
+        start(renderer::run)
+  - wait:
+      frames: 3
+  - create:
+      box: satellite-earth
+      name: 2 - Earth, coastlines, ISS ground track
+      frame:
+        x: 400.0
+        y: 40.0
+        w: 320.0
+        h: 100.0
+      properties:
+        vertex: |
+          #version 450
+          layout (location = 0) in vec3 pos;
+          layout (location = 1) in vec4 col;
+          layout (location = 0) out vec4 fcol;
+
+          layout(push_constant) uniform matrices {
+              mat4 p;
+              mat4 m;
+              vec4 eye;
+              vec4 spin;
+          } pc;
+
+          void main()
+          {
+              // Earth-fixed to inertial: turn about north (+y) by Greenwich sidereal time
+              float c = cos(pc.spin.x), s = sin(pc.spin.x);
+              vec3 w = vec3(c * pos.x + s * pos.z, pos.y, -s * pos.x + c * pos.z);
+              // points on the far side of the globe are drawn faintly
+              float facing = dot(normalize(w), pc.eye.xyz - w);
+              fcol = col * (facing > 0.0 ? 1.0 : 0.15);
+              gl_Position = pc.p * pc.m * vec4(w, 1);
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) in vec4 fcol;
+          layout(location = 0) out vec4 uFragColor;
+          void main()
+          {
+              uFragColor = fcol;
+          }
+        code: |
+          import afield.simulation.orbits.*
+          import java.time.Duration
+
+          // The catalogue, a clock that runs the sky at 120× real time, and one camera, all published
+          // with `prop` so the satellite box beneath this one shares them.
+          prop<SatelliteCatalogue>(sky)
+          prop<SkyClock>(clock)
+          prop<Camera>(camera)
+
+          sky = SatelliteCatalogue.bundled()
+          clock = SkyClock(sky.epoch, speed = 120.0)
+          camera = Camera()
+          camera.target = vec(0, 0, 0)
+
+          // Earth-fixed km to the drawing's frame: north is up (+y), units are Earth radii.
+          fun world(e: Xyz) = (e * (1.0 / Frames.EARTH_RADIUS_KM)).let { vec(it.y, it.z, it.x) }
+          fun world(g: Geodetic) = world(Frames.ecefOf(g.latitudeDeg, g.longitudeDeg, g.heightKm))
+
+          // Everything here is line segments: pairs of points, each with a colour.
+          val points = ArrayList<Vec3>()
+          val colors = ArrayList<Vec4>()
+          fun segment(a: Vec3, b: Vec3, c: Vec4) {
+              points += a; points += b; colors += c; colors += c
+          }
+          fun polyline(line: List<Geodetic>, c: Vec4) {
+              for (i in 0 until line.size - 1) segment(world(line[i]), world(line[i + 1]), c)
+          }
+
+          // A graticule every 30°, then the coastlines.
+          for (lon in -180 until 180 step 30) polyline((-90..90 step 3).map { Geodetic(it.toDouble(), lon.toDouble(), 0.0) }, vec(0.4, 0.55, 0.8, 0.35))
+          for (lat in -60..60 step 30) polyline((-180..180 step 3).map { Geodetic(lat.toDouble(), it.toDouble(), 0.0) }, vec(0.4, 0.55, 0.8, 0.35))
+          for (coast in Coastlines.lines) polyline(coast, vec(0.75, 0.9, 1.0, 0.9))
+
+          // The ISS's ground track for the next day: faint everywhere, bright where Chicago sees it above 10°.
+          val here = Observer(latitudeDeg = 41.88, longitudeDeg = -87.63)
+          val iss = sky.byName("ISS (ZARYA)")!!
+          val day = (0..1440).map { clock.reference.plus(Duration.ofMinutes(it.toLong())) }
+          for (i in 0 until day.size - 1) {
+              val a = iss.geodetic(day[i])!!.copy(heightKm = 20.0)
+              val b = iss.geodetic(day[i + 1])!!.copy(heightKm = 20.0)
+              if (kotlin.math.abs(a.longitudeDeg - b.longitudeDeg) > 180) continue // wrapped round the date line
+              val seen = here.look(iss, day[i])!!.elevationDeg >= 10.0
+              segment(world(a), world(b), if (seen) vec(1.0, 0.6, 0.2, 1.0) else vec(1.0, 0.6, 0.2, 0.18))
+          }
+          // Chicago, as a small cross.
+          val c = Frames.ecefOf(41.88, -87.63, 30.0)
+          for (d in listOf(Xyz(120.0, 0.0, 0.0), Xyz(0.0, 120.0, 0.0), Xyz(0.0, 0.0, 120.0)))
+              segment(world(Xyz(c.x - d.x, c.y - d.y, c.z - d.z)), world(Xyz(c.x + d.x, c.y + d.y, c.z + d.z)), vec(1.0, 0.85, 0.3, 1.0))
+          // Start the camera 2.6 Earth radii out, above Chicago as it is when the clock starts.
+          val g0 = clock.gmst()
+          val c0 = Xyz(kotlin.math.cos(g0) * c.x - kotlin.math.sin(g0) * c.y, kotlin.math.sin(g0) * c.x + kotlin.math.cos(g0) * c.y, c.z) * (2.6 / c.length)
+          camera.at = vec(c0.y, c0.z + 0.5, c0.x) // one unit is one Earth radius
+
+          println("${points.size / 2} segments; ISS seen from Chicago ${here.passes(iss, clock.reference, clock.reference.plus(Duration.ofDays(1))).size} times in the day drawn")
+
+          var module = moduleHere { primitiveType = lines }
+          var m = Mesh()
+          module += m named "earth"
+          renderer += module
+
+          m.p = camera.p
+          m.m = camera.m
+          // The vertex shader dims what is on the far side of the globe, so it needs the eye.
+          m.eye = { vec(camera.at.x, camera.at.y, camera.at.z, 1.0) }
+          // The drawing is the inertial TEME frame, so the Earth turns: by the clock's sidereal angle.
+          m.spin = { vec(clock.gmst(), 0.0, 0.0, 0.0) }
+
+          // one line per pair of vertices, indexed
+          m.set(points.size, points.size / 2) {
+              for ((i, p) in points.withIndex()) {
+                  pos.add(p.x, p.y, p.z)
+                  col.add(colors[i].x, colors[i].y, colors[i].z, colors[i].w)
+                  tri.add(i)
+              }
+          }
+
+          var kc by keyCamera(camera = camera)
+  - connect:
+      parent: agent_graphics_context
+      child: satellite-earth
+  - execute:
+      box: satellite-earth
+      property: code
+      type: fragment
+      code: |
+        import afield.simulation.orbits.*
+        import java.time.Duration
+
+        // The catalogue, a clock that runs the sky at 120× real time, and one camera, all published
+        // with `prop` so the satellite box beneath this one shares them.
+        prop<SatelliteCatalogue>(sky)
+        prop<SkyClock>(clock)
+        prop<Camera>(camera)
+
+        sky = SatelliteCatalogue.bundled()
+        clock = SkyClock(sky.epoch, speed = 120.0)
+        camera = Camera()
+        camera.target = vec(0, 0, 0)
+
+        // Earth-fixed km to the drawing's frame: north is up (+y), units are Earth radii.
+        fun world(e: Xyz) = (e * (1.0 / Frames.EARTH_RADIUS_KM)).let { vec(it.y, it.z, it.x) }
+        fun world(g: Geodetic) = world(Frames.ecefOf(g.latitudeDeg, g.longitudeDeg, g.heightKm))
+
+        // Everything here is line segments: pairs of points, each with a colour.
+        val points = ArrayList<Vec3>()
+        val colors = ArrayList<Vec4>()
+        fun segment(a: Vec3, b: Vec3, c: Vec4) {
+            points += a; points += b; colors += c; colors += c
+        }
+        fun polyline(line: List<Geodetic>, c: Vec4) {
+            for (i in 0 until line.size - 1) segment(world(line[i]), world(line[i + 1]), c)
+        }
+
+        // A graticule every 30°, then the coastlines.
+        for (lon in -180 until 180 step 30) polyline((-90..90 step 3).map { Geodetic(it.toDouble(), lon.toDouble(), 0.0) }, vec(0.4, 0.55, 0.8, 0.35))
+        for (lat in -60..60 step 30) polyline((-180..180 step 3).map { Geodetic(lat.toDouble(), it.toDouble(), 0.0) }, vec(0.4, 0.55, 0.8, 0.35))
+        for (coast in Coastlines.lines) polyline(coast, vec(0.75, 0.9, 1.0, 0.9))
+
+        // The ISS's ground track for the next day: faint everywhere, bright where Chicago sees it above 10°.
+        val here = Observer(latitudeDeg = 41.88, longitudeDeg = -87.63)
+        val iss = sky.byName("ISS (ZARYA)")!!
+        val day = (0..1440).map { clock.reference.plus(Duration.ofMinutes(it.toLong())) }
+        for (i in 0 until day.size - 1) {
+            val a = iss.geodetic(day[i])!!.copy(heightKm = 20.0)
+            val b = iss.geodetic(day[i + 1])!!.copy(heightKm = 20.0)
+            if (kotlin.math.abs(a.longitudeDeg - b.longitudeDeg) > 180) continue // wrapped round the date line
+            val seen = here.look(iss, day[i])!!.elevationDeg >= 10.0
+            segment(world(a), world(b), if (seen) vec(1.0, 0.6, 0.2, 1.0) else vec(1.0, 0.6, 0.2, 0.18))
+        }
+        // Chicago, as a small cross.
+        val c = Frames.ecefOf(41.88, -87.63, 30.0)
+        for (d in listOf(Xyz(120.0, 0.0, 0.0), Xyz(0.0, 120.0, 0.0), Xyz(0.0, 0.0, 120.0)))
+            segment(world(Xyz(c.x - d.x, c.y - d.y, c.z - d.z)), world(Xyz(c.x + d.x, c.y + d.y, c.z + d.z)), vec(1.0, 0.85, 0.3, 1.0))
+        // Start the camera 2.6 Earth radii out, above Chicago as it is when the clock starts.
+        val g0 = clock.gmst()
+        val c0 = Xyz(kotlin.math.cos(g0) * c.x - kotlin.math.sin(g0) * c.y, kotlin.math.sin(g0) * c.x + kotlin.math.cos(g0) * c.y, c.z) * (2.6 / c.length)
+        camera.at = vec(c0.y, c0.z + 0.5, c0.x) // one unit is one Earth radius
+
+        println("${points.size / 2} segments; ISS seen from Chicago ${here.passes(iss, clock.reference, clock.reference.plus(Duration.ofDays(1))).size} times in the day drawn")
+
+        var module = moduleHere { primitiveType = lines }
+        var m = Mesh()
+        module += m named "earth"
+        renderer += module
+
+        m.p = camera.p
+        m.m = camera.m
+        // The vertex shader dims what is on the far side of the globe, so it needs the eye.
+        m.eye = { vec(camera.at.x, camera.at.y, camera.at.z, 1.0) }
+        // The drawing is the inertial TEME frame, so the Earth turns: by the clock's sidereal angle.
+        m.spin = { vec(clock.gmst(), 0.0, 0.0, 0.0) }
+
+        // one line per pair of vertices, indexed
+        m.set(points.size, points.size / 2) {
+            for ((i, p) in points.withIndex()) {
+                pos.add(p.x, p.y, p.z)
+                col.add(colors[i].x, colors[i].y, colors[i].z, colors[i].w)
+                tri.add(i)
+            }
+        }
+
+        var kc by keyCamera(camera = camera)
+  - create:
+      box: satellite-catalogue
+      name: 3 - Every satellite, propagated on the GPU
+      frame:
+        x: 400.0
+        y: 200.0
+        w: 320.0
+        h: 100.0
+      properties:
+        vertex: |
+          #version 460
+          {{ Orbit.all }}
+          {{ orbit.kepler }}
+
+          layout(push_constant) uniform Push {
+              OrbitArray orbits;
+              mat4 p;
+              mat4 m;
+              vec4 eye;
+              vec4 clock;
+          } pc;
+
+          layout(location = 0) out vec4 fcol;
+
+          void main()
+          {
+              Orbit o = pc.orbits.elements[gl_VertexIndex];
+              // TEME, in Earth radii, then into the drawing's frame (north up)
+              vec3 teme = meanElementsPosition(o.shape, o.angles, o.rates.xyz, pc.clock.x) / 6378.137;
+              vec3 w = vec3(teme.y, teme.z, teme.x);
+
+              // hidden behind the globe: the ray from the eye meets the unit sphere before it reaches the satellite
+              vec3 d = w - pc.eye.xyz;
+              float dist = length(d);
+              d /= dist;
+              float b = dot(pc.eye.xyz, d);
+              float disc = b * b - (dot(pc.eye.xyz, pc.eye.xyz) - 1.0);
+              float hit = -b - sqrt(max(disc, 0.0));
+              bool hidden = disc > 0.0 && hit > 0.0 && hit < dist;
+
+              // colour by height: below 600 km, 600 to 1,000 km, above
+              float alt = (length(teme) - 1.0) * 6378.137;
+              vec3 c = alt < 600.0 ? vec3(0.45, 0.8, 1.0) : (alt < 1000.0 ? vec3(1.0, 0.78, 0.35) : vec3(1.0, 0.45, 0.6));
+              fcol = vec4(c, hidden ? 0.06 : 0.9);
+              bool picked = gl_VertexIndex == int(pc.clock.z);
+              if (picked) fcol = vec4(1.0, 0.95, 0.8, 1.0);
+
+              gl_Position = pc.p * pc.m * vec4(w, 1);
+              // level of detail by distance: a satellite near the camera is drawn larger
+              gl_PointSize = picked ? 16.0 : clamp(pc.clock.y / dist, 1.5, 12.0);
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) in vec4 fcol;
+          layout(location = 0) out vec4 uFragColor;
+          void main()
+          {
+              // a round dot with a soft edge
+              float r = length(gl_PointCoord - vec2(0.5));
+              if (r > 0.5) discard;
+              uFragColor = vec4(fcol.rgb, fcol.a * smoothstep(0.5, 0.25, r));
+          }
+        code: |
+          import afield.simulation.orbits.*
+
+          // One record per satellite: its mean elements, moved to the clock's start so the shader's time is small.
+          @GpuStruct
+          data class Orbit(
+              val shape: Vector4f, // semi-major axis (km), eccentricity, inclination, 0
+              val angles: Vector4f, // node, perigee, mean anomaly at the clock's start (radians), 0
+              val rates: Vector4f, // their drift, radians per minute, 0
+          )
+
+          val orbitSchema = gpuSchema<Orbit>()
+          shaderTemplate["Orbit"] = orbitSchema.template
+          // The vertex shader solves Kepler's equation with the same few lines MeanElements.position runs on the CPU.
+          shaderTemplate["orbit"] = mapOf("kepler" to Resolver { MeanElements.glsl })
+
+          // `sky`, `clock` and `camera` come from the Earth box above this one.
+          val orbits = sky.meanElementsAt(clock.reference).map { e ->
+              Orbit(
+                  vec(e.semiMajorAxisKm, e.eccentricity, e.inclination, 0.0),
+                  vec(e.raan, e.argPerigee, e.meanAnomaly, 0.0),
+                  vec(e.raanRate, e.argPerigeeRate, e.meanAnomalyRate, 0.0),
+              )
+          }
+          val orbitData = defaultBuffer { size = (orbits.size * orbitSchema.strideBytes).bytes }.buffer
+          orbitData.mapAndWrite_bytes { orbitSchema.writeArray(orbits, this) }
+          println("${orbits.size} orbits on the GPU, ${orbitSchema.strideBytes} bytes each")
+
+          //%-
+
+          var module = moduleHere { primitiveType = points }
+          var m = Mesh()
+          module += m named "satellites"
+          renderer += module
+
+          m.orbits = { orbitData }
+          m.p = camera.p
+          m.m = camera.m
+          m.eye = { vec(camera.at.x, camera.at.y, camera.at.z, 1.0) }
+          // minutes since the clock started, the point size scale, and which satellite to pick out (the ISS)
+          val picked = sky.satellites.indexOf(sky.byName("ISS (ZARYA)"))
+          m.clock = { vec(clock.minutes(), 10.0, picked.toDouble(), 0.0) }
+
+          // one vertex per satellite; the shader fetches its orbit from the buffer
+          m.resize(orbits.size)
+  - connect:
+      parent: satellite-earth
+      child: satellite-catalogue
+  - execute:
+      box: satellite-catalogue
+      property: code
+      type: fragment
+      code: |
+        import afield.simulation.orbits.*
+
+        // One record per satellite: its mean elements, moved to the clock's start so the shader's time is small.
+        @GpuStruct
+        data class Orbit(
+            val shape: Vector4f, // semi-major axis (km), eccentricity, inclination, 0
+            val angles: Vector4f, // node, perigee, mean anomaly at the clock's start (radians), 0
+            val rates: Vector4f, // their drift, radians per minute, 0
+        )
+
+        val orbitSchema = gpuSchema<Orbit>()
+        shaderTemplate["Orbit"] = orbitSchema.template
+        // The vertex shader solves Kepler's equation with the same few lines MeanElements.position runs on the CPU.
+        shaderTemplate["orbit"] = mapOf("kepler" to Resolver { MeanElements.glsl })
+
+        // `sky`, `clock` and `camera` come from the Earth box above this one.
+        val orbits = sky.meanElementsAt(clock.reference).map { e ->
+            Orbit(
+                vec(e.semiMajorAxisKm, e.eccentricity, e.inclination, 0.0),
+                vec(e.raan, e.argPerigee, e.meanAnomaly, 0.0),
+                vec(e.raanRate, e.argPerigeeRate, e.meanAnomalyRate, 0.0),
+            )
+        }
+        val orbitData = defaultBuffer { size = (orbits.size * orbitSchema.strideBytes).bytes }.buffer
+        orbitData.mapAndWrite_bytes { orbitSchema.writeArray(orbits, this) }
+        println("${orbits.size} orbits on the GPU, ${orbitSchema.strideBytes} bytes each")
+
+        //%-
+
+        var module = moduleHere { primitiveType = points }
+        var m = Mesh()
+        module += m named "satellites"
+        renderer += module
+
+        m.orbits = { orbitData }
+        m.p = camera.p
+        m.m = camera.m
+        m.eye = { vec(camera.at.x, camera.at.y, camera.at.z, 1.0) }
+        // minutes since the clock started, the point size scale, and which satellite to pick out (the ISS)
+        val picked = sky.satellites.indexOf(sky.byName("ISS (ZARYA)"))
+        m.clock = { vec(clock.minutes(), 10.0, picked.toDouble(), 0.0) }
+
+        // one vertex per satellite; the shader fetches its orbit from the buffer
+        m.resize(orbits.size)
+  - wait:
+      seconds: 2

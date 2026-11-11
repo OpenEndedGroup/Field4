@@ -195,3 +195,33 @@ data class Observer(val latitudeDeg: Double, val longitudeDeg: Double, val heigh
         return out
     }
 }
+
+/**
+ * A running clock for animating the sky: simulated time starting at [reference], running [speed] times real time.
+ *
+ * Read [minutes] (since [reference]) and [gmst] every frame and hand them to a shader; [rate] changes the speed (0 stops it).
+ *
+ * @param reference the simulated time at which the clock starts.
+ * @param speed simulated seconds per real second.
+ */
+class SkyClock(val reference: Instant, speed: Double = 60.0) {
+    /** Simulated seconds per real second; change it with [rate]. */
+    var speed: Double = speed
+        private set
+    private var realStart = System.nanoTime()
+    private var simAtStart = 0.0
+
+    /** Simulated minutes since [reference]. */
+    fun minutes(): Double = simAtStart + (System.nanoTime() - realStart) / 6.0e10 * speed
+
+    /** The simulated time now. */
+    fun instant(): Instant = reference.plusNanos((minutes() * 6.0e10).toLong())
+
+    /** Greenwich mean sidereal time at the simulated time, radians. */
+    fun gmst(): Double = Frames.gmst(Frames.julianOf(reference) + minutes() / 1440.0)
+
+    /** Changes the rate without a jump in simulated time. */
+    fun rate(newSpeed: Double) {
+        simAtStart = minutes(); realStart = System.nanoTime(); speed = newSpeed
+    }
+}

@@ -629,6 +629,9 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // satellites.md: a week of SGP4 passes over Chicago (CPU), then a renderer, an Earth box and
+        // every catalogued satellite propagated in a vertex shader. Opens a Window, so compile-only.
+        "satellites",
         // The pilot explainer deck (2026-11-09): its deck box opens Electron audience windows and
         // its figure box returns an audio patch for the audio device. PresentationFiguresTest
         // covers the figure engine without either.
