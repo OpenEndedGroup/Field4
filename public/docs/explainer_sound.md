@@ -17,11 +17,11 @@ After “Sound” by Bartosz Ciechanowski,
 
 [Open →](offline.html?file=assets/agent_transcripts/explainer_sound/metadata.edn)
 
-This page is the talk figure by figure, in the order it shows them. Each figure is a box in the
-talk's document: its code is below, then what it draws, with the slide that shows it in the margin.
-**Open →** shows the whole document beside this page, and **Open in Field·4** in that view imports
-an editable copy. Run its `deck` box in Field's desktop app to give the talk; [Live figures beside
-prose](presentation_studio.md#live-figures-beside-prose) says how a deck like this one is built.
+Follow the talk figure by figure on this page. Each figure is a box in the document: you'll see
+its code and what it draws, with the slide that uses it in the margin. **Open →** shows the whole
+document beside the page; **Open in Field·4** imports an editable copy. To give the talk, run its
+`deck` box in Field's desktop app. [Live figures beside prose](presentation_studio.md#live-figures-beside-prose)
+shows how to build a deck like this one.
 
 ## Three keys
 

@@ -637,12 +637,11 @@ movie.accumulationModuleFactory = { configuration ->
 
 ## Paired exposure cadence
 
-**Paired exposure cadence** gives accumulated sections a paired-frame rhythm. At the default
-**Exposure pairs / second = 12**, one accumulated image is held for 1/12 real second. The first
-half is optionally softened and darkened; the second half shows the same exposure clear.
-That is 12 pairs, or 24 half-steps, per second even when source playback is 8×. This option
-starts off; enable it alongside **8x blur**, or leave it enabled while a score cuts between
-sharp and accumulated sections. Sharp sections bypass it automatically.
+**Paired exposure cadence** holds each accumulated image for two half-steps: the first can be
+softened and darkened, and the second shows the same exposure clear. At the default **Exposure
+pairs / second = 12**, each pair lasts 1/12 real second, even when source playback is 8×. The option
+starts off. Enable it alongside **8x blur**, or leave it enabled while a score cuts between sharp
+and accumulated sections. Sharp sections bypass it automatically.
 
 **Soft-half blur sigma (px)** controls a Gaussian in original video pixels; **Soft-half blur
 mix** blends it with the full-resolution held exposure. Zero sigma or zero mix preserves the
