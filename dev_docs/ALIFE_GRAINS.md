@@ -24,9 +24,11 @@ the method description; nothing copied.
   `G → GGG[---G]G`, 125 grains, 5.79 s.
 
 ## Traps
-- The default terms saturate fast and are gamed by a continuous trunk drone (`GGG...` overlapping
-  grains read as polyphony). A harder profile (e.g. a density or pitch-entropy term, or penalising
-  overlap on one pitch) is the obvious next step.
+- Without a `MODE_SHARE` term the search was gamed by a one-pitch trunk drone (`G → GGG[---G]G`
+  scored 0.965). `MODE_SHARE` (share of grains on the most common pitch, trapezoid 0,0,0.3,0.6) is
+  now in `defaultGrainTerms()`; the drone scores < 0.9 (test), and the page's seeded run (budget 400,
+  seed 7) ends at 125 grains, median 56, 22% on one pitch.
+- Seeded test run after the change: 0.832 → 0.847 → 0.947 → 0.969 → 0.997 → 1.000 (gens 1,2,3,6,7,12).
 - `display(channel, …)` and `showImg` REPLACE a channel's content: sliders/plots/players each need
   their own channel.
 - Short clips (<1 s) show "0:00" in the audio player; the breeder's random gen-0 children are often
