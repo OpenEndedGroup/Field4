@@ -34,6 +34,7 @@ layout(push_constant) uniform SlugPC {
     SlugData slugData; // immutable word-outline atlas
     vec2 viewport; // dimensions of this eye, for perspective-dependent quad dilation
     vec4 tint; // linear RGBA, with score-driven word opacity
+    vec4 clipPlane; // world-space backdrop clipping, zero for the main scene
 } pc;
 vec4 data4(uint at) {
     return uintBitsToFloat(uvec4(pc.slugData.words[at], pc.slugData.words[at+1],
@@ -41,7 +42,9 @@ vec4 data4(uint at) {
 }
 layout(location=0) out vec2 emCoord;
 const vec2 corners[6] = vec2[6](vec2(0,0), vec2(1,0), vec2(1,1), vec2(0,0), vec2(1,1), vec2(0,1));
+layout(location=1) out float backdropDistance;
 void main() {
+    backdropDistance=0;
     vec4 bounds = data4(8u);
     // A closed SlugBuffer's empty atlas: nothing to cover, so put every corner outside the clip volume.
     if (!(bounds.z > bounds.x && bounds.w > bounds.y)) {
@@ -75,4 +78,5 @@ void main() {
     q += distance * normal;
     emCoord = q;
     gl_Position = matrix * vec4(q, 0.0, 1.0);
+    backdropDistance=dot(pc.clipPlane,pc.model*vec4(q,0,1));
 }

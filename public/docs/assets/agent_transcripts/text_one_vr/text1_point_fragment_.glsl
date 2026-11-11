@@ -3,7 +3,9 @@ layout(location=0) noperspective in vec2 uv;
 layout(location=1) flat in vec4 tint;
 layout(location=2) flat in vec4 shape;
 layout(location=0) out vec4 outColor;
+layout(location=3) in float backdropDistance;
 void main() {
+    if(backdropDistance<0)discard;
     float c=cos(shape.z),s=sin(shape.z);
     vec2 p=mat2(c,-s,s,c)*uv;
     p.x/=max(shape.w,.1);

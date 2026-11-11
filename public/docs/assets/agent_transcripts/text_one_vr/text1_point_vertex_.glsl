@@ -13,6 +13,7 @@ layout(push_constant) uniform DiagramPush {
     mat4 model; // diagram-local to world, shared by both eyes
     DiagramMarkers diagramData; // position/radius, linear RGBA and SDF parameters
     vec4 options; // viewport width/height, minimum stroke/marker radius in pixels
+    vec4 clipPlane; // world-space backdrop clipping, zero for the main scene
 } pc;
 #extension GL_EXT_multiview : require
 layout(std140, set=0, binding=7) uniform StereoViews {
@@ -42,7 +43,9 @@ layout(location=0) noperspective out vec2 uv;
 layout(location=1) flat out vec4 tint;
 layout(location=2) flat out vec4 shape;
 const vec2 corners[6]=vec2[6](vec2(-1,-1),vec2(1,-1),vec2(1,1),vec2(-1,-1),vec2(1,1),vec2(-1,1));
+layout(location=3) out float backdropDistance;
 void main() {
+    backdropDistance=0;
     Marker p=pc.diagramData.item[gl_VertexIndex/6];
     mat4 vp=gl_ViewIndex==0?stereoVpL:stereoVpR;
     vec4 projection=gl_ViewIndex==0?stereoProjectionL:stereoProjectionR;
@@ -55,6 +58,7 @@ void main() {
     uv=corners[gl_VertexIndex%6]*(1+2/max(radius,1e-5));
     clip.xy+=uv*radius*vec2(2,-2)/pc.options.xy*clip.w;
     gl_Position=clip;
+    backdropDistance=dot(pc.clipPlane,inverse(vp)*clip);
     tint=p.color;
     shape=p.shape;
 }

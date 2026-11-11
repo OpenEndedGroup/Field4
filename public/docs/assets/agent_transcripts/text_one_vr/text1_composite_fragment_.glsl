@@ -13,7 +13,7 @@ layout(push_constant) uniform CompositePush {
 layout(std140,set=0,binding=3) uniform CompositeGrade {
     vec4 selectorRange; // selector minimum/maximum, cubic fold strength, reserved
     vec4 selectorSource; // sharp/medium/broad green weights, reserved
-    vec4 paint; // opacity threshold, smooth knee width, normalization mix, reserved
+    vec4 paint; // reserved legacy layout; accumulated light is never normalized
     vec4 colorFold; // red/green/blue fold gains, overall fold mix
     vec4 foldLimits; // red/green/blue fold caps, fold scale
     vec4 alphaFold; // fold gain, cap, strength, reserved
@@ -39,11 +39,6 @@ vec3 blurWeights(float green) {
 }
 float luminance(vec3 c) {
     return dot(c,vec3(0.2126,0.7152,0.0722));
-}
-float smoothMaximum(float a,float b,float width) {
-    if(width<=1e-6)return max(a,b);
-    float h=clamp(0.5+0.5*(a-b)/width,0.0,1.0);
-    return mix(b,a,h)+width*h*(1.0-h);
 }
 vec3 signedGamma(vec3 c,vec3 gamma_) {
     return sign(c)*pow(abs(c),1.0/max(gamma_,vec3(0.001)));
@@ -124,17 +119,14 @@ vec3 composeScene(vec2 at) {
     c.rgb=mix(c.rgb,folded,clamp(grade.colorFold.w,0.0,1.0));
     c.a*=1.0-clamp(grade.alphaFold.z,0.0,1.0)*clamp(g*broad.g*grade.alphaFold.x,0.0,max(grade.alphaFold.y,0.0));
 
-    // C1 knee from additive light below the threshold to opacity-weighted paint above it.
-    float denominator=max(smoothMaximum(max(c.a,0.0),max(grade.paint.x,0.0001),max(grade.paint.y,0.0)),0.0001);
-    c.rgb*=mix(1.0,1.0/denominator,clamp(grade.paint.z,0.0,1.0));
+    // Additive light: opacity weights deposition, never divides accumulated RGB.
     float energy=dot(abs(c.rgb),vec3(1.0/3.0));
     c.rgb=mix(vec3(luminance(c.rgb)),c.rgb,max(grade.saturation.x,0.0));
     float desaturate=clamp(grade.saturation.y*max(grade.saturation.z-energy,0.0)*grade.saturation.w,0.0,1.0);
     c.rgb=mix(c.rgb,vec3(energy),desaturate);
 
-    // Signed foreground can darken the background. Neither is clipped before artistic gamma.
-    float coverage=clamp(max(c.a,0.0)/denominator,0.0,1.0);
-    vec3 color=c.rgb+grade.background.rgb*grade.background.a*(1.0-coverage);
+    // Background is another light contribution, without coverage-based darkening.
+    vec3 color=c.rgb+grade.background.rgb*grade.background.a;
     color*=grade.gain.rgb*pc.reconstruction.z;
     // Toning operates on final display-linear colour, after artistic gamma.
     // This makes its luminance invariant survive per-channel gamma and gamut limits.

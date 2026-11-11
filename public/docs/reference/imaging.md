@@ -4,7 +4,7 @@
 
 Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. Dependency-free CPU float math built on one value type, `Img`, with the separable-convolution core vectorized to roughly OpenCV's single-threaded speed. Every detector hands back geometry, so results go straight to `lines()`.
 
-55 source file(s), 889 public symbol(s), 453 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+55 source file(s), 890 public symbol(s), 454 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -313,10 +313,11 @@ A live Field document in a world-locked Chromium panel. Construct after the rend
 | <a id="fieldvrworkspace-kt--fieldvrworkspace--panel"></a>[<code class="highlight"><span class="k">val</span> <span class="n">panel</span><span class="p">:</span> <span class="nc">PuppetBrowserVrPanel</span></code>](source/jvmMain/afield/media/browser/FieldVrWorkspace/#L91) |  |
 | <a id="fieldvrworkspace-kt--fieldvrworkspace--input"></a>[<code class="highlight"><span class="k">val</span> <span class="n">input</span><span class="p">:</span> <span class="nc">PuppetBrowserVrInput</span></code>](source/jvmMain/afield/media/browser/FieldVrWorkspace/#L92) |  |
 | <a id="fieldvrworkspace-kt--fieldvrworkspace--grab"></a>[<code class="highlight"><span class="k">val</span> <span class="n">grab</span><span class="p">:</span> <span class="nc">PuppetBrowserVrGrab</span></code>](source/jvmMain/afield/media/browser/FieldVrWorkspace/#L93) |  |
-| <a id="fieldvrworkspace-kt--fieldvrworkspace--keyboard"></a>[<code class="highlight"><span class="k">val</span> <span class="n">keyboard</span></code>](source/jvmMain/afield/media/browser/FieldVrWorkspace/#L94) |  |
-| <a id="fieldvrworkspace-kt--fieldvrworkspace--companion"></a>[<code class="highlight"><span class="k">val</span> <span class="k">companion</span><span class="p">:</span> <span class="nc">PuppetBrowserWindowPanel</span></code>](source/jvmMain/afield/media/browser/FieldVrWorkspace/#L97) |  |
-| <a id="fieldvrworkspace-kt--fieldvrworkspace--recenter"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">recenter</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldVrWorkspace/#L151) | Keep the panel in the room; call this to bring it in front of the current head position. |
-| <a id="fieldvrworkspace-kt--fieldvrworkspace--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldVrWorkspace/#L248) |  |
+| <a id="fieldvrworkspace-kt--fieldvrworkspace--controllerscrollhands"></a>[<code class="highlight"><span class="k">var</span> <span class="n">controllerScrollHands</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Hand</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/FieldVrWorkspace/#L95) | Reserve a hand's stick for scene navigation while retaining its pointer and grip. |
+| <a id="fieldvrworkspace-kt--fieldvrworkspace--keyboard"></a>[<code class="highlight"><span class="k">val</span> <span class="n">keyboard</span></code>](source/jvmMain/afield/media/browser/FieldVrWorkspace/#L96) |  |
+| <a id="fieldvrworkspace-kt--fieldvrworkspace--companion"></a>[<code class="highlight"><span class="k">val</span> <span class="k">companion</span><span class="p">:</span> <span class="nc">PuppetBrowserWindowPanel</span></code>](source/jvmMain/afield/media/browser/FieldVrWorkspace/#L99) |  |
+| <a id="fieldvrworkspace-kt--fieldvrworkspace--recenter"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">recenter</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldVrWorkspace/#L153) | Keep the panel in the room; call this to bring it in front of the current head position. |
+| <a id="fieldvrworkspace-kt--fieldvrworkspace--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldVrWorkspace/#L257) |  |
 
 ## HeadlessPuppetBrowser.kt { #headlesspuppetbrowser-kt }
 
