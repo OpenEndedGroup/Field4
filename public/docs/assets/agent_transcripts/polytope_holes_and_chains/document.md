@@ -20,7 +20,7 @@ named function at all. Every operator is now on both receivers, so a chain reads
 wherever a step sits.
 
 ```edn [field-box id="polytope_chained_vocabulary" role="properties"]
-{"id" "polytope_chained_vocabulary" "index" 0 "name" "3 — every composite chains now" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — every composite chains now" "_tombstone" false "frame" #afield/rect [80.0 360.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_chained_vocabulary_code_.kt" "lines" 47 "characters" 2281 "sha256" "e981f32b1609811c17b3ad75ecc868f0c39eb6c8b10839dd12ff0f753ce3a84e"}]}
+{"id" "polytope_chained_vocabulary" "index" 0 "name" "3 — every composite chains now" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — every composite chains now" "_tombstone" false "frame" #afield/rect [80.0 360.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_chained_vocabulary_code_.kt" "lines" 45 "characters" 2267 "sha256" "1489ef05af2208d437a123aae3f1c99e44cc680d92ff3ef8180fbca7cc529fbb"}]}
 ```
 
 ```kotlin [field-property box="polytope_chained_vocabulary" name="code" path="polytope_chained_vocabulary_code_.kt"]
@@ -66,9 +66,7 @@ println(
     result: ${long.polyhedron.topology.elements(0).size}v ${long.polyhedron.topology.elements(2).size}f,
         chi = ${long.polyhedron.topology.eulerCharacteristic()}
     a composite still refuses a single realization policy:
-        ${runCatching { cube().ambo().transform(ConwayOperator.BEVEL, DualCentroidRealization) }.exceptionOrNull()?.message}
-    """
-        .trimIndent(),
+        ${runCatching { cube().ambo().transform(ConwayOperator.BEVEL, DualCentroidRealization) }.exceptionOrNull()?.message}""".trimIndent(),
 )
 viz("chain", long.summary())
 ```
@@ -84,7 +82,7 @@ From `code`
 **** CHANGE THIS LINE ***** the hole's half-width; strictly between 0 and 1.
 
 ```edn [field-box id="polytope_plate_with_and_without" role="properties"]
-{"id" "polytope_plate_with_and_without" "index" 1 "name" "2 — the same plate, with the ring and without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the same plate, with the ring and without it" "_tombstone" false "frame" #afield/rect [80.0 220.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_plate_with_and_without_code_.kt" "lines" 80 "characters" 3385 "sha256" "cb49698612489660fc8449518b55404b54d4322505db2a72b4c4a456e3ef6b80"}]}
+{"id" "polytope_plate_with_and_without" "index" 1 "name" "2 — the same plate, with the ring and without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the same plate, with the ring and without it" "_tombstone" false "frame" #afield/rect [80.0 220.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_plate_with_and_without_code_.kt" "lines" 78 "characters" 3371 "sha256" "9659d49a8ec8f227aaf0ca11803343b53ec0ca15ac6d72b5abfbf3d70af15084"}]}
 ```
 
 ```kotlin [field-property box="polytope_plate_with_and_without" name="code" path="polytope_plate_with_and_without_code_.kt"]
@@ -164,9 +162,7 @@ println(
     """
     left: one face, two boundary rings, ${plate(true).toTriMesh().triangleCount} triangles
     right: the identical outline with the ring dropped, ${plate(false).toTriMesh().triangleCount} triangles
-    the filled area differs by exactly the ring: ${4.0 * hole * hole}
-    """
-        .trimIndent(),
+    the filled area differs by exactly the ring: ${4.0 * hole * hole}""".trimIndent(),
 )
 ```
 
@@ -181,7 +177,7 @@ From `code`
 **** CHANGE THIS LINE ***** the window's half-width, anywhere inside (0, 1).
 
 ```edn [field-box id="polytope_face_with_a_hole" role="properties"]
-{"id" "polytope_face_with_a_hole" "index" 2 "name" "1 — a face with a hole, end to end" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — a face with a hole, end to end" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_face_with_a_hole_code_.kt" "lines" 76 "characters" 3157 "sha256" "53eb45ff5e65e491473c0db6ba695fe815a125af9219658688a82d18ab322b7e"}]}
+{"id" "polytope_face_with_a_hole" "index" 2 "name" "1 — a face with a hole, end to end" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — a face with a hole, end to end" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_face_with_a_hole_code_.kt" "lines" 72 "characters" 3113 "sha256" "02c1e010e89eb190c2382be3ab2b33734089652a430c33bb286594ef78873b95"}]}
 ```
 
 ```kotlin [field-property box="polytope_face_with_a_hole" name="code" path="polytope_face_with_a_hole_code_.kt"]
@@ -215,9 +211,7 @@ println(
         (a disk with one hole is 1 - 1, so a sphere with a window is 1)
     closed manifold = ${topology.validate(checkManifold = true).isValid}, and the only complaints are
         ${topology.validate(checkManifold = true).issues.size} one-sided window edges
-    triangles cut from the windowed face = $rimTriangles (a solid square would be 2)
-    """
-        .trimIndent(),
+    triangles cut from the windowed face = $rimTriangles (a solid square would be 2)""".trimIndent(),
 )
 println("\nrefused, by name:")
 refusals.forEach { (call, message) -> println("  $call -> $message") }
@@ -244,9 +238,7 @@ val faceLines = solid.toFaceFLines { face, line ->
             - outer ring: `${topology.faceCycle(face.id).size}` vertices
             - holes: `${holes.map { it.size }}`
             - triangles: `${(0 until geometry.triangleCount).count { geometry.sourceFace(it) == face.id }}`
-            - clicked at: `${hit.position}`
-            """
-                .trimIndent(),
+            - clicked at: `${hit.position}`""".trimIndent(),
         )
     }
 }

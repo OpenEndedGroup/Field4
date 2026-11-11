@@ -173,7 +173,29 @@ data class ThreeWireBuffers internal constructor(val generation: String, val byt
 /** One typed array in a buffer response. Offsets are multiples of eight, so a Float64 view needs no copy. */
 @Serializable
 @ConsistentCopyVisibility
-data class ThreeWireBuffer internal constructor(val type: String, val offset: Long, val count: Int)
+data class ThreeWireBuffer internal constructor(
+    val type: String, val offset: Long, val count: Int,
+    /**
+     * A 64-bit hash of the array's contents. A viewer already holding an array with this hash reuses
+     * it and asks `/three-buffers?only=` for the rest, and a drawable whose other arrays are all
+     * unchanged has its changed ones (colours, typically) written into the geometry on screen.
+     */
+    val hash: String = "",
+)
+
+/** FNV-1a over the array's raw bits, with its type and length: [ThreeWireBuffer.hash]. */
+internal fun ThreeWireSource.contentHash(): String {
+    var h = -0x340d631b7bdddcdbL
+    fun mix(v: Long) { h = (h xor v) * 0x100000001b3L }
+    mix(type.hashCode().toLong()); mix(count.toLong())
+    when (this) {
+        is ThreeWireSource.Floats -> for (v in values) mix(java.lang.Float.floatToRawIntBits(v).toLong())
+        is ThreeWireSource.Doubles -> for (v in values) mix(java.lang.Double.doubleToRawLongBits(v))
+        is ThreeWireSource.Ints -> for (v in values) mix(v.toLong())
+        is ThreeWireSource.Pairs -> for (e in values) for (v in e) mix(v.toLong())
+    }
+    return java.lang.Long.toHexString(h)
+}
 
 /** One numeric array, as the buffer response carries it. Holds the payload's own array, never a copy. */
 internal sealed class ThreeWireSource(val type: String, val count: Int, val width: Int) {
@@ -188,6 +210,19 @@ internal sealed class ThreeWireSource(val type: String, val count: Int, val widt
 /** A view's buffers for one generation: what `/three-buffers` writes. */
 internal class ThreeGeometryBuffers(val bytes: Long, private val sources: List<ThreeWireSource>) {
     fun writeTo(out: OutputStream) = writeThreeBuffers(sources, out)
+
+    /**
+     * Only the buffers numbered [only], in that order, each padded to eight bytes from the start of
+     * the response: what a viewer that already holds the others asks for. Null when an index is out
+     * of range.
+     */
+    fun subset(only: List<Int>): ThreeGeometryBuffers? {
+        if (only.any { it !in sources.indices }) return null
+        val picked = only.map { sources[it] }
+        var size = 0L
+        picked.forEach { size = (size + 7) / 8 * 8 + it.byteLength }
+        return ThreeGeometryBuffers(size, picked)
+    }
     fun toByteArray(): ByteArray = ByteArrayOutputStream(bytes.toInt()).also(::writeTo).toByteArray()
 }
 
@@ -201,7 +236,7 @@ private class Splitter {
 
     fun add(source: ThreeWireSource): Int {
         val offset = (bytes + 7) / 8 * 8
-        entries += ThreeWireBuffer(source.type, offset, source.count)
+        entries += ThreeWireBuffer(source.type, offset, source.count, source.contentHash())
         sources += source
         bytes = offset + source.byteLength
         return sources.size - 1

@@ -109,6 +109,12 @@ nav:
     - A Generator, Graded by Datalog: chain_flow_islands.md
     - A Word Cut as a Stencil: chain_stencil_bridges.md
     - A Tracked Body, Measured and Heard: chain_tracked_body.md
+    # Last in Long Way Round, after the chain pages and grouped: the explainer talks, which chains.md
+    # introduces as their own section after the MADP tools. More are expected to join them.
+    - Explainers:
+      - Sound: explainer_sound.md
+      - Cameras and Lenses: explainer_cameras.md
+      - Lights and Shadows: explainer_lights.md
   - Working in a Document:
     # First in the section: panning, zooming, Cmd Cmd-and-hold between boxes and the nine bookmark
     # slots, i.e. how you get around a document before you do anything in it. It absorbed the old
@@ -190,6 +196,9 @@ nav:
       - "GP Optimisation and Preference": gaussian_process_optimization.md
       - Differentiating Functions: autodiff_examples.md
       - Proving a Function's Range: fn_intervals.md
+      # Beside the GP pages: a value that is a whole distribution, sampled and queried with its
+      # standard error, and lowered to GLSL for the GPU.
+      - Distributions: distributions.md
     - Time & Signals:
       - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
       # Directly after the interpolants page: that page eases a value from code, this one draws it.

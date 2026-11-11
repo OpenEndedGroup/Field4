@@ -239,9 +239,7 @@ ui.eval(
     f.src = "/welcome"
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1100px;height:1000px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 var state = ""
 for (i in 0 until 80) {
@@ -254,8 +252,7 @@ for (i in 0 until 80) {
                 if (!section) return "loading"
                 if (!section.open) section.querySelector("summary").click()
                 return section.querySelectorAll(".starting-point-entry").length > 0 ? "ready" : "empty"
-                """
-                    .trimIndent(),
+                """.trimIndent(),
             )
             .toString()
     if (state.contains("ready")) break
@@ -273,9 +270,7 @@ ui.eval(
     m.setAttribute("style", "position:fixed;pointer-events:none;background:transparent;border:0;z-index:2147483001;" +
         "left:" + (o.left + r.left) + "px;top:" + (o.top + r.top) + "px;width:" + r.width + "px;height:" + r.height + "px")
     document.body.appendChild(m)
-    return [r.width, r.height]
-    """
-        .trimIndent(),
+    return [r.width, r.height]""".trimIndent(),
 )
 ui.pause(300)
 ```
@@ -499,9 +494,7 @@ ui.eval(
     f.src = "/docs-pass.html"
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1200px;height:1400px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 var state = ""
 for (i in 0 until 240) {
@@ -515,8 +508,7 @@ for (i in 0 until 240) {
                 if (!d.getElementById("counts")?.children.length) return "counts"
                 if (!d.getElementById("handoffs")?.children.length) return "handoffs"
                 return "ready"
-                """
-                    .trimIndent(),
+                """.trimIndent(),
             )
             .toString()
     if (state.contains("ready")) break
@@ -539,9 +531,7 @@ ui.eval(
     m.setAttribute("style", "position:fixed;pointer-events:none;background:transparent;border:0;z-index:2147483001;" +
         "left:" + (o.left + r.left) + "px;top:" + (o.top + r.top) + "px;width:" + r.width + "px;height:" + r.height + "px")
     document.body.appendChild(m)
-    return [r.width, r.height]
-    """
-        .trimIndent(),
+    return [r.width, r.height]""".trimIndent(),
 )
 ui.pause(300)
 ```
@@ -567,9 +557,7 @@ ui.eval(
     f.src = "/welcome"
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1700px;height:2000px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 var state = ""
 for (i in 0 until 80) {
@@ -584,8 +572,7 @@ for (i in 0 until 80) {
                 const states = ["completion-doc-polish-state", "docs-pass-state", "ai-tool-use-improvement-state"]
                     .map(id => d.getElementById(id)?.textContent || "checking")
                 return states.some(s => /checking/i.test(s)) ? "pending" : "ready"
-                """
-                    .trimIndent(),
+                """.trimIndent(),
             )
             .toString()
     if (state.contains("ready")) break
@@ -596,9 +583,7 @@ ui.eval(
     """
     const panel = document.getElementById("docs-welcome-frame").contentDocument.getElementById("ai-settings-details")
     panel.querySelectorAll(".ai-docs-panel")[0].scrollIntoView({ block: "start" })
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(300)
 ui.eval(
@@ -617,9 +602,7 @@ ui.eval(
     m.setAttribute("style", "position:fixed;pointer-events:none;background:transparent;border:0;z-index:2147483001;" +
         "left:" + (o.left + r.left) + "px;top:" + (o.top + r.top) + "px;width:" + r.width + "px;height:" + r.height + "px")
     document.body.appendChild(m)
-    return [r.width, r.height]
-    """
-        .trimIndent(),
+    return [r.width, r.height]""".trimIndent(),
 )
 ui.pause(300)
 ```

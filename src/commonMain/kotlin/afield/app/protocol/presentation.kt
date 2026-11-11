@@ -12,8 +12,69 @@ data class AudienceContent(
     val document: String = "",
     val rect: List<Double>? = null,
     val macro: AudienceMacro? = null,
-    val interactiveGuide: Boolean = false
+    val interactiveGuide: Boolean = false,
+    /** Live box outputs placed in this HTML slide's figure slots; see [AudienceFigure]. */
+    val figures: List<AudienceFigure> = emptyList()
 )
+
+/**
+ * One live figure on an HTML slide: the output area of the box [box] (a uid in the presentation's own
+ * document), shown in its own native view over the slot whose `data-field-figure` attribute is [id].
+ * [channels] limits it to those output channels; empty shows every channel the box displays. [rect],
+ * a fraction of the audience window, places it explicitly instead of measuring the slot. [name] is the
+ * box name the deck used, kept for search and for exporting the slide later.
+ */
+@Serializable
+data class AudienceFigure(
+    val id: String,
+    val box: String,
+    val name: String,
+    val channels: List<String> = emptyList(),
+    val rect: List<Double>? = null
+)
+
+/**
+ * The scale a figure page (`index.html?figure=`) gives a box's output area so all of it fits a
+ * [viewWidth] × [viewHeight] view, with a small margin, between 0.2× and 4×.
+ *
+ * The area's size is the larger of its laid-out size and its content size ([scrollWidth],
+ * [scrollHeight]): an output wider than the area (an editable drawing, a wide plot) overflows it, and
+ * fitting the laid-out size alone would crop the overflow off the slide. Null while the area has no
+ * size yet.
+ */
+fun figureFitZoom(
+    offsetWidth: Double, offsetHeight: Double, scrollWidth: Double, scrollHeight: Double,
+    viewWidth: Double, viewHeight: Double
+): Double? {
+    val width = maxOf(offsetWidth, scrollWidth)
+    val height = maxOf(offsetHeight, scrollHeight)
+    if (width < 1 || height < 1) return null
+    return (minOf(viewWidth / width, viewHeight / height) * 0.96).coerceIn(0.2, 4.0)
+}
+
+/** How a figure page places a box's output area: a scale, and a shift in the area's own pixels. */
+data class FigureFit(val zoom: Double, val shiftX: Double, val shiftY: Double)
+
+/**
+ * [figureFitZoom], and the shift that centres the content when it overflows the area. Applied as
+ * `scale(zoom) translate(shiftX, shiftY)` about the area's centre, which moves only paint: nothing
+ * here changes the layout it was measured from, so measuring again gives the same answer.
+ *
+ * The figure page once centred an overflowing drawing by widening the box to the content with a
+ * `min-width`. That was a layout write: content sized to its container grew with the box, and
+ * Field's panel auto-sizing wrote the larger size back into the panel, so every pass measured a
+ * wider overflow than the last and the figure shrank towards nothing.
+ */
+fun figureFit(
+    offsetWidth: Double, offsetHeight: Double, scrollWidth: Double, scrollHeight: Double,
+    viewWidth: Double, viewHeight: Double
+): FigureFit? {
+    val zoom = figureFitZoom(offsetWidth, offsetHeight, scrollWidth, scrollHeight, viewWidth, viewHeight) ?: return null
+    // Overflow runs right and down from the area's origin; centre the content on the area instead.
+    val shiftX = (offsetWidth - maxOf(offsetWidth, scrollWidth)) / 2
+    val shiftY = (offsetHeight - maxOf(offsetHeight, scrollHeight)) / 2
+    return FigureFit(zoom, shiftX, shiftY)
+}
 
 @Serializable
 data class AudienceMacro(val name: String, val scope: String = "document", val project: String = "")
@@ -36,3 +97,32 @@ data class PresentationState(
     val checkpoint: String = "",
     val searchTexts: List<String> = emptyList()
 )
+
+/**
+ * Arrange Boxes by Presentation: the server's request to a canvas client to put [boxes] (uids, in
+ * slide order) in one row from where the first one is, each box after the previous one's footprint
+ * (its frame and every open output panel) plus [gap] world units, every frame at the first one's y.
+ * Only a client knows how big those panels are drawn. After the first box (the Presentation box)
+ * the gap is [leadGap]: the presenter's notes appear beside that box, and must not cover a figure.
+ */
+@Serializable
+data class ArrangeBoxesRequest(val id: String, val boxes: List<String>, val gap: Double = 80.0, val leadGap: Double = 440.0)
+
+/**
+ * An Electron canvas has handed a [PresentationState] to its audience and presenter windows
+ * (`presentation-shown`), so a talk presented before any Electron had the document open stops waiting.
+ */
+@Serializable
+data class PresentationShown(val slideshowId: String)
+
+/** A client's answer to an [ArrangeBoxesRequest]: the frames to give the boxes. */
+@Serializable
+data class ArrangeBoxesResult(val id: String, val frames: List<Set_rect>)
+
+/**
+ * A pointer drag on a `lines(..., onDrag = { })` drawing, sent by the viewer: [id] names the box
+ * and channel, [phase] is `start`, `move` or `end`, and [x], [y] are in the drawing's own SVG
+ * coordinates (the server undoes any fit back to the lines' coordinates).
+ */
+@Serializable
+data class LinesDrag(val id: String, val phase: String, val x: Double, val y: Double)

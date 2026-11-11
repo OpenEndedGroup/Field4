@@ -1,0 +1,168 @@
+{
+ "tool": "tools/presentation/capture-deck.mjs (macOS screencapture -l of this checkout's Electron audience window)",
+ "transcript": "dev_docs/agents/transcripts/explainer_cameras.yaml",
+ "transcriptSha256": "09cad60ea2bbb9955c649282793020762b5cc1b1e2caff68f60dc359cf7aba16",
+ "resized": "sips -Z 960 (the window capture scaled to 960 px wide)",
+ "slides": [
+  {
+   "file": "opening.png",
+   "view": "1 / 24 \u00b7 Cameras and lenses",
+   "figures": 0,
+   "inFront": true,
+   "captureSha256": "502d9ade7f3c0af94ca5366375aba9c236febc0f3c41e3105df076ac6899aaf4",
+   "sha256": "79d4bb7bd13251a11cc2e3cb82ecec8d0e8fb0976bf58abfc5053d7ab53c51a3"
+  },
+  {
+   "file": "photons.png",
+   "view": "2 / 24 \u00b7 Counting light \u00b7 cue 0 / 2",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "157684b415ed9c886713ccf928317c13aa2222da509a0f2bd3a89399a6b40f6a",
+   "sha256": "a214c1b99b1630ad306f27779020cf46b2ff03fb4211ac026bfa26bbd5d1edcd"
+  },
+  {
+   "file": "colour.png",
+   "view": "3 / 24 \u00b7 Colour from filters \u00b7 cue 0 / 2",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "ceff672e6732d6d6c26b6e70b2f54565659bcc541fd0d7734e4933d9b7e8e080",
+   "sha256": "0211098f889b153b9d2d17e789758f443ba4b4c8aaf5dad9670640380102b283"
+  },
+  {
+   "file": "scene.png",
+   "view": "4 / 24 \u00b7 A scene to photograph",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "5ed2c0b04b92d3c95c7093c487c96dd982a513ab2070b90cd0de242d81b7dba2",
+   "sha256": "5c348c59aa47f3290b459e9d4279ae6cabbb3268c370207a3533c424a9d079cb"
+  },
+  {
+   "file": "bare-sensor.png",
+   "view": "5 / 24 \u00b7 A bare sensor",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "9075d896eec7c55e634e4ddf9ea3250429b0a81b5cd598f043fe96c93b85940f",
+   "sha256": "3b6b48f24e56c2a5b84fe3ffc511eaab975500e0b807071f953eda4f67ecc555"
+  },
+  {
+   "file": "pinhole.png",
+   "view": "6 / 24 \u00b7 A box with a hole",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "373f5e2fe969c95b8c8ac405237011e61aea7d0090579a83e8befd35395919a6",
+   "sha256": "6671047bf1ffdf9b1472b34880931636209d74d63258a8023b88fb7f7aaf8c68"
+  },
+  {
+   "file": "field-of-view.png",
+   "view": "7 / 24 \u00b7 How much it sees \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "62897a2ae139b796a191308f5258b1703e49b77285e560fd3280d127a6140258",
+   "sha256": "021fb5e765c7e1c7296c800d9c0c74c28e7579ff28127de96df552fab9a4e5d6"
+  },
+  {
+   "file": "falloff.png",
+   "view": "8 / 24 \u00b7 Darker at the edges \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "72cfe1047c5dfcd5ae30c1f8aae6b9ab1a92824ed3de58efba29ead681bc84b3",
+   "sha256": "23bc49f0ddf772776d7f8088a8f85fd5106dbe79d5b97face6d3de1a0ab87fe8"
+  },
+  {
+   "file": "glass.png",
+   "view": "10 / 24 \u00b7 Glass moves things \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "6e6b3faee7003b66a694db4c30ea9419fd767e701cf5c3f7c2cea64c8a7eafce",
+   "sha256": "6c2762e7290ac23559421227c24827ecf07154d8de47e2f1838700c41fadefca"
+  },
+  {
+   "file": "wave.png",
+   "view": "11 / 24 \u00b7 Light is a wave",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "18bd0f5f9b5223c5c16169f66ad1ce2b54a4cab1e827864d5852dfff72e76e32",
+   "sha256": "2564d2a37c188b831b396132d8df2b9a25810b8c6043039699b51f6972d16ddb"
+  },
+  {
+   "file": "snell.png",
+   "view": "13 / 24 \u00b7 Snell's law \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "a9d3979cadd9c8a1c700c47199661149346bf56277f4bf794cb2f408ee666357",
+   "sha256": "389997d7b284ef675e9c9439d3264cbb528fcf3a208ef19c0e6b04622c503b25"
+  },
+  {
+   "file": "wedge.png",
+   "view": "15 / 24 \u00b7 Tilted faces \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "f90f105956ccaf849353bc9519ee5599a7a6599889f8c5eaeb1570a4b12b7e98",
+   "sha256": "db5ab776c8ba1281d9e222c9003b0bfbb8960ed36057e9bad47c02c2c4b5df6d"
+  },
+  {
+   "file": "thin-lens.png",
+   "view": "16 / 24 \u00b7 A thin lens \u00b7 cue 0 / 2",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "e4f6f01c8d7c5eac46b1561d16b70c17a3e821061c5021d927c4248bdc37df9a",
+   "sha256": "aa8f5a6c5de6393ad75037fa4db3b9e0bf484706469e565aab3ed8c60932a352"
+  },
+  {
+   "file": "lens-camera.png",
+   "view": "17 / 24 \u00b7 A camera with a lens",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "4ede403e25c590358e1f9f08fe5f18a9bfdd0dd33b72ae80c10762feb3621e9a",
+   "sha256": "45899909af99b5c952e5c8ad0fb70be1c7de46ff403681b9645f97503ac22666"
+  },
+  {
+   "file": "aperture.png",
+   "view": "19 / 24 \u00b7 The shape of blur \u00b7 cue 0 / 2",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "7064e2116c4165d2a2e389b35d6b20c25b231ff9bf08c001c8dc6e0f67e762ee",
+   "sha256": "940899029cf560b0719d6c059f52f312b18ce75441bfe947d694ed962333f420"
+  },
+  {
+   "file": "depth-of-field.png",
+   "view": "20 / 24 \u00b7 How deep is sharp \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "653b49f6922e017df92212330a10ff2db4d1ad0cd84bb5382c020d9d473f6144",
+   "sha256": "8d700c036d3ceec630cc03755fd03a3feef42e1ca6050b731bd1dd826376548f"
+  },
+  {
+   "file": "f-number.png",
+   "view": "21 / 24 \u00b7 f-numbers \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "d2683ae0b901b0086ce7fce8a29dd58ea3d6d6941f32dbc7938b80a533f94416",
+   "sha256": "312d0f6558e7609b68881e707ba930cdc5c95491061479eca251c1c7dc4a9e8a"
+  },
+  {
+   "file": "spherical.png",
+   "view": "22 / 24 \u00b7 Spheres miss \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "5626744ff89e92be3e54e28f20be2c41b74da8572ed4471efa7ac1a6e718b60d",
+   "sha256": "6519f8df8609c5a9b6a451c59b3e3ea1016a30438822052039d1d8673cee1a38"
+  },
+  {
+   "file": "chromatic.png",
+   "view": "23 / 24 \u00b7 Colours split \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "5f8173a7bcd035a190a4f067c83b7de3eb5a1538e02218648a26cc581f80965a",
+   "sha256": "c043e4b5a0df4ce82ced70b1d860576e88e88abc3d54d6780ff1cf5804a2dfca"
+  },
+  {
+   "file": "further-reading.png",
+   "view": "24 / 24 \u00b7 Further reading",
+   "figures": 0,
+   "inFront": false,
+   "captureSha256": "5c3e0859d7d17f79dbc078ed90846f158c7fb5d6b41db2f032dc7660871a4d92",
+   "sha256": "a2064ea09dbf65d78e01dd93e9a2eaebd5e0330ba7ff1601434d9aa0d6ebd14c"
+  }
+ ]
+}

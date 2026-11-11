@@ -18,6 +18,7 @@ from tools.check_staged_generated_artifacts import (
     _reference_source_roots,
     conflicting_unstaged_paths,
     guards_for_paths,
+    python_tool_modules_for_paths,
 )
 from tools.git_isolation import scrub_process_env  # noqa: E402
 
@@ -137,6 +138,7 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
                 "checkAgentTranscripts",
                 "checkAgentTranscriptIndex", "checkDocsPublications",
                 "checkTranscriptRegistration",
+                "checkAgentTranscriptLayouts",
                 "checkCompletionCorpusFixtures",
                 "checkBoxIdioms",
                 "checkBoxCodeFormat",
@@ -144,6 +146,21 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
                 "citationGates",
             ],
         )
+
+    def test_every_population_the_layout_guard_audits_selects_it(self) -> None:
+        # 2026-11-10: a docs_capture create with no frame (body_one_live) and two over-ceiling boxes
+        # (forth_step_sequencer) landed because only demo paths selected the layout guard.
+        for path in (
+            "dev_docs/agents/transcripts/forth_step_sequencer.yaml",
+            "dev_docs/agents/transcripts/docs_capture/body_one_live.yaml",
+            "dev_docs/agents/demos/new_demo/metadata.edn",
+            "dev_docs/agents/transcript_layout_exceptions.yaml",
+            "src/jvmMain/kotlin/afield/tools/docs/AgentTranscriptLayoutGuard.kt",
+        ):
+            with self.subTest(path=path):
+                self.assertIn("checkAgentTranscriptLayouts", task_names([path]))
+        # Negative control: an unrelated agent note still selects nothing of the kind.
+        self.assertNotIn("checkAgentTranscriptLayouts", task_names(["dev_docs/agents/notes.md"]))
 
     def test_new_demo_selects_its_registration_and_drift_guards(self) -> None:
         self.assertEqual(
@@ -214,6 +231,47 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
             ),
             ["public/docs/reference/controls.md"],
         )
+
+
+class PythonToolScopeTests(unittest.TestCase):
+    """Which `tools/test_*.py` suites a guard run needs, from what changed."""
+
+    def test_regenerated_reference_pages_run_only_their_readers(self) -> None:
+        # The lander's own regeneration commit: every Kotlin landing rewrites these pages, and until
+        # 2026-11-10 that ran all ~120 suites. The voice boards read the real reference tree.
+        scope = python_tool_modules_for_paths(["public/docs/reference/math.md", "public/docs/reference/index.md"])
+        self.assertIsNotNone(scope)
+        self.assertIn("tools.test_docs_voice_detectors", scope)
+        self.assertIn("tools.test_check_staged_generated_artifacts", scope)
+        self.assertNotIn("tools.test_land", scope)
+        self.assertLess(len(scope), 20)
+
+    def test_a_new_demo_runs_the_suites_that_read_demos(self) -> None:
+        scope = python_tool_modules_for_paths(["dev_docs/agents/demos/new_demo/metadata.edn"])
+        self.assertIn("tools.test_check_box_idioms", scope)
+        self.assertNotIn("tools.test_docs_voice_detectors", scope)
+
+    def test_the_completion_scrape_runs_its_readers(self) -> None:
+        scope = python_tool_modules_for_paths(["tools/completion-corpus/scraped.tsv"])
+        self.assertIn("tools.test_completion_diff", scope)
+
+    def test_python_tooling_or_a_build_file_runs_everything(self) -> None:
+        for path in ("tools/land.py", "tools/docs_voice/check_anchors.py", "build.gradle.kts", "uv.lock",
+                     "tools/refactor-engine/src/main/kotlin/Engine.kt"):
+            with self.subTest(path=path):
+                self.assertIsNone(python_tool_modules_for_paths(["public/docs/reference/math.md", path]))
+
+    def test_paths_the_suite_does_not_read_select_nothing(self) -> None:
+        self.assertEqual(python_tool_modules_for_paths(["src/jvmMain/kotlin/afield/audio/Piano.kt",
+                                                       "public/docs/eigendrum.md"]), [])
+
+    def test_every_corpus_input_has_a_scope(self) -> None:
+        # A corpus input with no scope would run the whole suite again, silently undoing the saving.
+        for path in ("dev_docs/agents/demos/x/metadata.edn", _REFERENCE_GENERATOR_REL,
+                     "public/docs/reference/graphics.md", "tools/completion-corpus/name-fixtures.tsv"):
+            with self.subTest(path=path):
+                self.assertIn("checkPythonTools", task_names([path]))
+                self.assertIsNotNone(python_tool_modules_for_paths([path]))
 
 
 class ReferenceSourceRootsTests(unittest.TestCase):

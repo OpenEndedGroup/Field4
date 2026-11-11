@@ -16,9 +16,7 @@ run {
             `-DMANIFOLD_CBIND=ON`.
 
             Then run this box again. The binding finds `libmanifoldc` on its own; set
-            `-Dafield.manifold.library=<path>` if you built your own.
-            """
-                .trimIndent(),
+            `-Dafield.manifold.library=<path>` if you built your own.""".trimIndent(),
         )
         return@run
     }

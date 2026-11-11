@@ -569,9 +569,7 @@ ui.eval(
     const style = document.createElement("style")
     style.textContent = ".disclosure-group { display: none !important; }"
     document.head.appendChild(style)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(800)
 ```
@@ -1142,9 +1140,7 @@ ui.eval(
     const style = document.createElement("style")
     style.textContent = ".disclosure-group { display: none !important; }"
     document.head.appendChild(style)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(800)
 ```

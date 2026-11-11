@@ -18,6 +18,7 @@ import afield.ui.visualization.lines
 import afield.document.graph.Box
 import afield.geometry.mesh.MeshView
 import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.boxMesh
 import afield.math.linalg.Vec3
 import afield.math.linalg.Vec4
 import afield.geometry.mesh.boundsArray
@@ -70,6 +71,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal var camera: ThreeCameraSpec? = null
     internal var background: String? = null
     internal var autoFrame: Boolean = true
+    /** The box [fitTo] declared for the single view: the camera frames exactly this. */
+    internal var fitBox: ThreeBounds? = null
     internal var inspector: ThreeInspector? = null
     internal var cameraLink: ThreeCameraLinkSpec? = null
     internal var cameraFollow: ThreeCameraFollowSpec? = null
@@ -220,6 +223,24 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     ) {
         camera = ThreeCameraSpec(yaw, pitch, distance, fieldOfView, padding, upAxis, follow)
         autoFrame = false
+    }
+
+    /**
+     * Fit the camera to the box from [min] to [max] instead of to what is drawn.
+     *
+     * The viewer frames its first view on the meshes in the scene. A figure whose content grows or
+     * moves with a slider (a lamp that gets bigger, a dome of lights that fills in) would otherwise be
+     * framed on whatever its first frame happened to hold. The camera frames exactly this box, even
+     * where geometry reaches beyond it (a small camera on a large floor can be the subject); an
+     * invisible box of that size is also added, which draws no pixels, writes no depth and cannot be
+     * picked. With [panel], the box joins that panel's geometry instead.
+     */
+    fun fitTo(min: Vec3, max: Vec3, panel: Int? = null) {
+        require(min.x <= max.x && min.y <= max.y && min.z <= max.z) { "fitTo needs min <= max on every axis, got $min and $max" }
+        if (panel == null) fitBox = ThreeBounds(floatArrayOf(min.x, min.y, min.z), floatArrayOf(max.x, max.y, max.z))
+        val box = boxMesh(max.x - min.x, max.y - min.y, max.z - min.z)
+            .translated((min.x + max.x) / 2, (min.y + max.y) / 2, (min.z + max.z) / 2)
+        mesh(box, wireframe = false, opacity = 0.0, panel = panel, id = "fitTo")
     }
 
     /** The camera as a [MeshView] already describes it — the migration path for existing figures. */
@@ -562,7 +583,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             fills = base?.fills,
             points = base?.points,
             interactive = base?.interactive ?: emptyList(),
-            bounds = tracker.toBounds(),
+            bounds = fitBox ?: tracker.toBounds(),
+            fitBounds = fitBox != null,
             meta = ThreeMeta(
                 lineSegments = base?.meta?.lineSegments ?: 0,
                 triangles = (base?.meta?.triangles ?: 0) + drawableTriangles,

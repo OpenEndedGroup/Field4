@@ -98,8 +98,7 @@ operations:
           """x: ${fitX.initialParameters} -> ${fitX.parameters}
           |   residual ${fitX.initialResidual} -> ${fitX.finalResidual}
           |y: ${fitY.initialParameters} -> ${fitY.parameters}
-          |   residual ${fitY.initialResidual} -> ${fitY.finalResidual}"""
-              .trimMargin()
+          |   residual ${fitY.initialResidual} -> ${fitY.finalResidual}""".trimMargin()
   - execute:
       box: rectsl_inverse_fit
       property: code
@@ -183,8 +182,7 @@ operations:
         """x: ${fitX.initialParameters} -> ${fitX.parameters}
         |   residual ${fitX.initialResidual} -> ${fitX.finalResidual}
         |y: ${fitY.initialParameters} -> ${fitY.parameters}
-        |   residual ${fitY.initialResidual} -> ${fitY.finalResidual}"""
-            .trimMargin()
+        |   residual ${fitY.initialResidual} -> ${fitY.finalResidual}""".trimMargin()
   - await:
       wait: pending
   - wait:
@@ -216,9 +214,7 @@ operations:
                         1.4 1.4 ->wh
                         "sweep" track-ref 1.0 free-param gain * 0.0 free-param bias + ->x
                         0x44d4b4 solid ->fill
-                      ;
-                      """
-                          .trimIndent(),
+                      ;""".trimIndent(),
                   )
                   .program
 
@@ -268,9 +264,7 @@ operations:
               IR after:    ${fit.fitted.describe()}
               residual:    ${fit.initialResidual} -> ${fit.finalResidual}
               x(1.0) = ${fit.fitted.sample(1.0)}   x(3.0) = ${fit.fitted.sample(3.0)}
-              ~~~
-          """
-                  .trimIndent(),
+              ~~~""".trimIndent(),
           )
   - execute:
       box: rectsl_free_param_word
@@ -296,9 +290,7 @@ operations:
                       1.4 1.4 ->wh
                       "sweep" track-ref 1.0 free-param gain * 0.0 free-param bias + ->x
                       0x44d4b4 solid ->fill
-                    ;
-                    """
-                        .trimIndent(),
+                    ;""".trimIndent(),
                 )
                 .program
 
@@ -348,9 +340,7 @@ operations:
             IR after:    ${fit.fitted.describe()}
             residual:    ${fit.initialResidual} -> ${fit.finalResidual}
             x(1.0) = ${fit.fitted.sample(1.0)}   x(3.0) = ${fit.fitted.sample(3.0)}
-            ~~~
-        """
-                .trimIndent(),
+            ~~~""".trimIndent(),
         )
   - await:
       wait: pending

@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-11T00:30:07.742Z",
+  "documentName": "noiselang_distributions",
+  "outputs": [
+    {
+      "uid": "noise_track_point",
+      "channel": "track",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "noise_tempo_follow",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "noise_tempo_follow",
+      "channel": "tempo",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "noise_walks",
+      "channel": "walks",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "noise_weighted_scale",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 191,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "noise_weighted_scale",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "noise_five_in_sixteen",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 275,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "noise_five_in_sixteen",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "noise_gp_curves",
+      "channel": "curves",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "noise_gp_curves",
+      "channel": "peak",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 496,
+      "height": 211,
+      "path": "outputs/9.html"
+    }
+  ]
+}

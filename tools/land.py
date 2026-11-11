@@ -314,20 +314,41 @@ def _took(item: dict) -> float | None:
     return (end - start).total_seconds() if start and end else None
 
 
+_ATTEMPT_HEADER = re.compile(r"=== \d{4}-\d\d-\d\dT")
+
+
 def _log_lines(item: dict) -> list[str]:
     try:
         text = Path(item["log"]).read_text(errors="replace").splitlines()
     except (KeyError, OSError):
         return []
-    # Only the latest attempt: a landing that restarted after main moved begins again at "===".
-    starts = [i for i, line in enumerate(text) if line.startswith("=== ")]
+    # Only the latest attempt: a landing that restarted after main moved begins again at the dated
+    # "=== <ISO time> <batch>" header. Only that header: tools/run_python_tests.py prints
+    # "=== tools.test_x" before each suite, which once made every Gradle line look like an
+    # earlier attempt, so `status` said "(no Gradle)" for a landing whose guard build ran.
+    starts = [i for i, line in enumerate(text) if _ATTEMPT_HEADER.match(line)]
     return [line for line in text[starts[-1] if starts else 0 :] if line.strip()]
+
+
+# _ran_gradle per log, keyed by the log's (mtime, size). `_typical` asks about the last 20 landings
+# three times a frame, and each of their logs runs to ~140,000 lines: uncached, one `status` frame
+# cost 2-4 s of CPU, so `status --watch` (a frame every 2 s) held a core on 2026-11-10.
+_RAN_GRADLE: dict[str, tuple[tuple[float, int], bool]] = {}
 
 
 def _ran_gradle(item: dict) -> bool:
     if _is_doc(item):
         return False
-    return any(line.startswith("> Task :") for line in _log_lines(item))
+    try:
+        stat = Path(item["log"]).stat()
+    except (KeyError, OSError):
+        return False
+    key, stamp = item["log"], (stat.st_mtime, stat.st_size)
+    cached = _RAN_GRADLE.get(key)
+    if cached is None or cached[0] != stamp:
+        cached = (stamp, any(line.startswith("> Task :") for line in _log_lines(item)))
+        _RAN_GRADLE[key] = cached
+    return cached[1]
 
 
 def _phase(item: dict) -> tuple[str, str]:
@@ -963,7 +984,9 @@ def cmd_status(args: argparse.Namespace) -> int:
                     time.sleep(2)
                 elif select.select([stdin], [], [], 2)[0]:
                     key = os.read(stdin, 1)
-                    if key in (b"q", b"Q", b"\x1b", b"\x03"):
+                    # b"": the terminal hung up. Its stdin stays readable forever after, so without
+                    # this the loop redraws flat out for a screen nobody can see or quit.
+                    if key in (b"", b"q", b"Q", b"\x1b", b"\x03"):
                         break
                     if key in (b"b", b"B"):
                         sys.stdout.write("\033[2J\033[H" + _Style().yellow("bouncy? looking for bounces nobody followed up (then the agent; ~30-60 s)") + "\n")

@@ -131,8 +131,18 @@ class ControlSurfaceProbeTest {
         val sliders: List<SliderCase>,
         val decimals: List<DecimalCase>,
         val buttons: List<ControlCase> = emptyList(),
-        val meters: List<ControlCase> = emptyList()
+        val meters: List<ControlCase> = emptyList(),
+        val keys: List<KeysCase> = emptyList()
     )
+
+    @Serializable
+    private data class KeysCase(val name: String, val ids: List<String>, val html: String)
+
+    @Serializable
+    private data class ObservedKeyStep(val step: String, val sent: List<String>)
+
+    @Serializable
+    private data class ObservedKeys(val name: String, val sequence: List<ObservedKeyStep>)
 
     @Serializable
     private data class ObservedValue(
@@ -166,6 +176,7 @@ class ControlSurfaceProbeTest {
     private data class Observed(
         val laws: List<ObservedLaw> = emptyList(),
         val buttons: List<ObservedButton> = emptyList(),
+        val keys: List<ObservedKeys> = emptyList(),
         val meters: List<ObservedMeter> = emptyList()
     )
 
@@ -430,6 +441,37 @@ class ControlSurfaceProbeTest {
             steps.getValue("an unrelated key").sent,
             "an unrelated key pressed the button"
         )
+    }
+
+    @Test
+    fun `keys report which key moved, and their letters play only on a figure page`() {
+        val pressed = mutableListOf<String>()
+        val (html, controls) = built { keys("low", "middle", "high", letters = "wer") { key, down -> pressed += "$key:$down" } }
+        val ids = controls.map { it.id }
+        assertEquals(3, ids.toSet().size, "three keys did not get three control ids: $ids")
+        assertEquals(listOf("low", "middle", "high"), controls.map { it.label })
+        assertTrue(controls.all { it.type == "button" }, "a key is not a button to the control surfaces")
+        ids.forEach { id -> assertTrue("data-control-id=\"$id\"" in html, "no key markup for $id") }
+        assertTrue("data-key-letter=\"w\"" in html && "data-key-letter=\"r\"" in html, "the letters are not in the markup")
+        assertTrue("field-control-row" in html, "the keys are not laid out as one row")
+        afield.ui.output.getButtonCallback(ids[2])!!(true)
+        afield.ui.output.getButtonCallback(ids[2])!!(false)
+        afield.ui.output.getButtonCallback(ids[0])!!(true)
+        assertEquals(listOf("2:true", "2:false", "0:true"), pressed, "a key's callback did not name its own index")
+
+        val observed = run(
+            Cases("controlLaws.js", "sliders.js", sliderCases(), decimalCases(), keys = listOf(KeysCase("three keys", ids, html)))
+        ) ?: return
+        val steps = observed.keys.single().sequence.associateBy({ it.step }, { it.sent })
+        println("ControlSurfaceProbeTest: keys sequence $steps")
+        assertEquals(listOf("1:true", "1:false"), steps.getValue("pointer on the second key"), "a pointer press is not its own key's down-then-up")
+        assertEquals(emptyList(), steps.getValue("its letter on the canvas"), "a key letter played on the canvas, where it is a Field shortcut")
+        assertEquals(listOf("1:true"), steps.getValue("its letter held in a figure, 5 keydowns"), "a held letter is not exactly one press")
+        assertEquals(listOf("1:false"), steps.getValue("its letter up"), "letting go of the letter did not release its key")
+        assertEquals(emptyList(), steps.getValue("its letter with command"), "a letter with a modifier pressed a key")
+        assertEquals(emptyList(), steps.getValue("a letter no key has"), "an unrelated letter pressed a key")
+        assertEquals(listOf("0:true"), steps.getValue("the first letter, shifted, held"), "a shifted letter did not press its key")
+        assertEquals(listOf("0:false"), steps.getValue("then focus lost"), "losing focus while a letter was held did not release its key")
     }
 
     @Test

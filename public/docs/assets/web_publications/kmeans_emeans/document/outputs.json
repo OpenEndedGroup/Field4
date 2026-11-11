@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-11T09:57:43.139Z",
+  "documentName": "kmeans_emeans",
+  "outputs": [
+    {
+      "uid": "kmeans_lloyd_vs_emeans",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1134,
+      "height": 425,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "kmeans_revival",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 878,
+      "height": 485,
+      "path": "outputs/1.html"
+    }
+  ]
+}

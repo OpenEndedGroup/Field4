@@ -101,7 +101,7 @@ structure, so the same net always draws the same way.
 <!-- field-box id="petri_tala_status" index="2" -->
 
 ```edn [field-box id="petri_tala_status" role="properties"]
-{"id" "petri_tala_status" "index" 2 "name" "3 — which engine drew it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — which engine drew it" "_tombstone" false "frame" #afield/rect [60.0 700.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_status_code_.kt" "lines" 101 "characters" 4366 "sha256" "796479ab204858cde8cb5dd3c2be127a2c9915bfbc1d547907f73c3681987335"}]}
+{"id" "petri_tala_status" "index" 2 "name" "3 — which engine drew it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — which engine drew it" "_tombstone" false "frame" #afield/rect [60.0 700.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_status_code_.kt" "lines" 99 "characters" 4348 "sha256" "124d993f2c6070a3260a226c463e8b4dbb06343b4df9e7f3cfc036e5be89dc1e"}]}
 ```
 
 ```kotlin [field-property box="petri_tala_status" name="code" path="petri_tala_status_code_.kt"]
@@ -199,9 +199,7 @@ go {
           timing them once each in order flatters whichever runs second</div>
         <div style="margin-top:8px;color:#8a8a8a">TALA is never chosen by
           <code>PetriLayout.AUTO</code>, so nothing already drawn changes.</div>
-      </div>
-    """
-            .trimIndent(),
+      </div>""".trimIndent(),
     )
 }
 

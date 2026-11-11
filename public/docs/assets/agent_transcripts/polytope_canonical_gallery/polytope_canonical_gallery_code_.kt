@@ -19,9 +19,7 @@ println(
     before: spread ${"%.3e".format(raw.canonicalDiagnostics().tangencyRadiusSpread)}  planarity ${"%.3e".format(raw.canonicalDiagnostics().maxFacePlanarityError)}
     after:  spread ${"%.3e".format(run.finalDiagnostics.tangencyRadiusSpread)}  planarity ${"%.3e".format(run.finalDiagnostics.maxFacePlanarityError)}  centre ${"%.3e".format(run.finalDiagnostics.tangencyCentroidOffset)}
     ${run.reason} after ${run.iterations} iterations (reciprocal ${run.reciprocalIterations}, relaxation ${run.relaxationIterations}, reseeded ${run.reseeded})
-    orbits: ${orbits.summary()}
-    """
-        .trimIndent(),
+    orbits: ${orbits.summary()}""".trimIndent(),
 )
 
 val status: (String) -> Unit = { message -> markdown("canonical face", message) }
@@ -62,9 +60,7 @@ fun PolyhedralObject.panel(label: String, dx: Float, alpha: Double) =
 
                 - degree: `$degree`
                 - combinatorial orbit: `$orbit of ${orbits.faceClassCount}`
-                - face-plane distance from centre: `${depth.f5}`
-                """
-                    .trimIndent(),
+                - face-plane distance from centre: `${depth.f5}`""".trimIndent(),
             )
         }
     }

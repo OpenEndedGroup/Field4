@@ -14,9 +14,7 @@ val ruby =
       use_synth :hollow
       play (scale :e3, :minor_pentatonic).tick, release: 0.7, amp: 0.35
       sleep 1
-    end
-    """
-        .trimIndent()
+    end""".trimIndent()
 
 recordSonicPiWav(
     sonicPi(),

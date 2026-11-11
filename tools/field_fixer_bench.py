@@ -41,6 +41,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 sys.path.insert(0, str(HERE))
 import land  # noqa: E402
+from verification_runtime import field_java  # noqa: E402
 
 OUT = REPO / "dev_docs" / "ai" / "ai4_fixer_runs" / "bench"
 SCRATCH = Path(os.environ.get("FIELD_FIXER_BENCH_SCRATCH", REPO / ".nightly-tmp" / "replay"))
@@ -133,9 +134,7 @@ def check_spec(case: dict, root: Path) -> list[list[str]]:
 
 
 def _java() -> str:
-    for home in sorted(Path.home().glob(".gradle/jdks/graalvm_community-25*/*/Contents/Home")):
-        return str(home / "bin" / "java")
-    return "java"
+    return field_java(REPO, 25, "field_fixer_bench JUnit/main checks")
 
 
 def run_checks(specs: list[list[str]], root: Path) -> tuple[bool | None, str]:

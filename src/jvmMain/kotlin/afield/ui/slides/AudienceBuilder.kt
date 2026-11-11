@@ -1,5 +1,6 @@
 package afield.ui.slides
 
+import afield.app.protocol.AudienceFigure
 import afield.ui.output.FieldMarkdown
 import kotlinx.html.*
 
@@ -30,7 +31,9 @@ enum class AudienceImageFit(internal val css: String) { Contain("contain"), Cove
 
 /** Standard HTML slide content, with scoped Markdown, stylesheets and image layouts. */
 class AudienceBuilder internal constructor(
-    consumer: TagConsumer<*>, classes: String = "field-slide"
+    consumer: TagConsumer<*>, classes: String = "field-slide",
+    /** The live figure slots written so far, shared by every nested builder of one slide. */
+    internal val figures: MutableList<AudienceFigure> = mutableListOf()
 ) : DIV(attributesMapOf("class", classes), consumer) {
     /** Render an indented Markdown block; ordinary `+String` still escapes text as HTML. */
     val String.md: AudienceMarkdown get() = AudienceMarkdown(FieldMarkdown.render(this))
@@ -40,7 +43,7 @@ class AudienceBuilder internal constructor(
 
     /** A nested HTML container that keeps the slide's scoped Markdown syntax available. */
     fun div(classes: String? = null, block: AudienceBuilder.() -> Unit = {}) {
-        AudienceBuilder(consumer, classes.orEmpty()).visit(block)
+        AudienceBuilder(consumer, classes.orEmpty(), figures).visit(block)
     }
 
     /** Load a stylesheet relative to this document's files/ directory; Refresh slide reloads it. */
@@ -50,6 +53,20 @@ class AudienceBuilder internal constructor(
             attributes["data-field-presentation-style"] = ""
         }
     }
+
+    /**
+     * A live figure: the output of the box called [name] fills this slot on the audience display.
+     *
+     * [channels] shows only those output channels (empty shows all of them). By default the slot
+     * takes the room its container leaves, so a slide that is only a figure runs nearly full-bleed
+     * and a heading above it takes what it needs; [height], in the 1920 × 1080 slide frame, pins it.
+     * Its width is that of its container. A [caption] is plain text beneath it. The box is looked up
+     * by name when the slide is attached to a step, so a typo fails the Presentation box rather than
+     * showing an empty slot. A member, so that it wins over kotlinx.html's own `figure` when box code
+     * imports `kotlinx.html.*`.
+     */
+    fun figure(name: String, vararg channels: String, height: Int? = null, caption: String = "") =
+        writeFigure(name, channels, height, caption)
 
     /** Fade this text, image or group in on forward entry; Back shows its completed state. */
     fun fadeIn(durationMs: Int = 350, delayMs: Int = 0, block: AudienceBuilder.() -> Unit) {
@@ -78,7 +95,7 @@ class AudienceBuilder internal constructor(
     ) {
         div(classes = "field-image-beside") {
             fun pictureColumn() { figure { picture(source, alt, citation, fit) } }
-            fun textColumn() { AudienceBuilder(consumer, "field-image-text").visit(block) }
+            fun textColumn() { AudienceBuilder(consumer, "field-image-text", figures).visit(block) }
             if (imageOnLeft) { pictureColumn(); textColumn() }
             else { textColumn(); pictureColumn() }
         }

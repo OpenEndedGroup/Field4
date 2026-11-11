@@ -207,9 +207,7 @@ operations:
                                       - Probe ${probe.f4} K · asked for ${target.f2} K · miss ${(winner.objective ?: Double.NaN).f4} K
                                       - Peak in the part ${peak.f4} K
                                       - Closed form says this arm wants k = ${if (predicted == null) "?" else predicted.f3} W/(m K)
-                                      - ${study.solveCount} solves · ${study.cacheHits} served from cache · mean ${study.meanSolveMs.f0} ms
-                                  """
-                                          .trimIndent() +
+                                      - ${study.solveCount} solves · ${study.cacheHits} served from cache · mean ${study.meanSolveMs.f0} ms""".trimIndent() +
                                           (landscape?.let { "\n- ${it.feasible.size}/${it.samples.size} feasible" } ?: "") +
                                           (optimisation?.let {
                                               "\n\n${mdEscape(it.run.summary())}" +

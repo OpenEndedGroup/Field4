@@ -537,9 +537,7 @@ val twoLobe =
                 if (abs(g)<1e-4) return 1.0/(4.0*PI);
                 float d=1.0+g*g-2.0*g*clamp(mu,-1.0,1.0);
                 return (1.0-g*g)/(4.0*PI*max(d,1e-12)*sqrt(max(d,1e-12)));
-            }
-            """
-                .trimIndent(),
+            }""".trimIndent(),
             """
             const float BACK_G=-0.55;   // the backward lobe
             const float BACK_W=0.3;     // its share of the mixture
@@ -552,9 +550,7 @@ val twoLobe =
             // classic way to bias this, and it looks plausible on screen.
             float phase(float mu,float g) {
                 return (1.0-BACK_W)*hg(mu,g)+BACK_W*hg(mu,BACK_G);
-            }
-            """
-                .trimIndent(),
+            }""".trimIndent(),
         )
         .replace(
             "float mu;\n    if (abs(g)<1e-4) mu=1.0-2.0*xi.y;",
@@ -567,9 +563,7 @@ val twoLobe =
             if (xi.x<BACK_W) { g2=BACK_G; xi.x=xi.x/BACK_W; }
             else             { xi.x=(xi.x-BACK_W)/(1.0-BACK_W); }
             g=g2;
-            if (abs(g)<1e-4) mu=1.0-2.0*xi.y;
-            """
-                .trimIndent(),
+            if (abs(g)<1e-4) mu=1.0-2.0*xi.y;""".trimIndent(),
         )
 
 println(tracer.reloadIntegrator(twoLobe)) // RELOADED; accumulation restarts

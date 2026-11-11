@@ -11,6 +11,7 @@ import afield.runtime.execution.plus
 import afield.ui.notation.with
 import afield.ui.output.slider
 
+import afield.audio.synth.levelJson
 import afield.document.graph.Box
 import afield.document.graph.box
 import afield.document.graph.stopTrackedJobs
@@ -113,6 +114,43 @@ class LifecycleLedgerTest {
         ownership.close()
         val after = lifecycleCensus(listOf(box), includeUnattributed = false)["boxes"].toString()
         assertTrue("\"liveTotal\":0" in after, after)
+    }
+
+    /**
+     * An ownership that can say what it is doing is reported under `details`, read at census time:
+     * this is how an audio patch's level reaches `lifecycle-census`. One that cannot is left out, and
+     * a describer that throws costs the census nothing.
+     */
+    @Test
+    fun theCensusReportsWhatAnOwnershipSaysItIsDoing() {
+        val box = Box("ledger-details")
+        var level = 0.0
+        val described = Box.withBoxContextNow(box) {
+            LifecycleLedger.claim(LifecycleKinds.AUDIO_PATCH, "p1", describe = {
+                kotlinx.serialization.json.buildJsonObject { put("rms", kotlinx.serialization.json.JsonPrimitive(level)) }
+            })
+        }
+        val silent = Box.withBoxContextNow(box) { LifecycleLedger.claim(LifecycleKinds.AUDIO_PATCH, "p2") }
+        val broken = Box.withBoxContextNow(box) { LifecycleLedger.claim(LifecycleKinds.AUDIO_PATCH, "p3", describe = { error("no") }) }
+
+        level = 0.25
+        val entry = lifecycleCensus(listOf(box), includeUnattributed = false)["boxes"].toString()
+        assertTrue("\"details\":{\"audio-patch:p1\":{\"rms\":0.25}}" in entry, "the census did not read the description when asked: $entry")
+        assertTrue("\"audio-patch\":3" in entry, entry)
+        listOf(described, silent, broken).forEach { it.close() }
+        val after = lifecycleCensus(listOf(box), includeUnattributed = false)["boxes"].toString()
+        assertFalse("\"details\":" in after, "a closed ownership is still described: $after")
+    }
+
+    /** A patch's level: a 440 Hz sine at 0.1 reads as 440 Hz, rms 0.1/√2, peak 0.1; silence as 0 Hz. */
+    @Test
+    fun anAudioLevelReadsATonesLoudnessAndFrequency() {
+        val sr = 48_000
+        val tone = FloatArray(4800) { (0.1 * kotlin.math.sin(2 * Math.PI * 440 * (it + 0.5) / sr)).toFloat() }
+        val level = afield.audio.synth.AudioSnapshot(tone, FloatArray(4800), sr).levelJson().toString()
+        assertTrue("\"rms\":0.07071" in level && "\"peak\":0.1" in level && "\"hz\":440.0" in level && "\"seconds\":0.1" in level, level)
+        val quiet = afield.audio.synth.AudioSnapshot(FloatArray(4800), null, sr).levelJson().toString()
+        assertTrue("\"rms\":0.0" in quiet && "\"hz\":0.0" in quiet, quiet)
     }
 
     /**

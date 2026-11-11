@@ -82,7 +82,7 @@ The head that plays the sound. It loads Tone.js and connects over the RemoteJS
 transport; the // {{ tone }} box below compiles to JS and runs in here.
 
 ```edn [field-box id="agent_tone_head" role="properties"]
-{"id" "agent_tone_head" "index" 2 "name" "RemoteAR Head (open me — then click to enable audio)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "RemoteAR Head (open me — then click to enable audio)" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_tone_head_code_.kt" "lines" 15 "characters" 500 "sha256" "20ed90f3dd2a5eab95f42f2ac66f67e05b8c1a469556b777634eba7fc65d9c0c"}]}
+{"id" "agent_tone_head" "index" 2 "name" "RemoteAR Head (open me — then click to enable audio)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "RemoteAR Head (open me — then click to enable audio)" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_tone_head_code_.kt" "lines" 13 "characters" 486 "sha256" "8db3b0477d09d99c63cd3e20130ce4429ee29a425fd7fb032d5d4937a9f2d6bb"}]}
 ```
 
 ```kotlin [field-property box="agent_tone_head" name="code" path="agent_tone_head_code_.kt"]
@@ -96,9 +96,7 @@ display(
       allow="xr-spatial-tracking; fullscreen; autoplay"
       data-afield-autosize="off"
       style="display:block; width:640px; height:400px; border:0; background:#000">
-    </iframe>
-    """
-        .trimIndent(),
+    </iframe>""".trimIndent(),
 )
 displayOpen("tone-head")
 ```

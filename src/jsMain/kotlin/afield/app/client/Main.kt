@@ -72,6 +72,7 @@ import afield.app.protocol.Notify
 import afield.app.protocol.OscEditorCommand
 import afield.app.protocol.Output
 import afield.app.protocol.OutputControl
+import afield.app.protocol.PresentationShown
 import afield.app.protocol.ProvisionalSet
 import afield.app.protocol.Rect
 import afield.app.protocol.SelectAndEditBox
@@ -2485,6 +2486,8 @@ private fun applyViewportTranslation(
  * is every pane's visible world rect `(x, y, w, h)`, in pane order, the main (bottom-right) pane last.
  */
 internal fun sendViewportsToServer() {
+    // A presentation figure shows one box, not the canvas; Box.viewport stays the author's.
+    if (figureModeActive) return
     val v = CanvasCamera.main.visibleWorldRect()
     send(
         Message("set-viewport").payload(
@@ -5762,7 +5765,8 @@ suspend fun main() {
     window.asDynamic().fieldSharedUiContext = sharedUiContext
     fieldDisplayMode = when {
         flagParam(searchParams, "editorOnly") -> "editor-only"
-        flagParam(searchParams, "noeditor") -> "no-editor"
+        // A presentation figure (?figure=<uid>) is one box's output; it never shows the editor.
+        flagParam(searchParams, "noeditor") || searchParams.get("figure") != null -> "no-editor"
         else -> "normal"
     }
     window.asDynamic().fieldDisplayMode = fieldDisplayMode
@@ -5778,6 +5782,7 @@ suspend fun main() {
     if (flagParam(searchParams, "transparent")) {
         document.body?.classList?.add("mode-transparent")
     }
+    installFigureMode(searchParams)
     window.asDynamic().fieldBackdoorUiReady = false
     window.asDynamic().fieldBackdoorDisconnectedOverlayActive = false
     window.asDynamic().currentDocumentFilename = filename
@@ -6920,11 +6925,13 @@ suspend fun main() {
     }
 
     // Only a Field tab in Electron can open a native audience window. Browser clients keep guides local.
+    // Saying so lets a talk presented before any Electron window was open stop waiting for one.
     handlers.put("presentation-state") { message, _ ->
         val bridge = window.asDynamic().fieldElectron
-        if (bridge != null && bridge.presentGuide != null) {
+        if (bridge != null && bridge.presentGuide != null && !figureModeActive) {
             val state = JSON.parse<dynamic>(message.payload.toString())
             bridge.presentGuide(state)
+            send(Message("presentation-shown").payload(PresentationShown(state.slideshowId as String)))
         }
         Handled.yes
     }
@@ -7035,6 +7042,13 @@ suspend fun main() {
                             val callbackName = href.substring(8) // Remove "#custom:" prefix
                             // Send callback command to server
                             send("slideshow-command", js("{command: 'callback:' + callbackName}"))
+                        }
+
+                        // A page or PDF linked from a presentation's note opens inside the talk, on
+                        // the audience display; Electron checks what it may open.
+                        !href.startsWith("#") -> {
+                            val bridge = window.asDynamic().fieldElectron
+                            if (bridge?.openPresentationLink != null) bridge.openPresentationLink(a.asDynamic().href as String)
                         }
                     }
                 }

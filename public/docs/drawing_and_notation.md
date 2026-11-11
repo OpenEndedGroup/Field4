@@ -69,8 +69,7 @@ for (i in 0 until 60) {
                 const tools = document.querySelector("#field-drawing-layer .App-toolbar")
                 const shown = !!tools && tools.getBoundingClientRect().width > 0
                 return (s && s.active && shown) ? "ready" : "waiting"
-                """
-                    .trimIndent(),
+                """.trimIndent(),
             )
             .toString()
     if (ready.contains("ready")) break
@@ -95,8 +94,7 @@ for (i in 0 until 80) {
                 """
                 const els = window.drawingLayerScene()
                 return els.some(e => !e.isDeleted && e.customData && e.customData.fieldKey === "echo") ? "echoed" : "waiting"
-                """
-                    .trimIndent(),
+                """.trimIndent(),
             )
             .toString()
     if (echoed.contains("echoed")) break

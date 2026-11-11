@@ -4221,6 +4221,26 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="controls-slider-label-spaces",
+            description="A slider label split for a middle ellipsis keeps the space at the split: \"focal length\", not \"focallength\".",
+            commands=[
+                "new-box --name ControlsSliderLabelSpaces",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/controls-slider-label-spaces.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/controls-slider-label-spaces.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="output-panel-mode-switch",
+            description="HTML that replaces a lines viewer in the same channel sizes the panel to itself instead of keeping the viewer's pinned height.",
+            commands=[
+                "new-box --name OutputPanelModeSwitch",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/output-panel-mode-switch.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/output-panel-mode-switch.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="keyframe-linked-simplify",
             description="The keyframe editor's Simplify slider simplifies lanes that share key times to the same times, and leaves other lanes alone.",
             commands=[
@@ -4269,6 +4289,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "new-box --name PartsRegression",
                 shell_join(["run", "@last", "--file", str(REPO_ROOT / "tools/ui_regressions/three-parts.kt")]),
                 shell_join(["page-eval", "--body", "--file", str(REPO_ROOT / "tools/ui_regressions/three-parts.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="three-figure-mode",
+            description="A three viewer moved into a presentation figure's host drops its grey background and HUD; on the canvas it keeps both.",
+            commands=[
+                "new-box --name FigureModeRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-figure-mode.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-figure-mode.js"), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),

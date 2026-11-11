@@ -583,7 +583,7 @@ message the drawing layer sends when you lift the pencil, so whichever box holds
 them. Needs the document open in a window.
 
 ```edn [field-box id="madp_line_draw_for_me" role="properties"]
-{"id" "madp_line_draw_for_me" "index" 6 "name" "draw for me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "draw for me" "_tombstone" false "frame" #afield/rect [380.0 40.0 200.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_line_draw_for_me_notes_.md" "lines" 5 "characters" 290 "sha256" "c8c8545c0dbd2edb41ddbd0172391d3ac7e62068209ed4c00cbde3c4eab6a76f"} {"name" "code" "language" "kotlin" "path" "madp_line_draw_for_me_code_.kt" "lines" 22 "characters" 2348 "sha256" "e76807c3e86e307bc245fc9de7aa0e9e26d9c461729a2427f17994536a425516"}]}
+{"id" "madp_line_draw_for_me" "index" 6 "name" "draw for me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "draw for me" "_tombstone" false "frame" #afield/rect [380.0 40.0 200.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_line_draw_for_me_notes_.md" "lines" 5 "characters" 290 "sha256" "c8c8545c0dbd2edb41ddbd0172391d3ac7e62068209ed4c00cbde3c4eab6a76f"} {"name" "code" "language" "kotlin" "path" "madp_line_draw_for_me_code_.kt" "lines" 21 "characters" 2339 "sha256" "eebe78195694f940f2a1774ba7139b8adc8ced0932076bebc376399969abc8b9"}]}
 ```
 
 ```markdown [field-property box="madp_line_draw_for_me" name="notes" path="madp_line_draw_for_me_notes_.md"]
@@ -614,8 +614,7 @@ const elements = $strokes.map((s, i) => ({ id: "hand-$stamp-" + i, type: "freedr
     seed: 1, version: 1, versionNonce: 1, isDeleted: false, boundElements: [], link: null, locked: false,
     points: s.points, pressures: [], simulatePressure: true }));
 send("notation-scene", { scene: JSON.stringify({ type: "excalidraw", version: 2, elements }) });
-</script>three strokes sent"""
-        .trimIndent(),
+</script>three strokes sent""".trimIndent(),
 )
 ```
 

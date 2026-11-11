@@ -8,17 +8,44 @@
   }
   addEventListener('resize', fit);
   fit();
+  // Slides run no scripts, so this shell takes their link clicks: Electron opens the page inside the
+  // talk, over the slide, and the presenter can go back to it. Fragment links stay on the slide.
+  frame.addEventListener('load', () => {
+    frame.contentDocument?.addEventListener('click', event => {
+      const link = event.target.closest?.('a[href]');
+      if (!link) return;
+      // Never let the slide itself navigate: with its <base>, even "#" would load the deck's folder.
+      event.preventDefault();
+      if (!link.getAttribute('href').startsWith('#')) window.fieldPresentation?.openLink(link.href);
+    }, true);
+  });
   // Electron releases builds only after its outgoing frame has finished cross-fading.
   window.startPresentationBuild = () => {
     const root = frame.contentDocument?.documentElement;
     if (root?.dataset.fieldBuilds === 'waiting') root.dataset.fieldBuilds = 'active';
   };
+  // Where each live figure slot sits, as fractions of this window, with the colour behind it.
+  // Electron lays a native view of the figure's box output over each one.
+  function measureFigures() {
+    const slide = frame.contentDocument;
+    if (!slide) return [];
+    const scale = Math.min(innerWidth / 1920, innerHeight / 1080);
+    const left = (innerWidth - 1920 * scale) / 2, top = (innerHeight - 1080 * scale) / 2;
+    const clamp = value => Math.min(1, Math.max(0, value));
+    return Array.from(slide.querySelectorAll('[data-field-figure]'), element => {
+      const box = element.getBoundingClientRect();
+      const x = clamp((left + box.left * scale) / innerWidth), y = clamp((top + box.top * scale) / innerHeight);
+      return {id: element.dataset.fieldFigure, background: getComputedStyle(element).backgroundColor,
+        rect: [x, y, Math.min(1 - x, box.width * scale / innerWidth), Math.min(1 - y, box.height * scale / innerHeight)]};
+    }).filter(figure => figure.rect[2] > 0 && figure.rect[3] > 0);
+  }
+  window.measureFigures = measureFigures;
   window.renderPresentation = state => new Promise((resolve, reject) => {
     const timer = setTimeout(() => finish(new Error('The audience slide did not finish loading')), 12000);
     function finish(error) {
       clearTimeout(timer);
       frame.removeEventListener('load', ready);
-      if (error) reject(error); else resolve();
+      if (error) reject(error); else resolve({figures: measureFigures()});
     }
     async function ready() {
       try {
@@ -45,9 +72,9 @@
       <base href="${state.baseUrl}"><link rel="stylesheet" href="${location.origin}/iosevka.css">
       <style>
       *{box-sizing:border-box}html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:var(--field-slide-bg,#000);color:var(--field-slide-fg,#eee)}
-      body{font-family:'Iosevka Web',Iosevka,monospace;font-size:40px;line-height:1.45;padding:120px 140px;display:flex;align-items:center}
+      body{font-family:'Iosevka Web',Iosevka;font-size:40px;line-height:1.45;padding:120px 140px;display:flex;align-items:center}
       main{width:100%}h1{font-size:112px;line-height:1.08;font-weight:400;margin:0 0 48px;letter-spacing:-.03em}
-      h2{font-size:72px;font-weight:400;line-height:1.15}p{margin:24px 0}li{margin:16px 0}a{color:inherit}code,pre{font-family:inherit}img,video,svg{max-width:100%}
+      h2{font-size:72px;font-weight:400;line-height:1.15}p{margin:24px 0}li{margin:16px 0}a{color:inherit}a[href]{cursor:pointer;text-decoration-thickness:2px;text-underline-offset:.15em}code,pre{font-family:inherit}img,video,svg{max-width:100%}
       hr{border:0;border-top:2px solid var(--field-slide-muted,#999);margin:48px 0}.muted{color:var(--field-slide-muted,#999)}.columns{display:flex;gap:80px}.columns>*{flex:1}
       .field-image-full{position:fixed;inset:0;margin:0;display:flex;flex-direction:column;background:var(--field-slide-bg,#000)}
       .field-image-full>img{width:100%;height:100%;min-height:0;flex:1;max-width:none}
@@ -64,6 +91,18 @@
       [data-field-builds="waiting"] .field-fade-in{opacity:0}
       [data-field-builds="active"] .field-fade-in{animation:field-fade-in var(--field-fade-duration,350ms) ease-out var(--field-fade-delay,0ms) both}
       .field-retained .field-fade-in{animation:none!important;opacity:1!important}
+      .field-live-figure{margin:0;display:flex;flex-direction:column;width:100%;height:100%;min-height:0}
+      .field-live-figure-slot{flex:1;min-height:0;background:var(--field-figure-bg,var(--field-slide-bg,#000))}
+      .field-live-figure>figcaption{font-size:22px;color:var(--field-slide-muted,#aaa);margin-top:12px}
+      body:has(.field-live-figure){padding:56px 64px}
+      body:has(.field-live-figure) main{height:100%}
+      .field-slide:has(.field-live-figure){height:100%;display:flex;flex-direction:column}
+      .field-slide:has(.field-live-figure)>*{flex:none}
+      .field-slide>.field-live-figure,.field-slide>.field-figure-beside,.field-slide>.columns:has(.field-live-figure){flex:1 1 auto;min-height:0}
+      .field-figure-beside{display:flex;align-items:stretch;gap:64px;width:100%;height:100%}
+      .field-figure-text{flex:0 0 34%;min-width:0;align-self:center;font-size:30px;line-height:1.45}
+      .field-figure-column{flex:1 1 0;min-width:0;display:flex}
+      .field-figure-text h1{font-size:64px;margin-bottom:32px}.field-figure-text h2{font-size:48px;margin:0 0 28px}.field-figure-text p{margin:18px 0}
       @keyframes field-fade-in{from{opacity:0}to{opacity:1}}
       @media(prefers-reduced-motion:reduce){.field-fade-in{animation:none!important;opacity:1!important}}
       </style></head><body><main>${html}</main></body></html>`;

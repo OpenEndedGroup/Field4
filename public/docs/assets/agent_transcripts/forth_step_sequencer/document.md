@@ -35,7 +35,7 @@ bass 24 render-steps
 <!-- field-box id="forth_steps_dirt" index="2" -->
 
 ```edn [field-box id="forth_steps_dirt" role="properties"]
-{"id" "forth_steps_dirt" "index" 2 "name" "dirt samples" "parents" ["root" "forth_steps_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "forth_steps_root"} "name" "dirt samples" "_tombstone" false "frame" #afield/rect [880.0 160.0 640.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "forth_steps_dirt_code_.kt" "lines" 4 "characters" 134 "sha256" "353ddd8e523132d7a977709c2d807b89bcd386772b8248874e440e4e3a797b27"}]}
+{"id" "forth_steps_dirt" "index" 2 "name" "dirt samples" "parents" ["root" "forth_steps_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "forth_steps_root"} "name" "dirt samples" "_tombstone" false "frame" #afield/rect [680.0 160.0 560.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "forth_steps_dirt_code_.kt" "lines" 4 "characters" 134 "sha256" "353ddd8e523132d7a977709c2d807b89bcd386772b8248874e440e4e3a797b27"}]}
 ```
 
 ```kotlin [field-property box="forth_steps_dirt" name="code" path="forth_steps_dirt_code_.kt"]
@@ -65,7 +65,7 @@ line 12 render-steps
 <!-- field-box id="forth_steps_chime" index="4" -->
 
 ```edn [field-box id="forth_steps_chime" role="properties"]
-{"id" "forth_steps_chime" "index" 4 "name" "chime" "parents" ["root" "forth_steps_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "forth_steps_root"} "name" "chime" "_tombstone" false "frame" #afield/rect [80.0 450.0 760.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "forth_steps_chime_code_.kt" "lines" 5 "characters" 199 "sha256" "6aae187ec51bb4a0db3f9ae924953f1401536855b6ef4e42f243427cc7a74ff2"}]}
+{"id" "forth_steps_chime" "index" 4 "name" "chime" "parents" ["root" "forth_steps_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "forth_steps_root"} "name" "chime" "_tombstone" false "frame" #afield/rect [80.0 450.0 560.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "forth_steps_chime_code_.kt" "lines" 5 "characters" 199 "sha256" "6aae187ec51bb4a0db3f9ae924953f1401536855b6ef4e42f243427cc7a74ff2"}]}
 ```
 
 ```kotlin [field-property box="forth_steps_chime" name="code" path="forth_steps_chime_code_.kt"]

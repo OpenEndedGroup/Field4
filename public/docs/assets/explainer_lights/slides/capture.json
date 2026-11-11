@@ -1,0 +1,160 @@
+{
+ "tool": "tools/presentation/capture-deck.mjs (macOS screencapture -l of this checkout's Electron audience window)",
+ "transcript": "dev_docs/agents/transcripts/explainer_lights.yaml",
+ "transcriptSha256": "41e41ee5476d1e060faa72e4f249f4bb7d56dddbe5cf7a19be5f9b018845a87a",
+ "resized": "sips -Z 960 (the window capture scaled to 960 px wide)",
+ "slides": [
+  {
+   "file": "opening.png",
+   "view": "1 / 21 \u00b7 Lights and Shadows",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "9a475e59e5b4011f2036f15072854e2fa5ee81dad4267046b30bfbc0475c1dc9",
+   "sha256": "dde74756841782ba801d5dca23c61d761a1db66b6c997f2e248b72f1f9ee9dd5"
+  },
+  {
+   "file": "power.png",
+   "view": "2 / 21 \u00b7 Power \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "bdef831d4d8a92f52feb2df6de8f42ef4ea2e9c96aa60288aedee31ded413ae3",
+   "sha256": "4548571d7cdb4c5821d6e94adf0c53312c51a7c64bbe5428b9977e79b962c523"
+  },
+  {
+   "file": "perceived.png",
+   "view": "3 / 21 \u00b7 Brightness is not power \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "019d752da1c6cb7ecf782737efbfdb96f2b0a387b9f2e3ba0f90d4c7e689f30b",
+   "sha256": "54327edf238aa078e1adb3390b6dd0e098d251f7a437804a904e3b6af6801f1f"
+  },
+  {
+   "file": "slant.png",
+   "view": "5 / 21 \u00b7 Light at a slant \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "3569ce572a21edf06c473e24596a455594539cca086cabccf21bd6ffee76da4d",
+   "sha256": "1d33313db08f2428dfed5cfbddd1bf03d37118cb5d54f12c478692f747c79b6a"
+  },
+  {
+   "file": "lit-sphere.png",
+   "view": "6 / 21 \u00b7 Shape from the cosine",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "2f94b7e5cbb7c5c97d712af3d99989433fd67e18f52e09884981b4651974f4f2",
+   "sha256": "b5431a8b20f23fe5c5f1ec14a8c63b85685f641a44fe4ac216bd7e2b24de9d96"
+  },
+  {
+   "file": "distance.png",
+   "view": "7 / 21 \u00b7 Farther away \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": false,
+   "captureSha256": "217ce25dd210ce53abba4cdaf3c63898c78927082159483549f45f53d342063d",
+   "sha256": "b49babe89699215e7aab5c1371c3795201c08d682ed766647793939540bb93fc"
+  },
+  {
+   "file": "angles.png",
+   "view": "9 / 21 \u00b7 How big things look \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "a67afaf1efc464ac65d9a8f42512a9c0ba2431dda173eb604d15cb8f25a15e56",
+   "sha256": "024603c614ba8a37ae14cae76e4a01a9276d87cd3353c1c425301b7ed843b223"
+  },
+  {
+   "file": "radians.png",
+   "view": "10 / 21 \u00b7 Angles as lengths \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "55357793df59e92703e4d96b39292e6c4f2a620379e4508217256a1bacfc74eb",
+   "sha256": "4c67fc8aa73bea0555430106ff9c824aa9b5b163d35ef6cebb581a3c5e3b526a"
+  },
+  {
+   "file": "solid-angle.png",
+   "view": "11 / 21 \u00b7 Angles in three dimensions \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "b50b23b73425c924753f9331672060296593f8bed6f5fcde4c7d9e3c4e24a675",
+   "sha256": "0f769d02a863ea833d04a9bfaba39bc9311cf93fcb42211f53e5399b7ce648ce"
+  },
+  {
+   "file": "hemisphere.png",
+   "view": "12 / 21 \u00b7 What the floor sees \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "25b8820fd04aaf994e279482ebb93f1ee81067a1282c5fa8440bd14fd4b8010c",
+   "sha256": "84868dd73031039ccee7b20ca9e079537cd9c40a95c222fadc7fce8687a85388"
+  },
+  {
+   "file": "radiance.png",
+   "view": "13 / 21 \u00b7 Brightness that does not fade \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "1d80240f800612847e3314a7246412f206507ac957b47e58b783330258f5d644",
+   "sha256": "9e72c551c75bf9036e78b2543c071f4a4a9ea733f58de2ef89320adeebed4197"
+  },
+  {
+   "file": "lambert.png",
+   "view": "14 / 21 \u00b7 Equally bright from every side \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "69a4ef60fad95af641a70bd76b9795d3d85ab7c745efc7da1ffcdc8bf5a0d5d1",
+   "sha256": "a9631b03bd87659ee59402228346022e6a47b29d18579cf91d15f0ad8af1a7bb"
+  },
+  {
+   "file": "reflections.png",
+   "view": "15 / 21 \u00b7 Mirror to matte \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "9b81d00060c8ef8cbe8f9ab1858c561d1eb0f38657d5338643ee1e34275947ad",
+   "sha256": "cdc32536924d6c442dc7cfcec3841013bb65eb43eac4e218a49b5c2777a77322"
+  },
+  {
+   "file": "soft-shadow.png",
+   "view": "16 / 21 \u00b7 Soft and hard shadows \u00b7 cue 0 / 2",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "aaea472a10facbd54e21ec22558edd2d422c0fdc6238c1722a83e28227e8ebb9",
+   "sha256": "c481a441c64d1c51dfcb167b7befa3d0f51b3b35b0c72c5d28b0c082bd171891"
+  },
+  {
+   "file": "colour.png",
+   "view": "17 / 21 \u00b7 Coloured light",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "93d112e138780f3ca7502e4be53e9fe90b9cddb0ae6c8b0591b0911e0da6cabf",
+   "sha256": "b4835238703aa55dcddcd6a671f9b2d95876de1c6a1062cceee22b139f69ba84"
+  },
+  {
+   "file": "additive.png",
+   "view": "18 / 21 \u00b7 Lights add up \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "84d460c769b082c94aa618fac2889f6d15b21ab9819bbc3c88080c22e0e0c960",
+   "sha256": "199d5ef570236337febef9bac45751dad43f11e033b64340dd254ad31f8c08ab"
+  },
+  {
+   "file": "bounces.png",
+   "view": "19 / 21 \u00b7 Light keeps going \u00b7 cue 0 / 2",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "3a731391a2d61a8ddf8bbae50329b26b95193e921cd45da6b557c83c0520d8b0",
+   "sha256": "2a0af67cf66ec19d110dcb580dca104ca35ee479bfc485ab2cf4d239268da13c"
+  },
+  {
+   "file": "sky.png",
+   "view": "20 / 21 \u00b7 A sky of light \u00b7 cue 0 / 1",
+   "figures": 1,
+   "inFront": true,
+   "captureSha256": "adfb508aa3e4484167ff85451e5420afd3e287da94bdcbf8ce353d26edfdaa36",
+   "sha256": "26cdf5278d3159ed9b6f5b58794d7b39f250c654ef22cc5ec6a417a52c6c5139"
+  },
+  {
+   "file": "further-reading.png",
+   "view": "21 / 21 \u00b7 Further reading",
+   "figures": 0,
+   "inFront": true,
+   "captureSha256": "697fa5c6a5ff72d3104d9f5d945f50fcdd90fc8d8d9a6de2cb153cd03fca859f",
+   "sha256": "ff85a797fcd26b34d664ac7caabd5e393bc9a0da1cc57062967612172174d67a"
+  }
+ ]
+}

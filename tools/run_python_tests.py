@@ -12,12 +12,20 @@ by existing. A module that cannot even be imported is reported as a failure rath
 an unimportable test is exactly as broken as a failing one, and quietly dropping it is how a
 suite stops covering anything.
 
+Each suite runs in its own process, several at once (`--jobs`, `FIELD_PYTHON_TEST_JOBS`; 1 runs
+them one after another in this process, as before 2026-11-10). A guard run names its changed paths
+in `AFIELD_GUARD_CHANGED_PATHS_FILE`; when none of them is Python tooling or a build file, only the
+suites that read the changed corpus run (`python_tool_modules_for_paths` in
+check_staged_generated_artifacts.py). `--all`, or no change list, runs every suite.
+
 Run directly with:  uv run --project . --group backdoor python tools/run_python_tests.py
 """
 
 from __future__ import annotations
 
+import argparse
 import faulthandler
+import json
 import os
 import re
 import shutil
@@ -41,7 +49,10 @@ FALLBACK_PYTHON_FLOOR = (3, 12)
 # JUnit XML, one file per suite, where the lander already reads Gradle's (`_collect_failures` in
 # tools/land.py globs build/test-results/*/TEST-*.xml). Without it a red here reached the lander's
 # fixer as "uv exited 1": the traceback was in the log, 54,000 lines above the 200-line tail it got.
-RESULTS_DIR = REPO_ROOT / "build" / "test-results" / "pythonTools"
+# A parallel run hands its own to each suite's process in RESULTS_DIR_ENV, so a test of this runner
+# that runs scratch reds cannot write them where the lander would read them as real ones.
+RESULTS_DIR_ENV = "FIELD_PYTHON_TEST_RESULTS_DIR"
+RESULTS_DIR = Path(os.environ.get(RESULTS_DIR_ENV) or REPO_ROOT / "build" / "test-results" / "pythonTools")
 
 # Per-module wall-clock budget. On 2026-10-21 `tools.test_refactor_pass` sat at 0% CPU for 1 h 53 min
 # inside six landing merges at once, and all the log said was its last line of output: nobody could
@@ -54,6 +65,15 @@ MODULE_BUDGET_SECONDS = float(os.environ.get("FIELD_PYTHON_TEST_MODULE_BUDGET", 
 # After the stacks are dumped and the children killed, how long the module gets to unwind on its own
 # (a test blocked on a child's pipe usually does) before the runner gives up on the process.
 UNWIND_GRACE_SECONDS = 30.0
+# Suites run in parallel, one process each. On 2026-11-10 they took 378 s one after another in the
+# lander, which was most of every landing's guard; the slowest single suite is ~90 s.
+MAX_DEFAULT_JOBS = 8
+# Last run's per-suite wall-clock, so the slowest start first and the pool drains evenly.
+DURATIONS_FILE = REPO_ROOT / "build" / "python-tools-durations.json"
+# The guards' change list (check_staged_generated_artifacts.py, land_precheck.py), one path per line.
+CHANGED_PATHS_ENV = "AFIELD_GUARD_CHANGED_PATHS_FILE"
+# The line a `--module` child ends with: its summary row, as JSON, for the parent.
+RESULT_MARKER = "run_python_tests-result: "
 
 
 def declared_python_floor() -> tuple[int, ...]:
@@ -242,9 +262,174 @@ def clear_repository_env(environ=os.environ) -> list[str]:
     return scrub_process_env(environ)
 
 
-def main() -> int:
+def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run the tools/test_*.py suites.")
+    parser.add_argument("--jobs", type=int, default=None,
+                        help="modules run at once, each in its own process (default: FIELD_PYTHON_TEST_JOBS, "
+                             "else half the CPUs, at most 8); 1 runs them one after another in this process")
+    parser.add_argument("--all", action="store_true",
+                        help=f"ignore {CHANGED_PATHS_ENV} and run every suite")
+    parser.add_argument("--module", help=argparse.SUPPRESS)  # one suite, for the parallel parent
+    return parser.parse_args(argv)
+
+
+def default_jobs() -> int:
+    configured = os.environ.get("FIELD_PYTHON_TEST_JOBS", "").strip()
+    if configured.isdigit() and int(configured) > 0:
+        return int(configured)
+    return max(1, min(MAX_DEFAULT_JOBS, (os.cpu_count() or 2) // 2))
+
+
+def scoped_module_names(names: list[str], environ=os.environ) -> tuple[list[str], str]:
+    """The suites a guard run's changed paths need, and a line saying why.
+
+    The guards hand their change list over in CHANGED_PATHS_ENV (as they do for the box-code
+    guards). Without it, or when a changed path is Python tooling or a build file, every suite runs.
+    """
+    listing = environ.get(CHANGED_PATHS_ENV)
+    if not listing:
+        return names, f"all {len(names)} suites"
+    try:
+        paths = [line.strip() for line in Path(listing).read_text().splitlines() if line.strip()]
+    except OSError as exc:
+        return names, f"all {len(names)} suites ({CHANGED_PATHS_ENV} unreadable: {exc})"
+    sys.path.insert(0, str(TOOLS_ROOT))
+    from check_staged_generated_artifacts import python_tool_modules_for_paths  # noqa: PLC0415
+
+    scope = python_tool_modules_for_paths(paths, TOOLS_ROOT)
+    if scope is None:
+        return names, f"all {len(names)} suites (the change touches Python tooling or a build file)"
+    selected = [name for name in names if name in set(scope)]
+    return selected, (f"{len(selected)} of {len(names)} suites, the ones that read the changed corpus "
+                      f"({len(paths)} changed path(s); --all runs every suite)")
+
+
+Outcome = tuple[tuple[str, int, int, int, int], list[str], bool]
+
+
+def run_module(name: str, on_abandon) -> Outcome:
+    """One suite in this process: (summary row, not-passing lines, failed). Writes its JUnit XML."""
+    try:
+        suite = unittest.TestLoader().loadTestsFromName(name)
+    except Exception as exc:  # noqa: BLE001 — any import-time explosion is a real failure
+        print(f"\n=== {name}: could not be loaded: {exc!r}", flush=True)
+        write_junit(name, 0, [], [(unittest.suite._ErrorHolder(name),  # noqa: SLF001
+                                   f"could not be loaded: {exc!r}")], 0)
+        return (name, 0, 0, 1, 0), [f"{name}: could not be loaded: {exc!r}"], True
+
+    print(f"\n=== {name}", flush=True)
+    # Everything on one stream: Gradle buffers stdout and stderr separately, so a summary
+    # on stdout and unittest on stderr arrive interleaved and unreadable.
+    with ModuleWatchdog(name, MODULE_BUDGET_SECONDS, on_abandon) as watchdog:
+        result = unittest.TextTestRunner(stream=sys.stdout, verbosity=1).run(suite)
+    ran, fails, errors, skipped = (result.testsRun, len(result.failures), len(result.errors),
+                                   len(result.skipped))
+    if watchdog.timed_out:
+        # It came back once its children were killed; what it reported is not its verdict.
+        return ((name, ran, fails, errors + 1, skipped),
+                [f"ERROR {name}: ran past its {MODULE_BUDGET_SECONDS:.0f} s budget "
+                 "(stacks above; its child processes were killed)"], True)
+    write_junit(name, ran, result.failures, result.errors, skipped)
+    not_passing = []
+    for kind, entries in (("FAIL", result.failures), ("ERROR", result.errors)):
+        for test, trace in entries:
+            classname, method = _test_identity(test)
+            not_passing.append(f"{kind} {classname}.{method}: {_exception_line(trace)[:300]}")
+    return (name, ran, fails, errors, skipped), not_passing, bool(fails or errors or not result.wasSuccessful())
+
+
+def _never_unwound(name: str) -> Outcome:
+    return ((name, 0, 0, 1, 0), [f"ERROR {name}: ran past its {MODULE_BUDGET_SECONDS:.0f} s budget and never "
+                                 "unwound (stacks above)"], True)
+
+
+def child_main(name: str) -> int:
+    """`--module`: run one suite and end with the RESULT_MARKER line the parent reads."""
+    def report(outcome: Outcome) -> None:
+        row, not_passing, failed = outcome
+        print(f"\n{RESULT_MARKER}" + json.dumps({"row": row, "not_passing": not_passing, "failed": failed}),
+              flush=True)
+
+    outcome = run_module(name, lambda: report(_never_unwound(name)))
+    report(outcome)
+    return 1 if outcome[2] else 0
+
+
+def _read_durations() -> dict[str, float]:
+    try:
+        return {k: float(v) for k, v in json.loads(DURATIONS_FILE.read_text()).items()}
+    except (OSError, ValueError, AttributeError):
+        return {}
+
+
+def _write_durations(measured: dict[str, float]) -> None:
+    try:
+        DURATIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        DURATIONS_FILE.write_text(json.dumps({**_read_durations(), **measured}, indent=1, sort_keys=True) + "\n")
+    except OSError:
+        pass  # only the next run's ordering depends on it
+
+
+def run_parallel(names: list[str], jobs: int) -> tuple[dict[str, Outcome], dict[str, float]]:
+    """Each suite in its own process, *jobs* at a time, slowest (by the last run) first.
+
+    A suite's output is held until it finishes and then printed whole, so the log reads as it did
+    when the suites ran one after another, and each `=== tools.test_x` block is still contiguous.
+    """
+    previous = _read_durations()
+    queue = sorted(names, key=lambda name: (-previous.get(name, float("inf")), name))
+    hard_limit = MODULE_BUDGET_SECONDS + UNWIND_GRACE_SECONDS + 60
+    running: dict[str, tuple[subprocess.Popen, object, float]] = {}
+    outcomes: dict[str, Outcome] = {}
+    durations: dict[str, float] = {}
+
+    def finish(name: str, killed: bool = False) -> None:
+        proc, sink, started = running.pop(name)
+        durations[name] = time.monotonic() - started
+        sink.seek(0)
+        text = sink.read()
+        sink.close()
+        marker = text.rfind(RESULT_MARKER)
+        shown = text[:marker].rstrip("\n") if marker >= 0 else text.rstrip("\n")
+        print(shown, flush=True)
+        if marker >= 0 and not killed:
+            try:
+                data = json.loads(text[marker + len(RESULT_MARKER):].splitlines()[0])
+                outcomes[name] = (tuple(data["row"]), list(data["not_passing"]), bool(data["failed"]))
+                return
+            except (ValueError, KeyError, IndexError):
+                pass
+        why = (f"killed after {hard_limit:.0f} s without finishing" if killed
+               else f"its process exited {proc.returncode} without reporting a result")
+        message = f"ERROR {name}: {why} (output above)"
+        if not (RESULTS_DIR / f"TEST-{name}.xml").exists():
+            write_junit(name, 0, [], [(unittest.suite._ErrorHolder(name), message)], 0)  # noqa: SLF001
+        outcomes[name] = ((name, 0, 0, 1, 0), [message], True)
+
+    while queue or running:
+        while queue and len(running) < jobs:
+            name = queue.pop(0)
+            sink = tempfile.TemporaryFile("w+")
+            proc = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--module", name],
+                                    cwd=REPO_ROOT, stdout=sink, stderr=subprocess.STDOUT, text=True,
+                                    env={**os.environ, RESULTS_DIR_ENV: str(RESULTS_DIR)})
+            running[name] = (proc, sink, time.monotonic())
+        time.sleep(0.1)
+        for name, (proc, _, started) in list(running.items()):
+            if proc.poll() is not None:
+                finish(name)
+            elif time.monotonic() - started > hard_limit:
+                kill_descendants(proc.pid)
+                proc.kill()
+                proc.wait()
+                finish(name, killed=True)
+    return outcomes, durations
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv)
     dropped = clear_repository_env()
-    if dropped:
+    if dropped and not args.module:
         print(f"run_python_tests: cleared {', '.join(dropped)} so no suite's scratch repository resolves "
               "to this one", flush=True)
     complaint = check_interpreter()
@@ -255,68 +440,46 @@ def main() -> int:
     # The suites import each other as `tools.<module>` (a PEP 420 namespace package — there is no
     # tools/__init__.py), so the repo root has to lead sys.path however this script was invoked.
     sys.path.insert(0, str(REPO_ROOT))
+    if args.module:
+        return child_main(args.module)
 
     names = suite_module_names()
     if not names:
         print("no tools/test_*.py suites found — that is itself a failure")
         return 1
+    if not args.all:
+        names, why = scoped_module_names(names)
+        print(f"run_python_tests: running {why}", flush=True)
+        if not names:
+            return 0
 
     shutil.rmtree(RESULTS_DIR, ignore_errors=True)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    loader = unittest.TestLoader()
-    rows: list[tuple[str, int, int, int, int]] = []
-    not_passing: list[str] = []
+    jobs = min(args.jobs or default_jobs(), len(names))
     durations: dict[str, float] = {}
-    failed = False
+    outcomes: dict[str, Outcome] = {}
+    if jobs <= 1:
+        rows: list[tuple[str, int, int, int, int]] = []
+        not_passing: list[str] = []
+        for name in names:
+            def abandon(name: str = name) -> None:
+                row, lines, _ = _never_unwound(name)
+                summarize(rows + [row], not_passing + lines, durations, failed=True)
 
-    for name in names:
-        try:
-            suite = loader.loadTestsFromName(name)
-        except Exception as exc:  # noqa: BLE001 — any import-time explosion is a real failure
-            print(f"\n=== {name}: could not be loaded: {exc!r}", flush=True)
-            rows.append((name, 0, 0, 1, 0))
-            not_passing.append(f"{name}: could not be loaded: {exc!r}")
-            write_junit(name, 0, [], [(unittest.case._ErrorHolder(name),  # noqa: SLF001
-                                       f"could not be loaded: {exc!r}")], 0)
-            failed = True
-            continue
+            started = time.monotonic()
+            outcomes[name] = run_module(name, abandon)
+            durations[name] = time.monotonic() - started
+            rows.append(outcomes[name][0])
+            not_passing.extend(outcomes[name][1])
+    else:
+        print(f"run_python_tests: {len(names)} suites, {jobs} at a time", flush=True)
+        outcomes, durations = run_parallel(names, jobs)
+    _write_durations(durations)
 
-        print(f"\n=== {name}", flush=True)
-        started = time.monotonic()
-
-        def abandon(name: str = name) -> None:
-            rows.append((name, 0, 0, 1, 0))
-            not_passing.append(f"ERROR {name}: ran past its {MODULE_BUDGET_SECONDS:.0f} s budget and never "
-                               "unwound (stacks above)")
-            summarize(rows, not_passing, durations, failed=True)
-
-        # Everything on one stream: Gradle buffers stdout and stderr separately, so a summary
-        # on stdout and unittest on stderr arrive interleaved and unreadable.
-        with ModuleWatchdog(name, MODULE_BUDGET_SECONDS, abandon) as watchdog:
-            result = unittest.TextTestRunner(stream=sys.stdout, verbosity=1).run(suite)
-        durations[name] = time.monotonic() - started
-        ran = result.testsRun
-        fails = len(result.failures)
-        errors = len(result.errors)
-        skipped = len(result.skipped)
-        if watchdog.timed_out:
-            # It came back once its children were killed; what it reported is not its verdict.
-            rows.append((name, ran, fails, errors + 1, skipped))
-            not_passing.append(f"ERROR {name}: ran past its {MODULE_BUDGET_SECONDS:.0f} s budget "
-                               "(stacks above; its child processes were killed)")
-            failed = True
-            continue
-        rows.append((name, ran, fails, errors, skipped))
-        write_junit(name, ran, result.failures, result.errors, skipped)
-        for kind, entries in (("FAIL", result.failures), ("ERROR", result.errors)):
-            for test, trace in entries:
-                classname, method = _test_identity(test)
-                not_passing.append(f"{kind} {classname}.{method}: {_exception_line(trace)[:300]}")
-        if fails or errors or not result.wasSuccessful():
-            failed = True
-
-    return summarize(rows, not_passing, durations, failed)
+    ordered = [outcomes[name] for name in names]
+    return summarize([row for row, _, _ in ordered], [line for _, lines, _ in ordered for line in lines],
+                     durations, any(failed for _, _, failed in ordered))
 
 
 def summarize(rows: list[tuple[str, int, int, int, int]], not_passing: list[str],

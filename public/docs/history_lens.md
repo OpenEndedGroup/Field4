@@ -13,9 +13,7 @@ val uid =
     ui.eval(
             """
             const b = [...document.querySelectorAll(".box")].find(b => (b.textContent || "").includes("sketch"))
-            return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null
-            """
-                .trimIndent(),
+            return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -27,9 +25,7 @@ ui.eval(
     const c = document.querySelector(".monaco-editor-container")
     for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
     if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(6500)
 val versions = [
@@ -37,17 +33,13 @@ val versions = [
     // A ring of points, saved three times.
     val radius = 64.0
     val count = 12
-    println("radius " + radius + ", count " + count)
-    """
-        .trimIndent(),
+    println("radius " + radius + ", count " + count)""".trimIndent(),
     """
     // A ring of points, saved three times.
     val radius = 80.0
     val count = 12
     val ring = (0 until count).map { it * 360.0 / count }
-    println("radius " + radius + ", " + ring.size + " points")
-    """
-        .trimIndent(),
+    println("radius " + radius + ", " + ring.size + " points")""".trimIndent(),
 ]
 for (text in versions) {
     val quoted = "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\""
@@ -60,9 +52,7 @@ ui.eval(
     ed.focus()
     ed.setPosition({ lineNumber: 2, column: 5 })
     ed.getAction("history-lens-selection").run()
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 var rows = ""
 for (i in 0 until 80) {
@@ -72,9 +62,7 @@ for (i in 0 until 80) {
                 """
                 const n = document.querySelectorAll(".history-lens-variant[data-version-index]").length
                 const meta = document.querySelector(".history-lens-meta")?.textContent || ""
-                return "rows=" + n + " meta=" + meta
-                """
-                    .trimIndent(),
+                return "rows=" + n + " meta=" + meta""".trimIndent(),
             )
             .toString()
     if ((Regex("rows=(\\d+)").find(rows)?.groupValues?.get(1)?.toInt() ?: 0) >= 3) break
@@ -94,9 +82,7 @@ ui.eval(
     m.setAttribute("style", "position:fixed;pointer-events:none;background:transparent;border:0;z-index:2147483001;" +
         "left:" + ed.left + "px;top:" + ed.top + "px;width:" + Math.min(ed.width, 900) + "px;height:" + (lens.bottom - ed.top + 60) + "px")
     document.body.appendChild(m)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.moveMouse(5.0, 5.0, 2)
 ui.pause(300)

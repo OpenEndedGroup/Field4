@@ -484,9 +484,7 @@ fun boxAt(name: String): List<Double> =
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     if (!b) return null
     const r = b.getBoundingClientRect()
-    return [r.left + r.width / 2, r.top + r.height / 2, b.uid || ""].join(",")
-"""
-                .trimIndent(),
+    return [r.left + r.width / 2, r.top + r.height / 2, b.uid || ""].join(",")""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -496,9 +494,7 @@ fun boxUid(name: String): String =
     ui.eval(
             """
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
-    return b ? b.uid : null
-"""
-                .trimIndent(),
+    return b ? b.uid : null""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -508,9 +504,7 @@ fun freeEditorLayout() {
         const c = document.querySelector(".monaco-editor-container")
         if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
         if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
-        return true
-        """
-            .trimIndent(),
+        return true""".trimIndent(),
     )
 }
 // The page-load toasts (keybindings reloaded, finished loading) are hidden the way screenshot prep
@@ -885,9 +879,7 @@ fun boxAt(name: String): List<Double> =
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     if (!b) return null
     const r = b.getBoundingClientRect()
-    return [r.left + r.width / 2, r.top + r.height / 2, b.uid || ""].join(",")
-"""
-                .trimIndent(),
+    return [r.left + r.width / 2, r.top + r.height / 2, b.uid || ""].join(",")""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -897,9 +889,7 @@ fun boxUid(name: String): String =
     ui.eval(
             """
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
-    return b ? b.uid : null
-"""
-                .trimIndent(),
+    return b ? b.uid : null""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -909,9 +899,7 @@ fun freeEditorLayout() {
         const c = document.querySelector(".monaco-editor-container")
         if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
         if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
-        return true
-        """
-            .trimIndent(),
+        return true""".trimIndent(),
     )
 }
 // The page-load toasts (keybindings reloaded, finished loading) are hidden the way screenshot prep
@@ -944,8 +932,7 @@ val nested =
             """
             const h = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "helper")
             return h ? getComputedStyle(h).display + "/" + getComputedStyle(h).visibility : "gone"
-            """
-                .trimIndent(),
+            """.trimIndent(),
         )
         .toString()
 check(!nested.contains("block/visible")) { "helper is still on the canvas after Nest: " + nested }
@@ -987,9 +974,7 @@ fun boxAt(name: String): List<Double> =
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     if (!b) return null
     const r = b.getBoundingClientRect()
-    return [r.left + r.width / 2, r.top + r.height / 2, b.uid || ""].join(",")
-"""
-                .trimIndent(),
+    return [r.left + r.width / 2, r.top + r.height / 2, b.uid || ""].join(",")""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -999,9 +984,7 @@ fun boxUid(name: String): String =
     ui.eval(
             """
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
-    return b ? b.uid : null
-"""
-                .trimIndent(),
+    return b ? b.uid : null""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -1011,9 +994,7 @@ fun freeEditorLayout() {
         const c = document.querySelector(".monaco-editor-container")
         if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
         if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
-        return true
-        """
-            .trimIndent(),
+        return true""".trimIndent(),
     )
 }
 // The page-load toasts (keybindings reloaded, finished loading) are hidden the way screenshot prep

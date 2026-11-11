@@ -18,9 +18,7 @@ display(
       <p style="margin:12px 0 0;color:#98a6b3">Pitch error is reported in <b>cents</b>, not in note
       names. One of the corpus cases is exactly 50 cents from equal temperament, where the correct
       note name genuinely does not exist — a measurement 0.1 cents out flips it a semitone.</p>
-    </section>
-    """
-        .trimIndent(),
+    </section>""".trimIndent(),
 )
 
 display(
@@ -30,7 +28,5 @@ display(
     so the register you admit sets the shortest note you can resolve:
       minHz  65 Hz (the wide default) → ${patPitchFrameSpan(PatSoundDocs.SR, 65.0)} samples = ${(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 65.0) / PatSoundDocs.SR).f1} ms
       minHz 261 Hz (a treble line)    → ${patPitchFrameSpan(PatSoundDocs.SR, 261.0)} samples = ${(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 261.0) / PatSoundDocs.SR).f1} ms
-    That ratio is what box 4 is about.
-"""
-        .trimIndent(),
+    That ratio is what box 4 is about.""".trimIndent(),
 )

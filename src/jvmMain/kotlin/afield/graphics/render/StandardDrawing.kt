@@ -171,6 +171,13 @@ var FLine.stroked by Delegation<Boolean> { true }
 var FLine.pointed by Delegation<Boolean> { false }
 
 /**
+ * In an editable drawing (`lines(..., editable = true)`), draw this line but offer nothing on it to
+ * select or drag. Off by default. It is how a picture keeps its scenery — walls, a scale, a field
+ * drawn as rings — still while one point in it is the thing the reader moves.
+ */
+var FLine.fixed by Delegation<Boolean> { false }
+
+/**
  * Size of the dots [pointed] draws, 1.0 by default, overridable node by node with
  * [FLine.Node.pointSize].
  *

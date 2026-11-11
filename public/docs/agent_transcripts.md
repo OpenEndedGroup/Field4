@@ -103,6 +103,18 @@ The glued view reports join lengths; its nearest-neighbour/2-opt route is not a 
 [Walkthrough and parameters](knight_tour_workshop.md) ·
 [Saved chat](assets/knight_tour_workshop/chat.txt)
 
+### physical_piano
+
+A physically modelled grand piano, ported from [coopiano](https://github.com/peterc/coopiano), as six
+boxes. `a4` renders A4 at velocity 0.5 for eight seconds and plots its spectrum; `string` draws one
+C3 string at five moments after the hammer leaves it; `piece` plays a short pattern; `pedal` plays
+a staccato arpeggio with the pedal up, down, and down without the sympathetic strings; `wobble`
+drives the string stiffness with a 110 Hz oscillator and the hammer hardness with a slow one;
+`live` plays it through the audio engine with sliders on the pedal, stiffness and soundboard. The
+replay runs the first five headless. See `Piano` in [Synthesis](reference/synthesis.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/physical_piano/metadata.edn)
+
 ### uncrossed_leapers
 
 **Knight paths that never cross.** The starting point for [uncrossed paths](knight_tour_workshop.md#uncrossed-paths):
@@ -825,6 +837,19 @@ rules side by side on a ring. From the measuring sections of [Drawing with FLine
 
 [Open →](offline.html?file=assets/agent_transcripts/fline_measure/metadata.edn)
 
+### clothoid_spline
+
+**Curvature-continuous splines.** Three boxes: `clothoidSplineFrom` and `cubicSplineFrom` through the
+same eight points, with curvature combs and curvature plotted against distance; seven points on a
+circle giving the circle back; and a closed round shape with its comb. From [Drawing with
+FLines](fline_examples.md#curvature-continuous-splines-clothoidsplinefrom).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/clothoid_spline.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="120" padding="12" name="gallery-clothoid-spline" alt="A rounded closed shape in blue through six white points, with grey curvature teeth along its inside" macro-file="../../dev_docs/agents/transcripts/clothoid_spline.yaml" capture-box="clothoid-spline-shape"}
+// The transcript builds and runs all three boxes; this is the closed-shape box.
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/clothoid_spline/metadata.edn)
+
 ### fline_exact_booleans
 
 **Exact booleans and cubic offsets, side by side with the old paths.** Two boxes, each with a dot on every node: the union and difference of a blob and a circle through `Area` and through `booleanExact`, and a star and an S-curve offset by `byOffsetting` and by `byOffsettingExact`. From [Drawing with FLines](fline_examples.md#exact-booleans-and-offsets).
@@ -1086,6 +1111,30 @@ a site, change a weight, raise an iso level or ask for a different `k` and re-ru
 
 [Open →](offline.html?file=assets/agent_transcripts/spatial_geometry_examples/metadata.edn)
 
+### alife_grains
+
+Evolved grain sets, after Nathan Ho's [EvoGrain](https://nathanho.me/posts/evograin), on the
+[ALife page](alife_examples.md): an L-system derivation read as a score of grains, where `G` plays a
+grain, `+`/`-` step the pitch and every bracket is a new voice. Box 1 decodes one grammar into a
+piano-roll and a player. Box 2 evolves the grammar toward a profile of trapezoid-scored statistics,
+with sliders for three of the targets that re-run the search. Box 3 is interactive evolution: six
+children with players, and a text field naming the parents of the next generation.
+
+[Open →](offline.html?file=assets/agent_transcripts/alife_grains/metadata.edn)
+
+### kmeans_emeans
+
+The [k-means at scale](spatial_geometry_examples.md#k-means-at-scale) section as two boxes.
+*Lloyd vs e-means* clusters 48 000 points in 60 blobs from the same random seeds with Lloyd's
+algorithm at 25 epochs and e-means ([Meta FAIR](https://e-means.github.io), ported from Faiss) at 3,
+and plots both runs' mean squared error per epoch. *Revival* rings 40 blobs with 12 strays, so
+k-means++ seeds a centroid on a stray, and shows e-means moving it back into the data. Change `k`,
+`epochs` or the seeding and re-run.
+
+![Three panels: the 60-blob cloud clustered by Lloyd, the same cloud clustered by e-means, and a log-scale plot of mean squared error per epoch for both](assets/spatial_geometry_examples/kmeans_lloyd_vs_emeans.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/kmeans_emeans/metadata.edn)
+
 ### alife_evolution
 
 The other half of [spatial artificial life](alife_examples.md): four boxes that
@@ -1164,6 +1213,19 @@ rather than run: a `Frames` that is only built never runs. None of the twenty op
 ![Two magma-coloured trail fields from the same 6000 agents: the sensing population has drawn a branching network of bright filaments and closed loops, the blind control is a featureless uniform disc](assets/alife_examples/physarum.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/alife_worked_example/metadata.edn)
+
+### alife_tree_growth
+
+[Trees that compete for light](alife_examples.md#trees-that-compete-for-light) as three boxes. Box 1
+grows one tree for 30 seasons with `TreeGrowth`: each bud reads the light left by everyone else's
+shadow, light is summed toward the root, and the root's growth resource is split back up each fork by
+the Borchert–Honda rule. It prints `isTree()`, the worst resource-conservation error over the 30
+seasons and the crown size under four values of the apical control `λ`, and draws the seasons, the
+bud light, the resource flow, the shadow grid and the four crowns. Box 2 is the same tree growing over
+seven seconds; launch it. Box 3 puts `λ` on a slider and regrows the tree as you drag. All three are
+pure CPU.
+
+[Open →](offline.html?file=assets/agent_transcripts/alife_tree_growth/metadata.edn)
 
 ### braitenberg_where_next
 
@@ -1534,6 +1596,29 @@ packing settles instead of chattering across the contact.
 ![twelve discs before and after a differentiable packing](assets/autodiff/autodiff_pack.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/autodiff_worked_example/metadata.edn)
+
+### noiselang_distributions
+
+Values that are **probability distributions**, from [Distributions](distributions.md). Eleven
+pure-CPU boxes. A Dirac spike, a die and the triangle two dice make, drawn by the inline
+`ᛟ.distribution` view as the samples arrive, with the mean of `5 + d6 + d6` settling on 12 (launch
+it). The NoiseLang questions — `P(X + Y < 10)`, the 23-person birthday problem at about 0.507,
+4·P(inside the unit circle) ≈ π — each printed with its standard error beside the exact value.
+Samples settling under an exact and a kernel density, and a distribution of `FLine`s, 120 random
+walks drawn from one graph. Then the newer half: two posteriors (`given`, `observed`) drawn over
+their priors; a weighted scale as a pattern and a rhythm conditioned to five hits in sixteen, each
+with a piano roll and a player; a sine whose pitch is drawn on the audio thread at every pulse of a
+clock (`d.param`), with the heard pitches drawn live (launch it, sound on); and a Gaussian process
+as correlated distributions, its curves drawn and the distribution of where its peak is. Last, a
+posterior that learns as data arrives (`Posterior`): a performer's tempo followed from the onsets in
+their sound, with an accompaniment on the predicted beats, and a point tracked through noise.
+
+```diffstatic {data-lang=text}
+macro write noiselang_distributions --file dev_docs/agents/transcripts/noiselang_distributions.yaml
+macro run noiselang_distributions
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/noiselang_distributions/metadata.edn)
 
 ### interaction_nets_lambda
 
@@ -2704,6 +2789,56 @@ Walkthrough: [Audio curves: a sound as a few slow controls](audio_curves.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/audio_curve_explorer/metadata.edn)
 
+### explainer_sine_pitch
+
+**A four-slide explainer with a figure you can hear.** One box, `sine`, draws twenty milliseconds
+of a sine wave, shows a frequency slider and a sound checkbox, and plays the tone. A second,
+`deck`, is a presentation after Bartosz Ciechanowski's [Sound](https://ciechanow.ski/sound/), in
+our own words: an opening slide, the figure beside prose with its slider, a cue that glides the
+slider up an octave, and a slide where a cue turns the sound on. Run `deck` in Field's Electron app;
+the talk starts `sine` when its slide comes up and stops it when the talk leaves. It is the
+template for the explainer decks, described in
+[Live figures beside prose](presentation_studio.md#live-figures-beside-prose).
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_sine_pitch/metadata.edn)
+
+### explainer_sound
+
+**The Sound explainer as a Field presentation.** A `deck` box follows Bartosz Ciechanowski's
+[Sound](https://ciechanow.ski/sound/) section by section, in our own words: air as a crowd of
+molecules, a plate pushing slices of air down a tube, pops that repeat into notes, sums of shapes
+and of sines, masses, springs and plucked strings, and pressure waves spreading through the open
+and through rooms. Each figure is its own box, named for what it shows and laid out to the right of
+`deck` in slide order, so the canvas reads as a table of contents. Run `deck` in Field's Electron
+app; the talk starts each figure when its slide comes up and stops it when the talk moves on, and
+nothing sounds until someone holds a key or ticks **sound**. Built on
+[Live figures beside prose](presentation_studio.md#live-figures-beside-prose).
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_sound/metadata.edn)
+
+### explainer_cameras
+
+**An explainer deck on cameras and lenses.** A `deck` box holds a presentation after Bartosz
+Ciechanowski's [Cameras and Lenses](https://ciechanow.ski/cameras-and-lenses/), in our own words,
+in the essay's order: a sensor counting light, a box with a hole, glass, light as a wave, lenses,
+aperture and focus, and the faults of real lenses. Each figure is its own box to the right of the
+deck; the sensor pictures are ray-traced on the CPU by `afield.simulation.optics`. Run `deck` in
+Field's Electron app; the talk starts each figure when its slide comes up.
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_cameras/metadata.edn)
+
+### explainer_lights
+
+**A talk on light and shadow, with figures lit on the CPU.** One box, `deck`, is a presentation
+after Bartosz Ciechanowski's [Lights and Shadows](https://ciechanow.ski/lights-and-shadows/), in our
+own words, section by section from power and the cosine factor to soft shadows, colour and bounced
+light. Each figure is its own box, laid out in slide order beside it. The three-dimensional figures
+compute the light at every vertex with `afield.graphics.lighting` (point, sphere and rectangle
+lights, shadow rays, a coarse radiosity solve) and draw the result unlit in a three view. Run `deck`
+in Field's Electron app; the talk starts each figure when its slide comes up.
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_lights/metadata.edn)
+
 ### audio_ai_underfit_mancini
 
 Import a held-out excerpt, hash the completed Experiment in Terror
@@ -2943,8 +3078,7 @@ for (i in 0 until 240) {
                 const f = document.querySelector("iframe[src*='score_view']")
                 const s = f && f.contentDocument && f.contentDocument.getElementById("status")
                 return s ? s.textContent : "no score view yet"
-                """
-                    .trimIndent(),
+                """.trimIndent(),
             )
             .toString()
     val t = Regex("score · ([0-9.]+)s").find(at)?.groupValues?.get(1)?.toDouble()
@@ -4367,6 +4501,24 @@ macro run atmospheric_sky
 ```
 
 [Open →](offline.html?file=assets/agent_transcripts/atmospheric_sky/metadata.edn)
+
+### noiselang_gpu
+
+**Distributions drawn inside a fragment shader.** One box defines a ring, the ring given
+x + y > 0.5, and a Gaussian process through five readings; `distHere` and `gpHere` make them
+`#include "dist/ring"`, `#include "dist/arc"` and `#include "gp/ridge"`. The shader box beneath it
+draws three panels from them: 320 draws of the ring, the arc the condition keeps (a posterior drawn
+per point on the GPU), and twenty whole curves of the process with its mean and band. See
+[Distributions in a shader](distributions.md#distributions-in-a-shader).
+
+![three panels: a blue ring of points, the orange arc of it above a diagonal line, and blue Gaussian-process curves through five orange readings](assets/distributions-gpu.png)
+
+```diffstatic {data-lang=text}
+macro write noiselang_gpu --file dev_docs/agents/transcripts/noiselang_gpu.yaml
+macro run noiselang_gpu
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/noiselang_gpu/metadata.edn)
 
 ### sky_environment
 

@@ -21,7 +21,7 @@ with the alignment term zeroed reaches 0.073.
 
 ## Source files
 
-Six dependency-free files built on the existing [imaging](imaging_examples.md) and
+Seven dependency-free files built on the existing [imaging](imaging_examples.md) and
 [mesh](mesh_examples.md) families. Nothing here reimplements convolution, connected-component
 labelling, colour mapping or marching cubes:
 
@@ -42,6 +42,8 @@ labelling, colour mapping or marching cubes:
   aggregation with two control models.
 - **`alife_lsystem.kt`** — a bracketed, parametric, optionally stochastic L-system with a turtle that
   emits [`FLine`](fline_examples.md)s, and space-colonization branching.
+- **`alife_tree_growth.kt`** — [trees that compete for light](#trees-that-compete-for-light): buds
+  in a shadow grid, light summed toward the root and growth resource split back up by Borchert–Honda.
 - **`alife_field.kt`** — the [inline `ToHTML` views](#evaluating-one-of-these-in-a-box-the-inline-views),
   kept in their own file so the five above name nothing from Field's visualizer.
 
@@ -1146,11 +1148,11 @@ prop<ShaderPhysarumSystem>(physarum) = ShaderPhysarumSystem() {
     agentCount = 300_000
     speciesCount = 3
     exclusive = true
-    attraction = listOf(
+    attraction = [
         vec(1f, -2f, -2f, 0f),
         vec(-2f, 1f, -2f, 0f),
         vec(-2f, -2f, 1f, 0f),
-    )
+    ]
 }
 physarum.trail.settings.diffusion = 0.2f
 physarum.installInto()
@@ -1878,6 +1880,138 @@ animateEvolution(
 )
 ```
 
+### Trees that compete for light
+
+Space colonization grows toward points you place. The model below, after Palubicki and colleagues'
+[self-organizing tree models](https://algorithmicbotany.org/papers/selforg.sig2009.small.pdf)
+(SIGGRAPH 2009), needs no target. A tree is a chain of *metamers*: an internode with a bud at its tip
+and an axillary bud beside it. Each bud measures the light that reaches it, and the shape of the crown
+comes from buds competing for that light. Chema Guerra's
+[Growing trees](https://brashandplucky.com/2026/10/15/growing-trees.html) walks through the same
+method; this is a 2-D version of it in
+[`alife_tree_growth.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/simulation/agents/alife_tree_growth.kt).
+
+One season of [`TreeGrowth.step()`](reference/simulation.md#alife-tree-growth-kt-treegrowth) does five things:
+
+1. **Shadow.** Every bud adds shadow to a wedge of grid cells below it, widening by one cell per row
+   and halving roughly every row and a half ([`ShadowGrid`](reference/simulation.md#alife-tree-growth-kt-shadowgrid)).
+   Shadows add up, so the inside of the crown goes dark.
+2. **Light.** A bud reads `Q = 1 − (shadow from everyone else)`, clamped to `0 .. 1`.
+3. **Light flows down.** `Q` is summed from the tips to the root, so every branch knows how much light
+   its whole subtree collects.
+4. **Resource flows up.** The root receives `v = α · Q_root` units of growth resource and passes them
+   back up. At each fork the Borchert–Honda rule splits it between the continuing axis and the lateral
+   branch: `v_main = v · λQ_main / (λQ_main + (1 − λ)Q_lateral)`. At `λ = 0.5` the resource follows the
+   light. Above 0.5 the leader takes more of it (apical dominance), and below 0.5 the side branches do.
+5. **Growth and shedding.** A bud given `v ≥ 1` grows a shoot of `⌊v⌋` metamers, bending toward the
+   brightest part of the cone ahead of it and toward the sky. A side branch whose light per metamer
+   falls under a threshold is dropped.
+
+Three properties of the model are checked every season rather than taken from a picture. The structure
+is a tree (`isTree()`, the same check `ColonizationTree` makes, here also run after every shed). The
+resource that reaches the buds equals the resource handed to the root, since the rule only ever splits
+it. And adding shadow never makes a bud brighter.
+
+The figure grows one tree for 30 seasons. The top row shows it at seasons 2, 5, 10, 20 and 30. The
+middle row shows the season-20 tree three ways: every bud coloured by the light it read, every
+internode coloured by the resource flowing through it, and the shadow grid itself. The bottom row
+shows the same seed under four values of `λ`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/tree_growth.png" wait="10.0" capture="box" open-outputs="true" padding="20"}
+:::static
+// One tree, 30 seasons. Each step() is one season: shadow, light, Borchert-Honda allocation,
+// growth and shedding.
+val tree = TreeGrowth(seed = 4L)
+val seasons = [2, 5, 10, 20, 30]
+val strip = ArrayList<Pair<String, Img>>()
+var views: List<Pair<String, Img>> = []
+for (s in 1..30) {
+    tree.step()
+    if (s in seasons)
+        strip.add("season " + s + ": " + tree.nodeCount + " metamers" to tree.render(TreeView.STRUCTURE, 3))
+    if (s == 20) {
+        views = [
+            "season 20: bud light" to tree.render(TreeView.LIGHT, 3),
+            "resource flow (log)" to tree.render(TreeView.RESOURCE, 3),
+            "shadow grid" to tree.render(TreeView.SHADOW, 3),
+        ]
+    }
+}
+println(tree)
+println("a tree (one root, n-1 edges, acyclic): " + tree.isTree())
+
+// Borchert-Honda only ever splits, so what reaches the buds is what the root was given.
+println(
+    "worst resource conservation error over 30 seasons: " + "%.1e".format(tree.history.maxOf { it.conservationError }),
+)
+val last = tree.history.last()
+println(
+    "season 30: " +
+        last.buds +
+        " buds read " +
+        last.baseLight.f6 +
+        " units of light; root gets " +
+        last.baseResource.f6,
+)
+
+// Apical control: the same seed, four values of lambda.
+val lambdas = [0.44, 0.5, 0.56, 0.62]
+val crowns = lambdas.map { lam ->
+    val t = TreeGrowth(params = TreeGrowthParams(lambda = lam), seed = 4L).stepTimes(30)
+    val xs = (0 until t.nodeCount).map { t.x(it) }
+    val ys = (0 until t.nodeCount).map { t.y(it) }
+    println(
+        "λ = " +
+            lam +
+            ": " +
+            t.nodeCount +
+            " metamers, crown " +
+            (xs.max() - xs.min()).f0 +
+            " wide, " +
+            (ys.max() - ys.min()).f0 +
+            " tall",
+    )
+    "lambda = " + lam to t.render(TreeView.STRUCTURE, 3)
+}
+
+showImg(montage(strip + views + crowns, columns = 5, cellSide = 300))
+```
+
+![a strip of five frames of one tree growing from a two-metamer sprout to a broad crown at season 30; then the season-20 tree three ways — buds glowing yellow on the crown's upper edge and dark inside it, internodes coloured from a bright trunk to dim twigs, and a dark shadow mass under the crown; then four trees from the same seed going from wide and spreading at λ 0.44 to narrow and columnar at λ 0.62](assets/alife_examples/tree_growth.png)
+
+The light view shows why the crown has the outline it has. Only the buds on its upper and outer surface
+read much light. The resource follows them, so the tree grows at its edge, and the shaded branches
+inside lose their resource and are shed. By season 30 the tree has shed more metamers than it keeps.
+The bottom row shows what `λ` does. At 0.44 the resource spreads into side branches and the crown is
+wider than it is tall. At 0.62 the leaders keep most of it, and the tree is a narrow column that reaches
+the top of the grid.
+
+### Thirty seasons, growing
+
+Each frame of the video below is a season or part of one, and the framing is the whole grid, so the tree
+grows inside a fixed frame. The left panel is the structure. On the right the buds are coloured by the
+light they read: the lit edge moves outward and upward as the tree grows, and the inside goes dark.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/tree_growth.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="900" embed=true name="alife-tree-growth-video" alt="a tree growing for thirty seasons in a fixed frame, beside the same tree with its buds coloured by the light they receive, the lit edge moving outward as the crown fills in"}
+:::static
+// Thirty seasons over seven seconds. TreeGrowth is mutable and step() returns it, so it is the
+// `step` here directly. render() frames the whole grid, so the tree grows inside a fixed frame.
+animateEvolution(
+    TreeGrowth(seed = 4L),
+    totalSteps = 30,
+    seconds = 7.0,
+    columns = 2,
+    cellSide = 450,
+    step = { it.step() },
+    panels = { t, n ->
+        [
+            "season " + n + ": " + t.nodeCount + " metamers" to t.render(TreeView.STRUCTURE, 4),
+            "bud light, " + t.shedMetamersTotal + " shed" to t.render(TreeView.LIGHT, 4),
+        ]
+    },
+)
+```
+
 ## 11. Evolution: searching the rule space
 
 Every section above picks a rule and measures what it does. This one runs the question backwards: given
@@ -2261,6 +2395,125 @@ cannot tell the methods apart. A harder target or a finer score would be needed 
 The vehicle brains of [Braitenberg vehicles §10](braitenberg_vehicles.md) run through the same
 `compareSearch`.
 
+### Evolved grain sets: an L-system as a score
+
+The same L-system genome can be read as music instead of a drawing. In Nathan Ho's
+[EvoGrain](https://nathanho.me/posts/evograin), a derived string is a list of commands for a turtle
+whose state is a **time** and a **pitch**: `G` plays a grain and moves forward in time, `f` rests,
+`+` and `-` step the pitch, and `[` and `]` save and restore the state. Because `]` returns to the
+*time* the branch started at, every bracket is a new voice, so brackets give polyphony. A branch also
+plays quieter and quicker than its parent (`GrainTurtle.branchAmp`, `branchDuration`). A trunk
+grain lasts about a second and the next starts 0.72 s later; `GrainTurtle(timeScale = 0.5)` plays
+the same set twice as fast.
+
+`decodeGrains(system, generations)` derives the grammar and returns its grains; `GrainSetStats`
+measures the set (count, median pitch, pitch spread, duration, density, mean polyphony); and
+`renderGrains` plays it sample-accurately as Hann-windowed tones, or as grains read from a sample if
+you pass `source =`. Here is one grammar, `G → G[+G-G]fG`, at three generations:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-decode.png" wait="10.0" timeout="120" capture="box" open-outputs="true" padding="20"}
+val system = lSystem("G", 'G' to "G[+G-G]fG")
+for ((i, s) in system.derivations(2).withIndex()) println("gen $i: $s")
+val grains = decodeGrains(system, 3)
+println(GrainSetStats(grains))
+showImg(grainScoreImg(grains, 640, 220), caption = "gen 3: time across, pitch up; gold trunk, blue and red branches")
+display("audio", renderGrains(grains).wav())
+```
+
+![a dark piano-roll plot with short horizontal bars: a gold trunk line of grains along middle C, with blue grains a step above and below branching from it, and smaller red grains nested inside the blue ones](assets/alife_examples/grains-decode.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-example.wav" audio-spec="example" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" embed=true hidden=true name="alife-grains-example-audio"}
+// Offline-rendered by GrainSetSoundDocs.renderWav("example").
+```
+
+Fitness is a weighted mean of **trapezoids**, one per statistic. A trapezoid scores 0 below its first
+corner, rises to 1 at its second, stays at 1 to its third and falls to 0 at its fourth, so each term
+says "about this much, and these are the limits". `defaultGrainTerms()` asks for 40 to 120 grains over
+12 to 30 seconds, a median near middle C, a few semitones of spread, a little polyphony, and no more
+than about a third of the grains on any one pitch.
+`grainSetObjective(terms)` turns that into an `Objective` for `PopulationSearch`, and
+`grainLSystemGenome()` is the `LSystemGenome` above with the alphabet `G f + - [ ]`, so mutation,
+crossover and bracket repair are the ones the drawn L-systems already use:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-evolve.png" wait="30.0" timeout="240" capture="box" open-outputs="true" padding="20"}
+val terms = defaultGrainTerms()
+val run = PopulationSearch.evolve(
+    grainLSystemGenome(),
+    grainSetObjective(terms),
+    budget = 400,
+    seed = 7L,
+    crossoverRate = 0.3,
+    immigrantRate = 0.1,
+    label = "grains",
+)
+println(run.summary())
+for (imp in run.improvements) println("$imp   ${grainRule(imp.genome)}")
+showImg(fitnessTraceImg(run.trace), channel = "trace", caption = "best-so-far fitness against evaluations, 0 to 1")
+
+val best = decodeGrains(run.best!!.genome, 3)
+val stats = GrainSetStats(best)
+println(stats)
+val ranges = mapOf(
+    GrainStat.COUNT to (0.0 to 450.0),
+    GrainStat.MEDIAN_PITCH to (40.0 to 84.0),
+    GrainStat.PITCH_SPREAD to (0.0 to 18.0),
+    GrainStat.DURATION to (0.0 to 70.0),
+    GrainStat.POLYPHONY to (0.0 to 9.0),
+    GrainStat.MODE_SHARE to (0.0 to 1.0),
+)
+val panels = terms.map { t ->
+    val (lo, hi) = ranges.getValue(t.stat)
+    "%s %.2f".format(t.stat.label, stats[t.stat]) to trapezoidImg(t.shape, lo, hi, stats[t.stat])
+}
+showImg(
+    montage(panels, columns = 3, cellSide = 220),
+    channel = "terms",
+    caption = "each term's trapezoid, the best set's value marked",
+)
+showImg(grainScoreImg(best, 640, 220), channel = "score", caption = "the best set")
+display("audio", renderGrains(best).wav())
+```
+
+![three panels: a blue best-so-far line rising in steps toward 1; a grid of six yellow trapezoid curves each with a vertical marker on or near its plateau; and a dense multi-coloured piano-roll of the evolved grain set](assets/alife_examples/grains-evolve.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-evolved.wav" audio-spec="evolved" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" embed=true hidden=true name="alife-grains-evolved-audio"}
+// Offline-rendered by GrainSetSoundDocs.renderWav("evolved").
+```
+
+The automatic run optimises what the trapezoids say, which is not the same as what sounds good. Without
+the last term the winners were one long overlapping trunk at a single pitch, a drone that counts as
+polyphony; the term was added for that, and the next thing the search games will need another. The
+other half of EvoGrain is **interactive evolution**: you listen and choose the parents.
+`GrainBreeder` holds a population of six grammars; `breed([2, 4])` keeps the chosen parents and fills
+the rest with their crossovers, each mutated once. The same seed and the same choices replay the same
+lineage. In a box, give each child a player and a text field for the choice:
+
+```diffstatic {data-lang=kotlin}
+val breeder = GrainBreeder(seed = 1L)
+fun show() {
+    displayClearAll()
+    val scores = breeder.scores()
+    val listing =
+        breeder.population.withIndex().joinToString("<br>") { (i, g) ->
+            "%d: %s &nbsp; fitness %.2f".format(i, grainRule(g), scores[i])
+        }
+    display("main", "generation ${breeder.generation}<br>" + listing)
+    for ((i, g) in breeder.population.withIndex()) display("child $i", renderGrains(decodeGrains(g, 3)).wav())
+    stringInput("parents (e.g. 1 4)") { s ->
+        val picks = s.split(" ", ",").mapNotNull { it.trim().toIntOrNull() }
+        if (picks.isNotEmpty()) {
+            breeder.breed(picks)
+            show()
+        }
+    }
+}
+show()
+```
+
+Every trapezoid corner and weight is a dial. Building the terms from `slider` callbacks and
+re-running `PopulationSearch.evolve` on release moves the target while you listen; the loadable
+demo below does exactly that.
+
 ## 12. Agents with their own programs
 
 Every system above moves its whole population with one rule: `BoidFlock.step(p)` applies the same
@@ -2514,12 +2767,14 @@ Every box above is one box of a shipped starting point, so you can open the page
 edit it rather than retyping it: open it from the welcome screen. Sections 1 to 10 are
 [`alife_worked_example`](agent_transcripts.md), and section 11 is
 [`alife_evolution`](agent_transcripts.md), kept separate because its four search boxes take about
-fifty seconds between them. Every box runs on its own and prints the numbers this page quotes; none
+fifty seconds between them. The grain boxes of "Evolved grain sets" are
+[`alife_grains`](agent_transcripts.md). Every box runs on its own and prints the numbers this page quotes; none
 of them opens a `Window` or a `Renderer`. To replay them from a terminal instead:
 
 ```diffstatic {data-lang=bash}
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_worked_example.yaml
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_evolution.yaml
+python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_grains.yaml
 ```
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference:
@@ -2529,3 +2784,48 @@ python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife
 [`alife_lsystem.kt`](reference/alife.md#alife-lsystem-kt) and
 [`alife_field.kt`](reference/alife.md#alife-field-kt). Start from
 [what's already in the box](reference/index.md).*
+
+## Where to go next
+
+- [Evolving creatures](evolving_creatures.md) runs the same kind of search on bodies that move,
+  and [Braitenberg vehicles](braitenberg_vehicles.md) evolves vehicle wirings on `PopulationSearch`.
+- [Cellular automata as sound](chain_ca_sound.md) and
+  [Boolean network music](boolean_network_music_examples.md) read rule systems as rhythm and
+  pitch, as the grain sets above do; [granular](functions_examples.md#granular) is Field's live
+  `GrainCloud`, which plays a sample rather than a decoded list of grains.
+- [Imaging](imaging_examples.md) supplies the `Img` operations every figure here is built from.
+- Open the starting points: [`alife_worked_example`](agent_transcripts.md#alife_worked_example)
+  (sections 1 to 10), [`alife_evolution`](agent_transcripts.md#alife_evolution),
+  [`alife_search_comparison`](agent_transcripts.md#alife_search_comparison),
+  [`alife_tree_growth`](agent_transcripts.md#alife_tree_growth) and
+  [`alife_grains`](agent_transcripts.md#alife_grains).
+- Source: [`alife_lsystem.kt`](reference/alife.md#alife-lsystem-kt),
+  [`alife_evolve.kt`](reference/alife.md#alife-evolve-kt) and
+  [`alife_grains.kt`](reference/alife.md#alife-grains-kt).
+
+Open questions and next builds for the grain sets:
+
+- **A target taken from a recording.** Decode a sample into onsets and pitches, compute its
+  `GrainSetStats`, and centre each trapezoid on the sample's value, so the search evolves toward a
+  sound you already have.
+- **Grains from a sample.** `renderGrains(source = ...)` already reads grains from a sample; a
+  figure comparing the tone and sample renderings of one evolved grammar is still missing.
+- **More symbols.** EvoGrain's grammars also change grain length and density. Adding `<` and `>`
+  (shorter and longer grains) and a pan symbol to `GrainTurtle` would widen what a grammar can say.
+- **Several productions.** `grainLSystemGenome` rewrites only `G`. A second nonterminal `X`, which
+  steers the grammar without sounding, would let the search find structure that one rule cannot.
+- **Novelty instead of fitness.** `GrainSetStats.vector()` is already a behaviour descriptor, so
+  `PopulationSearch.novelty` or `mapElites` over (pitch spread, polyphony) would show the range of
+  sets instead of one winner.
+- **A breeder you can drive live.** The interactive box replaces all its players after every
+  choice; keeping past generations in a column would let you hear a lineage.
+
+Open questions for the rest of the page:
+
+- **Search beyond the saturated L-system objective.** The dimension target in
+  [Does search beat random?](#does-search-beat-random) cannot separate the search methods. A
+  harder drawn target, such as matching a given silhouette, would.
+- **Lenia solitons in three dimensions.** The Lenia genome and soliton objective are 2-D; the
+  3-D life-like automaton shows the grid side of that extension already exists.
+- **Trees that compete for sound.** The light-competition trees could be read with the grain
+  decoder, each branch a voice, so a forest's growth becomes a score.

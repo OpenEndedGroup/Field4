@@ -75,9 +75,7 @@ operations:
               | tempo | ${clip.bpmAt(0.0)} BPM |
               | length | ${clip.durationSeconds.f2}s / ${clip.durationBeats} beats |
 
-              Format 1, with a real conductor track. Open it in any DAW, or run box 2.
-              """
-                  .trimIndent(),
+              Format 1, with a real conductor track. Open it in any DAW, or run box 2.""".trimIndent(),
           )
   - create:
       box: midi_read
@@ -122,9 +120,7 @@ operations:
               As a pattern again: ${firstCycle.size} events in cycle 0, pitches
               `${firstCycle.sortedBy { it.arc.start }.map { it.value }.joinToString(" ")}`.
 
-              The roll above is drawn from the *file*, not from the clip box 1 held in memory.
-              """
-                  .trimIndent(),
+              The roll above is drawn from the *file*, not from the clip box 1 held in memory.""".trimIndent(),
           )
   - create:
       box: midi_devices
@@ -174,9 +170,7 @@ operations:
 
               One caveat worth knowing before you open an input: doing so starts a non-daemon
               `Java Sound MidiInDevice Thread` that outlives `close()`, so a JVM that has opened a
-              MIDI input will not exit on its own.
-              """
-                  .trimIndent(),
+              MIDI input will not exit on its own.""".trimIndent(),
           )
   - create:
       box: midi_audition
@@ -225,9 +219,7 @@ operations:
               | soundbank | ${r.soundbankName} |
 
               Peak amplitude is the check that matters: a WAV of pure silence is exactly as large
-              as a loud one, so file size proves nothing. ${if (r.isSilent) "**This one is silent.**" else "This one is not silent."}
-              """
-                      .trimIndent()
+              as a loud one, so file size proves nothing. ${if (r.isSilent) "**This one is silent.**" else "This one is not silent."}""".trimIndent()
               } else {
                   """
               ### Offline rendering is not available in this JVM
@@ -242,9 +234,7 @@ operations:
               clip.playTo("Gervill")
               ```
 
-              Or to any other port `MidiDevices.outputs()` lists in box 3.
-              """
-                      .trimIndent()
+              Or to any other port `MidiDevices.outputs()` lists in box 3.""".trimIndent()
               }
 
           showMidiRoll(clip)

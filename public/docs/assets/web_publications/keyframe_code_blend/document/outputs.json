@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T08:57:30.540Z",
+  "capturedAt": "2026-11-10T22:15:40.142Z",
   "documentName": "keyframe_code_blend",
   "outputs": [
     {
@@ -16,11 +16,11 @@
     {
       "uid": "kfb_kotlin_run",
       "channel": "output",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
       "width": 426,
-      "height": 175,
+      "height": 176,
       "path": "outputs/1.html"
     },
     {

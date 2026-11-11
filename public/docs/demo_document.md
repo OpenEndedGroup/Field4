@@ -197,9 +197,7 @@ ui.eval(
       pos: (t, v) => [k[0][0] + t * sx, k[0][1] + (v - 0.1) * sy].join(','),
       key: i => keys()[i].join(',')
     };
-    return 'ok';
-    """
-        .trimIndent(),
+    return 'ok';""".trimIndent(),
 )
 val added = xy("return window.__kf.pos(3.2, 0.8)")
 hand(added.first - 200 to added.second + 60, added, 14)

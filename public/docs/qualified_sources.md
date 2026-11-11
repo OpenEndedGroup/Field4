@@ -50,8 +50,7 @@ fun place(level: String): Map<String, String> {
     return placed
 }
 ::place
-"""
-        .trimStart()
+""".trimStart()
 
 val loot = qualifiedSource(
     "loot",
