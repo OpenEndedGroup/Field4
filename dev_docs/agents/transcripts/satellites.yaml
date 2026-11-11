@@ -241,6 +241,7 @@ operations:
           clock = SkyClock(sky.epoch, speed = 120.0)
           camera = Camera()
           camera.target = vec(0, 0, 0)
+          camera.p.fov = 0.9 // radians: narrow enough that the globe fills the window
 
           // Earth-fixed km to the drawing's frame: north is up (+y), units are Earth radii.
           fun world(e: Xyz) = (e * (1.0 / Frames.EARTH_RADIUS_KM)).let { vec(it.y, it.z, it.x) }
@@ -326,6 +327,7 @@ operations:
         clock = SkyClock(sky.epoch, speed = 120.0)
         camera = Camera()
         camera.target = vec(0, 0, 0)
+        camera.p.fov = 0.9 // radians: narrow enough that the globe fills the window
 
         // Earth-fixed km to the drawing's frame: north is up (+y), units are Earth radii.
         fun world(e: Xyz) = (e * (1.0 / Frames.EARTH_RADIUS_KM)).let { vec(it.y, it.z, it.x) }
