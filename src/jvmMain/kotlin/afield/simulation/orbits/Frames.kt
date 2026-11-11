@@ -6,7 +6,9 @@
  * [Frames.temeToEcef] turns a TEME position by Greenwich mean sidereal time (polar motion is ignored, a few
  * metres); [Frames.geodetic] gives WGS-84 latitude, longitude and height; an [Observer] at a place on the
  * ground gives azimuth, elevation and range to a satellite, and [Observer.passes] finds every interval in
- * which a satellite is above a minimum elevation:
+ * which a satellite is above a minimum elevation. [Sun] says where the sun is, [Frames.isSunlit] whether a
+ * satellite is in the Earth's shadow, and [Observer.visiblePasses] keeps the parts of passes you could see
+ * with the eye: the satellite lit, the sky dark.
  *
  *     import afield.simulation.orbits.*
  *     import java.time.*
@@ -83,6 +85,22 @@ object Frames {
         return Geodetic(lat / DEG, lon / DEG, h)
     }
 
+    /**
+     * True when a satellite at TEME position [teme] (km) is in sunlight at [julian], false in the Earth's shadow.
+     *
+     * The shadow is a cylinder of the Earth's equatorial radius behind the Earth, away from the [Sun]: the umbra
+     * of a low orbit is within a few kilometres of that, and the penumbra between lit and dark is crossed in a few
+     * seconds, which is the size of the error at the shadow's edge.
+     */
+    fun isSunlit(teme: Xyz, julian: Double): Boolean {
+        val sun = Sun.position(julian)
+        val sl = sun.length
+        val along = (teme.x * sun.x + teme.y * sun.y + teme.z * sun.z) / sl
+        if (along >= 0.0) return true
+        val perp = teme - sun * (along / sl)
+        return perp.length > EARTH_RADIUS_KM
+    }
+
     /** The Earth-fixed position of a place on the WGS-84 ellipsoid. */
     fun ecefOf(latitudeDeg: Double, longitudeDeg: Double, heightKm: Double = 0.0): Xyz {
         val e2 = WGS84_F * (2 - WGS84_F)
@@ -90,6 +108,36 @@ object Frames {
         val n = EARTH_RADIUS_KM / sqrt(1 - e2 * sin(lat) * sin(lat))
         return Xyz((n + heightKm) * cos(lat) * cos(lon), (n + heightKm) * cos(lat) * sin(lon), (n * (1 - e2) + heightKm) * sin(lat))
     }
+}
+
+/**
+ * Where the sun is: the low-precision solar ephemeris of Vallado's *Fundamentals of Astrodynamics and Applications*
+ * (algorithm 29), good to about 0.01° between 1950 and 2050.
+ *
+ *     val noon = Instant.parse("2026-11-11T18:00:00Z")
+ *     println(Observer(41.88, -87.63).sunElevationDeg(noon))   // about 30° over Chicago at midday
+ */
+object Sun {
+    /** The astronomical unit, km. */
+    const val AU_KM = 149_597_870.7
+
+    /**
+     * The sun's position at [julian] (UTC), km from the Earth's centre, in the mean equator and equinox of date. That
+     * frame differs from SGP4's TEME by nutation, a few thousandths of a degree, so the result can be used beside
+     * [Sgp4] positions as it is.
+     */
+    fun position(julian: Double): Xyz {
+        val t = (julian - 2451545.0) / 36525.0
+        val meanLong = Math.toRadians((280.460 + 36000.771 * t).rem(360.0))
+        val meanAnomaly = Math.toRadians((357.5291092 + 35999.05034 * t).rem(360.0))
+        val eclipticLong = meanLong + Math.toRadians(1.914666471 * sin(meanAnomaly) + 0.019994643 * sin(2.0 * meanAnomaly))
+        val obliquity = Math.toRadians(23.439291 - 0.0130042 * t)
+        val r = (1.000140612 - 0.016708617 * cos(meanAnomaly) - 0.000139589 * cos(2.0 * meanAnomaly)) * AU_KM
+        return Xyz(r * cos(eclipticLong), r * cos(obliquity) * sin(eclipticLong), r * sin(obliquity) * sin(eclipticLong))
+    }
+
+    /** The sun's position at [time]; see [position]. */
+    fun position(time: Instant): Xyz = position(Frames.julianOf(time))
 }
 
 /**
@@ -154,45 +202,136 @@ data class Observer(val latitudeDeg: Double, val longitudeDeg: Double, val heigh
         return look(Frames.temeToEcef(s.position, Frames.julianOf(time)))
     }
 
+    /** The sun's elevation above this place's horizon at [time], degrees: below -6 the sky is dark enough to see satellites. */
+    fun sunElevationDeg(time: Instant): Double {
+        val jd = Frames.julianOf(time)
+        return look(Frames.temeToEcef(Sun.position(jd), jd)).elevationDeg
+    }
+
     /**
      * Every pass of [satellite] above [minElevationDeg] between [from] and [to].
      *
-     * Samples every [step] (30 s by default, short against a low-orbit pass of several minutes) and refines
-     * each rise and set by bisection to about a second.
+     * Samples every [step] (30 s by default, short against a low-orbit pass of several minutes), refines each rise
+     * and set by bisection, and the culmination by golden-section search, to about a second. A pass already under
+     * way at [from] starts there, and one still under way at [to] ends there, so a geostationary satellite above
+     * the horizon gives one pass covering the whole interval.
      */
     fun passes(
         satellite: Satellite, from: Instant, to: Instant, minElevationDeg: Double = 10.0, step: Duration = Duration.ofSeconds(30),
     ): List<Pass> {
         fun el(t: Instant) = look(satellite, t)?.elevationDeg ?: -90.0
-        fun edge(a0: Instant, b0: Instant): Instant {
-            var a = a0; var b = b0
-            val aboveA = el(a) >= minElevationDeg
-            while (Duration.between(a, b).toMillis() > 1000) {
-                val m = a.plusMillis(Duration.between(a, b).toMillis() / 2)
-                if ((el(m) >= minElevationDeg) == aboveA) a = m else b = m
-            }
-            return b
-        }
         val out = ArrayList<Pass>()
         var t = from
-        val first = el(t)
-        var rise: Instant? = if (first >= minElevationDeg) from else null
-        var best = first; var bestT = from
+        var rise: Instant? = if (el(t) >= minElevationDeg) from else null
+        var bestT = from
+        var best = el(from)
+        fun close(set: Instant) {
+            val r = rise!!
+            val c = highest(::el, maxOf(r, bestT.minus(step)), minOf(set, bestT.plus(step)))
+            val e = el(c)
+            out.add(if (e >= best) Pass(r, set, c, e) else Pass(r, set, bestT, best))
+            rise = null
+        }
         while (t < to) {
-            val n = t.plus(step)
+            val n = minOf(t.plus(step), to)
             val e = el(n)
             if (rise == null && e >= minElevationDeg) {
-                rise = edge(t, n); best = e; bestT = n
+                rise = edge(t, n) { el(it) >= minElevationDeg }
+                best = e; bestT = n
             } else if (rise != null) {
                 if (e > best) { best = e; bestT = n }
-                if (e < minElevationDeg) {
-                    out.add(Pass(rise, edge(t, n), bestT, best))
-                    rise = null
-                }
+                if (e < minElevationDeg) close(edge(t, n) { el(it) >= minElevationDeg })
             }
             t = n
         }
+        if (rise != null) close(to)
         return out
+    }
+
+    /**
+     * The parts of [satellite]'s passes that can be seen with the eye: above [minElevationDeg], with the satellite in
+     * sunlight ([Frames.isSunlit]) and the sun more than [maxSunElevationDeg] below this place's horizon (-6° by
+     * default, the end of civil twilight).
+     *
+     * Each result is a [Pass] cut down to its visible part: [Pass.rise] is when it becomes visible (it may already be
+     * high, coming out of the Earth's shadow), [Pass.set] when it stops (it may fade into the shadow overhead), and
+     * [Pass.maxElevationDeg] the highest it is while visible. Edges are found to about a second.
+     */
+    fun visiblePasses(
+        satellite: Satellite, from: Instant, to: Instant, minElevationDeg: Double = 10.0, maxSunElevationDeg: Double = -6.0,
+        step: Duration = Duration.ofSeconds(30),
+    ): List<Pass> {
+        fun el(t: Instant) = look(satellite, t)?.elevationDeg ?: -90.0
+        fun visible(t: Instant): Boolean {
+            if (el(t) < minElevationDeg) return false
+            if (sunElevationDeg(t) > maxSunElevationDeg) return false
+            val s = satellite.sgp4.propagate(t) ?: return false
+            return Frames.isSunlit(s.position, Frames.julianOf(t))
+        }
+        val fine = Duration.ofSeconds(10)
+        val out = ArrayList<Pass>()
+        for (p in passes(satellite, from, to, minElevationDeg, step)) {
+            // a pass in daylight is never visible: skip it on the sun at rise, culmination and set
+            if (listOf(p.rise, p.culmination, p.set).all { sunElevationDeg(it) > maxSunElevationDeg }) continue
+            var t = p.rise
+            var start: Instant? = if (visible(t)) t else null
+            while (t < p.set) {
+                val n = minOf(t.plus(fine), p.set)
+                val v = visible(n)
+                if (start == null && v) start = edge(t, n, test = ::visible)
+                else if (start != null && !v) {
+                    out.add(visiblePart(start, edge(t, n, lastBefore = true, test = ::visible), ::el))
+                    start = null
+                }
+                t = n
+            }
+            if (start != null) out.add(visiblePart(start, p.set, ::el))
+        }
+        return out
+    }
+
+    private fun visiblePart(a: Instant, b: Instant, el: (Instant) -> Double): Pass {
+        // elevation is unimodal within one pass, so its highest point in [a, b] is a golden-section search away
+        val c = highest(el, a, b)
+        return Pass(a, b, c, el(c))
+    }
+
+    private companion object {
+        /**
+         * The first instant in (a, b] at which [test] differs from its value at [a], to about a second; with
+         * [lastBefore], the last instant before that, at which it still has its value at [a].
+         */
+        fun edge(a0: Instant, b0: Instant, lastBefore: Boolean = false, test: (Instant) -> Boolean): Instant {
+            var a = a0
+            var b = b0
+            val atA = test(a)
+            while (Duration.between(a, b).toMillis() > 1000) {
+                val m = a.plusMillis(Duration.between(a, b).toMillis() / 2)
+                if (test(m) == atA) a = m else b = m
+            }
+            return if (lastBefore) a else b
+        }
+
+        /** Where [f] is greatest in [a, b], by golden-section search to about a second; assumes one peak. */
+        fun highest(f: (Instant) -> Double, a0: Instant, b0: Instant): Instant {
+            val g = (sqrt(5.0) - 1.0) / 2.0
+            var a = a0.toEpochMilli().toDouble()
+            var b = b0.toEpochMilli().toDouble()
+            fun at(ms: Double) = f(Instant.ofEpochMilli(ms.toLong()))
+            var c = b - g * (b - a)
+            var d = a + g * (b - a)
+            var fc = at(c)
+            var fd = at(d)
+            while (b - a > 1000.0) {
+                if (fc > fd) {
+                    b = d; d = c; fd = fc; c = b - g * (b - a); fc = at(c)
+                } else {
+                    a = c; c = d; fc = fd; d = a + g * (b - a); fd = at(d)
+                }
+            }
+            val best = listOf(a0.toEpochMilli().toDouble(), (a + b) / 2, b0.toEpochMilli().toDouble()).maxBy { at(it) }
+            return Instant.ofEpochMilli(best.toLong())
+        }
     }
 }
 

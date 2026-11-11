@@ -55,6 +55,7 @@ void main()
     if (picked) fcol = vec4(1.0, 0.95, 0.8, 1.0);
 
     gl_Position = pc.p * pc.m * vec4(w, 1);
-    // level of detail by distance: a satellite near the camera is drawn larger
-    gl_PointSize = picked ? 16.0 : clamp(pc.clock.y / dist, 1.5, 12.0);
+    // level of detail by distance: a satellite near the camera is drawn larger, and the high, sparse ones
+    // never smaller than 3 pixels, so the navigation shell and the geostationary ring show from far out
+    gl_PointSize = picked ? 16.0 : clamp(pc.clock.y / dist, alt > 2000.0 ? 3.0 : 1.5, 12.0);
 }

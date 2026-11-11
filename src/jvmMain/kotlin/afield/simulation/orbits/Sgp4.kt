@@ -18,10 +18,10 @@
  *     val state = Sgp4(iss).propagate(minutesSinceEpoch = 90.0)
  *     println(state.position)   // km, TEME
  *
- * Only the near-earth branch is implemented: an orbit with a period of 225 minutes or more (GPS,
- * geostationary, Molniya) needs the deep-space SDP4 terms, and [Sgp4] refuses it with an
- * [IllegalArgumentException] rather than returning a wrong answer; [Tle.isDeepSpace] says which is which.
- * Of the CelesTrak "active" catalogue, about 95% of objects are near-earth.
+ * An orbit with a period of 225 minutes or more (GPS, Galileo, geostationary, Molniya) also gets the
+ * deep-space terms, sometimes called SDP4: lunar and solar gravity, and the resonances of 12- and 24-hour
+ * orbits. [Tle.isDeepSpace] says which branch a set takes. Both are checked against the paper's
+ * verification vectors.
  *
  * [Frames] turns TEME into Earth-fixed and geodetic coordinates and look angles from a place on the ground.
  */
@@ -66,7 +66,7 @@ data class Tle(
     /** Orbital period in minutes, from the Kozai mean motion. */
     val periodMinutes: Double get() = 2 * PI / meanMotion
 
-    /** True when the period is 225 minutes or more, the orbits for which SGP4 needs its deep-space terms. */
+    /** True when the period is 225 minutes or more, the orbits for which SGP4 adds its deep-space (lunar-solar and resonance) terms. */
     val isDeepSpace: Boolean get() = periodMinutes >= 225.0
 
     /** The epoch as an [Instant]. */
@@ -146,12 +146,13 @@ data class Tle(
 data class TemeState(val minutesSinceEpoch: Double, val position: Xyz, val velocity: Xyz)
 
 /**
- * The near-earth SGP4 propagator for one [Tle], initialised once and then evaluated at any time.
+ * The SGP4 propagator for one [Tle], initialised once and then evaluated at any time, from any thread.
  *
+ * A [Tle.isDeepSpace] set also gets the lunar-solar and resonance terms (see `DeepSpace.kt`).
  * [propagate] returns `null` when the model breaks down (the satellite has decayed, or the
  * eccentricity has left `[0, 1)`), which happens for real objects close to re-entry.
  *
- * @param tle the element set; must not be [Tle.isDeepSpace].
+ * @param tle the element set.
  */
 class Sgp4(val tle: Tle) {
     private companion object {
@@ -180,6 +181,9 @@ class Sgp4(val tle: Tle) {
     private val con41: Double
     private val x1mth2: Double
     private val x7thm1: Double
+    private val xlcof: Double
+    private val aycof: Double
+    private val deep: DeepSpace?
     private val cc1: Double
     private val cc4: Double
     private val cc5: Double
@@ -195,17 +199,12 @@ class Sgp4(val tle: Tle) {
     private val t3cof: Double
     private val t4cof: Double
     private val t5cof: Double
-    private val xlcof: Double
-    private val aycof: Double
     private val xmcof: Double
     private val mdot: Double
     private val nodedot: Double
     private val nodecf: Double
 
     init {
-        require(!tle.isDeepSpace) {
-            "${tle.name}: period ${"%.1f".format(tle.periodMinutes)} min needs the deep-space SDP4 terms, which Sgp4 does not implement"
-        }
         // initl: recover the Brouwer mean motion from the Kozai one.
         val eccsq = ecco * ecco
         val omeosq = 1.0 - eccsq
@@ -276,6 +275,13 @@ class Sgp4(val tle: Tle) {
         delmo = (1.0 + eta * cos(mo)).pow(3)
         sinmao = sin(mo)
         x7thm1 = 7.0 * cosio2 - 1.0
+        deep = if (2.0 * PI / noUnkozai >= 225.0) {
+            isimp = true
+            DeepSpace(
+                epochDays1950 = tle.epochJulian - 2433281.5, ecco = ecco, inclo = inclo, nodeo = nodeo, argpo = argpo, mo = mo,
+                no = noUnkozai, mdot = mdot, nodedot = nodedot, argpdot = argpdot, xke = XKE, gsto = Frames.gmst(tle.epochJulian),
+            )
+        } else null
         if (!isimp) {
             val cc1sq = cc1 * cc1
             d2 = 4.0 * ao * tsi * cc1sq
@@ -290,13 +296,19 @@ class Sgp4(val tle: Tle) {
         }
     }
 
+    /** True when this propagator runs the deep-space terms. */
+    val isDeepSpace: Boolean get() = deep != null
+
     /**
-     * The secular part of this orbit: Kepler motion with SGP4's J2 drift of node, perigee and mean anomaly, no drag and
-     * no periodic terms. Cheap enough to evaluate for every catalogued object on the GPU each frame; within a
-     * few tens of km of [propagate] for a day around the epoch of a low orbit.
+     * The secular part of this orbit: Kepler motion with SGP4's J2 drift of node, perigee and mean anomaly (plus the
+     * moon's and sun's drift for a deep-space orbit), no drag and no periodic terms. Cheap enough to evaluate for every
+     * catalogued object on the GPU each frame; within a few tens of km of [propagate] for a day around the epoch of a
+     * low orbit.
      */
     val meanElements: MeanElements by lazy {
-        MeanElements(semiMajorAxisRadii * RE, ecco, inclo, nodeo, argpo, mo, nodedot, argpdot, mdot)
+        val d = deep
+        if (d == null) MeanElements(semiMajorAxisRadii * RE, ecco, inclo, nodeo, argpo, mo, nodedot, argpdot, mdot)
+        else MeanElements(semiMajorAxisRadii * RE, ecco, inclo, nodeo, argpo, mo, nodedot + d.dnodt, argpdot + d.domdt, mdot + d.dmdt)
     }
 
     /** The state at [time]. */
@@ -327,10 +339,20 @@ class Sgp4(val tle: Tle) {
             tempe += bstar * cc5 * (sin(mm) - sinmao)
             templ += t3cof * t3 + t4 * (t4cof + t * t5cof)
         }
+        var nm = noUnkozai
+        var em = ecco
+        var inclm = inclo
+        val d = deep
+        if (d != null) {
+            val el = DeepElements(em, argpm, inclm, mm, nodem, nm)
+            d.secular(t, el)
+            em = el.em; argpm = el.argpm; inclm = el.inclm; mm = el.mm; nodem = el.nodem; nm = el.nm
+        }
+        if (nm <= 0.0) return null
         if (tempa <= 0.0) return null
-        val am = (XKE / noUnkozai).pow(X2O3) * tempa * tempa
-        val nm = XKE / am.pow(1.5)
-        var em = ecco - tempe
+        val am = (XKE / nm).pow(X2O3) * tempa * tempa
+        nm = XKE / am.pow(1.5)
+        em -= tempe
         if (em >= 1.0 || em < -0.001) return null
         if (em < 1.0e-6) em = 1.0e-6
         mm += noUnkozai * templ
@@ -339,17 +361,49 @@ class Sgp4(val tle: Tle) {
         argpm = argpm.rem(TWOPI)
         xlm = xlm.rem(TWOPI)
         mm = (xlm - argpm - nodem).rem(TWOPI)
-        val sinip = sin(tle.inclination)
-        val cosip = cos(tle.inclination)
+
+        var ep = em
+        var xincp = inclm
+        var argpp = argpm
+        var nodep = nodem
+        var mp = mm
+        var ayc = aycof
+        var xlc = xlcof
+        var c41 = con41
+        var x1m = x1mth2
+        var x7m = x7thm1
+        if (d != null) {
+            // Lunar-solar periodics, then the inclination-dependent coefficients again for the perturbed inclination.
+            val el = DeepElements(ep, argpp, xincp, mp, nodep, nm)
+            d.periodics(t, el)
+            ep = el.em; xincp = el.inclm; nodep = el.nodem; argpp = el.argpm; mp = el.mm
+            if (xincp < 0.0) {
+                xincp = -xincp
+                nodep += PI
+                argpp -= PI
+            }
+            if (ep < 0.0 || ep > 1.0) return null
+        }
+        val sinip = sin(xincp)
+        val cosip = cos(xincp)
+        if (d != null) {
+            ayc = -0.5 * J3OJ2 * sinip
+            xlc = if (abs(cosip + 1.0) > 1.5e-12) -0.25 * J3OJ2 * sinip * (3.0 + 5.0 * cosip) / (1.0 + cosip)
+            else -0.25 * J3OJ2 * sinip * (3.0 + 5.0 * cosip) / 1.5e-12
+            val cosisq = cosip * cosip
+            c41 = 3.0 * cosisq - 1.0
+            x1m = 1.0 - cosisq
+            x7m = 7.0 * cosisq - 1.0
+        }
 
         // Long-period periodics.
-        val axnl = em * cos(argpm)
-        var temp = 1.0 / (am * (1.0 - em * em))
-        val aynl = em * sin(argpm) + temp * aycof
-        val xl = mm + argpm + nodem + temp * xlcof * axnl
+        val axnl = ep * cos(argpp)
+        var temp = 1.0 / (am * (1.0 - ep * ep))
+        val aynl = ep * sin(argpp) + temp * ayc
+        val xl = mp + argpp + nodep + temp * xlc * axnl
 
         // Kepler's equation in the form SGP4 solves it.
-        val u = (xl - nodem).rem(TWOPI)
+        val u = (xl - nodep).rem(TWOPI)
         var eo1 = u
         var tem5 = 9999.9
         var ktr = 1
@@ -384,12 +438,12 @@ class Sgp4(val tle: Tle) {
         temp = 1.0 / pl
         val temp1 = 0.5 * J2 * temp
         val temp2 = temp1 * temp
-        val mrt = rl * (1.0 - 1.5 * temp2 * betal * con41) + 0.5 * temp1 * x1mth2 * cos2u
-        su -= 0.25 * temp2 * x7thm1 * sin2u
-        val xnode = nodem + 1.5 * temp2 * cosip * sin2u
-        val xinc = tle.inclination + 1.5 * temp2 * cosip * sinip * cos2u
-        val mvt = rdotl - nm * temp1 * x1mth2 * sin2u / XKE
-        val rvdot = rvdotl + nm * temp1 * (x1mth2 * cos2u + 1.5 * con41) / XKE
+        val mrt = rl * (1.0 - 1.5 * temp2 * betal * c41) + 0.5 * temp1 * x1m * cos2u
+        su -= 0.25 * temp2 * x7m * sin2u
+        val xnode = nodep + 1.5 * temp2 * cosip * sin2u
+        val xinc = xincp + 1.5 * temp2 * cosip * sinip * cos2u
+        val mvt = rdotl - nm * temp1 * x1m * sin2u / XKE
+        val rvdot = rvdotl + nm * temp1 * (x1m * cos2u + 1.5 * c41) / XKE
 
         val sinsu = sin(su); val cossu = cos(su)
         val snod = sin(xnode); val cnod = cos(xnode)
@@ -422,6 +476,9 @@ class Sgp4(val tle: Tle) {
 data class Xyz(val x: Double, val y: Double, val z: Double) {
     /** Euclidean length. */
     val length: Double get() = sqrt(x * x + y * y + z * z)
+
+    /** Component-wise sum. */
+    operator fun plus(o: Xyz) = Xyz(x + o.x, y + o.y, z + o.z)
 
     /** Component-wise difference. */
     operator fun minus(o: Xyz) = Xyz(x - o.x, y - o.y, z - o.z)
