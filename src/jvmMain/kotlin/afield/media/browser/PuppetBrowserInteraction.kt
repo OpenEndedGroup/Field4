@@ -98,6 +98,26 @@ class PuppetBrowserUvInput(val browser: PuppetBrowserControl, val viewport: Exte
         )
     }
 
+    /** Ask the control under the controller ray to reset, without clicking or changing keyboard focus. */
+    fun resetControl(u: Double, v: Double) {
+        val x = u * cssWidth
+        val y = v * cssHeight
+        if (!x.isFinite() || !y.isFinite()) return
+        browser.evaluate("""(() => {
+            let doc = document, x = $x, y = $y, target = doc.elementFromPoint(x, y);
+            while (target && target.tagName === 'IFRAME') {
+                try {
+                    const rect = target.getBoundingClientRect();
+                    x -= rect.left + target.clientLeft; y -= rect.top + target.clientTop;
+                    doc = target.contentDocument;
+                    if (!doc) return;
+                    target = doc.elementFromPoint(x, y);
+                } catch (_) { return; }
+            }
+            target?.dispatchEvent(new doc.defaultView.CustomEvent('field-controller-reset', { bubbles: true }));
+        })()""")
+    }
+
     fun releaseAll() {
         BrowserMouseButton.entries
             .filter { it != BrowserMouseButton.NONE && buttons and it.cdpBit != 0 }

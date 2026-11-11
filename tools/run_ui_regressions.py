@@ -434,7 +434,7 @@ var velocity = Vector2f(0.25f, -0.5f)
 var tint = Vector4f(0.2f, 0.7f, 1.0f, 1.0f)
 
 controlGroup("controls") {
-    slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = gain) { gain = it }
+    slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = gain, unit = "m/s2") { gain = it }
     checkbox("enabled", initialValue = enabled) { enabled = it }
     stringInput("label", initialValue = label) { label = it }
     vec2Control(
@@ -2206,6 +2206,8 @@ try {
       count: controls.length,
       labels,
       hasSlider: !!root?.querySelector(".phone-control-slider input[type='range']"),
+      sliderValue: root?.querySelector(".phone-control-slider .phone-control-value")?.textContent || "",
+      sliderTransform: root?.querySelector(".phone-control-slider .phone-control-value") ? doc.defaultView.getComputedStyle(root.querySelector(".phone-control-slider .phone-control-value")).textTransform : "",
       hasCheckbox: !!root?.querySelector(".phone-control-checkbox .phone-toggle"),
       hasString: !!root?.querySelector(".phone-control-string .phone-text-input"),
       hasVec2: !!root?.querySelector(".phone-control-vec2 .phone-vec2-pad"),
@@ -2243,10 +2245,10 @@ try {
     };
     const controlsReady = controls.count === 5 &&
       expectedLabels.every((label) => controls.labels.includes(label)) &&
-      controls.hasSlider && controls.hasCheckbox && controls.hasString && controls.hasVec2 && controls.hasColor;
+      controls.hasSlider && controls.sliderValue.endsWith(" m/s²") && controls.sliderTransform === "none" && controls.hasCheckbox && controls.hasString && controls.hasVec2 && controls.hasColor;
     const outputsReady = outputControls.count === 5 &&
       expectedLabels.every((label) => outputControls.labels.includes(label)) &&
-      outputControls.hasSlider && outputControls.hasCheckbox && outputControls.hasString && outputControls.hasVec2 && outputControls.hasColor &&
+      outputControls.hasSlider && outputControls.sliderValue.endsWith(" m/s²") && outputControls.sliderTransform === "none" && outputControls.hasCheckbox && outputControls.hasString && outputControls.hasVec2 && outputControls.hasColor &&
       last.outputFrameCount === 1 &&
       last.hasSummary &&
       last.summaryText.includes("native controller controls ready");
@@ -2255,7 +2257,14 @@ try {
       controlsReady &&
       outputsReady &&
       last.errors.length === 0;
-    if (last.ok) return last;
+    if (last.ok) {
+      const slider = controlsDoc.querySelector("#group-controls .phone-control-slider input[type='range']");
+      slider.value = "0.63";
+      slider.dispatchEvent(new controlsFrame.contentWindow.Event("input", { bubbles: true }));
+      last.sliderAfterInput = controlsDoc.querySelector("#group-controls .phone-control-slider .phone-control-value")?.textContent || "";
+      last.ok = last.sliderAfterInput === "0.63 m/s²";
+      return last;
+    }
     await delay(250);
   }
   return { ok: false, reason: "controller native control group did not become ready", ...last };

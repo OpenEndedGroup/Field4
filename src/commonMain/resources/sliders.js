@@ -1960,7 +1960,7 @@ function updateSlider(container, value, { send = false, announce = send } = {}) 
     }
 
     const valueDisplay = document.getElementById(`${sliderId}-value`);
-    const formatted = lawFormat(spec, v);
+    const formatted = lawFormat(spec, v) + (container.dataset.unit ? ` ${container.dataset.unit}` : '');
     if (valueDisplay) {
         valueDisplay.textContent = formatted;
     }
@@ -2786,6 +2786,16 @@ function addDelegatedListeners() {
             evt.stopPropagation();
         }
     }, true);
+    document.addEventListener('field-controller-reset', (evt) => {
+        const container = evt.target.closest?.('.field-slider');
+        if (!container) return;
+        resetSlider(container);
+        sliderWheelState.delete(container);
+        if (sliderState.active === container) {
+            sliderState.t = sliderCurrentT(container);
+            sliderState.relative = true;
+        }
+    });
     // The wheel turns a slider only once it has focus (a click or Tab gave it one): an unfocused
     // slider under a passing wheel must not steal the canvas scroll. Vertical notches are arrow
     // presses; horizontal motion follows the track, retaining sub-step movement until it accumulates.

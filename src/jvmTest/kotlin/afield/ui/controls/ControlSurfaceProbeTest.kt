@@ -33,6 +33,8 @@ import afield.ui.output.controlGroup
 import afield.ui.output.controllerControlsForBox
 import afield.ui.output.slider
 import afield.ui.output.sliders
+import afield.ui.output.controlUnitSymbol
+import eu.sirotin.kotunil.base.mm
 import afield.media.image.util.NodeTool
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -191,6 +193,16 @@ class ControlSurfaceProbeTest {
         val html = seen.singleOrNull()?.second as? String
             ?: fail("controlGroup emitted ${seen.size} display payload(s), expected exactly one string")
         return html to controllerControlsForBox(box.id)
+    }
+
+    @Test fun `slider units use Field formatting and travel to the controller surface`() {
+        assertEquals("mm", controlUnitSymbol(mm))
+        val (html, controls) = built { slider("acceleration", initialValue = 0.5, unit = "m/s2") {} }
+        assertEquals("m/s²", controls.single().unit)
+        assertTrue(html.contains("data-unit=\"m/s²\""))
+        assertTrue(html.contains("0.50 m/s²"))
+        val escaped = buildSliderHtml("safe", "safe", 0.0, 1.0, 0.01, 0.5, unit = "<m&\"s>")
+        assertTrue(escaped.contains("&lt;m&amp;&quot;s&gt;"))
     }
 
     private val laws = listOf(
