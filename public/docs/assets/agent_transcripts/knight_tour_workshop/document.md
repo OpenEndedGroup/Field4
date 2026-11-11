@@ -11,18 +11,16 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="73b2ad1a-50a9-40ed-bef3-9456d8cf0d91" index="0" -->
 
 ```edn [field-box id="73b2ad1a-50a9-40ed-bef3-9456d8cf0d91" role="properties"]
-{"id" "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91" "index" 0 "name" "knight tours" "parents" ["root"] "children" ["cc20e577-5142-4a8b-8083-3c737fc5b084" "756af284-5020-45dd-baf4-7b3bc777e681" "2685e17b-ada6-4ad7-8de3-b127719b87d2" "0046694c-4358-43c9-913e-a17d8e55c785"] "properties" {"children" #{#afield/box "cc20e577-5142-4a8b-8083-3c737fc5b084" #afield/box "756af284-5020-45dd-baf4-7b3bc777e681" #afield/box "2685e17b-ada6-4ad7-8de3-b127719b87d2" #afield/box "0046694c-4358-43c9-913e-a17d8e55c785"} "parents" #{#afield/box "root"} "name" "knight tours" "_tombstone" false "frame" #afield/rect [60.0 60.0 240.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91_code_.kt" "lines" 257 "characters" 9051 "sha256" "bd5f64c6a732a532ac06fc351bd26ed6cd48f6bb548b79c4c8dabcaa3159d034"} {"name" "preamble" "language" "text" "lines" 15 "characters" 818 "sha256" "09c867bc9bfcc70225ff505869ec5376a2aba697d306780ce2ef86693c146d7b"}]}
+{"id" "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91" "index" 0 "name" "knight tours" "parents" ["root"] "children" ["cc20e577-5142-4a8b-8083-3c737fc5b084" "756af284-5020-45dd-baf4-7b3bc777e681" "2685e17b-ada6-4ad7-8de3-b127719b87d2" "0046694c-4358-43c9-913e-a17d8e55c785"] "properties" {"children" #{#afield/box "cc20e577-5142-4a8b-8083-3c737fc5b084" #afield/box "756af284-5020-45dd-baf4-7b3bc777e681" #afield/box "2685e17b-ada6-4ad7-8de3-b127719b87d2" #afield/box "0046694c-4358-43c9-913e-a17d8e55c785"} "parents" #{#afield/box "root"} "name" "knight tours" "_tombstone" false "frame" #afield/rect [60.0 60.0 240.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91_code_.kt" "lines" 255 "characters" 8975 "sha256" "542d2214ea63c0ee981517d3a77ba58da471dfe1a28f64585693f329b830b687"} {"name" "preamble" "language" "text" "lines" 15 "characters" 818 "sha256" "09c867bc9bfcc70225ff505869ec5376a2aba697d306780ce2ef86693c146d7b"}]}
 ```
 
 ```kotlin [field-property box="73b2ad1a-50a9-40ed-bef3-9456d8cf0d91" name="code" path="73b2ad1a-50a9-40ed-bef3-9456d8cf0d91_code_.kt"]
-import afield.runtime.execution.begin
-import kotlin.math.*
 import kotlin.random.Random
 
 // Squares are numbered y * w + x. A tour is an IntArray of every square, starting at s, ending at t.
 
 fun knightNeighbours(w: Int, h: Int): Array<IntArray> {
-    val jumps = listOf(1 to 2, 2 to 1, -1 to 2, -2 to 1, 1 to -2, 2 to -1, -1 to -2, -2 to -1)
+    val jumps = [1 to 2, 2 to 1, -1 to 2, -2 to 1, 1 to -2, 2 to -1, -1 to -2, -2 to -1]
     return Array(w * h) { i ->
         jumps
             .mapNotNull { (dx, dy) ->
@@ -193,7 +191,7 @@ fun threePointArc(
     val cx = c.first - ax
     val cy = c.second - ay
     val cross = bx * cy - by * cx
-    if (abs(cross) < 1e-9) return listOf(a, b, c)
+    if (abs(cross) < 1e-9) return [a, b, c]
     val bb = bx * bx + by * by
     val cc = cx * cx + cy * cy
     val ux = (bb * cy - cc * by) / (2 * cross)
@@ -237,11 +235,11 @@ fun tourLine(tour: IntArray, w: Int) = fline {
 val w = 8
 val s = 0
 val t = 6 * w + 7
-val rows = listOf(
+val rows = [
     allKnightTours(w, w, s, t).take(6).toList(),
     rotationKnightTours(w, w, s, t, Random(1)).take(6).toList(),
     randomKnightTours(w, w, s, t, Random(1)).take(6).toList(),
-)
+]
 // Compute arc geometry once for the existing arc-based child views.
 val arcRows = rows.map { row ->
     row.map { tour ->
@@ -297,12 +295,10 @@ val Why.knightCellSize by Whying() /**/
 <!-- field-box id="cc20e577-5142-4a8b-8083-3c737fc5b084" index="1" -->
 
 ```edn [field-box id="cc20e577-5142-4a8b-8083-3c737fc5b084" role="properties"]
-{"id" "cc20e577-5142-4a8b-8083-3c737fc5b084" "index" 1 "name" "knight tour glued arcs" "parents" ["root" "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"} "name" "knight tour glued arcs" "_tombstone" false "frame" #afield/rect [620.0 60.0 240.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cc20e577-5142-4a8b-8083-3c737fc5b084_code_.kt" "lines" 152 "characters" 5885 "sha256" "7855c47bb6c6db94a168e060dbfe4cb94fce87c416fb0a0f0dd5d18d19463fae"} {"name" "preamble" "language" "text" "lines" 15 "characters" 1508 "sha256" "6a3824d08189eef7b04e5aa0fdde9553115de3bcc5d74182a7b29127cc985954"}]}
+{"id" "cc20e577-5142-4a8b-8083-3c737fc5b084" "index" 1 "name" "knight tour glued arcs" "parents" ["root" "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"} "name" "knight tour glued arcs" "_tombstone" false "frame" #afield/rect [620.0 60.0 240.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cc20e577-5142-4a8b-8083-3c737fc5b084_code_.kt" "lines" 150 "characters" 5852 "sha256" "af28bbaaf2f909ef8dff98458c93cc38230c682c4ee0d554be8302c77013c4c9"} {"name" "preamble" "language" "text" "lines" 15 "characters" 1508 "sha256" "6a3824d08189eef7b04e5aa0fdde9553115de3bcc5d74182a7b29127cc985954"}]}
 ```
 
 ```kotlin [field-property box="cc20e577-5142-4a8b-8083-3c737fc5b084" name="code" path="cc20e577-5142-4a8b-8083-3c737fc5b084_code_.kt"]
-import kotlin.math.*
-
 val arcScale = 0.33
 val cell = knightCellSize
 val boardW = knightBoardWidth * cell
@@ -323,7 +319,7 @@ fun shortRoute(arcs: List<List<Pair<Double, Double>>>): List<Int> {
     if (n == 0) return emptyList()
     var best = (1..n).toList()
     var bestLength = joinLength(arcs, best)
-    for (start in 1..n) for (direction in listOf(1, -1)) {
+    for (start in 1..n) for (direction in [1, -1]) {
         val route = mutableListOf(start * direction)
         val used = BooleanArray(n)
         used[start - 1] = true
@@ -332,7 +328,7 @@ fun shortRoute(arcs: List<List<Pair<Double, Double>>>): List<Int> {
             var choice = 0
             var shortest = Double.POSITIVE_INFINITY
             for (k in 1..n) if (!used[k - 1])
-                for (sign in listOf(1, -1)) {
+                for (sign in [1, -1]) {
                     val d = distance(p, entry(arcs, k * sign))
                     if (d < shortest) {
                         shortest = d
@@ -477,13 +473,17 @@ val Why.knightCellSize by Whying() /*from:73b2ad1a-50a9-40ed-bef3-9456d8cf0d91*/
 
 <!-- field-box id="756af284-5020-45dd-baf4-7b3bc777e681" index="2" -->
 
+### Narrative
+
+From `code`
+
+Uniform scale about each triple's original B. 1.0 restores the source arcs.
+
 ```edn [field-box id="756af284-5020-45dd-baf4-7b3bc777e681" role="properties"]
-{"id" "756af284-5020-45dd-baf4-7b3bc777e681" "index" 2 "name" "knight tour perpendicular arcs" "parents" ["root" "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"} "name" "knight tour perpendicular arcs" "_tombstone" false "frame" #afield/rect [340.0 240.0 240.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "756af284-5020-45dd-baf4-7b3bc777e681_code_.kt" "lines" 120 "characters" 4168 "sha256" "06b47968ce2c0067a35b8eb1cc8b589db602996370148bef38fd43b56d734485"} {"name" "preamble" "language" "text" "lines" 15 "characters" 1508 "sha256" "6a3824d08189eef7b04e5aa0fdde9553115de3bcc5d74182a7b29127cc985954"}]}
+{"id" "756af284-5020-45dd-baf4-7b3bc777e681" "index" 2 "name" "knight tour perpendicular arcs" "parents" ["root" "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"} "name" "knight tour perpendicular arcs" "_tombstone" false "frame" #afield/rect [340.0 240.0 240.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "756af284-5020-45dd-baf4-7b3bc777e681_code_.kt" "lines" 118 "characters" 4147 "sha256" "f1c17ff13721782dd3c791010d6c035fa30466b15958821b6123e8a27c5b1a2a"} {"name" "preamble" "language" "text" "lines" 15 "characters" 1508 "sha256" "6a3824d08189eef7b04e5aa0fdde9553115de3bcc5d74182a7b29127cc985954"}]}
 ```
 
 ```kotlin [field-property box="756af284-5020-45dd-baf4-7b3bc777e681" name="code" path="756af284-5020-45dd-baf4-7b3bc777e681_code_.kt"]
-import kotlin.math.*
-
 // Uniform scale about each triple's original B. 1.0 restores the source arcs.
 val arcScale = 0.5
 // Signed shift along the original A-to-C normal, applied after scaling.
@@ -626,14 +626,18 @@ val Why.knightCellSize by Whying() /*from:73b2ad1a-50a9-40ed-bef3-9456d8cf0d91*/
 
 <!-- field-box id="2685e17b-ada6-4ad7-8de3-b127719b87d2" index="3" -->
 
+### Narrative
+
+From `code`
+
+Selection in the parent's computed rows (0: exhaustive, 1: rotation, 2: random).
+Change either selector and rerun this box; no tour search or arc sampling is repeated.
+
 ```edn [field-box id="2685e17b-ada6-4ad7-8de3-b127719b87d2" role="properties"]
-{"id" "2685e17b-ada6-4ad7-8de3-b127719b87d2" "index" 3 "name" "knight tour arc growth" "parents" ["root" "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"} "name" "knight tour arc growth" "_tombstone" false "frame" #afield/rect [340.0 60.0 240.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "2685e17b-ada6-4ad7-8de3-b127719b87d2_code_.kt" "lines" 116 "characters" 4380 "sha256" "a8c2f6ab090924eeb9dd9cbdcf9f00adbfbf86b7adcf40558138d70095552752"} {"name" "preamble" "language" "text" "lines" 15 "characters" 1508 "sha256" "6a3824d08189eef7b04e5aa0fdde9553115de3bcc5d74182a7b29127cc985954"}]}
+{"id" "2685e17b-ada6-4ad7-8de3-b127719b87d2" "index" 3 "name" "knight tour arc growth" "parents" ["root" "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"} "name" "knight tour arc growth" "_tombstone" false "frame" #afield/rect [340.0 60.0 240.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "2685e17b-ada6-4ad7-8de3-b127719b87d2_code_.kt" "lines" 113 "characters" 4322 "sha256" "fed30e3885addde445d4ea3666f5aae06a801141c22b9f5a05045bcebd13bcb5"} {"name" "preamble" "language" "text" "lines" 15 "characters" 1508 "sha256" "6a3824d08189eef7b04e5aa0fdde9553115de3bcc5d74182a7b29127cc985954"}]}
 ```
 
 ```kotlin [field-property box="2685e17b-ada6-4ad7-8de3-b127719b87d2" name="code" path="2685e17b-ada6-4ad7-8de3-b127719b87d2_code_.kt"]
-import afield.ui.output.displayClear
-import kotlin.math.*
-
 // Selection in the parent's computed rows (0: exhaustive, 1: rotation, 2: random).
 // Change either selector and rerun this box; no tour search or arc sampling is repeated.
 val sourceRow = 0
@@ -771,14 +775,19 @@ val Why.knightCellSize by Whying() /*from:73b2ad1a-50a9-40ed-bef3-9456d8cf0d91*/
 
 <!-- field-box id="0046694c-4358-43c9-913e-a17d8e55c785" index="4" -->
 
+### Narrative
+
+From `code`
+
+Zipped layers: use [a, b, c] or a scalar. Short lists hold their last value.
+All geometry parameters are deliberately UNCLAMPED.
+Trims are fractions of the original move removed from each end.
+
 ```edn [field-box id="0046694c-4358-43c9-913e-a17d8e55c785" role="properties"]
-{"id" "0046694c-4358-43c9-913e-a17d8e55c785" "index" 4 "name" "knight tour line experiments" "parents" ["root" "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"} "name" "knight tour line experiments" "_tombstone" false "frame" #afield/rect [60.0 240.0 240.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "0046694c-4358-43c9-913e-a17d8e55c785_code_.kt" "lines" 157 "characters" 6794 "sha256" "645ee0ef34f39da89fb585af98c43214844af98ab927fcc8f6e0edb95b6fe8f5"} {"name" "preamble" "language" "text" "lines" 15 "characters" 1508 "sha256" "6a3824d08189eef7b04e5aa0fdde9553115de3bcc5d74182a7b29127cc985954"}]}
+{"id" "0046694c-4358-43c9-913e-a17d8e55c785" "index" 4 "name" "knight tour line experiments" "parents" ["root" "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91"} "name" "knight tour line experiments" "_tombstone" false "frame" #afield/rect [60.0 240.0 240.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "0046694c-4358-43c9-913e-a17d8e55c785_code_.kt" "lines" 154 "characters" 6745 "sha256" "0f9ee3f919259df6df3a1b8db8543c1cb9e229e603083368c4040905d5e075d8"} {"name" "preamble" "language" "text" "lines" 15 "characters" 1508 "sha256" "6a3824d08189eef7b04e5aa0fdde9553115de3bcc5d74182a7b29127cc985954"}]}
 ```
 
 ```kotlin [field-property box="0046694c-4358-43c9-913e-a17d8e55c785" name="code" path="0046694c-4358-43c9-913e-a17d8e55c785_code_.kt"]
-import afield.math.linalg.*
-import kotlin.math.*
-
 /*
 Zipped layers: use [a, b, c] or a scalar. Short lists hold their last value.
 All geometry parameters are deliberately UNCLAMPED.

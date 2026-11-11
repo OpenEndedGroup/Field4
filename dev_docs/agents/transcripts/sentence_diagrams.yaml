@@ -57,7 +57,6 @@ operations:
       h: 100
     properties:
       code: |
-        import afield.graphics.render.color
         import afield.graphics.text.sentences.*
 
         val d = SentenceDiagram().use(Sentences.example(2))
@@ -102,7 +101,6 @@ operations:
       h: 100
     properties:
       code: |
-        import afield.graphics.render.color
         import afield.graphics.text.sentences.*
 
         val d = SentenceDiagram().use(Sentences.example(3))

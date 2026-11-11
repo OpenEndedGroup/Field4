@@ -64,22 +64,20 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
             ["checkCodebaseReference", "checkKDocAttachment", "citationGates"],
         )
 
-    def test_shader_macro_change_also_selects_completion_corpus_guard(self) -> None:
-        self.assertEqual(
-            task_names(["src/jvmMain/kotlin/afield/graphics/shader/shaders.kt"]),
-            [
-                "checkCodebaseReference",
-                "checkKDocAttachment",
-                "checkCompletionCorpusFixtures",
-                "citationGates",
-            ],
-        )
+    def test_macro_and_compiler_changes_leave_the_harvest_to_the_nightly_refresh(self) -> None:
+        # The corpus moves with these too, but routines/completion-corpus re-harvests main nightly.
+        for path in ("src/jvmMain/kotlin/afield/graphics/shader/shaders.kt",
+                     "src/jvmMain/kotlin/afield/graphics/scene/simplePLYSupport.kt",
+                     "src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface.kt"):
+            with self.subTest(path=path):
+                self.assertNotIn("checkCompletionCorpusFixtures", task_names([path]))
 
-    def test_macro_producer_is_discovered_from_its_registration(self) -> None:
-        self.assertEqual(
-            task_names(["src/jvmMain/kotlin/afield/graphics/scene/simplePLYSupport.kt"]),
-            ["checkCodebaseReference", "checkKDocAttachment", "checkCompletionCorpusFixtures", "citationGates"],
-        )
+    def test_the_harvester_and_its_fixtures_still_select_the_corpus_guard(self) -> None:
+        for path in ("src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpusHarvest.kt",
+                     "src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt",
+                     "tools/completion-corpus/boxes/manifest.tsv"):
+            with self.subTest(path=path):
+                self.assertIn("checkCompletionCorpusFixtures", task_names([path]))
 
     def test_ordinary_kotlin_source_does_not_become_a_corpus_input(self) -> None:
         self.assertEqual(
@@ -129,7 +127,7 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertIn("checkPythonTools", task_names([path]))
 
-    def test_transcript_change_selects_bundle_then_completion_fixtures_and_index(self) -> None:
+    def test_transcript_change_selects_bundle_and_index(self) -> None:
         self.assertEqual(
             task_names(["dev_docs/agents/transcripts/hello.yaml"]),
             # citationGates because PersonalBoundaryTest reads transcript yaml: a box program is
@@ -139,7 +137,6 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
                 "checkAgentTranscriptIndex", "checkDocsPublications",
                 "checkTranscriptRegistration",
                 "checkAgentTranscriptLayouts",
-                "checkCompletionCorpusFixtures",
                 "checkBoxIdioms",
                 "checkBoxCodeFormat",
                 "checkBoxCodeCompiles",
@@ -200,13 +197,12 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertNotIn("checkBoxCodeFormat", task_names([path]))
 
-    def test_materialized_transcript_also_selects_completion_corpus(self) -> None:
+    def test_materialized_transcript_selects_bundle_and_index(self) -> None:
         self.assertEqual(
             task_names(["public/docs/assets/agent_transcripts/hello/metadata.edn"]),
             [
                 "checkAgentTranscripts",
                 "checkAgentTranscriptIndex", "checkDocsPublications",
-                "checkCompletionCorpusFixtures",
                 "citationGates",
             ],
         )
@@ -216,7 +212,7 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
         # the three committed forms PersonalBoundaryTest reads.
         self.assertEqual(
             task_names(["templates/hello/metadata.edn"]),
-            ["checkAgentDemos", "checkCompletionCorpusFixtures", "citationGates"],
+            ["checkAgentDemos", "citationGates"],
         )
 
     def test_unrelated_change_selects_nothing(self) -> None:
@@ -452,7 +448,6 @@ class MergeSelectionTests(unittest.TestCase):
                 "checkKDocAttachment",
                 "checkAgentTranscripts",
                 "checkAgentTranscriptIndex", "checkDocsPublications",
-                "checkCompletionCorpusFixtures",
                 "citationGates",
             ],
         )

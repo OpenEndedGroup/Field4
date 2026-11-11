@@ -237,12 +237,10 @@ showRow("main", parts, width = 720)
 <!-- field-box id="nca_damage" index="6" -->
 
 ```edn [field-box id="nca_damage" role="properties"]
-{"id" "nca_damage" "index" 6 "name" "growing nca — damage sweep" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "growing nca — damage sweep" "_tombstone" false "frame" #afield/rect [40.0 1560.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "nca_damage_code_.kt" "lines" 107 "characters" 5177 "sha256" "5d3a7e15895c5de65fe0600570a8d7179ca26f756b3dba99755acd1361116942"}]}
+{"id" "nca_damage" "index" 6 "name" "growing nca — damage sweep" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "growing nca — damage sweep" "_tombstone" false "frame" #afield/rect [40.0 1560.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "nca_damage_code_.kt" "lines" 105 "characters" 5098 "sha256" "b948807d3d10d349e45882f6b5804fee6d45140384a77dd5387c63e5c14155a7"}]}
 ```
 
 ```kotlin [field-property box="nca_damage" name="code" path="nca_damage_code_.kt"]
-import afield.ui.output.FieldMarkdown
-import afield.ui.visualization.ScaleKind
 import java.util.Base64
 
 /*

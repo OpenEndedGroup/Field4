@@ -46,7 +46,7 @@ includable by this box's shaders and its descendants': `#include "dist/ring"`,
 shader box: its next compile includes the new graph.
 
 ```edn [field-box id="noiselang_gpu_dists" role="properties"]
-{"id" "noiselang_gpu_dists" "index" 1 "name" "distributions (run me first)" "parents" ["root" "agent_graphics_context"] "children" ["noiselang_gpu"] "properties" {"children" #{#afield/box "noiselang_gpu"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "distributions (run me first)" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "noiselang_gpu_dists_code_.kt" "lines" 24 "characters" 1135 "sha256" "d73c0ace1b3ebb19821c73920b301325e99a0008fe5d08946facb74f9ab7064a"}]}
+{"id" "noiselang_gpu_dists" "index" 1 "name" "distributions (run me first)" "parents" ["root" "agent_graphics_context"] "children" ["noiselang_gpu"] "properties" {"children" #{#afield/box "noiselang_gpu"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "distributions (run me first)" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "noiselang_gpu_dists_code_.kt" "lines" 24 "characters" 1129 "sha256" "dedff760ce283f1d000ea7945cafaee1fdc6f20e66e67b9d440da8387748f946"}]}
 ```
 
 ```kotlin [field-property box="noiselang_gpu_dists" name="code" path="noiselang_gpu_dists_code_.kt"]
@@ -61,7 +61,7 @@ import afield.math.distribution.*
 // a ring: radius about 1, any angle; drawn jointly, so x and y share the same radius and angle
 val radius = normal(1, 0.08)
 val angle = uniform(0, 2 * Math.PI)
-val ring = listOf(radius * angle.cos(), radius * angle.sin())
+val ring = [radius * angle.cos(), radius * angle.sin()]
 distHere("ring", ring)
 
 // the same ring, given x + y > 0.5: a posterior the shader draws by weighted reservoir sampling

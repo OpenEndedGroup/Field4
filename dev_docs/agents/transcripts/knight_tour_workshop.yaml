@@ -10,15 +10,13 @@ operations:
       w: 240.0
       h: 100.0
     properties:
-      code: |-
-        import afield.runtime.execution.begin
-        import kotlin.math.*
+      code: |
         import kotlin.random.Random
 
         // Squares are numbered y * w + x. A tour is an IntArray of every square, starting at s, ending at t.
 
         fun knightNeighbours(w: Int, h: Int): Array<IntArray> {
-            val jumps = listOf(1 to 2, 2 to 1, -1 to 2, -2 to 1, 1 to -2, 2 to -1, -1 to -2, -2 to -1)
+            val jumps = [1 to 2, 2 to 1, -1 to 2, -2 to 1, 1 to -2, 2 to -1, -1 to -2, -2 to -1]
             return Array(w * h) { i ->
                 jumps
                     .mapNotNull { (dx, dy) ->
@@ -189,7 +187,7 @@ operations:
             val cx = c.first - ax
             val cy = c.second - ay
             val cross = bx * cy - by * cx
-            if (abs(cross) < 1e-9) return listOf(a, b, c)
+            if (abs(cross) < 1e-9) return [a, b, c]
             val bb = bx * bx + by * by
             val cc = cx * cx + cy * cy
             val ux = (bb * cy - cc * by) / (2 * cross)
@@ -233,11 +231,11 @@ operations:
         val w = 8
         val s = 0
         val t = 6 * w + 7
-        val rows = listOf(
+        val rows = [
             allKnightTours(w, w, s, t).take(6).toList(),
             rotationKnightTours(w, w, s, t, Random(1)).take(6).toList(),
             randomKnightTours(w, w, s, t, Random(1)).take(6).toList(),
-        )
+        ]
         // Compute arc geometry once for the existing arc-based child views.
         val arcRows = rows.map { row ->
             row.map { tour ->
@@ -306,10 +304,7 @@ operations:
       w: 240.0
       h: 100.0
     properties:
-      code: |-
-        import afield.ui.output.displayClear
-        import kotlin.math.*
-
+      code: |
         // Selection in the parent's computed rows (0: exhaustive, 1: rotation, 2: random).
         // Change either selector and rerun this box; no tour search or arc sampling is repeated.
         val sourceRow = 0
@@ -464,9 +459,7 @@ operations:
       w: 240.0
       h: 100.0
     properties:
-      code: |-
-        import kotlin.math.*
-
+      code: |
         val arcScale = 0.33
         val cell = knightCellSize
         val boardW = knightBoardWidth * cell
@@ -487,7 +480,7 @@ operations:
             if (n == 0) return emptyList()
             var best = (1..n).toList()
             var bestLength = joinLength(arcs, best)
-            for (start in 1..n) for (direction in listOf(1, -1)) {
+            for (start in 1..n) for (direction in [1, -1]) {
                 val route = mutableListOf(start * direction)
                 val used = BooleanArray(n)
                 used[start - 1] = true
@@ -496,7 +489,7 @@ operations:
                     var choice = 0
                     var shortest = Double.POSITIVE_INFINITY
                     for (k in 1..n) if (!used[k - 1])
-                        for (sign in listOf(1, -1)) {
+                        for (sign in [1, -1]) {
                             val d = distance(p, entry(arcs, k * sign))
                             if (d < shortest) {
                                 shortest = d
@@ -658,10 +651,7 @@ operations:
       w: 240.0
       h: 100.0
     properties:
-      code: |-
-        import afield.math.linalg.*
-        import kotlin.math.*
-
+      code: |
         /*
         Zipped layers: use [a, b, c] or a scalar. Short lists hold their last value.
         All geometry parameters are deliberately UNCLAMPED.
@@ -857,9 +847,7 @@ operations:
       w: 240.0
       h: 100.0
     properties:
-      code: |-
-        import kotlin.math.*
-
+      code: |
         // Uniform scale about each triple's original B. 1.0 restores the source arcs.
         val arcScale = 0.5
         // Signed shift along the original A-to-C normal, applied after scaling.

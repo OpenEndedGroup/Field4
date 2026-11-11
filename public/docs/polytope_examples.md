@@ -914,28 +914,26 @@ fun row(label: String, d: RealizationDiagnostics) = [
     d.degenerateFaces.size,
 ]
 
-val metrics =
-    Table(
-            [
-                "embedding",
-                "edge mean",
-                "edge RMS dev",
-                "max planarity err",
-                "planarity RMS",
-                "degenerate",
-            ],
-        )
-        .rows(
-            [
-                row("aC as built", clean.geometryDiagnostics()),
-                row("jittered", solved.initialDiagnostics),
-                row("after solveRealization()", solved.finalDiagnostics),
-            ],
-        )
-        .format("edge mean") { (it as Number).f5 }
-        .format("edge RMS dev", sci)
-        .format("max planarity err", sci)
-        .format("planarity RMS", sci)
+val metrics = Table(
+    [
+        "embedding",
+        "edge mean",
+        "edge RMS dev",
+        "max planarity err",
+        "planarity RMS",
+        "degenerate",
+    ],
+).rows(
+    [
+        row("aC as built", clean.geometryDiagnostics()),
+        row("jittered", solved.initialDiagnostics),
+        row("after solveRealization()", solved.finalDiagnostics),
+    ],
+)
+    .format("edge mean") { (it as Number).f5 }
+    .format("edge RMS dev", sci)
+    .format("max planarity err", sci)
+    .format("planarity RMS", sci)
 
 markdown(
     "solve",
@@ -1016,23 +1014,21 @@ fun row(label: String, d: CanonicalDiagnostics) = [
 fun degrees(o: PolyhedralObject) =
     o.topology.elements(2).mapNotNull { o.topology.faceCycleOrNull(it.id)?.size }.distinct().sorted()
 
-val metrics =
-    Table(
-            [
-                "embedding",
-                "tangency radius spread",
-                "tangency centroid offset",
-                "max planarity err",
-                "dihedral mean",
-                "dihedral spread",
-            ],
-        )
-        .rows([row("as built", run.initialDiagnostics), row("canonical", run.finalDiagnostics)])
-        .format("tangency radius spread", sci)
-        .format("tangency centroid offset", sci)
-        .format("max planarity err", sci)
-        .format("dihedral mean") { (it as Number).f4 }
-        .format("dihedral spread", sci)
+val metrics = Table(
+    [
+        "embedding",
+        "tangency radius spread",
+        "tangency centroid offset",
+        "max planarity err",
+        "dihedral mean",
+        "dihedral spread",
+    ],
+).rows([row("as built", run.initialDiagnostics), row("canonical", run.finalDiagnostics)])
+    .format("tangency radius spread", sci)
+    .format("tangency centroid offset", sci)
+    .format("max planarity err", sci)
+    .format("dihedral mean") { (it as Number).f4 }
+    .format("dihedral spread", sci)
 
 markdown(
     "canon",
@@ -1123,21 +1119,19 @@ fun row(label: String, p: PolyhedralObject): List<Any?> {
     ]
 }
 
-val metrics =
-    Table(
-            [
-                "embedding",
-                "tangency radius spread",
-                "tangency centroid offset",
-                "max planarity err",
-                "min dihedral",
-            ],
-        )
-        .rows(panels.map { (label, p) -> row(label, p) })
-        .format("tangency radius spread", sci)
-        .format("tangency centroid offset", sci)
-        .format("max planarity err", sci)
-        .format("min dihedral") { (it as Number).f3 }
+val metrics = Table(
+    [
+        "embedding",
+        "tangency radius spread",
+        "tangency centroid offset",
+        "max planarity err",
+        "min dihedral",
+    ],
+).rows(panels.map { (label, p) -> row(label, p) })
+    .format("tangency radius spread", sci)
+    .format("tangency centroid offset", sci)
+    .format("max planarity err", sci)
+    .format("min dihedral") { (it as Number).f3 }
 
 markdown(
     "kkc",

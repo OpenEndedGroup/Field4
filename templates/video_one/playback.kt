@@ -1,9 +1,7 @@
-import afield.ui.output.ControlValueHandle
-
 // A local path, with ~ expansion; changing this field alone does not reopen the decoder.
 // The checkout ships an original stereo calibration movie; an environment override selects yours.
-var selectedFile = System.getenv("FIELD_STEREO_VIDEO")
-    ?: java.io.File("public/docs/assets/stereo_video/stereo-demo.mkv").absolutePath
+var selectedFile =
+    System.getenv("FIELD_STEREO_VIDEO") ?: java.io.File("public/docs/assets/stereo_video/stereo-demo.mkv").absolutePath
 
 var scrubber: ControlValueHandle<Double>? = null
 var playingControl: ControlValueHandle<Boolean>? = null
@@ -12,30 +10,64 @@ var persistenceControl: ControlValueHandle<Double>? = null
 var mixControl: ControlValueHandle<Double>? = null
 var eyeSwapControl: ControlValueHandle<Boolean>? = null
 
-// Rebuild only on file change, when duration changes. Handles keep playback ticks out of
-// the document edit log; seeks pause, and an explicit Playing gesture resumes.
-// Paired film-like exposures: one held accumulated image, soft/dark first, then clear.
-// These controls only affect accumulated material; ordinary sharp playback is unchanged.
+/*
+Rebuild only on file change, when duration changes. Handles keep playback ticks out of
+the document edit log; seeks pause, and an explicit Playing gesture resumes.
+Paired film-like exposures: one held accumulated image, soft/dark first, then clear.
+These controls only affect accumulated material; ordinary sharp playback is unchanged.
+*/
 fun showExposureCadence() {
     controlGroup("exposure cadence") {
-        checkbox("Paired exposure cadence", initialValue = movie.exposureCadenceEnabled,
-            hoverText = "Hold one accumulated exposure per pair, showing a softened/darker half followed by a clear half. Real-time cadence is independent of 8x playback and headset refresh. Sharp sections bypass it; pause freezes the current half.") {
+        checkbox(
+            "Paired exposure cadence",
+            initialValue = movie.exposureCadenceEnabled,
+            hoverText =
+                "Hold one accumulated exposure per pair, showing a softened/darker half followed by a clear half. Real-time cadence is independent of 8x playback and headset refresh. Sharp sections bypass it; pause freezes the current half.",
+        ) {
             movie.exposureCadenceEnabled = it
         }
-        slider("Exposure pairs / second", min = 1.0, max = 30.0, step = .1, initialValue = movie.exposurePairsPerSecond,
-            hoverText = "12 means twelve complete soft/dark → clear pairs per real second: 24 half-steps, like the paired frames of a 24 fps movie. The accumulated image is held for each pair; intermediate exposure samples still accumulate normally.") {
+        slider(
+            "Exposure pairs / second",
+            min = 1.0,
+            max = 30.0,
+            step = .1,
+            initialValue = movie.exposurePairsPerSecond,
+            hoverText =
+                "12 means twelve complete soft/dark → clear pairs per real second: 24 half-steps, like the paired frames of a 24 fps movie. The accumulated image is held for each pair; intermediate exposure samples still accumulate normally.",
+        ) {
             movie.exposurePairsPerSecond = it
         }
-        slider("Soft-half blur sigma (px)", min = 0.0, max = 16.0, step = .1, initialValue = movie.exposureBlurSigma.toDouble(),
-            hoverText = "Gaussian sigma in original video pixels, applied separately to each eye. A half-resolution separable blur is rebuilt once per exposure pair, before drawing with the current head pose. The clear half keeps the full-resolution held image.") {
+        slider(
+            "Soft-half blur sigma (px)",
+            min = 0.0,
+            max = 16.0,
+            step = .1,
+            initialValue = movie.exposureBlurSigma.toDouble(),
+            hoverText =
+                "Gaussian sigma in original video pixels, applied separately to each eye. A half-resolution separable blur is rebuilt once per exposure pair, before drawing with the current head pose. The clear half keeps the full-resolution held image.",
+        ) {
             movie.exposureBlurSigma = it.toFloat()
         }
-        slider("Soft-half blur mix", min = 0.0, max = 1.0, step = .01, initialValue = movie.exposureBlurMix.toDouble(),
-            hoverText = "Blend between the held exposure and its spatially blurred version during the first half only. Zero retains the held full-resolution exposure, one uses the Gaussian result. Independent of temporal accumulation mix.") {
+        slider(
+            "Soft-half blur mix",
+            min = 0.0,
+            max = 1.0,
+            step = .01,
+            initialValue = movie.exposureBlurMix.toDouble(),
+            hoverText =
+                "Blend between the held exposure and its spatially blurred version during the first half only. Zero retains the held full-resolution exposure, one uses the Gaussian result. Independent of temporal accumulation mix.",
+        ) {
             movie.exposureBlurMix = it.toFloat()
         }
-        slider("Soft-half darkening", min = 0.0, max = .5, step = .005, initialValue = movie.exposureDarkening.toDouble(),
-            hoverText = "Fraction of linear-light brightness removed from the first half of each exposure pair. 0.08 removes eight percent; zero turns the darkening off. The clear half has unchanged brightness.") {
+        slider(
+            "Soft-half darkening",
+            min = 0.0,
+            max = .5,
+            step = .005,
+            initialValue = movie.exposureDarkening.toDouble(),
+            hoverText =
+                "Fraction of linear-light brightness removed from the first half of each exposure pair. 0.08 removes eight percent; zero turns the darkening off. The clear half has unchanged brightness.",
+        ) {
             movie.exposureDarkening = it.toFloat()
         }
     }
@@ -63,14 +95,34 @@ fun showTransport() {
         button("Material: 24 fps") { down -> if (down) movie.materialFramesPerSecond = 24 }
         button("Material: 12 fps") { down -> if (down) movie.materialFramesPerSecond = 12 }
         checkbox("Alternate frames above 4x", initialValue = movie.selectiveDecode) { movie.selectiveDecode = it }
-        checkbox("Skip non-reference pictures", initialValue = movie.skipNonReferenceFrames) { movie.skipNonReferenceFrames = it }
-        mixControl = slider("Accumulation mix", min = 0.0, max = 1.0, step = .001, initialValue = movie.accumulationMix.toDouble()) {
-            movie.accumulationMix = it.toFloat()
+        checkbox("Skip non-reference pictures", initialValue = movie.skipNonReferenceFrames) {
+            movie.skipNonReferenceFrames = it
         }
-        persistenceControl = slider("Persistence half-life (s)", min = 0.0, max = 10.0, step = .01, initialValue = movie.accumulationHalfLife) {
-            movie.accumulationHalfLife = it
-        }
-        slider("Incoming frame weight", min = 0.0, max = 4.0, step = .01, initialValue = movie.accumulationInputWeight) {
+        mixControl = slider(
+            "Accumulation mix",
+            min = 0.0,
+            max = 1.0,
+            step = .001,
+            initialValue = movie.accumulationMix.toDouble(),
+        ) {
+                movie.accumulationMix = it.toFloat()
+            }
+        persistenceControl = slider(
+            "Persistence half-life (s)",
+            min = 0.0,
+            max = 10.0,
+            step = .01,
+            initialValue = movie.accumulationHalfLife,
+        ) {
+                movie.accumulationHalfLife = it
+            }
+        slider(
+            "Incoming frame weight",
+            min = 0.0,
+            max = 4.0,
+            step = .01,
+            initialValue = movie.accumulationInputWeight,
+        ) {
             movie.accumulationInputWeight = it
         }
         button("Clear accumulation") { down -> if (down) movie.clearAccumulation() }

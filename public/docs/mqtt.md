@@ -23,7 +23,10 @@ mqtt.subscribe("sensors/+/temp") { topic, message ->
 :::fold two rooms report a temperature, and one a humidity the wildcard skips
 mqtt.publish("sensors/kitchen/temp", 21.5)
 mqtt.publish("sensors/kitchen/humidity", 64)
-mqtt.publish("sensors/hall/temp", 18.25)
+mqtt.publish(
+    "sensors/hall/temp",
+    18.25,
+)
 
 :::endfold
 ```

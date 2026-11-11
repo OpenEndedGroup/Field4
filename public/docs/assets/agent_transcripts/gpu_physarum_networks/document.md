@@ -93,7 +93,7 @@ frame would reach. The slider sets the trail's half-life: shorter thins the netw
 towards a tree, longer lets it hold loops.
 
 ```edn [field-box id="net_measure" role="properties"]
-{"id" "net_measure" "index" 2 "name" "measure" "parents" ["root" "net_slime"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "net_slime"} "name" "measure" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "net_measure_code_.kt" "lines" 35 "characters" 1517 "sha256" "caec7763e47f8d971a38d10d736013950879648877dab27b97353afbc9550241"}]}
+{"id" "net_measure" "index" 2 "name" "measure" "parents" ["root" "net_slime"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "net_slime"} "name" "measure" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "net_measure_code_.kt" "lines" 35 "characters" 1511 "sha256" "944d0aaad47edab438923983a43617e8b8e654df5432aaaa31db8eb5863d74ae"}]}
 ```
 
 ```kotlin [field-property box="net_measure" name="code" path="net_measure_code_.kt"]
@@ -117,11 +117,11 @@ frames {
         val food = physarum.settings.food
         val decay = physarum.trail.decayFactors().x
         val network = TransportNetwork.extract(trail, food, threshold = 0.25 / (1.0 - decay))
-        val scores = listOf(
+        val scores = [
             network.score("physarum"),
             TransportNetwork.mst(food).score("MST"),
             TransportNetwork.delaunay(food).score("Delaunay"),
-        )
+        ]
         display("scores", "<pre>" + NetworkScore.table(scores) + "</pre>")
         // flipped, so it reads the same way up as the drawing and the window
         showImg(
@@ -149,7 +149,7 @@ them, delete them: the slime box follows. Re-running this box puts back the dots
 drew and leaves yours alone.
 
 ```edn [field-box id="net_map" role="properties"]
-{"id" "net_map" "index" 3 "name" "map" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "map" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "net_map_code_.kt" "lines" 30 "characters" 901 "sha256" "fe84eb0562517c1ff84af1e84a1bf5a5fb261ce130fd8b0cfc19f059f7aa3aae"}]}
+{"id" "net_map" "index" 3 "name" "map" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "map" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "net_map_code_.kt" "lines" 30 "characters" 895 "sha256" "2bac33b7ce4a90329dc1fc19c4b082a07e92baae00047a0b82606d2ae34b4ea2"}]}
 ```
 
 ```kotlin [field-property box="net_map" name="code" path="net_map_code_.kt"]
@@ -163,7 +163,7 @@ drew and leaves yours alone.
 val left = 400.0
 val top = 200.0
 val side = 400.0
-val dots = listOf(
+val dots = [
     0.22 to 0.30,
     0.38 to 0.18,
     0.62 to 0.22,
@@ -176,7 +176,7 @@ val dots = listOf(
     0.62 to 0.82,
     0.84 to 0.78,
     0.50 to 0.30,
-)
+]
 notation {
     frame("network", left, top, side, side) {
         for ((u, v) in dots) ellipse(left + u * side - 6, top + v * side - 6, 12, 12, fill = "#ffd8a8")

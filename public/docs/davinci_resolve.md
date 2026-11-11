@@ -93,20 +93,18 @@ Resolve.setPlayhead("01:00:10:00") // absolute record timecode
 Each setter returns the observed `ResolvePlayhead`. Seconds round to the nearest timeline frame;
 negative, nonfinite and out-of-range positions are rejected. Drop-frame conversion follows the
 timeline's settings. An optional timeline name guards against moving the wrong open edit:
-`Resolve.on("macbook-pro-2").setPlayheadSeconds(10.0, "Marked for real")`. That timeline must
+[`Resolve.on("macbook-pro-2").setPlayheadSeconds(10.0, "Marked for real")`](reference/networking.md#resolve-kt--resolve--on). That timeline must
 already be current; Field never switches Resolve's timeline automatically. The corresponding
 guarded getter is `other.playhead("Marked for real")`.
 
 ### Following a Field movie without blocking playback
 
-`ResolvePlayheadLink` owns a single background worker. `offer(seconds)` only replaces the latest
+[`ResolvePlayheadLink`](reference/networking.md#resolveplayheadlink-kt-resolveplayheadlink) owns a single background worker. [`offer(seconds)`](reference/networking.md#resolveplayheadlink-kt--resolveplayheadlink--offer) only replaces the latest
 target; it never queues a network operation or waits for Resolve. Following runs at most four
 times a second by default, retries failures with a backoff, and checks paused positions once a
 second so a delayed or manually moved playhead can converge again.
 
 ```diffstatic {data-lang=kotlin}
-import afield.io.resolve.ResolvePlayheadLink
-
 val link = ResolvePlayheadLink(Resolve.on("macbook-pro-2"), "Marked for real")
 link.enabled = true
 loop {
@@ -173,3 +171,9 @@ first `python3` it finds; any Python 3.6 or later works. A call that Resolve doe
 program, and the next call starts another. Its error output goes to `Resolve.logFile()`. For a
 Resolve installed somewhere other than the default place, set `RESOLVE_SCRIPT_API` and
 `RESOLVE_SCRIPT_LIB` as Resolve's scripting README describes.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`ResolvePlayheadLink.close`](reference/networking.md#resolveplayheadlink-kt--resolveplayheadlink--close)

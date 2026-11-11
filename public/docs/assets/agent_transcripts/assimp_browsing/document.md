@@ -10,13 +10,17 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 <!-- field-box id="assimp_scene" index="0" -->
 
+### Narrative
+
+From `code`
+
+Assimp's view of a glTF file: nodes, meshes, materials, animations
+
 ```edn [field-box id="assimp_scene" role="properties"]
-{"id" "assimp_scene" "index" 0 "name" "browse a glTF scene" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "browse a glTF scene" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "assimp_scene_code_.kt" "lines" 8 "characters" 320 "sha256" "a7f4634209d2ee421f2daa62461833116a9a29f5e945978623f8b121d96ebd91"}]}
+{"id" "assimp_scene" "index" 0 "name" "browse a glTF scene" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "browse a glTF scene" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "assimp_scene_code_.kt" "lines" 6 "characters" 278 "sha256" "967010943f8877ba7c7cb9e4b662122f1ee4c6c38ec8fd8dd719d92ecc3a6281"}]}
 ```
 
 ```kotlin [field-property box="assimp_scene" name="code" path="assimp_scene_code_.kt"]
-import afield.graphics.scene.GltfSupport
-
 // Assimp's view of a glTF file: nodes, meshes, materials, animations
 val scene = GltfSupport.loadModel("dev_docs/agents/fixtures/path_tracing/transforms.gltf")!!
 column("columns", scene, width = 1300)

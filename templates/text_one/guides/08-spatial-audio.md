@@ -12,8 +12,8 @@ output-device name, source coordinates, playback cursor and rendered block count
 
 ```kotlin
 spatialWordSound.play()
-spatialWordSound.pause()          // retain cursor, ramp down over roughly 5 ms
-spatialWordSound.seek(1.0)        // seconds into the WAV
+spatialWordSound.pause() // retain cursor, ramp down over roughly 5 ms
+spatialWordSound.seek(1.0) // seconds into the WAV
 spatialWordSound.restart()
 spatialWordSound.place(-.6, 1.5, -1.5)
 spatialWordSound.gain = .2f

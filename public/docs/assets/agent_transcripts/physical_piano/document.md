@@ -18,7 +18,7 @@ A prepared piano: bolts on the middle strings, rubber in the bass, a loose nut i
 treble. The phrase plain, then prepared, and the spectrum of A4 with and without a bolt.
 
 ```edn [field-box id="piano_prepared" role="properties"]
-{"id" "piano_prepared" "index" 0 "name" "prepared" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "prepared" "_tombstone" false "frame" #afield/rect [20.0 2560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_prepared_code_.kt" "lines" 28 "characters" 1314 "sha256" "cf032d91c3ff457c375691d50e72c60a07c3b85623026337d7531c7c4e3305c1"}]}
+{"id" "piano_prepared" "index" 0 "name" "prepared" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "prepared" "_tombstone" false "frame" #afield/rect [20.0 2560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_prepared_code_.kt" "lines" 28 "characters" 1302 "sha256" "3e964611f6a035b165b9b29d7b3fbc5f3f89125022e656f46a33b374f15008e3"}]}
 ```
 
 ```kotlin [field-property box="piano_prepared" name="code" path="piano_prepared_code_.kt"]
@@ -28,16 +28,16 @@ treble. The phrase plain, then prepared, and the spectrum of A4 with and without
 */
 val tune = pat("<[a2,e3] [f2,c3]> [e4 a4 c5 e5]")
 fun take(p: Piano) = pianoRender(6.0, p) { play(tune, cycles = 4, cps = 0.8, startFrame = 0) }
-val preparations = listOf(
+val preparations = [
     PianoPreparation.bolt(52..72, at = 0.28, grams = 4.0),
     PianoPreparation.rubber(36..51, at = 0.13, amount = 25.0),
     PianoPreparation.rattle(73..88, at = 0.2, level = 0.8, gapMm = 0.1),
-)
+]
 showPianoAudio(take(Piano(sampleRate = 44_100)), "plain")
 showPianoAudio(take(Piano(sampleRate = 44_100, preparations = preparations)), "prepared")
 fun spectrum(grams: Double, title: String): String {
     val bolt = PianoPreparation.bolt(69..69, at = 0.3, grams = grams)
-    val r = pianoRender(1.2, Piano(sampleRate = 44_100, room = Param(0f), preparations = listOf(bolt))) {
+    val r = pianoRender(1.2, Piano(sampleRate = 44_100, room = Param(0f), preparations = [bolt])) {
         noteOn(69, 0.7, 0)
     }
     return pianoPlotSvg(
@@ -109,7 +109,7 @@ Two close microphones, one near the hammers and one further along, panned apart;
 on single strings of each note, so the unison strings beat between the speakers.
 
 ```edn [field-box id="piano_mics" role="properties"]
-{"id" "piano_mics" "index" 2 "name" "mic pair" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mic pair" "_tombstone" false "frame" #afield/rect [20.0 3160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_mics_code_.kt" "lines" 16 "characters" 911 "sha256" "6f6a038c5ac31e4047c49b2f335f5cffc9eaf83fb2b40bbc2f6fae5b792ef318"}]}
+{"id" "piano_mics" "index" 2 "name" "mic pair" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mic pair" "_tombstone" false "frame" #afield/rect [20.0 3160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_mics_code_.kt" "lines" 15 "characters" 895 "sha256" "471bdbf96f927bd293c7ff09f9850b050f4d96b1a077f034331fcac0509d91ef"}]}
 ```
 
 ```kotlin [field-property box="piano_mics" name="code" path="piano_mics_code_.kt"]
@@ -117,12 +117,11 @@ on single strings of each note, so the unison strings beat between the speakers.
 // on single strings of each note, so the unison strings beat between the speakers.
 val tune = pat("<[a2,e3] [f2,c3]> [e4 a4 c5 e5]")
 fun take(p: Piano) = pianoRender(6.0, p) { play(tune, cycles = 4, cps = 0.8, startFrame = 0) }
-val pair =
-    listOf(PianoMic(position = Param(0.08f), pan = Param(-0.8f)), PianoMic(position = Param(0.33f), pan = Param(0.8f)))
-val strings = listOf(
+val pair = [PianoMic(position = Param(0.08f), pan = Param(-0.8f)), PianoMic(position = Param(0.33f), pan = Param(0.8f))]
+val strings = [
     PianoMic(position = Param(0.12f), pan = Param(-1f), string = 0),
     PianoMic(position = Param(0.12f), pan = Param(1f), string = 2),
-)
+]
 showPianoAudio(take(Piano(sampleRate = 44_100, dry = Param(1f), room = Param(0.12f), mics = pair)), "pair")
 showPianoAudio(
     take(Piano(sampleRate = 44_100, dry = Param(1f), room = Param(0.12f), mics = strings)),
@@ -144,7 +143,7 @@ strings answer every chord. Then into a prepared piano, whose strings answer in 
 tuning. `toMono()` turns any stereo source into a signal.
 
 ```edn [field-box id="piano_through" role="properties"]
-{"id" "piano_through" "index" 3 "name" "through" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "through" "_tombstone" false "frame" #afield/rect [760.0 3160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_through_code_.kt" "lines" 22 "characters" 1041 "sha256" "14c859b41ffad0e7b6a5c3bdc7e58dd48a16b6dcf3b7920401467085e3b60f80"}]}
+{"id" "piano_through" "index" 3 "name" "through" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "through" "_tombstone" false "frame" #afield/rect [760.0 3160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_through_code_.kt" "lines" 22 "characters" 1035 "sha256" "58559abe033cd16d6486d10332f46d7abafe826b6cb7ff81006ede8cdf968b49"}]}
 ```
 
 ```kotlin [field-property box="piano_through" name="code" path="piano_through_code_.kt"]
@@ -168,7 +167,7 @@ fun through(preparations: List<PianoPreparation>): PianoRender {
     return pianoRender(8.0, resonator)
 }
 showPianoAudio(through(emptyList()), "through")
-showPianoAudio(through(listOf(PianoPreparation.bolt(36..72, at = 0.28, grams = 6.0))), "through prepared")
+showPianoAudio(through([PianoPreparation.bolt(36..72, at = 0.28, grams = 6.0)]), "through prepared")
 ["through", "through prepared"].forEach { displayOpen(it) }
 ```
 
@@ -418,7 +417,7 @@ A prepared piano on the audio engine: one bolt and one rattle across the keyboar
 soft and middle pedals. Slide the bolt while a chord rings.
 
 ```edn [field-box id="piano_prepared_live" role="properties"]
-{"id" "piano_prepared_live" "index" 11 "name" "prepared live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "prepared live" "_tombstone" false "frame" #afield/rect [760.0 2560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_prepared_live_code_.kt" "lines" 29 "characters" 1584 "sha256" "f1b6429b997bc00ac56b19b59ec9f8c29b8f6973612600a26935b05703975185"}]}
+{"id" "piano_prepared_live" "index" 11 "name" "prepared live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "prepared live" "_tombstone" false "frame" #afield/rect [760.0 2560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_prepared_live_code_.kt" "lines" 29 "characters" 1578 "sha256" "f14e39bbe81617b2841ffec3a64a538d99f8b442f3a5cc6b879de7a3b0cb8689"}]}
 ```
 
 ```kotlin [field-property box="piano_prepared_live" name="code" path="piano_prepared_live_code_.kt"]
@@ -448,7 +447,7 @@ slider("una corda", 0.0, 1.0, initialValue = 0.0, channel = "soft", onUpdate = {
 slider("sostenuto", 0.0, 1.0, initialValue = 0.0, channel = "sost", onUpdate = { sost.base = it.toFloat() })
 ["at", "grams", "rubber", "rattle", "gap", "soft", "sost"].forEach { displayOpen(it) }
 val prep = PianoPreparation(21..108, position = at, mass = grams, damping = rubber, rattle = rattle, gap = gap)
-val piano = Piano(preparations = listOf(prep), unaCorda = soft, sostenuto = sost)
+val piano = Piano(preparations = [prep], unaCorda = soft, sostenuto = sost)
 piano.play(pat("<[a2,e3] [f2,c3]> [e4 a4 c5 e5]"), cycles = 32, cps = 0.8)
 audio(piano, gain = 1f)
 ```
@@ -464,7 +463,7 @@ From `code`
 A MIDI clip written in code, with the sustain pedal, rendered to a WAV in one call.
 
 ```edn [field-box id="piano_midi" role="properties"]
-{"id" "piano_midi" "index" 12 "name" "midi" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "midi" "_tombstone" false "frame" #afield/rect [20.0 3760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_midi_code_.kt" "lines" 19 "characters" 799 "sha256" "27a97d52e7b1e16286c3e2fa75d57ec3dc8765d29634a368fba2d4a80b84c7ba"}]}
+{"id" "piano_midi" "index" 12 "name" "midi" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "midi" "_tombstone" false "frame" #afield/rect [20.0 3760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "piano_midi_code_.kt" "lines" 19 "characters" 781 "sha256" "3af41402d583888471eda75555120075abb67f1d41d728615e2391b330366238"}]}
 ```
 
 ```kotlin [field-property box="piano_midi" name="code" path="piano_midi_code_.kt"]
@@ -473,16 +472,16 @@ val notes =
     listOf(48, 55, 60, 64, 67, 72).mapIndexed { i, p ->
         MidiNote(p, startBeats = i * 0.5, durationBeats = 0.4, velocity = 80)
     }
-val pedal = listOf(
+val pedal = [
     MidiControlChange(controller = 64, value = 127, beats = 0.0),
     MidiControlChange(controller = 64, value = 0, beats = 3.5),
-)
-val clip = MidiClip(tracks = listOf(MidiTrackData(notes = notes, controlChanges = pedal)))
+]
+val clip = MidiClip(tracks = [MidiTrackData(notes = notes, controlChanges = pedal)])
 val wav = java.io.File.createTempFile("piano-midi", ".wav")
 val r = pianoRenderMidi(
     clip,
     wav,
-    piano = Piano(sampleRate = 44_100, preparations = listOf(PianoPreparation.bolt(60..72, at = 0.3, grams = 3.0))),
+    piano = Piano(sampleRate = 44_100, preparations = [PianoPreparation.bolt(60..72, at = 0.3, grams = 3.0)]),
 )
 println("wrote ${wav.path}: ${r.seconds.f1} s")
 showPianoAudio(r, "midi")

@@ -1,6 +1,3 @@
-import afield.math.linalg.*
-import kotlin.math.*
-
 /*
 Zipped layers: use [a, b, c] or a scalar. Short lists hold their last value.
 All geometry parameters are deliberately UNCLAMPED.

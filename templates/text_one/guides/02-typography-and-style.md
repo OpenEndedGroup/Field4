@@ -11,6 +11,7 @@ val serif = Typefaces.named("Noto Serif", 100, strict = true)
 val sans = Typefaces.named("Noto Sans", 100, strict = true)
 val italicFace = serif.withStyle(italic = true)
 val boldItalicFace = serif.withStyle(bold = true, italic = true)
+
 // An exact file-backed face is useful when the family name is ambiguous:
 // val face = Typefaces.fromFile("/path/to/MyFont.otf", 100)
 ```

@@ -13,11 +13,11 @@ prop<ShaderPhysarumSystem>(physarum) = ShaderPhysarumSystem() {
     speciesCount = 3
     exclusive = true
     exposure = 0.06f
-    attraction = listOf(
+    attraction = [
         vec(1f, -2f, -2f, 0f),
         vec(-2f, 1f, -2f, 0f),
         vec(-2f, -2f, 1f, 0f),
-    )
+    ]
 }
 physarum.trail.settings.diffusion = 0.2f
 

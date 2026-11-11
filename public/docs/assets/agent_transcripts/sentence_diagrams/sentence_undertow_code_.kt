@@ -1,4 +1,3 @@
-import afield.graphics.render.color
 import afield.graphics.text.sentences.*
 
 val d = SentenceDiagram().use(Sentences.example(3))

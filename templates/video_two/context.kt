@@ -1,4 +1,3 @@
-import afield.graphics.vulkan.targets.*
 import afield.graphics.vulkan.util.Options
 import afield.media.browser.*
 
@@ -107,7 +106,9 @@ fun eyeFormatName(format: Int?): String = when (format) {
 
 displayOpen("preview")
 displayOpen("Field browser")
-markdown("precision", """
+markdown(
+    "precision",
+    """
 ### Eye images
 
 ${stereo.eyeWidth} × ${stereo.eyeHeight} per eye.
@@ -118,7 +119,8 @@ ${stereo.eyeWidth} × ${stereo.eyeHeight} per eye.
 | OpenXR | ${eyeFormatName(xr?.swapchainColorFormat)} |
 
 WiVRn stream bit depth is selected separately in the headset.
-""")
+""",
+)
 
 // Playback owns the render loop. This scope owns windows, browser and eye targets.
 loop { frame() }

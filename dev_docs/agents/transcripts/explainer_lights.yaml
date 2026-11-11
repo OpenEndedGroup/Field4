@@ -420,7 +420,7 @@ operations:
           // that shadow is the panel's solid angle; move the panel away and it shrinks as the square.
           val sphere = icosphereMesh(4, 1.0)
           // Two great circles, so the sphere reads as a sphere without a wireframe in the way.
-          val circles = listOf(
+          val circles = [
               fline {
                   moveTo(1.0, 0.0, 0.0)
                   for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96))
@@ -431,7 +431,7 @@ operations:
                   for (k in 1..96) lineTo(cos(2 * PI * k / 96), sin(2 * PI * k / 96), 0.0)
                   color = vec(1.0, 1.0, 1.0, 0.35)
               },
-          )
+          ]
 
           fun draw(distance: Double) {
               val panel = planeMesh(12, 12, 0.8, 0.8).translated(0.0, 0.0, -distance)
@@ -790,7 +790,7 @@ operations:
 
           // Nine tiles of different colours under one lamp whose colour you pick. A tile can only send
           // back the colours the lamp gives it.
-          val colours = listOf(
+          val colours = [
               vec(0.8, 0.8, 0.8),
               vec(0.8, 0.1, 0.1),
               vec(0.1, 0.7, 0.1),
@@ -800,7 +800,7 @@ operations:
               vec(0.7, 0.1, 0.7),
               vec(0.8, 0.4, 0.1),
               vec(0.3, 0.3, 0.3),
-          )
+          ]
           val tiles =
               colours
                   .withIndex()

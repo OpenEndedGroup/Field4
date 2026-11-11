@@ -1,7 +1,5 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 import afield.graphics.text.sentences.*
-import kotlin.math.*
 
 // 3 · Undertow. Nested dependency arcs, with independently scored labels and beads.
 val parsed = Sentences.example(3)

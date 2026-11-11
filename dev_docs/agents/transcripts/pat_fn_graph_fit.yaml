@@ -36,7 +36,7 @@ operations:
           ${gesture.graphText()}""".trimIndent()
 
           println(report)
-          display("<pre>" + report + "</pre>")
+          markdown("```text\n$report\n```")
   - create:
       box: pat_fn_fit
       name: 2 · fit the rhythm
@@ -60,7 +60,7 @@ operations:
               fitted  ${run.fitted.graphNode().strings["source"]}
               RMSE    ${run.initialError.f4} -> ${run.finalError.f4}""".trimIndent()
               println(report)
-              display("<pre>" + report + "</pre>")
+              markdown("```text\n$report\n```")
 
               run // Field renders the FnFitRun: RMSE before -> after + a loss sparkline
           }
@@ -91,27 +91,27 @@ operations:
               normalised blend flattens toward the mean of its atom values. Structure search
               (evolve) is the tool for re-assigning values between atoms.""".trimIndent()
               println(report)
-              display("<pre>" + report + "</pre>")
+              markdown("```text\n$report\n```")
           }
   - execute:
       box: pat_fn_inspect
       property: code
       type: fragment
       code: |
-          val gesture = patFn("g:(0.3,0.12) adsr:(0.8,0.01,0.08,0.4,0.2)", cps = 2.0, range = 0.9)
-          val node = gesture.graphNode()
+        val gesture = patFn("g:(0.3,0.12) adsr:(0.8,0.01,0.08,0.4,0.2)", cps = 2.0, range = 0.9)
+        val node = gesture.graphNode()
 
-          val report =
-              """
-          op        ${node.op}
-          source    ${node.strings["source"]}
-          knobs     ${node.children.joinToString("  ") { it.role }}
-          values    ${gesture.extractParameters().joinToString("  ")}
+        val report =
+            """
+        op        ${node.op}
+        source    ${node.strings["source"]}
+        knobs     ${node.children.joinToString("  ") { it.role }}
+        values    ${gesture.extractParameters().joinToString("  ")}
 
-          ${gesture.graphText()}""".trimIndent()
+        ${gesture.graphText()}""".trimIndent()
 
-          println(report)
-          display("<pre>" + report + "</pre>")
+        println(report)
+        markdown("```text\n$report\n```")
   - await:
       wait: pending
   - execute:
@@ -119,25 +119,25 @@ operations:
       property: code
       type: fragment
       code: |
-          with(Functions) {
-              val target = patFn("g:(0.9,0.18) g:(0.1,0.18)", cps = 1.0, range = 0.9)
-              val seed = patFn("g:(0.7,0.25) g:(0.3,0.12)", cps = 1.0, range = 0.9)
+        with(Functions) {
+            val target = patFn("g:(0.9,0.18) g:(0.1,0.18)", cps = 1.0, range = 0.9)
+            val seed = patFn("g:(0.7,0.25) g:(0.3,0.12)", cps = 1.0, range = 0.9)
 
-              val run = fitGradient(target, seed, domain = 0.0..2.0, iterations = 200, lr = 0.02, samples = 96)
+            val run = fitGradient(target, seed, domain = 0.0..2.0, iterations = 200, lr = 0.02, samples = 96)
 
-              plot(target, 0.0..2.0, channel = "1 target", title = "target")
-              plot(run.fitted, 0.0..2.0, channel = "2 fitted", title = "fitted")
+            plot(target, 0.0..2.0, channel = "1 target", title = "target")
+            plot(run.fitted, 0.0..2.0, channel = "2 fitted", title = "fitted")
 
-              val report =
-                  """
-              seed    ${seed.graphNode().strings["source"]}
-              fitted  ${run.fitted.graphNode().strings["source"]}
-              RMSE    ${run.initialError.f4} -> ${run.finalError.f4}""".trimIndent()
-              println(report)
-              display("<pre>" + report + "</pre>")
+            val report =
+                """
+            seed    ${seed.graphNode().strings["source"]}
+            fitted  ${run.fitted.graphNode().strings["source"]}
+            RMSE    ${run.initialError.f4} -> ${run.finalError.f4}""".trimIndent()
+            println(report)
+            markdown("```text\n$report\n```")
 
-              run
-          }
+            run
+        }
   - await:
       wait: pending
   - wait:

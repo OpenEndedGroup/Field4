@@ -96,7 +96,7 @@ the scope loads fine — the extra names simply have nowhere to go on apply."
 So a rename half-done looks exactly like a working slot, and Apply quietly drops it.
 
 ```edn [field-box id="kf_orphaned_slots" role="properties"]
-{"id" "kf_orphaned_slots" "index" 1 "name" "3 - A saved slot that applies to nowhere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A saved slot that applies to nowhere" "_tombstone" false "frame" #afield/rect [60.0 226.0 592.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_orphaned_slots_code_.kt" "lines" 64 "characters" 2765 "sha256" "e7965aa2397180bacb32e2ab562b3f969dc19bfc09109ab7f7f857d1a4de49da"}]}
+{"id" "kf_orphaned_slots" "index" 1 "name" "3 - A saved slot that applies to nowhere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A saved slot that applies to nowhere" "_tombstone" false "frame" #afield/rect [60.0 226.0 592.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_orphaned_slots_code_.kt" "lines" 64 "characters" 2759 "sha256" "1cc6119068eeaaaafc26d43dd5a78ea496791c34ed60827eda6789ba0bfaaf44"}]}
 ```
 
 ```kotlin [field-property box="kf_orphaned_slots" name="code" path="kf_orphaned_slots_code_.kt"]
@@ -125,7 +125,7 @@ run {
     [1f to 4f, 6f to 5f, 11f to 6f].forEachIndexed { i, (r, b) ->
         old.bind("radius") { r }
         old.bind("blur") { b }
-        past.capture().save(dir.resolve(["a", "b", "c"][i]), "look ${listOf("a", "b", "c")[i]}")
+        past.capture().save(dir.resolve(["a", "b", "c"][i]), "look ${["a", "b", "c"][i]}")
     }
 }
 

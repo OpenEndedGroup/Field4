@@ -1227,8 +1227,7 @@ for (iso in [0.15, 0.35, 0.55, 0.75]) {
 }
 
 val panels = mutableListOf(
-    "source 26x18, 6 levels" to
-        floatsToImg(source, sw, sh).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(14),
+    "source 26x18, 6 levels" to floatsToImg(source, sw, sh).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(14),
     "1x1 tiles, border pinned" to tiledField.colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(9),
     "3x3 patterns, as learned" to patternField.colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(9),
 )

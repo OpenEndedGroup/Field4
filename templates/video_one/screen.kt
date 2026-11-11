@@ -1,6 +1,4 @@
 import afield.graphics.scene.video.*
-import afield.ui.output.ControlGroupBuilder
-import afield.ui.output.ControlValueHandle
 
 // One movie owns decoding and uploads; box 4 owns its editable graphics pipeline.
 prop<StereoVideoSurface>(movie) = StereoVideoSurface(renderer, stereo, automaticDrawing = false)

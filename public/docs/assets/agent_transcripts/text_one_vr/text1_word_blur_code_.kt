@@ -1,5 +1,4 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // Separate words can breathe on separate clocks. The blur radius is measured in ems;
 // opacity is independent, so a word can stay bright while its outline dissolves.

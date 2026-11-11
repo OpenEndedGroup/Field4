@@ -565,7 +565,8 @@ val panels = settings.flatMapIndexed { i, (label, options) ->
     val ring = FLine()
     for (k in 0..96) {
         val a = k * 2 * PI / 96
-        if (k == 0) ring.moveTo(vec(100 * cos(a), 100 * sin(a), 0.0) + shift) else ring.lineTo(vec(100 * cos(a), 100 * sin(a), 0.0) + shift)
+        if (k == 0) ring.moveTo(vec(100 * cos(a), 100 * sin(a), 0.0) + shift)
+        else ring.lineTo(vec(100 * cos(a), 100 * sin(a), 0.0) + shift)
     }
     ring.color = vec(0.55, 0.55, 0.62, 0.9)
     val pair: List<FLine> = [ring, cloud(samples, 1.4, vec(0.44, 0.83, 0.78, 1.0), shift)]

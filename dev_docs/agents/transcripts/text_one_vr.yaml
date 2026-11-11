@@ -19,7 +19,6 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.vulkan.targets.*
         import afield.graphics.vulkan.util.Options
         import afield.media.browser.*
 
@@ -92,7 +91,6 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
         import afield.graphics.text.sentences.Sentences
 
         // 1 · Marked breath. Whole runs, two selected words and an arclength bead.
@@ -170,9 +168,7 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
         import afield.graphics.text.sentences.*
-        import kotlin.math.*
 
         // 2 · Complete canopy. Preserve the parser's tree, POS labels, word stems and dependency arcs.
         val parsed = Sentences.example(2)
@@ -342,9 +338,7 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
         import afield.graphics.text.sentences.*
-        import kotlin.math.*
 
         // 3 · Undertow. Nested dependency arcs, with independently scored labels and beads.
         val parsed = Sentences.example(3)
@@ -441,9 +435,7 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
         import afield.graphics.text.sentences.*
-        import kotlin.math.*
 
         // 4 · Sentence furniture. Reed-Kellogg shelves become a shallow spatial mobile, then a reading line.
         val parsed = Sentences.example(4)
@@ -530,9 +522,7 @@ operations:
       h: 100
     properties:
       code: |
-        import afield.geometry.path.FLine
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
 
         // 5 · A room for words. One Slug run can contain multiple real faces and inline styles.
         val serif = Typefaces.named("Noto Serif", 100, strict = true)
@@ -637,7 +627,6 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
 
         // Separate words can breathe on separate clocks. The blur radius is measured in ems;
         // opacity is independent, so a word can stay bright while its outline dissolves.
@@ -853,7 +842,7 @@ operations:
         // All eight scores are separate from graph construction and native typography preparation.
         // Re-run this box to rescore the existing players; their physics and Slug buffers are retained.
         val allExamples =
-            listOf(exampleOne, exampleTwo, exampleThree, exampleFour, exampleFive, exampleSix, exampleSeven, exampleEight)
+            [exampleOne, exampleTwo, exampleThree, exampleFour, exampleFive, exampleSix, exampleSeven, exampleEight]
         for ((index, example) in allExamples.withIndex()) {
             val graph = example.player.diagram
             example.player.playback.score = diagramScore(

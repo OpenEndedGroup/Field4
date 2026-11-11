@@ -95,7 +95,7 @@ val fx = pd(
 
 // [env~] reports the level of what leaves the lowpass, in dB with 100 at full scale.
 fx.receive("level") { m ->
-    display("level", "<div style='padding:8px'>after the lowpass: ${(m.float ?: 0f).f1} dB</div>")
+    markdown("level", "after the lowpass: **${(m.float ?: 0f).f1} dB**")
 }
 fx
 ```
@@ -130,7 +130,7 @@ val patch = pd(
 val arrived = mutableListOf<String>()
 patch.receive("out") { m ->
     arrived += "${m.selector} ${m.args.joinToString(" ")}".trim()
-    display("arrived", "<pre style='margin:8px'>" + arrived.joinToString("\n") + "</pre>")
+    markdown("arrived", "```text\n" + arrived.joinToString("\n") + "\n```")
 }
 
 patch.send("in", 41) // [+ 1] makes it 42
@@ -149,7 +149,7 @@ If Pd cannot create an object, `[osc 440]` where `[osc~ 440]` was meant, the err
 box line that holds it, with a suggestion; see [An object Pd cannot create](#an-object-pd-cannot-create).
 
 `PdLaunch` has the same `writeArray`, `readArray`, `arraySize`, `noteOn`, `controlChange` and
-`onMidi` as the Pd underneath it, and `patch.pd` is that `PdInstance` when you need the rest.
+`onMidi` as the Pd underneath it, and `patch.pd` is that [`PdInstance`](reference/synthesis.md#pdinstance-kt-pdinstance) when you need the rest.
 Channels are counted from 0 (`[noteout 1]` is channel 0). `launch.connectMidi(input = "Launchkey",
 output = "IAC")` wires a hardware port to `[notein]`/`[ctlin]` and `[noteout]`/`[ctlout]` to another.
 
@@ -249,10 +249,10 @@ pd.close()
 
 val ups = (1 until left.size).count { left[it - 1] < 0f && left[it] >= 0f }
 val peak = left.maxOf { abs(it) }
-display(
+markdown(
     "measured",
-    "<pre style='margin:8px'>${left.size} samples, $ups upward zero crossings, " +
-        "peak ${peak.f4}, left == right: ${left.contentEquals(right)}</pre>",
+    "${left.size} samples, $ups upward zero crossings, " +
+        "peak ${peak.f4}, left == right: ${left.contentEquals(right)}",
 )
 ```
 
@@ -462,3 +462,9 @@ something it can make. The signal or control twin comes first (`osc~` for `osc`,
 See also: [Faust](faust.md), [Sonic Pi](sonic_pi.md), and
 [Making a Sound, Every Path There Is](sound_paths.md) for where Pd sits among Field's other ways of
 making a sound.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`SawOsc`](reference/synthesis.md#oscillators-kt-sawosc)

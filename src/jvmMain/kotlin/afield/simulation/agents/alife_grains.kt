@@ -34,6 +34,11 @@ import kotlin.random.Random
  * ([decodeGrains]), the fitness ([GrainSetStats], [Trapezoid], [grainSetObjective]), the sound
  * ([renderGrains]) and the pictures ([grainScoreImg], [trapezoidImg], [fitnessTraceImg]). [GrainBreeder]
  * is the interactive half: you listen to children and choose the parents.
+ *
+ * A target need not be written by hand: [grainsFromAudio] reads a monophonic recording as a grain set
+ * and [grainTermsAround] centres the trapezoids on its statistics. [grainSetObjective]'s `behaviour`
+ * picks the statistics a [PopulationSearch.mapElites] grid is laid out over, so a run can return a
+ * map of different sets instead of one winner.
  */
 
 // ==============================================================================================
@@ -48,8 +53,17 @@ import kotlin.random.Random
  * @param pitch MIDI note number (fractional allowed), 60 = middle C
  * @param amp linear amplitude, 1 at the trunk and smaller on deeper branches
  * @param depth bracket depth the grain was emitted at, 0 for the trunk
+ * @param pan stereo position from the `l`/`r` symbols, -1 left to 1 right, added to the lean
+ *   [renderGrains] gives each branch depth
  */
-data class Grain(val onset: Double, val duration: Double, val pitch: Double, val amp: Double, val depth: Int) {
+data class Grain(
+    val onset: Double,
+    val duration: Double,
+    val pitch: Double,
+    val amp: Double,
+    val depth: Int,
+    val pan: Double = 0.0
+) {
     /** Where the grain ends: [onset] plus [duration]. */
     val end: Double get() = onset + duration
 }
@@ -59,8 +73,16 @@ data class Grain(val onset: Double, val duration: Double, val pitch: Double, val
  *
  * `G` emit a grain here and advance time; `f` advance time silently (a rest); `+`/`-` raise or lower the
  * pitch by [pitchStep]; `[` push the state (time, pitch, amplitude, grain length), entering a branch
- * whose amplitude is multiplied by [branchAmp] and whose grains by [branchDuration]; `]` pop it. Every
- * other character is ignored, so nonterminals such as `X` can steer the grammar without sounding.
+ * whose amplitude is multiplied by [branchAmp] and whose grains by [branchDuration]; `]` pop it.
+ *
+ * Three more pairs change the grains that follow, and are saved and restored by brackets like
+ * everything else: `<`/`>` make grains shorter or longer by [lengthStep] without moving the time step,
+ * so they change how much grains overlap; `*`/`/` make the time step shorter or longer by
+ * [densityStep], so the grains that follow come denser or sparser; `l`/`r` move the pan left or right
+ * by [panStep]. [GRAIN_ALPHABET_EXTENDED] lets a genome use them.
+ *
+ * Every other character is ignored, so nonterminals such as `X` can steer the grammar without
+ * sounding.
  *
  * @param basePitch MIDI pitch the turtle starts at
  * @param pitchStep semitones per `+` or `-`
@@ -72,6 +94,9 @@ data class Grain(val onset: Double, val duration: Double, val pitch: Double, val
  * @param maxGrains decoding stops after this many grains; a cap, not a range
  * @param timeScale multiplies [timeStep] and [grainDuration] together: 0.5 plays a set twice as fast,
  *   2 half as fast. The defaults put a trunk grain about every 0.7 s, so a set unfolds over seconds.
+ * @param lengthStep factor a `>` multiplies grain length by, and a `<` divides it by
+ * @param densityStep factor a `*` divides the time step by (denser), and a `/` multiplies it by
+ * @param panStep how far an `l` or `r` moves the pan, on the -1..1 scale
  */
 data class GrainTurtle(
     val basePitch: Double = 60.0,
@@ -81,7 +106,10 @@ data class GrainTurtle(
     val branchAmp: Double = 0.8,
     val branchDuration: Double = 0.75,
     val maxGrains: Int = 4000,
-    val timeScale: Double = 1.0
+    val timeScale: Double = 1.0,
+    val lengthStep: Double = 1.5,
+    val densityStep: Double = 1.5,
+    val panStep: Double = 0.25
 )
 
 /**
@@ -90,25 +118,44 @@ data class GrainTurtle(
  * An unmatched `]` is ignored, as [turtleDraw] ignores it.
  */
 fun decodeGrainString(string: String, turtle: GrainTurtle = GrainTurtle()): List<Grain> {
-    class State(val t: Double, val p: Double, val amp: Double, val scale: Double, val depth: Int)
+    class State(
+        val t: Double,
+        val p: Double,
+        val amp: Double,
+        val scale: Double,
+        val depth: Int,
+        val length: Double,
+        val density: Double,
+        val pan: Double
+    )
     val out = ArrayList<Grain>()
     val stack = ArrayDeque<State>()
     var t = 0.0; var p = turtle.basePitch; var amp = 1.0; var scale = 1.0; var depth = 0
+    var length = 1.0; var density = 1.0; var pan = 0.0
     for (c in string) {
         when (c) {
             'G' -> {
                 if (out.size >= turtle.maxGrains) return out
-                out.add(Grain(t, turtle.grainDuration * turtle.timeScale * scale, p, amp, depth))
-                t += turtle.timeStep * turtle.timeScale * scale
+                out.add(Grain(t, turtle.grainDuration * turtle.timeScale * scale * length, p, amp, depth, pan))
+                t += turtle.timeStep * turtle.timeScale * scale * density
             }
-            'f' -> t += turtle.timeStep * turtle.timeScale * scale
+            'f' -> t += turtle.timeStep * turtle.timeScale * scale * density
             '+' -> p += turtle.pitchStep
             '-' -> p -= turtle.pitchStep
+            '<' -> length /= turtle.lengthStep
+            '>' -> length *= turtle.lengthStep
+            '*' -> density /= turtle.densityStep
+            '/' -> density *= turtle.densityStep
+            'l' -> pan -= turtle.panStep
+            'r' -> pan += turtle.panStep
             '[' -> {
-                stack.addLast(State(t, p, amp, scale, depth))
+                stack.addLast(State(t, p, amp, scale, depth, length, density, pan))
                 amp *= turtle.branchAmp; scale *= turtle.branchDuration; depth++
             }
-            ']' -> stack.removeLastOrNull()?.let { s -> t = s.t; p = s.p; amp = s.amp; scale = s.scale; depth = s.depth }
+            ']' -> stack.removeLastOrNull()?.let { s ->
+                t = s.t; p = s.p; amp = s.amp; scale = s.scale; depth = s.depth
+                length = s.length; density = s.density; pan = s.pan
+            }
         }
     }
     return out
@@ -278,25 +325,137 @@ fun defaultGrainTerms(): List<GrainFitnessTerm> = listOf(
 
 /**
  * An [Objective] over grain-alphabet L-systems: decode, measure, score with [terms]. A grammar that
- * blows past the derivation cap or emits nothing scores 0. The behaviour descriptor is
- * [GrainSetStats.vector].
+ * blows past the derivation cap or emits nothing scores 0.
+ *
+ * @param behaviour the statistics that make up [Evaluation.behaviour], in this order. Every
+ *   statistic by default (the same as [GrainSetStats.vector]); [PopulationSearch.mapElites] needs
+ *   exactly as many as it has axes, so pass the two or three it should map.
  */
 fun grainSetObjective(
     terms: List<GrainFitnessTerm> = defaultGrainTerms(),
     generations: Int = 3,
-    turtle: GrainTurtle = GrainTurtle()
+    turtle: GrainTurtle = GrainTurtle(),
+    behaviour: List<GrainStat> = GrainStat.entries
 ): Objective<LSystem> = Objective { system ->
     val grains = runCatching { decodeGrains(system, generations, turtle) }.getOrDefault(emptyList())
     val stats = GrainSetStats(grains)
-    Evaluation(grainSetFitness(stats, terms), behaviour = stats.vector())
+    Evaluation(grainSetFitness(stats, terms), behaviour = behaviour.map { stats[it] }.toDoubleArray())
+}
+
+/** The symbols EvoGrain's grammars start with: `G` (twice, so bodies sound more than they rest), `+`, `-`, `[`, `]`, `f`. */
+const val GRAIN_ALPHABET: String = "GG+-[]f"
+
+/**
+ * [GRAIN_ALPHABET] plus the three pairs that shape the grains rather than place them: `<` `>` grain
+ * length, `*` `/` density, `l` `r` pan. See [GrainTurtle].
+ */
+const val GRAIN_ALPHABET_EXTENDED: String = "GG+-[]f<>*/lr"
+
+/**
+ * [LSystemGenome] over a grain alphabet: one production for `G`, and one more for each of
+ * [nonterminals].
+ *
+ * A nonterminal such as `X` is rewritten like `G` but plays nothing when decoded, so it can carry
+ * structure from one generation to the next without sounding: `G → G[X]`, `X → +GX` grows a rising
+ * branch one note longer every generation, which a single rule for `G` cannot write.
+ *
+ * @param alphabet what production bodies are built from; [GRAIN_ALPHABET] or
+ *   [GRAIN_ALPHABET_EXTENDED]
+ * @param nonterminals extra rewritten symbols, each added to the alphabet; none may be a symbol the
+ *   decoder reads
+ */
+fun grainLSystemGenome(
+    minLength: Int = 3,
+    maxLength: Int = 10,
+    alphabet: String = GRAIN_ALPHABET,
+    nonterminals: String = ""
+): LSystemGenome {
+    val read = "G" + GRAIN_ALPHABET_EXTENDED
+    require(nonterminals.none { it in read }) {
+        "nonterminals must not be symbols the grain decoder reads ($read), got '$nonterminals'"
+    }
+    return LSystemGenome(
+        axiom = "G",
+        symbols = "G" + nonterminals,
+        alphabet = alphabet + nonterminals,
+        minLength = minLength,
+        maxLength = maxLength
+    )
+}
+
+// ==============================================================================================
+// A target taken from a recording
+// ==============================================================================================
+
+/**
+ * Read a monophonic recording as a grain set: one [Grain] per note that
+ * [afield.audio.synth.patSegmentNotes] can name, at its onset, length and measured pitch, with
+ * amplitude the note's RMS relative to the loudest note. Every grain is on the trunk (depth 0),
+ * because a monophonic detector has no voices to report; a chord or a drum hit names nothing.
+ *
+ * Its [GrainSetStats] is a target: [grainTermsAround] centres a trapezoid on each statistic, and
+ * the search then evolves grammars toward a set that measures like the recording.
+ *
+ * @param samples mono audio
+ * @param minGapSeconds the shortest gap between two note onsets the segmenter will report
+ * @param minHz lowest pitch the detector listens for; it sets the analysis window, so pass the truth
+ *   about the register rather than a wide guess
+ * @param maxHz highest pitch the detector listens for
+ */
+fun grainsFromAudio(
+    samples: FloatArray,
+    sampleRate: Int,
+    minGapSeconds: Double = 0.05,
+    minHz: Double = afield.audio.synth.PAT_PITCH_MIN_HZ,
+    maxHz: Double = afield.audio.synth.PAT_PITCH_MAX_HZ
+): List<Grain> {
+    val frames = afield.audio.synth.patF0Frames(samples, sampleRate, minHz = minHz, maxHz = maxHz)
+    val notes = afield.audio.synth.patSegmentNotes(samples, sampleRate, minGapSeconds, frames = frames)
+    if (notes.isEmpty()) return emptyList()
+    val rms = notes.map { n ->
+        var sum = 0.0
+        val a = n.startSample.coerceIn(0, samples.size); val b = n.endSample.coerceIn(a, samples.size)
+        for (i in a until b) sum += samples[i] * samples[i].toDouble()
+        if (b > a) sqrt(sum / (b - a)) else 0.0
+    }
+    val loudest = rms.max().takeIf { it > 0 } ?: 1.0
+    return notes.mapIndexed { i, n ->
+        Grain(n.startSeconds, n.endSeconds - n.startSeconds, n.measuredMidi, rms[i] / loudest, 0)
+    }
 }
 
 /**
- * [LSystemGenome] over the grain alphabet: one production for `G`, built from `G`, `f`, `+`, `-`, `[`
- * and `]`. `G` appears twice in the alphabet so random bodies sound more often than they rest.
+ * One trapezoid per statistic in [stats], each centred on [target]'s value: a plateau of
+ * `value ± width·|value|` and feet four times as far out, so the score is 1 near the target and 0
+ * well away from it. Median pitch is not a quantity with a natural zero, so its half-width is
+ * `width × 8` semitones instead (2 semitones at the default). Each half-width is at least [floor]'s
+ * entry for that statistic, so a target of 0 (no polyphony, every grain on a different pitch) still
+ * has a plateau to stand on.
+ *
+ * @param target the statistics to aim at, for instance a recording's from [grainsFromAudio]
+ * @param width relative half-width of each plateau
+ * @param stats the statistics scored; [GrainStat.DENSITY] is left out by default because it is
+ *   count over duration, both of which are already scored
+ * @param floor the smallest half-width per statistic
  */
-fun grainLSystemGenome(minLength: Int = 3, maxLength: Int = 10): LSystemGenome =
-    LSystemGenome(axiom = "G", symbols = "G", alphabet = "GG+-[]f", minLength = minLength, maxLength = maxLength)
+fun grainTermsAround(
+    target: GrainSetStats,
+    width: Double = 0.25,
+    stats: List<GrainStat> = GrainStat.entries.filter { it != GrainStat.DENSITY },
+    floor: Map<GrainStat, Double> = mapOf(
+        GrainStat.COUNT to 1.0,
+        GrainStat.MEDIAN_PITCH to 0.5,
+        GrainStat.PITCH_SPREAD to 0.25,
+        GrainStat.DURATION to 0.1,
+        GrainStat.DENSITY to 0.1,
+        GrainStat.POLYPHONY to 0.05,
+        GrainStat.MODE_SHARE to 0.02
+    )
+): List<GrainFitnessTerm> = stats.map { stat ->
+    val v = target[stat]
+    val h = max(floor[stat] ?: 0.0, if (stat == GrainStat.MEDIAN_PITCH) width * 8.0 else width * abs(v))
+    GrainFitnessTerm(stat, Trapezoid(v - 4 * h, v - h, v + h, v + 4 * h))
+}
 
 // ==============================================================================================
 // Sound
@@ -327,36 +486,47 @@ class GrainAudio(
  * Render [grains] offline, sample-accurately: every grain starts on the sample nearest its onset.
  *
  * Each grain is a Hann-windowed tone at its pitch (fundamental plus a soft second and third harmonic),
- * or, when [source] is given, a Hann-windowed read of [source] transposed by `pitch - 60` semitones
- * from a position that walks through the source as the set goes on, the way [afield.audio.synth.GrainCloud]
- * reads a sample. Branch depth pans the grain: the trunk is centred, alternate depths lean left and right.
+ * or, when [source] is given, a Hann-windowed read of [source] transposed by `pitch - sourcePitch`
+ * semitones from a position that walks through the source as the set goes on, the way
+ * [afield.audio.synth.GrainCloud] reads a sample. Branch depth pans the grain: the trunk is centred,
+ * alternate depths lean left and right, and [Grain.pan] is added to that lean.
  *
  * This is offline rather than a `GrainCloud` because a cloud spawns grains stochastically from
  * density and position parameters; a decoded set is a fixed list of grains at fixed onsets.
  *
+ * @param sourcePitch the MIDI pitch [source] sounds at untransposed, so a grain at that pitch plays the
+ *   sample at its own speed; [grainsFromAudio] measures it
  * @param tail seconds of silence kept after the last grain ends
  * @param minSeconds the shortest render, so a one-grain set still gives a player something to play
+ * @param maxSeconds the longest render. A grammar full of `>` or `/` can push grains minutes or
+ *   hours out; past this the buffer stops, so a strange child cannot exhaust memory. Grains with a
+ *   non-finite onset or length are skipped for the same reason.
  */
 fun renderGrains(
     grains: List<Grain>,
     sampleRate: Int = 44_100,
     source: FloatArray? = null,
     sourceRate: Int = sampleRate,
+    sourcePitch: Double = 60.0,
     tail: Double = 0.5,
-    minSeconds: Double = 2.0
+    minSeconds: Double = 2.0,
+    maxSeconds: Double = 600.0
 ): GrainAudio {
-    val end = max(minSeconds, (grains.maxOfOrNull { it.end } ?: 0.0) + tail)
+    val grains = grains.filter { it.onset.isFinite() && it.duration.isFinite() && it.onset < maxSeconds }
+    val end = min(maxSeconds, max(minSeconds, (grains.maxOfOrNull { it.end } ?: 0.0) + tail))
     val n = max(1, (end * sampleRate).roundToInt())
     val left = FloatArray(n); val right = FloatArray(n)
     val span = max(1e-9, grains.maxOfOrNull { it.onset } ?: 1.0)
     for (g in grains) {
         val start = (g.onset * sampleRate).roundToInt()
-        val len = max(4, (g.duration * sampleRate).roundToInt())
+        val len = max(4, (min(g.duration, maxSeconds) * sampleRate).roundToInt())
         val hz = 440.0 * 2.0.pow((g.pitch - 69.0) / 12.0)
-        val pan = if (g.depth == 0) 0.0 else (if (g.depth % 2 == 1) -1.0 else 1.0) * min(0.8, 0.3 * g.depth)
+        val lean = if (g.depth == 0) 0.0 else (if (g.depth % 2 == 1) -1.0 else 1.0) * min(0.8, 0.3 * g.depth)
+        // Coerced only because sqrt(1 - pan) is NaN past ±1; any number of `l`s is still hard left.
+        val pan = (lean + g.pan).coerceIn(-1.0, 1.0)
         val gl = (g.amp * sqrt(0.5 * (1 - pan))).toFloat()
         val gr = (g.amp * sqrt(0.5 * (1 + pan))).toFloat()
-        val rate = 2.0.pow((g.pitch - 60.0) / 12.0) * sourceRate / sampleRate
+        val rate = 2.0.pow((g.pitch - sourcePitch) / 12.0) * sourceRate / sampleRate
         val readStart = if (source != null) (g.onset / span) * max(0, source.size - 1) * 0.9 else 0.0
         for (i in 0 until len) {
             val j = start + i
@@ -540,7 +710,9 @@ fun grainRule(system: LSystem): String = system.productions.joinToString("  ") {
  *
  * `example` is the hand-written grammar `G → G[+G-G]fG` at three generations; `evolved` is the best
  * grammar of the seeded run `PopulationSearch.evolve(grainLSystemGenome(), grainSetObjective(),
- * budget = 400, seed = 7L, crossoverRate = 0.3, immigrantRate = 0.1)`.
+ * budget = 400, seed = 7L, crossoverRate = 0.3, immigrantRate = 0.1)`. `shaped` is [SHAPED] at four
+ * generations; `matched` is the page's run toward the arpy recording ([matchedRun]), played from the
+ * first arpy sample. `matched` needs the pinned Dirt-Samples subset (`./gradlew fetchDocsDirtSamples`).
  */
 object GrainSetSoundDocs {
     /** The hand-written example grammar. */
@@ -552,14 +724,39 @@ object GrainSetSoundDocs {
         crossoverRate = 0.3, immigrantRate = 0.1, label = "grains"
     )
 
-    /** Render scene [name] (`example` or `evolved`) to a stereo `.wav` at [outPath]. */
+    /** The hand-written grammar that shows the length, density and pan symbols and a nonterminal. */
+    val SHAPED: LSystem = lSystem("G", 'G' to "G[lX]-*<G", 'X' to "+>G/X")
+
+    /** Tidal's eleven `arpy` samples back to back, mono, and their sample rate. */
+    fun arpyRecording(): Pair<FloatArray, Int> {
+        val arpy = afield.audio.synth.DirtRender.requirePinnedLibrary().family("arpy")
+            ?: error("the pinned Dirt-Samples subset has no arpy folder")
+        val notes = (0 until arpy.size).map { arpy.sample(it)!! }
+        return notes.flatMap { it.left.asList() }.toFloatArray() to notes[0].sampleRate.toInt()
+    }
+
+    /** The page's run toward [arpyRecording]: extended alphabet, terms around the recording's statistics. */
+    fun matchedRun(recording: FloatArray, rate: Int) = PopulationSearch.evolve(
+        grainLSystemGenome(alphabet = GRAIN_ALPHABET_EXTENDED),
+        grainSetObjective(grainTermsAround(GrainSetStats(grainsFromAudio(recording, rate, minHz = 100.0)))),
+        budget = 600, seed = 7L, crossoverRate = 0.3, immigrantRate = 0.1, label = "toward arpy"
+    )
+
+    /** Render scene [name] (`example`, `evolved`, `shaped` or `matched`) to a stereo `.wav` at [outPath]. */
     fun renderWav(name: String, outPath: String) {
-        val system = when (name) {
-            "example" -> EXAMPLE
-            "evolved" -> evolvedRun().best!!.genome
-            else -> error("unknown GrainSetSoundDocs scene '$name'; known: [example, evolved]")
+        val audio = when (name) {
+            "example" -> renderGrains(decodeGrains(EXAMPLE, 3))
+            "evolved" -> renderGrains(decodeGrains(evolvedRun().best!!.genome, 3))
+            "shaped" -> renderGrains(decodeGrains(SHAPED, 4))
+            "matched" -> {
+                val (recording, rate) = arpyRecording()
+                val first = grainsFromAudio(recording, rate, minHz = 100.0).first()
+                val firstNote = afield.audio.synth.DirtRender.requirePinnedLibrary().family("arpy")!!.sample(0)!!.left
+                val best = decodeGrains(matchedRun(recording, rate).best!!.genome, 3)
+                renderGrains(best, source = firstNote, sourceRate = rate, sourcePitch = first.pitch)
+            }
+            else -> error("unknown GrainSetSoundDocs scene '$name'; known: [example, evolved, shaped, matched]")
         }
-        val audio = renderGrains(decodeGrains(system, 3))
         require(audio.left.any { it != 0f }) { "scene '$name' rendered silence" }
         audio.writeWav(outPath)
     }

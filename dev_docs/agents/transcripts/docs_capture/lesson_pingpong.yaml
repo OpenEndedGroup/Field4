@@ -121,11 +121,11 @@ operations:
               vec3 c = vec3(0);
               float total = 0.0;
               for (int y = -1; y <= 1; y++)
-                  for (int x = -1; x <= 1; x++) {
-                      float w = (x == 0 && y == 0) ? 4.0 : ((x == 0 || y == 0) ? 2.0 : 1.0);
-                      c += w * texture(otherView, tc + 5.0 * px * vec2(x, y)).rgb;
-                      total += w;
-                  }
+              for (int x = -1; x <= 1; x++) {
+                  float w = (x == 0 && y == 0) ? 4.0 : ((x == 0 || y == 0) ? 2.0 : 1.0);
+                  c += w * texture(otherView, tc + 5.0 * px * vec2(x, y)).rgb;
+                  total += w;
+              }
               c = c / total * 0.996;
 
               // A dot moving on a Lissajous path, its colour cycling, stamped into the feedback every frame.

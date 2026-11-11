@@ -1,11 +1,9 @@
-import afield.runtime.execution.begin
-import kotlin.math.*
 import kotlin.random.Random
 
 // Squares are numbered y * w + x. A tour is an IntArray of every square, starting at s, ending at t.
 
 fun knightNeighbours(w: Int, h: Int): Array<IntArray> {
-    val jumps = listOf(1 to 2, 2 to 1, -1 to 2, -2 to 1, 1 to -2, 2 to -1, -1 to -2, -2 to -1)
+    val jumps = [1 to 2, 2 to 1, -1 to 2, -2 to 1, 1 to -2, 2 to -1, -1 to -2, -2 to -1]
     return Array(w * h) { i ->
         jumps
             .mapNotNull { (dx, dy) ->
@@ -176,7 +174,7 @@ fun threePointArc(
     val cx = c.first - ax
     val cy = c.second - ay
     val cross = bx * cy - by * cx
-    if (abs(cross) < 1e-9) return listOf(a, b, c)
+    if (abs(cross) < 1e-9) return [a, b, c]
     val bb = bx * bx + by * by
     val cc = cx * cx + cy * cy
     val ux = (bb * cy - cc * by) / (2 * cross)
@@ -220,11 +218,11 @@ fun tourLine(tour: IntArray, w: Int) = fline {
 val w = 8
 val s = 0
 val t = 6 * w + 7
-val rows = listOf(
+val rows = [
     allKnightTours(w, w, s, t).take(6).toList(),
     rotationKnightTours(w, w, s, t, Random(1)).take(6).toList(),
     randomKnightTours(w, w, s, t, Random(1)).take(6).toList(),
-)
+]
 // Compute arc geometry once for the existing arc-based child views.
 val arcRows = rows.map { row ->
     row.map { tour ->

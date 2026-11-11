@@ -9,8 +9,6 @@ operations:
       frame: {x: 40.0, y: 40.0, w: 420.0, h: 120.0}
       properties:
         code: |
-          import afield.graphics.scene.GltfSupport
-
           // Assimp's view of a glTF file: nodes, meshes, materials, animations
           val scene = GltfSupport.loadModel("dev_docs/agents/fixtures/path_tracing/transforms.gltf")!!
           column("columns", scene, width = 1300)
@@ -22,8 +20,6 @@ operations:
       property: code
       type: code
       code: |
-        import afield.graphics.scene.GltfSupport
-
         // Assimp's view of a glTF file: nodes, meshes, materials, animations
         val scene = GltfSupport.loadModel("dev_docs/agents/fixtures/path_tracing/transforms.gltf")!!
         column("columns", scene, width = 1300)

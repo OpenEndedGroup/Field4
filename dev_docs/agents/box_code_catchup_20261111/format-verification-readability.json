@@ -1,0 +1,29 @@
+{
+  "spans": 1718,
+  "uniqueBodies": 1373,
+  "formattedBodies": 72,
+  "changedPaths": [
+    "dev_docs/agents/demos/controls_surface/build.yaml",
+    "dev_docs/agents/demos/controls_surface/document.md",
+    "dev_docs/agents/demos/controls_surface/surface_code_.kt",
+    "dev_docs/agents/transcripts/audio_ai_analysis.yaml",
+    "dev_docs/agents/transcripts/audio_ai_corpus_microscope.yaml",
+    "dev_docs/agents/transcripts/audio_ai_muscriptor.yaml",
+    "dev_docs/agents/transcripts/audio_ai_spectral_embeddings.yaml",
+    "dev_docs/agents/transcripts/audio_ai_speech_embeddings.yaml",
+    "dev_docs/agents/transcripts/audio_ai_underfit_mancini.yaml",
+    "dev_docs/agents/transcripts/controls_presets_morph_midi.yaml",
+    "dev_docs/agents/transcripts/controls_surface.yaml",
+    "dev_docs/agents/transcripts/docs_capture/record_toggle.yaml",
+    "dev_docs/agents/transcripts/docs_capture/tour_interface_document.yaml",
+    "dev_docs/agents/transcripts/docs_capture/vec2_gestures.yaml",
+    "dev_docs/agents/transcripts/physical_piano.yaml",
+    "dev_docs/agents/transcripts/staged_project.yaml",
+    "public/docs/afield_four_graphics.md",
+    "public/docs/graph_query.md",
+    "public/docs/visualizers.md"
+  ],
+  "skips": [],
+  "tokenLiteralsFoldsAndFragmentMarkersVerified": true,
+  "formatter": "Actual Field editor imports, ktfmt and GLSL formatting"
+}

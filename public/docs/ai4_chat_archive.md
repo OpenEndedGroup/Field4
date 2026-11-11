@@ -13,7 +13,7 @@ folder in your workspace.
 
 ## A chat as a tree
 
-`ChatArchive.chats(folder)` finds every box in a document folder that has a saved chat. `ChatArchive.tree(chat)` reads one as a tree of turns. It only reads files, so you can point it at a document that is open in another Field. `ChatLogViews.outline(tree)` gives the tree as text, the way an agent first sees it. This box shows its header and first turn in an output panel:
+[`ChatArchive.chats(folder)`](reference/ai4.md#chatarchive-kt--chatarchive--chats) finds every box in a document folder that has a saved chat. [`ChatArchive.tree(chat)`](reference/ai4.md#chatarchive-kt--chatarchive--tree) reads one as a tree of turns. It only reads files, so you can point it at a document that is open in another Field. [`ChatLogViews.outline(tree)`](reference/ai4.md#chatlogviews-kt--chatlogviews--outline) gives the tree as text, the way an agent first sees it. This box shows its header and first turn in an output panel:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/ai4_chat_archive/outline.png" embed=true w="760" h="50" wait="1.5" timeout="90" name="chat-archive-outline" alt="The start of the harbour chat outline: a header counting turns, replies, tool calls and images, then turn 1, the dusk painting: the request, each reply as its first line, and each run of tool calls as one round line with its addresses, count and time"}
 import afield.ai.conversation.chatlog.*
@@ -23,10 +23,7 @@ val harbour = File("public/docs/assets/ai4_chat_archive/chats/harbour")
 val tree = ChatArchive.tree(ChatArchive.chats(harbour).single())
 // The header and the first turn; the whole outline goes on to the second turn and the rewound branches.
 val firstTurn = ChatLogViews.outline(tree).substringBefore("\n## Turn 2")
-display(
-    "outline",
-    "<pre style='margin:8px;max-width:720px;white-space:pre-wrap'>" + firstTurn.replace("<", "&lt;") + "</pre>",
-)
+markdown("outline", firstTurn, width = 720)
 ```
 
 Each block has an **address**, `<turn>.b<index>`, such as `t-5e7076a8-acf.b8`. A turn's id is never reused, so an address stays valid as the chat grows, and blocks on a rewound branch (the night turn, `t-23d59848-f38`, here) have addresses too. Tool calls are grouped into **rounds**, one line each, and named by what they do: `edit`, `look`, `build steps`, `note`. These are the same round lines the chat panel shows.

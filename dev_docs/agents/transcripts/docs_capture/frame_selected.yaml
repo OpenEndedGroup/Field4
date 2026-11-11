@@ -16,7 +16,10 @@ operations:
       frame: { x: 1500.0, y: 700.0, w: 200.0, h: 70.0 }
       properties:
         code: |
-          display("main", "<div style='width:340px;height:160px;padding:12px;color:#ddd;background:#1b2330'>the selected box's open output panel</div>")
+          display(
+              "main",
+              "<div style='width:340px;height:160px;padding:12px;color:#ddd;background:#1b2330'>the selected box's open output panel</div>",
+          )
           displayOpen("main")
   - launch: { box: fs_target }
   - wait: { millis: 800 }
