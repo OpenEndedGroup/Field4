@@ -123,6 +123,8 @@ class FlowLeniaRule(
  *
  * Mutable: [step] advances it in place. Build one with [FlowLeniaWorld], add matter with [seed], and
  * read it back with [matterImg], [speciesImg], [totalMass] and [speciesMass].
+ *
+ * @param randomSeed seed for [FlowLeniaMixing.SAMPLED] draws and for [seed]'s noise
  */
 class FlowLeniaWorld(
     /** Field width in cells. */
@@ -133,7 +135,6 @@ class FlowLeniaWorld(
     val rule: FlowLeniaRule,
     /** How many species tracers each cell carries. */
     val speciesCount: Int = 1,
-    /** Seed for [FlowLeniaMixing.SAMPLED] draws and for [seed]'s noise. */
     randomSeed: Long = 1L
 ) {
     init {
