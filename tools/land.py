@@ -1807,6 +1807,11 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
                         item.update(reason=f"merge conflict with main: {files}", finished=_now())
                         _move(queue, item, BOUNCED)
                     continue
+                # A publication's catalog entry and captured files must come from one side, or the
+                # sync recaptures every publication (tools/publication_merge.py says why).
+                if (wt / "tools/publication_merge.py").is_file():
+                    subprocess.run([sys.executable, str(wt / "tools/publication_merge.py")], cwd=wt, stdout=out,
+                                   stderr=subprocess.STDOUT, env=env)
                 subprocess.run(["git", "commit", "-q", "-m", _message(item)], cwd=wt, stdout=out, stderr=subprocess.STDOUT, env=env)
                 item["merged_as"] = _git(wt, "rev-parse", "HEAD")
                 members.append(item)

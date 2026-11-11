@@ -193,6 +193,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {path}", file=sys.stderr)
         return 1
 
+    # One side's catalog entry with the other side's captures makes every publication stale.
+    from publication_merge import unify  # noqa: PLC0415
+    taken = unify(repo)
+    if taken:
+        print(f"merge_regen: took {len(taken)} publication(s) whole from {args.ref or 'MERGE_HEAD'}: {', '.join(taken)}")
+
     # Inputs that changed on either side since the merge base decide which generators can be stale.
     base = _git(repo, "merge-base", "HEAD", "MERGE_HEAD").strip()
     changed = set(_lines(_git(repo, "diff", "--name-only", base, "HEAD")))
