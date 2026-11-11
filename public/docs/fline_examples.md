@@ -1384,7 +1384,7 @@ Each piece between two points is an [Euler spiral](https://en.wikipedia.org/wiki
 
 Two tools make the difference visible on any line. `curvatureComb` draws a tooth along the normal at each sample, as long as the curvature there, and joins the tips; the teeth swap sides where the line changes from turning left to turning right. `curvaturePlot` draws curvature against distance along the line, in a box `width` by `height` with zero on the middle row.
 
-The comparison below puts both splines through the same eight points. The cubic's comb (orange) steps at every point; the clothoid's (blue) is a chain of straight runs that meet without steps. The plots underneath share one vertical scale.
+The comparison below puts both splines through the same eight points. The plots underneath share one vertical scale. The cubic's curvature (orange) steps at every point; the clothoid's (blue) is a chain of straight runs that meet without steps, and its comb tips run on without a break.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/clothoid_spline_vs_cubic.png" embed=true}
 :::static

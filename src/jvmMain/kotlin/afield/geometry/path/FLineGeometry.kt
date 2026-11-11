@@ -5120,6 +5120,7 @@ fun clothoidSplineFrom(points: List<Vec3>, closed: Boolean = false, samplesPerSe
     val z = pts[0].z
     val pieces = solveClothoidSpline(xs, ys, closed, 40) ?: return cubicSplineFrom(pts, closed)
     val steps = max(samplesPerSegment, 2)
+    line.nodes.last().properties[CURVATURE_PROPERTY] = pieces[0].kappa
     for ((j, piece) in pieces.withIndex()) {
         val ds = piece.length / steps
         var x = xs[j]
@@ -5143,6 +5144,7 @@ fun clothoidSplineFrom(points: List<Vec3>, closed: Boolean = false, samplesPerSe
                 x = xs[e]; y = ys[e]
             }
             line.lineTo(vec(x.toFloat(), y.toFloat(), z))
+            line.nodes.last().properties[CURVATURE_PROPERTY] = piece.kappa + piece.kappaPrime * i * ds
         }
     }
     if (closed) line.close()
@@ -5155,26 +5157,60 @@ fun clothoidSplineFrom(points: List<Vec3>, closed: Boolean = false, samplesPerSe
 fun clothoidSplineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = false, samplesPerSegment: Int = 48): FLine =
     clothoidSplineFrom(points.map { vec(it.x, it.y, z) }, closed, samplesPerSegment)
 
-/** Signed curvature (XY plane) at each of [samples] arc-length-even points, from circles through neighbours. */
-private fun signedCurvatureSamples(line: FLine, samples: Int): Pair<List<Vec3>, DoubleArray> {
-    val pts = line.sampleByNumber(max(samples, 3))
-    // Each circle goes through samples a few steps apart: neighbouring float samples on a fine
-    // polyline turn rounding into visible teeth.
-    val sub = line.sampleByNumber(max(samples, 3) * 4 - 3)
-    val w = 4
-    val k = DoubleArray(pts.size)
-    for (i in 1 until pts.size - 1) {
-        val j = i * 4
-        val a = sub[max(j - w, 0)]; val b = sub[j]; val c = sub[min(j + w, sub.lastIndex)]
+/** Node property where [clothoidSplineFrom] records the exact signed curvature at each drawn point. */
+private const val CURVATURE_PROPERTY = "curvature"
+
+/**
+ * Points along [line], their unit normals (tangent turned left), arc length, and signed curvature.
+ *
+ * A line from [clothoidSplineFrom] carries exact curvature on its nodes and is read from them.
+ * Any other line is sampled evenly by arc length, and curvature is the circle through points a
+ * fixed distance either side, so the answer does not depend on how the line was flattened.
+ */
+private class CurvatureSamples(val points: List<Vec3>, val nx: DoubleArray, val ny: DoubleArray, val along: DoubleArray, val kappa: DoubleArray)
+
+private fun signedCurvatureSamples(line: FLine, samples: Int): CurvatureSamples {
+    val drawn = line.nodes.filter { it !is FLine.Close }
+    if (drawn.size >= 3 && drawn.all { it.properties[CURVATURE_PROPERTY] is Double }) {
+        val all = drawn.map { Vec3(it.to) }
+        val ks = drawn.map { it.properties[CURVATURE_PROPERTY] as Double }
+        val along = DoubleArray(all.size)
+        for (i in 1 until all.size) along[i] = along[i - 1] + all[i].distance(all[i - 1])
+        val pick = (0 until max(samples, 3)).map { (it.toDouble() * all.lastIndex / (max(samples, 3) - 1)).roundToInt() }.distinct()
+        val nx = DoubleArray(pick.size)
+        val ny = DoubleArray(pick.size)
+        for ((j, i) in pick.withIndex()) {
+            val o = all[max(i - 1, 0)]; val q = all[min(i + 1, all.lastIndex)]
+            val tx = (q.x - o.x).toDouble(); val ty = (q.y - o.y).toDouble()
+            val tl = max(hypot(tx, ty), 1e-12)
+            nx[j] = -ty / tl; ny[j] = tx / tl
+        }
+        return CurvatureSamples(pick.map { all[it] }, nx, ny, DoubleArray(pick.size) { along[pick[it]] }, DoubleArray(pick.size) { ks[pick[it]] })
+    }
+    val n = max(samples, 3)
+    val c = line.cursor()
+    val total = c.lengthD().toDouble()
+    val h = total / (n - 1) * 1.5
+    val pts = ArrayList<Vec3>(n)
+    val nx = DoubleArray(n); val ny = DoubleArray(n); val along = DoubleArray(n); val k = DoubleArray(n)
+    fun at(d: Double): Vec3 { c.setD(d.coerceIn(0.0, total).toFloat()); return c.position() }
+    for (i in 0 until n) {
+        val d = total * i / (n - 1)
+        val b = at(d)
+        val a = at(d - h); val e = at(d + h)
+        pts.add(b); along[i] = d
+        val tx = (e.x - a.x).toDouble(); val ty = (e.y - a.y).toDouble()
+        val tl = max(hypot(tx, ty), 1e-12)
+        nx[i] = -ty / tl; ny[i] = tx / tl
         val abx = (b.x - a.x).toDouble(); val aby = (b.y - a.y).toDouble()
-        val bcx = (c.x - b.x).toDouble(); val bcy = (c.y - b.y).toDouble()
-        val acx = (c.x - a.x).toDouble(); val acy = (c.y - a.y).toDouble()
+        val bcx = (e.x - b.x).toDouble(); val bcy = (e.y - b.y).toDouble()
         val cross = abx * bcy - aby * bcx
-        val denom = hypot(abx, aby) * hypot(bcx, bcy) * hypot(acx, acy)
+        val denom = hypot(abx, aby) * hypot(bcx, bcy) * hypot(tx, ty)
         k[i] = if (denom > 1e-18) 2 * cross / denom else 0.0
     }
-    k[0] = k[1]; k[k.size - 1] = k[k.size - 2]
-    return Pair(pts, k)
+    // the ends see a one-sided neighbourhood; copy their inside neighbour
+    k[0] = k[1]; k[n - 1] = k[n - 2]
+    return CurvatureSamples(pts, nx, ny, along, k)
 }
 
 /**
@@ -5183,27 +5219,23 @@ private fun signedCurvatureSamples(line: FLine, samples: Int): Pair<List<Vec3>, 
  *
  * Teeth point toward the centre of curvature, so they flip sides at an inflection; a
  * smooth envelope means smoothly varying curvature, a step in it is a curvature jump.
- * Curvature is measured from the drawn geometry (circles through neighbouring samples),
- * so it works on any line: cubic splines, clothoid splines, hand-drawn strokes.
+ * A line made by [clothoidSplineFrom] carries its exact curvature and is read from that
+ * (scale such a line after building it and the teeth keep the unscaled lengths). Any other line,
+ * a cubic spline or a hand-drawn stroke, is measured from its shape.
  *
  * @param scale tooth length per unit curvature (world units squared)
  * @param samples teeth along the whole line
  */
 fun FLine.curvatureComb(scale: Double = 2000.0, samples: Int = 120): FLine {
-    val (pts, k) = signedCurvatureSamples(this, samples)
+    val cs = signedCurvatureSamples(this, samples)
     val comb = FLine()
-    val tips = ArrayList<Vec3>()
-    for (i in pts.indices) {
-        val p = pts[i]
-        val q = pts[min(i + 1, pts.lastIndex)]
-        val o = pts[max(i - 1, 0)]
-        val tx = (q.x - o.x).toDouble(); val ty = (q.y - o.y).toDouble()
-        val tl = hypot(tx, ty)
-        if (tl < 1e-12) continue
-        val len = k[i] * scale
-        val tip = vec((p.x - ty / tl * len).toFloat(), (p.y + tx / tl * len).toFloat(), p.z)
-        comb.moveTo(p); comb.lineTo(tip)
-        tips.add(tip)
+    val tips = cs.points.indices.map { i ->
+        val p = cs.points[i]
+        val len = cs.kappa[i] * scale
+        vec((p.x + cs.nx[i] * len).toFloat(), (p.y + cs.ny[i] * len).toFloat(), p.z)
+    }
+    for (i in tips.indices) {
+        comb.moveTo(cs.points[i]); comb.lineTo(tips[i])
     }
     if (tips.size > 1) {
         comb.moveTo(tips[0])
@@ -5222,11 +5254,13 @@ fun FLine.curvatureComb(scale: Double = 2000.0, samples: Int = 120): FLine {
  * @param samples points along the line
  */
 fun FLine.curvaturePlot(width: Double = 400.0, height: Double = 120.0, samples: Int = 300, maxCurvature: Double? = null): FLine {
-    val (_, k) = signedCurvatureSamples(this, samples)
+    val cs = signedCurvatureSamples(this, samples)
+    val k = cs.kappa
+    val total = max(cs.along.last(), 1e-12)
     val top = maxCurvature ?: max(k.maxOf { abs(it) }, 1e-9)
     val plot = FLine()
     for (i in k.indices) {
-        val x = width * i / (k.size - 1)
+        val x = width * cs.along[i] / total
         val y = height / 2 - (k[i] / top).coerceIn(-1.0, 1.0) * height / 2
         if (i == 0) plot.moveTo(vec(x, y, 0.0)) else plot.lineTo(vec(x, y, 0.0))
     }

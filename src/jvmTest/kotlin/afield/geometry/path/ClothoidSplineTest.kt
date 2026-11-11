@@ -108,4 +108,20 @@ class ClothoidSplineTest {
         assertTrue(plot.nodes.size == 80)
         assertTrue(plot.nodes.all { it.to.y in -0.01f..100.01f })
     }
+
+    @Test
+    fun plotOfACircleIsFlat() {
+        // The spline carries exact curvature on its nodes, so the plot has no sampling ripple.
+        val knots = (0 until 6).map { i -> val a = 2 * PI * i / 6 + 0.2 * sin(i * 2.3); vec(80 * cos(a), 80 * sin(a), 0.0) }
+        val ys = clothoidSplineFrom(knots, closed = true).curvaturePlot(height = 100.0, samples = 200, maxCurvature = 0.02)
+            .nodes.map { it.to.y.toDouble() }
+        val spread = ys.maxOf { it } - ys.minOf { it }
+        assertTrue(spread < 0.05, "plot of a circle varies by $spread")
+    }
+
+    @Test
+    fun cubicCombFallsBackToMeasuredCurvature() {
+        val comb = cubicSplineFrom(wave).curvatureComb(samples = 40)
+        assertTrue(comb.nodes.size >= 80, "comb has ${comb.nodes.size} nodes")
+    }
 }
