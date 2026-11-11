@@ -1746,26 +1746,30 @@
     },
     "assets/agent_transcripts/flow_lenia/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-11T11:55:16.017Z",
-      "channels": 3,
+      "capturedAt": "2026-11-11T19:36:07.841Z",
+      "channels": 5,
       "file": "assets/web_publications/flow_lenia/document/metadata.edn",
       "files": {
-        "assets/web_publications/flow_lenia/document/metadata.edn": "4e8b97fa3d60e79150c97f9be97881b641b4e13a0cbfd35711ab6a7a4ad5d64b",
-        "assets/web_publications/flow_lenia/document/outputs.json": "8b1a4ed04062cbb066d231de1ec7aaff47f808aec664dbcee83e33fd8d9cadd5",
-        "assets/web_publications/flow_lenia/outputs/0.html": "df6573e3664e9312e1172cc12586009abedaf62859caf39cb263fe08a6946a4e",
-        "assets/web_publications/flow_lenia/outputs/1.html": "9d36ae1b62d139be1cc61942d7cd2a17b6a3507b75b8d0ef816d2f72e7c4095d",
-        "assets/web_publications/flow_lenia/outputs/2.html": "cb1f43ef0f14796cb32b4d5909224b3715baa8d7ce21b9ce3f446687855825bb"
+        "assets/web_publications/flow_lenia/document/metadata.edn": "3b33d9a55704f9f1a5803afc0ab0099bb554c2aebe104e2edc79c765d423cf6f",
+        "assets/web_publications/flow_lenia/document/outputs.json": "31027d6cf0cf033361e665fa7cd81128895d229bdaa1375e50ff85859eb97b92",
+        "assets/web_publications/flow_lenia/outputs/0.html": "82b7550edb201d1c04090b4a651b5193545e4dbe52997a9e311cbadd7e0aa7bd",
+        "assets/web_publications/flow_lenia/outputs/1.html": "e7e42a1ce28ca4b3494b4064532444a2040ec086ff9b482f73ea4a166b91f0f3",
+        "assets/web_publications/flow_lenia/outputs/2.html": "4a43c65551b95d3c3d38a104903d5e9a960fb029eea54e4f0876dc0817bb703e",
+        "assets/web_publications/flow_lenia/outputs/3.html": "fe257c714014409df02e99d8d2d1f129b227c640133c5e50c617e0ff1a3452ce",
+        "assets/web_publications/flow_lenia/outputs/4.html": "05b8827ad250f1d176a5416c2ee2bb6ccd4fc70e6b26fe622fcf31b55b28b798"
       },
       "kinds": [],
       "outputs": "assets/web_publications/flow_lenia/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/flow_lenia.yaml": "25e1501068c332b6bd7661b18396d4b729b85f941162cd54d1bc35efbbb17e04",
-        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_collision_code_.kt": "afcd0cd9759913f240a0990e4c8319fde04ad530d6cd25ea182fb4f74dabb2e4",
+        "dev_docs/agents/transcripts/flow_lenia.yaml": "e7315b70a827c92c845d964588d551e6cab39a73a15fef4318ca40be3757163c",
+        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_collision_code_.kt": "b5f23d8f5c5b1595399a94db3acefdf329fb8d73ce1420b5c8a4cdc1c132a32a",
         "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_conservation_code_.kt": "a74621be876e6827e6abb89547c6976d65c2a89b1d37dfda2000e9f1e2392eed",
-        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_drift_code_.kt": "be0d1866f3e44079e47aa6b2762c948376d2454fed56029f1e656509afa907be",
-        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_species_code_.kt": "3f1d542bed4dc71635584cbccdf7fbb10ae6d0ff4855e60d93c7904fe54ea0a9",
+        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_crescent_code_.kt": "8e4007f842aab322e2e746462ea5015de16a606b708ff3640812c0c57df6f924",
+        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_drift_code_.kt": "518162bcbabf5144ecc510e3d83e40523c7743b974ceabc378ba70554f1a3997",
+        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_mutation_code_.kt": "374cb7216c85a07a2601085d21c71483b331a923ccb677a1bcdd2052c2339640",
+        "public/docs/assets/agent_transcripts/flow_lenia/flow_lenia_species_code_.kt": "e4e719dc258d50477717611128cd33afd5023a5a36adc1764e86eae38c6ddb14",
         "public/docs/assets/agent_transcripts/flow_lenia/guides/alife_examples.md": "0c81d131364c0fcc13bb4112f5765c864c324505a350a0cb7a4c2c770f33b6e0",
-        "public/docs/assets/agent_transcripts/flow_lenia/metadata.edn": "0e65edc4183bae644f75bdd07ae4c6e55749b995d51716536f0339c0f3fb4759"
+        "public/docs/assets/agent_transcripts/flow_lenia/metadata.edn": "2e6687e00976c985f10cff837669f4b01653cd9a06260a020b11749b2bfa250c"
       }
     },
     "assets/agent_transcripts/fn_differentiable_fit_demo/metadata.edn": {

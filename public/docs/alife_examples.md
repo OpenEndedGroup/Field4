@@ -841,23 +841,27 @@ A species is a list of ring kernels, each with its own `mu` and `sigma`, and a w
 the paper's rule space (three to seven kernels of radius 3 to 12) and kept for what they did from a
 disc of noise: `wanderers` breaks into a dozen round bodies that drift slowly, `rings` settles into
 small hollow rings that keep apart, and `cell` grows one large body with a membrane. Seeded side by
-side in a 96 x 96 world, each keeps its own form, and the white line, the total mass, does not move:
+side in a 96 x 96 world and drawn at three times the resolution (`scale = 3`: 288 x 288 cells, nine
+for every one; [Higher resolution](#higher-resolution-the-same-world-in-more-cells) says what that
+changes), each takes its own form: the wanderers a dozen round bodies, the rings a cluster of hollow
+rings that later breaks into small crosses, and the cell a membrane that pulls apart into beaded
+chains. The white line, the total mass, does not move:
 
-```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-species.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="600" w="1000" embed=true name="alife-flow-lenia-species" alt="left, a dark field where an orange cloud of a dozen round bodies, a cluster of cyan hollow rings and one large pink body with a ragged membrane form from three discs of noise and keep apart; right, a plot whose white line, the total mass, stays perfectly flat while the orange, cyan and pink lines, each species' mass, stay level beneath it"}
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-species.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="900" w="1000" embed=true name="alife-flow-lenia-species" alt="left, a dark field where an orange cloud of a dozen round bodies, a cyan cluster of rings that breaks into small crosses and a pink membrane that pulls apart into beaded chains form from three discs of noise; right, a plot whose white line, the total mass, stays perfectly flat while the orange, cyan and pink lines, each species' mass, stay level beneath it"}
 :::static
-val world = flowLeniaWorld(96, 96, [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()])
+val world = flowLeniaWorld(288, 288, [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()], scale = 3)
 
 animateEvolution(
     world,
     totalSteps = 1200,
     seconds = 9.0,
     columns = 2,
-    cellSide = 384,
+    cellSide = 480,
     step = { it.step() },
     panels = { w, n ->
         [
-            ("step " + n) to w.speciesImg().upscaleNearest(4),
-            ("total mass %.6f".format(w.totalMass())) to w.massPlot(384, 384),
+            ("step " + n) to w.speciesImg().resize(480, 480),
+            ("total mass %.3f".format(w.totalMass())) to w.massPlot(480, 480),
         ]
     },
 )
@@ -872,18 +876,19 @@ only on its own, so a species with nobody near it runs exactly its own rule (the
 With `mixing = FlowLeniaMixing.SAMPLED`, a cell takes the parameters of one parcel of the matter
 arriving in it, chosen in proportion to mass, so a cell changes hands instead of blending. Then the
 mass per species is no longer fixed, and it records who is winning. Here `rings` (orange) and `cell`
-(cyan) start as two touching discs. For most of the run they trade a few units of mass back and forth
-along their border. Around step 900 the rings break into the membrane and take about 60 units of it,
-a quarter of the cell, while the white total stays flat:
+(cyan) start as two touching discs. For most of the run they trade mass back and forth along their
+border, a few tens of units out of about 4000. After step 1000 the rings break into the cell and take
+about 400 units of it, nearly a quarter, while the white total stays flat:
 
-```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-collision.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="600" w="1000" embed=true name="alife-flow-lenia-collision" alt="left, orange hollow rings and a cyan membrane-bound body pressed together; the rings push into the membrane and part of it turns orange. Right, the orange and cyan mass lines wobble around each other, then cross and separate sharply, while the white total above them stays flat"}
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-collision.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="900" w="1000" embed=true name="alife-flow-lenia-collision" alt="left, orange ring bodies and a cyan membrane body pressed together, mixing at their border and later merging into one large ring of both colours; right, the orange and cyan mass lines wobble around a steady gap, then separate sharply near the end, while the white total above them stays flat"}
 :::static
 val world = flowLeniaWorld(
-    96,
-    64,
+    288,
+    192,
     [FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
     positions = [38.0 to 32.0, 58.0 to 32.0],
     mixing = FlowLeniaMixing.SAMPLED,
+    scale = 3,
 )
 
 animateEvolution(
@@ -891,12 +896,12 @@ animateEvolution(
     totalSteps = 1200,
     seconds = 9.0,
     columns = 2,
-    cellSide = 384,
+    cellSide = 480,
     step = { it.step() },
     panels = { w, n ->
         [
-            ("step " + n) to w.speciesImg().upscaleNearest(4),
-            ("rings %.0f, cell %.0f".format(w.speciesMass(0), w.speciesMass(1))) to w.massPlot(384, 256),
+            ("step " + n) to w.speciesImg().resize(480, 320),
+            ("rings %.0f, cell %.0f".format(w.speciesMass(0), w.speciesMass(1))) to w.massPlot(480, 320),
         ]
     },
 )
@@ -906,25 +911,25 @@ With the default `FlowLeniaMixing.MEAN`, the same two discs blend instead. Matte
 and part cell carries an `h` between the two, and that `h` is a rule neither species had. On the
 right below is the parameter field itself: `weightImg(0)`, the weight on the rings' first kernel at
 every cell holding matter. It starts as two flat colours. By step 1200 about half the matter is a
-hybrid (`mixedMass()`, matter no species holds 90 % of), the rings' bodies carry a gradient of weights
-from pure rings to well into the cell, and the cell's membrane has taken on a little of the rings'
-rule. The species colours on the left blend the same way.
+hybrid (`mixedMass()`, matter no species holds 90 % of: 2051 of 4023 units). The rings' main body is
+almost pure rings, two smaller bodies sit between the two rules, and the cell's beaded chains grade
+from the cell's own weight towards the rings'. The species colours on the left blend the same way.
 
-```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-drift.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="600" w="1000" embed=true name="alife-flow-lenia-drift" alt="left, orange rings and a cyan membrane body whose colours blend into pale yellow and teal where they have mixed; right, the same matter coloured by one kernel weight on a viridis scale, starting as a yellow disc and a dark disc and ending with the rings' bodies graded from yellow to green and the membrane a dim blue"}
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-drift.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="900" w="1000" embed=true name="alife-flow-lenia-drift" alt="left, orange ring bodies and cyan beaded chains whose colours blend where they have mixed; right, the same matter coloured by one kernel weight on a viridis scale: a large yellow body, two green hybrid bodies, and teal chains grading towards blue"}
 :::static
-val world = flowLeniaWorld(96, 64, [FlowLeniaPresets.rings(), FlowLeniaPresets.cell()], positions = [38.0 to 32.0, 58.0 to 32.0])
+val world = flowLeniaWorld(288, 192, [FlowLeniaPresets.rings(), FlowLeniaPresets.cell()], positions = [38.0 to 32.0, 58.0 to 32.0], scale = 3)
 
 animateEvolution(
     world,
     totalSteps = 1200,
     seconds = 9.0,
     columns = 2,
-    cellSide = 384,
+    cellSide = 480,
     step = { it.step() },
     panels = { w, n ->
         [
-            ("step " + n) to w.speciesImg().upscaleNearest(4),
-            ("hybrid %.0f of %.0f".format(w.mixedMass(), w.totalMass())) to w.weightImg(0).colormap("viridis", 0f, 0.4f).upscaleNearest(4),
+            ("step " + n) to w.speciesImg().resize(480, 320),
+            ("hybrid %.0f of %.0f".format(w.mixedMass(), w.totalMass())) to w.weightImg(0).colormap("viridis", 0f, 0.4f).resize(480, 320),
         ]
     },
 )
@@ -935,17 +940,221 @@ that is a budget the species compete for, and a rule that is a property of the m
 space is explored by the creatures themselves as they collide and mix, with no outer search loop
 like the one in [section 11](#a-lenia-rule-that-travels).
 
+### Higher resolution: the same world in more cells
+
+`scale = 3` on `flowLeniaWorld` seeds the world at a third of its size and then grows it with
+`scaledCopy(3)`. Every cell becomes a 3 x 3 block, and every length in the rule triples: the kernel
+radii, the square each cell's matter is spread over when it lands, and the largest step. `dt` grows
+nine times, because the gradient of a pattern three times as large is a third as steep. Matter then
+moves the same fraction of a creature per step as before, and each creature is drawn with nine times
+as many cells. `scaledCopy(k)` does the same to a world that is already running, so you can find
+something in a small, fast world and then watch it large.
+
+Here the three species run twice, side by side, from the same seed. On the left is the 96-cell world,
+each cell drawn as a 5 x 5 block of pixels. On the right is `scale = 3`, the same start in 288 cells:
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-scale.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="900" w="1000" embed=true name="alife-flow-lenia-scale" alt="two copies of the three-species world side by side; left, blocky at 96 cells, right, smooth at 288 cells. In both, an orange cloud of a dozen round bodies forms in the same place. The cyan and pink species differ: on the left the cyan breaks into small hollow rings and the pink grows a ragged membrane body, while on the right the cyan forms one cluster of rings that later breaks into crosses and the pink pulls apart into beaded chains"}
+:::static
+val species = [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()]
+val small = flowLeniaWorld(96, 96, species)
+val large = flowLeniaWorld(288, 288, species, scale = 3)
+
+animateEvolution(
+    small to large,
+    totalSteps = 1200,
+    seconds = 9.0,
+    columns = 2,
+    cellSide = 480,
+    step = { (a, b) ->
+        a.step()
+        b.step()
+        a to b
+    },
+    panels = { (a, b), n ->
+        [
+            ("96 cells, step " + n) to a.speciesImg().upscaleNearest(5),
+            ("288 cells, step " + n) to b.speciesImg().resize(480, 480),
+        ]
+    },
+)
+```
+
+How close the large world stays to the small one depends on the species. Part of Flow Lenia's
+structure is set by the grid rather than the kernels, so the match is never cell for cell:
+
+- `wanderers` come out as the same dozen round bodies. At twice the resolution, 20 steps after the
+  copy, the large world averaged back down matches the small one with a cosine similarity of 0.95.
+  Leaving the spread at one cell instead gives 0.86 and covers every body with a one-cell speckle.
+- `rings` and `cell` keep their character but not their exact forms. At three times, the rings
+  settle as one cluster of rings that later breaks into crosses, and the cell's membrane becomes
+  chains.
+- The crescent glider below covers three times the cells per step at three times the resolution,
+  so its speed in body lengths is unchanged. At twice the resolution it covers 1.44 times the cells
+  rather than 2.
+
+A large world is mostly a convolution problem, because every tap of every kernel is nine times as
+many cells. The affinity is computed by whichever of two methods is cheaper for the current state
+(`FlowLeniaConvolution.AUTO`). `SPARSE` scatters each occupied cell through every tap.
+`FFT` multiplies in the frequency domain and costs the same whatever the kernel radius. Any side
+length works, and sides built from small primes, such as 96 or 288, are fast. The two agree to
+`1e-14`. The three species above take about 9 ms a step at 96 x 96 and about 150 ms at 288 x 288.
+
+### Bodies that travel
+
+`bodies()` splits the matter into connected pieces, joined across the seams of the torus, and gives
+each piece its mass, its centroid and its main species. `trackLargest(steps)` runs the world while
+following the largest body, and returns its path, unwrapped so that crossing the seam keeps
+counting, along with its mass over time. `FlowLeniaTrack.speed` is the straight-line distance per
+step, and `massKept` is the smallest mass over the run divided by the first.
+
+`FlowLeniaPresets.crescent()` is a rule from a random search of 900 rules scored that way. From a small
+noise disc it settles into one of two bodies. With noise seed 2 it folds into a crescent that travels
+convex side first at about 0.02 cells per step and keeps 99.6 % of its mass. From most other seeds it
+settles into a round body that stays put. Here the crescent forms on a 64-cell torus, is grown to
+three times the resolution, and runs for 3000 steps. On the right, each drawn frame is kept as a
+fading exposure, which shows the path:
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-crescent.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="900" w="1000" embed=true name="alife-flow-lenia-crescent" alt="left, an orange crescent made of beads travelling steadily across a dark field, wrapping round the edge of the torus; right, the same field as a long exposure in which the crescent's path is a fading band behind it"}
+:::static
+// Noise seed 2 folds into the crescent; grow it to three times the resolution once it has formed.
+val world = flowLeniaWorld(64, 64, [FlowLeniaPresets.crescent()], seedRadius = 6.0, randomSeed = 2L).steps(200).scaledCopy(3)
+val trail = FloatArray(world.width * world.height)
+
+animateEvolution(
+    world,
+    totalSteps = 3000,
+    seconds = 9.0,
+    columns = 2,
+    cellSide = 480,
+    step = { it.step() },
+    panels = { w, n ->
+        val b = w.bodies().first()
+        for (c in trail.indices) trail[c] = maxOf(0.97f * trail[c], w.matter[c].toFloat())
+        [
+            ("step %d: mass %.1f at (%.0f, %.0f)".format(n, b.mass, b.x, b.y)) to w.speciesImg().resize(480, 480),
+            "the path" to Img(w.width, w.height, 1, trail.copyOf()).colormap("magma", 0f, 1.2f).resize(480, 480),
+        ]
+    },
+)
+```
+
+### Searching for travellers
+
+`FlowLeniaGenome` makes Flow Lenia species a genome for the same `PopulationSearch` the
+[Lenia rule search](#a-lenia-rule-that-travels) uses. A random draw comes from the paper's rule space,
+the one the presets came from. It has three mutations: `nudge` moves every `mu`, `sigma` and weight a
+little, `rekernel` redraws one kernel, and `addOrDrop` adds or removes one. Crossover takes each kernel,
+with its weight, from one parent or the other. `flowLeniaGliderObjective` scores the tracked body's
+speed times the square of its `massKept`. It scores zero for a film covering more than 40 % of the
+world, because the centroid of such a film can drift without anything travelling. It averages over
+`seeds` noise seeds, so a rule only scores well if it travels from most starts. `code()` prints a
+species as the Kotlin that builds it, ready to paste into a box.
+
+```diffstatic {data-lang=kotlin}
+val ops = FlowLeniaGenome()
+val objective = flowLeniaGliderObjective(size = 64, warmup = 200, window = 200, seedRadius = 6.0, seeds = 3)
+val climb = PopulationSearch.hillClimb(ops, objective, 100, seed = 7L, patience = 1000, start = FlowLeniaPresets.crescent())
+val control = PopulationSearch.random(ops, objective, 100, seed = 7L)
+println(climb.summary())
+println(control.summary())
+println(control.best!!.genome.code())
+```
+
+That run takes about six minutes, so it is shown here rather than run on the page. The crescent
+starts at 0.0069, because it travels from one seed in three. Climbing from it for 100 evaluations
+reached 0.036. The climb's best travels at 0.098 cells per step from seed 2 but loses about 45 % of its
+mass from the other two. The random control, at the same budget, did better: 0.042. Its winner is
+`FlowLeniaPresets.dart()`, a small hooked body that crosses the 64-cell torus at 0.10 cells per step
+and keeps 99.6 % of its mass, five times the crescent's speed, after first shedding two rings that
+stay where they are.
+
+!!! note "The dart does not survive a larger grid"
+    At twice the resolution the dart nearly stops: 0.012 cells per step in the small world's cells,
+    against 0.10. It is only about seven cells across, and its motion depends on effects at the
+    scale of a single cell. To find travellers for a large world, search at that resolution, or grow
+    the ones you find and check that they still move, as the crescent does.
+
+### Evolution inside the world
+
+When species meet and blend, the rules only mix. Nothing in the world makes a rule that was not
+there at the start. `world.mutation = FlowLeniaMutation(rate, radius, scale)` adds that. On average
+`rate` times a step, a disc of `radius` cells, centred on a cell picked in proportion to its matter,
+has the same random offset added to its kernel weights. The offset is Gaussian with standard deviation
+`scale` per kernel, and it is not clipped: a weight that goes negative makes that kernel push matter
+away instead of drawing it in. Each mutated disc becomes a new **lineage**. Every cell carries the
+lineage of its matter. Under `SAMPLED` mixing that is the lineage of the parcel it took its
+parameters from, and under `MEAN` it is the lineage of the largest parcel that arrived.
+`lineageMasses()`, `lineageImg()` and `lineagePlot()` read the lineages back, and `lineages` records
+each one's parent, birth step and starting weights.
+
+`scale = 0` is the control. It cuts new lineages without changing any weight, so under `MEAN` mixing
+the matter is bit for bit what it would have been with no mutation at all (the test checks this),
+and any change in who holds the mass is drift. Here both worlds start as the three species at twice
+the resolution under `SAMPLED` mixing, with the same mutation rate. On the left the mutations are
+neutral. On the right they have size 0.3. Each world is coloured by lineage, with its mass per species
+plotted underneath and printed in the caption (wanderers, rings, cell):
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-mutation.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="10" timeout="900" w="1000" embed=true name="alife-flow-lenia-mutation" alt="two worlds of the three species side by side, coloured by lineage, both breaking into patches of new colours as mutations land; the left keeps its round bodies, rings and chain, while the right dissolves into a faint haze with a few bodies; below each, the mass per species, flat on the left and diverging on the right, where the amber species climbs while the pink one falls almost to nothing"}
+:::static
+val species = [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()]
+val neutral = flowLeniaWorld(192, 192, species, mixing = FlowLeniaMixing.SAMPLED, scale = 2)
+neutral.mutation = FlowLeniaMutation(rate = 0.05, radius = 12.0, scale = 0.0)
+val mutating = flowLeniaWorld(192, 192, species, mixing = FlowLeniaMixing.SAMPLED, scale = 2)
+mutating.mutation = FlowLeniaMutation(rate = 0.05, radius = 12.0, scale = 0.3)
+
+fun masses(w: FlowLeniaWorld) = w.speciesMasses().joinToString(" ") { "%.0f".format(it) }
+
+animateEvolution(
+    neutral to mutating,
+    totalSteps = 2400,
+    seconds = 9.0,
+    columns = 2,
+    cellSide = 384,
+    step = { (a, b) ->
+        a.step()
+        b.step()
+        a to b
+    },
+    panels = { (a, b), n ->
+        [
+            ("neutral " + masses(a)) to vstack(a.lineageImg().resize(384, 384), a.massPlot(384, 128)),
+            ("size 0.3 " + masses(b)) to vstack(b.lineageImg().resize(384, 384), b.massPlot(384, 128)),
+        ]
+    },
+)
+```
+
+With neutral mutations the three species hold their ground: 1069, 1010 and 794 units at step 600, and
+1178, 892 and 803 at step 2400. With mutations of size 0.3 the wanderers' descendants take over: by
+step 2400 they hold 1851 units, and the cell, which started with 739, is down to 114. The total is
+the same in both worlds throughout. The picture shows a second effect the numbers do not: in the
+mutating world much of the matter ends up as a faint haze between a few surviving bodies, because
+most large changes to the weights produce a rule that holds nothing together. The same comparison at 96 cells, for three noise seeds over 3000
+steps, went the same way each time. Neutral mutation moved no species' mass by more than about 20 %.
+Mutation of size 0.3 drove one species close to extinction in all three seeds, leaving 27, 77 and 38
+of the 198 to 261 units it started with: the cell in two seeds, the rings in the third.
+Which one wins depends on where the useful mutations land, so this is selection among mutants rather
+than a property of any species.
+
+`paintWeights(cx, cy, radius, h)` is the hand-held version: it gives the matter in a disc new weights
+`h` without moving it, and makes that matter a lineage of its own. Its other form takes a function
+of each cell and its current weights, which is how `mutate` is built.
+
 ??? aside "How the species were found, and what did not work"
     The first version used the ordinary Lenia gradient scale (central differences halved) and a single
     ring kernel; every creature it made sat still. The paper's Sobel filter is unnormalised, which
     makes the flow eight times stronger, and with it and several kernels per species roughly one
     random rule in ten gives compact bodies, a few of which move. The search ran in a numpy prototype
-    of the same step (`dev_docs/ALIFE.md`, Flow Lenia); the presets are three of its rules copied
-    exactly, and the Kotlin version reproduces the same behaviour from a different noise seed. No
-    long-lived glider like Orbium came out of it. `FlowLeniaTest` pins conservation (total under both
-    mixing rules, each species under `MEAN`), the sparse convolution against a dense one, and the
-    zero-weight-kernel equivalence. The CPU step is about 25 ms for 96 x 64 cells and two species,
-    which is why the videos run 1200 steps rather than tens of thousands; there is no GPU path yet.
+    of the same step (`dev_docs/ALIFE.md`, Flow Lenia); the first three presets are three of its rules
+    copied exactly, and the Kotlin version reproduces the same behaviour from a different noise seed.
+    The crescent came from a second numpy search of 900 rules scored like
+    `flowLeniaGliderObjective`, and the dart from the Kotlin random search above. `FlowLeniaTest`
+    pins conservation (total under both mixing rules, each species under `MEAN`, and with mutation),
+    the sparse convolution against a dense one and against the FFT, the zero-weight-kernel
+    equivalence, the 2x rescaling, seam-crossing bodies, the dart's and the crescent's motion, and
+    that a mutation of size zero leaves the matter bit for bit unchanged. The clips were first
+    captured at 96 cells shown four times larger; the FFT path is what made three times the
+    resolution affordable.
 
 ## 6. Boids
 
@@ -3088,6 +3297,48 @@ python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife
 - Source: [`alife_lsystem.kt`](reference/alife.md#alife-lsystem-kt),
   [`alife_evolve.kt`](reference/alife.md#alife-evolve-kt) and
   [`alife_grains.kt`](reference/alife.md#alife-grains-kt).
+
+Open questions and next builds for the grain sets:
+
+- **A statistic for contour.** The [recording target](#a-target-taken-from-a-recording) matches
+  count, span, spread and median and still does not rise evenly, because no `GrainStat` says which
+  way pitch moves over time. A slope of pitch against onset, or the share of steps that go up, would
+  let a target ask for a shape.
+- **Polyphonic targets.** `grainsFromAudio` is monophonic, so a recorded target always has a
+  polyphony of about 1. Reading a chordal recording needs a multi-pitch detector, which Field does
+  not have yet.
+- **A target that needs a second rule.** `nonterminals = "X"` works, but on the arpy target, at
+  the same budget and two seeds, it did not raise the best score with either alphabet. A target that rewards
+  growth that changes from one generation to the next, such as a voice that gets one note longer
+  each time, is the experiment that would show whether it helps.
+- **Statistics for the new symbols.** `<`, `>`, `l` and `r` change grain length and pan, and
+  nothing in `GrainSetStats` measures either, so the search uses them only for their side effects
+  on duration and polyphony. A length-spread and a pan-width statistic would make them targets.
+- **A breeder you can drive live.** The interactive box replaces all its players after every
+  choice; keeping past generations in a column would let you hear a lineage. `GrainBreeder.history`
+  already holds every generation and the parents chosen from it.
+- **Listening to the map.** The [map](#a-map-of-grain-sets-instead-of-one-winner) shows sixteen
+  scores; a player per cell would let you choose a parent for `GrainBreeder` from it.
+
+Open questions and next builds for Flow Lenia:
+
+- **Flow Lenia on the GPU.** The FFT path makes 288 x 288 cells about 150 ms a step on the CPU, so
+  tens of thousands of steps, or 1024-cell worlds, still need the GPU. The step is a convolution, two
+  Sobel gradients and a scatter, the shape of the ping-pong compute lessons in
+  `public/docs/assets/canonical_graphics/LESSONS.md`. The scatter needs atomic adds or a gather
+  rewrite. Check it against `FlowLeniaWorld` with `affinity()` and one `step()`, as
+  `FlowLeniaTest` checks the FFT against the sparse convolution.
+- **Search at the resolution you want to watch.** The dart travels at 64 cells and stops at 128.
+  Run `flowLeniaGliderObjective` on `flowLeniaWorld(..., scale = 2)` worlds, or score a found rule at
+  both scales, so the winners keep moving when they are drawn large.
+- **Selection with a measure of what is selected.** Mutation changes who holds the mass, but nothing
+  yet says what the winning lineages do differently. Read `lineages[id].h` against each lineage's
+  mass over time, and test whether a winner's weights win again when seeded fresh.
+- **Painting a rule with the pen.** `paintWeights` takes a disc. Driving it from
+  `notation.onStroke`, a stroke laying a rule along its path, would let a hand introduce mutants
+  where it wants them.
+- **Per-species mass as sound.** `speciesMasses()` and `lineageHistory` are smooth, conserved
+  series, a natural control signal for a synth: a competition you can hear.
 
 Open questions and next builds for the grain sets:
 

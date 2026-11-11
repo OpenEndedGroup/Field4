@@ -291,6 +291,42 @@ tracers; `step()` is affinity -> Sobel gradients -> reintegration tracking. Meas
 - Presets came from a numpy prototype of the same step (random rules: 3-7 kernels, R 3..12,
   mu 0.05..0.5, sigma 0.01..0.18, h 0.01..1, noise disc on 64x64, 400 steps), parameters copied exactly.
 
+#### Flow Lenia follow-up (2026-11-11)
+
+- **Resolution.** `FlowLeniaRule.scaled(k)` scales every length (radii, `spread`, `maxStep`) and `dt`
+  by `k²` (Sobel gradients of a k-times pattern are 1/k as steep). Leaving `spread` at one cell left a
+  one-cell speckle and dropped the 2x cosine from 0.95 to 0.86 (`scaledRuleKeepsTheCreature`).
+  `spread <= 1` is no longer required. `flowLeniaWorld(scale = k)` seeds at 1/k and calls
+  `scaledCopy(k)` so the seed noise grain scales too. Wanderers survive rescaling; rings/cell keep
+  character only; chaos control (dt +0.1 %) stays at cosine 1.000 for wanderers, so the gap is the
+  rescale. Crescent speed ratio: 3.0 at 3x, 1.44 at 2x. Dart: stops at 2x (0.012 vs 0.10 base
+  cells/step).
+- **FFT.** `FlowLeniaFft` is mixed-radix Cooley-Tukey (any side; cost n·Σ prime factors), kernel
+  spectra cached, inverse per kernel in parallel; agrees with sparse to 1e-14 at 64 and 96. AUTO
+  switches when occupied·taps > 2·(K+1)·transform work. 96² three species 9 ms/step (sparse ~24);
+  288² ~150 ms/step.
+- **Gliders.** `bodies()` is union-find over 8-connected cells above a threshold with torus wrap and
+  circular-mean centroids; `trackLargest` follows the nearest body of at least half the mass. numpy
+  search of 900 random rules (scratch prototype with FFT; same step) found the crescent: a bistable
+  rule, glides from some noise seeds (Kotlin seeds 2 and 10 of 16 move, 0.02 cells/step), round and
+  still from others. Kotlin `PopulationSearch.random` (100 draws, 3-seed objective, 158 s) found the
+  dart (0.10 cells/step, mass kept 0.996 on seed 1); `hillClimb` from the crescent reached 0.036 vs
+  random's 0.042 at the same budget, so climbing did not beat the control.
+- **Mutation and lineages.** Lineage carried with the sampled parcel (SAMPLED) or the largest
+  arriving parcel (MEAN). `FlowLeniaMutation(scale = 0)` is the neutral control: bit-identical matter
+  under MEAN. At 96 cells, rate 0.05, radius 6, 3000 steps, 3 seeds: neutral moves species masses
+  <= ~20 %; scale 0.3 drives one species to 27/77/38 units each time. Under SAMPLED the "new lineage
+  share" goes to 1 in both arms (mutation overwrites), so it is not a selection measure; species
+  mass is.
+- **Not done, and why.**
+  - GPU step: the CPU FFT made 3x clips affordable (the user's ask), and a GPU capture needs the
+    renderer chain plus a scatter rewrite (atomics or gather); left as the first "Where to go next".
+  - Sonification of species mass: wants a synth design and an audio fence capture, out of scope
+    for a simulation follow-up; listed in "Where to go next".
+  - Notation-driven painting: `paintWeights` is the hook; driving it from strokes needs the drawing
+    layer in a capture, which the docs runner cannot drive yet without a `drive` script.
+  - Empty cells keep a stale `h`: kept, it is the paper's formulation and `weightImg` masks it.
+
 ### Boids
 
 `BoidParams.minSpeedFraction` is not cosmetic. The three steering terms are all written as
