@@ -319,6 +319,51 @@ class PaintCanvas internal constructor(
     fun blot(rag: PaintRag, x: Double, y: Double, pressure: Double = 0.6, seed: Long? = null): Double =
         PaintNative.ragWipe(handle, rag.handle, floatArrayOf(toCanvasX(x).toFloat(), toCanvasY(y).toFloat()), listOf(pressure), seedFor(seed))
 
+    /**
+     * Fold the canvas along the line through ([x], [y]) toward ([dx], [dy]) and press the half on the left
+     * of that direction (as the canvas is drawn, y down) onto the other half at [pressure] 0..1, then
+     * open it again: decalcomania, a Rorschach blot. Wet paint thick enough to reach its mirror image
+     * through the gap the pressure leaves swaps [transfer] of itself with it (0.5: both sides end up
+     * one mixture), less as it cures; pressure spreads the pressed paint outward for [spread] 0..1 of
+     * the time it takes to level; pulling the halves apart splits the film between them, evenly at
+     * [peel] 0, in branching ridges [ridge] units apart that run away from the fold as [peel] goes to
+     * 1 (what one side keeps on a ridge its mirror lost). Paint is moved, never made or lost; dry
+     * paint does not move.
+     */
+    fun fold(
+        x: Double, y: Double, dx: Double = 0.0, dy: Double = 1.0, pressure: Double = 0.8, transfer: Double = 0.5,
+        spread: Double = 0.5, peel: Double = 0.6, ridge: Double = 20.0, seed: Long? = null,
+    ): Squished = PaintNative.foldPress(handle, toCanvasX(x).toFloat(), toCanvasY(y).toFloat(), toCanvasDx(dx).toFloat(),
+        toCanvasDy(dy).toFloat(), pressure.toFloat(), transfer.toFloat(), spread.toFloat(), peel.toFloat(),
+        toCanvasLength(ridge).toFloat(), seedFor(seed)).let { Squished(it[0], it[1]) }
+
+    /**
+     * Press a flat plate [radius] across onto the wet paint at ([x], [y]) at [pressure] 0..1, let the
+     * squashed paint spread for [spread] 0..1, and peel the plate off toward ([dx], [dy]): it takes
+     * [take] 0..1 of the film it touched, unevenly, in ridges [ridge] apart running with the peel,
+     * [peel] 0..1 deep (a monotype pull, a palm pressed and lifted). Returns the mm³ moved and lifted.
+     */
+    fun press(
+        x: Double, y: Double, radius: Double = 80.0, pressure: Double = 0.8, spread: Double = 0.5,
+        dx: Double = 1.0, dy: Double = 0.0, take: Double = 0.5, peel: Double = 0.7, ridge: Double = 12.0, seed: Long? = null,
+    ): Squished = PaintNative.pressPeel(handle, toCanvasX(x).toFloat(), toCanvasY(y).toFloat(), toCanvasLength(radius).toFloat(),
+        pressure.toFloat(), spread.toFloat(), toCanvasDx(dx).toFloat(), toCanvasDy(dy).toFloat(), take.toFloat(), peel.toFloat(),
+        toCanvasLength(ridge).toFloat(), seedFor(seed)).let { Squished(it[0], it[1]) }
+
+    /**
+     * Rub a pad [radius] across along every subpath of [line] at [pressure] 0..1: a thumb or a rag-wrapped
+     * finger dragged through wet paint. It picks up what stands above the film a light touch rides on
+     * and lays it further along, so the paint is dragged out and thins as it goes, in streaks where the
+     * skin presses harder; it never picks up what it laid on the same pass. What the pad still holds
+     * when it lifts is [Squished.liftedMm3] (it is on the thumb); nothing else is made or lost.
+     */
+    fun rub(line: FLine, radius: Double = 30.0, pressure: Double = 0.7, seed: Long? = null): Squished =
+        polylines(line, 2.0).withIndex().map { (i, xy) -> PaintNative.rub(handle, xy, toCanvasLength(radius).toFloat(), pressure.toFloat(), seedFor(seed, i)) }
+            .fold(Squished(0.0, 0.0)) { s, r -> Squished(s.movedMm3 + r[0], s.liftedMm3 + r[1]) }
+
+    /** All the wet paint on the canvas, mm³: what [fold], [press] and [rub] move (and a plate lifts). */
+    val wetMm3: Double get() = PaintNative.wetMm3(handle)
+
     /** Dip [rag]'s face in spirits, [amount] 0..1: damp, it lifts paint nearly to the ground until the spirits evaporate. */
     fun dampen(rag: PaintRag, amount: Double = 0.5): PaintCanvas = apply { PaintNative.ragDip(handle, rag.handle, amount.toFloat()) }
 
