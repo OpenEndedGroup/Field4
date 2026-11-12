@@ -34,10 +34,10 @@ fn value(x: f32, y: f32, seed: u64) -> f32 {
 }
 
 /// The ridged tack pattern a peel leaves at pixel (x, y), in -1..1: fingers `scale` pixels apart
-/// across the peel direction (`ux`, `uy`) and three times longer along it, branching (three
+/// across the peel direction (`ux`, `uy`) and six times longer along it, branching (three
 /// octaves of ridged noise).
 fn ridges(x: f32, y: f32, ux: f32, uy: f32, scale: f32, seed: u64) -> f32 {
-    let along = (x * ux + y * uy) / (3.0 * scale);
+    let along = (x * ux + y * uy) / (6.0 * scale);
     let across = (-x * uy + y * ux) / scale;
     let (mut sum, mut amp, mut f, mut norm) = (0.0, 1.0, 1.0, 0.0);
     for o in 0..3u64 {
@@ -65,6 +65,12 @@ impl Canvas {
     /// All the wet paint on the canvas, mm³.
     pub fn wet_mm3(&self) -> f64 {
         self.wet.vol.iter().map(|&v| v as f64).sum::<f64>() * self.mm3_per_coat_px()
+    }
+
+    /// Half the summed change of wet paint per pixel since `before`, in coats·px: the paint that
+    /// ended up somewhere else, counted once however many steps it took (never more than all of it).
+    fn net_moved(&self, before: &[f32]) -> f64 {
+        0.5 * self.wet.vol.iter().zip(before).map(|(a, b)| (a - b).abs() as f64).sum::<f64>()
     }
 
     /// How open the wet paint at buffer pixel `i` still is, 0.1..1: fresh paint 1, paint near its gel
@@ -213,6 +219,7 @@ impl Canvas {
         let transfer = transfer.clamp(0.0, 0.5);
         let peel = peel.clamp(0.0, 1.0);
         let ridge_px = (ridge * s).max(2.0);
+        let before = self.wet.vol.clone();
         let mut contact = vec![0.0f32; w * h];
         let mut pairs: Vec<(usize, usize)> = Vec::new();
         let mut moved = 0.0f64;
@@ -297,7 +304,8 @@ impl Canvas {
             }
         }
         self.mark_worked(grown);
-        Squished { moved_mm3: moved * self.mm3_per_coat_px(), lifted_mm3: 0.0 }
+        let _ = moved;
+        Squished { moved_mm3: self.net_moved(&before) * self.mm3_per_coat_px(), lifted_mm3: 0.0 }
     }
 
     /// Press a flat plate `radius` units across onto the wet paint at (`x`, `y`) at `pressure`
@@ -334,7 +342,9 @@ impl Canvas {
             }
         }
         let steps = (spread.clamp(0.0, 1.0) * (4.0 + 20.0 * pressure)).round() as usize;
-        let moved = self.spread_pressed(&contact, steps, 0.2, (x0, y0, x1, y1));
+        let before = self.wet.vol.clone();
+        self.spread_pressed(&contact, steps, 0.2, (x0, y0, x1, y1));
+        let moved = self.net_moved(&before);
         // the spread paint may now reach the plate where it did not before
         let (take, peel, ridge_px) = (take.clamp(0.0, 1.0), peel.clamp(0.0, 1.0), (ridge * s).max(2.0));
         let mut lifted = 0.0f64;
@@ -378,6 +388,7 @@ impl Canvas {
         let lay = 0.22;
         let (mut rv, mut rl, mut rh): (f32, Latent, Prop) = (0.0, [0.0; LAT], [0.0, 0.5, 1.0, 0.0, 1.0]);
         let mut laid = vec![0.0f32; w * h];
+        let before = self.wet.vol.clone();
         let mut moved = 0.0f64;
         let mut bx = (usize::MAX, usize::MAX, 0usize, 0usize);
         // pad centres every third of a radius, with the direction of travel there
@@ -463,7 +474,10 @@ impl Canvas {
             self.mark_worked(bx);
         }
         let k = self.mm3_per_coat_px();
-        Squished { moved_mm3: moved * k, lifted_mm3: rv.max(0.0) as f64 * k }
+        let _ = moved;
+        let lifted = rv.max(0.0) as f64;
+        // what left the canvas onto the pad is lifted, not moved
+        Squished { moved_mm3: (self.net_moved(&before) - 0.5 * lifted).max(0.0) * k, lifted_mm3: lifted * k }
     }
 }
 
@@ -490,6 +504,7 @@ mod tests {
         assert!(before > 0.0);
         let r = c.fold_press(500.0, 0.0, 0.0, 1.0, 0.9, 0.5, 0.6, 0.7, 25.0, 3);
         assert!(r.moved_mm3 > 0.0, "{r:?}");
+        assert!(r.moved_mm3 <= c.wet_mm3(), "moved {} of {} mm³", r.moved_mm3, c.wet_mm3());
         let after = c.wet_total();
         assert!(((after - before) / before).abs() < 1e-4, "{before} -> {after}");
     }

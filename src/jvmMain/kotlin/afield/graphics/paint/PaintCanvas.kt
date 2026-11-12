@@ -328,7 +328,8 @@ class PaintCanvas internal constructor(
      * the time it takes to level; pulling the halves apart splits the film between them, evenly at
      * [peel] 0, in branching ridges [ridge] units apart that run away from the fold as [peel] goes to
      * 1 (what one side keeps on a ridge its mirror lost). Paint is moved, never made or lost; dry
-     * paint does not move.
+     * paint does not move. Each point meets the nearest pixel to its mirror image, so a fold along x or
+     * y is exact and a diagonal fold is mirrored to within a pixel (paint is conserved either way).
      */
     fun fold(
         x: Double, y: Double, dx: Double = 0.0, dy: Double = 1.0, pressure: Double = 0.8, transfer: Double = 0.5,

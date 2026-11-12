@@ -396,7 +396,8 @@ squashed, rubbed and peeled. Field follows the method he describes; none of its 
   mixture). Pressure spreads the squashed paint outward for `spread` of the time it takes to level,
   thick paint faster than thin. Opening the fold splits the film between the two sides: evenly at
   `peel = 0`, and in branching ridges `ridge` units apart as `peel` rises. Where one side keeps a
-  ridge, its mirror is bare. Past `peel = 0.67` the film splits wholly.
+  ridge, its mirror is bare. Past `peel = 0.67` the film splits wholly. A fold along x or y prints
+  an exact mirror image; a diagonal fold is mirrored to within a pixel.
 - `canvas.press(x, y, radius)` presses a flat plate onto the paint and peels it off toward
   `(dx, dy)`. The plate takes `take` of the film it touched, unevenly, in the same kind of ridges. This
   is a monotype pull, or a palm pressed down and lifted.
@@ -404,22 +405,59 @@ squashed, rubbed and peeled. Field follows the method he describes; none of its 
   above the film a light touch rides on and lays it down further along. The paint is drawn out and
   thins as it goes, in streaks where the skin presses harder, and colours smear into each other.
 
-Each returns a `Squished`, with the mm³ it moved and the mm³ it took off the canvas (`liftedMm3`).
+Each returns a `Squished`: the mm³ of paint that ended up somewhere else on the canvas, counted once,
+and the mm³ taken off it (`liftedMm3`, what a plate took or a thumb still holds).
 `canvas.wetMm3` is all the wet paint on the canvas. A fold or a rub leaves it unchanged. A plate
 lowers it by exactly what the plate reports. Paint that has started to set moves less, and dry paint
 does not move.
 
-```diffstatic {data-lang=kotlin}
+The box below lays three thick strokes on the left half, folds the canvas down the middle and opens
+it. The top image is the canvas before the fold, the bottom one after: each stroke is printed onto
+the right half, and the two prints carry opposite ridges where the film split.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/fold.png" alt="two canvases, one above the other. The top one has three thick strokes on its left half: red, blue and yellow, with bristle ridges. In the bottom one each stroke has been printed onto the right half as a mirror image, and both halves are broken by streaky bare patches running away from the fold: where one half kept paint, its mirror is bare" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="fold" embed=true}
+:::static
 val canvas = PaintCanvas(900, aspect = 1.4, seed = 7)
 val brush = canvas.brush(BrushKind.HogFlat, width = 70.0)
-brush.load(rgb(0.1, 0.2, 0.6), amount = 4.0, stiff = 0.5)
-canvas.stroke(FLine().moveTo(230, 360).cubicTo(330, 320, 420, 400, 490, 430), brush, pressure = 1.0..1.0)
+val strokes = listOf(
+    rgb(0.75, 0.1, 0.08) to FLine().moveTo(300, 150).cubicTo(380, 200, 440, 260, 500, 290),
+    rgb(0.1, 0.2, 0.6) to FLine().moveTo(230, 360).cubicTo(330, 320, 420, 400, 490, 430),
+    rgb(0.95, 0.75, 0.15) to FLine().moveTo(340, 560).lineTo(500, 520),
+)
+for ((color, line) in strokes) {
+    brush.load(color, amount = 4.0, stiff = 0.5)
+    canvas.stroke(line, brush, pressure = 1.0..1.0)
+}
+display("before", canvas.png(wet = true, light = PaintLight.Raking))
 
-// fold down the middle, press, and open it again: a Rorschach print
+// fold along x = 500, press, and open it again
 canvas.fold(500.0, 0.0, pressure = 0.9, spread = 0.5, peel = 0.8, ridge = 18.0)
-canvas.press(300.0, 380.0, radius = 120.0, take = 0.5, peel = 0.8)
-canvas.rub(FLine().moveTo(150, 500).lineTo(850, 500), radius = 35.0, pressure = 0.7)
 display("main", canvas.png(wet = true, light = PaintLight.Raking))
+```
+
+Next, a plate is pressed onto a wet passage and peeled off, and then a thumb is rubbed across three
+stripes, so their colours smear into each other.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/press_rub.png" alt="two canvases, one above the other. In the top one a blue passage of broad strokes is crossed by a thick cream bar; on its left a round patch, where a plate was pressed and peeled, is mottled pale blue with ridged, lifted paint, and the cream bar there is wrinkled. In the bottom one three vertical stripes, red, yellow and blue, are crossed by three horizontal smears dragged to the right, red pulled into yellow and yellow into blue, which turns green where they meet" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="press_rub" embed=true}
+:::static
+val plate = PaintCanvas(900, aspect = 1.4, seed = 8)
+plate.work(FLine().rect(150, 150, 700, 420), rgb(0.12, 0.3, 0.55), handling = Handling.Broad, stiff = 0.5)
+val wide = plate.brush(BrushKind.HogFlat, width = 90.0)
+wide.load(rgb(0.95, 0.85, 0.7), amount = 4.0, stiff = 0.5)
+plate.stroke(FLine().moveTo(200, 360).lineTo(800, 360), wide, pressure = 1.0..1.0)
+plate.press(330.0, 360.0, radius = 150.0, pressure = 0.9, take = 0.5, peel = 0.8, ridge = 12.0)
+display("main", plate.png(wet = true, light = PaintLight.Raking))
+
+val thumb = PaintCanvas(900, aspect = 1.4, seed = 9)
+val brush = thumb.brush(BrushKind.HogFlat, width = 60.0)
+for ((i, color) in listOf(rgb(0.8, 0.15, 0.1), rgb(0.95, 0.75, 0.15), rgb(0.1, 0.25, 0.6)).withIndex()) {
+    brush.load(color, amount = 3.0, stiff = 0.4)
+    thumb.stroke(FLine().moveTo(180 + i * 70, 150).lineTo(180 + i * 70, 560), brush, pressure = 1.0..1.0)
+}
+thumb.rub(FLine().moveTo(120, 220).lineTo(820, 230), radius = 30.0, pressure = 0.4)
+thumb.rub(FLine().moveTo(120, 360).lineTo(820, 350), radius = 40.0, pressure = 0.9)
+thumb.rub(FLine().moveTo(120, 500).cubicTo(400, 420, 600, 600, 860, 480), radius = 35.0, pressure = 0.7)
+display("rubbed", thumb.png(wet = true, light = PaintLight.Raking))
 ```
 
 The [paint_fold_press](agent_transcripts.md#paint_fold_press) starting point has a box for each

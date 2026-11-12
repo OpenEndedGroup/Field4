@@ -542,7 +542,7 @@ data class DynamicReport(
 
 /** What a [PaintCanvas.fold], [PaintCanvas.press] or [PaintCanvas.rub] did to the wet paint. */
 data class Squished(
-    /** mm³ of paint moved from one place, or one side of a fold, to another. */
+    /** mm³ of paint that ended up somewhere else on the canvas, counted once (never more than all of it). */
     val movedMm3: Double,
     /** mm³ taken off the canvas altogether: what a plate took, or what a rubbing pad still holds. */
     val liftedMm3: Double,
