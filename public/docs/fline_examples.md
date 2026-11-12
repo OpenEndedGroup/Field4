@@ -1381,6 +1381,7 @@ fun clothoidSplineFrom(
     corners: Collection<Int> = emptyList(),
     startDirection: Vec2? = null,
     endDirection: Vec2? = null,
+    weight: Double? = 1.0,
 ): FLine
 fun clothoidSplineFrom(
     points: List<Vec3>,
@@ -1390,6 +1391,7 @@ fun clothoidSplineFrom(
     startDirection: Vec3? = null,
     endDirection: Vec3? = null,
     planeNormal: Vec3? = vec(0, 0, 1),
+    weight: Double? = 1.0,
 ): FLine
 
 fun FLine.curvatureComb(scale: Double = 2000.0, samples: Int = 120): FLine
@@ -1594,10 +1596,154 @@ The time the solve takes grows in proportion to the number of points, so a splin
 
 The solve can fail where the curve has to double back on itself between neighbouring points, as in a path that runs out and back along nearly the same line, or a zigzag with tall, narrow teeth. That stretch is then drawn as `cubicSplineFrom` would draw it, and the comb and plot measure it from its shape. A corner at each sharp turn usually fixes it.
 
-This spline is the simplest member of Aurimas Gasiulis's [S9 spline](https://gasiulis.name/new-spline) family, the one where both of a piece's weights are 1. S9 also lets each piece sharpen its turn near its ends, with weights computed from the end directions; that is not implemented here. The Euler-spiral spline itself is Raph Levien's, from his thesis [*From Spiral to Spline*](https://levien.com/phd/thesis.pdf) (2009); Henry Moreton's [*Minimum Curvature Variation Curves*](https://www2.eecs.berkeley.edu/Pubs/TechRpts/1993/CSD-93-732.pdf) (1992) is the background on why curves like this look fair.
+#### Sharper turns at the points: `weight = ...`
+
+With the default `weight = 1.0`, curvature changes at a steady rate along each piece. Below 1, each piece keeps its curvature close to its gentler end for most of its length and changes it quickly next to the point that needs the sharper turn. The curvature still runs one way between two points, so a piece still turns from left to right at most once, its sharpest curvature is at one of its points, and points on a circle still give the circle. `weight` runs from 1 down to 0.1; 0.5 is a good first try, and `null` picks one per piece (below).
+
+The same five points of a lopsided drop are drawn below at weights 1, 0.5 and 0.3, with a three-times enlargement of the lower right in the box and each curvature plot underneath on one shared scale (the tight end runs off the top). At weight 1 (blue) the plot is straight runs, and the long sides bulge out past the other two curves on their way into the tight end. As the weight drops, each run stays flat longer and bends into the point at its higher end, and the long sides stay closer to straight.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/clothoid_spline_weights.png" embed=true}
+:::static
+val knots = [vec(0, 50), vec(150, 0), vec(260, 40), vec(270, 70), vec(150, 110)]
+
+val weights = [1.0, 0.5, 0.3]
+val colors = [vec(0.5, 0.8, 1.0, 1.0), vec(1.0, 0.7, 0.3, 1.0), vec(1.0, 0.45, 0.6, 1.0)]
+
+val curves = weights.indices.map { i ->
+    clothoidSplineFrom(knots, closed = true, weight = weights[i]).apply {
+        thickness = 1.5
+        color = colors[i]
+    }
+}
+
+// the lower right, enlarged three times: the drawn points inside a 70-unit window round (205, 100)
+val centre = vec(205, 100)
+fun enlarge(line: FLine): FLine {
+    val inside = line.nodes.mapNotNull { it.toOrNull }.filter { kotlin.math.abs(it.x - centre.x) < 35 && kotlin.math.abs(it.y - centre.y) < 35 }
+    return polylineFrom(inside.map { vec(400 + 3 * (it.x - centre.x), 55 + 3 * (it.y - centre.y)) })
+}
+val enlarged = curves.indices.map { i ->
+    enlarge(curves[i]).apply {
+        thickness = 2.0
+        color = colors[i]
+    }
+}
+val frame = polylineFrom([vec(295, -50), vec(505, -50), vec(505, 160), vec(295, 160), vec(295, -50)]).apply {
+    color = vec(1.0, 1.0, 1.0, 0.3)
+}
+
+// curvature against distance, one row per weight, all on one scale
+val plots = curves.indices.map { i ->
+    (curves[i].curvaturePlot(500.0, 60.0, maxCurvature = 0.03) + vec(0, 180 + i * 70)).apply {
+        thickness = 2.0
+        color = colors[i]
+    }
+}
+val dots = polylineFrom(knots).apply {
+    stroked = false
+    pointed = true
+    pointSize = 2.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+lines(curves + enlarged + plots + frame + dots, w = 420.0, h = 400.0, fitToSize = true)
+```
+
+A lower weight helps most on a round outline with uneven spacing. Through the seven points of the egg below, weight 1 (orange, top) lets the curvature on the long sides run down past zero: in the plot beside it the curve dips under the white zero line twice, and the outline flattens and dents very slightly there, where it should stay round. At weight 0.5 (blue, below) the turn is gathered at the tight end and the curvature stays above zero all the way round.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/clothoid_spline_weight_egg.png" embed=true}
+:::static
+val egg = [vec(0, 0), vec(110, -5), vec(190, 35), vec(190, 65), vec(110, 105), vec(0, 100), vec(-30, 50)]
+
+val euler = clothoidSplineFrom(egg, closed = true).apply {
+    thickness = 2.5
+    color = vec(1.0, 0.7, 0.3, 1.0)
+}
+// the same points, moved down so the two outlines sit one above the other
+val lower = egg.map { it + vec(0, 200) }
+val weighted = clothoidSplineFrom(lower, closed = true, weight = 0.5).apply {
+    thickness = 2.5
+    color = vec(0.5, 0.8, 1.0, 1.0)
+}
+
+val eulerComb = euler.curvatureComb(scale = 900.0, samples = 200).apply { color = vec(1.0, 0.7, 0.3, 0.45) }
+val weightedComb = weighted.curvatureComb(scale = 900.0, samples = 200).apply { color = vec(0.5, 0.8, 1.0, 0.45) }
+val dots = polylineFrom(egg + lower).apply {
+    stroked = false
+    pointed = true
+    pointSize = 2.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+// beside each egg, its curvature once round from the first point; the white line is zero, and
+// the scale is set low so the dip shows (the tight end runs off the top)
+val eulerPlot = (euler.curvaturePlot(170.0, 80.0, maxCurvature = 0.01) + vec(240, 10)).apply {
+    thickness = 2.0
+    color = vec(1.0, 0.7, 0.3, 1.0)
+}
+val weightedPlot = (weighted.curvaturePlot(170.0, 80.0, maxCurvature = 0.01) + vec(240, 210)).apply {
+    thickness = 2.0
+    color = vec(0.5, 0.8, 1.0, 1.0)
+}
+val zeros = [50, 250].map { y -> polylineFrom([vec(240, y), vec(410, y)]).apply { color = vec(1.0, 1.0, 1.0, 0.5) } }
+
+val drawn: List<FLine> = [eulerComb, weightedComb, euler, weighted, dots, eulerPlot, weightedPlot]
+lines(zeros + drawn, w = 420.0, h = 340.0, fitToSize = true)
+```
+
+`weight = null` chooses a weight for each piece from the directions at its two ends. A piece shaped like a lopsided C, curling tightly at one end and leaving the other almost along its chord, gets a weight as low as 0.3; a symmetric arc, an S-shaped piece or a straight one keeps weight 1. So on the egg the long sides are drawn with low weights, while a wave like the one at the top of this section comes out almost exactly as at weight 1. This rule is our own: S9 also chooses its weights from the end directions, but its rule is not published.
+
+#### Compared with Hobby's spline: `hobbySplineFrom(...)`
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun hobbySplineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = false): FLine
+```
+
+John Hobby's spline is the one METAFONT and MetaPost draw. It also chooses one direction per point so that curvature matches across the point, but it matches an approximation of curvature that is only accurate for gentle turns. In return it solves for the directions in one step and draws each piece as a cubic Bézier, a form that fonts and plotters take directly. On the egg, Hobby's spline (orange, top) and `clothoidSplineFrom(..., weight = null)` (blue, below) look alike, and so do their curvature plots, drawn beside them on one scale. The difference is in the detail: Hobby's curvature has small steps and ripples at the points, while the clothoid's is made of smooth runs that meet without a step. For a drawing that ends up as Béziers, Hobby's spline is the simpler choice; where the curvature itself matters, use the clothoid.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/clothoid_spline_vs_hobby.png" embed=true}
+:::static
+val egg = [vec(0, 0), vec(110, -5), vec(190, 35), vec(190, 65), vec(110, 105), vec(0, 100), vec(-30, 50)]
+val lower = egg.map { it + vec(0, 200) }
+
+val hobby = hobbySplineFrom(egg, closed = true).apply {
+    thickness = 2.5
+    color = vec(1.0, 0.7, 0.3, 1.0)
+}
+val clothoid = clothoidSplineFrom(lower, closed = true, weight = null).apply {
+    thickness = 2.5
+    color = vec(0.5, 0.8, 1.0, 1.0)
+}
+
+val hobbyComb = hobby.curvatureComb(scale = 900.0, samples = 200).apply { color = vec(1.0, 0.7, 0.3, 0.45) }
+val clothoidComb = clothoid.curvatureComb(scale = 900.0, samples = 200).apply { color = vec(0.5, 0.8, 1.0, 0.45) }
+val hobbyPlot = (hobby.curvaturePlot(170.0, 80.0, maxCurvature = 0.03) + vec(240, 10)).apply {
+    thickness = 2.0
+    color = vec(1.0, 0.7, 0.3, 1.0)
+}
+val clothoidPlot = (clothoid.curvaturePlot(170.0, 80.0, maxCurvature = 0.03) + vec(240, 210)).apply {
+    thickness = 2.0
+    color = vec(0.5, 0.8, 1.0, 1.0)
+}
+val zeros = [50, 250].map { y -> polylineFrom([vec(240, y), vec(410, y)]).apply { color = vec(1.0, 1.0, 1.0, 0.5) } }
+val dots = polylineFrom(egg + lower).apply {
+    stroked = false
+    pointed = true
+    pointSize = 2.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+val drawn: List<FLine> = [hobbyComb, clothoidComb, hobby, clothoid, dots, hobbyPlot, clothoidPlot]
+lines(zeros + drawn, w = 420.0, h = 340.0, fitToSize = true)
+```
+
+A lower weight is not better everywhere. Where a piece runs between two points of equal curvature, as on the long sides of a symmetric rounded rectangle, every weight gives the same arc. On a wave whose curvature changes sign in every piece, a low weight squeezes each change of direction toward the points, and the curve reads more like arcs joined end to end.
+
+This spline is Aurimas Gasiulis's [S9 spline](https://gasiulis.name/new-spline) family; at weight 1 it is the Euler-spiral spline. That page describes what the weights do but not their formula, so the weighted pieces here are our own choice: curvature times piece length is `sign(F)·|F|^(1/weight)`, with `F` changing linearly along the piece. S9 itself picks two weights per piece from the piece's end directions; here a piece has one weight, either yours or the rule's. The Euler-spiral spline itself is Raph Levien's, from his thesis [*From Spiral to Spline*](https://levien.com/phd/thesis.pdf) (2009); Henry Moreton's [*Minimum Curvature Variation Curves*](https://www2.eecs.berkeley.edu/Pubs/TechRpts/1993/CSD-93-732.pdf) (1992) is the background on why curves like this look fair.
 
 ??? aside "How the captures were checked"
-    `src/jvmTest/kotlin/afield/geometry/path/ClothoidSplineTest.kt` measures the drawn polylines: the curvature jump at each point is under 1% of the peak, circle points stay within 0.1% of the radius, and no piece of the test shapes has more than one inflection.
+    `src/jvmTest/kotlin/afield/geometry/path/ClothoidSplineTest.kt` measures the drawn polylines: the curvature jump at each point is under 1% of the peak, circle points stay within 0.1% of the radius, and no piece of the test shapes has more than one inflection. The same file checks weights 0.8 down to 0.2: curvature stays continuous at the points, runs monotonically inside each piece, matches the curvature measured from the drawn shape, and a circle stays a circle; weight 0.99999 lands within 0.01 units of weight 1, whose code path is unchanged. The egg was found by trying round outlines with uneven spacing: weight 1's curvature dips to −0.08 of its peak there, while weight 0.7 and below stay positive.
 
 ### Biarcs: `biarcTo(...)` and `biarcBetween(...)`
 
@@ -4313,9 +4459,11 @@ Next on the Tour, [Drawing and Notation](drawing_and_notation.md) draws by hand 
   and [measuring along a line](#measuring-along-a-line) for reading a curve back.
 - [Variable-width strokes](#variable-width-strokes-the-swept-circle-envelope) above outline a pen stroke from its pressure, with [thinning for tablet strokes](#tablet-strokes-thinpensamples), [sharp turns](#sharp-turns-pencorners) and [outlining strokes as they are drawn](#outlining-strokes-as-they-are-drawn); open the [variable_width_strokes starting point](agent_transcripts.md#variable_width_strokes) to try them. Source: [`FLineThickening.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/path/FLineThickening.kt) and [`SweptCircleEnvelopeTest.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmTest/kotlin/afield/geometry/path/SweptCircleEnvelopeTest.kt).
 - Open the [clothoid_spline starting point](agent_transcripts.md#clothoid_spline) to try the
-  spline boxes in your own document.
+  spline boxes in your own document, and add `weight = 0.5` to any `clothoidSplineFrom` call to
+  see [the sharper-turn pieces](#sharper-turns-at-the-points-weight), or swap in
+  [`hobbySplineFrom`](#compared-with-hobbys-spline-hobbysplinefrom) to compare with Hobby's spline.
 - Source: [`FLineGeometry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt)
-  (`clothoidSplineFrom`, `curvatureComb`, `curvaturePlot`, `eulerSpiralBetween3D`) and its test,
+  (`clothoidSplineFrom`, `hobbySplineFrom`, `curvatureComb`, `curvaturePlot`, `eulerSpiralBetween3D`) and its test,
   [`ClothoidSplineTest.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmTest/kotlin/afield/geometry/path/ClothoidSplineTest.kt).
 
 Open questions and next builds:
@@ -4326,14 +4474,9 @@ Open questions and next builds:
   fixed by its two end directions in 3D (the 3D version of the per-piece fit), and the knot solve
   would match the curvature vector rather than one number. [`eulerSpiralBetween3D`](#euler-spiral-in-3d-clothoid-ish-connection)
   is the two-point version with a ramp, the place such a piece would start.
-- **The S9 weights.** Each S9 piece has two weights; below 1 they sharpen the turn near the piece's
-  ends, and S9 computes them from the end directions. A piece family with that behaviour
-  (curvature against arc length with two weights, reducing to the Euler spiral at 1) and a weight
-  rule would replace the per-piece clothoid fit; the knot solve stays as it is. Whether the
-  sharper ends help lettering, where S9 is aimed, is the thing to look at.
-- **A Hobby comparison.** Hobby's spline (the one in METAFONT and MetaPost) also picks each piece
-  from its two end directions, but as a cubic with a closed-form solve. Drawn through the same
-  knots with combs, it would show what curvature continuity costs and buys.
+- **Weights for lettering.** `weight = null` lowers the weight on lopsided C-shaped pieces only.
+  Whether that helps lettering, where S9 is aimed, is the thing to look at next, on the "D" and "S"
+  above and on traced glyphs.
 - **Draggable knots.** Read the knots from the drawing layer through `notation` and redraw on
   `notation.onChange`, so the spline follows the points as they move. Corners could come from the
   drawing too, as points marked differently.
