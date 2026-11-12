@@ -873,6 +873,31 @@ check(pressed.contains("true")) { "Reference axes button never appeared: " + pre
 ui.pause(1500)
 ```
 
+### Serving your own tools
+
+A tool that belongs to your project rather than to Field goes in a web folder that Field serves
+at `/extension-web/`. Field looks in these places in order and serves the first match:
+
+- `src/personal/web/` in the Field checkout;
+- `web/` in each [extension directory](installation.md#project-owned-kotlin-extensions) named by
+  `AFIELD_EXTENSION_DIRS` (or `-PfieldExtensionDirs`), next to its `kotlin/` and `resources/`;
+- each folder listed in `AFIELD_WEB_DIRS`, separated by `:` (`;` on Windows), served as it is.
+
+Name the tool by its path under the folder. `tools` appends a hash of the file's contents, so
+after you edit the file, the next run of the box loads the new version. Field sends these
+files with `Cache-Control: no-store`, so reloading the page fetches them again too. There is
+nothing to copy into `build/`.
+
+```diffstatic {data-lang=kotlin}
+three(name = "my-scene") {
+    tools("/extension-web/my_motion_tool.js")   // src/personal/web/my_motion_tool.js
+    mesh(icosphereMesh())
+}
+```
+
+The hash covers only the module `tools` names. If that module imports other files, a reload
+picks up changes to them, but a redraw without a reload does not.
+
 Each module exports a default factory returning a descriptor with a unique `id`.
 `mount(context)` receives a toolbar element, `THREE`, the camera and controls,
 `overlays`, the inspector API, `sources()` and `requestRender()`. `surface` is the
