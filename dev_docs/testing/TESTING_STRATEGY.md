@@ -541,6 +541,22 @@ Committed docs figures and videos also have a size budget (PNG 2 MiB and
 `checkDocAssetBudget`). Shrink a capture with `max-width=` on its fence; see
 `dev_docs/testing/LANDING_ASSET_GUARDS.md`.
 
+A docs image shown with `![](...)` or `<img src>` that no runner fence declares
+(`screenshot=`/`video=`/`poster=`, which includes retained capture-profile
+assets) is a hand-placed image. The ones that existed on 2026-11-12 are listed
+in `dev_docs/testing/doc_hand_images.json`; a new one fails until it is made by
+a runner fence or registered on purpose as a deliberate hand screenshot, and an
+entry whose image is gone fails too:
+`uv run python tools/check_doc_assets.py --hand-images-only`
+(`--write-hand-image-register` rewrites the list).
+
+`page.md#anchor` links written in source (docs pages, `dev_docs/**.md`, KDoc in
+`src/**.kt`) are checked against the target page's heading slugs, explicit
+`{#id}`s and raw-HTML ids without a docs build:
+`uv run python tools/check_doc_source_anchors.py`. The built-site check in
+`tools/check_doc_site_links.py` still owns rendered links on published pages.
+Both run in `checkPythonTools` and in `tools/land.py precheck`.
+
 ### 9. Specialized Manual References
 
 Some older feature notes are still useful as manual checklists or as source
