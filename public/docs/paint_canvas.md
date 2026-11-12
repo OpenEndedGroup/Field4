@@ -383,6 +383,63 @@ canvas.spatter(flick, 150.0, 540.0, toward = 600.0 to -60.0, spread = 0.3, force
 display("main", canvas.png(wet = true, light = PaintLight.Raking))
 ```
 
+## Folding, pressing and rubbing
+
+Three gestures move wet paint with no tool in it at all. They come from Dan Fountain's
+[Fold & Squish](https://danfountain.com/blog/paint-that-squishes), where thick paint is folded,
+squashed, rubbed and peeled. Field follows the method he describes; none of its code is used.
+
+- `canvas.fold(x, y, dx, dy)` folds the canvas along the line through `(x, y)` running toward
+  `(dx, dy)`. The half on the left of that direction is pressed onto the other half, then the canvas
+  is opened again. Where the paint on a point and on its mirror image is thick enough to meet through
+  the gap the `pressure` leaves, the two films swap `transfer` of themselves (0.5 makes them one
+  mixture). Pressure spreads the squashed paint outward for `spread` of the time it takes to level,
+  thick paint faster than thin. Opening the fold splits the film between the two sides: evenly at
+  `peel = 0`, and in branching ridges `ridge` units apart as `peel` rises. Where one side keeps a
+  ridge, its mirror is bare. Past `peel = 0.67` the film splits wholly.
+- `canvas.press(x, y, radius)` presses a flat plate onto the paint and peels it off toward
+  `(dx, dy)`. The plate takes `take` of the film it touched, unevenly, in the same kind of ridges. This
+  is a monotype pull, or a palm pressed down and lifted.
+- `canvas.rub(line, radius, pressure)` drags a thumb along a line. It picks up the paint that stands
+  above the film a light touch rides on and lays it down further along. The paint is drawn out and
+  thins as it goes, in streaks where the skin presses harder, and colours smear into each other.
+
+Each returns a `Squished`, with the mm³ it moved and the mm³ it took off the canvas (`liftedMm3`).
+`canvas.wetMm3` is all the wet paint on the canvas. A fold or a rub leaves it unchanged. A plate
+lowers it by exactly what the plate reports. Paint that has started to set moves less, and dry paint
+does not move.
+
+```diffstatic {data-lang=kotlin}
+val canvas = PaintCanvas(900, aspect = 1.4, seed = 7)
+val brush = canvas.brush(BrushKind.HogFlat, width = 70.0)
+brush.load(rgb(0.1, 0.2, 0.6), amount = 4.0, stiff = 0.5)
+canvas.stroke(FLine().moveTo(230, 360).cubicTo(330, 320, 420, 400, 490, 430), brush, pressure = 1.0..1.0)
+
+// fold down the middle, press, and open it again: a Rorschach print
+canvas.fold(500.0, 0.0, pressure = 0.9, spread = 0.5, peel = 0.8, ridge = 18.0)
+canvas.press(300.0, 380.0, radius = 120.0, take = 0.5, peel = 0.8)
+canvas.rub(FLine().moveTo(150, 500).lineTo(850, 500), radius = 35.0, pressure = 0.7)
+display("main", canvas.png(wet = true, light = PaintLight.Raking))
+```
+
+The [paint_fold_press](agent_transcripts.md#paint_fold_press) starting point has a box for each
+gesture, and each shows the canvas before and after.
+
+??? aside "What Field took from Fold & Squish, and what it already had"
+    The paint canvas already had thick paint (bristle ridges, the knife's slab, relief lighting,
+    gloss, drying, cracks), so none of that was rebuilt. What Fold & Squish has and Field did not is
+    gestures that act on the wet film as a whole: a second surface pressed onto it, then pulled away.
+    Field took four ideas from it: paint transfers only where it is thick enough to touch; pressure
+    spreads the squashed film; peeling splits the film in ridges, and the two surfaces get opposite
+    patterns; a moving pressure drags the paint. These are new Rust kernels over the crate's wet
+    layer (`native/field-paint/vendor/paint/src/field/squish.rs`). Fold & Squish runs per-pixel
+    pigment, height, wetness and drift on the GPU. Field's engine is single-threaded Rust. On a
+    1600 × 1280 canvas on an M-series Mac a fold takes about 160 ms, a plate 60 ms and a rub 30 ms,
+    against 530 ms for one heavy brush stroke. So the gestures are not the bottleneck; the brushes
+    are. Blowing (drift of fluid paint) was not added. The tests (`SquishTest`, and the Rust tests in
+    `squish.rs`) check that paint is conserved, that an even fold prints a mirror image, and that a
+    peel leaves complementary ridges.
+
 ## Brushes made to order
 
 A `BrushKind` is a starting point. `brush(kind, width, config = BrushConfig(...))` changes how the
@@ -577,16 +634,18 @@ without restarting. To use a copy somewhere else, set `AFIELD_PAINT_LIBRARY` or
 `-Dafield.paint.library` to its path. `PaintCanvas.isAvailable` says whether Field can find it, and
 `PaintLibrary.describe()` says where it looked.
 
-See also: [Watercolour and ink](watercolor.md), where water on paper moves by itself,
-[Brushes with moving hairs](paint_gestures.md), whose hairs bend, splay and flick under timed
-gestures of the hand, [Drawing with FLines](fline_examples.md), [Colors](colors_examples.md),
-[Drawn Strokes Become Paint](chain_drawn_paint.md), which paints strokes drawn on the drawing
-layer with the pen's pressure, and [AI4 paints](ai4_painting.md), where the AI chat paints on this
-canvas.
-
 ## API reference
 
 Implementation and parameter details for the helpers used above:
 
 - [`PaintCanvas.brush`](reference/graphics.md#paintcanvas-kt--paintcanvas--brush)
 - [`PaintToolbox.brush`](reference/graphics.md#painttoolbox-kt--painttoolbox--brush)
+
+## Where to go next
+
+[Watercolour and ink](watercolor.md), where water on paper moves by itself,
+[Brushes with moving hairs](paint_gestures.md), whose hairs bend, splay and flick under timed
+gestures of the hand, [Drawing with FLines](fline_examples.md), [Colors](colors_examples.md),
+[Drawn Strokes Become Paint](chain_drawn_paint.md), which paints strokes drawn on the drawing
+layer with the pen's pressure, and [AI4 paints](ai4_painting.md), where the AI chat paints on this
+canvas.
