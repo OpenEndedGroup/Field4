@@ -497,6 +497,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
     - [video](graphics.md#audiodecoder-kt)
 - [three](graphics.md#geometryview-kt)
 - [visionos](graphics.md#visiongeometrypreview-kt)
+- [volume](graphics.md#neuralclouds-kt)
 - *vulkan* — [Graphics](graphics.md#captureorientation-kt) · [Workspace](workspace.md#stdlib-buffers-kt)
     - *buffers* — [Graphics](graphics.md#dynamicbuffer-kt) · [Workspace](workspace.md#stdlib-buffers-kt)
     - [device](graphics.md#attachment-kt)
@@ -669,7 +670,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**39124 public symbols across 1779 source files**, 23095 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**39161 public symbols across 1780 source files**, 23126 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -682,7 +683,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 59 | 2438 | 1825 (74%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1105 | 519 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 394 | 9493 | 5962 (62%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 395 | 9530 | 5993 (62%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 801 | 431 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 514 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -1685,6 +1686,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>network/<wbr></small> [NativeGeometry.kt](graphics.md#nativegeometry-kt) | Graphics | 23 | 11 | Which of Field's optional native geometry libraries are installed, and what the welcome page says about the rest. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>graph/<wbr></small> [nesting.kt](workspace.md#nesting-kt) | Workspace | 10 | 5 | Nesting: drawing one box inside another, through the `nested` and `nestedIn` properties. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [NetStats.kt](workspace.md#netstats-kt) | Workspace · internal | 4 | 4 | Per-second counters of WebSocket traffic between the backend and the browser, shown on the pinned "net" console row. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>volume/<wbr></small> [NeuralClouds.kt](graphics.md#neuralclouds-kt) | Graphics | 37 | 31 |  | [Progressive path tracing](../path_tracing.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [NeuralFieldParitySmoke.kt](examples.md#neuralfieldparitysmoke-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>particles/<wbr></small> [neuralparticles.kt](machine-learning.md#neuralparticles-kt) | Machine learning | 36 | 33 | Taking a small trained network to the GPU: `MlpWeights` is a flat, layer-major snapshot of a multilayer perceptron's weights, and `MlpWeights.glsl` emits a GLSL function that evaluates the same network out of a storage buffer. | [Neural particle systems](../neural_particles.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>particles/<wbr></small> [neuralparticles_system.kt](machine-learning.md#neuralparticles-system-kt) | Machine learning | 31 | 31 | A particle system driven by a trained velocity field: `ShaderNeuralParticles` integrates a buffer of particles along the field in a compute pass and draws the same allocation as points, with no copy between the two. | [Neural particle systems](../neural_particles.md) |
