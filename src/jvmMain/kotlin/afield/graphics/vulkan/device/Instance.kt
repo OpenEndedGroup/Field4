@@ -555,6 +555,7 @@ class Instance(private val validate: Boolean) {
                 return null
             }
             val optional = listOf(
+                afield.graphics.vulkan.targets.OpenXROpaqueDataChannel.EXTENSION_NAME,
                 EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME,
                 EXTHandInteraction.XR_EXT_HAND_INTERACTION_EXTENSION_NAME,
                 EXTEyeGazeInteraction.XR_EXT_EYE_GAZE_INTERACTION_EXTENSION_NAME,
