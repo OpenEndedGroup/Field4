@@ -502,7 +502,8 @@ out and it comes from the paint, so thinned paint throws finer tendrils than sti
 the air passes is pushed to the tendrils' sides and tips, so a thin film is left behind with thick
 rims at the edges, and the solvent in that film evaporates faster. Paint is moved, never made or
 lost: `canvas.wetMm3` is the same before and after. `blow` returns a `Blown` with the mm³ moved and
-`branching`, how branched the fingers were (near 0 for a blot, near 2 for a tree of thin fingers).
+`branching`, how far the fingers spread for their area (about 1 for a round blot, 2 or more for a
+branching tree).
 
 The box below lays a thick blue film and blows across it along a curve. The top image is before,
 the bottom one after.

@@ -545,9 +545,9 @@ data class Blown(
     /** mm³ of paint that ended up somewhere else on the canvas, counted once. */
     val movedMm3: Double,
     /**
-     * How branched the air's fingers are: edges between the cells the air reached and the paint left,
-     * per cell reached, averaged over the jet's stations. A compact blot is near 0, a tree of fingers
-     * one cell wide near 2.
+     * How branched the air's fingers are: how far the cells the air reached spread for their number
+     * (their radius of gyration over that of a round blot of as many), averaged over the jet's
+     * stations. A compact blot is about 1; fingers that branch out reach 2 or more.
      */
     val branching: Double,
     /** Places along the line where the jet met wet paint. */

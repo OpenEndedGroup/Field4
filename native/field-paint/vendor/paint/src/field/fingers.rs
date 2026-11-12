@@ -153,20 +153,29 @@ impl Hele {
         order
     }
 
-    /// How branched the air that invaded the paint is: the edges between invaded cells and paint
-    /// that is left, per invaded cell. A compact blob of `n` cells has about `4 / sqrt(n)` of them;
-    /// a tree of one-cell-wide fingers about 2.
+    /// How far the air that invaded the paint reaches for its area: the radius of gyration of the
+    /// invaded cells over that of a round blot of as many cells. A compact blot is about 1; fingers
+    /// that branch out reach further, 2 or more for a DLA-like tree.
     pub fn branching(&self, invaded: &[usize]) -> f32 {
-        if invaded.is_empty() {
+        let n = invaded.len();
+        if n < 2 {
             return 0.0;
         }
-        let edges: usize = invaded.iter().map(|&i| self.nbrs(i).filter(|&j| self.domain[j] && !self.air[j]).count()).sum();
-        edges as f32 / invaded.len() as f32
+        let (mut sx, mut sy) = (0.0f64, 0.0f64);
+        for &i in invaded {
+            sx += (i % self.w) as f64;
+            sy += (i / self.w) as f64;
+        }
+        let (cx, cy) = (sx / n as f64, sy / n as f64);
+        let rg2 = invaded.iter().map(|&i| ((i % self.w) as f64 - cx).powi(2) + ((i / self.w) as f64 - cy).powi(2)).sum::<f64>() / n as f64;
+        // a disc of n cells: radius sqrt(n / pi), radius of gyration that over sqrt(2)
+        let disc2 = n as f64 / std::f64::consts::PI / 2.0;
+        (rg2 / disc2).sqrt() as f32
     }
 }
 
-/// What a blow did: mm³ of paint moved, and how branched the tendrils it drove are (`Hele::branching`,
-/// averaged over the jet's stations).
+/// What a blow did: mm³ of paint moved, and how far its tendrils reach for their area
+/// (`Hele::branching`, averaged over the jet's stations).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Blown {
     pub moved_mm3: f64,

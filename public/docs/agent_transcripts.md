@@ -2048,6 +2048,18 @@ and chalk* sketches a vase in 2B, hatches its shadow side in 4B and rules a chal
 
 [Open →](offline.html?file=assets/agent_transcripts/paint_canvas/metadata.edn)
 
+### paint_blow_fingers
+
+Three boxes that push wet paint [with air](paint_canvas.md#blowing-paint). *Blow a straw across wet
+paint* blows along a curve through a thick blue film, clearing a track with ragged tendrils and rims.
+*One puff, three viscosity contrasts* blows at three points, from a compact blot to long branching
+fingers, and reports how far each spreads. *Fold, open, and the film splits in fingers* folds a canvas
+so the film splits in [viscous fingers](paint_canvas.md#fingers-where-the-film-splits). Each box
+shows the canvas and reports the paint moved; the wet paint is the same before and after. All three
+need the optional paint library (`./gradlew buildPaintNative`).
+
+[Open →](offline.html?file=assets/agent_transcripts/paint_blow_fingers/metadata.edn)
+
 ### paint_fold_press
 
 Three boxes that move wet paint [without a brush](paint_canvas.md#folding-pressing-and-rubbing).
