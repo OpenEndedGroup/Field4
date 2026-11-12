@@ -683,7 +683,7 @@ val rows =
     }
 display(
     "compare",
-    "<img style='width:100%' src='data:image/png;base64,$png'>" +
+    "<img src='data:image/png;base64,$png'>" +
         "<div>reference | single scatter | fitted ambient | network; below, |error| x4</div>" +
         "<table><tr><th></th><th>relative MAE</th><th>RMSE</th></tr>$rows</table>",
 )
