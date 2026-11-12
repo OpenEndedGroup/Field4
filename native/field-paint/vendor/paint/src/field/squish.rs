@@ -273,7 +273,7 @@ impl Canvas {
                 fb = (fb.0.min(x), fb.1.min(y), fb.2.max(x + 1), fb.3.max(y + 1));
             }
             let opening = |x: usize, y: usize| ((x as f32 + 0.5 - cx) * nx + (y as f32 + 0.5 - cy) * ny).max(0.0) / ridge_px;
-            let fingers = super::fingers::peel_fingers(self, &film, fb, &opening, 0.4, (ridge_px / 2.0).round() as usize, 1.5, seed);
+            let fingers = super::fingers::peel_fingers(self, &film, fb, &opening, 0.3, (ridge_px / 2.0).round().max(3.0) as usize, (ridge_px / 4.0).max(2.0), 2.0, seed);
             for &(i, j) in &pairs {
                 let c = contact[i].min(contact[j]);
                 let t = self.wet.vol[i] + self.wet.vol[j];
@@ -348,7 +348,7 @@ impl Canvas {
             }
         }
         let opening = |x: usize, y: usize| (r - ((x as f32 + 0.5 - cx) * ux + (y as f32 + 0.5 - cy) * uy)).max(0.0) / ridge_px;
-        let fingers = super::fingers::peel_fingers(self, &film, (x0, y0, x1, y1), &opening, 0.4, (ridge_px / 2.0).round() as usize, 1.5, seed);
+        let fingers = super::fingers::peel_fingers(self, &film, (x0, y0, x1, y1), &opening, 0.3, (ridge_px / 2.0).round().max(3.0) as usize, (ridge_px / 4.0).max(2.0), 2.0, seed);
         let mut lifted = 0.0f64;
         for yy in y0..y1 {
             for xx in x0..x1 {
@@ -554,6 +554,65 @@ mod tests {
         let zeros = (0..c.f.h).flat_map(|y| (0..w / 2).map(move |x| (x, y))).filter(|&(x, y)| { let (a, b) = (c.wet.vol[y * w + x], c.wet.vol[y * w + (w - 1 - x)]); a + b > 1.0 && a.min(b) < 0.05 }).count();
         assert!(both > 100 && differ * 5 > both, "{differ} of {both} pressed pairs split unevenly");
         assert!(zeros * 5 > both, "{zeros} of {both} pressed pairs left one side bare");
+    }
+
+    #[test]
+    fn a_peel_gives_each_half_what_its_mirror_lost() {
+        let mut c = canvas_with_blob();
+        let (w, h) = (c.f.w, c.f.h);
+        // with no transfer or spread, each pair holds what it held before, split between its halves
+        let before: Vec<f32> = c.wet.vol.clone();
+        c.fold_press(500.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 30.0, 3);
+        let (mut pairs, mut kept, mut bare_left, mut bare_right) = (0, 0, 0, 0);
+        for y in 0..h {
+            for x in 0..w / 2 {
+                let (i, j) = (y * w + x, y * w + (w - 1 - x));
+                let t = before[i] + before[j];
+                if t < 1.0 {
+                    continue;
+                }
+                pairs += 1;
+                let (a, b) = (c.wet.vol[i], c.wet.vol[j]);
+                if ((a + b) - t).abs() < 1e-3 * t.max(1.0) {
+                    kept += 1;
+                }
+                if a < 0.05 * t && b > 0.9 * t {
+                    bare_left += 1;
+                }
+                if b < 0.05 * t && a > 0.9 * t {
+                    bare_right += 1;
+                }
+            }
+        }
+        assert!(pairs > 100 && kept == pairs, "{kept} of {pairs} pairs kept their paint between the halves");
+        assert!(bare_left * 25 > pairs && bare_right * 25 > pairs, "bare left {bare_left}, bare right {bare_right} of {pairs}");
+    }
+
+    #[test]
+    fn a_peels_fingers_are_not_grid_aligned() {
+        let mut c = canvas_with_blob();
+        let (w, h) = (c.f.w, c.f.h);
+        c.fold_press(500.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 30.0, 3);
+        // edge orientations of the left half's film: how many lie within 10 degrees of the grid
+        let (mut edges, mut aligned) = (0, 0);
+        for y in 1..h - 1 {
+            for x in 1..w / 2 - 1 {
+                let v = |dx: i64, dy: i64| c.wet.vol[(y as i64 + dy) as usize * w + (x as i64 + dx) as usize];
+                let gx = (v(1, -1) + 2.0 * v(1, 0) + v(1, 1)) - (v(-1, -1) + 2.0 * v(-1, 0) + v(-1, 1));
+                let gy = (v(-1, 1) + 2.0 * v(0, 1) + v(1, 1)) - (v(-1, -1) + 2.0 * v(0, -1) + v(1, -1));
+                if (gx * gx + gy * gy).sqrt() < 2.0 {
+                    continue;
+                }
+                edges += 1;
+                let a = gy.atan2(gx).to_degrees().rem_euclid(90.0);
+                if a < 10.0 || a > 80.0 {
+                    aligned += 1;
+                }
+            }
+        }
+        // isotropic edges put about 22% there; a staircase of square cells nearly all
+        assert!(edges > 200, "{edges} edge pixels");
+        assert!((aligned as f32) < 0.38 * edges as f32, "{aligned} of {edges} edge pixels lie along the grid");
     }
 
     #[test]

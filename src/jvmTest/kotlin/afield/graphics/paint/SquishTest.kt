@@ -115,9 +115,12 @@ class SquishTest {
 
     @Test fun theAirsFingersBranchMoreAsTheViscosityContrastRises() {
         requirePaintLibrary()
-        fun branching(contrast: Double) = PaintCanvas(400, aspect = 1.0, seed = 5).use { c ->
+        // the mean over a few puffs: one puff's spread is noisy
+        fun branching(contrast: Double) = PaintCanvas(800, aspect = 1.0, seed = 5).use { c ->
             film(c)
-            c.blow(line(500.0, 510.0, 502.0, 510.0), radius = 14.0, pressure = 0.9, contrast = contrast, tendril = 6.0, seed = 3).branching
+            listOf(250.0, 420.0, 590.0, 760.0).mapIndexed { i, x ->
+                c.blow(line(x, 510.0, x + 2.0, 510.0), radius = 14.0, pressure = 0.9, contrast = contrast, tendril = 4.0, seed = 3L + i).branching
+            }.average()
         }
         val (low, high) = branching(1.0) to branching(200.0)
         assertTrue(high > 1.3 * low, "branching at contrast 1: $low, at 200: $high")

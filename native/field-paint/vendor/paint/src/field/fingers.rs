@@ -46,12 +46,30 @@ pub struct Hele {
     pub q: Vec<f32>,
     /// Pressure.
     pub p: Vec<f32>,
+    /// The air cell each invaded cell grew from (`usize::MAX` for the first air).
+    pub parent: Vec<usize>,
+    /// Keys each cell's off-centre point (`pos`).
+    pub jitter_seed: u64,
 }
 
 impl Hele {
     pub fn new(w: usize, h: usize) -> Self {
         let n = w * h;
-        Hele { w, h, domain: vec![false; n], air: vec![false; n], sink: vec![false; n], k: vec![1.0; n], q: vec![0.0; n], p: vec![0.0; n] }
+        Hele { w, h, domain: vec![false; n], air: vec![false; n], sink: vec![false; n], k: vec![1.0; n], q: vec![0.0; n], p: vec![0.0; n], parent: vec![usize::MAX; n], jitter_seed: 0 }
+    }
+
+    /// Where in cell `l` a finger passes, in cell units: its centre moved by up to 0.42 of a cell
+    /// either way, so fingers joining these points run at every angle, not along the grid.
+    pub fn pos(&self, l: usize) -> (f32, f32) {
+        let (x, y) = ((l % self.w) as i64, (l / self.w) as i64);
+        let jx = crate::rng::hash2(x, y, self.jitter_seed ^ 0xA5A5) - 0.5;
+        let jy = crate::rng::hash2(x, y, self.jitter_seed ^ 0x5A5A) - 0.5;
+        (x as f32 + 0.5 + 0.84 * jx, y as f32 + 0.5 + 0.84 * jy)
+    }
+
+    /// The fingers as segments (cell units) from each invaded cell's parent to it, in growth order.
+    pub fn segments(&self, invaded: &[usize]) -> Vec<((f32, f32), (f32, f32))> {
+        invaded.iter().filter(|&&c| self.parent[c] != usize::MAX).map(|&c| (self.pos(self.parent[c]), self.pos(c))).collect()
     }
 
     fn nbrs(&self, i: usize) -> impl Iterator<Item = usize> + '_ {
@@ -105,6 +123,7 @@ impl Hele {
     /// multiplies each cell's chance. Returns the invaded cells in the order the front reached them.
     pub fn grow(&mut self, n: usize, eta: f32, bias: Option<&[f32]>, seed: u64) -> Vec<usize> {
         let mut rng = Rng::new(seed ^ 0xF1A6_E125);
+        self.jitter_seed = seed;
         let mut order = Vec::with_capacity(n);
         if n == 0 {
             return order;
@@ -141,6 +160,10 @@ impl Hele {
                 }
                 wts[pick] = 0.0;
                 let c = front[pick];
+                let ps: Vec<usize> = self.nbrs(c).filter(|&j| self.air[j]).collect();
+                if !ps.is_empty() {
+                    self.parent[c] = ps[(rng.f() * ps.len() as f32) as usize % ps.len()];
+                }
                 self.air[c] = true;
                 self.p[c] = 0.0;
                 order.push(c);
@@ -174,6 +197,54 @@ impl Hele {
     }
 }
 
+/// The point of segment `a`-`b` nearest `p`, and the distance to it.
+fn nearest(p: (f32, f32), a: (f32, f32), b: (f32, f32)) -> ((f32, f32), f32) {
+    let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+    let l2 = dx * dx + dy * dy;
+    let t = if l2 > 0.0 { (((p.0 - a.0) * dx + (p.1 - a.1) * dy) / l2).clamp(0.0, 1.0) } else { 0.0 };
+    let q = (a.0 + dx * t, a.1 + dy * t);
+    (q, ((p.0 - q.0).powi(2) + (p.1 - q.1).powi(2)).sqrt())
+}
+
+impl Canvas {
+    /// Push the wet paint within `hw` pixels of segment `a`-`b` (buffer pixels) out of it, each pixel's
+    /// paint (all but `film` coats) to the place just past the segment's edge straight out from its
+    /// nearest point: the air opening a finger shoves paint to its sides and tip, into rims.
+    pub(crate) fn push_out(&mut self, a: (f32, f32), b: (f32, f32), hw: f32, film: f32, dry: f32) {
+        let (w, h) = (self.f.w as i64, self.f.h as i64);
+        let x0 = (a.0.min(b.0) - hw - 1.0).floor().max(0.0) as i64;
+        let y0 = (a.1.min(b.1) - hw - 1.0).floor().max(0.0) as i64;
+        let x1 = ((a.0.max(b.0) + hw + 1.0).ceil() as i64).min(w);
+        let y1 = ((a.1.max(b.1) + hw + 1.0).ceil() as i64).min(h);
+        let (sx, sy) = (b.0 - a.0, b.1 - a.1);
+        let sl = (sx * sx + sy * sy).sqrt().max(1e-6);
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let p = (x as f32 + 0.5, y as f32 + 0.5);
+                let (q, d) = nearest(p, a, b);
+                if d > hw {
+                    continue;
+                }
+                // straight out from the finger; on its axis, to one side by the pixel's parity
+                let (ux, uy) = if d > 0.3 { ((p.0 - q.0) / d, (p.1 - q.1) / d) } else if (x + y) % 2 == 0 { (-sy / sl, sx / sl) } else { (sy / sl, -sx / sl) };
+                let (tx, ty) = ((q.0 + ux * (hw + 1.0)).floor() as i64, (q.1 + uy * (hw + 1.0)).floor() as i64);
+                if tx < 0 || ty < 0 || tx >= w || ty >= h {
+                    continue;
+                }
+                let (i, t) = ((y * w + x) as usize, (ty * w + tx) as usize);
+                if i == t {
+                    continue;
+                }
+                let v = (self.wet.vol[i] - film).max(0.0);
+                self.move_paint(i, t, v);
+                if !self.wet.solv.is_empty() {
+                    self.wet.solv[i] *= 1.0 - dry;
+                }
+            }
+        }
+    }
+}
+
 /// What a blow did: mm³ of paint moved, and how far its tendrils reach for their area
 /// (`Hele::branching`, averaged over the jet's stations).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -194,25 +265,6 @@ impl Canvas {
         (fluid * open).max(0.05)
     }
 
-    /// Move all but `film` coats of the wet paint in coarse cell (`ax`, `ay`) to the same places in
-    /// cell (`bx`, `by`), cells `g` pixels across starting at buffer pixel (`ox`, `oy`).
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn shift_cell(&mut self, ox: usize, oy: usize, g: usize, a: (usize, usize), b: (usize, usize), film: f32) {
-        let (w, h) = (self.f.w, self.f.h);
-        for dy in 0..g {
-            for dx in 0..g {
-                let (sx, sy) = (ox + a.0 * g + dx, oy + a.1 * g + dy);
-                let (tx, ty) = (ox + b.0 * g + dx, oy + b.1 * g + dy);
-                if sx >= w || sy >= h || tx >= w || ty >= h {
-                    continue;
-                }
-                let (s, t) = (sy * w + sx, ty * w + tx);
-                let v = (self.wet.vol[s] - film).max(0.0);
-                self.move_paint(s, t, v);
-            }
-        }
-    }
-
     /// Blow air through a straw or an airbrush along `pts` (canvas units) at `pressure` (0..1), the jet
     /// `radius` units across. Where the jet meets wet paint, the air pushes into it and the paint
     /// flows away from the jet ahead of it, along the direction of travel more than back; the air
@@ -226,7 +278,7 @@ impl Canvas {
         let (w, h) = (self.f.w, self.f.h);
         let s = self.f.scale;
         let r = (radius * s).max(1.0);
-        let g = (tendril * s).round().max(1.0) as usize;
+        let g = (1.5 * tendril * s).round().max(2.0) as usize;
         let reach = 6.0 * r;
         let pressure = pressure.clamp(0.0, 1.0);
         let before = self.wet.vol.clone();
@@ -321,16 +373,9 @@ impl Canvas {
             if paint_cells == 0 {
                 continue;
             }
-            // paint right under the jet is blown out of it first, away from the jet's centre
-            let film = 0.15f32;
             let ctr = |l: usize| -> (f32, f32) {
                 (((ox + (l % gw) * g) as f32 + 0.5 * g as f32 - c.0), ((oy + (l / gw) * g) as f32 + 0.5 * g as f32 - c.1))
             };
-            let mut under: Vec<usize> = (0..gw * gh).filter(|&l| hs.air[l] && vol[l] > film).collect();
-            under.sort_by(|&a, &b| {
-                let (da, db) = (ctr(a), ctr(b));
-                (db.0 * db.0 + db.1 * db.1).partial_cmp(&(da.0 * da.0 + da.1 * da.1)).unwrap()
-            });
             let m = contrast.unwrap_or_else(|| 1.0 + 30.0 * fluid.0 / fluid.1.max(1.0));
             let eta = eta_for_contrast(m);
             let bias: Vec<f32> = (0..gw * gh)
@@ -347,63 +392,16 @@ impl Canvas {
             let invaded = hs.grow(n, eta, Some(&bias), seed.wrapping_add(si as u64 * 0x9E37));
             bsum += hs.branching(&invaded);
             out.stations += 1;
-            // displace: each cell the air reached sends its paint on to its neighbour that holds
-            // the most pressure (the paint ahead), keeping a thin film; jet cells first, outermost
-            // first, then the fingers in the order they grew
-            for &l in &under {
-                let (dx, dy) = ctr(l);
-                let d = (dx * dx + dy * dy).sqrt();
-                let (ex_, ey_) = if d > 1e-3 { (dx / d, dy / d) } else { (u.0, u.1) };
-                let (mut px, mut py) = ((l % gw) as f32 + 0.5, (l / gw) as f32 + 0.5);
-                let mut target = None;
-                for _ in 0..(2 * gw + 2 * gh) {
-                    px += ex_;
-                    py += ey_;
-                    if px < 0.0 || py < 0.0 || px >= gw as f32 || py >= gh as f32 {
-                        break;
-                    }
-                    let j = py as usize * gw + px as usize;
-                    if !hs.air[j] {
-                        target = Some(j);
-                        break;
-                    }
-                }
-                if let Some(j) = target {
-                    self.shift_cell(ox, oy, g, (l % gw, l / gw), (j % gw, j / gw), film);
-                }
-            }
-            for &l in &invaded {
-                let (lx, ly) = (l % gw, l / gw);
-                let (dx, dy) = ctr(l);
-                let mut best: Option<(usize, f32)> = None;
-                for (nx, ny) in [(lx.wrapping_sub(1), ly), (lx + 1, ly), (lx, ly.wrapping_sub(1)), (lx, ly + 1)] {
-                    if nx >= gw || ny >= gh {
-                        continue;
-                    }
-                    let j = ny * gw + nx;
-                    if hs.air[j] {
-                        continue;
-                    }
-                    let (jx, jy) = ctr(j);
-                    let outward = (jx * jx + jy * jy).sqrt() - (dx * dx + dy * dy).sqrt();
-                    let score = hs.p[j] + 0.02 * outward;
-                    if best.is_none_or(|b| score > b.1) {
-                        best = Some((j, score));
-                    }
-                }
-                if let Some((j, _)) = best {
-                    self.shift_cell(ox, oy, g, (lx, ly), (j % gw, j / gw), film);
-                    if !self.wet.solv.is_empty() {
-                        for yy in 0..g {
-                            for xx in 0..g {
-                                let (x, y) = (ox + lx * g + xx, oy + ly * g + yy);
-                                if x < w && y < h {
-                                    self.wet.solv[y * w + x] *= 1.0 - 0.5 * pressure;
-                                }
-                            }
-                        }
-                    }
-                }
+            // displace, pixel by pixel: the jet first clears what is under it, straight out from its
+            // centre, then each finger, from where it grew to where it reached, shoves the paint in its
+            // way to its sides and tip (`push_out`), so the fingers are `tendril` wide whatever the
+            // cell, and run at any angle
+            let film = 0.15f32;
+            self.push_out(c, c, r, film, 0.5 * pressure);
+            let hw = 0.5 * tendril * s;
+            let to_px = |q: (f32, f32)| (ox as f32 + q.0 * g as f32, oy as f32 + q.1 * g as f32);
+            for (pa, pb) in hs.segments(&invaded) {
+                self.push_out(to_px(pa), to_px(pb), hw.max(0.7), film, 0.5 * pressure);
             }
             bx0 = bx0.min(ox);
             by0 = by0.min(oy);
@@ -431,7 +429,7 @@ impl Canvas {
 /// wide. Used by the fold's and the plate's peel in place of a noise texture.
 pub(crate) fn peel_fingers(
     canvas: &Canvas, contact: &[f32], bounds: (usize, usize, usize, usize), opening: &dyn Fn(usize, usize) -> f32, fraction: f32,
-    cell: usize, eta: f32, seed: u64,
+    cell: usize, width_px: f32, eta: f32, seed: u64,
 ) -> Vec<f32> {
     let (w, _h) = (canvas.f.w, canvas.f.h);
     let (x0, y0, x1, y1) = bounds;
@@ -478,28 +476,36 @@ pub(crate) fn peel_fingers(
     }
     let cells = hs.domain.iter().filter(|d| **d).count();
     let n = (fraction.clamp(0.0, 1.0) * cells as f32).round() as usize;
-    hs.grow(n, eta, None, seed);
-    // sample the cell pattern at pixels, bilinearly, so the fingers' edges are not staircases
-    let val = |cx: i64, cy: i64| -> f32 {
-        if cx < 0 || cy < 0 || cx >= gw as i64 || cy >= gh as i64 {
-            return -1.0;
+    let invaded = hs.grow(n, eta, None, seed);
+    // the fingers are drawn as the segments they grew along, `width_px` wide, at the jittered
+    // points of their cells: smooth edges at any angle, a width set by the caller, not the cell
+    let mut dist = vec![f32::INFINITY; contact.len()];
+    let to_px = |q: (f32, f32)| (x0 as f32 + (q.0 - 1.0) * g as f32, y0 as f32 + (q.1 - 1.0) * g as f32);
+    let hw = 0.5 * width_px.max(1.0);
+    for (pa, pb) in hs.segments(&invaded) {
+        let (a, b) = (to_px(pa), to_px(pb));
+        let xa = ((a.0.min(b.0) - hw - 2.0).floor().max(x0 as f32)) as usize;
+        let ya = ((a.1.min(b.1) - hw - 2.0).floor().max(y0 as f32)) as usize;
+        let xb = ((a.0.max(b.0) + hw + 2.0).ceil().max(0.0) as usize).min(x1);
+        let yb = ((a.1.max(b.1) + hw + 2.0).ceil().max(0.0) as usize).min(y1);
+        for y in ya..yb {
+            for x in xa..xb {
+                let (_, d) = nearest((x as f32 + 0.5, y as f32 + 0.5), a, b);
+                let i = y * w + x;
+                if d < dist[i] {
+                    dist[i] = d;
+                }
+            }
         }
-        let l = cy as usize * gw + cx as usize;
-        if hs.domain[l] && !hs.air[l] { 1.0 } else { -1.0 }
-    };
+    }
     for y in y0..y1 {
         for x in x0..x1 {
             let i = y * w + x;
             if contact[i] <= 0.0 {
                 continue;
             }
-            let fx = (x - x0) as f32 / g as f32 + 1.0 - 0.5;
-            let fy = (y - y0) as f32 / g as f32 + 1.0 - 0.5;
-            let (ix, iy) = (fx.floor() as i64, fy.floor() as i64);
-            let (tx, ty) = (fx - ix as f32, fy - iy as f32);
-            let a = val(ix, iy) + (val(ix + 1, iy) - val(ix, iy)) * tx;
-            let b = val(ix, iy + 1) + (val(ix + 1, iy + 1) - val(ix, iy + 1)) * tx;
-            field[i] = ((a + (b - a) * ty) * 1.4).clamp(-1.0, 1.0);
+            // a pixel-wide soft edge
+            field[i] = ((dist[i] - hw) / 0.75).clamp(-1.0, 1.0);
         }
     }
     field

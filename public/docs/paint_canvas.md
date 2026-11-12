@@ -416,7 +416,7 @@ The box below lays three thick strokes on the left half, folds the canvas down t
 it. The top image is the canvas before the fold, the bottom one after: each stroke is printed onto
 the right half, and the two prints carry opposite fingers where the film split.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/fold.png" alt="two canvases, one above the other. The top one has three thick strokes on its left half: red, blue and yellow, with bristle ridges. In the bottom one each stroke has been printed onto the right half as a mirror image, and both halves are broken by branching bare fingers that come in from the strokes' outer edges toward the fold: where one half kept paint, its mirror is bare" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="fold" embed=true scale=1}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/fold.png" alt="two canvases, one above the other. The top one has three thick strokes on its left half: red, blue and yellow, with bristle ridges. In the bottom one each stroke has been printed onto the right half as a mirror image, and the film has split in thin branching fingers: on the right half they are white veins branching through the paint, and on the left half the same fingers stand as branching strokes of paint on bare canvas, so where one half kept paint, its mirror is bare" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="fold" embed=true scale=1}
 :::static
 val canvas = PaintCanvas(900, aspect = 1.4, seed = 7)
 val brush = canvas.brush(BrushKind.HogFlat, width = 70.0)
@@ -439,7 +439,7 @@ display("main", canvas.png(wet = true, light = PaintLight.Raking))
 Next, a plate is pressed onto a wet passage and peeled off, and then a thumb is rubbed across three
 stripes, so their colours smear into each other.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/press_rub.png" alt="two canvases, one above the other. In the top one a blue passage of broad strokes is crossed by a thick cream bar; on its left a round patch, where a plate was pressed and peeled, is mottled pale blue with ridged, lifted paint, and the cream bar there is wrinkled. In the bottom one three vertical stripes, red, yellow and blue, are crossed by three horizontal smears dragged to the right, red pulled into yellow and yellow into blue, which turns green where they meet" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="press_rub" embed=true scale=1}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/press_rub.png" alt="two canvases, one above the other. In the top one a blue passage of broad strokes is crossed by a thick cream bar; on its left a round patch, where a plate was pressed and peeled, is pale blue crossed by thin, dark, branching fingers of paint, and the cream bar there is crinkled with small branching grooves. In the bottom one three vertical stripes, red, yellow and blue, are crossed by three horizontal smears dragged to the right, red pulled into yellow and yellow into blue, which turns green where they meet" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="press_rub" embed=true scale=1}
 :::static
 val plate = PaintCanvas(900, aspect = 1.4, seed = 8)
 plate.work(FLine().rect(150, 150, 700, 420), rgb(0.12, 0.3, 0.55), handling = Handling.Broad, stiff = 0.5)
@@ -508,7 +508,7 @@ branching tree).
 The box below lays a thick blue film and blows across it along a curve. The top image is before,
 the bottom one after.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/blow.png" alt="two canvases, one above the other. The top one has a broad, thick band of blue paint with bristle ridges. In the bottom one a curved path has been blown across the band: the paint is cleared along it to a thin pale film, with ragged tendrils reaching out from the track into the blue and dark rims of pushed-up paint along its edges" wait="30" capture="box" open-outputs="true" padding="20" requires="paint" name="blow" embed=true scale=1}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/blow.png" alt="two canvases, one above the other. The top one has a broad, thick band of blue paint with bristle ridges. In the bottom one a curved path has been blown across the band: the paint is cleared along it to a thin pale film, with short, fine tendrils fraying out from both edges of the track into the blue and dark rims of pushed-up paint along them" wait="30" capture="box" open-outputs="true" padding="20" requires="paint" name="blow" embed=true scale=1}
 :::static
 val canvas = PaintCanvas(900, aspect = 1.4, seed = 11)
 val brush = canvas.brush(BrushKind.HogFlat, width = 120.0)
@@ -524,7 +524,7 @@ display("main", canvas.png(wet = true, light = PaintLight.Raking))
 The same puff of air at one point, into the same film, with three viscosity contrasts: 1.5, 8 and
 200, left to right.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/blow_contrast.png" alt="a canvas with a thick blue band and three blown spots in a row. The left spot is a small pale clearing with a ragged, compact edge; the middle one sends out a few short lobes; the right one sends long, thin, branching pale fingers far out into the paint" wait="30" capture="box" open-outputs="true" padding="20" requires="paint" name="blow_contrast" embed=true scale=1}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/blow_contrast.png" alt="a canvas with a thick blue band and three blown spots in a row. each spot is a small round clearing. Around the left one, fine fingers stay close and dense; around the middle one they reach a little further; from the right one, thin, pale, branching fingers run far out into the paint" wait="30" capture="box" open-outputs="true" padding="20" requires="paint" name="blow_contrast" embed=true scale=1}
 :::static
 val canvas = PaintCanvas(900, aspect = 2.4, seed = 12)
 val brush = canvas.brush(BrushKind.HogFlat, width = 130.0)
