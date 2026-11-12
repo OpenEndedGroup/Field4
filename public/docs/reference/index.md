@@ -670,7 +670,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**39161 public symbols across 1780 source files**, 23126 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**39162 public symbols across 1780 source files**, 23127 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -683,7 +683,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 59 | 2438 | 1825 (74%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1105 | 519 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 395 | 9530 | 5993 (62%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 395 | 9531 | 5994 (62%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 801 | 431 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 514 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -2068,7 +2068,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [screenshot.kt](workspace.md#screenshot-kt) | Workspace · internal | 54 | 27 | Screenshot and video capture of Field's browser UI, used by the backdoor and the docs runner. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>models/<wbr></small> [ScriptedLlmBridge.kt](ai4.md#scriptedllmbridge-kt) | AI4 | 8 | 3 | An `LlmBridge` that replays a fixed script of tool calls instead of asking a model. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>search/<wbr></small> [SearchComparison.kt](search.md#searchcomparison-kt) | Search | 31 | 31 | Equal-budget comparison of search drivers for any `GenomeOps` and `Objective`: "does search beat random sampling here?" | [Spatial artificial life](../alife_examples.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>manifold/<wbr></small> [Section.kt](graphics.md#section-kt) | Graphics | 31 | 19 | 2D regions with holes, from Manifold's `CrossSection`: boolean operations, offsetting with a choice of `JoinType`, and extrusion into a `Solid`. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>manifold/<wbr></small> [Section.kt](graphics.md#section-kt) | Graphics | 32 | 20 | 2D regions with holes, from Manifold's `CrossSection`: boolean operations, offsetting with a choice of `JoinType`, and extrusion into a `Solid`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>retrieval/<wbr></small> [SemanticRetrievalService.kt](machine-learning.md#semanticretrievalservice-kt) | Machine learning | 184 | 2 | Hybrid semantic search over Field's own source, the open workspace and the documentation, backed by a local Lucene index and an ONNX embedding model. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [SemanticRetrievalSmokeTest.kt](examples.md#semanticretrievalsmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>retrieval/<wbr></small> [SemanticSearchManager.kt](data.md#semanticsearchmanager-kt) | Data | 38 | 0 | Box-facing wrapper around `afield.ai.retrieval.SemanticRetrievalService`, Field's embedding-based search over source, docs and workspace boxes. |  |
