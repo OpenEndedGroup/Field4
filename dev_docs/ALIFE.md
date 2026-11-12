@@ -39,6 +39,7 @@ stop.
 | `alife_continuous.kt` | `diffuse`, `GrayScottState`, `turingPattern`, `LeniaRule`, `leniaRun` |
 | `alife_agents.kt` | `BoidFlock`, `PhysarumSwarm`, `dlaCluster` / `edenCluster` / `sprinkleCluster` |
 | `alife_lsystem.kt` | `LSystem`, `turtleDraw`, `rasterizeFLines`, `spaceColonization` |
+| `alife_tree_growth.kt` | `TreeGrowth`, `ShadowGrid`, `TreeGrowthParams`, `SeasonReport`, `TreeView` — self-organizing tree growth (Palubicki 2009, Borchert–Honda) |
 | `alife_dla.kt` | `ShaderDlaSettings`, `ShaderDlaSystem` — the GPU aggregation, and not the same thing as `alife_agents.kt`'s CPU `dlaCluster` |
 | `alife_bml.kt` | `ShaderBmlSettings`, `ShaderBmlSystem` — the Biham–Middleton–Levine traffic model as one fragment pass over a ping-pong texture; GPU only, no CPU counterpart |
 | `alife_lbm.kt` | `ShaderLatticeBoltzmannSettings`, `ShaderLatticeBoltzmannSystem`, `FluidVisualizationMode` — a D2Q9 lattice Boltzmann fluid with a drawable control texture and advected dye; GPU only |
@@ -269,6 +270,63 @@ toroidal centroid, because a plain centroid jumps when the creature straddles th
 values shuffled die, and that it lives for `mu` 0.13 to 0.16. Noise seeds under Orbium's `mu` and `sigma`
 never found it. The `DEATH` / `BOUNDED` / `SATURATION` trichotomy via `leniaRun` is still measured.
 
+### Flow Lenia (`alife_flow_lenia.kt`)
+
+After Plantec et al., ALIFE 2023 (arXiv 2212.07906), written from the paper, no code copied.
+`FlowLeniaWorld` holds matter (unclamped `DoubleArray`), per-cell kernel weights `h` and per-species
+tracers; `step()` is affinity -> Sobel gradients -> reintegration tracking. Measured facts and traps:
+
+- **Gradient scale decides whether anything moves.** With halved central differences every creature
+  from a random rule sat still (numpy search, ~500 rules). The paper's unnormalised 3x3 Sobel (8x larger)
+  gives compact bodies in roughly one rule in ten, a few drifting. Speeds stayed well below Orbium's
+  0.62 cells/step; no long-lived glider was found.
+- **Conservation:** relative total-mass drift ~1e-12 over 300 steps, both mixing rules (`FlowLeniaTest`).
+  Under `MEAN` each species' tracer mass is conserved too; under `SAMPLED` it is not, which is what
+  makes it a competition measure.
+- **Cost:** the convolution is scattered from occupied cells, `U` evaluated only on occupied cells
+  dilated by one, kernels on parallel threads: ~24 ms/step at 96x64 with two species (11 kernels).
+  A box `run` stalls the runloop watchdog at 30 s, so docs/demo boxes use `animateEvolution` + launch.
+- **Empty cells keep a stale `h`** (from their last occupant). It enters `U` next to matter, as in the
+  paper's formulation; `weightImg` masks cells under 0.01 matter for that reason.
+- Presets came from a numpy prototype of the same step (random rules: 3-7 kernels, R 3..12,
+  mu 0.05..0.5, sigma 0.01..0.18, h 0.01..1, noise disc on 64x64, 400 steps), parameters copied exactly.
+
+#### Flow Lenia follow-up (2026-11-11)
+
+- **Resolution.** `FlowLeniaRule.scaled(k)` scales every length (radii, `spread`, `maxStep`) and `dt`
+  by `k²` (Sobel gradients of a k-times pattern are 1/k as steep). Leaving `spread` at one cell left a
+  one-cell speckle and dropped the 2x cosine from 0.95 to 0.86 (`scaledRuleKeepsTheCreature`).
+  `spread <= 1` is no longer required. `flowLeniaWorld(scale = k)` seeds at 1/k and calls
+  `scaledCopy(k)` so the seed noise grain scales too. Wanderers survive rescaling; rings/cell keep
+  character only; chaos control (dt +0.1 %) stays at cosine 1.000 for wanderers, so the gap is the
+  rescale. Crescent speed ratio: 3.0 at 3x, 1.44 at 2x. Dart: stops at 2x (0.012 vs 0.10 base
+  cells/step).
+- **FFT.** `FlowLeniaFft` is mixed-radix Cooley-Tukey (any side; cost n·Σ prime factors), kernel
+  spectra cached, inverse per kernel in parallel; agrees with sparse to 1e-14 at 64 and 96. AUTO
+  switches when occupied·taps > 2·(K+1)·transform work. 96² three species 9 ms/step (sparse ~24);
+  288² ~150 ms/step.
+- **Gliders.** `bodies()` is union-find over 8-connected cells above a threshold with torus wrap and
+  circular-mean centroids; `trackLargest` follows the nearest body of at least half the mass. numpy
+  search of 900 random rules (scratch prototype with FFT; same step) found the crescent: a bistable
+  rule, glides from some noise seeds (Kotlin seeds 2 and 10 of 16 move, 0.02 cells/step), round and
+  still from others. Kotlin `PopulationSearch.random` (100 draws, 3-seed objective, 158 s) found the
+  dart (0.10 cells/step, mass kept 0.996 on seed 1); `hillClimb` from the crescent reached 0.036 vs
+  random's 0.042 at the same budget, so climbing did not beat the control.
+- **Mutation and lineages.** Lineage carried with the sampled parcel (SAMPLED) or the largest
+  arriving parcel (MEAN). `FlowLeniaMutation(scale = 0)` is the neutral control: bit-identical matter
+  under MEAN. At 96 cells, rate 0.05, radius 6, 3000 steps, 3 seeds: neutral moves species masses
+  <= ~20 %; scale 0.3 drives one species to 27/77/38 units each time. Under SAMPLED the "new lineage
+  share" goes to 1 in both arms (mutation overwrites), so it is not a selection measure; species
+  mass is.
+- **Not done, and why.**
+  - GPU step: the CPU FFT made 3x clips affordable (the user's ask), and a GPU capture needs the
+    renderer chain plus a scatter rewrite (atomics or gather); left as the first "Where to go next".
+  - Sonification of species mass: wants a synth design and an audio fence capture, out of scope
+    for a simulation follow-up; listed in "Where to go next".
+  - Notation-driven painting: `paintWeights` is the hook; driving it from strokes needs the drawing
+    layer in a capture, which the docs runner cannot drive yet without a `drive` script.
+  - Empty cells keep a stale `h`: kept, it is the paper's formulation and `weightImg` masks it.
+
 ### Boids
 
 `BoidParams.minSpeedFraction` is not cosmetic. The three steering terms are all written as
@@ -325,6 +383,27 @@ that closes to `2.3e-14` of a step; drawn length that grows by exactly `4×` per
 step (the textbook `4/3` is the constant-*diameter* form); and enclosed area matching
 `9^n · A₀ · (1 + 3/5(1 − (4/9)^n))` to `3e-8` relative. That last floor is `FLine`'s single-precision
 coordinate storage, not the maths.
+
+### Self-organizing trees — `alife_tree_growth.kt`
+
+Palubicki et al. 2009 in 2-D, after Chema Guerra's "Growing trees" (brashandplucky.com, 2026-10-15).
+Choices the method leaves open, and what fixed them:
+
+- **Shadow constants.** The first defaults (`a = 1`, `b = 2`, one cell per metamer) put a vertical
+  stack of buds at zero light by season 3, so every tree starved and shed itself to a stub. The
+  defaults are now `a = 0.2`, `b = 1.6`, depth 8, and `α = 3`; mean bud light at season 30 is still
+  only ~0.09, which is what the light view should show (a lit rim over a dark crown).
+- **Light direction.** Picking "the least-shaded cell" with ties broken by sample order leaned every
+  tree left in open sky. It is now the light-weighted mean direction over the cone, which is the
+  heading itself when nothing is shaded.
+- **λ and crown shape**, seed 4, 30 seasons: λ 0.44 → 78 wide × 79 tall, 0.50 → 63 × 81,
+  0.56 → 49 × 90, 0.62 → 35 × 90 (the grid is 100 tall, so the leaders stop at its top).
+  `TreeGrowthTest.apicalControlMovesTheForm` and the gallery's `tree-growth` stage pin the ordering.
+- **Conservation.** At λ = 0 or 1 the weighted Borchert–Honda denominator can vanish while one side
+  still has light; the split then falls back to following light, so the worst error over λ ∈ {0 … 1}
+  stays ~1e-15 (`resourceIsConservedEverySeason`).
+- `measure()` runs again after growth and shedding, so `render()` shows the tree as it now stands;
+  before that, every new tip drew with zero light.
 
 ## One program per agent — `alife_script.kt`
 

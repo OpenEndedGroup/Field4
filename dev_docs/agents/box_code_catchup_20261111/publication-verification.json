@@ -1,0 +1,203 @@
+{
+  "status": "passed",
+  "refreshed": [
+    {
+      "name": "sentence_diagrams",
+      "ok": true,
+      "channels": 4,
+      "warnings": []
+    },
+    {
+      "name": "controls_presets_morph_midi",
+      "ok": true,
+      "channels": 3,
+      "warnings": []
+    },
+    {
+      "name": "assimp_browsing",
+      "ok": true,
+      "channels": 2,
+      "warnings": [
+        "columns: Lazy inspector: only the materialized rows and current view are captured",
+        "tree: Lazy inspector: only the materialized rows and current view are captured"
+      ]
+    },
+    {
+      "name": "chain_tracked_body",
+      "ok": true,
+      "channels": 5,
+      "warnings": [
+        "audio: Live media omitted"
+      ]
+    },
+    {
+      "name": "physical_piano",
+      "ok": true,
+      "channels": 20,
+      "warnings": [
+        "plain: Live media omitted",
+        "prepared: Live media omitted",
+        "pedal up: Live media omitted",
+        "pedal down: Live media omitted",
+        "pedal down, no sympathetic strings: Live media omitted",
+        "pair: Live media omitted",
+        "strings 0 and 2: Live media omitted",
+        "through: Live media omitted",
+        "through prepared: Live media omitted",
+        "wobble: Live media omitted",
+        "soundboard: Live media omitted",
+        "close mic: Live media omitted",
+        "piece: Live media omitted",
+        "a4: Live media omitted",
+        "midi: Live media omitted"
+      ]
+    },
+    {
+      "name": "inertial_movement",
+      "ok": true,
+      "channels": 4,
+      "warnings": []
+    },
+    {
+      "name": "flow_islands",
+      "ok": true,
+      "channels": 2,
+      "warnings": []
+    },
+    {
+      "name": "stencil_bridges",
+      "ok": true,
+      "channels": 4,
+      "warnings": []
+    },
+    {
+      "name": "fn_rewrite_kotlin_boxes",
+      "ok": true,
+      "channels": 2,
+      "warnings": []
+    },
+    {
+      "name": "knight_tour_workshop",
+      "ok": true,
+      "channels": 5,
+      "warnings": []
+    },
+    {
+      "name": "uncrossed_leapers",
+      "ok": true,
+      "channels": 14,
+      "warnings": []
+    },
+    {
+      "name": "pat_fn_graph_fit",
+      "ok": true,
+      "channels": 4,
+      "warnings": []
+    },
+    {
+      "name": "audio_ai_analysis",
+      "ok": true,
+      "channels": 4,
+      "warnings": []
+    },
+    {
+      "name": "audio_ai_speech_embeddings",
+      "ok": true,
+      "channels": 3,
+      "warnings": []
+    },
+    {
+      "name": "audio_ai_spectral_embeddings",
+      "ok": true,
+      "channels": 3,
+      "warnings": []
+    },
+    {
+      "name": "audio_ai_muscriptor",
+      "ok": true,
+      "channels": 3,
+      "warnings": [
+        "transcription: Live media omitted"
+      ]
+    },
+    {
+      "name": "audio_ai_corpus_microscope",
+      "ok": true,
+      "channels": 2,
+      "warnings": []
+    },
+    {
+      "name": "spatial_geometry_examples",
+      "ok": true,
+      "channels": 5,
+      "warnings": []
+    },
+    {
+      "name": "statistics_examples",
+      "ok": true,
+      "channels": 7,
+      "warnings": []
+    },
+    {
+      "name": "noiselang_distributions",
+      "ok": true,
+      "channels": 10,
+      "warnings": [
+        "audio: Live media omitted",
+        "audio: Live media omitted",
+        "audio: Live media omitted"
+      ]
+    },
+    {
+      "name": "keyframe_key_discovery",
+      "ok": true,
+      "channels": 4,
+      "warnings": []
+    },
+    {
+      "name": "controls_surface",
+      "ok": true,
+      "channels": 4,
+      "warnings": []
+    },
+    {
+      "name": "atmospheric_sky",
+      "ok": true,
+      "channels": 4,
+      "warnings": []
+    },
+    {
+      "name": "noiselang_gpu",
+      "ok": true,
+      "channels": 1,
+      "warnings": []
+    },
+    {
+      "name": "field_vr_ide",
+      "ok": true,
+      "channels": 1,
+      "warnings": []
+    },
+    {
+      "name": "growing_nca",
+      "ok": true,
+      "channels": 2,
+      "warnings": []
+    },
+    {
+      "name": "stereo_rtt_composite",
+      "ok": true,
+      "channels": 1,
+      "warnings": []
+    }
+  ],
+  "method": "Normal docs_publications.sync; actual supported transcript replay and transactional publication export.",
+  "retainedNative": [
+    "atmospheric_sky",
+    "noiselang_gpu",
+    "field_vr_ide",
+    "growing_nca",
+    "stereo_rtt_composite"
+  ],
+  "nativePolicy": "Compile-only recipes use their genuine retained docs-native images, following the existing publication policy. No claim of rerendering those scenes here."
+}

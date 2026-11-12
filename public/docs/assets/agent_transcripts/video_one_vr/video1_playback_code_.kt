@@ -1,5 +1,3 @@
-import afield.ui.output.ControlValueHandle
-
 // A local path, with ~ expansion; changing this field alone does not reopen the decoder.
 // The checkout ships an original stereo calibration movie; an environment override selects yours.
 var selectedFile =

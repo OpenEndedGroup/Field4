@@ -1,6 +1,10 @@
 # Presenting with Field
 
-With a few lines of Kotlin, Field can produce presentations that combine HTML slides, real webpages, YouTube video and live Field documents ([show a live document](#bring-the-working-material-on-screen)). A presentation is itself a document you can teach from. The audience gets a separate window; your Field document keeps the source and guide notes. Saved macros and interactive guides work inside the live document on the audience display.
+With a few lines of Kotlin, you can make a presentation in Field with HTML slides, webpages,
+YouTube video, [live documents](#bring-the-working-material-on-screen) and
+[live figures beside the prose](#live-figures-beside-prose). Teach from the Field document while
+your audience watches in a separate window. Your document keeps the source and guide notes, and
+saved macros and interactive guides work in the live document on the audience display.
 
 ## Start a presentation
 
@@ -111,9 +115,7 @@ audience {
         Something _worth trying_ in the live document.
 
         1. Predict what changes.
-        2. Run the experiment.
-    """
-        .md
+        2. Run the experiment.""".md
 }
 ```
 
@@ -131,9 +133,7 @@ audience {
     imageBeside("wave.svg", alt = "A sine wave", citation = "Author · source · license") {
         +"""
             # A small change.
-            Make a prediction, then try it in Field.
-        """
-            .md
+            Make a prediction, then try it in Field.""".md
     }
 }
 ```
@@ -444,6 +444,192 @@ and the document-guide controls above the outline.
 Each live surface fills the audience window by default. Pass `rect = listOf(0.04, 0.16, 0.92, 0.80)` to place it within a fraction of the window: `[x, y, width, height]`.
 
 Webpages use top-level, isolated Electron views, allowing sites with iframe restrictions to load normally. A site's login, network, DRM and playback rules still apply. YouTube uses its embed player and needs a video that permits embedding. Navigation failures appear in the presenter controls.
+
+### Open a link without leaving the talk
+
+A link on a slide opens its page over the audience slide when you click it, in the same kind of
+isolated view. A slide of further reading is just links:
+
+```diffstatic {data-lang=kotlin}
+step("Further reading") {
+    audienceMarkdown(
+        """
+        # Further reading
+
+        - [Cameras and Lenses](https://ciechanow.ski/cameras-and-lenses/), the essay this follows
+        - [Attention Is All You Need](https://arxiv.org/pdf/1706.03762) (PDF)
+        - [My notes](file:///Users/me/talks/notes.pdf) (a PDF on this computer)""".trimIndent(),
+    )
+}
+```
+
+Web pages open even when the site refuses to be framed, and PDFs open in Electron's PDF viewer,
+from the web or from a `file:` link. Nothing else opens: any other `file:` link and any script link
+is refused, the page cannot open pop-ups, and it can only move on to other web pages and PDFs.
+Links in the step's note on the canvas open the same way.
+
+While a page is open, the presenter says what is showing and offers **← Back to** the slide. The
+slide stays highlighted in the outline. **Back**, Escape, **Next**, **Previous** or a click on the
+highlighted slide close the page and return to the slide as it was, with its figures, controls and
+cue untouched underneath. Next does not skip ahead. Clicking a different slide goes there. In the
+audience window, arrow keys, Space and Page Up/Down scroll the page, and Escape or a clicker's
+F8/F9 return to the slide.
+
+## Live figures beside prose
+
+A slide can hold a live figure beside the text that explains it. The figure is the output of a box
+in the talk's own document, complete with its sliders, drawing and sound. The audience can drag
+its controls, and each step can set them. Build an explainer by making figures in boxes, then
+placing them alongside the words on your slides.
+
+The figure here is an ordinary box called `sine`. It draws twenty milliseconds of a sine wave,
+shows a frequency slider and a sound checkbox, and plays the tone:
+
+```diffstatic {data-lang=kotlin}
+val pitch = Param(220f)
+val loudness = Param(0f)
+
+fun draw(hz: Double) = lines(
+    fline {
+        moveTo(0.0, 120.0)
+        for (x in 1..640) lineTo(x.toDouble(), 120.0 - 90.0 * sin(2 * PI * hz * 0.02 * x / 640))
+        thickness = 2.0
+        color = vec(0.4, 0.9, 1.0, 1.0)
+    },
+    channel = "wave",
+    w = 640.0,
+    h = 240.0,
+)
+
+draw(220.0)
+controlGroup {
+    slider("frequency", 110.0, 880.0, step = 1.0, initialValue = 220.0, law = ControlLaw.LOGARITHMIC) {
+        pitch.base = it.toFloat()
+        draw(it)
+    }
+    checkbox("sound") { loudness.base = if (it) 0.15f else 0f }
+}
+
+audio(SineOsc(pitch), gain = loudness)
+```
+
+In the Presentation box, `figureBeside("sine") { ... }` puts that box's output on the right of the
+prose. `control("sine", "frequency", 220.0)` says what the slider reads when the step comes up, and
+a cue can move it, here gliding up an octave over a second and a half:
+
+```diffstatic {data-lang=kotlin}
+presentation(title = "A sine wave and its pitch") {
+        step("Twice as often", id = "octave") {
+            audience {
+                figureBeside("sine") {
+                    +"""
+                        ## Twice as often
+
+                        220 Hz is the A below middle C. Doubling the frequency fits
+                        twice as many swings in, and we hear the same note an octave up.""".md
+                }
+            }
+            control("sine", "frequency", 220.0)
+            control("sine", "sound", false)
+            cue("Up an octave") { control("sine", "frequency", 440.0, glideMs = 1500) }
+        }
+    }
+    .present()
+```
+
+![The audience window at "How often it repeats": prose on the left, and on the right the live sine figure with its frequency slider at 220 Hz and an unticked sound checkbox.](assets/presentation_studio/figure-slide.png)
+
+![The same figure after the "Up an octave" cue: the slider has glided to 440 Hz and the wave shows twice as many swings.](assets/presentation_studio/figure-glide.png)
+
+`figure("sine")` places a figure without the two-column layout, for instance two figures side by
+side in `div(classes = "columns") { ... }`. Name output channels to show only part of a box:
+`figure("sine", "wave")` shows the drawing without its controls, so two slots can show two views of
+one box, and a slider in one moves the other. A figure is found by its box name when the
+Presentation box runs, so a name that matches no box, or several, stops the talk with an error.
+
+A `three { ... }` figure can be turned by dragging it on the audience display, as in an output
+panel. When a slider or a cue redraws it, the camera stays where the audience left it.
+
+Next, Previous and a jump in the outline all set the controls a step and its cues declare, in
+order, so going back to a slide puts its figure back as the slide describes it. **Refresh slide**
+leaves the controls where the audience put them. `control(figure, label, true)` ticks a checkbox.
+Inside a box, `setControl("frequency", 330.0)` moves one of its own controls the same way, its
+callback running as if someone had dragged it.
+
+The talk runs its figures. When a slide comes up, its figure boxes start if they are not running;
+when the talk moves to a slide that does not show them, it stops those it started. Sound and
+animation therefore play only while their slide is on screen, and stopping the talk silences them.
+A box you started yourself keeps running.
+
+A figure that is played rather than set uses keys. `keys("low", "middle", "high", letters = "wer") { key, down -> ... }`
+in a `controlGroup` lays out a row of hold buttons and says which one moved; on a slide the
+letters play them too, once someone has clicked into the figure, and a key let go anywhere, or a
+window that loses focus, releases it. A figure that both moves and sounds is one box: return
+`loop { ... } + audio(...)`, and the talk starts and stops the two together.
+
+A slide with figures has a **Reset: figures** button in the presenter controls. It forgets every
+control change the audience made, runs the figures again from their initial values, and returns to
+the slide's first cue. A slide with its own `checkpoint` shows that instead.
+
+On the audience display a figure is drawn as one picture with its controls beneath it: the box's
+output channels without their panel headers, borders or resize handles, scaled up to fill the slot
+with its proportions kept, and with compact controls (two columns once there are more than three).
+All of its text is in Field's Iosevka. For a line of text beside the picture, such as a measured
+value, use `markdown("readout", "10 of 12 rays land · cos 30° = **0.87**")` rather than HTML with
+its own styles; the figure sets its size and colour to match the talk.
+
+An animated drawing keeps its framing. When a `loop { }` redraws `lines(...)` every frame, the first
+frame decides the scale and position and later frames keep them, so something moving near the edge
+does not rescale the whole picture; relaunching the box, or **Reset: figures**, frames it afresh.
+Pass `framing = LinesFraming.fixed(0.0, 0.0, 640.0, 300.0)` to choose the frame yourself, or
+`framing = LinesFraming.Fit` to refit every frame.
+
+A figure can animate and be dragged at once. `lines(..., onDrag = { e -> ... })` hands the box each
+press, move and release on the drawing as `LinesDragEvent(x, y, phase)`, in the lines' own
+coordinates, while the box goes on redrawing every frame: pull a ringing string aside and let go.
+`editable = true` is for drawings whose own points the reader moves; in a figure it shows no editing
+tools unless the box also asks for `drawing = true`, and lines marked `fixed = true` stay put.
+
+The four-slide deck this section comes from is the `explainer_sine_pitch` transcript in
+[Agent transcripts](agent_transcripts.md); it ends with the figure you can hear.
+
+For worked examples, see three talks built this way: [Sound](explainer_sound.md),
+[Cameras and Lenses](explainer_cameras.md) and [Lights and Shadows](explainer_lights.md). Each page
+walks through the talk figure by figure.
+
+!!! note "Figures need the Electron app"
+    A figure is a separate live view laid over its slot on the audience display, so it appears in
+    Field's Electron app only. Fades and reveals apply to the prose around it; the figure itself
+    stays live.
+
+### Arrange the document in slide order
+
+A talk with many figures puts many large output panels on one canvas. **Arrange Boxes by
+Presentation** in the command palette lays the document out the way the talk runs: the
+Presentation box first, then every figure box in the order the slides first use it, in one row.
+Each box goes after the previous one's footprint, its frame and every open output panel, with a
+gap, so no panel covers another. Boxes the slides never use go at the end. One undo puts
+everything back, and the new positions are saved with the document.
+
+To have a deck arrange itself whenever its Presentation box runs, call `arrangeBoxes()` before
+`present()`:
+
+```diffstatic {data-lang=kotlin}
+presentation(title = "Lights and Shadows") {
+        step("Opening", id = "opening") { audience { figureBeside("opening_scene") { +"# Lights and Shadows".md } } }
+    }
+    .arrangeBoxes()
+    .present()
+```
+
+A figure has panels only once it has run, so arranging first runs each figure box that has shown
+nothing yet, waits for its output, and stops it again. Only a canvas knows how large each panel is
+drawn, so the document has to be open in Field for the arrangement to happen.
+
+A deck can also run before any window has its document open, from a transcript for instance. Then
+the arrangement and the talk wait. The first Field canvas to open the document arranges it, and
+when that canvas is the Electron app, the audience and presenter windows open on the step the talk
+is on.
 
 ## Reuse the starter as a kit
 

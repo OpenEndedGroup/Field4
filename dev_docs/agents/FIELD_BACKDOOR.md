@@ -52,6 +52,12 @@ server now takes `--attach-existing` (whose default port is `$PORT` or 9092) or 
 explicit `--port 9092`. `tools/field_mcp.py` keeps 9092 as its default because it only
 ever attaches.
 
+A free port can still be taken by another checkout while this one builds, because the
+spawned JVM binds only after Gradle finishes. So a server the backdoor starts counts as
+ready only when `/api/instance-info` names this checkout. If another checkout's Field
+answers first, the backdoor logs `managed_server_foreign`, stops its own server and fails.
+Re-run to get the next free port.
+
 `status` reports whether this invocation owns the server and gives the session
 and managed-server log paths. A backdoor-owned Field enables JDWP on an ephemeral port the JVM binds itself
 (`AFIELD_JDWP_PORT=auto`) unless `AFIELD_JDWP_PORT` overrides or disables it. A plain
@@ -770,7 +776,10 @@ stop, delete and close bug. Per box: `jobs`, `runningStrands`, `stopHooks`, `own
 ownerships by kind: `audio-patch`, `patsynth-feeder`, `control-callback`, `runloop-preRun`,
 `runloop-postRun`, `render-module`, `stream-process`), `ownedByPolicy`, a sample of `ownedKeys`
 (each tagged with its policy), `engine` (`live`/`none`), `liveTotal`, which sums everything but the
-engine, and `liveRunning`, which sums only what a stop releases. `policies` maps each kind to its
+engine, and `liveRunning`, which sums only what a stop releases. `details` holds what a live ownership says it is doing, for kinds that can say: each audio patch
+reports `rms`, `peak` and `hz` (upward zero crossings) over its last ~85 ms of rendered output, after
+gain, so a check can tell a patch that plays from one that is in the mix but silent without anyone
+listening. `policies` maps each kind to its
 release policy; `unattributed` counts registrations made with no box executing. MCP:
 `field_lifecycle_census`.
 

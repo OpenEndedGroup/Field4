@@ -872,6 +872,8 @@ window.__flineHoverOut = function(groupEl) {
         var faces = [];
 
         scene.lines.forEach(function(line) {
+            // A fixed line is scenery: drawn by the renderer, but nothing on it is selectable.
+            if (line.fixed) return;
             var pieces = [];
             var currentPiece = null;
             var previousAnchor = null;
@@ -2020,7 +2022,8 @@ function startSliderDrag(container, event) {
     if (event.target?.setPointerCapture && event.pointerId !== undefined) {
         try { event.target.setPointerCapture(event.pointerId); } catch (_) {}
     }
-    try { container.focus({ preventScroll: true }); } catch (_) {}
+    // focusVisible: false — a drag focuses the slider for its keys, but it is not keyboard focus, so no ring.
+    try { container.focus({ preventScroll: true, focusVisible: false }); } catch (_) {}
     const relative = !!event.shiftKey;
     if (!relative) {
         const v = sliderValueFromPointer(container, event);
@@ -2436,7 +2439,8 @@ function startVec2Drag(container, event) {
     if (event.target?.setPointerCapture && event.pointerId !== undefined) {
         try { event.target.setPointerCapture(event.pointerId); } catch (_) {}
     }
-    try { container.focus({ preventScroll: true }); } catch (_) {}
+    // focusVisible: false — a drag focuses the slider for its keys, but it is not keyboard focus, so no ring.
+    try { container.focus({ preventScroll: true, focusVisible: false }); } catch (_) {}
     const relative = !!event.shiftKey;
     if (!relative) {
         const next = vec2ValueFromPointer(container, event);
@@ -2579,9 +2583,32 @@ function releaseAllButtons() {
     Array.from(buttonState.held).forEach(releaseButton);
 }
 
-/** Space and enter on a focused button, so the control is reachable without a pointer. */
+/**
+ * The `keys(..., letters = "wer")` key a letter plays, or null.
+ *
+ * Only on a page that shows one output alone (`body.mode-figure`, a presentation figure), where the
+ * keyboard has nothing else to do; on the canvas the same letters are Field's shortcuts. Never while
+ * typing in a field, and never with a modifier, so copy and the menus keep their keys.
+ */
+function letterKeyFor(event) {
+    if (!document.body?.classList?.contains('mode-figure')) return null;
+    if (event.metaKey || event.ctrlKey || event.altKey) return null;
+    const target = event.target;
+    if (target && (target.isContentEditable || /^(input|textarea|select)$/i.test(target.tagName || ''))) return null;
+    const letter = String(event.key || '').toLowerCase();
+    if (letter.length !== 1 || !/[a-z0-9]/.test(letter)) return null;
+    return document.querySelector(`.field-key[data-key-letter="${cssEscape(letter)}"]`);
+}
+
+/** Space and enter on a focused button, so the control is reachable without a pointer; and key letters. */
 function buttonKeyDown(event) {
-    if (event.key !== ' ' && event.key !== 'Enter' && event.code !== 'Space') return;
+    if (event.key !== ' ' && event.key !== 'Enter' && event.code !== 'Space') {
+        const key = letterKeyFor(event);
+        if (!key) return;
+        if (event.preventDefault) event.preventDefault();
+        pressButton(key);
+        return;
+    }
     const container = event.target?.closest?.('.field-button');
     if (!container) return;
     if (event.preventDefault) event.preventDefault();
@@ -2589,7 +2616,11 @@ function buttonKeyDown(event) {
 }
 
 function buttonKeyUp(event) {
-    if (event.key !== ' ' && event.key !== 'Enter' && event.code !== 'Space') return;
+    if (event.key !== ' ' && event.key !== 'Enter' && event.code !== 'Space') {
+        const key = letterKeyFor(event);
+        if (key?.dataset?.controlId) releaseButton(key.dataset.controlId);
+        return;
+    }
     const container = event.target?.closest?.('.field-button');
     if (container?.dataset?.controlId) releaseButton(container.dataset.controlId);
 }

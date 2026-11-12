@@ -181,6 +181,9 @@ a.triggers().respond(cps = 1.0) { event ->
 }
 ```
 
+`__m("pat")` is a [marker](visualizers.md#markers); `patHighlight` uses it to highlight, in the
+editor, the source text that produced each event.
+
 `voice` is an ordinary pattern carrying `gain` and `pan` annotations, so every route in
 [Sound: the Pattern → Audio Path](sound.md) takes it unchanged. `triggers()` gives one event per
 stage, and the event's `whole` is the stage's real span, so `respond` strikes it once and the
@@ -206,13 +209,13 @@ val walk = b.read(pat("<0 1 2 3 4>").nums(), fields = MarfFieldClock.STAGES)
 val slowWalk = b.read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES)
 
 // One colour per slot of the bank.
-val slotColors = listOf(
+val slotColors = [
     vec(0.95, 0.45, 0.35, 1.0),
     vec(0.95, 0.80, 0.30, 1.0),
     vec(0.45, 0.80, 0.45, 1.0),
     vec(0.35, 0.65, 0.95, 1.0),
     vec(0.75, 0.50, 0.95, 1.0),
-)
+]
 
 // A reader against time over eight cycles: a new line at each stage, in the colour of its slot.
 fun lane(r: MarfReader<Double>, top: Double): List<FLine> {
@@ -238,15 +241,16 @@ fun lane(r: MarfReader<Double>, top: Double): List<FLine> {
 }
 
 // Cycle boundaries, shared by both lanes.
-val grid = (0..8).map { c ->
-    fline {
-        moveTo(c * 75.0, 0.0)
-        lineTo(c * 75.0, 200.0)
-        stroked = true
-        thickness = 0.5
-        color = vec(1.0, 1.0, 1.0, 0.2)
+val grid =
+    (0..8).map { c ->
+        fline {
+            moveTo(c * 75.0, 0.0)
+            lineTo(c * 75.0, 200.0)
+            stroked = true
+            thickness = 0.5
+            color = vec(1.0, 1.0, 1.0, 0.2)
+        }
     }
-}
 
 lines(grid + lane(walk, 0.0) + lane(slowWalk, 120.0), w = 640.0, h = 220.0, fitToSize = true)
 ```
@@ -482,3 +486,10 @@ is the note that goes with it.
 | The figures, and their checks | [`MarfGallery.kt`](reference/patterns.md#marfgallery-kt) |
 | A worked example, printed as text | [`MarfSmokeTest.kt`](reference/patterns.md#marfsmoketest-kt) |
 | The pattern language underneath | [Patterns & Rhythm](pattern_language.md) |
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`MarfCurve.Exp`](reference/patterns.md#marf-kt--marfcurve--exp)
+- [`MarfCurve.Osc`](reference/patterns.md#marf-kt--marfcurve--osc)

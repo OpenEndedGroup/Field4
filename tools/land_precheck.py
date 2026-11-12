@@ -55,6 +55,7 @@ from check_staged_generated_artifacts import (  # noqa: E402
     _python_tool_input,
     _reference_input,
     _transcript_input,
+    _transcript_layout_input,
     _transcript_registration_input,
 )
 
@@ -222,7 +223,17 @@ CHECKS: tuple[Check, ...] = (
         jvm_tests=("afield.tools.docs.AgentDemoRegistrationTest",),
         # test_demo_build_scripts.py (the CORPUS that bounced both branches) runs under python-tools,
         # which the same paths select.
-        lander_guards=("checkAgentDemos", "checkAgentTranscriptLayouts"),
+        # checkAgentTranscriptLayouts also reads transcripts; "transcript-layouts" stands in for it.
+        lander_guards=("checkAgentDemos",),
+    ),
+    Check(
+        "transcript-layouts",
+        "checkAgentTranscriptLayouts on transcripts too (2026-11-10: body_one_live landed a create with no "
+        "frame and forth_step_sequencer two boxes over the ceiling, selected by nothing because only demo "
+        "paths chose the guard)",
+        lambda c: [p for p in c.paths if _transcript_layout_input(p)],
+        gradle=("checkAgentTranscriptLayouts",),
+        lander_guards=("checkAgentTranscriptLayouts",),
     ),
     Check(
         "saved-document-inlines",
@@ -254,6 +265,24 @@ CHECKS: tuple[Check, ...] = (
         lambda c: [p for p in c.paths if _doc_asset_budget_input(p)],
         python=("tools/check_doc_assets.py --budget-only",),
         lander_guards=("checkDocAssetBudget",),
+    ),
+    Check(
+        "doc-hand-images",
+        "test_check_doc_assets HandImageRatchet (N1112-1, 2026-11-12: a docs image added as plain ![](...) "
+        "that no runner fence declares and dev_docs/testing/doc_hand_images.json does not list)",
+        lambda c: [p for p in c.paths if p.startswith("public/docs/") and p.lower().endswith(
+            (".md", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"))
+            or p in {"dev_docs/testing/doc_hand_images.json", "tools/check_doc_assets.py"}],
+        python=("tools/check_doc_assets.py --hand-images-only",),
+    ),
+    Check(
+        "doc-source-anchors",
+        "test_check_doc_source_anchors (N1112-2, 2026-11-12: a page.md#anchor link from a docs page, "
+        "dev_doc or KDoc naming a heading the target page does not have)",
+        lambda c: _paths(c, lambda p: p.endswith((".md", ".kt"))
+                         and p.startswith(("public/docs/", "dev_docs/", "src/"))
+                         or p == "tools/check_doc_source_anchors.py"),
+        python=("tools/check_doc_source_anchors.py",),
     ),
     Check(
         "js-module-imports",

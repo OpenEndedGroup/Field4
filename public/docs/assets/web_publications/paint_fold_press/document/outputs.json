@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-12T08:01:14.651Z",
+  "documentName": "paint_fold_press",
+  "outputs": [
+    {
+      "uid": "paint_press",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 469,
+      "height": 45,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "paint_fold",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 469,
+      "height": 45,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "paint_rub",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 469,
+      "height": 45,
+      "path": "outputs/2.html"
+    }
+  ]
+}

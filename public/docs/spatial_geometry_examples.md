@@ -26,7 +26,7 @@ The filenames do not match their contents well, so here is what lives where:
 | 2D weighted (Apollonius) Voronoi | `dirichlet.kt` | `CircularDirichlet`. Pure Kotlin. **Not** Poisson-disc sampling, despite the name |
 | **3D** Voronoi, **3D** weighted Voronoi | `voronoi.kt` | `voronoi3d`, `CircularDirichlet3d`. `voronoi.kt` has no 2D anything and no Delaunay at all |
 | marching squares → polylines and `FLine`s | `contours.kt` | `generateIsoContours`, `generateSmoothIsoContours`, `pointEdgeScalarField2D` |
-| clustering | `clustering.kt` | agglomerative (7 linkages), k-medoids, k-medians. **There is no k-means in Field** — see below for why |
+| clustering | `clustering.kt` | agglomerative (7 linkages), k-medoids, k-medians, and k-means (Lloyd or e-means) for large clouds |
 | any of the above → `FLine` | `spatial_field.kt` | `toFLine`/`toFLines` per result type, plus `showPlane` / `showPlaneGrid` |
 
 </div>
@@ -868,11 +868,11 @@ animate {
 The last family asks the question the other way round: not "which part of the plane belongs to which
 point" but "which points belong together".
 
-**There is no k-means in Field, by design.** Every algorithm in `clustering.kt` returns either a
-*hierarchy* or a centre that is meaningful for the data it summarises. A **medoid** is one of your
-own samples: the actual document, the actual frame, the actual brush mark. A **median** is
-coordinate-wise robust. A k-means centroid is neither, and on a cloud with one outlier it is the one
-that moves. The three entry points:
+Most algorithms in `clustering.kt` return a *hierarchy* or a centre that summarises your data. A
+**medoid** is one of your own samples: an actual document, frame or brush mark. A **median** is
+robust in each coordinate. A k-means centroid is a mean, so an outlier can pull it away from the
+rest of the cloud. For smaller, messy datasets, start with the three methods here; for large clouds,
+see [k-means at scale](#k-means-at-scale). The three entry points:
 
 ```diffstatic {data-lang=kotlin}
 val tree = vec2Agglomerative(points, AgglomerativeLinkage.WARD) // the whole merge hierarchy
@@ -1116,6 +1116,356 @@ There is also a `visualizeVec2ClusterLayers3D(points, layers)` (and `Vec3`/`Floa
 of the hierarchy: the whole ladder of *k* at once, for `threeLines(...)` rather than a flat figure.
 It returns `FLine`s keyed `"cluster-points"`, `"cluster-points-halo"`, `"cluster-centers"`,
 `"cluster-centers-halo"`, `"cluster-links"`, `"cluster-guides"`.
+
+### k-means at scale
+
+The medoid and median strategies above are built for hundreds or thousands of samples. For a
+hundred thousand points (pixel colours, positions in a simulation, embedding vectors) use
+`vec2KMeans` (and `floatKMeans`, `vec3KMeans`, `vec4KMeans`). It is linear per pass, and its
+centroids are means. One option switches the algorithm:
+
+```diffstatic {data-lang=kotlin}
+vec2KMeans(points, k, KMeansOptions(algorithm = KMeansAlgorithm.LLOYD, epochs = 25)) // classic
+vec2KMeans(points, k, KMeansOptions(algorithm = KMeansAlgorithm.EMEANS, epochs = 3)) // the default
+```
+
+**Lloyd's algorithm** assigns every point and then moves every centroid to its cluster's exact
+mean: one update per pass. **e-means**, from [Meta FAIR's e-means](https://e-means.github.io)
+(Bessa et al., [arXiv:2611.09501](https://arxiv.org/abs/2611.09501)), ported from the MIT-licensed
+[Faiss reference](https://github.com/facebookresearch/faiss/tree/main/contrib/e_means), makes
+hundreds of updates per pass. Each small batch of points nudges a running average of every cluster's
+count and sum, and the centroid is their ratio. The batch size and the step come from scaling laws
+fitted in the paper, so there is nothing to tune. The step shrinks on a cosine to a tenth of its
+start, and the run ends by setting each centroid to the exact mean of what it collected in the last
+pass. `result.mseHistory` holds the mean squared error of the seeds and after each epoch.
+
+Both runs below start from the same random seeds on 48 000 points in 60 blobs:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/kmeans_lloyd_vs_emeans.png" wait="3.0" capture="box" open-outputs="true" w="1140" h="470" padding="14"}
+// 60 Gaussian blobs of uneven width, 800 points each: 48 000 points.
+val rng = java.util.Random(4)
+val centres = List(60) { vec(rng.nextDouble() * 10, rng.nextDouble() * 10) }
+val widths = List(60) { 0.08 + rng.nextDouble() * 0.22 }
+val points =
+    List(48_000) { i ->
+        val c = i % 60
+        vec(centres[c].x + rng.nextGaussian() * widths[c], centres[c].y + rng.nextGaussian() * widths[c])
+    }
+val window = Rect(-0.6, -0.6, 11.2, 11.2)
+// Same random seeds for both, so the only difference is the algorithm.
+val seeds = KMeansOptions(seeding = KMeansSeeding.RANDOM, randomSeed = 3L)
+val lloyd = vec2KMeans(points, 60, seeds.copy(algorithm = KMeansAlgorithm.LLOYD, epochs = 25))
+val emeans = vec2KMeans(points, 60, seeds.copy(algorithm = KMeansAlgorithm.EMEANS, epochs = 3))
+
+// Draw one point in thirteen (coprime with 60, so every blob shows): the clustering saw all 48 000.
+val shown = points.indices.filter { it % 13 == 0 }
+fun drawn(r: KMeansResult<Vec2>) =
+    ClusterLayer("shown", IntArray(shown.size) { r.labels[shown[it]] })
+        .toFLines(
+            shown.map { points[it] },
+            centers = r.centroids,
+            drawSpokes = false,
+            pointSize = 0.9,
+            centerSize = 1.6,
+        )
+
+// MSE per epoch on a log axis, laid out inside the same window as the clouds.
+val lo = ln(0.05)
+val hi = ln(maxOf(lloyd.mseHistory.max(), emeans.mseHistory.max()))
+fun curve(history: DoubleArray, color: Vec4) = polylineFrom(
+    history.indices.map { e -> vec(0.4 + e / 25.0 * 9.2, 9.6 - (ln(history[e]) - lo) / (hi - lo) * 9.2) },
+    0,
+    closed = false,
+).also {
+    it.color = color
+    it.thickness = 2.0
+    it.pointed = true
+    it.pointSize = 2.4
+}
+val axes = Rect(0.0, 0.0, 10.0, 10.0).toFLine(color = vec(0.35, 0.44, 0.56, 0.55), thickness = 1.0)
+
+showPlaneGrid(
+    "Lloyd, 25 epochs\nMSE %.4f, converged: ${lloyd.converged}".format(lloyd.mse) to drawn(lloyd),
+    "e-means, 3 epochs\nMSE %.4f, batch ${emeans.batchSize}, alpha0 %.3f".format(emeans.mse, emeans.alpha0) to
+        drawn(emeans),
+    "MSE per epoch, log scale\norange Lloyd, blue e-means; e-means 1 epoch %.4f".format(emeans.mseHistory[1]) to
+        listOf(
+            axes,
+            curve(lloyd.mseHistory, vec(1.0, 0.62, 0.30, 0.95)),
+            curve(emeans.mseHistory, vec(0.45, 0.80, 1.0, 0.95)),
+        ),
+    columns = 3,
+    cellWidth = 340,
+    cellHeight = 340,
+    window = window,
+)
+```
+
+![Three panels: the 60-blob cloud coloured by Lloyd's 25-epoch clustering, the same cloud coloured by e-means after 3 epochs, and a log-scale plot of mean squared error per epoch in which the blue e-means curve drops below the whole orange Lloyd curve after its first epoch](assets/spatial_geometry_examples/kmeans_lloyd_vs_emeans.png)
+
+Here e-means after one epoch is already below Lloyd after 25. A 3-D test on 100 000 points in 200
+blobs also finishes lower: by 1.2% from k-means++ seeds and 2.2% from random seeds. The result depends
+on the cloud. Over 2-D mixtures of 5 000 to 80 000 points in 10 to 160 blobs, three clouds each,
+e-means at 3 epochs ended between 20% below and 1.4% above Lloyd at 25, two to five times faster.
+Some 2-D clouds favoured Lloyd by up to 6%. Measure your own data: `mseHistory` gives you a line for
+each run.
+
+**Seeding.** The default is greedy k-means++ (`KMeansSeeding.GREEDY_PLUS_PLUS`, scikit-learn's
+default). Plain k-means++ (`PLUS_PLUS`, the D²-weighted rule k-medoids and k-medians use) draws each
+next seed with probability proportional to its squared distance from the seeds so far. The greedy
+version draws a few such candidates at every step and keeps the one that lowers the total squared
+distance most. Plain k-means++ often leaves a blob with no seed, and then two blobs end up sharing
+a centroid, which no number of epochs undoes. Over the same 2-D mixtures, greedy seeding ended 3–18%
+lower for both algorithms. In 32 dimensions with 40 blobs, plain k-means++ left blobs sharing a
+centroid from every one of four seeds, and greedy from none. It costs a few extra passes before the
+first epoch: about a second and a half on 100 000 points and 200 clusters. `KMeansSeeding.RANDOM`
+gives plain random samples, as Faiss does.
+
+**Dead clusters.** A centroid that ends up with no points of its own is wasted. e-means checks every
+five batches for clusters whose running count has fallen below a tenth of the average, and *revives*
+each one by splitting a heavy cluster in two. Faiss turns this off for 1-D and 2-D data, where it
+measured it costing accuracy, so this example turns it on with `reviveThreshold = 0.1`. Plain
+k-means++ seeding is drawn to far points, so with a ring of strays around the blobs it spends seeds
+on them:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/kmeans_revival.png" wait="3.0" capture="box" open-outputs="true" w="900" h="560" padding="14"}
+// 40 blobs of 400 points, and 12 strays on a circle far outside them.
+val rng = java.util.Random(8)
+val centres = List(40) { vec(rng.nextDouble() * 10, rng.nextDouble() * 10) }
+val blobs =
+    List(16_000) { i ->
+        val c = i % 40
+        vec(centres[c].x + rng.nextGaussian() * 0.2, centres[c].y + rng.nextGaussian() * 0.2)
+    }
+val strays = List(12) { j -> vec(5.0 + 9.0 * cos(j * PI / 6), 5.0 + 9.0 * sin(j * PI / 6)) }
+val points = buildList {
+    addAll(blobs)
+    addAll(strays)
+}
+val window = Rect(-4.6, -4.6, 19.2, 19.2)
+
+// Plain k-means++ seeds favour far points, so several land on strays. Revival is off by default in 2-D.
+val options = KMeansOptions(epochs = 3, seeding = KMeansSeeding.PLUS_PLUS, randomSeed = 5L)
+val off = vec2KMeans(points, 40, options.copy(reviveThreshold = 0.0))
+val on = vec2KMeans(points, 40, options.copy(reviveThreshold = 0.1))
+fun dead(r: KMeansResult<Vec2>) = r.clusterSizes.count { it < 10 }
+
+val shown = points.indices.filter { it % 7 == 0 || it >= blobs.size }
+fun drawn(r: KMeansResult<Vec2>) =
+    ClusterLayer("shown", IntArray(shown.size) { r.labels[shown[it]] })
+        .toFLines(
+            shown.map { points[it] },
+            centers = r.centroids,
+            drawSpokes = false,
+            pointSize = 1.0,
+            centerSize = 1.6,
+        )
+
+showPlaneGrid(
+    "e-means, revival off\n${dead(off)} clusters under 10 members, MSE %.3f".format(off.mse) to drawn(off),
+    "e-means, revival on\n${dead(on)} under 10, ${on.revivals} revivals, MSE %.3f".format(on.mse) to drawn(on),
+    columns = 2,
+    cellWidth = 400,
+    cellHeight = 400,
+    window = window,
+)
+```
+
+![Two panels of 40 blobs ringed by 12 lone strays: with revival off, one centroid sits on a stray at the bottom as a cluster of one; with revival on, that centroid has been moved into the blobs and every centroid holds at least ten points](assets/spatial_geometry_examples/kmeans_revival.png)
+
+With revival on, the centroid sitting on a stray moves back into the data. The mean squared error
+goes *up* slightly. The stray now belongs to a real cluster, its squared distance counts, and this
+is the outlier argument from the start of this section. Revival gives you `k` useful clusters, not
+a lower error.
+
+**Restarts.** k-means stops in whatever local minimum its seeds lead to. The usual one is two blobs
+sharing a centroid while another blob is cut in two, and more epochs never fix it. `runs = 4` clusters
+four times from fresh seeds and keeps the result with the lowest inertia. Each run costs a whole
+clustering, so the default is one.
+
+#### Watching the centroids move
+
+`recordCentroids = true` keeps every centroid at the seeds and after each epoch in
+`result.centroidHistory`, lined up with `mseHistory`. Cluster `c` is at index `c` in every entry, so
+`centroidHistory.map { it[c] }` is the path one centroid took. Here both algorithms start from the
+same random seeds, and each yellow trail runs from a seed to where its centroid ended:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/kmeans_centroid_trails.png" wait="3.0" capture="box" open-outputs="true" w="900" h="560" padding="14"}
+// 30 blobs of 400 points. Both runs start from the same random seeds and keep their centroids per epoch.
+val rng = java.util.Random(12)
+val centres = List(30) { vec(rng.nextDouble() * 10, rng.nextDouble() * 10) }
+val points =
+    List(12_000) { i ->
+        val c = i % 30
+        vec(centres[c].x + rng.nextGaussian() * 0.25, centres[c].y + rng.nextGaussian() * 0.25)
+    }
+val seeds = KMeansOptions(seeding = KMeansSeeding.RANDOM, randomSeed = 2L, recordCentroids = true)
+val lloyd = vec2KMeans(points, 30, seeds.copy(algorithm = KMeansAlgorithm.LLOYD, epochs = 25))
+val emeans = vec2KMeans(points, 30, seeds.copy(epochs = 3))
+
+// One trail per centroid, from its seed through every epoch to where it ended.
+fun trails(r: KMeansResult<Vec2>) =
+    (0 until r.k).map { c ->
+        polylineFrom(r.centroidHistory.map { it[c] }).also {
+            it.color = vec(1.0, 0.85, 0.45, 0.9)
+            it.thickness = 1.2
+            it.pointed = true
+            it.pointSize = 1.0
+        }
+    }
+// How far, on average, each centroid still was from its final place after the first epoch.
+fun leftAfterOne(r: KMeansResult<Vec2>) =
+    (0 until r.k).sumOf { c ->
+        val a = r.centroidHistory[1][c]
+        val b = r.centroids[c]
+        hypot((a.x - b.x).toDouble(), (a.y - b.y).toDouble())
+    } / r.k
+val cloud =
+    pointCloudFLine(points.filterIndexed { i, _ -> i % 4 == 0 }, color = vec(0.55, 0.65, 0.78, 0.35), pointSize = 0.8)
+
+showPlaneGrid(
+    "Lloyd, ${lloyd.epochs} epochs\nafter epoch 1 a centroid is %.3f from where it ends".format(leftAfterOne(lloyd)) to
+        listOf(cloud) + trails(lloyd),
+    "e-means, 3 epochs\nafter epoch 1 a centroid is %.3f from where it ends".format(leftAfterOne(emeans)) to
+        listOf(cloud) + trails(emeans),
+    columns = 2,
+    cellWidth = 420,
+    cellHeight = 420,
+    window = Rect(-0.8, -0.8, 11.6, 11.6),
+)
+```
+
+![Two panels of the same 30-blob cloud with a yellow trail per centroid from its random seed to its final place: Lloyd's trails are chains of many short steps, e-means' are a few long jumps, and the captions give each algorithm's mean distance still to go after one epoch](assets/spatial_geometry_examples/kmeans_centroid_trails.png)
+
+After one epoch an e-means centroid is already most of the way home. Lloyd's trails are chains of
+short steps, and its centroids are still several times farther from their final places after the
+first epoch, which is the same story `mseHistory` tells as a curve.
+
+#### Clustering by direction
+
+Sometimes only a vector's direction means anything: an embedding compared by cosine similarity, a
+surface normal, a stroke's heading. `spherical = true` scales every sample to unit length before
+clustering and puts every centroid back on the unit sphere after each update, so a sample joins the
+centroid it points most nearly along. Below, six fans of points leave the origin at lengths from 0.5
+to 9:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/kmeans_spherical.png" wait="3.0" capture="box" open-outputs="true" w="900" h="560" padding="14"}
+// Six directions from the origin, each a fan of points at lengths from 0.5 to 9.
+val rng = java.util.Random(6)
+val points =
+    List(2_400) { i ->
+        val angle = (i % 6) * PI / 3 + 0.3 + rng.nextGaussian() * 0.12
+        val length = 0.5 + rng.nextDouble() * 8.5
+        vec(length * cos(angle), length * sin(angle))
+    }
+val plain = vec2KMeans(points, 6, KMeansOptions(randomSeed = 1L))
+val byDirection = vec2KMeans(points, 6, KMeansOptions(randomSeed = 1L, spherical = true))
+
+fun drawn(r: KMeansResult<Vec2>) =
+    r.asLayer().toFLines(points, centers = r.centroids, drawSpokes = false, pointSize = 1.0, centerSize = 2.0)
+// Spherical centroids are unit vectors, so they sit on the unit circle.
+val unit = polylineFrom(List(97) { i -> vec(cos(i * PI / 48), sin(i * PI / 48)) }).also {
+    it.color = vec(0.6, 0.7, 0.85, 0.7)
+    it.thickness = 1.0
+}
+
+showPlaneGrid(
+    "k-means\nclusters by distance: MSE %.2f".format(plain.mse) to drawn(plain),
+    "k-means, spherical = true\nclusters by direction; centroids on the unit circle" to drawn(byDirection) + unit,
+    columns = 2,
+    cellWidth = 400,
+    cellHeight = 400,
+    window = Rect(-9.6, -9.6, 19.2, 19.2),
+)
+```
+
+![Two panels of six fans of points leaving the origin: plain k-means cuts them into an inner ring and outer pieces by distance, while spherical k-means gives each fan its own colour, with all six centroids on a small unit circle at the origin](assets/spatial_geometry_examples/kmeans_spherical.png)
+
+Plain k-means spends one cluster on everything near the origin and splits the fans by how far out
+they reach. Spherical k-means gives each fan its own cluster, and its centroids are unit vectors: the
+ring of markers at the origin. `KMeansTest` does the same in 16 dimensions, eight directions with
+lengths from 0.2 to 5. Plain k-means puts 63% of samples with their own direction, spherical
+100%.
+
+#### More than four dimensions
+
+`vectorKMeans` takes a `List<DoubleArray>` of any length, every vector the same length, and returns
+centroids as new `DoubleArray`s. Above 16 dimensions e-means switches to its "throughput" batch
+law, whose batches are about eight times larger, which is where the paper measures its biggest
+speedups. For embeddings, combine it with `spherical`:
+
+```diffstatic {data-lang=kotlin}
+val embeddings: List<DoubleArray> = rows.map { it.embedding } // e.g. 512 numbers each
+val topics = vectorKMeans(embeddings, 24, KMeansOptions(spherical = true, runs = 3))
+val topicOf = topics.labels // one cluster per row, in input order
+```
+
+`KMeansTest` clusters 20 000 vectors in 32 dimensions into 40 blobs this way. One run from
+k-means++ seeds merges two blobs (95% of samples in their planted cluster); four runs recover all
+40.
+
+#### Centroid paths as drawings
+
+`recordCentroids` keeps one picture per epoch. `recordPaths = true` keeps every centroid's position
+after *every* update in `result.centroidPaths`: hundreds of points per path for e-means, one per
+mini-batch, aligned in time across centroids. Three more knobs are for drawing rather than
+measuring:
+
+- `seeds = …` (a parameter of every `…KMeans` function) says where the centroids start, instead of
+  letting the seeding choose.
+- `stepScale = 0.05` multiplies e-means' step, so each centroid walks more slowly and averages away
+  more of the mini-batch noise.
+- `closeOnMean = false` skips the final jump to each cluster's exact mean, so a slowed path ends
+  where its walk ended.
+
+```diffstatic {data-lang=kotlin}
+val ring = List(90) { i -> vec(5.0 + 5.5 * cos(i * 2 * PI / 90), 5.0 + 5.5 * sin(i * 2 * PI / 90)) }
+val options = KMeansOptions(epochs = 12, stepScale = 0.05, closeOnMean = false, recordPaths = true)
+val r = vec2KMeans(points, 90, options, seeds = ring)
+val curves = r.centroidPaths.map { cubicSplineFrom(it.filterIndexed { i, _ -> i % 6 == 0 } + it.last()) }
+```
+
+One run alone draws mostly straight lines. A centroid walks toward the mean of the points it holds,
+and that mean moves only while other centroids take points away. A path bends only where centroids
+compete, and a centroid that captures nothing stays on its seed.
+
+The curves come from running k-means on its own answer. `vec2KMeansTree(points, shrink = 2.0)`
+clusters `n` points into `n / 2` centroids, then those centroids into `n / 4`, and so on down to
+one, keeping every path. Each level's paths start at points the level below finished on, so the
+whole thing is a tree. `toFLines()` draws it, coloured by level with coarser levels thicker, and
+joins each input to the start of its parent's path with a thin line:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/kmeans_tree.png" wait="4.0" capture="box" open-outputs="true" w="900" h="560" padding="14"}
+// 1 000 points scattered over a square, clustered into n/2, then those centroids into n/4, ... down to one.
+val rng = java.util.Random(40)
+val points = List(1_000) { vec(rng.nextDouble() * 10, rng.nextDouble() * 10) }
+val options = KMeansOptions(epochs = 4, randomSeed = 7L, stepScale = 0.3, closeOnMean = false)
+val halves = vec2KMeansTree(points, shrink = 2.0, options = options)
+val thirds = vec2KMeansTree(points, shrink = 3.0, options = options)
+
+showPlaneGrid(
+    "shrink = 2\n${halves.levels.joinToString(" → ") { "${it.result.k}" }}" to halves.toFLines(leafSize = 0.8),
+    "shrink = 3\n${thirds.levels.joinToString(" → ") { "${it.result.k}" }}" to thirds.toFLines(leafSize = 0.8),
+    columns = 2,
+    cellWidth = 420,
+    cellHeight = 420,
+    window = Rect(-0.4, -0.4, 10.8, 10.8),
+)
+```
+
+![Two panels of 1 000 scattered points overlaid with a tree of curves: short orange and yellow twigs between neighbouring points at the fine levels, then green, blue and violet strokes that sweep across the square at the coarse levels; with shrink 3 there are fewer levels and the coarse strokes are longer](assets/spatial_geometry_examples/kmeans_tree.png)
+
+The fine levels are twigs: a centroid of two or three points barely has to move. The coarse levels
+sweep across the square, because a centroid of half the plane starts on one of its inputs and has
+to travel to their mean. With `shrink = 3` there are fewer levels, and each one travels farther.
+Every level weighs the centroids below it equally, however many points each one holds, so the
+coarse strokes find the middle of the *centroids*, not of the points. Lower `stepScale` and raise
+`epochs` for longer, slower strokes, and pass `stride` and `smooth` to `toFLines` to change how
+each path is drawn.
+
+The [Lloyd vs e-means starting point](agent_transcripts.md#kmeans_emeans) has the Lloyd vs e-means,
+revival and tree boxes, and the centroid trails on an epoch slider: open it, change `k`, the epoch
+counts or `stepScale`, and run them again.
 
 ## Up one dimension
 
@@ -1450,7 +1800,7 @@ Extract level curves from a two-dimensional scalar field.
 
 ### Clustering
 
-Partition observations into groups. Hierarchical linkage gives nested cuts; medoids choose representative observations; medians fit coordinate-wise centres.
+Partition observations into groups. Hierarchical linkage gives nested cuts; medoids choose representative observations; medians fit coordinate-wise centres; k-means (Lloyd or e-means) scales to large clouds.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -1481,6 +1831,14 @@ Partition observations into groups. Hierarchical linkage gives nested cuts; medo
 | `fun vec2KMedians(points: List<Vec2>, k: Int, options: KMediansOptions = KMediansOptions()): KMediansResult<Vec2>` | Partition 2-D points into `k` clusters around coordinate-wise medians (Lloyd's algorithm on L1). [API](reference/data.md#clustering-kt). |
 | `fun vec3KMedians(points: List<Vec3>, k: Int, options: KMediansOptions = KMediansOptions()): KMediansResult<Vec3>` | Partition 3-D points into `k` clusters around coordinate-wise medians (Lloyd's algorithm on L1). [API](reference/data.md#clustering-kt). |
 | `fun vec4KMedians(points: List<Vec4>, k: Int, options: KMediansOptions = KMediansOptions()): KMediansResult<Vec4>` | Partition 4-D points into `k` clusters around coordinate-wise medians (Lloyd's algorithm on L1). [API](reference/data.md#clustering-kt). |
+| `KMeansAlgorithm` | `LLOYD` or `EMEANS`, the switch in [`KMeansOptions`](reference/data.md#clustering-kt-kmeansoptions). [API](reference/data.md#clustering-kt). |
+| `KMeansOptions` | How the `…KMeans` functions run: algorithm, epochs, seeding, and the e-means overrides. [API](reference/data.md#clustering-kt). |
+| `KMeansResult` | Labels, centroids, inertia and `mseHistory` per epoch; `asLayer()` gives a `ClusterLayer`. [API](reference/data.md#clustering-kt). |
+| `fun vec2KMeans(points: List<Vec2>, k: Int, options: KMeansOptions = KMeansOptions(), seeds: List<Vec2>? = null): KMeansResult<Vec2>` | Partition 2-D points into `k` clusters around their means (k-means); also `floatKMeans`, `vec3KMeans`, `vec4KMeans`. [API](reference/data.md#clustering-kt). |
+| `fun vectorKMeans(vectors: List<DoubleArray>, k: Int, options: KMeansOptions = KMeansOptions(), seeds: List<DoubleArray>? = null): KMeansResult<DoubleArray>` | k-means on vectors of any length, such as embeddings; pair with `spherical = true` for cosine similarity. [API](reference/data.md#clustering-kt). |
+| `KMeansSeeding` | `GREEDY_PLUS_PLUS` (the default), `PLUS_PLUS` or `RANDOM`. [API](reference/data.md#clustering-kt). |
+| `fun vec2KMeansTree(points: List<Vec2>, shrink: Double = 2.0, options: KMeansOptions = KMeansOptions(epochs = 3), maxLevels: Int = 64): KMeansTree` | k-means on its own centroids, level after level down to one, keeping every centroid's path. [API](reference/data.md#clustering-kt). |
+| `KMeansTree`, `KMeansTreeLevel` | The levels of a `vec2KMeansTree`; `toFLines()` draws the paths as a tree. [API](reference/data.md#clustering-kt). |
 | `ClusterLayer` | One clustering of one dataset: a label per sample, and a name to draw it under. [API](reference/data.md#clustering-kt). |
 | `fun asLayer(name: String = "kmedoids(k=$k)"): ClusterLayer` | This result as a [`ClusterLayer`](reference/data.md#clustering-kt-clusterlayer), so it can be stacked and drawn beside other cuts. [API](reference/data.md#clustering-kt). |
 | `fun indices(cluster: Int): IntArray` | Which samples landed in `cluster`, as indices into the original list. Empty for a cluster nothing was assigned to. [API](reference/data.md#clustering-kt). |
@@ -1521,3 +1879,40 @@ and `clustering.kt`, and the JTS-backed corner of `afield/data/graph/graph_conne
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference:
 [Graphics](reference/graphics.md) and [Data](reference/data.md).*
+
+## Where to go next
+
+- [Neighbours and graphs on a point cloud](graph_connectivity_examples.md) uses the same Delaunay
+  graph for k-nearest-neighbour and proximity graphs.
+- [Meshes and 3D geometry](mesh_examples.md) is the 3-D counterpart of `spatial_field.kt`.
+- [Merge trees and contour trees](contour_trees.md) follows the [contours of a field](#contours-of-a-field)
+  as the level moves, tracking where components are born and where they merge.
+- [Stipple transport](stipple_transport.md) places dots by optimal transport rather than by the
+  Lloyd relaxation in `stippling.kt`.
+- Open the starting points to try these boxes in your own document:
+  [the plane-geometry boxes](agent_transcripts.md#spatial_geometry_examples) and
+  [Lloyd vs e-means](agent_transcripts.md#kmeans_emeans).
+- Source: [`clustering.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/statistics/clustering.kt),
+  [`dirichlet.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/statistics/dirichlet.kt),
+  [`voronoi.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/spatial/voronoi.kt),
+  [`spatial_field.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/spatial/spatial_field.kt),
+  [`graph_connectivity.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/data/graph/graph_connectivity.kt).
+
+Open questions and next builds:
+
+- **Sample weights for k-means.** Weighted samples would let [`vec2KMeansTree`](#centroid-paths-as-drawings)
+  weigh each centroid by how many points it holds, and would cover the weighted Lloyd relaxation in
+  `stippling.kt`.
+- **A tree in 3-D, or on embeddings.** The same construction over `vec3KMeans` or `vectorKMeans`
+  with `spherical = true` gives a hierarchy of curves in space, or of topics.
+- **Momentum for the drawing.** One e-means run draws nearly straight lines; momentum on its walk
+  would bend them without the tree.
+- **Move the private k-means onto the new one.** `StudyEvidence.kt` has its own k = 5 palette
+  k-means, and `stippling.kt` runs a Lloyd relaxation. Moving either onto `vec3KMeans` /
+  `vec2KMeans` changes their committed outputs, so each needs a before/after comparison first.
+- **Weighted Voronoi from clusters.** Feed a k-means result's centroids and cluster sizes into
+  [`CircularDirichlet`](#when-the-bisector-is-a-circle) as sites and weights, so the plane is
+  divided in proportion to how much data each cluster holds.
+- **Saddles automatically.** [Sweep the level through the saddle](#sweep-the-level-through-the-saddle)
+  finds the merge level by eye. The contour tree finds it exactly, and could place the iso values
+  for `generateIsoContours`.

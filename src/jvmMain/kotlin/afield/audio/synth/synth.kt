@@ -56,7 +56,8 @@
  *     audio { (saw * 0.1f).pan(-0.35f) }
  *     audio { Pan(sine * 0.08f, 0.4.p) }
  *
- * Launch more than one thing from a box either with `+`:
+ * Launch more than one thing from a box either with `+` (`__m("pat")` is a
+ * [marker](../visualizers.md#markers) that `patHighlight` draws through):
  *
  *     audio { saw * 0.05f } +
  *         pat("bd [hh hh] sd").respond(cps = 0.5) { event ->
@@ -421,7 +422,7 @@
  *     arp.at(3.5)
  *     display("roll", arp.pianoRollSvg())
  *
- * Inline in the editor, in the style of history / histogram:
+ * Inline in the editor, in the style of history / histogram, through a [marker](../visualizers.md#markers):
  *
  *     __m("arp").pianoRoll(arp.at(4.0))
  *
@@ -704,6 +705,30 @@ inline fun audio(
     warmUpCycles: Int = 0,
     block: () -> StereoRenderable
 ): AudioPatchSpec = audio(block(), gain = gain, warmUpCycles = warmUpCycles)
+
+/**
+ * Plays every sound source in [bundle], each at [gain].
+ *
+ * `piano + piano2` does not mix two sources into one: on stereo sources, signals and patches, `+`
+ * means "launch these together" and makes a [LaunchBundle]. This overload accepts that bundle, so
+ * `audio(piano + piano2)` plays both. A [Signal] or [StereoRenderable] in the bundle becomes its own
+ * patch at [gain]. An [AudioPatchSpec] already has its gain and is left as it is. Anything else
+ * (frames, responders) is passed through and launched beside the audio.
+ */
+fun audio(bundle: afield.runtime.execution.LaunchBundle, gain: Param = Param(1f), warmUpCycles: Int = 0): afield.runtime.execution.LaunchBundle =
+    afield.runtime.execution.launches(*bundle.items.map { audioBundleItem(it, gain, warmUpCycles) }.toTypedArray())
+
+/** [audio] over a [afield.runtime.execution.LaunchBundle] with a constant [gain]. */
+fun audio(bundle: afield.runtime.execution.LaunchBundle, gain: Float, warmUpCycles: Int = 0): afield.runtime.execution.LaunchBundle =
+    audio(bundle, Param(gain), warmUpCycles)
+
+private fun audioBundleItem(item: Any?, gain: Param, warmUpCycles: Int): Any? = when (item) {
+    is afield.runtime.execution.LaunchBundle -> audio(item, gain, warmUpCycles)
+    is AudioPatchSpec -> item
+    is Signal -> audio(item, gain = gain, warmUpCycles = warmUpCycles)
+    is StereoRenderable -> audio(item, gain = gain, warmUpCycles = warmUpCycles)
+    else -> item
+}
 
 fun audioInput(): Signal = audioEngine().monoInput()
 

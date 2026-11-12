@@ -54,6 +54,13 @@ STALL_CPU_SECONDS = 1.0
 # of changed files does not establish its cause (events can include deletions and directory changes).
 ZENSICAL_STALL_RETRIES = 1
 ZENSICAL_STALL_RETRY_PAUSE = 30.0
+# The retry swaps zensical's FSEvents/inotify watcher for its polling one. On 2026-11-11 a wedge and
+# its retry both sat after "Build started" with 0.2 CPU-seconds: the docs dir was never even scanned,
+# the file agent's thread waited in its debounce select, nothing had changed on disk, and the same
+# build passed later. Polling (zensical's own ZENSICAL_POLL_WATCHER, read in zensical-watch's
+# `Monitor::default`) takes the OS event stream out of the second attempt, so a second wedge either
+# clears or tells us the watcher backend was not the cause. It built all 2,194 pages correctly.
+ZENSICAL_POLL_WATCHER_ENV = "ZENSICAL_POLL_WATCHER"
 
 # A site missing more than this share of its pages is refused rather than installed.
 MAX_MISSING_PAGE_FRACTION = 0.01
@@ -1349,17 +1356,21 @@ def report_zensical_stall(pid: int, cwd: Path, watched: list[Path]) -> None:
             print(f"{label} unavailable: {exc}", flush=True)
 
 
-def run_zensical(command: list[str], *, cwd: Path, watched: list[Path], stall_seconds: float) -> ZensicalRun:
+def run_zensical(command: list[str], *, cwd: Path, watched: list[Path], stall_seconds: float,
+                 env: dict[str, str] | None = None) -> ZensicalRun:
     """Run zensical, echoing its output, and stop it if it wedges.
 
     Wedged is either of the two ways the file monitor holds a build open (see above): nothing printed
     and under STALL_CPU_SECONDS of CPU for [stall_seconds], or the issue report printed and no
-    "Build finished" [stall_seconds] later, however busy the monitor is.
+    "Build finished" [stall_seconds] later, however busy the monitor is. [env], when given, replaces
+    the inherited environment.
     """
     started_wall = time.time()
-    proc = subprocess.Popen(command, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+    proc = subprocess.Popen(command, cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1)
-    print(f"Zensical started: pid={proc.pid}, cwd={cwd}, idle limit={stall_seconds:g}s", flush=True)
+    watcher = "polling" if (env if env is not None else os.environ).get(ZENSICAL_POLL_WATCHER_ENV) else "native"
+    print(f"Zensical started: pid={proc.pid}, cwd={cwd}, idle limit={stall_seconds:g}s, file watcher={watcher}",
+          flush=True)
     run = ZensicalRun(returncode=None)
     last_line = [time.monotonic()]
     reported_at: list[float | None] = [None]
@@ -1429,21 +1440,24 @@ def run_zensical_retrying_idle_wedges(
     run: Callable[[], ZensicalRun],
     *,
     before_retry: Callable[[], bool],
+    retry: Callable[[], ZensicalRun] | None = None,
     retries: int = ZENSICAL_STALL_RETRIES,
     pause: float = ZENSICAL_STALL_RETRY_PAUSE,
 ) -> ZensicalRun | None:
-    """[run], and again up to [retries] times while it wedges with nothing changing under it (see
-    ZENSICAL_STALL_RETRIES). None if [before_retry] (clearing the staging dir) fails."""
+    """[run], and then [retry] (default [run]) up to [retries] times while it wedges with nothing
+    changing under it (see ZENSICAL_STALL_RETRIES). None if [before_retry] (clearing the staging dir)
+    fails."""
     result = run()
     for attempt in range(retries):
         if not (result.stalled and result.changed == 0):
             break
         print(f"No modified files found under the watched dirs; the cause is unknown. "
-              f"Trying again in {pause:.0f} s (retry {attempt + 1} of {retries}).", flush=True)
+              f"Trying again in {pause:.0f} s (retry {attempt + 1} of {retries})"
+              f"{' with a different run (see the file watcher it reports)' if retry else ''}.", flush=True)
         time.sleep(pause)
         if not before_retry():
             return None
-        result = run()
+        result = (retry or run)()
     return result
 
 
@@ -1645,6 +1659,8 @@ def run(args: argparse.Namespace) -> int:
     zensical = run_zensical_retrying_idle_wedges(
         lambda: run_zensical(command, cwd=public_dir, watched=watched, stall_seconds=stall_seconds),
         before_retry=clear_staging,
+        retry=lambda: run_zensical(command, cwd=public_dir, watched=watched, stall_seconds=stall_seconds,
+                                   env={**os.environ, ZENSICAL_POLL_WATCHER_ENV: "1"}),
     )
     if zensical is None:
         print(f"{FAILURE_PREFIX}could not clear the staging site dir {staging}", file=sys.stderr)

@@ -39,6 +39,7 @@ import afield.ui.visualization.h
 import afield.geometry.path.FLine
 import afield.document.properties.Delegation
 import afield.math.linalg.Vec2
+import afield.math.linalg.Vec3
 import afield.math.linalg.vec
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -57,6 +58,7 @@ import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 
 /**
  * The box-facing API for the drawing layer: [notation] reads the document's Excalidraw scene as [Mark]s,
@@ -118,6 +120,23 @@ class Mark internal constructor(
      * none: a mouse stroke, whose width Excalidraw simulates from speed instead.
      */
     val pressures: List<Double> get() = MarkGeometry.of(json).pressures?.toList() ?: emptyList()
+
+    /**
+     * This stroke as pen samples for `sweptCircleStroke`: each of [points] as `(x, y, r)`, with
+     * the radius `r = width · p^exponent` from the pen pressure `p` there. A stroke with no
+     * recorded pressure (a mouse stroke) reads as full pressure, so its radius is [width]
+     * throughout.
+     *
+     * @param width radius at full pressure, in world units.
+     * @param exponent how pressure maps to width; 1.5 to 2 reads as natural ink.
+     */
+    fun penKnots(width: Double, exponent: Double = 1.75): List<Vec3> {
+        val p = pressures
+        return points.mapIndexed { i, q ->
+            val pressure = p.getOrNull(i)?.coerceIn(0.0, 1.0) ?: 1.0
+            vec(q.x, q.y, width * pressure.pow(exponent))
+        }
+    }
 
     /**
      * [pressures] at [n] stations evenly spaced by distance along the stroke, first point to last.

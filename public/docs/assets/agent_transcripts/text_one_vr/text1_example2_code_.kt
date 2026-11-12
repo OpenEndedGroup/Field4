@@ -1,7 +1,5 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 import afield.graphics.text.sentences.*
-import kotlin.math.*
 
 // 2 · Complete canopy. Preserve the parser's geometry, while the visible words come from the passage.
 val parsed = ReadingPassage.sentence(2)

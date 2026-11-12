@@ -36,7 +36,5 @@ markdown(
     """
     ${ladder.h}
 
-    ${torn.h}
-"""
-        .trimIndent(),
+    ${torn.h}""".trimIndent(),
 )

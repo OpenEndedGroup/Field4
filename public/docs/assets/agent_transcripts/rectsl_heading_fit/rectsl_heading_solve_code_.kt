@@ -33,5 +33,4 @@ val agreement = heading.gradientAgreement(
 |solved:        ${fit.parameters}   (pi/4 wants rise = 1)
 |residual:      ${fit.initialResidual} -> ${fit.finalResidual}
 |heading(2.0):  ${fit.fitted.sample(2.0)}  vs  ${PI / 4.0}
-|exact gradient vs central difference: $agreement"""
-    .trimMargin()
+|exact gradient vs central difference: $agreement""".trimMargin()

@@ -73,5 +73,4 @@ display(
 
 """worst |sampler - lowered| over ${strobe.size} strobes: $worst
 |the quadrant-less form is a half turn out at $halfTurns of them
-|lowered graph: ${lowered.extractParameters().size} numeric leaves"""
-    .trimMargin()
+|lowered graph: ${lowered.extractParameters().size} numeric leaves""".trimMargin()

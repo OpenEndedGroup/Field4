@@ -92,16 +92,15 @@ tree — a good way to label several related values at once:
 display(
     "transforms",
     linkedMapOf(
-            "scale (mat3)" to Matrix3f().set(2f, 0f, 0f, 0f, 3f, 0f, 0f, 0f, 1f),
-            "translate (mat4)" to
-                Matrix4f().identity().apply {
-                    set(3, 0, 5f)
-                    set(3, 1, -2f)
-                    set(3, 2, 1f)
-                },
-            "spin (quat)" to Quaternionf().rotateY(0.6f),
-        )
-        .h,
+        "scale (mat3)" to Matrix3f().set(2f, 0f, 0f, 0f, 3f, 0f, 0f, 0f, 1f),
+        "translate (mat4)" to
+            Matrix4f().identity().apply {
+                set(3, 0, 5f)
+                set(3, 1, -2f)
+                set(3, 2, 1f)
+            },
+        "spin (quat)" to Quaternionf().rotateY(0.6f),
+    ).h,
 )
 ```
 
@@ -785,9 +784,46 @@ m.histogram(0.42)
 
 The marker keeps the values it needs and draws the result beside that line in the editor.
 
+### Markers: `__m(...)` { #markers }
+
+`__m("name")` gives you the box's *marker* called `name`: a small named store that belongs to the
+box. Field makes it the first time the code asks for it and hands back the same one on every later
+run and every frame. A visualizer keeps its values there (the last 120 values of a histogram, say),
+which is how it fills up across frames. A marker lives in memory only and is not saved
+with the document.
+
+The editor will write one for you. Press ++cmd+shift+period++, or ++f1++ and **Insert Stack
+Mark**, and Field inserts `__m("…")` at the cursor with a fresh, unique id, such as
+`__m("Zq3kH0B-a7")`. The editor draws that text as a single rune, ᛟ, and the cursor steps over it
+as one character. So an example on this site that reads `__m("histogram").histogram(value)` looks
+like `ᛟ.histogram(value)` in the editor.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-palette-shell" screenshot="assets/insert-stack-mark.png" alt="Insert stack mark command" padding="6" wait="0" timeout="90" embed=true hidden=true name="insert-stack-mark"}
+ui.openEditor(id)
+ui.pause(700)
+ui.waitForSelector(".monaco-editor", 15000.0)
+ui.clickSelector(".monaco-editor")
+ui.pause(300)
+ui.press("F1")
+ui.waitForSelector(".afield-palette-shell", 8000.0)
+ui.pause(400)
+ui.type("stack")
+ui.pause(1200)
+```
+
+The id is unique so that each marker tracks one place in your code. Two calls with the same name
+share one store and mix their values. And because no other text in the box matches the id, Field
+can find that line again by its text alone, even when nothing in the box is running; that is how a
+[`flipbox`](running_code.md#flipbox-a-block-with-a-checkbox) redraws its checkbox when you click
+it.
+
+A name you type yourself works the same way, as long as no other marker in the box uses it. The
+examples on this site use readable names such as `"histogram"` and `"trail"`. The editor draws a
+name as a rune when it uses only letters, digits, `+`, `/` and `-`.
+
 ### Histogram, history, and summary stats
 
-Histograms answer “what values have I seen?”, history answers “how did the value move?”, and stats gives you a one-line summary.
+Histograms answer “what values have I seen?”, history answers “how did the value move?”, and stats gives you a one-line summary. Each one hangs off a [marker](#markers).
 
 The live examples below are all `loop { }` bodies, which is Field's frame loop: the body runs, then
 the frame advances, once per Runloop tick. What that tick is, and what stops one of these, is
@@ -837,20 +873,7 @@ Those three calls all share the same basic idea:
 - `ᛟ.history(value)` keeps a rolling time series.
 - `ᛟ.stats(value)` gives a compact summary panel.
 
-In the editor you can add a marker rune (ᛟ), with f1, "Insert Stack Mark", or shift+command period:
-
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-palette-shell" screenshot="assets/insert-stack-mark.png" alt="Insert stack mark command" padding="6" wait="0" timeout="90" embed=true hidden=true name="insert-stack-mark"}
-ui.openEditor(id)
-ui.pause(700)
-ui.waitForSelector(".monaco-editor", 15000.0)
-ui.clickSelector(".monaco-editor")
-ui.pause(300)
-ui.press("F1")
-ui.waitForSelector(".afield-palette-shell", 8000.0)
-ui.pause(400)
-ui.type("stack")
-ui.pause(1200)
-```
+Here ᛟ is the [marker](#markers) rune the editor draws over `__m("…")`.
 
 These functions are **passthroughs**. They return the value they were given, so you can drop them into a chain when you want to inspect the value flowing through a wire without changing the computation:
 
@@ -908,9 +931,28 @@ loop {
 
 Run either as a launch, not a plain execute.
 
+### A random variable, settling
+
+`ᛟ.distribution(d)` is the same kind of passthrough for a random variable from
+[Distributions](distributions.md): each call draws another batch of `d` and draws its histogram
+under its exact probabilities or density, with the running mean settling inside its standard-error
+band. Launch it in a `loop { }`:
+
+```diffstatic {data-lang=kotlin}
+:::static
+import afield.math.distribution.*
+
+val twoDice = die(6) + die(6)
+loop {
+    __m("two dice").distribution(twoDice, exact = 7.0)
+    frame()
+}
+```
+
 ### Piano rolls in the editor
 
-The piano-roll visualizer is the same idea, but for scheduled notes rather than scalar values.
+The piano-roll visualizer shows scheduled notes. Like the scalar views above, it hangs off a
+[marker](#markers).
 
 <!--
 FIELD_TEST
@@ -1097,9 +1139,10 @@ keeps the numbers and labels visible in cells:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val grid = Array(24) { row ->
-    DoubleArray(32) { col -> sin(col * 0.25) * cos(row * 0.3) }
-}
+val grid =
+    Array(24) { row ->
+        DoubleArray(32) { col -> sin(col * 0.25) * cos(row * 0.3) }
+    }
 showHeatmap(grid, channel = "field", colormap = "coolwarm", width = 480, smooth = false)
 ```
 
@@ -1382,14 +1425,12 @@ check("shaders" in inFrame("return d.body.innerText")) { inFrame("return d.body.
 
 ### Browsing a glTF scene
 
-A scene file opens the same way. `GltfSupport.loadModel` gives Assimp's own view of a glTF (or any
+A scene file opens the same way. [`GltfSupport.loadModel`](reference/graphics.md#simplegltfsupport-kt--gltfsupport--loadmodel) gives Assimp's own view of a glTF (or any
 file Assimp reads), and `column(...)` or `tree(...)` lists its root node with its transform and
 children, then its meshes, materials and animations. A `GltfModel` loaded for drawing browses as its
 meshes, each with its buffers, material, texture slots and transform.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-gltf-browse.png" capture="box" open-outputs="true" wait="3.0" w="1300" embed=true name="gltf-browse" alt="Two output panels browsing a glTF scene loaded with GltfSupport.loadModel: a column browser listing the Assimp scene's root node, its meshes (1 entry), materials (2) and animations (0), and below it the same four entries as a collapsible tree"}
-import afield.graphics.scene.GltfSupport
-
 val scene = GltfSupport.loadModel("dev_docs/agents/fixtures/path_tracing/transforms.gltf")!!
 column("columns", scene, width = 1300)
 tree("tree", scene, width = 700)
@@ -1726,6 +1767,17 @@ syncToProperty("gain", 0.5, min = 0.0, max = 2.0)
 `syncToProperty` starts from the property's current value when it has one, so re-running the box keeps whatever you last dialled in, and the property is saved with the document.
 
 Declare the property with `propDown<Double>(gain)` and moving the slider also reruns every box that reads `gain`; see [Properties that re-run boxes](reactive_properties.md#a-control-reruns-the-boxes-that-read-it).
+
+### When a callback is slower than the drag
+
+A drag sends about sixty values a second. When a callback takes longer than that, because it redraws
+a shaded mesh or traces an image, Field does not queue every value behind it: a control's callback
+never runs twice at once, and while one call is running only the newest value waits. The callback
+therefore sees fewer, later values, the picture keeps up with the hand, and the value the drag ends
+on is always the last one it gets. A box's callbacks run one at a time. A button's or a key's press
+and release are events, not values, so none of them is ever skipped. For code that needs every
+value of a drag, such as one that records the path, pass `everyValue = true` to `slider`,
+`vec2Control` or `colorPicker`.
 
 ### Build one surface with mixed control types
 
@@ -2083,12 +2135,29 @@ var tint by keys.color(Vector4f(0.2f, 0.6f, 1f, 1f))
 var ring by keys.checkbox(false)
 
 fun draw() {
-    val r = (20 + size * 60).toInt()
+    val radius = (20 + size * 60).toInt()
     val cx = 110 + (offset.x * 60).toInt()
     val cy = 90 - (offset.y * 50).toInt()
-    val fill = "rgba(${(tint.x * 255).toInt()},${(tint.y * 255).toInt()},${(tint.z * 255).toInt()},${tint.w})"
-    val stroke = if (ring) "stroke='white' stroke-width='6'" else ""
-    display("main", "<svg width='220' height='180' style='background:#222'><circle cx='$cx' cy='$cy' r='$r' fill='$fill' $stroke/></svg>")
+    val disc = fline {
+        circle(cx, cy, radius)
+        filled = true
+        stroked = false
+        color = Vector4f(tint)
+    }
+    val outline = fline {
+        circle(cx, cy, radius)
+        thickness = 6.0
+        color = vec(1.0, 1.0, 1.0, 1.0)
+    }
+    // Keep the frame fixed while the controls move or resize the circle.
+    val figure: List<FLine> = if (ring) [disc, outline] else [disc]
+    lines(
+        figure,
+        channel = "main",
+        w = 220.0,
+        h = 180.0,
+        framing = LinesFraming.fixed(0.0, 0.0, 220.0, 180.0),
+    )
 }
 keys.onChange { draw() }
 
@@ -2096,9 +2165,11 @@ val dir = presetDirectory("look")
 
 // Two keys to start from, written once; after that the stored ones are used.
 if (keys.savedKeyNames(dir).isEmpty()) {
-    keys.Key("size" to 0.25, "offset" to Vector2f(-0.5f, 0.3f), "tint" to Vector4f(0.2f, 0.6f, 1f, 1f), "ring" to 0f)
+    keys
+        .Key("size" to 0.25, "offset" to Vector2f(-0.5f, 0.3f), "tint" to Vector4f(0.2f, 0.6f, 1f, 1f), "ring" to 0f)
         .save(dir.resolve("calm"))
-    keys.Key("size" to 0.95, "offset" to Vector2f(0.6f, -0.4f), "tint" to Vector4f(1f, 0.25f, 0.1f, 1f), "ring" to 1f)
+    keys
+        .Key("size" to 0.95, "offset" to Vector2f(0.6f, -0.4f), "tint" to Vector4f(1f, 0.25f, 0.1f, 1f), "ring" to 1f)
         .save(dir.resolve("storm"))
 }
 
@@ -2267,7 +2338,7 @@ move the playhead on screen. A completion-style spinner remains over the wavefor
 zoomed or panned min/max envelope is loading, so the old waveform cannot be mistaken for the new
 view. During playback, crossing the right edge advances the visible interval and places the playhead
 slightly inside the new window; crossing the left edge after a backward seek mirrors that behavior.
-Set `followPlayhead = false` in `AudioVisualizerOptions` to keep a zoomed interval stationary.
+Set `followPlayhead = false` in [`AudioVisualizerOptions`](reference/visualization.md#audiovisualizer-kt-audiovisualizeroptions) to keep a zoomed interval stationary.
 Waveform-envelope requests have a 15-second browser deadline; a stalled service clears the spinner
 and reports a timeout instead of leaving the view permanently busy. Any subsequent pan, zoom, or
 resize retries normally.
@@ -2847,3 +2918,9 @@ Here is the practical rule of thumb:
 All of these tools compose. One box can have a little inline history, a piano roll, a browser in one output channel, and a control surface in another. Field is very happy when code is also an interface.
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`ValueVisualizer.kt`](reference/visualization.md#valuevisualizer-kt), [`ImagingVisualizer.kt`](reference/visualization.md#imagingvisualizer-kt), [`plotly.kt`](reference/visualization.md#plotly-kt). Start from [what's already in the box](reference/index.md).*
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`GltfSupport`](reference/graphics.md#simplegltfsupport-kt-gltfsupport)

@@ -1,4 +1,9 @@
-"""Keep hardware reference images out of automatic docs recapture on unsupported hosts."""
+"""Keep hardware reference images out of automatic docs recapture on unsupported hosts.
+
+These pages mix fences with a `capture-profile` (ray tracing, NVIDIA-only neural tools), which must be
+retained here, with ordinary fences that run on any host (path_tracing.md's neural-clouds figures),
+which may capture.
+"""
 import os
 from pathlib import Path
 import sys
@@ -16,13 +21,18 @@ PAGES=('direct_lighting','neural_reconstruction','ray_reconstruction','optical_f
        'path_traced_reconstruction','computed_ray_geometry','gpu_shader_learning')
 
 
+def refuse_profiled_capture(*args, options, **kwargs):
+    if options.capture_profile:
+        raise AssertionError(f'{options.capture_profile} capture attempted: {options.screenshot or options.video}')
+
+
 class HardwareDocsGatingTest(unittest.TestCase):
     def state(self,docs):
         return SimpleNamespace(docs_dir=docs,repo_root=ROOT,runner_mode='always',runner_media='all',
             config={'site_dir':str(ROOT/'build/test-doc-site'),'use_directory_urls':True},
             assets_reused=0,missing_assets=0,continue_on_error=False,
             ensure_screenshot=Mock(),ensure_video=Mock(),ensure_audio=Mock(),ensure_ui_drive=Mock(),
-            capture_with_environment=Mock(side_effect=AssertionError('GPU capture attempted')))
+            capture_with_environment=Mock(side_effect=refuse_profiled_capture))
 
     def test_mac_always_mode_retains_all_hardware_pages_even_with_profile_requested(self):
         state=self.state(ROOT/'public/docs')
@@ -31,7 +41,8 @@ class HardwareDocsGatingTest(unittest.TestCase):
                 page=state.docs_dir/(name+'.md')
                 with self.subTest(page=name):
                     docs_hooks.process_markdown(markdown=page.read_text(),page_path=page,state=state,files=[])
-        state.capture_with_environment.assert_not_called()
+        self.assertEqual([c.kwargs['options'].capture_profile for c in state.capture_with_environment.call_args_list],
+                         [None]*state.capture_with_environment.call_count)
         self.assertEqual(state.assets_reused,21)
         self.assertEqual(state.missing_assets,0)
 
@@ -41,7 +52,8 @@ class HardwareDocsGatingTest(unittest.TestCase):
             for name in ('path_tracing','ray_tracing_examples'):
                 page=state.docs_dir/(name+'.md')
                 docs_hooks.process_markdown(markdown=page.read_text(),page_path=page,state=state,files=[])
-        state.capture_with_environment.assert_not_called()
+        self.assertEqual([c.kwargs['options'].capture_profile for c in state.capture_with_environment.call_args_list],
+                         [None]*state.capture_with_environment.call_count)
         self.assertEqual(state.assets_reused,16)
 
     def test_profile_is_explicit_and_unknown_names_fail(self):

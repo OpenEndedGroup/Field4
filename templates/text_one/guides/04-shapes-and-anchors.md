@@ -38,10 +38,13 @@ appear only after the stroke reaches it.
 the exact glyph transform. Coordinates here are font units, with Y up:
 
 ```kotlin
-textPath("cap-ruler", title, shape = {
-    FLine().moveTo(advance.left, capHeight + 10f)
-        .lineTo(advance.right, capHeight + 10f)
-}) {
+textPath(
+    "cap-ruler",
+    title,
+    shape = {
+        FLine().moveTo(advance.left, capHeight + 10f).lineTo(advance.right, capHeight + 10f)
+    },
+) {
     width = .0008f
     dashed(.018f)
 }
@@ -50,22 +53,30 @@ textPath("cap-ruler", title, shape = {
 Draw a local bracket against the ink bounds:
 
 ```kotlin
-textPath("left-bracket", title, shape = {
-    val x = ink.left - 12f
-    FLine().moveTo(x + 8f, ink.bottom - 6f)
-        .lineTo(x, ink.bottom - 6f)
-        .lineTo(x, ink.top + 6f)
-        .lineTo(x + 8f, ink.top + 6f)
-})
+textPath(
+    "left-bracket",
+    title,
+    shape = {
+        val x = ink.left - 12f
+        FLine()
+            .moveTo(x + 8f, ink.bottom - 6f)
+            .lineTo(x, ink.bottom - 6f)
+            .lineTo(x, ink.top + 6f)
+            .lineTo(x + 8f, ink.top + 6f)
+    },
+)
 ```
 
 Or transform an existing local FLine inside a path:
 
 ```kotlin
-path("custom", shape = {
-    val local = FLine().moveTo(0, 0).lineTo(40, 20).lineTo(80, 0)
-    textLine(title, local)
-})
+path(
+    "custom",
+    shape = {
+        val local = FLine().moveTo(0, 0).lineTo(40, 20).lineTo(80, 0)
+        textLine(title, local)
+    },
+)
 ```
 
 `textLine` transforms cubic control points too. It returns a copy; it does not gradually

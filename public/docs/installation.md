@@ -179,9 +179,7 @@ ui.eval(
     f.src = "/welcome"
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1100px;height:1240px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 // Wait for the parts that load after the page: the starting-points dock and every panel summary.
 var state = ""
@@ -195,9 +193,7 @@ for (i in 0 until 60) {
                 const splash = d.getElementById("splash-screen")
                 if (splash && !splash.classList.contains("hidden")) return "splash"
                 const pending = [...d.querySelectorAll("details > summary")].filter(s => /loading|checking/i.test(s.textContent)).length
-                return pending === 0 ? "ready" : "pending:" + pending
-                """
-                    .trimIndent(),
+                return pending === 0 ? "ready" : "pending:" + pending""".trimIndent(),
             )
             .toString()
     if (state.contains("ready")) break
@@ -216,9 +212,7 @@ ui.eval(
     if (!summary.querySelector("[data-kit-count]")) throw new Error("Kits count is missing")
     const response = await f.contentWindow.fetch("/api/kits", {cache: "no-store"})
     if (!response.ok) throw new Error("Kit library failed to load: " + response.status)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ```
 

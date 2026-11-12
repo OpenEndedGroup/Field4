@@ -35,9 +35,7 @@ markdown(
     | `toFaceFLines()` | `$flineRefusal` | ${realized.toFaceFLines().size} FLines |
     | `triangulate()` | `$triangleRefusal` | ${realized.triangulate().triangleCount} triangles |
 
-    The left column is a complete, valid, checkable octahedron. It has nowhere to be.
-"""
-        .trimIndent(),
+    The left column is a complete, valid, checkable octahedron. It has nowhere to be.""".trimIndent(),
     width = 900,
 )
 

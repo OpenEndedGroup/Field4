@@ -233,3 +233,31 @@ every box in the document does.
     in three dimensions, so the shape keeps all six distances exactly. Drop in your own pictures.
 
 </div>
+
+## Explainers
+
+Three talks inspired by Bartosz Ciechanowski's
+[Sound](https://ciechanow.ski/sound/), [Cameras and Lenses](https://ciechanow.ski/cameras-and-lenses/)
+and [Lights and Shadows](https://ciechanow.ski/lights-and-shadows/), rebuilt in our own words and
+figures as Field presentations. Open one to explore the figures, or use the
+[presentation engine](presentation_studio.md#live-figures-beside-prose) to give the talk yourself.
+The slides can move a figure's controls, and the sound examples are ready to play.
+
+<div class="grid cards" markdown>
+
+-   ![The slide "A pulsing sphere": prose on the left, and on the right a live pressure field of orange and blue rings spreading from a small sphere, with a frequency slider](assets/explainer_sound/slides/waves-sphere.png)
+
+    **[Sound](explainer_sound.md).** From molecules in a box to notes, sums of sines, plucked
+    strings and pressure waves in a room, with keys you can play and clips you can hear.
+
+-   ![The slide "A box with a hole": prose on the left, and on the right a three-dimensional pinhole box looking at two spheres and the picture forming on its back wall](assets/explainer_cameras/slides/pinhole.png)
+
+    **[Cameras and Lenses](explainer_cameras.md).** A sensor counting light, a box with a hole,
+    then glass, lenses, aperture and focus, every picture ray-traced live.
+
+-   ![The slide "Light keeps going": prose on the left, and on the right a white floor beside a red wall lit by a lamp](assets/explainer_lights/slides/bounces.png)
+
+    **[Lights and Shadows](explainer_lights.md).** Power, the cosine factor, distance, solid
+    angle and radiance, then soft shadows, coloured light and light that bounces.
+
+</div>

@@ -30,7 +30,7 @@ The gradient flows through the emitted GLSL itself, interpreted node by node on
 `afield.math.autodiff`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
 
 ```edn [field-box id="stacksl-fit" role="properties"]
-{"id" "stacksl-fit" "index" 0 "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-fit_code_.kt" "lines" 127 "characters" 4600 "sha256" "0977f8fcc1ee29b4c12941b4db0de1b3b27ba69fee86add57b339dfb9ca9b615"}]}
+{"id" "stacksl-fit" "index" 0 "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-fit_code_.kt" "lines" 123 "characters" 4556 "sha256" "28275b062efc0cab1e6bec2ad523889f1961092c800af84aa1604b14e7690685"}]}
 ```
 
 ```kotlin [field-property box="stacksl-fit" name="code" path="stacksl-fit_code_.kt"]
@@ -64,9 +64,7 @@ run {
         0.5 0.5 0.5 1 vec4
         1.0 1.0 1.0 1 vec4
         0.0 0.33 0.67 1 vec4
-        palette
-        """
-            .trimIndent()
+        palette""".trimIndent()
 
     val targetProgram =
         """
@@ -75,9 +73,7 @@ run {
         0.31 0.45 0.52 1 vec4
         1.0 1.0 1.0 1 vec4
         0.12 0.55 0.88 1 vec4
-        palette
-        """
-            .trimIndent()
+        palette""".trimIndent()
 
     val template = StackSLCpu.stillTemplate()
     val dim = 64
@@ -184,7 +180,7 @@ program's render and the fitted wire vector's render. If the literal rewriting w
 column off by one, a token mismatched — it would not be small, it would be a different picture.
 
 ```edn [field-box id="stacksl-roundtrip" role="properties"]
-{"id" "stacksl-roundtrip" "index" 1 "name" "The round trip — the fit's output is a program you can paste back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The round trip — the fit's output is a program you can paste back" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-roundtrip_code_.kt" "lines" 96 "characters" 3911 "sha256" "84a65037771392aa1fd29dd54a965b3adb792d18b5f25a6f24b0a9429230ac7e"}]}
+{"id" "stacksl-roundtrip" "index" 1 "name" "The round trip — the fit's output is a program you can paste back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The round trip — the fit's output is a program you can paste back" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-roundtrip_code_.kt" "lines" 92 "characters" 3867 "sha256" "ee6b150630e9884cd7efb9a15d9c19d4a05247d09b6df4ddc172e720f23f6a9e"}]}
 ```
 
 ```kotlin [field-property box="stacksl-roundtrip" name="code" path="stacksl-roundtrip_code_.kt"]
@@ -214,9 +210,7 @@ run {
         0.5 0.5 0.5 1 vec4
         1.0 1.0 1.0 1 vec4
         0.0 0.33 0.67 1 vec4
-        palette
-        """
-            .trimIndent()
+        palette""".trimIndent()
 
     val targetProgram =
         """
@@ -225,9 +219,7 @@ run {
         0.31 0.45 0.52 1 vec4
         1.0 1.0 1.0 1 vec4
         0.12 0.55 0.88 1 vec4
-        palette
-        """
-            .trimIndent()
+        palette""".trimIndent()
 
     val template = StackSLCpu.stillTemplate()
 
@@ -305,7 +297,7 @@ Read the table below against the program above it. Wire #0 is the `3.0` you can 
 #1..#16 are the four `vec4` operands of `palette`. Nothing here invented syntax for a parameter.
 
 ```edn [field-box id="stacksl-wires" role="properties"]
-{"id" "stacksl-wires" "index" 2 "name" "The wires — every literal in a StackSL program, made addressable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The wires — every literal in a StackSL program, made addressable" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-wires_code_.kt" "lines" 73 "characters" 2992 "sha256" "5b5c2de9bf8c3df0760f909060d4e43cad1a9088eae32ae7c58e8affd05f8e21"}]}
+{"id" "stacksl-wires" "index" 2 "name" "The wires — every literal in a StackSL program, made addressable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The wires — every literal in a StackSL program, made addressable" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-wires_code_.kt" "lines" 71 "characters" 2970 "sha256" "164dc9ebb4ee289792987e6af4847cd43984ebaffc5b5b74fbe2bc8121cfd517"}]}
 ```
 
 ```kotlin [field-property box="stacksl-wires" name="code" path="stacksl-wires_code_.kt"]
@@ -332,9 +324,7 @@ run {
         0.5 0.5 0.5 1 vec4
         1.0 1.0 1.0 1 vec4
         0.0 0.33 0.67 1 vec4
-        palette
-        """
-            .trimIndent()
+        palette""".trimIndent()
 
     println("The StackSL program:")
     println(program.prependIndent("    "))

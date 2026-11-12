@@ -1,0 +1,214 @@
+name: flow_lenia
+description: >
+  Flow Lenia (Plantec et al., ALIFE 2023), as six pure-CPU boxes from the Flow Lenia sections of
+  public/docs/alife_examples.md. Box 0 runs three species for 200 steps and prints the worst relative
+  change in total mass. Boxes 1 to 3 are the page's first three clips at three times the resolution
+  (scale = 3): three species side by side with a flat total-mass plot, rings meeting a cell under
+  SAMPLED mixing with per-species mass, and the same pair under MEAN mixing with the parameter field
+  drawn. Box 4 grows a crescent glider to three times the resolution and draws its path; box 5 runs
+  mutation inside the world beside a neutral control, coloured by lineage. No Window, no Renderer.
+docs:
+  - page: alife_examples.md
+    why: "The Flow Lenia sections these boxes come from."
+operations:
+  - create:
+      box: flow_lenia_conservation
+      name: "0 — Flow Lenia: mass conserved over 200 steps"
+      frame:
+        x: 60.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val world = flowLeniaWorld(
+              64,
+              64,
+              [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+              seedRadius = 10.0,
+          )
+          val m0 = world.totalMass()
+          var worst = 0.0
+          repeat(200) {
+              world.step()
+              worst = maxOf(worst, kotlin.math.abs(world.totalMass() - m0) / m0)
+          }
+          println(world)
+          println("worst relative change in total mass over 200 steps: " + worst)
+  - create:
+      box: flow_lenia_species
+      name: "1 — Flow Lenia: three species, total mass flat"
+      frame:
+        x: 560.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val world = flowLeniaWorld(
+              288,
+              288,
+              [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+              scale = 3,
+          )
+
+          animateEvolution(
+              world,
+              totalSteps = 1200,
+              seconds = 9.0,
+              columns = 2,
+              cellSide = 480,
+              step = { it.step() },
+              panels = { w, n ->
+                  [
+                      ("step " + n) to w.speciesImg().resize(480, 480),
+                      ("total mass " + w.totalMass().f3) to w.massPlot(480, 480),
+                  ]
+              },
+          )
+  - create:
+      box: flow_lenia_collision
+      name: "2 — Rings meet a cell (SAMPLED mixing)"
+      frame:
+        x: 60.0
+        y: 240.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val world = flowLeniaWorld(
+              288,
+              192,
+              [FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+              positions = [38.0 to 32.0, 58.0 to 32.0],
+              mixing = FlowLeniaMixing.SAMPLED,
+              scale = 3,
+          )
+
+          animateEvolution(
+              world,
+              totalSteps = 1200,
+              seconds = 9.0,
+              columns = 2,
+              cellSide = 480,
+              step = { it.step() },
+              panels = { w, n ->
+                  [
+                      ("step " + n) to w.speciesImg().resize(480, 320),
+                      ("rings %.0f, cell %.0f".format(w.speciesMass(0), w.speciesMass(1))) to w.massPlot(480, 320),
+                  ]
+              },
+          )
+  - create:
+      box: flow_lenia_drift
+      name: "3 — The parameter field blending (MEAN mixing)"
+      frame:
+        x: 560.0
+        y: 240.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val world = flowLeniaWorld(
+              288,
+              192,
+              [FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+              positions = [38.0 to 32.0, 58.0 to 32.0],
+              scale = 3,
+          )
+
+          animateEvolution(
+              world,
+              totalSteps = 1200,
+              seconds = 9.0,
+              columns = 2,
+              cellSide = 480,
+              step = { it.step() },
+              panels = { w, n ->
+                  [
+                      ("step " + n) to w.speciesImg().resize(480, 320),
+                      ("hybrid %.0f of %.0f".format(w.mixedMass(), w.totalMass())) to
+                          w.weightImg(0).colormap("viridis", 0f, 0.4f).resize(480, 320),
+                  ]
+              },
+          )
+  - create:
+      box: flow_lenia_crescent
+      name: "4 — A crescent that travels, at three times the resolution"
+      frame:
+        x: 60.0
+        y: 420.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // Noise seed 2 folds into the crescent; grow it to three times the resolution once it has formed.
+          val world =
+              flowLeniaWorld(64, 64, [FlowLeniaPresets.crescent()], seedRadius = 6.0, randomSeed = 2L).steps(200).scaledCopy(3)
+          val trail = FloatArray(world.width * world.height)
+
+          animateEvolution(
+              world,
+              totalSteps = 3000,
+              seconds = 9.0,
+              columns = 2,
+              cellSide = 480,
+              step = { it.step() },
+              panels = { w, n ->
+                  val b = w.bodies().first()
+                  for (c in trail.indices) trail[c] = maxOf(0.97f * trail[c], w.matter[c].toFloat())
+                  [
+                      ("step %d: mass %.1f at (%.0f, %.0f)".format(n, b.mass, b.x, b.y)) to w.speciesImg().resize(480, 480),
+                      "the path" to Img(w.width, w.height, 1, trail.copyOf()).colormap("magma", 0f, 1.2f).resize(480, 480),
+                  ]
+              },
+          )
+  - create:
+      box: flow_lenia_mutation
+      name: "5 — Mutation inside the world, against a neutral control"
+      frame:
+        x: 560.0
+        y: 420.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val species = [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()]
+          val neutral = flowLeniaWorld(192, 192, species, mixing = FlowLeniaMixing.SAMPLED, scale = 2)
+          neutral.mutation = FlowLeniaMutation(rate = 0.05, radius = 12.0, scale = 0.0)
+          val mutating = flowLeniaWorld(192, 192, species, mixing = FlowLeniaMixing.SAMPLED, scale = 2)
+          mutating.mutation = FlowLeniaMutation(rate = 0.05, radius = 12.0, scale = 0.3)
+
+          fun masses(w: FlowLeniaWorld) = w.speciesMasses().joinToString(" ") { it.f0 }
+
+          animateEvolution(
+              neutral to mutating,
+              totalSteps = 2400,
+              seconds = 9.0,
+              columns = 2,
+              cellSide = 384,
+              step = { (a, b) ->
+                  a.step()
+                  b.step()
+                  a to b
+              },
+              panels = { (a, b), n ->
+                  [
+                      ("neutral " + masses(a)) to vstack(a.lineageImg().resize(384, 384), a.massPlot(384, 128)),
+                      ("size 0.3 " + masses(b)) to vstack(b.lineageImg().resize(384, 384), b.massPlot(384, 128)),
+                  ]
+              },
+          )
+  - execute:
+      box: flow_lenia_conservation
+      property: code
+      type: fragment
+  - launch: { box: flow_lenia_species, property: code }
+  - launch: { box: flow_lenia_collision, property: code }
+  - launch: { box: flow_lenia_drift, property: code }
+  - launch: { box: flow_lenia_crescent, property: code }
+  - launch: { box: flow_lenia_mutation, property: code }
+  - await:
+      wait: pending
+  - wait:
+      millis: 400

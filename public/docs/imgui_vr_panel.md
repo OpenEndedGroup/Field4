@@ -10,9 +10,11 @@ For a smaller scene with an editable post-processing pass, start with
 [Stereo RTT composite](stereo_rtt_composite.md): desktop preview, an FXAA toggle and optional OpenXR
 output in five boxes.
 
-The side-by-side stereo target underneath this demo is the same one the Vision Pro front end renders
-through. See [Apple Vision Pro](vision.md), where those eye matrices can come from an uplinked
-head pose instead of from OpenXR or the desktop mock.
+For desktop OpenXR scenes on Vision Pro over Wi-Fi, use
+[Linux → CloudXR → AVP](cloudxr_vision_pro.md). The separate
+[native RTT receiver](vision.md#streaming-the-rendered-scene-as-video) presents a stereo video
+surface; its eye matrices can come from an uplinked head pose. Those are different transports,
+with different presentation and input paths.
 
 ![A single eye of the VR panel: a readable Dear ImGui window titled "Field · VR Panel" with body text, a Click me button, a checkbox, a gain slider, and a ray-hit UV readout](assets/imgui_vr_panel/imgui-vr-panel-eye.png)
 

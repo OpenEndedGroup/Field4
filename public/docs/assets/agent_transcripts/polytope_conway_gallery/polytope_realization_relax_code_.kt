@@ -59,9 +59,7 @@ markdown(
 
     This is constraint relaxation, not canonicalisation. It has no symmetry model and it
     cannot tell you the shape you wish you had given it — only how far the shape you did
-    give it is from a common edge length, a common radius and planar faces.
-"""
-        .trimIndent(),
+    give it is from a common edge length, a common radius and planar faces.""".trimIndent(),
     width = 940,
 )
 

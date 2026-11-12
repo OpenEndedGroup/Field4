@@ -5,9 +5,7 @@ display(
     """
     <div style="width:320px;padding:24px;background:$colour;color:white;font:24px system-ui">
     Hello from inside Field VR!
-    </div>
-"""
-        .trimIndent(),
+    </div>""".trimIndent(),
 )
 displayOpen("hello")
 println("Code executed in the same Field document")

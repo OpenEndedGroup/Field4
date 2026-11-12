@@ -24,9 +24,7 @@ run {
         0.5 0.5 0.5 1 vec4
         1.0 1.0 1.0 1 vec4
         0.0 0.33 0.67 1 vec4
-        palette
-        """
-            .trimIndent()
+        palette""".trimIndent()
 
     val targetProgram =
         """
@@ -35,9 +33,7 @@ run {
         0.31 0.45 0.52 1 vec4
         1.0 1.0 1.0 1 vec4
         0.12 0.55 0.88 1 vec4
-        palette
-        """
-            .trimIndent()
+        palette""".trimIndent()
 
     val template = StackSLCpu.stillTemplate()
 

@@ -1,0 +1,1170 @@
+# Lights and Shadows
+
+<div data-field-transcript-gallery hidden></div>
+
+Everything we see is light that left a source, struck something, and reached an eye. This talk
+builds up how much light lands on a surface, and why one shadow is crisp while another is soft.
+
+After “Lights and Shadows” by Bartosz Ciechanowski,
+[ciechanow.ski/lights-and-shadows](https://ciechanow.ski/lights-and-shadows/). Words and figures made in Field.
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_lights/metadata.edn)
+
+Follow the talk figure by figure on this page. Each figure is a box in the document: you'll see
+its code and what it draws, with the slide that uses it in the margin. **Open →** shows the whole
+document beside the page; **Open in Field·4** imports an editable copy. To give the talk, run its
+`deck` box in Field's desktop app. [Live figures beside prose](presentation_studio.md#live-figures-beside-prose)
+shows how to build a deck like this one.
+
+## A lamp over a floor
+
+<figure class="field-margin-figure" markdown>
+![The slide “A lamp over a floor” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/opening.png)
+</figure>
+
+Slide the lamp across, or change its size. Drag the picture to look around.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/opening_scene.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-opening_scene" alt="A three-dimensional view of a square lamp above a grey floor with a small block on it, the floor bright beneath the lamp and darkening outward, the block casting a shadow, with position and size sliders"}
+:::fold imports
+import afield.graphics.lighting.*
+:::endfold
+
+// A lamp over a floor with a block on it. The light at every vertex is computed here.
+val floor = floorMesh(4.0, 4.0, divisions = 64)
+val block = panelBoxMesh(0.5, 0.5, 0.5, divisions = 10).translated(0.0, 0.25, 0.0)
+val scene = floor + block
+var across = 0.6
+var size = 0.5
+
+fun draw() {
+    val lamp = RectLight(vec(across, 1.3, 0.0), width = size, height = size, power = 30.0)
+    three(channel = "scene", width = 640, height = 420) {
+        // Only the block casts shadows.
+        mesh(scene.lit([lamp], occluders = block, exposure = 0.5), unlit = true, wireframe = false)
+        // Frame the view on the whole set, so it holds still as the lamp changes.
+        fitTo(vec(-2.0, 0.0, -2.0), vec(2.0, 1.6, 2.0))
+        mesh(lamp.mesh(), unlit = true, wireframe = false, cullBackFaces = false)
+        camera(yaw = 35.0, pitch = 30.0, distance = 2.6)
+        background("#000000")
+        hud(false)
+    }
+}
+
+draw()
+controlGroup {
+    slider("position", -1.2, 1.2, initialValue = across) {
+        across = it
+        draw()
+    }
+    slider("size", 0.05, 1.5, initialValue = size) {
+        size = it
+        draw()
+    }
+}
+```
+
+## Power
+
+<figure class="field-margin-figure" markdown>
+![The slide “Power” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/power.png)
+</figure>
+
+A lamp turns electrical power into light, and we measure the light the same way: in watts, the
+energy leaving the source each second.
+
+Think of it as rays streaming outward. A stronger lamp sends more of them.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/sphere_light.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-sphere_light" alt="A small grey sphere on black with thin rays streaming out from it in every direction, a readout of 10 W and 40 rays, and a power slider"}
+// A glowing ball and the light leaving it, drawn as rays: one ray for every quarter watt.
+val golden = PI * (3 - sqrt(5.0))
+
+fun draw(watts: Double) {
+    val n = (watts * 4).roundToInt()
+    val rays = n { i ->
+        // Directions spread evenly over the sphere, each ray starting on the ball's surface.
+        val y = 1 - 2 * (i + 0.5) / n
+        val r = sqrt(1 - y * y)
+        val d = vec(r * cos(golden * i), y, r * sin(golden * i))
+        fline {
+            moveTo(d.x * 0.2, d.y * 0.2, d.z * 0.2)
+            lineTo(d.x * 1.4, d.y * 1.4, d.z * 1.4)
+            color = vec(1.0, 0.9, 0.6, 0.5)
+        }
+    }
+    // How bright the ball looks: its glow fills up and then stays white.
+    val glow = min(1.0, watts / 60)
+    three(channel = "scene", width = 640, height = 420) {
+        lines(rays)
+        // Frame the view on the rays' reach, not on the ball.
+        fitTo(vec(-1.0, -1.0, -1.0), vec(1.0, 1.0, 1.0))
+        mesh(icosphereMesh(3, 0.2).withColor(glow, glow * 0.95, glow * 0.8), unlit = true, wireframe = false)
+        camera(yaw = 20.0, pitch = 15.0, distance = 2.2)
+        background("#000000")
+        hud(false)
+        helpers(false)
+    }
+    markdown("readout", "${watts.roundToInt()} W · $n rays")
+}
+
+draw(10.0)
+controlGroup {
+    slider("power", 1.0, 100.0, step = 1.0, initialValue = 10.0) { draw(it) }
+}
+```
+
+### Brightness is not power
+
+<figure class="field-margin-figure" markdown>
+![The slide “Brightness is not power” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/perceived.png)
+</figure>
+
+Twice the power does not look twice as bright. Our eyes compress what they receive, and a screen can
+only show so much: once a channel is full, every brighter value looks the same white.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/perceived.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-perceived" alt="A cyan curve of how bright a light looks against its power, rising steeply and then flat once it reaches white, an orange marker at 10 W, a grey swatch of that brightness, a readout that 10 W shows 48% of white, and a power slider"}
+// The light a patch gives off, against what a screen can show of it. The swatch is the patch;
+// the curve is the brightness the screen sends, which runs out at its brightest white.
+fun draw(watts: Double) {
+    // A screen channel holds 0..1 of linear light, here reached at 50 W, and encodes it as sRGB.
+    fun shown(w: Double) = min(1.0, w / 50).pow(1 / 2.2)
+    val curve = fline {
+        moveTo(40.0, 260.0)
+        for (w in 1..100) lineTo(40.0 + w * 3.6, 260.0 - 220 * shown(w.toDouble()))
+        thickness = 2.0
+        color = vec(0.4, 0.9, 1.0, 1.0)
+    }
+    val axes = fline {
+        moveTo(40.0, 30.0)
+        lineTo(40.0, 260.0)
+        lineTo(400.0, 260.0)
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
+    val here = fline {
+        moveTo(40.0 + watts * 3.6, 260.0)
+        lineTo(40.0 + watts * 3.6, 260.0 - 220 * shown(watts))
+        thickness = 2.0
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    val v = shown(watts)
+    val swatch = fline {
+        moveTo(450.0, 60.0)
+        lineTo(610.0, 60.0)
+        lineTo(610.0, 220.0)
+        lineTo(450.0, 220.0)
+        lineTo(450.0, 60.0)
+        filled = true
+        color = vec(v, v, v, 1.0)
+    }
+    lines(axes, curve, here, swatch, channel = "curve", w = 640.0, h = 280.0)
+    markdown("readout", "${watts.roundToInt()} W → ${(v * 100).roundToInt()} % of white")
+}
+
+draw(10.0)
+controlGroup {
+    slider("power", 0.0, 100.0, step = 1.0, initialValue = 10.0) { draw(it) }
+}
+```
+
+## Position
+
+### Light at a slant
+
+<figure class="field-margin-figure" markdown>
+![The slide “Light at a slant” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/slant.png)
+</figure>
+
+Tilt a beam away from straight down and the same rays spread over more floor. The light per square
+metre falls as the cosine of the angle from the surface's normal: half at 60°, nothing at 90°.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/light_angle.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-light_angle" alt="Above, a side view of vertical cyan rays landing on an orange patch of floor; below, the cosine curve falling from 1 at 0° toward 0 at 90°, a readout that 12 of 12 rays land and cos 0° is 1.00, and an angle slider"}
+// Parallel rays falling on an orange patch of floor, seen from the side.
+// Tilt them away from straight down and fewer of them land on the patch.
+val rays = 12
+
+fun draw(degrees: Double) {
+    val a = degrees * PI / 180
+    val across = sin(a)
+    val down = cos(a)
+    var landed = 0
+    val drawn = mutableListOf<FLine>()
+    for (i in 0 until rays) {
+        // Rays sit evenly across a beam 200 pixels wide; this is where each one meets the floor.
+        val x = 320 + ((i + 0.5) / rays - 0.5) * 200 / down
+        val hit = abs(x - 320) <= 100
+        if (hit) landed++
+        // Each ray is drawn back from the floor to the top or side of the frame.
+        val back = min(230 / down, if (across > 0) x / across else 1e9)
+        drawn += fline {
+            moveTo(x - across * back, 250 - down * back)
+            lineTo(x, 250.0)
+            thickness = 1.5
+            color = if (hit) vec(0.4, 0.9, 1.0, 1.0) else vec(1.0, 1.0, 1.0, 0.35)
+        }
+    }
+    drawn += fline {
+        moveTo(0.0, 250.0)
+        lineTo(640.0, 250.0)
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
+    drawn += fline {
+        moveTo(220.0, 250.0)
+        lineTo(420.0, 250.0)
+        thickness = 6.0
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    lines(drawn, channel = "side", w = 640.0, h = 280.0, framing = LinesFraming.fixed(0.0, 0.0, 640.0, 280.0))
+
+    // The cosine of the angle, with this angle marked.
+    val curve = fline {
+        moveTo(40.0, 20.0)
+        for (d in 1..90) lineTo(40.0 + d * 6.4, 20.0 + 120 * (1 - cos(d * PI / 180)))
+        thickness = 2.0
+        color = vec(0.4, 0.9, 1.0, 1.0)
+    }
+    val axes = fline {
+        moveTo(40.0, 10.0)
+        lineTo(40.0, 140.0)
+        lineTo(620.0, 140.0)
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
+    val here = fline {
+        moveTo(40.0 + degrees * 6.4, 140.0)
+        lineTo(40.0 + degrees * 6.4, 20.0 + 120 * (1 - down))
+        thickness = 2.0
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    lines(axes, curve, here, channel = "cosine", w = 640.0, h = 150.0)
+    markdown("readout", "$landed of $rays rays land · cos ${degrees.roundToInt()}° = ${down.f2}")
+}
+
+draw(0.0)
+controlGroup {
+    slider("angle", 0.0, 85.0, step = 1.0, initialValue = 0.0) { draw(it) }
+}
+```
+
+### Shape from the cosine
+
+<figure class="field-margin-figure" markdown>
+![The slide “Shape from the cosine” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/lit-sphere.png)
+</figure>
+
+Every point on a ball faces the lamp at a different angle. The cosine alone draws the shading that
+tells us the ball is round.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/lit_sphere.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-lit_sphere" alt="A grey ball on black, lit from the upper left so it shades smoothly to dark on its lower right, and a two-dimensional pad for the light's direction"}
+:::fold imports
+import afield.graphics.lighting.*
+:::endfold
+
+// A ball under one far-away light. Its shading is the cosine factor and nothing else.
+val ball = icosphereMesh(4, 0.5)
+
+fun draw(toward: Vec2) {
+    // The control picks where the light is, seen from the camera; it sits 100 m away in that direction.
+    val z = sqrt(max(0.0, 1.0 - toward.x * toward.x - toward.y * toward.y))
+    val far = 100.0
+    // Φ = 4π·100² W makes the irradiance one watt per square metre where the light hits head on.
+    val sun = PointLight(vec(toward.x * far, toward.y * far, z * far), power = 4 * PI * far * far)
+    three(channel = "scene", width = 640, height = 420) {
+        mesh(ball.lit([sun], occluders = null, exposure = 2.0), unlit = true, wireframe = false)
+        camera(yaw = 0.0, pitch = 0.0, distance = 2.4)
+        background("#000000")
+        hud(false)
+    }
+}
+
+draw(vec(0.7, 0.4))
+controlGroup {
+    vec2Control("light", initialValue = vec(0.7, 0.4)) { draw(it) }
+}
+```
+
+### Farther away
+
+<figure class="field-margin-figure" markdown>
+![The slide “Farther away” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/distance.png)
+</figure>
+
+Light leaving a point spreads over a sphere, and a sphere's area grows with the square of its
+radius. Twice as far, a quarter of the light: the inverse-square law.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/distance_rays.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-distance_rays" alt="A three-dimensional view of rays fanning out from a point light, some of them landing on an orange square panel, a readout that 169 of 400 rays reach it at 1.0 m, and a distance slider"}
+// A point light sends 600 rays into a cone. Move the square patch away and count how many reach it.
+val count = 600
+val golden = PI * (3 - sqrt(5.0))
+// Directions spread evenly over a cone 30° around +x.
+val directions = count { i ->
+    val c = 1 - (1 - cos(PI / 6)) * (i + 0.5) / count
+    val s = sqrt(1 - c * c)
+    vec(c, s * cos(golden * i), s * sin(golden * i))
+}
+
+fun draw(distance: Double) {
+    var reached = 0
+    val rays = directions.map { d ->
+        // Where the ray crosses the patch's plane, x = distance.
+        val t = distance / d.x
+        val hit = abs(t * d.y) <= 0.25 && abs(t * d.z) <= 0.25
+        if (hit) reached++
+        val end = if (hit) t else 4.5 / d.x
+        fline {
+            moveTo(0.0, 0.0, 0.0)
+            lineTo(end * d.x, end * d.y, end * d.z)
+            color = if (hit) vec(0.4, 0.9, 1.0, 1.0) else vec(1.0, 1.0, 1.0, 0.12)
+        }
+    }
+    val patch =
+        planeMesh(1, 1, 0.5, 0.5)
+            .rotated(Quat().rotateY((-PI / 2).toFloat()))
+            .translated(distance, 0.0, 0.0)
+            .withColor(1.0, 0.6, 0.2)
+    three(channel = "scene", width = 640, height = 380) {
+        lines(rays)
+        mesh(patch, unlit = true, wireframe = false, cullBackFaces = false)
+        mesh(icosphereMesh(2, 0.05).withColor(1.0, 1.0, 1.0), unlit = true, wireframe = false)
+        camera(yaw = 30.0, pitch = 25.0, distance = 2.2)
+        background("#000000")
+        hud(false)
+        helpers(false)
+    }
+    markdown("readout", "${distance.f1} m: $reached of $count rays")
+}
+
+draw(1.0)
+controlGroup {
+    slider("distance", 1.0, 4.0, step = 0.1, initialValue = 1.0) { draw(it) }
+}
+```
+
+## Angles
+
+### How big things look
+
+<figure class="field-margin-figure" markdown>
+![The slide “How big things look” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/angles.png)
+</figure>
+
+How large something looks is the angle it takes up in front of you. Walk away from a car and that
+angle shrinks, close to one over the distance.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/car_angle.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-car_angle" alt="Above, a top view of an eye and an orange car with the narrow angle it takes up; below, the eye's view, the car as an orange block on the horizon, a readout that a car 10 m away spans 16.3°, and a distance slider"}
+// A car 1.8 m wide driving away from you, from above and through your eye. How wide it looks is
+// the angle it spans, and that angle shrinks about as one over the distance.
+fun draw(distance: Double) {
+    val half = atan(0.9 / distance)
+    val scale = 9.0
+    val x = 30 + distance * scale
+    val top = mutableListOf<FLine>()
+    top += fline {
+        moveTo(x, 100 - 0.9 * scale)
+        lineTo(x + 4.5 * scale, 100 - 0.9 * scale)
+        lineTo(x + 4.5 * scale, 100 + 0.9 * scale)
+        lineTo(x, 100 + 0.9 * scale)
+        lineTo(x, 100 - 0.9 * scale)
+        filled = true
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    top += fline {
+        moveTo(x, 100 - 0.9 * scale)
+        lineTo(30.0, 100.0)
+        lineTo(x, 100 + 0.9 * scale)
+        color = vec(0.4, 0.9, 1.0, 1.0)
+    }
+    lines(top, channel = "above", w = 640.0, h = 200.0, framing = LinesFraming.fixed(0.0, 0.0, 640.0, 200.0))
+    // The eye's view: 40° across 640 pixels. The car is 1.8 m wide and 1.5 m tall.
+    val perDegree = 640.0 / 40
+    val w = 2 * half * 180 / PI * perDegree
+    val h = 2 * atan(0.75 / distance) * 180 / PI * perDegree
+    val eye = fline {
+        moveTo(320 - w / 2, 140 - h)
+        lineTo(320 + w / 2, 140 - h)
+        lineTo(320 + w / 2, 140.0)
+        lineTo(320 - w / 2, 140.0)
+        lineTo(320 - w / 2, 140 - h)
+        filled = true
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    val ground = fline {
+        moveTo(0.0, 140.0)
+        lineTo(640.0, 140.0)
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
+    lines(ground, eye, channel = "view", w = 640.0, h = 160.0, framing = LinesFraming.fixed(0.0, 0.0, 640.0, 160.0))
+    markdown("readout", "${distance.roundToInt()} m away: ${(2 * half * 180 / PI).f1}°")
+}
+
+draw(10.0)
+controlGroup {
+    slider("distance", 3.0, 60.0, step = 1.0, initialValue = 10.0) { draw(it) }
+}
+```
+
+### Angles as lengths
+
+<figure class="field-margin-figure" markdown>
+![The slide “Angles as lengths” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/radians.png)
+</figure>
+
+Measure an angle by the arc it cuts from a circle: arc length over radius is the angle in radians,
+and a whole turn is 2π. For a small angle the arc is nearly straight, so size ≈ angle × distance.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/radians.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-radians" alt="A circle with a highlighted cyan arc cut off by a 60° angle and a short bar for the radius, a readout that 60° is 1.05 radians, and angle and radius sliders"}
+// An angle measured by the arc it cuts from a circle. Unrolled on the right, the arc is so many
+// radii long: that count is the angle in radians.
+var radius = 90.0
+var degrees = 60.0
+
+fun draw() {
+    val a = degrees * PI / 180
+    val cx = 160.0
+    val cy = 150.0
+    val drawn = mutableListOf<FLine>()
+    drawn += fline {
+        moveTo(cx + radius, cy)
+        for (k in 1..120) lineTo(cx + radius * cos(2 * PI * k / 120), cy - radius * sin(2 * PI * k / 120))
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
+    drawn += fline {
+        moveTo(cx + radius, cy)
+        lineTo(cx, cy)
+        lineTo(cx + radius * cos(a), cy - radius * sin(a))
+        color = vec(1.0, 1.0, 1.0, 0.8)
+    }
+    drawn += fline {
+        moveTo(cx + radius, cy)
+        for (k in 1..90) lineTo(cx + radius * cos(a * k / 90), cy - radius * sin(a * k / 90))
+        thickness = 4.0
+        color = vec(0.4, 0.9, 1.0, 1.0)
+    }
+    // The arc laid straight, drawn at 0.4 of its length, with a tick at every radius.
+    val x0 = 330.0
+    drawn += fline {
+        moveTo(x0, 270.0)
+        lineTo(x0 + radius * a * 0.4, 270.0)
+        thickness = 4.0
+        color = vec(0.4, 0.9, 1.0, 1.0)
+    }
+    var k = 0
+    while (k * radius <= radius * a + 1e-9) {
+        drawn += fline {
+            moveTo(x0 + k * radius * 0.4, 258.0)
+            lineTo(x0 + k * radius * 0.4, 282.0)
+            thickness = 2.0
+            color = vec(1.0, 0.6, 0.2, 1.0)
+        }
+        k++
+    }
+    lines(drawn, channel = "circle", w = 640.0, h = 300.0, framing = LinesFraming.fixed(0.0, 0.0, 640.0, 300.0))
+    markdown("readout", "${degrees.roundToInt()}° = ${a.f2} radians")
+}
+
+draw()
+controlGroup {
+    slider("angle", 0.0, 360.0, step = 1.0, initialValue = degrees) {
+        degrees = it
+        draw()
+    }
+    slider("radius", 40.0, 120.0, step = 1.0, initialValue = radius) {
+        radius = it
+        draw()
+    }
+}
+```
+
+## Solid angles
+
+### Angles in three dimensions
+
+<figure class="field-margin-figure" markdown>
+![The slide “Angles in three dimensions” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/solid-angle.png)
+</figure>
+
+Project a shape onto a sphere of radius one around your eye. The patch it covers is its solid angle,
+in steradians; the whole sphere is 4π. Move a panel twice as far and its solid angle drops to a
+quarter.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/projected_rect.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-projected_rect" alt="A pale cyan panel in front of a wireframe unit sphere around the eye, the patch it covers on the sphere drawn on its surface, a readout of the solid angle and of solid angle times distance squared, and a distance slider"}
+// A square panel 0.8 m across and its shadow on a sphere of radius one around the eye. The area of
+// that shadow is the panel's solid angle; move the panel away and it shrinks as the square.
+val sphere = icosphereMesh(4, 1.0)
+// Two great circles, so the sphere reads as a sphere without a wireframe in the way.
+val circles = [
+    fline {
+        moveTo(1.0, 0.0, 0.0)
+        for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96))
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    },
+    fline {
+        moveTo(1.0, 0.0, 0.0)
+        for (k in 1..96) lineTo(cos(2 * PI * k / 96), sin(2 * PI * k / 96), 0.0)
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    },
+]
+
+fun draw(distance: Double) {
+    val panel = planeMesh(12, 12, 0.8, 0.8).translated(0.0, 0.0, -distance)
+    // Every point of the panel pushed onto the unit sphere, along its line to the eye.
+    val shadow = panel.transformed { p -> p.normalize().mul(1.004f) }
+    var omega = 0.0
+    for (t in 0 until shadow.triangleCount) omega += shadow.triangleArea(t)
+    // From the eye through each corner of the patch to the panel's corner.
+    val corners =
+        listOf(-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4).map { (x, y) ->
+            fline {
+                moveTo(0.0, 0.0, 0.0)
+                lineTo(x, y, -distance)
+                color = vec(1.0, 1.0, 1.0, 0.35)
+            }
+        }
+    three(channel = "scene", width = 640, height = 420) {
+        mesh(sphere.withColor(0.4, 0.45, 0.5), opacity = 0.1, wireframe = false)
+        lines(circles + corners)
+        mesh(panel.withColor(0.4, 0.9, 1.0), unlit = true, wireframe = false, cullBackFaces = false)
+        mesh(shadow.withColor(1.0, 0.6, 0.2), unlit = true, wireframe = false, cullBackFaces = false)
+        mesh(icosphereMesh(1, 0.03).withColor(1.0, 1.0, 1.0), unlit = true, wireframe = false)
+        fitTo(vec(-1.1, -1.1, -2.4), vec(1.1, 1.1, 0.6))
+        camera(yaw = 145.0, pitch = 18.0)
+        background("#000000")
+        hud(false)
+    }
+    markdown("readout", "${distance.f1} m: ${omega.f3} sr · × distance² = ${(omega * distance * distance).f2}")
+}
+
+draw(1.3)
+controlGroup {
+    slider("distance", 1.2, 4.0, step = 0.1, initialValue = 1.3) { draw(it) }
+}
+```
+
+## Surface vision
+
+### What the floor sees
+
+<figure class="field-margin-figure" markdown>
+![The slide “What the floor sees” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/hemisphere.png)
+</figure>
+
+A point on a floor looks out on a hemisphere of directions. Project the lamp onto that hemisphere,
+then flatten it straight down onto the disc beneath: the share of the disc it covers is the share of
+light the point gets. The flattening is the cosine factor again.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/hemisphere.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-hemisphere" alt="A three-dimensional view of a white lamp panel over a grey floor, its outline projected onto a hemisphere around a floor point in orange and then flattened onto the disc below in cyan, a readout of 18.1% of the disc, and a lamp position slider"}
+:::fold imports
+import afield.graphics.lighting.*
+:::endfold
+
+/*
+What one point on the floor sees: a hemisphere of directions. The lamp, pushed onto that
+hemisphere (orange) and then flattened straight down onto the disc beneath (cyan). The share of
+the disc the flattened lamp covers is the share of the lamp's radiance that reaches the point.
+*/
+val dome =
+    icosphereMesh(4, 1.0).let { ball ->
+        ball.filterTriangles { t -> ball.triangle(t).let { (a, b, c) -> a.y + b.y + c.y > 0 } }
+    }
+val floor = floorMesh(2.6, 2.6, divisions = 48)
+val rim = fline {
+    moveTo(1.0, 0.0, 0.0)
+    for (k in 1..96) lineTo(cos(2 * PI * k / 96), 0.0, sin(2 * PI * k / 96))
+    color = vec(1.0, 1.0, 1.0, 0.4)
+}
+val side = 1.0
+
+fun draw(across: Double) {
+    val lamp = RectLight(vec(across, 1.2, 0.0), width = side, height = side, power = 20.0)
+    val outline = planeMesh(12, 12, side, side).transformed { p -> vec(p.x + across, 1.2, p.y) }
+    val onDome = outline.transformed { p -> p.normalize().mul(1.004f) }
+    val flat = onDome.transformed { p -> vec(p.x, 0.004, p.z) }
+    var covered = 0.0
+    for (t in 0 until flat.triangleCount) covered += flat.triangleArea(t)
+    // Irradiance two ways: summed over the lamp by afield.graphics.lighting, and the lamp's
+    // radiance times the flattened area it covers.
+    val radiance = lamp.power / (PI * side * side)
+    val e = irradianceAt(vec(0.0, 0.0, 0.0), vec(0.0, 1.0, 0.0), lamp).x
+    val sight =
+        listOf(-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5).map { (x, z) ->
+            fline {
+                moveTo(0.0, 0.0, 0.0)
+                lineTo(across + x, 1.2, z)
+                color = vec(1.0, 1.0, 1.0, 0.3)
+            }
+        }
+    three(channel = "scene", width = 640, height = 420) {
+        mesh(floor.lit([lamp], occluders = null, exposure = 0.35), unlit = true, wireframe = false)
+        mesh(dome.withColor(0.4, 0.45, 0.5), opacity = 0.12, wireframe = false, cullBackFaces = false)
+        lines(sight + rim)
+        mesh(lamp.mesh(), unlit = true, wireframe = false, cullBackFaces = false)
+        mesh(onDome.withColor(1.0, 0.6, 0.2), unlit = true, wireframe = false, cullBackFaces = false)
+        mesh(flat.withColor(0.4, 0.9, 1.0), unlit = true, wireframe = false, cullBackFaces = false)
+        fitTo(vec(-1.1, 0.0, -1.1), vec(1.1, 1.25, 1.1))
+        camera(yaw = 20.0, pitch = 30.0)
+        background("#000000")
+        hud(false)
+    }
+    markdown("readout", "${(100 * covered / PI).f1} % of the disc · ${(radiance * covered).f2} W/m² (summed: ${e.f2})")
+}
+
+draw(0.0)
+controlGroup {
+    slider("lamp position", -2.0, 2.0, step = 0.05, initialValue = 0.0) { draw(it) }
+}
+```
+
+## Radiance
+
+### Brightness that does not fade
+
+<figure class="field-margin-figure" markdown>
+![The slide “Brightness that does not fade” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/radiance.png)
+</figure>
+
+Step back from a lamp and it looks just as bright, only smaller. Each cell in the eye takes in a
+fixed cone of directions; farther away, that cone covers more of the lamp, and the extra area makes
+up for the inverse-square law exactly. What stays the same is called radiance.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/constant_radiance.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-constant_radiance" alt="A side view of an eye at the left looking through a narrow cyan cone at an orange lamp, a readout that at 1.0 m the cone covers 1.0 times the area and each part looks 1.0 times fainter, and a distance slider"}
+// An eye looking at a wide lamp, from the side. One cell of the eye takes in a fixed cone of
+// directions; move the lamp away and the cone covers more of it.
+fun draw(distance: Double) {
+    val half = 5 * PI / 180
+    val x = 60 + distance * 130
+    val reach = (x - 60) * tan(half)
+    val drawn = mutableListOf<FLine>()
+    drawn += fline {
+        moveTo(x, 20.0)
+        lineTo(x, 260.0)
+        thickness = 4.0
+        color = vec(1.0, 1.0, 1.0, 0.5)
+    }
+    drawn += fline {
+        moveTo(x, 140 - reach)
+        lineTo(x, 140 + reach)
+        thickness = 8.0
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    drawn += fline {
+        moveTo(x, 140 - reach)
+        lineTo(60.0, 140.0)
+        lineTo(x, 140 + reach)
+        color = vec(0.4, 0.9, 1.0, 1.0)
+    }
+    drawn += fline {
+        moveTo(40.0, 125.0)
+        lineTo(60.0, 140.0)
+        lineTo(40.0, 155.0)
+        thickness = 3.0
+        color = vec(1.0, 1.0, 1.0, 0.8)
+    }
+    lines(drawn, channel = "side", w = 640.0, h = 280.0, framing = LinesFraming.fixed(0.0, 0.0, 640.0, 280.0))
+    val d2 = distance * distance
+    markdown("readout", "${distance.f1} m: ${d2.f1}× the area, each ${d2.f1}× fainter")
+}
+
+draw(1.0)
+controlGroup {
+    slider("distance", 1.0, 4.0, step = 0.1, initialValue = 1.0) { draw(it) }
+}
+```
+
+### Equally bright from every side
+
+<figure class="field-margin-figure" markdown>
+![The slide “Equally bright from every side” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/lambert.png)
+</figure>
+
+A matte emitter sends less power off to the side, in proportion to the cosine of the angle. Seen
+from that side its surface is foreshortened by the same cosine, so it looks equally bright from any
+direction.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/lambert_lobe.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-lambert_lobe" alt="A side view of a flat orange emitter with its emission drawn as a cyan circle resting on it, longest straight up and shrinking toward the sides, faint rays around it, a readout at 0°, and a viewing angle slider"}
+// A small matte patch giving off light, seen from the side. It sends less light off to the side,
+// as the cosine of the angle, and it also looks narrower from there by the same cosine.
+val rays = 41
+
+fun draw(degrees: Double) {
+    val v = degrees * PI / 180
+    val drawn = mutableListOf<FLine>()
+    // Rays whose sines are evenly spaced: their density falls off as the cosine.
+    for (i in 0 until rays) {
+        val s = 2.0 * (i + 0.5) / rays - 1
+        val c = sqrt(1 - s * s)
+        drawn += fline {
+            moveTo(320.0, 250.0)
+            lineTo(320 + 210 * s, 250 - 210 * c)
+            color = vec(1.0, 1.0, 1.0, 0.3)
+        }
+    }
+    // The lobe: in each direction, the power sent that way. A circle resting on the patch.
+    drawn += fline {
+        moveTo(320.0, 250.0)
+        for (k in 1..180) {
+            val p = -PI / 2 + PI * k / 180
+            lineTo(320 + 200 * cos(p) * sin(p), 250 - 200 * cos(p) * cos(p))
+        }
+        thickness = 2.0
+        color = vec(0.4, 0.9, 1.0, 1.0)
+    }
+    drawn += fline {
+        moveTo(270.0, 250.0)
+        lineTo(370.0, 250.0)
+        thickness = 6.0
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    // The viewing direction, and how wide the patch looks from there.
+    drawn += fline {
+        moveTo(320.0, 250.0)
+        lineTo(320 + 240 * sin(v), 250 - 240 * cos(v))
+        thickness = 2.0
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    val w = 50 * cos(v)
+    drawn += fline {
+        moveTo(320 + 240 * sin(v) - w * cos(v), 250 - 240 * cos(v) - w * sin(v))
+        lineTo(320 + 240 * sin(v) + w * cos(v), 250 - 240 * cos(v) + w * sin(v))
+        thickness = 5.0
+        color = vec(1.0, 0.6, 0.2, 1.0)
+    }
+    lines(drawn, channel = "side", w = 640.0, h = 280.0, framing = LinesFraming.fixed(0.0, 0.0, 640.0, 280.0))
+    val c = cos(v)
+    markdown(
+        "readout",
+        "${degrees.roundToInt()}°: ${(c * 100).roundToInt()} % of the power, ${(c * 100).roundToInt()} % of the width",
+    )
+}
+
+draw(0.0)
+controlGroup {
+    slider("viewing angle", -80.0, 80.0, step = 1.0, initialValue = 0.0) { draw(it) }
+}
+```
+
+## Reflections
+
+### Mirror to matte
+
+<figure class="field-margin-figure" markdown>
+![The slide “Mirror to matte” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/reflections.png)
+</figure>
+
+A mirror sends each ray back at the angle it arrived. Roughen it and every ray meets a facet tilted
+its own way, so the returning rays fan out. A surface rough enough at every scale sends light back
+in all directions alike: matte.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/rough_mirror.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-rough_mirror" alt="A side view of orange rays arriving at a surface from the left and cyan rays leaving it to the right, all at the mirror angle, with roughness and light angle sliders"}
+// Parallel rays striking a surface, seen from the side. Each ray meets a tiny facet of the
+// surface and leaves as from a mirror; roughness tilts the facets, so the rays fan out.
+val rays = 25
+var roughness = 0.0
+var angle = 40.0
+
+fun draw() {
+    val a = angle * PI / 180
+    val drawn = mutableListOf<FLine>()
+    drawn += fline {
+        moveTo(20.0, 240.0)
+        lineTo(620.0, 240.0)
+        color = vec(1.0, 1.0, 1.0, 0.35)
+    }
+    for (i in 0 until rays) {
+        val x = 220 + 200.0 * i / (rays - 1)
+        // Each facet's tilt, spread evenly (golden-ratio steps) over ± roughness × 50°.
+        val tilt = roughness * 50 * PI / 180 * (2 * ((i * 0.618034) % 1.0) - 1)
+        // Travelling down and to the right; y grows downward in this drawing.
+        val dx = sin(a)
+        val dy = cos(a)
+        // The facet's normal points up, tilted; the ray reflects about it.
+        val nx = sin(tilt)
+        val ny = -cos(tilt)
+        val dot = dx * nx + dy * ny
+        var rx = dx - 2 * dot * nx
+        var ry = dy - 2 * dot * ny
+        if (ry > 0) ry = -ry
+        drawn += fline {
+            moveTo(x - dx * 230, 240 - dy * 230)
+            lineTo(x, 240.0)
+            color = vec(1.0, 0.6, 0.2, 0.6)
+        }
+        drawn += fline {
+            moveTo(x, 240.0)
+            lineTo(x + rx * 200, 240 + ry * 200)
+            color = vec(0.4, 0.9, 1.0, 0.9)
+        }
+        drawn += fline {
+            moveTo(x - 6 * cos(tilt), 240 - 6 * sin(tilt))
+            lineTo(x + 6 * cos(tilt), 240 + 6 * sin(tilt))
+            thickness = 2.0
+            color = vec(1.0, 1.0, 1.0, 0.8)
+        }
+    }
+    lines(drawn, channel = "side", w = 640.0, h = 280.0, framing = LinesFraming.fixed(0.0, 0.0, 640.0, 280.0))
+}
+
+draw()
+controlGroup {
+    slider("roughness", 0.0, 1.0, step = 0.01, initialValue = roughness) {
+        roughness = it
+        draw()
+    }
+    slider("light angle", 0.0, 70.0, step = 1.0, initialValue = angle) {
+        angle = it
+        draw()
+    }
+}
+```
+
+## Shadow
+
+### Soft and hard shadows
+
+<figure class="field-margin-figure" markdown>
+![The slide “Soft and hard shadows” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/soft-shadow.png)
+</figure>
+
+Keep the lamp's power fixed and make it bigger. Points near the edge of the shadow can now see part
+of the lamp, and the hard edge softens into a penumbra.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/soft_shadow.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-soft_shadow" alt="A three-dimensional view of a lamp above a floor and a block casting a dark shadow with a sharp edge, an orange point at the shadow's edge and the line from it to the lamp, a readout of how much of the lamp that point sees, and size, altitude and point sliders"}
+:::fold imports
+import afield.graphics.lighting.*
+:::endfold
+
+/*
+A black wall on a white floor, lit by a ball of light. The ball always gives out 40 W;
+make it bigger and the edge of the shadow softens.
+The wall's faces sit on the floor's grid lines, so no floor vertex is half under it.
+*/
+val floor = floorMesh(4.0, 3.2, divisions = 80).withColor(0.8, 0.8, 0.8)
+val wall = panelBoxMesh(0.05, 0.6, 1.2, divisions = 4).translated(0.025, 0.3, 0.0).withColor(0.03, 0.03, 0.03)
+val blocker = wall.bvh()
+val scene = floor + wall
+// The lit floor depends only on the lamp, so moving the point redraws the lines, not the light.
+var litFor = ""
+var litScene = scene
+var size = 0.05
+var altitude = 50.0
+var probe = 1.15
+
+fun draw() {
+    val a = altitude * PI / 180
+    val lamp = SphereLight(vec(-1.4 * cos(a), 1.4 * sin(a), 0.0), radius = size, power = 40.0, samples = 160)
+    // From one point on the floor: a line to every bit of the lamp it faces, cyan where it is clear.
+    val point = vec(probe, 0.0, 0.0)
+    val sight = lamp.sightLines(point, vec(0.0, 1.0, 0.0), blocker)
+    val rays = sight.map { s ->
+        fline {
+            moveTo(s.from.x.toDouble(), s.from.y.toDouble(), s.from.z.toDouble())
+            lineTo(s.to.x.toDouble(), s.to.y.toDouble(), s.to.z.toDouble())
+            color = if (s.clear) vec(0.4, 0.9, 1.0, 0.7) else vec(1.0, 1.0, 1.0, 0.08)
+        }
+    }
+    if (litFor != "$size $altitude") {
+        // Only the wall casts shadows; the floor need not be tested against its own triangles.
+        litScene = scene.lit([lamp], occluders = wall, exposure = 0.6)
+        litFor = "$size $altitude"
+    }
+    three(channel = "scene", width = 640, height = 420) {
+        mesh(litScene, unlit = true, wireframe = false)
+        mesh(lamp.mesh(), unlit = true, wireframe = false)
+        mesh(icosphereMesh(2, 0.035).translated(point).withColor(1.0, 0.6, 0.2), unlit = true, wireframe = false)
+        lines(rays)
+        // Frame the view on the whole set, so it holds still as the lamp changes.
+        fitTo(vec(-2.0, 0.0, -1.6), vec(2.0, 1.6, 1.6))
+        camera(yaw = 20.0, pitch = 35.0)
+        background("#000000")
+        hud(false)
+    }
+    markdown(
+        "readout",
+        "The orange point sees ${(100.0 * sight.count { it.clear } / sight.size.coerceAtLeast(1)).roundToInt()} % of the lamp",
+    )
+}
+
+draw()
+controlGroup {
+    slider("size", 0.02, 0.5, step = 0.01, initialValue = size) {
+        size = it
+        draw()
+    }
+    slider("altitude", 15.0, 85.0, step = 1.0, initialValue = altitude) {
+        altitude = it
+        draw()
+    }
+    slider("point", -1.5, 1.8, step = 0.01, initialValue = probe) {
+        probe = it
+        draw()
+    }
+}
+```
+
+## Colour
+
+### Coloured light
+
+<figure class="field-margin-figure" markdown>
+![The slide “Coloured light” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/colour.png)
+</figure>
+
+We stand in for the many wavelengths of light with three: red, green and blue power. A surface's
+colour is how much of each it sends back.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/light_colour.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-light_colour" alt="Nine tiles in white, red, green, blue, yellow, cyan, magenta, orange and grey under a white light, and a light colour picker"}
+:::fold imports
+import afield.graphics.lighting.*
+:::endfold
+
+// Nine tiles of different colours under one lamp whose colour you pick. A tile can only send
+// back the colours the lamp gives it.
+val colours = [
+    vec(0.8, 0.8, 0.8),
+    vec(0.8, 0.1, 0.1),
+    vec(0.1, 0.7, 0.1),
+    vec(0.1, 0.2, 0.8),
+    vec(0.8, 0.7, 0.1),
+    vec(0.1, 0.7, 0.7),
+    vec(0.7, 0.1, 0.7),
+    vec(0.8, 0.4, 0.1),
+    vec(0.3, 0.3, 0.3),
+]
+val tiles =
+    colours
+        .withIndex()
+        .map { (i, c) ->
+            floorMesh(0.5, 0.5, divisions = 8)
+                .translated((i % 3 - 1) * 0.6, 0.0, (i / 3 - 1) * 0.6)
+                .withColor(c.x, c.y, c.z)
+        }
+        .reduce { a, b -> a + b }
+
+fun draw(light: Vec4) {
+    val lamp =
+        RectLight(vec(0.0, 1.6, 0.0), width = 1.2, height = 1.2, power = 60.0, color = vec(light.x, light.y, light.z))
+    three(channel = "scene", width = 640, height = 420) {
+        mesh(tiles.lit([lamp], occluders = null, exposure = 0.6), unlit = true, wireframe = false)
+        camera(yaw = 0.0, pitch = 60.0, distance = 2.0)
+        background("#000000")
+        hud(false)
+    }
+}
+
+draw(vec(1.0, 1.0, 1.0, 1.0))
+controlGroup {
+    colorPicker("light colour", initialValue = vec(1.0, 1.0, 1.0, 1.0)) { draw(it) }
+}
+```
+
+### Lights add up
+
+<figure class="field-margin-figure" markdown>
+![The slide “Lights add up” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/additive.png)
+</figure>
+
+Two lamps on one floor simply add. Where a red and a green pool of light overlap, the floor turns
+yellow.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/additive.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-additive" alt="A floor lit by red, green and blue lamps, the coloured pools overlapping into mixed colours around a white block, with red, green and blue checkboxes and a spread slider"}
+:::fold imports
+import afield.graphics.lighting.*
+:::endfold
+
+// Red, green and blue lamps over a white floor with a white block. Where two pools overlap
+// their light adds; the block's shadows take the colours of the lamps it hides.
+val floor = floorMesh(2.4, 2.4, divisions = 72).withColor(0.8, 0.8, 0.8)
+val block = panelBoxMesh(0.3, 0.5, 0.3, divisions = 6).translated(0.0, 0.25, 0.0).withColor(0.8, 0.8, 0.8)
+val scene = floor + block
+var red = true
+var green = true
+var blue = true
+var spread = 0.6
+
+fun draw() {
+    val lamps = listOf(
+        Triple(red, 90.0, vec(1.0, 0.0, 0.0)),
+        Triple(green, 210.0, vec(0.0, 1.0, 0.0)),
+        Triple(blue, 330.0, vec(0.0, 0.0, 1.0)),
+    ).filter { it.first }
+        .map { (_, degrees, colour) ->
+            val a = degrees * PI / 180
+            SphereLight(
+                vec(spread * cos(a), 1.2, spread * sin(a)),
+                radius = 0.04,
+                power = 25.0,
+                color = colour,
+                samples = 128,
+            )
+        }
+    three(channel = "scene", width = 640, height = 420) {
+        mesh(scene.lit(lamps, occluders = block, exposure = 1.2), unlit = true, wireframe = false)
+        lamps.forEach { mesh(it.mesh(), unlit = true, wireframe = false) }
+        camera(yaw = 20.0, pitch = 45.0, distance = 2.0)
+        background("#000000")
+        hud(false)
+    }
+}
+
+draw()
+controlGroup {
+    checkbox("red", initialValue = true) {
+        red = it
+        draw()
+    }
+    checkbox("green", initialValue = true) {
+        green = it
+        draw()
+    }
+    checkbox("blue", initialValue = true) {
+        blue = it
+        draw()
+    }
+    slider("spread", 0.0, 1.2, step = 0.01, initialValue = spread) {
+        spread = it
+        draw()
+    }
+}
+```
+
+## Bounces
+
+### Light keeps going
+
+<figure class="field-margin-figure" markdown>
+![The slide “Light keeps going” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/bounces.png)
+</figure>
+
+The light a surface sends back lands on other surfaces. A red wall beside a white floor tints the
+floor red. Each bounce is weaker than the last, and their sum is the scene's indirect light.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/red_wall.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-red_wall" alt="A three-dimensional view of a white floor meeting a red wall with a lamp near the wall, the floor lit only directly at zero bounces, with power and bounces sliders and a bounced light only checkbox"}
+:::fold imports
+import afield.graphics.lighting.*
+:::endfold
+
+/*
+A white floor beside a red wall, lit by one small lamp close to the wall, so the wall is lit
+far more brightly than the floor. The solve follows the light through three bounces once,
+when the box runs; the sliders only choose what to show.
+*/
+val floor = floorMesh(2.4, 2.4, divisions = 24).withColor(0.8, 0.8, 0.8)
+val wall = panelBoxMesh(2.4, 1.4, 0.05, divisions = 16).translated(0.0, 0.7, -1.225).withColor(0.9, 0.06, 0.03)
+val lamp = SphereLight(vec(0.0, 0.9, -0.8), radius = 0.06, power = 1.0)
+val solve = Radiosity(floor + wall, [lamp], bounces = 3)
+
+var power = 20.0
+var bounces = 0.0
+var bounceOnly = false
+
+fun draw() {
+    val shown = solve.lit(
+        upTo = bounces.toInt(),
+        from = if (bounceOnly) 1 else 0,
+        exposure = if (bounceOnly) 2.0 else 0.6,
+        scale = power,
+        toneMap = ToneMap.EXPONENTIAL,
+    )
+    three(channel = "scene", width = 640, height = 420) {
+        mesh(shown, unlit = true, wireframe = false)
+        mesh(lamp.mesh(), unlit = true, wireframe = false)
+        camera(yaw = 25.0, pitch = 28.0, distance = 2.2)
+        background("#000000")
+        hud(false)
+    }
+}
+
+draw()
+controlGroup {
+    slider("power", 5.0, 60.0, step = 1.0, initialValue = power) {
+        power = it
+        draw()
+    }
+    slider("bounces", 0.0, 3.0, step = 1.0, initialValue = bounces) {
+        bounces = it
+        draw()
+    }
+    checkbox("bounced light only") {
+        bounceOnly = it
+        draw()
+    }
+}
+```
+
+## Sphere of light
+
+### A sky of light
+
+<figure class="field-margin-figure" markdown>
+![The slide “A sky of light” in the audience window: its prose on the left and the live figure on the right.](assets/explainer_lights/slides/sky.png)
+</figure>
+
+Surround the scene with light from every direction, like an overcast sky. Nothing casts a hard
+shadow, yet a tile still darkens the ground just beneath it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/sky_sphere.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-sky_sphere" alt="A three-dimensional view of a pale floor with a dark tile floating just above it and a darker patch beneath the tile, lit by one small lamp, with lamps and tile height sliders"}
+:::fold imports
+import afield.graphics.lighting.*
+:::endfold
+
+/*
+A floor under a dome of small lamps, all of them together giving out 400 W, and a black tile
+held above the floor. With one lamp the tile casts a hard shadow; with hundreds the light comes
+from the whole sky and only the ground right under the tile stays dark.
+*/
+val floor = floorMesh(3.0, 3.0, divisions = 60).withColor(0.8, 0.8, 0.8)
+val golden = PI * (3 - sqrt(5.0))
+val dot = icosphereMesh(1, 0.03).withColor(1.0, 1.0, 1.0)
+var count = 1.0
+var height = 0.3
+
+fun draw() {
+    val n = count.toInt()
+    // Lamps spread evenly over the upper half of a sphere of radius 2; the first sits overhead.
+    val lamps = n { i ->
+        val y = if (n == 1) 1.0 else 1 - (i + 0.5) / n
+        val r = sqrt(1 - y * y)
+        PointLight(vec(2 * r * cos(golden * i), 2 * y, 2 * r * sin(golden * i)), power = 400.0 / n)
+    }
+    val tile = panelBoxMesh(0.6, 0.02, 0.6, divisions = 4).translated(0.0, height, 0.0).withColor(0.02, 0.02, 0.02)
+    val dots = lamps.map { dot.translated(it.position) }.reduce { a, b -> a + b }
+    three(channel = "scene", width = 640, height = 420) {
+        // Only the tile casts shadows.
+        mesh((floor + tile).lit(lamps, occluders = tile, exposure = 0.4), unlit = true, wireframe = false)
+        mesh(dots, unlit = true, wireframe = false)
+        // Frame the view on the whole set, so it holds still as the lamp changes.
+        fitTo(vec(-2.0, 0.0, -2.0), vec(2.0, 2.0, 2.0))
+        camera(yaw = 25.0, pitch = 30.0, distance = 2.3)
+        background("#000000")
+        hud(false)
+    }
+}
+
+draw()
+controlGroup {
+    slider("lamps", 1.0, 300.0, step = 1.0, initialValue = count, law = ControlLaw.LOGARITHMIC) {
+        count = it
+        draw()
+    }
+    slider("tile height", 0.05, 0.8, step = 0.01, initialValue = height) {
+        height = it
+        draw()
+    }
+}
+```
+
+## Further reading
+
+<figure class="field-margin-figure" markdown>
+![The talk's last slide, “Further reading”, listing the books and sites below.](assets/explainer_lights/slides/further-reading.png)
+</figure>
+
+- Matt Pharr, Wenzel Jakob and Greg Humphreys, [*Physically Based Rendering*](https://pbr-book.org/), free online.
+- Romain Guy and Mathias Agopian, [*Physically Based Rendering in Filament*](https://google.github.io/filament/Filament.md.html), free online.
+- Michael F. Cohen and John R. Wallace, [*Radiosity and Realistic Image Synthesis*](https://archive.org/details/radiosityrealist0000cohe) (1993). The link is the Internet Archive's lending copy.
+
+The talk follows Bartosz Ciechanowski's [Lights and Shadows](https://ciechanow.ski/lights-and-shadows/), read for its order of ideas; every word and figure here was made in Field.
+
+See also: [Sound](explainer_sound.md), [Cameras and Lenses](explainer_cameras.md), the other two talks in this series, and [Presenting with Field](presentation_studio.md).
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`PointLight`](reference/graphics.md#lighting-kt-pointlight)

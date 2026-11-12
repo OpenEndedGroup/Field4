@@ -2,13 +2,13 @@ const path = require('node:path');
 const fs = require('node:fs');
 const {pathToFileURL} = require('node:url');
 const {app, BrowserWindow, WebContentsView, dialog, ipcMain, shell} = require('electron');
-const {validRect, guestUrl, fieldActions, validateGuideState} = require('./presentation-cues');
+const {validRect, guestUrl, figureUrl, fieldActions, validateGuideState, guideTarget, sameTarget, linkTarget, linkNavigation} = require('./presentation-cues');
 const {paintTransitionFrame} = require('./presentation-transition');
 
 const PRELOAD = path.join(__dirname, 'presentation-preload.js');
 const SERVER_MODULE = path.resolve(__dirname, '../tools/presentation/server.mjs');
 const TYPESCRIPT_MODULE = path.resolve(__dirname, '../tools/presentation/typescript-service.mjs');
-const ALLOWED_ACTIONS = new Set(['next', 'previous', 'reset-checkpoint', 'run-cue', 'first', 'last', 'goto', 'reload']);
+const ALLOWED_ACTIONS = new Set(['next', 'previous', 'reset-checkpoint', 'run-cue', 'first', 'last', 'goto', 'reload', 'close-link']);
 let active = null;
 let fieldHost = null;
 let guideUpdates = Promise.resolve();
@@ -26,6 +26,90 @@ function clearGuest(session) {
   session.guest = null;
   session.guestUrl = null;
   session.guestCue = null;
+}
+
+function clearFigures(session) {
+  for (const entry of session?.figures?.values() || []) {
+    try { session.audience.contentView.removeChildView(entry.view); } catch (_) {}
+    try { entry.view.webContents.close(); } catch (_) {}
+  }
+  session?.figures?.clear();
+}
+
+function layoutFigures(session) {
+  if (!session.figures || session.audience.isDestroyed()) return;
+  const [width, height] = session.audience.getContentSize();
+  for (const {view, rect: [x, y, w, h]} of session.figures.values()) {
+    view.setBounds({x: Math.round(x * width), y: Math.round(y * height),
+      width: Math.max(1, Math.round(w * width)), height: Math.max(1, Math.round(h * height))});
+  }
+}
+
+// Live figures: one native view per figure slot, each a Field page showing one box's output
+// (?figure=). A view whose URL the next slide also shows is kept, so a figure carried across
+// slides keeps its state and does not reload.
+async function showFigures(session, content, measured) {
+  if (!session.figures) session.figures = new Map();
+  const document = new URL(session.source.getURL()).searchParams.get('file') || '';
+  const seen = new Map();
+  const wanted = (content?.type === 'html' && Array.isArray(content.figures) ? content.figures : []).map(figure => {
+    const slot = measured.find(item => item.id === figure.id);
+    const rect = validRect(figure.rect) || validRect(slot?.rect);
+    const url = figureUrl(fieldHost?.getFieldUrl(), document, figure, slot?.background);
+    if (!url || !rect) return null;
+    const occurrence = (seen.get(url) || 0) + 1;
+    seen.set(url, occurrence);
+    return {key: `${occurrence}|${url}`, url, rect};
+  }).filter(Boolean);
+  for (const [key, entry] of session.figures) {
+    if (wanted.some(item => item.key === key)) continue;
+    try { session.audience.contentView.removeChildView(entry.view); } catch (_) {}
+    try { entry.view.webContents.close(); } catch (_) {}
+    session.figures.delete(key);
+  }
+  const loads = [];
+  for (const item of wanted) {
+    let entry = session.figures.get(item.key);
+    if (!entry) {
+      const view = new WebContentsView({webPreferences: {
+        sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false,
+        preload: path.join(__dirname, 'field-preload.js'), partition: 'persist:field-presentations',
+      }});
+      view.setBackgroundColor('#000000');
+      view.webContents.setWindowOpenHandler(({url: target}) => {
+        if (/^https?:\/\//i.test(target)) void shell.openExternal(target);
+        return {action: 'deny'};
+      });
+      view.webContents.on('before-input-event', (event, input) => {
+        if (input.type !== 'keyDown') return;
+        const action = input.key === 'F9' ? 'next' : input.key === 'F8' ? 'previous' : null;
+        if (action) { event.preventDefault(); sendAction(session, action); }
+      });
+      view.webContents.on('did-fail-load', (_, code, description, attemptedUrl, isMainFrame) => {
+        if (isMainFrame && code !== -3) emitError(session, `Figure could not load: ${description} (${attemptedUrl})`);
+      });
+      entry = {view, rect: item.rect};
+      session.figures.set(item.key, entry);
+      session.audience.contentView.addChildView(view);
+      loads.push(view.webContents.loadURL(item.url).catch(error => emitError(session, error)));
+    }
+    entry.rect = item.rect;
+  }
+  layoutFigures(session);
+  if (session.transition) {
+    session.audience.contentView.removeChildView(session.transition);
+    session.audience.contentView.addChildView(session.transition);
+  }
+  raiseLink(session);
+  // A figure page is a whole Field client; let it start loading, but do not hold the slide for it.
+  await Promise.race([Promise.all(loads), new Promise(resolve => setTimeout(resolve, 1500))]);
+}
+
+async function remeasureFigures(session) {
+  if (!session?.figures?.size || session.audience.isDestroyed()) return;
+  const measured = await session.audience.webContents.executeJavaScript('window.measureFigures?.() || []').catch(() => []);
+  const content = session.manifest?.slides?.[session.lastCue];
+  if (active === session && content) await showFigures(session, content, measured);
 }
 
 function clearTransition(session) {
@@ -54,6 +138,13 @@ async function prepareTransition(session) {
   const background = session.native && session.guest ? null : await captureFrame(session.audience.webContents);
   const guestImage = session.guest && !session.guest.webContents.isDestroyed()
     ? await captureFrame(session.guest.webContents) : null;
+  const figureImages = await Promise.all([...(session.figures?.values() || [])].map(async ({view}) => {
+    if (view.webContents.isDestroyed()) return null;
+    const image = await captureFrame(view.webContents).catch(() => null);
+    const bounds = view.getBounds();
+    return image && {source: image.toDataURL(),
+      style: `left:${bounds.x}px;top:${bounds.y}px;width:${bounds.width}px;height:${bounds.height}px;border:0;outline:0`};
+  }));
   if (active !== session || session.audience.isDestroyed()) return;
   const overlay = new WebContentsView({webPreferences: {
     sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false,
@@ -76,6 +167,7 @@ async function prepareTransition(session) {
     guestStyle: guestBounds
       ? `left:${guestBounds.x}px;top:${guestBounds.y}px;width:${guestBounds.width}px;height:${guestBounds.height}px;border:0;outline:0`
       : 'display:none',
+    figures: figureImages.filter(Boolean),
   })})`), 'The transition images did not decode');
   if (session.transition !== overlay || active !== session) return;
 }
@@ -170,6 +262,7 @@ async function showGuest(session, cue) {
   });
   session.audience.contentView.addChildView(guest);
   layoutGuest(session);
+  raiseLink(session);
   // Keep the outgoing frame on top while the destination loads, including its first paint.
   if (session.transition) {
     session.audience.contentView.removeChildView(session.transition);
@@ -209,7 +302,85 @@ async function runFieldAction(session, action) {
   throw new Error('This cue has no such Field action');
 }
 
+// A page opened from a link on a slide (Further reading, say). It covers the audience window
+// above the slide, its figures and any guest view, which stay exactly as they were underneath, so
+// going back only closes this view. It is its own sandboxed page: it cannot reach or navigate the
+// audience shell, pop-ups are refused, and it may only go on to other web pages and local PDFs.
+function linkBase(session) {
+  const document = new URL(session.source.getURL()).searchParams.get('file') || '';
+  return `${session.url}/project/${encodeURIComponent(document)}/files/`;
+}
+
+function announceLink(session) {
+  if (!session.control || session.control.isDestroyed()) return;
+  const link = session.link;
+  session.control.webContents.send('field-presentation-link-to-control', link
+    ? {url: link.url, title: link.view.webContents.isDestroyed() ? '' : link.view.webContents.getTitle()} : null);
+}
+
+function layoutLink(session) {
+  if (!session.link || session.audience.isDestroyed()) return;
+  const [width, height] = session.audience.getContentSize();
+  session.link.view.setBounds({x: 0, y: 0, width, height});
+}
+
+/** Views added later (a remeasured figure, a guest) go on top; keep an open page above them. */
+function raiseLink(session) {
+  if (!session.link || session.audience.isDestroyed()) return;
+  session.audience.contentView.removeChildView(session.link.view);
+  session.audience.contentView.addChildView(session.link.view);
+}
+
+function closeLink(session) {
+  const link = session?.link;
+  if (!link) return;
+  session.link = null;
+  try { session.audience.contentView.removeChildView(link.view); } catch (_) {}
+  try { link.view.webContents.close(); } catch (_) {}
+  announceLink(session);
+  if (!session.audience.isDestroyed()) session.audience.webContents.focus();
+}
+
+async function openLink(session, href) {
+  const url = linkTarget(href, linkBase(session));
+  if (!url) { emitError(session, `Only web pages and local PDFs open inside the talk, not ${String(href).slice(0, 200)}`); return; }
+  closeLink(session);
+  const view = new WebContentsView({webPreferences: {
+    sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false,
+    plugins: true, // Chromium's PDF viewer
+    partition: 'persist:field-presentation-links',
+  }});
+  view.setBackgroundColor('#ffffff');
+  view.webContents.setWindowOpenHandler(() => ({action: 'deny'}));
+  const guard = (event, target) => { if (!linkTarget(target, url)) event.preventDefault(); };
+  view.webContents.on('will-navigate', guard);
+  view.webContents.on('will-redirect', guard);
+  view.webContents.on('page-title-updated', () => { if (session.link?.view === view) announceLink(session); });
+  view.webContents.on('did-fail-load', (_, code, description, attemptedUrl, isMainFrame) => {
+    if (isMainFrame && code !== -3) emitError(session, `The linked page could not load: ${description} (${attemptedUrl})`);
+  });
+  // Escape and a clicker's keys go back to the slide; arrows, Space and Page keys scroll the page.
+  view.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown' || !['Escape', 'F8', 'F9'].includes(input.key)) return;
+    event.preventDefault();
+    closeLink(session);
+  });
+  session.link = {view, url};
+  session.audience.contentView.addChildView(view);
+  layoutLink(session);
+  announceLink(session);
+  view.webContents.focus();
+  await view.webContents.loadURL(url).catch(error => { if (session.link?.view === view) emitError(session, error); });
+}
+
 function sendAction(session, action, id) {
+  if (session?.native && session.link) {
+    const plan = linkNavigation(action, id, session.state);
+    if (plan.close) closeLink(session);
+    if (!plan.navigate) return;
+    ({action, id} = plan.navigate);
+  }
+  if (action === 'close-link') return;
   if (session?.native) {
     void navigateGuide(session, action, id).catch(error => emitError(session, error));
     return;
@@ -250,7 +421,10 @@ async function closePresentation() {
   session.typescript?.dispose();
   fieldHost?.enableTypeScript([]);
   clearTransition(session);
+  closeLink(session);
   clearGuest(session);
+  clearTimeout(session.remeasureTimer);
+  clearFigures(session);
   if (!session.control.isDestroyed()) session.control.close();
   if (!session.audience.isDestroyed()) session.audience.close();
   if (session.sourceClosed) session.source.removeListener('destroyed', session.sourceClosed);
@@ -266,26 +440,53 @@ async function commandGuide(session, command) {
     ${JSON.stringify({command, slideshowId: session.slideshowId})}))`);
 }
 
+/** Tells the presenter a move has started (from any window or key), so it can show where to. */
+function announcePending(session, target, action) {
+  if (target && session.control && !session.control.isDestroyed()) {
+    session.control.webContents.send('field-presentation-pending-to-control', {action, index: target.index, cueIndex: target.cueIndex});
+  }
+}
+
+/** After a move lands, makes the one that replaced it while it was in flight, if it still goes somewhere. */
+function runQueuedNavigation(session) {
+  const queued = session.queuedNavigation;
+  session.queuedNavigation = null;
+  if (!queued || active !== session || !guideTarget(session.state, 'goto', queued.index)) return;
+  void navigateGuide(session, 'goto', String(queued.index)).catch(error => emitError(session, error));
+}
+
 async function navigateGuide(session, action, id) {
-  if (session.navigating) return;
   const state = session.state;
+  if (session.navigating) {
+    // One move at a time: a different target waits for this one and replaces any other waiting;
+    // the same target again (a held key, a double click) is the move already under way.
+    if (action === 'reload') return;
+    const target = guideTarget(state, action, id);
+    session.queuedNavigation = target && !sameTarget(target, session.navigationTarget) ? target : null;
+    announcePending(session, session.queuedNavigation || session.navigationTarget, action);
+    return;
+  }
   let command = {first: 'home', last: String(state.titles.length - 1), reload: 'refresh'}[action] || action;
   if (action === 'goto') command = String(id);
   if ((action === 'next' && state.index === state.titles.length - 1 && state.cueIndex === state.cueTitles.length) ||
       (action === 'previous' && state.index === 0 && state.cueIndex === 0) ||
       (action === 'goto' && Number(id) === state.index)) return;
   session.navigating = true;
+  session.navigationTarget = action === 'reload' ? null : guideTarget(state, action, id);
+  announcePending(session, session.navigationTarget, action);
   try {
     await beginTransition(session);
     if (active !== session) return;
     await commandGuide(session, command);
     if (session.navigating) session.navigationTimer = setTimeout(() => {
       session.navigating = false;
+      session.queuedNavigation = null;
       clearTransition(session);
       emitError(session, 'The guide did not respond to navigation. Check the Presentation box for an error.');
     }, 12000);
   } catch (error) {
     session.navigating = false;
+    session.queuedNavigation = null;
     clearTransition(session);
     throw error;
   }
@@ -298,12 +499,16 @@ async function openGuidePresentation(source, state) {
   const control = makeWindow(`${state.title} · controls`, 860, 680);
   const session = {native: true, source, url, audience, control, state, slideshowId: state.slideshowId,
     hostUid: state.hostUid, manifest: {slides: {}, transitionMs: state.transitionMs},
-    guest: null, guestUrl: null, guestRect: [0, 0, 1, 1], guestCue: null, lastCue: null};
+    guest: null, guestUrl: null, guestRect: [0, 0, 1, 1], guestCue: null, lastCue: null, figures: new Map()};
   active = session;
   session.sourceClosed = () => { if (active === session) void closePresentation(); };
   source.once('destroyed', session.sourceClosed);
   audience.on('resize', () => {
     layoutGuest(session);
+    layoutFigures(session);
+    layoutLink(session);
+    clearTimeout(session.remeasureTimer);
+    session.remeasureTimer = setTimeout(() => void remeasureFigures(session).catch(error => emitError(session, error)), 150);
     if (session.transition) {
       const [width, height] = audience.getContentSize();
       session.transition.setBounds({x: 0, y: 0, width, height});
@@ -346,8 +551,10 @@ async function updateGuidePresentation(source, state) {
   try {
     const document = new URL(source.getURL()).searchParams.get('file') || '';
     const baseUrl = `${session.url}/project/${encodeURIComponent(document)}/files/`;
-    await session.audience.webContents.executeJavaScript(`window.renderPresentation(${JSON.stringify({...state, baseUrl, animateBuilds})})`);
+    const rendered = await session.audience.webContents.executeJavaScript(`window.renderPresentation(${JSON.stringify({...state, baseUrl, animateBuilds})})`);
     await showGuest(session, session.lastCue);
+    if (active !== session) return;
+    await showFigures(session, state.content, Array.isArray(rendered?.figures) ? rendered.figures : []);
     if (active !== session) return;
     finishTransition(session);
     session.control.webContents.send('field-presentation-state-to-control', {
@@ -368,6 +575,8 @@ async function updateGuidePresentation(source, state) {
   } finally {
     clearTimeout(session.navigationTimer);
     session.navigating = false;
+    session.navigationTarget = null;
+    runQueuedNavigation(session);
   }
 }
 
@@ -475,6 +684,14 @@ function install() {
     if (request?.action === 'diagnostics') return active.typescript.diagnostics(request);
     if (request?.action === 'completions') return active.typescript.completions(request);
     throw new Error('Unknown TSX action');
+  });
+  // A link clicked on the audience slide, in the presenter, or in a slide's note on the canvas.
+  ipcMain.on('field-presentation-open-link', (event, href) => {
+    const session = active;
+    if (!session?.native) return;
+    const from = event.sender;
+    if (from !== session.audience.webContents && from !== session.control.webContents && from !== session.source) return;
+    void openLink(session, href).catch(error => emitError(session, error));
   });
   ipcMain.on('field-presentation-action', (event, {action, id} = {}) => {
     if (event.sender !== active?.control.webContents) return;

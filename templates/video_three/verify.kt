@@ -12,7 +12,10 @@ try {
     groupLooks.scope.loadKey(file)()
     carousel.surfaces.forEachIndexed { i, s -> check(kotlin.math.abs(s.shadowCooling - (.1 + .04 * i)) < 1e-6) }
     val beforeBad = carousel.surfaces.map { it.shadowCooling }
-    val rejected = runCatching { groupLooks.scope.Key("output.shadowCooling" to .8, "flash.onFrames" to 0.0, "flash.offFrames" to 0.0)() }.exceptionOrNull()!!
+    val rejected = runCatching {
+        groupLooks.scope.Key("output.shadowCooling" to .8, "flash.onFrames" to 0.0, "flash.offFrames" to 0.0)()
+    }
+            .exceptionOrNull()!!
     check(rejected.message!!.contains("screen index 0"))
     check(carousel.surfaces.map { it.shadowCooling } == beforeBad)
     check(carousel.source.speed == preservedSpeed)
@@ -20,4 +23,6 @@ try {
     preserved()
 }
 check(carousel.surfaces.map { it.shadowCooling } == preservedCooling)
-println("Eight real surfaces: function application, native save/reload, flash validation and unchanged shared speed passed")
+println(
+    "Eight real surfaces: function application, native save/reload, flash validation and unchanged shared speed passed",
+)

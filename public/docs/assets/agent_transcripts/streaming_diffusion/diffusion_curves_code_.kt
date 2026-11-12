@@ -1,7 +1,7 @@
 import afield.media.video.diffusion.*
 
 // Connect this box beneath a running renderer box before launching it.
-val owner: Renderer = fromContext()
+val owner = renderer
 prop<SpinningDiffusionDemo>(diffusionDemo)
 fromContextWithNameOrNull<SpinningDiffusionDemo>("diffusionDemo")?.close()
 
@@ -22,9 +22,7 @@ if (!support.available) {
         ${support.reason}
 
         See [Streaming diffusion](https://openendedgroup.com/Field4/streaming_diffusion/).
-        The model environment is optional; you can keep editing this document.
-    """
-            .trimIndent(),
+        The model environment is optional; you can keep editing this document.""".trimIndent(),
     )
 } else {
     var material = 1 // 0 ink, 1 charcoal, 2 barbed wire

@@ -66,12 +66,11 @@ show()
 <!-- field-box id="eagle_flow_movie" index="1" -->
 
 ```edn [field-box id="eagle_flow_movie" role="properties"]
-{"id" "eagle_flow_movie" "index" 1 "name" "2 - The whole clip as a movie" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - The whole clip as a movie" "_tombstone" false "frame" #afield/rect [560.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "eagle_flow_movie_code_.kt" "lines" 54 "characters" 1838 "sha256" "ea04c39e27f5f6a4a3a943a5006f660a79b0841685e7456af300f8bd044aeb45"}]}
+{"id" "eagle_flow_movie" "index" 1 "name" "2 - The whole clip as a movie" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - The whole clip as a movie" "_tombstone" false "frame" #afield/rect [560.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "eagle_flow_movie_code_.kt" "lines" 53 "characters" 1806 "sha256" "7aca4017445a1aca518ab6e9deff1e08e28d0b97eb1712b540d0ae67dd3db3d7"}]}
 ```
 
 ```kotlin [field-property box="eagle_flow_movie" name="code" path="eagle_flow_movie_code_.kt"]
 import afield.geometry.topology.vectorfield.*
-import afield.tools.docs.FFMPEG
 import java.io.File
 
 // Launch this one: every frame drawn in the raw look, encoded at the film's 18 frames per second.

@@ -1,5 +1,4 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 /*
 Verbatim excerpts from texts/source-passage.txt; line breaks are the only layout edits.

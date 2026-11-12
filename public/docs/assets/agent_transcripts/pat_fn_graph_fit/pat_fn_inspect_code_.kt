@@ -10,9 +10,7 @@ source    ${node.strings["source"]}
 knobs     ${node.children.joinToString("  ") { it.role }}
 values    ${gesture.extractParameters().joinToString("  ")}
 
-${gesture.graphText()}
-"""
-        .trimIndent()
+${gesture.graphText()}""".trimIndent()
 
 println(report)
-display("<pre>" + report + "</pre>")
+markdown("```text\n$report\n```")

@@ -120,7 +120,7 @@ After a crash, verify cloudxr.pid is dead and ipc_cloudxr has no owner before mo
 markers aside; never remove live runtime IPC. A failed scene macro leaves Field open for
 repair: inspect scene-launch.jsonl and rerun the macro after fixing its first error.
 
-Edit using a laptop browser in Mac Virtual Display. On the tested beta, connecting the
+With a Mac, edit in Chrome connected to Linux Field through Mac Virtual Display. On the tested beta, connecting the
 native streaming client stops ordinary typing throughout its UI, including WKWebView,
 a plain TextEditor and Apple's message field. Direct Bluetooth and forwarded keyboards
 both fail; GCKeyboard transitions stop too. Local immersion without streaming works.

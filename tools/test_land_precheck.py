@@ -111,6 +111,8 @@ class SelectionTest(unittest.TestCase):
         # Negative control: a transcript is not a demo.
         self.assertNotIn("demo-corpus", keys(Change({"dev_docs/agents/transcripts/x.yaml": "A"})))
         self.assertIn("transcript-index", keys(Change({"dev_docs/agents/transcripts/x.yaml": "A"})))
+        # But the layout guard audits transcripts too (2026-11-10, body_one_live's frameless create).
+        self.assertIn("transcript-layouts", keys(Change({"dev_docs/agents/transcripts/docs_capture/x.yaml": "M"})))
 
     def test_a_new_transcript_selects_the_registration_check(self) -> None:
         # 2026-11-05, gpu_physarum: the branch added the yaml and nothing else (positive control).

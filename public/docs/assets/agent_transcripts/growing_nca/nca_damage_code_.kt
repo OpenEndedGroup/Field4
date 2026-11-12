@@ -1,5 +1,3 @@
-import afield.ui.output.FieldMarkdown
-import afield.ui.visualization.ScaleKind
 import java.util.Base64
 
 /*

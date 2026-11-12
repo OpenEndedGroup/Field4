@@ -4,9 +4,17 @@ Render an OpenXR scene on Linux and view it on Apple Vision Pro through NVIDIA C
 and Apple's Foveated Streaming framework. Field uses its existing Vulkan renderer and
 multiview eye targets; the Vision Pro client handles the stream and native tracking.
 
-The working development setup keeps editing on a laptop: open the Linux Field document in
-its browser and view the laptop through Mac Virtual Display. The headset receives the scene.
-The same live document can be edited from other connected browsers.
+This is a working route for taking a desktop OpenXR scene onto AVP over Wi-Fi. The tested
+editing setup is also usable for real work: **Field on Linux → Chrome on a Mac → Mac Virtual
+Display in Vision Pro**, alongside the streamed scene. That editing setup requires a Mac;
+the scene still renders on Linux. Other connected browsers can edit the same live document.
+
+[Apple's Mac Virtual Display](https://support.apple.com/en-ie/118521) requires a Mac;
+there is no supported Linux sender. A separate AVP remote-desktop
+viewer would normally be [hidden while this app's immersive space is open](https://developer.apple.com/documentation/swiftui/immersive-spaces), so Linux desktop
+streaming through another AVP app is not an established substitute here. Mac Virtual Display
+has its own developer setting for use inside immersive apps: **Settings → Developer → Allow
+Mac Virtual Display**. The client itself also offers optional IDE surfaces, described below.
 
 ## Starting point
 

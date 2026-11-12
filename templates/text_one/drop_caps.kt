@@ -1,8 +1,10 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
-// Authored line breaks are part of the poem. The first three lines sit beside the initial;
-// the fourth returns to the paragraph's left margin. Everything is one measured run, with bounded Slug atlases for its render parts.
+/*
+Authored line breaks are part of the poem. The first three lines sit beside the initial;
+the fourth returns to the paragraph's left margin. Everything is one measured run, with bounded Slug atlases for its
+render parts.
+*/
 val body = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
 val readingFrames = mutableListOf<DiagramTextFrame>()
 val graph = readingDiagram {

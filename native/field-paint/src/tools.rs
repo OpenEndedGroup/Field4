@@ -586,3 +586,62 @@ pub extern "C" fn field_paint_rag_from_state(bytes: *const u8, len: i64) -> *mut
         Ok(Box::into_raw(Box::new(paint::field::state::read_rag(b)?)))
     })
 }
+
+/// Fold the canvas along the line through (`px`, `py`) toward (`dx`, `dy`), press the left half onto
+/// the right at `pressure` and pull it open (`paint::field::squish`, `Canvas::fold_press`). Writes
+/// `[moved mm³, lifted mm³]` to `out`.
+#[unsafe(no_mangle)]
+pub extern "C" fn field_paint_fold_press(
+    c: *mut Studio, px: f32, py: f32, dx: f32, dy: f32, pressure: f32, transfer: f32, spread: f32, peel: f32,
+    ridge: f32, seed: u64, out: *mut f64,
+) -> i32 {
+    guard(-1, || {
+        let st = unsafe { &mut *c };
+        if ![px, py, dx, dy, pressure, transfer, spread, peel, ridge].iter().all(|v| v.is_finite()) || dx == 0.0 && dy == 0.0 {
+            return Err("a fold needs a finite line with a direction".into());
+        }
+        let r = st.canvas.fold_press(px, py, dx, dy, pressure, transfer, spread, peel, ridge, seed);
+        unsafe { *out = r.moved_mm3; *out.add(1) = r.lifted_mm3; }
+        Ok(0)
+    })
+}
+
+/// Press a plate `radius` units across at (`x`, `y`) and peel it off toward (`dx`, `dy`)
+/// (`Canvas::press_peel`). Writes `[moved mm³, lifted mm³]` to `out`.
+#[unsafe(no_mangle)]
+pub extern "C" fn field_paint_press_peel(
+    c: *mut Studio, x: f32, y: f32, radius: f32, pressure: f32, spread: f32, dx: f32, dy: f32, take: f32, peel: f32,
+    ridge: f32, seed: u64, out: *mut f64,
+) -> i32 {
+    guard(-1, || {
+        let st = unsafe { &mut *c };
+        if ![x, y, radius, pressure, spread, dx, dy, take, peel, ridge].iter().all(|v| v.is_finite()) || radius <= 0.0 {
+            return Err("a plate needs a finite place and a positive radius".into());
+        }
+        let r = st.canvas.press_peel(x, y, radius, pressure, spread, dx, dy, take, peel, ridge, seed);
+        unsafe { *out = r.moved_mm3; *out.add(1) = r.lifted_mm3; }
+        Ok(0)
+    })
+}
+
+/// Rub a pad `radius` units across along the `n` points `xy` at `pressure` (`Canvas::rub`). Writes
+/// `[moved mm³, lifted mm³]` to `out`.
+#[unsafe(no_mangle)]
+pub extern "C" fn field_paint_rub(c: *mut Studio, xy: *const f32, n: i32, radius: f32, pressure: f32, seed: u64, out: *mut f64) -> i32 {
+    guard(-1, || {
+        let st = unsafe { &mut *c };
+        let pts = points(xy, n)?;
+        if !(radius.is_finite() && radius > 0.0 && pressure.is_finite()) {
+            return Err("a rub needs a positive radius and a finite pressure".into());
+        }
+        let r = st.canvas.rub(&pts, radius, pressure, seed);
+        unsafe { *out = r.moved_mm3; *out.add(1) = r.lifted_mm3; }
+        Ok(0)
+    })
+}
+
+/// All the wet paint on the canvas, mm³ (`Canvas::wet_mm3`); negative on error.
+#[unsafe(no_mangle)]
+pub extern "C" fn field_paint_wet_mm3(c: *mut Studio) -> f64 {
+    guard(-1.0, || Ok(unsafe { &*c }.canvas.wet_mm3()))
+}

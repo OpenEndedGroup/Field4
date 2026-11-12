@@ -145,6 +145,9 @@ object DemoTranscriptExecSmokeTest {
         // Five CPU boxes: two strokes drawn from code, read back, resampled and paired with
         // matchPoints, morphed, and the morph played as pitch into audio players. Offline buffers only.
         "drawn_morph",
+        // Five CPU boxes: the coopiano port rendered offline (A4, string shape, a pattern, pedal takes,
+        // audio-rate stiffness) into audio players. The sixth, `live`, is created but not executed.
+        "physical_piano",
         // Three CPU boxes: a SourceFramesStudy of a box property with registerStudyTools, then two
         // children that publish a SetNumbers revision and sweep/try variants. Frames come from a CPU
         // painter at 256 px at most; no Window, no Renderer.
@@ -353,11 +356,19 @@ object DemoTranscriptExecSmokeTest {
         // Five independent pure-CPU plane-geometry boxes; showPlaneGrid is drawToSVG -> display,
         // so no AWT, no GPU and nothing to launch.
         "spatial_geometry_examples",
+        // Two independent pure-CPU k-means boxes (Lloyd vs e-means), drawn with showPlaneGrid.
+        "kmeans_emeans",
         // Ten independent pure-CPU spatial-ALife boxes; nothing opens a Window or a Renderer.
         "alife_evolution",
+        "alife_grains",
         "alife_worked_example",
+        // Three pure-CPU tree-growth boxes; the video box is an animateEvolution clip and the
+        // third mounts a slider. No Window, no Renderer.
+        "alife_tree_growth",
         // Three pure-CPU Particle Lenia boxes; the two animated ones are animateEvolution clips and are launched.
         "particle_lenia",
+        // Four pure-CPU Flow Lenia boxes; the three clips are animateEvolution and are launched.
+        "flow_lenia",
         // Five pure-CPU Braitenberg-vehicle boxes (braitenberg_vehicles.md sections 5-9); the
         // moving-lights box is an animateEvolution clip and is launched. No Window, no Renderer.
         "braitenberg_where_next",
@@ -396,6 +407,10 @@ object DemoTranscriptExecSmokeTest {
         // Five independent pure-CPU automatic-differentiation boxes; plot, showSignals and
         // showPlaneGrid all end in display(), so no AWT, no GPU and nothing to launch.
         "autodiff_worked_example",
+        // Random variables sampled on the CPU and drawn by the inline distribution view; three boxes
+        // launch loop { } but need no Window, Renderer or device. The live-audio box (8) is created
+        // but never launched, so no audio device is needed either; the pattern boxes render offline.
+        "noiselang_distributions",
         // λ-terms compiled to interaction nets, reduced and read back, against a substitution
         // evaluator that shares nothing with them. Pure CPU: no Window, no Renderer, no service —
         // the only drawing is `showInteractionOverview`, which is FLines into an output panel. Runs
@@ -533,6 +548,11 @@ object DemoTranscriptExecSmokeTest {
         "fline_hit_records",
         // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
         "fline_measure",
+        // fline_examples.md's curvature-continuous splines: clothoidSplineFrom vs cubicSplineFrom with
+        // curvature combs, a circle, a closed shape. CPU only.
+        "clothoid_spline",
+        // swept-circle stroke outlines and a notation pressure stroke: pure geometry, headless
+        "variable_width_strokes",
         // fline_examples.md's exact booleans and offsets: Area vs booleanExact, byOffsetting vs
         // byOffsettingExact, side by side through lines(). CPU only.
         "fline_exact_booleans",
@@ -561,6 +581,7 @@ object DemoTranscriptExecSmokeTest {
         // Renderer. All check PaintCanvas.isAvailable first; without `./gradlew buildPaintNative` — the branch CI
         // takes — they print where they looked and stop, rather than failing.
         "paint_canvas",
+        "paint_fold_press", // CPU paint simulation; boxes stop with a message without the library
         // Two pure-CPU boxes over the same paint canvas: one registers an agentExtension (paint tools,
         // context, commands, the canvas as branch state) and shows the bare canvas, the other adds a
         // scribble aiTool that paints on it. No model is called; without the paint library the Studio
@@ -617,6 +638,22 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // satellites.md: a week of SGP4 passes over Chicago (CPU), then a renderer, an Earth box and
+        // every catalogued satellite propagated in a vertex shader. Opens a Window, so compile-only.
+        "satellites",
+        // The pilot explainer deck (2026-11-09): its deck box opens Electron audience windows and
+        // its figure box returns an audio patch for the audio device. PresentationFiguresTest
+        // covers the figure engine without either.
+        "explainer_sine_pitch",
+        // The Sound explainer deck: the same shape at full length. The deck opens Electron audience
+        // windows, its figures return audio patches and run animation loops.
+        "explainer_sound",
+        // The cameras explainer deck: its deck box opens Electron audience windows. Its figures
+        // are CPU ray tracing (CameraOpticsTest) and three/lines outputs.
+        "explainer_cameras",
+        // The Lights and Shadows deck: its deck box opens Electron audience windows. Its figures are
+        // CPU lighting in three views; LightingTest checks the physics they are drawn from.
+        "explainer_lights",
         // Box 2 returns a live patSynth launch (an audio-engine registration held while the box runs);
         // the drawing-to-facts path and the live re-solve are covered by DatalogRhythmLiveTest.
         "datalog_rhythm_drawn",
@@ -763,6 +800,8 @@ object DemoTranscriptExecSmokeTest {
         // Real Vulkan/OpenXR rendering; binocular depth additionally requires HTC eye hardware.
         "openxr_eye_intersection",
         "afield_four_traditional_triangle",
+        // A child draw box beneath `agent_graphics_context`; captured by fline_examples.md (graphics context).
+        "variable_width_strokes_gpu",
         // Two ShaderBoids flocks on their own native Window + Renderer; captured by neural_particles.md.
         "shader_boids_separation",
         // ShaderParticleLenia on its own native Window + Renderer; captured by particle_lenia.md.
@@ -931,6 +970,9 @@ object DemoTranscriptExecSmokeTest {
         // `four.shader-boids.smoke` grades both the written and the learned rule against a CPU
         // brute force. What is left here is the window.
         "neural_particles",
+        // Native renderer + fullscreen fragment shader; the CPU half is graded by NeuralCloudsTest
+        // (network beats the fitted ambient term on a held-out camera, GLSL compiles).
+        "neural_clouds",
         "learned_boids",
         // Opens a Vulkan window for the GPU compute-shader NCA; the CPU rule it shares is graded
         // by GrowingNcaTest (grows from a seed, regrows after damage).
@@ -938,6 +980,10 @@ object DemoTranscriptExecSmokeTest {
         // Opens a Vulkan window for the fullscreen sky shader; the scattering it includes is graded on
         // the CPU twin by AtmosphereTest (closed-form transmittance, blue noon, red sunset).
         "atmospheric_sky",
+        // Opens a Vulkan window for a fullscreen shader that includes distributions (dist/…) and a
+        // Gaussian process (gp/…) defined by the box above it; the GLSL is graded on the GPU by the
+        // jvm-main smoke four.noiselang.gpu-includes and compiled by GlslIncludeTest.
+        "noiselang_gpu",
         // Opens a Vulkan window for the fabricate renderer lit by the baked sky; the bake is graded
         // by AtmosphereTest (texels equal radiance, sunset key light reddens).
         "sky_environment",

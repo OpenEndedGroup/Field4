@@ -71,6 +71,10 @@ these hooks:
   dries, the height it reaches down to by pressure is drawn up toward `DRY_TH` (just above the ground's
   local median) and its push falls, both by `tooth` times its dryness. At 0, exactly as before.
 
+- Fold, press and rub (`src/field/squish.rs`, new): `Canvas::fold_press`, `press_peel`, `rub` and
+  `wet_mm3` move the wet layer (`Wet::vol`, `lat`, `hide`, `cover`; a plate scales `solv`) and touch
+  no upstream file. Method after Dan Fountain's "Fold & Squish" write-up; no code from it.
+
 ## Taking a newer upstream
 
 Copy `crates/paint/{Cargo.toml,build.rs,src}` of the new commit over this directory (keeping

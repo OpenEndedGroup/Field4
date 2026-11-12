@@ -29,9 +29,7 @@ println(
     kis deployed over ${deployment.selectedSources?.size} of ${source.topology.elements(2).size} faces
     heightScale resolved over ${deployed.size} sources: $scalarRange
     output ${out.topology.elements(0).size}v ${out.topology.elements(1).size}e ${out.topology.elements(2).size}f
-    hover a face; click it to read the lineage that produced it
-    """
-        .trimIndent(),
+    hover a face; click it to read the lineage that produced it""".trimIndent(),
 )
 
 val card: (String) -> Unit = { message -> markdown("face provenance", message) }
@@ -62,9 +60,7 @@ val faceLines = out.toFaceFLines { face, line ->
             - role: `$role`
             - deployed spike: `${spike?.let { it.f3 } ?: "not selected"}`
             - source: ${result.sourceElements(face.id).joinToString { "rank ${it.rank} / id ${it.id.value}" }}
-            - clicked at: `${hit.position}`
-            """
-                .trimIndent(),
+            - clicked at: `${hit.position}`""".trimIndent(),
         )
     }
 }

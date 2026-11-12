@@ -17,7 +17,7 @@ From `code`
 A four-step guide to this document. Run it, then follow the links in the note.
 
 ```edn [field-box id="sg_tour" role="properties"]
-{"id" "sg_tour" "index" 0 "name" "tour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "tour" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sg_tour_code_.kt" "lines" 83 "characters" 2239 "sha256" "efe4049d4553f884fd4303dbc71b1a22b99c22d82fcca6f2401a252fd2767dd8"}]}
+{"id" "sg_tour" "index" 0 "name" "tour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "tour" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sg_tour_code_.kt" "lines" 75 "characters" 2119 "sha256" "e6f2bcff38eb11c2331c544836f95c06eb2bf4bbd2e5826796a497b771f3156a"}]}
 ```
 
 ```kotlin [field-property box="sg_tour" name="code" path="sg_tour_code_.kt"]
@@ -40,9 +40,7 @@ val show = slideShow {
             ## A tour of this document
             This guide has four steps. Each one selects the box it is about.
 
-            [[next:Start →]]
-            """
-                .trimIndent(),
+            [[next:Start →]]""".trimIndent(),
             animated = true,
         )
         selectBox(guide)
@@ -56,9 +54,7 @@ val show = slideShow {
             ## `numbers` makes a list
             The green line points at it. Visits to this step: **{{visits}}**.
 
-            [[back]] [[next]]
-            """
-                .trimIndent(),
+            [[back]] [[next]]""".trimIndent(),
             animated = true,
         )
         selectBox(numbersBox)
@@ -70,9 +66,7 @@ val show = slideShow {
             ## Line 3 does the work
             `squares` maps each number to its square.
 
-            [[back]] [[next]]
-            """
-                .trimIndent(),
+            [[back]] [[next]]""".trimIndent(),
             animated = true,
         )
         selectBox(squaresBox, property = "code", line = 3, highlight = 3)
@@ -90,9 +84,7 @@ val show = slideShow {
             ## Your turn
             [Give this guide a star](#custom:star). Stars so far: **{{stars}}**.
 
-            [[home:Start again]] [[finish]]
-            """
-                .trimIndent(),
+            [[home:Start again]] [[finish]]""".trimIndent(),
             animated = true,
         )
         linkCallback("star") {

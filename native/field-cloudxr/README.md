@@ -38,7 +38,7 @@ IDE panel, pointing/pinch clicks, one fist moves the panel and two fists resize 
 Two-fist rotation and threshold tuning remain future work. The app requests hidden upper
 limbs; visionOS retains control of that presentation.
 
-The recommended editor is a laptop browser connected to Linux Field, viewed through Mac
+With a Mac, the tested editor is Chrome connected to Linux Field, viewed through Mac
 Virtual Display. The starter defaults to scene-only rendering. Linux launcher `--ide` adds
 the optional Vulkan panel. **Open Field IDE** opens a native WKWebView in this app; enter
 an HTTPS Field URL, saved locally. With a development certificate, expand **Development

@@ -25,8 +25,9 @@ operations:
   - create:
       box: body1_preview_capture
       name: Preview capture
+      frame: { x: 0, y: 160, w: 300, h: 100 }
       properties:
-        code: 'val previewCaptureWindow = renderer.windows[1]'
+        code: "val previewCaptureWindow = renderer.windows[1]\n"
   - connect: {parent: body1_context, child: body1_preview_capture}
   - launch: {box: body1_preview_capture}
   - await: {wait: pending}

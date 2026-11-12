@@ -6,6 +6,106 @@ fixes and wording changes, open **Changelog** on the Welcome screen.
 
 ## November 2026
 
+<!-- changelog: 7b54e8d393..b95d2066d5 -->
+### Flow Lenia, pen strokes and fold-and-press paint
+
+*11–12 November 2026*
+
+- **Flow Lenia**: a Lenia whose matter moves rather than appears, with bodies, gliders, a glider
+  search and mutating lineages. [Flow Lenia](alife_examples.md#flow-lenia-matter-that-moves-instead-of-growing).
+- **Swept-circle strokes** take tablet input and sharp corners, and fill on the GPU.
+  [Variable-width strokes](fline_examples.md#variable-width-strokes-the-swept-circle-envelope).
+- **Satellites** gain deep-space orbits, visible passes and a flight out to the geostationary ring.
+  [Satellites and Orbits](satellites.md).
+- **Sharper spline turns** with `weight = ...`, and a comparison with Hobby's spline.
+  [Sharper turns at the points](fline_examples.md#sharper-turns-at-the-points-weight).
+- **Folding, pressing and rubbing wet paint**. [Folding, pressing and rubbing](paint_canvas.md#folding-pressing-and-rubbing).
+
+<!-- changelog: 785890235f..c0cad7711c -->
+### Satellites in orbit, and strokes of varying width
+
+*11 November 2026*
+
+- **Satellites and orbits**: parse TLEs, propagate them with SGP4, find passes, and draw the whole
+  catalogue around the Earth on the GPU. [Satellites and Orbits](satellites.md).
+- **Variable-width strokes** from the exact envelope of a swept circle.
+  [Variable-width strokes](fline_examples.md#variable-width-strokes-the-swept-circle-envelope).
+- **Clothoid splines** take corners, fixed end directions and heights; k-means adds spherical
+  clustering, trails and trees; and evolved grain sets can be shaped, aimed at a recording, or
+  spread over a map. [k-means at scale](spatial_geometry_examples.md#k-means-at-scale).
+- Text connections stretch elastically, paragraphs get measured drop caps, and canvas zoom is
+  gentler on the wheel and pinch.
+
+<!-- changelog: efcfbabdf3..ff93b22a46 -->
+### A piano you can prepare, and curvature-continuous splines
+
+*11 November 2026*
+
+- **The physically modelled piano** gets a close-mic pickup, four soundboard regions, prepared and
+  sympathetic strings, and soft and sostenuto pedals. [A physically modelled piano](sound.md#a-physically-modelled-piano).
+- **Distributions that learn as data arrives**, and distributions as patterns, sound, Gaussian
+  processes and shader includes. [Distributions](distributions.md).
+- **Clothoid splines**: `clothoidSplineFrom` passes a curvature-continuous curve through your
+  points, with a curvature comb to read it. [FLine examples](fline_examples.md).
+- **k-means at scale**, Lloyd against e-means. [k-means at scale](spatial_geometry_examples.md#k-means-at-scale).
+- **Evolved grain sets**: L-systems decoded as grains of sound and bred.
+  [Evolved grain sets](alife_examples.md#evolved-grain-sets-an-l-system-as-a-score).
+
+<!-- changelog: 3f780d32d0..0ef363a6b4 -->
+### Explainer pages, distributions, a modelled piano and growing trees
+
+*10 November 2026*
+
+- **Explainers** on [Sound](explainer_sound.md), [Cameras and Lenses](explainer_cameras.md) and
+  [Lights and Shadows](explainer_lights.md), each a page made from a Field talk.
+- **Distributions**: a small language where every value is a probability distribution, with
+  conditioning and posteriors on the CPU and GPU. [Distributions](distributions.md).
+- **A physically modelled piano** to play from patterns. [A physically modelled piano](sound.md#a-physically-modelled-piano).
+- **Trees that compete for light**. [Trees that compete for light](alife_examples.md#trees-that-compete-for-light).
+- A link on a slide now opens inside the talk. [Open a link without leaving the talk](presentation_studio.md#open-a-link-without-leaving-the-talk).
+
+<!-- changelog: 0b7a0220b6..851d86c664 -->
+### A tracked body you can hear, and scenes lit by the sky
+
+*10 November 2026*
+
+- **A tracked body, measured and heard**: a chain from body landmarks to a distance played as a
+  pattern. [A Tracked Body, Measured and Heard](chain_tracked_body.md).
+- **The atmospheric sky lights a scene**, in the Fabricate renderer and under the path tracer.
+  [A sky that lights the scene](fabricate_renderer.md#a-sky-that-lights-the-scene).
+- **Rhythm rules that listen to a drawing** and can be swapped while playing.
+  [Rules that listen to the drawing](datalog.md#rules-that-listen-to-the-drawing).
+- Stereo video gains a time carousel of independently exposed screens, and DaVinci Resolve's
+  playhead can be set from a box. [Stereo video in a room](stereo_video.md).
+
+<!-- changelog: 3672427844..07c96d9c25 -->
+### Stereo video in a room, and body and hand tracking
+
+*9 November 2026*
+
+- **Stereo video in a room**: place video screens around a headset, with exposure and speed
+  controls. [Stereo video in a room](stereo_video.md).
+- **Body and hand tracking**: tracked bodies with bounds, closest points and inspector panels.
+  [Body and hand tracking](body_tracking.md).
+- **Tables as heat maps** in a box's output. [Tables and heat maps](visualizers.md#tables-and-heat-maps).
+- Controls take Markdown hover help, and first-run setup now guides a Mac without the Command Line
+  Tools or Homebrew.
+
+<!-- changelog: 723bf799dc..9833d650ff -->
+### An atmospheric sky, rhythm rules and DaVinci Resolve markers
+
+*8–9 November 2026*
+
+- **An atmospheric sky**: sunlight scattered through air, from noon to twilight and seen from
+  space. [An atmospheric sky](afield_four_graphics.md#atmospheric-sky).
+- **DaVinci Resolve**: read timelines, markers and the playhead from box code.
+  [DaVinci Resolve](davinci_resolve.md).
+- **Rules that decide when notes play**, in Datalog, and a **Forth step sequencer** where each
+  step is a program. [Rhythm rules](datalog.md#rules-that-decide-when-notes-play),
+  [Each step is a program](forth_examples.md#each-step-is-a-program).
+- Growing NCA learns to turn and survives a damage sweep, Particle Lenia searches for gliders, and
+  shape-aware ASCII runs on the GPU. [Growing NCA](growing_nca.md#turning-the-rule-without-retraining).
+
 <!-- changelog: e6cae5992d..5bc84b8f69 -->
 ### Hearing a Penrose tiling, and pages gathered in one place
 

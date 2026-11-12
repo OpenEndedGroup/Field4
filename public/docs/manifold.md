@@ -98,8 +98,7 @@ val slotSolid =
         .translated(0.0, 0.0, -15.0)
 println()
 println(
-    "wall between the slot and the nearest bore: " +
-        "${slotSolid.minGap(nearestBore, searchLength = 30.0).f3} mm",
+    "wall between the slot and the nearest bore: " + "${slotSolid.minGap(nearestBore, searchLength = 30.0).f3} mm",
 )
 
 /*
@@ -240,8 +239,7 @@ val opened =
 println()
 println("closing a 2x2 square: ${closed.area.f6} (the identity, 4.0)")
 println(
-    "opening it:           ${opened.area.f6} (4 - (4-pi)/4 = " +
-        "${(4.0 - (4.0 - Math.PI) * 0.25).f6})",
+    "opening it:           ${opened.area.f6} (4 - (4-pi)/4 = " + "${(4.0 - (4.0 - Math.PI) * 0.25).f6})",
 )
 
 fun white() = outline.toFLines().onEach {

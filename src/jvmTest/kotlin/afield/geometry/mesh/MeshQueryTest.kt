@@ -189,6 +189,31 @@ class MeshQueryTest {
     }
 
     @Test
+    fun occludedAnswersTheShadowRayQuestionWithinTheSegment() {
+        val cube = boxMesh(2, 2, 2).bvh()
+        // From z = -10 toward +z the -z face is 9 away.
+        assertTrue(cube.occluded(0.0, 0.0, -10.0, 0.0, 0.0, 1.0, maxDistance = 20.0), "the cube blocks a long segment")
+        assertTrue(!cube.occluded(0.0, 0.0, -10.0, 0.0, 0.0, 1.0, maxDistance = 8.5), "a segment that stops short is clear")
+        assertTrue(!cube.occluded(0.0, 3.0, -10.0, 0.0, 0.0, 1.0, maxDistance = 20.0), "a segment that passes above is clear")
+        // From inside, the far wall is a back face, and it still blocks.
+        assertTrue(cube.occluded(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, maxDistance = 5.0), "back faces block")
+        // Agrees with raycast on many random segments.
+        val tree = icosphereMesh(3, 1.0).bvh()
+        val rng = Random(7)
+        repeat(400) {
+            val o = Vec3(rng.nextFloat() * 6f - 3f, rng.nextFloat() * 6f - 3f, rng.nextFloat() * 6f - 3f)
+            val d = Vec3(rng.nextFloat() * 2f - 1f, rng.nextFloat() * 2f - 1f, rng.nextFloat() * 2f - 1f)
+            val reach = rng.nextDouble() * 6.0
+            val expected = tree.raycast(o, d, maxDistance = reach) != null
+            assertEquals(
+                expected,
+                tree.occluded(o.x.toDouble(), o.y.toDouble(), o.z.toDouble(), d.x.toDouble(), d.y.toDouble(), d.z.toDouble(), reach),
+                "occluded and raycast disagree from $o along $d over $reach",
+            )
+        }
+    }
+
+    @Test
     fun raysAgainstAnAxisAlignedBoxAreExact() {
         val cube = boxMesh(2, 2, 2).bvh()
         val hit = assertNotNull(cube.raycast(Vec3(0f, 0f, -10f), Vec3(0f, 0f, 1f)))

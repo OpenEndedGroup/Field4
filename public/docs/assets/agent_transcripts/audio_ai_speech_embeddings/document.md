@@ -11,20 +11,19 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="speech_embedding_guide" index="0" -->
 
 ```edn [field-box id="speech_embedding_guide" role="properties"]
-{"id" "speech_embedding_guide" "index" 0 "name" "1 · speech embedding guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · speech embedding guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "speech_embedding_guide_code_.kt" "lines" 12 "characters" 1221 "sha256" "a208058fe04dacce848a27abede2bea50b9eeb326f601aef7ec213ccb23c43d4"}]}
+{"id" "speech_embedding_guide" "index" 0 "name" "1 · speech embedding guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · speech embedding guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "speech_embedding_guide_code_.kt" "lines" 11 "characters" 937 "sha256" "89e7d39bd852db33e40689e274149c6b32258a33802b2b287d74fe050bf4b312"}]}
 ```
 
 ```kotlin [field-property box="speech_embedding_guide" name="code" path="speech_embedding_guide_code_.kt"]
-display(
+markdown(
     "guide",
     """
-    <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
-      <h2 style="margin:0 0 8px;color:#7fcbd7">Speech-reactive learned spaces</h2>
-      <p><b>emotion2vec</b> emphasizes vocal affect, prosody and texture. <b>WavLM Base+</b> supplies a broader self-supervised speech representation; layer 6 is a useful acoustic/phonetic compromise. Both produce 50 Hz frame vectors, explicit WebRTC voice activity, energy, novelty, and a compact binary MessagePack artifact.</p>
-      <p>Run box 2 to inspect the synchronized visualizer without a worker. Run box 3 for the complete local path: find or import <code>~/Downloads/near_drowning.wav</code> → submit two durable jobs → watch progress → retrieve cached results → pool 500 ms of acoustic evidence every 40 ms (25 Hz) → run fixed-seed cosine t-SNE in Field through Smile → play the recording through axes 0×1 and 2×3. Hover a path to inspect its time; click it to seek the audio.</p>
-    </section>
-    """
-        .trimIndent(),
+    ## Speech-reactive learned spaces
+
+    **emotion2vec** emphasizes vocal affect, prosody and texture. **WavLM Base+** supplies a broader self-supervised speech representation; layer 6 is a useful acoustic/phonetic compromise. Both produce 50 Hz frame vectors, explicit WebRTC voice activity, energy, novelty, and a compact binary MessagePack artifact.
+
+    Run box 2 to inspect the synchronized visualizer without a worker. Run box 3 for the complete local path: find or import `~/Downloads/near_drowning.wav` → submit two durable jobs → watch progress → retrieve cached results → pool 500 ms of acoustic evidence every 40 ms (25 Hz) → run fixed-seed cosine t-SNE in Field through Smile → play the recording through axes 0×1 and 2×3. Hover a path to inspect its time; click it to seek the audio.""".trimIndent(),
+    width = 1040,
 )
 display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 ```
@@ -34,7 +33,7 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 <!-- field-box id="analyse_near_drowning_speech" index="1" -->
 
 ```edn [field-box id="analyse_near_drowning_speech" role="properties"]
-{"id" "analyse_near_drowning_speech" "index" 1 "name" "3 · import, submit, monitor, audition near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, audition near_drowning" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_speech_code_.kt" "lines" 114 "characters" 5212 "sha256" "3ff7839be5fb513812d0ea6064cdbe10794508dc41dd3a6d5a68300b8c28db2e"}]}
+{"id" "analyse_near_drowning_speech" "index" 1 "name" "3 · import, submit, monitor, audition near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, audition near_drowning" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_speech_code_.kt" "lines" 115 "characters" 5282 "sha256" "c79a19064ea357ae7059b3696ab160fd25669dda9cbadf8aa3c31414c5a3e836"}]}
 ```
 
 ```kotlin [field-property box="analyse_near_drowning_speech" name="code" path="analyse_near_drowning_speech_code_.kt"]
@@ -54,6 +53,7 @@ display("all jobs", fieldAudioJobMonitor(heightPixels = 340))
 
 go {
     try {
+        // Resolve one source before submitting either model request.
         val matches = client.assetsByFilename("*near_drowning*").await()
         val source = when {
             matches.size == 1 -> matches.single()

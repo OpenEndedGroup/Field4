@@ -1,6 +1,6 @@
 # Paint and pencil from FLines
 
-`PaintCanvas` turns any [FLine](fline_examples.md) into a brushstroke of simulated oil paint, a
+[`PaintCanvas`](reference/graphics.md#paintcanvas-kt-paintcanvas) turns any [FLine](fline_examples.md) into a brushstroke of simulated oil paint, a
 pencil line, hatching, a stippled area or a hand-drawn outline. The
 simulation is the `paint` crate from [claude-paint](https://github.com/aliceisjustplaying/claude-paint),
 by alice ([@aliceisjustplaying](https://github.com/aliceisjustplaying)), MIT licensed. It models
@@ -44,7 +44,7 @@ A few things in that box apply everywhere on this page:
 - **One stroke per subpath.** Each `moveTo` starts a new movement of the hand. The brush is not
   reloaded between subpaths, so a line with many pieces uses up its paint the way a real brush would.
 - **Colours** are `rgb(...)` values, the same sRGB colours as everywhere else in Field.
-- **`png()`** renders the canvas and encodes it, and `display` shows the bytes as an image. Its
+- **[`png()`](reference/graphics.md#paintcanvas-kt--paintcanvas--png)** renders the canvas and encodes it, and `display` shows the bytes as an image. Its
   `relief` argument (0.6 by default) lights the thickness of the paint from the upper left, which is
   what makes the bristle ridges visible.
 
@@ -65,7 +65,7 @@ display("main", canvas.png())
 ```
 
 `width` is the brush's width at full pressure, in canvas units. A brush gets wider when pressed
-harder, so `stroke(..., pressure = 0.3..0.9)` gives a stroke that starts thin and swells.
+harder, so [`stroke(..., pressure = 0.3..0.9)`](reference/graphics.md#paintcanvas-kt--paintcanvas--stroke) gives a stroke that starts thin and swells.
 `point = 1.0` gives a round or rigger brush a fine tip. Pressed lightly, only the tip touches, and
 the mark draws down to a point as the brush lifts.
 
@@ -383,6 +383,101 @@ canvas.spatter(flick, 150.0, 540.0, toward = 600.0 to -60.0, spread = 0.3, force
 display("main", canvas.png(wet = true, light = PaintLight.Raking))
 ```
 
+## Folding, pressing and rubbing
+
+Three gestures move wet paint with no tool in it at all. They come from Dan Fountain's
+[Fold & Squish](https://danfountain.com/blog/paint-that-squishes), where thick paint is folded,
+squashed, rubbed and peeled. Field follows the method he describes; none of its code is used.
+
+- `canvas.fold(x, y, dx, dy)` folds the canvas along the line through `(x, y)` running toward
+  `(dx, dy)`. The half on the left of that direction is pressed onto the other half, then the canvas
+  is opened again. Where the paint on a point and on its mirror image is thick enough to meet through
+  the gap the `pressure` leaves, the two films swap `transfer` of themselves (0.5 makes them one
+  mixture). Pressure spreads the squashed paint outward for `spread` of the time it takes to level,
+  thick paint faster than thin. Opening the fold splits the film between the two sides: evenly at
+  `peel = 0`, and in branching ridges `ridge` units apart as `peel` rises. Where one side keeps a
+  ridge, its mirror is bare. Past `peel = 0.67` the film splits wholly. A fold along x or y prints
+  an exact mirror image; a diagonal fold is mirrored to within a pixel.
+- `canvas.press(x, y, radius)` presses a flat plate onto the paint and peels it off toward
+  `(dx, dy)`. The plate takes `take` of the film it touched, unevenly, in the same kind of ridges. This
+  is a monotype pull, or a palm pressed down and lifted.
+- `canvas.rub(line, radius, pressure)` drags a thumb along a line. It picks up the paint that stands
+  above the film a light touch rides on and lays it down further along. The paint is drawn out and
+  thins as it goes, in streaks where the skin presses harder, and colours smear into each other.
+
+Each returns a `Squished`: the mm³ of paint that ended up somewhere else on the canvas, counted once,
+and the mm³ taken off it (`liftedMm3`, what a plate took or a thumb still holds).
+`canvas.wetMm3` is all the wet paint on the canvas. A fold or a rub leaves it unchanged. A plate
+lowers it by exactly what the plate reports. Paint that has started to set moves less, and dry paint
+does not move.
+
+The box below lays three thick strokes on the left half, folds the canvas down the middle and opens
+it. The top image is the canvas before the fold, the bottom one after: each stroke is printed onto
+the right half, and the two prints carry opposite ridges where the film split.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/fold.png" alt="two canvases, one above the other. The top one has three thick strokes on its left half: red, blue and yellow, with bristle ridges. In the bottom one each stroke has been printed onto the right half as a mirror image, and both halves are broken by streaky bare patches running away from the fold: where one half kept paint, its mirror is bare" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="fold" embed=true scale=1}
+:::static
+val canvas = PaintCanvas(900, aspect = 1.4, seed = 7)
+val brush = canvas.brush(BrushKind.HogFlat, width = 70.0)
+val strokes = [
+    rgb(0.75, 0.1, 0.08) to FLine().moveTo(300, 150).cubicTo(380, 200, 440, 260, 500, 290),
+    rgb(0.1, 0.2, 0.6) to FLine().moveTo(230, 360).cubicTo(330, 320, 420, 400, 490, 430),
+    rgb(0.95, 0.75, 0.15) to FLine().moveTo(340, 560).lineTo(500, 520),
+]
+for ((color, line) in strokes) {
+    brush.load(color, amount = 4.0, stiff = 0.5)
+    canvas.stroke(line, brush, pressure = 1.0..1.0)
+}
+display("before", canvas.png(wet = true, light = PaintLight.Raking))
+
+// fold along x = 500, press, and open it again
+canvas.fold(500.0, 0.0, pressure = 0.9, spread = 0.5, peel = 0.8, ridge = 18.0)
+display("main", canvas.png(wet = true, light = PaintLight.Raking))
+```
+
+Next, a plate is pressed onto a wet passage and peeled off, and then a thumb is rubbed across three
+stripes, so their colours smear into each other.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/press_rub.png" alt="two canvases, one above the other. In the top one a blue passage of broad strokes is crossed by a thick cream bar; on its left a round patch, where a plate was pressed and peeled, is mottled pale blue with ridged, lifted paint, and the cream bar there is wrinkled. In the bottom one three vertical stripes, red, yellow and blue, are crossed by three horizontal smears dragged to the right, red pulled into yellow and yellow into blue, which turns green where they meet" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="press_rub" embed=true scale=1}
+:::static
+val plate = PaintCanvas(900, aspect = 1.4, seed = 8)
+plate.work(FLine().rect(150, 150, 700, 420), rgb(0.12, 0.3, 0.55), handling = Handling.Broad, stiff = 0.5)
+val wide = plate.brush(BrushKind.HogFlat, width = 90.0)
+wide.load(rgb(0.95, 0.85, 0.7), amount = 4.0, stiff = 0.5)
+plate.stroke(FLine().moveTo(200, 360).lineTo(800, 360), wide, pressure = 1.0..1.0)
+plate.press(330.0, 360.0, radius = 150.0, pressure = 0.9, take = 0.5, peel = 0.8, ridge = 12.0)
+display("main", plate.png(wet = true, light = PaintLight.Raking))
+
+val thumb = PaintCanvas(900, aspect = 1.4, seed = 9)
+val brush = thumb.brush(BrushKind.HogFlat, width = 60.0)
+for ((i, color) in listOf(rgb(0.8, 0.15, 0.1), rgb(0.95, 0.75, 0.15), rgb(0.1, 0.25, 0.6)).withIndex()) {
+    brush.load(color, amount = 3.0, stiff = 0.4)
+    thumb.stroke(FLine().moveTo(180 + i * 70, 150).lineTo(180 + i * 70, 560), brush, pressure = 1.0..1.0)
+}
+thumb.rub(FLine().moveTo(120, 220).lineTo(820, 230), radius = 30.0, pressure = 0.4)
+thumb.rub(FLine().moveTo(120, 360).lineTo(820, 350), radius = 40.0, pressure = 0.9)
+thumb.rub(FLine().moveTo(120, 500).cubicTo(400, 420, 600, 600, 860, 480), radius = 35.0, pressure = 0.7)
+display("rubbed", thumb.png(wet = true, light = PaintLight.Raking))
+```
+
+The [paint_fold_press](agent_transcripts.md#paint_fold_press) starting point has a box for each
+gesture, and each shows the canvas before and after.
+
+??? aside "What Field took from Fold & Squish, and what it already had"
+    The paint canvas already had thick paint (bristle ridges, the knife's slab, relief lighting,
+    gloss, drying, cracks), so none of that was rebuilt. What Fold & Squish has and Field did not is
+    gestures that act on the wet film as a whole: a second surface pressed onto it, then pulled away.
+    Field took four ideas from it: paint transfers only where it is thick enough to touch; pressure
+    spreads the squashed film; peeling splits the film in ridges, and the two surfaces get opposite
+    patterns; a moving pressure drags the paint. These are new Rust kernels over the crate's wet
+    layer (`native/field-paint/vendor/paint/src/field/squish.rs`). Fold & Squish runs per-pixel
+    pigment, height, wetness and drift on the GPU. Field's engine is single-threaded Rust. On a
+    1600 × 1280 canvas on an M-series Mac a fold takes about 160 ms, a plate 60 ms and a rub 30 ms,
+    against 530 ms for one heavy brush stroke. So the gestures are not the bottleneck; the brushes
+    are. Blowing (drift of fluid paint) was not added. The tests (`SquishTest`, and the Rust tests in
+    `squish.rs`) check that paint is conserved, that an even fold prints a mirror image, and that a
+    peel leaves complementary ridges.
+
 ## Brushes made to order
 
 A `BrushKind` is a starting point. `brush(kind, width, config = BrushConfig(...))` changes how the
@@ -417,7 +512,7 @@ display("main", canvas.png())
 
 A brush keeps what it picks up. Stroked through wet paint, it carries some of that colour into its
 next stroke, and `load` mixes new paint into what is left unless `wipe` takes it out first. To come
-back to the same brush later, keep it: a `PaintToolbox` holds brushes, knives, rags and pencils by
+back to the same brush later, keep it: a [`PaintToolbox`](reference/graphics.md#painttoolbox-kt-painttoolbox) holds brushes, knives, rags and pencils by
 name.
 
 ```diffstatic {data-lang=kotlin}
@@ -512,7 +607,7 @@ Looking at it, and keeping it:
   in mm³.
 - `copy()` is an independent copy, wet paint included, for trying something out.
   `saveState(path)` writes the whole canvas to a file and `PaintCanvas.load(path)` carries on from
-  it. `save(path)` writes a PNG.
+  it. [`save(path)`](reference/graphics.md#painttoolbox-kt--painttoolbox--save) writes a PNG.
 
 A canvas and its brushes hold native memory. It is freed when they are garbage-collected, or straight
 away with `close()` (both are `AutoCloseable`, so `use { }` works).
@@ -536,7 +631,8 @@ fun paintOn(ground: PaintGround): PaintCanvas {
 fun cell(label: String, png: ByteArray) =
     "<figure style='margin:0'><img width='300' src='data:image/png;base64,${java.util.Base64.getEncoder().encodeToString(png)}'/>" +
         "<figcaption style='font:12px monospace;color:#ccc'>$label</figcaption></figure>"
-fun grid(cells: List<String>) = "<div style='display:grid;grid-template-columns:repeat(3,300px);gap:10px'>${cells.joinToString("")}</div>"
+fun grid(cells: List<String>) =
+    "<div style='display:grid;grid-template-columns:repeat(3,300px);gap:10px'>${cells.joinToString("")}</div>"
 
 display("grounds", grid(PaintGround.entries.map { cell(it.name, paintOn(it).png()) }))
 
@@ -576,7 +672,16 @@ without restarting. To use a copy somewhere else, set `AFIELD_PAINT_LIBRARY` or
 `-Dafield.paint.library` to its path. `PaintCanvas.isAvailable` says whether Field can find it, and
 `PaintLibrary.describe()` says where it looked.
 
-See also: [Watercolour and ink](watercolor.md), where water on paper moves by itself,
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`PaintCanvas.brush`](reference/graphics.md#paintcanvas-kt--paintcanvas--brush)
+- [`PaintToolbox.brush`](reference/graphics.md#painttoolbox-kt--painttoolbox--brush)
+
+## Where to go next
+
+[Watercolour and ink](watercolor.md), where water on paper moves by itself,
 [Brushes with moving hairs](paint_gestures.md), whose hairs bend, splay and flick under timed
 gestures of the hand, [Drawing with FLines](fline_examples.md), [Colors](colors_examples.md),
 [Drawn Strokes Become Paint](chain_drawn_paint.md), which paints strokes drawn on the drawing

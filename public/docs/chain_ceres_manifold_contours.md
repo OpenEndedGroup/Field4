@@ -267,7 +267,7 @@ for (expression in ["gC", "gD"]) {
                     "$expression, $label",
                     height.f6,
                     solid.surfaceArea.f6,
-                    "%.6f".format(a.sumOf { it } * height / LAYERS),
+                    (a.sumOf { it } * height / LAYERS).f6,
                     layers.sumOf { it.size },
                     a.min().f6,
                     a.max().f6,
@@ -283,18 +283,17 @@ display("plan", plan(panels))
 markdown(
     "forms",
     Table(
-            [
-                "form",
-                "height",
-                "surface",
-                "Σ area·h/n",
-                "contours over $LAYERS layers",
-                "smallest layer",
-                "largest layer",
-                "vertex turn, worst / mean",
-            ],
-        )
-        .rows(rows)
+        [
+            "form",
+            "height",
+            "surface",
+            "Σ area·h/n",
+            "contours over $LAYERS layers",
+            "smallest layer",
+            "largest layer",
+            "vertex turn, worst / mean",
+        ],
+    ).rows(rows)
         .h,
     width = 1180,
 )
@@ -447,19 +446,18 @@ Solid.scope {
 markdown(
     "kkc",
     Table(
-            [
-                "embedding",
-                "tangency spread",
-                "canonicalDiagnostics()",
-                "Manifold status",
-                "genus",
-                "signed volume",
-                "Σ area·h/n at 768 layers",
-                "layers where POSITIVE ≠ EVEN_ODD, overlap",
-                "1 − 2·overlap",
-            ],
-        )
-        .rows(rows)
+        [
+            "embedding",
+            "tangency spread",
+            "canonicalDiagnostics()",
+            "Manifold status",
+            "genus",
+            "signed volume",
+            "Σ area·h/n at 768 layers",
+            "layers where POSITIVE ≠ EVEN_ODD, overlap",
+            "1 − 2·overlap",
+        ],
+    ).rows(rows)
         .h,
     width = 1180,
 )

@@ -33,6 +33,11 @@ import org.jetbrains.ktfmt.format.Formatter
 import org.jetbrains.ktfmt.format.KotlinCode
 import org.jetbrains.kotlin.com.intellij.psi.PsiComment
 import org.jetbrains.kotlin.lexer.KtTokens
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+import org.jetbrains.kotlin.psi.KtPrefixExpression
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
@@ -59,6 +64,7 @@ fun formatKotlinCode(code: String, blockifyComments: Boolean = true): String {
     formatted = restoreStatementSpacing(code, formatted)
     formatted = joinAssignmentBreaks(formatted)
     formatted = collapseOneLineLambdaAssignments(formatted)
+    formatted = tuckRawStringChains(formatted)
     return if (blockifyComments) blockifyLineCommentRuns(formatted) else formatted
 }
 
@@ -183,6 +189,70 @@ fun collapseOneLineLambdaAssignments(code: String): String {
     }
     return out.joinToString("\n")
 }
+
+/**
+ * Put a raw string's call chain back on its closing quotes, and those quotes at the end of the text:
+ *
+ * ```
+ * +"""                         +"""
+ *     # Further reading            # Further reading
+ *     - item               ->      - item""".md
+ * """
+ *     .md
+ * ```
+ *
+ * ktfmt gives a multi-line raw string's closing `"""` a line of its own and then breaks the chain
+ * after it onto another, so `.md` and `.trimIndent()` end up alone below the text. The chain is
+ * always joined to the quotes. The quotes move up only when that cannot change what the code
+ * computes, since moving them drops the string's final newline and indentation: `.trimIndent()`
+ * and `.trimMargin()` remove a blank last line anyway, and `+"""…""".md`, a slide builder's
+ * Markdown, renders the same without it ([afield.ui.output.FieldMarkdown.render]). A last line
+ * ending in `"` keeps its line, as `""""` would close the string one quote early. A `.md` that is
+ * not under a unary `+` is `Any?.md`, which escapes the text verbatim, so its quotes stay put.
+ *
+ * ktfmt breaks the chain again on the next format and this joins it again; once the quotes have
+ * moved they are no longer alone on a line, so the pair is a fixed point.
+ */
+fun tuckRawStringChains(code: String): String {
+    val file = try { FieldKtParser.parse(code) } catch (t: Throwable) { return code }
+    val edits = mutableListOf<Pair<IntRange, String>>()
+    file.collectDescendantsOfType<KtStringTemplateExpression>().forEach { string ->
+        val text = string.text
+        if (!text.startsWith("\"\"\"") || text.length < 6 || !text.endsWith("\"\"\"") || '\n' !in text) return@forEach
+        val chain = string.parent as? KtDotQualifiedExpression ?: return@forEach
+        if (chain.receiverExpression != string) return@forEach
+        val end = string.endOffset
+        val dot = chain.operationTokenNode.startOffset
+        val gap = code.substring(end, dot)
+        if (gap.isNotBlank() || '\n' !in gap) return@forEach
+        edits += (end until dot) to ""
+
+        val quotes = end - 3
+        val quotesLine = code.lastIndexOf('\n', quotes - 1) + 1
+        if (code.substring(quotesLine, quotes).isNotBlank() || !chain.dropsFinalBlankLine()) return@forEach
+        val newline = quotesLine - 1
+        val contentStart = string.startOffset + 3
+        if (newline < contentStart) return@forEach
+        val lastLine = code.substring(maxOf(code.lastIndexOf('\n', newline - 1) + 1, contentStart), newline)
+        if (lastLine.isBlank() || lastLine.endsWith('"')) return@forEach
+        edits += (newline until quotes) to ""
+    }
+    if (edits.isEmpty()) return code
+    val out = StringBuilder(code)
+    edits.sortedByDescending { it.first.first }.forEach { (range, replacement) -> out.replace(range.first, range.last + 1, replacement) }
+    return out.toString()
+}
+
+/** Whether this chain's first call ignores a blank last line in its raw-string receiver. */
+private fun KtDotQualifiedExpression.dropsFinalBlankLine(): Boolean =
+    when (val selector = selectorExpression) {
+        is KtCallExpression -> selector.calleeExpression?.text.let {
+            (it == "trimIndent" && selector.valueArguments.isEmpty()) || it == "trimMargin"
+        }
+        is KtNameReferenceExpression -> selector.getReferencedName() == "md" &&
+            (parent as? KtPrefixExpression)?.operationToken == KtTokens.PLUS
+        else -> false
+    }
 
 private const val END_SENTINEL = "__afieldFormatterEnd__"
 

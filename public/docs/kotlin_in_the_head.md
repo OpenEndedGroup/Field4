@@ -9,6 +9,10 @@ You can use Kotlin's `data class`es, `operator fun` and standard library, with c
 reported on the corresponding source line. Operator overloading works in the head too, so you can
 write vector and matrix math in the same style.
 
+For an existing desktop OpenXR scene, [Linux → CloudXR → AVP](cloudxr_vision_pro.md) is the
+working Wi-Fi streaming route, with head and hand tracking. The Live Metal profile below
+serves a different purpose: its program and rendering execute on the headset itself.
+
 If Kotlin itself is new to you, read the [Kotlin Syntax Overview](kotlin_overview.md) first. This
 page assumes you can read a `data class` and a lambda.
 

@@ -19,9 +19,6 @@ and the C ABI, so that is what this checks, in minutes rather than tens of minut
 from __future__ import annotations
 
 import argparse
-import os
-import platform
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -32,19 +29,15 @@ DEFAULT_OUT = REPO_ROOT / "build" / "ken-ceres-redistributable"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_ceres_native import library_name  # noqa: E402
+from verification_runtime import MissingJdkError, field_java  # noqa: E402
 
 
 def find_java() -> str:
     """The harness needs a JDK 22 or newer, because that is where FFM stopped being a preview API."""
-    java_home = os.environ.get("JAVA_HOME")
-    if java_home:
-        candidate = Path(java_home) / "bin" / ("java.exe" if platform.system() == "Windows" else "java")
-        if candidate.is_file():
-            return str(candidate)
-    found = shutil.which("java")
-    if found:
-        return found
-    raise SystemExit("error: no java on PATH and JAVA_HOME is unset; the harness needs a JDK 22+")
+    try:
+        return field_java(REPO_ROOT, 22, "the Ceres ABI harness")
+    except MissingJdkError as error:
+        raise SystemExit(f"error: {error}") from None
 
 
 def main() -> int:

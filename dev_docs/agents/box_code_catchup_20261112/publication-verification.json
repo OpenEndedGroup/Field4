@@ -1,0 +1,23 @@
+{
+  "publications": [
+    {
+      "name": "ordered_group_keyframes",
+      "ok": true,
+      "channels": 1,
+      "warnings": []
+    },
+    {
+      "name": "variable_width_strokes",
+      "ok": true,
+      "channels": 6,
+      "warnings": []
+    },
+    {
+      "name": "satellites",
+      "ok": true,
+      "channels": 1,
+      "warnings": []
+    }
+  ],
+  "method": "Normal docs_publications.py sync: real transcript replay and export."
+}

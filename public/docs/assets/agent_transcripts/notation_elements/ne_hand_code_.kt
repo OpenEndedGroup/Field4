@@ -20,6 +20,5 @@ const arrow = { ...base("hand-arrow-$t", "arrow", 1100, 670, ${f.x + f.w + 4 - 1
 const text = { ...base("hand-text-$t", "text", 1100, 830, 120, 25), text: "by hand", originalText: "by hand",
     fontSize: 20, fontFamily: 5, textAlign: "left", verticalAlign: "top", containerId: null, lineHeight: 1.25 };
 send("notation-scene", { scene: JSON.stringify({ type: "excalidraw", version: 2, elements: [stroke, arrow, text] }) });
-</script>sent"""
-        .trimIndent(),
+</script>sent""".trimIndent(),
 )

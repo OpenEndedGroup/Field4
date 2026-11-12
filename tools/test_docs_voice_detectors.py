@@ -25,13 +25,16 @@ own four pages stay near zero and it is green today, but wiring a *content* thre
 from __future__ import annotations
 
 import importlib.util
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 DETECTORS = Path(__file__).resolve().parent / "docs_voice"
+REPO = DETECTORS.parent.parent
 
 
 def load(name):
@@ -108,6 +111,31 @@ ROOT_BLIND_BY_DESIGN = {
 KNOWN_RED = {}
 
 
+# One sweep of the real tree per board, shared by every test below that needs one, and run
+# concurrently. Until 2026-11-10 two classes each swept every board one after another and asserted
+# the same two things of it, which made this the slowest Python suite in the landing guard (~90 s).
+_REAL_TREE_RUNS: dict[str, subprocess.CompletedProcess] = {}
+
+
+def _sweep(stem: str, root: str | None = None) -> subprocess.CompletedProcess:
+    argv = BOARD_ARGV.get(stem, ["public/docs"])
+    if root is not None:
+        argv = [root if not a.startswith("-") else a for a in argv]
+    return subprocess.run([sys.executable, str(DETECTORS / f"{stem}.py"), *argv],
+                          cwd=REPO, capture_output=True, text=True, timeout=300)
+
+
+def _concurrently(fn, items: list) -> list:
+    with ThreadPoolExecutor(max_workers=max(1, min(8, os.cpu_count() or 2))) as pool:
+        return list(pool.map(fn, items))
+
+
+def real_tree_runs(stems) -> dict[str, subprocess.CompletedProcess]:
+    missing = [stem for stem in stems if stem not in _REAL_TREE_RUNS]
+    _REAL_TREE_RUNS.update(zip(missing, _concurrently(_sweep, missing)))
+    return _REAL_TREE_RUNS
+
+
 class BoardsSurviveTheTree(unittest.TestCase):
     def test_kdoc_overviews_skips_appledouble_metadata(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -141,20 +169,9 @@ class BoardsSurviveTheTree(unittest.TestCase):
     def boards(self):
         return sorted(p for p in DETECTORS.glob("*.py") if not p.name.startswith("_"))
 
-    _ran = {}
-
     def run_board(self, path):
-        """One sweep, shared by both assertions: one subprocess per board, not two."""
-        if path.stem not in self._ran:
-            argv = BOARD_ARGV.get(path.stem, ["public/docs"])
-            self._ran[path.stem] = subprocess.run(
-                [sys.executable, str(path), *argv],
-                cwd=DETECTORS.parent.parent,
-                capture_output=True,
-                text=True,
-                timeout=300,
-            )
-        return self._ran[path.stem]
+        """One sweep per board, shared by every assertion (`real_tree_runs`)."""
+        return real_tree_runs([board.stem for board in self.boards()])[path.stem]
 
     def test_every_board_exits_zero_on_the_real_tree(self):
         self.assertTrue(self.boards(), f"no boards found under {DETECTORS}")
@@ -204,17 +221,12 @@ class BoardsSurviveTheTree(unittest.TestCase):
         word-split. Those were one-off mistakes in a shell. This one is in a file.
         """
         with tempfile.TemporaryDirectory() as void:
-            for path in self.boards():
-                if path.stem in ROOT_BLIND_BY_DESIGN or path.stem in KNOWN_RED:
-                    continue
+            boards = [path for path in self.boards()
+                      if path.stem not in ROOT_BLIND_BY_DESIGN and path.stem not in KNOWN_RED]
+            empties = _concurrently(lambda path: _sweep(path.stem, void).stdout, boards)
+            for path, empty in zip(boards, empties):
                 with self.subTest(board=path.name):
                     real = self.run_board(path).stdout
-                    argv = [void if not a.startswith("-") else a
-                            for a in BOARD_ARGV.get(path.stem, ["public/docs"])]
-                    empty = subprocess.run(
-                        [sys.executable, str(path), *argv],
-                        cwd=DETECTORS.parent.parent, capture_output=True,
-                        text=True, timeout=300).stdout
                     self.assertNotEqual(
                         real, empty,
                         f"{path.name} says exactly the same thing about an empty "
@@ -299,27 +311,21 @@ class BoardsStayAlive(unittest.TestCase):
     NOT_A_BOARD = {"build_machinery", "in_fences", "test_census"}
 
     def test_every_board_exits_zero_and_prints_something(self):
-        import subprocess
-
-        docs = DETECTORS.parent.parent / "public" / "docs"
+        docs = REPO / "public" / "docs"
         self.assertTrue(docs.is_dir(), f"expected a docs tree at {docs}")
+        names = [name for name in module_names()
+                 if name not in self.NOT_A_DIRECTORY_SCAN and name not in self.NOT_A_BOARD]
+        # Through BOARD_ARGV, not a bare `public/docs`. This class predates that map and
+        # predates `kdoc_overviews.py`, whose root is a Kotlin source tree -- so the merge that
+        # brought both together had this gate calling it with the docs root, where it correctly
+        # refuses and exits 2. The fix is to share the one map rather than grow a third exemption
+        # set beside NOT_A_DIRECTORY_SCAN and NOT_A_BOARD: a board added tomorrow should not have
+        # to be registered in two places. The sweep itself is shared too (`real_tree_runs`).
+        runs = real_tree_runs(names)
         checked = []
-        for name in module_names():
-            if name in self.NOT_A_DIRECTORY_SCAN or name in self.NOT_A_BOARD:
-                continue
+        for name in names:
             with self.subTest(board=name):
-                # Through BOARD_ARGV, not a bare `public/docs`. This class predates
-                # that map and predates `kdoc_overviews.py`, whose root is a Kotlin
-                # source tree -- so the merge that brought both together had this
-                # gate calling it with the docs root, where it correctly refuses and
-                # exits 2. The fix is to share the one map rather than grow a third
-                # exemption set beside NOT_A_DIRECTORY_SCAN and NOT_A_BOARD: a board
-                # added tomorrow should not have to be registered in two places.
-                argv = BOARD_ARGV.get(name, [str(docs)])
-                done = subprocess.run(
-                    [sys.executable, str(DETECTORS / f"{name}.py"), *argv],
-                    capture_output=True, text=True, timeout=300,
-                )
+                done = runs[name]
                 self.assertEqual(
                     done.returncode, 0,
                     f"{name}.py exited {done.returncode} over the real tree. A board that "

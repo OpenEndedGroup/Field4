@@ -255,9 +255,9 @@ later.
 
     The video is the box above, launched by the docs build in a real browser and recorded as it
     runs. A browser recording carries no sound, so the clips are rendered separately by
-    `OrcaSoundDocs`, which runs the same grids through `OrcaHeadless`: ORCA's unmodified operators
+    [`OrcaSoundDocs`](reference/patterns.md#orcasounddocs-kt-orcasounddocs), which runs the same grids through `OrcaHeadless`: ORCA's unmodified operators
     in the JVM, one frame at a time, with the exchange from the box run after every frame, and each
-    note voiced by the same `PatSynthBank` and placed on the sample its frame falls on.
+    note voiced by the same [`PatSynthBank`](reference/patterns.md#patsynth-kt-patsynthbank) and placed on the sample its frame falls on.
     `OrcaHeadlessTest` fails if the renderer's grids or exchange drift from the starting point's.
 
 ## GPT jams ORCA
@@ -331,3 +331,9 @@ edited the box to give channel 2 one, put the hat in the grid there, and ran the
   all, so an ORCA program can be rendered to a file or checked in a test. `evaluate(js)` runs
   JavaScript in it at once.
 - ORCA is Hundred Rabbits' code, unmodified, under the MIT licence.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`OrcaSoundDocs.render`](reference/patterns.md#orcasounddocs-kt--orcasounddocs--render)

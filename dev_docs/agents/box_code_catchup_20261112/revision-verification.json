@@ -1,0 +1,44 @@
+{
+  "changes": [
+    {
+      "path": "dev_docs/agents/transcripts/satellites.yaml",
+      "body": 8,
+      "collectionFactoriesRemoved": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/satellites.yaml",
+      "body": 9,
+      "collectionFactoriesRemoved": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "body": 9,
+      "collectionFactoriesRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/variable_width_strokes.yaml",
+      "body": 1,
+      "collectionFactoriesRemoved": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/variable_width_strokes.yaml",
+      "body": 2,
+      "collectionFactoriesRemoved": 1
+    },
+    {
+      "path": "public/docs/fline_examples.md",
+      "body": 76,
+      "collectionFactoriesRemoved": 1
+    },
+    {
+      "path": "public/docs/fline_examples.md",
+      "body": 77,
+      "collectionFactoriesRemoved": 1
+    },
+    {
+      "path": "templates/text_one/score.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 0
+    }
+  ]
+}

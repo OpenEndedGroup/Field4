@@ -1,5 +1,3 @@
-import afield.data.query.datalog.Datalog
-
 prop<Datalog>(islandModel)
 
 val rules =

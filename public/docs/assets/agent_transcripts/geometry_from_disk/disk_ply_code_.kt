@@ -27,9 +27,7 @@ try {
         1 1 0 60 60 255
         0 1 0 255 235 40
         3 0 1 2
-        3 0 2 3
-        """
-            .trimIndent() + "\n",
+        3 0 2 3""".trimIndent() + "\n",
     )
 
     // PlySupport.loadPly is parsing plus memAlloc: no renderer, no Vulkan, no Box context. Only

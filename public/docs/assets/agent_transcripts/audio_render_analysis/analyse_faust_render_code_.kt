@@ -6,9 +6,7 @@ val faustSource =
     import("stdfaust.lib");
     sweep = 240 + 170 * os.osc(0.11);
     voice = os.sawtooth(sweep) : fi.lowpass(3, 900 + 650 * os.osc(0.07));
-    process = voice * 0.18 <: _,_;
-    """
-        .trimIndent()
+    process = voice * 0.18 <: _,_;""".trimIndent()
 
 renderFaustWavAsync(
     Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "faust-sweep-study.wav"),

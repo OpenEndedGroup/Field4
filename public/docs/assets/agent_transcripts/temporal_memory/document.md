@@ -11,13 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="tm_dancer_live" index="0" -->
 
 ```edn [field-box id="tm_dancer_live" role="properties"]
-{"id" "tm_dancer_live" "index" 0 "name" "3 - the dancer, live (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - the dancer, live (launch)" "_tombstone" false "frame" #afield/rect [60.0 2160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_dancer_live_code_.kt" "lines" 62 "characters" 2190 "sha256" "04aeb0e0a6d3069326db4205466347137bb9f287fde91cf1c2515a54f69b55a3"}]}
+{"id" "tm_dancer_live" "index" 0 "name" "3 - the dancer, live (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - the dancer, live (launch)" "_tombstone" false "frame" #afield/rect [60.0 2160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_dancer_live_code_.kt" "lines" 61 "characters" 2169 "sha256" "4e2c9d187cd0a37b62309d3792ff5e06cee6f6b1ff19c9d2ee47187fc3dca741"}]}
 ```
 
 ```kotlin [field-property box="tm_dancer_live" name="code" path="tm_dancer_live_code_.kt"]
 import afield.io.mocap.*
 import afield.math.oracle.*
-import kotlin.math.*
 
 // six takes of modern dance (CMU subject 05): every joint, in the dancer's own frame, at 30 Hz,
 // without the standing still before and after each take
@@ -84,14 +83,13 @@ frames {
 <!-- field-box id="tm_judged" index="1" -->
 
 ```edn [field-box id="tm_judged" role="properties"]
-{"id" "tm_judged" "index" 1 "name" "6 - five ways to play the dance" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 - five ways to play the dance" "_tombstone" false "frame" #afield/rect [60.0 4260.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_judged_code_.kt" "lines" 54 "characters" 2322 "sha256" "c187a96b225e0f1190fffb7fa409fefb0bd8adc588190cf393c754e4e4c3a48e"}]}
+{"id" "tm_judged" "index" 1 "name" "6 - five ways to play the dance" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 - five ways to play the dance" "_tombstone" false "frame" #afield/rect [60.0 4260.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_judged_code_.kt" "lines" 53 "characters" 2301 "sha256" "039e867d2ed7f13ea53492d7790e70f1f48c280b459d2fa13b621d7c7b568c86"}]}
 ```
 
 ```kotlin [field-property box="tm_judged" name="code" path="tm_judged_code_.kt"]
 import afield.io.mocap.*
 import afield.math.oracle.*
 import afield.math.temporal.*
-import kotlin.math.*
 
 // six takes of modern dance (CMU subject 05): every joint, in the dancer's own frame, at 30 Hz,
 // without the standing still before and after each take
@@ -149,13 +147,12 @@ markdown(
 <!-- field-box id="tm_dance_signal" index="2" -->
 
 ```edn [field-box id="tm_dance_signal" role="properties"]
-{"id" "tm_dance_signal" "index" 2 "name" "2 - the signal, and where it came from" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - the signal, and where it came from" "_tombstone" false "frame" #afield/rect [60.0 1460.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_dance_signal_code_.kt" "lines" 43 "characters" 1685 "sha256" "ef3b89752c2ee2dcecd38f655bd000077414adf8c055ee54af63578a932d048b"}]}
+{"id" "tm_dance_signal" "index" 2 "name" "2 - the signal, and where it came from" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - the signal, and where it came from" "_tombstone" false "frame" #afield/rect [60.0 1460.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_dance_signal_code_.kt" "lines" 42 "characters" 1664 "sha256" "930367facec4d5575ba1dd2fe3ec98f01d8eaff6524d7d088ebc47d98a0f4fcf"}]}
 ```
 
 ```kotlin [field-property box="tm_dance_signal" name="code" path="tm_dance_signal_code_.kt"]
 import afield.io.mocap.*
 import afield.math.oracle.*
-import kotlin.math.*
 
 // six takes of modern dance (CMU subject 05): every joint, in the dancer's own frame, at 30 Hz,
 // without the standing still before and after each take
@@ -282,13 +279,12 @@ frames {
 <!-- field-box id="tm_fan" index="4" -->
 
 ```edn [field-box id="tm_fan" role="properties"]
-{"id" "tm_fan" "index" 4 "name" "5 - Timestral, a forecast and its fan" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - Timestral, a forecast and its fan" "_tombstone" false "frame" #afield/rect [60.0 3560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_fan_code_.kt" "lines" 42 "characters" 1316 "sha256" "ddc06c6b59ad7201b16129311d167bffa5f295e5f55de24362d2a18974bcfc65"}]}
+{"id" "tm_fan" "index" 4 "name" "5 - Timestral, a forecast and its fan" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - Timestral, a forecast and its fan" "_tombstone" false "frame" #afield/rect [60.0 3560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_fan_code_.kt" "lines" 41 "characters" 1295 "sha256" "2b6c47db8800a970579702d818de8f1da22e9f7fb57b06b8d4f559e25671bda6"}]}
 ```
 
 ```kotlin [field-property box="tm_fan" name="code" path="tm_fan_code_.kt"]
 import afield.math.oracle.*
 import afield.math.temporal.*
-import kotlin.math.*
 
 // Needs the forecaster once: print(TimestralSession.install("mistralai/Timestral-28M"))
 print(TimestralSession.status())
@@ -335,13 +331,12 @@ lines(fan + past + median, w = 900.0, h = 320.0, fitToSize = true)
 <!-- field-box id="tm_dance" index="5" -->
 
 ```edn [field-box id="tm_dance" role="properties"]
-{"id" "tm_dance" "index" 5 "name" "1 - a dancer's memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - a dancer's memory" "_tombstone" false "frame" #afield/rect [60.0 760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_dance_code_.kt" "lines" 46 "characters" 1874 "sha256" "960023328f8df3e65f3ce79ed0e57a7ad17f1fa5e13b2237ed249d2b047f768d"}]}
+{"id" "tm_dance" "index" 5 "name" "1 - a dancer's memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - a dancer's memory" "_tombstone" false "frame" #afield/rect [60.0 760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_dance_code_.kt" "lines" 45 "characters" 1853 "sha256" "f2e352b85181bf6fb0d78386339bed2821bc15e13138c4b6c24e1caaee565363"}]}
 ```
 
 ```kotlin [field-property box="tm_dance" name="code" path="tm_dance_code_.kt"]
 import afield.io.mocap.*
 import afield.math.oracle.*
-import kotlin.math.*
 
 // six takes of modern dance (CMU subject 05): every joint, in the dancer's own frame, at 30 Hz,
 // without the standing still before and after each take
@@ -392,7 +387,7 @@ three(name = "dance-strip", width = 1000, height = 420) {
 <!-- field-box id="tm_notebook" index="6" -->
 
 ```edn [field-box id="tm_notebook" role="properties"]
-{"id" "tm_notebook" "index" 6 "name" "0 - lab notebook" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "0 - lab notebook" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_notebook_code_.kt" "lines" 68 "characters" 4097 "sha256" "823563c4da77a4616b752385a8b7351fd25fe9328053348986df454350810818"}]}
+{"id" "tm_notebook" "index" 6 "name" "0 - lab notebook" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "0 - lab notebook" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_notebook_code_.kt" "lines" 66 "characters" 4083 "sha256" "5ed4782e94fedb0e0f5cd686b384524aa2e895a0adb0150bcdf26f0f191fc2c0"}]}
 ```
 
 ```kotlin [field-property box="tm_notebook" name="code" path="tm_notebook_code_.kt"]
@@ -460,9 +455,7 @@ markdown(
     - Hard endpoints ("arrive here in 4 s"); tempo, offset and amplitude transforms of recalled passages.
     - More dancers: the bridges make a memory of several performers possible.
 
-    Full report: dev_docs/TEMPORAL_MEMORY_EXPERIMENTS.md. Data: public/docs/assets/temporal_memory/cmu_05/README.md.
-    """
-        .trimIndent(),
+    Full report: dev_docs/TEMPORAL_MEMORY_EXPERIMENTS.md. Data: public/docs/assets/temporal_memory/cmu_05/README.md.""".trimIndent(),
 )
 ```
 

@@ -568,9 +568,7 @@ fun freeEditorLayout() {
         const c = document.querySelector(".monaco-editor-container")
         if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
         if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
-        return true
-        """
-            .trimIndent(),
+        return true""".trimIndent(),
     )
 }
 fun rect(name: String): List<Double> =
@@ -579,9 +577,7 @@ fun rect(name: String): List<Double> =
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     if (!b) return null
     const r = b.getBoundingClientRect()
-    return [r.left, r.top, r.right, r.bottom].join(",")
-"""
-                .trimIndent(),
+    return [r.left, r.top, r.right, r.bottom].join(",")""".trimIndent(),
         )
         .toString()
         .trim('"')

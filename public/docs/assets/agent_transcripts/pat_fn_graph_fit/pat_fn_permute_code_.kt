@@ -17,9 +17,7 @@ with(Functions) {
 
     It descends, but not to the answer: it escapes into wide kernels, where a
     normalised blend flattens toward the mean of its atom values. Structure search
-    (evolve) is the tool for re-assigning values between atoms.
-    """
-            .trimIndent()
+    (evolve) is the tool for re-assigning values between atoms.""".trimIndent()
     println(report)
-    display("<pre>" + report + "</pre>")
+    markdown("```text\n$report\n```")
 }

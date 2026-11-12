@@ -1,5 +1,4 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // Verbatim excerpts from texts/source-passage.txt; line breaks are the only layout edits.
 // Fixed landmarks and sliding constraints share one small connection helper. Only the
@@ -106,7 +105,9 @@ controlGroup("elastic threads") {
         graph.connections.forEach { c -> c.lengthStiffness = it.toFloat() }
     }
     checkbox("Minimize length", initialValue = false) {
-        graph.connections.forEach { c -> c.lengthMode = if (it) DiagramConnectionLength.MINIMIZE else DiagramConnectionLength.STABILIZE }
+        graph.connections.forEach { c ->
+            c.lengthMode = if (it) DiagramConnectionLength.MINIMIZE else DiagramConnectionLength.STABILIZE
+        }
     }
     slider("Rest length multiplier", initialValue = 1.0, min = 0.0, max = 3.0) {
         graph.connections.forEach { c -> c.lengthScale = it.toFloat() }

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="surface" index="0" -->
 
 ```edn [field-box id="surface" role="properties"]
-{"id" "surface" "index" 0 "name" "1 - A performer's surface" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A performer's surface" "_tombstone" false "frame" #afield/rect [60.0 60.0 260.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "surface_code_.kt" "lines" 46 "characters" 1490 "sha256" "def660097b214a6a3937a20373cd226a8c7a6942a1a3d97ff2d0a8b105fcb72e"}]}
+{"id" "surface" "index" 0 "name" "1 - A performer's surface" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A performer's surface" "_tombstone" false "frame" #afield/rect [60.0 60.0 260.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "surface_code_.kt" "lines" 55 "characters" 1460 "sha256" "2966b5c607705c173e031789a825a3f0381c97be87b091067d87b48f816c0351"}]}
 ```
 
 ```kotlin [field-property box="surface" name="code" path="surface_code_.kt"]
@@ -21,20 +21,29 @@ var armed = true
 var title = "orbit"
 var tint = Vector4f(0.05f, 0.78f, 0.93f, 1f)
 fun draw() {
-    val c = "rgba(${(tint.x * 255).toInt()},${(tint.y * 255).toInt()},${(tint.z * 255).toInt()},${tint.w})"
-    val r = 10 + 40 * kotlin.math.log10(cutoff / 20.0) / 3.0
-    val dot =
-        if (armed) "<circle cx='${150 + orbit.x * 120}' cy='${150 - orbit.y * 120}' r='${r.f1}' fill='$c'/>" else ""
-    display(
-        "figure",
-        """
-        <svg width="300" height="300" style="background:#05080a;border:1px solid #136178">
-          <line x1="150" y1="150" x2="${150 + orbit.x * 120}" y2="${150 - orbit.y * 120}" stroke="#136178"/>$dot
-        </svg>
-        <div style="font:18px Iosevka,monospace;color:#0cc8ed">$title  cutoff ${cutoff.toInt()} Hz</div>
-    """
-            .trimIndent(),
+    val radius = 10 + 40 * kotlin.math.log10(cutoff / 20.0) / 3.0
+    val x = 150 + orbit.x * 120
+    val y = 150 - orbit.y * 120
+    val arm = fline {
+        moveTo(150, 150)
+        lineTo(x, y)
+        color = vec(0.075, 0.38, 0.47, 1.0)
+    }
+    val disc = fline {
+        circle(x, y, radius)
+        filled = true
+        stroked = false
+        color = Vector4f(tint)
+    }
+    val figure: List<FLine> = if (armed) [arm, disc] else [arm]
+    lines(
+        figure,
+        channel = "figure",
+        w = 300.0,
+        h = 300.0,
+        framing = LinesFraming.fixed(0.0, 0.0, 300.0, 300.0),
     )
+    markdown("caption", "**$title** · cutoff `${cutoff.toInt()} Hz`")
 }
 controlGroup("controls") {
     slider("cutoff", min = 20.0, max = 20000.0, initialValue = 800.0, law = ControlLaw.LOGARITHMIC) {

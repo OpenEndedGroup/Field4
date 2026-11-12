@@ -105,9 +105,8 @@ def _reference_source_roots() -> tuple[str, ...]:
     agent was made to commit regenerated pages was decided by whether it touched a ``.md``, not by
     whether it changed the API.
 
-    The same argument, and nearly the same sentence, is already written above
-    :func:`_macro_producer`: keeping a second hand-written path list is how ``stdlib/shaders.kt``
-    escaped that guard. One list, read from the thing that owns it.
+    Keeping a second hand-written path list is how ``stdlib/shaders.kt`` once escaped the
+    completion-corpus guard. One list, read from the thing that owns it.
 
     Deliberately *not* derived: the generator's ``EXCLUDE_PREFIXES``. Selecting an excluded file
     over-runs one gate, which costs time; failing to select an included one is the defect. The
@@ -151,6 +150,20 @@ def _transcript_input(path: str) -> bool:
 def _demo_input(path: str) -> bool:
     # A new demo has no existing ledger entry to touch, so its own path must select the guards.
     return _under(path, "dev_docs/agents/demos")
+
+
+def _transcript_layout_input(path: str) -> bool:
+    # AgentTranscriptLayoutGuard audits every create frame under dev_docs/agents/transcripts as well as
+    # the demos. Selecting it on demo paths alone let two transcripts land with a frameless box and two
+    # over-ceiling boxes (aa84996868, 5bd7b02d7a, 2026-11-10), because no landing ran the guard.
+    return (
+        _demo_input(path)
+        or _under(path, "dev_docs/agents/transcripts")
+        or path in {
+            "dev_docs/agents/transcript_layout_exceptions.yaml",
+            "src/jvmMain/kotlin/afield/tools/docs/AgentTranscriptLayoutGuard.kt",
+        }
+    )
 
 
 # The authored documents AgentDemoDriftGuard visits beside the demos: each directory directly under
@@ -200,62 +213,19 @@ def _compiled_transcript(path: str) -> bool:
 
 
 def _completion_input(path: str) -> bool:
-    return (
-        # Authored transcripts regenerate the starting-point boxes harvested below. Select
-        # both generators up front, before those generated changes exist in the diff.
-        _compiled_transcript(path)
-        or _under(path, "public/docs/assets/agent_transcripts")
-        or _under(path, "templates")
-        or _under(path, "tools/completion-corpus/boxes")
-        or _under(path, "src/jvmMain/kotlin/afield/runtime/macros")
-        or path
-        in {
-            "src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt",
-            "src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpusHarvest.kt",
-            "src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface.kt",
-            "src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface2.kt",
-            "src/jvmMain/kotlin/afield/runtime/kotlin/KotlinScriptEngine.kt",
-            "src/jvmMain/kotlin/afield/graphics/shader/shaders.kt",
-        }
-        or _macro_producer(path)
-    )
+    """Whether a landing must re-harvest ``tools/completion-corpus/boxes``.
 
-
-_MACRO_REGISTRATION = re.compile(
-    r"(?:MacroRegistry\s*\.\s*)?callRewrite(?:WithContext)?\s*\["
-)
-
-
-@functools.lru_cache(maxsize=None)
-def _macro_producer(path: str) -> bool:
-    """Whether ``path`` registers code that changes completion-corpus expansion.
-
-    The corpus runs snippets through Field's real macro expansion. Its producers are therefore
-    the Kotlin sources that register into ``callRewrite`` / ``callRewriteWithContext``; keeping a
-    second hand-written path list is exactly how ``stdlib/shaders.kt`` escaped the guard. Read both
-    the working tree and HEAD so additions, edits, and deletions all select the producer's guard.
+    Only when the harvester or its committed output changes. A transcript, template, macro or
+    compiler change also moves the harvest, but those were most landings, and the harvest cost
+    each of them one to three minutes (ten on 2026-11-11, on a loaded machine) for fixtures that
+    feed only ``jvmTest``, which no landing runs. The ``completion-corpus`` routine
+    (``routines/completion-corpus/``) re-harvests ``main`` nightly and lands the refresh before
+    nightly CI's ``docsGates`` checks it, so the corpus trails the transcripts by at most a day.
     """
-    if not (_under(path, "src/jvmMain/kotlin") and path.endswith(".kt")):
-        return False
-    repo = Path(__file__).resolve().parents[1]
-    texts: list[str] = []
-    working = repo / path
-    if working.is_file():
-        try:
-            texts.append(working.read_text())
-        except OSError:
-            pass
-    previous = subprocess.run(
-        ["git", "show", f"HEAD:{path}"],
-        cwd=repo,
-        check=False,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        text=True,
-    )
-    if previous.returncode == 0:
-        texts.append(previous.stdout)
-    return any(_MACRO_REGISTRATION.search(text) for text in texts)
+    return _under(path, "tools/completion-corpus/boxes") or path in {
+        "src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt",
+        "src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpusHarvest.kt",
+    }
 
 
 _CITATION_TEST_SOURCES = {
@@ -435,6 +405,43 @@ def _python_tool_input(path: str) -> bool:
     )
 
 
+# The corpus inputs of `_python_tool_input` that are not Python code, each with the strings that
+# mark a `tools/test_*.py` module as reading that corpus. A change to only these runs only those
+# modules. Before this, regenerating `public/docs/reference/` (which almost every Kotlin change
+# does) ran all ~120 modules, ~6.5 min, in 157 of the lander's 224 rounds in November 2026, although
+# five modules name that tree. A module that reads a corpus without naming it is missed here; the
+# full suite still runs in `check` and `docsGates`, and for any change to tooling itself.
+_PYTHON_CORPUS_SCOPES: tuple[tuple[PathPredicate, tuple[str, ...]], ...] = (
+    (_demo_input, ("agents/demos",)),
+    (lambda path: path == _REFERENCE_GENERATOR_REL or _under(path, "public/docs/reference"),
+     ("docs/reference", "StdlibReferenceGenerator")),
+    (lambda path: path in _scraped_completion_docs()
+     or path in {"tools/completion-corpus/scraped.tsv", "tools/completion-corpus/name-fixtures.tsv"},
+     ("completion-corpus", "scrape_completion_corpus")),
+)
+
+
+def python_tool_modules_for_paths(paths: Iterable[str], tools_root: Path | None = None) -> list[str] | None:
+    """The `tools.test_*` modules a change to [paths] needs, or None for the whole suite.
+
+    None whenever a path is Python tooling, the refactor engine or a build/dependency file, since
+    anything may import those. Otherwise each corpus path selects the modules whose source names
+    that corpus (`_PYTHON_CORPUS_SCOPES`); a path `_python_tool_input` does not match selects nothing.
+    """
+    root = tools_root or Path(__file__).resolve().parent
+    needles: set[str] = set()
+    for path in paths:
+        if not _python_tool_input(path):
+            continue
+        scoped = [marks for matches, marks in _PYTHON_CORPUS_SCOPES if matches(path)]
+        if not scoped:
+            return None
+        for marks in scoped:
+            needles.update(marks)
+    return [f"tools.{test.stem}" for test in sorted(root.glob("test_*.py"))
+            if any(needle in test.read_text(errors="replace") for needle in needles)]
+
+
 def _transcript_registration_input(path: str) -> bool:
     # A new or renamed top-level transcript, or any of the registers it must appear in.
     return (
@@ -492,7 +499,7 @@ GUARDS = (
     Guard("checkDocsPublications", "published document freshness and coverage", _publication_input),
     Guard("checkTranscriptRegistration", "agent transcript registration", _transcript_registration_input),
     Guard("checkDocAssetBudget", "docs asset size budget", _doc_asset_budget_input),
-    Guard("checkAgentTranscriptLayouts", "agent transcript and demo layouts", _demo_input),
+    Guard("checkAgentTranscriptLayouts", "agent transcript and demo layouts", _transcript_layout_input),
     Guard("checkAgentDemos", "saved document inline copies", _saved_document_input),
     Guard("checkPythonTools", "Python tools and their corpus contracts", _python_tool_input),
     Guard(

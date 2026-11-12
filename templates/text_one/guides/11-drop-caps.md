@@ -48,7 +48,8 @@ Measurements account for its lower baseline; no-descender boxes retain its dropp
 Connect a thread to it just like any other span:
 
 ```kotlin
-connection("initial-thread",
+connection(
+    "initial-thread",
     paragraph.initial.attach(DiagramTextSite.BOUNDARY),
     aside.attach(DiagramTextSite.LEFT_MARGIN),
 ) {

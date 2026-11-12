@@ -193,7 +193,7 @@ println(clock.now()) // 00:59:50:00, counting from the moment generate was calle
 This box follows LTC delivered in 512-sample blocks at the pace audio would bring them, stops the
 source after a second and a half, and reads the clock 60 times a second throughout:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/smpte_timecode/clock_freewheel.png" alt="a plot of clock.seconds read at 60 Hz against wall time: a straight, smooth ramp of green dots, which carries on for half a second past the dashed line where the LTC stops, then flattens into a row of grey dots once the clock is no longer locked; below, the reading count and the timecode it held at" wait-output=true wait-output-kind=display wait-output-channel="info" capture="box" embed=true name="smpte-clock-freewheel" w="760" h="420"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/smpte_timecode/clock_freewheel.png" alt="a plot of clock.seconds read at 60 Hz against wall time: a straight, smooth ramp of green dots, which carries on for half a second past the orange line where the LTC stops, then flattens into a row of grey dots once the clock is no longer locked; below, the reading count and the timecode it held at" wait-output=true wait-output-kind=display wait-output-channel="info" capture="box" embed=true name="smpte-clock-freewheel" w="760" h="420"}
 :::static
 import afield.io.timecode.*
 
@@ -216,27 +216,22 @@ while (true) {
     Thread.sleep(16)
 }
 
-// clock.seconds (from the first locked reading) against wall time, green while locked, grey after.
+// Measure clock time from the first lock; the chart keeps real seconds on both axes.
 val first = readings.first { it.third }
-val w = 640.0
-val h = 220.0
-fun x(t: Double) = t / 3.0 * w
-fun y(s: Double) = h - (s - first.second) / 2.0 * h
-val dots = readings.filter { it.first >= first.first }.joinToString("") { (t, s, locked) ->
-    "<circle cx='${x(t).f1}' cy='${y(s).f1}' r='1.6' fill='${if (locked) "#2a7" else "#999"}'/>"
+val chart = Chart(xLabel = "wall time (s)", yLabel = "clock since first lock (s)").apply {
+    width = 700.0
+    height = 300.0
+    xDomain = 0.0 to 3.0
+    yDomain = 0.0 to 2.0
 }
-display(
-    "main",
-    """<svg width="${w + 60}" height="${h + 40}" style="font: 12px sans-serif">
-  <g transform="translate(40,10)">
-    <rect width="$w" height="$h" fill="none" stroke="#999"/>
-    <line x1="${x(stopAt).f1}" x2="${x(stopAt).f1}" y1="0" y2="$h" stroke="#c52" stroke-dasharray="4 3"/>
-    <text x="${x(stopAt) + 4}" y="14" fill="#c52">LTC stops</text>
-    $dots
-    <text x="4" y="14" fill="#2a7">clock.seconds, read at 60 Hz</text>
-    <text x="${w / 2 - 40}" y="${h + 22}" fill="#999">wall time, s (0 … 3)</text>
-  </g></svg>""",
-)
+fun addReadings(locked: Boolean, label: String, color: Vec4) {
+    val samples = readings.filter { it.first >= first.first && it.third == locked }
+    chart.points(label, samples.map { it.first }, samples.map { it.second - first.second }, color, size = 1.6)
+}
+addReadings(true, "locked", vec(0.13, 0.67, 0.47, 1.0))
+addReadings(false, "held", vec(0.6, 0.6, 0.6, 1.0))
+chart.vrule(stopAt, "LTC stops", vec(0.8, 0.33, 0.13, 1.0))
+lines(chart.toFLines(), channel = "main", w = 700.0, h = 300.0, fitToSize = true)
 val last = readings.last()
 markdown("info", "${readings.size} readings; held at **${clock.now()}**, locked: ${last.third}")
 ```
@@ -246,3 +241,12 @@ is not thread-safe. `now()`, `seconds` and `locked` are safe to read from any th
 
 The four boxes behind this page, including MTC into a clock and a clock following LTC in
 512-sample blocks, are the [smpte_timecode](agent_transcripts.md#smpte_timecode) starting point.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`Chart`](reference/visualization.md#charts-kt-chart)
+- [`Chart.points`](reference/visualization.md#charts-kt--chart--points)
+- [`Chart.vrule`](reference/visualization.md#charts-kt--chart--vrule)
+- [`Chart.toFLines`](reference/visualization.md#charts-kt--chart--toflines)

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_recorded_results" index="0" -->
 
 ```edn [field-box id="motion_recorded_results" role="properties"]
-{"id" "motion_recorded_results" "index" 0 "name" "Recorded motion — ARDY and CLoSD" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Recorded motion — ARDY and CLoSD" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_recorded_results_code_.kt" "lines" 98 "characters" 4555 "sha256" "dccf5eb3db9b09fdf7441b08e7c0822553a3e60b5fc379e40cb905da6e72b3c9"}]}
+{"id" "motion_recorded_results" "index" 0 "name" "Recorded motion — ARDY and CLoSD" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Recorded motion — ARDY and CLoSD" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_recorded_results_code_.kt" "lines" 98 "characters" 4531 "sha256" "ad8a16393f3acfa5b37299a5b416d8205a9535ce49890907a84e0d311e9657c8"}]}
 ```
 
 ```kotlin [field-property box="motion_recorded_results" name="code" path="motion_recorded_results_code_.kt"]
@@ -20,15 +20,15 @@ import afield.animation.mocap.*
 // Change to "live", "closd" or "route" to compare the other recordings.
 val experiment = "ardy"
 val sources = when (experiment) {
-    "live" -> listOf("Skip" to "ardy-live-skip", "Run" to "ardy-live-run", "Recoil" to "ardy-live-recoil")
+    "live" -> ["Skip" to "ardy-live-skip", "Run" to "ardy-live-run", "Recoil" to "ardy-live-recoil"]
     "closd" ->
-        listOf(
+        [
             "Baseline" to "closd-baseline-seed0",
             "Weak tether" to "closd-weak-seed0",
             "Strong tether" to "closd-capped-seed0",
-        )
-    "route" -> listOf("4 steps" to "ardy-path", "10 steps" to "ardy-path-10steps")
-    else -> listOf("Run" to "ardy-run-seed0", "Jump" to "ardy-jump-seed0", "Somersault" to "ardy-somersault-seed0")
+        ]
+    "route" -> ["4 steps" to "ardy-path", "10 steps" to "ardy-path-10steps"]
+    else -> ["Run" to "ardy-run-seed0", "Jump" to "ardy-jump-seed0", "Somersault" to "ardy-somersault-seed0"]
 }
 val takes = sources.map { (_, file) -> MotionRecording(("%docs/assets/motion_recordings/$file.f4motion").path) }
 val clips = takes.map { it.clip() }

@@ -18,7 +18,7 @@ Topology is the source of truth. Coordinates and the FLine viewer only arrive af
 selection and the abstract Conway operation have decided what the new faces are.
 
 ```edn [field-box id="polytope_selective_kis" role="properties"]
-{"id" "polytope_selective_kis" "index" 0 "name" "Polytope — selective kis, topology to FLine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — selective kis, topology to FLine" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_selective_kis_code_.kt" "lines" 83 "characters" 2898 "sha256" "dff9537fa2ab0e5713ae90f9da8f05c3d9c395ff0f7ff629cf90d5b3c5bf9f74"}]}
+{"id" "polytope_selective_kis" "index" 0 "name" "Polytope — selective kis, topology to FLine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — selective kis, topology to FLine" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_selective_kis_code_.kt" "lines" 79 "characters" 2854 "sha256" "b00cf1d8b1bce48536597b5394d262154a5be9dfd65440c3a77ba10a64b395f4"}]}
 ```
 
 ```kotlin [field-property box="polytope_selective_kis" name="code" path="polytope_selective_kis_code_.kt"]
@@ -51,9 +51,7 @@ println(
     selective kis on two opposite cube faces
     transform = ${result.summary()}
     triangles = ${triangles.summary()}
-    orbit the view; hover and click a face to inspect its lineage
-    """
-        .trimIndent(),
+    orbit the view; hover and click a face to inspect its lineage""".trimIndent(),
 )
 
 val status: (String) -> Unit = { message -> markdown("face provenance", message) }
@@ -85,9 +83,7 @@ val faceLines = polyhedron.toFaceFLines { face, line ->
             - role: `$role`
             - deployed height: `$deployed`
             - source: $sources
-            - clicked at: `${hit.position}`
-            """
-                .trimIndent(),
+            - clicked at: `${hit.position}`""".trimIndent(),
         )
     }
 }

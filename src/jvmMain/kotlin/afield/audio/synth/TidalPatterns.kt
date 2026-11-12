@@ -134,7 +134,8 @@
  *         }
  *
  *     Scheduled events also retain the source span of the atom that produced
- *     them, so live debug tools can point back into the pattern text:
+ *     them, so live debug tools can point back into the pattern text (`__m("pat")` is a
+ *     [marker](../visualizers.md#markers)):
  *
  *         pat("bd [hh hh] sd").respond(cps = 2.0) { event ->
  *             __m("pat").patHighlight(event)

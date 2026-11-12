@@ -1,5 +1,4 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 /*
 Authored line breaks are part of the poem. The first three lines sit beside the initial;

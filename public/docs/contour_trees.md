@@ -88,7 +88,8 @@ val field =
 :::fold draw the three trees
 // The two halves and their merge, each simplified the same way and drawn as a plot.
 fun drawn(tree: ScalarTree) =
-    Img(200, 150, 3, FloatArray(200 * 150 * 3)).drawFLines(tree.simplify(persistence = 0.03).plot(200.0, 150.0, margin = 15.0), scale = 2.0)
+    Img(200, 150, 3, FloatArray(200 * 150 * 3))
+        .drawFLines(tree.simplify(persistence = 0.03).plot(200.0, 150.0, margin = 15.0), scale = 2.0)
 showImgGrid(
     "join tree" to drawn(ContourTrees.joinTree(field)),
     "split tree" to drawn(ContourTrees.splitTree(field)),

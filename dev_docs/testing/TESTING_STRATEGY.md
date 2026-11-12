@@ -55,12 +55,16 @@ its subtests that way on any machine with Field open, until its sandbox started 
 `PORT`.
 
 The Python tool suites (`uv run --project . --group backdoor python tools/run_python_tests.py`,
-the Gradle `checkPythonTools` task, about 6 minutes) are not run on every landing. The lander
-picks guards by changed path (`guards_for_paths` in `tools/check_staged_generated_artifacts.py`),
-and `checkPythonTools` is selected only by changes under `dev_docs/agents/demos/`. A branch that
-lands green has therefore not run `tools/test_*.py`, which is how the (since retired) `CARRIER_PAGES` ledger in
-`tools/check_doc_offline_links.py` stayed stale on `main` after f9f3910c5. If you touch
-`tools/`, `field.sh`, or a page those suites read, run the suite yourself before enqueueing.
+the Gradle `checkPythonTools` task) run each `tools/test_*.py` module in its own process, several
+at once: about 2 minutes for all of them. The lander picks guards by changed path
+(`guards_for_paths` in `tools/check_staged_generated_artifacts.py`). `checkPythonTools` is selected
+by Python tooling, build files, and the corpora some suites read (demos, the generated reference
+pages, the completion scrape). When only corpora changed, it runs only the suites that name that
+corpus (`python_tool_modules_for_paths`); `--all` or a run with no change list runs every suite. A
+branch that lands green has therefore not necessarily run every `tools/test_*.py`, which is how the
+(since retired) `CARRIER_PAGES` ledger in `tools/check_doc_offline_links.py` stayed stale on `main`
+after f9f3910c5. If you touch `field.sh` or a page those suites read, run the suite yourself before
+enqueueing.
 
 Incremental capture keys hash capture-affecting syntax from
 `public/docs_hooks.py`, not its diagnostic prose, logging calls, or
@@ -536,6 +540,22 @@ Committed docs figures and videos also have a size budget (PNG 2 MiB and
 `uv run python tools/check_doc_assets.py --budget-only` (Gradle
 `checkDocAssetBudget`). Shrink a capture with `max-width=` on its fence; see
 `dev_docs/testing/LANDING_ASSET_GUARDS.md`.
+
+A docs image shown with `![](...)` or `<img src>` that no runner fence declares
+(`screenshot=`/`video=`/`poster=`, which includes retained capture-profile
+assets) is a hand-placed image. The ones that existed on 2026-11-12 are listed
+in `dev_docs/testing/doc_hand_images.json`; a new one fails until it is made by
+a runner fence or registered on purpose as a deliberate hand screenshot, and an
+entry whose image is gone fails too:
+`uv run python tools/check_doc_assets.py --hand-images-only`
+(`--write-hand-image-register` rewrites the list).
+
+`page.md#anchor` links written in source (docs pages, `dev_docs/**.md`, KDoc in
+`src/**.kt`) are checked against the target page's heading slugs, explicit
+`{#id}`s and raw-HTML ids without a docs build:
+`uv run python tools/check_doc_source_anchors.py`. The built-site check in
+`tools/check_doc_site_links.py` still owns rendered links on published pages.
+Both run in `checkPythonTools` and in `tools/land.py precheck`.
 
 ### 9. Specialized Manual References
 

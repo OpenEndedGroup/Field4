@@ -409,5 +409,42 @@ class SizeBudgetTest(unittest.TestCase):
         self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
 
 
+class HandImageRatchet(unittest.TestCase):
+    """N1112-1: a NEW hand-added image fails, an established registered one passes, a stale entry fails."""
+
+    def tree(self, tmp: str) -> Path:
+        docs = Path(tmp) / "public" / "docs"
+        (docs / "assets").mkdir(parents=True)
+        for name in ("cap.png", "hand.png", "new.png"):
+            (docs / "assets" / name).write_bytes(b"x")
+        (docs / "page.md").write_text(
+            '```kotlin runner screenshot="assets/cap.png"\n```\n![](assets/cap.png)\n![](assets/hand.png)\n')
+        return docs
+
+    def test_registered_hand_image_and_runner_capture_pass(self):
+        with TemporaryDirectory() as tmp:
+            docs = self.tree(tmp)
+            self.assertEqual(cda.hand_image_problems(Path(tmp), docs, ["assets/hand.png"], floor=1), [])
+
+    def test_new_unowned_image_fails(self):
+        with TemporaryDirectory() as tmp:
+            docs = self.tree(tmp)
+            (docs / "other.md").write_text('<img src="assets/new.png">\n')
+            problems = cda.hand_image_problems(Path(tmp), docs, ["assets/hand.png"], floor=1)
+            self.assertEqual(len(problems), 1)
+            self.assertIn("NEW hand-added image assets/new.png", problems[0])
+
+    def test_stale_entry_and_empty_scan_fail(self):
+        with TemporaryDirectory() as tmp:
+            docs = self.tree(tmp)
+            problems = cda.hand_image_problems(Path(tmp), docs, ["assets/hand.png", "assets/gone.png"])
+            self.assertTrue(any("STALE" in p and "gone.png" in p for p in problems))
+            self.assertTrue(any("scan is broken" in p for p in problems))
+
+    def test_real_tree_has_no_new_hand_images(self):
+        root = Path(__file__).resolve().parent.parent
+        self.assertEqual(cda.hand_image_problems(root), [])
+
+
 if __name__ == "__main__":
     unittest.main()

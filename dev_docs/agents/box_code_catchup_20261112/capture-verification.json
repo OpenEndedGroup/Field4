@@ -1,0 +1,22 @@
+{
+  "captures": [
+    {
+      "page": "fline_examples.md",
+      "name": "fline-swept-cubic",
+      "status": "passed",
+      "screenshot": "assets/swept_circle_cubic.png",
+      "video": null,
+      "sourceFingerprint": "a961963ba767c972f0ff716cf255d7a38a5b1e9a2c8f2603cc84bc98d6c1c712"
+    },
+    {
+      "page": "fline_examples.md",
+      "name": "fline-swept-degenerate",
+      "status": "passed",
+      "screenshot": "assets/swept_circle_degenerate.png",
+      "video": null,
+      "sourceFingerprint": "4e727af6b882ca55912c3c313a94f1d52e086afcdfc6726c81192c4fc4b406e5"
+    }
+  ],
+  "method": "Normal RunnerState capture_with_environment and transactional publication; actual authored fence and transcript.",
+  "visualInspection": "Both actual PNGs inspected: all reference circles and flank outlines present; the degenerate stroke retains its filled shell and separated flanks; no Field error marker."
+}

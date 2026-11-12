@@ -21,7 +21,7 @@ with the alignment term zeroed reaches 0.073.
 
 ## Source files
 
-Six dependency-free files built on the existing [imaging](imaging_examples.md) and
+Seven dependency-free files built on the existing [imaging](imaging_examples.md) and
 [mesh](mesh_examples.md) families. Nothing here reimplements convolution, connected-component
 labelling, colour mapping or marching cubes:
 
@@ -42,6 +42,8 @@ labelling, colour mapping or marching cubes:
   aggregation with two control models.
 - **`alife_lsystem.kt`** — a bracketed, parametric, optionally stochastic L-system with a turtle that
   emits [`FLine`](fline_examples.md)s, and space-colonization branching.
+- **`alife_tree_growth.kt`** — [trees that compete for light](#trees-that-compete-for-light): buds
+  in a shadow grid, light summed toward the root and growth resource split back up by Borchert–Honda.
 - **`alife_field.kt`** — the [inline `ToHTML` views](#evaluating-one-of-these-in-a-box-the-inline-views),
   kept in their own file so the five above name nothing from Field's visualizer.
 
@@ -812,6 +814,365 @@ showImg(
 
 ![two identical black boards, each holding one white five-cell glider at the same position, labelled float Lenia and integer Life after 20 generations](assets/alife_examples/lenia-limit.png)
 
+### Flow Lenia: matter that moves instead of growing
+
+Flow Lenia gives the matter in a cellular automaton somewhere to go. Ordinary Lenia adds growth to
+the field, so its total mass changes at each step; Particle Lenia keeps mass fixed by using
+particles. Flow Lenia keeps the grid and moves its mass from cell to cell. The matter carries its
+own rule with it, so different species can meet and mix in one world.
+
+Each [`FlowLeniaWorld`](reference/alife.md#alife-flow-lenia-kt-flowleniaworld) advances with [`step()`](reference/alife.md#alife-flow-lenia-kt--flowleniaworld--step); [`animateEvolution`](reference/alife.md#alife-animate-kt--animateevolution) runs the steps and records the panels shown below.
+
+The model comes from Plantec, Hamon, Etcheverry, Oudeyer, Moulin-Frier and Chan's
+["Flow-Lenia: Towards open-ended evolution in cellular automata through mass conservation and
+parameter localization"](https://arxiv.org/abs/2212.07906) (ALIFE 2023). Here is how it works:
+
+- **The mass is conserved exactly.** Growth is no longer added to the field. The same kernels and
+  growth curves make an *affinity* `U = Σ h_k G_k(K_k * A)`, and the matter flows uphill on it,
+  `F = (1 − α)∇U − α∇A`, where `α = (A/θ)²` (capped at 1) pushes matter apart once it piles past
+  `θ = 2`. Each cell's matter then moves to `x + dt·F` as a small square and is shared among the
+  cells that square lands on, in proportion to the overlap (*reintegration tracking*). The shares of
+  every cell add up to one, so matter is only ever moved. Over 300 steps of three species the total
+  drifts by about `1e-12` of itself, which is rounding.
+- **The rule travels with the matter.** The kernel weights `h` are stored per cell, not per world.
+  When matter moves, its `h` moves with it. When matter from two places lands in one cell, the cell's
+  `h` becomes their mass-weighted mean, or (the paper's rule) the `h` of one arriving parcel drawn in
+  proportion to its mass. Several species, each with a different `h`, can share one world and one
+  set of kernels, push into each other and blend.
+
+A species is a list of ring kernels, each with its own `mu` and `sigma`, and a weight on each.
+[`FlowLeniaPresets`](reference/alife.md#alife-flow-lenia-kt) holds three found by random search over
+the paper's rule space (three to seven kernels of radius 3 to 12). Starting from a disc of noise,
+[`wanderers`](reference/alife.md#alife-flow-lenia-kt--flowleniapresets--wanderers) breaks into a dozen round bodies that drift slowly, [`rings`](reference/alife.md#alife-flow-lenia-kt--flowleniapresets--rings) settles into small hollow
+rings that keep apart, and [`cell`](reference/alife.md#alife-flow-lenia-kt--flowleniapresets--cell) grows one large body with a membrane. Seed them side by side in a
+96 x 96 world, drawn at three times the resolution (`scale = 3`: 288 x 288 cells, nine for every
+one; [Higher resolution](#higher-resolution-the-same-world-in-more-cells) says what that changes),
+and each takes its own form: the wanderers a dozen round bodies, the rings a cluster of hollow rings
+that later breaks into small crosses, and the cell a membrane that pulls apart into beaded chains.
+The white line tracks total mass; it stays flat:
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-species.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="900" w="1000" embed=true name="alife-flow-lenia-species" alt="left, a dark field where an orange cloud of a dozen round bodies, a cyan cluster of rings that breaks into small crosses and a pink membrane that pulls apart into beaded chains form from three discs of noise; right, a plot whose white line, the total mass, stays perfectly flat while the orange, cyan and pink lines, each species' mass, stay level beneath it"}
+:::static
+val world = flowLeniaWorld(
+    288,
+    288,
+    [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+    scale = 3,
+)
+
+animateEvolution(
+    world,
+    totalSteps = 1200,
+    seconds = 9.0,
+    columns = 2,
+    cellSide = 480,
+    step = { it.step() },
+    panels = { w, n ->
+        [
+            ("step " + n) to w.speciesImg().resize(480, 480),
+            ("total mass " + w.totalMass().f3) to w.massPlot(480, 480),
+        ]
+    },
+)
+```
+
+[`flowLeniaWorld`](reference/alife.md#alife-flow-lenia-kt--flowleniaworld) puts every species' kernels side by side in one rule and gives each species weight
+only on its own, so a species with nobody near it runs exactly its own rule (the test checks this to
+`1e-9`). Its matter still feels everyone else's through those kernels, which is how species meet.
+
+### When species meet
+
+With `mixing = FlowLeniaMixing.SAMPLED`, a cell takes the parameters of one parcel of the matter
+arriving in it, chosen in proportion to mass, so a cell changes hands instead of blending. Then the
+mass per species is no longer fixed, and it records who is winning. Here `rings` (orange) and `cell`
+(cyan) start as two touching discs. For most of the run they trade mass back and forth along their
+border, a few tens of units out of about 4000. After step 1000 the rings break into the cell and take
+about 400 units of it, nearly a quarter, while the white total stays flat:
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-collision.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="900" w="1000" embed=true name="alife-flow-lenia-collision" alt="left, orange ring bodies and a cyan membrane body pressed together, mixing at their border and later merging into one large ring of both colours; right, the orange and cyan mass lines wobble around a steady gap, then separate sharply near the end, while the white total above them stays flat"}
+:::static
+val world = flowLeniaWorld(
+    288,
+    192,
+    [FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+    positions = [38.0 to 32.0, 58.0 to 32.0],
+    mixing = FlowLeniaMixing.SAMPLED,
+    scale = 3,
+)
+
+animateEvolution(
+    world,
+    totalSteps = 1200,
+    seconds = 9.0,
+    columns = 2,
+    cellSide = 480,
+    step = { it.step() },
+    panels = { w, n ->
+        [
+            ("step " + n) to w.speciesImg().resize(480, 320),
+            ("rings %.0f, cell %.0f".format(w.speciesMass(0), w.speciesMass(1))) to w.massPlot(480, 320),
+        ]
+    },
+)
+```
+
+With the default `FlowLeniaMixing.MEAN`, the same two discs blend instead. Matter that is part rings
+and part cell carries an `h` between the two, and that `h` is a rule neither species had. On the
+right below is the parameter field itself: `weightImg(0)`, the weight on the rings' first kernel at
+every cell holding matter. It starts as two flat colours. By step 1200 about half the matter is a
+hybrid (`mixedMass()`, matter no species holds 90 % of: 2051 of 4023 units). The rings' main body is
+almost pure rings, two smaller bodies sit between the two rules, and the cell's beaded chains grade
+from the cell's own weight towards the rings'. The species colours on the left blend the same way.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-drift.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="900" w="1000" embed=true name="alife-flow-lenia-drift" alt="left, orange ring bodies and cyan beaded chains whose colours blend where they have mixed; right, the same matter coloured by one kernel weight on a viridis scale: a large yellow body, two green hybrid bodies, and teal chains grading towards blue"}
+:::static
+val world = flowLeniaWorld(
+    288,
+    192,
+    [FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+    positions = [38.0 to 32.0, 58.0 to 32.0],
+    scale = 3,
+)
+
+animateEvolution(
+    world,
+    totalSteps = 1200,
+    seconds = 9.0,
+    columns = 2,
+    cellSide = 480,
+    step = { it.step() },
+    panels = { w, n ->
+        [
+            ("step " + n) to w.speciesImg().resize(480, 320),
+            ("hybrid %.0f of %.0f".format(w.mixedMass(), w.totalMass())) to
+                w.weightImg(0).colormap("viridis", 0f, 0.4f).resize(480, 320),
+        ]
+    },
+)
+```
+
+Here the species share a fixed supply of mass and carry their rules with them. As they collide and
+mix, the creatures explore the rule space themselves. Compare this with the outer search loop in
+[section 11](#a-lenia-rule-that-travels).
+
+### Higher resolution: the same world in more cells
+
+`scale = 3` on `flowLeniaWorld` seeds the world at a third of its size and then grows it with
+`scaledCopy(3)`. Every cell becomes a 3 x 3 block, and every length in the rule triples: the kernel
+radii, the square each cell's matter is spread over when it lands, and the largest step. `dt` grows
+nine times, because the gradient of a pattern three times as large is a third as steep. Matter then
+moves the same fraction of a creature per step as before, and each creature is drawn with nine times
+as many cells. Use `scaledCopy(k)` on a world that is already running to find something in a
+small, fast world and then watch it at a larger scale.
+
+Here the three species run twice, side by side, from the same seed. On the left is the 96 x 96
+world, each cell drawn as a 5 x 5 block of pixels. On the right is the same start at `scale = 3`,
+in a 288 x 288 world:
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-scale.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="900" w="1000" embed=true name="alife-flow-lenia-scale" alt="two copies of the three-species world side by side; left, blocky at 96 cells, right, smooth at 288 cells. In both, an orange cloud of a dozen round bodies forms in the same place. The cyan and pink species differ: on the left the cyan breaks into small hollow rings and the pink grows a ragged membrane body, while on the right the cyan forms one cluster of rings that later breaks into crosses and the pink pulls apart into beaded chains"}
+:::static
+val species = [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()]
+val small = flowLeniaWorld(96, 96, species)
+val large = flowLeniaWorld(288, 288, species, scale = 3)
+
+animateEvolution(
+    small to large,
+    totalSteps = 1200,
+    seconds = 9.0,
+    columns = 2,
+    cellSide = 480,
+    step = { (a, b) ->
+        a.step()
+        b.step()
+        a to b
+    },
+    panels = { (a, b), n ->
+        [
+            ("96 cells, step " + n) to a.speciesImg().upscaleNearest(5),
+            ("288 cells, step " + n) to b.speciesImg().resize(480, 480),
+        ]
+    },
+)
+```
+
+How close the large world stays to the small one depends on the species. Part of Flow Lenia's
+structure is set by the grid rather than the kernels, so the match is never cell for cell:
+
+- `wanderers` come out as the same dozen round bodies. At twice the resolution, 20 steps after the
+  copy, the large world averaged back down matches the small one with a cosine similarity of 0.95.
+  Leaving the spread at one cell instead gives 0.86 and covers every body with a one-cell speckle.
+- `rings` and `cell` keep their character but not their exact forms. At three times, the rings
+  settle as one cluster of rings that later breaks into crosses, and the cell's membrane becomes
+  chains.
+- The crescent glider below covers three times the cells per step at three times the resolution,
+  so its speed in body lengths is unchanged. At twice the resolution it covers 1.44 times the cells
+  rather than 2.
+
+At higher resolution, convolution has more cells to cover for every tap of every kernel.
+`FlowLeniaConvolution.AUTO` computes affinity with whichever of two methods is cheaper for the
+current state. `SPARSE` scatters each occupied cell through every tap.
+`FFT` multiplies in the frequency domain and costs the same whatever the kernel radius. Any side
+length works, and sides built from small primes, such as 96 or 288, are fast. The two agree to
+`1e-14`. The three species above take about 9 ms a step at 96 x 96 and about 150 ms at 288 x 288.
+
+### Bodies that travel
+
+`bodies()` splits the matter into connected pieces, joining them across the edges of the torus. It
+gives each piece its mass, centroid and main species. `trackLargest(steps)` follows the largest body
+as the world runs, returning its path and mass over time. The path is unwrapped, so it continues
+across an edge instead of jumping back. `FlowLeniaTrack.speed` is the straight-line distance per
+step, and `massKept` is the smallest mass over the run divided by the first.
+
+[`FlowLeniaPresets.crescent()`](reference/alife.md#alife-flow-lenia-kt--flowleniapresets--crescent) is a rule from a random search of 900 rules scored that way. From a small
+noise disc it settles into one of two bodies. With noise seed 2 it folds into a crescent that travels
+convex side first at about 0.02 cells per step and keeps 99.6 % of its mass. From most other seeds it
+settles into a round body that stays put. Here the crescent forms on a 64-cell torus, is grown to
+three times the resolution, and runs for 3000 steps. On the right, each drawn frame is kept as a
+fading exposure, which shows the path:
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-crescent.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="900" w="1000" embed=true name="alife-flow-lenia-crescent" alt="left, an orange crescent made of beads travelling steadily across a dark field, wrapping round the edge of the torus; right, the same field as a long exposure in which the crescent's path is a fading band behind it"}
+:::static
+// Noise seed 2 folds into the crescent; grow it to three times the resolution once it has formed.
+val world =
+    flowLeniaWorld(64, 64, [FlowLeniaPresets.crescent()], seedRadius = 6.0, randomSeed = 2L).steps(200).scaledCopy(3)
+val trail = FloatArray(world.width * world.height)
+
+animateEvolution(
+    world,
+    totalSteps = 3000,
+    seconds = 9.0,
+    columns = 2,
+    cellSide = 480,
+    step = { it.step() },
+    panels = { w, n ->
+        val b = w.bodies().first()
+        for (c in trail.indices) trail[c] = maxOf(0.97f * trail[c], w.matter[c].toFloat())
+        [
+            ("step %d: mass %.1f at (%.0f, %.0f)".format(n, b.mass, b.x, b.y)) to w.speciesImg().resize(480, 480),
+            "the path" to Img(w.width, w.height, 1, trail.copyOf()).colormap("magma", 0f, 1.2f).resize(480, 480),
+        ]
+    },
+)
+```
+
+### Searching for travellers
+
+[`FlowLeniaGenome`](reference/alife.md#alife-flow-lenia-kt-flowleniagenome) lets you search for species with the same `PopulationSearch` used in the
+[Lenia rule search](#a-lenia-rule-that-travels). A random draw comes from the paper's rule space,
+where the presets came from too. There are three mutations: `nudge` moves every `mu`, `sigma` and weight a
+little, `rekernel` redraws one kernel, and `addOrDrop` adds or removes one. Crossover takes each kernel,
+with its weight, from one parent or the other. `flowLeniaGliderObjective` scores the tracked body's
+speed times the square of its `massKept`. It scores zero for a film covering more than 40 % of the
+world, because the centroid of such a film can drift without anything travelling. It averages over
+`seeds` noise seeds, so a rule only scores well if it travels from most starts. `code()` prints a
+species as the Kotlin that builds it, ready to paste into a box.
+
+```diffstatic {data-lang=kotlin}
+val ops = FlowLeniaGenome()
+val objective = flowLeniaGliderObjective(size = 64, warmup = 200, window = 200, seedRadius = 6.0, seeds = 3)
+val climb =
+    PopulationSearch.hillClimb(ops, objective, 100, seed = 7L, patience = 1000, start = FlowLeniaPresets.crescent())
+val control = PopulationSearch.random(ops, objective, 100, seed = 7L)
+println(climb.summary())
+println(control.summary())
+println(control.best!!.genome.code())
+```
+
+That run takes about six minutes, so it is shown here rather than run on the page. The crescent
+starts at 0.0069, because it travels from one seed in three. Climbing from it for 100 evaluations
+reached 0.036. The climb's best travels at 0.098 cells per step from seed 2 but loses about 45 % of its
+mass from the other two. The random control, at the same budget, did better: 0.042. Its winner is
+`FlowLeniaPresets.dart()`, a small hooked body that crosses the 64-cell torus at 0.10 cells per step
+and keeps 99.6 % of its mass, five times the crescent's speed, after first shedding two rings that
+stay where they are.
+
+!!! note "The dart does not survive a larger grid"
+    At twice the resolution the dart nearly stops: 0.012 cells per step in the small world's cells,
+    against 0.10. It is only about seven cells across, and its motion depends on effects at the
+    scale of a single cell. To find travellers for a large world, search at that resolution, or grow
+    the ones you find and check that they still move, as the crescent does.
+
+### Evolution inside the world
+
+When species meet and blend, their rules mix. To introduce new rules as the world runs, set
+`world.mutation = FlowLeniaMutation(rate, radius, scale)`. On average
+`rate` times a step, a disc of `radius` cells, centred on a cell picked in proportion to its matter,
+has the same random offset added to its kernel weights. The offset is Gaussian with standard deviation
+`scale` per kernel, and it is not clipped: a weight that goes negative makes that kernel push matter
+away instead of drawing it in. Each mutated disc becomes a new **lineage**. Every cell carries the
+lineage of its matter. Under `SAMPLED` mixing that is the lineage of the parcel it took its
+parameters from, and under `MEAN` it is the lineage of the largest parcel that arrived.
+`lineageMasses()`, `lineageImg()` and `lineagePlot()` read the lineages back, and `lineages` records
+each one's parent, birth step and starting weights.
+
+`scale = 0` is the control. It cuts new lineages without changing any weight, so under `MEAN` mixing
+the matter is bit for bit what it would have been with no mutation at all (the test checks this),
+and any change in who holds the mass is drift. Here both worlds start as the three species at twice
+the resolution under `SAMPLED` mixing, with the same mutation rate. On the left the mutations are
+neutral. On the right they have size 0.3. Each world is coloured by lineage, with its mass per species
+plotted underneath and printed in the caption (wanderers, rings, cell):
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-mutation.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="10" timeout="900" w="1000" embed=true name="alife-flow-lenia-mutation" alt="two worlds of the three species side by side, coloured by lineage, both breaking into patches of new colours as mutations land; the left keeps its round bodies, rings and chain, while the right dissolves into a faint haze with a few bodies; below each, the mass per species, flat on the left and diverging on the right, where the amber species climbs while the pink one falls almost to nothing"}
+:::static
+val species = [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()]
+val neutral = flowLeniaWorld(192, 192, species, mixing = FlowLeniaMixing.SAMPLED, scale = 2)
+neutral.mutation = FlowLeniaMutation(rate = 0.05, radius = 12.0, scale = 0.0)
+val mutating = flowLeniaWorld(192, 192, species, mixing = FlowLeniaMixing.SAMPLED, scale = 2)
+mutating.mutation = FlowLeniaMutation(rate = 0.05, radius = 12.0, scale = 0.3)
+
+fun masses(w: FlowLeniaWorld) = w.speciesMasses().joinToString(" ") { it.f0 }
+
+animateEvolution(
+    neutral to mutating,
+    totalSteps = 2400,
+    seconds = 9.0,
+    columns = 2,
+    cellSide = 384,
+    step = { (a, b) ->
+        a.step()
+        b.step()
+        a to b
+    },
+    panels = { (a, b), n ->
+        [
+            ("neutral " + masses(a)) to vstack(a.lineageImg().resize(384, 384), a.massPlot(384, 128)),
+            ("size 0.3 " + masses(b)) to vstack(b.lineageImg().resize(384, 384), b.massPlot(384, 128)),
+        ]
+    },
+)
+```
+
+With neutral mutations the three species hold their ground: 1069, 1010 and 794 units at step 600, and
+1178, 892 and 803 at step 2400. With mutations of size 0.3 the wanderers' descendants take over: by
+step 2400 they hold 1851 units, and the cell, which started with 739, is down to 114. The total is
+the same in both worlds throughout. In the picture, much of the mutating world ends up as a faint
+haze between a few surviving bodies: most large changes to the weights produce a rule that holds
+nothing together. The same comparison at 96 cells, for three noise seeds over 3000
+steps, went the same way each time. Neutral mutation moved no species' mass by more than about 20 %.
+Mutation of size 0.3 drove one species close to extinction in all three seeds, leaving 27, 77 and 38
+of the 198 to 261 units it started with: the cell in two seeds, the rings in the third.
+Which species wins depends on where the useful mutations land: the world is selecting among mutants.
+
+Use `paintWeights(cx, cy, radius, h)` to give the matter in a disc new weights by hand. The matter
+stays in place and becomes a lineage of its own. The other form takes a function
+of each cell and its current weights, which is how `mutate` is built.
+
+??? aside "How the species were found, and what did not work"
+    The first version used the ordinary Lenia gradient scale (central differences halved) and a single
+    ring kernel; every creature it made sat still. The paper's Sobel filter is unnormalised, which
+    makes the flow eight times stronger, and with it and several kernels per species roughly one
+    random rule in ten gives compact bodies, a few of which move. The search ran in a numpy prototype
+    of the same step (`dev_docs/ALIFE.md`, Flow Lenia); the first three presets are three of its rules
+    copied exactly, and the Kotlin version reproduces the same behaviour from a different noise seed.
+    The crescent came from a second numpy search of 900 rules scored like
+    `flowLeniaGliderObjective`, and the dart from the Kotlin random search above. `FlowLeniaTest`
+    pins conservation (total under both mixing rules, each species under `MEAN`, and with mutation),
+    the sparse convolution against a dense one and against the FFT, the zero-weight-kernel
+    equivalence, the 2x rescaling, seam-crossing bodies, the dart's and the crescent's motion, and
+    that a mutation of size zero leaves the matter bit for bit unchanged. The clips were first
+    captured at 96 cells shown four times larger; the FFT path is what made three times the
+    resolution affordable.
+
 ## 6. Boids
 
 [Reynolds' three rules](https://www.red3d.com/cwr/boids/) — separation, alignment, cohesion — on a
@@ -863,10 +1224,7 @@ val noSep = start.copy()
 noSep.stepTimes(params.copy(separationWeight = 0.0), 900)
 
 println(
-    "flock polarization " +
-        flock.order().f3 +
-        ", CONTROL with no alignment " +
-        noAlign.order().f3,
+    "flock polarization " + flock.order().f3 + ", CONTROL with no alignment " + noAlign.order().f3,
 )
 println(
     "5th-percentile nearest neighbour: flock " +
@@ -1088,9 +1446,9 @@ animateEvolution(
 
 ### A million agents on the GPU
 
-The same rule runs on the GPU as `ShaderPhysarumSystem`: a million agents on a trail 512 pixels high, each
+The same rule runs on the GPU as [`ShaderPhysarumSystem`](reference/alife.md#alife-physarum-gpu-kt-shaderphysarumsystem): a million agents on a trail 512 pixels high, each
 one a single vertex-shader invocation per frame that senses, turns, steps and deposits. The defaults are
-the `PhysarumParams` defaults above. The trail is a [`TrailField`](reference/alife.md#alife-trail-kt-trailfield), a stigmergy
+the [`PhysarumParams`](reference/alife.md#alife-agents-kt-physarumparams) defaults above. The trail is a [`TrailField`](reference/alife.md#alife-trail-kt-trailfield), a stigmergy
 field you can use on its own: four channels, each with its own half-life, plus diffusion and wind. Any
 module can deposit into it, and any shader can read it with `#include "trail/sample"`. Here there are
 two species, one per channel. Each follows its own trail and avoids the other's:
@@ -1146,11 +1504,11 @@ prop<ShaderPhysarumSystem>(physarum) = ShaderPhysarumSystem() {
     agentCount = 300_000
     speciesCount = 3
     exclusive = true
-    attraction = listOf(
+    attraction = [
         vec(1f, -2f, -2f, 0f),
         vec(-2f, 1f, -2f, 0f),
         vec(-2f, -2f, 1f, 0f),
-    )
+    ]
 }
 physarum.trail.settings.diffusion = 0.2f
 physarum.installInto()
@@ -1167,7 +1525,7 @@ shifting as one species pushes into another's ground.
 // The transcript builds a renderer and two systems, one and three species, each drawn into half the window.
 ```
 
-Any other particle system can steer by the same field. `TrailFollowers` climbs the gradient of
+Any other particle system can steer by the same field. [`TrailFollowers`](reference/alife.md#alife-trail-followers-kt-trailfollowers) climbs the gradient of
 `dot(trail, weights)`, so these 20,000 particles ride the amber roads and keep off the cyan ones:
 
 ```diffstatic {data-lang=kotlin}
@@ -1250,7 +1608,9 @@ val p = PhysarumParams()
 val road = 0.25 * p.deposit / (1 - p.decay)
 
 fun grow(label: String, agents: Int, params: PhysarumParams) =
-    label to PhysarumSwarm.random(200, 200, agents, seed = 5L).meanTrail(params, 3000, averageOver = 300, seed = 5L, food = food)
+    label to
+        PhysarumSwarm.random(200, 200, agents, seed = 5L)
+            .meanTrail(params, 3000, averageOver = 300, seed = 5L, food = food)
 
 val trails = [
     grow("1600 agents", 1600, p),
@@ -1263,12 +1623,18 @@ val controls: List<NetworkScore> = [
     TransportNetwork.mst(food.points).score("MST"),
     TransportNetwork.delaunay(food.points).score("Delaunay"),
 ]
-markdown("scores", "```\n" + NetworkScore.table(networks.map { (label, net) -> net.score(label) } + controls) + "\n```", width = 560)
+markdown(
+    "scores",
+    "```\n" + NetworkScore.table(networks.map { (label, net) -> net.score(label) } + controls) + "\n```",
+    width = 560,
+)
 
 :::fold draw each network over its trail
 showImg(
     montage(
-        networks.zip(trails).map { (n, t) -> n.first to n.second.drawOver(t.second.colormap("magma", 0f, (road * 4).toFloat())) },
+        networks.zip(trails).map { (n, t) ->
+            n.first to n.second.drawOver(t.second.colormap("magma", 0f, (road * 4).toFloat()))
+        },
         columns = 3,
         cellSide = 300,
     ),
@@ -1299,9 +1665,11 @@ dot on the plane; the table lists every run, including the ones that break apart
 val food = PhysarumFood.scattered(200, 200, 8, seed = 3L)
 
 fun run(label: String, agents: Int, p: PhysarumParams): NetworkScore {
-    val trail = PhysarumSwarm.random(200, 200, agents, seed = 5L).meanTrail(p, 3000, averageOver = 300, seed = 5L, food = food)
+    val trail =
+        PhysarumSwarm.random(200, 200, agents, seed = 5L).meanTrail(p, 3000, averageOver = 300, seed = 5L, food = food)
     return TransportNetwork.extract(trail, food.points, 0.25 * p.deposit / (1 - p.decay)).score(label)
 }
+
 :::endfold
 
 val base = PhysarumParams()
@@ -1878,6 +2246,137 @@ animateEvolution(
 )
 ```
 
+### Trees that compete for light
+
+Space colonization grows toward points you place. The model below, after Palubicki and colleagues'
+[self-organizing tree models](https://algorithmicbotany.org/papers/selforg.sig2009.small.pdf)
+(SIGGRAPH 2009), needs no target. A tree is a chain of *metamers*: an internode with a bud at its tip
+and an axillary bud beside it. Each bud measures the light that reaches it, and the shape of the crown
+comes from buds competing for that light. Chema Guerra's
+[Growing trees](https://brashandplucky.com/2026/10/15/growing-trees.html) walks through the same
+method; this is a 2-D version of it in
+[`alife_tree_growth.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/simulation/agents/alife_tree_growth.kt).
+
+One season of [`TreeGrowth.step()`](reference/simulation.md#alife-tree-growth-kt-treegrowth) does five things:
+
+1. **Shadow.** Every bud adds shadow to a wedge of grid cells below it, widening by one cell per row
+   and halving roughly every row and a half ([`ShadowGrid`](reference/simulation.md#alife-tree-growth-kt-shadowgrid)).
+   Shadows add up, so the inside of the crown goes dark.
+2. **Light.** A bud reads `Q = 1 − (shadow from everyone else)`, clamped to `0 .. 1`.
+3. **Light flows down.** `Q` is summed from the tips to the root, so every branch knows how much light
+   its whole subtree collects.
+4. **Resource flows up.** The root receives `v = α · Q_root` units of growth resource and passes them
+   back up. At each fork the Borchert–Honda rule splits it between the continuing axis and the lateral
+   branch: `v_main = v · λQ_main / (λQ_main + (1 − λ)Q_lateral)`. At `λ = 0.5` the resource follows the
+   light. Above 0.5 the leader takes more of it (apical dominance), and below 0.5 the side branches do.
+5. **Growth and shedding.** A bud given `v ≥ 1` grows a shoot of `⌊v⌋` metamers, bending toward the
+   brightest part of the cone ahead of it and toward the sky. A side branch whose light per metamer
+   falls under a threshold is dropped.
+
+Each season checks that the structure is still a tree (`isTree()`, also run after every shed), and
+that all the resource handed to the root reaches the buds. The allocation rule only splits it; it
+doesn't create or discard any. Adding shadow never makes a bud brighter.
+
+The figure grows one tree for 30 seasons. The top row shows it at seasons 2, 5, 10, 20 and 30. The
+middle row shows the season-20 tree three ways: every bud coloured by the light it read, every
+internode coloured by the resource flowing through it, and the shadow grid itself. The bottom row
+shows the same seed under four values of `λ`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/tree_growth.png" wait="10.0" capture="box" open-outputs="true" padding="20"}
+:::static
+// One tree, 30 seasons. Each step() is one season: shadow, light, Borchert-Honda allocation,
+// growth and shedding.
+val tree = TreeGrowth(seed = 4L)
+val seasons = [2, 5, 10, 20, 30]
+val strip = ArrayList<Pair<String, Img>>()
+var views: List<Pair<String, Img>> = []
+for (s in 1..30) {
+    tree.step()
+    if (s in seasons)
+        strip.add("season " + s + ": " + tree.nodeCount + " metamers" to tree.render(TreeView.STRUCTURE, 3))
+    if (s == 20) {
+        views = [
+            "season 20: bud light" to tree.render(TreeView.LIGHT, 3),
+            "resource flow (log)" to tree.render(TreeView.RESOURCE, 3),
+            "shadow grid" to tree.render(TreeView.SHADOW, 3),
+        ]
+    }
+}
+println(tree)
+println("a tree (one root, n-1 edges, acyclic): " + tree.isTree())
+
+// Borchert-Honda only ever splits, so what reaches the buds is what the root was given.
+println(
+    "worst resource conservation error over 30 seasons: " + "%.1e".format(tree.history.maxOf { it.conservationError }),
+)
+val last = tree.history.last()
+println(
+    "season 30: " +
+        last.buds +
+        " buds read " +
+        last.baseLight.f6 +
+        " units of light; root gets " +
+        last.baseResource.f6,
+)
+
+// Apical control: the same seed, four values of lambda.
+val lambdas = [0.44, 0.5, 0.56, 0.62]
+val crowns = lambdas.map { lam ->
+    val t = TreeGrowth(params = TreeGrowthParams(lambda = lam), seed = 4L).stepTimes(30)
+    val xs = (0 until t.nodeCount).map { t.x(it) }
+    val ys = (0 until t.nodeCount).map { t.y(it) }
+    println(
+        "λ = " +
+            lam +
+            ": " +
+            t.nodeCount +
+            " metamers, crown " +
+            (xs.max() - xs.min()).f0 +
+            " wide, " +
+            (ys.max() - ys.min()).f0 +
+            " tall",
+    )
+    "lambda = " + lam to t.render(TreeView.STRUCTURE, 3)
+}
+
+showImg(montage(strip + views + crowns, columns = 5, cellSide = 300))
+```
+
+![a strip of five frames of one tree growing from a two-metamer sprout to a broad crown at season 30; then the season-20 tree three ways — buds glowing yellow on the crown's upper edge and dark inside it, internodes coloured from a bright trunk to dim twigs, and a dark shadow mass under the crown; then four trees from the same seed going from wide and spreading at λ 0.44 to narrow and columnar at λ 0.62](assets/alife_examples/tree_growth.png)
+
+The light view shows how the crown takes shape. Only the buds on its upper and outer surface
+read much light. The resource follows them, so the tree grows at its edge, and the shaded branches
+inside lose their resource and are shed. By season 30 the tree has shed more metamers than it keeps.
+The bottom row shows what `λ` does. At 0.44 the resource spreads into side branches and the crown is
+wider than it is tall. At 0.62 the leaders keep most of it, and the tree is a narrow column that reaches
+the top of the grid.
+
+### Thirty seasons, growing
+
+Each frame of the video below is a season or part of one, and the framing is the whole grid, so the tree
+grows inside a fixed frame. The left panel is the structure. On the right the buds are coloured by the
+light they read: the lit edge moves outward and upward as the tree grows, and the inside goes dark.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/tree_growth.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="900" embed=true name="alife-tree-growth-video" alt="a tree growing for thirty seasons in a fixed frame, beside the same tree with its buds coloured by the light they receive, the lit edge moving outward as the crown fills in"}
+:::static
+// Thirty seasons over seven seconds. TreeGrowth is mutable and step() returns it, so it is the
+// `step` here directly. render() frames the whole grid, so the tree grows inside a fixed frame.
+animateEvolution(
+    TreeGrowth(seed = 4L),
+    totalSteps = 30,
+    seconds = 7.0,
+    columns = 2,
+    cellSide = 450,
+    step = { it.step() },
+    panels = { t, n ->
+        [
+            "season " + n + ": " + t.nodeCount + " metamers" to t.render(TreeView.STRUCTURE, 4),
+            "bud light, " + t.shedMetamersTotal + " shed" to t.render(TreeView.LIGHT, 4),
+        ]
+    },
+)
+```
+
 ## 11. Evolution: searching the rule space
 
 Every section above picks a rule and measures what it does. This one runs the question backwards: given
@@ -2200,7 +2699,7 @@ showImg(
 
 ![a contact sheet of twenty small greyscale automaton boards laid out in a six-column grid, each labelled with its two bin indices and score: the top-left cells are near-empty, the bottom-right cells are dense static, and the middle band holds boards with visible structure](assets/alife_examples/evolve-mapelites.png)
 
-All three searches run on one engine, `PopulationSearch`, and each is a genome (a `GenomeOps`: how to
+All three searches run on one engine, [`PopulationSearch`](reference/search.md#populationsearch-kt-populationsearch), and each is a genome (a `GenomeOps`: how to
 make, mutate and recombine one) plus an `Objective` that scores it. Evolving the shape of a function
 for animation runs on the same engine; see [evolving and optimizing
 functions](functions_examples.md#evolving-and-optimizing-functions).
@@ -2260,6 +2759,271 @@ of 0.25, its practical ceiling (an exact dimension plus the straightness bonus),
 cannot tell the methods apart. A harder target or a finer score would be needed before it could.
 The vehicle brains of [Braitenberg vehicles §10](braitenberg_vehicles.md) run through the same
 `compareSearch`.
+
+### Evolved grain sets: an L-system as a score
+
+The same L-system genome can be read as music instead of a drawing. In Nathan Ho's
+[EvoGrain](https://nathanho.me/posts/evograin), a derived string is a list of commands for a turtle
+whose state is a **time** and a **pitch**: `G` plays a grain and moves forward in time, `f` rests,
+`+` and `-` step the pitch, and `[` and `]` save and restore the state. Because `]` returns to the
+*time* the branch started at, every bracket is a new voice, so brackets give polyphony. A branch also
+plays quieter and quicker than its parent (`GrainTurtle.branchAmp`, `branchDuration`). A trunk
+grain lasts about a second and the next starts 0.72 s later; `GrainTurtle(timeScale = 0.5)` plays
+the same set twice as fast.
+
+`decodeGrains(system, generations)` derives the grammar and returns its grains; [`GrainSetStats`](reference/alife.md#alife-grains-kt-grainsetstats)
+measures the set (count, median pitch, pitch spread, duration, density, mean polyphony); and
+`renderGrains` plays it sample-accurately as Hann-windowed tones, or as grains read from a sample if
+you pass `source =`. Here is one grammar, `G → G[+G-G]fG`, at three generations:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-decode.png" wait="10.0" timeout="120" capture="box" open-outputs="true" padding="20"}
+val system = lSystem("G", 'G' to "G[+G-G]fG")
+for ((i, s) in system.derivations(2).withIndex()) println("gen $i: $s")
+val grains = decodeGrains(system, 3)
+println(GrainSetStats(grains))
+showImg(grainScoreImg(grains, 640, 220), caption = "gen 3: time across, pitch up; gold trunk, blue and red branches")
+display("audio", renderGrains(grains).wav())
+```
+
+![a dark piano-roll plot with short horizontal bars: a gold trunk line of grains along middle C, with blue grains a step above and below branching from it, and smaller red grains nested inside the blue ones](assets/alife_examples/grains-decode.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-example.wav" audio-spec="example" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" embed=true hidden=true name="alife-grains-example-audio"}
+// Offline-rendered by GrainSetSoundDocs.renderWav("example").
+```
+
+Fitness is a weighted mean of **trapezoids**, one per statistic. A trapezoid scores 0 below its first
+corner, rises to 1 at its second, stays at 1 to its third and falls to 0 at its fourth, so each term
+says "about this much, and these are the limits". `defaultGrainTerms()` asks for 40 to 120 grains over
+12 to 30 seconds, a median near middle C, a few semitones of spread, a little polyphony, and no more
+than about a third of the grains on any one pitch.
+`grainSetObjective(terms)` turns that into an `Objective` for `PopulationSearch`, and
+`grainLSystemGenome()` is the `LSystemGenome` above with the alphabet `G f + - [ ]`, so mutation,
+crossover and bracket repair are the ones the drawn L-systems already use:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-evolve.png" wait="30.0" timeout="240" capture="box" open-outputs="true" padding="20"}
+val terms = defaultGrainTerms()
+val run = PopulationSearch.evolve(
+    grainLSystemGenome(),
+    grainSetObjective(terms),
+    budget = 400,
+    seed = 7L,
+    crossoverRate = 0.3,
+    immigrantRate = 0.1,
+    label = "grains",
+)
+println(run.summary())
+for (imp in run.improvements) println("$imp   ${grainRule(imp.genome)}")
+showImg(fitnessTraceImg(run.trace), channel = "trace", caption = "best-so-far fitness against evaluations, 0 to 1")
+
+val best = decodeGrains(run.best!!.genome, 3)
+val stats = GrainSetStats(best)
+println(stats)
+val ranges = mapOf(
+    GrainStat.COUNT to (0.0 to 450.0),
+    GrainStat.MEDIAN_PITCH to (40.0 to 84.0),
+    GrainStat.PITCH_SPREAD to (0.0 to 18.0),
+    GrainStat.DURATION to (0.0 to 70.0),
+    GrainStat.POLYPHONY to (0.0 to 9.0),
+    GrainStat.MODE_SHARE to (0.0 to 1.0),
+)
+val panels = terms.map { t ->
+    val (lo, hi) = ranges.getValue(t.stat)
+    "%s %.2f".format(t.stat.label, stats[t.stat]) to trapezoidImg(t.shape, lo, hi, stats[t.stat])
+}
+showImg(
+    montage(panels, columns = 3, cellSide = 220),
+    channel = "terms",
+    caption = "each term's trapezoid, the best set's value marked",
+)
+showImg(grainScoreImg(best, 640, 220), channel = "score", caption = "the best set")
+display("audio", renderGrains(best).wav())
+```
+
+![three panels: a blue best-so-far line rising in steps toward 1; a grid of six yellow trapezoid curves each with a vertical marker on or near its plateau; and a dense multi-coloured piano-roll of the evolved grain set](assets/alife_examples/grains-evolve.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-evolved.wav" audio-spec="evolved" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" embed=true hidden=true name="alife-grains-evolved-audio"}
+// Offline-rendered by GrainSetSoundDocs.renderWav("evolved").
+```
+
+The automatic run optimises the trapezoids. Whether the result sounds good is up to you. Without
+the last term, the winners were a long overlapping trunk at a single pitch: a drone that counts as
+polyphony. The term discourages that result, though the search can still find other ways to satisfy
+the numbers. EvoGrain also offers **interactive evolution**: you listen and choose the parents.
+`GrainBreeder` holds a population of six grammars; `breed([2, 4])` keeps the chosen parents and fills
+the rest with their crossovers, each mutated once. The same seed and the same choices replay the same
+lineage. In a box, give each child a player and a text field for the choice:
+
+```diffstatic {data-lang=kotlin}
+val breeder = GrainBreeder(seed = 1L)
+fun show() {
+    displayClearAll()
+    val scores = breeder.scores()
+    val listing =
+        breeder.population.withIndex().joinToString("<br>") { (i, g) ->
+            "%d: %s &nbsp; fitness %.2f".format(i, grainRule(g), scores[i])
+        }
+    display("main", "generation ${breeder.generation}<br>" + listing)
+    for ((i, g) in breeder.population.withIndex()) display("child $i", renderGrains(decodeGrains(g, 3)).wav())
+    stringInput("parents (e.g. 1 4)") { s ->
+        val picks = s.split(" ", ",").mapNotNull { it.trim().toIntOrNull() }
+        if (picks.isNotEmpty()) {
+            breeder.breed(picks)
+            show()
+        }
+    }
+}
+show()
+```
+
+Every trapezoid corner and weight is a dial. Building the terms from `slider` callbacks and
+re-running [`PopulationSearch.evolve`](reference/search.md#populationsearch-kt--populationsearch--evolve) on release moves the target while you listen; the loadable
+demo below does exactly that.
+
+#### Shaping the grains: length, density, pan and a silent symbol
+
+The six symbols above place grains; three more pairs shape them. `<` and `>` make the grains that
+follow shorter or longer by `GrainTurtle.lengthStep` (1.5) without moving the time step, so they
+change how much the grains overlap. `*` and `/` make the time step shorter or longer by
+`densityStep` (1.5), so the grains that follow come denser or sparser. `l` and `r` move the pan by
+`panStep` (a quarter of the way to one side). Brackets save and restore all three, so a branch can
+change them without touching the trunk. A grammar may also have a second rule, for a symbol such as
+`X` that is rewritten like `G` but never plays; it carries structure from one generation to the
+next. Here the trunk steps down and speeds up, and every branch is an `X` that steps up and slows
+down a little more each generation:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-shaped.png" wait="10.0" timeout="120" capture="box" open-outputs="true" padding="20"}
+// < and > make the grains that follow shorter or longer, * and / denser or sparser,
+// l and r move them left or right. X is rewritten like G but never plays.
+val system = lSystem("G", 'G' to "G[lX]-*<G", 'X' to "+>G/X")
+for ((i, s) in system.derivations(2).withIndex()) println("gen $i: $s")
+val grains = decodeGrains(system, 4)
+println(GrainSetStats(grains))
+showImg(grainScoreImg(grains, 640, 220), caption = "gen 4: the trunk falls and quickens; each branch climbs and slows")
+display("audio", renderGrains(grains).wav())
+```
+
+![a piano-roll plot: gold trunk grains that start long at the top left and fall in pitch while getting shorter and closer together until they are slivers at the bottom right; above each of them a blue branch grain, longer than the trunk grain beside it](assets/alife_examples/grains-shaped.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-shaped.wav" audio-spec="shaped" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" embed=true hidden=true name="alife-grains-shaped-audio"}
+// Offline-rendered by GrainSetSoundDocs.renderWav("shaped").
+```
+
+The search can use them too. `grainLSystemGenome(alphabet = GRAIN_ALPHABET_EXTENDED)` builds rules
+from all twelve symbols, and `nonterminals = "X"` adds a rule for `X` to every genome.
+
+#### A target taken from a recording
+
+You can write the trapezoids by hand, or take their target from a sound.
+`grainsFromAudio(samples, sampleRate)` reads a monophonic recording as a grain set: one grain per
+note Field's pitch detector can name, at its onset, length and pitch, with its loudness as the
+amplitude. `grainTermsAround(stats)` then puts a trapezoid on each of that set's statistics, with a
+plateau a quarter of the value either side (two semitones for the median pitch) and feet four times
+as far out. The recording here is Tidal's eleven `arpy` samples played one after another, a rising
+scale of plucked notes from middle C up two octaves in a second and a half. Its notes are about
+0.13 s apart, five times closer than a trunk grain's 0.72 s. The plain alphabet can only get that
+close with deep branches, which are quicker; `*` gives the search a second way. The box compares the
+two alphabets over eight seeds, then plays the winner from the first `arpy` note:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-recording.png" wait="20.0" timeout="240" capture="box" open-outputs="true" padding="20" requires="dirt-samples"}
+// The recording: Tidal's eleven arpy samples back to back, a rising scale.
+val arpy = DirtRender.requirePinnedLibrary().family("arpy")!!
+val notes = (0 until arpy.size).map { arpy.sample(it)!! }
+val rate = notes[0].sampleRate.toInt()
+val recording = notes.flatMap { it.left.asList() }.toFloatArray()
+
+// Read it as grains, and centre a trapezoid on each of its statistics.
+val heard = grainsFromAudio(recording, rate, minHz = 100.0)
+val target = GrainSetStats(heard)
+println("recording: $target")
+val terms = grainTermsAround(target)
+
+fun search(alphabet: String, seed: Long) = PopulationSearch.evolve(
+    grainLSystemGenome(alphabet = alphabet),
+    grainSetObjective(terms),
+    budget = 600,
+    seed = seed,
+    crossoverRate = 0.3,
+    immigrantRate = 0.1,
+    label = "toward arpy",
+)
+
+// The plain alphabet against the one with < > * / l r, over eight seeds each.
+for (alphabet in [GRAIN_ALPHABET, GRAIN_ALPHABET_EXTENDED]) {
+    val bests = (1L..8L).map { search(alphabet, it).bestFitness }
+    println("%-14s mean best %.3f, worst %.3f".format(alphabet, bests.average(), bests.min()))
+}
+
+val run = search(GRAIN_ALPHABET_EXTENDED, 7L)
+val best = decodeGrains(run.best!!.genome, 3)
+println(grainRule(run.best!!.genome))
+println("evolved:   " + GrainSetStats(best))
+showImg(grainScoreImg(heard, 640, 160), channel = "recording", caption = "the recording, read as grains")
+showImg(grainScoreImg(best, 640, 160), channel = "score", caption = "the evolved set")
+// Played from the first arpy note, which the detector heard at this pitch.
+display("audio", renderGrains(best, source = notes[0].left, sourceRate = rate, sourcePitch = heard[0].pitch).wav())
+```
+
+![two piano-roll plots: above, eleven gold grains climbing evenly from bottom left to top right, the recording; below, the evolved set, one long low grain, a second higher one, then a quick cluster of shorter grains climbing at the right](assets/alife_examples/grains-recording.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/alife_examples/grains-matched.wav" audio-spec="matched" audio-renderer="afield.simulation.agents.GrainSetSoundDocs" requires="dirt-samples" embed=true hidden=true name="alife-grains-matched-audio"}
+// Offline-rendered by GrainSetSoundDocs.renderWav("matched").
+```
+
+Over the eight seeds the extended alphabet's mean best is higher (0.871 against 0.823) and its worst
+is lower (0.634 against 0.801): twelve symbols make a larger space, and some seeds get lost in it.
+The statistics are also a coarse description: a set can match the count, span, spread and median of a
+rising scale and still not rise evenly, as the evolved set shows. Nothing in `GrainSetStats` says
+which way the pitch moves over time, so nothing in the search pushes toward it. `grainsFromAudio`
+names one note at a time; a chord or a drum hit gives it nothing to read, so polyphony in a target
+taken from a recording is always about 1.
+
+#### A map of grain sets instead of one winner
+
+`PopulationSearch.evolve` returns the one set that scores best. `PopulationSearch.mapElites` keeps
+the best set of each *kind*: it divides two statistics into a grid and keeps the highest-scoring set
+in every cell. `grainSetObjective(behaviour = [...])` chooses the two statistics, here pitch spread
+across and polyphony up, so the grid runs from narrow, thin sets at the bottom left to wide, thick
+ones at the top right:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/grains-map.png" wait="20.0" timeout="240" capture="box" open-outputs="true" padding="20"}
+// MAP-Elites over pitch spread and polyphony: the best set of each kind, not one winner.
+val axes = [GrainStat.PITCH_SPREAD, GrainStat.POLYPHONY]
+val map = PopulationSearch.mapElites(
+    grainLSystemGenome(),
+    grainSetObjective(behaviour = axes),
+    budget = 800,
+    axes = [0.0..12.0, 0.0..6.0],
+    bins = [4, 4],
+    seed = 1L,
+)
+println(map)
+
+// One score per cell: spread grows to the right, polyphony upward.
+val panels =
+    (3 downTo 0).flatMap { row ->
+        (0..3).map { col ->
+            val elite = map.elites[[col, row]]
+            if (elite == null) {
+                "empty" to Img.zeros(240, 120, 3)
+            } else {
+                val grains = decodeGrains(elite.genome, 3)
+                val st = GrainSetStats(grains)
+                "%.1f st  x%.1f  %.2f".format(st.pitchSpread, st.polyphony, elite.fitness) to
+                    grainScoreImg(grains, 240, 120)
+            }
+        }
+    }
+showImg(
+    montage(panels, columns = 4, cellSide = 240, textScale = 2),
+    caption = "pitch spread across, polyphony up; trapezoid fitness in each label",
+)
+```
+
+![a four by four grid of small piano-roll plots: the left column holds narrow sets that stay near one pitch, the right column wide sets that sweep up or down several octaves; the bottom row has sparse single-voice sets and the top row dense stacks of overlapping blue, red and green branch grains](assets/alife_examples/grains-map.png)
+
+All sixteen cells fill in 800 evaluations. Every cell is still scored by `defaultGrainTerms()`, so
+the corners, which ask for more spread or polyphony than those terms like, score lower; the map
+shows what each kind of set costs against the target.
 
 ## 12. Agents with their own programs
 
@@ -2514,12 +3278,15 @@ Every box above is one box of a shipped starting point, so you can open the page
 edit it rather than retyping it: open it from the welcome screen. Sections 1 to 10 are
 [`alife_worked_example`](agent_transcripts.md), and section 11 is
 [`alife_evolution`](agent_transcripts.md), kept separate because its four search boxes take about
-fifty seconds between them. Every box runs on its own and prints the numbers this page quotes; none
-of them opens a `Window` or a `Renderer`. To replay them from a terminal instead:
+fifty seconds between them. The grain boxes of "Evolved grain sets" are
+[`alife_grains`](agent_transcripts.md#alife_grains), and the Flow Lenia boxes are
+[`flow_lenia`](agent_transcripts.md#flow_lenia). Every box runs on its own; none opens a `Window` or
+a `Renderer`. To replay the first three starting points from a terminal instead:
 
 ```diffstatic {data-lang=bash}
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_worked_example.yaml
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_evolution.yaml
+python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_grains.yaml
 ```
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference:
@@ -2529,3 +3296,84 @@ python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife
 [`alife_lsystem.kt`](reference/alife.md#alife-lsystem-kt) and
 [`alife_field.kt`](reference/alife.md#alife-field-kt). Start from
 [what's already in the box](reference/index.md).*
+
+## Where to go next
+
+- [Evolving creatures](evolving_creatures.md) runs the same kind of search on bodies that move,
+  and [Braitenberg vehicles](braitenberg_vehicles.md) evolves vehicle wirings on `PopulationSearch`.
+- [Cellular automata as sound](chain_ca_sound.md) and
+  [Boolean network music](boolean_network_music_examples.md) read rule systems as rhythm and
+  pitch, as the grain sets above do; [granular](functions_examples.md#granular) is Field's live
+  `GrainCloud`, which plays a sample rather than a decoded list of grains.
+- [Imaging](imaging_examples.md) supplies the `Img` operations every figure here is built from.
+- Open the starting points: [`alife_worked_example`](agent_transcripts.md#alife_worked_example)
+  (sections 1 to 10), [`alife_evolution`](agent_transcripts.md#alife_evolution),
+  [`alife_search_comparison`](agent_transcripts.md#alife_search_comparison),
+  [`alife_tree_growth`](agent_transcripts.md#alife_tree_growth) and
+  [`alife_grains`](agent_transcripts.md#alife_grains), plus
+  [`flow_lenia`](agent_transcripts.md#flow_lenia).
+- Source: [`alife_lsystem.kt`](reference/alife.md#alife-lsystem-kt),
+  [`alife_evolve.kt`](reference/alife.md#alife-evolve-kt) and
+  [`alife_grains.kt`](reference/alife.md#alife-grains-kt).
+
+Open questions and next builds for the grain sets:
+
+- **A statistic for contour.** The [recording target](#a-target-taken-from-a-recording) matches
+  count, span, spread and median and still does not rise evenly, because no `GrainStat` says which
+  way pitch moves over time. A slope of pitch against onset, or the share of steps that go up, would
+  let a target ask for a shape.
+- **Polyphonic targets.** `grainsFromAudio` is monophonic, so a recorded target always has a
+  polyphony of about 1. Reading a chordal recording needs a multi-pitch detector, which Field does
+  not have yet.
+- **A target that needs a second rule.** `nonterminals = "X"` works, but on the arpy target, at
+  the same budget and two seeds, it did not raise the best score with either alphabet. A target that rewards
+  growth that changes from one generation to the next, such as a voice that gets one note longer
+  each time, is the experiment that would show whether it helps.
+- **Statistics for the new symbols.** `<`, `>`, `l` and `r` change grain length and pan, and
+  nothing in `GrainSetStats` measures either, so the search uses them only for their side effects
+  on duration and polyphony. A length-spread and a pan-width statistic would make them targets.
+- **A breeder you can drive live.** The interactive box replaces all its players after every
+  choice; keeping past generations in a column would let you hear a lineage. `GrainBreeder.history`
+  already holds every generation and the parents chosen from it.
+- **Listening to the map.** The [map](#a-map-of-grain-sets-instead-of-one-winner) shows sixteen
+  scores; a player per cell would let you choose a parent for `GrainBreeder` from it.
+
+Open questions and next builds for Flow Lenia:
+
+- **Flow Lenia on the GPU.** The FFT path makes 288 x 288 cells about 150 ms a step on the CPU, so
+  tens of thousands of steps, or 1024-cell worlds, still need the GPU. The step is a convolution, two
+  Sobel gradients and a scatter, the shape of the [ping-pong compute lessons](assets/canonical_graphics/LESSONS.md).
+  The scatter needs atomic adds or a gather
+  rewrite. Check it against `FlowLeniaWorld` with `affinity()` and one `step()`, as
+  `FlowLeniaTest` checks the FFT against the sparse convolution.
+- **Search at the resolution you want to watch.** The dart travels at 64 cells and stops at 128.
+  Run `flowLeniaGliderObjective` on `flowLeniaWorld(..., scale = 2)` worlds, or score a found rule at
+  both scales, so the winners keep moving when they are drawn large.
+- **Selection with a measure of what is selected.** Mutation changes who holds the mass, but nothing
+  yet says what the winning lineages do differently. Read `lineages[id].h` against each lineage's
+  mass over time, and test whether a winner's weights win again when seeded fresh.
+- **Painting a rule with the pen.** `paintWeights` takes a disc. Driving it from
+  `notation.onStroke`, a stroke laying a rule along its path, would let a hand introduce mutants
+  where it wants them.
+- **Per-species mass as sound.** `speciesMasses()` and `lineageHistory` are smooth, conserved
+  series, a natural control signal for a synth: a competition you can hear.
+
+Open questions for the rest of the page:
+
+- **Search beyond the saturated L-system objective.** The dimension target in
+  [Does search beat random?](#does-search-beat-random) cannot separate the search methods. A
+  harder drawn target, such as matching a given silhouette, would.
+- **Lenia solitons in three dimensions.** The Lenia genome and soliton objective are 2-D; the
+  3-D life-like automaton shows the grid side of that extension already exists.
+- **Trees that compete for sound.** The light-competition trees could be read with the grain
+  decoder, each branch a voice, so a forest's growth becomes a score.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`ShaderPhysarumSystem.installInto`](reference/alife.md#alife-physarum-gpu-kt--shaderphysarumsystem--installinto)
+- [`TrailFollowers.installInto`](reference/alife.md#alife-trail-followers-kt--trailfollowers--installinto)
+- [`LifeRuleGenome`](reference/alife.md#alife-evolve-kt-liferulegenome)
+- [`PopulationSearch.hillClimb`](reference/search.md#populationsearch-kt--populationsearch--hillclimb)
+- [`PopulationSearch.random`](reference/search.md#populationsearch-kt--populationsearch--random)
