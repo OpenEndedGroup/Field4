@@ -43,6 +43,11 @@ def main():
         ('text1_word_blur', '14 · Words becoming weather', 650, 550, {'code': (here/'word_blur.kt').read_text()}),
         ('text1_elastic', '18 · Elastic sentences', 650, 660, {'code': (here/'elastic_sentences.kt').read_text()}),
         ('text1_drop_caps', '19 · A dropped initial', 650, 770, {'code': (here/'drop_caps.kt').read_text()}),
+        ('text1_two_readings', '22 · Two readings / composed sequence', 650, 880, {'code': (here/'two_readings.kt').read_text()}),
+        ('text1_overstroke_rectangle', '24 · Extended rectangle', -1300, 150, {'code': (here/'overstroke_rectangle.kt').read_text()}),
+        ('text1_overstroke_union', '25 · Union with corner extensions', -1300, 260, {'code': (here/'overstroke_union.kt').read_text()}),
+        ('text1_frustum_readings', '26 · Transparent text frustum', -1300, 370, {'code': (here/'frustum_readings.kt').read_text()}),
+        ('text1_frustum_two_faces', '27 · A holder with two faces', -1300, 480, {'code': (here/'frustum_two_faces.kt').read_text()}),
         ('text1_score', '6 · Scores / example selector', 1200, 0, {'code': (here/'score.kt').read_text()}),
         ('text1_stroke', '7 · FLine strokes', 1800, 0, {'code': shader_box('strokeModuleFactory'), 'vertex': shader('stroke_vertex'), 'fragment': shader('stroke_fragment')}),
         ('text1_point', '8 · SDF markers', 1800, 110, {'code': shader_box('pointModuleFactory'), 'vertex': shader('point_vertex'), 'fragment': shader('point_fragment')}),
@@ -51,21 +56,28 @@ def main():
         ('text1_blur_medium_v', '15 · Medium blur / vertical', 1800, 440, {'code': shader_box('mediumVerticalFactory'), 'vertex': shader('fullscreen_vertex'), 'fragment': shader('blur_fragment')}),
         ('text1_blur_broad_h', '16 · Broad blur / horizontal', 1800, 550, {'code': shader_box('broadHorizontalFactory'), 'vertex': shader('fullscreen_vertex'), 'fragment': shader('blur_fragment')}),
         ('text1_blur_broad_v', '17 · Broad blur / vertical', 1800, 660, {'code': shader_box('broadVerticalFactory'), 'vertex': shader('fullscreen_vertex'), 'fragment': shader('blur_fragment')}),
-        ('text1_composite', '11 · Green / paint compositor', 1800, 770, {'code': shader_box('compositeModuleFactory'), 'vertex': shader('fullscreen_vertex'), 'fragment': shader('composite_fragment')}),
+        ('text1_composite', '11 · Green / light compositor', 1800, 770, {'code': shader_box('compositeModuleFactory'), 'vertex': shader('fullscreen_vertex'), 'fragment': shader('composite_fragment')}),
         ('text1_drawing', '12 · Drawing / score playback', 2350, 0, {'code': (here/'drawing.kt').read_text()}),
+        ('text1_body', '21 · Body interaction / diagnostics', 2350, 220, {'code': (here/'body_interaction.kt').read_text(), 'vertex': (here/'body_vertex.glsl').read_text(), 'fragment': (here/'body_fragment.glsl').read_text()}),
+        ('text1_navigation', '20 · Move through the reading space', 2350, 110, {'code': (here/'navigation.kt').read_text()}),
+        ('text1_global_keys', '23 · Global looks / keyframes', -650, 150, {'code': (here/'global_controls.kt').read_text()}),
     ]
     create = [
-        {'create': {'box': uid, 'name': name, 'frame': {'x': x, 'y': y, 'w': 480, 'h': 100}, 'properties': props}}
+        {'create': {'box': uid, 'name': name, 'frame': {'x': x + 1340, 'y': y, 'w': 480, 'h': 100}, 'properties': props}}
         for uid, name, x, y, props in boxes
     ]
-    for child in ['text1_poem', 'text1_example2', 'text1_example3', 'text1_example4', 'text1_typography', 'text1_word_blur', 'text1_elastic', 'text1_drop_caps', 'text1_stroke', 'text1_point', 'text1_text', 'text1_blur', 'text1_blur_medium_v', 'text1_blur_broad_h', 'text1_blur_broad_v', 'text1_composite']:
+    for child in ['text1_poem', 'text1_example2', 'text1_example3', 'text1_example4', 'text1_typography', 'text1_word_blur', 'text1_elastic', 'text1_drop_caps', 'text1_two_readings', 'text1_overstroke_rectangle', 'text1_overstroke_union', 'text1_frustum_readings', 'text1_frustum_two_faces', 'text1_stroke', 'text1_point', 'text1_text', 'text1_blur', 'text1_blur_medium_v', 'text1_blur_broad_h', 'text1_blur_broad_v', 'text1_composite']:
         create.append({'connect': {'parent': 'text1_context', 'child': child}})
-    for parent in ['text1_poem', 'text1_example2', 'text1_example3', 'text1_example4', 'text1_typography', 'text1_word_blur', 'text1_elastic', 'text1_drop_caps']:
+    for parent in ['text1_poem', 'text1_example2', 'text1_example3', 'text1_example4', 'text1_typography', 'text1_word_blur', 'text1_elastic', 'text1_drop_caps', 'text1_two_readings', 'text1_overstroke_rectangle', 'text1_overstroke_union', 'text1_frustum_readings', 'text1_frustum_two_faces']:
         create.append({'connect': {'parent': parent, 'child': 'text1_score'}})
     for parent in ['text1_poem', 'text1_score', 'text1_stroke', 'text1_point', 'text1_text', 'text1_blur', 'text1_blur_medium_v', 'text1_blur_broad_h', 'text1_blur_broad_v', 'text1_composite']:
         create.append({'connect': {'parent': parent, 'child': 'text1_drawing'}})
+    create.append({'connect': {'parent': 'text1_drawing', 'child': 'text1_body'}})
+    create.append({'connect': {'parent': 'text1_drawing', 'child': 'text1_navigation'}})
+    for parent in ['text1_body', 'text1_navigation']:
+        create.append({'connect': {'parent': parent, 'child': 'text1_global_keys'}})
     launch = [{'launch': {'box': uid}} for uid, *_ in boxes] + [{'await': {'wait': 'pending'}}]
-    stop = [{'stop': {'box': 'text1_drawing'}}, {'stop': {'box': 'text1_context'}}]
+    stop = [{'stop': {'box': 'text1_navigation'}}, {'stop': {'box': 'text1_body'}}, {'stop': {'box': 'text1_drawing'}}, {'stop': {'box': 'text1_context'}}]
     if args.transcript:
         import yaml
 
@@ -79,7 +91,7 @@ def main():
         args.transcript.parent.mkdir(parents=True, exist_ok=True)
         args.transcript.write_text(yaml.dump({
             'name': 'text_one_vr',
-            'description': 'Eight shallow-3D reading spaces: marked breath, constituency canopy, dependency undertow, Reed-Kellogg sentence furniture, a mixed-font typography playground slow word-local Gaussian blur elastic sentence threads and dropped paragraph initials. CPU SIMDVerlet, per-eye FLine thickening and Slug text, with independent scores. Starts in desktop preview; OpenXR is an explicit fresh-process mode. Generated from templates/text_one by build_transcript.py.',
+            'description': 'Thirteen shallow-3D reading spaces: marked breath, constituency canopy, dependency undertow, Reed-Kellogg sentence furniture, a mixed-font typography playground slow word-local Gaussian blur elastic sentence threads dropped paragraph initials a composed frosted reading duet, two overstroked frames and two mechanical text frusta. CPU SIMDVerlet, per-eye FLine thickening and Slug text, with independent scores. Starts in desktop preview; OpenXR is an explicit fresh-process mode. Generated from templates/text_one by build_transcript.py.',
             'docs': [{'page': 'sentence_diagrams.md', 'why': 'Parser setup, four diagrams, mixed-font typography and the reading-space DSL.'}],
             'operations': create + launch,
         }, Dumper=SourceDumper, allow_unicode=True, sort_keys=False, width=100))

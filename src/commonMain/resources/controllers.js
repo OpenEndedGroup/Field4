@@ -1220,8 +1220,8 @@
 
   /** A control's value as text, deferring to the law's adaptive decimals when it has one. */
   function controlValueText(control, spec, value) {
-    if (spec) return window.FieldControlLaw.format(spec, value);
-    return formatNumber(value, control.decimalPlaces ?? 2);
+    const number = spec ? window.FieldControlLaw.format(spec, value) : formatNumber(value, control.decimalPlaces ?? 2);
+    return number + (control.unit ? ` ${control.unit}` : "");
   }
 
   function renderSliderControl(control) {

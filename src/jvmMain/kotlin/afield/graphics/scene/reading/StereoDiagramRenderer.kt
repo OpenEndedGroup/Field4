@@ -47,6 +47,7 @@ class StereoDiagramRenderer(
     textBlurConfig: ReadingTextBlurConfig = ReadingTextBlurConfig(),
     private val moduleFactories: Map<String, DiagramModuleFactory> = emptyMap(),
 ) : AutoCloseable {
+    private val backdropClip = Vector4f()
     private val ownedTarget = stereo.layered
     val compositor = DiagramCompositor(renderer, stereo, shaders, sceneScale, moduleFactories)
     // Eight vec4 records (128 bytes) per CPU centreline segment, read by stroke_vertex.
@@ -92,8 +93,55 @@ class StereoDiagramRenderer(
     private val pointMesh = Mesh(renderer, pointModule)
     private val slugData =
         scene.shapes.values.flatMap { it.renderShapes }.distinct().associateWith { SlugBuffer(renderer, it.slug) }
-    internal val localBlurCaches = scene.blurRequests.entries.map { it.key to it.value }.chunked(2).map {
-        ReadingTextBlurCache(renderer, stereo, compositor.sharp, it, slugData, scene.maximumLabels, textBlurConfig)
+    var textBlurConfig: ReadingTextBlurConfig = textBlurConfig
+        private set
+    var maximumTextBlurBytes = 2L * 1024 * 1024 * 1024
+    private val pendingTextBlurConfig = java.util.concurrent.atomic.AtomicReference<ReadingTextBlurConfig?>()
+    internal var localBlurCaches = buildTextBlurCaches(textBlurConfig)
+        private set
+
+    private fun buildTextBlurCaches(config: ReadingTextBlurConfig): List<ReadingTextBlurCache> {
+        val requests = scene.blurRequests.entries.map { it.key to it.value }
+        require(config.estimatedBytes(requests.size) <= maximumTextBlurBytes) {
+            "Text caches exceed the ${maximumTextBlurBytes / (1024 * 1024)} MiB budget; reduce resolution or downsample sooner"
+        }
+        val built = ArrayList<ReadingTextBlurCache>()
+        try {
+            requests.chunked(2).forEach {
+                built.add(ReadingTextBlurCache(renderer, stereo, compositor.sharp, it, slugData, scene.maximumLabels, config))
+            }
+            return built
+        } catch (failure: Throwable) {
+            built.forEach { it.close() }
+            throw failure
+        }
+    }
+
+    /** Stage allocation for the next acquired frame, outside all render passes. */
+    fun requestTextBlurRebuild(config: ReadingTextBlurConfig) {
+        require(config.estimatedBytes(scene.blurRequests.size) <= maximumTextBlurBytes) { "Text cache quality exceeds the memory budget" }
+        pendingTextBlurConfig.set(config)
+    }
+
+    private fun rebuildTextBlurCaches() {
+        val config = pendingTextBlurConfig.getAndSet(null) ?: return
+        localBlurCaches.firstOrNull()?.drawModule?.current?.liveUniformStructures?.get("TextBlurTone")?.let {
+            config.appearance.set(it.get<Vector4f>("appearance"))
+        }
+        val replacement = buildTextBlurCaches(config)
+        val retired = localBlurCaches
+        compositor.sharp.modules.keys.filter { it.startsWith("reading-local-blur-") }.toList()
+            .forEach { compositor.sharp.modules.remove(it) }
+        localBlurCaches = replacement
+        textBlurConfig = config
+        replacement.forEachIndexed { i, cache -> compositor.sharp += "reading-local-blur-$i" to cache.drawModule }
+        frost.updateSources(sceneSources())
+        updateLabels()
+        retired.forEach { it.close() }
+    }
+
+    private fun sceneSources() = linkedMapOf("strokes" to strokeModule, "markers" to pointModule, "text" to textModule).apply {
+        localBlurCaches.forEachIndexed { i, cache -> put("local-blur-$i", cache.drawModule) }
     }
     /** Rebuild Drawing after adding blur to an unreserved word or exceeding its cached radius. */
     var textBlurNeedsRebuild: Boolean = false
@@ -101,6 +149,9 @@ class StereoDiagramRenderer(
     val textBlurPreparationCount get() = localBlurCaches.sumOf { it.preparationCount }
     val textBlurCacheBytes get() = localBlurCaches.sumOf { it.bytes }
     private val wordMeshes = List(scene.maximumLabels) { Mesh(renderer, textModule) }
+    /** Bounded per-panel current-frame captures, separate from the global green blur cascade. */
+    val frost = ReadingFrostRenderer(renderer, stereo, compositor.sharp,
+        sceneSources(), ::setBackdropClip)
     val model = Matrix4f()
     val origin = Vector3f()
     var distance = 2.35f
@@ -133,6 +184,7 @@ class StereoDiagramRenderer(
             mesh.push["viewport"] =
                 Vector2f(compositor.sharp.width.toFloat(), compositor.sharp.height.toFloat())
             mesh.push["tint"] = Vector4f(0f)
+            mesh.push["clipPlane"] = backdropClip
             textModule += "word-$i" to mesh
         }
         val overlays = LinkedHashMap(ownedTarget.modules)
@@ -141,12 +193,18 @@ class StereoDiagramRenderer(
         compositor.sharp += "reading-markers" to pointModule
         compositor.sharp += "reading-slug" to textModule
         localBlurCaches.forEachIndexed { i, cache -> compositor.sharp += "reading-local-blur-$i" to cache.drawModule }
-        compositor.beforeScene = Target { command, index -> localBlurCaches.forEach { it.prepare(command, index) } }
+        compositor.beforeScene = Target { command, index ->
+            updateFrame()
+            rebuildTextBlurCaches()
+            localBlurCaches.forEach { it.prepare(command, index) }
+            frost.prepare(command, index, scene.frostSurfaces, model)
+        }
         ownedTarget += "reading-composite" to compositor.module
         ownedTarget.modules.putAll(overlays) // Field's browser stays sharp and above the scene.
         strokeModule.current.before["reading-frame"] = Target { _, _ -> updateFrame() }
         strokeMesh.resize(0, 0)
         pointMesh.resize(0, 0)
+        setBackdropClip(Vector4f())
         // Address/model suppliers remain live when a module is rebuilt.
         strokeMesh.push.bindPushConstant("model", { model }) {
             error("Missing diagram push-constant member")
@@ -166,6 +224,14 @@ class StereoDiagramRenderer(
         pointMesh.push.bindPushConstant("options", { viewportOptions() }) {
             error("Missing diagram push-constant member")
         }
+    }
+
+    private fun setBackdropClip(plane: Vector4f) {
+        backdropClip.set(plane)
+        strokeMesh.push["clipPlane"] = Vector4f(plane)
+        pointMesh.push["clipPlane"] = Vector4f(plane)
+        wordMeshes.forEach { it.push["clipPlane"] = Vector4f(plane) }
+        localBlurCaches.forEach { it.setClipPlane(plane) }
     }
 
     private fun viewportOptions() =
@@ -198,7 +264,7 @@ class StereoDiagramRenderer(
             yaw = atan2(-forward.x, -forward.z)
             recenterPending = false
         }
-        if (followReader) {
+        if (followReader && !scene.individualTextFacing) {
             val desired = atan2(head.x - origin.x, head.z - origin.z)
             val delta = atan2(sin(desired - yaw), cos(desired - yaw))
             val motionDt = min(dt, .1)
@@ -207,6 +273,7 @@ class StereoDiagramRenderer(
                 amount.coerceIn(-maximumTurnRate * motionDt, maximumTurnRate * motionDt).toFloat()
         }
         model.identity().translation(origin).rotateY(yaw)
+        scene.setReaderPosition(Matrix4f(model).invert().transformPosition(Vector3f(head)))
         scene.update(dt)
         check(scene.geometry.segments.size <= maxSegments) {
             "Diagram has ${scene.geometry.segments.size} segments; capacity $maxSegments"
@@ -224,6 +291,11 @@ class StereoDiagramRenderer(
         }
         strokeMesh.resize(scene.geometry.segments.size * 6, 0)
         pointMesh.resize(scene.geometry.points.size * 6, 0)
+        updateLabels()
+        frameCount++
+    }
+
+    private fun updateLabels() {
         textBlurNeedsRebuild = false
         for ((i, mesh) in wordMeshes.withIndex()) {
             val word = scene.labels.getOrNull(i)
@@ -236,14 +308,13 @@ class StereoDiagramRenderer(
             val cached = if (word.blur > 0f) cache?.mix(word.shape, word.blur)?.cached ?: 0f else 0f
             mesh.resize(if (cached >= 1f) 0 else 6, 0)
             mesh.push["model"] =
-                Matrix4f(model).translate(word.position).rotateZ(word.rotation).scale(word.scale)
+                Matrix4f(model).translate(word.position).rotate(word.orientation).rotateZ(word.rotation).scale(word.scale)
             mesh.push["slugData"] = slugData.getValue(word.shape)
             mesh.push["viewport"] =
                 Vector2f(compositor.sharp.width.toFloat(), compositor.sharp.height.toFloat())
             mesh.push["tint"] = Vector4f(labelColor).mul(word.color).apply { w *= word.opacity * (1f - cached) }
         }
         localBlurCaches.forEach { it.update(scene.labels, model, labelColor) }
-        frameCount++
     }
 
     /**
@@ -268,6 +339,7 @@ class StereoDiagramRenderer(
         if (closed) return
         closed = true
         ownedTarget.modules.remove("reading-composite", compositor.module)
+        frost.close()
         compositor.sharp.modules.clear()
         localBlurCaches.forEach { it.close() }
         compositor.close()

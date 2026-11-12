@@ -9,6 +9,7 @@ layout(push_constant) uniform SlugPC {
     SlugData slugData; // immutable word-outline atlas
     vec2 viewport; // dimensions of this eye
     vec4 tint; // linear RGBA and score-driven opacity
+    vec4 clipPlane; // world-space backdrop plane, shared with the vertex stage
 } pc;
 vec4 data4(uint at) {
     return uintBitsToFloat(uvec4(pc.slugData.words[at], pc.slugData.words[at+1],
@@ -176,7 +177,9 @@ vec3 shade(vec2 q) {
     // White ink; glyph coverage and score-driven opacity remain independent.
     return vec3(1.0);
 }
+layout(location=1) in float backdropDistance;
 void main() {
+    if(backdropDistance<0)discard;
     ivec2 loc = ivec2(pc.slugData.words[16], pc.slugData.words[17]);
     ivec2 bandMax = ivec2(pc.slugData.words[18], pc.slugData.words[19]);
     float coverage = slug_Render(emCoord, data4(12u), loc, bandMax);

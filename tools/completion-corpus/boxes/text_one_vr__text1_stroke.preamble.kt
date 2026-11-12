@@ -116,6 +116,9 @@ fun BufferParameters.asStereoViews(): StereoViews =
 /*graphics-pc-structure:options*/ var Structure.options by Structure.FromStructure<Any>() // viewport width/height, minimum stroke/marker radius in pixels
 /*graphics-pc-binding:options*/ var Mesh.options by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>() // viewport width/height, minimum stroke/marker radius in pixels
 /*graphics-pc-binding-group:options*/ var MeshGroup.options by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // viewport width/height, minimum stroke/marker radius in pixels
+/*graphics-pc-structure:clipPlane*/ var Structure.clipPlane by Structure.FromStructure<Any>() // world-space backdrop clipping, zero for the main scene
+/*graphics-pc-binding:clipPlane*/ var Mesh.clipPlane by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>() // world-space backdrop clipping, zero for the main scene
+/*graphics-pc-binding-group:clipPlane*/ var MeshGroup.clipPlane by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // world-space backdrop clipping, zero for the main scene
 /*graphics-ubo:StereoViews*/ val ModulePointer.StereoViews by FromUniform()
 /*graphics-ubo-member:StereoViews:stereoVpL*/ var Structure.stereoVpL by Structure.FromStructure<afield.math.linalg.Matrix4f>() // left-eye projection/view
 /*graphics-ubo-member:StereoViews:stereoVpR*/ var Structure.stereoVpR by Structure.FromStructure<afield.math.linalg.Matrix4f>() // right-eye projection/view

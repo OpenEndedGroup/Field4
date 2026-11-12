@@ -1,12 +1,15 @@
 #version 450
 layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 outColor;
+layout(std140, set = 0, binding = 23) uniform TextBlurTone {
+    vec4 appearance; // light gain, post-blur coverage exponent, two reserved values
+};
 layout(push_constant) uniform LocalBlurPush {
     mat4 model;  // text-local to current world pose
     vec4 bounds; // padded font-space rectangle
-    vec4 levels; // lower/upper levels and variance-matched interpolation
+    vec4 levels; // lower/upper levels, variance interpolation, clip-plane W
     vec4 tint;   // live colour/opacity; no fade is stored in the cached masks
-    vec4 info;   // layer within this pair of cached words
+    vec4 info;   // layer and clip-plane XYZ
 }
 pc;
 layout(set = 0, binding = 8) uniform sampler2DArray mask1;
@@ -60,8 +63,14 @@ float sampleLevel(int level) {
     }
     return 0;
 }
+layout(location=1) in float backdropDistance;
 void main() {
+    if(backdropDistance<0)discard;
     float coverage =
         mix(sampleLevel(int(pc.levels.x + .5)), sampleLevel(int(pc.levels.y + .5)), pc.levels.z);
-    outColor = vec4(1, 1, 1, coverage * pc.tint.a); // matches text_one's white analytic ink
+    coverage = clamp(coverage, 0, 1);
+    // Shape the filtered mask, not the score opacity: fading remains an independent linear channel.
+    float light = pow(coverage, clamp(appearance.y, .25, 4)) * max(appearance.x, 0);
+    // Premultiplied additive light preserves the true coverage channel independently of artistic shaping.
+    outColor = vec4(light, coverage, light, coverage) * pc.tint.a; // green stays linear control data
 }

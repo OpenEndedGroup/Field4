@@ -87,4 +87,17 @@ class ReadingTextBlurTest {
         assertFailsWith<IllegalArgumentException> { word.blur = -1f }
         assertFailsWith<IllegalArgumentException> { word.blurCapacity = Float.POSITIVE_INFINITY }
     }
+    @Test fun qualityEstimatesPairedStorageAndChangesBroadLevelResolution() {
+        val standard = ReadingTextBlurConfig()
+        assertEquals(23330816L, standard.estimatedBytes(1))
+        assertEquals(standard.estimatedBytes(1), standard.estimatedBytes(2))
+        assertEquals(standard.estimatedBytes(1) * 2, standard.estimatedBytes(3))
+        assertEquals(0L, standard.estimatedBytes(0))
+        assertEquals(128, ReadingBlurLevels.size(2048, 15, 128, 2))
+        assertEquals(512, ReadingBlurLevels.size(2048, 15, 512, 2))
+        assertEquals(512, ReadingBlurLevels.size(2048, 7, 128, 4))
+        assertFailsWith<IllegalArgumentException> { ReadingTextBlurConfig(levelsPerHalving = 0) }
+        assertFailsWith<IllegalArgumentException> { ReadingTextBlurConfig(maximumRadius = 513) }
+        assertFailsWith<IllegalArgumentException> { ReadingTextBlurConfig(sigmaCutoff = Float.NaN) }
+    }
 }

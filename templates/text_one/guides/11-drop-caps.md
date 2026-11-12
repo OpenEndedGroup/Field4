@@ -8,9 +8,8 @@ whole run. Font geometry is prepared once; it is not scaled/rasterized anew ever
 
 ```kotlin
 val graph = readingDiagram {
-    val paragraph = text(
-        "paragraph",
-        "The river carries\nsmall things toward\nthe edge of light\nand brings them home.",
+    val paragraph = text("paragraph",
+        "When the door closed behind me\nand I saw my eyes were going\nto be useless in the dark,\nI took myself in hand.",
         point("paragraph-point", 0, .2),
     ) {
         dropCap(lines = 3, gapEm = .2f) {
@@ -41,7 +40,7 @@ accented letter with combining marks remains intact. Increase it for a multi-let
 silently skipped: if it is first, it is part of the initial you selected.
 
 `paragraph.initial` is a regular `DiagramTextSpan`, preserving the original source indices.
-`paragraph.word("river")`, `line(1)`, `characters(...)`, bounds, underlines and carets use the
+`paragraph.word("door")`, `line(1)`, `characters(...)`, bounds, underlines and carets use the
 actual prepared placements. Multiline inline font overrides also work in a drop-cap run.
 The initial's explicit typography takes precedence over inline styles covering that initial.
 Measurements account for its lower baseline; no-descender boxes retain its dropped body.

@@ -13,6 +13,8 @@ data class DiagramPose(
     val offset: Vector3f = Vector3f(),
     var scale: Float = 1f,
     var blur: Float = 0f, // additive Gaussian-radius score channel, in ems
+    var overstrokeFraction: Float? = null, // null keeps the frame's authored extension fraction
+    var overstrokeDistance: Float? = null, // null keeps the authored extension distance in metres
 )
 
 class DiagramScore
@@ -63,6 +65,50 @@ internal constructor(private val diagram: ReadingDiagram, private val duration: 
     fun fadeOut(item: DiagramItem, at: Double, seconds: Double = 1.2) {
         timing(at, seconds)
         track(item) { t, p -> p.opacity *= 1f - phase(t, at, seconds) }
+    }
+
+    fun fadeIn(frame: DiagramTextFrame, at: Double, seconds: Double = .8) = fadeIn(frame.path, at, seconds)
+
+    fun fadeOut(frame: DiagramTextFrame, at: Double, seconds: Double = 1.2) = fadeOut(frame.path, at, seconds)
+
+    /** Absolute, seekable overrun at each end; scoring never mutates the authored frame settings. */
+    fun overstroke(
+        frame: DiagramTextFrame,
+        fromFraction: Float,
+        toFraction: Float,
+        at: Double,
+        seconds: Double = 1.0,
+        fromDistance: Float = frame.overstrokeDistance,
+        toDistance: Float = fromDistance,
+    ) {
+        timing(at, seconds)
+        require(listOf(fromFraction, toFraction, fromDistance, toDistance).all { it.isFinite() && it >= 0f })
+        track(frame.path) { t, p ->
+            val u = phase(t, at, seconds)
+            p.overstrokeFraction = fromFraction + (toFraction - fromFraction) * u
+            p.overstrokeDistance = fromDistance + (toDistance - fromDistance) * u
+        }
+    }
+
+    /** A holder fades as one assembly; its two texts and each structural path remain scoreable too. */
+    fun fadeIn(holder: DiagramTextFrustum, at: Double, seconds: Double = .8) = fadeIn(holder.group, at, seconds)
+
+    fun fadeOut(holder: DiagramTextFrustum, at: Double, seconds: Double = 1.2) = fadeOut(holder.group, at, seconds)
+
+    fun blurIn(holder: DiagramTextFrustum, at: Double, seconds: Double = 4.0, radius: Float = .8f) {
+        blurIn(holder.front, at, seconds, radius)
+        blurIn(holder.back, at, seconds, radius)
+    }
+
+    fun blurOut(holder: DiagramTextFrustum, at: Double, seconds: Double = 4.0, radius: Float = .8f) {
+        blurOut(holder.front, at, seconds, radius)
+        blurOut(holder.back, at, seconds, radius)
+    }
+
+    /** Translate the two text ends once. Their frames, rails and attachments follow automatically. */
+    fun move(holder: DiagramTextFrustum, from: Vector3f, to: Vector3f, at: Double, seconds: Double = 1.0) {
+        move(holder.front, from, to, at, seconds)
+        move(holder.back, from, to, at, seconds)
     }
 
     /** Radius is in ems, independent of opacity. Prepare/rebuild Drawing after adding blur tracks. */
@@ -141,14 +187,18 @@ internal constructor(private val diagram: ReadingDiagram, private val duration: 
     }
 
     /** Crossfade two authored selections while current eye poses and physics keep advancing. */
-    fun transition(from: DiagramGroup, to: DiagramGroup, at: Double, seconds: Double = 1.5) {
+    fun transition(from: DiagramGroup, to: DiagramGroup, at: Double, seconds: Double = 1.5, drawPaths: Boolean = true) {
         require(from !== to && from.items.none { it in to.items }) {
             "Crossfade groups must be disjoint"
         }
         fadeOut(from, at, seconds)
         fadeIn(to, at, seconds)
-        for (path in to.items.filterIsInstance<DiagramPath>()) drawIn(path, at, seconds)
+        if (drawPaths) for (path in to.items.filterIsInstance<DiagramPath>()) drawIn(path, at, seconds)
     }
+
+    /** Mechanical holders crossfade complete lines, without changing their stroke reveal. */
+    fun transition(from: DiagramTextFrustum, to: DiagramTextFrustum, at: Double, seconds: Double = 1.5) =
+        transition(from.group, to.group, at, seconds, drawPaths = false)
 
     fun exitAll(at: Double, seconds: Double = 1.2, erasePaths: Boolean = true) {
         for (item in diagram.items) {

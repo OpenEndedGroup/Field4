@@ -107,6 +107,7 @@ class KeyframeControl<T> internal constructor(
  * A keyframed `Double` slider as a delegated local: `var size by keys.slider(0.4, 0.1..1.0)`. The
  * range, [step] and [law] are the ones [keyframeSlider] takes; [label] defaults to the property name.
  * Every `keys.*` control takes `hoverText`, shown on hover, as the `controlGroup` controls do.
+ * Numeric sliders also accept `unit`, displayed beside their value without rescaling it.
  */
 fun KeyframeScope.slider(
     initial: Double,
@@ -118,13 +119,14 @@ fun KeyframeScope.slider(
     lawCenter: Double = (range.start + range.endInclusive) / 2,
     significantDigits: Int = defaultSignificantDigits(law),
     hoverText: String? = null,
+    unit: Any? = null,
 ): KeyframeControl<Double> = KeyframeControl(
     this, initial, label, { it }, "slider", { stored -> stored.value?.coerceIn(range.start, range.endInclusive) },
     register = { n, get, set -> doubleTarget(n, get, set) },
     build = { c ->
         val handle = keyframeSlider(
             this@slider, c.name, c.label, range.start, range.endInclusive, step, law, lawExponent, lawCenter,
-            significantDigits, hoverText = hoverText, get = { c.value }, set = { c.fromControl(it) }
+            significantDigits, hoverText = hoverText, unit = unit, get = { c.value }, set = { c.fromControl(it) }
         )
         val mirror: (Double) -> Unit = { handle.set(it) }
         mirror
@@ -143,13 +145,14 @@ fun KeyframeScope.slider(
     lawCenter: Double = (range.start + range.endInclusive) / 2,
     significantDigits: Int = defaultSignificantDigits(law),
     hoverText: String? = null,
+    unit: Any? = null,
 ): KeyframeControl<Float> = KeyframeControl(
     this, initial, label, { it }, "slider", { stored -> stored.value?.coerceIn(range.start, range.endInclusive)?.toFloat() },
     register = { n, get, set -> floatTarget(n, get, set) },
     build = { c ->
         val handle = keyframeFloatSlider(
             this@slider, c.name, c.label, range.start, range.endInclusive, step, law, lawExponent, lawCenter,
-            significantDigits, hoverText = hoverText, get = { c.value }, set = { c.fromControl(it) }
+            significantDigits, hoverText = hoverText, unit = unit, get = { c.value }, set = { c.fromControl(it) }
         )
         val mirror: (Float) -> Unit = { handle.set(it.toDouble()) }
         mirror

@@ -191,7 +191,10 @@ the fold moved the controls without printing anything.
 `keys.color` and `keys.text`. Each is built by an explicit helper — `keyframeSlider`,
 `keyframeFloatSlider`, `keyframeCheckbox`, `keyframeVec2Control`, `keyframeColorPicker`,
 `keyframeText` — that takes a key name, a label and a `get`/`set` pair, for a value that lives in an
-object rather than a local. The underlying grouped controls also hand back a `ControlValueHandle<T>`;
+object rather than a local. Numeric helpers and delegated sliders accept `unit`, for example
+`keys.slider(1.25, 0.0..10.0, unit = "s")`. The unit appears beside the value;
+key capture and recall keep the numeric value in that unit.
+The underlying grouped controls also hand back a `ControlValueHandle<T>`;
 `handle.set(value)` is the UI-only half of that, for a custom integration that needs it. It never
 invokes the control callback, so it cannot start a feedback loop.
 

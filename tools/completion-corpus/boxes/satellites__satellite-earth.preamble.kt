@@ -23,18 +23,18 @@ val Why.camera by Whying() /**/
 /*graphics-input:pos*/ val Mesh.pos by FromInput()
 /*graphics-input:col*/ val Mesh.col by FromInput()
 /*supermap*/ class MappedStructure {;             lateinit var tri : IntBuffer; lateinit var pos : FloatBuffer; lateinit var col : FloatBuffer; ;         };         fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;             this.resize(numVert, numTriangle);             val mesh = this;             MappedStructure().apply {;                  mesh.write("col") { col = this ; mesh.write("pos") { pos = this ; mesh.t?.mapAndWrite_ints { tri = this ; builder() } } } ;            };         }
-/*graphics-pc-structure:p*/ var Structure.p by Structure.FromStructure<Any>()
-/*graphics-pc-binding:p*/ var Mesh.p by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>()
-/*graphics-pc-binding-group:p*/ var MeshGroup.p by MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>()
-/*graphics-pc-structure:m*/ var Structure.m by Structure.FromStructure<Any>()
-/*graphics-pc-binding:m*/ var Mesh.m by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>()
-/*graphics-pc-binding-group:m*/ var MeshGroup.m by MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>()
-/*graphics-pc-structure:eye*/ var Structure.eye by Structure.FromStructure<Any>()
-/*graphics-pc-binding:eye*/ var Mesh.eye by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
-/*graphics-pc-binding-group:eye*/ var MeshGroup.eye by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
-/*graphics-pc-structure:spin*/ var Structure.spin by Structure.FromStructure<Any>()
-/*graphics-pc-binding:spin*/ var Mesh.spin by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
-/*graphics-pc-binding-group:spin*/ var MeshGroup.spin by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
+/*graphics-pc-structure:p*/ var Structure.p by Structure.FromStructure<Any>() // Clip-from-view projection.
+/*graphics-pc-binding:p*/ var Mesh.p by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>() // Clip-from-view projection.
+/*graphics-pc-binding-group:p*/ var MeshGroup.p by MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>() // Clip-from-view projection.
+/*graphics-pc-structure:m*/ var Structure.m by Structure.FromStructure<Any>() // View-from-world camera transform.
+/*graphics-pc-binding:m*/ var Mesh.m by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>() // View-from-world camera transform.
+/*graphics-pc-binding-group:m*/ var MeshGroup.m by MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>() // View-from-world camera transform.
+/*graphics-pc-structure:eye*/ var Structure.eye by Structure.FromStructure<Any>() // World-space camera position, in Earth radii; w is unused.
+/*graphics-pc-binding:eye*/ var Mesh.eye by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>() // World-space camera position, in Earth radii; w is unused.
+/*graphics-pc-binding-group:eye*/ var MeshGroup.eye by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // World-space camera position, in Earth radii; w is unused.
+/*graphics-pc-structure:spin*/ var Structure.spin by Structure.FromStructure<Any>() // x: Greenwich sidereal angle in radians; yzw unused.
+/*graphics-pc-binding:spin*/ var Mesh.spin by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>() // x: Greenwich sidereal angle in radians; yzw unused.
+/*graphics-pc-binding-group:spin*/ var MeshGroup.spin by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // x: Greenwich sidereal angle in radians; yzw unused.
 var Box.window by Inheritance<Window>() /*from:agent_graphics_context*/ /**/
 val Once.window by Onceing<Window>() /*from:agent_graphics_context*/ /**/
 val Why.window by Whying() /*from:agent_graphics_context*/ /**/

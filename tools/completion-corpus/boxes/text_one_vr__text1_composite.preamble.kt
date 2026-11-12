@@ -24,7 +24,7 @@ class CompositeGrade(
     init { setMembers(members) }
     var selectorRange by Structure.FromStructure<afield.math.linalg.Vector4f>() // selector minimum/maximum, cubic fold strength, reserved
     var selectorSource by Structure.FromStructure<afield.math.linalg.Vector4f>() // sharp/medium/broad green weights, reserved
-    var paint by Structure.FromStructure<afield.math.linalg.Vector4f>() // opacity threshold, smooth knee width, normalization mix, reserved
+    var paint by Structure.FromStructure<afield.math.linalg.Vector4f>() // reserved legacy layout; accumulated light is never normalized
     var colorFold by Structure.FromStructure<afield.math.linalg.Vector4f>() // red/green/blue fold gains, overall fold mix
     var foldLimits by Structure.FromStructure<afield.math.linalg.Vector4f>() // red/green/blue fold caps, fold scale
     var alphaFold by Structure.FromStructure<afield.math.linalg.Vector4f>() // fold gain, cap, strength, reserved
@@ -73,7 +73,7 @@ fun BufferParameters.asCompositeGrade(): CompositeGrade =
 /*graphics-ubo:CompositeGrade*/ val ModulePointer.CompositeGrade by FromUniform()
 /*graphics-ubo-member:CompositeGrade:selectorRange*/ var Structure.selectorRange by Structure.FromStructure<afield.math.linalg.Vector4f>() // selector minimum/maximum, cubic fold strength, reserved
 /*graphics-ubo-member:CompositeGrade:selectorSource*/ var Structure.selectorSource by Structure.FromStructure<afield.math.linalg.Vector4f>() // sharp/medium/broad green weights, reserved
-/*graphics-ubo-member:CompositeGrade:paint*/ var Structure.paint by Structure.FromStructure<afield.math.linalg.Vector4f>() // opacity threshold, smooth knee width, normalization mix, reserved
+/*graphics-ubo-member:CompositeGrade:paint*/ var Structure.paint by Structure.FromStructure<afield.math.linalg.Vector4f>() // reserved legacy layout; accumulated light is never normalized
 /*graphics-ubo-member:CompositeGrade:colorFold*/ var Structure.colorFold by Structure.FromStructure<afield.math.linalg.Vector4f>() // red/green/blue fold gains, overall fold mix
 /*graphics-ubo-member:CompositeGrade:foldLimits*/ var Structure.foldLimits by Structure.FromStructure<afield.math.linalg.Vector4f>() // red/green/blue fold caps, fold scale
 /*graphics-ubo-member:CompositeGrade:alphaFold*/ var Structure.alphaFold by Structure.FromStructure<afield.math.linalg.Vector4f>() // fold gain, cap, strength, reserved

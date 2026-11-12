@@ -1,8 +1,8 @@
 import afield.graphics.scene.reading.*
 import afield.graphics.text.sentences.*
 
-// 2 · Complete canopy. Preserve the parser's tree, POS labels, word stems and dependency arcs.
-val parsed = Sentences.example(2)
+// 2 · Complete canopy. Preserve the parser's geometry, while the visible words come from the passage.
+val parsed = ReadingPassage.sentence(2)
 check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
 val face = Typefaces.named("Noto Serif Light", 100, strict = true)
 val layout =
@@ -23,7 +23,6 @@ val bounds = layout.bounds
 val cx = bounds.centre.x
 val cy = bounds.centre.y
 val metres = min(2.15 / bounds.width, 1.7 / bounds.height)
-val tagMetrics = Java2DMetrics(face.awtFont.deriveFont(13f))
 fun world(p: P, z: Double = 0.0) = vec(((p.x - cx) * metres).toFloat(), (-(p.y - cy) * metres).toFloat(), z.toFloat())
 fun direction(p: P) = vec((p.x * metres).toFloat(), (-p.y * metres).toFloat(), 0f)
 val graph = readingDiagram {
@@ -44,7 +43,7 @@ val graph = readingDiagram {
         val b = nodes.getValue(edge.child).anchor
         val c1 = direction(edge.curve.c1 - edge.curve.a)
         val c2 = direction(edge.curve.c2 - edge.curve.b)
-        path(
+        val branch = path(
             "branch-${edge.parent}-${edge.child}",
             shape = {
                 val from = position(a)
@@ -55,6 +54,7 @@ val graph = readingDiagram {
             width = .0013f
             color = vec(1f, 1f, 1f, .7f)
         }
+        endpointDots(branch)
     }
     for (n in layout.nodes) {
         val anchor = nodes.getValue(n.id).anchor
@@ -62,12 +62,7 @@ val graph = readingDiagram {
             radius = if (n.leaf) .0025f else .004f
             shape = DiagramPointShape.RING
         }
-        // Every label is drawn, including the POS leaves. Centred runs need half their width added.
-        val gap = max(.012, layout.config.tagOffset.x * metres)
-        text("tag-${n.id}", n.label, anchor.offset(x = gap + tagMetrics.width(n.label) * metres * .4)) {
-            scale = (10.4 * metres / .09).toFloat()
-            color = vec(1f, 1f, 1f, .65f)
-        }
+
     }
     val particles = mutableMapOf<Int, DiagramParticle>()
     val words =
@@ -93,7 +88,7 @@ val graph = readingDiagram {
         val b = wordAnchor(edge.token, edge.curve.b)
         val c1 = direction(edge.curve.c1 - edge.curve.a)
         val c2 = direction(edge.curve.c2 - edge.curve.b)
-        path(
+        val stem = path(
             "stem-${edge.token}",
             shape = {
                 val from = position(a)
@@ -104,6 +99,7 @@ val graph = readingDiagram {
             width = .0010f
             color = vec(1f, 1f, 1f, .6f)
         }
+        endpointDots(stem)
     }
     for (w in layout.words) if (w.underlined)
         underline("mark-${w.token}", words.getValue(w.token).all, gap = .010f) {
@@ -127,18 +123,7 @@ val graph = readingDiagram {
             width = .0012f
             color = vec(1f, 1f, 1f, .45f)
         }
-        // Convert the layout's label position to an arclength anchor that stays on a moving arc.
-        val samples = (0..128).map { dep.curve.pointAt(it / 128.0) }
-        val lengths = samples.zipWithNext().map { (a, b) -> (b - a).length }
-        val labelOnCurve = dep.labelAt - P(0.0, layout.config.arcLabelDrop)
-        val nearest = samples.indices.minBy { (samples[it] - labelOnCurve).length }
-        val fraction = (lengths.take(nearest).sum() / lengths.sum()).toFloat()
-        val offset = direction(dep.labelAt - samples[nearest])
-        text("dependency-label-$i", dep.label, arc.at(fraction).offset(x = offset.x, y = offset.y)) {
-            scale = (8.8 * metres / .09).toFloat()
-            rotation = -Math.toRadians(dep.labelAngle).toFloat()
-            color = vec(1f, 1f, 1f, .55f)
-        }
+        endpointDots(arc)
     }
 }
 // Let the words lead: structural strokes and markers are more translucent.
@@ -155,6 +140,6 @@ val player = try {
 player.wind = .012f
 prop<ReadingExample>(exampleTwo) = ReadingExample(
     "2 · Constituency canopy",
-    "The complete constituent tree, POS labels and word stems, with collapsed dependencies beneath the words. Curves follow their moving anchors.",
+    "The complete constituent tree and word stems, with collapsed dependencies beneath the passage’s words. Curves follow their moving anchors.",
     player,
 )

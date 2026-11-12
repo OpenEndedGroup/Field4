@@ -1,5 +1,21 @@
 import afield.graphics.scene.reading.*
 
+// Staged cache quality. Apply changes at an acquired frame, without replacing the renderer or XR session.
+rootProp<Int>(textCacheWidth, 2048)
+rootProp<Int>(textCacheHeight, 1024)
+rootProp<Int>(textCacheMinimum, 512)
+rootProp<Int>(textCacheHalving, 2)
+rootProp<Int>(textCacheTaps, 513)
+rootProp<Float>(textCacheCutoff, 4f)
+fun pendingTextCacheQuality() = ReadingTextBlurConfig(
+    width = root.textCacheWidth,
+    height = root.textCacheHeight,
+    minimumSize = root.textCacheMinimum,
+    levelsPerHalving = root.textCacheHalving,
+    maximumRadius = (root.textCacheTaps - 1) / 2,
+    sigmaCutoff = root.textCacheCutoff,
+)
+
 // Each shader box owns its moduleHere pipeline and its standard Alt+R action.
 // The renderer supplies pass-specific targets/resources without copying shader properties.
 val passes = mapOf(
@@ -13,85 +29,49 @@ val passes = mapOf(
     "reading-composite" to compositeModuleFactory,
 )
 
-prop<StereoDiagramRenderer>(drawing) = StereoDiagramRenderer(renderer, stereo, poem, moduleFactories = passes)
+prop<StereoDiagramRenderer>(drawing) =
+    StereoDiagramRenderer(renderer, stereo, poem, textBlurConfig = pendingTextCacheQuality(), moduleFactories = passes)
 val ownedDrawing = drawing
-controlGroup("drawing") {
-    button("Recenter poem") { down -> if (down) drawing.recenter() }
-    checkbox("Gently face the reader", initialValue = true) { drawing.followReader = it }
-    slider("Turning half-life (seconds)", initialValue = 2.0, min = .1, max = 10.0) {
-        drawing.turnHalfLife = it.toFloat()
+
+rootProp<Boolean>(showSkeleton, false)
+rootProp<Boolean>(showPhysicsNodes, true)
+rootProp<Boolean>(showBodyForces, true)
+
+// The uniform has its own document-wide floor; panel-local black levels remain available in the DSL.
+rootProp<Float>(frostBlackLevel, .012f)
+rootProp<Float>(frostBlurGamma, 1f)
+val frostScenePreparation = drawing.compositor.beforeScene
+val frostFloorValue: () -> Float = { root.frostBlackLevel }
+drawing.compositor.beforeScene =
+    afield.graphics.vulkan.Target { command, index ->
+        drawing.frost.blurGamma = root.frostBlurGamma
+        frostScenePreparation?.render(command, index)
+        drawing.compositor.sharp.modules
+            .filterKeys { it.startsWith("reading-frost-") }
+            .values
+            .forEach { pass ->
+                pass.current.liveUniformStructures.getValue("FrostTone").bind("globalBlackLevel", frostFloorValue)
+            }
     }
-    slider("Stroke width multiplier", initialValue = 1.0, min = .2, max = 4.0) {
-        poem.examples.forEach { e -> e.player.strokeWidthScale = it.toFloat() }
+
+// These controls shape already-filtered text coverage; neither changes its cache nor its timing.
+rootProp<Float>(textBlurGain, 1f)
+rootProp<Float>(textBlurContrast, 1f)
+val textBlurToneValue: () -> Vector4f = { vec(root.textBlurGain, root.textBlurContrast, 0f, 0f) }
+val prepareTextAndFrost = drawing.compositor.beforeScene
+drawing.compositor.beforeScene =
+    afield.graphics.vulkan.Target { command, index ->
+        drawing.compositor.sharp.modules
+            .filterKeys { it.startsWith("reading-local-blur-") }
+            .values
+            .forEach { pass ->
+                pass.current.liveUniformStructures.getValue("TextBlurTone").bind("appearance", textBlurToneValue)
+            }
+        prepareTextAndFrost?.render(command, index)
     }
-    slider("Point radius multiplier", initialValue = 1.0, min = .2, max = 4.0) {
-        poem.examples.forEach { e -> e.player.dotRadiusScale = it.toFloat() }
-    }
-    checkbox("Show diagram dots", initialValue = true) { poem.examples.forEach { e -> e.player.showDots = it } }
-}
-val grade = drawing.compositor.settings
-controlGroup("blur cascade") {
-    slider("Medium blur radius", initialValue = grade.mediumRadius.toDouble(), min = 0.0, max = 8.0) {
-        grade.mediumRadius = it.toFloat()
-    }
-    slider("Broad blur radius", initialValue = grade.broadRadius.toDouble(), min = 0.0, max = 8.0) {
-        grade.broadRadius = it.toFloat()
-    }
-}
-controlGroup("green compositor") {
-    slider("Blur mix", initialValue = grade.selection.z.toDouble(), min = 0.0, max = 1.0) {
-        grade.selection.z = it.toFloat()
-    }
-    slider("Green selector gain", initialValue = grade.selection.x.toDouble(), min = 0.0, max = 8.0) {
-        grade.selection.x = it.toFloat()
-    }
-    slider("Green selector offset", initialValue = grade.selection.y.toDouble(), min = -1.0, max = 1.0) {
-        grade.selection.y = it.toFloat()
-    }
-    slider("Source green scale", initialValue = grade.selection.w.toDouble(), min = 0.0, max = 4.0) {
-        grade.selection.w = it.toFloat()
-    }
-    slider("Selector sharp weight", initialValue = grade.selectorSource.x.toDouble(), min = 0.0, max = 1.0) {
-        grade.selectorSource.x = it.toFloat()
-    }
-    slider("Selector medium weight", initialValue = grade.selectorSource.y.toDouble(), min = 0.0, max = 1.0) {
-        grade.selectorSource.y = it.toFloat()
-    }
-    slider("Selector broad weight", initialValue = grade.selectorSource.z.toDouble(), min = 0.0, max = 1.0) {
-        grade.selectorSource.z = it.toFloat()
-    }
-    slider("Green from red / blue", initialValue = grade.reconstruction.x.toDouble(), min = 0.0, max = 1.0) {
-        grade.reconstruction.x = it.toFloat()
-        grade.reconstruction.y = 1f - it.toFloat()
-    }
-}
-controlGroup("paint and colour") {
-    slider("Additive to weighted paint", initialValue = grade.paint.z.toDouble(), min = 0.0, max = 1.0) {
-        grade.paint.z = it.toFloat()
-    }
-    slider("Paint opacity threshold", initialValue = grade.paint.x.toDouble(), min = .001, max = 4.0) {
-        grade.paint.x = it.toFloat()
-    }
-    slider("Paint knee width", initialValue = grade.paint.y.toDouble(), min = 0.0, max = 2.0) {
-        grade.paint.y = it.toFloat()
-    }
-    slider("Exposure", initialValue = grade.reconstruction.z.toDouble(), min = 0.0, max = 4.0) {
-        grade.reconstruction.z = it.toFloat()
-    }
-    slider("Saturation", initialValue = grade.saturation.x.toDouble(), min = 0.0, max = 3.0) {
-        grade.saturation.x = it.toFloat()
-    }
-    slider("FXAA mix", initialValue = grade.fxaa.x.toDouble(), min = 0.0, max = 1.0) { grade.fxaa.x = it.toFloat() }
-    colorPicker("Background", initialValue = grade.background) { grade.background.set(it) }
-    colorPicker("Shadow tone (alpha = strength)", initialValue = grade.shadowTone) { grade.shadowTone.set(it) }
-    colorPicker("Highlight tone (alpha = strength)", initialValue = grade.highlightTone) { grade.highlightTone.set(it) }
-}
+
 // Optional perceptual dither for downstream display quantization; zero keeps it disabled.
-controlGroup("display dither") {
-    slider("Dither (8-bit code steps)", initialValue = grade.supersampling.w.toDouble(), min = 0.0, max = 2.0) {
-        grade.supersampling.w = it.toFloat()
-    }
-}
+
 var lastStats = 0L
 loop {
     renderer.windows.forEach { it.pollEvents() }
@@ -101,7 +81,7 @@ loop {
         lastStats = now
         display(
             "frame",
-            "<div style='padding:12px;width:440px'>${if (drawing.textBlurNeedsRebuild) "Blur capacity changed: rebuild Drawing. " else ""}Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.</div>",
+            "<div style='padding:12px;width:440px'>${if (drawing.textBlurNeedsRebuild) "Blur capacity changed: rebuild Drawing. " else ""}Frost: ${drawing.frost.activeSurfaces} active / ${drawing.frost.allocatedSurfaces} cached · ${drawing.frost.allocatedBytes / (1024 * 1024)} MiB · ${drawing.frost.omittedSurfaces} over budget. Text caches: ${drawing.textBlurConfig.width}×${drawing.textBlurConfig.height}, minimum ${drawing.textBlurConfig.minimumSize}px, max ${2*drawing.textBlurConfig.maximumRadius+1} taps, ${drawing.textBlurCacheBytes/(1024*1024)} MiB. Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.</div>",
         )
     }
     frame()

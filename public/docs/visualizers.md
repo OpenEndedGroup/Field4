@@ -1565,6 +1565,23 @@ pad. For `sliders(...)`, put it in each `SliderConfig`; for a property-bound con
 
 Standalone sliders, `sliders(...)` and sliders in a `controlGroup` share the same gestures:
 
+Point at a slider in the VR workspace and press the controller's B button to return it to its starting
+value. You can also put a unit after its readout:
+
+```diffstatic {data-lang=kotlin}
+import eu.sirotin.kotunil.base.mm
+
+var radius = 3.0
+controlGroup("size") {
+    slider("radius", min = 0.0, max = 10.0, initialValue = radius, unit = mm) { radius = it }
+    slider("acceleration", min = 0.0, max = 20.0, unit = "m/s2") {}
+}
+```
+
+The readouts show `mm` and `m/s²`. Values, steps and callbacks are numeric in the given unit; this
+is a display label and does not convert them. `unit` also works on `Box.slider`, `SliderConfig` and
+the numeric `syncToProperty` slider. A slider without a unit keeps its existing display.
+
 This recording drags a live `controlGroup` slider, nudges it with the arrow key, then double-clicks
 the track to return to its starting value. The large bar is updated by the slider's callback, so it
 shows the value Field receives while the pointer moves.

@@ -81,6 +81,22 @@ class HeadlessPuppetBrowserTest {
     }
 
     @Test
+    fun `controller reset reaches the element under the ray inside an iframe without taking focus`() {
+        value("""(() => {
+            document.body.innerHTML = '<input id="focus"><iframe id="frame" style="position:fixed;left:20px;top:30px;width:200px;height:100px;border:0"></iframe>';
+            document.getElementById('focus').focus();
+            const doc = document.getElementById('frame').contentDocument;
+            doc.body.innerHTML = '<div id="control" style="position:fixed;inset:0"></div>';
+            window.resets = 0;
+            doc.getElementById('control').addEventListener('field-controller-reset', () => window.resets++);
+            return true;
+        })()""")
+        PuppetBrowserUvInput(browser(), browser().viewport).resetControl(100.0 / 900, 70.0 / 600)
+        assertEquals(1, value("window.resets").jsonPrimitive.int)
+        assertEquals("focus", value("document.activeElement.id").jsonPrimitive.content)
+    }
+
+    @Test
     fun `evaluate surfaces a page exception instead of undefined`() {
         val error = failureOf(browser().evaluate("notDefinedAnywhere.reach()"))
         val message = error.message ?: ""

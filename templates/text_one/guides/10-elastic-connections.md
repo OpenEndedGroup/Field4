@@ -7,12 +7,11 @@ It does not add particles or neighbour slots to the word graph, or pull words ar
 
 ```kotlin
 val graph = readingDiagram {
-    val a = text("a", "the river remembers\nsmall things", point("pa", -.6, .2))
-    val b = text("b", "a changing light", point("pb", .65, .25, .03))
-    val thread = connection(
-        "thread",
-        a.word("river").attach(DiagramTextSite.UNDERLINE),
-        b.word("light").attach(DiagramTextSite.BOUNDARY),
+    val a = text("a", "When the door closed\nbehind me", point("pa", -.6, .2))
+    val b = text("b", "my eyes were going\nto be useless in the dark", point("pb", .65, .25, .03))
+    val thread = connection("thread",
+        a.word("door").attach(DiagramTextSite.UNDERLINE),
+        b.word("eyes").attach(DiagramTextSite.BOUNDARY),
         interiorNodes = 8,
     ) {
         responseSeconds = 1.0f
@@ -29,6 +28,7 @@ val graph = readingDiagram {
         width = .0015f
         color = vec(1f, 1f, 1f, .3f)
     }
+    endpointDots(thread.path)
     dot("bead", thread.path.at(.5f)) { radius = .003f }
 }
 ```
@@ -62,7 +62,7 @@ A sliding endpoint may switch to another line when it becomes closer.
 Projection is in diagram space after text rotation, font scaling, physics and score offsets.
 Each endpoint slides toward its adjacent interior node. Before the first physics step, the
 opposite text endpoint seeds that direction. Fixed anchors also work directly:
-`connection("fixed", a.right, b.word("light").below)`; use `.attachment()` to mix an existing
+`connection("fixed", a.right, b.word("eyes").below)`; use `.attachment()` to mix an existing
 anchor with a sliding attachment. Carets, particles and path anchors work this way too.
 
 ## Three independent kinds of stiffness

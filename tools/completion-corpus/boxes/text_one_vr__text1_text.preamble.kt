@@ -81,6 +81,9 @@ fun BufferParameters.asStereoViews(): StereoViews =
 /*graphics-pc-structure:tint*/ var Structure.tint by Structure.FromStructure<Any>() // linear RGBA, with score-driven word opacity
 /*graphics-pc-binding:tint*/ var Mesh.tint by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>() // linear RGBA, with score-driven word opacity
 /*graphics-pc-binding-group:tint*/ var MeshGroup.tint by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // linear RGBA, with score-driven word opacity
+/*graphics-pc-structure:clipPlane*/ var Structure.clipPlane by Structure.FromStructure<Any>() // world-space backdrop clipping, zero for the main scene
+/*graphics-pc-binding:clipPlane*/ var Mesh.clipPlane by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>() // world-space backdrop clipping, zero for the main scene
+/*graphics-pc-binding-group:clipPlane*/ var MeshGroup.clipPlane by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // world-space backdrop clipping, zero for the main scene
 /*graphics-ubo:StereoViews*/ val ModulePointer.StereoViews by FromUniform()
 /*graphics-ubo-member:StereoViews:stereoVpL*/ var Structure.stereoVpL by Structure.FromStructure<afield.math.linalg.Matrix4f>() // left-eye projection/view
 /*graphics-ubo-member:StereoViews:stereoVpR*/ var Structure.stereoVpR by Structure.FromStructure<afield.math.linalg.Matrix4f>() // right-eye projection/view

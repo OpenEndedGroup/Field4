@@ -70,6 +70,7 @@ class FieldVrWorkspace(
     var headsetDevices: WiVRnBrowserInput? = null
         private set
     private var previousPresses = emptySet<String>()
+    private var previousResets = emptySet<String>()
     private var previousGrips = emptySet<String>()
     private val rayAnchors = mutableMapOf<String, Pair<Vector3f, Vector3f>>()
     @Volatile var keyboardReady = false
@@ -90,6 +91,8 @@ class FieldVrWorkspace(
     val panel: PuppetBrowserVrPanel
     val input: PuppetBrowserVrInput
     val grab: PuppetBrowserVrGrab
+    /** Reserve a hand's stick for scene navigation while retaining its pointer and grip. */
+    var controllerScrollHands: Set<Hand> = setOf(Hand.RIGHT, Hand.LEFT)
     val keyboard = FieldVrKeyboard(browser,
         recenter = { recenterRequested.set(true) },
         focusKeyboard = { keyboardFocusRequested.set(true) })
@@ -178,11 +181,19 @@ class FieldVrWorkspace(
             // Controller aim only. Tracked hands resting on a keyboard/mouse must not
             // reclaim its page cursor through hover movement or an incidental pinch.
             listOf(Hand.RIGHT, Hand.LEFT).mapNotNull { hand ->
-                input.controller("$hand-controller", xr.controllerState(hand), elapsed)
+                val state = xr.controllerState(hand)
+                if (hand !in controllerScrollHands) {
+                    state.thumbstickX = 0f
+                    state.thumbstickY = 0f
+                    state.trackpadX = 0f
+                    state.trackpadY = 0f
+                }
+                input.controller("$hand-controller", state, elapsed)
             }
         }
         val worldPress = pointers.any {
-            ((it.pressed && it.id !in previousPresses) || (it.gripPressed && it.id !in previousGrips)) &&
+            ((it.pressed && it.id !in previousPresses) || (it.gripPressed && it.id !in previousGrips) ||
+                (it.resetPressed && it.id !in previousResets)) &&
                 panel.panel.raycast(it.origin, it.direction)?.onPanel == true
         }
         val worldMotion = pointers.any { pointer ->
@@ -201,6 +212,7 @@ class FieldVrWorkspace(
             headsetPointer = false
         }
         previousPresses = pointers.filter { it.pressed }.map { it.id }.toSet()
+        previousResets = pointers.filter { it.resetPressed }.map { it.id }.toSet()
         previousGrips = pointers.filter { it.gripPressed }.map { it.id }.toSet()
         val worldPointer = !desktopPointer && !headsetPointer
         val dragging = grab.update(pointers, enabled = worldPointer)

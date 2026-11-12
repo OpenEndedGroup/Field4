@@ -50,7 +50,8 @@ The cache renders Slug coverage into padded, linear R16F masks and builds fiftee
 levels once. The renderer interpolates between levels by Gaussian variance, switching from the
 analytic outline near zero. Padding extends four standard deviations beyond each side.
 
-Defaults use a 2048 × 1024 source and retain at least 128 × 128 pixels at broad levels.
+The library defaults use a 2048 × 1024 source and retain at least 128 × 128 pixels at broad
+levels. This document starts with a **512 × 512 minimum** for close inspection in VR.
 Two distinct prepared text shapes share an array batch; a partially filled batch costs the
 same. Each default batch uses about 22.3 MiB of mask image storage, excluding driver overhead.
 Only shapes with a nonzero reservation allocate a cache. Gallery scenes reserve their masks
@@ -71,3 +72,80 @@ Drawing's **Dither (8-bit code steps)** control adds monochrome triangular noise
 and spatial AA, in perceptual code space. Zero disables it; about 0.65 is a gentle starting
 point for a downstream eight-bit display conversion. The noise is static in screen coordinates
 and black backgrounds remain black. It changes neither the blur cache nor headset pose timing.
+
+
+## Blur energy and artistic shaping
+
+Box **12 → text blur appearance** contains three separate controls:
+
+- **Text blur contrast (power)** applies `coverage^power` to the filtered red/blue light.
+  **1** retains the normalized linear blur. Values above 1 trim faint tails and make the
+  result more concentrated; values below 1 expand the faint glow. Try **1.5–2** to tighten it.
+- **Text blur gain** multiplies that shaped light. Its neutral value is **1**. Increase it
+  after raising contrast if you want brighter remaining highlights. It affects cached
+  blurred text, while the analytic sharp-text contribution remains unchanged.
+- **Final contrast (power)** applies the compositor's master artistic exponent to the
+  whole scene. **1** is neutral; values above 1 darken midtones and increase contrast.
+  Internally this is the reciprocal of `grade.gamma.w`. Display sRGB encoding is separate.
+
+The mask is still generated and Gaussian-filtered as linear **R16F coverage**. Text contrast
+is a post-filter artistic power, not a different Gaussian averaging space. It intentionally
+changes total emitted light. Gain and contrast happen before score opacity is applied,
+so entrance/exit fades remain independently controllable. Green control data and alpha
+coverage retain the unshaped, linear mask. Premultiplied additive blending keeps those
+channels independent from the red/blue artistic light.
+
+`drawing.textBlurConfig.appearance` is `(gain, power, reserved, reserved)` in the core API.
+The document's `textBlurGain` and `textBlurContrast` root properties bind the draw shader's
+`TextBlurTone.appearance` uniform. These settings need no mask rebuild and no history image;
+all word transforms and eye poses remain current-frame values.
+
+The separate **frost gamma** control changes the averaging space of the *backdrop frost*;
+it does not change word-local text blur. Frost brightness and black level intentionally
+change the light behind a panel too. For a neutral reference use word gain/power 1,
+final contrast 1, frost gamma/brightness 1 and frost black level 0.
+
+The real-GPU smoke `four.reading.text-blur-energy` measures every cached Gaussian level's
+normalized integral, compares a sharp and blurred word before grading, and checks gain,
+contrast, unchanged green/alpha, and an exact neutral reset. This checks numerical linear
+energy; it is not a measurement of perceived brightness or headset luminance.
+
+
+## Resolution and Gaussian tap controls
+
+Box **12 → text blur quality** stages these settings:
+
+| Control | Effect |
+| --- | --- |
+| Cache width / height | Base Slug coverage resolution; helps small detail and long runs. |
+| Broad level minimum | Minimum dimension of later cache levels. Raise this first for blocks seen up close. The document starts at **512**. |
+| Levels per size halving | **2** is the original schedule. Higher values retain resolution for more blur levels. |
+| Maximum taps per axis | Maximum Gaussian samples in each separable preparation pass. **513** in the document means a radius cap of 256 samples. Actual short kernels use fewer taps. |
+| Gaussian support (sigma) | Tail extent, normally **4** standard deviations. Padding expands for support above 4. |
+
+Press **Apply text blur quality** after adjusting the staged values. The masks regenerate
+on the next acquired frame, with no new XR session, physics reset or score restart. The
+frame output reports the active resolution, minimum size, tap budget and cache MiB. The
+first frame can hitch while the GPU rebuilds; subsequent frames reuse the prepared masks.
+Sliders themselves only stage values. On a later Drawing launch, those staged values
+become the startup quality.
+
+For an A/B comparison, use box 22's **Hold both readings**, keep your head in one place,
+and compare broad minimum **128**, **512**, then **1024**. Try **4096 × 2048** if the
+base masks are still visible. Larger masks and slower downsampling use more VRAM; the
+renderer checks a 2 GiB text-cache image budget before accepting a rebuild. This excludes
+other scene/frost images and driver overhead. The previous caches retire through Field's
+GPU cleanup queue, so old and new allocations briefly coexist. The budget is available
+in code as `drawing.maximumTextBlurBytes`.
+
+The tap limit controls sampling density rather than squeezing the blur radius. When a
+kernel needs more samples than the budget, its sample spacing grows to retain the chosen
+sigma support. Too few taps can therefore introduce sampling artifacts; more taps reduce
+them at a one-time preparation cost. These are preparation taps, not extra sampling work
+on every headset frame.
+
+In code, call `drawing.requestTextBlurRebuild(ReadingTextBlurConfig(...))`. The constructor
+accepts `width`, `height`, `minimumSize`, `levelsPerHalving`, `maximumRadius`, and
+`sigmaCutoff`. The rebuild retains text gain/contrast, current scene pose and clock, and
+refreshes the frost captures' borrowed text modules before retiring the old resources.
+Changing Field's core API requires a fresh JVM once; later quality applies do not.

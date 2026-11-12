@@ -17,6 +17,7 @@ data class BrowserVrPointer(
     val gripPressed: Boolean = false,
     val orientation: Quaternionf = Quaternionf(),
     val scrollX: Double = 0.0,
+    val resetPressed: Boolean = false,
 )
 
 /**
@@ -43,6 +44,7 @@ class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
         private set
     private var capturedPointer: String? = null
     private var previousPressed = emptySet<String>()
+    private var previousResetPressed = emptySet<String>()
     private val pinching = mutableMapOf<String, Boolean>()
 
     fun update(pointers: List<BrowserVrPointer>, enabled: Boolean = true): PuppetBrowserPanel.Hit? {
@@ -52,6 +54,7 @@ class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
             capturedPointer = null
             activePointer = null
             previousPressed = pointers.filter { it.pressed }.map { it.id }.toSet()
+            previousResetPressed = pointers.filter { it.resetPressed }.map { it.id }.toSet()
             return null
         }
         val captured = capturedPointer
@@ -62,7 +65,8 @@ class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
         }
         val hits = pointers.associate { it.id to panel.raycast(it.origin, it.direction) }
         val freshPress = pointers.firstOrNull {
-            it.pressed && it.id !in previousPressed && hits[it.id]?.onPanel == true
+            ((it.pressed && it.id !in previousPressed) ||
+                (it.resetPressed && it.id !in previousResetPressed)) && hits[it.id]?.onPanel == true
         }
         val selected = pointers.firstOrNull { it.id == capturedPointer }
             ?: freshPress
@@ -78,7 +82,11 @@ class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
             val down = it.pressed && (it.id == capturedPointer || it.id !in previousPressed)
             val target = hits[it.id]?.let { hit -> smoothTarget(hit, down || it.id == capturedPointer) }
             if (target == null) filteredHit = null
-            panel.interactHit(target, down, it.scrollY, scrollX = it.scrollX)
+            val result = panel.interactHit(target, down, it.scrollY, scrollX = it.scrollX)
+            if (it.resetPressed && it.id !in previousResetPressed && target?.onPanel == true) {
+                panel.uv.resetControl(target.u, target.v)
+            }
+            result
         }
         if (selected == null) {
             panel.releasePointer()
@@ -86,6 +94,7 @@ class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
         }
         capturedPointer = if (panel.uv.buttons != 0) selected?.id else null
         previousPressed = pointers.filter { it.pressed }.map { it.id }.toSet()
+        previousResetPressed = pointers.filter { it.resetPressed }.map { it.id }.toSet()
         return hit
     }
 
@@ -127,14 +136,15 @@ class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
         fun axis(stick: Float, pad: Float): Double {
             val raw = if (kotlin.math.abs(stick) > 0.12f) stick else pad
             val magnitude = ((kotlin.math.abs(raw) - 0.12) / 0.88).coerceIn(0.0, 1.0)
-            return kotlin.math.sign(raw.toDouble()) * magnitude * magnitude
+            return kotlin.math.sign(raw.toDouble()) * Math.pow(magnitude, 1.5)
         }
         val seconds = elapsedSeconds.coerceIn(0.0, 0.05)
         val (origin, direction) = PuppetBrowserPanel.controllerRay(state, Vector3f(0f, 0f, -1f))
         return BrowserVrPointer(id, origin, direction, state.selectPressed || state.triggerPressed || state.aPressed,
             -axis(state.thumbstickY, state.trackpadY) * 1200.0 * seconds,
             gripPressed = state.squeezePressed, orientation = Quaternionf(state.rotation),
-            scrollX = axis(state.thumbstickX, state.trackpadX) * 1200.0 * seconds)
+            scrollX = axis(state.thumbstickX, state.trackpadX) * 1200.0 * seconds,
+            resetPressed = state.bPressed)
     }
 
     /** Joint-based fallback when the runtime supplies hands without a controller aim action. */

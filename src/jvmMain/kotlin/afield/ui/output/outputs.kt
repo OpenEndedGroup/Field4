@@ -1135,6 +1135,7 @@ fun Box.transcript(channel: String = "transcript") {
  * @param step increment used for interaction and displayed precision
  * @param initialValue value shown when the control is created
  * @param hoverText optional Markdown help shown at the label
+ * @param unit optional KotUniL unit expression or unit symbol; values are expressed in this unit
  * @param onUpdate callback invoked with the selected value
  */
 data class SliderConfig(
@@ -1144,11 +1145,23 @@ data class SliderConfig(
     val step: Double = 100.0,
     val initialValue: Double = 0.0,
     val hoverText: String? = null,
+    val unit: Any? = null,
     val onUpdate: (Double) -> Unit
 ) {
     constructor(label: String, min: Double = 0.0, max: Double = 1.0, step: Double = 100.0,
                 initialValue: Double = 0.0, callback: (Double) -> Unit) :
         this(label, min, max, step, initialValue, onUpdate = callback)
+    constructor(label: String, min: Double, max: Double, step: Double, initialValue: Double,
+                hoverText: String?, callback: (Double) -> Unit) :
+        this(label, min, max, step, initialValue, hoverText, unit = null, onUpdate = callback)
+}
+
+/** A display unit is either a unit expression from KotUniL or a literal unit symbol. */
+internal fun controlUnitSymbol(unit: Any?): String? = when (unit) {
+    null -> null
+    is String -> afield.math.units.formatUnitSuperscripts(unit).takeIf { it.isNotBlank() }
+    is eu.sirotin.kotunil.core.Expression -> afield.math.units.formatExpression(unit).second.takeIf { it.isNotBlank() }
+    else -> throw IllegalArgumentException("Slider unit must be a unit expression or a string")
 }
 
 /** Markdown source and rendered fragment, escaped for HTML attributes. */
@@ -1268,6 +1281,7 @@ internal fun FLineClick.toIntersection(): FLineIntersection = FLineIntersection(
  * @param lawCenter the value at mid-travel for [ControlLaw.BIPOLAR]; defaults to the range's midpoint
  * @param significantDigits digits shown, or `0` to derive the decimal count from [step] as before
  * @param hoverText optional Markdown help shown at the label
+ * @param unit optional KotUniL unit expression (such as `mm`) or symbol (such as `"m/s2"`); values and callbacks use that unit
  * @param onUpdate callback invoked with the selected value
  */
 fun Box.slider(
@@ -1282,13 +1296,14 @@ fun Box.slider(
     lawCenter: Double = (min + max) / 2,
     significantDigits: Int = defaultSignificantDigits(law),
     hoverText: String? = null,
+    unit: Any? = null,
     onUpdate: (Double) -> Unit
 ) {
     val sliderId = "slider-${UUID.randomUUID()}"
     registerSliderCallback(sliderId, onUpdate)
 
     val spec = ControlLawSpec(law, min, max, lawExponent, lawCenter).also { it.validate(label) }
-    val html = buildSliderHtml(sliderId, label, min, max, step, initialValue, spec, significantDigits, hoverText = hoverText)
+    val html = buildSliderHtml(sliderId, label, min, max, step, initialValue, spec, significantDigits, hoverText = hoverText, unit = controlUnitSymbol(unit))
     display(channel, html)
 }
 
@@ -1312,7 +1327,7 @@ fun Box.sliders(
         configs.forEach { (id, config) ->
             val sliderId = "slider-$id-${UUID.randomUUID()}"
             registerSliderCallback(sliderId, config.onUpdate)
-            append(buildSliderHtml(sliderId, config.label, config.min, config.max, config.step, config.initialValue, hoverText = config.hoverText))
+            append(buildSliderHtml(sliderId, config.label, config.min, config.max, config.step, config.initialValue, hoverText = config.hoverText, unit = controlUnitSymbol(config.unit)))
         }
         append("</div>")
     }
@@ -1345,6 +1360,7 @@ internal fun buildSliderHtml(
     defaultValue: Double = value,
     ariaLabel: String = label,
     hoverText: String? = null,
+    unit: String? = null,
 ): String {
     val stepDecimals = calculateDecimalPlaces(step)
     val clampedValue = value.coerceIn(minOf(min, max), maxOf(min, max))
@@ -1375,6 +1391,7 @@ internal fun buildSliderHtml(
     } else ""
     val defaultNotch = "<path d=\"M 0 ${centerY + 7} l -3 5 l 6 0 z\" transform=\"translate(${"%.2f".format(java.util.Locale.ROOT, defaultX)} 0)\" data-f=\"$defaultF\" class=\"slider-default\"></path>"
     val ownAttributes = (if (send) "" else " data-send=\"false\"") + (if (extraAttributes.isBlank()) "" else " $extraAttributes")
+    val safeUnit = unit?.replace("&", "&amp;")?.replace("\"", "&quot;")?.replace("<", "&lt;")?.replace(">", "&gt;")
     return """
         <div class="field-control field-slider"
              data-slider-id="$sliderId"
@@ -1387,6 +1404,7 @@ internal fun buildSliderHtml(
              data-law-center="${spec.center}"
              data-significant-digits="$significantDigits"
              data-value="$value"
+             data-unit="${safeUnit.orEmpty()}"
              data-default="${defaultValue.coerceIn(minOf(min, max), maxOf(min, max))}"
              data-view-width="$viewWidth"
              data-padding="$padding"
@@ -1401,7 +1419,7 @@ internal fun buildSliderHtml(
                 <circle cx="$cx" cy="$centerY" r="5" class="slider-thumb"></circle>
                 <circle cx="$cx" cy="$centerY" r="2" class="slider-thumb-dot"></circle>
             </svg>
-            <span class="field-value" id="${sliderId}-value">$formattedValue</span>
+            <span class="field-value" id="${sliderId}-value">$formattedValue${safeUnit?.let { " $it" }.orEmpty()}</span>
         </div>
     """.trimIndent()
 }
@@ -1879,6 +1897,11 @@ fun Box.button(
 }
 
 // Keep the pre-hover-text positional callback forms source and binary compatible.
+fun Box.slider(label: String, min: Double, max: Double, step: Double, initialValue: Double,
+               channel: String, law: ControlLaw, lawExponent: Double, lawCenter: Double,
+               significantDigits: Int, hoverText: String?, callback: (Double) -> Unit) =
+    slider(label, min, max, step, initialValue, channel, law, lawExponent, lawCenter, significantDigits,
+        hoverText = hoverText, unit = null, onUpdate = callback)
 fun Box.slider(label: String, min: Double = 0.0, max: Double = 1.0, step: Double = 0.01,
                initialValue: Double = (min + max) / 2, channel: String = "controls",
                law: ControlLaw = ControlLaw.LINEAR, lawExponent: Double = 2.0,
@@ -2414,6 +2437,11 @@ class ControlGroupBuilder(private val box: Box, private val channel: String, pri
     internal val ownerChannel: String get() = channel
 
     // Retain calls which pass the callback positionally inside parentheses, as well as trailing lambdas.
+    fun slider(label: String, min: Double, max: Double, step: Double, initialValue: Double,
+               law: ControlLaw, lawExponent: Double, lawCenter: Double, significantDigits: Int,
+               hoverText: String?, callback: (Double) -> Unit) =
+        slider(label, min, max, step, initialValue, law, lawExponent, lawCenter, significantDigits,
+            hoverText = hoverText, unit = null, onUpdate = callback)
     fun slider(label: String, min: Double = 0.0, max: Double = 1.0, step: Double = 0.01,
                initialValue: Double = (min + max) / 2, law: ControlLaw = ControlLaw.LINEAR,
                lawExponent: Double = 2.0, lawCenter: Double = (min + max) / 2,
@@ -2565,6 +2593,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String, pri
      * @param significantDigits digits shown, or `0` to derive the decimal count from [step] as before;
      *   nonlinear laws default to 4, so one control can read `20.00` and `20000`
      * @param hoverText optional Markdown help shown at the label
+     * @param unit optional KotUniL unit expression or unit symbol; values and callbacks use that unit
      * @param everyValue run [onUpdate] for every value a drag sends, instead of the newest one
      *   (see the class notes on dragging); for code that records the whole gesture
      * @param onUpdate callback invoked with the current value
@@ -2580,6 +2609,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String, pri
         lawCenter: Double = (min + max) / 2,
         significantDigits: Int = defaultSignificantDigits(law),
         hoverText: String? = null,
+        unit: Any? = null,
         everyValue: Boolean = false,
         onUpdate: (Double) -> Unit
     ): ControlValueHandle<Double> {
@@ -2592,7 +2622,8 @@ class ControlGroupBuilder(private val box: Box, private val channel: String, pri
         if (cached.previous?.value != null) {
             onUpdate(value)
         }
-        val html = buildSliderHtml(sliderId, label, min, max, step, value, spec, significantDigits, defaultValue = initialValue, hoverText = hoverText)
+        val unitSymbol = controlUnitSymbol(unit)
+        val html = buildSliderHtml(sliderId, label, min, max, step, value, spec, significantDigits, defaultValue = initialValue, hoverText = hoverText, unit = unitSymbol)
         val control = ControllerControl(
             id = sliderId,
             type = "slider",
@@ -2607,7 +2638,8 @@ class ControlGroupBuilder(private val box: Box, private val channel: String, pri
             lawExponent = spec.exponent,
             lawCenter = spec.center,
             significantDigits = significantDigits,
-            hoverText = hoverText
+            hoverText = hoverText,
+            unit = unitSymbol
         )
         emit(html, control, hoverText)
         box.storeControlGroupValue(cached.cacheKey, control)
@@ -3217,12 +3249,13 @@ fun Box.syncToProperty(
     label: String = propertyName,
     law: ControlLaw = ControlLaw.LINEAR,
     hoverText: String? = null,
+    unit: Any? = null,
 ) {
     val start = (getPropertyRaw(propertyName) as? Double) ?: initialValue
     val sliderId = "slider-${UUID.randomUUID()}"
     registerSliderCallback(sliderId) { writeSyncedProperty(propertyName, it) }
     val spec = ControlLawSpec(law, min, max).also { it.validate(label) }
-    display(channel, buildSliderHtml(sliderId, label, min, max, step, start, spec, defaultValue = initialValue, hoverText = hoverText))
+    display(channel, buildSliderHtml(sliderId, label, min, max, step, start, spec, defaultValue = initialValue, hoverText = hoverText, unit = controlUnitSymbol(unit)))
     if (getPropertyRaw(propertyName) == null) setPropertyRaw(propertyName, start, doResync = true)
     markPersistent(propertyName)
 }

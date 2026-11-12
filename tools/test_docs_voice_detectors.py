@@ -137,6 +137,18 @@ def real_tree_runs(stems) -> dict[str, subprocess.CompletedProcess]:
 
 
 class BoardsSurviveTheTree(unittest.TestCase):
+    def test_kdoc_overviews_skips_appledouble_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "src"
+            personal = src / "personal"
+            personal.mkdir(parents=True)
+            (personal / "._Box.kt").write_bytes(b"\x00\x05\x16\x07\xb0")
+            (src / "Real.kt").write_text("/**\n * Overview\n * " + "word " * 100 + "\n */\n\npackage example\n")
+            result = subprocess.run([sys.executable, str(DETECTORS / "kdoc_overviews.py"), str(src), str(Path(tmp) / "reference")],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("overviews=1", result.stdout)
+
     """Every board runs over the real `public/docs` without dying.
 
     Importing and passing `live_fire()` is not the same as surviving 618 real files, and

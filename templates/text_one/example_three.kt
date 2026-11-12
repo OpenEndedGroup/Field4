@@ -2,7 +2,7 @@ import afield.graphics.scene.reading.*
 import afield.graphics.text.sentences.*
 
 // 3 · Undertow. Nested dependency arcs, with independently scored labels and beads.
-val parsed = Sentences.example(3)
+val parsed = ReadingPassage.sentence(3)
 check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
 val face = Typefaces.named("Noto Serif Light", 100, strict = true)
 val layout =
@@ -62,10 +62,7 @@ val graph = readingDiagram {
             radius = .004f
             color = vec(.85f, .48f, .15f, 1f)
         }
-        text("label-$i", dep.label, path.at(.52f).offset(y = -.027f)) {
-            scale = (8.8 * metres / .09).toFloat()
-            color = vec(1f, 1f, 1f, .55f)
-        }
+        endpointDots(path)
     }
 }
 // Let the words lead: structural strokes and markers are more translucent.
@@ -82,6 +79,6 @@ val player = try {
 player.wind = .010f
 prop<ReadingExample>(exampleThree) = ReadingExample(
     "3 · Dependency undertow",
-    "The real collapsed dependencies form nested undercurrents. Beads and relation labels follow each moving arc's arclength.",
+    "The real collapsed dependencies form nested undercurrents. Beads and small endpoint dots follow the moving arcs.",
     player,
 )

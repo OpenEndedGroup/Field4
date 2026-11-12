@@ -18,6 +18,7 @@ layout(push_constant) uniform DiagramPush {
     mat4 model; // diagram-local to world, shared by both eyes
     DiagramSegments diagramData; // CPU-authored centreline samples, never eye-dependent triangles
     vec4 options; // viewport width/height, minimum stroke/marker radius in pixels
+    vec4 clipPlane; // world-space backdrop clipping, zero for the main scene
 } pc;
 #extension GL_EXT_multiview : require
 layout(std140, set=0, binding=7) uniform StereoViews {
@@ -56,7 +57,9 @@ vec2 unit(vec2 p,vec2 fallback) {
     return dot(p,p)>1e-10?normalize(p):fallback;
 }
 const vec2 corners[6]=vec2[6](vec2(0,-1),vec2(1,-1),vec2(1,1),vec2(0,-1),vec2(1,1),vec2(0,1));
+layout(location=6) out float backdropDistance;
 void main() {
+    backdropDistance=0;
     Segment s=pc.diagramData.item[gl_VertexIndex/6];
     // Do not rasterize unrevealed tessellation segments. Clamped arclength derivatives
     // at their joins can otherwise turn distant AA tails into a dotted preview.
@@ -108,6 +111,7 @@ void main() {
     if(atEnd&&((flags&2u)!=0u||leave<1))p+=axis*(rb+1.5);
     clip.xy=vec2(p.x/pc.options.x*2-1,1-p.y/pc.options.y*2)*clip.w;
     gl_Position=clip;
+    backdropDistance=dot(pc.clipPlane,inverse(vp)*clip);
     endpoints=vec4(pa,pb);
     widthsArc=vec4(ra,rb,mix(s.a.w,s.b.w,enter),mix(s.a.w,s.b.w,leave));
     colorA=mix(s.colorA,s.colorB,enter);

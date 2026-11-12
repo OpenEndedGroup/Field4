@@ -52,7 +52,7 @@ supplies headset eye dimensions; desktop fallback and browser texture sizes are 
 | Decoration stops rotating with text | Use a measured anchor, `textPath` or `alongText`, rather than diagram-axis offsets |
 | “Same” word gets the wrong font | Reprepare player and renderer; GPU buffers are keyed by prepared shape, not string alone |
 | Weight slider/code changes seem quantized | AWT may choose the same available face; use an exact named/file-backed font |
-| A faint stroke looks surprisingly opaque | Green/paint compositor mode and threshold; inspect additive mode first |
+| A faint stroke looks surprisingly opaque | Opacity, exposure and accumulated overlapping light |
 | Font or topology change is invisible | The old player/gallery/renderer still owns prepared data; follow the reload sequence |
 | A requested character/word boundary is rejected | It splits a shaped glyph cluster, is out of range, or does not match the literal text |
 
@@ -73,7 +73,7 @@ Core code lives in `src/jvmMain/kotlin/afield/graphics/scene/reading/`:
 - `ReadingGallery.kt`: switches prepared scenes and keeps different fonts distinct.
 - `DiagramGeometry.kt`: CPU centrelines/markers and packed GPU input.
 - `StereoDiagramRenderer.kt`: shared upload, per-eye thickening, Slug buffers and world placement.
-- `DiagramCompositor.kt`: float sharp image, blur cascade, green selection and weighted paint.
+- `DiagramCompositor.kt`: float sharp image, blur cascade, green selection and additive light.
 
 The shared `Typeface` and `Typefaces` APIs are in `afield/graphics/text/typography.kt`.
 Reading shaders are in `src/jvmMain/resources/afield/reading/`.

@@ -7,7 +7,7 @@ layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer Slu
 struct BlurEntry {
     SlugData slug; // word-local outline atlas address
     vec4 bounds; // padded min XY / max XY in font units
-    vec4 metrics; // maximum Gaussian sigma in font units, three reserved values
+    vec4 metrics; // maximum sigma in font units, tap radius limit, sigma cutoff, reserved
 };
 layout(std430, buffer_reference) readonly buffer BlurEntries {
     BlurEntry item[]; // paired immutable 48-byte word-cache entries

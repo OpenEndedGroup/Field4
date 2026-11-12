@@ -6,7 +6,9 @@ layout(location=3) flat in vec4 colorB;
 layout(location=4) flat in vec4 ink;
 layout(location=5) flat in vec4 limits;
 layout(location=0) out vec4 outColor;
+layout(location=6) in float backdropDistance;
 void main() {
+    if(backdropDistance<0)discard;
     // Empty reveal intervals must never leave a rounded cap behind.
     if(limits.y<=limits.x)discard;
     vec2 delta=endpoints.zw-endpoints.xy;

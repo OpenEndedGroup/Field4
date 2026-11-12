@@ -2,13 +2,14 @@
 
 A small CPU-driven hanging diagram: Field's 3D SIMDVerlet solver, FLines,
 GPU-expanded strokes and SDF markers, and Slug analytic text coverage in both eyes.
-The example passages are original placeholders. Replace them freely.
+The examples draw from the supplied source passage in `texts/source-passage.txt`.
 
-The document separates three jobs:
+The document separates four jobs:
 
-1. **Eight example boxes** author named material and prepare distinct text runs once.
+1. **Thirteen example boxes** author named material and prepare distinct text runs once.
 2. **Scores / example selector** controls that material over time, without rebuilding it.
 3. **Drawing** uploads one CPU scene snapshot and renders it with the current matrices for both eyes.
+4. **Global looks / keyframes** owns the global controls and native saved looks; see `guides/16-global-keyframes.md`.
 
 Launch `text_one_launch`; `text_one_stop` stops Drawing before Reading space.
 Each shader box builds its pass with `moduleHere`, from its own `vertex` and `fragment` tabs.
@@ -142,7 +143,7 @@ after the target acquires its frame slot. Both eyes use that snapshot and their 
 predicted view. Only the diagram's deliberate reader-facing yaw is gently smoothed; eye
 matrices never are. No TAA, delayed head pose or image-history composite is involved.
 
-Colours are linear; drawing accumulates into a float target before blur and paint compositing.
+Colours are linear; drawing accumulates into a float target before blur and additive compositing.
 The browser is drawn sharply above the diagram. Desktop preview samples the stereo
 image, with an optional **Show both eyes side by side** control.
 
@@ -155,30 +156,36 @@ switching modes needs a fresh JVM. The VR path uses the existing high-resolution
 browser and its keyboard/mouse forwarding and controller pane movement. Recenter is explicit.
 The desktop mirror samples the same multiview image supplied to the headset.
 
-## Five examples
+## Examples
 
-- **Marked breath** — “Listen if you will / birdsong reflects off the walls”. Two complete
+- **Marked breath** — “Then let go, / hands lifting—feeling around / in front of me.”. Two complete
   runs in planes 5 cm apart; selected-word underlines, a dot beside a word, a bead on an
   underline and a labelled reflection arc. Inspired by the decoration hooks in `sentences`.
-- **Constituency canopy** — “The quiet water carries the light”. The actual parser tree
+- **Constituency canopy** — “A smile widened my lips, faintly surprising me as I felt it there.”. The actual parser tree
   suspends word particles from a hierarchy, with restrained NP/VP labels, ring joints and
   shallow depth layers. Every tree edge is drawn; physical constraints use a bounded
   four-link stencil, with layout springs retaining the remaining branches.
-- **Dependency undertow** — “Every small wave remembers the shore”. The existing nested
+- **Dependency undertow** — “My words found a few last handholds of their own once my body collapsed.”. The existing nested
   arc layout provides the structure and handle offsets. Moving word anchors rebuild it in
   3D; beads and labels follow full arclength. Text remains in readable planes.
-- **Sentence furniture** — “The wind carries a little weather through the room”. The
+- **Sentence furniture** — “Each toe could smell the earth it touched.”. The
   Reed–Kellogg layout becomes a spatial mobile, with softened text slants and shallow shelf
   offsets. At 9 seconds the separate score crossfades it into a complete reading run.
 
 - **A room for words** — mixed faces and inline styles, repeated words in different fonts,
   numeric weights, measured boxes and a cap-height ruler. Source: `typography_playground.kt`.
 
+- **Words becoming weather** — independently blurred fragments from the passage.
+- **Elastic sentences** — six independently oriented runs, rectlet surrounds and soft threads.
+- **A dropped initial** — a measured paragraph with a drop cap and a sliding connection.
+- **Two readings** — the combined fade/blur, frosted-surround, elastic-thread and body-interaction
+  sequence. Select example 9; box 22 owns its graph and score. See [guide 15](guides/15-two-readings.md).
+
 The example selectors reuse the same stereo renderer and prepared text resources. They
-start at 6 seconds for inspection; **Restart entrances** shows the full score. The fourth
+start at 6 seconds for inspection (example 9 starts at 0); **Restart entrances** shows the full score. The fourth
 example's reading-line state is visible after its transition at 9–11.4 seconds.
 
-The first four use Stanza parses, packaged in `/afield/sentences/examples/1.json` through `4.json`,
+The parser-based examples use Stanza parses, packaged in `/afield/reading/passages/2.json` through `4.json`,
 so reopening the document does not need the service. The source material and 2D layout
 algorithms live in `src/jvmMain/kotlin/afield/graphics/text/sentences`; the example boxes rebuild their
 connections around moving three-dimensional anchors. They do not turn a rendered SVG
@@ -206,7 +213,7 @@ uv run --group backdoor python templates/text_one/build_transcript.py --transcri
 
 Readable YAML source blocks keep Kotlin and shader properties distinct for documentation checks.
 
-## Blur and paint
+## Blur and additive light
 
 The drawing, marker and Slug modules add opacity-weighted RGB and opacity into a transparent
 `R16G16B16A16_SFLOAT` two-eye target, with no depth attachment. Four separable blur passes
@@ -216,9 +223,9 @@ the sharp browser surface follow on the same command buffer and current stereo v
 Green is a blur-control channel. Edit each item's green value to change its response; the
 final image reconstructs green from red and blue. **Blur mix** starts at zero, and the
 selector defaults to the medium image. `blurWeights` in box 11 defines the effective LUT.
-The **Additive to weighted paint** control mixes accumulated light with opacity-normalized
-colour. Alpha sums coverage from every stroke, point and glyph, rather than being cleared
-to one or overwritten with display alpha. The paint threshold and knee set the crossover.
+Strokes, text and markers strictly add opacity-weighted light. Alpha records summed opacity
+for inspection, but does not normalize RGB. Overlapping light cannot darken the scene, and
+the background is added without a coverage mask.
 
 Box 10 and the three following blur boxes expose the horizontal/vertical passes at each scale;
 box 11 exposes the compositor. **Reload Shader** in a pass preserves physics and text atlases. The settings also expose
@@ -333,3 +340,9 @@ uses the existing FLine renderer and score. See [Elastic connections](guides/10-
 for multiline margins, boundary/underline projection, physical units and reset behaviour.
 
 **19 · A dropped initial** adds an ink-fitted drop cap across authored lines, custom initial typography and normal span anchors. See [Drop caps](guides/11-drop-caps.md).
+
+Frosted text-frame backdrops: see [guide 14](guides/14-frosted-frames.md). Box 12 controls blur, brightness and opacity independently of the global green compositor.
+
+Examples 10–13 explore mechanical text holders: eight corner extensions, stepped
+frame unions and frosted rectangular frusta with two reading faces. See
+`guides/17-mechanical-text-holders.md` for builders and score cues.

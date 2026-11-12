@@ -7,7 +7,7 @@ layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer Slu
 struct BlurEntry {
     SlugData slug; // word-local outline atlas address
     vec4 bounds; // padded min XY / max XY in font units
-    vec4 metrics; // maximum Gaussian sigma in font units, three reserved values
+    vec4 metrics; // maximum sigma in font units, tap radius limit, sigma cutoff, reserved
 };
 layout(std430, buffer_reference) readonly buffer BlurEntries {
     BlurEntry item[]; // paired immutable 48-byte word-cache entries
@@ -26,14 +26,19 @@ void main() {
     bool horizontal = pc.pass.w < .5;
     float extent = horizontal ? entry.bounds.z - entry.bounds.x : entry.bounds.w - entry.bounds.y;
     float pixels = horizontal ? pc.pass.x : pc.pass.y;
-    // Separable, normalized, four-sigma Gaussian. A small floor also prefilters downsampling.
+    // Separable, normalized Gaussian. A small floor also prefilters downsampling.
     float sigma = max(entry.metrics.x * pc.pass.z * pixels / extent, .65);
-    int radius = min(128, int(ceil(4 * sigma)));
+    float cutoff = entry.metrics.z > 0 ? clamp(entry.metrics.z, 2, 6) : 4;
+    int limit = entry.metrics.y > 0 ? clamp(int(entry.metrics.y), 4, 512) : 128;
+    int radius = min(limit, int(ceil(cutoff * sigma)));
+    // A tap budget changes sampling density, not the requested Gaussian width.
+    float stride = max(1, cutoff * sigma / float(limit));
     vec2 stepUV = horizontal ? vec2(1 / pc.pass.x, 0) : vec2(0, 1 / pc.pass.y);
     float sum = 0, weight = 0;
     for (int k = -radius; k <= radius; k++) {
-        float w = exp(-.5 * float(k * k) / (sigma * sigma));
-        sum += texture(source, vec3(uv + stepUV * float(k), float(eye))).r * w;
+        float offset = float(k) * stride;
+        float w = exp(-.5 * offset * offset / (sigma * sigma));
+        sum += texture(source, vec3(uv + stepUV * offset, float(eye))).r * w;
         weight += w;
     }
     outColor = vec4(sum / max(weight, 1e-8));

@@ -20,7 +20,7 @@ class DiagramCompositeSettings {
     val reconstruction = Vector4f(.5f, .5f, 1f, 0f) // red/blue weights, exposure, reserved
     val selectorRange = Vector4f(0f, 1f, 0f, 0f)
     val selectorSource = Vector4f(0f, 1f, 0f, 0f)
-    val paint = Vector4f(1f, .1f, 1f, 0f)
+    val paint = Vector4f(1f, .1f, 0f, 0f) // retained UBO layout; reading light is strictly additive
     val colorFold = Vector4f(0f)
     val foldLimits = Vector4f(1f, 1f, 1f, .5f)
     val alphaFold = Vector4f(1f, 1f, 0f, 0f)
