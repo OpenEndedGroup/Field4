@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="paint_press" index="0" -->
 
 ```edn [field-box id="paint_press" role="properties"]
-{"id" "paint_press" "index" 0 "name" "Paint — press a plate and peel it off" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Paint — press a plate and peel it off" "_tombstone" false "frame" #afield/rect [80.0 2400.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_press_code_.kt" "lines" 22 "characters" 1196 "sha256" "85175cc16ecd6b8d34655939d3663ba0fe67e5f5205899fbf3ee5d9d4f7930ff"}]}
+{"id" "paint_press" "index" 0 "name" "Paint — press a plate and peel it off" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Paint — press a plate and peel it off" "_tombstone" false "frame" #afield/rect [80.0 2400.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_press_code_.kt" "lines" 29 "characters" 1294 "sha256" "0356f0aa8e4f2ace4c2f1ee0ee517daa62b0b012ed5b3d1959b4a66d41f4e406"}]}
 ```
 
 ```kotlin [field-property box="paint_press" name="code" path="paint_press_code_.kt"]
@@ -34,8 +34,15 @@ run {
     // and a lighter press on the right, peeled upward
     val right = canvas.press(680.0, 360.0, radius = 110.0, pressure = 0.6, dx = 0.0, dy = -1.0, take = 0.4, peel = 0.6)
     display("main", canvas.png(wet = true, light = PaintLight.Raking))
-    markdown("plates lifted %.2f and %.2f mm³; wet paint %.2f mm³ before, %.2f after".format(
-        left.liftedMm3, right.liftedMm3, wet, canvas.wetMm3))
+    markdown(
+        "plates lifted %.2f and %.2f mm³; wet paint %.2f mm³ before, %.2f after"
+            .format(
+                left.liftedMm3,
+                right.liftedMm3,
+                wet,
+                canvas.wetMm3,
+            ),
+    )
 }
 ```
 
@@ -80,7 +87,7 @@ run {
 <!-- field-box id="paint_rub" index="2" -->
 
 ```edn [field-box id="paint_rub" role="properties"]
-{"id" "paint_rub" "index" 2 "name" "Paint — rub a thumb through wet paint" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Paint — rub a thumb through wet paint" "_tombstone" false "frame" #afield/rect [80.0 4700.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_rub_code_.kt" "lines" 23 "characters" 1231 "sha256" "9816ec21f888a9cb5c9ce7f7e869b4c38c8d9fc41d070c8f9a15774f19bdd8f2"}]}
+{"id" "paint_rub" "index" 2 "name" "Paint — rub a thumb through wet paint" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Paint — rub a thumb through wet paint" "_tombstone" false "frame" #afield/rect [80.0 4700.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_rub_code_.kt" "lines" 30 "characters" 1321 "sha256" "acb2330bfbdaf25c8cc568c64a44dad240dea3e223f651e81da11bac504fe753"}]}
 ```
 
 ```kotlin [field-property box="paint_rub" name="code" path="paint_rub_code_.kt"]
@@ -102,10 +109,17 @@ run {
     // three rubs across the stripes: light, firm, and a curve
     val light = canvas.rub(FLine().moveTo(120, 220).lineTo(820, 230), radius = 30.0, pressure = 0.4)
     val firm = canvas.rub(FLine().moveTo(120, 360).lineTo(820, 350), radius = 40.0, pressure = 0.9)
-    val curve = canvas.rub(FLine().moveTo(120, 500).cubicTo(400, 420, 600, 600, 860, 480), radius = 35.0, pressure = 0.7)
+    val curve =
+        canvas.rub(FLine().moveTo(120, 500).cubicTo(400, 420, 600, 600, 860, 480), radius = 35.0, pressure = 0.7)
     display("main", canvas.png(wet = true, light = PaintLight.Raking))
-    markdown("rubs moved %.1f mm³; wet paint %.2f mm³ before, %.2f after".format(
-        light.movedMm3 + firm.movedMm3 + curve.movedMm3, wet, canvas.wetMm3))
+    markdown(
+        "rubs moved %.1f mm³; wet paint %.2f mm³ before, %.2f after"
+            .format(
+                light.movedMm3 + firm.movedMm3 + curve.movedMm3,
+                wet,
+                canvas.wetMm3,
+            ),
+    )
 }
 ```
 

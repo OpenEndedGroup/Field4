@@ -17,6 +17,13 @@ run {
     // and a lighter press on the right, peeled upward
     val right = canvas.press(680.0, 360.0, radius = 110.0, pressure = 0.6, dx = 0.0, dy = -1.0, take = 0.4, peel = 0.6)
     display("main", canvas.png(wet = true, light = PaintLight.Raking))
-    markdown("plates lifted %.2f and %.2f mm³; wet paint %.2f mm³ before, %.2f after".format(
-        left.liftedMm3, right.liftedMm3, wet, canvas.wetMm3))
+    markdown(
+        "plates lifted %.2f and %.2f mm³; wet paint %.2f mm³ before, %.2f after"
+            .format(
+                left.liftedMm3,
+                right.liftedMm3,
+                wet,
+                canvas.wetMm3,
+            ),
+    )
 }

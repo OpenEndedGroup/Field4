@@ -16,8 +16,15 @@ run {
     // three rubs across the stripes: light, firm, and a curve
     val light = canvas.rub(FLine().moveTo(120, 220).lineTo(820, 230), radius = 30.0, pressure = 0.4)
     val firm = canvas.rub(FLine().moveTo(120, 360).lineTo(820, 350), radius = 40.0, pressure = 0.9)
-    val curve = canvas.rub(FLine().moveTo(120, 500).cubicTo(400, 420, 600, 600, 860, 480), radius = 35.0, pressure = 0.7)
+    val curve =
+        canvas.rub(FLine().moveTo(120, 500).cubicTo(400, 420, 600, 600, 860, 480), radius = 35.0, pressure = 0.7)
     display("main", canvas.png(wet = true, light = PaintLight.Raking))
-    markdown("rubs moved %.1f mm³; wet paint %.2f mm³ before, %.2f after".format(
-        light.movedMm3 + firm.movedMm3 + curve.movedMm3, wet, canvas.wetMm3))
+    markdown(
+        "rubs moved %.1f mm³; wet paint %.2f mm³ before, %.2f after"
+            .format(
+                light.movedMm3 + firm.movedMm3 + curve.movedMm3,
+                wet,
+                canvas.wetMm3,
+            ),
+    )
 }
