@@ -13,7 +13,7 @@ run {
     val wet = canvas.wetMm3
     // a straw, blown along a curve through the film
     val path = FLine().moveTo(150, 480).cubicTo(350, 250, 600, 600, 850, 300)
-    val blown = canvas.blow(path, radius = 14.0, pressure = 0.8, tendril = 5.0)
+    val blown = canvas.blow(path, radius = 14.0, pressure = 0.9, tendril = 9.0)
     display("main", canvas.png(wet = true, light = PaintLight.Raking))
     markdown(
         "blow moved %.1f mm³ at %d places, branching %.2f; wet paint %.2f mm³ before, %.2f after"

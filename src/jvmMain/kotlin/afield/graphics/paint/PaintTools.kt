@@ -547,7 +547,8 @@ data class Blown(
     /**
      * How branched the air's fingers are: how far the cells the air reached spread for their number
      * (their radius of gyration over that of a round blot of as many), averaged over the jet's
-     * stations. A compact blot is about 1; fingers that branch out reach 2 or more.
+     * stations that grew more than one cell (0 if none did: a fast pass with wide tendrils). A compact
+     * blot is about 1; fingers that branch out reach 2 or more.
      */
     val branching: Double,
     /** Places along the line where the jet met wet paint. */

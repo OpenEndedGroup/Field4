@@ -284,6 +284,7 @@ impl Canvas {
         let before = self.wet.vol.clone();
         let mut out = Blown::default();
         let mut bsum = 0.0f32;
+        let mut bn = 0u32;
         let mut stations: Vec<((f32, f32), (f32, f32))> = Vec::new();
         for seg in pts.windows(2) {
             let a = (seg[0].0 * s - self.f.x0 as f32, seg[0].1 * s - self.f.y0 as f32);
@@ -390,7 +391,11 @@ impl Canvas {
             let dwell = if stations.len() == 1 { 10.0 } else { 1.0 };
             let n = ((dwell * pressure * 1.5 * (r / g as f32).powi(2)).round() as usize).clamp(1, (paint_cells / 4).max(1));
             let invaded = hs.grow(n, eta, Some(&bias), seed.wrapping_add(si as u64 * 0x9E37));
-            bsum += hs.branching(&invaded);
+            // a station that moved one cell has no shape to measure
+            if invaded.len() >= 2 {
+                bsum += hs.branching(&invaded);
+                bn += 1;
+            }
             out.stations += 1;
             // displace, pixel by pixel: the jet first clears what is under it, straight out from its
             // centre, then each finger, from where it grew to where it reached, shoves the paint in its
@@ -416,7 +421,7 @@ impl Canvas {
             self.wet.touch(bx0, by0, bx1, by1);
             self.surf_gen += 1;
         }
-        out.branching = if out.stations > 0 { bsum / out.stations as f32 } else { 0.0 };
+        out.branching = if bn > 0 { bsum / bn as f32 } else { 0.0 };
         out.moved_mm3 = 0.5 * self.wet.vol.iter().zip(&before).map(|(a, b)| (a - b).abs() as f64).sum::<f64>() * self.mm3_per_coat_px();
         out
     }
