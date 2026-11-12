@@ -385,11 +385,11 @@ display("main", canvas.png(wet = true, light = PaintLight.Raking))
 
 ## Folding, pressing and rubbing
 
-Three gestures move wet paint with no tool in it at all. They come from Dan Fountain's
-[Fold & Squish](https://danfountain.com/blog/paint-that-squishes), where thick paint is folded,
+You can also move wet paint by folding the canvas, pressing a plate onto it or rubbing it with a
+thumb. These gestures come from Dan Fountain's [Fold & Squish](https://danfountain.com/blog/paint-that-squishes), where thick paint is folded,
 squashed, rubbed and peeled. Field follows the method he describes; none of its code is used.
 
-- `canvas.fold(x, y, dx, dy)` folds the canvas along the line through `(x, y)` running toward
+- [`canvas.fold(x, y, dx, dy)`](reference/graphics.md#paintcanvas-kt--paintcanvas--fold) folds the canvas along the line through `(x, y)` running toward
   `(dx, dy)`. The half on the left of that direction is pressed onto the other half, then the canvas
   is opened again. Where the paint on a point and on its mirror image is thick enough to meet through
   the gap the `pressure` leaves, the two films swap `transfer` of themselves (0.5 makes them one
@@ -398,10 +398,10 @@ squashed, rubbed and peeled. Field follows the method he describes; none of its 
   `peel = 0`, and in branching ridges `ridge` units apart as `peel` rises. Where one side keeps a
   ridge, its mirror is bare. Past `peel = 0.67` the film splits wholly. A fold along x or y prints
   an exact mirror image; a diagonal fold is mirrored to within a pixel.
-- `canvas.press(x, y, radius)` presses a flat plate onto the paint and peels it off toward
+- [`canvas.press(x, y, radius)`](reference/graphics.md#paintcanvas-kt--paintcanvas--press) presses a flat plate onto the paint and peels it off toward
   `(dx, dy)`. The plate takes `take` of the film it touched, unevenly, in the same kind of ridges. This
   is a monotype pull, or a palm pressed down and lifted.
-- `canvas.rub(line, radius, pressure)` drags a thumb along a line. It picks up the paint that stands
+- [`canvas.rub(line, radius, pressure)`](reference/graphics.md#paintcanvas-kt--paintcanvas--rub) drags a thumb along a line. It picks up the paint that stands
   above the film a light touch rides on and lays it down further along. The paint is drawn out and
   thins as it goes, in streaks where the skin presses harder, and colours smear into each other.
 
@@ -742,9 +742,8 @@ Implementation and parameter details for the helpers used above:
 
 ## Where to go next
 
-[Watercolour and ink](watercolor.md), where water on paper moves by itself,
-[Brushes with moving hairs](paint_gestures.md), whose hairs bend, splay and flick under timed
-gestures of the hand, [Drawing with FLines](fline_examples.md), [Colors](colors_examples.md),
-[Drawn Strokes Become Paint](chain_drawn_paint.md), which paints strokes drawn on the drawing
-layer with the pen's pressure, and [AI4 paints](ai4_painting.md), where the AI chat paints on this
-canvas.
+Try [watercolour and ink](watercolor.md), where water on paper moves by itself, or
+[brushes with moving hairs](paint_gestures.md) that bend, splay and flick under timed gestures.
+[Drawn Strokes Become Paint](chain_drawn_paint.md) paints the strokes you draw with a pen, using
+its pressure; in [AI4 paints](ai4_painting.md), the AI chat paints on this canvas. For more on the
+building blocks, see [Drawing with FLines](fline_examples.md) and [Colors](colors_examples.md).
