@@ -14,7 +14,7 @@ lprintln("info,mypage", "something happened")
 
 `"info,mypage"` is a **channel**: a comma-separated list of *tags* that consumers use to select
 messages. There
-are **1125**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
+are **1126**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
 `lprintln` with the channel written out as a literal, spelling
 **261**<!--count:logChannelStrings--> distinct channel strings between them.
 
