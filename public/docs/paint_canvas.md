@@ -515,7 +515,7 @@ display("main", canvas.png(wet = true, light = PaintLight.Raking))
 The same puff of air at one point, into the same film, with three viscosity contrasts: 1.5, 8 and
 200, left to right.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/blow_contrast.png" alt="a canvas with a thick blue band and three blown spots in a row. each spot is a small round clearing. Around the left one, fine fingers stay close and dense; around the middle one they reach a little further; from the right one, thin, pale, branching fingers run far out into the paint" wait="30" capture="box" open-outputs="true" padding="20" requires="paint" name="blow_contrast" embed=true scale=1}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/blow_contrast.png" alt="a canvas with a thick blue band and three blown spots in a row. each spot is a small round clearing with thin, pale, branching fingers running out from it into the paint; the left spot's fingers stay closer to it and the right spot's reach furthest" wait="30" capture="box" open-outputs="true" padding="20" requires="paint" name="blow_contrast" embed=true scale=1}
 :::static
 val canvas = PaintCanvas(900, aspect = 2.4, seed = 12)
 val brush = canvas.brush(BrushKind.HogFlat, width = 130.0)
