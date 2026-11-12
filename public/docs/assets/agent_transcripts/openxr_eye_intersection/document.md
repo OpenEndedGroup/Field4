@@ -40,7 +40,7 @@ start(renderer::run)
 <!-- field-box id="eye_ray_scene" index="1" -->
 
 ```edn [field-box id="eye_ray_scene" role="properties"]
-{"id" "eye_ray_scene" "index" 1 "name" "2 · eye rays + world marker" "parents" ["root" "eye_ray_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "eye_ray_renderer"} "name" "2 · eye rays + world marker" "_tombstone" false "frame" #afield/rect [340.0 150.0 390.0 120.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "eye_ray_scene_vertex_.glsl" "lines" 13 "characters" 316 "sha256" "3ed65e56090d366813d8ebf73081fd80067692f4086282c4263593eee1af03c6"} {"name" "fragment" "language" "glsl" "path" "eye_ray_scene_fragment_.glsl" "lines" 6 "characters" 121 "sha256" "09f2d517b9f20511becdbad44a079ab2444e197c15df7f90141a8a45c10d42de"} {"name" "code" "language" "kotlin" "path" "eye_ray_scene_code_.kt" "lines" 206 "characters" 8902 "sha256" "8fb9483b0a1ede27eadbed68cbe5e00cb4bfaebe55405b153aa198c065d0cb76"}]}
+{"id" "eye_ray_scene" "index" 1 "name" "2 · eye rays + world marker" "parents" ["root" "eye_ray_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "eye_ray_renderer"} "name" "2 · eye rays + world marker" "_tombstone" false "frame" #afield/rect [340.0 150.0 390.0 120.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "eye_ray_scene_vertex_.glsl" "lines" 13 "characters" 316 "sha256" "3ed65e56090d366813d8ebf73081fd80067692f4086282c4263593eee1af03c6"} {"name" "fragment" "language" "glsl" "path" "eye_ray_scene_fragment_.glsl" "lines" 6 "characters" 121 "sha256" "09f2d517b9f20511becdbad44a079ab2444e197c15df7f90141a8a45c10d42de"} {"name" "code" "language" "kotlin" "path" "eye_ray_scene_code_.kt" "lines" 204 "characters" 8860 "sha256" "7582aefded21e5fa4d7d148a828f0c7d9bd8535b3f089a30b34841db46a0a79a"}]}
 ```
 
 ```glsl [field-property box="eye_ray_scene" name="vertex" path="eye_ray_scene_vertex_.glsl"]
@@ -254,9 +254,7 @@ module +=
                 White cube = binocular midpoint · grey cubes = world Z -1, -2, -4 m</p>
                 <p>world = worldFromLocal * LOCAL<br>clip = eyeProjection * eyeViewLocal * inverse(worldFromLocal) * world</p>
                 <p>Hold a valid placement, then move your head: the cube must stay fixed.<br>
-                Edit worldFromLocal above and relaunch to test another world origin.</p></div>
-            """
-                            .trimIndent()
+                Edit worldFromLocal above and relaunch to test another world origin.</p></div>""".trimIndent()
                             .format(solve.separation, solve.angleDegrees),
                     )
                 }

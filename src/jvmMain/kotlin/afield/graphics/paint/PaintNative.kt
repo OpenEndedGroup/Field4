@@ -205,6 +205,10 @@ internal object PaintNative {
     private val contactMapH by fn("field_paint_contact_map", I, A, A, I)
     private val dbrushStateH by fn("field_paint_dbrush_state", I, A, A, A)
     private val dbrushFromStateH by fn("field_paint_dbrush_from_state", A, A, L)
+    private val foldPressH by fn("field_paint_fold_press", I, A, F, F, F, F, F, F, F, F, F, L, A)
+    private val pressPeelH by fn("field_paint_press_peel", I, A, F, F, F, F, F, F, F, F, F, F, L, A)
+    private val rubH by fn("field_paint_rub", I, A, A, I, F, F, L, A)
+    private val wetMm3H by fn("field_paint_wet_mm3", D, A)
 
     private fun error(what: String): Nothing {
         val msg = (lastErrorH.invokeExact() as MemorySegment).reinterpret(Long.MAX_VALUE).getString(0)
@@ -381,6 +385,31 @@ internal object PaintNative {
         check(renderH.invokeExact(c, relief, gloss, out, pixels) as Int, "render")
         out.toArray(I)
     }
+
+    /** `[moved mm³, lifted mm³]`: `paint::field::squish`, `Canvas::fold_press`. */
+    fun foldPress(c: MemorySegment, px: Float, py: Float, dx: Float, dy: Float, pressure: Float, transfer: Float, spread: Float,
+                  peel: Float, ridge: Float, seed: Long): DoubleArray = Arena.ofConfined().use { a ->
+        val out = a.allocate(D, 2)
+        check(foldPressH.invokeExact(c, px, py, dx, dy, pressure, transfer, spread, peel, ridge, seed, out) as Int, "folding the canvas")
+        out.toArray(D)
+    }
+
+    /** `[moved mm³, lifted mm³]`: `Canvas::press_peel`. */
+    fun pressPeel(c: MemorySegment, x: Float, y: Float, radius: Float, pressure: Float, spread: Float, dx: Float, dy: Float,
+                  take: Float, peel: Float, ridge: Float, seed: Long): DoubleArray = Arena.ofConfined().use { a ->
+        val out = a.allocate(D, 2)
+        check(pressPeelH.invokeExact(c, x, y, radius, pressure, spread, dx, dy, take, peel, ridge, seed, out) as Int, "pressing a plate")
+        out.toArray(D)
+    }
+
+    /** `[moved mm³, lifted mm³]`: `Canvas::rub`. */
+    fun rub(c: MemorySegment, xy: FloatArray, radius: Float, pressure: Float, seed: Long): DoubleArray = Arena.ofConfined().use { a ->
+        val out = a.allocate(D, 2)
+        check(rubH.invokeExact(c, a.allocateFrom(F, *xy), xy.size / 2, radius, pressure, seed, out) as Int, "rubbing")
+        out.toArray(D)
+    }
+
+    fun wetMm3(c: MemorySegment): Double = (wetMm3H.invokeExact(c) as Double).also { if (it < 0) error("measuring the wet paint") }
 
     fun renderWetArgb(c: MemorySegment, pixels: Int): IntArray = Arena.ofConfined().use { a ->
         val out = a.allocate(I, pixels.toLong())

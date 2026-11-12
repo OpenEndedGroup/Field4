@@ -218,7 +218,7 @@ is checkable, and this box checks it: one program, five draws, and the two ends
 compared pixel for pixel against the programs they are supposed to be.
 
 ```edn [field-box id="kfb_runtime" role="properties"]
-{"id" "kfb_runtime" "index" 4 "name" "The push-constant convention, rendered" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The push-constant convention, rendered" "_tombstone" false "frame" #afield/rect [80.0 400.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_runtime_code_.kt" "lines" 89 "characters" 3275 "sha256" "5728e66705249b8e5d034c47f8e8a1f03567b7c77594df387912a922408eb1d2"}]}
+{"id" "kfb_runtime" "index" 4 "name" "The push-constant convention, rendered" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The push-constant convention, rendered" "_tombstone" false "frame" #afield/rect [80.0 400.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_runtime_code_.kt" "lines" 87 "characters" 3261 "sha256" "d0c2e7b64a4714a1cd18a025c82f8aecc8efb4b08f02da37ba520a329383348f"}]}
 ```
 
 ```kotlin [field-property box="kfb_runtime" name="code" path="kfb_runtime_code_.kt"]
@@ -251,9 +251,7 @@ val template =
     void main() {
         vec4 stackInput = vec4(fragUV, 0.0, 0.0);
         outColor = vec4(clamp(program(stackInput).rgb, 0.0, 1.0), 1.0);
-    }
-    """
-        .trimIndent()
+    }""".trimIndent()
 
 val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
 val cool = "uv 8.0 * fbm 0.45 + [0.2,0.5,1.0] *"

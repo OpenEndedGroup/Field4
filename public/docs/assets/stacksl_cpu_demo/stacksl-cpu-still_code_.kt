@@ -21,9 +21,7 @@ run {
         3.0 *
         fbm
         palette
-        saturate
-        """
-            .trimIndent()
+        saturate""".trimIndent()
 
     // `StackSLCpu.compile` is the ordinary `stack.auto` compile: same options, same emitter.
     val glsl = StackSLCpu.compile(program).glsl

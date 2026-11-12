@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-11T16:07:52.159Z",
+  "documentName": "alife_tree_growth",
+  "outputs": [
+    {
+      "uid": "tree_growth",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 502,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "tree_growth_lambda",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 56,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "tree_growth_lambda",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 410,
+      "path": "outputs/2.html"
+    }
+  ]
+}

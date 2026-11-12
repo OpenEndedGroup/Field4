@@ -11,12 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="text1_context" index="0" -->
 
 ```edn [field-box id="text1_context" role="properties"]
-{"id" "text1_context" "index" 0 "name" "1 · Reading space" "parents" ["root"] "children" ["text1_poem" "text1_example2" "text1_example3" "text1_example4" "text1_typography" "text1_word_blur" "text1_elastic" "text1_drop_caps" "text1_two_readings" "text1_overstroke_rectangle" "text1_overstroke_union" "text1_frustum_readings" "text1_frustum_two_faces" "text1_stroke" "text1_point" "text1_text" "text1_blur" "text1_blur_medium_v" "text1_blur_broad_h" "text1_blur_broad_v" "text1_composite"] "properties" {"children" #{#afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4" #afield/box "text1_typography" #afield/box "text1_word_blur" #afield/box "text1_elastic" #afield/box "text1_drop_caps" #afield/box "text1_two_readings" #afield/box "text1_overstroke_rectangle" #afield/box "text1_overstroke_union" #afield/box "text1_frustum_readings" #afield/box "text1_frustum_two_faces" #afield/box "text1_stroke" #afield/box "text1_point" #afield/box "text1_text" #afield/box "text1_blur" #afield/box "text1_blur_medium_v" #afield/box "text1_blur_broad_h" #afield/box "text1_blur_broad_v" #afield/box "text1_composite"} "parents" #{#afield/box "root"} "name" "1 · Reading space" "_tombstone" false "frame" #afield/rect [0.0 150.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_context_code_.kt" "lines" 64 "characters" 3068 "sha256" "208388fd3cada3d24733c90f1e3449f1f58e8196ac77f59dc84d65574b78e6db"}]}
+{"id" "text1_context" "index" 0 "name" "1 · Reading space" "parents" ["root"] "children" ["text1_poem" "text1_example2" "text1_example3" "text1_example4" "text1_typography" "text1_word_blur" "text1_elastic" "text1_drop_caps" "text1_two_readings" "text1_overstroke_rectangle" "text1_overstroke_union" "text1_frustum_readings" "text1_frustum_two_faces" "text1_stroke" "text1_point" "text1_text" "text1_blur" "text1_blur_medium_v" "text1_blur_broad_h" "text1_blur_broad_v" "text1_composite"] "properties" {"children" #{#afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4" #afield/box "text1_typography" #afield/box "text1_word_blur" #afield/box "text1_elastic" #afield/box "text1_drop_caps" #afield/box "text1_two_readings" #afield/box "text1_overstroke_rectangle" #afield/box "text1_overstroke_union" #afield/box "text1_frustum_readings" #afield/box "text1_frustum_two_faces" #afield/box "text1_stroke" #afield/box "text1_point" #afield/box "text1_text" #afield/box "text1_blur" #afield/box "text1_blur_medium_v" #afield/box "text1_blur_broad_h" #afield/box "text1_blur_broad_v" #afield/box "text1_composite"} "parents" #{#afield/box "root"} "name" "1 · Reading space" "_tombstone" false "frame" #afield/rect [1340.0 150.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_context_code_.kt" "lines" 63 "characters" 3028 "sha256" "37866d9f6bac2b01392fde0dcb009a2f7bd3476a89d44b4f7657f9c7e7419446"}]}
 ```
 
 ```kotlin [field-property box="text1_context" name="code" path="text1_context_code_.kt"]
 import afield.graphics.scene.reading.*
-import afield.graphics.vulkan.targets.*
 import afield.graphics.vulkan.util.Options
 import afield.media.browser.*
 
@@ -86,12 +85,11 @@ loop { frame() }
 <!-- field-box id="text1_word_blur" index="1" -->
 
 ```edn [field-box id="text1_word_blur" role="properties"]
-{"id" "text1_word_blur" "index" 1 "name" "14 · Words becoming weather" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "14 · Words becoming weather" "_tombstone" false "frame" #afield/rect [650.0 550.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_word_blur_code_.kt" "lines" 30 "characters" 1310 "sha256" "bc546f972c78770ced983b3773c84e4fd80756b7ab151b0de2f6f8f5d287faa6"}]}
+{"id" "text1_word_blur" "index" 1 "name" "14 · Words becoming weather" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "14 · Words becoming weather" "_tombstone" false "frame" #afield/rect [1990.0 550.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_word_blur_code_.kt" "lines" 29 "characters" 1280 "sha256" "66eb98cd5f48e7f90fb3417ebc397e2299d03707bb004121c0cebd352618b451"}]}
 ```
 
 ```kotlin [field-property box="text1_word_blur" name="code" path="text1_word_blur_code_.kt"]
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // Separate words can breathe on separate clocks. The blur radius is measured in ems;
 // opacity is independent, so a word can stay bright while its outline dissolves.
@@ -133,7 +131,7 @@ From `code`
 Drawing supplies the target and textures; this box owns its shader and Alt+R.
 
 ```edn [field-box id="text1_composite" role="properties"]
-{"id" "text1_composite" "index" 2 "name" "11 · Green / light compositor" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "11 · Green / light compositor" "_tombstone" false "frame" #afield/rect [1800.0 770.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_composite_code_.kt" "lines" 4 "characters" 215 "sha256" "379695a35d73e35ac5a246e0a588aaef6a2618ec57951381b11cfa84ee409128"} {"name" "vertex" "language" "glsl" "path" "text1_composite_vertex_.glsl" "lines" 10 "characters" 310 "sha256" "bfeef78cb283bfcb51d42e49e10e99971c2d418460670cf8a23279f7fd45a6cf"} {"name" "fragment" "language" "glsl" "path" "text1_composite_fragment_.glsl" "lines" 213 "characters" 11278 "sha256" "95964628b7ce3cb8fbf11db1a7314286bc4c4eb099b74550774a95ee2ae5769e"}]}
+{"id" "text1_composite" "index" 2 "name" "11 · Green / light compositor" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "11 · Green / light compositor" "_tombstone" false "frame" #afield/rect [3140.0 770.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_composite_code_.kt" "lines" 4 "characters" 215 "sha256" "379695a35d73e35ac5a246e0a588aaef6a2618ec57951381b11cfa84ee409128"} {"name" "vertex" "language" "glsl" "path" "text1_composite_vertex_.glsl" "lines" 10 "characters" 310 "sha256" "bfeef78cb283bfcb51d42e49e10e99971c2d418460670cf8a23279f7fd45a6cf"} {"name" "fragment" "language" "glsl" "path" "text1_composite_fragment_.glsl" "lines" 213 "characters" 11278 "sha256" "95964628b7ce3cb8fbf11db1a7314286bc4c4eb099b74550774a95ee2ae5769e"}]}
 ```
 
 ```kotlin [field-property box="text1_composite" name="code" path="text1_composite_code_.kt"]
@@ -383,7 +381,7 @@ From `code`
 Drawing supplies the target and textures; this box owns its shader and Alt+R.
 
 ```edn [field-box id="text1_blur_broad_h" role="properties"]
-{"id" "text1_blur_broad_h" "index" 3 "name" "16 · Broad blur / horizontal" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "16 · Broad blur / horizontal" "_tombstone" false "frame" #afield/rect [1800.0 550.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_blur_broad_h_code_.kt" "lines" 4 "characters" 215 "sha256" "502d696a5e93fee970c1cdde3d6f507177ae2ba8985100e33fb1f28b3055bac8"} {"name" "vertex" "language" "glsl" "path" "text1_blur_broad_h_vertex_.glsl" "lines" 10 "characters" 310 "sha256" "bfeef78cb283bfcb51d42e49e10e99971c2d418460670cf8a23279f7fd45a6cf"} {"name" "fragment" "language" "glsl" "path" "text1_blur_broad_h_fragment_.glsl" "lines" 20 "characters" 861 "sha256" "4631f2b27487bb0cc7e210c7578866150db400df9abd6bd045ba7c65518aba71"}]}
+{"id" "text1_blur_broad_h" "index" 3 "name" "16 · Broad blur / horizontal" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "16 · Broad blur / horizontal" "_tombstone" false "frame" #afield/rect [3140.0 550.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_blur_broad_h_code_.kt" "lines" 4 "characters" 215 "sha256" "502d696a5e93fee970c1cdde3d6f507177ae2ba8985100e33fb1f28b3055bac8"} {"name" "vertex" "language" "glsl" "path" "text1_blur_broad_h_vertex_.glsl" "lines" 10 "characters" 310 "sha256" "bfeef78cb283bfcb51d42e49e10e99971c2d418460670cf8a23279f7fd45a6cf"} {"name" "fragment" "language" "glsl" "path" "text1_blur_broad_h_fragment_.glsl" "lines" 20 "characters" 861 "sha256" "4631f2b27487bb0cc7e210c7578866150db400df9abd6bd045ba7c65518aba71"}]}
 ```
 
 ```kotlin [field-property box="text1_blur_broad_h" name="code" path="text1_blur_broad_h_code_.kt"]
@@ -434,7 +432,7 @@ void main() {
 <!-- field-box id="text1_poem" index="4" -->
 
 ```edn [field-box id="text1_poem" role="properties"]
-{"id" "text1_poem" "index" 4 "name" "2 · Marked breath" "parents" ["root" "text1_context"] "children" ["text1_score" "text1_drawing"] "properties" {"children" #{#afield/box "text1_score" #afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "2 · Marked breath" "_tombstone" false "frame" #afield/rect [650.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_poem_code_.kt" "lines" 58 "characters" 2441 "sha256" "88a009cf2b4b0931f8717e4b807d11df6211feab2f202ddb2ad8f61e78d6a84f"}]}
+{"id" "text1_poem" "index" 4 "name" "2 · Marked breath" "parents" ["root" "text1_context"] "children" ["text1_score" "text1_drawing"] "properties" {"children" #{#afield/box "text1_score" #afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "2 · Marked breath" "_tombstone" false "frame" #afield/rect [1990.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_poem_code_.kt" "lines" 58 "characters" 2441 "sha256" "88a009cf2b4b0931f8717e4b807d11df6211feab2f202ddb2ad8f61e78d6a84f"}]}
 ```
 
 ```kotlin [field-property box="text1_poem" name="code" path="text1_poem_code_.kt"]
@@ -503,14 +501,12 @@ prop<ReadingExample>(exampleOne) = ReadingExample(
 <!-- field-box id="text1_example2" index="5" -->
 
 ```edn [field-box id="text1_example2" role="properties"]
-{"id" "text1_example2" "index" 5 "name" "3 · Constituency canopy" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "3 · Constituency canopy" "_tombstone" false "frame" #afield/rect [650.0 110.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example2_code_.kt" "lines" 146 "characters" 6074 "sha256" "3f1276ceaf1f6999d3eb75bc09b91db79294b77c77d9a4e5212b21ac9fc5afec"}]}
+{"id" "text1_example2" "index" 5 "name" "3 · Constituency canopy" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "3 · Constituency canopy" "_tombstone" false "frame" #afield/rect [1990.0 110.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example2_code_.kt" "lines" 144 "characters" 6023 "sha256" "394bc0d4520056491249145450dea56163fe72355de0b258231b148380395b99"}]}
 ```
 
 ```kotlin [field-property box="text1_example2" name="code" path="text1_example2_code_.kt"]
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 import afield.graphics.text.sentences.*
-import kotlin.math.*
 
 // 2 · Complete canopy. Preserve the parser's geometry, while the visible words come from the passage.
 val parsed = ReadingPassage.sentence(2)
@@ -660,14 +656,12 @@ prop<ReadingExample>(exampleTwo) = ReadingExample(
 <!-- field-box id="text1_example3" index="6" -->
 
 ```edn [field-box id="text1_example3" role="properties"]
-{"id" "text1_example3" "index" 6 "name" "4 · Dependency undertow" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "4 · Dependency undertow" "_tombstone" false "frame" #afield/rect [650.0 220.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example3_code_.kt" "lines" 86 "characters" 3807 "sha256" "9049912afb434c0e7225f4947bae04e07b721bb0566cd964a818d90932110097"}]}
+{"id" "text1_example3" "index" 6 "name" "4 · Dependency undertow" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "4 · Dependency undertow" "_tombstone" false "frame" #afield/rect [1990.0 220.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example3_code_.kt" "lines" 84 "characters" 3756 "sha256" "0ffcfa7690f02977e756cddf6d738eaf1a04fe48503ed03649fd376efdb1df3e"}]}
 ```
 
 ```kotlin [field-property box="text1_example3" name="code" path="text1_example3_code_.kt"]
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 import afield.graphics.text.sentences.*
-import kotlin.math.*
 
 // 3 · Undertow. Nested dependency arcs, with independently scored labels and beads.
 val parsed = ReadingPassage.sentence(3)
@@ -757,14 +751,12 @@ prop<ReadingExample>(exampleThree) = ReadingExample(
 <!-- field-box id="text1_example4" index="7" -->
 
 ```edn [field-box id="text1_example4" role="properties"]
-{"id" "text1_example4" "index" 7 "name" "5 · Sentence furniture" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "5 · Sentence furniture" "_tombstone" false "frame" #afield/rect [650.0 330.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example4_code_.kt" "lines" 88 "characters" 4454 "sha256" "72472c8e6de45e3daa8ab86e073b6cf7e704879a915247695e30966f6fe45c41"}]}
+{"id" "text1_example4" "index" 7 "name" "5 · Sentence furniture" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "5 · Sentence furniture" "_tombstone" false "frame" #afield/rect [1990.0 330.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example4_code_.kt" "lines" 86 "characters" 4403 "sha256" "f8cd35722e7f15ec0fe7d3d6881315ab95c3f26aa80798fece4b8d204a39f9a6"}]}
 ```
 
 ```kotlin [field-property box="text1_example4" name="code" path="text1_example4_code_.kt"]
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 import afield.graphics.text.sentences.*
-import kotlin.math.*
 
 // 4 · Sentence furniture. Reed-Kellogg shelves become a shallow spatial mobile, then a reading line.
 val parsed = ReadingPassage.sentence(4)
@@ -856,13 +848,11 @@ prop<ReadingExample>(exampleFour) = ReadingExample(
 <!-- field-box id="text1_typography" index="8" -->
 
 ```edn [field-box id="text1_typography" role="properties"]
-{"id" "text1_typography" "index" 8 "name" "13 · Typography playground" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "13 · Typography playground" "_tombstone" false "frame" #afield/rect [650.0 440.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_typography_code_.kt" "lines" 91 "characters" 3475 "sha256" "75c8c0b9d47ad091e0b9a93ba53c903e05f473aa7d30148e8d5cd0545132578c"}]}
+{"id" "text1_typography" "index" 8 "name" "13 · Typography playground" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "13 · Typography playground" "_tombstone" false "frame" #afield/rect [1990.0 440.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_typography_code_.kt" "lines" 89 "characters" 3411 "sha256" "0010901eb388f646860fd37055285cc13cd64526951a1c78dfdb556184ca9ca0"}]}
 ```
 
 ```kotlin [field-property box="text1_typography" name="code" path="text1_typography_code_.kt"]
-import afield.geometry.path.FLine
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // 5 · A room for words. One Slug run can contain multiple real faces and inline styles.
 val serif = Typefaces.named("Noto Serif", 100, strict = true)
@@ -958,12 +948,11 @@ prop<ReadingExample>(exampleFive) = ReadingExample(
 <!-- field-box id="text1_elastic" index="9" -->
 
 ```edn [field-box id="text1_elastic" role="properties"]
-{"id" "text1_elastic" "index" 9 "name" "18 · Elastic sentences" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "18 · Elastic sentences" "_tombstone" false "frame" #afield/rect [650.0 660.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_elastic_code_.kt" "lines" 177 "characters" 7074 "sha256" "5afcea8b919a6ab83777c5d780aaa8a38eb076e9aa3cbb5e99e17f6d2aa07df5"}]}
+{"id" "text1_elastic" "index" 9 "name" "18 · Elastic sentences" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "18 · Elastic sentences" "_tombstone" false "frame" #afield/rect [1990.0 660.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_elastic_code_.kt" "lines" 176 "characters" 7044 "sha256" "b7e97b579c50c2a4267484b5ded17f09ddbf7e2fbb2d5076ed5c20c44a57e306"}]}
 ```
 
 ```kotlin [field-property box="text1_elastic" name="code" path="text1_elastic_code_.kt"]
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 /*
 Verbatim excerpts from texts/source-passage.txt; line breaks are the only layout edits.
@@ -1146,12 +1135,11 @@ controlGroup("text frames") {
 <!-- field-box id="text1_drop_caps" index="10" -->
 
 ```edn [field-box id="text1_drop_caps" role="properties"]
-{"id" "text1_drop_caps" "index" 10 "name" "19 · A dropped initial" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "19 · A dropped initial" "_tombstone" false "frame" #afield/rect [650.0 770.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_drop_caps_code_.kt" "lines" 82 "characters" 3147 "sha256" "8aac84d791addd13c7d9e8f96fd6a25ff53f09b08ad18ec7ee94378a0a41f3df"}]}
+{"id" "text1_drop_caps" "index" 10 "name" "19 · A dropped initial" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "19 · A dropped initial" "_tombstone" false "frame" #afield/rect [1990.0 770.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_drop_caps_code_.kt" "lines" 81 "characters" 3117 "sha256" "2efbfcef3af1d0aa407d519822bf70d3a9b54741f7d6b36a027e8ba0517a4406"}]}
 ```
 
 ```kotlin [field-property box="text1_drop_caps" name="code" path="text1_drop_caps_code_.kt"]
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 /*
 Authored line breaks are part of the poem. The first three lines sit beside the initial;
@@ -1239,7 +1227,7 @@ controlGroup("text frames") {
 <!-- field-box id="text1_two_readings" index="11" -->
 
 ```edn [field-box id="text1_two_readings" role="properties"]
-{"id" "text1_two_readings" "index" 11 "name" "22 · Two readings / composed sequence" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "22 · Two readings / composed sequence" "_tombstone" false "frame" #afield/rect [650.0 880.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_two_readings_code_.kt" "lines" 108 "characters" 4415 "sha256" "3406ee2d96570c6a9ce0dc9deb3abb7584fc9f42d5b20a656813700e7b41f29f"}]}
+{"id" "text1_two_readings" "index" 11 "name" "22 · Two readings / composed sequence" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "22 · Two readings / composed sequence" "_tombstone" false "frame" #afield/rect [1990.0 880.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_two_readings_code_.kt" "lines" 108 "characters" 4415 "sha256" "3406ee2d96570c6a9ce0dc9deb3abb7584fc9f42d5b20a656813700e7b41f29f"}]}
 ```
 
 ```kotlin [field-property box="text1_two_readings" name="code" path="text1_two_readings_code_.kt"]
@@ -1358,7 +1346,7 @@ display(
 <!-- field-box id="text1_overstroke_rectangle" index="12" -->
 
 ```edn [field-box id="text1_overstroke_rectangle" role="properties"]
-{"id" "text1_overstroke_rectangle" "index" 12 "name" "24 · Extended rectangle" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "24 · Extended rectangle" "_tombstone" false "frame" #afield/rect [-1300.0 150.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_overstroke_rectangle_code_.kt" "lines" 55 "characters" 1990 "sha256" "8a91cadcdcc3df20c7d61d02e0e95dcefd16ae8583f3b5e81baaf50f16036227"}]}
+{"id" "text1_overstroke_rectangle" "index" 12 "name" "24 · Extended rectangle" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "24 · Extended rectangle" "_tombstone" false "frame" #afield/rect [40.0 150.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_overstroke_rectangle_code_.kt" "lines" 55 "characters" 1990 "sha256" "8a91cadcdcc3df20c7d61d02e0e95dcefd16ae8583f3b5e81baaf50f16036227"}]}
 ```
 
 ```kotlin [field-property box="text1_overstroke_rectangle" name="code" path="text1_overstroke_rectangle_code_.kt"]
@@ -1424,7 +1412,7 @@ prop<ReadingExample>(exampleTen) = ReadingExample(
 <!-- field-box id="text1_overstroke_union" index="13" -->
 
 ```edn [field-box id="text1_overstroke_union" role="properties"]
-{"id" "text1_overstroke_union" "index" 13 "name" "25 · Union with corner extensions" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "25 · Union with corner extensions" "_tombstone" false "frame" #afield/rect [-1300.0 260.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_overstroke_union_code_.kt" "lines" 59 "characters" 2156 "sha256" "d4c33bdfe873f992b753fd4d8041194aaf21aa4a07e486356740320334b40936"}]}
+{"id" "text1_overstroke_union" "index" 13 "name" "25 · Union with corner extensions" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "25 · Union with corner extensions" "_tombstone" false "frame" #afield/rect [40.0 260.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_overstroke_union_code_.kt" "lines" 59 "characters" 2156 "sha256" "d4c33bdfe873f992b753fd4d8041194aaf21aa4a07e486356740320334b40936"}]}
 ```
 
 ```kotlin [field-property box="text1_overstroke_union" name="code" path="text1_overstroke_union_code_.kt"]
@@ -1494,7 +1482,7 @@ prop<ReadingExample>(exampleEleven) = ReadingExample(
 <!-- field-box id="text1_frustum_readings" index="14" -->
 
 ```edn [field-box id="text1_frustum_readings" role="properties"]
-{"id" "text1_frustum_readings" "index" 14 "name" "26 · Transparent text frustum" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "26 · Transparent text frustum" "_tombstone" false "frame" #afield/rect [-1300.0 370.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_frustum_readings_code_.kt" "lines" 57 "characters" 2041 "sha256" "b7d931356c06ac651a6e676e51772458353aa395a90fc726fa18dff2be417044"}]}
+{"id" "text1_frustum_readings" "index" 14 "name" "26 · Transparent text frustum" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "26 · Transparent text frustum" "_tombstone" false "frame" #afield/rect [40.0 370.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_frustum_readings_code_.kt" "lines" 57 "characters" 2041 "sha256" "b7d931356c06ac651a6e676e51772458353aa395a90fc726fa18dff2be417044"}]}
 ```
 
 ```kotlin [field-property box="text1_frustum_readings" name="code" path="text1_frustum_readings_code_.kt"]
@@ -1562,7 +1550,7 @@ prop<ReadingExample>(exampleTwelve) = ReadingExample(
 <!-- field-box id="text1_frustum_two_faces" index="15" -->
 
 ```edn [field-box id="text1_frustum_two_faces" role="properties"]
-{"id" "text1_frustum_two_faces" "index" 15 "name" "27 · A holder with two faces" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "27 · A holder with two faces" "_tombstone" false "frame" #afield/rect [-1300.0 480.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_frustum_two_faces_code_.kt" "lines" 67 "characters" 2650 "sha256" "677385001e9760c88ef4b8ff34e5619859fad22052ec900185f14606102a6af9"}]}
+{"id" "text1_frustum_two_faces" "index" 15 "name" "27 · A holder with two faces" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "27 · A holder with two faces" "_tombstone" false "frame" #afield/rect [40.0 480.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_frustum_two_faces_code_.kt" "lines" 67 "characters" 2650 "sha256" "677385001e9760c88ef4b8ff34e5619859fad22052ec900185f14606102a6af9"}]}
 ```
 
 ```kotlin [field-property box="text1_frustum_two_faces" name="code" path="text1_frustum_two_faces_code_.kt"]
@@ -1640,7 +1628,7 @@ prop<ReadingExample>(exampleThirteen) = ReadingExample(
 <!-- field-box id="text1_score" index="16" -->
 
 ```edn [field-box id="text1_score" role="properties"]
-{"id" "text1_score" "index" 16 "name" "6 · Scores / example selector" "parents" ["root" "text1_poem" "text1_example2" "text1_example3" "text1_example4" "text1_typography" "text1_word_blur" "text1_elastic" "text1_drop_caps" "text1_two_readings" "text1_overstroke_rectangle" "text1_overstroke_union" "text1_frustum_readings" "text1_frustum_two_faces"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4" #afield/box "text1_typography" #afield/box "text1_word_blur" #afield/box "text1_elastic" #afield/box "text1_drop_caps" #afield/box "text1_two_readings" #afield/box "text1_overstroke_rectangle" #afield/box "text1_overstroke_union" #afield/box "text1_frustum_readings" #afield/box "text1_frustum_two_faces"} "name" "6 · Scores / example selector" "_tombstone" false "frame" #afield/rect [1200.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_score_code_.kt" "lines" 116 "characters" 5399 "sha256" "e0c7b456c6b4e39d31177e20aa21b155f1b40859fca8cd4b430d168e6d4d7d03"}]}
+{"id" "text1_score" "index" 16 "name" "6 · Scores / example selector" "parents" ["root" "text1_poem" "text1_example2" "text1_example3" "text1_example4" "text1_typography" "text1_word_blur" "text1_elastic" "text1_drop_caps" "text1_two_readings" "text1_overstroke_rectangle" "text1_overstroke_union" "text1_frustum_readings" "text1_frustum_two_faces"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4" #afield/box "text1_typography" #afield/box "text1_word_blur" #afield/box "text1_elastic" #afield/box "text1_drop_caps" #afield/box "text1_two_readings" #afield/box "text1_overstroke_rectangle" #afield/box "text1_overstroke_union" #afield/box "text1_frustum_readings" #afield/box "text1_frustum_two_faces"} "name" "6 · Scores / example selector" "_tombstone" false "frame" #afield/rect [2540.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_score_code_.kt" "lines" 116 "characters" 5350 "sha256" "93cbcf43da9c203e26676f18a04f1a4a9956cf76df5acdbeafd121c233d24009"}]}
 ```
 
 ```kotlin [field-property box="text1_score" name="code" path="text1_score_code_.kt"]
@@ -1726,7 +1714,7 @@ if (poem.examples.map { it.player } != allExamples.map { it.player }) poem = Rea
 
 fun describe() {
     val e = poem.examples[poem.selected]
-    display("selected example", "<div style='padding:12px;width:440px'><b>${e.title}</b><p>${e.description}</p></div>")
+    markdown("selected example", "### ${e.title}\n\n${e.description}")
 }
 controlGroup("reading spaces") {
     for ((i, e) in allExamples.withIndex()) button(e.title) { down ->
@@ -1773,7 +1761,7 @@ From `code`
 Drawing supplies the target and textures; this box owns its shader and Alt+R.
 
 ```edn [field-box id="text1_stroke" role="properties"]
-{"id" "text1_stroke" "index" 17 "name" "7 · FLine strokes" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "7 · FLine strokes" "_tombstone" false "frame" #afield/rect [1800.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_stroke_code_.kt" "lines" 4 "characters" 212 "sha256" "c8359ab0081c678a5886f5803d7aa38ba11de15fc3891484051754f5ab273d0f"} {"name" "vertex" "language" "glsl" "path" "text1_stroke_vertex_.glsl" "lines" 121 "characters" 5151 "sha256" "d2310aaf9fbc8bfbf276debe12a15b81a75073748d40bef2049f6a41b90a1756"} {"name" "fragment" "language" "glsl" "path" "text1_stroke_fragment_.glsl" "lines" 46 "characters" 2293 "sha256" "2b99df22a8e0c0bbfe075e1fed7a782de28bfe46f764ed88dcf5c20e546ac075"}]}
+{"id" "text1_stroke" "index" 17 "name" "7 · FLine strokes" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "7 · FLine strokes" "_tombstone" false "frame" #afield/rect [3140.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_stroke_code_.kt" "lines" 4 "characters" 212 "sha256" "c8359ab0081c678a5886f5803d7aa38ba11de15fc3891484051754f5ab273d0f"} {"name" "vertex" "language" "glsl" "path" "text1_stroke_vertex_.glsl" "lines" 121 "characters" 5151 "sha256" "d2310aaf9fbc8bfbf276debe12a15b81a75073748d40bef2049f6a41b90a1756"} {"name" "fragment" "language" "glsl" "path" "text1_stroke_fragment_.glsl" "lines" 46 "characters" 2293 "sha256" "2b99df22a8e0c0bbfe075e1fed7a782de28bfe46f764ed88dcf5c20e546ac075"}]}
 ```
 
 ```kotlin [field-property box="text1_stroke" name="code" path="text1_stroke_code_.kt"]
@@ -1967,7 +1955,7 @@ From `code`
 Drawing supplies the target and textures; this box owns its shader and Alt+R.
 
 ```edn [field-box id="text1_point" role="properties"]
-{"id" "text1_point" "index" 18 "name" "8 · SDF markers" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "8 · SDF markers" "_tombstone" false "frame" #afield/rect [1800.0 110.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_point_code_.kt" "lines" 4 "characters" 211 "sha256" "c693e017aa8a8eba8680a71ce5c219a4878b8f96ad3593ec1681bb847f99c3bf"} {"name" "vertex" "language" "glsl" "path" "text1_point_vertex_.glsl" "lines" 64 "characters" 2618 "sha256" "bf39f13c5d3472bd8f511bd5a9e76640abfe557ed1f36ceeab22557460b001a1"} {"name" "fragment" "language" "glsl" "path" "text1_point_fragment_.glsl" "lines" 23 "characters" 798 "sha256" "aec1f1d5ad29382bd4bb1822b40de85c196b93c29e09e08b6618b4261b6ddcbe"}]}
+{"id" "text1_point" "index" 18 "name" "8 · SDF markers" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "8 · SDF markers" "_tombstone" false "frame" #afield/rect [3140.0 110.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_point_code_.kt" "lines" 4 "characters" 211 "sha256" "c693e017aa8a8eba8680a71ce5c219a4878b8f96ad3593ec1681bb847f99c3bf"} {"name" "vertex" "language" "glsl" "path" "text1_point_vertex_.glsl" "lines" 64 "characters" 2618 "sha256" "bf39f13c5d3472bd8f511bd5a9e76640abfe557ed1f36ceeab22557460b001a1"} {"name" "fragment" "language" "glsl" "path" "text1_point_fragment_.glsl" "lines" 23 "characters" 798 "sha256" "aec1f1d5ad29382bd4bb1822b40de85c196b93c29e09e08b6618b4261b6ddcbe"}]}
 ```
 
 ```kotlin [field-property box="text1_point" name="code" path="text1_point_code_.kt"]
@@ -2081,7 +2069,7 @@ From `code`
 Drawing supplies the target and textures; this box owns its shader and Alt+R.
 
 ```edn [field-box id="text1_text" role="properties"]
-{"id" "text1_text" "index" 19 "name" "9 · Slug words" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "9 · Slug words" "_tombstone" false "frame" #afield/rect [1800.0 220.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_text_code_.kt" "lines" 4 "characters" 210 "sha256" "0189d94da9a729d4c5ac99475520342c87bbbc506408196bf09f38ed28d42fe9"} {"name" "vertex" "language" "glsl" "path" "text1_text_vertex_.glsl" "lines" 82 "characters" 3577 "sha256" "37c0f8f64c82736754c0ba76cbdb3bd07e9926743677f8c98d46289e1b2ceb97"} {"name" "fragment" "language" "glsl" "path" "text1_text_fragment_.glsl" "lines" 190 "characters" 7559 "sha256" "009c3b3978744a15fa63b7b1b2fb282f20dbda6d7f74e823ad19fa1f2d2daa7a"}]}
+{"id" "text1_text" "index" 19 "name" "9 · Slug words" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "9 · Slug words" "_tombstone" false "frame" #afield/rect [3140.0 220.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_text_code_.kt" "lines" 4 "characters" 210 "sha256" "0189d94da9a729d4c5ac99475520342c87bbbc506408196bf09f38ed28d42fe9"} {"name" "vertex" "language" "glsl" "path" "text1_text_vertex_.glsl" "lines" 82 "characters" 3577 "sha256" "37c0f8f64c82736754c0ba76cbdb3bd07e9926743677f8c98d46289e1b2ceb97"} {"name" "fragment" "language" "glsl" "path" "text1_text_fragment_.glsl" "lines" 190 "characters" 7559 "sha256" "009c3b3978744a15fa63b7b1b2fb282f20dbda6d7f74e823ad19fa1f2d2daa7a"}]}
 ```
 
 ```kotlin [field-property box="text1_text" name="code" path="text1_text_code_.kt"]
@@ -2380,7 +2368,7 @@ From `code`
 Drawing supplies the target and textures; this box owns its shader and Alt+R.
 
 ```edn [field-box id="text1_blur" role="properties"]
-{"id" "text1_blur" "index" 20 "name" "10 · Medium blur / horizontal" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "10 · Medium blur / horizontal" "_tombstone" false "frame" #afield/rect [1800.0 330.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_blur_code_.kt" "lines" 4 "characters" 216 "sha256" "9f3b7e99d9b6993cdf3ced60ac66cc8d2651e56f8a9a79724a6a52b960a3e2cc"} {"name" "vertex" "language" "glsl" "path" "text1_blur_vertex_.glsl" "lines" 10 "characters" 310 "sha256" "bfeef78cb283bfcb51d42e49e10e99971c2d418460670cf8a23279f7fd45a6cf"} {"name" "fragment" "language" "glsl" "path" "text1_blur_fragment_.glsl" "lines" 20 "characters" 861 "sha256" "4631f2b27487bb0cc7e210c7578866150db400df9abd6bd045ba7c65518aba71"}]}
+{"id" "text1_blur" "index" 20 "name" "10 · Medium blur / horizontal" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "10 · Medium blur / horizontal" "_tombstone" false "frame" #afield/rect [3140.0 330.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_blur_code_.kt" "lines" 4 "characters" 216 "sha256" "9f3b7e99d9b6993cdf3ced60ac66cc8d2651e56f8a9a79724a6a52b960a3e2cc"} {"name" "vertex" "language" "glsl" "path" "text1_blur_vertex_.glsl" "lines" 10 "characters" 310 "sha256" "bfeef78cb283bfcb51d42e49e10e99971c2d418460670cf8a23279f7fd45a6cf"} {"name" "fragment" "language" "glsl" "path" "text1_blur_fragment_.glsl" "lines" 20 "characters" 861 "sha256" "4631f2b27487bb0cc7e210c7578866150db400df9abd6bd045ba7c65518aba71"}]}
 ```
 
 ```kotlin [field-property box="text1_blur" name="code" path="text1_blur_code_.kt"]
@@ -2437,7 +2425,7 @@ From `code`
 Drawing supplies the target and textures; this box owns its shader and Alt+R.
 
 ```edn [field-box id="text1_blur_medium_v" role="properties"]
-{"id" "text1_blur_medium_v" "index" 21 "name" "15 · Medium blur / vertical" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "15 · Medium blur / vertical" "_tombstone" false "frame" #afield/rect [1800.0 440.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_blur_medium_v_code_.kt" "lines" 4 "characters" 214 "sha256" "42613517a509edbfcdb2150d299898030f087353de41327c6ecc1353f130e9ca"} {"name" "vertex" "language" "glsl" "path" "text1_blur_medium_v_vertex_.glsl" "lines" 10 "characters" 310 "sha256" "bfeef78cb283bfcb51d42e49e10e99971c2d418460670cf8a23279f7fd45a6cf"} {"name" "fragment" "language" "glsl" "path" "text1_blur_medium_v_fragment_.glsl" "lines" 20 "characters" 861 "sha256" "4631f2b27487bb0cc7e210c7578866150db400df9abd6bd045ba7c65518aba71"}]}
+{"id" "text1_blur_medium_v" "index" 21 "name" "15 · Medium blur / vertical" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "15 · Medium blur / vertical" "_tombstone" false "frame" #afield/rect [3140.0 440.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_blur_medium_v_code_.kt" "lines" 4 "characters" 214 "sha256" "42613517a509edbfcdb2150d299898030f087353de41327c6ecc1353f130e9ca"} {"name" "vertex" "language" "glsl" "path" "text1_blur_medium_v_vertex_.glsl" "lines" 10 "characters" 310 "sha256" "bfeef78cb283bfcb51d42e49e10e99971c2d418460670cf8a23279f7fd45a6cf"} {"name" "fragment" "language" "glsl" "path" "text1_blur_medium_v_fragment_.glsl" "lines" 20 "characters" 861 "sha256" "4631f2b27487bb0cc7e210c7578866150db400df9abd6bd045ba7c65518aba71"}]}
 ```
 
 ```kotlin [field-property box="text1_blur_medium_v" name="code" path="text1_blur_medium_v_code_.kt"]
@@ -2494,7 +2482,7 @@ From `code`
 Drawing supplies the target and textures; this box owns its shader and Alt+R.
 
 ```edn [field-box id="text1_blur_broad_v" role="properties"]
-{"id" "text1_blur_broad_v" "index" 22 "name" "17 · Broad blur / vertical" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "17 · Broad blur / vertical" "_tombstone" false "frame" #afield/rect [1800.0 660.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_blur_broad_v_code_.kt" "lines" 4 "characters" 213 "sha256" "6b30c78dc48684b72bc9906a1e6e8e61a8363459b80d5d2a80078633aac2b5ad"} {"name" "vertex" "language" "glsl" "path" "text1_blur_broad_v_vertex_.glsl" "lines" 10 "characters" 310 "sha256" "bfeef78cb283bfcb51d42e49e10e99971c2d418460670cf8a23279f7fd45a6cf"} {"name" "fragment" "language" "glsl" "path" "text1_blur_broad_v_fragment_.glsl" "lines" 20 "characters" 861 "sha256" "4631f2b27487bb0cc7e210c7578866150db400df9abd6bd045ba7c65518aba71"}]}
+{"id" "text1_blur_broad_v" "index" 22 "name" "17 · Broad blur / vertical" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "17 · Broad blur / vertical" "_tombstone" false "frame" #afield/rect [3140.0 660.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_blur_broad_v_code_.kt" "lines" 4 "characters" 213 "sha256" "6b30c78dc48684b72bc9906a1e6e8e61a8363459b80d5d2a80078633aac2b5ad"} {"name" "vertex" "language" "glsl" "path" "text1_blur_broad_v_vertex_.glsl" "lines" 10 "characters" 310 "sha256" "bfeef78cb283bfcb51d42e49e10e99971c2d418460670cf8a23279f7fd45a6cf"} {"name" "fragment" "language" "glsl" "path" "text1_blur_broad_v_fragment_.glsl" "lines" 20 "characters" 861 "sha256" "4631f2b27487bb0cc7e210c7578866150db400df9abd6bd045ba7c65518aba71"}]}
 ```
 
 ```kotlin [field-property box="text1_blur_broad_v" name="code" path="text1_blur_broad_v_code_.kt"]
@@ -2545,7 +2533,7 @@ void main() {
 <!-- field-box id="text1_drawing" index="23" -->
 
 ```edn [field-box id="text1_drawing" role="properties"]
-{"id" "text1_drawing" "index" 23 "name" "12 · Drawing / score playback" "parents" ["root" "text1_poem" "text1_score" "text1_stroke" "text1_point" "text1_text" "text1_blur" "text1_blur_medium_v" "text1_blur_broad_h" "text1_blur_broad_v" "text1_composite"] "children" ["text1_body" "text1_navigation"] "properties" {"children" #{#afield/box "text1_body" #afield/box "text1_navigation"} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_score" #afield/box "text1_stroke" #afield/box "text1_point" #afield/box "text1_text" #afield/box "text1_blur" #afield/box "text1_blur_medium_v" #afield/box "text1_blur_broad_h" #afield/box "text1_blur_broad_v" #afield/box "text1_composite"} "name" "12 · Drawing / score playback" "_tombstone" false "frame" #afield/rect [2350.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_drawing_code_.kt" "lines" 89 "characters" 4300 "sha256" "a03550507a9c90cc2edfe9a6c95c4eb0e211aa994d61cdb57d549931a9a94b1e"}]}
+{"id" "text1_drawing" "index" 23 "name" "12 · Drawing / score playback" "parents" ["root" "text1_poem" "text1_score" "text1_stroke" "text1_point" "text1_text" "text1_blur" "text1_blur_medium_v" "text1_blur_broad_h" "text1_blur_broad_v" "text1_composite"] "children" ["text1_body" "text1_navigation"] "properties" {"children" #{#afield/box "text1_body" #afield/box "text1_navigation"} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_score" #afield/box "text1_stroke" #afield/box "text1_point" #afield/box "text1_text" #afield/box "text1_blur" #afield/box "text1_blur_medium_v" #afield/box "text1_blur_broad_h" #afield/box "text1_blur_broad_v" #afield/box "text1_composite"} "name" "12 · Drawing / score playback" "_tombstone" false "frame" #afield/rect [3690.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_drawing_code_.kt" "lines" 89 "characters" 4300 "sha256" "a03550507a9c90cc2edfe9a6c95c4eb0e211aa994d61cdb57d549931a9a94b1e"}]}
 ```
 
 ```kotlin [field-property box="text1_drawing" name="code" path="text1_drawing_code_.kt"]
@@ -2645,7 +2633,7 @@ loop {
 <!-- field-box id="text1_body" index="24" -->
 
 ```edn [field-box id="text1_body" role="properties"]
-{"id" "text1_body" "index" 24 "name" "21 · Body interaction / diagnostics" "parents" ["root" "text1_drawing"] "children" ["text1_global_keys"] "properties" {"children" #{#afield/box "text1_global_keys"} "parents" #{#afield/box "root" #afield/box "text1_drawing"} "name" "21 · Body interaction / diagnostics" "_tombstone" false "frame" #afield/rect [2350.0 220.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_body_code_.kt" "lines" 229 "characters" 10555 "sha256" "01dc814811b017552a524ce2eb7a8dd222835363befb51afe8d28fcb7a680e23"} {"name" "vertex" "language" "glsl" "path" "text1_body_vertex_.glsl" "lines" 52 "characters" 1925 "sha256" "da4fb84e08efc0ffbe43960894b7c2e2abb080cabd49536892f2a049e116f035"} {"name" "fragment" "language" "glsl" "path" "text1_body_fragment_.glsl" "lines" 13 "characters" 504 "sha256" "7eb68433c9497fd4c424e92c222ca427c8ee61e30584bcecaf428f3afa664639"}]}
+{"id" "text1_body" "index" 24 "name" "21 · Body interaction / diagnostics" "parents" ["root" "text1_drawing"] "children" ["text1_global_keys"] "properties" {"children" #{#afield/box "text1_global_keys"} "parents" #{#afield/box "root" #afield/box "text1_drawing"} "name" "21 · Body interaction / diagnostics" "_tombstone" false "frame" #afield/rect [3690.0 220.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_body_code_.kt" "lines" 229 "characters" 10555 "sha256" "01dc814811b017552a524ce2eb7a8dd222835363befb51afe8d28fcb7a680e23"} {"name" "vertex" "language" "glsl" "path" "text1_body_vertex_.glsl" "lines" 52 "characters" 1925 "sha256" "da4fb84e08efc0ffbe43960894b7c2e2abb080cabd49536892f2a049e116f035"} {"name" "fragment" "language" "glsl" "path" "text1_body_fragment_.glsl" "lines" 13 "characters" 504 "sha256" "7eb68433c9497fd4c424e92c222ca427c8ee61e30584bcecaf428f3afa664639"}]}
 ```
 
 ```kotlin [field-property box="text1_body" name="code" path="text1_body_code_.kt"]
@@ -2956,7 +2944,7 @@ void main() {
 <!-- field-box id="text1_navigation" index="25" -->
 
 ```edn [field-box id="text1_navigation" role="properties"]
-{"id" "text1_navigation" "index" 25 "name" "20 · Move through the reading space" "parents" ["root" "text1_drawing"] "children" ["text1_global_keys"] "properties" {"children" #{#afield/box "text1_global_keys"} "parents" #{#afield/box "root" #afield/box "text1_drawing"} "name" "20 · Move through the reading space" "_tombstone" false "frame" #afield/rect [2350.0 110.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_navigation_code_.kt" "lines" 44 "characters" 1784 "sha256" "93214b1d4f3fda5631923b195fdec3a7b85f8a48555d16d7f0417b0297c75d9e"}]}
+{"id" "text1_navigation" "index" 25 "name" "20 · Move through the reading space" "parents" ["root" "text1_drawing"] "children" ["text1_global_keys"] "properties" {"children" #{#afield/box "text1_global_keys"} "parents" #{#afield/box "root" #afield/box "text1_drawing"} "name" "20 · Move through the reading space" "_tombstone" false "frame" #afield/rect [3690.0 110.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_navigation_code_.kt" "lines" 44 "characters" 1784 "sha256" "93214b1d4f3fda5631923b195fdec3a7b85f8a48555d16d7f0417b0297c75d9e"}]}
 ```
 
 ```kotlin [field-property box="text1_navigation" name="code" path="text1_navigation_code_.kt"]
@@ -3011,7 +2999,7 @@ loop { frame() }
 <!-- field-box id="text1_global_keys" index="26" -->
 
 ```edn [field-box id="text1_global_keys" role="properties"]
-{"id" "text1_global_keys" "index" 26 "name" "23 · Global looks / keyframes" "parents" ["root" "text1_body" "text1_navigation"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "text1_body" #afield/box "text1_navigation"} "name" "23 · Global looks / keyframes" "_tombstone" false "frame" #afield/rect [-650.0 150.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_global_keys_code_.kt" "lines" 804 "characters" 25900 "sha256" "67c81f7df43fe674089e4fb08e55d526c72b31eccf44237091b7529528918615"}]}
+{"id" "text1_global_keys" "index" 26 "name" "23 · Global looks / keyframes" "parents" ["root" "text1_body" "text1_navigation"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "text1_body" #afield/box "text1_navigation"} "name" "23 · Global looks / keyframes" "_tombstone" false "frame" #afield/rect [690.0 150.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_global_keys_code_.kt" "lines" 804 "characters" 25900 "sha256" "67c81f7df43fe674089e4fb08e55d526c72b31eccf44237091b7529528918615"}]}
 ```
 
 ```kotlin [field-property box="text1_global_keys" name="code" path="text1_global_keys_code_.kt"]

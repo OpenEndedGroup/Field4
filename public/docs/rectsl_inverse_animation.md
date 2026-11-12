@@ -116,7 +116,7 @@ track, with its scale and offset left for the fitter:
 Until you fit it, a `free-param` is just its current value, so a scene with unknowns in it plays and
 renders exactly as written.
 
-From Kotlin, any track with `FreeParamTrack` leaves in it can be solved with `fitParameters`. It
+From Kotlin, any track with [`FreeParamTrack`](reference/languages.md#rectsl-kt-freeparamtrack) leaves in it can be solved with `fitParameters`. It
 steps until the residual stops changing, up to `iterations = 5000` at `lr = 0.05`, and `converged`
 says whether it got there before the bound; when it is false, give it more iterations or a larger
 `lr` before trusting `parameters`. The box below builds the same sweep track and fits it with the
@@ -149,9 +149,7 @@ markdown(
     fit.finalResidual    ${fit.finalResidual}
     fit.converged        ${fit.converged} after ${fit.steps.size} steps
     fit.fitted           ${fit.fitted.describe()}
-    ~~~
-"""
-        .trimIndent(),
+    ~~~""".trimIndent(),
 )
 ```
 
@@ -318,9 +316,7 @@ markdown(
     samples:               ${xs.size} over x in [-2, 2]
     worst difference:      $worst
     samples not bit-equal: $notBitEqual
-    ~~~
-"""
-        .trimIndent(),
+    ~~~""".trimIndent(),
 )
 ```
 
@@ -367,9 +363,7 @@ markdown(
     disagreements:     ${wrong.size}${if (wrong.isEmpty()) "" else " at " + wrong.take(6)}
     step(0.0):         ${step.eval(0.0)}
     step(-1e-16):      ${step.eval(-1e-16)}
-    ~~~
-"""
-        .trimIndent(),
+    ~~~""".trimIndent(),
 )
 ```
 
@@ -427,3 +421,12 @@ or the last bit, and a signed zero can turn a `->face-travel` rect half a turn.
 
 A key's value is itself a track, so it can be a free parameter too. TCB tracks recompute their
 tangents from the fitted key values, so a moved key bends the spline the way the sampler would.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`BinaryDoubleTrack`](reference/languages.md#rectsl-kt-binarydoubletrack)
+- [`LinearScalarTrack`](reference/languages.md#rectsl-kt-linearscalartrack)
+- [`TcbKey`](reference/languages.md#rectsl-kt-tcbkey)
+- [`TrackFitTarget`](reference/languages.md#rectslfit-kt-trackfittarget)

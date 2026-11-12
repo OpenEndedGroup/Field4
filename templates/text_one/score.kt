@@ -56,7 +56,7 @@ if (poem.examples.map { it.player } != allExamples.map { it.player }) poem = Rea
 
 fun describe() {
     val e = poem.examples[poem.selected]
-    display("selected example", "<div style='padding:12px;width:440px'><b>${e.title}</b><p>${e.description}</p></div>")
+    markdown("selected example", "### ${e.title}\n\n${e.description}")
 }
 controlGroup("reading spaces") {
     for ((i, e) in allExamples.withIndex()) button(e.title) { down ->

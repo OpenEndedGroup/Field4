@@ -1,0 +1,60 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "name": "presets",
+      "status": "passed",
+      "source": "dev_docs/agents/transcripts/controls_presets_morph_midi.yaml",
+      "capture": "build/box-code-revision/catchup-20261111/runtime/presets.png"
+    },
+    {
+      "name": "surface",
+      "status": "passed",
+      "source": "dev_docs/agents/transcripts/controls_surface.yaml",
+      "capture": "build/box-code-revision/catchup-20261111/runtime/surface.png"
+    },
+    {
+      "name": "ring",
+      "status": "passed",
+      "source": "dev_docs/agents/transcripts/docs_capture/tour_interface_document.yaml",
+      "capture": "build/box-code-revision/catchup-20261111/runtime/ring.png"
+    },
+    {
+      "name": "query_table",
+      "status": "passed",
+      "source": "public/docs/graph_query.md",
+      "capture": "build/box-code-revision/catchup-20261111/runtime/query_table.png"
+    },
+    {
+      "name": "chat_outline",
+      "status": "passed",
+      "source": "public/docs/ai4_chat_archive.md",
+      "capture": "build/box-code-revision/catchup-20261111/runtime/chat_outline.png"
+    },
+    {
+      "name": "trail",
+      "status": "passed",
+      "source": "dev_docs/agents/transcripts/docs_capture/vec2_gestures.yaml"
+    },
+    {
+      "name": "guide",
+      "status": "passed",
+      "source": "dev_docs/agents/transcripts/audio_ai_analysis.yaml"
+    },
+    {
+      "name": "live_edits",
+      "status": "passed",
+      "method": "Actual second fragment changes size and ring, then redraws the live figure"
+    }
+  ],
+  "nativeSky": {
+    "status": "passed",
+    "source": "dev_docs/agents/transcripts/atmospheric_sky.yaml",
+    "preset": "sunset",
+    "capture": "build/box-code-revision/catchup-20261111/runtime/sky.png",
+    "visuallyInspected": true
+  },
+  "limits": [
+    "Audio guide text and output are verified; the optional job monitor reported its local Field Audio service unavailable. No remote inference or analysis result is claimed."
+  ]
+}

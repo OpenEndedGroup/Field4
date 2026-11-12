@@ -920,10 +920,41 @@ class FieldBackdoor:
                 **watch.describe(),
             )
             if healthy:
+                # A healthy port is not proof that the server answering is the one this session
+                # spawned. The port was free when chosen, but our JVM binds only after the Gradle
+                # build, and on 2026-11-10 the lander started its own Field on 9477 in that window:
+                # this wait took the lander's `/health` for ours, adopted its docs-publication
+                # workspace, and ran a scratch box against `main`'s code. So the answer must name
+                # this checkout before it counts.
+                info = field_instance_info(self.port, self.ssl_context)
+                if info is None:
+                    # Our own Field always serves /api/instance-info; a miss right after /health is
+                    # a busy or half-started server. Keep polling: if it is a foreign Field too old
+                    # to report identity, our JVM cannot bind the port and exits, which ends the wait.
+                    self.logger.log("managed_server_identity_pending", attempt=attempt, port=self.port)
+                    await asyncio.sleep(poll_interval)
+                    continue
+                problem = field_instance_problem(info, REPO_ROOT, allow_stale_source=True)
+                if problem is not None:
+                    self.logger.log(
+                        "managed_server_foreign",
+                        port=self.port,
+                        reason=problem,
+                        instance=info,
+                        managedLog=str(self.managed_log_path),
+                    )
+                    self._stop_managed_process()
+                    raise BackdoorError(
+                        f"Port {self.port} is answered by a Field this session did not start: {problem} "
+                        f"(pid {info.get('pid')}, workspace {info.get('workspace')}). Another checkout bound the "
+                        "port while this one was building, so the server spawned here was stopped rather than "
+                        "running commands against the wrong code. Re-run (without --port the next free port is "
+                        "chosen) or pass a different --port."
+                    )
                 # Read the workspace back even on the path that supplied it. `--args=--workspace`
                 # can be overridden or normalised server-side, and a fact worth verifying is
                 # worth verifying in the one case where the answer is expected.
-                self.adopt_server_workspace(field_instance_info(self.port, self.ssl_context))
+                self.adopt_server_workspace(info)
                 self.logger.log(
                     "managed_server_ready",
                     attempt=attempt,

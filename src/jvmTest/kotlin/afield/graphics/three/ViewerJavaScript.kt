@@ -298,6 +298,8 @@ $region
         "wire-payload" to listOf(
             "WIRE_BUFFER_TYPES",
             "bindWireBuffers",
+            "wireReusable",
+            "wireAssemble",
             "partAppearancePayload",
             "receiveWireMessage",
             "wireAbandon",

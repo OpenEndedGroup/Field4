@@ -178,6 +178,10 @@ data class Marker(val name: String, val box: Box) : HasProperties, HasHierarchy 
  * `__m("trail") { properties["points"] = mutableListOf<Vec3>() }`: [onCreation] runs **only** the first time,
  * which is what makes this safe to call every frame from inside an animation loop. The marker and its contents
  * outlive an individual frame but not the process, and are not saved with the document.
+ *
+ * In the editor, Cmd+Shift+. (or F1, **Insert Stack Mark**) inserts `__m("<fresh uid>")` at the cursor and
+ * draws it as a single rune, ᛟ. The uid keeps each marker's state apart and makes the text unique in the box, so
+ * Field can find that line again; [Markers](../visualizers.md#markers) is the prose.
  */
 fun Box.__m(s: String, onCreation: Marker.() -> Unit = {}) = this.markers.computeIfAbsent(s) {
     val m = Marker(s, box = this)

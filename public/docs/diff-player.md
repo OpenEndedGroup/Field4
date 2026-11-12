@@ -196,7 +196,8 @@ Runner attributes, by what they decide. Hyphenated names also answer to an under
 - `open-outputs` — true unless you say otherwise.
 - `with-editor` — implied by `capture="window-editor"`.
 
-Reach for `capture="editor"` when the subject is the Monaco pane itself: inline visualizers such as the histogram and piano-roll decorations.
+Reach for `capture="editor"` when the subject is the Monaco pane itself: inline visualizers such as the histogram and piano-roll decorations, which hang off a
+[marker](visualizers.md#markers) (`__m(...)`).
 
 ````text
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/editor-inline-histogram.png" wait="1.0" capture="editor" outputs="inline"}

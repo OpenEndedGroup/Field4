@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "transcriptSha256": "655aeb3ad532c2b5cd24ef424fb0d0a593b60e9d99d124b0fc661e6cecd9ec70",
+  "pictures": [
+    {
+      "file": "figure-slide.png",
+      "sha256": "d786f4a64857b47cf21c71009b43d2464a62c0e6eda5260200c4151ddaa907bf"
+    },
+    {
+      "file": "figure-glide.png",
+      "sha256": "ff56a82437642e894328aec89cbeb68bd45ad2de24b5946e4d38c86b57c97637"
+    }
+  ]
+}

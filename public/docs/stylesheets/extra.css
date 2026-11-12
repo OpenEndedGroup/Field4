@@ -1741,6 +1741,40 @@ html .md-typeset details.aside > :last-child {
     }
 }
 
+/* ── margin figures (the explainer pages) ──────────────────────────────────
+   `<figure class="field-margin-figure" markdown>` holds a picture that sits
+   beside the text rather than in it: on the explainer pages, the slide that
+   shows the figure whose code and output follow. Below 82em it is an ordinary
+   figure in the flow, at most half the column wide so it does not push the
+   code away; from 82em it floats into the right margin by the same negative
+   margin trick as `??? aside` above, a little wider than an aside because a
+   16:9 slide has to stay legible. */
+.md-typeset figure.field-margin-figure {
+    margin: 0.4em 0 1em;
+    max-width: 50%;
+}
+
+.md-typeset figure.field-margin-figure img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+@media screen and (min-width: 82em) {
+    .md-typeset figure.field-margin-figure {
+        --field-margin-figure-width: clamp(
+            10.5rem,
+            calc((100vw - var(--field-reading-width)) / 2 - var(--field-aside-gap) - 1.2rem),
+            18rem
+        );
+        float: right;
+        clear: right;
+        width: var(--field-margin-figure-width);
+        max-width: none;
+        margin: 0.3em calc(-1 * (var(--field-margin-figure-width) + var(--field-aside-gap))) 1em 0;
+    }
+}
+
 /* Printed, an aside comes back into the flow — a margin float against a paper
    width nobody chose is worse than a block. Whether its body prints is the
    browser's call, as for any `<details>`; the title always does. */

@@ -34,7 +34,7 @@
     {"name": "arxiv-cs-gr", "url": "https://rss.arxiv.org/rss/cs.GR", "limit": 40},
     {"name": "pkh", "url": "https://blog.pkh.me/rss.xml"},
     {"name": "jcgt", "url": "https://jcgt.org/feed.xml", "limit": 10},
-    {"name": "construction-physics", "url": "https://www.construction-physics.com/feed"},
+    {"name": "construction-physics", "url": "https://www.construction-physics.com/feed", "exclude_titles": "^Reading List"},
     {"name": "public-domain-review", "url": "https://publicdomainreview.org/rss.xml", "limit": 20},
     {"name": "ieee-spectrum", "url": "https://spectrum.ieee.org/feeds/feed.rss", "limit": 30}
   ],

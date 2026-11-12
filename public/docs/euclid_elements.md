@@ -18,14 +18,14 @@ proportion in Book VI.
 ## Writing a proposition
 
 Every proposition on this page is written out in full in its box, with `construction`. The same
-constructions are in the library as `Elements.prop1(...)`, `Elements.prop46(...)` and so on, and
+constructions are in the library as `Elements.prop1(...)`, [`Elements.prop46(...)`](reference/graphics.md#elements-kt--elements--prop46) and so on, and
 a proposition that cites an earlier one calls the library's copy. Inside `construction { }`:
 
 - `step("sentence", figures...)` adds a numbered sentence of the proof and what it draws.
 - `shape.drawn(Byrne.RED)` makes a figure, with a `Role` when it is construction, result or area;
   `point.named("A")` letters a point.
 - `meet(a, b)` is where two figures cross. `pick(points)` chooses one, and `pickSide(line, points,
-  side)` chooses by side of a line; these are the choices `Elements.solutions` explores.
+  side)` chooses by side of a line; these are the choices [`Elements.solutions`](reference/graphics.md#elements-kt--elements--solutions) explores.
 - `by { Elements.prop1(...) }` cites an earlier proposition: its steps join the proof, and its
   result comes back.
 - `check(claim, "why")` states what the proposition promises, so a choice that breaks it is
@@ -765,7 +765,6 @@ the square.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/euclid_elements/book2prop14.png" wait="3" capture="box" open-outputs="true" w="1000" h="860" padding="14" timeout="90" name="euclid-later-book2prop14" embed=true alt="Byrne's figure for II.14: a red rectangle BEDC, its side BE produced to F, a black semicircle on BF below it, the dotted line from E down to H on the semicircle, and the yellow square on EH, equal in area to the red rectangle."}
 import afield.geometry.euclid.*
-import kotlin.math.PI
 
 // book2prop14 written out in full; the library has the same construction as Elements.book2prop14(...)
 fun book2prop14(rect: Quadrilateral2) = construction("II.14", "To construct a square equal to a given rectilineal figure.") {
@@ -924,7 +923,6 @@ goes in by drawing the tangent at A and copying the golden triangle's base angle
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/euclid_elements/book4prop11.png" wait="3" capture="box" open-outputs="true" w="1000" h="780" padding="14" timeout="90" name="euclid-later-book4prop11" embed=true alt="Byrne's figure for IV.11: on the left the golden triangle FGH; on the right a black circle with the dotted tangent KAL at the top, the red sides AC and AD and blue base CD of the inscribed triangle, the dotted bisectors CE and DB, and the yellow regular pentagon ABCDE."}
 import afield.geometry.euclid.*
-import kotlin.math.PI
 
 // book4prop11 written out in full; the library has the same construction as Elements.book4prop11(...)
 fun book4prop11(circle: Circle2, at: Double = -PI / 2) = construction("IV.11", "In a given circle to inscribe an equilateral and equiangular pentagon.") {
@@ -991,7 +989,6 @@ the centre, it cuts off two corners, and lines from them through the centre give
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/euclid_elements/book4prop15.png" wait="3" capture="box" open-outputs="true" w="1000" h="860" padding="14" timeout="90" name="euclid-later-book4prop15" embed=true alt="Byrne's figure for IV.15: a black circle with centre G, the dotted diameter AD, a thin red circle about D through G cutting the circle at C and E, the dotted lines CF and EB through G, and the yellow regular hexagon ABCDEF."}
 import afield.geometry.euclid.*
-import kotlin.math.PI
 
 // book4prop15 written out in full; the library has the same construction as Elements.book4prop15(...)
 fun book4prop15(circle: Circle2, at: Double = -PI / 2) = construction("IV.15", "In a given circle to inscribe an equilateral and equiangular hexagon.") {
@@ -1037,7 +1034,6 @@ gives the figure.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/euclid_elements/book4prop16.png" wait="3" capture="box" open-outputs="true" w="1000" h="860" padding="14" timeout="90" name="euclid-later-book4prop16" embed=true alt="Byrne's figure for IV.16: a black circle holding a blue equilateral triangle and a red regular pentagon that share the top corner A. The arc between the pentagon's corner B and the triangle's corner C is halved at E, and a ring of thin yellow circles steps a yellow fifteen-sided figure round the circle."}
 import afield.geometry.euclid.*
-import kotlin.math.PI
 
 // book4prop16 written out in full; the library has the same construction as Elements.book4prop16(...)
 fun book4prop16(circle: Circle2, at: Double = -PI / 2) = construction(
@@ -1105,7 +1101,6 @@ the last to B, and a parallel through the first step cuts off the part.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/euclid_elements/book6prop9.png" wait="3" capture="box" open-outputs="true" w="1000" h="700" padding="14" timeout="90" name="euclid-later-book6prop9" embed=true alt="Byrne's figure for VI.9: the black line AB and a second line AC rising from A, marked off by three thin blue circles into equal steps AD, DE, EC. The red line BC and the dotted red parallel DF through D, with the yellow third AF along AB."}
 import afield.geometry.euclid.*
-import kotlin.math.PI
 
 // book6prop9 written out in full; the library has the same construction as Elements.book6prop9(...)
 fun book6prop9(ab: Segment2, parts: Int = 3) = construction("VI.9", "From a given straight line to cut off a prescribed part.") {
@@ -1256,9 +1251,6 @@ the end of B cuts off x.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/euclid_elements/book6prop12.png" wait="3" capture="box" open-outputs="true" w="1000" h="820" padding="14" timeout="90" name="euclid-later-book6prop12" embed=true alt="Byrne's figure for VI.12: three given lines on the left in red, blue and black; from D a line carrying DG equal to the red and GE equal to the blue, a line rising at an angle carrying DH equal to the black, thin circles marking each, the dotted joins GH and EL, and the yellow fourth proportional HL."}
 import afield.geometry.euclid.*
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 // book6prop12 written out in full; the library has the same construction as Elements.book6prop12(...)
 fun book6prop12(first: Segment2, second: Segment2, third: Segment2, at: Point2 = Point2.ORIGIN) = construction("VI.12", "To three given straight lines to find a fourth proportional.") {
@@ -1461,3 +1453,9 @@ letters, and `labelSize` and `labelDistance` (both in multiples of `thickness`) 
   It also has III.1 (the centre of a circle), IV.4 and IV.5 (a triangle's incircle and
   circumcircle) and VI.13 (a mean proportional), which this page does not show.
 - [Typography as Geometry](typography_examples.md), where the letters come from.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`Segment2`](reference/graphics.md#euclid-kt-segment2)

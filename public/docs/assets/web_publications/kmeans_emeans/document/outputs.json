@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-11T16:03:00.933Z",
+  "documentName": "kmeans_emeans",
+  "outputs": [
+    {
+      "uid": "kmeans_lloyd_vs_emeans",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1134,
+      "height": 425,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "kmeans_tree",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 918,
+      "height": 505,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "kmeans_epoch_slider",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 56,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "kmeans_epoch_slider",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 918,
+      "height": 505,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "kmeans_revival",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 878,
+      "height": 485,
+      "path": "outputs/4.html"
+    }
+  ]
+}

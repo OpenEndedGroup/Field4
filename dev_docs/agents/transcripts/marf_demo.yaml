@@ -117,9 +117,7 @@ operations:
               - <span style="color:#ff9942">orange</span> — `read slow 3 "<0 1 2 3 4>"`, each address held three stages
               - <span style="color:#85e585">green</span> — `read saw slow 8`, a fractional address blending two slots
 
-              Same five stages in all three. Only the trajectory differs.
-              """
-                  .trimIndent(),
+              Same five stages in all three. Only the trajectory differs.""".trimIndent(),
           )
   - create:
       box: marf_path
@@ -228,9 +226,7 @@ operations:
 
               The stage boundaries fall in the same places in all three lanes, because there is one stage
               structure carrying three values. `signal { it.x.toDouble() }` is how a vector reader reaches
-              the rest of the language, which is scalar nearly everywhere.
-              """
-                  .trimIndent(),
+              the rest of the language, which is scalar nearly everywhere.""".trimIndent(),
           )
   - create:
       box: marf_sound

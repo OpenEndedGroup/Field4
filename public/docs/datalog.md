@@ -513,7 +513,7 @@ val song = datalog(
 val r = song.rhythm()
 val grids = (0L until 4L).joinToString("\n\n") { "bar $it\n" + r.grid(it) }
 println(grids)
-display("main", "<pre>$grids</pre>")
+markdown("main", "```text\n$grids\n```")
 ```
 
 To hear it, add `showPatAudio(r.pattern(), cycles = 4, cps = 0.5)`, which renders four bars and

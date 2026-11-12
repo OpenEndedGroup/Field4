@@ -646,7 +646,7 @@ ui.pause(13500)
 
 `audioCurves` takes any uncompressed PCM WAV and returns one file per channel. For your own
 recording, use `"~/Downloads/recording.wav".path`, or `"recording.wav".path` for the document's
-`files/` folder (see [Files and paths](files_and_paths.md)). `AudioCurveSettings` changes the
+`files/` folder (see [Files and paths](files_and_paths.md)). [`AudioCurveSettings`](reference/audio.md#audiocurves-kt-audiocurvesettings) changes the
 analysis; each combination of settings is analysed once and kept:
 
 | Setting | Default | What it changes |
@@ -684,3 +684,9 @@ and returns its spectra, distance table and curves before and after alignment.
 - [Visualizers](visualizers.md#recorded-audio-waveform-player-playhead-and-navigation): the waveform
   player, and `onTime` for drawing in step with it.
 - [Loris](loris.md): a recording as partial tracks you can edit and resynthesize.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`AudioCurveFrame`](reference/audio.md#audiocurvefile-kt-audiocurveframe)

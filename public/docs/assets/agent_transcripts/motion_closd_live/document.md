@@ -11,13 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_closd_live" index="0" -->
 
 ```edn [field-box id="motion_closd_live" role="properties"]
-{"id" "motion_closd_live" "index" 0 "name" "CLoSD — intention and interference" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — intention and interference" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_closd_live_code_.kt" "lines" 169 "characters" 8843 "sha256" "163c5ccc52d109006ce479da6e6bfea57d2c39daa400870b5383510f8353fc5d"}]}
+{"id" "motion_closd_live" "index" 0 "name" "CLoSD — intention and interference" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — intention and interference" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_closd_live_code_.kt" "lines" 167 "characters" 8764 "sha256" "5fbbc661181f8b46eb2c5bc88c044194b6a92f49b294ba09ad946ed131a8192a"}]}
 ```
 
 ```kotlin [field-property box="motion_closd_live" name="code" path="motion_closd_live_code_.kt"]
 import afield.animation.mocap.*
-import afield.math.linalg.vec
-import afield.ui.output.ControlValueHandle
 import java.nio.file.Files
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.CompletableFuture
@@ -69,7 +67,7 @@ controlGroup(columns = 2) {
 
 frames {
     // Longer observation window; stock fall/termination logic and executed feedback remain enabled.
-    val worker = CLoSD.openAsync(MotionProcessConfig(overrides = listOf("env.episode_length=1800"))).awaitMotion()
+    val worker = CLoSD.openAsync(MotionProcessConfig(overrides = ["env.episode_length=1800"])).awaitMotion()
     worker.use { dancer ->
         val root = "motion-recordings".path
         Files.createDirectories(root)

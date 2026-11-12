@@ -14,6 +14,8 @@ import afield.geometry.mesh.torusMesh
 import afield.geometry.mesh.weld
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -578,6 +580,27 @@ class ManifoldTest {
             }
             Unit
         }
+    }
+
+    @Test
+    fun `double contours hold millimetre plans that Float ones round`() {
+        if (!requireManifold()) return
+        // A 9 m by 4.123456789 m plan in millimetres: Float holds 4123.4568, Double the lot.
+        val h = 4123.456789
+        val ring = listOf(0.0 to 0.0, 9000.0 to 0.0, 9000.0 to h, 0.0 to h)
+        Section.ofDoublePolygon(ring).use { exact ->
+            assertEquals(9000.0 * h, exact.area, 1e-12 * 9000.0 * h, "the area to 1e-12 relative")
+            val back = exact.toDoublePolygons().single()
+            assertEquals(h, back.maxOf { it.second }, 1e-8, "the coordinate comes back on Clipper's 1e-8 grid")
+        }
+        Section.ofPolygon(ring.map { Vec2(it.first.toFloat(), it.second.toFloat()) }).use { narrowed ->
+            assertTrue(abs(narrowed.area - 9000.0 * h) > 0.1, "through Float the area moves by more than 0.1 mm²")
+        }
+        // A slanted edge (a 75 degree corner) and both windings under NON_ZERO.
+        val c = cos(Math.toRadians(75.0)) * 3000.0; val s = sin(Math.toRadians(75.0)) * 3000.0
+        val slanted = listOf(0.0 to 0.0, 6000.0 to 0.0, 6000.0 + c to s, c to s)
+        Section.ofDoublePolygon(slanted).use { assertEquals(6000.0 * s, it.area, 1e-12 * 6000.0 * s) }
+        Section.ofDoublePolygon(slanted.reversed(), FillRule.NON_ZERO).use { assertEquals(6000.0 * s, it.area, 1e-12 * 6000.0 * s) }
     }
 
     @Test

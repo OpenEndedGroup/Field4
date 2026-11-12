@@ -45,7 +45,7 @@ contract a sweep needs: named lanes with a getter and a setter, and nothing else
 document writing them.
 
 ```edn [field-box id="ks_rig" role="properties"]
-{"id" "ks_rig" "index" 1 "name" "the rig, and ten lanes of it" "parents" ["root" "ks_renderer"] "children" ["ks_sweep"] "properties" {"children" #{#afield/box "ks_sweep"} "parents" #{#afield/box "root" #afield/box "ks_renderer"} "name" "the rig, and ten lanes of it" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_rig_code_.kt" "lines" 208 "characters" 8133 "sha256" "79e7ff7b67fb6d6778f5f9336d119727742dd7e39e66c9b359c9c4f28f4ebc0c"}]}
+{"id" "ks_rig" "index" 1 "name" "the rig, and ten lanes of it" "parents" ["root" "ks_renderer"] "children" ["ks_sweep"] "properties" {"children" #{#afield/box "ks_sweep"} "parents" #{#afield/box "root" #afield/box "ks_renderer"} "name" "the rig, and ten lanes of it" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_rig_code_.kt" "lines" 208 "characters" 8118 "sha256" "d87c65279c3ed0aeaed12c8244937ffaa950e803ddc936c1496b322dd34f112a"}]}
 ```
 
 ```kotlin [field-property box="ks_rig" name="code" path="ks_rig_code_.kt"]
@@ -62,7 +62,7 @@ import kotlin.io.path.writeText
 prop<StandardRenderer.Bundle>(bundle)
 prop<afield.animation.keyframes.KeyframeScope>(keys)
 
-val r: Renderer = fromContext()
+val r = renderer
 val dim = 512
 
 // Plain locals rather than `prop<>`s: a `Path` in a document property would have to
@@ -340,15 +340,14 @@ The whole of it. Twelve renders here so the box finishes while you watch; set `c
 to 5000 and `maxDurationMs` to whatever "stop at 7am" is, and walk away.
 
 ```edn [field-box id="ks_sweep" role="properties"]
-{"id" "ks_sweep" "index" 3 "name" "the sweep" "parents" ["root" "ks_rig"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ks_rig"} "name" "the sweep" "_tombstone" false "frame" #afield/rect [40.0 360.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_sweep_code_.kt" "lines" 60 "characters" 2560 "sha256" "f5a4ad316fd30d42019840f9d6419e45f4872b0bd28aeea0c073e2fa6c9af467"}]}
+{"id" "ks_sweep" "index" 3 "name" "the sweep" "parents" ["root" "ks_rig"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ks_rig"} "name" "the sweep" "_tombstone" false "frame" #afield/rect [40.0 360.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_sweep_code_.kt" "lines" 59 "characters" 2460 "sha256" "e66d03bf6e8ccd9961658cc52e1b69ee59c0c4c2afecde56502b3b0622d40ef7"}]}
 ```
 
 ```kotlin [field-property box="ks_sweep" name="code" path="ks_sweep_code_.kt"]
 // The whole of it. Twelve renders here so the box finishes while you watch; set `count`
 // to 5000 and `maxDurationMs` to whatever "stop at 7am" is, and walk away.
-val r: Renderer = fromContext()
-val keys: KeyframeScope = fromContext()
-val bundle: afield.graphics.scene.fabricated.StandardRenderer.Bundle = fromContext()
+val r = renderer
+val ownedBundle = bundle
 val pool = "%document/looks".path
 val archive = "%document/sweep".path
 
@@ -382,13 +381,13 @@ a callable reference, `start(renderer::run)`), which is why the trap is unspent.
 frames {
     val report = sweep.run { render ->
         r.awaitFrames(6)
-        render.captureStill(r, bundle.postStack.output(), settleFrames = 0)
-        render.captureClip(r, bundle.postStack.output(), frames = 8, fps = 12, settleFrames = 0) { _, t ->
+        render.captureStill(r, ownedBundle.postStack.output(), settleFrames = 0)
+        render.captureClip(r, ownedBundle.postStack.output(), frames = 8, fps = 12, settleFrames = 0) { _, t ->
             // A small orbit *around* the blended camera, so the clip moves without
             // overwriting the lane the key set.
             val at = render.key["camera.at"] as afield.math.linalg.Vector3f
             val a = (t - 0.5) * 0.5
-            bundle.scene.camera.at.set(
+            ownedBundle.scene.camera.at.set(
                 (at.x * kotlin.math.cos(a) - at.z * kotlin.math.sin(a)).toFloat(),
                 at.y,
                 (at.x * kotlin.math.sin(a) + at.z * kotlin.math.cos(a)).toFloat(),

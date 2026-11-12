@@ -31,8 +31,16 @@ PILOTS = ("fline_examples", "three_output_gallery", "canonical_graphics") + FIEL
 # watchdog, so they capture under a 120 s budget. The execution harness records ~67 s for Morpho's.
 # The evolution and fitting searches joined on 2026-11-08: a full refresh (any change to the
 # capture digest) stalled them on four landing attempts in a row, one of them on an idle host.
+# A Pen That Sees joined on 2026-11-10: its `ps_measure` box ("seeing against blind, measured")
+# stalled the watchdog at 30 s in the full refreshes of 2026-11-07 and 2026-11-10.
 LONG_COMPUTE = frozenset({"petri_tala_layout", "morpho_circuit_search", "alife_evolution",
-                          "braitenberg_brain_search", "braitenberg_where_next", "stacksl_fit_demo"})
+                          "braitenberg_brain_search", "braitenberg_where_next", "stacksl_fit_demo",
+                          "a_pen_that_sees"})
+# Failures that say nothing about the document, so they get one retry in a fresh Field session:
+# a capture that ran out of time, and a WebSocket the session dropped mid-capture (1006, no close
+# frame). The drop bounced full refreshes on 2026-11-07 (box_graph_demo), 2026-11-08
+# (spreadsheet_constraints) and 2026-11-10 (fline_exact_booleans), a different document each time.
+TRANSIENT_CAPTURE_ERRORS = ("Output capture exceeded", "ConnectionClosedError", "code=1006")
 
 
 def publication_node() -> str | None:
@@ -222,9 +230,11 @@ def sync_publications(*, mode: str = 'incremental', port: int | None = None) -> 
         print('Docs publications: ' + json.dumps(summary), flush=True)
         return summary
     report = asyncio.run(capture(pending, port=port, force=True)) if pending else []
-    retry_names = {r['name'] for r in report if not r['ok'] and 'Output capture exceeded' in r.get('error', '')}
+    retry_names = {r['name'] for r in report
+                   if not r['ok'] and any(mark in r.get('error', '') for mark in TRANSIENT_CAPTURE_ERRORS)}
     if retry_names:
-        print('Retrying timed-out captures in a fresh Field session: ' + ', '.join(sorted(retry_names)), flush=True)
+        print('Retrying timed-out or disconnected captures in a fresh Field session: '
+              + ', '.join(sorted(retry_names)), flush=True)
         retried = asyncio.run(capture([r for r in pending if r['name'] in retry_names], port=port, force=True))
         by_name = {r['name']: {**r, 'attempts': 2} for r in retried}
         report = [by_name.get(r['name'], r) for r in report]

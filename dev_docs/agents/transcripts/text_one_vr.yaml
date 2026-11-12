@@ -13,14 +13,13 @@ operations:
     box: text1_context
     name: 1 · Reading space
     frame:
-      x: 0
+      x: 1340
       y: 150
       w: 480
       h: 100
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.vulkan.targets.*
         import afield.graphics.vulkan.util.Options
         import afield.media.browser.*
 
@@ -87,7 +86,7 @@ operations:
     box: text1_poem
     name: 2 · Marked breath
     frame:
-      x: 650
+      x: 1990
       y: 0
       w: 480
       h: 100
@@ -155,16 +154,14 @@ operations:
     box: text1_example2
     name: 3 · Constituency canopy
     frame:
-      x: 650
+      x: 1990
       y: 110
       w: 480
       h: 100
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
         import afield.graphics.text.sentences.*
-        import kotlin.math.*
 
         // 2 · Complete canopy. Preserve the parser's geometry, while the visible words come from the passage.
         val parsed = ReadingPassage.sentence(2)
@@ -311,16 +308,14 @@ operations:
     box: text1_example3
     name: 4 · Dependency undertow
     frame:
-      x: 650
+      x: 1990
       y: 220
       w: 480
       h: 100
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
         import afield.graphics.text.sentences.*
-        import kotlin.math.*
 
         // 3 · Undertow. Nested dependency arcs, with independently scored labels and beads.
         val parsed = ReadingPassage.sentence(3)
@@ -407,16 +402,14 @@ operations:
     box: text1_example4
     name: 5 · Sentence furniture
     frame:
-      x: 650
+      x: 1990
       y: 330
       w: 480
       h: 100
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
         import afield.graphics.text.sentences.*
-        import kotlin.math.*
 
         // 4 · Sentence furniture. Reed-Kellogg shelves become a shallow spatial mobile, then a reading line.
         val parsed = ReadingPassage.sentence(4)
@@ -505,15 +498,13 @@ operations:
     box: text1_typography
     name: 13 · Typography playground
     frame:
-      x: 650
+      x: 1990
       y: 440
       w: 480
       h: 100
     properties:
       code: |
-        import afield.geometry.path.FLine
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
 
         // 5 · A room for words. One Slug run can contain multiple real faces and inline styles.
         val serif = Typefaces.named("Noto Serif", 100, strict = true)
@@ -606,14 +597,13 @@ operations:
     box: text1_word_blur
     name: 14 · Words becoming weather
     frame:
-      x: 650
+      x: 1990
       y: 550
       w: 480
       h: 100
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
 
         // Separate words can breathe on separate clocks. The blur radius is measured in ems;
         // opacity is independent, so a word can stay bright while its outline dissolves.
@@ -646,14 +636,13 @@ operations:
     box: text1_elastic
     name: 18 · Elastic sentences
     frame:
-      x: 650
+      x: 1990
       y: 660
       w: 480
       h: 100
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
 
         /*
         Verbatim excerpts from texts/source-passage.txt; line breaks are the only layout edits.
@@ -833,14 +822,13 @@ operations:
     box: text1_drop_caps
     name: 19 · A dropped initial
     frame:
-      x: 650
+      x: 1990
       y: 770
       w: 480
       h: 100
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
 
         /*
         Authored line breaks are part of the poem. The first three lines sit beside the initial;
@@ -925,7 +913,7 @@ operations:
     box: text1_two_readings
     name: 22 · Two readings / composed sequence
     frame:
-      x: 650
+      x: 1990
       y: 880
       w: 480
       h: 100
@@ -1043,7 +1031,7 @@ operations:
     box: text1_overstroke_rectangle
     name: 24 · Extended rectangle
     frame:
-      x: -1300
+      x: 40
       y: 150
       w: 480
       h: 100
@@ -1108,7 +1096,7 @@ operations:
     box: text1_overstroke_union
     name: 25 · Union with corner extensions
     frame:
-      x: -1300
+      x: 40
       y: 260
       w: 480
       h: 100
@@ -1177,7 +1165,7 @@ operations:
     box: text1_frustum_readings
     name: 26 · Transparent text frustum
     frame:
-      x: -1300
+      x: 40
       y: 370
       w: 480
       h: 100
@@ -1244,7 +1232,7 @@ operations:
     box: text1_frustum_two_faces
     name: 27 · A holder with two faces
     frame:
-      x: -1300
+      x: 40
       y: 480
       w: 480
       h: 100
@@ -1321,7 +1309,7 @@ operations:
     box: text1_score
     name: 6 · Scores / example selector
     frame:
-      x: 1200
+      x: 2540
       y: 0
       w: 480
       h: 100
@@ -1409,7 +1397,7 @@ operations:
 
         fun describe() {
             val e = poem.examples[poem.selected]
-            display("selected example", "<div style='padding:12px;width:440px'><b>${e.title}</b><p>${e.description}</p></div>")
+            markdown("selected example", "### ${e.title}\n\n${e.description}")
         }
         controlGroup("reading spaces") {
             for ((i, e) in allExamples.withIndex()) button(e.title) { down ->
@@ -1447,7 +1435,7 @@ operations:
     box: text1_stroke
     name: 7 · FLine strokes
     frame:
-      x: 1800
+      x: 3140
       y: 0
       w: 480
       h: 100
@@ -1630,7 +1618,7 @@ operations:
     box: text1_point
     name: 8 · SDF markers
     frame:
-      x: 1800
+      x: 3140
       y: 110
       w: 480
       h: 100
@@ -1733,7 +1721,7 @@ operations:
     box: text1_text
     name: 9 · Slug words
     frame:
-      x: 1800
+      x: 3140
       y: 220
       w: 480
       h: 100
@@ -2021,7 +2009,7 @@ operations:
     box: text1_blur
     name: 10 · Medium blur / horizontal
     frame:
-      x: 1800
+      x: 3140
       y: 330
       w: 480
       h: 100
@@ -2067,7 +2055,7 @@ operations:
     box: text1_blur_medium_v
     name: 15 · Medium blur / vertical
     frame:
-      x: 1800
+      x: 3140
       y: 440
       w: 480
       h: 100
@@ -2113,7 +2101,7 @@ operations:
     box: text1_blur_broad_h
     name: 16 · Broad blur / horizontal
     frame:
-      x: 1800
+      x: 3140
       y: 550
       w: 480
       h: 100
@@ -2159,7 +2147,7 @@ operations:
     box: text1_blur_broad_v
     name: 17 · Broad blur / vertical
     frame:
-      x: 1800
+      x: 3140
       y: 660
       w: 480
       h: 100
@@ -2205,7 +2193,7 @@ operations:
     box: text1_composite
     name: 11 · Green / light compositor
     frame:
-      x: 1800
+      x: 3140
       y: 770
       w: 480
       h: 100
@@ -2444,7 +2432,7 @@ operations:
     box: text1_drawing
     name: 12 · Drawing / score playback
     frame:
-      x: 2350
+      x: 3690
       y: 0
       w: 480
       h: 100
@@ -2543,7 +2531,7 @@ operations:
     box: text1_body
     name: 21 · Body interaction / diagnostics
     frame:
-      x: 2350
+      x: 3690
       y: 220
       w: 480
       h: 100
@@ -2849,7 +2837,7 @@ operations:
     box: text1_navigation
     name: 20 · Move through the reading space
     frame:
-      x: 2350
+      x: 3690
       y: 110
       w: 480
       h: 100
@@ -2903,7 +2891,7 @@ operations:
     box: text1_global_keys
     name: 23 · Global looks / keyframes
     frame:
-      x: -650
+      x: 690
       y: 150
       w: 480
       h: 100

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T21:00:01.299Z",
+  "capturedAt": "2026-11-12T06:40:04.313Z",
   "documentName": "ordered_group_keyframes",
   "outputs": [
     {
@@ -9,7 +9,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 463,
+      "width": 474,
       "height": 67,
       "path": "outputs/0.html"
     }

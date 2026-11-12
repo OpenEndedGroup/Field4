@@ -10,15 +10,17 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 <!-- field-box id="ordered_group_demo" index="0" -->
 
+### Narrative
+
+From `code`
+
+An inherited property stays dynamic after source-only rehydration.
+
 ```edn [field-box id="ordered_group_demo" role="properties"]
-{"id" "ordered_group_demo" "index" 0 "name" "Ordered group keyframes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ordered group keyframes" "_tombstone" false "frame" #afield/rect [40.0 40.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ordered_group_demo_code_.kt" "lines" 62 "characters" 2531 "sha256" "79ae743d85de84713c14a150e1c689cfc91a2fa21d744d34a8e395961249c284"}]}
+{"id" "ordered_group_demo" "index" 0 "name" "Ordered group keyframes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ordered group keyframes" "_tombstone" false "frame" #afield/rect [40.0 40.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ordered_group_demo_code_.kt" "lines" 58 "characters" 2382 "sha256" "24807ca3767280a67d06dfc2fe0fd0006b4152b4c4851b9e387d0514043d157c"}]}
 ```
 
 ```kotlin [field-property box="ordered_group_demo" name="code" path="ordered_group_demo_code_.kt"]
-import afield.animation.keyframes.OrderedKeyframeGroup
-import afield.document.workspace.FileManager
-import afield.study.source.SourceBackedFunction
-
 // An inherited property stays dynamic after source-only rehydration.
 prop<Double>(ruleOffset) = 0.1
 val group =

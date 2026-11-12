@@ -1,6 +1,4 @@
-import afield.geometry.path.FLine
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // 5 · A room for words. One Slug run can contain multiple real faces and inline styles.
 val serif = Typefaces.named("Noto Serif", 100, strict = true)

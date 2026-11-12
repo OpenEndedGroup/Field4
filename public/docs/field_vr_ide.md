@@ -7,7 +7,8 @@ connected browser.
 The IDE is a high-resolution browser panel inside Field's Vulkan/OpenXR scene. Controllers point,
 click, scroll, move and resize it. On Quest 3 with WiVRn, a keyboard and mouse connected to the
 headset provide ordinary text editing and a cursor inside the panel, without desktop window focus.
-This workflow has been used for development in the headset on the Linux/NVIDIA setup below.
+This workflow has been used for development in the headset on the Linux/NVIDIA setup below, and it
+also runs from an Apple silicon Mac through [WiVRn for macOS](#macos-through-wivrn).
 
 ```diffstatic_runner {data-lang=kotlin requires="electron-runtime" screenshot="assets/field_vr_ide/companion.png" capture="native-window" native-wait-frames="20" trim-native=true wait="8" embed=true hidden=true timeout="180" name="field-vr-ide-companion" alt="Field's live canvas, executed Playground output and VR toolbar, sampled from Chromium into the Vulkan desktop companion" macro-file="../../dev_docs/agents/transcripts/field_vr_ide.yaml" capture-box="vr_ide_renderer" run-box="vr_ide_playground"}
 // Runs the starter and Playground in desktop mode, then captures the actual Vulkan companion.
@@ -71,6 +72,7 @@ Restart Field to change OpenXR mode or eye dimensions.
 ## Choose your input
 
 For Apple Vision Pro through ALVR, see [the SteamVR launch setup below](#apple-vision-pro-through-alvr).
+On a Mac, use the companion window or the in-panel keyboard; see [macOS through WiVRn](#macos-through-wivrn).
 
 | Input | What receives it | Desktop window focus |
 | --- | --- | --- |
@@ -86,7 +88,7 @@ document the panel displays.
 ## A real keyboard
 
 For a keyboard attached to the PC while OpenXR is active, set `headsetInput = false` in the
-`FieldVrWorkspace(...)` constructor in box 2, then stop and relaunch that box. This selects the
+[`FieldVrWorkspace(...)`](reference/imaging.md#fieldvrworkspace-kt-fieldvrworkspace) constructor in box 2, then stop and relaunch that box. This selects the
 desktop focus behaviour below. The default Linux/OpenXR mode uses the dedicated headset input path.
 `FIELD_VR_INPUT=desktop` selects this default for all panels in a Field process;
 `FIELD_VR_INPUT=wivrn` explicitly selects WiVRn on Linux/OpenXR. An explicit constructor argument
@@ -210,6 +212,92 @@ also depend on what ALVR and SteamVR expose; the Quest interaction results below
 
 This streamed Linux renderer is separate from Field's [native visionOS frontend](vision.md).
 
+## macOS through WiVRn
+
+The path is **Field OpenXR → WiVRn for macOS → Quest**: the Mac renders, the headset displays.
+[WiVRn for macOS](https://github.com/orchardxr/wivrn-macos) is a port of the WiVRn server that
+encodes with VideoToolbox and streams to the ordinary WiVRn headset app. The starting point, the
+browser panel, controller pointing and grip work as described above.
+
+You need an Apple silicon Mac and the port's `WiVRn.app` in `/Applications`. The WiVRn app on the
+headset must be the same version as the server it connects to: the port is WiVRn 26.9, and a
+headset app installed for a Linux server on another version reports an incompatible server version.
+
+Two steps prepare the Mac once. Run them from the Field checkout:
+
+```diffstatic {data-lang=bash}
+# Build the Khronos OpenXR loader into .afield-local/openxr (needs git and cmake).
+uv run python tools/field_wivrn_macos.py --build-loader
+# Make WiVRn encode with VideoToolbox HEVC.
+uv run python tools/field_wivrn_macos.py --configure-encoder
+```
+
+The first is needed because LWJGL ships no OpenXR loader for macOS. The second edits
+`~/.config/wivrn/config.json`, keeping your other settings: left to choose by itself, WiVRn can
+fall back to its software x264 encoder, which stops the WiVRn server on the first frame.
+
+Open WiVRn and pair the headset. In the headset app, add the Mac by its IP address if it is not
+listed, and enter the PIN that the WiVRn window shows while pairing is enabled. Then start Field
+with WiVRn as its OpenXR runtime:
+
+```diffstatic {data-lang=bash}
+# Read-only: print the environment and command, and anything still missing.
+uv run python tools/field_wivrn_macos.py --check -- /path/to/workspace -d Field-VR-IDE
+# Launch Field with WiVRn for this process.
+uv run python tools/field_wivrn_macos.py -- /path/to/workspace -d Field-VR-IDE
+```
+
+[The launcher](https://github.com/OpenEndedGroup/Field4/blob/main/tools/field_wivrn_macos.py) sets
+`XR_RUNTIME_JSON`, the loader path and the Vulkan driver for this Field process only. The driver is
+MoltenVK, because WiVRn's runtime shares its eye images with Field through `VK_EXT_metal_objects`,
+which KosmicKrisp does not provide. Your default OpenXR runtime and Field's default driver are
+left as they were. Set `useHeadset = true` in starter box 1, then launch box 1 followed by box 2.
+Restart Field to leave OpenXR mode.
+
+To stay on KosmicKrisp, build a patched copy of WiVRn's runtime once, then launch with
+`--kosmickrisp`:
+
+```diffstatic {data-lang=bash}
+# Clone the pinned WiVRn for macOS into ~/.field4/wivrn-macos and build its runtime with Field's patch.
+uv run python tools/field_wivrn_macos.py --build-kk-runtime
+# Launch Field on KosmicKrisp with that runtime.
+uv run python tools/field_wivrn_macos.py --kosmickrisp -- /path/to/workspace -d Field-VR-IDE
+```
+
+[The patch](https://github.com/OpenEndedGroup/Field4/blob/main/optional/wivrn-macos/README.md)
+makes the runtime copy each eye image into WiVRn's IOSurface on the GPU instead of wrapping it,
+which KosmicKrisp can do. The installed `WiVRn.app` still runs the server. The build needs the
+port's Homebrew build dependencies, Xcode and the Vulkan SDK. Frame rate and latency come out
+within a few frames per second of MoltenVK.
+
+Type with a keyboard attached to the Mac while the companion window has focus, or use the
+in-panel keyboard. WiVRn's headset keyboard and mouse forwarding is Linux-only.
+
+### Frame rate and latency on the Mac
+
+Field renders at the headset's refresh rate; WiVRn's encoder is what limits the stream. The
+headset app's refresh rate and stream scale decide whether it keeps up. Measured on an M1 Max
+MacBook Pro on Wi-Fi with a Quest 3, with the VR IDE running:
+
+| Headset app setting | Stream per eye | Frames reaching the headset |
+| --- | --- | --- |
+| 120 Hz, stream scale 1.0 | 2176 × 2304 | about 36 per second |
+| 90 Hz, stream scale 1.0 | 2176 × 2304 | 78–85 per second |
+| 90 Hz, stream scale 0.5 | 1088 × 1088 | about 90 per second |
+
+Use 90 Hz. At 120 Hz each eye takes longer to encode than a frame lasts, so most frames miss
+their slot. Stream scale trades sharpness for smoothness: 0.5 keeps the full rate, and a higher
+scale gives sharper text at a lower rate. WiVRn for macOS caps the stream at 2176 × 2304 per eye,
+so past that a higher render resolution adds nothing to the stream.
+
+The headset app's motion-to-photon overlay, which reports the worst case, read about 150 ms at
+stream scale 1.0. Turning off hand tracking in the headset app, when you use controllers, brought
+that to about 130 ms, and stream scale 0.5 to about 90 ms. A wired connection for the Mac shortens
+the network step.
+
+Restart WiVRn and Field after changing settings in the headset app; a resumed session keeps the
+old ones. If the headset cannot reconnect after it sleeps, quit and reopen WiVRn, then restart Field.
+
 ## What has been verified
 
 The **Quest 3, WiVRn and Linux/NVIDIA** workflow was tested on-headset on **2 November 2026**.
@@ -221,6 +309,12 @@ The private Tailscale listener also served two real Chromium clients that exchan
 edits while preserving independent focus. That check used two clients on one host; a second
 physical remote computer has not yet been checked. Field still needs the graphics/display session
 described above, even when nobody is using the PC screen.
+
+The **Quest 3, WiVRn for macOS and Apple silicon** path was tested on-headset on **12 November
+2026** (M1 Max, macOS 26.5, WiVRn for macOS 26.9.5): the VR IDE panel displayed and was usable
+in the headset, with the frame rates and latency above, on MoltenVK and on KosmicKrisp with the
+patched runtime. Headset-attached keyboard and mouse and body tracking are not supported on this
+path.
 
 ??? aside "Rendering and input checks"
     The companion figure is captured from the real Chromium-to-Vulkan browser path. It shows the
@@ -276,7 +370,7 @@ see [stereo video precision](stereo_video.md#colour-precision) for the stages to
 
 ## World-space audio through WiVRn
 
-Place a mono WAV in the OpenXR scene with `SpatialWavPlayer`. Steam Audio renders it as binaural
+Place a mono WAV in the OpenXR scene with [`SpatialWavPlayer`](reference/audio.md#spatialwavplayer-kt-spatialwavplayer). Steam Audio renders it as binaural
 stereo using the headset pose, through a named WiVRn output; your desktop's default output stays
 as it was. Install Steam Audio's native library first with `./gradlew fetchSteamAudioNatives`.
 
@@ -304,3 +398,12 @@ device-paced thread; the graphics Runloop reads and changes its controls.
 
 To inspect the tracking data behind headset interactions, open [body_one](body_tracking.md).
 It draws available hands, sparse body joints and controllers, with bounds and closest-point helpers.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`SpatialWavPlayer.openWiVRn`](reference/audio.md#spatialwavplayer-kt--spatialwavplayer--openwivrn)
+- [`SpatialWavPlayer.place`](reference/audio.md#spatialwavplayer-kt--spatialwavplayer--place)
+- [`SpatialWavPlayer.play`](reference/audio.md#spatialwavplayer-kt--spatialwavplayer--play)
+- [`SpatialWavPlayer.close`](reference/audio.md#spatialwavplayer-kt--spatialwavplayer--close)

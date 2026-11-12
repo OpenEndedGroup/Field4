@@ -27,8 +27,6 @@ the geometry found. Below the stills is the signed distance over the whole clip.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_tracked_body/measured.png" scale="1.5" wait="3" capture="box" open-outputs="true" w="1180" h="640" padding="18" timeout="120" name="chain-tracked-body-measured" embed=true alt="Ten stills from the swing film, two rows of five, each labelled with its frame and time: a woman in a patterned dress holding the swing ropes at shoulder height, with a thin white mediapipe skeleton, green body slots and connections, and a pink dot on her right wrist joined to the nearest point of her body; below, a jagged pink curve of the wrist distance across the clip; below that, a summary of frames and distances"}
 import afield.graphics.scene.body.*
 import afield.graphics.vulkan.targets.OpenXRHmdTarget.*
-import afield.media.image.*
-import afield.media.video.*
 import java.io.File
 import kotlinx.serialization.json.*
 
@@ -172,7 +170,6 @@ so that one cycle lasts as long as the clip.
 import afield.graphics.scene.body.*
 import afield.graphics.vulkan.targets.OpenXRHmdTarget.*
 import java.io.File
-import kotlin.math.roundToInt
 import kotlinx.serialization.json.*
 
 // The recording: per frame, null or mediapipe's 33 landmarks as [x, y, z, visibility].

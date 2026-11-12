@@ -75,9 +75,7 @@ presentation(title = "Teaching with Field") {
                         The picture and the explanation live together.
 
                         1. Predict the effect of a frequency change.
-                        2. Try it in the live document.
-                    """
-                            .md
+                        2. Try it in the live document.""".md
                     }
                 }
                 markdownNote(

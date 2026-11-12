@@ -108,6 +108,15 @@ def normalize_url(url: str) -> str:
     return urllib.parse.urlunsplit(("https", host, path, query, ""))
 
 
+def fetchable_url(url: str) -> str:
+    """The link as it can be fetched: like `normalize_url` but keeping the host as given, since some
+    sites (construction-physics.com) only resolve with their `www.`."""
+    parts = urllib.parse.urlsplit(url.strip())
+    query = urllib.parse.urlencode([(k, v) for k, v in urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
+                                    if not TRACKING.match(k)])
+    return urllib.parse.urlunsplit((parts.scheme or "https", parts.netloc, parts.path, query, ""))
+
+
 def key_for(url: str | None, hn_id: str | None = None) -> str:
     if url:
         return hashlib.sha1(normalize_url(url).encode()).hexdigest()[:12]
@@ -236,7 +245,7 @@ class Ledger:
         item = self.items.get(key)
         created = item is None
         if created:
-            item = Item(key=key, title=title.strip(), url=normalize_url(url) if url else None, added=today().isoformat())
+            item = Item(key=key, title=title.strip(), url=fetchable_url(url) if url else None, added=today().isoformat())
             self.items[key] = item
         same = [s for s in item.sightings if s.get("src") == sighting.get("src") and s.get("hn") == sighting.get("hn")]
         if same:
@@ -386,9 +395,11 @@ def feed_date(text: str) -> dt.date | None:
         return None
 
 
-def feed(fetcher: Fetcher, name: str, url: str, limit: int = 30, lookback_days: int = 14) -> Iterable[tuple[str, str | None, dict]]:
+def feed(fetcher: Fetcher, name: str, url: str, limit: int = 30, lookback_days: int = 14,
+         exclude_titles: str | None = None) -> Iterable[tuple[str, str | None, dict]]:
     """A feed's recent items. Items older than `lookback_days` are skipped, so a feed's archive
-    does not arrive on the first run; undated items are kept and deduplicated by the ledger."""
+    does not arrive on the first run; undated items are kept and deduplicated by the ledger.
+    `exclude_titles` is a regex for posts a feed mixes in that are not its essays (link roundups)."""
     # Some feeds carry every post in full (Graphics Programming Weekly's is over 6 MB).
     r = fetcher.get(url, "application/rss+xml, application/atom+xml, application/xml, text/xml", max_bytes=32_000_000)
     if r.status != 200:
@@ -396,6 +407,8 @@ def feed(fetcher: Fetcher, name: str, url: str, limit: int = 30, lookback_days: 
     oldest = today() - dt.timedelta(days=lookback_days)
     for title, link, date in parse_feed(r.body)[:limit]:
         when = feed_date(date)
+        if exclude_titles and re.search(exclude_titles, title or ""):
+            continue
         if when is not None and when < oldest:
             continue
         yield title, link, {"src": f"feed:{name}", "at": when.isoformat() if when else ""}
@@ -483,7 +496,7 @@ def harvest(ledger: Ledger, fetcher: Fetcher, sources: dict, log: Callable[[str]
         take(f"lobsters:{tag}", lobsters(fetcher, tag), count_as="lobsters")
     for f in sources.get("feeds", []):
         rows = feed(fetcher, f["name"], f["url"], f.get("limit", 30),
-                    f.get("lookback_days", sources.get("feed_lookback_days", 14)))
+                    f.get("lookback_days", sources.get("feed_lookback_days", 14)), f.get("exclude_titles"))
         take(f"feed:{f['name']}", expand_issues(ledger, fetcher, f["name"], rows) if f.get("expand") else rows)
     ledger.save()
     for label, n in counts.items():
@@ -640,7 +653,15 @@ def fetch_page(fetcher: Fetcher, item: Item) -> tuple[str, dict]:
         r = fetcher.get(f"https://raw.githubusercontent.com/{repo[0]}/{repo[1]}/HEAD/README.md")
         text = r.body.decode("utf-8", "replace") if r.status == 200 else meta.get("description", "")
         return text, {**meta, "kind": "github"}
-    r = fetcher.get(item.url, "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5")
+    accept = "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5"
+    try:
+        r = fetcher.get(item.url, accept)
+    except urllib.error.URLError as error:
+        # Ledger entries written before `fetchable_url` lost their `www.`; try it back on.
+        parts = urllib.parse.urlsplit(item.url)
+        if (parts.hostname or "").startswith("www.") or not isinstance(error.reason, OSError):
+            raise
+        r = fetcher.get(urllib.parse.urlunsplit(parts._replace(netloc="www." + parts.netloc)), accept)
     if r.status != 200:
         raise OSError(f"HTTP {r.status}")
     ctype = r.content_type.lower()

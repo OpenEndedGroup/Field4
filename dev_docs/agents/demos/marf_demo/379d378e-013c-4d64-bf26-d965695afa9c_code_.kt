@@ -65,7 +65,5 @@ markdown(
 
     The stage boundaries fall in the same places in all three lanes, because there is one stage
     structure carrying three values. `signal { it.x.toDouble() }` is how a vector reader reaches
-    the rest of the language, which is scalar nearly everywhere.
-    """
-        .trimIndent(),
+    the rest of the language, which is scalar nearly everywhere.""".trimIndent(),
 )

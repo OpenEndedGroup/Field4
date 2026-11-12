@@ -1,6 +1,4 @@
 import afield.geometry.leaper.*
-import afield.runtime.execution.begin
-import kotlin.math.*
 import kotlin.random.Random
 
 // Longest uncrossed knight paths and the longest closed one on 7×7, published under the knight-tour workshop's
@@ -36,7 +34,7 @@ fun threePointArc(
     val cx = c.first - ax
     val cy = c.second - ay
     val cross = bx * cy - by * cx
-    if (abs(cross) < 1e-9) return listOf(a, b, c)
+    if (abs(cross) < 1e-9) return [a, b, c]
     val bb = bx * bx + by * by
     val cc = cx * cx + cy * cy
     val ux = (bb * cy - cc * by) / (2 * cross)

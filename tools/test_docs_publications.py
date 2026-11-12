@@ -259,6 +259,26 @@ class PublicationRefreshTest(unittest.TestCase):
             self.assertEqual(publications.sync_publications()['refreshed'], 1)
         self.assertEqual(len(calls), 2)
 
+    def test_a_dropped_websocket_gets_one_fresh_session_retry(self):
+        calls = []
+        async def capture(recipes, **kwargs):
+            calls.append(recipes)
+            if len(calls) == 1:
+                return [{'name': 'example', 'ok': False,
+                         'error': 'ConnectionClosedError: no close frame received or sent [code=1006]'}]
+            self.record()
+            return [{'name': 'example', 'ok': True, 'channels': 0}]
+        with patch.object(publications, 'capture', new=AsyncMock(side_effect=capture)):
+            self.assertEqual(publications.sync_publications()['refreshed'], 1)
+        self.assertEqual(len(calls), 2)
+
+    def test_a_real_failure_is_not_retried(self):
+        with patch.object(publications, 'capture', new=AsyncMock(return_value=[
+                {'name': 'example', 'ok': False, 'error': 'Box interrupted: compile error'}])) as runner:
+            with self.assertRaisesRegex(ValueError, 'compile error'):
+                publications.sync_publications()
+            self.assertEqual(runner.await_count, 1)
+
     def test_persistent_capture_timeout_fails_after_one_retry(self):
         with patch.object(publications, 'capture', new=AsyncMock(return_value=[
                 {'name': 'example', 'ok': False, 'error': 'Output capture exceeded 30 seconds'}])) as runner:
@@ -307,6 +327,17 @@ class PublicationRefreshTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'source file set changed'):
             publications.registry()
 
+
+
+class LongComputeNamesRealRecipes(unittest.TestCase):
+    """Against the real tree: a LONG_COMPUTE entry that names no recipe protects nothing."""
+
+    def test_every_long_compute_name_is_a_gallery_recipe_with_the_long_budget(self):
+        recipes = {r['name']: r for r in publications.recipes('gallery')}
+        for name in sorted(publications.LONG_COMPUTE):
+            with self.subTest(name=name):
+                self.assertIn(name, recipes, f'{name} is no longer a publication recipe; drop it from LONG_COMPUTE')
+                self.assertTrue(recipes[name]['longCompute'])
 
 if __name__ == '__main__':
     unittest.main()

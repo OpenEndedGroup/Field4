@@ -95,8 +95,7 @@ operations:
 
           """worst |sampler - lowered| over ${strobe.size} strobes: $worst
           |the quadrant-less form is a half turn out at $halfTurns of them
-          |lowered graph: ${lowered.extractParameters().size} numeric leaves"""
-              .trimMargin()
+          |lowered graph: ${lowered.extractParameters().size} numeric leaves""".trimMargin()
   - execute:
       box: rectsl_heading_lowering
       property: code
@@ -174,8 +173,7 @@ operations:
 
         """worst |sampler - lowered| over ${strobe.size} strobes: $worst
         |the quadrant-less form is a half turn out at $halfTurns of them
-        |lowered graph: ${lowered.extractParameters().size} numeric leaves"""
-            .trimMargin()
+        |lowered graph: ${lowered.extractParameters().size} numeric leaves""".trimMargin()
   - await:
       wait: pending
   - wait:
@@ -223,8 +221,7 @@ operations:
           |solved:        ${fit.parameters}   (pi/4 wants rise = 1)
           |residual:      ${fit.initialResidual} -> ${fit.finalResidual}
           |heading(2.0):  ${fit.fitted.sample(2.0)}  vs  ${PI / 4.0}
-          |exact gradient vs central difference: $agreement"""
-              .trimMargin()
+          |exact gradient vs central difference: $agreement""".trimMargin()
   - execute:
       box: rectsl_heading_solve
       property: code
@@ -258,8 +255,7 @@ operations:
         |solved:        ${fit.parameters}   (pi/4 wants rise = 1)
         |residual:      ${fit.initialResidual} -> ${fit.finalResidual}
         |heading(2.0):  ${fit.fitted.sample(2.0)}  vs  ${PI / 4.0}
-        |exact gradient vs central difference: $agreement"""
-            .trimMargin()
+        |exact gradient vs central difference: $agreement""".trimMargin()
   - await:
       wait: pending
   - wait:

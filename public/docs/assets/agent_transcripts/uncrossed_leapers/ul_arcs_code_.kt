@@ -1,5 +1,3 @@
-import kotlin.math.*
-
 // Uniform scale about each triple's original B. 1.0 restores the source arcs.
 val arcScale = 0.5
 // Signed shift along the original A-to-C normal, applied after scaling.

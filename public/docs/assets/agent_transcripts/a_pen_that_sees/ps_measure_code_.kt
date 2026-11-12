@@ -29,7 +29,5 @@ markdown(
 | | seeing | blind |
 |---|---|---|
 | Michaux beside a line: following | ${hatching("michaux")} | ${hatching("michaux-blind")} |
-| cracks in an outline: joins | ${cracking("cracks")} | ${cracking("cracks-blind")} |
-"""
-        .trimIndent(),
+| cracks in an outline: joins | ${cracking("cracks")} | ${cracking("cracks-blind")} |""".trimIndent(),
 )

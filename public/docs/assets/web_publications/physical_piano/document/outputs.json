@@ -1,0 +1,247 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-11T15:49:21.773Z",
+  "documentName": "physical_piano",
+  "outputs": [
+    {
+      "uid": "piano_prepared",
+      "channel": "plain",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "piano_prepared",
+      "channel": "prepared",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "piano_prepared",
+      "channel": "bolt",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 656,
+      "height": 274,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "piano_pedal",
+      "channel": "pedal up",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "piano_pedal",
+      "channel": "pedal down",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "piano_pedal",
+      "channel": "pedal down, no sympathetic strings",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "piano_mics",
+      "channel": "pair",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "piano_mics",
+      "channel": "strings 0 and 2",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "piano_through",
+      "channel": "through",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "piano_through",
+      "channel": "through prepared",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/9.html"
+    },
+    {
+      "uid": "piano_wobble",
+      "channel": "wobble",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/10.html"
+    },
+    {
+      "uid": "piano_wobble",
+      "channel": "wobble spectrum",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 656,
+      "height": 211,
+      "path": "outputs/11.html"
+    },
+    {
+      "uid": "piano_string",
+      "channel": "shape",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 656,
+      "height": 573,
+      "path": "outputs/12.html"
+    },
+    {
+      "uid": "piano_close",
+      "channel": "soundboard",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/13.html"
+    },
+    {
+      "uid": "piano_close",
+      "channel": "close mic",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/14.html"
+    },
+    {
+      "uid": "piano_close",
+      "channel": "spectra",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 656,
+      "height": 294,
+      "path": "outputs/15.html"
+    },
+    {
+      "uid": "piano_piece",
+      "channel": "piece",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/16.html"
+    },
+    {
+      "uid": "piano_a4",
+      "channel": "a4",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/17.html"
+    },
+    {
+      "uid": "piano_a4",
+      "channel": "spectrum",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 656,
+      "height": 211,
+      "path": "outputs/18.html"
+    },
+    {
+      "uid": "piano_midi",
+      "channel": "midi",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/19.html"
+    }
+  ]
+}

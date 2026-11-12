@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T09:04:07.528Z",
+  "capturedAt": "2026-11-11T15:59:43.594Z",
   "documentName": "audio_ai_analysis",
   "outputs": [
     {
@@ -9,8 +9,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 461,
-      "height": 329,
+      "width": 1056,
+      "height": 133,
       "path": "outputs/0.html"
     },
     {

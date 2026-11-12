@@ -138,8 +138,7 @@ val report =
 
     Peak amplitude is the check that matters: a WAV of pure silence is exactly as large
     as a loud one, so file size proves nothing. ${if (r.isSilent) "**This one is silent.**" else "This one is not silent."}
-    """
-            .trimIndent()
+    """.trimIndent()
     } else {
         """
     ### Offline rendering is not available in this JVM
@@ -155,8 +154,7 @@ val report =
     ```
 
     Or to any other port `MidiDevices.outputs()` lists in box 3.
-    """
-            .trimIndent()
+    """.trimIndent()
     }
 
 showMidiRoll(clip)
@@ -224,8 +222,7 @@ markdown(
     | length | ${clip.durationSeconds.f2}s / ${clip.durationBeats} beats |
 
     Format 1, with a real conductor track. Open it in any DAW, or run box 2.
-    """
-        .trimIndent(),
+    """.trimIndent(),
 )
 ```
 
@@ -276,7 +273,6 @@ markdown(
     `${firstCycle.sortedBy { it.arc.start }.map { it.value }.joinToString(" ")}`.
 
     The roll above is drawn from the *file*, not from the clip box 1 held in memory.
-    """
-        .trimIndent(),
+    """.trimIndent(),
 )
 ```

@@ -27,9 +27,7 @@ println(
     selective kis on two opposite cube faces
     transform = ${result.summary()}
     triangles = ${triangles.summary()}
-    orbit the view; hover and click a face to inspect its lineage
-    """
-        .trimIndent(),
+    orbit the view; hover and click a face to inspect its lineage""".trimIndent(),
 )
 
 val status: (String) -> Unit = { message -> markdown("face provenance", message) }
@@ -61,9 +59,7 @@ val faceLines = polyhedron.toFaceFLines { face, line ->
             - role: `$role`
             - deployed height: `$deployed`
             - source: $sources
-            - clicked at: `${hit.position}`
-            """
-                .trimIndent(),
+            - clicked at: `${hit.position}`""".trimIndent(),
         )
     }
 }

@@ -28,9 +28,7 @@ println(
         (a disk with one hole is 1 - 1, so a sphere with a window is 1)
     closed manifold = ${topology.validate(checkManifold = true).isValid}, and the only complaints are
         ${topology.validate(checkManifold = true).issues.size} one-sided window edges
-    triangles cut from the windowed face = $rimTriangles (a solid square would be 2)
-    """
-        .trimIndent(),
+    triangles cut from the windowed face = $rimTriangles (a solid square would be 2)""".trimIndent(),
 )
 println("\nrefused, by name:")
 refusals.forEach { (call, message) -> println("  $call -> $message") }
@@ -57,9 +55,7 @@ val faceLines = solid.toFaceFLines { face, line ->
             - outer ring: `${topology.faceCycle(face.id).size}` vertices
             - holes: `${holes.map { it.size }}`
             - triangles: `${(0 until geometry.triangleCount).count { geometry.sourceFace(it) == face.id }}`
-            - clicked at: `${hit.position}`
-            """
-                .trimIndent(),
+            - clicked at: `${hit.position}`""".trimIndent(),
         )
     }
 }

@@ -1,7 +1,7 @@
 /*
-There is no k-means in Field, on purpose. Every algorithm here returns either a hierarchy
-or a centre that is meaningful for the data it summarises: a medoid is one of your own
-samples, a median is coordinate-wise robust. A k-means centroid is neither.
+Each algorithm here returns either a hierarchy or a centre that is meaningful for the
+data it summarises: a medoid is one of your own samples, a median is coordinate-wise
+robust. A k-means centroid (vec2KMeans) is neither, which is why it is not used here.
 
 Well-separated blobs make all four look identical, so this cloud has exactly ONE thing
 wrong with it: three tight blobs of 28, and a single 85th point nine units out.

@@ -298,7 +298,7 @@ That is why the Kotlin changed from `module.camera.p = ...` to `m.p = ...`. `p` 
 
 ## Keyboard camera
 
-`KeyCamera` does not change the shader contract. It wraps a `Camera` and updates it from keyboard input while the renderer runs.
+[`KeyCamera`](reference/graphics.md#keycamera-kt-keycamera) does not change the shader contract. It wraps a `Camera` and updates it from keyboard input while the renderer runs.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/02-keyboard-camera.png" alt="a small square window holding one pale cream right triangle, its vertical edge at the left and its right angle at the bottom left, seen at whatever angle the keyboard camera had reached when the frame was captured" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-keyboard-camera" source-box="assets/canonical_graphics/954d64d5-ee3f-4cb7-8ac7-1e2cce8a9073" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 var module = moduleHere()
@@ -569,9 +569,7 @@ ui.eval(
     const style = document.createElement("style")
     style.textContent = ".disclosure-group { display: none !important; }"
     document.head.appendChild(style)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(800)
 ```
@@ -781,13 +779,13 @@ layout(std430, buffer_reference) readonly buffer IndexBuffer {
 };
 
 layout(push_constant) uniform PushConstants {
-    mat4 modelView;        // view * model
-    mat4 proj;             // projection
+    mat4 modelView; // view * model
+    mat4 proj; // projection
     vec4 materialBaseColor;
-    uint vertexOffset;     // in floats
-    uint indexOffset;      // in indices
-    uint vertexStride;     // in floats
-    uint useVertexColor;   // bool as uint
+    uint vertexOffset; // in floats
+    uint indexOffset; // in indices
+    uint vertexStride; // in floats
+    uint useVertexColor; // bool as uint
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
 } pc;
@@ -798,9 +796,9 @@ void main()
     uint base = pc.vertexOffset + idx * pc.vertexStride;
 
     vec3 pos = vec3(
-        pc.vertexBuffer.vertexData[base + 0],
-        pc.vertexBuffer.vertexData[base + 1],
-        pc.vertexBuffer.vertexData[base + 2]
+    pc.vertexBuffer.vertexData[base + 0],
+    pc.vertexBuffer.vertexData[base + 1],
+    pc.vertexBuffer.vertexData[base + 2]
     );
     // ... normal, uv and colour follow at base + 3 to base + 11
 }
@@ -965,11 +963,11 @@ void main()
     vec3 c = vec3(0);
     float total = 0.0;
     for (int y = -1; y <= 1; y++)
-        for (int x = -1; x <= 1; x++) {
-            float w = (x == 0 && y == 0) ? 4.0 : ((x == 0 || y == 0) ? 2.0 : 1.0);
-            c += w * texture(otherView, tc + 5.0 * px * vec2(x, y)).rgb;
-            total += w;
-        }
+    for (int x = -1; x <= 1; x++) {
+        float w = (x == 0 && y == 0) ? 4.0 : ((x == 0 || y == 0) ? 2.0 : 1.0);
+        c += w * texture(otherView, tc + 5.0 * px * vec2(x, y)).rgb;
+        total += w;
+    }
     c = c / total * 0.996;
 
     // A dot on a Lissajous path, its colour cycling, stamped in every frame.
@@ -1142,9 +1140,7 @@ ui.eval(
     const style = document.createElement("style")
     style.textContent = ".disclosure-group { display: none !important; }"
     document.head.appendChild(style)
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(800)
 ```
@@ -1883,7 +1879,7 @@ with `#include "sky/atmosphere.glsl"` in any shader. Its Kotlin twin,
 `afield.graphics.sky.Atmosphere`, computes the same numbers on the CPU.
 
 The box draws one fullscreen triangle beneath the renderer, as the forest fire above does. It keeps
-the sun and camera in a `SkyView`, hands them to the shader as push constants every frame, and puts
+the sun and camera in a [`SkyView`](reference/graphics.md#atmosphere-kt-skyview), hands them to the shader as push constants every frame, and puts
 sliders for them in its output:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/atmospheric-sky-noon.png" alt="A noon sky seen from 3.5 km: deep blue overhead fading to pale blue and white at the horizon, the small white sun about 30 degrees up, and pale hazy ground below" timeout="120" capture="native-window" native-wait-frames="30" max-width="1600" embed=true name="atmospheric-sky-noon" macro-file="../../dev_docs/agents/transcripts/atmospheric_sky.yaml" capture-box="atmospheric_sky"}
@@ -1982,7 +1978,7 @@ first, so what is left is yellow and red, and the haze near the ground glows ora
 // Run this property to move the sky box (its `code`) to sunset.
 import afield.graphics.sky.SkyView
 
-fromContext<SkyView>().set(SkyView(sunElevation = 2.0, altitude = 3.5, pitch = 5.0, exposure = 4.0))
+skyView.set(SkyView(sunElevation = 2.0, altitude = 3.5, pitch = 5.0, exposure = 4.0))
 println("sky preset: sunset")
 ```
 
@@ -1993,7 +1989,7 @@ is still lit: a band of orange along the horizon under a violet sky, at ten time
 // Run this property to move the sky box (its `code`) to twilight.
 import afield.graphics.sky.SkyView
 
-fromContext<SkyView>().set(SkyView(sunElevation = -4.0, altitude = 3.5, pitch = 5.0, exposure = 40.0))
+skyView.set(SkyView(sunElevation = -4.0, altitude = 3.5, pitch = 5.0, exposure = 40.0))
 println("sky preset: twilight")
 ```
 
@@ -2006,8 +2002,7 @@ blue haze, fading into night where the sunlight has crossed a long path of air.
 // Run this property to move the sky box (its `code`) to space.
 import afield.graphics.sky.SkyView
 
-fromContext<SkyView>()
-    .set(SkyView(sunElevation = 20.0, altitude = 20000.0, pitch = -90.0, exposure = 0.4, fieldOfView = 40.0))
+skyView.set(SkyView(sunElevation = 20.0, altitude = 20000.0, pitch = -90.0, exposure = 0.4, fieldOfView = 40.0))
 println("sky preset: space")
 ```
 

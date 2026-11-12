@@ -1,0 +1,160 @@
+{
+  "changes": [
+    {
+      "path": "public/docs/alife_examples.md",
+      "links": [
+        {
+          "symbol": "FlowLeniaPresets.wanderers",
+          "target": "reference/alife.md#alife-flow-lenia-kt--flowleniapresets--wanderers",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "FlowLeniaPresets.rings",
+          "target": "reference/alife.md#alife-flow-lenia-kt--flowleniapresets--rings",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "FlowLeniaPresets.cell",
+          "target": "reference/alife.md#alife-flow-lenia-kt--flowleniapresets--cell",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "FlowLeniaPresets.crescent",
+          "target": "reference/alife.md#alife-flow-lenia-kt--flowleniapresets--crescent",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "FlowLeniaGenome",
+          "target": "reference/alife.md#alife-flow-lenia-kt-flowleniagenome",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "PopulationSearch.hillClimb",
+          "target": "reference/search.md#populationsearch-kt--populationsearch--hillclimb",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "PopulationSearch.random",
+          "target": "reference/search.md#populationsearch-kt--populationsearch--random",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "flowLeniaWorld",
+          "target": "reference/alife.md#alife-flow-lenia-kt--flowleniaworld",
+          "placement": "nearby prose"
+        },
+        {
+          "symbol": "FlowLeniaWorld",
+          "target": "reference/alife.md#alife-flow-lenia-kt-flowleniaworld",
+          "placement": "nearby prose"
+        },
+        {
+          "symbol": "FlowLeniaWorld.step",
+          "target": "reference/alife.md#alife-flow-lenia-kt--flowleniaworld--step",
+          "placement": "nearby prose"
+        },
+        {
+          "symbol": "animateEvolution",
+          "target": "reference/alife.md#alife-animate-kt--animateevolution",
+          "placement": "nearby prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/keyframer_examples.md",
+      "links": [
+        {
+          "symbol": "OrderedKeyframeGroup",
+          "target": "reference/graphics.md#orderedkeyframegroup-kt-orderedkeyframegroup",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "FileManager.current",
+          "target": "reference/data.md#filemanager-kt--filemanager--current",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "OrderedKeyframeGroup.apply",
+          "target": "reference/graphics.md#orderedkeyframegroup-kt--orderedkeyframegroup--apply",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "OrderedKeyframeGroup.blend",
+          "target": "reference/graphics.md#orderedkeyframegroup-kt--orderedkeyframegroup--blend",
+          "placement": "API reference section"
+        },
+        {
+          "symbol": "OrderedKeyframeGroup.transition",
+          "target": "reference/graphics.md#orderedkeyframegroup-kt--orderedkeyframegroup--transition",
+          "placement": "nearby prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/satellites.md",
+      "links": [
+        {
+          "symbol": "Sgp4",
+          "target": "reference/simulation.md#sgp4-kt-sgp4",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "Tle",
+          "target": "reference/simulation.md#sgp4-kt-tle",
+          "placement": "nearby prose"
+        },
+        {
+          "symbol": "Sgp4.propagate",
+          "target": "reference/simulation.md#sgp4-kt--sgp4--propagate",
+          "placement": "nearby prose"
+        },
+        {
+          "symbol": "Observer",
+          "target": "reference/simulation.md#frames-kt-observer",
+          "placement": "nearby prose"
+        },
+        {
+          "symbol": "Observer.passes",
+          "target": "reference/simulation.md#frames-kt--observer--passes",
+          "placement": "nearby prose"
+        },
+        {
+          "symbol": "Observer.visiblePasses",
+          "target": "reference/simulation.md#frames-kt--observer--visiblepasses",
+          "placement": "nearby prose"
+        },
+        {
+          "symbol": "SkyClock",
+          "target": "reference/simulation.md#frames-kt-skyclock",
+          "placement": "nearby prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/fline_examples.md",
+      "links": [
+        {
+          "symbol": "sweptCircleStroke",
+          "target": "reference/graphics.md#flinethickening-kt--sweptcirclestroke",
+          "placement": "nearby prose"
+        },
+        {
+          "symbol": "bySweptCircleEnveloping",
+          "target": "reference/graphics.md#flinethickening-kt--bysweptcircleenveloping",
+          "placement": "nearby prose"
+        },
+        {
+          "symbol": "thinPenSamples",
+          "target": "reference/graphics.md#flinethickening-kt--thinpensamples",
+          "placement": "nearby prose"
+        },
+        {
+          "symbol": "penCorners",
+          "target": "reference/graphics.md#flinethickening-kt--pencorners",
+          "placement": "nearby prose"
+        }
+      ]
+    }
+  ],
+  "policy": "Direct class/member links for short delegated examples and substantial helpers used by the changed examples; executable fences untouched and all targets checked against generated reference anchors."
+}

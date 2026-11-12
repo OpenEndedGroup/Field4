@@ -23,6 +23,30 @@ function fieldDocumentUrl(fieldUrl, document) {
   } catch { return null; }
 }
 
+// A live figure on an HTML slide: one box's output (the Field page's ?figure= mode), in the
+// presentation's own document. `document` is that document's name, taken from the source page.
+function figureUrl(fieldUrl, document, figure, background) {
+  const base = fieldDocumentUrl(fieldUrl, document);
+  if (!base || !validFigure(figure)) return null;
+  const url = new URL(base);
+  url.searchParams.set('figure', figure.box);
+  if (figure.channels?.length) url.searchParams.set('channels', figure.channels.join(','));
+  if (typeof background === 'string' && /^(#[0-9A-Fa-f]{3,8}|rgba?\([0-9., ]+\))$/.test(background)) {
+    url.searchParams.set('bg', background);
+  }
+  return url.href;
+}
+
+function validFigure(figure) {
+  return !!figure && typeof figure === 'object' &&
+    typeof figure.id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(figure.id) &&
+    typeof figure.box === 'string' && /^[A-Za-z0-9_.:-]{1,128}$/.test(figure.box) &&
+    (figure.name == null || (typeof figure.name === 'string' && figure.name.length <= 256)) &&
+    (figure.channels == null || (Array.isArray(figure.channels) && figure.channels.length <= 16 &&
+      figure.channels.every(c => typeof c === 'string' && c.length > 0 && c.length <= 128 && !/[\x00-\x1f,]/.test(c)))) &&
+    (figure.rect == null || validRect(figure.rect) !== null);
+}
+
 function guestUrl(slide, base, fieldUrl) {
   if (!slide || typeof slide !== 'object') return null;
   if (slide.type === 'field-document') return fieldDocumentUrl(fieldUrl, slide.document);
@@ -92,7 +116,61 @@ function validateGuideState(state) {
     throw new Error('Invalid guide audience content');
   }
   if (content.rect != null && !validRect(content.rect)) throw new Error('Invalid guide audience rect');
+  if (content.figures != null && (content.type !== 'html' || !Array.isArray(content.figures) ||
+      content.figures.length > 8 || !content.figures.every(validFigure) ||
+      new Set(content.figures.map(f => f.id)).size !== content.figures.length)) {
+    throw new Error('Invalid guide audience figures');
+  }
   return state;
 }
 
-module.exports = {validRect, validDocumentName, fieldDocumentUrl, guestUrl, fieldActions, validateGuideState};
+/**
+ * Where [action] takes a talk that is on [state]: {index, cueIndex}, with cueIndex null when the step
+ * decides; null when it goes nowhere. Moves count from the step the talk is on, not from one still
+ * pending, so a held key or a second click retargets the pending move rather than stacking another.
+ */
+function guideTarget(state, action, id) {
+  const count = state.titles.length;
+  const cues = state.cueTitles?.length || 0;
+  const cue = state.cueIndex || 0;
+  let target = null;
+  if (action === 'next') target = cue < cues ? {index: state.index, cueIndex: cue + 1} : {index: state.index + 1, cueIndex: 0};
+  if (action === 'previous') target = cue > 0 ? {index: state.index, cueIndex: cue - 1} : {index: state.index - 1, cueIndex: null};
+  if (action === 'first') target = {index: 0, cueIndex: 0};
+  if (action === 'last') target = {index: count - 1, cueIndex: 0};
+  if (action === 'goto') target = {index: Number(id), cueIndex: 0};
+  if (!target || !Number.isInteger(target.index) || target.index < 0 || target.index >= count) return null;
+  return target.index === state.index && target.cueIndex === cue ? null : target;
+}
+
+function sameTarget(a, b) { return !!a && !!b && a.index === b.index && a.cueIndex === b.cueIndex; }
+
+/**
+ * The page a link clicked on a slide may open inside the talk: an http(s) page, or a local PDF
+ * (file: ending in .pdf); null for anything else (javascript:, data:, other files, other schemes).
+ * Relative links resolve against [base], the slide's document folder.
+ */
+function linkTarget(href, base) {
+  if (typeof href !== 'string' || !href.trim()) return null;
+  try {
+    const url = new URL(href, base);
+    if (['http:', 'https:'].includes(url.protocol) && url.hostname) return url.href;
+    if (url.protocol === 'file:' && /\.pdf$/i.test(decodeURIComponent(url.pathname))) return url.href;
+  } catch {}
+  return null;
+}
+
+/**
+ * What a presenter action does while a linked page covers the slide. The slide, its figures and its
+ * cue stay as they were underneath, so going back only closes the page. Next and Previous go back
+ * rather than move, so the slide that had the link is not skipped; a slide picked in the navigator
+ * goes back and then to that slide (none, if it is the slide underneath).
+ */
+function linkNavigation(action, id, state) {
+  if (action === 'close-link') return {close: true, navigate: null};
+  if (['next', 'previous', 'first', 'last'].includes(action)) return {close: true, navigate: null};
+  if (action === 'goto') return {close: true, navigate: Number(id) === state?.index ? null : {action, id}};
+  return {close: false, navigate: {action, id}};
+}
+
+module.exports = {validRect, validDocumentName, fieldDocumentUrl, figureUrl, validFigure, guestUrl, fieldActions, validateGuideState, guideTarget, sameTarget, linkTarget, linkNavigation};

@@ -134,3 +134,9 @@ loop {
     notifications, which arrive on the main run loop; Field's main thread runs Field's own loop, so
     `afield.io.syphon` turns the run loop once per Field frame. Without that, Field's servers were seen
     only by clients that were already listening when they started.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`Syphon.describe`](reference/graphics.md#syphon-kt--syphon--describe)

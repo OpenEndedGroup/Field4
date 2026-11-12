@@ -540,6 +540,14 @@ data class DynamicReport(
     val waterLaid: Double, val waterTaken: Double, val pigmentLaid: Double, val pigmentTaken: Double,
 )
 
+/** What a [PaintCanvas.fold], [PaintCanvas.press] or [PaintCanvas.rub] did to the wet paint. */
+data class Squished(
+    /** mm³ of paint that ended up somewhere else on the canvas, counted once (never more than all of it). */
+    val movedMm3: Double,
+    /** mm³ taken off the canvas altogether: what a plate took, or what a rubbing pad still holds. */
+    val liftedMm3: Double,
+)
+
 /** How loaded a [PaintRag] is ([PaintCanvas.ragState]). */
 data class RagState(
     /** The face in use: 0 clean .. 1 full. */

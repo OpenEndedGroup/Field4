@@ -103,6 +103,17 @@ The glued view reports join lengths; its nearest-neighbour/2-opt route is not a 
 [Walkthrough and parameters](knight_tour_workshop.md) ·
 [Saved chat](assets/knight_tour_workshop/chat.txt)
 
+### physical_piano
+
+A physically modelled grand piano, ported from [coopiano](https://github.com/peterc/coopiano).
+Start with `a4` for a rendered note and its spectrum, `string` for the shape of a vibrating string,
+or `piece` for a short phrase. The other boxes explore pedals, moving stiffness, close microphones,
+prepared strings and playing sound through the piano. `live`, `close live` and `prepared live` put
+controls on an instrument you can play. See `Piano` in [Synthesis](reference/synthesis.md) and the
+[piano tour](sound.md#a-physically-modelled-piano).
+
+[Open →](offline.html?file=assets/agent_transcripts/physical_piano/metadata.edn)
+
 ### uncrossed_leapers
 
 **Knight paths that never cross.** The starting point for [uncrossed paths](knight_tour_workshop.md#uncrossed-paths):
@@ -825,6 +836,34 @@ rules side by side on a ring. From the measuring sections of [Drawing with FLine
 
 [Open →](offline.html?file=assets/agent_transcripts/fline_measure/metadata.edn)
 
+### clothoid_spline
+
+**Curvature-continuous splines.** Three boxes: `clothoidSplineFrom` and `cubicSplineFrom` through the
+same eight points, with curvature combs and curvature plotted against distance; seven points on a
+circle giving the circle back; and a closed round shape with its comb. From [Drawing with
+FLines](fline_examples.md#curvature-continuous-splines-clothoidsplinefrom).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/clothoid_spline.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="120" padding="12" name="gallery-clothoid-spline" alt="A rounded closed shape in blue through six white points, with grey curvature teeth along its inside" macro-file="../../dev_docs/agents/transcripts/clothoid_spline.yaml" capture-box="clothoid-spline-shape"}
+// The transcript builds and runs all three boxes; this is the closed-shape box.
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/clothoid_spline/metadata.edn)
+
+### variable_width_strokes
+
+**Variable-width strokes, outlined as a swept circle.** Seven boxes: a quick hand-written "o" drawn as
+pills, trapezoid pills and a swept spline; one cubic against `byVariableRibboning`; a stroke whose
+radius grows faster than it moves; a pressure stroke read back from the drawing layer; a
+thousand-sample tablet stroke thinned to sixty knots; a "z" with and without its corners; and a box
+that outlines each stroke you draw. From
+[Drawing with FLines](fline_examples.md#variable-width-strokes-the-swept-circle-envelope).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/variable_width_strokes.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="120" padding="12" name="gallery-variable-width-strokes" alt="A hand-written o drawn three ways in cream on black: knuckled pills, straight-sided trapezoid pills, and a smooth swept spline, with the pen samples as red dots" macro-file="../../dev_docs/agents/transcripts/variable_width_strokes.yaml" capture-box="swept-o"}
+// The transcript builds and runs all seven boxes; this is the "o" box.
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/variable_width_strokes/metadata.edn)
+
 ### fline_exact_booleans
 
 **Exact booleans and cubic offsets, side by side with the old paths.** Two boxes, each with a dot on every node: the union and difference of a blob and a circle through `Area` and through `booleanExact`, and a star and an S-curve offset by `byOffsetting` and by `byOffsettingExact`. From [Drawing with FLines](fline_examples.md#exact-booleans-and-offsets).
@@ -1086,6 +1125,35 @@ a site, change a weight, raise an iso level or ask for a different `k` and re-ru
 
 [Open →](offline.html?file=assets/agent_transcripts/spatial_geometry_examples/metadata.edn)
 
+### alife_grains
+
+Evolved grain sets, after Nathan Ho's [EvoGrain](https://nathanho.me/posts/evograin), on the
+[ALife page](alife_examples.md): an L-system derivation read as a score of grains, where `G` plays a
+grain, `+`/`-` step the pitch and every bracket is a new voice. Box 1 decodes one grammar into a
+piano-roll and a player. Box 2 evolves the grammar toward a profile of trapezoid-scored statistics,
+with sliders for three of the targets that re-run the search. Box 3 is interactive evolution: six
+children with players, and a text field naming the parents of the next generation. The remaining
+boxes shape grains, take a target from a recording and map a range of evolved sets.
+
+[Open →](offline.html?file=assets/agent_transcripts/alife_grains/metadata.edn)
+
+### kmeans_emeans
+
+The [k-means at scale](spatial_geometry_examples.md#k-means-at-scale) section as four boxes.
+*Lloyd vs e-means* clusters 48 000 points in 60 blobs from the same random seeds with Lloyd's
+algorithm at 25 epochs and e-means ([Meta FAIR](https://e-means.github.io), ported from Faiss) at 3,
+and plots both runs' mean squared error per epoch. *Revival* rings 40 blobs with 12 strays, so
+plain k-means++ seeds a centroid on a stray, and shows e-means moving it back into the data.
+*Centroid trails on an epoch slider* scrubs through both algorithms' centroids epoch by epoch.
+*k-means tree of centroid paths* runs
+`vec2KMeansTree`, clustering 1 000 points into half as many centroids, then half again down to one,
+and draws every centroid's path as a tree of curves. Change `k`, `epochs`, `stepScale` or the
+seeding and re-run.
+
+![Three panels: the 60-blob cloud clustered by Lloyd, the same cloud clustered by e-means, and a log-scale plot of mean squared error per epoch for both](assets/spatial_geometry_examples/kmeans_lloyd_vs_emeans.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/kmeans_emeans/metadata.edn)
+
 ### alife_evolution
 
 The other half of [spatial artificial life](alife_examples.md): four boxes that
@@ -1130,6 +1198,17 @@ held-out seeds; it takes a few minutes. Box 7 animates the evolved glider. All s
 
 [Open →](offline.html?file=assets/agent_transcripts/particle_lenia/metadata.edn)
 
+### flow_lenia
+
+Try [Flow Lenia](alife_examples.md#flow-lenia-matter-that-moves-instead-of-growing) in six boxes.
+Box 0 runs three species for 200 steps and prints the worst relative change in total mass (about
+`1e-12`). Boxes 1 to 3 make the page's clips: three species alongside a total-mass plot, rings
+meeting a cell with sampled mixing and a plot of each species' mass, and the same pair blending
+under mean mixing with the parameter field drawn. Box 4 follows a crescent at higher resolution;
+box 5 compares mutation with a neutral control. All six run on the CPU.
+
+[Open →](offline.html?file=assets/agent_transcripts/flow_lenia/metadata.edn)
+
 ### alife_search_comparison
 
 The "Does search beat random?" part of [spatial artificial life](alife_examples.md#does-search-beat-random)
@@ -1164,6 +1243,19 @@ rather than run: a `Frames` that is only built never runs. None of the twenty op
 ![Two magma-coloured trail fields from the same 6000 agents: the sensing population has drawn a branching network of bright filaments and closed loops, the blind control is a featureless uniform disc](assets/alife_examples/physarum.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/alife_worked_example/metadata.edn)
+
+### alife_tree_growth
+
+[Trees that compete for light](alife_examples.md#trees-that-compete-for-light) as three boxes. Box 1
+grows one tree for 30 seasons with `TreeGrowth`: each bud reads the light left by everyone else's
+shadow, light is summed toward the root, and the root's growth resource is split back up each fork by
+the Borchert–Honda rule. It prints `isTree()`, the worst resource-conservation error over the 30
+seasons and the crown size under four values of the apical control `λ`, and draws the seasons, the
+bud light, the resource flow, the shadow grid and the four crowns. Box 2 is the same tree growing over
+seven seconds; launch it. Box 3 puts `λ` on a slider and regrows the tree as you drag. All three are
+pure CPU.
+
+[Open →](offline.html?file=assets/agent_transcripts/alife_tree_growth/metadata.edn)
 
 ### braitenberg_where_next
 
@@ -1534,6 +1626,29 @@ packing settles instead of chattering across the contact.
 ![twelve discs before and after a differentiable packing](assets/autodiff/autodiff_pack.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/autodiff_worked_example/metadata.edn)
+
+### noiselang_distributions
+
+Values that are **probability distributions**, from [Distributions](distributions.md). Eleven
+pure-CPU boxes. A Dirac spike, a die and the triangle two dice make, drawn by the inline
+`ᛟ.distribution` view as the samples arrive, with the mean of `5 + d6 + d6` settling on 12 (launch
+it). The NoiseLang questions — `P(X + Y < 10)`, the 23-person birthday problem at about 0.507,
+4·P(inside the unit circle) ≈ π — each printed with its standard error beside the exact value.
+Samples settling under an exact and a kernel density, and a distribution of `FLine`s, 120 random
+walks drawn from one graph. Then the newer half: two posteriors (`given`, `observed`) drawn over
+their priors; a weighted scale as a pattern and a rhythm conditioned to five hits in sixteen, each
+with a piano roll and a player; a sine whose pitch is drawn on the audio thread at every pulse of a
+clock (`d.param`), with the heard pitches drawn live (launch it, sound on); and a Gaussian process
+as correlated distributions, its curves drawn and the distribution of where its peak is. Last, a
+posterior that learns as data arrives (`Posterior`): a performer's tempo followed from the onsets in
+their sound, with an accompaniment on the predicted beats, and a point tracked through noise.
+
+```diffstatic {data-lang=text}
+macro write noiselang_distributions --file dev_docs/agents/transcripts/noiselang_distributions.yaml
+macro run noiselang_distributions
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/noiselang_distributions/metadata.edn)
 
 ### interaction_nets_lambda
 
@@ -1932,6 +2047,18 @@ and chalk* sketches a vase in 2B, hatches its shadow side in 4B and rules a chal
 ![a few hundred curved brushstrokes sweeping in swirling currents, warm colours at the top shading to cool blues and violets at the bottom](assets/paint_canvas/flow.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/paint_canvas/metadata.edn)
+
+### paint_fold_press
+
+Three boxes that move wet paint [without a brush](paint_canvas.md#folding-pressing-and-rubbing).
+*Fold the canvas and open it* lays three thick strokes on the left half, folds the canvas down the
+middle and opens it: a Rorschach print whose two halves carry opposite ridges where the film split.
+*Press a plate and peel it off* lifts paint from a wet passage in a ridged disc. *Rub a thumb through
+wet paint* drags three stripes sideways so their colours smear together. Each box shows the canvas
+before and after and reports the paint moved. All three need the optional paint library
+(`./gradlew buildPaintNative`).
+
+[Open →](offline.html?file=assets/agent_transcripts/paint_fold_press/metadata.edn)
 
 ### photo_to_solid_chain
 
@@ -2704,6 +2831,56 @@ Walkthrough: [Audio curves: a sound as a few slow controls](audio_curves.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/audio_curve_explorer/metadata.edn)
 
+### explainer_sine_pitch
+
+**A four-slide explainer with a figure you can hear.** One box, `sine`, draws twenty milliseconds
+of a sine wave, shows a frequency slider and a sound checkbox, and plays the tone. A second,
+`deck`, is a presentation after Bartosz Ciechanowski's [Sound](https://ciechanow.ski/sound/), in
+our own words: an opening slide, the figure beside prose with its slider, a cue that glides the
+slider up an octave, and a slide where a cue turns the sound on. Run `deck` in Field's Electron app;
+the talk starts `sine` when its slide comes up and stops it when the talk leaves. It is the
+template for the explainer decks, described in
+[Live figures beside prose](presentation_studio.md#live-figures-beside-prose).
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_sine_pitch/metadata.edn)
+
+### explainer_sound
+
+**The Sound explainer as a Field presentation.** A `deck` box follows Bartosz Ciechanowski's
+[Sound](https://ciechanow.ski/sound/) section by section, in our own words: air as a crowd of
+molecules, a plate pushing slices of air down a tube, pops that repeat into notes, sums of shapes
+and of sines, masses, springs and plucked strings, and pressure waves spreading through the open
+and through rooms. Each figure is its own box, named for what it shows and laid out to the right of
+`deck` in slide order, so the canvas reads as a table of contents. Run `deck` in Field's Electron
+app; the talk starts each figure when its slide comes up and stops it when the talk moves on, and
+nothing sounds until someone holds a key or ticks **sound**. Built on
+[Live figures beside prose](presentation_studio.md#live-figures-beside-prose).
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_sound/metadata.edn)
+
+### explainer_cameras
+
+**An explainer deck on cameras and lenses.** A `deck` box holds a presentation after Bartosz
+Ciechanowski's [Cameras and Lenses](https://ciechanow.ski/cameras-and-lenses/), in our own words,
+in the essay's order: a sensor counting light, a box with a hole, glass, light as a wave, lenses,
+aperture and focus, and the faults of real lenses. Each figure is its own box to the right of the
+deck; the sensor pictures are ray-traced on the CPU by `afield.simulation.optics`. Run `deck` in
+Field's Electron app; the talk starts each figure when its slide comes up.
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_cameras/metadata.edn)
+
+### explainer_lights
+
+**A talk on light and shadow, with figures lit on the CPU.** One box, `deck`, is a presentation
+after Bartosz Ciechanowski's [Lights and Shadows](https://ciechanow.ski/lights-and-shadows/), in our
+own words, section by section from power and the cosine factor to soft shadows, colour and bounced
+light. Each figure is its own box, laid out in slide order beside it. The three-dimensional figures
+compute the light at every vertex with `afield.graphics.lighting` (point, sphere and rectangle
+lights, shadow rays, a coarse radiosity solve) and draw the result unlit in a three view. Run `deck`
+in Field's Electron app; the talk starts each figure when its slide comes up.
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_lights/metadata.edn)
+
 ### audio_ai_underfit_mancini
 
 Import a held-out excerpt, hash the completed Experiment in Terror
@@ -2943,8 +3120,7 @@ for (i in 0 until 240) {
                 const f = document.querySelector("iframe[src*='score_view']")
                 const s = f && f.contentDocument && f.contentDocument.getElementById("status")
                 return s ? s.textContent : "no score view yet"
-                """
-                    .trimIndent(),
+                """.trimIndent(),
             )
             .toString()
     val t = Regex("score · ([0-9.]+)s").find(at)?.groupValues?.get(1)?.toDouble()
@@ -3359,6 +3535,16 @@ here are captures of that window, taken by the docs capture pipeline from these 
 (`capture="native-window"`). Where an entry
 carries none, there is no such capture: run the scene yourself and grab its window with a follow-on
 `native-screenshot` backdoor command (with `--with-playwright`).
+
+### satellites
+
+**SGP4 passes and the whole satellite catalogue on the GPU.** Four boxes: a week of passes over
+Chicago for five satellites, charted on the CPU; a renderer; an Earth box drawing coastlines, a
+graticule and the ISS's ground track, bright where Chicago sees it; and about 15,000 satellites
+from the bundled CelesTrak snapshot, each moved by a Kepler solve in the vertex shader every frame.
+Fly the camera with the keyboard in the window. See [Satellites and Orbits](satellites.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/satellites/metadata.edn)
 
 ### renderer_browsing
 
@@ -4313,6 +4499,19 @@ that changes between passes is the medium. `dev_docs/PARTICIPATING_MEDIA.md` is 
 
 [Open →](offline.html?file=assets/agent_transcripts/path_tracing_medium/metadata.edn)
 
+### neural_clouds
+
+A raymarched cloud lit by a small network instead of an ambient term, after Charles Grassi's
+[neural volumetric clouds](https://charlesgrassi.dev/blog/neural-volumetric-clouds). *Train the
+in-scatter network* labels 12,000 points with a CPU volumetric path tracer and fits a 10-16-16-3
+network. *Compare against the path tracer* renders a camera the training never saw four ways:
+reference, single scattering, fitted ambient and network, with an error row and a table. *Neural
+cloud shader* runs the same raymarcher in a fragment shader with the weights as GLSL constants,
+beside debug views of the predicted in-scatter, sun transmittance and sky visibility. See
+[Neural multiple scattering in a raymarched cloud](path_tracing.md#neural-multiple-scattering-in-a-raymarched-cloud).
+
+[Open →](offline.html?file=assets/agent_transcripts/neural_clouds/metadata.edn)
+
 ### neural_particles
 
 **A cloud of noise assembling itself into a word, through a network trained a second earlier.** Three
@@ -4367,6 +4566,24 @@ macro run atmospheric_sky
 ```
 
 [Open →](offline.html?file=assets/agent_transcripts/atmospheric_sky/metadata.edn)
+
+### noiselang_gpu
+
+**Distributions drawn inside a fragment shader.** One box defines a ring, the ring given
+x + y > 0.5, and a Gaussian process through five readings; `distHere` and `gpHere` make them
+`#include "dist/ring"`, `#include "dist/arc"` and `#include "gp/ridge"`. The shader box beneath it
+draws three panels from them: 320 draws of the ring, the arc the condition keeps (a posterior drawn
+per point on the GPU), and twenty whole curves of the process with its mean and band. See
+[Distributions in a shader](distributions.md#distributions-in-a-shader).
+
+![three panels: a blue ring of points, the orange arc of it above a diagonal line, and blue Gaussian-process curves through five orange readings](assets/distributions-gpu.png)
+
+```diffstatic {data-lang=text}
+macro write noiselang_gpu --file dev_docs/agents/transcripts/noiselang_gpu.yaml
+macro run noiselang_gpu
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/noiselang_gpu/metadata.edn)
 
 ### sky_environment
 
@@ -4603,6 +4820,15 @@ this same box *given* that parent, which is how the
 context, and one triangle arrives.
 
 ![A right triangle filling a native Vulkan window against black, filled with a smooth interpolated gradient from deep blue at its lower-left corner to green at its upper-right](assets/afield_four_graphics/00-traditional-triangle.png)
+
+### variable_width_strokes_gpu
+
+Another draw box for the `agent_graphics_context` parent: a hand-written "o" and a "z" with its
+corners kept, outlined with `sweptCircleStroke`, tessellated and filled as one `Mesh`. Replayed alone
+it has no renderer; the figure in [variable-width strokes in a Vulkan scene](fline_examples.md#in-a-vulkan-scene)
+is this box given that parent.
+
+![A hand-written o, thick on its right side and with a thin tail at the lower left, beside a z whose top bar is heavier than its bottom one, both cream on black in a native Vulkan window; the inside of the o is empty and the corners of the z are sharp](assets/swept_circle_gpu.png)
 
 ### path_traced_reconstruction
 

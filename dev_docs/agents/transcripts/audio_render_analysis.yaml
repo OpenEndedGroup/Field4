@@ -23,9 +23,7 @@ operations:
                 <p>Each box below contains the whole loop: make sound, write WAV, import immutable bytes, submit named jobs, stream progress, await results, and draw a synchronized waveform/beat/pitch board. Re-run unchanged code and the content-addressed import plus operation cache return the same results.</p>
                 <p><b>Pat, Dirt and Dough</b> render offline. <b>Faust</b> compiles and renders on a daemon future because its first compiler warm-up is slow. <b>Sonic Pi</b> records in real time on that same background executor. None blocks Field's run loop.</p>
                 <p>The local <code>RenderedAudioFile.provenance</code> records the producing box and render parameters. The server asset id remains a hash of the WAV bytes; the Field document remains the authority for source code and arrangement.</p>
-              </section>
-              """
-                  .trimIndent(),
+              </section>""".trimIndent(),
           )
           display("all durable jobs", fieldAudioJobMonitor(heightPixels = 390))
   - create:
@@ -123,9 +121,7 @@ operations:
               import("stdfaust.lib");
               sweep = 240 + 170 * os.osc(0.11);
               voice = os.sawtooth(sweep) : fi.lowpass(3, 900 + 650 * os.osc(0.07));
-              process = voice * 0.18 <: _,_;
-              """
-                  .trimIndent()
+              process = voice * 0.18 <: _,_;""".trimIndent()
 
           renderFaustWavAsync(
               Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "faust-sweep-study.wav"),
@@ -173,9 +169,7 @@ operations:
                 use_synth :hollow
                 play (scale :e3, :minor_pentatonic).tick, release: 0.7, amp: 0.35
                 sleep 1
-              end
-              """
-                  .trimIndent()
+              end""".trimIndent()
 
           recordSonicPiWav(
               sonicPi(),

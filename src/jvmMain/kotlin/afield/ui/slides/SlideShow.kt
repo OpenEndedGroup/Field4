@@ -2,6 +2,7 @@ package afield.ui.slides
 
 import afield.app.protocol.AudienceContent
 import afield.app.protocol.PresentationState
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import afield.app.protocol.Execute
@@ -156,8 +157,12 @@ class SlideShowBuilder(val hostBox: Box, private val presentationOptions: Presen
  * Builder for individual slide steps
  */
 class SlideStepBuilder(val title: String, val hostBox: Box) {
+    /** Setting this names each live figure's box, so a figure naming no box fails while building. */
     internal var audienceContent: AudienceContent? = null
+        set(value) { field = value?.let { resolveFigures(hostBox, it) } }
     internal var audienceProvider: (() -> AudienceContent)? = null
+    /** Figure control values this view declares; see [control]. */
+    internal val controls = mutableListOf<FigureControl>()
     private val cues = mutableListOf<SlideStep>()
     private var checkpointTitle: String = ""
     private var checkpointReset: (suspend () -> Unit)? = null
@@ -336,6 +341,7 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
             title = title,
             noteHtml = noteHtml,
             noteAnchorBox = noteAnchorBox ?: hostBox,
+            noteAnchored = noteAnchorBox != null,
             targetBox = targetBox,
             targetProperty = targetProperty,
             targetLine = targetLine,
@@ -350,7 +356,8 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
             linkCallbacks = linkCallbacks.toMap(),
             audience = audienceContent,
             audienceProvider = audienceProvider,
-            cues = cues.toList(), checkpoint = checkpointTitle, reset = checkpointReset
+            cues = cues.toList(), checkpoint = checkpointTitle, reset = checkpointReset,
+            controls = controls.toList()
         )
     }
 }
@@ -388,8 +395,15 @@ data class SlideStep(
     val cues: List<SlideStep> = emptyList(),
     val checkpoint: String = "",
     val reset: (suspend () -> Unit)? = null,
-    val audienceProvider: (() -> AudienceContent)? = null
-)
+    val audienceProvider: (() -> AudienceContent)? = null,
+    val controls: List<FigureControl> = emptyList(),
+    /** True when the step chose [noteAnchorBox] itself, rather than taking the host box by default. */
+    val noteAnchored: Boolean = false,
+) {
+    /** True when this step or one of its cues shows a live figure or sets a figure's control. */
+    internal val hasFigures: Boolean
+        get() = controls.isNotEmpty() || audience?.figures?.isNotEmpty() == true || cues.any { it.hasFigures }
+}
 
 /**
  * Markdown renderer for slideshow notes with nav shortcuts.
@@ -399,10 +413,19 @@ object SlideMarkdown {
     private val parser = MarkdownParser(flavour)
     private val navPattern = Regex("""\[\[\s*(next|previous|prev|back|home|start|stop|finish)(?:\s*:\s*([^\]]+))?]]""", RegexOption.IGNORE_CASE)
 
+    /**
+     * A link to a local PDF (`[notes](file:///…/notes.pdf)`), which a talk opens on the audience
+     * display. The renderer's safe-links pass turns every `file:` link into `#`; this one kind is
+     * carried past it under [LOCAL_PDF] and restored, and every other `file:` link is still refused.
+     */
+    private val localPdfLink = Regex("""\]\(\s*file:(//[^)\s]*\.pdf)\s*\)""", RegexOption.IGNORE_CASE)
+    private const val LOCAL_PDF = "field-local-pdf:"
+
     fun render(markdown: String): String {
         val mdWithNav = injectNavShortcuts(markdown)
-        val parsedTree = parser.buildMarkdownTreeFromString(mdWithNav)
-        return HtmlGenerator(mdWithNav, parsedTree, flavour).generateHtml()
+        val carried = localPdfLink.replace(mdWithNav) { "](${LOCAL_PDF}${it.groupValues[1]})" }
+        val parsedTree = parser.buildMarkdownTreeFromString(carried)
+        return HtmlGenerator(carried, parsedTree, flavour).generateHtml().replace("href=\"$LOCAL_PDF", "href=\"file:")
     }
 
     private fun injectNavShortcuts(markdown: String): String {
@@ -451,6 +474,8 @@ class SlideShowInstance(
         private set
     private val completedCueActions = mutableSetOf<Pair<Int, Int>>()
     private val commandMutex = Mutex()
+    internal val figureStage = FigureStage(hostBox)
+    private var figureGeneration = 0
     private var searchTextsCache: List<String>? = null
     // Generate unique slideshow ID (use custom ID if provided, otherwise generate based on host box)
     val slideshowId: String = customId ?: "slideshow_${hostBox.id}_${System.currentTimeMillis()}"
@@ -478,6 +503,15 @@ class SlideShowInstance(
             else if (activeByRoot[root] === this) activeByRoot.remove(root)
         }
     }
+
+    /**
+     * Where [step]'s note goes on the canvas: the box the step anchors it to, else, in a guide, the
+     * guide's own box. A presentation's note is for the presenter, who also reads it in the
+     * presenter window, so unless the step anchors it, it keeps to the corner of the canvas ("")
+     * rather than covering the figures laid out beside the deck.
+     */
+    internal fun noteAnchorUid(step: SlideStep): String =
+        if (step.noteAnchored || presentationOptions == null) (step.noteAnchorBox ?: hostBox).id else ""
 
     val currentStep: SlideStep?
         get() = if (currentStepIndex >= 0 && currentStepIndex < steps.size) steps[currentStepIndex] else null
@@ -507,7 +541,48 @@ class SlideShowInstance(
         // Execute onEnter
         step.onEnter?.invoke()
 
+        syncFigures()
         renderCurrent()
+    }
+
+    /** The content of the view on screen: the current cue's if it has one, else its step's. */
+    private fun viewContent(): AudienceContent? {
+        val step = currentStep ?: return null
+        val visible = visibleStep()
+        return runCatching {
+            visible?.audienceProvider?.invoke() ?: visible?.audience ?: step.audienceProvider?.invoke() ?: step.audience
+        }.getOrNull()
+    }
+
+    /** Control values the view on screen declares: its step's, then each cue's up to the current one. */
+    private fun viewControls(): List<FigureControl> {
+        val step = currentStep ?: return emptyList()
+        return step.controls + step.cues.take(currentCueIndex).flatMap { it.controls }
+    }
+
+    /**
+     * Run the figures the view on screen shows (stopping those the deck launched that it no longer
+     * shows), then apply its control values. A control whose box is still starting (compiling, or
+     * still showing the controls of its previous run) is tried again for up to fifteen seconds, unless
+     * the view changes first.
+     */
+    private fun syncFigures(cancelGlides: Boolean = true) {
+        val figures = viewContent()?.figures.orEmpty()
+        val controls = viewControls()
+        figureStage.enter(figures, controls)
+        val generation = ++figureGeneration
+        var missing = figureStage.apply(controls, cancelGlides)
+        if (missing.isEmpty()) return
+        @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+        kotlinx.coroutines.GlobalScope.launch {
+            repeat(150) {
+                kotlinx.coroutines.delay(100)
+                if (generation != figureGeneration) return@launch
+                missing = figureStage.apply(missing, cancelGlides = false)
+                if (missing.isEmpty()) return@launch
+            }
+            figureStage.log(missing)
+        }
     }
 
     private fun visibleStep(): SlideStep? = currentStep?.let { step -> step.cues.getOrNull(currentCueIndex - 1) ?: step }
@@ -535,7 +610,7 @@ class SlideShowInstance(
             
             fun note(html: String, animated: Boolean) = ShowSlideNote(
                 html = html,
-                uid = step.noteAnchorBox?.id ?: hostBox.id,
+                uid = noteAnchorUid(step),
                 persistent = step.persistent,
                 animated = animated,
                 annotations = step.annotations,
@@ -594,6 +669,7 @@ class SlideShowInstance(
                 completedCueActions += key
             }
             currentCueIndex = next
+            syncFigures()
             renderCurrent()
         } else goToStep(currentStepIndex + 1)
     }
@@ -604,6 +680,7 @@ class SlideShowInstance(
     suspend fun previous() {
         if (currentCueIndex > 0) {
             currentCueIndex--
+            syncFigures()
             renderCurrent()
         } else if (currentStepIndex > 0) {
             goToStep(currentStepIndex - 1, steps[currentStepIndex - 1].cues.size)
@@ -628,10 +705,13 @@ class SlideShowInstance(
      * Stops the slideshow and hides notes
      */
     suspend fun stop() {
+        WaitingPresentations.withdraw(this)
         currentStep?.onExit?.invoke()
         currentStepIndex = -1
         currentCueIndex = 0
         completedCueActions.clear()
+        figureGeneration++
+        figureStage.leave()
         markActive(false)
         publishPresentation()
         sendToHostDocument(hostBox, Message("hide-slide-note").payload(HideSlideNote()))
@@ -657,6 +737,13 @@ class SlideShowInstance(
                         completedCueActions.removeAll { it.first == currentStepIndex }
                         currentCueIndex = 0
                         renderCurrent()
+                    } else if (step?.hasFigures == true) {
+                        // "Reset: figures": forget the audience's control changes and start the slide over.
+                        figureStage.reset(viewContent()?.figures.orEmpty(), viewControls())
+                        completedCueActions.removeAll { it.first == currentStepIndex }
+                        currentCueIndex = 0
+                        syncFigures()
+                        renderCurrent()
                     }
                 }
                 command == "run-cue" -> {
@@ -679,7 +766,8 @@ class SlideShowInstance(
         return PresentationState(slideshowId, hostBox.id, options.title, currentStepIndex,
             steps.map { it.title }, content, options.transitionMs, steps.map { it.sectionPath },
             steps.map { it.id }, currentCueIndex, step?.cues?.map { it.title }.orEmpty(),
-            currentCueIndex > 0 && visible?.onEnter != null, step?.checkpoint.orEmpty(),
+            currentCueIndex > 0 && visible?.onEnter != null,
+            step?.checkpoint?.ifEmpty { if (step.hasFigures) "figures" else "" }.orEmpty(),
             if (!includeSearchText || currentStepIndex < 0) emptyList() else searchTextsCache ?: steps.map {
                 PresentationSearch.text(it)
             }.also { searchTextsCache = it })

@@ -105,18 +105,25 @@ fun linesToHTML(
     w: Double = -1.0,
     h: Double = -1.0,
     fitToSize: Boolean = false,
+): String = linesToHTML(lines, w, h, fitToSize, frame = null)
+
+/** [linesToHTML] framed on [frame] (source coordinates) rather than on these lines' own bounds. */
+internal fun linesToHTML(
+    lines: List<FLine>, w: Double, h: Double, fitToSize: Boolean, frame: afield.app.protocol.Rect?,
+    callbackKey: String? = null, dragId: String? = null
 ): String {
     val renderable = lines.renderableLines()
-    val fit = computeFitTransform(renderable, w, h, fitToSize)
+    val fit = computeFitTransform(renderable, w, h, fitToSize, frame)
     return if (renderable.any { it.onClick != null || it.hoverColor != null }) {
         val pairs = renderable.map { it to it.applyFit(fit) }
         wrapLinesOutput(
-            buildInteractiveSVG(pairs, w, h, fit),
-            pairs.map { it.second }.combinedRenderableBoundsOrNull()
+            buildInteractiveSVG(pairs, w, h, fit, callbackKey),
+            frame?.let { framedBounds(it, fit, w, h, keepOrigin = true) } ?: pairs.map { it.second }.combinedRenderableBoundsOrNull(),
+            dragId
         )
     } else {
         val scaled = renderable.map { it.applyFit(fit) }
-        wrapLinesOutput(drawToSVG(scaled, w, h), renderedSvgBoundsFor(scaled, w, h))
+        wrapLinesOutput(drawToSVG(scaled, w, h), frame?.let { framedBounds(it, fit, w, h) } ?: renderedSvgBoundsFor(scaled, w, h), dragId)
     }
 }
 
@@ -130,6 +137,10 @@ fun linesToHTML(
  * @param h Output SVG height in pixels.
  * @param fitToSize If true, uniformly scales and offsets the lines to fit inside [w]x[h] with padding.
  * @param editable If true, points can be dragged; the returned state's `currentLines()` reads them.
+ * @param framing how successive displays are framed; see [LinesFraming]
+ * @param onDrag receives pointer drags across the drawing, in the lines' own coordinates. The drawing
+ *   stays an ordinary, redrawable `lines` output, so a figure can animate and be dragged at once
+ *   (pluck a string while it rings); an editable widget is for moving the drawing's own points.
  * @param onEditCommitted With [editable], receives detached copies of the lines each time a drag
  *   finishes. Keep it short; it runs on the server's message thread.
  */
@@ -143,17 +154,22 @@ fun Box.lines(
     editable: Boolean = false,
     drawing: Boolean = false,
     liveDrawing: Boolean = false,
+    framing: LinesFraming = LinesFraming.Auto,
+    onDrag: ((LinesDragEvent) -> Unit)? = null,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
 ): EditableFLineViewState? {
     val lines = m.asList().renderableLines()
+    val frame = linesFrame(channel, lines, framing)
     if (editable) {
-        val fit = computeFitTransform(lines, w, h, fitToSize)
+        val fit = computeFitTransform(lines, w, h, fitToSize, frame)
         val pairs = lines.map { it to it.applyFit(fit) }
         val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing, onEditCommitted = onEditCommitted)
         display(channel, widget.html)
         return widget.viewState
     }
-    display(channel, linesToHTML(lines, w, h, fitToSize))
+    val fit = computeFitTransform(lines, w, h, fitToSize, frame)
+    display(channel, linesToHTML(lines, w, h, fitToSize, frame, callbackKey = "$id/$channel",
+        dragId = onDrag?.let { registerLinesDrag(this, channel, fit, it) }))
     return null
 }
 
@@ -167,6 +183,10 @@ fun Box.lines(
  * @param h Output SVG height in pixels.
  * @param fitToSize If true, uniformly scales and offsets the lines to fit inside [w]x[h] with padding.
  * @param editable If true, points can be dragged; the returned state's `currentLines()` reads them.
+ * @param framing how successive displays are framed; see [LinesFraming]
+ * @param onDrag receives pointer drags across the drawing, in the lines' own coordinates. The drawing
+ *   stays an ordinary, redrawable `lines` output, so a figure can animate and be dragged at once
+ *   (pluck a string while it rings); an editable widget is for moving the drawing's own points.
  * @param onEditCommitted With [editable], receives detached copies of the lines each time a drag
  *   finishes. Keep it short; it runs on the server's message thread.
  */
@@ -180,17 +200,22 @@ fun Box.lines(
     editable: Boolean = false,
     drawing: Boolean = false,
     liveDrawing: Boolean = false,
+    framing: LinesFraming = LinesFraming.Auto,
+    onDrag: ((LinesDragEvent) -> Unit)? = null,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
 ): EditableFLineViewState? {
     val lines = m.renderableLines()
+    val frame = linesFrame(channel, lines, framing)
     if (editable) {
-        val fit = computeFitTransform(lines, w, h, fitToSize)
+        val fit = computeFitTransform(lines, w, h, fitToSize, frame)
         val pairs = lines.map { it to it.applyFit(fit) }
         val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing, onEditCommitted = onEditCommitted)
         display(channel, widget.html)
         return widget.viewState
     }
-    display(channel, linesToHTML(lines, w, h, fitToSize))
+    val fit = computeFitTransform(lines, w, h, fitToSize, frame)
+    display(channel, linesToHTML(lines, w, h, fitToSize, frame, callbackKey = "$id/$channel",
+        dragId = onDrag?.let { registerLinesDrag(this, channel, fit, it) }))
     return null
 }
 
@@ -216,11 +241,14 @@ fun Box.lines(
     editable: Boolean = false,
     drawing: Boolean = false,
     liveDrawing: Boolean = false,
+    framing: LinesFraming = LinesFraming.Auto,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
 ): Map<String, EditableFLineViewState> {
     val filteredLinesByChannel = linesByChannel.mapValues { (_, lines) -> lines.renderableLines() }
     val allLines = filteredLinesByChannel.values.flatten()
-    val fit = computeFitTransform(allLines, w, h, fitToSize)
+    // One framing for the whole map, so split channels keep the same scale as each other.
+    val frame = linesFrame(if (splitByChannel) linesByChannel.keys.joinToString("\u0000") else channel, allLines, framing)
+    val fit = computeFitTransform(allLines, w, h, fitToSize, frame)
     val states = linkedMapOf<String, EditableFLineViewState>()
     if (splitByChannel) {
         filteredLinesByChannel.forEach { (channelName, lines) ->
@@ -232,10 +260,11 @@ fun Box.lines(
                 states[channelName] = widget.viewState
             } else if (hasInteractive) {
                 val pairs = lines.map { it to it.applyFit(fit) }
-                display(channelName, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit), pairs.map { it.second }.combinedRenderableBoundsOrNull()))
+                display(channelName, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit, "$id/$channelName"),
+                    frame?.let { framedBounds(it, fit, w, h, keepOrigin = true) } ?: pairs.map { it.second }.combinedRenderableBoundsOrNull()))
             } else {
                 val scaled = lines.map { it.applyFit(fit) }
-                display(channelName, wrapLinesOutput(drawToSVG(scaled, w, h), renderedSvgBoundsFor(scaled, w, h)))
+                display(channelName, wrapLinesOutput(drawToSVG(scaled, w, h), frame?.let { framedBounds(it, fit, w, h) } ?: renderedSvgBoundsFor(scaled, w, h)))
             }
         }
     } else {
@@ -247,10 +276,11 @@ fun Box.lines(
             states[channel] = widget.viewState
         } else if (hasInteractive) {
             val pairs = allLines.map { it to it.applyFit(fit) }
-            display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit), pairs.map { it.second }.combinedRenderableBoundsOrNull()))
+            display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit, "$id/$channel"),
+                frame?.let { framedBounds(it, fit, w, h, keepOrigin = true) } ?: pairs.map { it.second }.combinedRenderableBoundsOrNull()))
         } else {
             val scaled = allLines.map { it.applyFit(fit) }
-            display(channel, wrapLinesOutput(drawToSVG(scaled, w, h), renderedSvgBoundsFor(scaled, w, h)))
+            display(channel, wrapLinesOutput(drawToSVG(scaled, w, h), frame?.let { framedBounds(it, fit, w, h) } ?: renderedSvgBoundsFor(scaled, w, h)))
         }
     }
     return states
@@ -288,11 +318,45 @@ private fun emptySvg(w: Double, h: Double): String {
     return """<svg xmlns="http://www.w3.org/2000/svg" width="$width" height="$height" style="overflow:visible"/>"""
 }
 
-private fun wrapLinesOutput(svg: String, bounds: afield.app.protocol.Rect? = null): String {
+private fun wrapLinesOutput(svg: String, bounds: afield.app.protocol.Rect? = null, dragId: String? = null): String {
     val boundsAttrs = bounds?.let {
         """ data-afield-bounds-x="${jsonN(it.x)}" data-afield-bounds-y="${jsonN(it.y)}" data-afield-bounds-w="${jsonN(it.w)}" data-afield-bounds-h="${jsonN(it.h)}""""
     } ?: ""
-    return """<div class="afield-lines-output" data-afield-lines-output="true"$boundsAttrs>$svg</div>"""
+    val dragAttr = dragId?.let { """ data-afield-drag="${it.replace("&", "&amp;").replace("\"", "&quot;")}"""" } ?: ""
+    return """<div class="afield-lines-output" data-afield-lines-output="true"$boundsAttrs$dragAttr>$svg</div>"""
+}
+
+/**
+ * A pointer dragged across a `lines(...)` drawing, in the lines' own coordinates: [phase] is
+ * [Phase.START] on press, [Phase.MOVE] while the pointer moves pressed (at most once a frame), and
+ * [Phase.END] on release.
+ */
+data class LinesDragEvent(val x: Double, val y: Double, val phase: Phase) {
+    enum class Phase { START, MOVE, END }
+}
+
+private val linesDragCallbacks = afield.runtime.lifecycle.OwnedCallbackRegistry<(LinesDragEvent) -> Unit>("linesDrag")
+
+/**
+ * Register [callback] for drags on [box]'s [channel] and return the id the viewer sends back. The id
+ * is the box and channel, so a drawing redisplayed every frame replaces its callback instead of
+ * adding one; [fit] is that display's fit, undone on the way back so the callback sees the lines'
+ * own coordinates.
+ */
+internal fun registerLinesDrag(box: Box, channel: String, fit: FitTransform?, callback: (LinesDragEvent) -> Unit): String {
+    val id = "lines-drag:${box.id}:$channel"
+    linesDragCallbacks.register(id, { e ->
+        callback(if (fit == null) e else e.copy(x = e.x / fit.scale - fit.offsetX, y = e.y / fit.scale - fit.offsetY))
+    })
+    return id
+}
+
+/** Deliver a [afield.app.protocol.LinesDrag] from a viewer; false when nothing is registered under its id. */
+internal fun deliverLinesDrag(drag: afield.app.protocol.LinesDrag): Boolean {
+    val callback = linesDragCallbacks[drag.id] ?: return false
+    val phase = when (drag.phase) { "start" -> LinesDragEvent.Phase.START; "end" -> LinesDragEvent.Phase.END; else -> LinesDragEvent.Phase.MOVE }
+    callback(LinesDragEvent(drag.x, drag.y, phase))
+    return true
 }
 
 private fun renderedSvgBoundsFor(lines: Collection<FLine>, w: Double, h: Double): afield.app.protocol.Rect? {
@@ -303,6 +367,85 @@ private fun renderedSvgBoundsFor(lines: Collection<FLine>, w: Double, h: Double)
         bounds.w,
         bounds.h
     )
+}
+
+/**
+ * The bounds a held or fixed [frame] (source coordinates) occupies in the drawn SVG: through [fit]
+ * when there is one, and with the same origin rule as [renderedSvgBoundsFor] (an axis drawn at its
+ * content's own size starts at zero). [keepOrigin] is the interactive SVG's rule, which never moves
+ * its geometry.
+ */
+private fun framedBounds(
+    frame: afield.app.protocol.Rect, fit: FitTransform?, w: Double, h: Double, keepOrigin: Boolean = false
+): afield.app.protocol.Rect {
+    val s = fit?.scale?.toDouble() ?: 1.0
+    val x = if (fit == null) frame.x else (frame.x + fit.offsetX) * s
+    val y = if (fit == null) frame.y else (frame.y + fit.offsetY) * s
+    return afield.app.protocol.Rect(
+        if (!keepOrigin && w <= 0.0) 0.0 else x,
+        if (!keepOrigin && h <= 0.0) 0.0 else y,
+        frame.w * s,
+        frame.h * s
+    )
+}
+
+/**
+ * How a `lines(...)` output is framed in its panel from one display to the next.
+ *
+ * The viewer fits each display to a rectangle: by default the bounds of the lines just drawn. For a
+ * static drawing that is right, but an animation redrawn every frame is then refitted every frame,
+ * so anything moving near the edge rescales and shifts the whole picture.
+ *
+ * - [Auto], the default: a display from an animation (code running on the Runloop, as `loop { }` and
+ *   `frames { }` bodies do) keeps the framing of the box's last display on that channel in this run;
+ *   any other display (the box's own run, a slider callback) fits its own lines, as before.
+ * - [Fit] fits every display to its own lines.
+ * - [Hold] fits the first display of a run and keeps that framing until the box runs again or stops.
+ * - [fixed] frames every display on a rectangle you give, in the lines' own coordinates.
+ */
+sealed interface LinesFraming {
+    data object Auto : LinesFraming
+    data object Fit : LinesFraming
+    data object Hold : LinesFraming
+    data class Fixed(val x: Double, val y: Double, val w: Double, val h: Double) : LinesFraming {
+        init { require(listOf(x, y, w, h).all { it.isFinite() } && w > 0 && h > 0) { "A fixed frame needs a finite, positive size" } }
+    }
+
+    companion object {
+        /** Frame every display on `x, y, w, h`, in the lines' own coordinates. */
+        fun fixed(x: Double, y: Double, w: Double, h: Double): LinesFraming = Fixed(x, y, w, h)
+    }
+}
+
+/** True while a display comes from an animation; the Runloop thread runs `loop { }` and `frames { }`. Tests replace it. */
+internal var linesDisplayIsAnimation: () -> Boolean = { afield.runtime.lifecycle.Runloop.isMainThread }
+
+private data class HeldLinesFrame(val launchEpoch: Int, val bounds: afield.app.protocol.Rect)
+
+private val heldLinesFrames = java.util.WeakHashMap<Box, MutableMap<String, HeldLinesFrame>>()
+
+/**
+ * The frame this display of [channel] is drawn on, or null to fit the lines' own bounds. A held
+ * frame belongs to one launch of the box: stopping it (and so relaunching it, or a presentation's
+ * Reset: figures) moves `launchEpoch` on, and the next display frames itself afresh.
+ */
+internal fun Box.linesFrame(channel: String, lines: Collection<FLine>, framing: LinesFraming): afield.app.protocol.Rect? {
+    if (framing is LinesFraming.Fixed) return afield.app.protocol.Rect(framing.x, framing.y, framing.w, framing.h)
+    val content = lines.combinedRenderableBoundsOrNull() ?: return null
+    val epoch = launchEpoch.get()
+    synchronized(heldLinesFrames) {
+        val held = heldLinesFrames.getOrPut(this) { HashMap() }
+        val current = held[channel]?.takeIf { it.launchEpoch == epoch }?.bounds
+        val hold = when (framing) {
+            LinesFraming.Hold -> true
+            LinesFraming.Auto -> linesDisplayIsAnimation()
+            else -> false
+        }
+        if (hold && current != null) return current
+        held[channel] = HeldLinesFrame(epoch, content)
+        // The first held display, and every display that fits itself, draw exactly as before.
+        return if (hold) content else null
+    }
 }
 
 /**
@@ -387,12 +530,14 @@ fun drawToSVG(n: List<FLine>, w: Double = -1.0, h: Double = -1.0): String {
 
 internal data class FitTransform(val scale: Float, val offsetX: Float, val offsetY: Float)
 
-private fun computeFitTransform(lines: Collection<FLine>, w: Double, h: Double, enabled: Boolean): FitTransform? {
+private fun computeFitTransform(
+    lines: Collection<FLine>, w: Double, h: Double, enabled: Boolean, frame: afield.app.protocol.Rect? = null
+): FitTransform? {
     if (!enabled) return null
     if (lines.isEmpty()) return null
     if (w <= 0.0 || h <= 0.0) return null
 
-    val bounds = lines.combinedRenderableBoundsOrNull() ?: return null
+    val bounds = frame ?: lines.combinedRenderableBoundsOrNull() ?: return null
     if (bounds.w <= 0f || bounds.h <= 0f) return null
 
     val safety = 20f
@@ -537,7 +682,7 @@ fun outputTo(f: FLine, s: Canvas, antiAlias: Boolean = false) {
  * inverts [fit] before it picks. `__flineIntersectionFromSvg` in `sliders.js` is the consumer, and
  * `FLineHitRecordProbeTest` executes that very function against the SVG this builds.
  */
-internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: Double, fit: FitTransform? = null): String {
+internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: Double, fit: FitTransform? = null, callbackKey: String? = null): String {
     val renderablePairs = pairs.withIndex()
         .filter { (_, pair) -> pair.second.safeFast2DBoundsOrNull() != null }
         .map { (index, pair) -> Triple(index, pair.first, pair.second) }
@@ -565,7 +710,9 @@ internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: 
         val hasInteraction = onClick != null || hoverColor != null
 
         val callbackId: String? = if (onClick != null) {
-            val id = "fline-${UUID.randomUUID()}"
+            // Keyed by box, channel and line when the caller names them, so a drawing redisplayed every
+            // frame replaces its click callbacks; a fresh id per display left one per frame behind.
+            val id = callbackKey?.let { "fline-$it-$lineIndex" } ?: "fline-${UUID.randomUUID()}"
             registerFLineClickCallback(id, onClick)
             id
         } else null

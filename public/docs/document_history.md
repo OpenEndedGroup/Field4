@@ -14,9 +14,7 @@ val uid =
     ui.eval(
             """
             const b = [...document.querySelectorAll(".box")].find(b => (b.textContent || "").includes("sketch"))
-            return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null
-            """
-                .trimIndent(),
+            return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -30,9 +28,7 @@ ui.eval(
     const c = document.querySelector(".monaco-editor-container")
     for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
     if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(6500)
 val versions = [
@@ -40,17 +36,13 @@ val versions = [
     // A ring of points, saved three times.
     val radius = 40.0
     val count = 12
-    println("radius " + radius + ", count " + count)
-    """
-        .trimIndent(),
+    println("radius " + radius + ", count " + count)""".trimIndent(),
     """
     // A ring of points, saved three times.
     val radius = 64.0
     val count = 12
     val ring = (0 until count).map { it * 360.0 / count }
-    println("radius " + radius + ", " + ring.size + " points")
-    """
-        .trimIndent(),
+    println("radius " + radius + ", " + ring.size + " points")""".trimIndent(),
 ]
 for (text in versions) {
     val quoted = "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\""
@@ -60,9 +52,7 @@ for (text in versions) {
 ui.eval(
     """
     window.switchToHistoryForFile(window.currentDocumentFilename || "default")
-    return window.currentDocumentFilename
-    """
-        .trimIndent(),
+    return window.currentDocumentFilename""".trimIndent(),
 )
 // Wait for the rail to show the three saved versions and the current one.
 var rail = ""
@@ -74,9 +64,7 @@ for (i in 0 until 80) {
                 const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
                 const d = f && f.contentDocument
                 const dots = d ? d.querySelectorAll("#rail [data-version-index]").length : 0
-                return "dots=" + dots
-                """
-                    .trimIndent(),
+                return "dots=" + dots""".trimIndent(),
             )
             .toString()
     if ((Regex("dots=(\\d+)").find(rail)?.groupValues?.get(1)?.toInt() ?: 0) >= 3) break
@@ -93,9 +81,7 @@ val at =
             const fr = f.getBoundingClientRect()
             const dot = f.contentDocument.querySelector('#rail [data-version-index="1"]')
             const r = dot.getBoundingClientRect()
-            return [fr.left + r.left + r.width / 2, fr.top + r.top + r.height / 2].join(",")
-            """
-                .trimIndent(),
+            return [fr.left + r.left + r.width / 2, fr.top + r.top + r.height / 2].join(",")""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -113,9 +99,7 @@ for (i in 0 until 60) {
                 const target = f.contentDocument.querySelector("#target-version")?.textContent?.trim() || ""
                 const zones = document.querySelectorAll(".monaco-editor .view-zones > div").length
                 const decorations = document.querySelectorAll(".monaco-editor [class*='aidiff'], .monaco-editor [class*='ai-diff']").length
-                return "target=" + target + " zones=" + zones + " decorations=" + decorations
-                """
-                    .trimIndent(),
+                return "target=" + target + " zones=" + zones + " decorations=" + decorations""".trimIndent(),
             )
             .toString()
     if (shown.contains("target=#1") && !shown.contains("zones=0 decorations=0")) break
@@ -166,9 +150,7 @@ val uid =
     ui.eval(
             """
             const b = [...document.querySelectorAll(".box")].find(b => (b.textContent || "").includes("sketch"))
-            return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null
-            """
-                .trimIndent(),
+            return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -180,9 +162,7 @@ ui.eval(
     const c = document.querySelector(".monaco-editor-container")
     for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
     if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(6500)
 // Three more saved edits of sketch's code: radius 64, then a ring of points, then radius 80.
@@ -206,9 +186,7 @@ for (i in 0 until 100) {
                 """
                 const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
                 const d = f && f.contentDocument
-                return "rows=" + (d ? d.querySelectorAll("#box-story-list .box-story-item").length : 0)
-                """
-                    .trimIndent(),
+                return "rows=" + (d ? d.querySelectorAll("#box-story-list .box-story-item").length : 0)""".trimIndent(),
             )
             .toString()
     if ((Regex("rows=(\\d+)").find(story)?.groupValues?.get(1)?.toInt() ?: 0) >= 4) break
@@ -226,9 +204,7 @@ val at =
             const row = [...f.contentDocument.querySelectorAll("#box-story-list .box-story-item")].find(r => r.querySelector(".range").textContent.trim() === "#1")
             row.scrollIntoView({ block: "center" })
             const r = row.getBoundingClientRect()
-            return [fr.left + r.left + 30, fr.top + r.top + r.height / 2].join(",")
-            """
-                .trimIndent(),
+            return [fr.left + r.left + 30, fr.top + r.top + r.height / 2].join(",")""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -245,9 +221,7 @@ for (i in 0 until 60) {
                 const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
                 const d = f.contentDocument
                 return "target=" + (d.querySelector("#target-version")?.textContent?.trim() || "") +
-                    " active=" + (d.querySelector("#box-story-list .box-story-item.active .range")?.textContent?.trim() || "")
-                """
-                    .trimIndent(),
+                    " active=" + (d.querySelector("#box-story-list .box-story-item.active .range")?.textContent?.trim() || "")""".trimIndent(),
             )
             .toString()
     if (shown.contains("target=#1") && shown.contains("active=#1")) break
@@ -267,9 +241,7 @@ val uid =
     ui.eval(
             """
             const b = [...document.querySelectorAll(".box")].find(b => (b.textContent || "").includes("sketch"))
-            return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null
-            """
-                .trimIndent(),
+            return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -281,9 +253,7 @@ ui.eval(
     const c = document.querySelector(".monaco-editor-container")
     for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
     if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
-    return true
-    """
-        .trimIndent(),
+    return true""".trimIndent(),
 )
 ui.pause(6500)
 // Three more saved edits of sketch's code: radius 64, then a ring of points, then radius 80.
@@ -307,9 +277,7 @@ for (i in 0 until 100) {
                 """
                 const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
                 const d = f && f.contentDocument
-                return "rows=" + (d ? d.querySelectorAll("#box-story-list .box-story-item").length : 0)
-                """
-                    .trimIndent(),
+                return "rows=" + (d ? d.querySelectorAll("#box-story-list .box-story-item").length : 0)""".trimIndent(),
             )
             .toString()
     if ((Regex("rows=(\\d+)").find(story)?.groupValues?.get(1)?.toInt() ?: 0) >= 4) break
@@ -329,9 +297,7 @@ val at =
             const b = rows.filter(r => r.querySelector("button")).pop().querySelector("button")
             b.scrollIntoView({ block: "center" })
             const r = b.getBoundingClientRect()
-            return [fr.left + r.left + r.width / 2, fr.top + r.top + r.height / 2].join(",")
-            """
-                .trimIndent(),
+            return [fr.left + r.left + r.width / 2, fr.top + r.top + r.height / 2].join(",")""".trimIndent(),
         )
         .toString()
         .trim('"')
@@ -347,9 +313,7 @@ for (i in 0 until 80) {
                 """
                 const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
                 const rows = f.contentDocument.querySelectorAll("#box-story-list .box-story-item").length
-                return "rows=" + rows + " editor=" + (window.globalEditor.getValue().includes("radius = 40.0"))
-                """
-                    .trimIndent(),
+                return "rows=" + rows + " editor=" + (window.globalEditor.getValue().includes("radius = 40.0"))""".trimIndent(),
             )
             .toString()
     if (after.contains("editor=true") && after.contains("rows=5")) break

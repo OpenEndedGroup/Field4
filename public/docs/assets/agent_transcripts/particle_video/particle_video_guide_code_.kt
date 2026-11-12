@@ -9,7 +9,5 @@ markdown(
     `FIELD_PARTICLE_TRACKER_PYTHON` to an existing Torch/Torchvision interpreter.
     Replace the movie filename to track your own footage. Width 0 retains native resolution.
 
-    [Video tracking and setup](https://openendedgroup.com/Field4/particle_video/)
-    """
-        .trimIndent(),
+    [Video tracking and setup](https://openendedgroup.com/Field4/particle_video/)""".trimIndent(),
 )

@@ -17,7 +17,5 @@ markdown(
     """
     | text | sentences | mean words | ÷ free random | ÷ fixed order | ÷ shortest | shorter than chance |
     | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-    ${rows.joinToString("\n    ")}
-    """
-        .trimIndent(),
+    ${rows.joinToString("\n    ")}""".trimIndent(),
 )

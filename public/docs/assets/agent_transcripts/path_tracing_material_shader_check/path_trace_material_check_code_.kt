@@ -40,9 +40,7 @@ val verify: suspend () -> Unit = {
             material.base.rgb = vec3(0);
             material.emission.rgb = vec3(pc.gain + pc.bias, 0, 0);
             return material;
-        }
-        """
-            .trimIndent(),
+        }""".trimIndent(),
     )
     check(reloadComputeShader(owner))
     check(tracer.materialModule.current !== original)

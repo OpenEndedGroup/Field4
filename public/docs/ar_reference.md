@@ -51,9 +51,7 @@ display(
     """
     <iframe src="/extensions/remote_ar/index.html?debug=1"
             allow="xr-spatial-tracking; fullscreen"
-            style="display:block;width:960px;height:540px;border:0;background:#000"></iframe>
-    """
-        .trimIndent(),
+            style="display:block;width:960px;height:540px;border:0;background:#000"></iframe>""".trimIndent(),
 )
 displayOpen("remote-ar")
 ```

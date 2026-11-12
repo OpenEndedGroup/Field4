@@ -55,6 +55,7 @@ internal object PresentationSearch {
                         }
                     }, true)
                     add(text.toString())
+                    content.figures.forEach { add(it.name) }
                 }
                 "field-document" -> add(content.document)
                 "webpage", "video" -> add(content.url)

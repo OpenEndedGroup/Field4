@@ -243,9 +243,7 @@ operations:
                           White cube = binocular midpoint · grey cubes = world Z -1, -2, -4 m</p>
                           <p>world = worldFromLocal * LOCAL<br>clip = eyeProjection * eyeViewLocal * inverse(worldFromLocal) * world</p>
                           <p>Hold a valid placement, then move your head: the cube must stay fixed.<br>
-                          Edit worldFromLocal above and relaunch to test another world origin.</p></div>
-                      """
-                                      .trimIndent()
+                          Edit worldFromLocal above and relaunch to test another world origin.</p></div>""".trimIndent()
                                       .format(solve.separation, solve.angleDegrees),
                               )
                           }

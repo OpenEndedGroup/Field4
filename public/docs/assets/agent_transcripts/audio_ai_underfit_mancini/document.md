@@ -68,20 +68,19 @@ client
 <!-- field-box id="underfit_mancini_guide" index="1" -->
 
 ```edn [field-box id="underfit_mancini_guide" role="properties"]
-{"id" "underfit_mancini_guide" "index" 1 "name" "1 · Mancini LoRA guide" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · Mancini LoRA guide" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "underfit_mancini_guide_code_.kt" "lines" 11 "characters" 1046 "sha256" "c44eecf3568ef8f25f7963ed1fcb8b859a15e6fc6e6c59242e0989aa517b316f"}]}
+{"id" "underfit_mancini_guide" "index" 1 "name" "1 · Mancini LoRA guide" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · Mancini LoRA guide" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "underfit_mancini_guide_code_.kt" "lines" 10 "characters" 757 "sha256" "43df937fcc5e5f0618048c8d936ffbfeb6a642f44277909868c4e1ceaccf9b98"}]}
 ```
 
 ```kotlin [field-property box="underfit_mancini_guide" name="code" path="underfit_mancini_guide_code_.kt"]
-display(
+markdown(
     "guide",
     """
-    <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
-      <h2 style="margin:0 0 8px;color:#7fcbd7">Experiment in Terror · Underfit LoRA</h2>
-      <p>This request uses 165 twelve-second chunks from the complete Henry Mancini album as training material. The pinned rank-16 DoRA checkpoint is applied to Stable Audio 3's small-music base model, with a 12-second source window extended to a 30-second candidate.</p>
-      <p>Set <code>FIELD_AUDIO_UNDERFIT_SOURCE_WAV</code> to your source WAV (at least 12 seconds), set <code>FIELD_AUDIO_UNDERFIT_LORA_ROOT</code>, and start the Underfit worker before running box 2. The worker must have the staged base model and the checkpoint beneath that root. The request retains its model revisions, checkpoint digest, seed, and sampling controls in the durable candidate provenance.</p>
-    </section>
-    """
-        .trimIndent(),
+    ## Experiment in Terror · Underfit LoRA
+
+    This request uses 165 twelve-second chunks from the complete Henry Mancini album as training material. The pinned rank-16 DoRA checkpoint is applied to Stable Audio 3's small-music base model, with a 12-second source window extended to a 30-second candidate.
+
+    Set `FIELD_AUDIO_UNDERFIT_SOURCE_WAV` to your source WAV (at least 12 seconds), set `FIELD_AUDIO_UNDERFIT_LORA_ROOT`, and start the Underfit worker before running box 2. The worker must have the staged base model and the checkpoint beneath that root. The request retains its model revisions, checkpoint digest, seed, and sampling controls in the durable candidate provenance.""".trimIndent(),
+    width = 1040,
 )
 ```
 

@@ -189,7 +189,7 @@ source and then committed, so that a change to one shows up as a reviewable diff
 | `checkKDocAttachment` | every KDoc block in `src/` attaching to the declaration below it | move the block — see `dev_docs/kdoc_reference_contract.md` |
 | `checkAgentTranscripts` | `public/docs/assets/agent_transcripts/`, the welcome screen's starting points | `./gradlew regenerateAgentTranscriptStartingPoints` |
 | `checkAgentTranscriptIndex` | `public/docs/agent_transcripts.md` being a true index of that corpus | write the missing entry |
-| `checkCompletionCorpusFixtures` | `tools/completion-corpus/boxes` after real macro expansion | re-run it with `AFIELD_HARVEST_WRITE=1` |
+| `checkCompletionCorpusFixtures` | `tools/completion-corpus/boxes` after real macro expansion | re-run it with `AFIELD_HARVEST_WRITE=1`, or run the nightly `completion-corpus` routine: landings re-harvest only when the harvester changes, so the corpus can trail `main` by a day |
 | `checkAgentDemos` | a `dev_docs/agents/demos` inline fallback matching its sidecar | `./gradlew regenerateAgentDemos` |
 | `citationGates` | every `path:line` and `path#symbol` cited by a guarded page | fix the citation |
 | `checkPythonTools` | the `tools/test_*.py` suites | fix the test |

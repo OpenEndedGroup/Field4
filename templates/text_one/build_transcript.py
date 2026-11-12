@@ -63,7 +63,7 @@ def main():
         ('text1_global_keys', '23 · Global looks / keyframes', -650, 150, {'code': (here/'global_controls.kt').read_text()}),
     ]
     create = [
-        {'create': {'box': uid, 'name': name, 'frame': {'x': x, 'y': y, 'w': 480, 'h': 100}, 'properties': props}}
+        {'create': {'box': uid, 'name': name, 'frame': {'x': x + 1340, 'y': y, 'w': 480, 'h': 100}, 'properties': props}}
         for uid, name, x, y, props in boxes
     ]
     for child in ['text1_poem', 'text1_example2', 'text1_example3', 'text1_example4', 'text1_typography', 'text1_word_blur', 'text1_elastic', 'text1_drop_caps', 'text1_two_readings', 'text1_overstroke_rectangle', 'text1_overstroke_union', 'text1_frustum_readings', 'text1_frustum_two_faces', 'text1_stroke', 'text1_point', 'text1_text', 'text1_blur', 'text1_blur_medium_v', 'text1_blur_broad_h', 'text1_blur_broad_v', 'text1_composite']:

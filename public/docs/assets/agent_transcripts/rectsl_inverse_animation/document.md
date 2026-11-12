@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rectsl_inverse_fit" index="0" -->
 
 ```edn [field-box id="rectsl_inverse_fit" role="properties"]
-{"id" "rectsl_inverse_fit" "index" 0 "name" "RectSL inverse animation" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "RectSL inverse animation" "_tombstone" false "frame" #afield/rect [80.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_inverse_fit_code_.kt" "lines" 80 "characters" 2662 "sha256" "2ef9150279c6b15729fbf1d9784f55f95afc28f5310867702cb0d7cc13cfa4ac"}]}
+{"id" "rectsl_inverse_fit" "index" 0 "name" "RectSL inverse animation" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "RectSL inverse animation" "_tombstone" false "frame" #afield/rect [80.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_inverse_fit_code_.kt" "lines" 79 "characters" 2657 "sha256" "51cd9abdd30d0fa8ffee5d6c191951247057ca7aefe23a9fb5cc9b2fc05d23b3"}]}
 ```
 
 ```kotlin [field-property box="rectsl_inverse_fit" name="code" path="rectsl_inverse_fit_code_.kt"]
@@ -93,8 +93,7 @@ display(
 """x: ${fitX.initialParameters} -> ${fitX.parameters}
 |   residual ${fitX.initialResidual} -> ${fitX.finalResidual}
 |y: ${fitY.initialParameters} -> ${fitY.parameters}
-|   residual ${fitY.initialResidual} -> ${fitY.finalResidual}"""
-    .trimMargin()
+|   residual ${fitY.initialResidual} -> ${fitY.finalResidual}""".trimMargin()
 ```
 
 ## 2. the free-param word
@@ -102,7 +101,7 @@ display(
 <!-- field-box id="rectsl_free_param_word" index="1" -->
 
 ```edn [field-box id="rectsl_free_param_word" role="properties"]
-{"id" "rectsl_free_param_word" "index" 1 "name" "the free-param word" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the free-param word" "_tombstone" false "frame" #afield/rect [80.0 960.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_free_param_word_code_.kt" "lines" 75 "characters" 2305 "sha256" "d089c38d6619e39e3f029c8194fb6b57cf7686dddd17dc0a3cb54200157bf0e0"}]}
+{"id" "rectsl_free_param_word" "index" 1 "name" "the free-param word" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the free-param word" "_tombstone" false "frame" #afield/rect [80.0 960.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_free_param_word_code_.kt" "lines" 71 "characters" 2265 "sha256" "450c02d0028c42ee3882186ad798071a64067522c703c8c21ea01199d51236d0"}]}
 ```
 
 ```kotlin [field-property box="rectsl_free_param_word" name="code" path="rectsl_free_param_word_code_.kt"]
@@ -125,9 +124,7 @@ val program =
               1.4 1.4 ->wh
               "sweep" track-ref 1.0 free-param gain * 0.0 free-param bias + ->x
               0x44d4b4 solid ->fill
-            ;
-            """
-                .trimIndent(),
+            ;""".trimIndent(),
         )
         .program
 
@@ -177,9 +174,7 @@ markdown(
     IR after:    ${fit.fitted.describe()}
     residual:    ${fit.initialResidual} -> ${fit.finalResidual}
     x(1.0) = ${fit.fitted.sample(1.0)}   x(3.0) = ${fit.fitted.sample(3.0)}
-    ~~~
-"""
-        .trimIndent(),
+    ~~~""".trimIndent(),
 )
 ```
 

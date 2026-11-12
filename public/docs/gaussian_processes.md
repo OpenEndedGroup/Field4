@@ -892,10 +892,21 @@ val start = System.nanoTime()
 loop {
     if (frameNumber % 2 == 0) {
         val phase = 2 * Math.PI * ((System.nanoTime() - start) / 4e9)
-        val slice = Array(side) { row ->
-            DoubleArray(side) { col -> animated(-1.0 + 2.0 * col / (side - 1), -1.0 + 2.0 * row / (side - 1), 0.0, phase) }
-        }
-        showHeatmap(slice, vmin = -2.0, vmax = 2.0, normalize = false, colormap = "coolwarm", width = 360, channel = "z = 0")
+        val slice =
+            Array(side) { row ->
+                DoubleArray(side) { col ->
+                    animated(-1.0 + 2.0 * col / (side - 1), -1.0 + 2.0 * row / (side - 1), 0.0, phase)
+                }
+            }
+        showHeatmap(
+            slice,
+            vmin = -2.0,
+            vmax = 2.0,
+            normalize = false,
+            colormap = "coolwarm",
+            width = 360,
+            channel = "z = 0",
+        )
     }
 }
 ```

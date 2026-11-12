@@ -19,7 +19,7 @@ Conway prefix notation, read right to left, over the seeds T C O I D and the
 operators d a k t g j n z o e s m b. Try "gD", "ktC", "bD", "sD", "dkD", "tI", "eC".
 
 ```edn [field-box id="polytope_canonical_gallery" role="properties"]
-{"id" "polytope_canonical_gallery" "index" 0 "name" "Polytope — Conway expression gallery, canonicalized" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — Conway expression gallery, canonicalized" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_canonical_gallery_code_.kt" "lines" 90 "characters" 3682 "sha256" "acca7465f14da2181f61566fb50c7d55df3f7674e0e820aec7b86e265b058f78"}]}
+{"id" "polytope_canonical_gallery" "index" 0 "name" "Polytope — Conway expression gallery, canonicalized" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — Conway expression gallery, canonicalized" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_canonical_gallery_code_.kt" "lines" 86 "characters" 3630 "sha256" "b9bd010fb31a18dc26a369528da7d555cf87566a33b516aac7b93b8ce23dd106"}]}
 ```
 
 ```kotlin [field-property box="polytope_canonical_gallery" name="code" path="polytope_canonical_gallery_code_.kt"]
@@ -44,9 +44,7 @@ println(
     before: spread ${"%.3e".format(raw.canonicalDiagnostics().tangencyRadiusSpread)}  planarity ${"%.3e".format(raw.canonicalDiagnostics().maxFacePlanarityError)}
     after:  spread ${"%.3e".format(run.finalDiagnostics.tangencyRadiusSpread)}  planarity ${"%.3e".format(run.finalDiagnostics.maxFacePlanarityError)}  centre ${"%.3e".format(run.finalDiagnostics.tangencyCentroidOffset)}
     ${run.reason} after ${run.iterations} iterations (reciprocal ${run.reciprocalIterations}, relaxation ${run.relaxationIterations}, reseeded ${run.reseeded})
-    orbits: ${orbits.summary()}
-    """
-        .trimIndent(),
+    orbits: ${orbits.summary()}""".trimIndent(),
 )
 
 val status: (String) -> Unit = { message -> markdown("canonical face", message) }
@@ -87,9 +85,7 @@ fun PolyhedralObject.panel(label: String, dx: Float, alpha: Double) =
 
                 - degree: `$degree`
                 - combinatorial orbit: `$orbit of ${orbits.faceClassCount}`
-                - face-plane distance from centre: `${depth.f5}`
-                """
-                    .trimIndent(),
+                - face-plane distance from centre: `${depth.f5}`""".trimIndent(),
             )
         }
     }

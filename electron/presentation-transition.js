@@ -1,5 +1,5 @@
 // Runs inside the transparent transition view; keep this function self-contained.
-async function paintTransitionFrame({baseSource, guestSource, guestStyle}) {
+async function paintTransitionFrame({baseSource, guestSource, guestStyle, figures = []}) {
   const paint = async (canvas, source) => {
     canvas.hidden = !source;
     if (!source) return;
@@ -18,7 +18,15 @@ async function paintTransitionFrame({baseSource, guestSource, guestStyle}) {
   const base = document.getElementById('base');
   const guest = document.getElementById('guest');
   guest.style.cssText = guestStyle;
-  await Promise.all([paint(base, baseSource), paint(guest, guestSource)]);
+  // Each live figure's outgoing frame, at its own bounds, so figures cross-fade with the slide.
+  const figureCanvases = figures.map(({style}) => {
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = `position:absolute;visibility:hidden;${style}`;
+    document.body.appendChild(canvas);
+    return canvas;
+  });
+  await Promise.all([paint(base, baseSource), paint(guest, guestSource),
+    ...figures.map(({source}, index) => paint(figureCanvases[index], source))]);
   // Stay transparent over the outgoing live view until its captured pixels are drawn.
   // Revealing the black backing earlier exposes a frame while Image.onload is pending.
   if (!baseSource) document.body.style.background = '#000';

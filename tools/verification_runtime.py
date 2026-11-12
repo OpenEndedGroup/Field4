@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import signal
 import socket
 import ssl
@@ -30,21 +31,110 @@ def pinned_graalvm_args(repo: Path) -> list[str]:
     """
     if os.environ.get("AFIELD_SKIP_TOOLCHAIN_PROVISION") == "1":
         return []
+    home = provisioned_graalvm_home(repo)
+    return [f"-Dorg.gradle.java.installations.paths={home}"] if home else []
+
+
+_JAVA = "java.exe" if os.name == "nt" else "java"
+
+
+def _release_field(home: Path, key: str) -> str | None:
+    try:
+        text = (home / "release").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    match = re.search(rf'^{key}="([^"]*)"', text, re.MULTILINE)
+    return match.group(1) if match else None
+
+
+def provisioned_graalvm_home(repo: Path) -> Path | None:
+    """The exact GraalVM build `field.sh` provisions under `~/.field4/toolchains`, or None.
+
+    Python twin of gradlew's `FIELD TOOLCHAIN SELECTION` block: the directory name must
+    carry `graalvmVersion` from build.gradle.kts and its `release` file must say so too.
+    """
     try:
         build = (repo / "build.gradle.kts").read_text(encoding="utf-8")
     except OSError:
-        return []
+        return None
     match = re.search(r'^val graalvmVersion = "([^"]+)"', build, re.MULTILINE)
     if not match:
-        return []
-    java = "java.exe" if os.name == "nt" else "java"
+        return None
+    version = match.group(1)
     toolchains = Path.home() / ".field4" / "toolchains"
-    for pattern in (f"graalvm-community-*{match.group(1)}*/bin/{java}",
-                    f"graalvm-community-*{match.group(1)}*/Contents/Home/bin/{java}"):
+    for pattern in (f"graalvm-community-*{version}*/bin/{_JAVA}",
+                    f"graalvm-community-*{version}*/Contents/Home/bin/{_JAVA}"):
         for candidate in sorted(toolchains.glob(pattern)):
-            if candidate.is_file() and os.access(candidate, os.X_OK):
-                return [f"-Dorg.gradle.java.installations.paths={candidate.parent.parent}"]
-    return []
+            home = candidate.parent.parent
+            if (candidate.is_file() and os.access(candidate, os.X_OK)
+                    and _release_field(home, "GRAALVM_VERSION") == version):
+                return home
+    return None
+
+
+def java_home_major(home: Path) -> int | None:
+    """Feature release of the JDK at `home` (25 for `25.0.4`), read from its `release` file."""
+    match = re.match(r"(?:1\.)?(\d+)", _release_field(home, "JAVA_VERSION") or "")
+    return int(match.group(1)) if match else None
+
+
+def _probe_java_major(java: str) -> int | None:
+    """Feature release of an arbitrary `java` launcher (macOS's /usr/bin/java has no release file)."""
+    try:
+        result = subprocess.run([java, "-XshowSettings:properties", "-version"], capture_output=True,
+                                text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    match = re.search(r"^\s*java\.specification\.version = (?:1\.)?(\d+)", result.stderr, re.MULTILINE)
+    return int(match.group(1)) if match else None
+
+
+class MissingJdkError(RuntimeError):
+    """No JDK new enough for a JVM tool; the message names the version and where it looked."""
+
+
+def _candidate_java_homes(repo: Path) -> Iterator[Path]:
+    home = provisioned_graalvm_home(repo)
+    if home:
+        yield home
+    for root in (Path.home() / ".gradle" / "jdks", Path.home() / ".field4" / "gradle-jvm"):
+        for pattern in (f"*/bin/{_JAVA}", f"*/*/bin/{_JAVA}",
+                        f"*/Contents/Home/bin/{_JAVA}", f"*/*/Contents/Home/bin/{_JAVA}"):
+            for java in sorted(root.glob(pattern)):
+                yield java.parent.parent
+    if os.environ.get("JAVA_HOME"):
+        yield Path(os.environ["JAVA_HOME"])
+
+
+def field_java(repo: Path, minimum: int, purpose: str = "this tool") -> str:
+    """The `java` a JVM tool under tools/ should run on: Field's JDK first, never blindly PATH's.
+
+    Order: the GraalVM `field.sh` provisions (what Field and Gradle's toolchain use),
+    Gradle-provisioned toolchain JDKs (`~/.gradle/jdks`), the JDKs gradlew bootstraps itself
+    on (`~/.field4/gradle-jvm`, which compile the standalone tool builds under tools/), then
+    `JAVA_HOME` and `java` on PATH. A candidate must be at least Java `minimum`: a JDK 22 on PATH running
+    a tool compiled for 25 dies with UnsupportedClassVersionError. Raises `MissingJdkError`
+    naming `minimum` when nothing qualifies.
+    """
+    seen: list[str] = []
+    for home in _candidate_java_homes(repo):
+        java = home / "bin" / _JAVA
+        if not (java.is_file() and os.access(java, os.X_OK)):
+            continue
+        major = java_home_major(home)
+        seen.append(f"{home} (Java {major if major is not None else '?'})")
+        if major is not None and major >= minimum:
+            return str(java)
+    ambient = shutil.which(_JAVA)
+    if ambient:
+        major = _probe_java_major(ambient)
+        seen.append(f"{ambient} on PATH (Java {major if major is not None else '?'})")
+        if major is not None and major >= minimum:
+            return ambient
+    raise MissingJdkError(
+        f"{purpose} needs Java {minimum} or newer, and none was found "
+        f"(looked at: {'; '.join(seen) if seen else 'nothing'}). Run ./field.sh once to provision "
+        f"Field's GraalVM, or set JAVA_HOME to a JDK {minimum}+.")
 
 
 #: Backdoor verbs that, since 2026-09-14, grade themselves on the box's own error output

@@ -81,7 +81,7 @@ The parameters are the ones Pattern Collider exposes:
 
 Each `DeBruijnTile` carries its four `corners`, its `type` (the acute angle is
 `type * 180 / symmetry` degrees), its `center`, and the two grid lines `first` and `second` whose
-crossing made it, as `DeBruijnLine(family, index)`.
+crossing made it, as [`DeBruijnLine(family, index)`](reference/graphics.md#debruijntiling-kt-debruijnline).
 
 ## Other symmetries, and disorder
 
@@ -870,7 +870,7 @@ as the lattice grows.
 
 ### A live tiling
 
-`ModalDrum` plays a spring network exactly as it plays a drum: return it from a box and launch the
+[`ModalDrum`](reference/audio.md#modaldrum-kt-modaldrum) plays a spring network exactly as it plays a drum: return it from a box and launch the
 box. Its modes run on the audio thread, and `strike(x, y)` from any box or callback adds a strike
 at the start of the next block. `fundamentalFor(220.0)` keeps the E = 0 pitch at 220 Hz. With all
 934 modes of this patch, a 512-sample block takes about 2 ms to render.
@@ -983,3 +983,9 @@ Open questions about the spectrum:
     edge of a `between(...)` slab must have exactly two faces, and a slice must cover a disk once at
     every sample point. An earlier cut picked slab cells by their centres; Manifold welded them,
     but cells meeting only along an edge left a non-manifold mesh, which is why `between` exists.
+
+## API reference
+
+Implementation and parameter details for the helpers used above:
+
+- [`MeshView`](reference/graphics.md#mesh-field-kt-meshview)

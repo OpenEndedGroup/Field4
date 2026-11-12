@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-10T09:04:15.609Z",
+  "capturedAt": "2026-11-11T15:59:54.672Z",
   "documentName": "audio_ai_muscriptor",
   "outputs": [
     {
@@ -9,8 +9,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 455,
-      "height": 430,
+      "width": 1056,
+      "height": 141,
       "path": "outputs/0.html"
     },
     {
