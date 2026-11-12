@@ -962,11 +962,12 @@ mix, the creatures explore the rule space themselves. Compare this with the oute
 radii, the square each cell's matter is spread over when it lands, and the largest step. `dt` grows
 nine times, because the gradient of a pattern three times as large is a third as steep. Matter then
 moves the same fraction of a creature per step as before, and each creature is drawn with nine times
-as many cells. `scaledCopy(k)` does the same to a world that is already running, so you can find
-something in a small, fast world and then watch it large.
+as many cells. Use `scaledCopy(k)` on a world that is already running to find something in a
+small, fast world and then watch it at a larger scale.
 
-Here the three species run twice, side by side, from the same seed. On the left is the 96-cell world,
-each cell drawn as a 5 x 5 block of pixels. On the right is `scale = 3`, the same start in 288 cells:
+Here the three species run twice, side by side, from the same seed. On the left is the 96 x 96
+world, each cell drawn as a 5 x 5 block of pixels. On the right is the same start at `scale = 3`,
+in a 288 x 288 world:
 
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-scale.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="900" w="1000" embed=true name="alife-flow-lenia-scale" alt="two copies of the three-species world side by side; left, blocky at 96 cells, right, smooth at 288 cells. In both, an orange cloud of a dozen round bodies forms in the same place. The cyan and pink species differ: on the left the cyan breaks into small hollow rings and the pink grows a ragged membrane body, while on the right the cyan forms one cluster of rings that later breaks into crosses and the pink pulls apart into beaded chains"}
 :::static
@@ -1007,19 +1008,19 @@ structure is set by the grid rather than the kernels, so the match is never cell
   so its speed in body lengths is unchanged. At twice the resolution it covers 1.44 times the cells
   rather than 2.
 
-A large world is mostly a convolution problem, because every tap of every kernel is nine times as
-many cells. The affinity is computed by whichever of two methods is cheaper for the current state
-(`FlowLeniaConvolution.AUTO`). `SPARSE` scatters each occupied cell through every tap.
+At higher resolution, convolution has more cells to cover for every tap of every kernel.
+`FlowLeniaConvolution.AUTO` computes affinity with whichever of two methods is cheaper for the
+current state. `SPARSE` scatters each occupied cell through every tap.
 `FFT` multiplies in the frequency domain and costs the same whatever the kernel radius. Any side
 length works, and sides built from small primes, such as 96 or 288, are fast. The two agree to
 `1e-14`. The three species above take about 9 ms a step at 96 x 96 and about 150 ms at 288 x 288.
 
 ### Bodies that travel
 
-`bodies()` splits the matter into connected pieces, joined across the seams of the torus, and gives
-each piece its mass, its centroid and its main species. `trackLargest(steps)` runs the world while
-following the largest body, and returns its path, unwrapped so that crossing the seam keeps
-counting, along with its mass over time. `FlowLeniaTrack.speed` is the straight-line distance per
+`bodies()` splits the matter into connected pieces, joining them across the edges of the torus. It
+gives each piece its mass, centroid and main species. `trackLargest(steps)` follows the largest body
+as the world runs, returning its path and mass over time. The path is unwrapped, so it continues
+across an edge instead of jumping back. `FlowLeniaTrack.speed` is the straight-line distance per
 step, and `massKept` is the smallest mass over the run divided by the first.
 
 [`FlowLeniaPresets.crescent()`](reference/alife.md#alife-flow-lenia-kt--flowleniapresets--crescent) is a rule from a random search of 900 rules scored that way. From a small
@@ -1056,9 +1057,9 @@ animateEvolution(
 
 ### Searching for travellers
 
-[`FlowLeniaGenome`](reference/alife.md#alife-flow-lenia-kt-flowleniagenome) makes Flow Lenia species a genome for the same `PopulationSearch` the
-[Lenia rule search](#a-lenia-rule-that-travels) uses. A random draw comes from the paper's rule space,
-the one the presets came from. It has three mutations: `nudge` moves every `mu`, `sigma` and weight a
+[`FlowLeniaGenome`](reference/alife.md#alife-flow-lenia-kt-flowleniagenome) lets you search for species with the same `PopulationSearch` used in the
+[Lenia rule search](#a-lenia-rule-that-travels). A random draw comes from the paper's rule space,
+where the presets came from too. There are three mutations: `nudge` moves every `mu`, `sigma` and weight a
 little, `rekernel` redraws one kernel, and `addOrDrop` adds or removes one. Crossover takes each kernel,
 with its weight, from one parent or the other. `flowLeniaGliderObjective` scores the tracked body's
 speed times the square of its `massKept`. It scores zero for a film covering more than 40 % of the
@@ -1093,8 +1094,8 @@ stay where they are.
 
 ### Evolution inside the world
 
-When species meet and blend, the rules only mix. Nothing in the world makes a rule that was not
-there at the start. `world.mutation = FlowLeniaMutation(rate, radius, scale)` adds that. On average
+When species meet and blend, their rules mix. To introduce new rules as the world runs, set
+`world.mutation = FlowLeniaMutation(rate, radius, scale)`. On average
 `rate` times a step, a disc of `radius` cells, centred on a cell picked in proportion to its matter,
 has the same random offset added to its kernel weights. The offset is Gaussian with standard deviation
 `scale` per kernel, and it is not clipped: a weight that goes negative makes that kernel push matter
@@ -1144,17 +1145,16 @@ animateEvolution(
 With neutral mutations the three species hold their ground: 1069, 1010 and 794 units at step 600, and
 1178, 892 and 803 at step 2400. With mutations of size 0.3 the wanderers' descendants take over: by
 step 2400 they hold 1851 units, and the cell, which started with 739, is down to 114. The total is
-the same in both worlds throughout. The picture shows a second effect the numbers do not: in the
-mutating world much of the matter ends up as a faint haze between a few surviving bodies, because
-most large changes to the weights produce a rule that holds nothing together. The same comparison at 96 cells, for three noise seeds over 3000
+the same in both worlds throughout. In the picture, much of the mutating world ends up as a faint
+haze between a few surviving bodies: most large changes to the weights produce a rule that holds
+nothing together. The same comparison at 96 cells, for three noise seeds over 3000
 steps, went the same way each time. Neutral mutation moved no species' mass by more than about 20 %.
 Mutation of size 0.3 drove one species close to extinction in all three seeds, leaving 27, 77 and 38
 of the 198 to 261 units it started with: the cell in two seeds, the rings in the third.
-Which one wins depends on where the useful mutations land, so this is selection among mutants rather
-than a property of any species.
+Which species wins depends on where the useful mutations land: the world is selecting among mutants.
 
-`paintWeights(cx, cy, radius, h)` is the hand-held version: it gives the matter in a disc new weights
-`h` without moving it, and makes that matter a lineage of its own. Its other form takes a function
+Use `paintWeights(cx, cy, radius, h)` to give the matter in a disc new weights by hand. The matter
+stays in place and becomes a lineage of its own. The other form takes a function
 of each cell and its current weights, which is how `mutate` is built.
 
 ??? aside "How the species were found, and what did not work"
@@ -3279,8 +3279,9 @@ edit it rather than retyping it: open it from the welcome screen. Sections 1 to 
 [`alife_worked_example`](agent_transcripts.md), and section 11 is
 [`alife_evolution`](agent_transcripts.md), kept separate because its four search boxes take about
 fifty seconds between them. The grain boxes of "Evolved grain sets" are
-[`alife_grains`](agent_transcripts.md). Every box runs on its own and prints the numbers this page quotes; none
-of them opens a `Window` or a `Renderer`. To replay them from a terminal instead:
+[`alife_grains`](agent_transcripts.md#alife_grains), and the Flow Lenia boxes are
+[`flow_lenia`](agent_transcripts.md#flow_lenia). Every box runs on its own; none opens a `Window` or
+a `Renderer`. To replay the first three starting points from a terminal instead:
 
 ```diffstatic {data-lang=bash}
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_worked_example.yaml
@@ -3309,7 +3310,8 @@ python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife
   (sections 1 to 10), [`alife_evolution`](agent_transcripts.md#alife_evolution),
   [`alife_search_comparison`](agent_transcripts.md#alife_search_comparison),
   [`alife_tree_growth`](agent_transcripts.md#alife_tree_growth) and
-  [`alife_grains`](agent_transcripts.md#alife_grains).
+  [`alife_grains`](agent_transcripts.md#alife_grains), plus
+  [`flow_lenia`](agent_transcripts.md#flow_lenia).
 - Source: [`alife_lsystem.kt`](reference/alife.md#alife-lsystem-kt),
   [`alife_evolve.kt`](reference/alife.md#alife-evolve-kt) and
   [`alife_grains.kt`](reference/alife.md#alife-grains-kt).
@@ -3340,8 +3342,8 @@ Open questions and next builds for Flow Lenia:
 
 - **Flow Lenia on the GPU.** The FFT path makes 288 x 288 cells about 150 ms a step on the CPU, so
   tens of thousands of steps, or 1024-cell worlds, still need the GPU. The step is a convolution, two
-  Sobel gradients and a scatter, the shape of the ping-pong compute lessons in
-  `public/docs/assets/canonical_graphics/LESSONS.md`. The scatter needs atomic adds or a gather
+  Sobel gradients and a scatter, the shape of the [ping-pong compute lessons](assets/canonical_graphics/LESSONS.md).
+  The scatter needs atomic adds or a gather
   rewrite. Check it against `FlowLeniaWorld` with `affinity()` and one `step()`, as
   `FlowLeniaTest` checks the FFT against the sparse convolution.
 - **Search at the resolution you want to watch.** The dart travels at 64 cells and stops at 128.
@@ -3356,38 +3358,6 @@ Open questions and next builds for Flow Lenia:
 - **Per-species mass as sound.** `speciesMasses()` and `lineageHistory` are smooth, conserved
   series, a natural control signal for a synth: a competition you can hear.
 
-Open questions and next builds for the grain sets:
-
-- **A statistic for contour.** The [recording target](#a-target-taken-from-a-recording) matches
-  count, span, spread and median and still does not rise evenly, because no `GrainStat` says which
-  way pitch moves over time. A slope of pitch against onset, or the share of steps that go up, would
-  let a target ask for a shape.
-- **Polyphonic targets.** `grainsFromAudio` is monophonic, so a recorded target always has a
-  polyphony of about 1. Reading a chordal recording needs a multi-pitch detector, which Field does
-  not have yet.
-- **A target that needs a second rule.** `nonterminals = "X"` works, but on the arpy target, at
-  the same budget and two seeds, it did not raise the best score with either alphabet. A target that rewards
-  growth that changes from one generation to the next, such as a voice that gets one note longer
-  each time, is the experiment that would show whether it helps.
-- **Statistics for the new symbols.** `<`, `>`, `l` and `r` change grain length and pan, and
-  nothing in `GrainSetStats` measures either, so the search uses them only for their side effects
-  on duration and polyphony. A length-spread and a pan-width statistic would make them targets.
-- **A breeder you can drive live.** The interactive box replaces all its players after every
-  choice; keeping past generations in a column would let you hear a lineage. `GrainBreeder.history`
-  already holds every generation and the parents chosen from it.
-- **Listening to the map.** The [map](#a-map-of-grain-sets-instead-of-one-winner) shows sixteen
-  scores; a player per cell would let you choose a parent for `GrainBreeder` from it.
-
-Open questions and next builds for Flow Lenia:
-
-- Flow Lenia on the GPU: the step is a convolution, a gradient and a scatter, the shape of the
-  ping-pong compute lessons in `public/docs/assets/canonical_graphics/LESSONS.md`; check it against
-  `FlowLeniaWorld` the way `FlowLeniaTest` checks the sparse convolution.
-- A longer search for Flow Lenia gliders, scored on the speed of the largest body with its mass held,
-  and mutation of `h` so the drift in "When species meet" can select rather than only blend.
-- Per-species mass from `speciesMasses()` driving sound, or `h` painted onto the world through
-  `notation`.
-
 Open questions for the rest of the page:
 
 - **Search beyond the saturated L-system objective.** The dimension target in
@@ -3397,16 +3367,6 @@ Open questions for the rest of the page:
   3-D life-like automaton shows the grid side of that extension already exists.
 - **Trees that compete for sound.** The light-competition trees could be read with the grain
   decoder, each branch a voice, so a forest's growth becomes a score.
-
-Next builds for Flow Lenia:
-
-- Flow Lenia on the GPU: the step is a convolution, a gradient and a scatter, the shape of the
-  ping-pong compute lessons in `public/docs/assets/canonical_graphics/LESSONS.md`; check it against
-  `FlowLeniaWorld` the way `FlowLeniaTest` checks the sparse convolution.
-- A longer search for Flow Lenia gliders, scored on the speed of the largest body with its mass held,
-  and mutation of `h` so the drift in "When species meet" can select rather than only blend.
-- Per-species mass from `speciesMasses()` driving sound, or `h` painted onto the world through
-  `notation`.
 
 ## API reference
 
