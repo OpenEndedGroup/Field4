@@ -720,8 +720,9 @@ dominates, then two of its inputs, the sun transmittance and the sky visibility.
 first box and run the shader box to watch the GPU cloud change. Until a box calls `cloudHere`,
 `cloud/network` returns zero, so the shader still compiles and draws single scattering.
 
-The shader evaluates the network at every step of every ray, with no attempt to make that fast,
-so it is a way to look at the network rather than a production cloud renderer.
+The shader evaluates the network at every step of every ray. It gives you a way to see what the
+network has learned, rather than a production cloud renderer. Below, we'll look at how often you
+need to evaluate it.
 
 ### Does the GPU draw the same cloud?
 
@@ -757,10 +758,10 @@ cloud dispatched at 1280 × 800:
 | 4 | 0.0658 | 21.7 ms | 12.6 ms |
 | 8 | 0.0640 | 17.1 ms | 8.1 ms |
 
-Holding the in-scatter for eight steps costs nothing measurable here, because the in-scatter
+In this view, holding the in-scatter for eight steps makes little difference to the error: it
 changes slowly along a ray compared with the sun term, which is still computed every step. The
-timings come from wall-clock frames, and an empty frame already takes 9 ms, so only the drop at
-n = 8 stands clear of the noise. Treat them as an upper bound, not a GPU timer reading.
+timings are wall-clock frame times, and an empty frame already takes 9 ms. Only the drop at
+n = 8 stands clear of the noise; these are upper bounds, not GPU timer readings.
 
 ## Material shaders in a Field box
 

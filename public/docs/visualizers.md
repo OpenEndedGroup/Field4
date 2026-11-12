@@ -1563,27 +1563,10 @@ pad. For `sliders(...)`, put it in each `SliderConfig`; for a property-bound con
 
 ### Handling a slider
 
-Standalone sliders, `sliders(...)` and sliders in a `controlGroup` share the same gestures:
-
-Point at a slider in the VR workspace and press the controller's B button to return it to its starting
-value. You can also put a unit after its readout:
-
-```diffstatic {data-lang=kotlin}
-import eu.sirotin.kotunil.base.mm
-
-var radius = 3.0
-controlGroup("size") {
-    slider("radius", min = 0.0, max = 10.0, initialValue = radius, unit = mm) { radius = it }
-    slider("acceleration", min = 0.0, max = 20.0, unit = "m/s2") {}
-}
-```
-
-The readouts show `mm` and `m/s²`. Values, steps and callbacks are numeric in the given unit; this
-is a display label and does not convert them. `unit` also works on `Box.slider`, `SliderConfig` and
-the numeric `syncToProperty` slider. A slider without a unit keeps its existing display.
-
-This recording drags a live `controlGroup` slider, nudges it with the arrow key, then double-clicks
-the track to return to its starting value. The large bar is updated by the slider's callback, so it
+Standalone sliders, `sliders(...)` and sliders in a `controlGroup` share the same gestures.
+In the VR workspace, point at a slider and press the controller's B button to return it to its
+starting value. This recording drags a live `controlGroup` slider, nudges it with the arrow key, then
+double-clicks the track to return to its starting value. The large bar is updated by the slider's callback, so it
 shows the value Field receives while the pointer moves.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1000x900" clip="65,205,560,350" video="assets/visualizers-slider-gestures.mp4" fps="20" transcript="../../dev_docs/agents/transcripts/docs_capture/slider_gestures.yaml" padding="0" wait="0" timeout="240" embed=true hidden=true name="slider-gestures" alt="A live GAIN slider starts at 0.35. The pointer drags its thumb to the right and the readout and large cyan bar follow, the right arrow nudges it once, then a double-click returns the thumb, readout and bar to 0.35."}
@@ -1675,6 +1658,24 @@ ui.pause(100)
 
 If the box re-renders the control while you are dragging it, because its callback rebuilt the
 `controlGroup` or the box re-ran, the drag carries on with the new control.
+
+#### Slider units
+
+You can put a unit after a slider's readout:
+
+```diffstatic {data-lang=kotlin}
+import eu.sirotin.kotunil.base.mm
+
+var radius = 3.0
+controlGroup("size") {
+    slider("radius", min = 0.0, max = 10.0, initialValue = radius, unit = mm) { radius = it }
+    slider("acceleration", min = 0.0, max = 20.0, unit = "m/s2") {}
+}
+```
+
+The readouts show `mm` and `m/s²`. Values, steps and callbacks are numeric in the given unit; this
+is a display label and does not convert them. `unit` also works on `Box.slider`, `SliderConfig` and
+the numeric `syncToProperty` slider. A slider without a unit keeps its existing display.
 
 #### Handling an XY pad
 
