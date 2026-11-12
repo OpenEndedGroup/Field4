@@ -189,6 +189,8 @@ nav:
     # out of Reference, which is generated, and this page is written; the generated API it
     # describes (linear_algebra_api.md) stays there.
     - Linear Algebra: linear_algebra.md
+    # Beside linear algebra: the other small vocabulary under drawing, numbers that know their unit.
+    - Lengths in mm and Inches: lengths.md
     - Functions & Derivatives:
       - Functions Examples: functions_examples.md
       - Functions Domains: functions_domains.md

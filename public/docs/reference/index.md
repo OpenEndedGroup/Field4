@@ -574,7 +574,8 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - [oracle](math.md#improviser-kt)
 - *statistics* — [Data](data.md#embeddingsimplex-kt) · [Graphics](graphics.md#quantilewarp-kt) · [Math](math.md#correlations-kt)
 - [temporal](math.md#forecastjudge-kt)
-- [units](math.md#units-kt)
+- [units](math.md#length-kt)
+    - [length](math.md#length-kt)
 
 </div>
 
@@ -671,7 +672,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**39309 public symbols across 1793 source files**, 23194 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**39361 public symbols across 1794 source files**, 23246 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -682,7 +683,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Lighting](lighting.md) | 8 | 206 | 206 (100%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 18 | 439 | 269 (61%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
-| [Math](math.md) | 59 | 2438 | 1825 (74%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
+| [Math](math.md) | 60 | 2490 | 1877 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1105 | 519 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 404 | 9640 | 6041 (62%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 801 | 431 (53%) | Turning a scene into pixels on a Vulkan device. |
@@ -1525,6 +1526,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>shader/<wbr>learning/<wbr></small> [LearnedShaderSmoke.kt](graphics.md#learnedshadersmoke-kt) | Graphics | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>optimization/<wbr></small> [LeastSquares.kt](math.md#leastsquares-kt) | Math | 19 | 2 | A Levenberg–Marquardt nonlinear least-squares solver, pure Kotlin and self-contained. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [LeastSquaresAndFMChirpSmokeTest.kt](examples.md#leastsquaresandfmchirpsmoketest-kt) | Examples · internal | 3 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>units/<wbr>length/<wbr></small> [Length.kt](math.md#length-kt) | Math | 52 | 52 | Typed lengths: `12.7.mm`, `0.5.inch`, `4.ft` and `3.m` are all a `Length`, which reads back in any of those units. | [Lengths in Millimetres and Inches](../lengths.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>slides/<wbr></small> [LessonCheckpoint.kt](visualization.md#lessoncheckpoint-kt) | Visualization | 2 | 2 | A reset button for a lesson: capture a box's source before an audience changes it, and restore it from a later slide. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>lex/<wbr></small> [Lexer.kt](languages.md#lexer-kt) | Languages | 5 | 5 | FieldML's first stage: source text in, a flat list of `Token`s out, and a diagnostic for anything that could not be read. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [LifecycleCensusSmoke.kt](examples.md#lifecyclecensussmoke-kt) | Examples | 0 | 0 |  |  |
