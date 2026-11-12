@@ -279,6 +279,41 @@ Supported runner shapes:
 - `jvm-main` for standalone smoke entrypoints
 - `backdoor-box` for scratch-box snippets
 
+#### Structured check records
+
+A smoke can state its assertions as check records instead of a pass sentence:
+`afield.tools.testing.Checks` (`src/jvmMain/kotlin/afield/tools/testing/Checks.kt`) makes one
+`CheckRecord` per assertion: `name`, `measured`, `expected` (a value, or a description of the rule),
+`tolerance`, `passed`, `note`, and `provenance` (who or what states the rule: an architect's
+sentence, a standard, a saved model, a solver target). Each record is printed as it is made, as one
+line `FIELD_CHECK {json}`. In a box that line goes to the box's output; in a `jvm-main` entrypoint
+it goes to stdout. The runner reads those lines from a `jvm-main`'s stdout and from a box's `output`
+events. It prints a table of each test's records under its result line, writes them into
+`results.json` (`results[].checks`, with `checkCount` and `failedChecks` at the top), fails a
+test with any failed record, and names every failed record under `Failed checks:` in the summary.
+A malformed `FIELD_CHECK` line fails the test as well; it is never skipped.
+
+```kotlin
+import afield.tools.testing.Checks
+
+val checks = Checks()
+checks.near("cost", result.cost, 0.0, tolerance = 1e-10, provenance = "solver convergence target")
+checks.equal("joint count", skeleton.size, 27, provenance = "skeleton definition")
+checks.that("area grew", shapedArea, "> base + 0.025", note = "shaped=$shaped") { it > baseArea + 0.025 }
+checks.requireAll()  // a jvm-main then exits non-zero, naming each failed check
+```
+
+`stdlib.least-squares-fmchirp.smoke` (`LeastSquaresAndFMChirpSmokeTest.kt`) is the worked
+example. Keep an `expect.stdoutContains` / `outputContains` sentence as well, so that a smoke that
+never reaches its checks still fails.
+
+Personal and extension smokes use the same API. `src/personal` and `AFIELD_EXTENSION_DIRS`
+roots compile against core (`personalJar`), so `import afield.tools.testing.Checks` works there
+unchanged, and `run-jvm-main` puts the personal jar on the launched JVM's classpath. `src/personal/kotlin`
+is a default discovery root, so its `FIELD_TEST` blocks are catalogued with the public ones; pass an
+extension root with `--refresh-catalog --root <dir>/kotlin` (repeatable; `--root` replaces the
+default roots for that run). Nothing about checks is specific to the public tree.
+
 ### Deliberately accepted JVM test failures
 
 `./gradlew check` normally requires every JVM test to pass. If preserving a
