@@ -970,6 +970,9 @@ object DemoTranscriptExecSmokeTest {
         // `four.shader-boids.smoke` grades both the written and the learned rule against a CPU
         // brute force. What is left here is the window.
         "neural_particles",
+        // Native renderer + fullscreen fragment shader; the CPU half is graded by NeuralCloudsTest
+        // (network beats the fitted ambient term on a held-out camera, GLSL compiles).
+        "neural_clouds",
         "learned_boids",
         // Opens a Vulkan window for the GPU compute-shader NCA; the CPU rule it shares is graded
         // by GrowingNcaTest (grows from a seed, regrows after damage).

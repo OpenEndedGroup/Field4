@@ -1,0 +1,100 @@
+package afield.graphics.volume
+
+import afield.graphics.shader.ShaderKind
+import afield.graphics.shader.ShaderSPIRVUtils
+import java.io.File
+import java.util.SplittableRandom
+import kotlin.test.Test
+import kotlin.test.assertTrue
+
+/**
+ * Trains the in-scatter network on a small budget and checks that it beats the fitted
+ * single-scatter-plus-ambient approximation against the path-traced reference, on a camera the
+ * training never saw. Writes the comparison to `build/neural_clouds/`.
+ */
+class NeuralCloudsTest {
+    private val scene = CloudScene()
+    private val trainCameras = listOf(
+        CloudScene.Camera(doubleArrayOf(0.0, 2.2, 7.5), doubleArrayOf(0.0, 1.95, 0.0)),
+        CloudScene.Camera(doubleArrayOf(-5.5, 3.4, 4.5), doubleArrayOf(0.0, 1.9, 0.0)),
+        CloudScene.Camera(doubleArrayOf(4.0, 1.6, -6.0), doubleArrayOf(0.0, 2.0, 0.0)),
+    )
+    private val heldOut = CloudScene.Camera(doubleArrayOf(4.6, 0.9, 3.6), doubleArrayOf(0.0, 2.05, 0.0), 40.0)
+
+    @Test
+    fun estimatorIsFiniteAndPositive() {
+        val random = SplittableRandom(3)
+        val y = DoubleArray(3)
+        var sum = 0.0
+        repeat(200) {
+            scene.multipleScatter(doubleArrayOf(0.1, 1.0, 0.2), doubleArrayOf(0.0, 0.0, 1.0), random, into = y)
+            assertTrue(y.all { it.isFinite() && it >= 0.0 })
+            sum += y.sum()
+        }
+        assertTrue(sum > 0.0, "deep inside a lit cloud the in-scatter should not be zero")
+    }
+
+    @Test
+    fun networkBeatsAmbientOnAHeldOutView() {
+        val samples = NeuralCloud.samples(scene, trainCameras, count = 12000, pathsPerSample = 8)
+        val net = NeuralCloud.train(samples, steps = 8000)
+        val ambient = NeuralCloud.ambient(samples)
+        val w = 200; val h = 125
+        val none = CloudScene.InScatter { _, _, _, _, into -> into.fill(0.0) }
+        val reference = scene.render(heldOut, w, h, scene.reference(48))
+        val approx = scene.render(heldOut, w, h, ambient)
+        val neural = scene.render(heldOut, w, h, net.inScatter)
+        val single = scene.render(heldOut, w, h, none)
+        val mask = approxSkyMask(w, h)
+        val eNet = cloudError(neural, reference, mask)
+        val eAmb = cloudError(approx, reference, mask)
+        val eSingle = cloudError(single, reference, mask)
+        val dir = File("build/neural_clouds").apply { mkdirs() }
+        writeCloudComparison(File(dir, "held_out.png"), reference, listOf(single, approx, neural))
+        File(dir, "held_out.txt").writeText(
+            "samples ${samples.size}, final loss ${net.trainingLoss.takeLast(200).average()}\n" +
+                "single-scatter only: $eSingle\nfitted ambient: $eAmb\nnetwork: $eNet\n",
+        )
+        File(dir, "network.glsl").writeText(net.glslNetwork())
+        println("NEURAL_CLOUDS single=$eSingle ambient=$eAmb net=$eNet")
+        assertTrue(eNet.rmse < eAmb.rmse, "network $eNet should beat ambient $eAmb")
+    }
+
+    @Test
+    fun generatedGlslCompiles() {
+        val samples = NeuralCloud.samples(scene, trainCameras, count = 400, pathsPerSample = 2)
+        val net = NeuralCloud.train(samples, steps = 50)
+        val src = "#version 460\n" + NeuralCloud.glslInclude(net, NeuralCloud.ambient(samples)) + scene.glslScene() + """
+            layout(location=0) in vec2 uv;
+            layout(location=0) out vec4 color;
+            void main() {
+                vec2 ndc = vec2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
+                color = vec4(cloudRender(vec3(4.6, 0.9, 3.6), vec3(0.0, 2.05, 0.0), 40.0, ndc, 1.6, int(uv.x * 6.0), gl_FragCoord.xy), 1.0);
+            }
+        """.trimIndent()
+        val spirv = try { ShaderSPIRVUtils.compileShader("cloud.frag", src, ShaderKind.FRAGMENT_SHADER) } catch (t: Throwable) {
+            throw AssertionError("cloud fragment did not compile: ${t.message}\n$src", t)
+        }
+        assertTrue(spirv != null)
+        // and the zero-network fallback compiles too
+        ShaderSPIRVUtils.compileShader("cloud0.frag", src.replace(NeuralCloud.glslInclude(net, NeuralCloud.ambient(samples)), NeuralCloud.glslInclude(null, null)), ShaderKind.FRAGMENT_SHADER)
+    }
+
+    @Test
+    fun cloudHereRegistersIncludesForTheBox() {
+        val box = afield.document.graph.Box("cloud-here-${System.nanoTime()}")
+        box.cloudHere(null, null, scene)
+        assertTrue(cloudIncludeSource(box, "scene.glsl") == scene.glslScene())
+        assertTrue(cloudIncludeSource(box, "network") == NeuralCloud.glslInclude(null, null))
+    }
+
+    /** Pixels whose ray crosses the cloud's box count as cloud; others are bare sky. */
+    private fun approxSkyMask(w: Int, h: Int): CloudScene.Image {
+        val mask = CloudScene.Image(w, h)
+        // a mask image equal to the reference except where the ray hits cloud: built by a render with
+        // an absurd in-scatter, so any pixel touched by cloud differs from it
+        val huge = CloudScene.InScatter { _, _, _, _, into -> into.fill(1e3) }
+        scene.render(heldOut, w, h, huge).rgb.copyInto(mask.rgb)
+        return mask
+    }
+}
