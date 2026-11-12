@@ -593,6 +593,79 @@ shafts appear. How the medium is tested is in `dev_docs/PARTICIPATING_MEDIA.md`.
 surface normal unset, so reprojection rejects that pixel, and a dense medium gets no temporal reuse for most of the frame. Raise `samplesPerFrame` instead
 of reaching for reuse.
 
+## Neural multiple scattering in a raymarched cloud
+
+A raymarched cloud is cheap to light with *single* scattering: at each step, add the sun dimmed by
+the optical depth toward it, times the phase function. That leaves the cloud dark grey. What makes
+a real cloud white is light that has bounced many times inside it, plus skylight, and that part is
+expensive. The usual stand-in is an ambient term. Following Charles Grassi's
+[neural volumetric clouds](https://charlesgrassi.dev/blog/neural-volumetric-clouds), Field can
+replace that term with a small network: 10 inputs, two hidden layers of 16, and 3 outputs for the
+RGB in-scattered light, about 500 multiply-adds per evaluation.
+
+The network's inputs are values a raymarcher can afford at each step: the height in the cloud,
+the density, the transmittance toward the sun over three distances, toward the sky, toward the eye
+and toward the ground, and the scattering angle with its phase value. Its training targets come
+from a Monte Carlo volumetric path tracer in `afield.graphics.volume.CloudScene`, which follows
+paths through the varying density, adds the sun at every bounce and the sky when a path escapes.
+The tracer above, with `mediumDensity`, fills its box with uniform haze, so it cannot supply
+these targets.
+
+The [neural_clouds](agent_transcripts.md#neural_clouds) starting point has three boxes under a
+renderer. The first labels 12,000 points, drawn where three cameras see the cloud, and trains the
+network:
+
+```kotlin
+import afield.graphics.volume.*
+
+prop<CloudScene>(cloudScene)
+prop<NeuralCloud>(cloudNet)
+prop<AmbientFit>(cloudAmbient)
+
+cloudScene = CloudScene()
+val samples = NeuralCloud.samples(cloudScene, cameras, count = 12000, pathsPerSample = 8)
+cloudNet = NeuralCloud.train(samples, hidden = intArrayOf(16, 16), steps = 8000)
+cloudAmbient = NeuralCloud.ambient(samples)
+
+// #include "cloud/network" and "cloud/scene" in the boxes below now mean these
+cloudHere(cloudNet, cloudAmbient, cloudScene)
+```
+
+`NeuralCloud.ambient` is the baseline: an ambient colour times the sky visibility plus a colour
+times the sun transmittance, fitted to the same samples by least squares, so it is the best that
+form can do. The second box renders a fourth camera, one the training never saw, four ways on the
+CPU with one raymarcher. Only the in-scatter term differs between them. In the figure, the
+reference comes first, then single scattering only, the fitted ambient baseline and the network,
+and the row below shows each one's error against the reference, multiplied by four:
+
+![Four renders of the same cloud from a held-out camera, left to right: path-traced reference, single scattering only (dark grey), fitted ambient (grey with dark undersides), and the network (white, close to the reference); below, error images that are solid white for single scattering, bright for ambient and faint speckle for the network](assets/path_tracing/neural_clouds_cpu.png)
+
+Over the 4,532 pixels the cloud covers:
+
+| In-scatter term | Relative mean absolute error | RMSE |
+| --- | --- | --- |
+| Single scattering only | 0.68 | 0.44 |
+| Fitted ambient | 0.31 | 0.21 |
+| Network | 0.068 | 0.053 |
+
+The reference averages 48 paths per step, so part of the network's 0.068 is noise in the
+reference itself. `NeuralCloudsTest` trains and renders the same comparison, and fails if the
+network stops beating the ambient fit.
+
+The third box runs the same raymarcher in a fragment shader. `#include "cloud/network"` writes the
+weights as a `const float[]`, so the shader needs no buffer, and `cloudRender(eye, target, fovY,
+ndc, aspect, mode)` picks the in-scatter term or a debug view:
+
+![The cloud on the GPU as six panels: across the top, fitted ambient, network and single scattering; across the bottom, the network's predicted in-scatter (pale blue), the sun transmittance and the sky visibility](assets/path_tracing/neural_clouds_gpu.png)
+
+The bottom row is what the network sees and says: its predicted in-scatter, bluish where skylight
+dominates, then two of its inputs, the sun transmittance and the sky visibility. Train again in the
+first box and run the shader box to watch the GPU cloud change. Until a box calls `cloudHere`,
+`cloud/network` returns zero, so the shader still compiles and draws single scattering.
+
+The shader evaluates the network at every step of every ray, with no attempt to make that fast,
+so it is a way to look at the network rather than a production cloud renderer.
+
 ## Material shaders in a Field box
 
 Use `pathTracingHere` instead of the plain constructor to put material evaluation
@@ -1405,3 +1478,9 @@ Implementation and parameter details for the helpers used above:
 - [`PathTraceScene.sphere`](reference/renderers.md#pathtracescene-kt--pathtracescene--sphere)
 
 - [`PathTraceDemo`](reference/renderers.md#pathtracegpusmoke-kt-pathtracedemo)
+
+## Where to go next
+
+- [Neural particles](neural_particles.md) trains a velocity field with the same `VectorMLP` and runs it in a compute shader.
+- [A learned shader function](learned_shader.md) fits a network to a shader's output on the GPU.
+- [Path-traced reconstruction](path_traced_reconstruction.md) cleans up a noisy path-traced frame.
