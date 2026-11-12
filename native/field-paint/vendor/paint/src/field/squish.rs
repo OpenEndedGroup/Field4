@@ -33,26 +33,6 @@ fn value(x: f32, y: f32, seed: u64) -> f32 {
     a + (b - a) * sy
 }
 
-/// The ridged tack pattern a peel leaves at pixel (x, y), in -1..1: fingers `scale` pixels apart
-/// across the peel direction (`ux`, `uy`) and six times longer along it, branching (three
-/// octaves of ridged noise).
-fn ridges(x: f32, y: f32, ux: f32, uy: f32, scale: f32, seed: u64) -> f32 {
-    let along = (x * ux + y * uy) / (6.0 * scale);
-    let across = (-x * uy + y * ux) / scale;
-    let (mut sum, mut amp, mut f, mut norm) = (0.0, 1.0, 1.0, 0.0);
-    for o in 0..3u64 {
-        let n = value(along * f, across * f, seed.wrapping_add(o * 7919));
-        let r = 1.0 - (2.0 * n - 1.0).abs();
-        sum += amp * r * r;
-        norm += amp;
-        amp *= 0.5;
-        f *= 2.1;
-    }
-    // thin crests (the fingers of paint) against the hollows between them, sharpened so a full peel
-    // leaves paint on one side or the other rather than a little less on both
-    ((sum / norm - 0.4) * 8.0).clamp(-1.0, 1.0)
-}
-
 /// What a gesture did, in mm³ of paint: moved from one place (or surface) to another, and lifted
 /// off the canvas altogether (a plate's pull).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -83,14 +63,14 @@ impl Canvas {
     }
 
     /// mm³ in one buffer pixel holding `coats` of wet paint.
-    fn mm3_per_coat_px(&self) -> f64 {
+    pub(crate) fn mm3_per_coat_px(&self) -> f64 {
         let mm_px = self.mm_per_unit as f64 / self.f.scale as f64;
         // a coat is the crate's unit layer (`surface::COAT_UM` µm)
         mm_px * mm_px * crate::surface::COAT_UM as f64 * 1e-3
     }
 
     /// Move `v` coats of the wet paint at `from` (its own mixture) onto `to`.
-    fn move_paint(&mut self, from: usize, to: usize, v: f32) {
+    pub(crate) fn move_paint(&mut self, from: usize, to: usize, v: f32) {
         if v <= 0.0 {
             return;
         }
@@ -282,15 +262,25 @@ impl Canvas {
         let grown = (bx.0.saturating_sub(steps), bx.1.saturating_sub(steps), (bx.2 + steps).min(w), (bx.3 + steps).min(h));
         moved += self.spread_pressed(&contact, steps, 0.2, grown);
         if peel > 0.0 {
+            // as the halves come apart the gap opens fastest far from the fold, and air is drawn
+            // into the film from its open edges as viscous fingers (`fingers`) that grow toward the
+            // fold: on the flap's side, the film is where the paint held
+            let mut film = vec![0.0f32; w * h];
+            let mut fb = (w, h, 0usize, 0usize);
+            for &(i, _) in &pairs {
+                film[i] = contact[i];
+                let (x, y) = (i % w, i / w);
+                fb = (fb.0.min(x), fb.1.min(y), fb.2.max(x + 1), fb.3.max(y + 1));
+            }
+            let opening = |x: usize, y: usize| ((x as f32 + 0.5 - cx) * nx + (y as f32 + 0.5 - cy) * ny).max(0.0) / ridge_px;
+            let fingers = super::fingers::peel_fingers(self, &film, fb, &opening, 0.4, (ridge_px / 2.0).round() as usize, 1.5, seed);
             for &(i, j) in &pairs {
                 let c = contact[i].min(contact[j]);
                 let t = self.wet.vol[i] + self.wet.vol[j];
                 if t <= 0.0 {
                     continue;
                 }
-                let (x, y) = ((i % w) as f32, (i / w) as f32);
-                // the fingers run away from the fold: across the fold line
-                let r = ridges(x, y, nx, ny, ridge_px, seed);
+                let r = fingers[i];
                 // past peel 2/3 the film splits wholly: crests stay on one side, hollows are bare
                 let share = (0.5 + 0.5 * (1.5 * peel * c).min(1.0) * r).clamp(0.0, 1.0);
                 let want = share * t;
@@ -347,6 +337,18 @@ impl Canvas {
         let moved = self.net_moved(&before);
         // the spread paint may now reach the plate where it did not before
         let (take, peel, ridge_px) = (take.clamp(0.0, 1.0), peel.clamp(0.0, 1.0), (ridge * s).max(2.0));
+        // the plate comes up from its trailing edge first, so the gap opens fastest there and the
+        // air's fingers (`fingers`) run with the peel
+        let mut film = vec![0.0f32; w * h];
+        for yy in y0..y1 {
+            for xx in x0..x1 {
+                let i = yy * w + xx;
+                let d = ((xx as f32 + 0.5 - cx).powi(2) + (yy as f32 + 0.5 - cy).powi(2)).sqrt();
+                film[i] = (r - d).clamp(0.0, 1.0) * ((self.wet.vol[i] - gap) / (0.5 + 0.5 * gap)).clamp(0.0, 1.0);
+            }
+        }
+        let opening = |x: usize, y: usize| (r - ((x as f32 + 0.5 - cx) * ux + (y as f32 + 0.5 - cy) * uy)).max(0.0) / ridge_px;
+        let fingers = super::fingers::peel_fingers(self, &film, (x0, y0, x1, y1), &opening, 0.4, (ridge_px / 2.0).round() as usize, 1.5, seed);
         let mut lifted = 0.0f64;
         for yy in y0..y1 {
             for xx in x0..x1 {
@@ -357,7 +359,7 @@ impl Canvas {
                 if c <= 0.0 {
                     continue;
                 }
-                let rr = ridges(xx as f32 + self.f.x0 as f32, yy as f32 + self.f.y0 as f32, ux, uy, ridge_px, seed);
+                let rr = fingers[i];
                 let share = (take * c * self.openness(i) * (1.0 + peel * rr)).clamp(0.0, 1.0);
                 let v = self.wet.vol[i] * share;
                 self.wet.vol[i] -= v;

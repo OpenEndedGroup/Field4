@@ -395,11 +395,12 @@ squashed, rubbed and peeled. Field follows the method he describes; none of its 
   the gap the `pressure` leaves, the two films swap `transfer` of themselves (0.5 makes them one
   mixture). Pressure spreads the squashed paint outward for `spread` of the time it takes to level,
   thick paint faster than thin. Opening the fold splits the film between the two sides: evenly at
-  `peel = 0`, and in branching ridges `ridge` units apart as `peel` rises. Where one side keeps a
-  ridge, its mirror is bare. Past `peel = 0.67` the film splits wholly. A fold along x or y prints
+  `peel = 0`, and in branching fingers about half of `ridge` units wide as `peel` rises (see
+  [Fingers where the film splits](#fingers-where-the-film-splits)). Where one side keeps paint,
+  its mirror is bare. Past `peel = 0.67` the film splits wholly. A fold along x or y prints
   an exact mirror image; a diagonal fold is mirrored to within a pixel.
 - `canvas.press(x, y, radius)` presses a flat plate onto the paint and peels it off toward
-  `(dx, dy)`. The plate takes `take` of the film it touched, unevenly, in the same kind of ridges. This
+  `(dx, dy)`. The plate takes `take` of the film it touched, unevenly, in the same kind of fingers, running with the peel. This
   is a monotype pull, or a palm pressed down and lifted.
 - `canvas.rub(line, radius, pressure)` drags a thumb along a line. It picks up the paint that stands
   above the film a light touch rides on and lays it down further along. The paint is drawn out and
@@ -474,9 +475,78 @@ gesture, and each shows the canvas before and after.
     pigment, height, wetness and drift on the GPU. Field's engine is single-threaded Rust. On a
     1600 × 1280 canvas on an M-series Mac a fold takes about 160 ms, a plate 60 ms and a rub 30 ms,
     against 530 ms for one heavy brush stroke. So the gestures are not the bottleneck; the brushes
-    are. Blowing (drift of fluid paint) was not added. The tests (`SquishTest`, and the Rust tests in
+    are. Blowing and true viscous fingering came later (next section). The tests (`SquishTest`, and the Rust tests in
     `squish.rs`) check that paint is conserved, that an even fold prints a mirror image, and that a
     peel leaves complementary ridges.
+
+### Fingers where the film splits
+
+When two surfaces with wet paint between them are pulled apart, air has to get into the widening gap.
+It does not come in as a straight front. Wherever the front bulges a little, the paint ahead of it
+gives way more easily, so the bulge grows. The front breaks into fingers, and the fingers split
+again. This is viscous fingering, the Saffman–Taylor instability, and it is what makes the
+tree-like patterns of decalcomania. The more viscous the paint is than what pushes into it, the
+more the fingers branch; air into oil paint branches like diffusion-limited aggregation.
+
+`fold` and `press` grow these fingers rather than drawing them from a texture. The air comes in
+where the gap opens first: from the edges of a folded film far from the fold, and from the trailing
+edge of a peeled plate. Thinner, more open paint gives way more easily, so the fingers run into it.
+
+### Blowing paint
+
+`canvas.blow(line, radius, pressure)` blows air through a straw or an airbrush along any FLine. Where
+the jet meets wet paint, the paint runs away ahead of it, more along the direction of travel than
+back, and the air follows it in as fingers about `tendril` units wide. `contrast` sets how much more
+viscous the paint is than the air: 1 gives a compact blot, 100 or more a branching tree. Leave it
+out and it comes from the paint, so thinned paint throws finer tendrils than stiff paint. The paint
+the air passes is pushed to the tendrils' sides and tips, so a thin film is left behind with thick
+rims at the edges, and the solvent in that film evaporates faster. Paint is moved, never made or
+lost: `canvas.wetMm3` is the same before and after. `blow` returns a `Blown` with the mm³ moved and
+`branching`, how branched the fingers were (near 0 for a blot, near 2 for a tree of thin fingers).
+
+The box below lays a thick blue film and blows across it along a curve. The top image is before,
+the bottom one after.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/blow.png" alt="two canvases, one above the other. The top one has a broad, thick band of blue paint with bristle ridges. In the bottom one a curved path has been blown across the band: the paint is cleared along it to a thin film, and branching tendrils of bare canvas reach out from the path into the blue, with thick rims of paint along their edges" wait="30" capture="box" open-outputs="true" padding="20" requires="paint" name="blow" embed=true scale=1}
+:::static
+val canvas = PaintCanvas(900, aspect = 1.4, seed = 11)
+val brush = canvas.brush(BrushKind.HogFlat, width = 120.0)
+brush.load(rgb(0.1, 0.18, 0.55), amount = 5.0, stiff = 0.3)
+for (y in [220, 330, 440, 550]) canvas.stroke(FLine().moveTo(120, y).lineTo(880, y), brush, pressure = 1.0..1.0)
+display("before", canvas.png(wet = true, light = PaintLight.Raking))
+
+// a straw, blown along a curve through the film
+canvas.blow(FLine().moveTo(150, 480).cubicTo(350, 250, 600, 600, 850, 300), radius = 14.0, pressure = 0.8, tendril = 5.0)
+display("main", canvas.png(wet = true, light = PaintLight.Raking))
+```
+
+The same puff of air at one point, into the same film, with three viscosity contrasts: 1.5, 8 and
+200, left to right.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/blow_contrast.png" alt="a canvas with a thick blue band and three blown spots in a row. The left spot is a compact round clearing with a ragged edge; the middle one has a few thick lobes; the right one is a branching tree of thin bare fingers reaching out into the paint" wait="30" capture="box" open-outputs="true" padding="20" requires="paint" name="blow_contrast" embed=true scale=1}
+:::static
+val canvas = PaintCanvas(900, aspect = 2.4, seed = 12)
+val brush = canvas.brush(BrushKind.HogFlat, width = 130.0)
+brush.load(rgb(0.1, 0.18, 0.55), amount = 5.0, stiff = 0.3)
+for (y in [140, 260]) canvas.stroke(FLine().moveTo(60, y).lineTo(940, y), brush, pressure = 1.0..1.0)
+for ((x, contrast) in [170.0 to 1.5, 500.0 to 8.0, 830.0 to 200.0]) {
+    canvas.blow(FLine().moveTo(x, 200).lineTo(x + 2, 200), radius = 12.0, pressure = 1.0, contrast = contrast, tendril = 5.0)
+}
+display("main", canvas.png(wet = true, light = PaintLight.Raking))
+```
+
+??? aside "How the fingers are grown"
+    The pattern is the dielectric breakdown model (Niemeyer, Pietronero and Wiesmann, 1984) on a
+    coarse grid over the wet film (`native/field-paint/vendor/paint/src/field/fingers.rs`). The
+    pressure in the paint obeys Darcy's law in a thin gap, with the paint's mobility from its
+    stiffness and how far it has set; a peel adds suction where the gap is opening, a jet holds the
+    paint at the edge of its reach. The front advances a cell at a time, chosen with probability
+    proportional to the local pressure gradient raised to `eta = 1.5 (1 - 1/contrast)`: 0 is Eden
+    growth, 1 DLA. It replaced the ridged noise the first fold used, so the pattern now responds to
+    where the paint is and how thick it is. `SquishTest` pins that a blow conserves the wet paint and
+    that branching rises with contrast; the Rust test `fingers_branch_more_as_the_viscosity_contrast_rises`
+    pins the same on a bare grid. Not modelled: surface tension setting a finger width (the grid
+    cell does), and thin paint pushed into thick paint as a tool of its own.
 
 ## Brushes made to order
 

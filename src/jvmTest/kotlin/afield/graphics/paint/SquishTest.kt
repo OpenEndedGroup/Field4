@@ -92,4 +92,34 @@ class SquishTest {
             assertTrue(abs(c.wetMm3 + r.liftedMm3 - mid) / mid < 1e-4, "$mid mm³ before the rub, ${c.wetMm3} after and ${r.liftedMm3} on the pad")
         }
     }
+
+    /** A thick even film of one colour over the middle of the canvas, for the jet to blow through. */
+    private fun film(c: PaintCanvas) {
+        c.brush(BrushKind.HogFlat, 140.0).use { b ->
+            b.load(Vec4(0.1f, 0.12f, 0.55f, 1f), amount = 5.0)
+            for (y in listOf(330.0, 450.0, 570.0, 690.0)) c.stroke(line(150.0, y, 850.0, y), b, pressure = 1.0..1.0)
+        }
+    }
+
+    @Test fun aBlowMovesPaintWithoutMakingOrLosingAny() {
+        requirePaintLibrary()
+        PaintCanvas(400, aspect = 1.0, seed = 5).use { c ->
+            film(c)
+            val before = c.wetMm3
+            val r = c.blow(line(200.0, 510.0, 800.0, 510.0), radius = 14.0, pressure = 0.8, seed = 3)
+            save(c, "blow_after")
+            assertTrue(r.stations > 0 && r.movedMm3 > 0.0, "the jet moved paint: $r")
+            assertTrue(abs(c.wetMm3 - before) / before < 1e-4, "$before mm³ before the blow, ${c.wetMm3} after")
+        }
+    }
+
+    @Test fun theAirsFingersBranchMoreAsTheViscosityContrastRises() {
+        requirePaintLibrary()
+        fun branching(contrast: Double) = PaintCanvas(400, aspect = 1.0, seed = 5).use { c ->
+            film(c)
+            c.blow(line(500.0, 510.0, 502.0, 510.0), radius = 14.0, pressure = 0.9, contrast = contrast, tendril = 6.0, seed = 3).branching
+        }
+        val (low, high) = branching(1.0) to branching(200.0)
+        assertTrue(high > 1.3 * low, "branching at contrast 1: $low, at 200: $high")
+    }
 }

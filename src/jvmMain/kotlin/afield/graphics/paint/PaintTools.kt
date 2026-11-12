@@ -540,6 +540,20 @@ data class DynamicReport(
     val waterLaid: Double, val waterTaken: Double, val pigmentLaid: Double, val pigmentTaken: Double,
 )
 
+/** What [PaintCanvas.blow] did. */
+data class Blown(
+    /** mm³ of paint that ended up somewhere else on the canvas, counted once. */
+    val movedMm3: Double,
+    /**
+     * How branched the air's fingers are: edges between the cells the air reached and the paint left,
+     * per cell reached, averaged over the jet's stations. A compact blot is near 0, a tree of fingers
+     * one cell wide near 2.
+     */
+    val branching: Double,
+    /** Places along the line where the jet met wet paint. */
+    val stations: Int,
+)
+
 /** What a [PaintCanvas.fold], [PaintCanvas.press] or [PaintCanvas.rub] did to the wet paint. */
 data class Squished(
     /** mm³ of paint that ended up somewhere else on the canvas, counted once (never more than all of it). */

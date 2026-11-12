@@ -326,8 +326,9 @@ class PaintCanvas internal constructor(
      * through the gap the pressure leaves swaps [transfer] of itself with it (0.5: both sides end up
      * one mixture), less as it cures; pressure spreads the pressed paint outward for [spread] 0..1 of
      * the time it takes to level; pulling the halves apart splits the film between them, evenly at
-     * [peel] 0, in branching ridges [ridge] units apart that run away from the fold as [peel] goes to
-     * 1 (what one side keeps on a ridge its mirror lost). Paint is moved, never made or lost; dry
+     * [peel] 0, and as [peel] goes to 1 in viscous fingers about half of [ridge] wide: air drawn in from
+     * the film's open edges, where the gap opens first, branching toward the fold (the Saffman–Taylor
+     * instability, grown on the paint itself, not a texture; what one side keeps its mirror lost). Paint is moved, never made or lost; dry
      * paint does not move. Each point meets the nearest pixel to its mirror image, so a fold along x or
      * y is exact and a diagonal fold is mirrored to within a pixel (paint is conserved either way).
      */
@@ -341,7 +342,8 @@ class PaintCanvas internal constructor(
     /**
      * Press a flat plate [radius] across onto the wet paint at ([x], [y]) at [pressure] 0..1, let the
      * squashed paint spread for [spread] 0..1, and peel the plate off toward ([dx], [dy]): it takes
-     * [take] 0..1 of the film it touched, unevenly, in ridges [ridge] apart running with the peel,
+     * [take] 0..1 of the film it touched, unevenly, in viscous fingers about half of [ridge] wide grown in
+     * from the plate's trailing edge and running with the peel,
      * [peel] 0..1 deep (a monotype pull, a palm pressed and lifted). Returns the mm³ moved and lifted.
      */
     fun press(
@@ -361,6 +363,29 @@ class PaintCanvas internal constructor(
     fun rub(line: FLine, radius: Double = 30.0, pressure: Double = 0.7, seed: Long? = null): Squished =
         polylines(line, 2.0).withIndex().map { (i, xy) -> PaintNative.rub(handle, xy, toCanvasLength(radius).toFloat(), pressure.toFloat(), seedFor(seed, i)) }
             .fold(Squished(0.0, 0.0)) { s, r -> Squished(s.movedMm3 + r[0], s.liftedMm3 + r[1]) }
+
+    /**
+     * Blow air along every subpath of [line] through a straw or an airbrush, the jet [radius] across, at
+     * [pressure] 0..1. Where the jet meets wet paint the air pushes into it, and the paint runs away
+     * ahead of it, more along the direction of travel than back. The air does not advance as a flat
+     * front: it breaks into fingers that split and branch (viscous fingering, the Saffman–Taylor
+     * instability), about [tendril] wide, more branched the larger the viscosity [contrast] between
+     * paint and air (1: none, a compact blot; 100: a fractal tree; `null`: from the paint, so thinned
+     * paint throws finer tendrils than stiff paint). The paint the air passes is pushed to the
+     * tendrils' sides and tips, leaving a thin film behind and thick rims at the edges, and the
+     * solvent in that film evaporates faster. Paint is moved, never made or lost; dry paint and bare
+     * canvas do not move.
+     */
+    fun blow(
+        line: FLine, radius: Double = 12.0, pressure: Double = 0.7, contrast: Double? = null, tendril: Double = 4.0,
+        seed: Long? = null,
+    ): Blown = polylines(line, 2.0).withIndex().map { (i, xy) ->
+        PaintNative.blow(handle, xy, toCanvasLength(radius).toFloat(), pressure.toFloat(), contrast?.toFloat() ?: Float.NaN,
+            toCanvasLength(tendril).toFloat(), seedFor(seed, i))
+    }.fold(Blown(0.0, 0.0, 0)) { b, r ->
+        val n = b.stations + r[2].toInt()
+        Blown(b.movedMm3 + r[0], if (n == 0) 0.0 else (b.branching * b.stations + r[1] * r[2]) / n, n)
+    }
 
     /** All the wet paint on the canvas, mm³: what [fold], [press] and [rub] move (and a plate lifts). */
     val wetMm3: Double get() = PaintNative.wetMm3(handle)
