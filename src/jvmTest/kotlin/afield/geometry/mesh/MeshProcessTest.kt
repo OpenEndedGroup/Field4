@@ -291,6 +291,47 @@ class MeshProcessTest {
         assertEquals(flat.bounds().max.y, coarse.bounds().max.y, 1e-5f)
     }
 
+    /** [mesh] with every triangle above `z = 0` moved onto its own copies of its vertices: closed, but not welded. */
+    private fun unweldedAtTheEquator(mesh: TriMesh): TriMesh {
+        val n = mesh.vertexCount
+        val positions = mesh.positions.copyOf(n * 6)
+        mesh.positions.copyInto(positions, n * 3)
+        val indices = IntArray(mesh.indices.size) { i ->
+            val t = i / 3
+            val north = mesh.z(mesh.ia(t)) + mesh.z(mesh.ib(t)) + mesh.z(mesh.ic(t)) > 0f
+            if (north) mesh.indices[i] + n else mesh.indices[i]
+        }
+        return TriMesh(positions, indices).removeUnusedVertices()
+    }
+
+    @Test
+    fun decimationWeldsFirstSoADuplicatedSeamStaysClosed() {
+        val split = unweldedAtTheEquator(icosphereMesh(4, 1.0))
+        assertTrue(split.topology().boundaryEdges.isNotEmpty(), "the equator is two unshared rims")
+        assertTrue(split.isClosed(), "but the surface is closed")
+        for (target in listOf(1000, 200)) {
+            val coarse = split.decimate(target)
+            assertTrue(coarse.triangleCount <= target, coarse.summary())
+            assertTrue(coarse.isClosed(), "decimation opened the seam: ${coarse.openEdges().size} open edges")
+            assertTrue(coarse.isWatertight(), coarse.summary())
+            assertEquals(2, coarse.topology().eulerCharacteristic, coarse.summary())
+        }
+        // A triangle soup — every vertex duplicated — is the extreme case of the same thing.
+        val soup = icosphereMesh(3, 1.0).flatShaded()
+        val coarse = soup.decimate(300)
+        assertTrue(coarse.triangleCount <= 300, coarse.summary())
+        assertTrue(coarse.isClosed(), "${coarse.openEdges().size} open edges")
+        assertTrue(maxDeviation(icosphereMesh(3, 1.0), coarse) < 0.08)
+    }
+
+    @Test
+    fun decimationOfAnOpenMeshAddsNoOpenEdges() {
+        val tube = cylinderMesh(48, caps = false).loopSubdivide(1)
+        val before = tube.openEdges().size
+        val coarse = tube.decimate(tube.triangleCount / 4)
+        assertTrue(coarse.openEdges().size <= before, "${coarse.openEdges().size} > $before")
+    }
+
     @Test
     fun decimationAtOrAboveTheCurrentCountIsANoOp() {
         val mesh = icosphereMesh(2)

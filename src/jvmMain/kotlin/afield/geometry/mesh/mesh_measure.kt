@@ -64,6 +64,7 @@ import afield.simulation.automata.slice
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.acos
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
@@ -305,6 +306,141 @@ fun TriMesh.meanCurvature(): DoubleArray {
         val along = lx[v] * nrm.x + ly[v] * nrm.y + lz[v] * nrm.z
         if (along <= 0.0) mag else -mag
     }
+}
+
+// ==============================================================================================
+// Planarity
+// ==============================================================================================
+
+/**
+ * One flat face of a mesh — a connected run of triangles facing the same way — and how far its
+ * vertices stray from the plane they share. See [TriMesh.planarFaces].
+ */
+class PlanarFace(
+    /** The triangles in this face, as indices into the mesh. */
+    val triangles: IntArray,
+    /** The face's plane normal: the area-weighted mean of its triangles' normals, unit length. */
+    val normal: Vec3,
+    /** A point on that plane: the face's area-weighted centroid, moved along [normal] to the middle of its thickness. */
+    val point: Vec3,
+    /** The face's total area. */
+    val area: Double,
+    /**
+     * The farthest any vertex of the face lies from the plane through [point] along [normal], in
+     * model units — half the thickness of the thinnest slab along [normal] that holds the face. `0`
+     * for an exactly flat face; a single triangle always is one.
+     */
+    val outOfPlane: Double,
+) {
+    /** Triangle count, area and out-of-plane distance on one line, for `println`. */
+    override fun toString(): String =
+        "PlanarFace(%d triangles, area %.4g, out of plane %.3g)".format(triangles.size, area, outOfPlane)
+}
+
+/**
+ * The mesh's faces in the CAD sense — connected groups of triangles that face the same way — each
+ * with the distance its vertices lie out of its plane.
+ *
+ * A face grows from a seed triangle across shared edges (vertices within [weldTolerance] count as
+ * shared, so an unwelded export still groups) and takes in each neighbour whose normal is within
+ * [angleDegrees] of the face's area-weighted mean normal so far. [PlanarFace.outOfPlane] is then
+ * measured against a plane with that mean normal. So the angle decides
+ * what is *meant* to be one flat face, and the distance says how flat it actually is: a wall panel a
+ * warp has twisted shows up as one face with a non-zero [PlanarFace.outOfPlane], in the model's own
+ * units, where a per-triangle measure would call every triangle flat. The plane sits midway through
+ * the face's thickness, so a quad with one corner lifted by `h` reports `h / 4`.
+ *
+ * Normals are signed, so the mesh should be consistently wound ([TriMesh.fixWinding]); two triangles
+ * folded back onto each other are never one face. Triangles with no area belong to no face. On a
+ * curved surface finer than [angleDegrees] per triangle, a face is a patch of the curve and its
+ * [PlanarFace.outOfPlane] is its sag.
+ *
+ * ```kotlin
+ * boxMesh().planarFaces().size                              // 6
+ * boxMesh().planarFaces().maxOf { it.outOfPlane }           // 0.0
+ * ```
+ *
+ * @param angleDegrees how far, in degrees, a triangle may turn from its face's mean normal and
+ *   still join it.
+ * @param weldTolerance absolute distance within which vertices are one vertex; see
+ *   [defaultWeldTolerance].
+ * @return every face, largest area first.
+ */
+fun TriMesh.planarFaces(angleDegrees: Double = 1.0, weldTolerance: Double = defaultWeldTolerance()): List<PlanarFace> {
+    require(angleDegrees.isFinite() && angleDegrees in 0.0..180.0) { "angleDegrees must be within 0..180, got $angleDegrees" }
+    val n = triangleCount
+    if (n == 0) return emptyList()
+    val (group, kept) = weldGroups(weldTolerance)
+    val nx = DoubleArray(n); val ny = DoubleArray(n); val nz = DoubleArray(n); val area = DoubleArray(n)
+    for (t in 0 until n) {
+        val a = ia(t); val b = ib(t); val c = ic(t)
+        if (group[a] == group[b] || group[b] == group[c] || group[a] == group[c]) continue
+        val ux = (x(b) - x(a)).toDouble(); val uy = (y(b) - y(a)).toDouble(); val uz = (z(b) - z(a)).toDouble()
+        val vx = (x(c) - x(a)).toDouble(); val vy = (y(c) - y(a)).toDouble(); val vz = (z(c) - z(a)).toDouble()
+        val cx = uy * vz - uz * vy; val cy = uz * vx - ux * vz; val cz = ux * vy - uy * vx
+        val len = sqrt(cx * cx + cy * cy + cz * cz)
+        if (len < 1e-30) continue
+        nx[t] = cx / len; ny[t] = cy / len; nz[t] = cz / len; area[t] = len / 2
+    }
+    val stride = (kept.size + 1).toLong()
+    fun edgeKey(u: Int, v: Int): Long = min(group[u], group[v]).toLong() * stride + max(group[u], group[v])
+    val edgeTriangles = HashMap<Long, MutableList<Int>>()
+    for (t in 0 until n) {
+        if (area[t] == 0.0) continue
+        val a = ia(t); val b = ib(t); val c = ic(t)
+        for (key in longArrayOf(edgeKey(a, b), edgeKey(b, c), edgeKey(c, a))) edgeTriangles.getOrPut(key) { mutableListOf() }.add(t)
+    }
+    val cosLimit = cos(angleDegrees * PI / 180.0)
+    val taken = BooleanArray(n)
+    val faces = ArrayList<PlanarFace>()
+    for (seed in 0 until n) {
+        if (taken[seed] || area[seed] == 0.0) continue
+        val members = mutableListOf(seed)
+        taken[seed] = true
+        var sx = nx[seed] * area[seed]; var sy = ny[seed] * area[seed]; var sz = nz[seed] * area[seed]
+        var next = 0
+        while (next < members.size) {
+            val t = members[next++]
+            val a = ia(t); val b = ib(t); val c = ic(t)
+            for (key in longArrayOf(edgeKey(a, b), edgeKey(b, c), edgeKey(c, a))) {
+                for (o in edgeTriangles[key] ?: continue) {
+                    if (taken[o]) continue
+                    val sl = sqrt(sx * sx + sy * sy + sz * sz)
+                    if ((nx[o] * sx + ny[o] * sy + nz[o] * sz) / sl < cosLimit) continue
+                    taken[o] = true
+                    members.add(o)
+                    sx += nx[o] * area[o]; sy += ny[o] * area[o]; sz += nz[o] * area[o]
+                }
+            }
+        }
+        val sl = sqrt(sx * sx + sy * sy + sz * sz)
+        val fx = sx / sl; val fy = sy / sl; val fz = sz / sl
+        var total = 0.0; var px = 0.0; var py = 0.0; var pz = 0.0
+        for (t in members) {
+            val a = ia(t); val b = ib(t); val c = ic(t)
+            total += area[t]
+            px += area[t] * (x(a) + x(b) + x(c)) / 3.0
+            py += area[t] * (y(a) + y(b) + y(c)) / 3.0
+            pz += area[t] * (z(a) + z(b) + z(c)) / 3.0
+        }
+        px /= total; py /= total; pz /= total
+        // Centre the plane in the face's thickness along the normal, so the distance reported is the
+        // least any plane of that orientation achieves: half the thinnest slab holding the face.
+        var lo = Double.MAX_VALUE; var hi = -Double.MAX_VALUE
+        for (t in members) for (v in intArrayOf(ia(t), ib(t), ic(t))) {
+            val d = (x(v) - px) * fx + (y(v) - py) * fy + (z(v) - pz) * fz
+            lo = min(lo, d); hi = max(hi, d)
+        }
+        val shift = (lo + hi) / 2
+        faces.add(PlanarFace(
+            triangles = members.toIntArray(),
+            normal = Vec3(fx.toFloat(), fy.toFloat(), fz.toFloat()),
+            point = Vec3((px + shift * fx).toFloat(), (py + shift * fy).toFloat(), (pz + shift * fz).toFloat()),
+            area = total,
+            outOfPlane = (hi - lo) / 2,
+        ))
+    }
+    return faces.sortedByDescending { it.area }
 }
 
 // ==============================================================================================
