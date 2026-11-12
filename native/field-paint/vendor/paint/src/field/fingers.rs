@@ -334,7 +334,7 @@ impl Canvas {
             // the air a station blows in: about the jet's own area per jet radius travelled (more,
             // held in one place), so a pass clears a track a few jet widths across, tendrils and all
             let dwell = if stations.len() == 1 { 10.0 } else { 1.0 };
-            let n = ((dwell * pressure * 1.5 * (r / g as f32).powi(2)).round() as usize).clamp(1, paint_cells);
+            let n = ((dwell * pressure * 1.5 * (r / g as f32).powi(2)).round() as usize).clamp(1, (paint_cells / 4).max(1));
             let invaded = hs.grow(n, eta, Some(&bias), seed.wrapping_add(si as u64 * 0x9E37));
             bsum += hs.branching(&invaded);
             out.stations += 1;
@@ -402,6 +402,10 @@ impl Canvas {
             by1 = by1.max(ey);
         }
         if bx0 < bx1 && by0 < by1 {
+            // the displaced paint slumps a little as the air passes: a short levelling flow (thick to
+            // thin, conservative) rounds the cell-sized steps of the fingers into rims
+            let contact = vec![1.0f32; w * h];
+            self.spread_pressed(&contact, 3, 0.2, (bx0, by0, bx1, by1));
             self.wet.touch(bx0, by0, bx1, by1);
             self.surf_gen += 1;
         }
@@ -486,7 +490,7 @@ pub(crate) fn peel_fingers(
             let (tx, ty) = (fx - ix as f32, fy - iy as f32);
             let a = val(ix, iy) + (val(ix + 1, iy) - val(ix, iy)) * tx;
             let b = val(ix, iy + 1) + (val(ix + 1, iy + 1) - val(ix, iy + 1)) * tx;
-            field[i] = ((a + (b - a) * ty) * 2.0).clamp(-1.0, 1.0);
+            field[i] = ((a + (b - a) * ty) * 1.4).clamp(-1.0, 1.0);
         }
     }
     field

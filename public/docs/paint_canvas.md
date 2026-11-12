@@ -414,9 +414,9 @@ does not move.
 
 The box below lays three thick strokes on the left half, folds the canvas down the middle and opens
 it. The top image is the canvas before the fold, the bottom one after: each stroke is printed onto
-the right half, and the two prints carry opposite ridges where the film split.
+the right half, and the two prints carry opposite fingers where the film split.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/fold.png" alt="two canvases, one above the other. The top one has three thick strokes on its left half: red, blue and yellow, with bristle ridges. In the bottom one each stroke has been printed onto the right half as a mirror image, and both halves are broken by streaky bare patches running away from the fold: where one half kept paint, its mirror is bare" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="fold" embed=true scale=1}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/fold.png" alt="two canvases, one above the other. The top one has three thick strokes on its left half: red, blue and yellow, with bristle ridges. In the bottom one each stroke has been printed onto the right half as a mirror image, and both halves are broken by branching bare fingers that come in from the strokes' outer edges toward the fold: where one half kept paint, its mirror is bare" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="fold" embed=true scale=1}
 :::static
 val canvas = PaintCanvas(900, aspect = 1.4, seed = 7)
 val brush = canvas.brush(BrushKind.HogFlat, width = 70.0)
@@ -507,7 +507,7 @@ lost: `canvas.wetMm3` is the same before and after. `blow` returns a `Blown` wit
 The box below lays a thick blue film and blows across it along a curve. The top image is before,
 the bottom one after.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/blow.png" alt="two canvases, one above the other. The top one has a broad, thick band of blue paint with bristle ridges. In the bottom one a curved path has been blown across the band: the paint is cleared along it to a thin film, and branching tendrils of bare canvas reach out from the path into the blue, with thick rims of paint along their edges" wait="30" capture="box" open-outputs="true" padding="20" requires="paint" name="blow" embed=true scale=1}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/blow.png" alt="two canvases, one above the other. The top one has a broad, thick band of blue paint with bristle ridges. In the bottom one a curved path has been blown across the band: the paint is cleared along it to a thin pale film, with ragged tendrils reaching out from the track into the blue and dark rims of pushed-up paint along its edges" wait="30" capture="box" open-outputs="true" padding="20" requires="paint" name="blow" embed=true scale=1}
 :::static
 val canvas = PaintCanvas(900, aspect = 1.4, seed = 11)
 val brush = canvas.brush(BrushKind.HogFlat, width = 120.0)
@@ -523,14 +523,14 @@ display("main", canvas.png(wet = true, light = PaintLight.Raking))
 The same puff of air at one point, into the same film, with three viscosity contrasts: 1.5, 8 and
 200, left to right.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/blow_contrast.png" alt="a canvas with a thick blue band and three blown spots in a row. The left spot is a compact round clearing with a ragged edge; the middle one has a few thick lobes; the right one is a branching tree of thin bare fingers reaching out into the paint" wait="30" capture="box" open-outputs="true" padding="20" requires="paint" name="blow_contrast" embed=true scale=1}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/blow_contrast.png" alt="a canvas with a thick blue band and three blown spots in a row. The left spot is a small pale clearing with a ragged, compact edge; the middle one sends out a few short lobes; the right one sends long, thin, branching pale fingers far out into the paint" wait="30" capture="box" open-outputs="true" padding="20" requires="paint" name="blow_contrast" embed=true scale=1}
 :::static
 val canvas = PaintCanvas(900, aspect = 2.4, seed = 12)
 val brush = canvas.brush(BrushKind.HogFlat, width = 130.0)
 brush.load(rgb(0.1, 0.18, 0.55), amount = 5.0, stiff = 0.3)
 for (y in [140, 260]) canvas.stroke(FLine().moveTo(60, y).lineTo(940, y), brush, pressure = 1.0..1.0)
 for ((x, contrast) in [170.0 to 1.5, 500.0 to 8.0, 830.0 to 200.0]) {
-    canvas.blow(FLine().moveTo(x, 200).lineTo(x + 2, 200), radius = 12.0, pressure = 1.0, contrast = contrast, tendril = 5.0)
+    canvas.blow(FLine().moveTo(x, 200).lineTo(x + 2, 200), radius = 16.0, pressure = 1.0, contrast = contrast, tendril = 4.0)
 }
 display("main", canvas.png(wet = true, light = PaintLight.Raking))
 ```
