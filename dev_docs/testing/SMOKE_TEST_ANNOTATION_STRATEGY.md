@@ -118,6 +118,11 @@ visual-diff baseline.
 The runner also fails ordinary execution errors and missing expected output
 unless explicitly allowed.
 
+Structured checks need no annotation key. Every `FIELD_CHECK {json}` line a test prints through
+`afield.tools.testing.Checks` (stdout for `jvm-main`, box output for `backdoor-box`) becomes a
+row in that test's `checks` in `results.json`, and a failed or malformed record fails the test.
+See "Structured check records" in `TESTING_STRATEGY.md`.
+
 ## Commands
 
 ```bash

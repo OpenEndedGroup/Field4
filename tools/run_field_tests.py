@@ -2140,6 +2140,10 @@ def run_one_test(
         result["backdoorResults"] = backdoor_results
         result["backdoorResult"] = backdoor_results[-1]
         failures = evaluate_expectations(test, backdoor_results, process=process, artifacts=artifacts)
+        checks, check_problems = collect_check_records(backdoor_results)
+        result["checks"] = checks
+        failures.extend(check_problems)
+        failures.extend(f"check failed: {describe_check(check)}" for check in checks if not check["passed"])
         if timed_out:
             completed_text = (
                 "all commands produced JSON results, but the backdoor process did not exit"
@@ -2155,6 +2159,7 @@ def run_one_test(
         failures = [str(exc)]
         result["backdoorResults"] = []
         result["backdoorResult"] = None
+        result["checks"] = []
         # No parseable transport result means the test's assertions never ran. It still fails the
         # catalog, but keeping it distinct prevents one server stall from masquerading as N product
         # regressions in the machine-readable summary.
@@ -2163,6 +2168,81 @@ def run_one_test(
     result["ok"] = not failures
     result["failures"] = failures
     return result
+
+
+# `afield.tools.testing.CheckRecord.LINE_PREFIX`: one JSON check record per stdout line.
+CHECK_LINE_PREFIX = "FIELD_CHECK "
+CHECK_KEYS = ("name", "measured", "expected", "tolerance", "passed", "note", "provenance")
+
+
+def _check_texts(backdoor_results: list[dict[str, Any]]) -> list[str]:
+    """Where a test's printed lines arrive: a jvm-main's `data.stdout`, a box's `output` events.
+
+    A box's `println` arrives verbatim in the event's `html` field (one event per line, newline kept),
+    so it is read as text: stripping tags or decoding entities would corrupt a record whose strings
+    hold `<` or `&`. `peer-output` repeats `output` for other clients and is not read.
+    """
+    texts: list[str] = []
+    for result in backdoor_results:
+        data = result.get("data")
+        if isinstance(data, dict) and data.get("stdout"):
+            texts.append(str(data["stdout"]))
+    for event in collect_backdoor_events(backdoor_results):
+        payload = event.get("payload")
+        if event.get("name") == "output" and isinstance(payload, dict) and payload.get("html"):
+            texts.append(str(payload["html"]))
+    return texts
+
+
+def collect_check_records(backdoor_results: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
+    """The test's check records in emission order, and a problem for each malformed record line."""
+    records: list[dict[str, Any]] = []
+    problems: list[str] = []
+    for text in _check_texts(backdoor_results):
+        for line in text.splitlines():
+            line = line.strip()
+            if not line.startswith(CHECK_LINE_PREFIX):
+                continue
+            try:
+                record = json.loads(line[len(CHECK_LINE_PREFIX):])
+            except json.JSONDecodeError as exc:
+                problems.append(f"malformed check record ({exc.msg}): {line[:200]}")
+                continue
+            if not isinstance(record, dict) or not isinstance(record.get("name"), str) \
+                    or not isinstance(record.get("passed"), bool):
+                problems.append(f"check record needs a string name and a boolean passed: {line[:200]}")
+                continue
+            records.append({key: record.get(key) for key in CHECK_KEYS})
+    return records, problems
+
+
+def describe_check(check: dict[str, Any]) -> str:
+    tolerance = f" ± {check['tolerance']}" if check.get("tolerance") is not None else ""
+    return f"{check['name']} (measured {check.get('measured')}, expected {check.get('expected')}{tolerance})"
+
+
+def format_check_table(checks: list[dict[str, Any]], *, width: int = 36) -> list[str]:
+    """One row per check record, failures marked, for the progress stream."""
+    if not checks:
+        return []
+
+    def cell(value: Any) -> str:
+        text = "" if value is None else str(value)
+        return text if len(text) <= width else text[: width - 1] + "…"
+
+    rows = [("", "check", "measured", "expected", "provenance")]
+    for check in checks:
+        expected = check.get("expected")
+        if check.get("tolerance") is not None:
+            expected = f"{expected} ± {check['tolerance']}"
+        rows.append(("ok" if check["passed"] else "FAIL", cell(check["name"]), cell(check.get("measured")),
+                     cell(expected), cell(check.get("provenance"))))
+    widths = [max(len(row[i]) for row in rows) for i in range(len(rows[0]))]
+    passed = sum(1 for check in checks if check["passed"])
+    lines = [f"  checks: {passed}/{len(checks)} passed"]
+    for row in rows:
+        lines.append("    " + "  ".join(value.ljust(widths[i]) for i, value in enumerate(row)).rstrip())
+    return lines
 
 
 def format_result_line(result: dict[str, Any]) -> str:
@@ -2612,6 +2692,8 @@ def run(args: argparse.Namespace, environment: VerificationEnvironment | None = 
                     current_test_ids={str(item.get("id") or "") for item in tests},
                 )
             progress(f"[{index}/{total}] {format_result_line(result)}")
+            for line in format_check_table(result.get("checks") or []):
+                progress(line)
             for failure in result["failures"]:
                 progress(f"  {failure}")
             if failed and args.fail_fast:
@@ -2672,6 +2754,13 @@ def run(args: argparse.Namespace, environment: VerificationEnvironment | None = 
                 coverage_at_start["oldestCompletedAgeSec"] if coverage_at_start else None
             ),
         },
+        "checkCount": sum(len(result.get("checks") or []) for result in results),
+        "failedChecks": [
+            {"id": result["id"], **check}
+            for result in results
+            for check in result.get("checks") or []
+            if not check["passed"]
+        ],
         "serverLogs": SERVER_LOGS,
         "results": results,
     }
@@ -2692,6 +2781,10 @@ def run(args: argparse.Namespace, environment: VerificationEnvironment | None = 
                 f"{kinds['infrastructure']} infrastructure/transport, "
                 f"{kinds['contract']} expected-failure contract"
             )
+        if report["failedChecks"]:
+            print("Failed checks:")
+            for check in report["failedChecks"]:
+                print(f"  {check['id']}: {describe_check(check)}")
         print(f"Results: {results_path}")
 
     return 1 if failed else 2 if environment_incomplete else 0

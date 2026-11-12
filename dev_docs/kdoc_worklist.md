@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 23162 of 39265 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 23180 of 39295 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2040 undocumented entry points** (types, top-level functions and values) and 13357 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2039 undocumented entry points** (types, top-level functions and values) and 13370 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -498,7 +498,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StackSLSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/stacksl/StackSLSmokeTest.kt) | Examples | — | 1 | 2 | 0% |
 | [FileManagerSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/stdlib/FileManagerSmokeTest.kt) | Examples | — | 1 | 2 | 0% |
 | [InteractionNetsSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/stdlib/InteractionNetsSmokeTest.kt) | Examples | — | 1 | 2 | 0% |
-| [LeastSquaresAndFMChirpSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/stdlib/LeastSquaresAndFMChirpSmokeTest.kt) | Examples | — | 1 | 2 | 0% |
 | [SavedJsonSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/stdlib/SavedJsonSmokeTest.kt) | Examples | — | 1 | 2 | 0% |
 | [WfcSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/stdlib/WfcSmokeTest.kt) | Examples | — | 1 | 2 | 0% |
 | [FLineEditing.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineEditing.kt) | Graphics | — | 1 | 2 | 0% |
@@ -657,6 +656,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StackSLIntervals.kt](../src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLIntervals.kt) | Languages | — | 0 | 13 | 50% |
 | [RayReconstructionDemo.kt](../src/jvmMain/kotlin/afield/media/reconstruction/RayReconstructionDemo.kt) | Imaging | — | 0 | 13 | 7% |
 | [SimdVerlet.kt](../src/jvmMain/kotlin/afield/simulation/physics/SimdVerlet.kt) | Simulation | — | 0 | 13 | 59% |
+| [Checks.kt](../src/jvmMain/kotlin/afield/tools/testing/Checks.kt) | Workspace | — | 0 | 13 | 31% |
 | [NotationGeometry.kt](../src/jvmMain/kotlin/afield/ui/notation/NotationGeometry.kt) | Visualization | — | 0 | 13 | 53% |
 | [BoxOutputCapture.kt](../src/jvmMain/kotlin/afield/ai/agent/BoxOutputCapture.kt) | AI4 | — | 0 | 12 | 45% |
 | [OpenAiIdeCodexBridge.kt](../src/jvmMain/kotlin/afield/ai/models/OpenAiIdeCodexBridge.kt) | AI4 | — | 0 | 12 | 29% |
@@ -931,6 +931,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [GraphConnectivitySmokeTest.kt](../src/jvmMain/kotlin/afield/examples/stdlib/GraphConnectivitySmokeTest.kt) | Examples | — | 0 | 2 | 33% |
 | [LambdaPropertyOracleTest.kt](../src/jvmMain/kotlin/afield/examples/stdlib/LambdaPropertyOracleTest.kt) | Examples | — | 0 | 2 | 60% |
 | [LambdaTermsSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/stdlib/LambdaTermsSmokeTest.kt) | Examples | — | 0 | 2 | 33% |
+| [LeastSquaresAndFMChirpSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/stdlib/LeastSquaresAndFMChirpSmokeTest.kt) | Examples | — | 0 | 2 | 33% |
 | [SmileStdlibSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/stdlib/SmileStdlibSmokeTest.kt) | Examples | — | 0 | 2 | 33% |
 | [PlanarTessellation.kt](../src/jvmMain/kotlin/afield/geometry/path/PlanarTessellation.kt) | Graphics | — | 0 | 2 | 75% |
 | [SplatCloudEdit.kt](../src/jvmMain/kotlin/afield/graphics/render/SplatCloudEdit.kt) | Graphics | — | 0 | 2 | 89% |
@@ -1315,4 +1316,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `SquareOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:140` |
 | `PulseOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:167` |
 
-…and **1920 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1919 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
