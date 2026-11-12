@@ -1,0 +1,8 @@
+{
+  "mirrors": [
+    "text1_elastic",
+    "text1_drop_caps",
+    "text1_score"
+  ],
+  "executableTokensAgree": true
+}

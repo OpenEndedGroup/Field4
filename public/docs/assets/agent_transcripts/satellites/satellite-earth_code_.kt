@@ -55,7 +55,7 @@ for (i in 0 until day.size - 1) {
 }
 // Chicago, as a small cross.
 val c = Frames.ecefOf(41.88, -87.63, 30.0)
-for (d in listOf(Xyz(120.0, 0.0, 0.0), Xyz(0.0, 120.0, 0.0), Xyz(0.0, 0.0, 120.0))) segment(
+for (d in [Xyz(120.0, 0.0, 0.0), Xyz(0.0, 120.0, 0.0), Xyz(0.0, 0.0, 120.0)]) segment(
     world(Xyz(c.x - d.x, c.y - d.y, c.z - d.z)),
     world(Xyz(c.x + d.x, c.y + d.y, c.z + d.z)),
     vec(1.0, 0.85, 0.3, 1.0),

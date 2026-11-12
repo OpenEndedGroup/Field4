@@ -821,6 +821,8 @@ the field, so its total mass changes at each step; Particle Lenia keeps mass fix
 particles. Flow Lenia keeps the grid and moves its mass from cell to cell. The matter carries its
 own rule with it, so different species can meet and mix in one world.
 
+Each [`FlowLeniaWorld`](reference/alife.md#alife-flow-lenia-kt-flowleniaworld) advances with [`step()`](reference/alife.md#alife-flow-lenia-kt--flowleniaworld--step); [`animateEvolution`](reference/alife.md#alife-animate-kt--animateevolution) runs the steps and records the panels shown below.
+
 The model comes from Plantec, Hamon, Etcheverry, Oudeyer, Moulin-Frier and Chan's
 ["Flow-Lenia: Towards open-ended evolution in cellular automata through mass conservation and
 parameter localization"](https://arxiv.org/abs/2212.07906) (ALIFE 2023). Here is how it works:
@@ -841,8 +843,8 @@ parameter localization"](https://arxiv.org/abs/2212.07906) (ALIFE 2023). Here is
 A species is a list of ring kernels, each with its own `mu` and `sigma`, and a weight on each.
 [`FlowLeniaPresets`](reference/alife.md#alife-flow-lenia-kt) holds three found by random search over
 the paper's rule space (three to seven kernels of radius 3 to 12). Starting from a disc of noise,
-`wanderers` breaks into a dozen round bodies that drift slowly, `rings` settles into small hollow
-rings that keep apart, and `cell` grows one large body with a membrane. Seed them side by side in a
+[`wanderers`](reference/alife.md#alife-flow-lenia-kt--flowleniapresets--wanderers) breaks into a dozen round bodies that drift slowly, [`rings`](reference/alife.md#alife-flow-lenia-kt--flowleniapresets--rings) settles into small hollow
+rings that keep apart, and [`cell`](reference/alife.md#alife-flow-lenia-kt--flowleniapresets--cell) grows one large body with a membrane. Seed them side by side in a
 96 x 96 world, drawn at three times the resolution (`scale = 3`: 288 x 288 cells, nine for every
 one; [Higher resolution](#higher-resolution-the-same-world-in-more-cells) says what that changes),
 and each takes its own form: the wanderers a dozen round bodies, the rings a cluster of hollow rings
@@ -851,7 +853,12 @@ The white line tracks total mass; it stays flat:
 
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-species.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="900" w="1000" embed=true name="alife-flow-lenia-species" alt="left, a dark field where an orange cloud of a dozen round bodies, a cyan cluster of rings that breaks into small crosses and a pink membrane that pulls apart into beaded chains form from three discs of noise; right, a plot whose white line, the total mass, stays perfectly flat while the orange, cyan and pink lines, each species' mass, stay level beneath it"}
 :::static
-val world = flowLeniaWorld(288, 288, [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()], scale = 3)
+val world = flowLeniaWorld(
+    288,
+    288,
+    [FlowLeniaPresets.wanderers(), FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+    scale = 3,
+)
 
 animateEvolution(
     world,
@@ -869,7 +876,7 @@ animateEvolution(
 )
 ```
 
-`flowLeniaWorld` puts every species' kernels side by side in one rule and gives each species weight
+[`flowLeniaWorld`](reference/alife.md#alife-flow-lenia-kt--flowleniaworld) puts every species' kernels side by side in one rule and gives each species weight
 only on its own, so a species with nobody near it runs exactly its own rule (the test checks this to
 `1e-9`). Its matter still feels everyone else's through those kernels, which is how species meet.
 
@@ -919,7 +926,13 @@ from the cell's own weight towards the rings'. The species colours on the left b
 
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-drift.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="900" w="1000" embed=true name="alife-flow-lenia-drift" alt="left, orange ring bodies and cyan beaded chains whose colours blend where they have mixed; right, the same matter coloured by one kernel weight on a viridis scale: a large yellow body, two green hybrid bodies, and teal chains grading towards blue"}
 :::static
-val world = flowLeniaWorld(288, 192, [FlowLeniaPresets.rings(), FlowLeniaPresets.cell()], positions = [38.0 to 32.0, 58.0 to 32.0], scale = 3)
+val world = flowLeniaWorld(
+    288,
+    192,
+    [FlowLeniaPresets.rings(), FlowLeniaPresets.cell()],
+    positions = [38.0 to 32.0, 58.0 to 32.0],
+    scale = 3,
+)
 
 animateEvolution(
     world,
@@ -931,7 +944,8 @@ animateEvolution(
     panels = { w, n ->
         [
             ("step " + n) to w.speciesImg().resize(480, 320),
-            ("hybrid %.0f of %.0f".format(w.mixedMass(), w.totalMass())) to w.weightImg(0).colormap("viridis", 0f, 0.4f).resize(480, 320),
+            ("hybrid %.0f of %.0f".format(w.mixedMass(), w.totalMass())) to
+                w.weightImg(0).colormap("viridis", 0f, 0.4f).resize(480, 320),
         ]
     },
 )
@@ -1008,7 +1022,7 @@ following the largest body, and returns its path, unwrapped so that crossing the
 counting, along with its mass over time. `FlowLeniaTrack.speed` is the straight-line distance per
 step, and `massKept` is the smallest mass over the run divided by the first.
 
-`FlowLeniaPresets.crescent()` is a rule from a random search of 900 rules scored that way. From a small
+[`FlowLeniaPresets.crescent()`](reference/alife.md#alife-flow-lenia-kt--flowleniapresets--crescent) is a rule from a random search of 900 rules scored that way. From a small
 noise disc it settles into one of two bodies. With noise seed 2 it folds into a crescent that travels
 convex side first at about 0.02 cells per step and keeps 99.6 % of its mass. From most other seeds it
 settles into a round body that stays put. Here the crescent forms on a 64-cell torus, is grown to
@@ -1018,7 +1032,8 @@ fading exposure, which shows the path:
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/flow-lenia-crescent.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="900" w="1000" embed=true name="alife-flow-lenia-crescent" alt="left, an orange crescent made of beads travelling steadily across a dark field, wrapping round the edge of the torus; right, the same field as a long exposure in which the crescent's path is a fading band behind it"}
 :::static
 // Noise seed 2 folds into the crescent; grow it to three times the resolution once it has formed.
-val world = flowLeniaWorld(64, 64, [FlowLeniaPresets.crescent()], seedRadius = 6.0, randomSeed = 2L).steps(200).scaledCopy(3)
+val world =
+    flowLeniaWorld(64, 64, [FlowLeniaPresets.crescent()], seedRadius = 6.0, randomSeed = 2L).steps(200).scaledCopy(3)
 val trail = FloatArray(world.width * world.height)
 
 animateEvolution(
@@ -1041,7 +1056,7 @@ animateEvolution(
 
 ### Searching for travellers
 
-`FlowLeniaGenome` makes Flow Lenia species a genome for the same `PopulationSearch` the
+[`FlowLeniaGenome`](reference/alife.md#alife-flow-lenia-kt-flowleniagenome) makes Flow Lenia species a genome for the same `PopulationSearch` the
 [Lenia rule search](#a-lenia-rule-that-travels) uses. A random draw comes from the paper's rule space,
 the one the presets came from. It has three mutations: `nudge` moves every `mu`, `sigma` and weight a
 little, `rekernel` redraws one kernel, and `addOrDrop` adds or removes one. Crossover takes each kernel,
@@ -3400,3 +3415,5 @@ Implementation and parameter details for the helpers used above:
 - [`ShaderPhysarumSystem.installInto`](reference/alife.md#alife-physarum-gpu-kt--shaderphysarumsystem--installinto)
 - [`TrailFollowers.installInto`](reference/alife.md#alife-trail-followers-kt--trailfollowers--installinto)
 - [`LifeRuleGenome`](reference/alife.md#alife-evolve-kt-liferulegenome)
+- [`PopulationSearch.hillClimb`](reference/search.md#populationsearch-kt--populationsearch--hillclimb)
+- [`PopulationSearch.random`](reference/search.md#populationsearch-kt--populationsearch--random)

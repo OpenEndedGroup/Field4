@@ -98,8 +98,7 @@ operations:
           println("byVariableRibboning: %.3f".format(ribbon.outlineDistanceTo(reference)))
 
           val circles =
-              (0..16).map { i ->
-                  val s = centre.sampleSeries(17)[i]
+              centre.sampleSeries(17).map { s ->
                   val r = radius.evaluate(s.t, s.point).toDouble()
                   fline { circle(s.point.x.toDouble(), s.point.y.toDouble(), r) }
                       .apply {
@@ -107,23 +106,23 @@ operations:
                           color = vec(1.0, 1.0, 1.0, 0.35)
                       }
               }
+          val outlines: List<FLine> = [
+              centre.copy().apply { color = vec(1.0, 1.0, 1.0, 0.5) },
+              ribbon.copy().apply {
+                  color = vec(1.0, 0.45, 0.3, 1.0)
+                  thickness = 1.5
+              },
+              swept.left.copy().apply {
+                  color = vec(0.4, 0.9, 1.0, 1.0)
+                  thickness = 2.0
+              },
+              swept.right.copy().apply {
+                  color = vec(0.4, 0.9, 1.0, 1.0)
+                  thickness = 2.0
+              },
+          ]
           lines(
-              circles +
-                  listOf(
-                      centre.copy().apply { color = vec(1.0, 1.0, 1.0, 0.5) },
-                      ribbon.copy().apply {
-                          color = vec(1.0, 0.45, 0.3, 1.0)
-                          thickness = 1.5
-                      },
-                      swept.left.copy().apply {
-                          color = vec(0.4, 0.9, 1.0, 1.0)
-                          thickness = 2.0
-                      },
-                      swept.right.copy().apply {
-                          color = vec(0.4, 0.9, 1.0, 1.0)
-                          thickness = 2.0
-                      },
-                  ),
+              circles + outlines,
               w = 900.0,
               h = 380.0,
               fitToSize = true,
@@ -140,13 +139,13 @@ operations:
         code: |
           // The pen nearly stops and presses: around the middle sample the radius changes faster than
           // the centre moves, and the circle swallows itself.
-          val knots = listOf(
+          val knots = [
               vec(0.0, 0.0, 4.0),
               vec(60.0, 20.0, 7.0),
               vec(66.0, 22.0, 30.0),
               vec(72.0, 20.0, 8.0),
               vec(150.0, 0.0, 4.0),
-          )
+          ]
           val spans = sweptCircleDegenerateSpans(knots)
           println("no envelope on " + spans.joinToString { "%.4f..%.4f".format(it.start, it.endInclusive) })
 

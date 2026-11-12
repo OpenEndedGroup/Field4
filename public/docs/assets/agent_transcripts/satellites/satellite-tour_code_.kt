@@ -1,10 +1,3 @@
-import kotlin.math.asin
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.pow
-import kotlin.math.sin
-import kotlin.math.sqrt
-
 /*
 `camera` comes from the Earth box above. The flight starts where that box put the camera, 2.6 Earth
 radii above Chicago, and pulls out through the low shell, past the navigation satellites at four

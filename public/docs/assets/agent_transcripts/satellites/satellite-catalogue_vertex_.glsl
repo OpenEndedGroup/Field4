@@ -23,10 +23,10 @@ vec3 meanElementsPosition(vec4 shape, vec4 angles, vec3 rates, float t) {
 
 layout(push_constant) uniform Push {
     OrbitData orbits;
-    mat4 p;
-    mat4 m;
-    vec4 eye;
-    vec4 clock;
+    mat4 p; // Clip-from-view projection.
+    mat4 m; // View-from-world camera transform.
+    vec4 eye; // World-space camera position, in Earth radii; w is unused.
+    vec4 clock; // x: minutes since epoch, y: point-size scale, z: selected index, w unused.
 } pc;
 
 layout(location = 0) out vec4 fcol;

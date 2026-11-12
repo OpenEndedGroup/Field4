@@ -1,5 +1,4 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // Fixed landmarks and sliding constraints share one small connection helper. Only the
 // interior nodes have inertia: the two visible endpoints always stay on the measured text.

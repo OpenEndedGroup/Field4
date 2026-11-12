@@ -1,12 +1,12 @@
 // The pen nearly stops and presses: around the middle sample the radius changes faster than
 // the centre moves, and the circle swallows itself.
-val knots = listOf(
+val knots = [
     vec(0.0, 0.0, 4.0),
     vec(60.0, 20.0, 7.0),
     vec(66.0, 22.0, 30.0),
     vec(72.0, 20.0, 8.0),
     vec(150.0, 0.0, 4.0),
-)
+]
 val spans = sweptCircleDegenerateSpans(knots)
 println("no envelope on " + spans.joinToString { "%.4f..%.4f".format(it.start, it.endInclusive) })
 

@@ -1225,7 +1225,7 @@ runtime program at five values of the push constant, and compares both ends agai
 
 ## Ordered groups: one rule for a whole look
 
-An `OrderedKeyframeGroup` makes one key describe a whole ordered collection. A lane can be a
+An [`OrderedKeyframeGroup`](reference/graphics.md#orderedkeyframegroup-kt-orderedkeyframegroup) makes one key describe a whole ordered collection. A lane can be a
 constant, such as `0.2`, or a source-backed function of the member's zero-based index:
 
 ```diffstatic {data-lang=kotlin}
@@ -1267,7 +1267,7 @@ Blending mixes the **outputs** of two rules at each member. The programs can be 
 different. `group.scope.interpolate(a, b, t)` uses this pointwise interpretation for registered
 group lanes, while ordinary code lanes retain their existing code-blend semantics.
 
-For a travelling transition, call this from a control loop with elapsed seconds:
+For a travelling transition, call [`OrderedKeyframeGroup.transition`](reference/graphics.md#orderedkeyframegroup-kt--orderedkeyframegroup--transition) from a control loop with elapsed seconds:
 
 ```diffstatic {data-lang=kotlin}
 val key = group.transition(
@@ -1300,3 +1300,6 @@ Implementation and parameter details for the helpers used above:
 
 - [`CodeBlendOptions`](reference/graphics.md#keyframecodeblend-kt-codeblendoptions)
 - [`KeyframeScope.codeBlendPlans`](reference/graphics.md#keyframer-kt--keyframescope--codeblendplans)
+- [`FileManager.current`](reference/data.md#filemanager-kt--filemanager--current)
+- [`OrderedKeyframeGroup.apply`](reference/graphics.md#orderedkeyframegroup-kt--orderedkeyframegroup--apply)
+- [`OrderedKeyframeGroup.blend`](reference/graphics.md#orderedkeyframegroup-kt--orderedkeyframegroup--blend)

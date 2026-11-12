@@ -1,5 +1,4 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // Fixed landmarks and sliding constraints share one small connection helper. Only the
 // interior nodes have inertia: the two visible endpoints always stay on the measured text.
@@ -17,9 +16,12 @@ val graph = readingDiagram {
         font = face
         scale = .55f
     }
-    val thread = connection("river-thread",
+    val thread = connection(
+        "river-thread",
         water.word("river").attach(DiagramTextSite.UNDERLINE),
-        light.word("light").attach(DiagramTextSite.BOUNDARY), interiorNodes = 8) {
+        light.word("light").attach(DiagramTextSite.BOUNDARY),
+        interiorNodes = 8,
+    ) {
         responseSeconds = 1.0f
         dampingRatio = .8f
         lengthStiffness = 35f
@@ -29,8 +31,12 @@ val graph = readingDiagram {
         width = .0015f
         color = vec(1f, 1f, 1f, .3f)
     }
-    connection("margin-thread", water.attach(DiagramTextSite.RIGHT_MARGIN),
-        breath.attach(DiagramTextSite.BOUNDARY), interiorNodes = 6) {
+    connection(
+        "margin-thread",
+        water.attach(DiagramTextSite.RIGHT_MARGIN),
+        breath.attach(DiagramTextSite.BOUNDARY),
+        interiorNodes = 6,
+    ) {
         responseSeconds = 1.7f
         dampingRatio = 1f
         bow.set(.05f, -.1f, 0f)
@@ -65,7 +71,9 @@ controlGroup("elastic threads") {
         graph.connections.forEach { c -> c.lengthStiffness = it.toFloat() }
     }
     checkbox("Minimize length", initialValue = false) {
-        graph.connections.forEach { c -> c.lengthMode = if (it) DiagramConnectionLength.MINIMIZE else DiagramConnectionLength.STABILIZE }
+        graph.connections.forEach { c ->
+            c.lengthMode = if (it) DiagramConnectionLength.MINIMIZE else DiagramConnectionLength.STABILIZE
+        }
     }
     slider("Rest length multiplier", initialValue = 1.0, min = 0.0, max = 3.0) {
         graph.connections.forEach { c -> c.lengthScale = it.toFloat() }

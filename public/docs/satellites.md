@@ -9,7 +9,7 @@ The code lives in `afield.simulation.orbits` and covers near-Earth and deep-spac
 
 ## Where a satellite is
 
-A `Tle` is one element set. Give it to `Sgp4` to find a position and velocity at a time measured in
+A [`Tle`](reference/simulation.md#sgp4-kt-tle) is one element set. Give it to [`Sgp4`](reference/simulation.md#sgp4-kt-sgp4) to find a position and velocity at a time measured in
 minutes from the set's epoch. The result is in kilometres and km/s, in SGP4's TEME frame:
 
 ```diffstatic {data-lang=kotlin}
@@ -23,7 +23,7 @@ val state = Sgp4(vanguard).propagate(minutesSinceEpoch = 360.0)
 println(state!!.position) // Xyz(x=-7154.03..., y=-3783.17..., z=-3536.19...)
 ```
 
-`propagate` returns `null` when the model breaks down, which happens to real objects close to
+[`propagate`](reference/simulation.md#sgp4-kt--sgp4--propagate) returns `null` when the model breaks down, which happens to real objects close to
 re-entry. Positions are `Xyz`, a double-precision vector: a single-precision `Vec3` is only good to
 about half a metre at orbital radius.
 
@@ -61,12 +61,12 @@ propagates every object at once.
 
 ## A week of passes over one place
 
-An `Observer` is a place on the ground. `look` gives azimuth, elevation and range to a satellite, and
-`passes` finds every interval in which the satellite is above a minimum elevation, sampling every 30
+An [`Observer`](reference/simulation.md#frames-kt-observer) is a place on the ground. `look` gives azimuth, elevation and range to a satellite, and
+[`passes`](reference/simulation.md#frames-kt--observer--passes) finds every interval in which the satellite is above a minimum elevation, sampling every 30
 seconds and refining each rise, set and highest moment to about a second.
 
 To see a satellite by its reflected sunlight, you need a dark sky while the satellite is still lit:
-often in the hours after sunset or before sunrise. `visiblePasses` finds those parts of each pass,
+often in the hours after sunset or before sunrise. [`visiblePasses`](reference/simulation.md#frames-kt--observer--visiblepasses) finds those parts of each pass,
 using `Sun.position` for the sun and `Frames.isSunlit` for the Earth's shadow. By default it asks
 for the sun to be at least 6° below the horizon; change that with `maxSunElevationDeg`. The test
 does not estimate the satellite's brightness.
@@ -171,7 +171,6 @@ pink:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/satellites/geo.png" capture="box" open-outputs="true" wait="3.0" timeout="300" padding="12" embed=true name="satellites-geo" alt="A strip map of the equatorial band from 180° west to 180° east, latitude 15° south to 15° north, over faint coastlines of the Americas, Africa and Asia. Hundreds of blue dots and short blue vertical figure-eights crowd the equator, densest over Asia and the Americas; pink tracks of drifting satellites cross the band as long slanted lines and tall loops, most of them between 60° and 150° east, and one wide pink ellipse spans from 130° west to 60° east" macro-file="../../dev_docs/agents/transcripts/satellites.yaml" capture-box="satellite-geo"}
 import afield.simulation.orbits.*
 import java.time.Duration
-import kotlin.math.abs
 
 // Every object in the snapshot, near-earth and deep-space.
 val sky = SatelliteCatalogue.bundled()
@@ -287,7 +286,7 @@ in GLSL, so a vertex shader can solve Kepler's equation for every satellite, eve
 
 The drawing takes three boxes. A renderer box opens the window. Beneath it, an Earth box draws the
 graticule, Natural Earth's coastlines and the ISS's ground track for the next day, bright where Chicago
-sees it above 10°, as line segments. It also makes the catalogue, a `SkyClock` that runs the sky at
+sees it above 10°, as line segments. It also makes the catalogue, a [`SkyClock`](reference/simulation.md#frames-kt-skyclock) that runs the sky at
 120 times real time, and the camera. It publishes all three with `prop` for the box beneath it.
 Beneath that, a satellites box writes one record per satellite into a GPU buffer, laid out by a
 [GPU schema](gpu_schema.md), and draws one point per satellite:
@@ -423,13 +422,6 @@ low ones swirl round the globe while the ring, turning with the Earth, keeps its
 continents beneath it:
 
 ```diffstatic_runner {data-lang=kotlin capture="native-window" video="assets/satellites/tour.mp4" duration="22" fps="15" wait="0.5" timeout="420" embed=true name="satellites-tour" alt="The wire globe seen from above North America, wrapped in the pale shell of low satellites streaming round it. The camera pulls away and turns: the globe shrinks, scattered pink dots of the navigation satellites appear around it, and a thin ring of dots opens out round the equator, tilted towards the viewer, until it spans the frame with the small globe at its centre; the view then circles slowly while the low shell keeps moving and the ring holds its place" macro-file="../../dev_docs/agents/transcripts/satellites.yaml" capture-box="satellite-tour"}
-import kotlin.math.asin
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.pow
-import kotlin.math.sin
-import kotlin.math.sqrt
-
 /*
 `camera` comes from the Earth box above. The flight starts where that box put the camera, 2.6 Earth
 radii above Chicago, and pulls out through the low shell, past the navigation satellites at four

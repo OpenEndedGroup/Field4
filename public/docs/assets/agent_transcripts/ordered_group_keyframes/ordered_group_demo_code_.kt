@@ -1,7 +1,3 @@
-import afield.animation.keyframes.OrderedKeyframeGroup
-import afield.document.workspace.FileManager
-import afield.study.source.SourceBackedFunction
-
 // An inherited property stays dynamic after source-only rehydration.
 prop<Double>(ruleOffset) = 0.1
 val group =

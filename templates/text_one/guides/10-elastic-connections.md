@@ -9,7 +9,8 @@ It does not add particles or neighbour slots to the word graph, or pull words ar
 val graph = readingDiagram {
     val a = text("a", "the river remembers\nsmall things", point("pa", -.6, .2))
     val b = text("b", "a changing light", point("pb", .65, .25, .03))
-    val thread = connection("thread",
+    val thread = connection(
+        "thread",
         a.word("river").attach(DiagramTextSite.UNDERLINE),
         b.word("light").attach(DiagramTextSite.BOUNDARY),
         interiorNodes = 8,
