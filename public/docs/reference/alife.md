@@ -422,7 +422,7 @@ neighbour counting a claim they must agree on exactly.
 
 `src/jvmMain/kotlin/afield/simulation/agents/alife_continuous.kt` — [read the source](source/jvmMain/afield/simulation/agents/alife_continuous/)
 
-**Used in:** [Spatial artificial life](../alife_examples.md)
+**Used in:** [Spatial artificial life](../alife_examples.md), [Agent transcript gallery](../agent_transcripts.md)
 
 ### Top-level functions { #alife-continuous-kt-functions }
 
@@ -1011,7 +1011,7 @@ A forest-fire excitable medium: ignition, fire state and ink, each a full-screen
 
 `src/jvmMain/kotlin/afield/simulation/agents/alife_flow_lenia.kt` — [read the source](source/jvmMain/afield/simulation/agents/alife_flow_lenia/)
 
-**Used in:** [Spatial artificial life](../alife_examples.md)
+**Used in:** [Spatial artificial life](../alife_examples.md), [Agent transcript gallery](../agent_transcripts.md)
 
 ### Top-level functions { #alife-flow-lenia-kt-functions }
 

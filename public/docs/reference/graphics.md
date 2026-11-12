@@ -1391,7 +1391,7 @@ is `public/docs/principal_curves.md`.
 
 `src/jvmMain/kotlin/afield/geometry/curves/principal/PrincipalCurves.kt` — [read the source](source/jvmMain/afield/geometry/curves/principal/PrincipalCurves/)
 
-**Used in:** [Principal curves: smooth curves through point clouds](../principal_curves.md), [Chaining the geometry extensions](../geometry_chains.md)
+**Used in:** [Principal curves: smooth curves through point clouds](../principal_curves.md), [Chaining the geometry extensions](../geometry_chains.md), [Agent transcript gallery](../agent_transcripts.md)
 
 ### ElasticParameters { #principalcurves-kt-elasticparameters }
 
@@ -6704,6 +6704,8 @@ points, and 384 MB at a million points on 16 workers — pass a smaller `threads
 
 `src/jvmMain/kotlin/afield/geometry/spatial/stippling.kt` — [read the source](source/jvmMain/afield/geometry/spatial/stippling/)
 
+**Used in:** [Agent transcript gallery](../agent_transcripts.md)
+
 ### Top-level functions { #stippling-kt-functions }
 
 | Declaration | Summary |
@@ -7439,7 +7441,7 @@ index. The worked account is `public/docs/contour_trees.md`.
 
 `src/jvmMain/kotlin/afield/geometry/topology/trees/ContourTrees.kt` — [read the source](source/jvmMain/afield/geometry/topology/trees/ContourTrees/)
 
-**Used in:** [Merge trees and contour trees](../contour_trees.md)
+**Used in:** [Merge trees and contour trees](../contour_trees.md), [Agent transcript gallery](../agent_transcripts.md)
 
 ### TreeNodeType { #contourtrees-kt-treenodetype }
 

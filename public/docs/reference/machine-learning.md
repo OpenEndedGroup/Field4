@@ -1745,6 +1745,8 @@ time, so you can draw source points once and re-transport the same list for each
 
 `src/jvmMain/kotlin/afield/geometry/spatial/stippletransport.kt` — [read the source](source/jvmMain/afield/geometry/spatial/stippletransport/)
 
+**Used in:** [Stipple transport](../stipple_transport.md)
+
 ### Top-level functions { #stippletransport-kt-functions }
 
 | Declaration | Summary |

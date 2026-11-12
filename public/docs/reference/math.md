@@ -3233,7 +3233,7 @@ multichannel and contrast variants are in `MultiDimensional.kt`. Tests: `MatrixP
 
 `src/jvmMain/kotlin/afield/math/matrixprofile/MatrixProfile.kt` — [read the source](source/jvmMain/afield/math/matrixprofile/MatrixProfile/)
 
-**Used in:** [Motifs, Discords and Contrast: the Matrix Profile](../matrix_profile.md)
+**Used in:** [Motifs, Discords and Contrast: the Matrix Profile](../matrix_profile.md), [Agent transcript gallery](../agent_transcripts.md)
 
 ### Top-level functions { #matrixprofile-kt-functions }
 
@@ -3296,7 +3296,7 @@ ones ([`ContrastProfile`](math.md#multidimensional-kt-contrastprofile), [`Plato`
 
 `src/jvmMain/kotlin/afield/math/matrixprofile/MultiDimensional.kt` — [read the source](source/jvmMain/afield/math/matrixprofile/MultiDimensional/)
 
-**Used in:** [Motifs, Discords and Contrast: the Matrix Profile](../matrix_profile.md)
+**Used in:** [Motifs, Discords and Contrast: the Matrix Profile](../matrix_profile.md), [Agent transcript gallery](../agent_transcripts.md)
 
 ### Top-level functions { #multidimensional-kt-functions }
 
