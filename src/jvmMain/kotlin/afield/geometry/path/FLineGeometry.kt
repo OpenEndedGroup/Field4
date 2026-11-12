@@ -4963,9 +4963,97 @@ fun FLine.byTransformingTo(start: Vec2, end: Vec2): FLine {
 
 // ==================== G2 CLOTHOID SPLINE ====================
 
-/** One fitted segment of [clothoidSplineFrom]: start heading, start curvature, curvature slope, length. */
-private class ClothoidPiece(val theta: Double, val kappa: Double, val kappaPrime: Double, val length: Double) {
-    val endKappa get() = kappa + kappaPrime * length
+/**
+ * One fitted segment of [clothoidSplineFrom]: start heading, start curvature, curvature slope, length.
+ *
+ * With [weight] 1 (the Euler spiral) curvature is `kappa + kappaPrime·s`. Any other weight is an S9
+ * segment ([fitWeightedPiece]): with `t = s / length` and `u = t − ½`, curvature is
+ * `(a + b·g(u)) / length` where `g(u) = ½·sign(u)·|2u|^(1/weight)`; [kappa] and [endKappa] are its
+ * end values, and [bendA] / [bendB] the dimensionless `a`, `b`.
+ */
+private class ClothoidPiece(
+    val theta: Double, val kappa: Double, val kappaPrime: Double, val length: Double,
+    val weight: Double = 1.0, val bendA: Double = 0.0, val bendB: Double = 0.0,
+) {
+    val endKappa get() = if (weight == 1.0) kappa + kappaPrime * length else (bendA + 0.5 * bendB) / length
+
+    /** Change of curvature across the piece times its length: zero for a circular arc. */
+    val bendSpread get() = if (weight == 1.0) kappaPrime * length * length else bendB
+
+    /** Heading at arc length [s]; the weight-1 expression is the one the drawing always used. */
+    fun heading(s: Double): Double {
+        if (weight == 1.0) return theta + kappa * s + 0.5 * kappaPrime * s * s
+        val t = s / length
+        return theta + bendA * t + bendB * s9Integral(t - 0.5, 1 / weight)
+    }
+
+    fun curvature(s: Double): Double {
+        if (weight == 1.0) return kappa + kappaPrime * s
+        return (bendA + bendB * s9Shape(s / length - 0.5, 1 / weight)) / length
+    }
+}
+
+/** The S9 curvature shape `g(u) = ½·sign(u)·|2u|^e` on `u ∈ [−½, ½]`; `e = 1` is linear (Euler). */
+private fun s9Shape(u: Double, e: Double): Double = 0.5 * sign(u) * abs(2 * u).pow(e)
+
+/** `∫ from −½ to u of g`, which is `(|2u|^(e+1) − 1) / (4(e+1))`; zero at both ends of the segment. */
+private fun s9Integral(u: Double, e: Double): Double = (abs(2 * u).pow(e + 1) - 1) / (4 * (e + 1))
+
+/**
+ * The S9 segment of [weight] from (ax, ay) heading [thetaA] to (bx, by) heading [thetaB].
+ *
+ * In the chord's frame, scaled to unit chord, the heading is `ψ(t) = φ0 + a·t + b·G(t)` with
+ * `G = ∫g`. `G(1) = 0` because `g` is odd about the middle, so the turn fixes `a = φ1 − φ0`, and
+ * `b` is the root of `∫₀¹ sin ψ dt = 0` (the end lands on the chord). Then `length = chord / ∫ cos ψ`.
+ * The small-angle guess is `b = (φ0 + a/2) / ∫₀¹ (t − ½)·g dt`, which is `12(φ0 + a/2)` at weight 1;
+ * Newton runs from there, falling back to bisection inside a bracket when a step leaves it.
+ */
+private fun fitWeightedPiece(ax: Double, ay: Double, bx: Double, by: Double, thetaA: Double, thetaB: Double, weight: Double): ClothoidPiece? {
+    val dx = bx - ax
+    val dy = by - ay
+    val chordLength = hypot(dx, dy)
+    if (chordLength < 1e-12) return null
+    val chord = atan2(dy, dx)
+    val phi0 = wrapToPi(thetaA - chord)
+    val phi1 = wrapToPi(thetaB - chord)
+    val a = phi1 - phi0
+    val e = 1 / weight
+    val panels = 64
+    fun integrals(b: Double): Pair<Double, Double> {
+        var c = 0.0
+        var sn = 0.0
+        for (q in 0..panels) {
+            val w = if (q == 0 || q == panels) 1.0 else if (q % 2 == 1) 4.0 else 2.0
+            val t = q.toDouble() / panels
+            val psi = phi0 + a * t + b * s9Integral(t - 0.5, e)
+            c += w * cos(psi); sn += w * sin(psi)
+        }
+        return c / (3.0 * panels) to sn / (3.0 * panels)
+    }
+    // ∫ (t − ½)·g dt over the segment is 1 / (4(e + 2)) in closed form
+    var b = (phi0 + 0.5 * a) * 4 * (e + 2)
+    var lo = Double.NaN
+    var hi = Double.NaN
+    var converged = false
+    for (iter in 0 until 80) {
+        val f = integrals(b).second
+        if (abs(f) < 1e-13) { converged = true; break }
+        // f falls as b grows near the root; keep a bracket for bisection
+        if (f > 0) lo = b else hi = b
+        val h = 1e-6 * max(1.0, abs(b))
+        val df = (integrals(b + h).second - integrals(b - h).second) / (2 * h)
+        var next = if (abs(df) > 1e-14) b - f / df else Double.NaN
+        val bracketed = !lo.isNaN() && !hi.isNaN()
+        if (bracketed && (next.isNaN() || next <= min(lo, hi) || next >= max(lo, hi))) next = 0.5 * (lo + hi)
+        if (next.isNaN()) return null
+        if (abs(next - b) < 1e-14 * max(1.0, abs(b))) { b = next; converged = true; break }
+        b = next
+    }
+    if (!converged && abs(integrals(b).second) > 1e-9) return null
+    val x = integrals(b).first
+    if (x <= 1e-12) return null
+    val length = chordLength / x
+    return ClothoidPiece(thetaA, (a - 0.5 * b) / length, 0.0, length, weight, a, b)
 }
 
 private fun fitClothoidPiece(ax: Double, ay: Double, bx: Double, by: Double, thetaA: Double, thetaB: Double): ClothoidPiece? {
@@ -4992,7 +5080,7 @@ private fun fitClothoidPiece(ax: Double, ay: Double, bx: Double, by: Double, the
  */
 private fun solveClothoidSpline(
     xs: DoubleArray, ys: DoubleArray, closed: Boolean, iterations: Int,
-    startTheta: Double? = null, endTheta: Double? = null,
+    startTheta: Double? = null, endTheta: Double? = null, weight: Double = 1.0,
 ): List<ClothoidPiece>? {
     val n = xs.size
     val segs = if (closed) n else n - 1
@@ -5029,17 +5117,19 @@ private fun solveClothoidSpline(
         if (fixedEnd == null) theta[1] = 2 * c - theta[0]
     }
 
-    fun fitSeg(j: Int, th: DoubleArray) = fitClothoidPiece(xs[j], ys[j], xs[nxt(j)], ys[nxt(j)], th[j], th[nxt(j)])
+    fun fitSeg(j: Int, th: DoubleArray) =
+        if (weight == 1.0) fitClothoidPiece(xs[j], ys[j], xs[nxt(j)], ys[nxt(j)], th[j], th[nxt(j)])
+        else fitWeightedPiece(xs[j], ys[j], xs[nxt(j)], ys[nxt(j)], th[j], th[nxt(j)], weight)
 
     /** Residual at knot [i], from the pieces either side of it (and its heading, at a fixed end). */
     fun residualAt(i: Int, pieces: Array<ClothoidPiece?>, th: DoubleArray): Double {
         if (!closed && i == 0) {
             if (fixedStart != null) return th[0] - fixedStart
-            val p = pieces[0]!!; return p.kappaPrime * p.length * p.length
+            return pieces[0]!!.bendSpread
         }
         if (!closed && i == n - 1) {
             if (fixedEnd != null) return th[n - 1] - fixedEnd
-            val p = pieces[segs - 1]!!; return p.kappaPrime * p.length * p.length
+            return pieces[segs - 1]!!.bendSpread
         }
         val a = pieces[(i - 1 + segs) % segs]!!
         val b = pieces[i % segs]!!
@@ -5400,8 +5490,17 @@ private class ClothoidRun(val knots: List<Int>, val pieces: List<ClothoidPiece>?
  * @param startDirection direction at the first knot of an open curve; null leaves it free, ending
  *   the curve in a circular arc
  * @param endDirection direction at the last knot of an open curve; null leaves it free
+ * [weight] picks the member of the S9 family. At 1 each segment is an Euler spiral. Below 1 the
+ * curvature inside a segment follows `a + b·g(u)` with `g(u) = ½·sign(u)·|2u|^(1/weight)` (u runs
+ * from −½ to ½ along the segment): nearly constant through the middle, changing quickly near the
+ * knots, so a segment is close to a circular arc that blends into its neighbours at the ends. The
+ * shape `g` rises monotonically, so every segment still has at most one inflection and its
+ * curvature extremes sit at its knots; arcs of one circle still come out as that circle.
+ *
  * @param planeNormal normal of the plane the curve is solved in (default +Z, the XY plane); null
  *   fits a plane to the knots
+ * @param weight S9 weight in `[0.1, 1]`: 1 is the Euler-spiral spline, smaller values keep each
+ *   segment's curvature flatter in the middle and move its change toward the knots
  */
 fun clothoidSplineFrom(
     points: List<Vec3>,
@@ -5411,7 +5510,9 @@ fun clothoidSplineFrom(
     startDirection: Vec3? = null,
     endDirection: Vec3? = null,
     planeNormal: Vec3? = Vec3(0f, 0f, 1f),
+    weight: Double = 1.0,
 ): FLine {
+    require(weight in 0.1..1.0) { "clothoidSplineFrom: weight must be in 0.1..1.0, was $weight" }
     require(!closed || (startDirection == null && endDirection == null)) {
         "clothoidSplineFrom: startDirection and endDirection apply to open curves; a closed curve has no ends"
     }
@@ -5463,7 +5564,7 @@ fun clothoidSplineFrom(
     val order: List<Int>
     if (closed && cornerAt.isEmpty()) {
         order = (0..n).map { it % n }
-        val pieces = solveClothoidSpline(xs, ys, true, 40) ?: return cubicSplineFrom(pts, true)
+        val pieces = solveClothoidSpline(xs, ys, true, 40, weight = weight) ?: return cubicSplineFrom(pts, true)
         runs.add(ClothoidRun(order, pieces))
     } else {
         val first = if (closed) cornerAt.first() else 0
@@ -5476,7 +5577,7 @@ fun clothoidSplineFrom(
             val et = if (!closed && b == order.lastIndex) endTheta else null
             val rx = DoubleArray(knots.size) { xs[knots[it]] }
             val ry = DoubleArray(knots.size) { ys[knots[it]] }
-            val pieces = if (knots.size == 2 && st == null && et == null) null else solveClothoidSpline(rx, ry, false, 40, st, et)
+            val pieces = if (knots.size == 2 && st == null && et == null) null else solveClothoidSpline(rx, ry, false, 40, st, et, weight)
             runs.add(ClothoidRun(knots, pieces))
         }
     }
@@ -5525,14 +5626,14 @@ fun clothoidSplineFrom(
                     for (q in 0..panels) {
                         val w = if (q == 0 || q == panels) 1.0 else if (q % 2 == 1) 4.0 else 2.0
                         val s = s0 + q * hh
-                        val th = piece.theta + piece.kappa * s + 0.5 * piece.kappaPrime * s * s
+                        val th = piece.heading(s)
                         cx += w * cos(th); cy += w * sin(th)
                     }
                     x += cx * hh / 3.0
                     y += cy * hh / 3.0
                     // the last sample lands on the knot exactly
                     line.lineTo(if (i == steps) place(xs[b], ys[b], seg, piece.length) else place(x, y, seg, i * ds))
-                    if (record) line.nodes.last().properties[CURVATURE_PROPERTY] = piece.kappa + piece.kappaPrime * i * ds
+                    if (record) line.nodes.last().properties[CURVATURE_PROPERTY] = piece.curvature(i * ds)
                 }
                 seg++
             }
@@ -5568,9 +5669,11 @@ fun clothoidSplineFrom(
     corners: Collection<Int> = emptyList(),
     startDirection: Vec2? = null,
     endDirection: Vec2? = null,
+    weight: Double = 1.0,
 ): FLine = clothoidSplineFrom(
     points.map { vec(it.x, it.y, z) }, closed, samplesPerSegment, corners,
     startDirection?.let { vec(it.x, it.y, 0) }, endDirection?.let { vec(it.x, it.y, 0) },
+    weight = weight,
 )
 
 /** Node property where [clothoidSplineFrom] records the exact signed curvature at each drawn point. */
