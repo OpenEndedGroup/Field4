@@ -105,6 +105,7 @@ class PersonalBoundaryTest {
             "src/commonMain",
             "src/jvmMain",
             "src/jvmTest",
+            "src/jvmFastTest",
             "src/jsMain",
             "dev_docs",
             "public/docs",

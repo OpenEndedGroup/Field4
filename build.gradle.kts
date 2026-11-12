@@ -504,6 +504,11 @@ val externalExtensionRoots = ((providers.gradleProperty("fieldExtensionDirs").or
         }
     }
 val personalSourceRoots = (listOf(file("src/personal")) + externalExtensionRoots).distinctBy { it.canonicalPath }
+// `-PfastTestRoots=a:b` narrows the fast lane to those roots (each holding kotlin/ and resources/),
+// e.g. `src/personal/fastTest`; by default it is every root's `fastTest` folder plus the public one.
+val fastTestSourceRoots: List<File> = providers.gradleProperty("fastTestRoots").orNull
+    ?.split(File.pathSeparatorChar)?.filter { it.isNotBlank() }?.map { file(it.trim()).canonicalFile }
+    ?: (listOf(file("src/jvmFastTest")) + personalSourceRoots.map { File(it, "fastTest") })
 val hasPersonalLayer = personalSourceRoots.any { File(it, "kotlin").isDirectory || File(it, "resources").isDirectory } || kitCoordinates.isNotEmpty() || !kitJars.isEmpty
 val personalLayerJar: File = layout.buildDirectory.file("personal/afield-personal.jar").get().asFile
 /** Must match `afield.app.settings.PersonalLayer.CLASSPATH_PROPERTY`. */
@@ -938,6 +943,28 @@ kotlin {
                 }
             }
         }
+
+        // The fast lane (`fastTest`, registered below): kotlin.test classes compiled against core, and
+        // the personal layer when there is one, without jvmTest's thousand-file compilation and without
+        // a Field server. Its sources are src/jvmFastTest/kotlin plus `fastTest/kotlin` under
+        // src/personal and every extension root, or only the roots `-PfastTestRoots` names.
+        val jvmCompilations = compilations
+        jvmCompilations.create("fastTest") {
+            associateWith(jvmCompilations.getByName("main"))
+            if (hasPersonalLayer) {
+                associateWith(jvmCompilations.getByName("personal"))
+                compileDependencyFiles += kitClasspath
+                runtimeDependencyFiles = (runtimeDependencyFiles ?: files()) + kitClasspath
+            }
+            defaultSourceSet {
+                kotlin.setSrcDirs(fastTestSourceRoots.map { File(it, "kotlin") })
+                resources.setSrcDirs(fastTestSourceRoots.map { File(it, "resources") })
+                dependencies {
+                    implementation(kotlin("test"))
+                    implementation(kotlin("test-junit"))
+                }
+            }
+        }
     }
     js {
         useEsModules()
@@ -1354,6 +1381,23 @@ val personalJar = if (hasPersonalLayer) {
         archiveFileName.set(personalLayerJar.name)
     }
 } else null
+
+// The fast JVM-only lane: unit tests for pure code (geometry, solvers, the DSL core) in one plain
+// test JVM, compiled apart from jvmTest so that a run costs its own sources, not the whole suite.
+// No Field server, no personalJar, no docs inputs. Narrow it with `--tests 'pkg.*'` or
+// `-PfastTestRoots=<root>`. It takes the same worker setup as every Test task (JVM args, Smile and
+// Steam Audio natives, the tree-write guard), and Manifold loads exactly as it does in jvmTest.
+// dev_docs/testing/TESTING_STRATEGY.md ("Fast JVM-only lane") is the reference.
+tasks.register<org.gradle.api.tasks.testing.Test>("fastTest") {
+    group = "verification"
+    description = "Runs kotlin.test unit tests from src/jvmFastTest and personal/extension fastTest roots, without Field."
+    val compilation = kotlin.jvm().compilations.getByName("fastTest")
+    testClassesDirs = compilation.output.classesDirs
+    classpath = compilation.output.allOutputs + compilation.runtimeDependencyFiles!!
+    useJUnit()
+    // A selector that matches nothing is a mistyped package, not a pass.
+    filter { isFailOnNoMatchingTests = true }
+}
 
 tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
@@ -1840,6 +1884,14 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
         include("**/*.diff")
     })
         .withPropertyName("guardedTemplateBoxCode")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // The fast lane's public sources are on no classpath this task sees, and `PersonalBoundaryTest`
+    // scans them: a public fast test compiles against the personal layer, so it is where an import of
+    // a private package would first slip through.
+    inputs.files(fileTree("src/jvmFastTest") {
+        include("**/*.kt")
+    })
+        .withPropertyName("guardedFastTestSources")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("dev_docs/agents/transcript_layout_exceptions.yaml")
         .withPathSensitivity(PathSensitivity.RELATIVE)

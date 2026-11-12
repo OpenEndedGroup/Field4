@@ -27,7 +27,7 @@ ensure_repo_python(("websockets", "PIL"))
 from PIL import Image, ImageChops, ImageStat
 
 from completion_sidecar import SIDECAR_URL_ENV, SidecarLease
-from discover_field_tests import DEFAULT_ROOTS, discover
+from discover_field_tests import DEFAULT_ROOTS, SHORT_TEST_MAX_TIMEOUT_SEC, discover, smoke_size
 from field_backdoor import (
     DEFAULT_MANAGED_STARTUP_CEILING,
     MANAGED_JVM_START_TIMEOUT_ENV,
@@ -2229,6 +2229,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             f"{DEFAULT_AUTOMATION_PORT}; never uses developer port 9092."
         ),
     )
+    parser.add_argument(
+        "--allow-battery",
+        action="append",
+        dest="allow_battery",
+        metavar="ID",
+        help=(
+            "Run this long test (size: long, or timeoutSec over "
+            f"{SHORT_TEST_MAX_TIMEOUT_SEC:g}) on battery below 80%%. Repeatable; the id must be selected. "
+            "Short tests never need it."
+        ),
+    )
     parser.add_argument("--fail-fast", action="store_true")
     parser.add_argument(
         "--catalog-order",
@@ -2252,6 +2263,15 @@ def requires_native_display(test: dict[str, Any]) -> bool:
     # Browser screenshots use headless Playwright, not a physical display. JVM
     # tests that create their own Window declare requiresDisplay explicitly.
     return graphics_context_config(test) is not None or test.get("requiresDisplay") is True
+
+
+def requires_power(test: dict[str, Any], allowed_on_battery: set[str] = frozenset()) -> bool:
+    """Whether the battery rule (AC or at least 80%) gates this test.
+
+    Short tests run on battery; long ones (`discover_field_tests.smoke_size`) stay gated unless the run
+    names them with `--allow-battery`. Disk and display rules apply either way.
+    """
+    return smoke_size(test) == "long" and str(test.get("id")) not in allowed_on_battery
 
 
 def requires_sidecar(test: dict[str, Any]) -> bool:
@@ -2286,16 +2306,17 @@ def prepare_smoke_natives(
     environment: VerificationEnvironment | None,
     heartbeat_interval: float,
     progress: Callable[[str], None],
+    require_power: bool = True,
 ) -> None:
     tasks = smoke_native_tasks(tests)
     if not tasks:
         return
     progress(f"Smoke native prerequisites: {', '.join(tasks)}")
-    token = environment.checkpoint(require_display=False) if environment else 0
+    token = environment.checkpoint(require_display=False, require_power=require_power) if environment else 0
 
     def check_environment() -> None:
         if environment:
-            environment.check(token, require_display=False)
+            environment.check(token, require_display=False, require_power=require_power)
 
     result, _, timed_out = run_with_watchdog(
         gradle_command(*tasks),
@@ -2394,6 +2415,11 @@ def run(args: argparse.Namespace, environment: VerificationEnvironment | None = 
     if not selected:
         raise SystemExit("No tests matched the requested filters.")
 
+    allowed_on_battery = set(getattr(args, "allow_battery", None) or [])
+    unselected_battery = sorted(allowed_on_battery - {str(test.get("id")) for test in selected})
+    if unselected_battery:
+        raise SystemExit("--allow-battery names tests this run did not select: " + ", ".join(unselected_battery))
+
     expected_failures_path = Path(args.expected_failures)
     if not expected_failures_path.is_absolute():
         expected_failures_path = REPO_ROOT / expected_failures_path
@@ -2477,6 +2503,7 @@ def run(args: argparse.Namespace, environment: VerificationEnvironment | None = 
         prepare_smoke_natives(
             tests, environment=environment,
             heartbeat_interval=args.heartbeat_interval, progress=progress,
+            require_power=any(requires_power(test, allowed_on_battery) for test in tests),
         )
 
     # One completion sidecar for the run, when anything selected needs one. It is handed to the
@@ -2504,11 +2531,13 @@ def run(args: argparse.Namespace, environment: VerificationEnvironment | None = 
         for index, test in enumerate(tests, start=1):
             started = False
             wall_started = time.time()
+            power = requires_power(test, allowed_on_battery)
             try:
-                token = environment.checkpoint(require_display=requires_native_display(test)) if environment else 0
+                token = (environment.checkpoint(require_display=requires_native_display(test), require_power=power)
+                         if environment else 0)
                 def check_environment():
                     if environment:
-                        environment.check(token, require_display=requires_native_display(test))
+                        environment.check(token, require_display=requires_native_display(test), require_power=power)
                 if not args.no_prewarm and field_proc is None:
                     if not args.no_reap:
                         reap_stale_field_jvms(args.port)
@@ -2546,14 +2575,20 @@ def run(args: argparse.Namespace, environment: VerificationEnvironment | None = 
                         if after is not None:
                             result["failures"].append(f"completion sidecar after the test: {after}")
                 if environment:
-                    environment.check(token, require_display=requires_native_display(test), force=True)
+                    environment.check(token, require_display=requires_native_display(test),
+                                      require_power=power, force=True)
             except VerificationEnvironmentError as exc:
+                reason = str(exc)
+                if power and reason.startswith("power:"):
+                    reason += f" ({smoke_size(test)} test; --allow-battery {test['id']} runs it on battery)"
                 result = {"id": test["id"], "ok": False, "failureKind": "environment",
                           "environmentStatus": "INTERRUPTED" if started else "NOT RUN",
                           "durationMs": None, "observedWallMs": round((time.time() - wall_started) * 1000),
-                          "failures": [str(exc)]}
+                          "failures": [reason]}
                 stop_persistent_field(field_proc, port=args.port)
                 field_proc = None
+            result["size"] = smoke_size(test)
+            result["requiresPower"] = power
             apply_expected_smoke_failure(result, expected_failures)
             results.append(result)
             if result.get("failureKind") == "environment":
