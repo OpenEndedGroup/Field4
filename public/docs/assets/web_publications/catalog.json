@@ -2980,12 +2980,12 @@
     },
     "assets/agent_transcripts/neural_clouds/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-12T21:53:53.395Z",
+      "capturedAt": "2026-11-12T22:13:49.725Z",
       "channels": 1,
       "file": "assets/web_publications/neural_clouds/document/metadata.edn",
       "files": {
-        "assets/web_publications/neural_clouds/document/metadata.edn": "22d3f1ba1278fe77ba6b9dd04380194e568416296cf2502e730c1b605a337b34",
-        "assets/web_publications/neural_clouds/document/outputs.json": "86d0b5572b149fe3fbfec1f653fd1eeec75d2313710c5b95d2653a8049c64777",
+        "assets/web_publications/neural_clouds/document/metadata.edn": "480d6aa10642a99ec0bae22371a342473c626e4dca11e4444913f1a5f666f1de",
+        "assets/web_publications/neural_clouds/document/outputs.json": "9712f1b77731075ec01239d7087bb1e2c6fff0dc54e32c48e85b3cb74fb6cf24",
         "assets/web_publications/neural_clouds/outputs/0.html": "650fee95287bb0a9b26abcf78b4096135128a289730bf039b9d40f8d271eb751"
       },
       "kinds": [
@@ -2993,15 +2993,15 @@
       ],
       "outputs": "assets/web_publications/neural_clouds/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/neural_clouds.yaml": "48f01771b614d79b68ae531d45448f65dc6392e41c2e401a47bd49f716df943a",
-        "public/docs/assets/agent_transcripts/neural_clouds/cloud_compare_code_.kt": "e68035dd5fd52a0a2c8b2ba1d1e9a18988a25f187182c0b9a8ef60a8ac1c39d4",
+        "dev_docs/agents/transcripts/neural_clouds.yaml": "6cfc83ee285e464a104e17c7a328d6a82faded0792683ba1d3a883a7ddc0d9eb",
+        "public/docs/assets/agent_transcripts/neural_clouds/cloud_compare_code_.kt": "221908a335970d14d28ec088d58518ecea9fc36310340cdee63e3325fd7ef70a",
         "public/docs/assets/agent_transcripts/neural_clouds/cloud_renderer_code_.kt": "0142566f5745b83d8a058b6bb1489af3fb3cc4a2d7bf6815a14d7bcb19ae3dd3",
         "public/docs/assets/agent_transcripts/neural_clouds/cloud_train_code_.kt": "e94e108329493ccafda392103f8838d915092cf7b83295a45d3ce3c331cb6b1d",
         "public/docs/assets/agent_transcripts/neural_clouds/cloud_view_code_.kt": "7fb3294fb296610d1ac6c7c4ad49378f085eeaa283cccfc9d6c7de27cb6711f4",
         "public/docs/assets/agent_transcripts/neural_clouds/cloud_view_fragment_.glsl": "a3f4eb32ba9641b91d368f839123d7accc1c3802a061451ec4f4ac562339b857",
         "public/docs/assets/agent_transcripts/neural_clouds/cloud_view_vertex_.glsl": "74d68cae67f8a16feb378d4c086daed1503bb17c6ae7a20d209893c08771007c",
         "public/docs/assets/agent_transcripts/neural_clouds/guides/path_tracing.md": "f5c6d8331a2e29f169d3e4155f61bea32d7765effb1e9f0dbf9a46dfc73d4b94",
-        "public/docs/assets/agent_transcripts/neural_clouds/metadata.edn": "475df3bc786d13482181568f1dedef369b89a12b6759842192302dfe79a5633d",
+        "public/docs/assets/agent_transcripts/neural_clouds/metadata.edn": "47efa0a76edc9ee1424119a71e39fcab623589bbc0e93997a3adc1c7448f8800",
         "public/docs/assets/path_tracing/neural_clouds_gpu.png": "70ab3ab478b7e02b05046edd51db6c8f2beb47cca2ccfda72a133b76cf2da9dc",
         "public/docs/path_tracing.md#capture-box=cloud_view": "3fc3d0038d9ef6314fa940562208b62465f2b65f9acb9dfdf923979b96de2ef1"
       },
@@ -3269,6 +3269,27 @@
         "public/docs/assets/agent_transcripts/ordered_group_keyframes/metadata.edn": "a4eaff263adf0db339f1b45fcfca2b8818936f15bcd097884085474c49fb11cb",
         "public/docs/assets/agent_transcripts/ordered_group_keyframes/ordered_group_demo_code_.kt": "24807ca3767280a67d06dfc2fe0fd0006b4152b4c4851b9e387d0514043d157c",
         "public/docs/assets/agent_transcripts/ordered_group_keyframes/ordered_group_other_code_.kt": "5e762134a1e45eb36fa6df47e673be5d6734aeb4997387c597a8b309d918201c"
+      }
+    },
+    "assets/agent_transcripts/paint_blow_fingers/metadata.edn": {
+      "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
+      "capturedAt": "2026-11-12T21:38:58.448Z",
+      "channels": 2,
+      "file": "assets/web_publications/paint_blow_fingers/document/metadata.edn",
+      "files": {
+        "assets/web_publications/paint_blow_fingers/document/metadata.edn": "e0063f40d1e6a2b4704abb9b8094d08c6d25861ff7e22a0b17a6bca483d6f7bc",
+        "assets/web_publications/paint_blow_fingers/document/outputs.json": "baf16ee86867bde6c291ac15593b1cf1bd671a3881d9edc15e11c6524c2ecbda",
+        "assets/web_publications/paint_blow_fingers/outputs/0.html": "d167bece5cd73e6a9cd377148667f42bcfa4c92e1746f54be05f1a4bebd65c3b",
+        "assets/web_publications/paint_blow_fingers/outputs/1.html": "d167bece5cd73e6a9cd377148667f42bcfa4c92e1746f54be05f1a4bebd65c3b"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/paint_blow_fingers/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/paint_blow_fingers.yaml": "798ccd4eeeb8e03ddde0af5e002ff1671a69d77360a39ef7c0409de8bfa7a308",
+        "public/docs/assets/agent_transcripts/paint_blow_fingers/guides/paint_canvas.md": "423ae101d65d742b5bf03f7d93c3dd884b8fd7cb2de359fe207de788454d2d57",
+        "public/docs/assets/agent_transcripts/paint_blow_fingers/metadata.edn": "7799f375c870f121f26af0a4c3821e4ef5bf7c8d5c6426d3c1ed9a2f8b935757",
+        "public/docs/assets/agent_transcripts/paint_blow_fingers/paint_blow_code_.kt": "a31018936e19e0c17ea625b727a4464412e6baca891436485658240a959a76eb",
+        "public/docs/assets/agent_transcripts/paint_blow_fingers/paint_blow_contrast_code_.kt": "2e48ac2a8ea30295f3bde14954bd535bffe2f318066a1cf41dde7c3c6f74f8b8"
       }
     },
     "assets/agent_transcripts/paint_canvas/metadata.edn": {

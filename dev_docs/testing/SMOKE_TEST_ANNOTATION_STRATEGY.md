@@ -136,6 +136,11 @@ Selection flags are `--id`, `--tag`, and `--runner` (repeatable). There is no
 `--no-prewarm` tells the runner to rely on a server already serving `--port`
 rather than starting and retaining one for the run.
 
+`size: long` marks a test that the battery rule gates even though its `timeoutSec` is 60 or
+less; a `timeoutSec` over 60 already makes a test long, and `size: short` cannot override it.
+Short tests run on battery, long ones need AC or 80%, and `--allow-battery <id>` lets one named
+long test run on battery (`TESTING_STRATEGY.md`, "Continuous verification prerequisites").
+
 Platform `skipOn` entries are reported as skips. Keep opt-outs narrow and leave
 the reason beside the owning annotation.
 

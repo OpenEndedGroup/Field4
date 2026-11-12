@@ -165,7 +165,12 @@ def sleep_evidence(start: float, end: float) -> list[str]:
     return rows[-100:]
 
 
-def environment_problem(snapshot: dict, *, require_display: bool) -> str | None:
+def environment_problem(snapshot: dict, *, require_display: bool, require_power: bool = True) -> str | None:
+    """Why this snapshot cannot certify an action, or None.
+
+    `require_power=False` is for work short enough to run on battery (the smoke runner's short tests,
+    `discover_field_tests.smoke_size`); it waives only the power rule, never disk or display.
+    """
     disk = snapshot.get("disk")
     if disk is not None:
         if disk.get("freeBytes") is None:
@@ -176,9 +181,9 @@ def environment_problem(snapshot: dict, *, require_display: bool) -> str | None:
                     "No cleanup was attempted.")
     if not snapshot.get("supported"):
         return None
-    if snapshot.get("onAC") is None:
+    if require_power and snapshot.get("onAC") is None:
         return "power state unknown (probe failed)"
-    if not snapshot["onAC"] and (snapshot.get("batteryPercent") is None or snapshot["batteryPercent"] < 80):
+    if require_power and not snapshot["onAC"] and (snapshot.get("batteryPercent") is None or snapshot["batteryPercent"] < 80):
         return f"power: battery {snapshot.get('batteryPercent')}%; long verification requires AC or at least 80%"
     if require_display and snapshot.get("displayAvailable") is not True:
         return "no display" if snapshot.get("displayAvailable") is False else "display state unknown (probe failed)"
@@ -252,24 +257,27 @@ class VerificationEnvironment:
         self._thread.start()
         return self
 
-    def checkpoint(self, *, require_display: bool) -> int:
+    def checkpoint(self, *, require_display: bool, require_power: bool = True) -> int:
         self.sample()
         with self._lock:
-            problem = environment_problem(self.snapshot, require_display=require_display)
+            problem = environment_problem(self.snapshot, require_display=require_display,
+                                          require_power=require_power)
             if problem:
                 raise VerificationEnvironmentError(problem)
             self.disk.admit(self.snapshot["disk"])
             return len(self.events)
 
-    def check(self, checkpoint: int, *, require_display: bool, force: bool = False):
+    def check(self, checkpoint: int, *, require_display: bool, require_power: bool = True, force: bool = False):
         self.sample(force=force)
         with self._lock:
             for event in self.events[checkpoint:]:
                 problem = (event["message"] if event["kind"] == "observation-gap" else
-                           environment_problem(event["snapshot"], require_display=require_display))
+                           environment_problem(event["snapshot"], require_display=require_display,
+                                               require_power=require_power))
                 if problem:
                     raise VerificationEnvironmentError(problem)
-            problem = environment_problem(self.snapshot, require_display=require_display)
+            problem = environment_problem(self.snapshot, require_display=require_display,
+                                          require_power=require_power)
             if problem:
                 raise VerificationEnvironmentError(problem)
 

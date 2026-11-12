@@ -73,7 +73,7 @@ display(
 <!-- field-box id="cloud_compare" index="2" -->
 
 ```edn [field-box id="cloud_compare" role="properties"]
-{"id" "cloud_compare" "index" 2 "name" "compare against the path tracer" "parents" ["root" "cloud_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cloud_train"} "name" "compare against the path tracer" "_tombstone" false "frame" #afield/rect [380.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloud_compare_code_.kt" "lines" 38 "characters" 1523 "sha256" "e68035dd5fd52a0a2c8b2ba1d1e9a18988a25f187182c0b9a8ef60a8ac1c39d4"}]}
+{"id" "cloud_compare" "index" 2 "name" "compare against the path tracer" "parents" ["root" "cloud_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cloud_train"} "name" "compare against the path tracer" "_tombstone" false "frame" #afield/rect [380.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloud_compare_code_.kt" "lines" 37 "characters" 1528 "sha256" "221908a335970d14d28ec088d58518ecea9fc36310340cdee63e3325fd7ef70a"}]}
 ```
 
 ```kotlin [field-property box="cloud_compare" name="code" path="cloud_compare_code_.kt"]
@@ -104,7 +104,7 @@ val errors =
         "| $name | ${e.relativeMeanAbs.f3} | ${e.rmse.f3} |"
     }
 // Keep the computed image as an embed; the caption and measured table are Markdown.
-display("compare", "<img style='width:100%' src='data:image/png;base64,$png'>")
+display("compare", "<img style='width:${w * 4}px' src='data:image/png;base64,$png'>")
 markdown(
     "errors",
     """
@@ -112,8 +112,7 @@ Top: reference · single scatter · fitted ambient · network. Bottom: absolute 
 
 | Model | Relative MAE | RMSE |
 | --- | --- | --- |
-$errors
-""".trimIndent(),
+$errors""".trimIndent(),
 )
 ```
 

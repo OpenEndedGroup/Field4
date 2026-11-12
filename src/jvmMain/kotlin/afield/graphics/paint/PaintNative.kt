@@ -208,6 +208,7 @@ internal object PaintNative {
     private val foldPressH by fn("field_paint_fold_press", I, A, F, F, F, F, F, F, F, F, F, L, A)
     private val pressPeelH by fn("field_paint_press_peel", I, A, F, F, F, F, F, F, F, F, F, F, L, A)
     private val rubH by fn("field_paint_rub", I, A, A, I, F, F, L, A)
+    private val blowH by fn("field_paint_blow", I, A, A, I, F, F, F, F, L, A)
     private val wetMm3H by fn("field_paint_wet_mm3", D, A)
 
     private fun error(what: String): Nothing {
@@ -401,6 +402,14 @@ internal object PaintNative {
         check(pressPeelH.invokeExact(c, x, y, radius, pressure, spread, dx, dy, take, peel, ridge, seed, out) as Int, "pressing a plate")
         out.toArray(D)
     }
+
+    /** `[moved mm³, branching, stations]`: `Canvas::blow` (`paint::field::fingers`); NaN [contrast] means from the paint. */
+    fun blow(c: MemorySegment, xy: FloatArray, radius: Float, pressure: Float, contrast: Float, tendril: Float, seed: Long): DoubleArray =
+        Arena.ofConfined().use { a ->
+            val out = a.allocate(D, 3)
+            check(blowH.invokeExact(c, a.allocateFrom(F, *xy), xy.size / 2, radius, pressure, contrast, tendril, seed, out) as Int, "blowing")
+            out.toArray(D)
+        }
 
     /** `[moved mm³, lifted mm³]`: `Canvas::rub`. */
     fun rub(c: MemorySegment, xy: FloatArray, radius: Float, pressure: Float, seed: Long): DoubleArray = Arena.ofConfined().use { a ->

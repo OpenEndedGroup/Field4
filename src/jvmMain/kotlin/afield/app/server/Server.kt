@@ -5901,6 +5901,9 @@ class Server {
                             }
                         }
 
+                        // Viewer tools and other modules from src/personal/web, extension roots' web/
+                        // folders and AFIELD_WEB_DIRS; see ExtensionWeb.
+                        installExtensionWebRoute()
                         route("/min") {
                             get("{...}") {
                                 val relativeUri = URI(call.request.uri).path.removePrefix("/min/")
