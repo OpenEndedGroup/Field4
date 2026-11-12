@@ -1,5 +1,7 @@
 package afield.graphics.volume
 
+import afield.graphics.shader.ShaderKind
+import afield.graphics.shader.ShaderSPIRVUtils
 import java.io.File
 import java.util.SplittableRandom
 import kotlin.test.Test
@@ -56,6 +58,26 @@ class NeuralCloudsTest {
         File(dir, "network.glsl").writeText(net.glslNetwork())
         println("NEURAL_CLOUDS single=$eSingle ambient=$eAmb net=$eNet")
         assertTrue(eNet.rmse < eAmb.rmse, "network $eNet should beat ambient $eAmb")
+    }
+
+    @Test
+    fun generatedGlslCompiles() {
+        val samples = NeuralCloud.samples(scene, trainCameras, count = 400, pathsPerSample = 2)
+        val net = NeuralCloud.train(samples, steps = 50)
+        val src = "#version 460\n" + NeuralCloud.glslInclude(net, NeuralCloud.ambient(samples)) + scene.glslScene() + """
+            layout(location=0) in vec2 uv;
+            layout(location=0) out vec4 color;
+            void main() {
+                vec2 ndc = vec2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
+                color = vec4(cloudRender(vec3(4.6, 0.35, 3.6), vec3(0.0, 1.05, 0.0), 40.0, ndc, 1.6, int(uv.x * 6.0)), 1.0);
+            }
+        """.trimIndent()
+        val spirv = try { ShaderSPIRVUtils.compileShader("cloud.frag", src, ShaderKind.FRAGMENT_SHADER) } catch (t: Throwable) {
+            throw AssertionError("cloud fragment did not compile: ${t.message}\n$src", t)
+        }
+        assertTrue(spirv != null)
+        // and the zero-network fallback compiles too
+        ShaderSPIRVUtils.compileShader("cloud0.frag", src.replace(NeuralCloud.glslInclude(net, NeuralCloud.ambient(samples)), NeuralCloud.glslInclude(null, null)), ShaderKind.FRAGMENT_SHADER)
     }
 
     /** Pixels whose ray crosses the cloud's box count as cloud; others are bare sky. */
