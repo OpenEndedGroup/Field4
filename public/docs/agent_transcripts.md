@@ -2048,6 +2048,18 @@ and chalk* sketches a vase in 2B, hatches its shadow side in 4B and rules a chal
 
 [Open →](offline.html?file=assets/agent_transcripts/paint_canvas/metadata.edn)
 
+### paint_fold_press
+
+Three boxes that move wet paint [without a brush](paint_canvas.md#folding-pressing-and-rubbing).
+*Fold the canvas and open it* lays three thick strokes on the left half, folds the canvas down the
+middle and opens it: a Rorschach print whose two halves carry opposite ridges where the film split.
+*Press a plate and peel it off* lifts paint from a wet passage in a ridged disc. *Rub a thumb through
+wet paint* drags three stripes sideways so their colours smear together. Each box shows the canvas
+before and after and reports the paint moved. All three need the optional paint library
+(`./gradlew buildPaintNative`).
+
+[Open →](offline.html?file=assets/agent_transcripts/paint_fold_press/metadata.edn)
+
 ### photo_to_solid_chain
 
 A photograph becomes a printable solid, as four pure-compute boxes — the loadable version of
