@@ -254,6 +254,22 @@ which KosmicKrisp does not provide. Your default OpenXR runtime and Field's defa
 left as they were. Set `useHeadset = true` in starter box 1, then launch box 1 followed by box 2.
 Restart Field to leave OpenXR mode.
 
+To stay on KosmicKrisp, build a patched copy of WiVRn's runtime once, then launch with
+`--kosmickrisp`:
+
+```diffstatic {data-lang=bash}
+# Clone the pinned WiVRn for macOS into ~/.field4/wivrn-macos and build its runtime with Field's patch.
+uv run python tools/field_wivrn_macos.py --build-kk-runtime
+# Launch Field on KosmicKrisp with that runtime.
+uv run python tools/field_wivrn_macos.py --kosmickrisp -- /path/to/workspace -d Field-VR-IDE
+```
+
+[The patch](https://github.com/OpenEndedGroup/Field4/blob/main/optional/wivrn-macos/README.md)
+makes the runtime copy each eye image into WiVRn's IOSurface on the GPU instead of wrapping it,
+which KosmicKrisp can do. The installed `WiVRn.app` still runs the server. The build needs the
+port's Homebrew build dependencies, Xcode and the Vulkan SDK. Frame rate and latency come out
+within a few frames per second of MoltenVK.
+
 Type with a keyboard attached to the Mac while the companion window has focus, or use the
 in-panel keyboard. WiVRn's headset keyboard and mouse forwarding is Linux-only.
 
@@ -296,8 +312,9 @@ described above, even when nobody is using the PC screen.
 
 The **Quest 3, WiVRn for macOS and Apple silicon** path was tested on-headset on **12 November
 2026** (M1 Max, macOS 26.5, WiVRn for macOS 26.9.5): the VR IDE panel displayed and was usable
-in the headset, with the frame rates and latency above. Headset-attached keyboard and mouse,
-body tracking and the Mac's KosmicKrisp driver are not supported on this path.
+in the headset, with the frame rates and latency above, on MoltenVK and on KosmicKrisp with the
+patched runtime. Headset-attached keyboard and mouse and body tracking are not supported on this
+path.
 
 ??? aside "Rendering and input checks"
     The companion figure is captured from the real Chromium-to-Vulkan browser path. It shows the

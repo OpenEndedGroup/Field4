@@ -1,0 +1,434 @@
+diff --git a/src/xrt/auxiliary/vk/vk_helpers.c b/src/xrt/auxiliary/vk/vk_helpers.c
+index e7f2dba..025bf4b 100644
+--- a/src/xrt/auxiliary/vk/vk_helpers.c
++++ b/src/xrt/auxiliary/vk/vk_helpers.c
+@@ -28,6 +28,7 @@
+ #if defined(XRT_GRAPHICS_BUFFER_HANDLE_IS_MACH_PORT)
+ #include <IOSurface/IOSurfaceRef.h>
+ #include <mach/mach.h>
++#include <pthread.h>
+ #endif
+ 
+ #include <stdio.h>
+@@ -353,6 +354,180 @@ err_image:
+ 	return ret;
+ }
+ 
++
++#if defined(XRT_GRAPHICS_BUFFER_HANDLE_IS_MACH_PORT)
++/*
++ * Copy path for drivers without VK_EXT_metal_objects (KosmicKrisp): the app renders into a
++ * local image and each release copies it into the service's IOSurface, whose memory is
++ * imported as a host-pointer buffer. On Apple silicon that memory is unified, so the copy is
++ * a GPU transfer with no CPU involvement.
++ */
++bool vk_apple_metal_objects_enabled = false;
++
++struct vk_iosurface_copy
++{
++	VkImage image;
++	VkBuffer buffer;
++	VkDeviceMemory memory;
++	uint32_t row_texels;
++	IOSurfaceRef surface;
++};
++
++#define VK_IOSURFACE_COPY_MAX 128
++static struct vk_iosurface_copy g_iosurface_copies[VK_IOSURFACE_COPY_MAX];
++static pthread_mutex_t g_iosurface_copies_lock = PTHREAD_MUTEX_INITIALIZER;
++
++static VkResult
++create_iosurface_copy(struct vk_bundle *vk, VkImage image, IOSurfaceRef surface)
++{
++	void *base = IOSurfaceGetBaseAddress(surface);
++	size_t size = IOSurfaceGetAllocSize(surface);
++	size_t bytes_per_element = IOSurfaceGetBytesPerElement(surface);
++	size_t bytes_per_row = IOSurfaceGetBytesPerRow(surface);
++	if (base == NULL || size == 0 || bytes_per_element == 0 || bytes_per_row % bytes_per_element != 0) {
++		VK_ERROR(vk, "IOSurface copy path: unusable surface (base %p, size %zu, %zu bytes/row, %zu bytes/element)",
++		         base, size, bytes_per_row, bytes_per_element);
++		return VK_ERROR_INVALID_EXTERNAL_HANDLE;
++	}
++
++	VkExternalMemoryBufferCreateInfo external_info = {
++	    .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO,
++	    .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT,
++	};
++	VkBufferCreateInfo buffer_info = {
++	    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
++	    .pNext = &external_info,
++	    .size = size,
++	    .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
++	    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
++	};
++	VkBuffer buffer = VK_NULL_HANDLE;
++	VkResult ret = vk->vkCreateBuffer(vk->device, &buffer_info, NULL, &buffer);
++	if (ret != VK_SUCCESS) {
++		VK_ERROR(vk, "IOSurface copy path: vkCreateBuffer: %s", vk_result_string(ret));
++		return ret;
++	}
++
++	VkMemoryRequirements requirements = {0};
++	vk->vkGetBufferMemoryRequirements(vk->device, buffer, &requirements);
++	uint32_t type_bits = requirements.memoryTypeBits;
++	PFN_vkGetMemoryHostPointerPropertiesEXT host_pointer_properties =
++	    (PFN_vkGetMemoryHostPointerPropertiesEXT)vk->vkGetDeviceProcAddr(vk->device,
++	                                                                     "vkGetMemoryHostPointerPropertiesEXT");
++	if (host_pointer_properties != NULL) {
++		VkMemoryHostPointerPropertiesEXT props = {.sType = VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT};
++		if (host_pointer_properties(vk->device, VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT, base,
++		                            &props) == VK_SUCCESS) {
++			type_bits &= props.memoryTypeBits;
++		}
++	}
++	uint32_t type_index = UINT32_MAX;
++	for (uint32_t i = 0; i < vk->device_memory_props.memoryTypeCount; i++) {
++		if ((type_bits & (1u << i)) != 0 && (vk->device_memory_props.memoryTypes[i].propertyFlags &
++		                                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0) {
++			type_index = i;
++			break;
++		}
++	}
++	if (type_index == UINT32_MAX) {
++		VK_ERROR(vk, "IOSurface copy path: no host-visible memory type for the surface (bits 0x%x)", type_bits);
++		vk->vkDestroyBuffer(vk->device, buffer, NULL);
++		return VK_ERROR_FEATURE_NOT_PRESENT;
++	}
++
++	VkImportMemoryHostPointerInfoEXT import_info = {
++	    .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT,
++	    .handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT,
++	    .pHostPointer = base,
++	};
++	VkMemoryAllocateInfo allocate_info = {
++	    .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
++	    .pNext = &import_info,
++	    .allocationSize = size,
++	    .memoryTypeIndex = type_index,
++	};
++	VkDeviceMemory memory = VK_NULL_HANDLE;
++	ret = vk->vkAllocateMemory(vk->device, &allocate_info, NULL, &memory);
++	if (ret == VK_SUCCESS) {
++		ret = vk->vkBindBufferMemory(vk->device, buffer, memory, 0);
++	}
++	if (ret != VK_SUCCESS) {
++		VK_ERROR(vk, "IOSurface copy path: importing the surface's memory: %s", vk_result_string(ret));
++		if (memory != VK_NULL_HANDLE) {
++			vk->vkFreeMemory(vk->device, memory, NULL);
++		}
++		vk->vkDestroyBuffer(vk->device, buffer, NULL);
++		return ret;
++	}
++
++	pthread_mutex_lock(&g_iosurface_copies_lock);
++	struct vk_iosurface_copy *slot = NULL;
++	for (uint32_t i = 0; i < VK_IOSURFACE_COPY_MAX; i++) {
++		if (g_iosurface_copies[i].image == VK_NULL_HANDLE) {
++			slot = &g_iosurface_copies[i];
++			break;
++		}
++	}
++	if (slot != NULL) {
++		CFRetain(surface);
++		*slot = (struct vk_iosurface_copy){
++		    .image = image,
++		    .buffer = buffer,
++		    .memory = memory,
++		    .row_texels = (uint32_t)(bytes_per_row / bytes_per_element),
++		    .surface = surface,
++		};
++	}
++	pthread_mutex_unlock(&g_iosurface_copies_lock);
++	if (slot == NULL) {
++		VK_ERROR(vk, "IOSurface copy path: more than %d swapchain images", VK_IOSURFACE_COPY_MAX);
++		vk->vkFreeMemory(vk->device, memory, NULL);
++		vk->vkDestroyBuffer(vk->device, buffer, NULL);
++		return VK_ERROR_TOO_MANY_OBJECTS;
++	}
++	VK_DEBUG(vk, "IOSurface copy path: image %p -> %zu bytes, %zu bytes/row", (void *)image, size, bytes_per_row);
++	return VK_SUCCESS;
++}
++
++bool
++vk_iosurface_copy_target(VkImage image, VkBuffer *out_buffer, uint32_t *out_row_texels)
++{
++	bool found = false;
++	pthread_mutex_lock(&g_iosurface_copies_lock);
++	for (uint32_t i = 0; i < VK_IOSURFACE_COPY_MAX && image != VK_NULL_HANDLE; i++) {
++		if (g_iosurface_copies[i].image == image) {
++			*out_buffer = g_iosurface_copies[i].buffer;
++			*out_row_texels = g_iosurface_copies[i].row_texels;
++			found = true;
++			break;
++		}
++	}
++	pthread_mutex_unlock(&g_iosurface_copies_lock);
++	return found;
++}
++
++void
++vk_iosurface_copy_release(struct vk_bundle *vk, VkImage image)
++{
++	struct vk_iosurface_copy copy = {0};
++	pthread_mutex_lock(&g_iosurface_copies_lock);
++	for (uint32_t i = 0; i < VK_IOSURFACE_COPY_MAX && image != VK_NULL_HANDLE; i++) {
++		if (g_iosurface_copies[i].image == image) {
++			copy = g_iosurface_copies[i];
++			g_iosurface_copies[i] = (struct vk_iosurface_copy){0};
++			break;
++		}
++	}
++	pthread_mutex_unlock(&g_iosurface_copies_lock);
++	if (copy.image == VK_NULL_HANDLE) {
++		return;
++	}
++	vk->vkDestroyBuffer(vk->device, copy.buffer, NULL);
++	vk->vkFreeMemory(vk->device, copy.memory, NULL);
++	CFRelease(copy.surface);
++}
++#endif
++
+ // - vk_csci_get_image_external_handle_type (usually but not always a constant)
+ // - vk_csci_get_image_external_support
+ //   - vkGetPhysicalDeviceImageFormatProperties2
+@@ -450,14 +625,20 @@ vk_create_image_from_native(struct vk_bundle *vk,
+ 		return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+ 	}
+ 
+-	// The image is backed by the IOSurface, no external memory involved.
++	// With VK_EXT_metal_objects the image is backed by the IOSurface, no external memory
++	// involved; without it the image is app-local and copied into the IOSurface on release.
++	const bool copy_path = !vk->has_EXT_metal_objects;
+ 	VkImportMetalIOSurfaceInfoEXT import_iosurface_info = {
+ 	    .sType = VK_STRUCTURE_TYPE_IMPORT_METAL_IO_SURFACE_INFO_EXT,
+ 	    .pNext = external_memory_image_create_info.pNext,
+ 	    .ioSurface = surface,
+ 	};
+-	void *image_next = &import_iosurface_info;
++	void *image_next = copy_path ? (void *)external_memory_image_create_info.pNext : (void *)&import_iosurface_info;
++	if (copy_path) {
++		image_usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
++	}
+ #else
++	const bool copy_path = false;
+ 	void *image_next = &external_memory_image_create_info;
+ #endif
+ 
+@@ -481,7 +662,13 @@ vk_create_image_from_native(struct vk_bundle *vk,
+ 	VkImage image = VK_NULL_HANDLE;
+ 	ret = vk->vkCreateImage(vk->device, &vk_info, NULL, &image);
+ #if defined(XRT_GRAPHICS_BUFFER_HANDLE_IS_MACH_PORT)
+-	// The image holds its own reference to the IOSurface.
++	// The image holds its own reference to the IOSurface; on the copy path the copy entry does.
++	if (ret == VK_SUCCESS && copy_path) {
++		ret = create_iosurface_copy(vk, image, surface);
++		if (ret != VK_SUCCESS) {
++			vk->vkDestroyImage(vk->device, image, NULL);
++		}
++	}
+ 	CFRelease(surface);
+ #endif
+ 	if (ret != VK_SUCCESS) {
+@@ -559,7 +746,7 @@ vk_create_image_from_native(struct vk_bundle *vk,
+ 		 */
+ 		VK_ERROR(vk, "size must be greater than 0");
+ 
+-	} else if (requirements.size > image_native->size) {
++	} else if (!copy_path && requirements.size > image_native->size) {
+ 		VK_ERROR(vk, "size mismatch, exported %" PRIu64 " but requires %" PRIu64, image_native->size,
+ 		         requirements.size);
+ 		if (!debug_get_bool_option_vk_ignore_memory_size_mismatch()) {
+diff --git a/src/xrt/auxiliary/vk/vk_helpers.h b/src/xrt/auxiliary/vk/vk_helpers.h
+index aa5c632..c8f9421 100644
+--- a/src/xrt/auxiliary/vk/vk_helpers.h
++++ b/src/xrt/auxiliary/vk/vk_helpers.h
+@@ -913,6 +913,34 @@ vk_alloc_and_bind_image_memory(struct vk_bundle *vk,
+                                const char *caller_name,
+                                VkDeviceMemory *out_mem);
+ 
++#if defined(XRT_GRAPHICS_BUFFER_HANDLE_IS_MACH_PORT)
++/*!
++ * Set when xrCreateVulkanDeviceKHR enabled VK_EXT_metal_objects on the app's device. Without
++ * it (KosmicKrisp, or an app that made its own device) swapchain images are app-local and
++ * copied into the service's IOSurfaces through VK_EXT_external_memory_host on release.
++ *
++ * @ingroup aux_vk
++ */
++extern bool vk_apple_metal_objects_enabled;
++
++/*!
++ * For an image made by @ref vk_create_image_from_native on the copy path: the buffer over its
++ * IOSurface and the row length in texels to copy with. False for any other image.
++ *
++ * @ingroup aux_vk
++ */
++bool
++vk_iosurface_copy_target(VkImage image, VkBuffer *out_buffer, uint32_t *out_row_texels);
++
++/*!
++ * Release the IOSurface buffer of a copy-path image, before the image is destroyed.
++ *
++ * @ingroup aux_vk
++ */
++void
++vk_iosurface_copy_release(struct vk_bundle *vk, VkImage image);
++#endif
++
+ /*!
+  *
+  * @brief Creates a Vulkan device memory and image from a native graphics buffer handle.
+diff --git a/src/xrt/auxiliary/vk/vk_bundle_init.c b/src/xrt/auxiliary/vk/vk_bundle_init.c
+index f652be4..be5f42a 100644
+--- a/src/xrt/auxiliary/vk/vk_bundle_init.c
++++ b/src/xrt/auxiliary/vk/vk_bundle_init.c
+@@ -1325,8 +1325,10 @@ vk_init_from_given(struct vk_bundle *vk,
+ 	}
+ 
+ #if defined(XRT_GRAPHICS_BUFFER_HANDLE_IS_MACH_PORT)
+-	// Required device extension for sharing images on this platform.
+-	vk->has_EXT_metal_objects = true;
++	// IOSurfaces are wrapped with VK_EXT_metal_objects when xrCreateVulkanDeviceKHR enabled it
++	// (MoltenVK), otherwise copied through VK_EXT_external_memory_host, which is required.
++	vk->has_EXT_metal_objects = vk_apple_metal_objects_enabled;
++	vk->has_EXT_external_memory_host = true;
+ #endif
+ 
+ #ifdef VK_KHR_timeline_semaphore
+diff --git a/src/xrt/auxiliary/vk/vk_compositor_flags.c b/src/xrt/auxiliary/vk/vk_compositor_flags.c
+index 6b0bb9e..2726e32 100644
+--- a/src/xrt/auxiliary/vk/vk_compositor_flags.c
++++ b/src/xrt/auxiliary/vk/vk_compositor_flags.c
+@@ -243,7 +243,8 @@ vk_csci_get_image_external_support(struct vk_bundle *vk,
+ 	// IOSurface backed images have no external handle type to query.
+ 	if (handle_type == 0) {
+ 		if (out_importable) {
+-			*out_importable = vk->has_EXT_metal_objects;
++			// The copy path writes into the IOSurface instead of wrapping it.
++			*out_importable = vk->has_EXT_metal_objects || vk->has_EXT_external_memory_host;
+ 		}
+ 		if (out_exportable) {
+ 			*out_exportable = vk->has_EXT_metal_objects;
+@@ -422,7 +423,7 @@ vk_csci_is_format_supported(struct vk_bundle *vk,
+ 			VK_DEBUG(vk, "Format '%s' has no IOSurface pixel format!", vk_format_string(format));
+ 			return false;
+ 		}
+-		return vk->has_EXT_metal_objects;
++		return vk->has_EXT_metal_objects || vk->has_EXT_external_memory_host;
+ 	}
+ #endif
+ 
+diff --git a/src/xrt/compositor/client/comp_vk_client.c b/src/xrt/compositor/client/comp_vk_client.c
+index 3cf2752..e7de4cf 100644
+--- a/src/xrt/compositor/client/comp_vk_client.c
++++ b/src/xrt/compositor/client/comp_vk_client.c
+@@ -298,6 +298,9 @@ client_vk_swapchain_destroy(struct xrt_swapchain *xsc)
+ 
+ 	for (uint32_t i = 0; i < sc->base.base.image_count; i++) {
+ 		if (sc->base.images[i] != VK_NULL_HANDLE) {
++#if defined(XRT_GRAPHICS_BUFFER_HANDLE_IS_MACH_PORT)
++			vk_iosurface_copy_release(vk, sc->base.images[i]);
++#endif
+ 			vk->vkDestroyImage(vk->device, sc->base.images[i], NULL);
+ 			sc->base.images[i] = VK_NULL_HANDLE;
+ 		}
+@@ -797,6 +800,50 @@ client_vk_swapchain_create(struct xrt_compositor *xc,
+ 		    1,                                  // imageMemoryBarrierCount
+ 		    &acquire);                          // pImageMemoryBarriers
+ 
++#if defined(XRT_GRAPHICS_BUFFER_HANDLE_IS_MACH_PORT)
++		VkBuffer copy_buffer = VK_NULL_HANDLE;
++		uint32_t copy_row_texels = 0;
++		if (vk_iosurface_copy_target(sc->base.images[i], &copy_buffer, &copy_row_texels)) {
++			// Copy path: the image is app-local, so release means copying it into the
++			// service's IOSurface. The commit's CPU wait orders the copy before the service reads.
++			VkImageMemoryBarrier to_transfer = {
++			    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
++			    .srcAccessMask = barrier_access_mask,
++			    .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
++			    .oldLayout = barrier_optimal_layout,
++			    .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
++			    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
++			    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
++			    .image = sc->base.images[i],
++			    .subresourceRange = subresource_range,
++			};
++			vk->vkCmdPipelineBarrier(sc->release[i], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
++			                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &to_transfer);
++			VkBufferImageCopy region = {
++			    .bufferOffset = 0,
++			    .bufferRowLength = copy_row_texels,
++			    .bufferImageHeight = 0,
++			    .imageSubresource = {.aspectMask = barrier_aspect_mask, .mipLevel = 0, .baseArrayLayer = 0,
++			                         .layerCount = 1},
++			    .imageOffset = {0, 0, 0},
++			    .imageExtent = {xinfo.width, xinfo.height, 1},
++			};
++			vk->vkCmdCopyImageToBuffer(sc->release[i], sc->base.images[i], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
++			                           copy_buffer, 1, &region);
++			VkBufferMemoryBarrier to_host = {
++			    .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
++			    .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
++			    .dstAccessMask = VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT,
++			    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
++			    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
++			    .buffer = copy_buffer,
++			    .offset = 0,
++			    .size = VK_WHOLE_SIZE,
++			};
++			vk->vkCmdPipelineBarrier(sc->release[i], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, 0,
++			                         0, NULL, 1, &to_host, 0, NULL);
++		} else
++#endif
+ 		vk->vkCmdPipelineBarrier(                 //
+ 		    sc->release[i],                       // commandBuffer
+ 		    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,   // srcStageMask
+diff --git a/src/xrt/compositor/client/comp_vk_glue.c b/src/xrt/compositor/client/comp_vk_glue.c
+index d88ce13..39e82ff 100644
+--- a/src/xrt/compositor/client/comp_vk_glue.c
++++ b/src/xrt/compositor/client/comp_vk_glue.c
+@@ -44,7 +44,9 @@ const char *xrt_gfx_vk_device_extensions = VK_KHR_DEDICATED_ALLOCATION_EXTENSION
+     " " VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME
+ 
+ #elif defined(XRT_GRAPHICS_BUFFER_HANDLE_IS_MACH_PORT)
+-    " " VK_EXT_METAL_OBJECTS_EXTENSION_NAME
++    // Every Apple driver has it; VK_EXT_metal_objects (MoltenVK only) is added by
++    // xrCreateVulkanDeviceKHR when the driver offers it, see oxr_vulkan.c.
++    " " VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME
+ #else
+ #error "Need port!"
+ #endif
+diff --git a/src/xrt/state_trackers/oxr/oxr_vulkan.c b/src/xrt/state_trackers/oxr/oxr_vulkan.c
+index 6c9840e..63472b2 100644
+--- a/src/xrt/state_trackers/oxr/oxr_vulkan.c
++++ b/src/xrt/state_trackers/oxr/oxr_vulkan.c
+@@ -190,7 +190,9 @@ static const char *required_vk_device_extensions[] = {
+     VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
+ 
+ #elif defined(XRT_GRAPHICS_BUFFER_HANDLE_IS_MACH_PORT)
+-    VK_EXT_METAL_OBJECTS_EXTENSION_NAME,
++    // IOSurface images are copied through host-imported memory unless the driver
++    // also has VK_EXT_metal_objects (optional, below), which wraps them directly.
++    VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME,
+ #else
+ #error "Need port!"
+ #endif
+@@ -217,6 +219,7 @@ static const char *optional_device_extensions[] = {
+ #elif defined(XRT_GRAPHICS_SYNC_HANDLE_IS_WIN32_HANDLE) // Not optional
+ 
+ #elif defined(XRT_GRAPHICS_SYNC_HANDLE_IS_MACH_PORT)
++    VK_EXT_METAL_OBJECTS_EXTENSION_NAME, // MoltenVK: wrap IOSurfaces, share MTLSharedEvents
+ 
+ #else
+ #error "Need port!"
+@@ -510,6 +513,11 @@ oxr_vk_create_vulkan_device(struct oxr_logger *log,
+ 		if (strcmp(optional_device_extensions[i], VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME) == 0) {
+ 			image_format_list_enabled = true;
+ 		}
++#if defined(XRT_GRAPHICS_BUFFER_HANDLE_IS_MACH_PORT)
++		if (strcmp(optional_device_extensions[i], VK_EXT_METAL_OBJECTS_EXTENSION_NAME) == 0) {
++			vk_apple_metal_objects_enabled = true;
++		}
++#endif
+ 	}
+ 
+ 	free(props);

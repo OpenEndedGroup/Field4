@@ -7,6 +7,10 @@ runtime imports its swapchains with VK_EXT_metal_objects, which KosmicKrisp does
 are set for this launch only. `--build-loader` builds the Khronos loader into `.afield-local/openxr`;
 `--configure-encoder` makes WiVRn use VideoToolbox HEVC, since its automatic choice can fall back to
 the x264 encoder, which crashes the WiVRn server on the first frame under MoltenVK.
+
+`--build-kk-runtime` builds WiVRn's runtime with `optional/wivrn-macos`'s patch, which copies the eye
+images into WiVRn's IOSurfaces instead of wrapping them, and `--kosmickrisp` launches Field on
+KosmicKrisp with that runtime.
 """
 from __future__ import annotations
 
@@ -14,6 +18,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import hashlib
 import shutil
 import subprocess
 import sys
@@ -24,6 +29,9 @@ OPENXR_SDK_TAG = 'release-1.1.53'
 LOADER_PREFIX = REPO / '.afield-local/openxr'
 DEFAULT_APP = Path('/Applications/WiVRn.app')
 VIDEOTOOLBOX = {'encoder': 'videotoolbox', 'codec': 'h265'}
+KK_PIN = REPO / 'optional/wivrn-macos/pin.json'
+KK_RUNTIME_DIR = REPO / '.afield-local/wivrn-kk'
+KK_MANIFEST = KK_RUNTIME_DIR / 'openxr_wivrn_kk.json'
 
 
 def runtime_manifest(app: Path) -> Path:
@@ -87,11 +95,72 @@ def build_loader(prefix: Path = LOADER_PREFIX) -> Path:
     return library
 
 
-def launch_environment(manifest: Path, loader: Path, environ: dict[str, str]) -> dict[str, str]:
+def write_kk_manifest(runtime_dir: Path, library: Path) -> Path:
+    manifest = runtime_dir / KK_MANIFEST.name
+    manifest.write_text(json.dumps({'file_format_version': '1.0.0', 'runtime': {
+        'name': 'WiVRn (KosmicKrisp copy path)', 'library_path': f'./{library.name}'}}, indent=2) + '\n')
+    return manifest
+
+
+def build_kk_runtime(work: Path = Path.home() / '.field4/wivrn-macos', runtime_dir: Path = KK_RUNTIME_DIR) -> Path:
+    """Build the pinned WiVRn for macOS runtime client with optional/wivrn-macos's patch and install it."""
+    pin = json.loads(KK_PIN.read_text())
+    patch = KK_PIN.parent / pin['patch']
+    for tool in ('git', 'cmake', 'ninja', 'xcrun'):
+        if shutil.which(tool) is None:
+            raise ValueError(f'{tool} is needed to build the WiVRn runtime.')
+    source = work / 'src'
+    if not (source / '.git').exists():
+        work.mkdir(parents=True, exist_ok=True)
+        subprocess.run(['git', 'clone', '--quiet', '--branch', pin['tag'], pin['source'], str(source)], check=True)
+    head = subprocess.run(['git', '-C', str(source), 'rev-parse', 'HEAD'], check=True, text=True,
+                          capture_output=True).stdout.strip()
+    if head != pin['revision']:
+        raise ValueError(f'{source} is at {head}, not the pinned {pin["revision"]} ({pin["tag"]}); '
+                         'remove it to re-clone.')
+    subprocess.run(['git', '-C', str(source), 'submodule', 'update', '--init', '--depth', '1',
+                    'third_party/monado', 'third_party/wivrn', 'third_party/openxr-sdk'], check=True)
+    monado = source / 'third_party/monado'
+    # The port's script resets each submodule to its pin and stages its own patch series.
+    subprocess.run([str(source / 'scripts/patches.sh'), 'apply'], cwd=source, check=True)
+    subprocess.run(['git', '-C', str(monado), 'apply', '--index', str(patch)], check=True)
+    # build-wivrn.sh --client-* compiles a snapshot of the staged Monado tree; take one as its
+    # server build would, so the client needs no server build.
+    snapshot = source / 'build/monado-snapshot'
+    shutil.rmtree(snapshot, ignore_errors=True)
+    snapshot.mkdir(parents=True)
+    subprocess.run(['git', '-C', str(monado), 'checkout-index', '-a', f'--prefix={snapshot}/'], check=True)
+    for name, args in (('.snapshot-base', ['rev-parse', 'HEAD']), ('.snapshot-tree', ['write-tree'])):
+        (snapshot / name).write_text(subprocess.run(['git', '-C', str(monado), *args], check=True, text=True,
+                                                    capture_output=True).stdout)
+    (snapshot / '.snapshot-patches').write_text(
+        '\n'.join(sorted(p.name for p in (source / 'patches/monado').glob('*.patch'))) + '\n')
+    env = dict(os.environ)
+    env['SDKROOT'] = subprocess.run(['xcrun', '--sdk', 'macosx', '--show-sdk-path'], check=True, text=True,
+                                    capture_output=True).stdout.strip()
+    sdks = sorted((Path.home() / 'VulkanSDK').glob('[0-9]*/macOS'))
+    if 'VULKAN_SDK' not in env and sdks:
+        env['VULKAN_SDK'] = str(sdks[-1])
+    shutil.rmtree(source / 'build/wivrn-client-arm64', ignore_errors=True)
+    subprocess.run([str(source / 'scripts/build-wivrn.sh'), '--client-arm64'], cwd=source, env=env, check=True)
+    built = source / 'build/wivrn-client-arm64/client/libopenxr_wivrn.dylib'
+    if not built.is_file():
+        raise ValueError(f'The WiVRn build finished but {built} is missing.')
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+    library = runtime_dir / built.name
+    shutil.copy2(built, library)
+    (runtime_dir / 'build-info.json').write_text(json.dumps({
+        **pin, 'patchSha256': hashlib.sha256(patch.read_bytes()).hexdigest(),
+        'vulkanSdk': env.get('VULKAN_SDK')}, indent=2) + '\n')
+    return write_kk_manifest(runtime_dir, library)
+
+
+def launch_environment(manifest: Path, loader: Path, environ: dict[str, str],
+                       driver: str = 'moltenvk') -> dict[str, str]:
     """The variables this launch overrides. JAVA_TOOL_OPTIONS keeps whatever the caller already had."""
     tool_options = ' '.join(filter(None, [environ.get('JAVA_TOOL_OPTIONS', '').strip(),
                                           f'-Dorg.lwjgl.openxr.libname={loader}']))
-    return {'XR_RUNTIME_JSON': str(manifest), 'AFIELD_VULKAN_DRIVER': 'moltenvk',
+    return {'XR_RUNTIME_JSON': str(manifest), 'AFIELD_VULKAN_DRIVER': driver,
             'JAVA_TOOL_OPTIONS': tool_options, 'AFIELD_FIELD_SH_NO_TERMINAL': '1'}
 
 
@@ -102,6 +171,11 @@ def main() -> int:
     parser.add_argument('--build-loader', action='store_true', help='Build the OpenXR loader into .afield-local/openxr, then exit')
     parser.add_argument('--configure-encoder', action='store_true',
                         help="Set WiVRn's encoder to VideoToolbox HEVC in ~/.config/wivrn/config.json, then exit")
+    parser.add_argument('--build-kk-runtime', action='store_true',
+                        help="Build WiVRn's runtime with optional/wivrn-macos's KosmicKrisp patch into "
+                             '.afield-local/wivrn-kk, then exit')
+    parser.add_argument('--kosmickrisp', action='store_true',
+                        help='Run Field on KosmicKrisp with the runtime --build-kk-runtime built')
     parser.add_argument('--check', action='store_true', help='Print the launch plan without starting anything')
     parser.add_argument('field_args', nargs=argparse.REMAINDER, help='Arguments after -- go to field.sh')
     args = parser.parse_args()
@@ -110,15 +184,24 @@ def main() -> int:
         if args.build_loader:
             print(build_loader())
             return 0
+        if args.build_kk_runtime:
+            print(build_kk_runtime())
+            return 0
         if args.configure_encoder:
             configure_encoder(config)
             print(f'{config}: encoder set to VideoToolbox HEVC. Restart WiVRn for it to apply.')
             return 0
+        # The installed app is needed either way: it runs the WiVRn server.
         manifest = runtime_manifest(args.wivrn)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         parser.error(str(error))
     loader = (args.loader or loader_library()).expanduser().resolve()
     problems = []
+    driver = 'moltenvk'
+    if args.kosmickrisp:
+        driver, manifest = 'kosmickrisp', KK_MANIFEST
+        if not KK_MANIFEST.is_file():
+            problems.append(f'No KosmicKrisp runtime at {KK_MANIFEST}; run this tool with --build-kk-runtime first.')
     if not loader.is_file():
         problems.append(f'No OpenXR loader at {loader}; run this tool with --build-loader first.')
     if not encoder_configured(config):
@@ -126,14 +209,14 @@ def main() -> int:
                         'then restart WiVRn.')
     launcher = REPO / 'field.sh'
     field_args = args.field_args[1:] if args.field_args[:1] == ['--'] else args.field_args
-    overrides = launch_environment(manifest, loader, os.environ)
+    overrides = launch_environment(manifest, loader, os.environ, driver)
     if args.check:
         print(json.dumps({'environment': overrides, 'command': [str(launcher), *field_args],
                           'problems': problems, 'status': 'Launch plan only; nothing was started.'}, indent=2))
         return 0
     if problems:
         parser.error(' '.join(problems))
-    print('Field → WiVRn for macOS. Open WiVRn and connect the headset first; set useHeadset = true in the '
+    print(f'Field ({driver}) → WiVRn for macOS. Open WiVRn and connect the headset first; set useHeadset = true in the '
           'VR starting point.', file=sys.stderr, flush=True)
     os.execve(launcher, [str(launcher), *field_args], {**os.environ, **overrides})
     return 0

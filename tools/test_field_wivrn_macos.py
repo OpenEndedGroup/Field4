@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 from tools.field_wivrn_macos import (configure_encoder, encoder_configured, launch_environment,
-                                     runtime_manifest)
+                                     runtime_manifest, write_kk_manifest)
 
 
 class FieldWivrnMacosTest(unittest.TestCase):
@@ -55,6 +55,12 @@ class FieldWivrnMacosTest(unittest.TestCase):
         self.assertEqual(launch_environment(self.manifest, loader, {})['JAVA_TOOL_OPTIONS'],
                          f'-Dorg.lwjgl.openxr.libname={loader}')
 
+    def test_kk_manifest_names_the_library_beside_it(self):
+        runtime = self.home / 'wivrn-kk'
+        runtime.mkdir()
+        manifest = write_kk_manifest(runtime, runtime / 'libopenxr_wivrn.dylib')
+        self.assertEqual(json.loads(manifest.read_text())['runtime']['library_path'], './libopenxr_wivrn.dylib')
+
     def test_exec_preserves_arguments_and_scopes_runtime_driver_and_loader(self):
         repo = self.home / 'Field checkout'
         (repo / 'tools').mkdir(parents=True)
@@ -92,6 +98,16 @@ class FieldWivrnMacosTest(unittest.TestCase):
             'argv': args[1:], 'runtime': str(self.manifest), 'driver': 'moltenvk',
             'options': f'-Dorg.lwjgl.openxr.libname={loader.resolve()}', 'keep': 'preserved'})
         self.assertEqual(default.read_text(), 'the system default runtime must stay here')
+
+        kk = [*command, '--kosmickrisp', *args]
+        missing = subprocess.run(kk, env=env, text=True, capture_output=True)
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertIn('--build-kk-runtime', missing.stderr)
+        kk_manifest = repo / '.afield-local/wivrn-kk/openxr_wivrn_kk.json'
+        kk_manifest.parent.mkdir(parents=True)
+        kk_manifest.write_text('{}')
+        launched = json.loads(subprocess.run(kk, env=env, text=True, capture_output=True, check=True).stdout)
+        self.assertEqual((launched['runtime'], launched['driver']), (str(kk_manifest), 'kosmickrisp'))
 
 
 if __name__ == '__main__':
