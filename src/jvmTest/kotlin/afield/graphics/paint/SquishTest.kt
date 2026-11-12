@@ -118,8 +118,8 @@ class SquishTest {
         // the mean over a few puffs: one puff's spread is noisy
         fun branching(contrast: Double) = PaintCanvas(800, aspect = 1.0, seed = 5).use { c ->
             film(c)
-            listOf(250.0, 420.0, 590.0, 760.0).mapIndexed { i, x ->
-                c.blow(line(x, 510.0, x + 2.0, 510.0), radius = 14.0, pressure = 0.9, contrast = contrast, tendril = 4.0, seed = 3L + i).branching
+            listOf(200.0, 400.0, 600.0, 800.0).flatMap { x -> (0..1).map { k -> x to k } }.mapIndexed { i, (x, k) ->
+                c.blow(line(x, 380.0 + 260.0 * k, x + 2.0, 380.0 + 260.0 * k), radius = 14.0, pressure = 0.9, contrast = contrast, tendril = 4.0, seed = 3L + i).branching
             }.average()
         }
         val (low, high) = branching(1.0) to branching(200.0)

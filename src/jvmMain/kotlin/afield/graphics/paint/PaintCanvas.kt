@@ -326,9 +326,8 @@ class PaintCanvas internal constructor(
      * through the gap the pressure leaves swaps [transfer] of itself with it (0.5: both sides end up
      * one mixture), less as it cures; pressure spreads the pressed paint outward for [spread] 0..1 of
      * the time it takes to level; pulling the halves apart splits the film between them, evenly at
-     * [peel] 0, and as [peel] goes to 1 in viscous fingers about half of [ridge] wide: air drawn in from
-     * the film's open edges, where the gap opens first, branching toward the fold (the Saffman–Taylor
-     * instability, grown on the paint itself, not a texture; what one side keeps its mirror lost). Paint is moved, never made or lost; dry
+     * [peel] 0, in branching ridges [ridge] units apart that run away from the fold as [peel] goes to
+     * 1 (what one side keeps on a ridge its mirror lost). Paint is moved, never made or lost; dry
      * paint does not move. Each point meets the nearest pixel to its mirror image, so a fold along x or
      * y is exact and a diagonal fold is mirrored to within a pixel (paint is conserved either way).
      */
@@ -342,8 +341,7 @@ class PaintCanvas internal constructor(
     /**
      * Press a flat plate [radius] across onto the wet paint at ([x], [y]) at [pressure] 0..1, let the
      * squashed paint spread for [spread] 0..1, and peel the plate off toward ([dx], [dy]): it takes
-     * [take] 0..1 of the film it touched, unevenly, in viscous fingers about half of [ridge] wide grown in
-     * from the plate's trailing edge and running with the peel,
+     * [take] 0..1 of the film it touched, unevenly, in ridges [ridge] apart running with the peel,
      * [peel] 0..1 deep (a monotype pull, a palm pressed and lifted). Returns the mm³ moved and lifted.
      */
     fun press(

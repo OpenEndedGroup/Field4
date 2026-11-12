@@ -1,16 +1,15 @@
 name: paint_blow_fingers
 description: >
-  Three boxes that push wet paint with air on a PaintCanvas. The first lays a thick blue film and
+  Two boxes that push wet paint with air on a PaintCanvas. The first lays a thick blue film and
   blows a straw across it along a curve: before and after, the paint cleared to a thin film along
   the path, tendrils branching off it with thick rims. The second puffs air at one point with three
   viscosity contrasts, from a compact blot to a branching tree (viscous fingering, the
-  Saffman–Taylor instability, grown on the paint, not a texture). The third folds a canvas and opens
-  it, where the same fingering splits the film. Each box reports the paint moved, how branched the
+  Saffman–Taylor instability, grown on the paint, not a texture).  Each box reports the paint moved, how branched the
   fingers were, and the wet paint before and after. The paint library is optional —
   `./gradlew buildPaintNative` builds it — and without it every box says so and stops.
 docs:
   - page: paint_canvas.md
-    why: "The Blowing paint and Fingers where the film splits sections explain these calls."
+    why: "The Blowing paint section explains these calls."
 operations:
   - create:
       box: paint_blow
@@ -33,7 +32,7 @@ operations:
               val wet = canvas.wetMm3
               // a straw, blown along a curve through the film
               val path = FLine().moveTo(150, 480).cubicTo(350, 250, 600, 600, 850, 300)
-              val blown = canvas.blow(path, radius = 14.0, pressure = 0.8, tendril = 5.0)
+              val blown = canvas.blow(path, radius = 14.0, pressure = 0.9, tendril = 9.0)
               display("main", canvas.png(wet = true, light = PaintLight.Raking))
               markdown(
                   "blow moved %.1f mm³ at %d places, branching %.2f; wet paint %.2f mm³ before, %.2f after"
@@ -58,31 +57,9 @@ operations:
               for (y in listOf(140, 260)) canvas.stroke(FLine().moveTo(60, y).lineTo(940, y), brush, pressure = 1.0..1.0)
               val report = StringBuilder()
               for ((x, contrast) in listOf(170.0 to 1.5, 500.0 to 8.0, 830.0 to 200.0)) {
-                  val b = canvas.blow(FLine().moveTo(x, 200).lineTo(x + 2, 200), radius = 16.0, pressure = 1.0, contrast = contrast, tendril = 4.0)
+                  val b = canvas.blow(FLine().moveTo(x, 200).lineTo(x + 2, 200), radius = 16.0, pressure = 1.0, contrast = contrast, tendril = 8.0)
                   report.append("contrast %.1f: branching %.2f  \n".format(contrast, b.branching))
               }
               display("main", canvas.png(wet = true, light = PaintLight.Raking))
               markdown(report.toString())
-          }
-  - create:
-      box: paint_fold_fingers
-      name: "Paint — fold, open, and the film splits in fingers"
-      frame: { x: 80.0, y: 3600.0, w: 340.0, h: 100.0 }
-      properties:
-        code: |
-          run {
-              if (!PaintCanvas.isAvailable) {
-                  markdown(PaintLibrary.describe())
-                  return@run
-              }
-
-              val canvas = PaintCanvas(900, aspect = 1.4, seed = 13)
-              val brush = canvas.brush(BrushKind.HogFlat, width = 140.0)
-              brush.load(rgb(0.55, 0.08, 0.1), amount = 5.0, stiff = 0.3)
-              for (y in listOf(200, 320, 440, 560)) canvas.stroke(FLine().moveTo(150, y).lineTo(500, y), brush, pressure = 1.0..1.0)
-              display("before", canvas.png(wet = true, light = PaintLight.Raking))
-              val wet = canvas.wetMm3
-              val fold = canvas.fold(500.0, 0.0, pressure = 0.95, spread = 0.4, peel = 0.9, ridge = 14.0)
-              display("main", canvas.png(wet = true, light = PaintLight.Raking))
-              markdown("fold moved %.1f mm³; wet paint %.2f mm³ before, %.2f after".format(fold.movedMm3, wet, canvas.wetMm3))
           }

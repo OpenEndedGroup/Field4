@@ -15,7 +15,7 @@
 //! (no contrast, Eden growth), 1 is DLA, and larger is sparser still. `eta` comes from the viscosity
 //! contrast `M` as `1.5 (1 - 1/M)`.
 //!
-//! The pattern is computed, not painted: callers use the cells the air reached to decide where paint
+//! Used by `Canvas::blow`. The pattern is computed, not painted: callers use the cells the air reached to decide where paint
 //! goes, and move it (they never make or lose any).
 
 use crate::canvas::Canvas;
@@ -420,95 +420,6 @@ impl Canvas {
         out.moved_mm3 = 0.5 * self.wet.vol.iter().zip(&before).map(|(a, b)| (a - b).abs() as f64).sum::<f64>() * self.mm3_per_coat_px();
         out
     }
-}
-
-/// The air's fingers as a field over buffer pixels in -1..1 for a peel: -1 where the air reached
-/// between the surfaces, +1 where the paint held, 0 outside the pressed film. `contact` (per buffer
-/// pixel) marks the film; `opening` (per buffer pixel, >= 0) is how fast the gap opens there, which
-/// is where the air is drawn in from; `fraction` of the film is invaded; fingers are `cell` pixels
-/// wide. Used by the fold's and the plate's peel in place of a noise texture.
-pub(crate) fn peel_fingers(
-    canvas: &Canvas, contact: &[f32], bounds: (usize, usize, usize, usize), opening: &dyn Fn(usize, usize) -> f32, fraction: f32,
-    cell: usize, width_px: f32, eta: f32, seed: u64,
-) -> Vec<f32> {
-    let (w, _h) = (canvas.f.w, canvas.f.h);
-    let (x0, y0, x1, y1) = bounds;
-    let g = cell.max(1);
-    let mut field = vec![0.0f32; contact.len()];
-    if x0 >= x1 || y0 >= y1 {
-        return field;
-    }
-    // one cell of air all round, where the air comes in from
-    let (gw, gh) = ((x1 - x0).div_ceil(g) + 2, (y1 - y0).div_ceil(g) + 2);
-    let mut hs = Hele::new(gw, gh);
-    for cy in 1..gh - 1 {
-        for cx in 1..gw - 1 {
-            let (mut sc, mut sk, mut sq, mut n) = (0.0f32, 0.0f32, 0.0f32, 0.0f32);
-            for dy in 0..g {
-                for dx in 0..g {
-                    let (x, y) = (x0 + (cx - 1) * g + dx, y0 + (cy - 1) * g + dy);
-                    if x < x1 && y < y1 {
-                        let i = y * w + x;
-                        sc += contact[i];
-                        sk += canvas.mobility(i);
-                        sq += opening(x, y);
-                        n += 1.0;
-                    }
-                }
-            }
-            let l = cy * gw + cx;
-            let n = n.max(1.0);
-            hs.domain[l] = sc / n > 0.25;
-            hs.k[l] = sk / n;
-            hs.q[l] = 0.05 * sq / n;
-        }
-    }
-    // air comes in only where the gap has opened: not across a fold's hinge, nor past a plate's
-    // leading edge (walls there)
-    for l in 0..gw * gh {
-        if hs.domain[l] {
-            continue;
-        }
-        let (cx, cy) = ((l % gw) as i64 - 1, (l / gw) as i64 - 1);
-        let x = (x0 as i64 + cx * g as i64 + g as i64 / 2).clamp(0, canvas.f.w as i64 - 1) as usize;
-        let y = (y0 as i64 + cy * g as i64 + g as i64 / 2).clamp(0, canvas.f.h as i64 - 1) as usize;
-        hs.air[l] = opening(x, y) > 0.25;
-    }
-    let cells = hs.domain.iter().filter(|d| **d).count();
-    let n = (fraction.clamp(0.0, 1.0) * cells as f32).round() as usize;
-    let invaded = hs.grow(n, eta, None, seed);
-    // the fingers are drawn as the segments they grew along, `width_px` wide, at the jittered
-    // points of their cells: smooth edges at any angle, a width set by the caller, not the cell
-    let mut dist = vec![f32::INFINITY; contact.len()];
-    let to_px = |q: (f32, f32)| (x0 as f32 + (q.0 - 1.0) * g as f32, y0 as f32 + (q.1 - 1.0) * g as f32);
-    let hw = 0.5 * width_px.max(1.0);
-    for (pa, pb) in hs.segments(&invaded) {
-        let (a, b) = (to_px(pa), to_px(pb));
-        let xa = ((a.0.min(b.0) - hw - 2.0).floor().max(x0 as f32)) as usize;
-        let ya = ((a.1.min(b.1) - hw - 2.0).floor().max(y0 as f32)) as usize;
-        let xb = ((a.0.max(b.0) + hw + 2.0).ceil().max(0.0) as usize).min(x1);
-        let yb = ((a.1.max(b.1) + hw + 2.0).ceil().max(0.0) as usize).min(y1);
-        for y in ya..yb {
-            for x in xa..xb {
-                let (_, d) = nearest((x as f32 + 0.5, y as f32 + 0.5), a, b);
-                let i = y * w + x;
-                if d < dist[i] {
-                    dist[i] = d;
-                }
-            }
-        }
-    }
-    for y in y0..y1 {
-        for x in x0..x1 {
-            let i = y * w + x;
-            if contact[i] <= 0.0 {
-                continue;
-            }
-            // a pixel-wide soft edge
-            field[i] = ((dist[i] - hw) / 0.75).clamp(-1.0, 1.0);
-        }
-    }
-    field
 }
 
 #[cfg(test)]

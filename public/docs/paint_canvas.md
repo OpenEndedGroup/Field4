@@ -395,12 +395,11 @@ squashed, rubbed and peeled. Field follows the method he describes; none of its 
   the gap the `pressure` leaves, the two films swap `transfer` of themselves (0.5 makes them one
   mixture). Pressure spreads the squashed paint outward for `spread` of the time it takes to level,
   thick paint faster than thin. Opening the fold splits the film between the two sides: evenly at
-  `peel = 0`, and in branching fingers about half of `ridge` units wide as `peel` rises (see
-  [Fingers where the film splits](#fingers-where-the-film-splits)). Where one side keeps paint,
-  its mirror is bare. Past `peel = 0.67` the film splits wholly. A fold along x or y prints
+  `peel = 0`, and in branching ridges `ridge` units apart as `peel` rises. Where one side keeps a
+  ridge, its mirror is bare. Past `peel = 0.67` the film splits wholly. A fold along x or y prints
   an exact mirror image; a diagonal fold is mirrored to within a pixel.
 - `canvas.press(x, y, radius)` presses a flat plate onto the paint and peels it off toward
-  `(dx, dy)`. The plate takes `take` of the film it touched, unevenly, in the same kind of fingers, running with the peel. This
+  `(dx, dy)`. The plate takes `take` of the film it touched, unevenly, in the same kind of ridges. This
   is a monotype pull, or a palm pressed down and lifted.
 - `canvas.rub(line, radius, pressure)` drags a thumb along a line. It picks up the paint that stands
   above the film a light touch rides on and lays it down further along. The paint is drawn out and
@@ -414,9 +413,9 @@ does not move.
 
 The box below lays three thick strokes on the left half, folds the canvas down the middle and opens
 it. The top image is the canvas before the fold, the bottom one after: each stroke is printed onto
-the right half, and the two prints carry opposite fingers where the film split.
+the right half, and the two prints carry opposite ridges where the film split.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/fold.png" alt="two canvases, one above the other. The top one has three thick strokes on its left half: red, blue and yellow, with bristle ridges. In the bottom one each stroke has been printed onto the right half as a mirror image, and the film has split in thin branching fingers: on the right half they are white veins branching through the paint, and on the left half the same fingers stand as branching strokes of paint on bare canvas, so where one half kept paint, its mirror is bare" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="fold" embed=true scale=1}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/fold.png" alt="two canvases, one above the other. The top one has three thick strokes on its left half: red, blue and yellow, with bristle ridges. In the bottom one each stroke has been printed onto the right half as a mirror image, and both halves are broken by streaky bare patches running away from the fold: where one half kept paint, its mirror is bare" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="fold" embed=true scale=1}
 :::static
 val canvas = PaintCanvas(900, aspect = 1.4, seed = 7)
 val brush = canvas.brush(BrushKind.HogFlat, width = 70.0)
@@ -439,7 +438,7 @@ display("main", canvas.png(wet = true, light = PaintLight.Raking))
 Next, a plate is pressed onto a wet passage and peeled off, and then a thumb is rubbed across three
 stripes, so their colours smear into each other.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/press_rub.png" alt="two canvases, one above the other. In the top one a blue passage of broad strokes is crossed by a thick cream bar; on its left a round patch, where a plate was pressed and peeled, is pale blue crossed by thin, dark, branching fingers of paint, and the cream bar there is crinkled with small branching grooves. In the bottom one three vertical stripes, red, yellow and blue, are crossed by three horizontal smears dragged to the right, red pulled into yellow and yellow into blue, which turns green where they meet" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="press_rub" embed=true scale=1}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/press_rub.png" alt="two canvases, one above the other. In the top one a blue passage of broad strokes is crossed by a thick cream bar; on its left a round patch, where a plate was pressed and peeled, is mottled pale blue with ridged, lifted paint, and the cream bar there is wrinkled. In the bottom one three vertical stripes, red, yellow and blue, are crossed by three horizontal smears dragged to the right, red pulled into yellow and yellow into blue, which turns green where they meet" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="press_rub" embed=true scale=1}
 :::static
 val plate = PaintCanvas(900, aspect = 1.4, seed = 8)
 plate.work(FLine().rect(150, 150, 700, 420), rgb(0.12, 0.3, 0.55), handling = Handling.Broad, stiff = 0.5)
@@ -475,24 +474,16 @@ gesture, and each shows the canvas before and after.
     pigment, height, wetness and drift on the GPU. Field's engine is single-threaded Rust. On a
     1600 × 1280 canvas on an M-series Mac a fold takes about 160 ms, a plate 60 ms and a rub 30 ms,
     against 530 ms for one heavy brush stroke. So the gestures are not the bottleneck; the brushes
-    are. Blowing and true viscous fingering came later (next section). The tests (`SquishTest`, and the Rust tests in
+    are. Blowing came later (next section). The tests (`SquishTest`, and the Rust tests in
     `squish.rs`) check that paint is conserved, that an even fold prints a mirror image, and that a
     peel leaves complementary ridges.
 
-### Fingers where the film splits
-
-When two surfaces with wet paint between them are pulled apart, air has to get into the widening gap.
-It does not come in as a straight front. Wherever the front bulges a little, the paint ahead of it
-gives way more easily, so the bulge grows. The front breaks into fingers, and the fingers split
-again. This is viscous fingering, the Saffman–Taylor instability, and it is what makes the
-tree-like patterns of decalcomania. The more viscous the paint is than what pushes into it, the
-more the fingers branch; air into oil paint branches like diffusion-limited aggregation.
-
-`fold` and `press` grow these fingers rather than drawing them from a texture. The air comes in
-where the gap opens first: from the edges of a folded film far from the fold, and from the trailing
-edge of a peeled plate. Thinner, more open paint gives way more easily, so the fingers run into it.
-
 ### Blowing paint
+
+Air pushed into wet paint does not advance as a straight front. Wherever the front bulges a little,
+the paint ahead gives way more easily, so the bulge grows, and the front breaks into fingers that
+split again: viscous fingering, the Saffman–Taylor instability. The more viscous the paint is than
+what pushes into it, the more the fingers branch.
 
 `canvas.blow(line, radius, pressure)` blows air through a straw or an airbrush along any FLine. Where
 the jet meets wet paint, the paint runs away ahead of it, more along the direction of travel than
@@ -517,7 +508,7 @@ for (y in [220, 330, 440, 550]) canvas.stroke(FLine().moveTo(120, y).lineTo(880,
 display("before", canvas.png(wet = true, light = PaintLight.Raking))
 
 // a straw, blown along a curve through the film
-canvas.blow(FLine().moveTo(150, 480).cubicTo(350, 250, 600, 600, 850, 300), radius = 14.0, pressure = 0.8, tendril = 5.0)
+canvas.blow(FLine().moveTo(150, 480).cubicTo(350, 250, 600, 600, 850, 300), radius = 14.0, pressure = 0.9, tendril = 9.0)
 display("main", canvas.png(wet = true, light = PaintLight.Raking))
 ```
 
@@ -531,7 +522,7 @@ val brush = canvas.brush(BrushKind.HogFlat, width = 130.0)
 brush.load(rgb(0.1, 0.18, 0.55), amount = 5.0, stiff = 0.3)
 for (y in [140, 260]) canvas.stroke(FLine().moveTo(60, y).lineTo(940, y), brush, pressure = 1.0..1.0)
 for ((x, contrast) in [170.0 to 1.5, 500.0 to 8.0, 830.0 to 200.0]) {
-    canvas.blow(FLine().moveTo(x, 200).lineTo(x + 2, 200), radius = 16.0, pressure = 1.0, contrast = contrast, tendril = 4.0)
+    canvas.blow(FLine().moveTo(x, 200).lineTo(x + 2, 200), radius = 16.0, pressure = 1.0, contrast = contrast, tendril = 8.0)
 }
 display("main", canvas.png(wet = true, light = PaintLight.Raking))
 ```
@@ -540,17 +531,13 @@ display("main", canvas.png(wet = true, light = PaintLight.Raking))
     The pattern is the dielectric breakdown model (Niemeyer, Pietronero and Wiesmann, 1984) on a
     coarse grid over the wet film (`native/field-paint/vendor/paint/src/field/fingers.rs`). The
     pressure in the paint obeys Darcy's law in a thin gap, with the paint's mobility from its
-    stiffness and how far it has set; a peel adds suction where the gap is opening, a jet holds the
-    paint at the edge of its reach. The front advances a cell at a time, chosen with probability
-    proportional to the local pressure gradient raised to `eta = 1.5 (1 - 1/contrast)`: 0 is Eden
-    growth, 1 DLA. It replaced the ridged noise the first fold used, so the pattern now responds to
-    where the paint is and how thick it is. `SquishTest` pins that a blow conserves the wet paint and
-    that branching rises with contrast; the Rust test `fingers_branch_more_as_the_viscosity_contrast_rises`
-    pins the same on a bare grid. The fingers are drawn along the segments they grew,
-    between points jittered inside their cells, at a width set by `ridge` or `tendril`, so they run
-    at any angle; Rust tests pin that a fold's halves are complementary and that the fingers' edges
-    are not aligned with the grid. Not modelled: surface tension choosing the finger width (the
-    caller does), and thin paint pushed into thick paint as a tool of its own.
+    stiffness and how far it has set, held at the edge of the jet's reach. The front advances a cell
+    at a time, chosen with probability proportional to the local pressure gradient raised to
+    `eta = 1.5 (1 - 1/contrast)`: 0 is Eden growth, 1 DLA. Each finger is drawn along the segment it
+    grew, between points jittered inside their cells, `tendril` wide, so fingers run at any angle;
+    the paint in a finger's way is pushed out to its sides and tip. `SquishTest` pins that a blow
+    conserves the wet paint and that branching rises with contrast. The same fingering was tried for
+    the fold's and plate's peel and set aside: the ridged peel read better.
 
 ## Brushes made to order
 
