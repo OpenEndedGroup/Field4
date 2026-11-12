@@ -16,7 +16,7 @@ curves that all agree about where they end.
 
 ## A polygon and three routes
 
-Build an `LpPolygon` from its vertices (either winding; it is normalised to counter-clockwise), pick
+Build an [`LpPolygon`](reference/graphics.md#lp-trajectories-kt-lppolygon) from its vertices (either winding; it is normalised to counter-clockwise), pick
 a direction, and ask for a route. The example below draws the barrier method's central path, the
 primal-dual method's iterates and the simplex method's walk, all for the same direction.
 
@@ -567,7 +567,7 @@ size that takes a few milliseconds. The flat SVG view takes the same callback:
 
 Everything above works in space too. A three-dimensional linear program maximises \( c \cdot x \) over a
 convex polytope, the answer is again a vertex, and the same methods walk there by their own
-routes, now through a solid. `LpPolytope` holds the solid, and each method returns its walk as a
+routes, now through a solid. [`LpPolytope`](reference/graphics.md#lp-polytope-kt-lppolytope) holds the solid, and each method returns its walk as a
 3-D trajectory that draws as an `FLine` in a `three { }` scene.
 
 ### A polytope from a point cloud
@@ -855,3 +855,23 @@ Source: `src/jvmMain/kotlin/afield/geometry/spatial/lp_trajectories.kt`, `src/jv
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference:
 [Graphics](reference/graphics.md).*
+
+- Planar optimisation paths: [`LpPolygon`](reference/graphics.md#lp-trajectories-kt-lppolygon) —
+  [`centralFan`](reference/graphics.md#lp-trajectories-kt--centralfan),
+  [`centralPath`](reference/graphics.md#lp-trajectories-kt--centralpath),
+  [`cuttingPlanes`](reference/graphics.md#lp-trajectories-kt--cuttingplanes),
+  [`ellipsoid`](reference/graphics.md#lp-trajectories-kt--ellipsoid),
+  [`fanMap`](reference/graphics.md#lp-fan-map-kt--fanmap),
+  [`pdhg`](reference/graphics.md#lp-trajectories-kt--pdhg),
+  [`primalDual`](reference/graphics.md#lp-trajectories-kt--primaldual),
+  [`simplexWalk`](reference/graphics.md#lp-trajectories-kt--simplexwalk).
+- Polytope construction and optimisation paths:
+  [`LpPolytope`](reference/graphics.md#lp-polytope-kt-lppolytope) —
+  [`centralFan`](reference/graphics.md#lp-polytope-kt--centralfan),
+  [`centralPath`](reference/graphics.md#lp-polytope-kt--centralpath),
+  [`cuttingPlanes`](reference/graphics.md#lp-polytope-kt--cuttingplanes),
+  [`ellipsoid`](reference/graphics.md#lp-polytope-kt--ellipsoid),
+  [`hull`](reference/graphics.md#lp-polytope-kt--lppolytope-companion--hull),
+  [`pdhg`](reference/graphics.md#lp-polytope-kt--pdhg),
+  [`primalDual`](reference/graphics.md#lp-polytope-kt--primaldual),
+  [`simplexWalk`](reference/graphics.md#lp-polytope-kt--simplexwalk).

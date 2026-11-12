@@ -184,3 +184,7 @@ float radius = base * (1.0 + 0.55 * energy) + thickness * (seed.y - 0.5) * 2.0;
   and [GPU State](gpu_state.md) for what changes when a shader's input is its own last output.
 * [A cellular automaton you can hear](chain_ca_sound.md) is the neighbouring chain in the other
   direction: a discrete dynamical system into notation, and notation into sound.
+
+- Band measurements from the rendered scene:
+  [`PatSynthDocs`](reference/patterns.md#patsynthdocs-kt-patsynthdocs) —
+  [`bandSeries`](reference/patterns.md#patsynthdocs-kt--patsynthdocs--bandseries).

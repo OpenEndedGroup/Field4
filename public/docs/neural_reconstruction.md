@@ -98,7 +98,7 @@ experiment.reset("material edit")
 // The constructing box run owns this view; Stop or rerun closes it.
 ```
 
-`ReconstructionDemo` registers with the constructing box run immediately. Stop or rerun
+[`ReconstructionDemo`](reference/imaging.md#reconstructiondemo-kt-reconstructiondemo) registers with the constructing box run immediately. Stop or rerun
 detaches its exact view and releases its resources. `renderer` comes from the parent renderer box. `mode = null` selects Source. The example contains the
 controls and shader properties needed to keep editing, rather than requiring a separate launch script.
 
@@ -208,3 +208,9 @@ The next experiments are also Starting Points: [Ray Reconstruction](ray_reconstr
 Each has its own input contract and availability check.
 
 For the complete editable pass graph—from `moduleHere()` and three render attachments to this adapter—continue with [From modules to reconstruction](reconstruction_plumbing.md) and its [reconstruction_plumbing](agent_transcripts.md#reconstruction_plumbing) Starting Point.
+
+## API reference
+
+- Rebuilding the reconstruction experiment:
+  [`ReconstructionDemo`](reference/imaging.md#reconstructiondemo-kt-reconstructiondemo) —
+  [`reset`](reference/imaging.md#reconstructiondemo-kt--reconstructiondemo--reset).

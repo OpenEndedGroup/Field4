@@ -99,7 +99,7 @@ velocity.
 
 ### How the oracle decides what matches
 
-`VariableMarkovOracle.build` turns each sample into a feature frame: every channel, centred and
+[`VariableMarkovOracle.build`](reference/math.md#variablemarkovoracle-kt--variablemarkovoracle-companion--build) turns each sample into a feature frame: every channel, centred and
 scaled by its spread, followed by its first difference, scaled the same way. Two frames closer than a
 threshold count as the same symbol, and the oracle (a Factor Oracle built over those symbols)
 links each moment to the earlier moment that ends the longest repeat of what led up to it.
@@ -108,7 +108,7 @@ links each moment to the earlier moment that ends the longest repeat of what led
 The threshold matters. Too small, and nothing ever repeats. Too large, and everything is the
 same symbol, so a match says nothing. `build` tries a range of thresholds and keeps the one with
 the highest *information rate*, the measure from the reference implementation of how much the
-past tells you about the present. `VariableMarkovOracle.thresholdScan` returns every candidate if
+past tells you about the present. [`VariableMarkovOracle.thresholdScan`](reference/math.md#variablemarkovoracle-kt--variablemarkovoracle-companion--thresholdscan) returns every candidate if
 you want to see the choice:
 
 ```diffstatic {data-lang=kotlin}
@@ -800,3 +800,8 @@ its band.
   port of [the reference implementation](https://github.com/wangsix/vmo), checked against it
   by `VmoReferenceTest`.
 - [Timestral](https://github.com/mistralai/timestral), Mistral's inference code and model cards.
+
+## API reference
+
+- Building the temporal model and scanning thresholds:
+  [`VariableMarkovOracle`](reference/math.md#variablemarkovoracle-kt-variablemarkovoracle).

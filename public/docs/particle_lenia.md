@@ -520,3 +520,9 @@ Implementation and parameter details for the helpers used above:
 
 - [`PopulationSearch.evolve`](reference/search.md#populationsearch-kt--populationsearch--evolve)
 - [`PopulationSearch`](reference/search.md#populationsearch-kt-populationsearch)
+
+- Initialising and evolving Particle Lenia:
+  [`ParticleLenia`](reference/alife.md#alife-particle-lenia-kt-particlelenia) —
+  [`currentEnergy`](reference/alife.md#alife-particle-lenia-kt--particlelenia--currentenergy),
+  [`random`](reference/alife.md#alife-particle-lenia-kt--particlelenia-companion--random),
+  [`stepTimes`](reference/alife.md#alife-particle-lenia-kt--particlelenia--steptimes).
