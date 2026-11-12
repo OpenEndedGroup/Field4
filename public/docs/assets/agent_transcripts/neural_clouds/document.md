@@ -34,7 +34,7 @@ start(renderer::run)
 <!-- field-box id="cloud_train" index="1" -->
 
 ```edn [field-box id="cloud_train" role="properties"]
-{"id" "cloud_train" "index" 1 "name" "train the in-scatter network" "parents" ["root" "cloud_renderer"] "children" ["cloud_compare" "cloud_view"] "properties" {"children" #{#afield/box "cloud_compare" #afield/box "cloud_view"} "parents" #{#afield/box "root" #afield/box "cloud_renderer"} "name" "train the in-scatter network" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloud_train_code_.kt" "lines" 25 "characters" 1121 "sha256" "47488fc2f6762300fabd4f3bd1be8f8db0f11d0b3bc4c11325cbc49448148a9b"}]}
+{"id" "cloud_train" "index" 1 "name" "train the in-scatter network" "parents" ["root" "cloud_renderer"] "children" ["cloud_compare" "cloud_view"] "properties" {"children" #{#afield/box "cloud_compare" #afield/box "cloud_view"} "parents" #{#afield/box "root" #afield/box "cloud_renderer"} "name" "train the in-scatter network" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloud_train_code_.kt" "lines" 25 "characters" 1133 "sha256" "4415e8b407ebeaf25978158bb27c2b74de384f100a9ad2a4786b23615292cb35"}]}
 ```
 
 ```kotlin [field-property box="cloud_train" name="code" path="cloud_train_code_.kt"]
@@ -62,7 +62,7 @@ cloudAmbient = NeuralCloud.ambient(samples)
 // #include "cloud/network" and "cloud/scene" in this box's descendants now mean these.
 cloudHere(cloudNet, cloudAmbient, cloudScene)
 
-println("${samples.size} samples, ${cloudNet.weights}, loss ${cloudNet.trainingLoss.takeLast(200).average().f4}")
+display("training", "${samples.size} samples, ${cloudNet.weights}, loss ${cloudNet.trainingLoss.takeLast(200).average().f4}")
 ```
 
 ## 3. compare against the path tracer

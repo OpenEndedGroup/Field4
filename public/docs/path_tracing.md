@@ -641,7 +641,7 @@ cloudAmbient = NeuralCloud.ambient(samples)
 // #include "cloud/network" and "cloud/scene" in this box's descendants now mean these.
 cloudHere(cloudNet, cloudAmbient, cloudScene)
 
-println("${samples.size} samples, ${cloudNet.weights}, loss ${cloudNet.trainingLoss.takeLast(200).average().f4}")
+display("training", "${samples.size} samples, ${cloudNet.weights}, loss ${cloudNet.trainingLoss.takeLast(200).average().f4}")
 ```
 
 `NeuralCloud.ambient` is the baseline: an ambient colour times the sky visibility plus a colour
