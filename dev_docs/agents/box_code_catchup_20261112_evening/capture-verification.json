@@ -14,9 +14,9 @@
       "status": "passed",
       "screenshot": "assets/path_tracing/neural_clouds_cpu.png",
       "video": null,
-      "sourceFingerprint": "8ab7d3941eb8b0fd1141c67771359365b5e634afa9114ee26bb8a9585c21c67e"
+      "sourceFingerprint": "bf99ca72f2ce8bf9123ed70c1f17e0f47179e37f0a29587f502d617411ebdc4a"
     }
   ],
   "method": "Normal RunnerState capture_with_environment and transactional publication; actual authored fence and transcript.",
-  "visualInspection": "Actual paint press/rub PNG and cloud comparison PNG inspected: both paint canvases, four computed cloud views, error images and the Markdown error table are present; no Field error marker."
+  "visualInspection": "Paint press/rub output inspected; final cloud comparison with an explicit 800 CSS pixel image width inspected. Computed panels, error images and measured Markdown table are correct, with no Field error marker."
 }

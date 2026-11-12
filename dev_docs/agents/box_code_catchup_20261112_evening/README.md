@@ -40,3 +40,8 @@ The matching paint library was built in this checkout. Hardware captures with a 
 profile keep their recorded media; this pass does not claim new headset/body-tracking results or
 execution of every native scene. Final verification and the separately requested whole-corpus
 helper-link follow-up are tracked in `checkpoint.json`.
+
+Final verification: current main merged through `merge_regen.py`; generated-artifact guards
+passed. The final precheck was green in 3.9 minutes, including 1,798 passing Python tooling
+tests (29 skipped). The cloud image now has an explicit 800 CSS pixel width, and the final
+capture was rerun and inspected.
