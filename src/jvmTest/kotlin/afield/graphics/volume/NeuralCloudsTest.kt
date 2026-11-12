@@ -80,6 +80,14 @@ class NeuralCloudsTest {
         ShaderSPIRVUtils.compileShader("cloud0.frag", src.replace(NeuralCloud.glslInclude(net, NeuralCloud.ambient(samples)), NeuralCloud.glslInclude(null, null)), ShaderKind.FRAGMENT_SHADER)
     }
 
+    @Test
+    fun cloudHereRegistersIncludesForTheBox() {
+        val box = afield.document.graph.Box("cloud-here-${System.nanoTime()}")
+        box.cloudHere(null, null, scene)
+        assertTrue(cloudIncludeSource(box, "scene.glsl") == scene.glslScene())
+        assertTrue(cloudIncludeSource(box, "network") == NeuralCloud.glslInclude(null, null))
+    }
+
     /** Pixels whose ray crosses the cloud's box count as cloud; others are bare sky. */
     private fun approxSkyMask(w: Int, h: Int): CloudScene.Image {
         val mask = CloudScene.Image(w, h)
