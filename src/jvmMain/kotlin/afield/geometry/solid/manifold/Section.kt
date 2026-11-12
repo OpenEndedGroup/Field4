@@ -269,8 +269,13 @@ class Section internal constructor(handle: MemorySegment) : AutoCloseable {
      */
     fun toPolygons(): List<List<Vec2>> = toDoublePolygons().map { ring -> ring.map { Vec2(it.first.toFloat(),it.second.toFloat()) } }
 
-    /** Native coordinates for dimensional audits; never pass through drawing Vec2s. */
-    internal fun toDoublePolygons(): List<List<Pair<Double,Double>>> {
+    /**
+     * The contours in Clipper's own `Double` coordinates, as `(x, y)` pairs: [toPolygons] without
+     * the narrowing to `Float`. Use this where the numbers matter (dimensions, audits, a
+     * coordinate fed back into a model). A [Section.ofDoublePolygons]/`toDoublePolygons()` round
+     * trip returns each point to Clipper's grid of 1e-8 units. Winding as in [toPolygons].
+     */
+    fun toDoublePolygons(): List<List<Pair<Double,Double>>> {
         val polygons = ManifoldNative.ptr(
             ManifoldNative.sectionToPolygons,
             ManifoldNative.ptr(ManifoldNative.allocPolygons),
@@ -382,8 +387,22 @@ class Section internal constructor(handle: MemorySegment) : AutoCloseable {
         fun ofPolygons(contours: List<List<Vec2>>, fillRule: FillRule = FillRule.POSITIVE): Section =
             ofDoublePolygons(contours.map { ring -> ring.map { it.x.toDouble() to it.y.toDouble() } },fillRule)
 
-        /** Double input for native geometry audits, without a Float drawing conversion. */
-        internal fun ofDoublePolygons(contours: List<List<Pair<Double,Double>>>, fillRule: FillRule = FillRule.POSITIVE): Section {
+        /**
+         * [ofPolygons] in `Double`: contours as `(x, y)` pairs, passed to Clipper unnarrowed.
+         *
+         * [Vec2] is `Float`, about seven significant figures, so a 10 m outline drawn in
+         * millimetres through [ofPolygons] lands only to the nearest ~0.001 mm; here it lands on
+         * Clipper's own grid of 1e-8 units, and areas come out to about 1e-12 relative. Use this one when the
+         * coordinates are dimensions (a plan, a cut, a tolerance check) rather than a drawing. The
+         * same rules apply: under [FillRule.POSITIVE] an outline is counter-clockwise and a hole
+         * clockwise; [FillRule.NON_ZERO] takes either winding.
+         *
+         * ```kotlin
+         * val plan = Section.ofDoublePolygons(listOf(listOf(0.0 to 0.0, 9000.0 to 0.0, 9000.0 to 4123.456789, 0.0 to 4123.456789)))
+         * plan.area                                  // 3.7111111101e7 mm²; through Float it is ~2 mm² out
+         * ```
+         */
+        fun ofDoublePolygons(contours: List<List<Pair<Double,Double>>>, fillRule: FillRule = FillRule.POSITIVE): Section {
             val usable = contours.filter { it.size >= 3 }
             if (usable.isEmpty()) return empty()
             Arena.ofConfined().use { arena ->
@@ -422,6 +441,10 @@ class Section internal constructor(handle: MemorySegment) : AutoCloseable {
                 }
             }
         }
+
+        /** [ofDoublePolygons] for the common single-contour case. */
+        fun ofDoublePolygon(contour: List<Pair<Double,Double>>, fillRule: FillRule = FillRule.POSITIVE): Section =
+            ofDoublePolygons(listOf(contour), fillRule)
 
         /** [ofPolygons] for the common single-contour case. */
         fun ofPolygon(contour: List<Vec2>, fillRule: FillRule = FillRule.POSITIVE): Section =
