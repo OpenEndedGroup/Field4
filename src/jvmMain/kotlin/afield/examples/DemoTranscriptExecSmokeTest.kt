@@ -581,6 +581,7 @@ object DemoTranscriptExecSmokeTest {
         // Renderer. All check PaintCanvas.isAvailable first; without `./gradlew buildPaintNative` — the branch CI
         // takes — they print where they looked and stop, rather than failing.
         "paint_canvas",
+        "paint_fold_press", // CPU paint simulation; boxes stop with a message without the library
         // Two pure-CPU boxes over the same paint canvas: one registers an agentExtension (paint tools,
         // context, commands, the canvas as branch state) and shows the bare canvas, the other adds a
         // scribble aiTool that paints on it. No model is called; without the paint library the Studio
