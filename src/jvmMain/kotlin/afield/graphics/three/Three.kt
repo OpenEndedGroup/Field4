@@ -2,6 +2,7 @@
 
 package afield.graphics.three
 
+import afield.app.server.ExtensionWeb
 import afield.geometry.path.div
 import afield.geometry.path.minus
 import afield.geometry.path.plus
@@ -193,12 +194,16 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * Install optional viewer tools from same-origin ES-module paths. Each module exports a
      * default factory returning a tool descriptor. Modules run with the viewer's privileges;
      * supply only trusted application code. A saved review never imports a module on its own.
+     *
+     * A path under `/extension-web/` names a file in a registered web folder (`src/personal/web`,
+     * an extension root's `web/`, `AFIELD_WEB_DIRS`; see [afield.app.server.ExtensionWeb]) and gets
+     * `?v=<hash of its contents>` appended here, so an edited tool loads on the next redraw.
      */
     fun tools(vararg modules: String) {
         require(modules.all { it.startsWith("/") && !it.startsWith("//") && '\\' !in it }) {
             "Viewer tools need absolute same-origin paths"
         }
-        toolModules += modules.filterNot { it in toolModules }
+        toolModules += modules.map(ExtensionWeb::versioned).distinct().filterNot { it in toolModules }
     }
 
     /** Add FLines. They keep every behaviour they have in [Box.threeLines] — picking, hover, fills. */

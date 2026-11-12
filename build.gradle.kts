@@ -499,8 +499,8 @@ val externalExtensionRoots = ((providers.gradleProperty("fieldExtensionDirs").or
     ?: providers.environmentVariable("AFIELD_EXTENSION_DIRS").orNull).orEmpty()
     .split(File.pathSeparatorChar).filter { it.isNotBlank() } + kitValues("extensions"))
     .map { file(it.trim()).canonicalFile }.distinct().onEach { root ->
-        require(root.isDirectory && (File(root, "kotlin").isDirectory || File(root, "resources").isDirectory)) {
-            "Field extension root must contain kotlin/ or resources/: $root"
+        require(root.isDirectory && listOf("kotlin", "resources", "web").any { File(root, it).isDirectory }) {
+            "Field extension root must contain kotlin/, resources/ or web/: $root"
         }
     }
 val personalSourceRoots = (listOf(file("src/personal")) + externalExtensionRoots).distinctBy { it.canonicalPath }
@@ -551,6 +551,8 @@ fun requiredRunJvmArgs(): List<String> {
         add("-Dafield.opendlssnr.root=${layout.buildDirectory.dir("native/field-opendlssnr").get().asFile.absolutePath}")
         add(steamAudioJvmArg())
         if (hasPersonalLayer) add("-D$personalLayerProperty=" + (files(personalLayerJar) + kitClasspath).asPath)
+        // Each extension root's web/ folder, served at /extension-web/ (must match ExtensionWeb.DIRS_PROPERTY).
+        add("-Dafield.extension.web=" + personalSourceRoots.map { File(it, "web").path }.joinToString(File.pathSeparator))
         add("-Dafield.kits.dir=${kitDirectory.absolutePath}")
         add("-Dafield.kit.revisions=" + (0 until kitCount).joinToString(",") {
             kitProfile.getProperty("kit.$it.id") + "@" + kitProfile.getProperty("kit.$it.revision")

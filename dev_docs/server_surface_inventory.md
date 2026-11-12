@@ -69,7 +69,7 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-53 routes, 40 of them with no route-specific guard. `guard` is computed from the handler
+54 routes, 41 of them with no route-specific guard. `guard` is computed from the handler
 body by the docs-route vocabulary the mutating census also uses
 (`docsAnnotations.kt:739#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
 `docsAnnotations.kt:723#fun ApplicationCall.refuseUnlessLocalDocsClient`); there is no `install(Authentication)`
@@ -137,6 +137,7 @@ mutation; it is a different one.
 | `GET /controllers/controls` | `controllers.kt` | none |
 | `GET /controllers/outputs` | `controllers.kt` | none |
 | `GET /docs-pass-site/{...}` | `docsPass.kt` | loopback + same-site |
+| `GET /extension-web/{...}` | `extensionWeb.kt` | none |
 | `GET /field-audio/{...}` | `fieldAudioProxy.kt` | none |
 | `GET /field-docs/{...}` | `docsAnnotations.kt` | loopback |
 | `GET /health` | `Server.kt` | none |
@@ -150,10 +151,10 @@ mutation; it is a different one.
 | `GET /three-review` | `Server.kt` | loopback + same-site |
 | `GET /three-review-image` | `Server.kt` | loopback + same-site |
 
-### The five that serve files off disk, which deserve reading twice
+### The six that serve files off disk, which deserve reading twice
 
-`/project/{...}`, `/min/{...}`, `/local/{...}`, `/field-docs/{...}` and
-`/api/document-guide-asset` turn a URL into a path on your machine. Four enforce path
+`/project/{...}`, `/min/{...}`, `/extension-web/{...}`, `/local/{...}`, `/field-docs/{...}` and
+`/api/document-guide-asset` turn a URL into a path on your machine. Five enforce path
 boundaries and one does not:
 
 - `Server.kt#project file not found or outside project directory` canonicalises the
@@ -162,6 +163,9 @@ boundaries and one does not:
   `/tmp/workspace-evil` for workspace `/tmp/workspace`;
 - `Server.kt#Monaco asset not found` does the same for `/min/`, against the Monaco
   directory;
+- `extensionWeb.kt#fun resolve` does the same for `/extension-web/`, against each registered
+  web folder in turn (`src/personal/web`, extension roots' `web/`, `AFIELD_WEB_DIRS`), after
+  `URI.getPath` has decoded the request, so `%2e%2e` is checked as `..`;
 - `docsAnnotations.kt#Two independent checks now` checks both encodings: after a
   percent-encoding bug let `%2e%2e` through a textual `..` check, it now checks the
   *decoded* path textually **and** re-checks the assembled URI after `URI.normalize`;
