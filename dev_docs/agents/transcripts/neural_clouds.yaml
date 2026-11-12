@@ -52,11 +52,11 @@ operations:
           cloudScene = CloudScene()
 
           // Training points are drawn where these cameras see cloud. cloud_compare's view is not one of them.
-          val cameras = listOf(
+          val cameras = [
               CloudScene.Camera(doubleArrayOf(0.0, 1.2, 7.5), doubleArrayOf(0.0, 0.95, 0.0)),
               CloudScene.Camera(doubleArrayOf(-5.5, 2.4, 4.5), doubleArrayOf(0.0, 0.9, 0.0)),
               CloudScene.Camera(doubleArrayOf(4.0, 0.6, -6.0), doubleArrayOf(0.0, 1.0, 0.0)),
-          )
+          ]
 
           // Each label is the mean of 8 path-traced estimates: noisy, and the network averages the noise out.
           val samples = NeuralCloud.samples(cloudScene, cameras, count = 12000, pathsPerSample = 8)
@@ -66,7 +66,7 @@ operations:
           // #include "cloud/network" and "cloud/scene" in this box's descendants now mean these.
           cloudHere(cloudNet, cloudAmbient, cloudScene)
 
-          println("${samples.size} samples, ${cloudNet.weights}, loss ${"%.4f".format(cloudNet.trainingLoss.takeLast(200).average())}")
+          println("${samples.size} samples, ${cloudNet.weights}, loss ${cloudNet.trainingLoss.takeLast(200).average().f4}")
   # 3. the CPU comparison on a held-out camera: reference / single scatter / ambient / network.
   - create:
       box: cloud_compare
@@ -92,12 +92,13 @@ operations:
           val mask = cloudScene.render(view, w, h, CloudScene.InScatter { _, _, _, _, into -> into.fill(1e3) })
 
           val file = File.createTempFile("neural_clouds", ".png")
-          writeCloudComparison(file, reference, listOf(single, ambient, neural))
+          writeCloudComparison(file, reference, [single, ambient, neural])
           val png = Base64.getEncoder().encodeToString(file.readBytes())
-          val rows = listOf("single scatter" to single, "fitted ambient" to ambient, "network" to neural).joinToString("") { (name, image) ->
-              val e = cloudError(image, reference, mask)
-              "<tr><td>$name</td><td>${"%.3f".format(e.relativeMeanAbs)}</td><td>${"%.3f".format(e.rmse)}</td></tr>"
-          }
+          val rows =
+              ["single scatter" to single, "fitted ambient" to ambient, "network" to neural].joinToString("") { (name, image) ->
+                  val e = cloudError(image, reference, mask)
+                  "<tr><td>$name</td><td>${e.relativeMeanAbs.f3}</td><td>${e.rmse.f3}</td></tr>"
+              }
           display(
               "compare",
               "<img style='width:100%' src='data:image/png;base64,$png'>" +

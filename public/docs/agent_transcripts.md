@@ -4486,6 +4486,19 @@ that changes between passes is the medium. `dev_docs/PARTICIPATING_MEDIA.md` is 
 
 [Open →](offline.html?file=assets/agent_transcripts/path_tracing_medium/metadata.edn)
 
+### neural_clouds
+
+A raymarched cloud lit by a small network instead of an ambient term, after Charles Grassi's
+[neural volumetric clouds](https://charlesgrassi.dev/blog/neural-volumetric-clouds). *Train the
+in-scatter network* labels 12,000 points with a CPU volumetric path tracer and fits a 10-16-16-3
+network. *Compare against the path tracer* renders a camera the training never saw four ways:
+reference, single scattering, fitted ambient and network, with an error row and a table. *Neural
+cloud shader* runs the same raymarcher in a fragment shader with the weights as GLSL constants,
+beside debug views of the predicted in-scatter, sun transmittance and sky visibility. See
+[Neural multiple scattering in a raymarched cloud](path_tracing.md#neural-multiple-scattering-in-a-raymarched-cloud).
+
+[Open →](offline.html?file=assets/agent_transcripts/neural_clouds/metadata.edn)
+
 ### neural_particles
 
 **A cloud of noise assembling itself into a word, through a network trained a second earlier.** Three

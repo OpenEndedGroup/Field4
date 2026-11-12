@@ -615,20 +615,33 @@ The [neural_clouds](agent_transcripts.md#neural_clouds) starting point has three
 renderer. The first labels 12,000 points, drawn where three cameras see the cloud, and trains the
 network:
 
-```kotlin
+```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/neural_clouds_train.png" capture="box" open-outputs="true" embed=true timeout="300" padding="12" name="neural-clouds-train" alt="The training box's output: the sample count, the network shape with 499 parameters, and the final loss" macro-file="../../dev_docs/agents/transcripts/neural_clouds.yaml" capture-box="cloud_train"}
+:::static
 import afield.graphics.volume.*
 
+// Published for the boxes below.
 prop<CloudScene>(cloudScene)
 prop<NeuralCloud>(cloudNet)
 prop<AmbientFit>(cloudAmbient)
 
 cloudScene = CloudScene()
+
+// Training points are drawn where these cameras see cloud. cloud_compare's view is not one of them.
+val cameras = [
+    CloudScene.Camera(doubleArrayOf(0.0, 1.2, 7.5), doubleArrayOf(0.0, 0.95, 0.0)),
+    CloudScene.Camera(doubleArrayOf(-5.5, 2.4, 4.5), doubleArrayOf(0.0, 0.9, 0.0)),
+    CloudScene.Camera(doubleArrayOf(4.0, 0.6, -6.0), doubleArrayOf(0.0, 1.0, 0.0)),
+]
+
+// Each label is the mean of 8 path-traced estimates: noisy, and the network averages the noise out.
 val samples = NeuralCloud.samples(cloudScene, cameras, count = 12000, pathsPerSample = 8)
 cloudNet = NeuralCloud.train(samples, hidden = intArrayOf(16, 16), steps = 8000)
 cloudAmbient = NeuralCloud.ambient(samples)
 
-// #include "cloud/network" and "cloud/scene" in the boxes below now mean these
+// #include "cloud/network" and "cloud/scene" in this box's descendants now mean these.
 cloudHere(cloudNet, cloudAmbient, cloudScene)
+
+println("${samples.size} samples, ${cloudNet.weights}, loss ${cloudNet.trainingLoss.takeLast(200).average().f4}")
 ```
 
 `NeuralCloud.ambient` is the baseline: an ambient colour times the sky visibility plus a colour
@@ -638,7 +651,40 @@ CPU with one raymarcher. Only the in-scatter term differs between them. In the f
 reference comes first, then single scattering only, the fitted ambient baseline and the network,
 and the row below shows each one's error against the reference, multiplied by four:
 
-![Four renders of the same cloud from a held-out camera, left to right: path-traced reference, single scattering only (dark grey), fitted ambient (grey with dark undersides), and the network (white, close to the reference); below, error images that are solid white for single scattering, bright for ambient and faint speckle for the network](assets/path_tracing/neural_clouds_cpu.png)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/neural_clouds_cpu.png" capture="box" open-outputs="true" embed=true timeout="300" padding="12" name="neural-clouds-compare" alt="Four renders of the same cloud from a held-out camera: path-traced reference, single scattering only (dark grey), fitted ambient, and the network (close to the reference); below, error images; and a table of the three errors" macro-file="../../dev_docs/agents/transcripts/neural_clouds.yaml" capture-box="cloud_compare"}
+:::static
+import afield.graphics.volume.*
+import java.io.File
+import java.util.Base64
+
+val view = CloudScene.Camera(doubleArrayOf(4.6, 0.35, 3.6), doubleArrayOf(0.0, 1.05, 0.0), 40.0)
+val w = 200
+val h = 125
+val none = CloudScene.InScatter { _, _, _, _, into -> into.fill(0.0) }
+
+val reference = cloudScene.render(view, w, h, cloudScene.reference(48))
+val single = cloudScene.render(view, w, h, none)
+val ambient = cloudScene.render(view, w, h, cloudAmbient)
+val neural = cloudScene.render(view, w, h, cloudNet.inScatter)
+
+// Pixels the cloud touches: where an absurd in-scatter changes the picture.
+val mask = cloudScene.render(view, w, h, CloudScene.InScatter { _, _, _, _, into -> into.fill(1e3) })
+
+val file = File.createTempFile("neural_clouds", ".png")
+writeCloudComparison(file, reference, [single, ambient, neural])
+val png = Base64.getEncoder().encodeToString(file.readBytes())
+val rows =
+    ["single scatter" to single, "fitted ambient" to ambient, "network" to neural].joinToString("") { (name, image) ->
+        val e = cloudError(image, reference, mask)
+        "<tr><td>$name</td><td>${e.relativeMeanAbs.f3}</td><td>${e.rmse.f3}</td></tr>"
+    }
+display(
+    "compare",
+    "<img style='width:100%' src='data:image/png;base64,$png'>" +
+        "<div>reference | single scatter | fitted ambient | network; below, |error| x4</div>" +
+        "<table><tr><th></th><th>relative MAE</th><th>RMSE</th></tr>$rows</table>",
+)
+```
 
 Over the 4,532 pixels the cloud covers:
 
@@ -656,7 +702,9 @@ The third box runs the same raymarcher in a fragment shader. `#include "cloud/ne
 weights as a `const float[]`, so the shader needs no buffer, and `cloudRender(eye, target, fovY,
 ndc, aspect, mode)` picks the in-scatter term or a debug view:
 
-![The cloud on the GPU as six panels: across the top, fitted ambient, network and single scattering; across the bottom, the network's predicted in-scatter (pale blue), the sun transmittance and the sky visibility](assets/path_tracing/neural_clouds_gpu.png)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/neural_clouds_gpu.png" capture="native-window" native-wait-frames="6" embed=true hidden=true timeout="300" name="neural-clouds-gpu" alt="The cloud on the GPU as six panels: across the top, fitted ambient, network and single scattering; across the bottom, the network's predicted in-scatter, the sun transmittance and the sky visibility" macro-file="../../dev_docs/agents/transcripts/neural_clouds.yaml" capture-box="cloud_view"}
+// Built and launched from dev_docs/agents/transcripts/neural_clouds.yaml.
+```
 
 The bottom row is what the network sees and says: its predicted in-scatter, bluish where skylight
 dominates, then two of its inputs, the sun transmittance and the sky visibility. Train again in the
