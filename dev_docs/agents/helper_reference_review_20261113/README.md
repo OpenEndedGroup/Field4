@@ -56,5 +56,13 @@ fragment in `how_field_is_built.md`, not a failed transcript parse.
   ```
 
 All 723 fences across the selected pages, including their runner attributes, match
-the baseline byte for byte. Generated preambles, Kotlin/GLSL source, transcript YAML,
-templates and media are unchanged. This prose-only change needs no recapture.
+the baseline byte for byte. Generated preambles, box Kotlin/GLSL source, transcript
+YAML, templates, runtime code and media are unchanged. No recapture is needed.
+
+The first landing precheck exposed a citation-census limitation: the six
+`ProceduralSplats` builders were already evaluated by `SplatShaderTest`, but only
+through `ProceduralSplats.all`. The existing count test now calls each public
+builder explicitly and compares the counts and order with the registry. Its
+original count assertions remain, along with the separate finiteness, determinism,
+colour/opacity/scale, quaternion and bounds checks. No compile-only exemption was
+added.

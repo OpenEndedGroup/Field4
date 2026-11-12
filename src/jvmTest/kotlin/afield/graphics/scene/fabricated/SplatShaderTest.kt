@@ -77,7 +77,17 @@ class SplatShaderTest {
 
     @Test
     fun theSixCloudsAreTheDemosSixClouds() {
-        val counts = ProceduralSplats.all.mapValues { it.value().count }
+        // Exercise the public entry points as well as the registry used by the demo.
+        val counts = linkedMapOf(
+            "icosphere shell" to ProceduralSplats.icosphereShell().count,
+            "fern plume" to ProceduralSplats.fernPlume().count,
+            "nautilus shell" to ProceduralSplats.nautilusShell().count,
+            "coral branches" to ProceduralSplats.coralBranches().count,
+            "phyllotaxis bloom" to ProceduralSplats.phyllotaxisBloom().count,
+            "torus braid" to ProceduralSplats.torusBraid().count,
+        )
+        assertEquals(counts.keys.toList(), ProceduralSplats.all.keys.toList())
+        assertEquals(counts, ProceduralSplats.all.mapValues { it.value().count })
         // icosphere: an octahedron subdivided four times has 8 * 4^4 / 2 + 2 vertices
         assertEquals(1026, counts["icosphere shell"])
         assertEquals(7200 - 28, counts["fern plume"])
