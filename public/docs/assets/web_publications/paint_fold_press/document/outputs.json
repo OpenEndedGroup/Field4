@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-12T07:32:29.116Z",
+  "documentName": "paint_fold_press",
+  "outputs": [
+    {
+      "uid": "paint_press",
+      "channel": "before",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 651,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "paint_press",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 651,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "paint_press",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 468,
+      "height": 40,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "paint_fold",
+      "channel": "before",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 651,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "paint_fold",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 651,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "paint_fold",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 381,
+      "height": 40,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "paint_rub",
+      "channel": "before",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 651,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "paint_rub",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 651,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "paint_rub",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 381,
+      "height": 40,
+      "path": "outputs/8.html"
+    }
+  ]
+}

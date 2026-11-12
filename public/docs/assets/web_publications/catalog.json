@@ -3262,6 +3262,35 @@
         "public/docs/assets/agent_transcripts/paint_canvas/paint_pencil_drawing_code_.kt": "ef6f9147c20f264348d7d62427e9745f019481bb2cac3886783cc01133f826f9"
       }
     },
+    "assets/agent_transcripts/paint_fold_press/metadata.edn": {
+      "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
+      "capturedAt": "2026-11-12T07:32:29.116Z",
+      "channels": 9,
+      "file": "assets/web_publications/paint_fold_press/document/metadata.edn",
+      "files": {
+        "assets/web_publications/paint_fold_press/document/metadata.edn": "f5a1b523c084972daf4171589afbd923ce072a2c7c17816e275e75b8f0bcf6b0",
+        "assets/web_publications/paint_fold_press/document/outputs.json": "3b653de0d08bf49a686580c4b215e71245e091f4b66c0e9892b6c0c155615cdb",
+        "assets/web_publications/paint_fold_press/outputs/0.html": "174a662afe001ab39618acf03396fbc9bfcb2213b10c8daa943fa73b3a44b15a",
+        "assets/web_publications/paint_fold_press/outputs/1.html": "62005dcb3e19ee8e4c7120994e2196edabecc4d6046800ced1f25bab21574d1c",
+        "assets/web_publications/paint_fold_press/outputs/2.html": "9f46ca6b4d3d46c1cea49085587f5dd4e28a2e1b6fe43472d441e486414c3bc6",
+        "assets/web_publications/paint_fold_press/outputs/3.html": "691669ff23446815c8540cb94767fe17e5c10a0066b17d93f1a20a749b78ffa1",
+        "assets/web_publications/paint_fold_press/outputs/4.html": "999381eabbc5bc1f78bd8aab1499462f4f4d2286a8818df7b0fe6df2f2061115",
+        "assets/web_publications/paint_fold_press/outputs/5.html": "79974aa969281748145ca2f8685d46d9f22d8908af2c85699f33bcd1fc59e9d4",
+        "assets/web_publications/paint_fold_press/outputs/6.html": "2fd6fcd3a336cc667977f86946642452880b3065543b2eca0322d92889c5bd8d",
+        "assets/web_publications/paint_fold_press/outputs/7.html": "fd4dfc50a0acb74f67e0fcbf152e44ec22807951dfd5ee8ad385efba992080ab",
+        "assets/web_publications/paint_fold_press/outputs/8.html": "26030a86d5588cd7affb1f639a25ed856fbfacd29b7b1947c9df8603fd218713"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/paint_fold_press/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/paint_fold_press.yaml": "ecdca6b95a263651a4965751253802d1a7642c4523c5f8a7eb6906903ace9667",
+        "public/docs/assets/agent_transcripts/paint_fold_press/guides/paint_canvas.md": "887ae603022ba7c6bfcfddc683a6d95aef16e67173a31cc2043580eb4455c074",
+        "public/docs/assets/agent_transcripts/paint_fold_press/metadata.edn": "d163faec8be6b8809c958203ae97da9cbfaa893b229fee01c73bbc92bf1d3e17",
+        "public/docs/assets/agent_transcripts/paint_fold_press/paint_fold_code_.kt": "c7485569f4875513b07d53dde66c4ca739a6304c7c285a12a98dc2b310ecd839",
+        "public/docs/assets/agent_transcripts/paint_fold_press/paint_press_code_.kt": "85175cc16ecd6b8d34655939d3663ba0fe67e5f5205899fbf3ee5d9d4f7930ff",
+        "public/docs/assets/agent_transcripts/paint_fold_press/paint_rub_code_.kt": "9816ec21f888a9cb5c9ce7f7e869b4c38c8d9fc41d070c8f9a15774f19bdd8f2"
+      }
+    },
     "assets/agent_transcripts/particle_lenia/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
       "capturedAt": "2026-11-11T16:08:19.044Z",
