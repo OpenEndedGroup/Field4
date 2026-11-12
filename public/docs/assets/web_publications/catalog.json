@@ -2980,30 +2980,30 @@
     },
     "assets/agent_transcripts/neural_clouds/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-12T07:12:10.089Z",
+      "capturedAt": "2026-11-12T07:30:25.263Z",
       "channels": 1,
       "file": "assets/web_publications/neural_clouds/document/metadata.edn",
       "files": {
-        "assets/web_publications/neural_clouds/document/metadata.edn": "90b5f47ef7765d1bad22f69cd1ae2a9014b96ed913a8a58ee635e0ffdaa0e1ba",
-        "assets/web_publications/neural_clouds/document/outputs.json": "dc132a7afc4cbe0435eff10bdc02bfb32affcd4874347bd3ec7198426983f534",
-        "assets/web_publications/neural_clouds/outputs/0.html": "e344f7918e42544ae6a65c1395c0e9728001cb78b3c8a83985e0414166db1002"
+        "assets/web_publications/neural_clouds/document/metadata.edn": "ffc0313877b369bcd66978ff32f90df9e50c6ed71de5218bce95429c836550dc",
+        "assets/web_publications/neural_clouds/document/outputs.json": "f66e66f0a14454cccfe5e60edad071f82263e54fe22e72bc0ec969c6a2915845",
+        "assets/web_publications/neural_clouds/outputs/0.html": "650fee95287bb0a9b26abcf78b4096135128a289730bf039b9d40f8d271eb751"
       },
       "kinds": [
         "native-image"
       ],
       "outputs": "assets/web_publications/neural_clouds/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/neural_clouds.yaml": "16dd725cd6289636f7e637998d2db698db53b1da872334b818cd566b261a7ae4",
-        "public/docs/assets/agent_transcripts/neural_clouds/cloud_compare_code_.kt": "5e03fd62da0163570ce5aa18896cbe93c72cc84eecf0d890fa3020d2adad5c20",
+        "dev_docs/agents/transcripts/neural_clouds.yaml": "e6346ec9104da97681aa7275cdf7cb9d27a271571a2b463e94381e100f11dc8d",
+        "public/docs/assets/agent_transcripts/neural_clouds/cloud_compare_code_.kt": "cf7d440f3636b41163562e1fbd3938ffe766611eabf6e62c95e91d7fd5f3a5a7",
         "public/docs/assets/agent_transcripts/neural_clouds/cloud_renderer_code_.kt": "0142566f5745b83d8a058b6bb1489af3fb3cc4a2d7bf6815a14d7bcb19ae3dd3",
-        "public/docs/assets/agent_transcripts/neural_clouds/cloud_train_code_.kt": "4415e8b407ebeaf25978158bb27c2b74de384f100a9ad2a4786b23615292cb35",
+        "public/docs/assets/agent_transcripts/neural_clouds/cloud_train_code_.kt": "ba36f6c98503950db4831606bcf283b048b2ff59ebd98a94079a6809d183990a",
         "public/docs/assets/agent_transcripts/neural_clouds/cloud_view_code_.kt": "7fb3294fb296610d1ac6c7c4ad49378f085eeaa283cccfc9d6c7de27cb6711f4",
-        "public/docs/assets/agent_transcripts/neural_clouds/cloud_view_fragment_.glsl": "3e00fdcd4f577d283aa8a16f4b7c1493883162448613fe7e03e0b38febc80e6d",
+        "public/docs/assets/agent_transcripts/neural_clouds/cloud_view_fragment_.glsl": "eb4130b11c61fde0beba91499cb58494467c706a258b97766d07c48eeb6b26e3",
         "public/docs/assets/agent_transcripts/neural_clouds/cloud_view_vertex_.glsl": "70608faa9d5a10444a303a98fe7634c1e2bd82aeed98094381d7fc60349f3911",
         "public/docs/assets/agent_transcripts/neural_clouds/guides/path_tracing.md": "f5c6d8331a2e29f169d3e4155f61bea32d7765effb1e9f0dbf9a46dfc73d4b94",
-        "public/docs/assets/agent_transcripts/neural_clouds/metadata.edn": "d4d537d1709a267165eeb7eb0240efb50de4de86a43f8758fd66191efdf81949",
-        "public/docs/assets/path_tracing/neural_clouds_gpu.png": "4ee4d056ee7ad6dac99d56d8f103be9db061b84c8d86814b6483b88bd349c141",
-        "public/docs/path_tracing.md#capture-box=cloud_view": "f0cb4d5af288dbdf566ae8f5bde3c6734989aab413084aae90eaddc39639537e"
+        "public/docs/assets/agent_transcripts/neural_clouds/metadata.edn": "77762f59ffbf46712aa3d3cb46d965e40f61a9dd2f6659c5139389cb8969264a",
+        "public/docs/assets/path_tracing/neural_clouds_gpu.png": "70ab3ab478b7e02b05046edd51db6c8f2beb47cca2ccfda72a133b76cf2da9dc",
+        "public/docs/path_tracing.md#capture-box=cloud_view": "3fc3d0038d9ef6314fa940562208b62465f2b65f9acb9dfdf923979b96de2ef1"
       },
       "supplementalSources": [
         "public/docs/assets/path_tracing/neural_clouds_gpu.png",

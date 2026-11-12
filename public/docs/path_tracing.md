@@ -628,9 +628,9 @@ cloudScene = CloudScene()
 
 // Training points are drawn where these cameras see cloud. cloud_compare's view is not one of them.
 val cameras = [
-    CloudScene.Camera(doubleArrayOf(0.0, 1.2, 7.5), doubleArrayOf(0.0, 0.95, 0.0)),
-    CloudScene.Camera(doubleArrayOf(-5.5, 2.4, 4.5), doubleArrayOf(0.0, 0.9, 0.0)),
-    CloudScene.Camera(doubleArrayOf(4.0, 0.6, -6.0), doubleArrayOf(0.0, 1.0, 0.0)),
+    CloudScene.Camera(doubleArrayOf(0.0, 2.2, 7.5), doubleArrayOf(0.0, 1.95, 0.0)),
+    CloudScene.Camera(doubleArrayOf(-5.5, 3.4, 4.5), doubleArrayOf(0.0, 1.9, 0.0)),
+    CloudScene.Camera(doubleArrayOf(4.0, 1.6, -6.0), doubleArrayOf(0.0, 2.0, 0.0)),
 ]
 
 // Each label is the mean of 8 path-traced estimates: noisy, and the network averages the noise out.
@@ -641,7 +641,10 @@ cloudAmbient = NeuralCloud.ambient(samples)
 // #include "cloud/network" and "cloud/scene" in this box's descendants now mean these.
 cloudHere(cloudNet, cloudAmbient, cloudScene)
 
-display("training", "${samples.size} samples, ${cloudNet.weights}, loss ${cloudNet.trainingLoss.takeLast(200).average().f4}")
+display(
+    "training",
+    "${samples.size} samples, ${cloudNet.weights}, loss ${cloudNet.trainingLoss.takeLast(200).average().f4}",
+)
 ```
 
 `NeuralCloud.ambient` is the baseline: an ambient colour times the sky visibility plus a colour
@@ -657,7 +660,7 @@ import afield.graphics.volume.*
 import java.io.File
 import java.util.Base64
 
-val view = CloudScene.Camera(doubleArrayOf(4.6, 0.35, 3.6), doubleArrayOf(0.0, 1.05, 0.0), 40.0)
+val view = CloudScene.Camera(doubleArrayOf(4.6, 0.9, 3.6), doubleArrayOf(0.0, 2.05, 0.0), 40.0)
 val w = 200
 val h = 125
 val none = CloudScene.InScatter { _, _, _, _, into -> into.fill(0.0) }
@@ -686,23 +689,29 @@ display(
 )
 ```
 
-Over the 4,532 pixels the cloud covers:
+Over the 4,089 pixels the cloud covers:
 
 | In-scatter term | Relative mean absolute error | RMSE |
 | --- | --- | --- |
-| Single scattering only | 0.68 | 0.44 |
-| Fitted ambient | 0.31 | 0.21 |
-| Network | 0.068 | 0.053 |
+| Single scattering only | 0.65 | 0.42 |
+| Fitted ambient | 0.32 | 0.23 |
+| Network | 0.065 | 0.051 |
 
-The reference averages 48 paths per step, so part of the network's 0.068 is noise in the
+The reference averages 48 paths per step, so part of the network's 0.065 is noise in the
 reference itself. `NeuralCloudsTest` trains and renders the same comparison, and fails if the
 network stops beating the ambient fit.
 
+Every march, toward the eye and toward the sun and sky, starts at an offset that changes from pixel
+to pixel (interleaved gradient noise), and the view march takes a step every 0.04 world units. A
+fixed offset gives every pixel the same sample positions, and the cloud shows arcs centred on the
+camera; the offset trades those bands for fine grain. The network trains on features measured
+with random offsets, so it has already seen that grain.
+
 The third box runs the same raymarcher in a fragment shader. `#include "cloud/network"` writes the
 weights as a `const float[]`, so the shader needs no buffer, and `cloudRender(eye, target, fovY,
-ndc, aspect, mode)` picks the in-scatter term or a debug view:
+ndc, aspect, mode, pixel)` picks the in-scatter term or a debug view:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/neural_clouds_gpu.png" capture="native-window" native-wait-frames="6" embed=true hidden=true timeout="300" name="neural-clouds-gpu" alt="The cloud on the GPU as six panels: across the top, fitted ambient, network and single scattering; across the bottom, the network's predicted in-scatter, the sun transmittance and the sky visibility" macro-file="../../dev_docs/agents/transcripts/neural_clouds.yaml" capture-box="cloud_view"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/neural_clouds_gpu.png" capture="native-window" native-wait-frames="6" embed=true hidden=true timeout="300" name="neural-clouds-gpu" max-width=1600 alt="The cloud on the GPU as six panels: across the top, fitted ambient, network and single scattering; across the bottom, the network's predicted in-scatter, the sun transmittance and the sky visibility" macro-file="../../dev_docs/agents/transcripts/neural_clouds.yaml" capture-box="cloud_view"}
 // Built and launched from dev_docs/agents/transcripts/neural_clouds.yaml.
 ```
 

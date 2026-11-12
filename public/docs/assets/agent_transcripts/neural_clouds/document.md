@@ -34,7 +34,7 @@ start(renderer::run)
 <!-- field-box id="cloud_train" index="1" -->
 
 ```edn [field-box id="cloud_train" role="properties"]
-{"id" "cloud_train" "index" 1 "name" "train the in-scatter network" "parents" ["root" "cloud_renderer"] "children" ["cloud_compare" "cloud_view"] "properties" {"children" #{#afield/box "cloud_compare" #afield/box "cloud_view"} "parents" #{#afield/box "root" #afield/box "cloud_renderer"} "name" "train the in-scatter network" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloud_train_code_.kt" "lines" 25 "characters" 1133 "sha256" "4415e8b407ebeaf25978158bb27c2b74de384f100a9ad2a4786b23615292cb35"}]}
+{"id" "cloud_train" "index" 1 "name" "train the in-scatter network" "parents" ["root" "cloud_renderer"] "children" ["cloud_compare" "cloud_view"] "properties" {"children" #{#afield/box "cloud_compare" #afield/box "cloud_view"} "parents" #{#afield/box "root" #afield/box "cloud_renderer"} "name" "train the in-scatter network" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloud_train_code_.kt" "lines" 28 "characters" 1144 "sha256" "e94e108329493ccafda392103f8838d915092cf7b83295a45d3ce3c331cb6b1d"}]}
 ```
 
 ```kotlin [field-property box="cloud_train" name="code" path="cloud_train_code_.kt"]
@@ -49,9 +49,9 @@ cloudScene = CloudScene()
 
 // Training points are drawn where these cameras see cloud. cloud_compare's view is not one of them.
 val cameras = [
-    CloudScene.Camera(doubleArrayOf(0.0, 1.2, 7.5), doubleArrayOf(0.0, 0.95, 0.0)),
-    CloudScene.Camera(doubleArrayOf(-5.5, 2.4, 4.5), doubleArrayOf(0.0, 0.9, 0.0)),
-    CloudScene.Camera(doubleArrayOf(4.0, 0.6, -6.0), doubleArrayOf(0.0, 1.0, 0.0)),
+    CloudScene.Camera(doubleArrayOf(0.0, 2.2, 7.5), doubleArrayOf(0.0, 1.95, 0.0)),
+    CloudScene.Camera(doubleArrayOf(-5.5, 3.4, 4.5), doubleArrayOf(0.0, 1.9, 0.0)),
+    CloudScene.Camera(doubleArrayOf(4.0, 1.6, -6.0), doubleArrayOf(0.0, 2.0, 0.0)),
 ]
 
 // Each label is the mean of 8 path-traced estimates: noisy, and the network averages the noise out.
@@ -62,7 +62,10 @@ cloudAmbient = NeuralCloud.ambient(samples)
 // #include "cloud/network" and "cloud/scene" in this box's descendants now mean these.
 cloudHere(cloudNet, cloudAmbient, cloudScene)
 
-display("training", "${samples.size} samples, ${cloudNet.weights}, loss ${cloudNet.trainingLoss.takeLast(200).average().f4}")
+display(
+    "training",
+    "${samples.size} samples, ${cloudNet.weights}, loss ${cloudNet.trainingLoss.takeLast(200).average().f4}",
+)
 ```
 
 ## 3. compare against the path tracer
@@ -70,7 +73,7 @@ display("training", "${samples.size} samples, ${cloudNet.weights}, loss ${cloudN
 <!-- field-box id="cloud_compare" index="2" -->
 
 ```edn [field-box id="cloud_compare" role="properties"]
-{"id" "cloud_compare" "index" 2 "name" "compare against the path tracer" "parents" ["root" "cloud_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cloud_train"} "name" "compare against the path tracer" "_tombstone" false "frame" #afield/rect [380.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloud_compare_code_.kt" "lines" 31 "characters" 1423 "sha256" "5e03fd62da0163570ce5aa18896cbe93c72cc84eecf0d890fa3020d2adad5c20"}]}
+{"id" "cloud_compare" "index" 2 "name" "compare against the path tracer" "parents" ["root" "cloud_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cloud_train"} "name" "compare against the path tracer" "_tombstone" false "frame" #afield/rect [380.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloud_compare_code_.kt" "lines" 31 "characters" 1422 "sha256" "cf7d440f3636b41163562e1fbd3938ffe766611eabf6e62c95e91d7fd5f3a5a7"}]}
 ```
 
 ```kotlin [field-property box="cloud_compare" name="code" path="cloud_compare_code_.kt"]
@@ -78,7 +81,7 @@ import afield.graphics.volume.*
 import java.io.File
 import java.util.Base64
 
-val view = CloudScene.Camera(doubleArrayOf(4.6, 0.35, 3.6), doubleArrayOf(0.0, 1.05, 0.0), 40.0)
+val view = CloudScene.Camera(doubleArrayOf(4.6, 0.9, 3.6), doubleArrayOf(0.0, 2.05, 0.0), 40.0)
 val w = 200
 val h = 125
 val none = CloudScene.InScatter { _, _, _, _, into -> into.fill(0.0) }
@@ -118,7 +121,7 @@ From `code`
 A fullscreen triangle; the fragment shader does all the work.
 
 ```edn [field-box id="cloud_view" role="properties"]
-{"id" "cloud_view" "index" 3 "name" "neural cloud shader" "parents" ["root" "cloud_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cloud_train"} "name" "neural cloud shader" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloud_view_code_.kt" "lines" 8 "characters" 228 "sha256" "7fb3294fb296610d1ac6c7c4ad49378f085eeaa283cccfc9d6c7de27cb6711f4"} {"name" "vertex" "language" "glsl" "path" "cloud_view_vertex_.glsl" "lines" 7 "characters" 196 "sha256" "70608faa9d5a10444a303a98fe7634c1e2bd82aeed98094381d7fc60349f3911"} {"name" "fragment" "language" "glsl" "path" "cloud_view_fragment_.glsl" "lines" 25 "characters" 1015 "sha256" "3e00fdcd4f577d283aa8a16f4b7c1493883162448613fe7e03e0b38febc80e6d"}]}
+{"id" "cloud_view" "index" 3 "name" "neural cloud shader" "parents" ["root" "cloud_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cloud_train"} "name" "neural cloud shader" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloud_view_code_.kt" "lines" 8 "characters" 228 "sha256" "7fb3294fb296610d1ac6c7c4ad49378f085eeaa283cccfc9d6c7de27cb6711f4"} {"name" "vertex" "language" "glsl" "path" "cloud_view_vertex_.glsl" "lines" 7 "characters" 196 "sha256" "70608faa9d5a10444a303a98fe7634c1e2bd82aeed98094381d7fc60349f3911"} {"name" "fragment" "language" "glsl" "path" "cloud_view_fragment_.glsl" "lines" 25 "characters" 1031 "sha256" "eb4130b11c61fde0beba91499cb58494467c706a258b97766d07c48eeb6b26e3"}]}
 ```
 
 ```kotlin [field-property box="cloud_view" name="code" path="cloud_view_code_.kt"]
@@ -162,7 +165,7 @@ void main() {
     // window aspect from the pixel footprint, then one panel's share of it
     float aspect = fwidth(uv.y) / fwidth(uv.x) * 2.0 / 3.0;
     vec2 ndc = vec2(st.x * 2.0 - 1.0, 1.0 - st.y * 2.0);
-    vec3 c = cloudRender(vec3(4.6, 0.35, 3.6), vec3(0.0, 1.05, 0.0), 40.0, ndc, aspect, mode);
+    vec3 c = cloudRender(vec3(4.6, 0.9, 3.6), vec3(0.0, 2.05, 0.0), 40.0, ndc, aspect, mode, gl_FragCoord.xy);
 
     if (mode < 3) c = 1.0 - exp(-c * 1.2); // the tone curve writeCloudComparison uses
     if (min(st.x, st.y) < 0.004) c = vec3(0.0);

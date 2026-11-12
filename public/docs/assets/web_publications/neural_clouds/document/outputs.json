@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-12T07:12:10.089Z",
+  "capturedAt": "2026-11-12T07:30:25.263Z",
   "documentName": "neural_clouds",
   "outputs": [
     {
@@ -8,8 +8,8 @@
       "channel": "Vulkan window · still image",
       "open": true,
       "path": "outputs/0.html",
-      "width": 4112,
-      "height": 2524,
+      "width": 1600,
+      "height": 982,
       "kinds": [
         "native-image"
       ],

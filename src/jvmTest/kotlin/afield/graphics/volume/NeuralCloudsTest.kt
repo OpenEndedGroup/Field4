@@ -15,11 +15,11 @@ import kotlin.test.assertTrue
 class NeuralCloudsTest {
     private val scene = CloudScene()
     private val trainCameras = listOf(
-        CloudScene.Camera(doubleArrayOf(0.0, 1.2, 7.5), doubleArrayOf(0.0, 0.95, 0.0)),
-        CloudScene.Camera(doubleArrayOf(-5.5, 2.4, 4.5), doubleArrayOf(0.0, 0.9, 0.0)),
-        CloudScene.Camera(doubleArrayOf(4.0, 0.6, -6.0), doubleArrayOf(0.0, 1.0, 0.0)),
+        CloudScene.Camera(doubleArrayOf(0.0, 2.2, 7.5), doubleArrayOf(0.0, 1.95, 0.0)),
+        CloudScene.Camera(doubleArrayOf(-5.5, 3.4, 4.5), doubleArrayOf(0.0, 1.9, 0.0)),
+        CloudScene.Camera(doubleArrayOf(4.0, 1.6, -6.0), doubleArrayOf(0.0, 2.0, 0.0)),
     )
-    private val heldOut = CloudScene.Camera(doubleArrayOf(4.6, 0.35, 3.6), doubleArrayOf(0.0, 1.05, 0.0), 40.0)
+    private val heldOut = CloudScene.Camera(doubleArrayOf(4.6, 0.9, 3.6), doubleArrayOf(0.0, 2.05, 0.0), 40.0)
 
     @Test
     fun estimatorIsFiniteAndPositive() {
@@ -69,7 +69,7 @@ class NeuralCloudsTest {
             layout(location=0) out vec4 color;
             void main() {
                 vec2 ndc = vec2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
-                color = vec4(cloudRender(vec3(4.6, 0.35, 3.6), vec3(0.0, 1.05, 0.0), 40.0, ndc, 1.6, int(uv.x * 6.0)), 1.0);
+                color = vec4(cloudRender(vec3(4.6, 0.9, 3.6), vec3(0.0, 2.05, 0.0), 40.0, ndc, 1.6, int(uv.x * 6.0), gl_FragCoord.xy), 1.0);
             }
         """.trimIndent()
         val spirv = try { ShaderSPIRVUtils.compileShader("cloud.frag", src, ShaderKind.FRAGMENT_SHADER) } catch (t: Throwable) {

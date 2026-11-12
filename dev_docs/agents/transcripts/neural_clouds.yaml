@@ -53,9 +53,9 @@ operations:
 
           // Training points are drawn where these cameras see cloud. cloud_compare's view is not one of them.
           val cameras = [
-              CloudScene.Camera(doubleArrayOf(0.0, 1.2, 7.5), doubleArrayOf(0.0, 0.95, 0.0)),
-              CloudScene.Camera(doubleArrayOf(-5.5, 2.4, 4.5), doubleArrayOf(0.0, 0.9, 0.0)),
-              CloudScene.Camera(doubleArrayOf(4.0, 0.6, -6.0), doubleArrayOf(0.0, 1.0, 0.0)),
+              CloudScene.Camera(doubleArrayOf(0.0, 2.2, 7.5), doubleArrayOf(0.0, 1.95, 0.0)),
+              CloudScene.Camera(doubleArrayOf(-5.5, 3.4, 4.5), doubleArrayOf(0.0, 1.9, 0.0)),
+              CloudScene.Camera(doubleArrayOf(4.0, 1.6, -6.0), doubleArrayOf(0.0, 2.0, 0.0)),
           ]
 
           // Each label is the mean of 8 path-traced estimates: noisy, and the network averages the noise out.
@@ -66,7 +66,10 @@ operations:
           // #include "cloud/network" and "cloud/scene" in this box's descendants now mean these.
           cloudHere(cloudNet, cloudAmbient, cloudScene)
 
-          display("training", "${samples.size} samples, ${cloudNet.weights}, loss ${cloudNet.trainingLoss.takeLast(200).average().f4}")
+          display(
+              "training",
+              "${samples.size} samples, ${cloudNet.weights}, loss ${cloudNet.trainingLoss.takeLast(200).average().f4}",
+          )
   # 3. the CPU comparison on a held-out camera: reference / single scatter / ambient / network.
   - create:
       box: cloud_compare
@@ -78,7 +81,7 @@ operations:
           import java.io.File
           import java.util.Base64
 
-          val view = CloudScene.Camera(doubleArrayOf(4.6, 0.35, 3.6), doubleArrayOf(0.0, 1.05, 0.0), 40.0)
+          val view = CloudScene.Camera(doubleArrayOf(4.6, 0.9, 3.6), doubleArrayOf(0.0, 2.05, 0.0), 40.0)
           val w = 200
           val h = 125
           val none = CloudScene.InScatter { _, _, _, _, into -> into.fill(0.0) }
@@ -148,7 +151,7 @@ operations:
               // window aspect from the pixel footprint, then one panel's share of it
               float aspect = fwidth(uv.y) / fwidth(uv.x) * 2.0 / 3.0;
               vec2 ndc = vec2(st.x * 2.0 - 1.0, 1.0 - st.y * 2.0);
-              vec3 c = cloudRender(vec3(4.6, 0.35, 3.6), vec3(0.0, 1.05, 0.0), 40.0, ndc, aspect, mode);
+              vec3 c = cloudRender(vec3(4.6, 0.9, 3.6), vec3(0.0, 2.05, 0.0), 40.0, ndc, aspect, mode, gl_FragCoord.xy);
 
               if (mode < 3) c = 1.0 - exp(-c * 1.2); // the tone curve writeCloudComparison uses
               if (min(st.x, st.y) < 0.004) c = vec3(0.0);

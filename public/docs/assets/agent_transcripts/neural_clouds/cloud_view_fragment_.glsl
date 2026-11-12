@@ -17,7 +17,7 @@ void main() {
     // window aspect from the pixel footprint, then one panel's share of it
     float aspect = fwidth(uv.y) / fwidth(uv.x) * 2.0 / 3.0;
     vec2 ndc = vec2(st.x * 2.0 - 1.0, 1.0 - st.y * 2.0);
-    vec3 c = cloudRender(vec3(4.6, 0.35, 3.6), vec3(0.0, 1.05, 0.0), 40.0, ndc, aspect, mode);
+    vec3 c = cloudRender(vec3(4.6, 0.9, 3.6), vec3(0.0, 2.05, 0.0), 40.0, ndc, aspect, mode, gl_FragCoord.xy);
 
     if (mode < 3) c = 1.0 - exp(-c * 1.2); // the tone curve writeCloudComparison uses
     if (min(st.x, st.y) < 0.004) c = vec3(0.0);

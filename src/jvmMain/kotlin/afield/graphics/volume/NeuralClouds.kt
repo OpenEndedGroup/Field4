@@ -69,15 +69,15 @@ class CloudScene(
     /** Henyey–Greenstein anisotropy. */
     val g: Double = 0.55,
 ) {
-    val boundsLow = doubleArrayOf(-2.4, 0.0, -1.6)
-    val boundsHigh = doubleArrayOf(2.4, 2.2, 1.6)
+    val boundsLow = doubleArrayOf(-2.4, 1.0, -1.6)
+    val boundsHigh = doubleArrayOf(2.4, 3.2, 1.6)
 
     private val blobs = arrayOf(
-        doubleArrayOf(-1.1, 0.75, 0.0, 0.85),
-        doubleArrayOf(0.15, 1.05, 0.2, 1.05),
-        doubleArrayOf(1.25, 0.7, -0.15, 0.75),
-        doubleArrayOf(0.5, 0.55, -0.6, 0.6),
-        doubleArrayOf(-0.4, 1.45, 0.1, 0.6),
+        doubleArrayOf(-1.1, 1.75, 0.0, 0.85),
+        doubleArrayOf(0.15, 2.05, 0.2, 1.05),
+        doubleArrayOf(1.25, 1.7, -0.15, 0.75),
+        doubleArrayOf(0.5, 1.55, -0.6, 0.6),
+        doubleArrayOf(-0.4, 2.45, 0.1, 0.6),
     )
 
     /** Density in `0..1`: a union of soft spheres eroded by a sum of sines. */
@@ -118,15 +118,18 @@ class CloudScene(
         return doubleArrayOf(t0, t1)
     }
 
-    /** Optical depth from [p] along [d] for at most [maxDistance], by [steps] midpoint samples. */
-    fun opticalDepth(p: DoubleArray, d: DoubleArray, maxDistance: Double = Double.MAX_VALUE, steps: Int = 16): Double {
+    /**
+     * Optical depth from [p] along [d] for at most [maxDistance], by [steps] samples offset by
+     * [jitter] in `0..1` within each step. A fixed offset (0.5, the midpoint) bands; vary it per pixel.
+     */
+    fun opticalDepth(p: DoubleArray, d: DoubleArray, maxDistance: Double = Double.MAX_VALUE, steps: Int = 16, jitter: Double = 0.5): Double {
         val s = span(p, d) ?: return 0.0
         val length = min(s[1], maxDistance)
         if (length <= 0.0) return 0.0
         val dt = length / steps
         var tau = 0.0
         for (i in 0 until steps) {
-            val t = (i + 0.5) * dt
+            val t = (i + jitter) * dt
             tau += density(p[0] + d[0] * t, p[1] + d[1] * t, p[2] + d[2] * t)
         }
         return tau * dt * sigma
@@ -136,16 +139,16 @@ class CloudScene(
      * The network's inputs at [p] for light leaving toward the eye along [w]. Ten values, all in
      * roughly `0..1`; [glslScene]'s `cloudFeatures` computes the same ten.
      */
-    fun features(p: DoubleArray, w: DoubleArray, into: DoubleArray = DoubleArray(FEATURES)): DoubleArray {
+    fun features(p: DoubleArray, w: DoubleArray, into: DoubleArray = DoubleArray(FEATURES), jitter: Double = 0.5): DoubleArray {
         val cosTheta = dot(w, sun)
         into[0] = (p[1] - boundsLow[1]) / (boundsHigh[1] - boundsLow[1])
         into[1] = density(p)
-        into[2] = exp(-opticalDepth(p, sun, 0.25))
-        into[3] = exp(-opticalDepth(p, sun, 1.0))
-        into[4] = exp(-opticalDepth(p, sun))
-        into[5] = exp(-opticalDepth(p, UP))
-        into[6] = exp(-opticalDepth(p, w))
-        into[7] = exp(-opticalDepth(p, DOWN))
+        into[2] = exp(-opticalDepth(p, sun, 0.25, jitter = jitter))
+        into[3] = exp(-opticalDepth(p, sun, 1.0, jitter = jitter))
+        into[4] = exp(-opticalDepth(p, sun, jitter = jitter))
+        into[5] = exp(-opticalDepth(p, UP, jitter = jitter))
+        into[6] = exp(-opticalDepth(p, w, jitter = jitter))
+        into[7] = exp(-opticalDepth(p, DOWN, jitter = jitter))
         into[8] = cosTheta
         into[9] = hg(cosTheta, g) * 4.0 * PI / 10.0
         return into
@@ -252,7 +255,7 @@ class CloudScene(
      * sun plus [inScatter] for everything else. Rows run in parallel; each row's random stream is
      * seeded from [seed] and its index, so a render is reproducible.
      */
-    fun render(camera: Camera, width: Int, height: Int, inScatter: InScatter, steps: Int = 48, seed: Long = 1L): Image {
+    fun render(camera: Camera, width: Int, height: Int, inScatter: InScatter, seed: Long = 1L): Image {
         val image = Image(width, height)
         val aspect = width.toDouble() / height
         IntStream.range(0, height).parallel().forEach { row ->
@@ -264,7 +267,7 @@ class CloudScene(
                 val u = (col + 0.5) / width * 2.0 - 1.0
                 val v = 1.0 - (row + 0.5) / height * 2.0
                 val d = camera.ray(u, v, aspect)
-                val rgb = march(camera.eye, d, steps, inScatter, random, f, ms)
+                val rgb = march(camera.eye, d, ign(col.toDouble(), row.toDouble()), ign(col + 5.588, row + 5.588), inScatter, random, f, ms)
                 sky(d, skyRgb)
                 val at = (row * width + col) * 3
                 for (c in 0..2) image.rgb[at + c] = (rgb[c] + rgb[3] * skyRgb[c]).toFloat()
@@ -274,20 +277,21 @@ class CloudScene(
     }
 
     /** Returns in-scattered radiance (three values) and the remaining transmittance (fourth). */
-    private fun march(eye: DoubleArray, d: DoubleArray, steps: Int, inScatter: InScatter, random: SplittableRandom, f: DoubleArray, ms: DoubleArray): DoubleArray {
+    private fun march(eye: DoubleArray, d: DoubleArray, jitter: Double, featureJitter: Double, inScatter: InScatter, random: SplittableRandom, f: DoubleArray, ms: DoubleArray): DoubleArray {
         val result = doubleArrayOf(0.0, 0.0, 0.0, 1.0)
         val s = span(eye, d) ?: return result
+        val steps = min(MAX_STEPS, kotlin.math.ceil((s[1] - s[0]) / STEP).toInt().coerceAtLeast(1))
         val dt = (s[1] - s[0]) / steps
         val w = doubleArrayOf(-d[0], -d[1], -d[2])
         val phaseSun = hg(dot(w, sun), g)
         val p = DoubleArray(3)
         for (i in 0 until steps) {
-            val t = s[0] + (i + 0.5) * dt
+            val t = s[0] + (i + jitter) * dt
             for (a in 0..2) p[a] = eye[a] + d[a] * t
             val rho = density(p)
             if (rho <= 0.0) continue
             val ext = sigma * rho
-            features(p, w, f)
+            features(p, w, f, featureJitter)
             inScatter.at(p, w, f, random, ms)
             val stepT = exp(-ext * dt)
             // ∫ T(s) σs L ds over the step, with L constant across it
@@ -304,8 +308,9 @@ class CloudScene(
      * raymarcher as the Kotlin above, constants baked in. It expects `cloudNetwork(float[10])` and
      * `cloudAmbient(float[10])` to be declared first, which `#include "cloud/network"` does.
      *
-     * `vec3 cloudRender(vec3 eye, vec3 target, float fovY, vec2 ndc, float aspect, int mode)` returns
-     * linear radiance for one pixel; `ndc` is `-1..1` with y up. Modes: [MODE_SINGLE] single scattering
+     * `vec3 cloudRender(vec3 eye, vec3 target, float fovY, vec2 ndc, float aspect, int mode, vec2 pixel)`
+     * returns linear radiance for one pixel; `ndc` is `-1..1` with y up, and `pixel` (`gl_FragCoord.xy`)
+     * seeds the per-pixel jitter of every march, as `ign` does for [render]. Modes: [MODE_SINGLE] single scattering
      * only, [MODE_AMBIENT] plus the fitted ambient term, [MODE_NETWORK] plus the network, and three debug
      * views — [MODE_DEBUG_INSCATTER] the network's predicted in-scatter, [MODE_DEBUG_SUN] the sun
      * transmittance and [MODE_DEBUG_SKY] the sky visibility, each averaged along the ray by opacity.
@@ -351,13 +356,13 @@ bool cloudSpan(vec3 o, vec3 d, out float t0, out float t1) {
     return t0 <= t1;
 }
 
-float cloudOpticalDepth(vec3 p, vec3 d, float maxDistance) {
+float cloudOpticalDepth(vec3 p, vec3 d, float maxDistance, float jitter) {
     float t0, t1;
     if (!cloudSpan(p, d, t0, t1)) return 0.0;
     float len = min(t1, maxDistance);
     if (len <= 0.0) return 0.0;
     float dt = len / 16.0, tau = 0.0;
-    for (int i = 0; i < 16; ++i) tau += cloudDensity(p + d * ((float(i) + 0.5) * dt));
+    for (int i = 0; i < 16; ++i) tau += cloudDensity(p + d * ((float(i) + jitter) * dt));
     return tau * dt * CLOUD_SIGMA;
 }
 
@@ -366,16 +371,16 @@ float cloudHg(float c, float g) {
     return (1.0 - g * g) / (4.0 * CLOUD_PI * denom * sqrt(denom));
 }
 
-void cloudFeatures(vec3 p, vec3 w, out float f[10]) {
+void cloudFeatures(vec3 p, vec3 w, float j, out float f[10]) {
     float c = dot(w, CLOUD_SUN);
     f[0] = (p.y - CLOUD_LOW.y) / (CLOUD_HIGH.y - CLOUD_LOW.y);
     f[1] = cloudDensity(p);
-    f[2] = exp(-cloudOpticalDepth(p, CLOUD_SUN, 0.25));
-    f[3] = exp(-cloudOpticalDepth(p, CLOUD_SUN, 1.0));
-    f[4] = exp(-cloudOpticalDepth(p, CLOUD_SUN, 1e30));
-    f[5] = exp(-cloudOpticalDepth(p, vec3(0.0, 1.0, 0.0), 1e30));
-    f[6] = exp(-cloudOpticalDepth(p, w, 1e30));
-    f[7] = exp(-cloudOpticalDepth(p, vec3(0.0, -1.0, 0.0), 1e30));
+    f[2] = exp(-cloudOpticalDepth(p, CLOUD_SUN, 0.25, j));
+    f[3] = exp(-cloudOpticalDepth(p, CLOUD_SUN, 1.0, j));
+    f[4] = exp(-cloudOpticalDepth(p, CLOUD_SUN, 1e30, j));
+    f[5] = exp(-cloudOpticalDepth(p, vec3(0.0, 1.0, 0.0), 1e30, j));
+    f[6] = exp(-cloudOpticalDepth(p, w, 1e30, j));
+    f[7] = exp(-cloudOpticalDepth(p, vec3(0.0, -1.0, 0.0), 1e30, j));
     f[8] = c;
     f[9] = cloudHg(c, CLOUD_G) * 4.0 * CLOUD_PI / 10.0;
 }
@@ -388,20 +393,24 @@ vec3 cloudRay(vec3 eye, vec3 target, float fovY, vec2 ndc, float aspect) {
     return normalize(fw + rt * ndc.x * k * aspect + up * ndc.y * k);
 }
 
-vec3 cloudRender(vec3 eye, vec3 target, float fovY, vec2 ndc, float aspect, int mode) {
+float cloudIgn(vec2 px) { return fract(52.9829189 * fract(0.06711056 * px.x + 0.00583715 * px.y)); }
+
+vec3 cloudRender(vec3 eye, vec3 target, float fovY, vec2 ndc, float aspect, int mode, vec2 pixel) {
     vec3 d = cloudRay(eye, target, fovY, ndc, aspect);
     vec3 radiance = vec3(0.0), debug = vec3(0.0);
     float T = 1.0, t0, t1;
     if (cloudSpan(eye, d, t0, t1)) {
-        float dt = (t1 - t0) / 48.0;
+        int steps = min($MAX_STEPS, max(1, int(ceil((t1 - t0) / ${glslLiteral(STEP)}))));
+        float dt = (t1 - t0) / float(steps);
+        float jitter = cloudIgn(pixel), featureJitter = cloudIgn(pixel + 5.588);
         vec3 w = -d;
         float phaseSun = cloudHg(dot(w, CLOUD_SUN), CLOUD_G);
-        for (int i = 0; i < 48; ++i) {
-            vec3 p = eye + d * (t0 + (float(i) + 0.5) * dt);
+        for (int i = 0; i < steps; ++i) {
+            vec3 p = eye + d * (t0 + (float(i) + jitter) * dt);
             float rho = cloudDensity(p);
             if (rho <= 0.0) continue;
             float f[10];
-            cloudFeatures(p, w, f);
+            cloudFeatures(p, w, featureJitter, f);
             vec3 ms = vec3(0.0);
             if (mode == $MODE_AMBIENT) ms = cloudAmbient(f);
             else if (mode >= $MODE_NETWORK) ms = cloudNetwork(f);
@@ -422,6 +431,17 @@ vec3 cloudRender(vec3 eye, vec3 target, float fovY, vec2 ndc, float aspect, int 
 
     companion object {
         const val FEATURES = 10
+
+        /** View-march step in world units; a ray takes `ceil(span / STEP)` steps, at most [MAX_STEPS]. */
+        const val STEP = 0.04
+        const val MAX_STEPS = 160
+
+        /** Interleaved gradient noise (Jimenez 2014): a per-pixel offset in `0..1` with blue-ish spectrum. */
+        fun ign(x: Double, y: Double): Double {
+            val a = 0.06711056 * x + 0.00583715 * y
+            val b = 52.9829189 * (a - kotlin.math.floor(a))
+            return b - kotlin.math.floor(b)
+        }
         const val MODE_SINGLE = 0
         const val MODE_AMBIENT = 1
         const val MODE_NETWORK = 2
@@ -535,7 +555,7 @@ class NeuralCloud(val weights: MlpWeights, val outputScale: Double, val training
                     val p = DoubleArray(3) { camera.eye[it] + d[it] * t }
                     if (scene.density(p) <= 0.0) continue
                     val w = doubleArrayOf(-d[0], -d[1], -d[2])
-                    val f = scene.features(p, w)
+                    val f = scene.features(p, w, jitter = random.nextDouble())
                     val y = DoubleArray(3)
                     reference.at(p, w, f, random, y)
                     list += CloudSample(f, y)

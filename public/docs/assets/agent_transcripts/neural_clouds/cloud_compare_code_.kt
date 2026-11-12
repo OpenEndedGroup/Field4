@@ -2,7 +2,7 @@ import afield.graphics.volume.*
 import java.io.File
 import java.util.Base64
 
-val view = CloudScene.Camera(doubleArrayOf(4.6, 0.35, 3.6), doubleArrayOf(0.0, 1.05, 0.0), 40.0)
+val view = CloudScene.Camera(doubleArrayOf(4.6, 0.9, 3.6), doubleArrayOf(0.0, 2.05, 0.0), 40.0)
 val w = 200
 val h = 125
 val none = CloudScene.InScatter { _, _, _, _, into -> into.fill(0.0) }
