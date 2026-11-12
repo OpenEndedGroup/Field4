@@ -87,7 +87,7 @@ void main() {
 }
 ```
 
-`RayTracingDocsHarness.renderUvGradient` runs exactly this, at 1024 by 1024, and reads the storage image back to a PNG.
+[`RayTracingDocsHarness.renderUvGradient`](reference/renderers.md#raytracingdocsharness-kt--raytracingdocsharness--renderuvgradient) runs exactly this, at 1024 by 1024, and reads the storage image back to a PNG.
 
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-uv-gradient.png" alt="a square filled corner to corner by a smooth two-axis colour ramp, with no geometry in it: bright green at bottom-left, bright red at top-right, yellow at bottom-right where both are strong, and near-black at top-left where neither is. Every ray hit the image plane and nothing else, so what is drawn is the launch index itself" source-image="/tmp/docs-rt-uv-gradient.png" wait="12.0" timeout="120" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-uv-gradient"}
 import afield.graphics.scene.fabricated.RayTracingDocsHarness
@@ -499,3 +499,10 @@ Implementation and parameter details for the helpers used above:
 
 - [`RayTracingModule`](reference/graphics.md#raytracingmodule-kt-raytracingmodule)
 - [`RayTracingDispatch`](reference/graphics.md#raytracingmodule-kt-raytracingdispatch)
+
+- Rendering and installing the ray-tracing scenes:
+  [`RayTracingDocsHarness`](reference/renderers.md#raytracingdocsharness-kt-raytracingdocsharness) —
+  [`installMirrorBallsSceneInWindow`](reference/renderers.md#raytracingdocsharness-kt--raytracingdocsharness--installmirrorballssceneinwindow),
+  [`renderMirrorBallsScene`](reference/renderers.md#raytracingdocsharness-kt--raytracingdocsharness--rendermirrorballsscene),
+  [`renderShaderTileScene`](reference/renderers.md#raytracingdocsharness-kt--raytracingdocsharness--rendershadertilescene),
+  [`renderTriangleScene`](reference/renderers.md#raytracingdocsharness-kt--raytracingdocsharness--rendertrianglescene).

@@ -283,3 +283,9 @@ for multicast.
   outputs and inputs, and `showUniverse`.
 * [A RectSL Animation as a Solid](chain_rectsl_spacetime.md) is the neighbouring chain: the same
   language read as a volume over *(x, y, t)* instead of a sequence of frames.
+
+- Measuring the lighting round trip: [`SceneOnARig`](reference/lighting.md#sceneonarig-kt-sceneonarig) —
+  [`aliasing`](reference/lighting.md#sceneonarig-kt--sceneonarig--aliasing),
+  [`decodeErrors`](reference/lighting.md#sceneonarig-kt--sceneonarig--decodeerrors),
+  [`roundTrip`](reference/lighting.md#sceneonarig-kt--sceneonarig--roundtrip-2),
+  [`timing`](reference/lighting.md#sceneonarig-kt--sceneonarig--timing-2).

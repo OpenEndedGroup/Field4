@@ -1727,7 +1727,7 @@ void main() {
 
 ## A fluid: lattice Boltzmann { #lattice-boltzmann }
 
-`ShaderLatticeBoltzmannSystem` is a two-dimensional fluid. Every texel is a lattice site holding nine numbers, how much fluid there is moving in each of nine directions: still, the four neighbours, the four diagonals. A step moves each of those one site along its direction, then relaxes each site toward the equilibrium for its own density and velocity, and a population that runs into a solid site bounces back where it came from. Density and velocity are never stored; they are sums over the nine. This box builds one as a wind tunnel, wind blowing left to right across a lattice that wraps:
+[`ShaderLatticeBoltzmannSystem`](reference/alife.md#alife-lbm-kt-shaderlatticeboltzmannsystem) is a two-dimensional fluid. Every texel is a lattice site holding nine numbers, how much fluid there is moving in each of nine directions: still, the four neighbours, the four diagonals. A step moves each of those one site along its direction, then relaxes each site toward the equilibrium for its own density and velocity, and a population that runs into a solid site bounces back where it came from. Density and velocity are never stored; they are sums over the nine. This box builds one as a wind tunnel, wind blowing left to right across a lattice that wraps:
 
 ```diffstatic {data-lang=kotlin}
 /*
@@ -1803,7 +1803,7 @@ The box's `fragment` tab holds one step of the method, all nine populations writ
 
 ## A forest fire { #forest-fire }
 
-`ShaderForestFireSystem` spreads fire through a forest. Each texel is a tree or bare ground, decided once from a hash of its position, and each tree is ready to burn, burning, or recovering. A ready tree catches from a burning neighbour, by chance: each burning neighbour gets one try per frame with probability `spreadProbability`, half by default. A tree burns for a few frames, then cannot burn again until it has recovered. Because trees recover, the fire never runs out of fuel, and a front can be followed by another one through the same trees. There are four kinds of fire, one per colour channel, and they compete: a tree that catches one kind is not available to the others until it has recovered. This box builds a forest the shape of the window:
+[`ShaderForestFireSystem`](reference/alife.md#alife-fire-kt-shaderforestfiresystem) spreads fire through a forest. Each texel is a tree or bare ground, decided once from a hash of its position, and each tree is ready to burn, burning, or recovering. A ready tree catches from a burning neighbour, by chance: each burning neighbour gets one try per frame with probability `spreadProbability`, half by default. A tree burns for a few frames, then cannot burn again until it has recovered. Because trees recover, the fire never runs out of fuel, and a front can be followed by another one through the same trees. There are four kinds of fire, one per colour channel, and they compete: a tree that catches one kind is not available to the others until it has recovered. This box builds a forest the shape of the window:
 
 ```diffstatic {data-lang=kotlin}
 /*
@@ -2116,3 +2116,19 @@ scene harness, material parameters, shadows, and ambient occlusion captures, or
 [Path tracing](path_tracing.md) for the progressive tracer written over the same device. The
 [Renderers](reference/renderers.md) reference page lists all three and the scene, pass and material
 machinery they share, each declaration with the KDoc beside it in the source.
+
+## API reference
+
+- Installing the diffusion-limited aggregation system:
+  [`ShaderDlaSystem`](reference/alife.md#alife-dla-kt-shaderdlasystem) —
+  [`installInto`](reference/alife.md#alife-dla-kt--shaderdlasystem--installinto).
+- Installing and feeding the forest-fire simulation:
+  [`ShaderForestFireSystem`](reference/alife.md#alife-fire-kt-shaderforestfiresystem) —
+  [`addFireInput`](reference/alife.md#alife-fire-kt--shaderforestfiresystem--addfireinput),
+  [`fireInputParameters`](reference/alife.md#alife-fire-kt--shaderforestfiresystem--fireinputparameters),
+  [`installInto`](reference/alife.md#alife-fire-kt--shaderforestfiresystem--installinto).
+- Installing and controlling the fluid simulation:
+  [`ShaderLatticeBoltzmannSystem`](reference/alife.md#alife-lbm-kt-shaderlatticeboltzmannsystem) —
+  [`addControls`](reference/alife.md#alife-lbm-kt--shaderlatticeboltzmannsystem--addcontrols),
+  [`controlsParameters`](reference/alife.md#alife-lbm-kt--shaderlatticeboltzmannsystem--controlsparameters),
+  [`installInto`](reference/alife.md#alife-lbm-kt--shaderlatticeboltzmannsystem--installinto).

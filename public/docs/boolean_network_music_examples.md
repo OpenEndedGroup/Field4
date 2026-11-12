@@ -1,6 +1,6 @@
 # Boolean network music examples
 
-Give each step of a Boolean network a duration and its stream of states can be read as notes, sample names or triggers. These extension functions on `BooleanNetwork` do it:
+Give each step of a Boolean network a duration and its stream of states can be read as notes, sample names or triggers. These extension functions on [`BooleanNetwork`](reference/data.md#booleannetworks-kt-booleannetwork) do it:
 
 - `scheduledSteps(...)` for timed Boolean states.
 - `scheduledNotes(...)` for direct `Iterator<ScheduledNote>` mapping.
@@ -387,3 +387,10 @@ audio { kit } +
 For the underlying state-space pictures, continue with [Boolean networks examples](boolean_networks_examples.md). For piano-roll and synth display tooling, see [Visualizers & Controls](visualizers.md).
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`booleannetworks.kt`](reference/data.md#booleannetworks-kt). Start from [what's already in the box](reference/index.md).*
+
+## API reference
+
+- Attractors and musical events: [`BooleanNetwork`](reference/data.md#booleannetworks-kt-booleannetwork) —
+  [`asNoteProcess`](reference/patterns.md#booleannetworksequencing-kt--asnoteprocess),
+  [`findAttractors`](reference/data.md#booleannetworks-kt--findattractors),
+  [`respondAhead`](reference/patterns.md#booleannetworksequencing-kt--respondahead).

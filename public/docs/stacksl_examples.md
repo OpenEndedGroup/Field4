@@ -1297,7 +1297,7 @@ input 2 fbm3.2
 
 ## Fitting a program's literals
 
-`StackSLFit` adjusts the numbers in a program until its image matches a target
+[`StackSLFit`](reference/languages.md#stackslfit-kt-stackslfit) adjusts the numbers in a program until its image matches a target
 image. It runs the program on the CPU and follows the exact gradient of the
 difference, computed by automatic differentiation. Take this palette program,
 whose every number is a parameter the fit can move:
@@ -1439,3 +1439,8 @@ uv fbm palette  # returned
 Use `tolerant = true` for mutation runs. Unknown words become no-ops with warnings; strict mode reports them as errors for authoring.
 
 When a program becomes too short, it still returns a valid `vec4`, so mutation makes strange images rather than broken shaders.
+
+## API reference
+
+- Fitting the numbers in a shader program: [`StackSLFit`](reference/languages.md#stackslfit-kt-stackslfit) —
+  [`fit`](reference/languages.md#stackslfit-kt--stackslfit--fit).

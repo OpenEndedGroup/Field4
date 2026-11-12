@@ -211,3 +211,6 @@ shapes of very different sizes, makes the index-order fold worse.
 * [A Drawn Score, Heard](chain_drawn_score.md) is the nearest chain: the same drawing layer read as
   a score instead of as shapes.
 * [Patterns & Rhythm](pattern_language.md) for `patTimed` and the voice.
+
+- Notes from corresponding strokes: [`DrawnMorphDocs`](reference/patterns.md#drawnmorphdocs-kt-drawnmorphdocs)
+  — [`morphNotes`](reference/patterns.md#drawnmorphdocs-kt--drawnmorphdocs--morphnotes).
