@@ -69,6 +69,18 @@ class EnvironmentTests(unittest.TestCase):
         self.assertIsNotNone(environment_problem({**GOOD, "onAC": None}, require_display=False))
         self.assertIsNone(environment_problem({"supported": False}, require_display=True))
 
+    def test_short_work_waives_only_the_power_rule(self):
+        drained = {**GOOD, "onAC": False, "batteryPercent": 12, "disk": None}
+        self.assertIsNone(environment_problem(drained, require_display=False, require_power=False))
+        self.assertIsNone(environment_problem({**drained, "onAC": None}, require_display=False, require_power=False))
+        self.assertEqual(environment_problem({**drained, "displayAvailable": False}, require_display=True,
+                                             require_power=False), "no display")
+        token = self.monitor.checkpoint(require_display=False, require_power=False)
+        self.change(onAC=False, batteryPercent=12)
+        self.monitor.check(token, require_display=False, require_power=False)
+        with self.assertRaisesRegex(VerificationEnvironmentError, "battery 12"):
+            self.monitor.check(token, require_display=False)
+
     def test_no_display_blocks_native_but_not_headless(self):
         self.change(displayAvailable=False)
         self.monitor.checkpoint(require_display=False)
@@ -204,9 +216,9 @@ class EnvironmentTests(unittest.TestCase):
                 docs_hooks.on_post_build(None)
         state.close.assert_called_once()
 
-    def run_smoke_fixture(self, tests, action):
+    def run_smoke_fixture(self, tests, action, extra=()):
         with tempfile.TemporaryDirectory() as directory:
-            with patch.object(sys, "argv", ["run_field_tests", "--no-prewarm", "--catalog-order"]):
+            with patch.object(sys, "argv", ["run_field_tests", "--no-prewarm", "--catalog-order", *extra]):
                 args = smoke.parse_args()
             args.results = str(Path(directory) / "results.json")
             with patch.object(smoke, "load_or_refresh_catalog", return_value={"tests": tests}), \
@@ -231,10 +243,38 @@ class EnvironmentTests(unittest.TestCase):
             self.change(onAC=False)
             self.change(onAC=True)
             return {"id": test["id"], "ok": False, "failures": ["timeout"], "durationMs": 1}
-        code, report, _ = self.run_smoke_fixture([{"id": "interrupted"}], action)
+        code, report, _ = self.run_smoke_fixture([{"id": "interrupted", "size": "long"}], action)
         self.assertEqual(code, 2)
         self.assertEqual(report["failureKinds"]["test"], 0)
         self.assertEqual(report["results"][0]["environmentStatus"], "INTERRUPTED")
+
+    def test_battery_gates_long_tests_only_unless_named(self):
+        self.change(onAC=False, batteryPercent=40)
+        tests = [{"id": "short", "timeoutSec": 60}, {"id": "budget", "timeoutSec": 61},
+                 {"id": "marked", "size": "long", "timeoutSec": 20}]
+        ran = lambda test, **kw: {"id": test["id"], "ok": True, "failures": [], "durationMs": 1}
+        code, report, count = self.run_smoke_fixture(tests, ran)
+        self.assertEqual((code, count, report["passed"]), (2, 1, 1))
+        by_id = {result["id"]: result for result in report["results"]}
+        self.assertEqual((by_id["short"]["size"], by_id["short"]["requiresPower"]), ("short", False))
+        for test_id in ("budget", "marked"):
+            self.assertEqual(by_id[test_id]["environmentStatus"], "NOT RUN")
+            self.assertIn(f"--allow-battery {test_id}", by_id[test_id]["failures"][0])
+        code, report, count = self.run_smoke_fixture(tests, ran, extra=["--allow-battery", "budget"])
+        self.assertEqual((count, report["passed"]), (2, 2))
+        with self.assertRaisesRegex(SystemExit, "did not select: missing"):
+            self.run_smoke_fixture(tests, ran, extra=["--allow-battery", "missing"])
+
+    def test_size_annotation_is_validated_against_its_budget(self):
+        from discover_field_tests import ParseError, smoke_size, validate_annotation
+        base = {"id": "x", "runner": "backdoor-box"}
+        self.assertEqual(smoke_size(base), "short")
+        self.assertEqual(smoke_size({**base, "timeoutSec": 240}), "long")
+        self.assertEqual(smoke_size({**base, "size": "long"}), "long")
+        with self.assertRaisesRegex(ParseError, "size must be short or long"):
+            validate_annotation(Path("x.kt"), 2, {**base, "size": "huge"})
+        with self.assertRaisesRegex(ParseError, "timeoutSec <= 60"):
+            validate_annotation(Path("x.kt"), 2, {**base, "size": "short", "timeoutSec": 240})
 
     def test_preflight_refusal_never_stops_an_unowned_listener(self):
         with patch.object(smoke, "health_check") as health, patch.object(smoke, "recycle_field") as recycle:
