@@ -646,6 +646,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - <span class="reference-internal">[automation](workspace.md#agentjvmmainlauncher-kt)</span>
 - <span class="reference-internal">[docs](workspace.md#agentdemodriftguard-kt)</span>
     - <span class="reference-internal">[index](workspace.md#kdocextractor-kt)</span>
+- <span class="reference-internal">[testing](workspace.md#checks-kt)</span>
 
 </div>
 
@@ -670,13 +671,13 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**39276 public symbols across 1791 source files**, 23173 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**39295 public symbols across 1792 source files**, 23180 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 238 | 737 | 327 (44%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 238 | 737 | 328 (44%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 21 | 158 | 56 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 206 | 206 (100%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 18 | 439 | 269 (61%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
@@ -698,7 +699,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 92 | 2364 | 1230 (52%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 586 | 586 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 129 | 3181 | 1582 (49%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 239 | 3215 | 1297 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 240 | 3234 | 1303 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 96 | 2138 | 807 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 687 | 410 (59%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 178 | 41 (23%) |  |
@@ -927,6 +928,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr>chatlog/<wbr></small> [ChatlogRoutes.kt](ai4.md#chatlogroutes-kt) | AI4 | 1 | 1 | The lens viewer's two read routes (`ChatLensViewer`). |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr>chatlog/<wbr></small> [ChatlogTools.kt](ai4.md#chatlogtools-kt) | AI4 | 14 | 9 | Chat-log tools: AI4 agents that read chats and write lenses |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr>chatlog/<wbr></small> [ChatLogViews.kt](ai4.md#chatlogviews-kt) | AI4 | 12 | 10 | What an agent reads of a chat |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>testing/<wbr></small> [Checks.kt](workspace.md#checks-kt) | Workspace · internal | 19 | 6 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [Clip.kt](machine-learning.md#clip-kt) | Machine learning | 35 | 30 | CLIP, as a source of *directions in meaning*. | [Depth and CLIP: neural vision in a box](../onnx.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [ClipSmokeTest.kt](machine-learning.md#clipsmoketest-kt) | Machine learning · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>clojure/<wbr></small> [ClojureInterface.kt](languages.md#clojureinterface-kt) | Languages | 54 | 28 | Clojure as a Field main language: a box whose source is Clojure, evaluated by the real Clojure runtime on this JVM. |  |
@@ -1521,7 +1523,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>shader/<wbr>learning/<wbr></small> [LearnedShader.kt](graphics.md#learnedshader-kt) | Graphics | 16 | 3 | Runs a trained shader function as a compute pass that writes its own render target. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>shader/<wbr>learning/<wbr></small> [LearnedShaderSmoke.kt](graphics.md#learnedshadersmoke-kt) | Graphics | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>optimization/<wbr></small> [LeastSquares.kt](math.md#leastsquares-kt) | Math | 19 | 2 | A Levenberg–Marquardt nonlinear least-squares solver, pure Kotlin and self-contained. |  |
-| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [LeastSquaresAndFMChirpSmokeTest.kt](examples.md#leastsquaresandfmchirpsmoketest-kt) | Examples · internal | 3 | 0 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [LeastSquaresAndFMChirpSmokeTest.kt](examples.md#leastsquaresandfmchirpsmoketest-kt) | Examples · internal | 3 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>slides/<wbr></small> [LessonCheckpoint.kt](visualization.md#lessoncheckpoint-kt) | Visualization | 2 | 2 | A reset button for a lesson: capture a box's source before an audience changes it, and restore it from a later slide. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>lex/<wbr></small> [Lexer.kt](languages.md#lexer-kt) | Languages | 5 | 5 | FieldML's first stage: source text in, a flat list of `Token`s out, and a diagnostic for anything that could not be read. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [LifecycleCensusSmoke.kt](examples.md#lifecyclecensussmoke-kt) | Examples | 0 | 0 |  |  |

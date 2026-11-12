@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-238 source file(s), 737 public symbol(s), 327 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+238 source file(s), 737 public symbol(s), 328 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -3115,12 +3115,14 @@ The oracle harness for `afield.lang.lambda.LambdaTerms`.
 
 ### LeastSquaresAndFMChirpSmokeTest { #leastsquaresandfmchirpsmoketest-kt-leastsquaresandfmchirpsmoketest }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">LeastSquaresAndFMChirpSmokeTest</span></code>](source/jvmMain/afield/examples/stdlib/LeastSquaresAndFMChirpSmokeTest/#L21)
+[<code class="highlight"><span class="k">object</span> <span class="nc">LeastSquaresAndFMChirpSmokeTest</span></code>](source/jvmMain/afield/examples/stdlib/LeastSquaresAndFMChirpSmokeTest/#L26)
+
+The public example of structured checks (`afield.tools.testing.Checks`): every tolerance below is one `FIELD_CHECK` record that `tools/run_field_tests.py` tabulates and writes into `results.json`.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="leastsquaresandfmchirpsmoketest-kt--leastsquaresandfmchirpsmoketest--runtests"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runTests</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/examples/stdlib/LeastSquaresAndFMChirpSmokeTest/#L23) |  |
-| <a id="leastsquaresandfmchirpsmoketest-kt--leastsquaresandfmchirpsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/LeastSquaresAndFMChirpSmokeTest/#L39) |  |
+| <a id="leastsquaresandfmchirpsmoketest-kt--leastsquaresandfmchirpsmoketest--runtests"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runTests</span><span class="p">(</span><span class="n">checks</span><span class="p">:</span> <span class="nc">Checks</span> <span class="o">=</span> <span class="nc">Checks</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/examples/stdlib/LeastSquaresAndFMChirpSmokeTest/#L28) |  |
+| <a id="leastsquaresandfmchirpsmoketest-kt--leastsquaresandfmchirpsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/LeastSquaresAndFMChirpSmokeTest/#L45) |  |
 
 ## SavedJsonSmokeTest.kt { #savedjsonsmoketest-kt }
 
