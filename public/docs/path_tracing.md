@@ -723,6 +723,45 @@ first box and run the shader box to watch the GPU cloud change. Until a box call
 The shader evaluates the network at every step of every ray, with no attempt to make that fast,
 so it is a way to look at the network rather than a production cloud renderer.
 
+### Does the GPU draw the same cloud?
+
+The fragment shader and `CloudScene.render` are meant to be the same raymarcher, and the smoke
+test `four.neural-cloud-parity.smoke` checks that they are. It runs `cloudRenderEvery` in a compute
+shader, one invocation per pixel, with the CPU's pixel centres and jitter seeds. It reads the image
+back and compares it with the CPU network render of the held-out view, over the same 4,089 cloud
+pixels as the table above:
+
+| Comparison | Relative mean absolute error |
+| --- | --- |
+| GPU network against CPU network | 8.4e-7 |
+| GPU with the network's outputs scaled by 1.5, against CPU network | 0.32 |
+
+The GPU and the CPU agree to fp32 rounding. The second row is there so the first means something:
+a network that is wrong by half misses by more than five orders of magnitude, and the test fails if
+that gap shrinks below ten times. Run it with
+`tools/run_field_tests.py --id four.neural-cloud-parity.smoke`. Measured on an M1 Max with
+KosmicKrisp.
+
+### Evaluating the network every Nth step
+
+`render(..., networkEvery = n)` and `cloudRenderEvery(..., pixel, n)` compute the ten features and
+the in-scatter term only on every nth step that has cloud in it, and hold the last value in
+between. The steps in between march only the sun transmittance, one optical depth instead of six.
+The same smoke test measures both what this costs in quality and what it saves in time, with the
+cloud dispatched at 1280 × 800:
+
+| n | Relative MAE against the 48-path reference | Frame time | Over an empty frame |
+| --- | --- | --- | --- |
+| 1 | 0.0652 | 21.4 ms | 12.3 ms |
+| 2 | 0.0656 | 23.9 ms | 14.8 ms |
+| 4 | 0.0658 | 21.7 ms | 12.6 ms |
+| 8 | 0.0640 | 17.1 ms | 8.1 ms |
+
+Holding the in-scatter for eight steps costs nothing measurable here, because the in-scatter
+changes slowly along a ray compared with the sun term, which is still computed every step. The
+timings come from wall-clock frames, and an empty frame already takes 9 ms, so only the drop at
+n = 8 stands clear of the noise. Treat them as an upper bound, not a GPU timer reading.
+
 ## Material shaders in a Field box
 
 Use `pathTracingHere` instead of the plain constructor to put material evaluation
