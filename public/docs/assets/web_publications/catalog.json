@@ -3271,6 +3271,27 @@
         "public/docs/assets/agent_transcripts/ordered_group_keyframes/ordered_group_other_code_.kt": "5e762134a1e45eb36fa6df47e673be5d6734aeb4997387c597a8b309d918201c"
       }
     },
+    "assets/agent_transcripts/paint_blow_fingers/metadata.edn": {
+      "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
+      "capturedAt": "2026-11-12T21:38:58.448Z",
+      "channels": 2,
+      "file": "assets/web_publications/paint_blow_fingers/document/metadata.edn",
+      "files": {
+        "assets/web_publications/paint_blow_fingers/document/metadata.edn": "e0063f40d1e6a2b4704abb9b8094d08c6d25861ff7e22a0b17a6bca483d6f7bc",
+        "assets/web_publications/paint_blow_fingers/document/outputs.json": "baf16ee86867bde6c291ac15593b1cf1bd671a3881d9edc15e11c6524c2ecbda",
+        "assets/web_publications/paint_blow_fingers/outputs/0.html": "d167bece5cd73e6a9cd377148667f42bcfa4c92e1746f54be05f1a4bebd65c3b",
+        "assets/web_publications/paint_blow_fingers/outputs/1.html": "d167bece5cd73e6a9cd377148667f42bcfa4c92e1746f54be05f1a4bebd65c3b"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/paint_blow_fingers/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/paint_blow_fingers.yaml": "798ccd4eeeb8e03ddde0af5e002ff1671a69d77360a39ef7c0409de8bfa7a308",
+        "public/docs/assets/agent_transcripts/paint_blow_fingers/guides/paint_canvas.md": "423ae101d65d742b5bf03f7d93c3dd884b8fd7cb2de359fe207de788454d2d57",
+        "public/docs/assets/agent_transcripts/paint_blow_fingers/metadata.edn": "7799f375c870f121f26af0a4c3821e4ef5bf7c8d5c6426d3c1ed9a2f8b935757",
+        "public/docs/assets/agent_transcripts/paint_blow_fingers/paint_blow_code_.kt": "a31018936e19e0c17ea625b727a4464412e6baca891436485658240a959a76eb",
+        "public/docs/assets/agent_transcripts/paint_blow_fingers/paint_blow_contrast_code_.kt": "2e48ac2a8ea30295f3bde14954bd535bffe2f318066a1cf41dde7c3c6f74f8b8"
+      }
+    },
     "assets/agent_transcripts/paint_canvas/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
       "capturedAt": "2026-11-11T16:45:52.048Z",

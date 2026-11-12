@@ -7,7 +7,11 @@ run {
     val canvas = PaintCanvas(900, aspect = 1.4, seed = 11)
     val brush = canvas.brush(BrushKind.HogFlat, width = 120.0)
     brush.load(rgb(0.1, 0.18, 0.55), amount = 5.0, stiff = 0.3)
-    for (y in listOf(220, 330, 440, 550)) canvas.stroke(FLine().moveTo(120, y).lineTo(880, y), brush, pressure = 1.0..1.0)
+    for (y in listOf(220, 330, 440, 550)) canvas.stroke(
+        FLine().moveTo(120, y).lineTo(880, y),
+        brush,
+        pressure = 1.0..1.0,
+    )
     display("before", canvas.png(wet = true, light = PaintLight.Raking))
 
     val wet = canvas.wetMm3

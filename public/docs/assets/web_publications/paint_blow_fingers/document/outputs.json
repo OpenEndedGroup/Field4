@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-12T21:38:58.448Z",
+  "documentName": "paint_blow_fingers",
+  "outputs": [
+    {
+      "uid": "paint_blow",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 469,
+      "height": 45,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "paint_blow_contrast",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 469,
+      "height": 45,
+      "path": "outputs/1.html"
+    }
+  ]
+}
