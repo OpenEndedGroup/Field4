@@ -362,6 +362,29 @@ class PaintCanvas internal constructor(
         polylines(line, 2.0).withIndex().map { (i, xy) -> PaintNative.rub(handle, xy, toCanvasLength(radius).toFloat(), pressure.toFloat(), seedFor(seed, i)) }
             .fold(Squished(0.0, 0.0)) { s, r -> Squished(s.movedMm3 + r[0], s.liftedMm3 + r[1]) }
 
+    /**
+     * Blow air along every subpath of [line] through a straw or an airbrush, the jet [radius] across, at
+     * [pressure] 0..1. Where the jet meets wet paint the air pushes into it, and the paint runs away
+     * ahead of it, more along the direction of travel than back. The air does not advance as a flat
+     * front: it breaks into fingers that split and branch (viscous fingering, the Saffman–Taylor
+     * instability), about [tendril] wide, more branched the larger the viscosity [contrast] between
+     * paint and air (1: none, a compact blot; 100: a fractal tree; `null`: from the paint, so thinned
+     * paint throws finer tendrils than stiff paint). The paint the air passes is pushed to the
+     * tendrils' sides and tips, leaving a thin film behind and thick rims at the edges, and the
+     * solvent in that film evaporates faster. Paint is moved, never made or lost; dry paint and bare
+     * canvas do not move.
+     */
+    fun blow(
+        line: FLine, radius: Double = 12.0, pressure: Double = 0.7, contrast: Double? = null, tendril: Double = 4.0,
+        seed: Long? = null,
+    ): Blown = polylines(line, 2.0).withIndex().map { (i, xy) ->
+        PaintNative.blow(handle, xy, toCanvasLength(radius).toFloat(), pressure.toFloat(), contrast?.toFloat() ?: Float.NaN,
+            toCanvasLength(tendril).toFloat(), seedFor(seed, i))
+    }.fold(Blown(0.0, 0.0, 0)) { b, r ->
+        val n = b.stations + r[2].toInt()
+        Blown(b.movedMm3 + r[0], if (n == 0) 0.0 else (b.branching * b.stations + r[1] * r[2]) / n, n)
+    }
+
     /** All the wet paint on the canvas, mm³: what [fold], [press] and [rub] move (and a plate lifts). */
     val wetMm3: Double get() = PaintNative.wetMm3(handle)
 

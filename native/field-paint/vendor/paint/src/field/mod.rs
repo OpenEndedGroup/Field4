@@ -12,6 +12,7 @@ pub mod watercolor;
 pub mod bristles;
 pub mod warp;
 pub mod squish;
+pub mod fingers;
 mod clumping_before;
 
 impl crate::Canvas {

@@ -75,6 +75,12 @@ these hooks:
   `wet_mm3` move the wet layer (`Wet::vol`, `lat`, `hide`, `cover`; a plate scales `solv`) and touch
   no upstream file. Method after Dan Fountain's "Fold & Squish" write-up; no code from it.
 
+- Blowing (`src/field/fingers.rs`, new): `Canvas::blow`, a jet of air that pushes the wet layer
+  (`vol`, `lat`, `hide`, `cover`; scales `solv`) into viscous fingers grown by the dielectric
+  breakdown model (`Hele`), drawn along their growth segments at a caller-set width. Uses
+  `squish.rs`'s `move_paint`, `spread_pressed` and `mm3_per_coat_px` (made `pub(crate)`). Touches no
+  upstream file.
+
 ## Taking a newer upstream
 
 Copy `crates/paint/{Cargo.toml,build.rs,src}` of the new commit over this directory (keeping
