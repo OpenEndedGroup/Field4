@@ -267,6 +267,24 @@ CHECKS: tuple[Check, ...] = (
         lander_guards=("checkDocAssetBudget",),
     ),
     Check(
+        "doc-hand-images",
+        "test_check_doc_assets HandImageRatchet (N1112-1, 2026-11-12: a docs image added as plain ![](...) "
+        "that no runner fence declares and dev_docs/testing/doc_hand_images.json does not list)",
+        lambda c: [p for p in c.paths if p.startswith("public/docs/") and p.lower().endswith(
+            (".md", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"))
+            or p in {"dev_docs/testing/doc_hand_images.json", "tools/check_doc_assets.py"}],
+        python=("tools/check_doc_assets.py --hand-images-only",),
+    ),
+    Check(
+        "doc-source-anchors",
+        "test_check_doc_source_anchors (N1112-2, 2026-11-12: a page.md#anchor link from a docs page, "
+        "dev_doc or KDoc naming a heading the target page does not have)",
+        lambda c: _paths(c, lambda p: p.endswith((".md", ".kt"))
+                         and p.startswith(("public/docs/", "dev_docs/", "src/"))
+                         or p == "tools/check_doc_source_anchors.py"),
+        python=("tools/check_doc_source_anchors.py",),
+    ),
+    Check(
         "js-module-imports",
         "test_check_module_imports (WebRTC: a bare `send(` in a module script)",
         lambda c: _paths(c, _js_module),

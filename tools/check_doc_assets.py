@@ -456,6 +456,88 @@ def report_budget(root: Path) -> bool:
     return not offenders and not errors
 
 
+# ── Hand-added images (judge backlog N1112-1) ──────────────────────────────────────────────
+#
+# A figure on a docs page is *owned* when a runner fence declares it (`screenshot=`, `video=`,
+# `poster=` -- this also covers retained `capture-profile=` assets, which are declared the same
+# way): the docs build regenerates it from real code. A plain `![](x.png)` / `<img src>` whose
+# file no fence declares is a hand-placed image. Deliberate hand screenshots stay (Marc: keep
+# them), so this is a ratchet, not a ban: every unowned image that existed on 2026-11-12 is
+# listed in HAND_IMAGE_REGISTER, a NEW unowned image fails until it is either produced by a runner
+# fence or added to the register on purpose, and a register entry whose image is gone (or now
+# owned) fails too, so the list only shrinks by deletion.
+HAND_IMAGE_REGISTER = "dev_docs/testing/doc_hand_images.json"
+HAND_IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif")
+OWNING_ATTR = re.compile(r'(?:screenshot|video|poster)\s*=\s*"([^"]+)"')
+HTML_IMG = re.compile(r'<img[^>]*?\ssrc\s*=\s*"([^"]+)"')
+HAND_IMAGE_FLOOR = 1000  # owned figures found on 2026-11-12: 1,596. Fewer means a broken scan.
+
+
+def _docs_asset(docs_root: Path, page: Path, ref: str) -> str | None:
+    clean = ref.split("#")[0].split("?")[0].strip().lstrip("/")
+    for cand in (page.parent / clean, page.parent / page.stem / clean, docs_root / clean):
+        cand = cand.resolve()
+        if cand.is_file() and docs_root in cand.parents:
+            return cand.relative_to(docs_root).as_posix()
+    return None
+
+
+def hand_images(docs_root: Path) -> tuple[dict[str, list[str]], int]:
+    """`({asset: [pages]}, owned_count)` for every shown image no runner fence declares."""
+    docs_root = docs_root.resolve()
+    pages = sorted(docs_root.rglob("*.md"))
+    texts = {p: p.read_text(encoding="utf-8", errors="ignore") for p in pages}
+    owned = {a for p, t in texts.items() for r in OWNING_ATTR.findall(t)
+             if (a := _docs_asset(docs_root, p, r))}
+    unowned: dict[str, list[str]] = {}
+    for p, t in texts.items():
+        for r in MD_IMG.findall(t) + HTML_IMG.findall(t):
+            r = r.strip("<>")
+            if r.startswith(EXTERNAL) or not r.lower().endswith(HAND_IMAGE_EXTS):
+                continue
+            a = _docs_asset(docs_root, p, r)
+            if a and a not in owned:
+                unowned.setdefault(a, [])
+                page = p.relative_to(docs_root).as_posix()
+                if page not in unowned[a]:
+                    unowned[a].append(page)
+    return unowned, len(owned)
+
+
+def load_hand_image_register(root: Path) -> list[str]:
+    import json
+
+    path = root / HAND_IMAGE_REGISTER
+    return json.loads(path.read_text(encoding="utf-8"))["images"] if path.is_file() else []
+
+
+def hand_image_problems(root: Path, docs_root: Path | None = None,
+                        register: list[str] | None = None, floor: int = HAND_IMAGE_FLOOR) -> list[str]:
+    docs_root = docs_root or root / "public" / "docs"
+    unowned, owned = hand_images(docs_root)
+    register = load_hand_image_register(root) if register is None else register
+    problems = []
+    if owned < floor:
+        problems.append(f"only {owned} runner-owned figure(s) found (floor {floor}): the scan is broken")
+    for asset in sorted(set(unowned) - set(register)):
+        problems.append(f"NEW hand-added image {asset} (on {', '.join(unowned[asset])}): no runner "
+                        "fence declares it. Produce it with a runner fence (screenshot=/video=), or, "
+                        f"if it is a deliberate hand screenshot, add it to {HAND_IMAGE_REGISTER}.")
+    for asset in sorted(set(register) - set(unowned)):
+        problems.append(f"STALE {HAND_IMAGE_REGISTER} entry {asset}: no page shows it as a hand "
+                        "image any more (removed, or now runner-owned). Delete the entry.")
+    return problems
+
+
+def report_hand_images(root: Path) -> bool:
+    problems = hand_image_problems(root)
+    for line in problems:
+        print(f"FAIL -- {line}")
+    if not problems:
+        print(f"hand images: {len(load_hand_image_register(root))} registered, no new ones")
+    return not problems
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--docs-root", default="public/docs", help="Docs directory (default: public/docs).")
@@ -465,9 +547,24 @@ def main() -> int:
                         help="Docs-root-relative page path to skip (repeatable).")
     parser.add_argument("--budget-only", action="store_true",
                         help="Check only the size budget of tracked PNGs and videos (fast; the landing guard).")
+    parser.add_argument("--hand-images-only", action="store_true",
+                        help="Check only that no new unowned (hand-added) image appeared (fast).")
+    parser.add_argument("--write-hand-image-register", action="store_true",
+                        help="Rewrite the hand-image register to the current tree (deliberate additions only).")
     args = parser.parse_args()
 
     root = repo_root()
+    if args.write_hand_image_register:
+        import json
+        unowned, _ = hand_images(root / "public" / "docs")
+        (root / HAND_IMAGE_REGISTER).write_text(json.dumps(
+            {"_comment": "Deliberate hand-placed docs images (no runner fence owns them). "
+                         "Ratchet: tools/check_doc_assets.py fails on an unlisted one and on a stale entry.",
+             "images": sorted(unowned)}, indent=1) + "\n", encoding="utf-8")
+        print(f"wrote {len(unowned)} entries to {HAND_IMAGE_REGISTER}")
+        return 0
+    if args.hand_images_only:
+        return 0 if report_hand_images(root) else 1
     if args.budget_only:
         return 0 if report_budget(root) else 1
     docs_root = (root / args.docs_root).resolve()
@@ -555,7 +652,7 @@ def main() -> int:
         print("\nFix: add `embed=true` to the fence, or reference the asset with an ordinary "
               "![](...) line.")
 
-    budget_ok = report_budget(root)
+    budget_ok = report_budget(root) and report_hand_images(root)
     if not problems:
         if fakes or orphans or not budget_ok:
             return 1
