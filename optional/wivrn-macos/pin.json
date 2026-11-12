@@ -1,0 +1,8 @@
+{
+  "source": "https://github.com/orchardxr/wivrn-macos.git",
+  "tag": "v26.9.5",
+  "revision": "b239707dacd502b9aa97d9619446076026fe67a7",
+  "monadoRevision": "f037264d23e2472a444a157370647fcd601ed81b",
+  "wivrnRevision": "bbc6e4cc36c355fa6180980abd231673dc15115d",
+  "patch": "kosmickrisp-iosurface-copy-path.patch"
+}
