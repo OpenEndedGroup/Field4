@@ -2978,6 +2978,38 @@
         "public/docs/assets/agent_transcripts/morpho_circuit_search/morpho_search_recursion_code_.kt": "fc312dae97642e0959225c728ed9b65c1e9f92247f807f084e862a090af8cc93"
       }
     },
+    "assets/agent_transcripts/neural_clouds/metadata.edn": {
+      "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
+      "capturedAt": "2026-11-12T12:05:00.128Z",
+      "channels": 1,
+      "file": "assets/web_publications/neural_clouds/document/metadata.edn",
+      "files": {
+        "assets/web_publications/neural_clouds/document/metadata.edn": "c9b2270e82a251241756029b8746b6dd819e3d4b73ae2fff11ae561c9405507b",
+        "assets/web_publications/neural_clouds/document/outputs.json": "f5a442f8f80590dbfd2fc27ba60dca4cdba6ad24b101702c6a65ce6dd82cf690",
+        "assets/web_publications/neural_clouds/outputs/0.html": "650fee95287bb0a9b26abcf78b4096135128a289730bf039b9d40f8d271eb751"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/neural_clouds/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/neural_clouds.yaml": "a684fefc1f76e831051ce28a3e9de9bf86104a3527443e7086aaa309cba13d94",
+        "public/docs/assets/agent_transcripts/neural_clouds/cloud_compare_code_.kt": "cf7d440f3636b41163562e1fbd3938ffe766611eabf6e62c95e91d7fd5f3a5a7",
+        "public/docs/assets/agent_transcripts/neural_clouds/cloud_renderer_code_.kt": "0142566f5745b83d8a058b6bb1489af3fb3cc4a2d7bf6815a14d7bcb19ae3dd3",
+        "public/docs/assets/agent_transcripts/neural_clouds/cloud_train_code_.kt": "e94e108329493ccafda392103f8838d915092cf7b83295a45d3ce3c331cb6b1d",
+        "public/docs/assets/agent_transcripts/neural_clouds/cloud_view_code_.kt": "7fb3294fb296610d1ac6c7c4ad49378f085eeaa283cccfc9d6c7de27cb6711f4",
+        "public/docs/assets/agent_transcripts/neural_clouds/cloud_view_fragment_.glsl": "eb4130b11c61fde0beba91499cb58494467c706a258b97766d07c48eeb6b26e3",
+        "public/docs/assets/agent_transcripts/neural_clouds/cloud_view_vertex_.glsl": "70608faa9d5a10444a303a98fe7634c1e2bd82aeed98094381d7fc60349f3911",
+        "public/docs/assets/agent_transcripts/neural_clouds/guides/path_tracing.md": "f5c6d8331a2e29f169d3e4155f61bea32d7765effb1e9f0dbf9a46dfc73d4b94",
+        "public/docs/assets/agent_transcripts/neural_clouds/metadata.edn": "37addaedaa1960cd3ca1c4360c5c457d48bdd99fca30a2eda0f422d09ea1394f",
+        "public/docs/assets/path_tracing/neural_clouds_gpu.png": "70ab3ab478b7e02b05046edd51db6c8f2beb47cca2ccfda72a133b76cf2da9dc",
+        "public/docs/path_tracing.md#capture-box=cloud_view": "3fc3d0038d9ef6314fa940562208b62465f2b65f9acb9dfdf923979b96de2ef1"
+      },
+      "supplementalSources": [
+        "public/docs/assets/path_tracing/neural_clouds_gpu.png",
+        "public/docs/path_tracing.md#capture-box=cloud_view"
+      ]
+    },
     "assets/agent_transcripts/neural_particles/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
       "capturedAt": "2026-11-11T16:49:14.745Z",

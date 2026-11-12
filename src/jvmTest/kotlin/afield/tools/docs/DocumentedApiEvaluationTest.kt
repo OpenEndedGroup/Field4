@@ -190,7 +190,6 @@ class DocumentedApiEvaluationTest {
         // The explainer talks (2026-11-10): explainer_sound, explainer_cameras and explainer_lights are
         // COMPILE_ONLY because their deck boxes open Electron audience windows and play sound. Their
         // figure boxes are published on explainer_*.md, where the docs runner runs and captures each one.
-        "copyInto" to "explainer_sound.md; used in a Sound figure box; the deck is COMPILE_ONLY (Electron windows, sound), the docs runner runs the figure",
         "echoGain" to "explainer_sound.md; a helper the echo figure box defines for itself; the deck is COMPILE_ONLY, the docs runner runs the figure",
         "sensorMesh" to "explainer_cameras.md; afield.simulation.optics, drawn by the pinhole_box figure; the deck is COMPILE_ONLY, the docs runner runs the figure",
         "wavelengthColor" to "explainer_cameras.md; afield.simulation.optics, used by the dispersion figure; the deck is COMPILE_ONLY, the docs runner runs the figure",
