@@ -43,14 +43,13 @@ val errors = comparisons.joinToString("\\n") { (name, image) ->
     "| $name | ${e.relativeMeanAbs.f3} | ${e.rmse.f3} |"
 }
 // Keep the computed image as an embed; the caption and measured table are Markdown.
-display("compare", "<img style='width:100%' src='data:image/png;base64,$png'>")
+display("compare", "<img style='width:${w * 4}px' src='data:image/png;base64,$png'>")
 markdown("errors", """
 Top: reference · single scatter · fitted ambient · network. Bottom: absolute error ×4.
 
 | Model | Relative MAE | RMSE |
 | --- | --- | --- |
-$errors
-""".trimIndent())
+$errors""".trimIndent())
 '''
         if code != before:
             if row['kind'] == 'yaml':
