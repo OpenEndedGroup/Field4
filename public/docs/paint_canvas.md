@@ -485,7 +485,7 @@ the paint ahead gives way more easily, so the bulge grows, and the front breaks 
 split again: viscous fingering, the Saffman–Taylor instability. The more viscous the paint is than
 what pushes into it, the more the fingers branch.
 
-`canvas.blow(line, radius, pressure)` blows air through a straw or an airbrush along any FLine. Where
+[`canvas.blow(line, radius, pressure)`](reference/graphics.md#paintcanvas-kt--paintcanvas--blow) blows air through a straw or an airbrush along any FLine. Where
 the jet meets wet paint, the paint runs away ahead of it, more along the direction of travel than
 back, and the air follows it in as fingers about `tendril` units wide. `contrast` sets how much more
 viscous the paint is than the air: 1 gives a compact blot, 100 or more a branching tree. Leave it
@@ -526,6 +526,9 @@ for ((x, contrast) in [170.0 to 1.5, 500.0 to 8.0, 830.0 to 200.0]) {
 }
 display("main", canvas.png(wet = true, light = PaintLight.Raking))
 ```
+
+The [paint_blow_fingers](agent_transcripts.md#paint_blow_fingers) starting point gives you both
+examples to try and change.
 
 ??? aside "How the fingers are grown"
     The pattern is the dielectric breakdown model (Niemeyer, Pietronero and Wiesmann, 1984) on a
