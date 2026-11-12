@@ -1,5 +1,9 @@
 # Field on Apple Vision Pro
 
+For Linux Vulkan/OpenXR streaming, hand interaction and laptop-browser editing, see
+[Linux to Apple Vision Pro through CloudXR](cloudxr_vision_pro.md). This page describes
+the separate native frontend and RTT receiver.
+
 !!! warning "Work in progress"
     This is an early snapshot of Field's native **visionOS** front end. Some pieces are
     solid and verified; others are half-built and named as such. Expect it to move.

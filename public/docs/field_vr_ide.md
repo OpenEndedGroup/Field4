@@ -15,6 +15,10 @@ This workflow has been used for development in the headset on the Linux/NVIDIA s
 
 [Open the starting point →](offline.html?file=assets/agent_transcripts/field_vr_ide/metadata.edn)
 
+For the separate Linux → Apple Vision Pro CloudXR route, including native hand actions,
+optional IDE surfaces and its current keyboard limitation, see
+[Linux to Apple Vision Pro](cloudxr_vision_pro.md).
+
 ## Start it
 
 Launch **1 — VR IDE renderer**, then **2 — Live IDE in VR**. The starting point defaults to a
