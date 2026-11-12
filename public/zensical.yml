@@ -468,6 +468,7 @@ nav:
       # after the page above — same transport, real Kotlin instead of raw JS — and directly before
       # the two visionOS pages whose `visionmetal` profile it is the compile route for.
       - Kotlin in the Head: kotlin_in_the_head.md
+      - Linux to Vision Pro (CloudXR): cloudxr_vision_pro.md
       - Apple Vision Pro (WiP): vision.md
       - Geometry in the Headset: vision_geometry.md
       - Stereo RTT composite: stereo_rtt_composite.md

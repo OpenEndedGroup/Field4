@@ -167,6 +167,8 @@ class OpenXRHmdTarget(
     val renderer: Renderer = fromContext(),
     /** Prefer floating-point or ten-bit runtime swapchains; legacy runtimes can still fall back. */
     val preferHighPrecision: Boolean = true,
+    /** Opt into hand aim/pinch/grasp as controller actions; raw joint tracking is independent. */
+    val handInteractionActions: Boolean = false,
 ) {
     /** Runtime-selected Vulkan format, null until the initial OpenXR frame creates swapchains. */
     val swapchainColorFormat: Int? get() = swapchains.firstOrNull()?.format
@@ -643,6 +645,18 @@ class OpenXRHmdTarget(
 
     // --- OpenXR handles ---
     private var xrBootstrap: Instance.Companion.OpenXRBootstrap? = null
+    private val opaqueDataChannels = mutableListOf<OpenXROpaqueDataChannel>()
+
+    /** Create an optional client message channel, retired automatically with this target. */
+    fun createDataChannel(uuid: java.util.UUID): OpenXROpaqueDataChannel = renderer.runOnQueueThread {
+        check(OpenXROpaqueDataChannel.EXTENSION_NAME in Instance.enabledOpenXRInstanceExtensions) {
+            "Runtime does not support ${OpenXROpaqueDataChannel.EXTENSION_NAME}"
+        }
+        OpenXROpaqueDataChannel.create(checkNotNull(xrInstance), xrSystemId, uuid).also {
+            opaqueDataChannels.add(it)
+        }
+    }
+
     private var xrInstance: XrInstance? = null
     private var xrSystemId: Long = 0
     private var xrSession: XrSession? = null
@@ -1588,6 +1602,30 @@ class OpenXRHmdTarget(
                 profileHTCVive,
                 listOf(viveFull, viveReduced, viveMinimum)
             )
+
+            // Hand-only runtimes (including CloudXR on Vision Pro) advertise a hand profile,
+            // rather than pretending to have Touch or Index controllers. Reuse the same actions
+            // so browser pointing, clicking and two-hand grip resizing share the controller path.
+            if (handInteractionActions && org.lwjgl.openxr.EXTHandInteraction.XR_EXT_HAND_INTERACTION_EXTENSION_NAME in
+                Instance.enabledOpenXRInstanceExtensions) {
+                val handProfile = stringToPath(xrInstanceLocal, stack,
+                    "/interaction_profiles/ext/hand_interaction_ext")
+                val handBindings = buildList {
+                    for (hand in listOf("left", "right")) {
+                        val base = "/user/hand/$hand/input"
+                        add(poseAction to stringToPath(xrInstanceLocal, stack, "$base/grip/pose"))
+                        add(aimAction to stringToPath(xrInstanceLocal, stack, "$base/aim/pose"))
+                        // The profile permits boolean and float bindings to this analogue component.
+                        val select = stringToPath(xrInstanceLocal, stack, "$base/aim_activate_ext/value")
+                        add(selectAction to select)
+                        add(triggerValueAction to select)
+                        add(squeezeValueAction to stringToPath(xrInstanceLocal, stack, "$base/grasp_ext/value"))
+                    }
+                }
+                val result = suggestBindings("ext/hand_interaction_ext", handProfile, handBindings)
+                lprintln(if (result == XR_SUCCESS) "info,openxr" else "warning,openxr",
+                    "Hand interaction bindings: $result")
+            }
 
             // Eye gaze belongs to the same action set, but has no left/right hand subactions.
             eyeGazeInteraction = ExtEyeGazeInteraction.create(session, xrSystemId, actionSet)
@@ -2975,6 +3013,12 @@ class OpenXRHmdTarget(
         swapchains.clear()
 
         // XR resources
+        opaqueDataChannels.forEach { channel ->
+            runCatching { channel.close() }.onFailure {
+                lprintln("warning,openxr", "Opaque channel cleanup: ${it.message}")
+            }
+        }
+        opaqueDataChannels.clear()
         eyeGazeInteraction?.close()
         eyeGazeInteraction = null
         htcEyeTracker?.close()

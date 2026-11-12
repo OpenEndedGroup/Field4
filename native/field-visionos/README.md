@@ -1,5 +1,11 @@
 # Field4Vision — visionOS shell (handoff)
 
+For an existing desktop OpenXR scene on AVP over Wi-Fi, use the working
+[Linux CloudXR route](../../tools/cloudxr/README.md) and its
+[optional streaming client](../field-cloudxr/README.md). This project remains the separate
+native RTT video-surface receiver and Kotlin → Live Metal presentation path. The public
+[route comparison](../../public/docs/vision.md) describes the different uses.
+
 A SwiftUI + WKWebView shell that hosts the existing Field4 web front end as spatial "docks"
 on visionOS. It is a **thin third RPC client** alongside the browser and the Python backdoor —
 it renders the *existing* Field server endpoints (`/welcome`, `/index.html?file=…`) in

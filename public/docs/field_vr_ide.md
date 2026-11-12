@@ -16,6 +16,10 @@ also runs from an Apple silicon Mac through [WiVRn for macOS](#macos-through-wiv
 
 [Open the starting point →](offline.html?file=assets/agent_transcripts/field_vr_ide/metadata.edn)
 
+For the separate Linux → Apple Vision Pro CloudXR route, including native hand actions,
+optional IDE surfaces and its current keyboard limitation, see
+[Linux to Apple Vision Pro](cloudxr_vision_pro.md).
+
 ## Start it
 
 Launch **1 — VR IDE renderer**, then **2 — Live IDE in VR**. The starting point defaults to a
@@ -71,8 +75,12 @@ Restart Field to change OpenXR mode or eye dimensions.
 
 ## Choose your input
 
-For Apple Vision Pro through ALVR, see [the SteamVR launch setup below](#apple-vision-pro-through-alvr).
-On a Mac, use the companion window or the in-panel keyboard; see [macOS through WiVRn](#macos-through-wivrn).
+For Apple Vision Pro, [Linux → CloudXR → AVP](cloudxr_vision_pro.md) is the verified Wi-Fi
+route with native hand actions. With a Mac, edit in Chrome through Mac Virtual Display;
+the in-app hardware keyboard limitation is documented on that page. The
+[SteamVR/ALVR setup below](#apple-vision-pro-through-alvr) remains an alternative prepared path.
+
+For Mac → Quest, use the companion window or in-panel keyboard; see [macOS through WiVRn](#macos-through-wivrn).
 
 | Input | What receives it | Desktop window focus |
 | --- | --- | --- |
@@ -177,6 +185,9 @@ before working from the headset. These can be managed remotely; no person needs 
 window on the PC. The helper adds a private listener while preserving existing listeners.
 
 ## Apple Vision Pro through ALVR
+
+For the working Linux-to-AVP route tested with this scene infrastructure, start with
+[CloudXR](cloudxr_vision_pro.md). The ALVR instructions here describe a separate integration.
 
 The host path is **Field OpenXR → SteamVR → ALVR → Vision Pro**. Use the same starting point
 and high-resolution browser panel. This is a prepared integration path; Vision Pro rendering,
