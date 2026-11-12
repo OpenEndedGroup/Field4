@@ -104,53 +104,58 @@ impl Canvas {
     fn spread_pressed(&mut self, contact: &[f32], steps: usize, rate: f32, b: (usize, usize, usize, usize)) -> f64 {
         let w = self.f.w;
         let (x0, y0, x1, y1) = b;
+        if steps == 0 || x0 >= x1 || y0 >= y1 {
+            return 0.0;
+        }
+        // work on a copy of the box, indexed locally
+        let (bw, bh) = (x1 - x0, y1 - y0);
+        let g = |lx: usize, ly: usize| (y0 + ly) * w + x0 + lx;
         let mut moved = 0.0f64;
-        let mut fx = vec![0.0f32; w * self.f.h];
-        let mut fy = vec![0.0f32; w * self.f.h];
+        let mut fx = vec![0.0f32; bw * bh];
+        let mut fy = vec![0.0f32; bw * bh];
+        let mut mob = vec![0.0f32; bw * bh];
         for _ in 0..steps {
-            let vol = self.wet.vol.clone();
-            let lat = self.wet.lat.clone();
-            let hide = self.wet.hide.clone();
-            let mob = |i: usize| -> f32 {
-                let m = vol[i];
-                let fluid = 1.0 - 0.7 * hide[i][1].clamp(0.0, 1.0);
-                (m * m / (4.0 + m * m)) * fluid * self.openness(i) * contact[i]
-            };
-            // flux across the right and lower edge of each pixel, positive out of it
-            for y in y0..y1 {
-                for x in x0..x1 {
-                    let i = y * w + x;
-                    fx[i] = 0.0;
-                    fy[i] = 0.0;
-                    if x + 1 < x1 {
-                        let j = i + 1;
-                        let d = vol[i] - vol[j];
-                        let m = mob(if d > 0.0 { i } else { j }).min(mob(i).max(mob(j)));
-                        fx[i] = rate * d * m;
-                    }
-                    if y + 1 < y1 {
-                        let j = i + w;
-                        let d = vol[i] - vol[j];
-                        let m = mob(if d > 0.0 { i } else { j }).min(mob(i).max(mob(j)));
-                        fy[i] = rate * d * m;
-                    }
+            let mut vol = vec![0.0f32; bw * bh];
+            let mut lat = vec![[0.0f32; LAT]; bw * bh];
+            let mut hide = vec![[0.0f32; 5]; bw * bh];
+            for ly in 0..bh {
+                for lx in 0..bw {
+                    let (l, i) = (ly * bw + lx, g(lx, ly));
+                    vol[l] = self.wet.vol[i];
+                    lat[l] = self.wet.lat[i];
+                    hide[l] = self.wet.hide[i];
+                    let m = vol[l];
+                    let fluid = 1.0 - 0.7 * hide[l][1].clamp(0.0, 1.0);
+                    mob[l] = (m * m / (4.0 + m * m)) * fluid * self.openness(i) * contact[i];
                 }
             }
-            for y in y0..y1 {
-                for x in x0..x1 {
-                    let i = y * w + x;
-                    // outflows (positive) and inflows (negative) on the four edges
-                    let mut edges: [(f32, usize); 4] = [(0.0, i); 4];
-                    edges[0] = (fx[i], i + 1);
-                    edges[1] = (fy[i], i + w);
-                    if x > x0 {
-                        edges[2] = (-fx[i - 1], i - 1);
+            // flux across the right and lower edge of each pixel, positive out of it, at the
+            // mobility of the paint that flows (and no more than the more mobile side allows)
+            let edge = |a: usize, c: usize| {
+                let d = vol[a] - vol[c];
+                rate * d * mob[if d > 0.0 { a } else { c }].min(mob[a].max(mob[c]))
+            };
+            for ly in 0..bh {
+                for lx in 0..bw {
+                    let l = ly * bw + lx;
+                    fx[l] = if lx + 1 < bw { edge(l, l + 1) } else { 0.0 };
+                    fy[l] = if ly + 1 < bh { edge(l, l + bw) } else { 0.0 };
+                }
+            }
+            for ly in 0..bh {
+                for lx in 0..bw {
+                    let l = ly * bw + lx;
+                    let mut edges: [(f32, usize); 4] = [(0.0, l); 4];
+                    edges[0] = (fx[l], l + 1);
+                    edges[1] = (fy[l], l + bw);
+                    if lx > 0 {
+                        edges[2] = (-fx[l - 1], l - 1);
                     }
-                    if y > y0 {
-                        edges[3] = (-fy[i - w], i - w);
+                    if ly > 0 {
+                        edges[3] = (-fy[l - bw], l - bw);
                     }
                     let out: f32 = edges.iter().map(|e| e.0.max(0.0)).sum();
-                    let (mut rv, mut rl, mut rh): (f32, Latent, Prop) = ((vol[i] - out).max(0.0), lat[i], hide[i]);
+                    let (mut rv, mut rl, mut rh): (f32, Latent, Prop) = ((vol[l] - out).max(0.0), lat[l], hide[l]);
                     let mut inflow = 0.0;
                     for &(f, j) in &edges {
                         if f < 0.0 {
@@ -158,6 +163,7 @@ impl Canvas {
                             inflow -= f;
                         }
                     }
+                    let i = g(lx, ly);
                     if inflow > 0.0 {
                         self.wet.cover[i] = 1.0;
                     }
@@ -210,6 +216,8 @@ impl Canvas {
         let mut contact = vec![0.0f32; w * h];
         let mut pairs: Vec<(usize, usize)> = Vec::new();
         let mut moved = 0.0f64;
+        // the box holding every pressed pixel, so the spread works only there
+        let mut bx = (w, h, 0usize, 0usize);
         for y in 0..h {
             for x in 0..w {
                 let (fx, fy) = (x as f32 + 0.5 - cx, y as f32 + 0.5 - cy);
@@ -233,6 +241,10 @@ impl Canvas {
                 contact[i] = contact[i].max(c);
                 contact[j] = contact[j].max(c);
                 pairs.push((i, j));
+                for k in [i, j] {
+                    let (kx, ky) = (k % w, k / w);
+                    bx = (bx.0.min(kx), bx.1.min(ky), bx.2.max(kx + 1), bx.3.max(ky + 1));
+                }
                 let k = transfer * c * self.openness(i).min(self.openness(j));
                 let (ga, gb) = (k * va, k * vb);
                 // exchange through a snapshot of both, so neither side's gift includes what it received
@@ -260,7 +272,8 @@ impl Canvas {
             return Squished::default();
         }
         let steps = (spread.clamp(0.0, 1.0) * (4.0 + 20.0 * pressure)).round() as usize;
-        moved += self.spread_pressed(&contact, steps, 0.2, (0, 0, w, h));
+        let grown = (bx.0.saturating_sub(steps), bx.1.saturating_sub(steps), (bx.2 + steps).min(w), (bx.3 + steps).min(h));
+        moved += self.spread_pressed(&contact, steps, 0.2, grown);
         if peel > 0.0 {
             for &(i, j) in &pairs {
                 let c = contact[i].min(contact[j]);
@@ -283,7 +296,7 @@ impl Canvas {
                 moved += (have - want).abs() as f64;
             }
         }
-        self.mark_worked((0, 0, w, h));
+        self.mark_worked(grown);
         Squished { moved_mm3: moved * self.mm3_per_coat_px(), lifted_mm3: 0.0 }
     }
 
@@ -546,5 +559,27 @@ mod tests {
         assert!(r.lifted_mm3 > 0.0);
         let lifted_units = (before - after) * c.mm3_per_coat_px() * (c.f.scale as f64).powi(2);
         assert!(((lifted_units - r.lifted_mm3) / r.lifted_mm3).abs() < 1e-3, "{lifted_units} vs {:?}", r);
+    }
+
+    /// How long each gesture takes on a canvas 1600 px wide: `cargo test --release -- --ignored squish_timing --nocapture`.
+    #[test]
+    #[ignore]
+    fn squish_timing() {
+        let mut c = Canvas::new(1600, 1.25, [0.9, 0.9, 0.88]);
+        let mut b = Held::new(Tool::filbert(120.0), 1);
+        b.load(Paint::body([0.7, 0.05, 0.05]).with_stiff(0.4), 4.0);
+        let t = std::time::Instant::now();
+        c.drag(&mut b, &Gesture::new(vec![(120.0, 300.0), (480.0, 520.0), (200.0, 700.0)]).pressure(1.0, 1.0), None);
+        let stroke = t.elapsed();
+        let t = std::time::Instant::now();
+        c.fold_press(500.0, 0.0, 0.0, 1.0, 0.9, 0.5, 0.5, 0.8, 20.0, 1);
+        let fold = t.elapsed();
+        let t = std::time::Instant::now();
+        c.press_peel(300.0, 500.0, 200.0, 0.9, 0.5, 1.0, 0.0, 0.5, 0.7, 12.0, 2);
+        let press = t.elapsed();
+        let t = std::time::Instant::now();
+        c.rub(&[(100.0, 400.0), (900.0, 420.0)], 40.0, 0.8, 3);
+        let rub = t.elapsed();
+        eprintln!("SQUISH 1600x1280: one brush stroke {stroke:?}, fold {fold:?}, press {press:?}, rub {rub:?}");
     }
 }
