@@ -171,3 +171,16 @@ written on the page: lower the weight only on pieces that would dip toward zero 
 | egg3 | −0.136 | −0.026 | 0.003 | 0.016 |
 | bean | −0.191 | −0.085 | −0.007 | 0.003 |
 | pebble2 | 0.058 | 0.090 | 0.105 | 0.116 |
+
+### Per-piece rule and Hobby (2026-11-12, second pass)
+
+- `weight = null`: `w = max(0.3, 1 − 1.7·asymmetry·cShape)` with
+  `asymmetry = |φ0+φ1|/(|φ0|+|φ1|)`, `cShape = max(0, −2φ0φ1/(φ0²+φ1²))` (φ against the chord).
+  Exactly 1 for arcs, S shapes, straight pieces; continuous in the headings (the knot Newton varies
+  them). Our rule, not S9's. Default stays `weight = 1.0` (bit-identical).
+- Regression test `lowWeightsKeepConvexKnotsConvex`: two eggs where weight 1 dips below zero;
+  w ≤ 0.5 and `null` must keep curvature positive. The first family fails it.
+- `hobbySplineFrom`: Hobby tension 1. Its mock-curvature equation is exactly the small-angle Euler
+  condition (`κL = 2φ − 4θ` at a piece's start, `2θ − 4φ` at its end), solved densely (2 unknowns per
+  piece), ends "curl 1" as θ = φ on the end pieces; cubic pieces from Hobby's velocity function.
+- The weights capture uses an inset: at column width the curves differ by only ~2% of the size.
