@@ -180,8 +180,8 @@ displayOpen("diagram")
 
 ## From geometry to a shallow-3D reading space
 
-[Open text_one](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn) for eight
-related reading spaces: **Marked breath**, **Constituency canopy**, **Dependency undertow**,
+[Open text_one](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn) for thirteen
+related reading spaces, including: **Marked breath**, **Constituency canopy**, **Dependency undertow**,
 **Sentence furniture**, **A room for words**, and **Words becoming weather**. Sentence furniture
 crossfades its structural drawing into a complete reading line; the typography playground
 combines inline styles, multiple faces and text-relative geometry. Select an example in
@@ -254,6 +254,11 @@ fresh pose at an absolute time, so scrubbing backward does not accumulate edits.
 only the score leaves the physics, prepared outlines and renderer alive. Stop Drawing before
 rebuilding graph topology or fonts. The example source and detailed guide are in
 `templates/text_one/`.
+
+Build the scene with [`ReadingDiagram`](reference/graphics.md#diagramdsl-kt-readingdiagram).
+[`ReadingDiagramPlayer.prepare`](reference/graphics.md#readingdiagramplayer-kt--readingdiagramplayer-companion--prepare) prepares its native text once;
+[`textFrame`](reference/graphics.md#diagramtextframe-kt--textframe) fits a surround to a run, and
+[`textFrustum`](reference/graphics.md#diagramtextfrustum-kt--textfrustum) joins two text faces into a holder.
 
 ### Typography and geometry in the words’ coordinate system
 

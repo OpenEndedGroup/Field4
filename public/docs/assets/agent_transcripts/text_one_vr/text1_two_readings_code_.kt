@@ -1,5 +1,4 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // Two verbatim excerpts, with authored line breaks. These are independent physical runs,
 // not a single billboard: the near surround can frost part of the later, more distant run.
@@ -102,7 +101,7 @@ controlGroup("sequence") {
         }
     }
 }
-display(
+markdown(
     "timing",
-    "<div style='padding:12px;width:440px'>Near reading: enter 0–8s, dissolve 22–29s.<br>Far reading: enter 5–14s, dissolve 26–34s.<br>Dots lead the thread; the thread fades at 7.1s. Both text anchors are unpinned, so the body can waft them and their surrounds away.</div>",
+    "Near reading: enter 0–8s, dissolve 22–29s.\n\nFar reading: enter 5–14s, dissolve 26–34s.\n\nDots lead the thread; the thread fades at 7.1s. Both text anchors are unpinned, so the body can waft them and their surrounds away.",
 )

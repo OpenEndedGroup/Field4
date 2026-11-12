@@ -1,6 +1,4 @@
-import afield.animation.keyframes.*
 import afield.graphics.scene.reading.*
-import afield.ui.output.*
 import java.nio.file.Files
 
 /*
@@ -109,13 +107,13 @@ drawingBox.controlGroup("text blur quality", restoreValues = false) {
                 }
                 val quality = pendingTextCacheQuality()
                 drawing.requestTextBlurRebuild(quality)
-                display(
+                markdown(
                     "text blur quality status",
-                    "<div style='padding:12px'>Queued ${quality.estimatedBytes(poem.blurRequests.size) / (1024 * 1024)} MiB of text masks. Current settings appear in the frame output after preparation.</div>",
+                    "Queued ${quality.estimatedBytes(poem.blurRequests.size) / (1024 * 1024)} MiB of text masks. Current settings appear in the frame output after preparation.",
                 )
             }
                 .onFailure {
-                    display("text blur quality status", "<div style='padding:12px'>${it.message}</div>")
+                    markdown("text blur quality status", "${it.message}")
                 }
         }
     }
@@ -749,7 +747,8 @@ val visibleComponents = setOf(
     "fxaa.x",
     "supersampling.w",
 )
-for ((name, vector) in vectors) for ((axis, suffix) in listOf("x", "y", "z", "w").withIndex()) {
+val axes = ["x", "y", "z", "w"]
+for ((name, vector) in vectors) for ((axis, suffix) in axes.withIndex()) {
     if ("$name.$suffix" !in visibleComponents)
         keys.floatTarget(
             "compositor.$name.$suffix",
@@ -798,7 +797,7 @@ controlGroup("global looks", restoreValues = false) {
     presetBar(keys, directory = keyDirectory)
 }
 keyframeBrowser(keyDirectory, channel = "saved global looks", scope = keys, width = 620, height = 420)
-display(
+markdown(
     "keyframe guide",
-    "<div style='padding:12px;width:560px'>Store saves every global control, including colour, blur, frosting, physics, body interaction and navigation. Recall restores a named look and its sliders. Preset morph blends saved looks in name order. Cache quality is staged; use Apply text blur quality to rebuild. Score time, node positions and headset pose are independent. See guide 16.</div>",
+    "Store saves every global control, including colour, blur, frosting, physics, body interaction and navigation. Recall restores a named look and its sliders. Preset morph blends saved looks in name order. Cache quality is staged; use Apply text blur quality to rebuild. Score time, node positions and headset pose are independent. See guide 16.",
 )

@@ -73,7 +73,7 @@ display(
 <!-- field-box id="cloud_compare" index="2" -->
 
 ```edn [field-box id="cloud_compare" role="properties"]
-{"id" "cloud_compare" "index" 2 "name" "compare against the path tracer" "parents" ["root" "cloud_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cloud_train"} "name" "compare against the path tracer" "_tombstone" false "frame" #afield/rect [380.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloud_compare_code_.kt" "lines" 31 "characters" 1422 "sha256" "cf7d440f3636b41163562e1fbd3938ffe766611eabf6e62c95e91d7fd5f3a5a7"}]}
+{"id" "cloud_compare" "index" 2 "name" "compare against the path tracer" "parents" ["root" "cloud_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cloud_train"} "name" "compare against the path tracer" "_tombstone" false "frame" #afield/rect [380.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloud_compare_code_.kt" "lines" 38 "characters" 1523 "sha256" "e68035dd5fd52a0a2c8b2ba1d1e9a18988a25f187182c0b9a8ef60a8ac1c39d4"}]}
 ```
 
 ```kotlin [field-property box="cloud_compare" name="code" path="cloud_compare_code_.kt"]
@@ -97,16 +97,23 @@ val mask = cloudScene.render(view, w, h, CloudScene.InScatter { _, _, _, _, into
 val file = File.createTempFile("neural_clouds", ".png")
 writeCloudComparison(file, reference, [single, ambient, neural])
 val png = Base64.getEncoder().encodeToString(file.readBytes())
-val rows =
-    ["single scatter" to single, "fitted ambient" to ambient, "network" to neural].joinToString("") { (name, image) ->
+val comparisons = ["single scatter" to single, "fitted ambient" to ambient, "network" to neural]
+val errors =
+    comparisons.joinToString("\n") { (name, image) ->
         val e = cloudError(image, reference, mask)
-        "<tr><td>$name</td><td>${e.relativeMeanAbs.f3}</td><td>${e.rmse.f3}</td></tr>"
+        "| $name | ${e.relativeMeanAbs.f3} | ${e.rmse.f3} |"
     }
-display(
-    "compare",
-    "<img style='width:100%' src='data:image/png;base64,$png'>" +
-        "<div>reference | single scatter | fitted ambient | network; below, |error| x4</div>" +
-        "<table><tr><th></th><th>relative MAE</th><th>RMSE</th></tr>$rows</table>",
+// Keep the computed image as an embed; the caption and measured table are Markdown.
+display("compare", "<img style='width:100%' src='data:image/png;base64,$png'>")
+markdown(
+    "errors",
+    """
+Top: reference · single scatter · fitted ambient · network. Bottom: absolute error ×4.
+
+| Model | Relative MAE | RMSE |
+| --- | --- | --- |
+$errors
+""".trimIndent(),
 )
 ```
 
@@ -121,7 +128,7 @@ From `code`
 A fullscreen triangle; the fragment shader does all the work.
 
 ```edn [field-box id="cloud_view" role="properties"]
-{"id" "cloud_view" "index" 3 "name" "neural cloud shader" "parents" ["root" "cloud_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cloud_train"} "name" "neural cloud shader" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloud_view_code_.kt" "lines" 8 "characters" 228 "sha256" "7fb3294fb296610d1ac6c7c4ad49378f085eeaa283cccfc9d6c7de27cb6711f4"} {"name" "vertex" "language" "glsl" "path" "cloud_view_vertex_.glsl" "lines" 7 "characters" 196 "sha256" "70608faa9d5a10444a303a98fe7634c1e2bd82aeed98094381d7fc60349f3911"} {"name" "fragment" "language" "glsl" "path" "cloud_view_fragment_.glsl" "lines" 25 "characters" 1031 "sha256" "eb4130b11c61fde0beba91499cb58494467c706a258b97766d07c48eeb6b26e3"}]}
+{"id" "cloud_view" "index" 3 "name" "neural cloud shader" "parents" ["root" "cloud_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cloud_train"} "name" "neural cloud shader" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloud_view_code_.kt" "lines" 8 "characters" 228 "sha256" "7fb3294fb296610d1ac6c7c4ad49378f085eeaa283cccfc9d6c7de27cb6711f4"} {"name" "vertex" "language" "glsl" "path" "cloud_view_vertex_.glsl" "lines" 7 "characters" 197 "sha256" "74d68cae67f8a16feb378d4c086daed1503bb17c6ae7a20d209893c08771007c"} {"name" "fragment" "language" "glsl" "path" "cloud_view_fragment_.glsl" "lines" 25 "characters" 1032 "sha256" "a3f4eb32ba9641b91d368f839123d7accc1c3802a061451ec4f4ac562339b857"}]}
 ```
 
 ```kotlin [field-property box="cloud_view" name="code" path="cloud_view_code_.kt"]

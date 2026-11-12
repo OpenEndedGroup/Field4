@@ -72,7 +72,6 @@ val graph = readingDiagram {
             weight = 300.0 + 100 * i
             scale = .48f
         }
-
     }
 }
 val progress = progressReporter("Prepare typography playground", showDelayMillis = 0)

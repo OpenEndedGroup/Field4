@@ -1,6 +1,5 @@
 import afield.graphics.scene.body.*
 import afield.graphics.vulkan.Target
-import kotlin.math.*
 
 // These are persistent, inherited Field properties. Re-running this box keeps the controls' values.
 prop<Boolean>(readingBodyEnabled, true)
@@ -39,11 +38,18 @@ var contactPlayer = poem.current
 // Input: signed capsule-surface distance and outward normal, in world metres.
 // Output: world acceleration. Wafting never attracts: its smooth outside band fades to zero.
 fun readingBodyForce(hit: BodySegmentHit): Vector3f {
-    if (!readingBodyWaft) return hit.force(readingBodyPull, readingBodyPush, readingBodyReach,
-        readingBodyFalloff, readingBodyMaximum, readingBodyInsideReach)
+    if (!readingBodyWaft)
+        return hit.force(
+            readingBodyPull,
+            readingBodyPush,
+            readingBodyReach,
+            readingBodyFalloff,
+            readingBodyMaximum,
+            readingBodyInsideReach,
+        )
     val outside = max(hit.distance, 0f)
-    val t = if (outside == 0f) 1f else if (readingBodyReach > 0f)
-        (1f - outside / readingBodyReach).coerceIn(0f, 1f) else 0f
+    val t =
+        if (outside == 0f) 1f else if (readingBodyReach > 0f) (1f - outside / readingBodyReach).coerceIn(0f, 1f) else 0f
     val smooth = t * t * (3f - 2f * t)
     val envelope = if (smooth == 0f) 0f else smooth.pow(readingBodyFalloff)
     var strength = readingBodyWaftStrength * envelope + readingBodyPush * max(-hit.distance, 0f)
@@ -113,11 +119,12 @@ val readingBodyUpdate: () -> Unit = {
         contactForces.fill(0f)
         contactFrames.fill(-100L)
     }
-    readingBodySnapshot = if (readingBodyEnabled || root.showSkeleton)
-        renderer.openXRHmdTarget?.bodySegments(readingBodyHands, readingBodyHead) { name, radius ->
-            (readingBodyRadii[name] ?: radius) * readingBodyRadiusScale
-        } ?: BodySegments.from(null)
-    else BodySegments.from(null)
+    readingBodySnapshot =
+        if (readingBodyEnabled || root.showSkeleton)
+            renderer.openXRHmdTarget?.bodySegments(readingBodyHands, readingBodyHead) { name, radius ->
+                (readingBodyRadii[name] ?: radius) * readingBodyRadiusScale
+            } ?: BodySegments.from(null)
+        else BodySegments.from(null)
     for (example in readingBodyExamples) {
         if (readingBodyEnabled && readingBodySnapshot.active.isNotEmpty())
             example.player.externalAccelerations["tracked-body"] = readingBodyAcceleration
@@ -131,24 +138,30 @@ drawing.beforeUpdate = readingBodyUpdate
 // Node dots use current SIMD state; force lines retain the exact point sampled by that step.
 readingBodyModule.current.before["body-debug"] = Target { _, _ ->
     readingBodyMarks.forEach { it[2].w = 0f }
-    if (root.showSkeleton) for (segment in readingBodySnapshot.active) {
-        val mark = readingBodyMarks[segment.id]
-        mark[0].set(segment.start.x, segment.start.y, segment.start.z, if (segment.id == 8) .015f else .002f)
-        mark[1].set(segment.end.x, segment.end.y, segment.end.z, if (segment.id == 8) 1f else 0f)
-        mark[2].set(.5f, 0f, .5f, .35f)
-    }
+    if (root.showSkeleton)
+        for (segment in readingBodySnapshot.active) {
+            val mark = readingBodyMarks[segment.id]
+            mark[0].set(segment.start.x, segment.start.y, segment.start.z, if (segment.id == 8) .015f else .002f)
+            mark[1].set(segment.end.x, segment.end.y, segment.end.z, if (segment.id == 8) 1f else 0f)
+            mark[2].set(.5f, 0f, .5f, .35f)
+        }
     val player = poem.current
     var active = 0
     var maximum = 0f
     for ((index, node) in player.diagram.particles.withIndex()) {
-        val pushing = readingBodyEnabled && readingBodySnapshot.active.isNotEmpty() &&
-            renderer.frameCounter - contactFrames[index] <= 3L && contactForces[index] > .01f
+        val pushing =
+            readingBodyEnabled &&
+                readingBodySnapshot.active.isNotEmpty() &&
+                renderer.frameCounter - contactFrames[index] <= 3L &&
+                contactForces[index] > .01f
         if (pushing) {
             active++
             maximum = max(maximum, contactForces[index])
         }
         if (root.showPhysicsNodes) {
-            val p = drawing.model.transformPosition(vec(player.state.x[index], player.state.y[index], player.state.z[index]))
+            val p = drawing.model.transformPosition(
+                vec(player.state.x[index], player.state.y[index], player.state.z[index]),
+            )
             val mark = readingBodyMarks[BodySegments.CAPACITY + index]
             mark[0].set(p.x, p.y, p.z, if (pushing) .010f else .006f)
             mark[1].w = 1f
@@ -163,8 +176,12 @@ readingBodyModule.current.before["body-debug"] = Target { _, _ ->
             mark[2].set(1f, 0f, 1f, .25f + .6f * min(contactForces[index] / 4f, 1f))
         }
     }
-    bodyInteractionStats = mapOf("nodes" to player.state.size.toFloat(), "pushing" to active.toFloat(),
-        "maxAcceleration" to maximum, "bones" to readingBodySnapshot.active.size.toFloat())
+    bodyInteractionStats = mapOf(
+        "nodes" to player.state.size.toFloat(),
+        "pushing" to active.toFloat(),
+        "maxAcceleration" to maximum,
+        "bones" to readingBodySnapshot.active.size.toFloat(),
+    )
 }
 
 // Apply this preset without moving the scene, resetting particles or changing text orientations.
@@ -193,12 +210,19 @@ loop {
     if (now - lastBodyStats > 1_000_000_000L) {
         lastBodyStats = now
         val stats = bodyInteractionStats
-        display("body diagnostics", "<div style='padding:12px;width:440px'>${stats["bones"]?.toInt() ?: 0} tracked bones · ${stats["nodes"]?.toInt() ?: 0} SIMD nodes · ${stats["pushing"]?.toInt() ?: 0} pushing. Bright dots and bone-to-node lines mark applied force. Dim dots are pinned. Contact uses these nodes; thread interior nodes and glyph outlines are not tested.</div>")
+        markdown(
+            "body diagnostics",
+            "${stats["bones"]?.toInt() ?: 0} tracked bones · ${stats["nodes"]?.toInt() ?: 0} SIMD nodes · ${stats["pushing"]?.toInt() ?: 0} pushing. Bright dots and bone-to-node lines mark applied force. Dim dots are pinned. Contact uses these nodes; thread interior nodes and glyph outlines are not tested.",
+        )
     }
     frame()
-}.end {
-    if (drawing.beforeUpdate === readingBodyUpdate) drawing.beforeUpdate = previousReadingUpdate
-    for (example in readingBodyExamples) example.player.externalAccelerations.remove("tracked-body", readingBodyAcceleration)
-    readingBodyModule.disable()
-    readingBodyTarget.modules.remove("tracked-body", readingBodyModule)
 }
+    .end {
+        if (drawing.beforeUpdate === readingBodyUpdate) drawing.beforeUpdate = previousReadingUpdate
+        for (example in readingBodyExamples) example.player.externalAccelerations.remove(
+            "tracked-body",
+            readingBodyAcceleration,
+        )
+        readingBodyModule.disable()
+        readingBodyTarget.modules.remove("tracked-body", readingBodyModule)
+    }

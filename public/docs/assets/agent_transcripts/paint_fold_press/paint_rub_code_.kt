@@ -6,7 +6,8 @@ run {
 
     val canvas = PaintCanvas(900, aspect = 1.4, seed = 9)
     val brush = canvas.brush(BrushKind.HogFlat, width = 60.0)
-    for ((i, color) in listOf(rgb(0.8, 0.15, 0.1), rgb(0.95, 0.75, 0.15), rgb(0.1, 0.25, 0.6)).withIndex()) {
+    val palette = [rgb(0.8, 0.15, 0.1), rgb(0.95, 0.75, 0.15), rgb(0.1, 0.25, 0.6)]
+    for ((i, color) in palette.withIndex()) {
         brush.load(color, amount = 3.0, stiff = 0.4)
         canvas.stroke(FLine().moveTo(180 + i * 70, 150).lineTo(180 + i * 70, 560), brush, pressure = 1.0..1.0)
     }

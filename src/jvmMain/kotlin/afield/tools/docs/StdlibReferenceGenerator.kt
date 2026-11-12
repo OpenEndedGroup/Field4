@@ -1017,6 +1017,22 @@ object StdlibReferenceGenerator {
             .flatMap { root -> root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList() }
             .sortedBy { it.absolutePath }
 
+    /** Public instance and companion members, retaining their source owners and anchors. */
+    internal fun referenceMembers(
+        definitions: List<KotlinSourceIndex.ParsedDefinition>,
+        lines: List<String>,
+        owner: String,
+    ): List<KotlinSourceIndex.ParsedDefinition> {
+        val visible = definitions.filter { it.visibility == "public" }
+        val companions = visible.filter {
+            it.owner == owner && it.kind == "object" &&
+                Regex("\\bcompanion\\s+object\\b").containsMatchIn(signatureAt(lines, it.line, it.kind))
+        }.map { it.name }.toSet()
+        return visible.filter {
+            (it.owner == owner || it.owner in companions) && it.name !in companions
+        }.sortedBy { it.line }
+    }
+
     private fun readDocument(repo: File, file: File): SourceDocument {
         val rel = repo.toPath().relativize(file.toPath()).toString().replace('\\', '/')
         val text = file.readText()
@@ -1052,11 +1068,7 @@ object StdlibReferenceGenerator {
         val types = topLevel
             .filter { it.kind in TYPE_KINDS }
             .map { def ->
-                val members = visible
-                    .filter { it.owner == def.name }
-                    .filterNot { it.simpleName() == "Companion" }
-                    .sortedBy { it.line }
-                    .map(::toSymbol)
+                val members = referenceMembers(definitions, lines, def.name).map(::toSymbol)
                 val symbol = toSymbol(def)
                 val constants =
                     if (symbol.signature.contains("enum class")) enumConstantsAt(lines, def.line) else emptyList()

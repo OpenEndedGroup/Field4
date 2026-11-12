@@ -1,0 +1,15 @@
+{
+  "state": "catch-up complete; companion regression tests and actual captures passed; precheck pending",
+  "scope": "scope.json",
+  "reviewed": [],
+  "next": "Run landing precheck, enqueue and wait for landing; then begin the authorized whole-corpus delegation/link review.",
+  "followup": "User requested a whole-corpus class-and-method reference-link review after this catch-up lands. Include named receivers and factory calls, with contextual review of substantive delegation.",
+  "verification": {
+    "companionRegressionTests": "2 tests, 0 failures",
+    "templateProperties": "45 agree in executable tokens",
+    "shaderBodies": "25 preserve executable tokens",
+    "links": "17 checked targets on three pages",
+    "captures": "2 real captures, inspected",
+    "publications": "2 normal publication refreshes"
+  }
+}

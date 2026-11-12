@@ -43,16 +43,16 @@ if (!headsetMode) {
     stereo.stereoCamera.base.target = vec(0f, 0f, 0f)
 }
 stereo.layered.parameters.clearColor = vec(.003f, .005f, .010f, 1f)
-display(
+markdown(
     "resolution",
-    "<div style='padding:12px'>${if (headsetMode) "OpenXR runtime" else "Desktop fallback"}: ${stereo.eyeWidth} × ${stereo.eyeHeight} per eye. Browser: 2560 × 1600. Restart Field after changing WiVRn resolution.</div>",
+    "${if (headsetMode) "OpenXR runtime" else "Desktop fallback"}: ${stereo.eyeWidth} × ${stereo.eyeHeight} per eye. Browser: 2560 × 1600. Restart Field after changing WiVRn resolution.",
 )
 prop<Boolean>(showStereoPair) = false
 val mirror = stereo.mirrorToScreen(name = "reading-preview", stereoPair = { showStereoPair })
 
-display(
+markdown(
     "mode",
-    "<div style='padding:12px;width:440px'>${if(headsetMode)"OpenXR: current predicted pose in both eyes + sharp Field browser" else "Desktop stereo preview: the same two-eye scene, without a headset"}. No motion history or temporal antialiasing. Launch the example boxes, Scores, the shaders, then Drawing.</div>",
+    "${if(headsetMode)"OpenXR: current predicted pose in both eyes + sharp Field browser" else "Desktop stereo preview: the same two-eye scene, without a headset"}. No motion history or temporal antialiasing. Launch the example boxes, Scores, the shaders, then Drawing.",
 )
 loop { frame() }
     .end {

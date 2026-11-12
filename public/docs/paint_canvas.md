@@ -389,7 +389,7 @@ Three gestures move wet paint with no tool in it at all. They come from Dan Foun
 [Fold & Squish](https://danfountain.com/blog/paint-that-squishes), where thick paint is folded,
 squashed, rubbed and peeled. Field follows the method he describes; none of its code is used.
 
-- `canvas.fold(x, y, dx, dy)` folds the canvas along the line through `(x, y)` running toward
+- [`canvas.fold(x, y, dx, dy)`](reference/graphics.md#paintcanvas-kt--paintcanvas--fold) folds the canvas along the line through `(x, y)` running toward
   `(dx, dy)`. The half on the left of that direction is pressed onto the other half, then the canvas
   is opened again. Where the paint on a point and on its mirror image is thick enough to meet through
   the gap the `pressure` leaves, the two films swap `transfer` of themselves (0.5 makes them one
@@ -398,10 +398,10 @@ squashed, rubbed and peeled. Field follows the method he describes; none of its 
   `peel = 0`, and in branching ridges `ridge` units apart as `peel` rises. Where one side keeps a
   ridge, its mirror is bare. Past `peel = 0.67` the film splits wholly. A fold along x or y prints
   an exact mirror image; a diagonal fold is mirrored to within a pixel.
-- `canvas.press(x, y, radius)` presses a flat plate onto the paint and peels it off toward
+- [`canvas.press(x, y, radius)`](reference/graphics.md#paintcanvas-kt--paintcanvas--press) presses a flat plate onto the paint and peels it off toward
   `(dx, dy)`. The plate takes `take` of the film it touched, unevenly, in the same kind of ridges. This
   is a monotype pull, or a palm pressed down and lifted.
-- `canvas.rub(line, radius, pressure)` drags a thumb along a line. It picks up the paint that stands
+- [`canvas.rub(line, radius, pressure)`](reference/graphics.md#paintcanvas-kt--paintcanvas--rub) drags a thumb along a line. It picks up the paint that stands
   above the film a light touch rides on and lays it down further along. The paint is drawn out and
   thins as it goes, in streaks where the skin presses harder, and colours smear into each other.
 
@@ -411,7 +411,7 @@ and the mm³ taken off it (`liftedMm3`, what a plate took or a thumb still holds
 lowers it by exactly what the plate reports. Paint that has started to set moves less, and dry paint
 does not move.
 
-The box below lays three thick strokes on the left half, folds the canvas down the middle and opens
+The [`PaintCanvas`](reference/graphics.md#paintcanvas-kt-paintcanvas) example below lays three thick strokes on the left half, folds the canvas down the middle and opens
 it. The top image is the canvas before the fold, the bottom one after: each stroke is printed onto
 the right half, and the two prints carry opposite ridges where the film split.
 
@@ -450,7 +450,8 @@ display("main", plate.png(wet = true, light = PaintLight.Raking))
 
 val thumb = PaintCanvas(900, aspect = 1.4, seed = 9)
 val brush = thumb.brush(BrushKind.HogFlat, width = 60.0)
-for ((i, color) in listOf(rgb(0.8, 0.15, 0.1), rgb(0.95, 0.75, 0.15), rgb(0.1, 0.25, 0.6)).withIndex()) {
+val palette = [rgb(0.8, 0.15, 0.1), rgb(0.95, 0.75, 0.15), rgb(0.1, 0.25, 0.6)]
+for ((i, color) in palette.withIndex()) {
     brush.load(color, amount = 3.0, stiff = 0.4)
     thumb.stroke(FLine().moveTo(180 + i * 70, 150).lineTo(180 + i * 70, 560), brush, pressure = 1.0..1.0)
 }

@@ -8,7 +8,10 @@ additive FLine strokes, the ordinary Slug renderer and the existing frost/blur p
 ## Eight outward extensions
 
 ```kotlin
-val border = textFrame("holder", words, standoff = .025f,
+val border = textFrame(
+    "holder",
+    words,
+    standoff = .025f,
     mode = DiagramTextFrameMode.LINE_UNION,
     overstrokeFraction = .12f,
     overstrokeDistance = .015f,
@@ -16,7 +19,10 @@ val border = textFrame("holder", words, standoff = .025f,
     width = .0007f
     color = vec(1f, 1f, 1f, .18f)
 }
-border.frost.apply { enabled = true; blurPixels = 8f }
+border.frost.apply {
+    enabled = true
+    blurPixels = 8f
+}
 ```
 
 For a bounding side of length `L`, the extension at **each** end has length
@@ -36,9 +42,15 @@ font scale and scored movement affect the outline and decoration together.
 val score = diagramScore(graph, 28.0) {
     val border = graph.textFrame("holder")
     fadeIn(border, at = 1.0, seconds = 3.0)
-    overstroke(border, fromFraction = .12f, toFraction = .25f,
-        at = 7.0, seconds = 8.0,
-        fromDistance = .015f, toDistance = .025f)
+    overstroke(
+        border,
+        fromFraction = .12f,
+        toFraction = .25f,
+        at = 7.0,
+        seconds = 8.0,
+        fromDistance = .015f,
+        toDistance = .025f,
+    )
     fadeOut(border, at = 22.0, seconds = 5.0)
 }
 ```
@@ -50,14 +62,20 @@ parameters while this score is in use; remove the cue to control them directly.
 ## Two frosted ends and four rails
 
 ```kotlin
-val front = text("front", "Marble.\nGoing back to antiquity.",
-    point("near", 0, 0, .2)) {
+val front = text(
+    "front",
+    "Marble.\nGoing back to antiquity.",
+    point("near", 0, 0, .2),
+) {
     font = face
     scale = .72f
     blurCapacity = .8f
 }
-val back = text("back", "Faintly hinted,\nthe heady scent of a rose.",
-    point("far", .08, .04, -.2)) {
+val back = text(
+    "back",
+    "Faintly hinted,\nthe heady scent of a rose.",
+    point("far", .08, .04, -.2),
+) {
     font = face
     scale = .44f
     blurCapacity = .8f
@@ -66,7 +84,10 @@ val holder = textFrustum("holder", front, back, standoff = .025f) {
     aspectRatio = 3.2f
     width = .0007f
     color = vec(1f, 1f, 1f, .17f)
-    frost { enabled = true; blurPixels = 7f }
+    frost {
+        enabled = true
+        blurPixels = 7f
+    }
 }
 ```
 

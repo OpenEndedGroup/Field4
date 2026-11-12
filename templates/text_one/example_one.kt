@@ -1,5 +1,4 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // 1 · Marked breath. Whole runs, two selected words and an arclength bead.
 // Verbatim fragments of the supplied passage; font preparation happens before playback.
@@ -38,7 +37,6 @@ val graph = readingDiagram {
     }
     endpointDots(relation)
     dot("bead", relation.at(.50f)) { radius = .003f }
-
 }
 val face = Typefaces.named("Noto Serif Light", 100, strict = true)
 // Let the words lead: structural strokes and markers are more translucent.

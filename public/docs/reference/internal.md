@@ -4,7 +4,7 @@
 
 Implementation details explicitly marked Internal by their source. They remain available to browse here, but are not intended as entry points for code written in a Field box.
 
-21 source file(s), 158 public symbol(s), 56 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+21 source file(s), 159 public symbol(s), 57 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -181,6 +181,7 @@ Constants: `NO_ERROR`, `NON_FINITE_VERTEX`, `NOT_MANIFOLD`, `VERTEX_INDEX_OUT_OF
 | Declaration | Summary |
 | --- | --- |
 | <a id="manifoldnative-kt--manifoldstatus--iserror"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isError</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L879) | `true` for everything except `NO_ERROR`. |
+| <a id="manifoldnative-kt--manifoldstatus-companion--of"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">of</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ManifoldStatus</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L883) | The enum for a raw `ManifoldError`, or `INVALID_CONSTRUCTION` for a code from a newer Manifold. |
 
 ### BooleanOp { #manifoldnative-kt-booleanop }
 

@@ -2980,12 +2980,12 @@
     },
     "assets/agent_transcripts/neural_clouds/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-12T12:05:00.128Z",
+      "capturedAt": "2026-11-12T21:53:53.395Z",
       "channels": 1,
       "file": "assets/web_publications/neural_clouds/document/metadata.edn",
       "files": {
-        "assets/web_publications/neural_clouds/document/metadata.edn": "c9b2270e82a251241756029b8746b6dd819e3d4b73ae2fff11ae561c9405507b",
-        "assets/web_publications/neural_clouds/document/outputs.json": "f5a442f8f80590dbfd2fc27ba60dca4cdba6ad24b101702c6a65ce6dd82cf690",
+        "assets/web_publications/neural_clouds/document/metadata.edn": "22d3f1ba1278fe77ba6b9dd04380194e568416296cf2502e730c1b605a337b34",
+        "assets/web_publications/neural_clouds/document/outputs.json": "86d0b5572b149fe3fbfec1f653fd1eeec75d2313710c5b95d2653a8049c64777",
         "assets/web_publications/neural_clouds/outputs/0.html": "650fee95287bb0a9b26abcf78b4096135128a289730bf039b9d40f8d271eb751"
       },
       "kinds": [
@@ -2993,15 +2993,15 @@
       ],
       "outputs": "assets/web_publications/neural_clouds/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/neural_clouds.yaml": "a684fefc1f76e831051ce28a3e9de9bf86104a3527443e7086aaa309cba13d94",
-        "public/docs/assets/agent_transcripts/neural_clouds/cloud_compare_code_.kt": "cf7d440f3636b41163562e1fbd3938ffe766611eabf6e62c95e91d7fd5f3a5a7",
+        "dev_docs/agents/transcripts/neural_clouds.yaml": "48f01771b614d79b68ae531d45448f65dc6392e41c2e401a47bd49f716df943a",
+        "public/docs/assets/agent_transcripts/neural_clouds/cloud_compare_code_.kt": "e68035dd5fd52a0a2c8b2ba1d1e9a18988a25f187182c0b9a8ef60a8ac1c39d4",
         "public/docs/assets/agent_transcripts/neural_clouds/cloud_renderer_code_.kt": "0142566f5745b83d8a058b6bb1489af3fb3cc4a2d7bf6815a14d7bcb19ae3dd3",
         "public/docs/assets/agent_transcripts/neural_clouds/cloud_train_code_.kt": "e94e108329493ccafda392103f8838d915092cf7b83295a45d3ce3c331cb6b1d",
         "public/docs/assets/agent_transcripts/neural_clouds/cloud_view_code_.kt": "7fb3294fb296610d1ac6c7c4ad49378f085eeaa283cccfc9d6c7de27cb6711f4",
-        "public/docs/assets/agent_transcripts/neural_clouds/cloud_view_fragment_.glsl": "eb4130b11c61fde0beba91499cb58494467c706a258b97766d07c48eeb6b26e3",
-        "public/docs/assets/agent_transcripts/neural_clouds/cloud_view_vertex_.glsl": "70608faa9d5a10444a303a98fe7634c1e2bd82aeed98094381d7fc60349f3911",
+        "public/docs/assets/agent_transcripts/neural_clouds/cloud_view_fragment_.glsl": "a3f4eb32ba9641b91d368f839123d7accc1c3802a061451ec4f4ac562339b857",
+        "public/docs/assets/agent_transcripts/neural_clouds/cloud_view_vertex_.glsl": "74d68cae67f8a16feb378d4c086daed1503bb17c6ae7a20d209893c08771007c",
         "public/docs/assets/agent_transcripts/neural_clouds/guides/path_tracing.md": "f5c6d8331a2e29f169d3e4155f61bea32d7765effb1e9f0dbf9a46dfc73d4b94",
-        "public/docs/assets/agent_transcripts/neural_clouds/metadata.edn": "37addaedaa1960cd3ca1c4360c5c457d48bdd99fca30a2eda0f422d09ea1394f",
+        "public/docs/assets/agent_transcripts/neural_clouds/metadata.edn": "475df3bc786d13482181568f1dedef369b89a12b6759842192302dfe79a5633d",
         "public/docs/assets/path_tracing/neural_clouds_gpu.png": "70ab3ab478b7e02b05046edd51db6c8f2beb47cca2ccfda72a133b76cf2da9dc",
         "public/docs/path_tracing.md#capture-box=cloud_view": "3fc3d0038d9ef6314fa940562208b62465f2b65f9acb9dfdf923979b96de2ef1"
       },
@@ -3296,25 +3296,31 @@
     },
     "assets/agent_transcripts/paint_fold_press/metadata.edn": {
       "captureDigest": "4e5ccb514b17f548065f84557fb13791208ac7c977ef9c94ed8ef040c8ef179f",
-      "capturedAt": "2026-11-12T08:01:14.651Z",
-      "channels": 3,
+      "capturedAt": "2026-11-12T21:53:51.125Z",
+      "channels": 9,
       "file": "assets/web_publications/paint_fold_press/document/metadata.edn",
       "files": {
-        "assets/web_publications/paint_fold_press/document/metadata.edn": "5ecc4a5f75bbb5308518aeb955e1fe5211ac1dfb4dbb4890499e5dbd2efd530f",
-        "assets/web_publications/paint_fold_press/document/outputs.json": "d71b5e423d24b1043893736d45b9bb9c62e7235dfdb50272add553f87582cddc",
-        "assets/web_publications/paint_fold_press/outputs/0.html": "02a691a8404cfad57ca85804951b63b62ea65da9a70d0c9d758e46b474067652",
-        "assets/web_publications/paint_fold_press/outputs/1.html": "02a691a8404cfad57ca85804951b63b62ea65da9a70d0c9d758e46b474067652",
-        "assets/web_publications/paint_fold_press/outputs/2.html": "02a691a8404cfad57ca85804951b63b62ea65da9a70d0c9d758e46b474067652"
+        "assets/web_publications/paint_fold_press/document/metadata.edn": "b10f57fb34937237625a7c48b87c2fd19d44185b9d794ae0d86781d05799b676",
+        "assets/web_publications/paint_fold_press/document/outputs.json": "e92eb6b2ff160a495ae9b7064ae815d1f0d76e96f7255a7fc4dea8eff0360ee4",
+        "assets/web_publications/paint_fold_press/outputs/0.html": "3a24bf6df5d44f0ddb77709e70894a1b12349ff19a9b7c8c62a4ce6e2a031ab4",
+        "assets/web_publications/paint_fold_press/outputs/1.html": "b305aa26dada9460d62592b0db98bcdd58105a6edaa76abc31392b8329f4d4c9",
+        "assets/web_publications/paint_fold_press/outputs/2.html": "576bad246265ae558bef53d3ba72252061d9712c87244b09773adaffd3f5ecc1",
+        "assets/web_publications/paint_fold_press/outputs/3.html": "ea6e60849afb768e5a561a76d86f637c65df80d301765cc76090636ab650ecf2",
+        "assets/web_publications/paint_fold_press/outputs/4.html": "b625661886b28b65349bf1c0531d3888133baa39034b67cac65e08e4893ff162",
+        "assets/web_publications/paint_fold_press/outputs/5.html": "38011ca102eaade652f1ab07b019f29cbd821b95478831f576b113add676e8ce",
+        "assets/web_publications/paint_fold_press/outputs/6.html": "fb04f862d434f0c6d7e2a596cf0a2809d323743c1c83cf8bb02d338f0256a8d0",
+        "assets/web_publications/paint_fold_press/outputs/7.html": "f9892bad8f0c47ba0746c644de8bc162db486eebc128b5e4a9aa93afbcf466ad",
+        "assets/web_publications/paint_fold_press/outputs/8.html": "e10c3b9a225446b78186c98162354cb9f7b151ddf1e15a9c519c866efee18958"
       },
       "kinds": [],
       "outputs": "assets/web_publications/paint_fold_press/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/paint_fold_press.yaml": "0bec931db6db4142d5165b068d3c98e105f1d3e509dceb92723949e7b1ac861a",
+        "dev_docs/agents/transcripts/paint_fold_press.yaml": "3c698fa79c4e555b0141b9c4acb0e346d766b9f89a964816a17fa2c199c2cbef",
         "public/docs/assets/agent_transcripts/paint_fold_press/guides/paint_canvas.md": "887ae603022ba7c6bfcfddc683a6d95aef16e67173a31cc2043580eb4455c074",
-        "public/docs/assets/agent_transcripts/paint_fold_press/metadata.edn": "57dbf61596957975261cb1f1e6835cad59666c9811e68494a92bbce11c9b42f2",
-        "public/docs/assets/agent_transcripts/paint_fold_press/paint_fold_code_.kt": "c7485569f4875513b07d53dde66c4ca739a6304c7c285a12a98dc2b310ecd839",
+        "public/docs/assets/agent_transcripts/paint_fold_press/metadata.edn": "b2cb2217a255d1e5d593854f8ea7d08179f65789b5bfd6b2742bb39364249b8c",
+        "public/docs/assets/agent_transcripts/paint_fold_press/paint_fold_code_.kt": "52bd51763a5f7dc8fa064eb268bcdc4ffb32c441a8ad27a66518892cd71ca959",
         "public/docs/assets/agent_transcripts/paint_fold_press/paint_press_code_.kt": "0356f0aa8e4f2ace4c2f1ee0ee517daa62b0b012ed5b3d1959b4a66d41f4e406",
-        "public/docs/assets/agent_transcripts/paint_fold_press/paint_rub_code_.kt": "acb2330bfbdaf25c8cc568c64a44dad240dea3e223f651e81da11bac504fe753"
+        "public/docs/assets/agent_transcripts/paint_fold_press/paint_rub_code_.kt": "c283c6be6cebe0e5642bcd03fdda7b0d12be5ed09c5e5ee46b80c2e0a3f9ffd1"
       }
     },
     "assets/agent_transcripts/particle_lenia/metadata.edn": {

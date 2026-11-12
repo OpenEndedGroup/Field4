@@ -64,16 +64,16 @@ operations:
             stereo.stereoCamera.base.target = vec(0f, 0f, 0f)
         }
         stereo.layered.parameters.clearColor = vec(.003f, .005f, .010f, 1f)
-        display(
+        markdown(
             "resolution",
-            "<div style='padding:12px'>${if (headsetMode) "OpenXR runtime" else "Desktop fallback"}: ${stereo.eyeWidth} × ${stereo.eyeHeight} per eye. Browser: 2560 × 1600. Restart Field after changing WiVRn resolution.</div>",
+            "${if (headsetMode) "OpenXR runtime" else "Desktop fallback"}: ${stereo.eyeWidth} × ${stereo.eyeHeight} per eye. Browser: 2560 × 1600. Restart Field after changing WiVRn resolution.",
         )
         prop<Boolean>(showStereoPair) = false
         val mirror = stereo.mirrorToScreen(name = "reading-preview", stereoPair = { showStereoPair })
 
-        display(
+        markdown(
             "mode",
-            "<div style='padding:12px;width:440px'>${if(headsetMode)"OpenXR: current predicted pose in both eyes + sharp Field browser" else "Desktop stereo preview: the same two-eye scene, without a headset"}. No motion history or temporal antialiasing. Launch the example boxes, Scores, the shaders, then Drawing.</div>",
+            "${if(headsetMode)"OpenXR: current predicted pose in both eyes + sharp Field browser" else "Desktop stereo preview: the same two-eye scene, without a headset"}. No motion history or temporal antialiasing. Launch the example boxes, Scores, the shaders, then Drawing.",
         )
         loop { frame() }
             .end {
@@ -93,7 +93,6 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
 
         // 1 · Marked breath. Whole runs, two selected words and an arclength bead.
         // Verbatim fragments of the supplied passage; font preparation happens before playback.
@@ -609,7 +608,8 @@ operations:
         // opacity is independent, so a word can stay bright while its outline dissolves.
         val serif = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
         val graph = readingDiagram {
-            for ((i, word) in listOf("a land", "of vague", "promise.").withIndex()) {
+            val phrases = ["a land", "of vague", "promise."]
+            for ((i, word) in phrases.withIndex()) {
                 val p = point("word-$i", (i - 1) * .65f, .04f, pinned = true)
                 text("blur-word-$i", word, p) {
                     font = serif
@@ -677,14 +677,14 @@ operations:
                 font = face
                 scale = .52f
             }
-            val frames =
-                listOf(door, eyes, hands, nonexistence, sipping, taut).associateWith { run ->
-                    textFrame("${run.id}-frame", run, standoff = .025f, mode = DiagramTextFrameMode.LINE_UNION) {
-                            width = .0008f
-                            color = vec(1f, 1f, 1f, .22f)
-                        }
-                        .also { readingFrames.add(it) }
-                }
+            val readings = [door, eyes, hands, nonexistence, sipping, taut]
+            val frames = readings.associateWith { run ->
+                textFrame("${run.id}-frame", run, standoff = .025f, mode = DiagramTextFrameMode.LINE_UNION) {
+                        width = .0008f
+                        color = vec(1f, 1f, 1f, .22f)
+                    }
+                    .also { readingFrames.add(it) }
+            }
             val thread = connection(
                 "door-thread",
                 frames.getValue(door).attach(),
@@ -744,7 +744,7 @@ operations:
                 color = vec(1f, 1f, 1f, .25f)
             }
             // Endpoints use the same live path anchors, including sliding attachments.
-            for (line in listOf(thread, marginThread, silenceThread, elsewhereThread, tideThread)) endpointDots(line.path)
+            for (line in [thread, marginThread, silenceThread, elsewhereThread, tideThread]) endpointDots(line.path)
         }
         // Each text plane turns about its own physics point. The stage itself stays fixed in the room.
         graph.texts.forEach { it.faceReader = true }
@@ -862,7 +862,7 @@ operations:
             val asideFrame = textFrame("aside-frame", aside, standoff = .025f, mode = DiagramTextFrameMode.LINE_UNION) {
                 color = vec(1f, 1f, 1f, .22f)
             }
-            readingFrames.addAll(listOf(paragraphFrame, asideFrame))
+            readingFrames.addAll([paragraphFrame, asideFrame])
             val thread = connection(
                 "initial-thread",
                 paragraphFrame.attach(),
@@ -920,7 +920,6 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
 
         // Two verbatim excerpts, with authored line breaks. These are independent physical runs,
         // not a single billboard: the near surround can frost part of the later, more distant run.
@@ -1023,9 +1022,9 @@ operations:
                 }
             }
         }
-        display(
+        markdown(
             "timing",
-            "<div style='padding:12px;width:440px'>Near reading: enter 0–8s, dissolve 22–29s.<br>Far reading: enter 5–14s, dissolve 26–34s.<br>Dots lead the thread; the thread fades at 7.1s. Both text anchors are unpinned, so the body can waft them and their surrounds away.</div>",
+            "Near reading: enter 0–8s, dissolve 22–29s.\n\nFar reading: enter 5–14s, dissolve 26–34s.\n\nDots lead the thread; the thread fades at 7.1s. Both text anchors are unpinned, so the body can waft them and their surrounds away.",
         )
 - create:
     box: text1_overstroke_rectangle
@@ -1038,7 +1037,6 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
 
         // Verbatim excerpts from the source passage; only the line breaks are authored here.
         val face = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
@@ -1103,7 +1101,6 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
 
         // Verbatim excerpts from the source passage; only the line breaks are authored here.
         val face = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
@@ -1172,7 +1169,6 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
 
         // Verbatim excerpts from the source passage; only the line breaks are authored here.
         val face = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
@@ -1239,7 +1235,6 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
 
         // Verbatim excerpts from the source passage; only the line breaks are authored here.
         val face = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
@@ -1322,7 +1317,7 @@ operations:
         Endpoint dots lead their curves by about .7 seconds; curves only change opacity.
         Re-run this box to rescore the existing players; their physics and Slug buffers are retained.
         */
-        val allExamples = listOf(
+        val allExamples = [
             exampleOne,
             exampleTwo,
             exampleThree,
@@ -1336,7 +1331,7 @@ operations:
             exampleEleven,
             exampleTwelve,
             exampleThirteen,
-        )
+        ]
         for ((index, example) in allExamples.withIndex()) {
             if (index >= 8) continue // Two readings and the mechanical holders own their complete scores.
             val graph = example.player.diagram
@@ -2519,9 +2514,9 @@ operations:
             val now = System.nanoTime()
             if (now - lastStats > 1_000_000_000L) {
                 lastStats = now
-                display(
+                markdown(
                     "frame",
-                    "<div style='padding:12px;width:440px'>${if (drawing.textBlurNeedsRebuild) "Blur capacity changed: rebuild Drawing. " else ""}Frost: ${drawing.frost.activeSurfaces} active / ${drawing.frost.allocatedSurfaces} cached · ${drawing.frost.allocatedBytes / (1024 * 1024)} MiB · ${drawing.frost.omittedSurfaces} over budget. Text caches: ${drawing.textBlurConfig.width}×${drawing.textBlurConfig.height}, minimum ${drawing.textBlurConfig.minimumSize}px, max ${2*drawing.textBlurConfig.maximumRadius+1} taps, ${drawing.textBlurCacheBytes/(1024*1024)} MiB. Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.</div>",
+                    "${if (drawing.textBlurNeedsRebuild) "Blur capacity changed: rebuild Drawing. " else ""}Frost: ${drawing.frost.activeSurfaces} active / ${drawing.frost.allocatedSurfaces} cached · ${drawing.frost.allocatedBytes / (1024 * 1024)} MiB · ${drawing.frost.omittedSurfaces} over budget. Text caches: ${drawing.textBlurConfig.width}×${drawing.textBlurConfig.height}, minimum ${drawing.textBlurConfig.minimumSize}px, max ${2*drawing.textBlurConfig.maximumRadius+1} taps, ${drawing.textBlurCacheBytes/(1024*1024)} MiB. Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.",
                 )
             }
             frame()
@@ -2539,7 +2534,6 @@ operations:
       code: |
         import afield.graphics.scene.body.*
         import afield.graphics.vulkan.Target
-        import kotlin.math.*
 
         // These are persistent, inherited Field properties. Re-running this box keeps the controls' values.
         prop<Boolean>(readingBodyEnabled, true)
@@ -2750,9 +2744,9 @@ operations:
             if (now - lastBodyStats > 1_000_000_000L) {
                 lastBodyStats = now
                 val stats = bodyInteractionStats
-                display(
+                markdown(
                     "body diagnostics",
-                    "<div style='padding:12px;width:440px'>${stats["bones"]?.toInt() ?: 0} tracked bones · ${stats["nodes"]?.toInt() ?: 0} SIMD nodes · ${stats["pushing"]?.toInt() ?: 0} pushing. Bright dots and bone-to-node lines mark applied force. Dim dots are pinned. Contact uses these nodes; thread interior nodes and glyph outlines are not tested.</div>",
+                    "${stats["bones"]?.toInt() ?: 0} tracked bones · ${stats["nodes"]?.toInt() ?: 0} SIMD nodes · ${stats["pushing"]?.toInt() ?: 0} pushing. Bright dots and bone-to-node lines mark applied force. Dim dots are pinned. Contact uses these nodes; thread interior nodes and glyph outlines are not tested.",
                 )
             }
             frame()
@@ -2897,9 +2891,7 @@ operations:
       h: 100
     properties:
       code: |
-        import afield.animation.keyframes.*
         import afield.graphics.scene.reading.*
-        import afield.ui.output.*
         import java.nio.file.Files
 
         /*
@@ -3008,13 +3000,13 @@ operations:
                         }
                         val quality = pendingTextCacheQuality()
                         drawing.requestTextBlurRebuild(quality)
-                        display(
+                        markdown(
                             "text blur quality status",
-                            "<div style='padding:12px'>Queued ${quality.estimatedBytes(poem.blurRequests.size) / (1024 * 1024)} MiB of text masks. Current settings appear in the frame output after preparation.</div>",
+                            "Queued ${quality.estimatedBytes(poem.blurRequests.size) / (1024 * 1024)} MiB of text masks. Current settings appear in the frame output after preparation.",
                         )
                     }
                         .onFailure {
-                            display("text blur quality status", "<div style='padding:12px'>${it.message}</div>")
+                            markdown("text blur quality status", "${it.message}")
                         }
                 }
             }
@@ -3648,7 +3640,8 @@ operations:
             "fxaa.x",
             "supersampling.w",
         )
-        for ((name, vector) in vectors) for ((axis, suffix) in listOf("x", "y", "z", "w").withIndex()) {
+        val axes = ["x", "y", "z", "w"]
+        for ((name, vector) in vectors) for ((axis, suffix) in axes.withIndex()) {
             if ("$name.$suffix" !in visibleComponents)
                 keys.floatTarget(
                     "compositor.$name.$suffix",
@@ -3697,9 +3690,9 @@ operations:
             presetBar(keys, directory = keyDirectory)
         }
         keyframeBrowser(keyDirectory, channel = "saved global looks", scope = keys, width = 620, height = 420)
-        display(
+        markdown(
             "keyframe guide",
-            "<div style='padding:12px;width:560px'>Store saves every global control, including colour, blur, frosting, physics, body interaction and navigation. Recall restores a named look and its sliders. Preset morph blends saved looks in name order. Cache quality is staged; use Apply text blur quality to rebuild. Score time, node positions and headset pose are independent. See guide 16.</div>",
+            "Store saves every global control, including colour, blur, frosting, physics, body interaction and navigation. Recall restores a named look and its sliders. Preset morph blends saved looks in name order. Cache quality is staged; use Apply text blur quality to rebuild. Score time, node positions and headset pose are independent. See guide 16.",
         )
 - connect:
     parent: text1_context
