@@ -3,6 +3,7 @@ package afield.examples.stdlib
 import afield.graphics.vulkan.util.FMChirpCurves
 import afield.math.optimization.LeastSquaresOptions
 import afield.math.optimization.leastSquares
+import afield.tools.testing.Checks
 import kotlin.math.abs
 import kotlin.math.sin
 
@@ -18,14 +19,19 @@ expect:
   stdoutContains:
     - "LeastSquares and FMChirp smoke tests passed"
 */
+/**
+ * The public example of structured checks (`afield.tools.testing.Checks`): every tolerance below is
+ * one `FIELD_CHECK` record that `tools/run_field_tests.py` tabulates and writes into `results.json`.
+ */
 object LeastSquaresAndFMChirpSmokeTest {
 
-    fun runTests(): Boolean {
+    fun runTests(checks: Checks = Checks()): Boolean {
         return try {
             println("Running LeastSquares and FMChirp smoke tests...")
-            testLeastSquaresFindsSmallNonlinearSolution()
-            testFMChirpPointModifier()
-            testFMChirpOrderedAreaModifier()
+            testLeastSquaresFindsSmallNonlinearSolution(checks)
+            testFMChirpPointModifier(checks)
+            testFMChirpOrderedAreaModifier(checks)
+            checks.requireAll()
             println("LeastSquares and FMChirp smoke tests passed")
             true
         } catch (t: Throwable) {
@@ -40,7 +46,7 @@ object LeastSquaresAndFMChirpSmokeTest {
         check(runTests()) { "LeastSquares and FMChirp smoke tests failed" }
     }
 
-    private fun testLeastSquaresFindsSmallNonlinearSolution() {
+    private fun testLeastSquaresFindsSmallNonlinearSolution(checks: Checks) {
         val result = leastSquares(
             initial = doubleArrayOf(0.2, -0.1),
             options = LeastSquaresOptions(maxIterations = 80)
@@ -51,12 +57,13 @@ object LeastSquaresAndFMChirpSmokeTest {
             )
         }
 
-        require(result.cost < 1e-10) { "Expected tiny least-squares cost, got ${result.cost}" }
-        require(abs(result.x[0] + 2.0 * result.x[1] - 1.0) < 1e-5) { "Linear residual remained high" }
-        require(abs(sin(result.x[0]) - 0.25) < 1e-5) { "Nonlinear residual remained high" }
+        val solver = "least-squares convergence target for an exactly solvable 2x2 system"
+        checks.that("least-squares cost", result.cost, "< 1e-10", provenance = solver) { it < 1e-10 }
+        checks.near("linear residual x0 + 2 x1 - 1", result.x[0] + 2.0 * result.x[1] - 1.0, 0.0, tolerance = 1e-5, provenance = solver)
+        checks.near("nonlinear residual sin(x0) - 0.25", sin(result.x[0]) - 0.25, 0.0, tolerance = 1e-5, provenance = solver)
     }
 
-    private fun testFMChirpPointModifier() {
+    private fun testFMChirpPointModifier(checks: Checks) {
         val base = FMChirpCurves.Presets.neutral()
         val targetX = 0.5f
         val targetY = 0.68f
@@ -70,12 +77,13 @@ object LeastSquaresAndFMChirpSmokeTest {
 
         val beforeError = abs(base.eval(targetX) - targetY)
         val afterError = abs(shaped.eval(targetX) - targetY)
-        require(afterError < beforeError * 0.35f) {
-            "Point modifier did not improve enough: before=$beforeError after=$afterError shaped=$shaped"
-        }
+        checks.that(
+            "point modifier hit error", afterError.toDouble(), "< 0.35 x unshaped error ($beforeError)",
+            note = "shaped=$shaped", provenance = "FMChirp hit modifier contract: pulls the curve toward the target",
+        ) { it < beforeError * 0.35f }
     }
 
-    private fun testFMChirpOrderedAreaModifier() {
+    private fun testFMChirpOrderedAreaModifier(checks: Checks) {
         val base = FMChirpCurves.Presets.neutral()
         val targetX = 0.5f
         val targetY = 0.62f
@@ -90,11 +98,10 @@ object LeastSquaresAndFMChirpSmokeTest {
 
         val baseArea = base.area()
         val shapedArea = shaped.area()
-        require(shapedArea > baseArea + 0.025f) {
-            "Area modifier did not increase area enough: base=$baseArea shaped=$shapedArea"
+        val ordered = "FMChirp ordered modifiers: areaDelta raises area without abandoning the hit"
+        checks.that("area after areaDelta(0.08)", shapedArea.toDouble(), "> base area ($baseArea) + 0.025", provenance = ordered) {
+            it > baseArea + 0.025f
         }
-        require(abs(shaped.eval(targetX) - targetY) < 0.18f) {
-            "Ordered modifiers wandered too far from hit target: y=${shaped.eval(targetX)} target=$targetY"
-        }
+        checks.near("ordered hit y at x=0.5", shaped.eval(targetX).toDouble(), targetY.toDouble(), tolerance = 0.18, provenance = ordered)
     }
 }
