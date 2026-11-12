@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-236 source file(s), 733 public symbol(s), 325 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+237 source file(s), 735 public symbol(s), 326 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1786,6 +1786,20 @@ Runs the production shader on adjacent byte slices, including shared packed word
 | Declaration | Summary |
 | --- | --- |
 | <a id="nanooutputboundssmoketest-kt--nanooutputboundssmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NanoOutputBoundsSmokeTest/#L29) |  |
+
+## NeuralCloudParitySmoke.kt { #neuralcloudparitysmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/NeuralCloudParitySmoke.kt` — [read the source](source/jvmMain/afield/examples/four/NeuralCloudParitySmoke/)
+
+### NeuralCloudParitySmoke { #neuralcloudparitysmoke-kt-neuralcloudparitysmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">NeuralCloudParitySmoke</span></code>](source/jvmMain/afield/examples/four/NeuralCloudParitySmoke/#L53)
+
+The neural cloud on the GPU, read back and compared with [`CloudScene.render`](graphics.md#neuralclouds-kt--cloudscene--render) on the CPU.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="neuralcloudparitysmoke-kt--neuralcloudparitysmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NeuralCloudParitySmoke/#L71) |  |
 
 ## NeuralFieldParitySmoke.kt { #neuralfieldparitysmoke-kt }
 
