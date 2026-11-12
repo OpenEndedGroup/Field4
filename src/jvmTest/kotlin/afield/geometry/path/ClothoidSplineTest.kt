@@ -431,4 +431,62 @@ class ClothoidSplineTest {
             assertTrue(spread < 1e-4 / r, "w=$w curvature varies by $spread on a circle")
         }
     }
+
+    /** Convex outlines with uneven spacing where weight 1's curvature dips below zero. */
+    private val convexEggs = listOf(
+        listOf(vec(0, 0, 0), vec(110, -5, 0), vec(190, 35, 0), vec(190, 65, 0), vec(110, 105, 0), vec(0, 100, 0), vec(-30, 50, 0)),
+        listOf(vec(0, 0, 0), vec(120, 0, 0), vec(200, 40, 0), vec(200, 60, 0), vec(120, 100, 0), vec(0, 100, 0), vec(-30, 50, 0)),
+    )
+
+    @Test
+    fun lowWeightsKeepConvexKnotsConvex() {
+        // The first weight family (flat middle, both ends steep) passed every per-piece test and
+        // still put inflections into these outlines; this is the check that caught it.
+        for (knots in convexEggs) {
+            val euler = recorded(clothoidSplineFrom(knots, closed = true))
+            assertTrue(euler.minOf { it } < 0, "weight 1 no longer dips on this egg: pick a harder one")
+            for (w in listOf(0.5, 0.4, 0.3, 0.2)) {
+                val k = recorded(clothoidSplineFrom(knots, closed = true, weight = w))
+                assertTrue(k.all { it > 0 }, "w=$w: curvature changes sign (min ${k.minOf { it }}) on convex knots")
+            }
+        }
+    }
+
+    @Test
+    fun perPieceWeightKeepsConvexKnotsConvexAndIsG2() {
+        val n = 2000
+        for (knots in convexEggs) {
+            val line = clothoidSplineFrom(knots, closed = true, samplesPerSegment = n, weight = null)
+            val k = recorded(line)
+            assertTrue(k.all { it > 0 }, "weight=null: curvature changes sign (min ${k.minOf { it }})")
+            val kMax = k.maxOf { abs(it) }
+            for (i in 1 until knots.size) {
+                assertTrue(Vec3(line.nodes[i * n].to).sub(knots[i]).length() < 1e-3f, "knot $i missed")
+                assertTrue(abs(k[i * n] - k[i * n + 1]) < 0.01 * kMax, "knot $i curvature jump")
+            }
+        }
+        // an S-shaped wave keeps Euler pieces: weight=null draws what weight 1 draws, near enough
+        val a = clothoidSplineFrom(wave, samplesPerSegment = perSegment)
+        val b = clothoidSplineFrom(wave, samplesPerSegment = perSegment, weight = null)
+        val worst = a.nodes.zip(b.nodes).maxOf { (x, y) -> Vec3(x.to).sub(y.to).length().toDouble() }
+        assertTrue(worst < 2.0, "weight=null moved the wave by $worst")
+    }
+
+    @Test
+    fun hobbyPassesThroughKnotsAndRoundsACircle() {
+        val r = 100.0
+        val knots = (0 until 8).map { i -> val a = 2 * PI * i / 8 + 0.2 * sin(i * 1.7); afield.math.linalg.Vec2((r * cos(a)).toFloat(), (r * sin(a)).toFloat()) }
+        val line = hobbySplineFrom(knots, closed = true)
+        val ends = line.nodes.filter { it !is FLine.Close }.map { Vec3(it.to) }
+        for ((i, k) in knots.withIndex()) assertTrue(hypot((ends[i].x - k.x).toDouble(), (ends[i].y - k.y).toDouble()) < 1e-3, "knot $i missed")
+        val c = line.cursor()
+        val total = c.lengthD().toDouble()
+        for (i in 0 until 200) {
+            c.setD((total * i / 200).toFloat())
+            val d = c.position().length()
+            assertTrue(abs(d - r) < 0.01 * r, "Hobby point $d from centre, expected about $r")
+        }
+        val open = hobbySplineFrom(wave.map { afield.math.linalg.Vec2(it.x, it.y) })
+        assertTrue(open.nodes.size == wave.size)
+    }
 }

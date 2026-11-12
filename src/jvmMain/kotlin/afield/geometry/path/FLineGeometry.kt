@@ -5079,6 +5079,32 @@ private fun fitWeightedPiece(ax: Double, ay: Double, bx: Double, by: Double, the
     return ClothoidPiece(thetaA, k0 / length, 0.0, length, weight, toF(k0), toF(k1))
 }
 
+/**
+ * The weight [clothoidSplineFrom] gives a piece when called with `weight = null`: our rule, not
+ * S9's (which is unpublished).
+ *
+ * With `φ0`, `φ1` the end headings against the chord, a C-shaped piece has them on opposite sides
+ * (`φ0·φ1 < 0`, a symmetric arc has `φ1 = −φ0`), an S-shaped piece on the same side. Euler pieces
+ * misbehave on lopsided C shapes: one end curls tightly and the other end's curvature is dragged
+ * past zero. So the weight drops with `asymmetry · cShape`, where
+ * `asymmetry = |φ0 + φ1| / (|φ0| + |φ1|)` (0 for an arc, 1 when one end runs along the chord) and
+ * `cShape = max(0, −2φ0φ1 / (φ0² + φ1²))` (1 for an arc, 0 for any S shape). The product peaks
+ * near 0.3, which the factor maps to a weight of about 0.5; S shapes, arcs and straight pieces stay
+ * Euler spirals (weight exactly 1). The rule is continuous in the headings, which the knot solve
+ * needs since it varies them.
+ */
+private fun s9PieceWeight(ax: Double, ay: Double, bx: Double, by: Double, thetaA: Double, thetaB: Double): Double {
+    val chord = atan2(by - ay, bx - ax)
+    val p0 = wrapToPi(thetaA - chord)
+    val p1 = wrapToPi(thetaB - chord)
+    val sum = abs(p0) + abs(p1)
+    if (sum < 1e-12) return 1.0
+    val asymmetry = abs(p0 + p1) / sum
+    val cShape = max(0.0, -2 * p0 * p1 / (p0 * p0 + p1 * p1))
+    val lower = 1.7 * asymmetry * cShape
+    return if (lower <= 0.0) 1.0 else max(0.3, 1 - lower)
+}
+
 private fun fitClothoidPiece(ax: Double, ay: Double, bx: Double, by: Double, thetaA: Double, thetaB: Double): ClothoidPiece? {
     val dx = bx - ax
     val dy = by - ay
@@ -5103,7 +5129,7 @@ private fun fitClothoidPiece(ax: Double, ay: Double, bx: Double, by: Double, the
  */
 private fun solveClothoidSpline(
     xs: DoubleArray, ys: DoubleArray, closed: Boolean, iterations: Int,
-    startTheta: Double? = null, endTheta: Double? = null, weight: Double = 1.0,
+    startTheta: Double? = null, endTheta: Double? = null, weight: Double? = 1.0,
 ): List<ClothoidPiece>? {
     val n = xs.size
     val segs = if (closed) n else n - 1
@@ -5140,9 +5166,11 @@ private fun solveClothoidSpline(
         if (fixedEnd == null) theta[1] = 2 * c - theta[0]
     }
 
-    fun fitSeg(j: Int, th: DoubleArray) =
-        if (weight == 1.0) fitClothoidPiece(xs[j], ys[j], xs[nxt(j)], ys[nxt(j)], th[j], th[nxt(j)])
-        else fitWeightedPiece(xs[j], ys[j], xs[nxt(j)], ys[nxt(j)], th[j], th[nxt(j)], weight)
+    fun fitSeg(j: Int, th: DoubleArray): ClothoidPiece? {
+        val w = weight ?: s9PieceWeight(xs[j], ys[j], xs[nxt(j)], ys[nxt(j)], th[j], th[nxt(j)])
+        return if (w == 1.0) fitClothoidPiece(xs[j], ys[j], xs[nxt(j)], ys[nxt(j)], th[j], th[nxt(j)])
+        else fitWeightedPiece(xs[j], ys[j], xs[nxt(j)], ys[nxt(j)], th[j], th[nxt(j)], w)
+    }
 
     /** Residual at knot [i], from the pieces either side of it (and its heading, at a fixed end). */
     fun residualAt(i: Int, pieces: Array<ClothoidPiece?>, th: DoubleArray): Double {
@@ -5523,7 +5551,9 @@ private class ClothoidRun(val knots: List<Int>, val pieces: List<ClothoidPiece>?
  * @param planeNormal normal of the plane the curve is solved in (default +Z, the XY plane); null
  *   fits a plane to the knots
  * @param weight S9 weight in `[0.1, 1]`: 1 is the Euler-spiral spline; smaller values gather each
- *   segment's change of curvature next to its more sharply curved knot
+ *   segment's change of curvature next to its more sharply curved knot. `null` picks a weight per
+ *   piece from its end directions ([s9PieceWeight]): lopsided C-shaped pieces get down to 0.3,
+ *   S-shaped pieces and arcs stay at 1
  */
 fun clothoidSplineFrom(
     points: List<Vec3>,
@@ -5533,9 +5563,9 @@ fun clothoidSplineFrom(
     startDirection: Vec3? = null,
     endDirection: Vec3? = null,
     planeNormal: Vec3? = Vec3(0f, 0f, 1f),
-    weight: Double = 1.0,
+    weight: Double? = 1.0,
 ): FLine {
-    require(weight in 0.1..1.0) { "clothoidSplineFrom: weight must be in 0.1..1.0, was $weight" }
+    require(weight == null || weight in 0.1..1.0) { "clothoidSplineFrom: weight must be null or in 0.1..1.0, was $weight" }
     require(!closed || (startDirection == null && endDirection == null)) {
         "clothoidSplineFrom: startDirection and endDirection apply to open curves; a closed curve has no ends"
     }
@@ -5692,12 +5722,96 @@ fun clothoidSplineFrom(
     corners: Collection<Int> = emptyList(),
     startDirection: Vec2? = null,
     endDirection: Vec2? = null,
-    weight: Double = 1.0,
+    weight: Double? = 1.0,
 ): FLine = clothoidSplineFrom(
     points.map { vec(it.x, it.y, z) }, closed, samplesPerSegment, corners,
     startDirection?.let { vec(it.x, it.y, 0) }, endDirection?.let { vec(it.x, it.y, 0) },
     weight = weight,
 )
+
+/**
+ * John Hobby's spline (the one METAFONT and MetaPost draw `..` paths with), at tension 1, through
+ * [points]: one cubic Bézier per piece.
+ *
+ * Like [clothoidSplineFrom] it picks one direction per knot so that curvature matches across the
+ * knot, but it matches a linearized ("mock") curvature, which makes the knot directions the
+ * solution of one linear system instead of a Newton solve; each piece is then a cubic whose
+ * control-point distances come from Hobby's velocity function. The mock curvature equation is the
+ * small-angle limit of the Euler-spiral condition, so on gently turning knots the two splines
+ * nearly agree and they part where the turns are large. Open curves end as the small-angle
+ * version of an arc (the first and last pieces leave and arrive at equal angles to their chords,
+ * curl 1). From Hobby, "Smooth, easy to compute interpolating splines" (1986); the equations here
+ * were rederived from that linearization, not copied.
+ *
+ * @param points the knots, in order; repeated points are dropped
+ * @param z the Z value of the drawn line
+ * @param closed join the last knot back to the first, smoothly
+ */
+fun hobbySplineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = false): FLine {
+    val pts = ArrayList<Vec2>()
+    for (p in points) if (pts.isEmpty() || hypot((p.x - pts.last().x).toDouble(), (p.y - pts.last().y).toDouble()) > 1e-6) pts.add(p)
+    if (closed && pts.size > 1 && hypot((pts[0].x - pts.last().x).toDouble(), (pts[0].y - pts.last().y).toDouble()) < 1e-6) pts.removeAt(pts.lastIndex)
+    val line = FLine()
+    val zz = z.toDouble()
+    val n = pts.size
+    if (n == 0) return line
+    line.moveTo(vec(pts[0].x, pts[0].y, zz))
+    if (n == 1) return line
+    if (n == 2 && !closed || closed && n < 3) {
+        line.lineTo(vec(pts[1].x, pts[1].y, zz)); return line
+    }
+    val segs = if (closed) n else n - 1
+    fun nx(i: Int) = (i + 1) % n
+    val d = DoubleArray(segs) { hypot((pts[nx(it)].x - pts[it].x).toDouble(), (pts[nx(it)].y - pts[it].y).toDouble()) }
+    val chord = DoubleArray(segs) { atan2((pts[nx(it)].y - pts[it].y).toDouble(), (pts[nx(it)].x - pts[it].x).toDouble()) }
+    // psi[k]: turn from the chord arriving at knot k to the chord leaving it
+    fun psi(k: Int) = wrapToPi(chord[k % segs] - chord[(k - 1 + segs) % segs])
+    // Unknowns: theta[j] (leaving knot j, against chord j) at index j, phi[j] (arriving at knot j+1,
+    // chord j to tangent, clockwise) at index segs + j. Small-angle Euler-spiral curvatures of piece j:
+    // κ·d at its start = 2φ − 4θ, at its end = 2θ − 4φ.
+    val m = 2 * segs
+    val a = Array(m) { DoubleArray(m) }
+    val b = DoubleArray(m)
+    var row = 0
+    val knots = if (closed) 0 until n else 1 until n - 1
+    for (k in knots) {
+        val prev = (k - 1 + segs) % segs
+        val next = k % segs
+        // the tangent is shared: φ_prev + θ_next = −ψ_k
+        a[row][segs + prev] = 1.0; a[row][next] = 1.0; b[row] = -psi(k); row++
+        // curvature arriving = curvature leaving
+        a[row][prev] += 2 / d[prev]; a[row][segs + prev] += -4 / d[prev]
+        a[row][segs + next] += -2 / d[next]; a[row][next] += 4 / d[next]
+        row++
+    }
+    if (!closed) {
+        a[row][0] = 1.0; a[row][segs] = -1.0; row++
+        a[row][segs - 1] = 1.0; a[row][2 * segs - 1] = -1.0; row++
+    }
+    val x = solveDense(a, b) ?: return catmullRomToBezier(pts.map { vec(it.x, it.y, zz) }, closed)
+    fun velocity(t: Double, p: Double): Double {
+        val r5 = sqrt(5.0)
+        val num = 2 + sqrt(2.0) * (sin(t) - sin(p) / 16) * (sin(p) - sin(t) / 16) * (cos(t) - cos(p))
+        return num / (3 * (1 + 0.5 * (r5 - 1) * cos(t) + 0.5 * (3 - r5) * cos(p)))
+    }
+    for (j in 0 until segs) {
+        val th = x[j]
+        val ph = x[segs + j]
+        val p0 = pts[j]
+        val p1 = pts[nx(j)]
+        val f = velocity(th, ph) * d[j]
+        val g = velocity(ph, th) * d[j]
+        val out = chord[j] + th
+        val inc = chord[j] - ph
+        line.cubicTo(
+            vec(p0.x + f * cos(out), p0.y + f * sin(out), zz),
+            vec(p1.x - g * cos(inc), p1.y - g * sin(inc), zz),
+            vec(p1.x, p1.y, zz),
+        )
+    }
+    if (closed) line.close()
+    return line
+}
 
 /** Node property where [clothoidSplineFrom] records the exact signed curvature at each drawn point. */
 private const val CURVATURE_PROPERTY = "curvature"
