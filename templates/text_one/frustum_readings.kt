@@ -1,5 +1,4 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // Verbatim excerpts from the source passage; only the line breaks are authored here.
 val face = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
@@ -21,7 +20,11 @@ val graph = readingDiagram {
         width = .0007f
         color = vec(1f, 1f, 1f, .17f)
         aspectRatio = 3.2f
-        frost { enabled = true; blurPixels = 7f; brightness = 1.1f }
+        frost {
+            enabled = true
+            blurPixels = 7f
+            brightness = 1.1f
+        }
     }
 }
 val score = diagramScore(graph, 30.0) {
@@ -40,10 +43,14 @@ val player = try {
         progress.update(n.toDouble() / total, "$n / $total: $text")
     }
 } finally {
-    progress.close()
-}
+        progress.close()
+    }
 player.spring = 8f
 player.dampingRate = 4f
 player.gravity = 0f
 player.wind = 0f
-prop<ReadingExample>(exampleTwelve) = ReadingExample("12 · A transparent text frustum", "Two frosted, text-fitted rectangular ends share an aspect and four rails; a whole-holder cue moves both ends.", player)
+prop<ReadingExample>(exampleTwelve) = ReadingExample(
+    "12 · A transparent text frustum",
+    "Two frosted, text-fitted rectangular ends share an aspect and four rails; a whole-holder cue moves both ends.",
+    player,
+)

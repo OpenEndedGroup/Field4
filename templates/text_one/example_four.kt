@@ -30,10 +30,11 @@ val graph = readingDiagram {
             points.add(w to particle)
             // Kellogg can merge detached clause punctuation into a predicate ("could smell .").
             // Keep a verbatim phrase here; the complete reading run retains the original punctuation.
-            val quote = w.text.trim().let { label ->
-                if (ReadingPassage.text.contains(label)) label
-                else label.trimEnd { it.isWhitespace() || it in ".,;:!?…" }
-            }
+            val quote =
+                w.text.trim().let { label ->
+                    if (ReadingPassage.text.contains(label)) label
+                    else label.trimEnd { it.isWhitespace() || it in ".,;:!?…" }
+                }
             check(ReadingPassage.text.contains(quote)) { "Layout changed the source phrase: $quote" }
             text("word-$i", quote, particle) {
                 scale = (w.size * metres / .09).toFloat()

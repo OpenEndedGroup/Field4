@@ -51,7 +51,7 @@ run {
 <!-- field-box id="paint_fold" index="1" -->
 
 ```edn [field-box id="paint_fold" role="properties"]
-{"id" "paint_fold" "index" 1 "name" "Paint — fold the canvas and open it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Paint — fold the canvas and open it" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_fold_code_.kt" "lines" 25 "characters" 1146 "sha256" "c7485569f4875513b07d53dde66c4ca739a6304c7c285a12a98dc2b310ecd839"}]}
+{"id" "paint_fold" "index" 1 "name" "Paint — fold the canvas and open it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Paint — fold the canvas and open it" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_fold_code_.kt" "lines" 25 "characters" 1140 "sha256" "52bd51763a5f7dc8fa064eb268bcdc4ffb32c441a8ad27a66518892cd71ca959"}]}
 ```
 
 ```kotlin [field-property box="paint_fold" name="code" path="paint_fold_code_.kt"]
@@ -63,11 +63,11 @@ run {
 
     val canvas = PaintCanvas(900, aspect = 1.4, seed = 7)
     val brush = canvas.brush(BrushKind.HogFlat, width = 70.0)
-    val blobs = listOf(
+    val blobs = [
         rgb(0.75, 0.1, 0.08) to FLine().moveTo(300, 150).cubicTo(380, 200, 440, 260, 500, 290),
         rgb(0.1, 0.2, 0.6) to FLine().moveTo(230, 360).cubicTo(330, 320, 420, 400, 490, 430),
         rgb(0.95, 0.75, 0.15) to FLine().moveTo(340, 560).lineTo(500, 520),
-    )
+    ]
     for ((color, line) in blobs) {
         brush.load(color, amount = 4.0, stiff = 0.5)
         canvas.stroke(line, brush, pressure = 1.0..1.0)
@@ -87,7 +87,7 @@ run {
 <!-- field-box id="paint_rub" index="2" -->
 
 ```edn [field-box id="paint_rub" role="properties"]
-{"id" "paint_rub" "index" 2 "name" "Paint — rub a thumb through wet paint" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Paint — rub a thumb through wet paint" "_tombstone" false "frame" #afield/rect [80.0 4700.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_rub_code_.kt" "lines" 30 "characters" 1321 "sha256" "acb2330bfbdaf25c8cc568c64a44dad240dea3e223f651e81da11bac504fe753"}]}
+{"id" "paint_rub" "index" 2 "name" "Paint — rub a thumb through wet paint" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Paint — rub a thumb through wet paint" "_tombstone" false "frame" #afield/rect [80.0 4700.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_rub_code_.kt" "lines" 31 "characters" 1341 "sha256" "c283c6be6cebe0e5642bcd03fdda7b0d12be5ed09c5e5ee46b80c2e0a3f9ffd1"}]}
 ```
 
 ```kotlin [field-property box="paint_rub" name="code" path="paint_rub_code_.kt"]
@@ -99,7 +99,8 @@ run {
 
     val canvas = PaintCanvas(900, aspect = 1.4, seed = 9)
     val brush = canvas.brush(BrushKind.HogFlat, width = 60.0)
-    for ((i, color) in listOf(rgb(0.8, 0.15, 0.1), rgb(0.95, 0.75, 0.15), rgb(0.1, 0.25, 0.6)).withIndex()) {
+    val palette = [rgb(0.8, 0.15, 0.1), rgb(0.95, 0.75, 0.15), rgb(0.1, 0.25, 0.6)]
+    for ((i, color) in palette.withIndex()) {
         brush.load(color, amount = 3.0, stiff = 0.4)
         canvas.stroke(FLine().moveTo(180 + i * 70, 150).lineTo(180 + i * 70, 560), brush, pressure = 1.0..1.0)
     }

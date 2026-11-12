@@ -5,7 +5,7 @@ The gallery scores are separate from graph construction and native typography pr
 Endpoint dots lead their curves by about .7 seconds; curves only change opacity.
 Re-run this box to rescore the existing players; their physics and Slug buffers are retained.
 */
-val allExamples = listOf(
+val allExamples = [
     exampleOne,
     exampleTwo,
     exampleThree,
@@ -19,7 +19,7 @@ val allExamples = listOf(
     exampleEleven,
     exampleTwelve,
     exampleThirteen,
-)
+]
 for ((index, example) in allExamples.withIndex()) {
     if (index >= 8) continue // Two readings and the mechanical holders own their complete scores.
     val graph = example.player.diagram

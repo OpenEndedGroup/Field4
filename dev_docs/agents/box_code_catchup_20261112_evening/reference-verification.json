@@ -1,0 +1,105 @@
+{
+  "changes": [
+    {
+      "path": "public/docs/paint_canvas.md",
+      "links": [
+        {
+          "symbol": "PaintCanvas.fold",
+          "target": "reference/graphics.md#paintcanvas-kt--paintcanvas--fold",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "PaintCanvas.press",
+          "target": "reference/graphics.md#paintcanvas-kt--paintcanvas--press",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "PaintCanvas.rub",
+          "target": "reference/graphics.md#paintcanvas-kt--paintcanvas--rub",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "PaintCanvas",
+          "target": "reference/graphics.md#paintcanvas-kt-paintcanvas",
+          "placement": "nearby explanation"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/path_tracing.md",
+      "links": [
+        {
+          "symbol": "CloudScene",
+          "target": "reference/graphics.md#neuralclouds-kt-cloudscene",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "NeuralCloud.ambient",
+          "target": "reference/graphics.md#neuralclouds-kt--neuralcloud-companion--ambient",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "CloudScene.render",
+          "target": "reference/graphics.md#neuralclouds-kt--cloudscene--render",
+          "placement": "existing prose"
+        },
+        {
+          "symbol": "NeuralCloud",
+          "target": "reference/graphics.md#neuralclouds-kt-neuralcloud",
+          "placement": "nearby explanation"
+        },
+        {
+          "symbol": "NeuralCloud.samples",
+          "target": "reference/graphics.md#neuralclouds-kt--neuralcloud-companion--samples",
+          "placement": "nearby explanation"
+        },
+        {
+          "symbol": "NeuralCloud.train",
+          "target": "reference/graphics.md#neuralclouds-kt--neuralcloud-companion--train",
+          "placement": "nearby explanation"
+        },
+        {
+          "symbol": "writeCloudComparison",
+          "target": "reference/graphics.md#neuralclouds-kt--writecloudcomparison",
+          "placement": "nearby explanation"
+        },
+        {
+          "symbol": "cloudError",
+          "target": "reference/graphics.md#neuralclouds-kt--clouderror",
+          "placement": "nearby explanation"
+        },
+        {
+          "symbol": "cloudHere",
+          "target": "reference/graphics.md#neuralclouds-kt--cloudhere",
+          "placement": "existing prose"
+        }
+      ]
+    },
+    {
+      "path": "public/docs/sentence_diagrams.md",
+      "links": [
+        {
+          "symbol": "ReadingDiagram",
+          "target": "reference/graphics.md#diagramdsl-kt-readingdiagram",
+          "placement": "reading-space explanation"
+        },
+        {
+          "symbol": "ReadingDiagramPlayer.prepare",
+          "target": "reference/graphics.md#readingdiagramplayer-kt--readingdiagramplayer-companion--prepare",
+          "placement": "reading-space explanation"
+        },
+        {
+          "symbol": "textFrame",
+          "target": "reference/graphics.md#diagramtextframe-kt--textframe",
+          "placement": "reading-space explanation"
+        },
+        {
+          "symbol": "textFrustum",
+          "target": "reference/graphics.md#diagramtextfrustum-kt--textfrustum",
+          "placement": "reading-space explanation"
+        }
+      ]
+    }
+  ],
+  "policy": "Direct class and method links in nearby prose; actual generated anchors, including companion factories."
+}

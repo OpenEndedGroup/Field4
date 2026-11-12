@@ -1,11 +1,11 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // Two verbatim excerpts, with authored line breaks. These are independent physical runs,
 // not a single billboard: the near surround can frost part of the later, more distant run.
 val face = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
 val graph = readingDiagram {
-    val near = text("near-reading",
+    val near = text(
+        "near-reading",
         "My words found a few\nlast handholds of their own\nonce my body collapsed.",
         point("near-point", -.14, -.04, .28),
     ) {
@@ -14,7 +14,8 @@ val graph = readingDiagram {
         orientation.rotateY(-.10f)
         blurCapacity = 1.5f // both entrance and exit tracks reserve their Gaussian range before Drawing
     }
-    val far = text("far-reading",
+    val far = text(
+        "far-reading",
         "A whole school of ideas\nswam before me,\nbut I could hook only one:\ndon’t believe what you see.",
         point("far-point", .14, .11, -.24),
     ) {
@@ -74,8 +75,8 @@ val player = try {
         progress.update(n.toDouble() / total, "$n / $total: $text")
     }
 } finally {
-    progress.close()
-}
+        progress.close()
+    }
 player.spring = 3f
 player.dampingRate = 3f
 player.wind = 0f
@@ -100,4 +101,7 @@ controlGroup("sequence") {
         }
     }
 }
-display("timing", "<div style='padding:12px;width:440px'>Near reading: enter 0–8s, dissolve 22–29s.<br>Far reading: enter 5–14s, dissolve 26–34s.<br>Dots lead the thread; the thread fades at 7.1s. Both text anchors are unpinned, so the body can waft them and their surrounds away.</div>")
+markdown(
+    "timing",
+    "Near reading: enter 0–8s, dissolve 22–29s.\n\nFar reading: enter 5–14s, dissolve 26–34s.\n\nDots lead the thread; the thread fades at 7.1s. Both text anchors are unpinned, so the body can waft them and their surrounds away.",
+)

@@ -32,7 +32,7 @@ val graph = readingDiagram {
     val asideFrame = textFrame("aside-frame", aside, standoff = .025f, mode = DiagramTextFrameMode.LINE_UNION) {
         color = vec(1f, 1f, 1f, .22f)
     }
-    readingFrames.addAll(listOf(paragraphFrame, asideFrame))
+    readingFrames.addAll([paragraphFrame, asideFrame])
     val thread = connection(
         "initial-thread",
         paragraphFrame.attach(),

@@ -411,7 +411,7 @@ and the mm³ taken off it (`liftedMm3`, what a plate took or a thumb still holds
 lowers it by exactly what the plate reports. Paint that has started to set moves less, and dry paint
 does not move.
 
-The box below lays three thick strokes on the left half, folds the canvas down the middle and opens
+The [`PaintCanvas`](reference/graphics.md#paintcanvas-kt-paintcanvas) example below lays three thick strokes on the left half, folds the canvas down the middle and opens
 it. The top image is the canvas before the fold, the bottom one after: each stroke is printed onto
 the right half, and the two prints carry opposite ridges where the film split.
 
@@ -450,7 +450,8 @@ display("main", plate.png(wet = true, light = PaintLight.Raking))
 
 val thumb = PaintCanvas(900, aspect = 1.4, seed = 9)
 val brush = thumb.brush(BrushKind.HogFlat, width = 60.0)
-for ((i, color) in listOf(rgb(0.8, 0.15, 0.1), rgb(0.95, 0.75, 0.15), rgb(0.1, 0.25, 0.6)).withIndex()) {
+val palette = [rgb(0.8, 0.15, 0.1), rgb(0.95, 0.75, 0.15), rgb(0.1, 0.25, 0.6)]
+for ((i, color) in palette.withIndex()) {
     brush.load(color, amount = 3.0, stiff = 0.4)
     thumb.stroke(FLine().moveTo(180 + i * 70, 150).lineTo(180 + i * 70, 560), brush, pressure = 1.0..1.0)
 }

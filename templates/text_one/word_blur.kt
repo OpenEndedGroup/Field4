@@ -4,7 +4,8 @@ import afield.graphics.scene.reading.*
 // opacity is independent, so a word can stay bright while its outline dissolves.
 val serif = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
 val graph = readingDiagram {
-    for ((i, word) in listOf("a land", "of vague", "promise.").withIndex()) {
+    val phrases = ["a land", "of vague", "promise."]
+    for ((i, word) in phrases.withIndex()) {
         val p = point("word-$i", (i - 1) * .65f, .04f, pinned = true)
         text("blur-word-$i", word, p) {
             font = serif

@@ -8,8 +8,12 @@ and body-debug overlays remain sharp.
 Every `textFrame` owns independent settings:
 
 ```kotlin
-val border = textFrame("paragraph-frame", paragraph,
-    standoff = .025f, mode = DiagramTextFrameMode.LINE_UNION)
+val border = textFrame(
+    "paragraph-frame",
+    paragraph,
+    standoff = .025f,
+    mode = DiagramTextFrameMode.LINE_UNION,
+)
 border.frost.apply {
     enabled = true
     opacity = 1f

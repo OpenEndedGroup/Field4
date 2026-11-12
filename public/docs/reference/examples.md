@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-238 source file(s), 737 public symbol(s), 328 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+238 source file(s), 750 public symbol(s), 328 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1532,6 +1532,10 @@ Holds the two simulation templates to the pixels: a Stam stable fluid and a jump
 
 [<code class="highlight"><span class="k">class</span> <span class="nc">FieldProbeSmokeTest</span></code>](source/jvmMain/afield/examples/four/FieldProbeSmokeTest/#L16)
 
+| Declaration | Summary |
+| --- | --- |
+| <a id="fieldprobesmoketest-kt--fieldprobesmoketest-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/FieldProbeSmokeTest/#L19) |  |
+
 ## FieldStatsSmokeTest.kt { #fieldstatssmoketest-kt }
 
 `src/jvmMain/kotlin/afield/examples/four/FieldStatsSmokeTest.kt` — [read the source](source/jvmMain/afield/examples/four/FieldStatsSmokeTest/)
@@ -1539,6 +1543,10 @@ Holds the two simulation templates to the pixels: a Stam stable fluid and a jump
 ### FieldStatsSmokeTest { #fieldstatssmoketest-kt-fieldstatssmoketest }
 
 [<code class="highlight"><span class="k">class</span> <span class="nc">FieldStatsSmokeTest</span></code>](source/jvmMain/afield/examples/four/FieldStatsSmokeTest/#L18)
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="fieldstatssmoketest-kt--fieldstatssmoketest-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/FieldStatsSmokeTest/#L21) |  |
 
 ## GpuNeighbourGridSmoke.kt { #gpuneighbourgridsmoke-kt }
 
@@ -1699,6 +1707,7 @@ Standalone, runnable end-to-end demo of "ImGui as an in-VR panel".
 | <a id="imguivrpaneldemo-kt--imguivrpaneldemo--runcapture"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runCapture</span><span class="p">(</span><span class="n">outputPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L236) | Verification loop: aim the mock controller straight at the panel centre, render a warm-up of frames, then grab the *live macOS window* with `screencapture` (the same tool doc.kt uses for Field 4 window shots). We deliberately avoid the Vulkan swapchain readback here because that path is Y-flipped for our blitted content; screencapture records exactly what is on screen. |
 | <a id="imguivrpaneldemo-kt--imguivrpaneldemo--runcapturegpu"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runCaptureGpu</span><span class="p">(</span><span class="n">outputPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L269) | Headless verification capture: aim at the panel centre, render a warm-up of frames, then read the swapchain back to a PNG with [`Renderer.captureWindowToFile`](graphics.md#renderer-kt--renderer--capturewindowtofile) (a Vulkan transfer-source copy — unlike `screencapture` it needs no Screen-Recording permission and works over SSH/CI). The captured pixels are the blitted side-by-side packed image, preserving the orientation presented by the swapchain. |
 | <a id="imguivrpaneldemo-kt--imguivrpaneldemo--running"></a>[<code class="highlight"><span class="k">var</span> <span class="n">running</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L322) |  |
+| <a id="imguivrpaneldemo-kt--imguivrpaneldemo-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L352) |  |
 
 ## ImGuiVrPanelSmokeTest.kt { #imguivrpanelsmoketest-kt }
 
@@ -1709,6 +1718,10 @@ Standalone, runnable end-to-end demo of "ImGui as an in-VR panel".
 [<code class="highlight"><span class="k">class</span> <span class="nc">ImGuiVrPanelSmokeTest</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelSmokeTest/#L32)
 
 End-to-end smoke for the ImGui-as-a-VR-panel pipeline: builds the ImGui -> RTT -> stereo-quad -> side-by-side pipeline exactly as [`ImGuiVrPanelDemo`](examples.md#imguivrpaneldemo-kt-imguivrpaneldemo), renders a warm-up of frames on a real Vulkan window with the mock controller aimed at the panel centre, and asserts the controller ray -> quad hit-test round-trips to panel-centre UV.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="imguivrpanelsmoketest-kt--imguivrpanelsmoketest-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelSmokeTest/#L35) |  |
 
 ## ImageReducerExample.kt { #imagereducerexample-kt }
 
@@ -1726,6 +1739,7 @@ Example demonstrating the usage of ImageReducer utility class.
 | <a id="imagereducerexample-kt--imagereducerexample--renderer"></a>[<code class="highlight"><span class="k">val</span> <span class="n">renderer</span></code>](source/jvmMain/afield/examples/four/ImageReducerExample/#L20) |  |
 | <a id="imagereducerexample-kt--imagereducerexample--runonce"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runOnce</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImageReducerExample/#L25) | Example 1: "Just do it once" - synchronous one-shot execution |
 | <a id="imagereducerexample-kt--imagereducerexample--runperframe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runPerFrame</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImageReducerExample/#L47) | Example 2: "Do it every frame" - install into RenderTarget.others |
+| <a id="imagereducerexample-kt--imagereducerexample-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImageReducerExample/#L78) |  |
 
 ## KeyframeSweepDemo.kt { #keyframesweepdemo-kt }
 
@@ -1846,6 +1860,7 @@ Step two of the neural-particle pilot: that a buffer of particles integrated on 
 | <a id="newmain6-kt--newmain6--cleanup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain6/#L159) |  |
 | <a id="newmain6-kt--newmain6--running"></a>[<code class="highlight"><span class="k">var</span> <span class="n">running</span></code>](source/jvmMain/afield/examples/four/NewMain6/#L163) |  |
 | <a id="newmain6-kt--newmain6--run"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain6/#L165) |  |
+| <a id="newmain6-kt--newmain6-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain6/#L189) |  |
 
 ## NewMain7_dynamicNumberOfVerts.kt { #newmain7-dynamicnumberofverts-kt }
 
@@ -1864,6 +1879,7 @@ Step two of the neural-particle pilot: that a buffer of particles integrated on 
 | <a id="newmain7-dynamicnumberofverts-kt--newmain7-dynamicnumberofverts--cleanup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain7_dynamicNumberOfVerts/#L201) |  |
 | <a id="newmain7-dynamicnumberofverts-kt--newmain7-dynamicnumberofverts--running"></a>[<code class="highlight"><span class="k">var</span> <span class="n">running</span></code>](source/jvmMain/afield/examples/four/NewMain7_dynamicNumberOfVerts/#L205) |  |
 | <a id="newmain7-dynamicnumberofverts-kt--newmain7-dynamicnumberofverts--run"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain7_dynamicNumberOfVerts/#L207) |  |
+| <a id="newmain7-dynamicnumberofverts-kt--newmain7-dynamicnumberofverts-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain7_dynamicNumberOfVerts/#L231) |  |
 
 ## NewMain7_errorChecking.kt { #newmain7-errorchecking-kt }
 
@@ -1882,6 +1898,7 @@ Step two of the neural-particle pilot: that a buffer of particles integrated on 
 | <a id="newmain7-errorchecking-kt--newmain7-errorchecking--cleanup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain7_errorChecking/#L206) |  |
 | <a id="newmain7-errorchecking-kt--newmain7-errorchecking--running"></a>[<code class="highlight"><span class="k">var</span> <span class="n">running</span></code>](source/jvmMain/afield/examples/four/NewMain7_errorChecking/#L210) |  |
 | <a id="newmain7-errorchecking-kt--newmain7-errorchecking--run"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain7_errorChecking/#L212) |  |
+| <a id="newmain7-errorchecking-kt--newmain7-errorchecking-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain7_errorChecking/#L236) |  |
 
 ## NewMain8_writeToImage.kt { #newmain8-writetoimage-kt }
 
@@ -1900,6 +1917,7 @@ Step two of the neural-particle pilot: that a buffer of particles integrated on 
 | <a id="newmain8-writetoimage-kt--newmain8-writetoimage--cleanup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L192) |  |
 | <a id="newmain8-writetoimage-kt--newmain8-writetoimage--running"></a>[<code class="highlight"><span class="k">var</span> <span class="n">running</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L196) |  |
 | <a id="newmain8-writetoimage-kt--newmain8-writetoimage--run"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L198) |  |
+| <a id="newmain8-writetoimage-kt--newmain8-writetoimage-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L222) |  |
 
 ## NoiseLangGpuIncludes.kt { #noiselanggpuincludes-kt }
 
@@ -2119,6 +2137,10 @@ That GPU boids computes the *same force* as a CPU brute force over the same law,
 
 [<code class="highlight"><span class="k">class</span> <span class="nc">ShaderCopyPushConstantTemplateSmokeTest</span></code>](source/jvmMain/afield/examples/four/ShaderCopyPushConstantTemplateSmokeTest/#L14)
 
+| Declaration | Summary |
+| --- | --- |
+| <a id="shadercopypushconstanttemplatesmoketest-kt--shadercopypushconstanttemplatesmoketest-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ShaderCopyPushConstantTemplateSmokeTest/#L17) |  |
+
 ## ShaderFieldAutoControlSmokeTest.kt { #shaderfieldautocontrolsmoketest-kt }
 
 `src/jvmMain/kotlin/afield/examples/four/ShaderFieldAutoControlSmokeTest.kt` — [read the source](source/jvmMain/afield/examples/four/ShaderFieldAutoControlSmokeTest/)
@@ -2127,6 +2149,10 @@ That GPU boids computes the *same force* as a CPU brute force over the same law,
 
 [<code class="highlight"><span class="k">class</span> <span class="nc">ShaderFieldAutoControlSmokeTest</span></code>](source/jvmMain/afield/examples/four/ShaderFieldAutoControlSmokeTest/#L19)
 
+| Declaration | Summary |
+| --- | --- |
+| <a id="shaderfieldautocontrolsmoketest-kt--shaderfieldautocontrolsmoketest-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ShaderFieldAutoControlSmokeTest/#L22) |  |
+
 ## ShaderFieldQuantileWarpSmokeTest.kt { #shaderfieldquantilewarpsmoketest-kt }
 
 `src/jvmMain/kotlin/afield/examples/four/ShaderFieldQuantileWarpSmokeTest.kt` — [read the source](source/jvmMain/afield/examples/four/ShaderFieldQuantileWarpSmokeTest/)
@@ -2134,6 +2160,10 @@ That GPU boids computes the *same force* as a CPU brute force over the same law,
 ### ShaderFieldQuantileWarpSmokeTest { #shaderfieldquantilewarpsmoketest-kt-shaderfieldquantilewarpsmoketest }
 
 [<code class="highlight"><span class="k">class</span> <span class="nc">ShaderFieldQuantileWarpSmokeTest</span></code>](source/jvmMain/afield/examples/four/ShaderFieldQuantileWarpSmokeTest/#L23)
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="shaderfieldquantilewarpsmoketest-kt--shaderfieldquantilewarpsmoketest-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ShaderFieldQuantileWarpSmokeTest/#L26) |  |
 
 ## ShaderReloadTransactionSmoke.kt { #shaderreloadtransactionsmoke-kt }
 
@@ -2170,6 +2200,10 @@ The reload-transition matrix, on a real device: one box, one graphics module, an
 ### ShaderTypedStructurePreambleSmokeTest { #shadertypedstructurepreamblesmoketest-kt-shadertypedstructurepreamblesmoketest }
 
 [<code class="highlight"><span class="k">class</span> <span class="nc">ShaderTypedStructurePreambleSmokeTest</span></code>](source/jvmMain/afield/examples/four/ShaderTypedStructurePreambleSmokeTest/#L12)
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="shadertypedstructurepreamblesmoketest-kt--shadertypedstructurepreamblesmoketest-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ShaderTypedStructurePreambleSmokeTest/#L15) |  |
 
 ## ShapeAsciiGpuSmoke.kt { #shapeasciigpusmoke-kt }
 

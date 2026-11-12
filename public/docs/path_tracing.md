@@ -600,20 +600,20 @@ the optical depth toward it, times the phase function. That leaves the cloud dar
 a real cloud white is light that has bounced many times inside it, plus skylight, and that part is
 expensive. The usual stand-in is an ambient term. Following Charles Grassi's
 [neural volumetric clouds](https://charlesgrassi.dev/blog/neural-volumetric-clouds), Field can
-replace that term with a small network: 10 inputs, two hidden layers of 16, and 3 outputs for the
+replace that term with a small [`NeuralCloud`](reference/graphics.md#neuralclouds-kt-neuralcloud) network: 10 inputs, two hidden layers of 16, and 3 outputs for the
 RGB in-scattered light, about 500 multiply-adds per evaluation.
 
 The network's inputs are values a raymarcher can afford at each step: the height in the cloud,
 the density, the transmittance toward the sun over three distances, toward the sky, toward the eye
 and toward the ground, and the scattering angle with its phase value. Its training targets come
-from a Monte Carlo volumetric path tracer in `afield.graphics.volume.CloudScene`, which follows
+from a Monte Carlo volumetric path tracer in [`afield.graphics.volume.CloudScene`](reference/graphics.md#neuralclouds-kt-cloudscene), which follows
 paths through the varying density, adds the sun at every bounce and the sky when a path escapes.
 The tracer above, with `mediumDensity`, fills its box with uniform haze, so it cannot supply
 these targets.
 
 The [neural_clouds](agent_transcripts.md#neural_clouds) starting point has three boxes under a
 renderer. The first labels 12,000 points, drawn where three cameras see the cloud, and trains the
-network:
+network with [`NeuralCloud.samples`](reference/graphics.md#neuralclouds-kt--neuralcloud-companion--samples) and [`NeuralCloud.train`](reference/graphics.md#neuralclouds-kt--neuralcloud-companion--train):
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/neural_clouds_train.png" capture="box" open-outputs="true" embed=true timeout="300" padding="12" name="neural-clouds-train" alt="The training box's output: the sample count, the network shape with 499 parameters, and the final loss" macro-file="../../dev_docs/agents/transcripts/neural_clouds.yaml" capture-box="cloud_train"}
 :::static
@@ -647,12 +647,14 @@ display(
 )
 ```
 
-`NeuralCloud.ambient` is the baseline: an ambient colour times the sky visibility plus a colour
+[`NeuralCloud.ambient`](reference/graphics.md#neuralclouds-kt--neuralcloud-companion--ambient) is the baseline: an ambient colour times the sky visibility plus a colour
 times the sun transmittance, fitted to the same samples by least squares, so it is the best that
 form can do. The second box renders a fourth camera, one the training never saw, four ways on the
 CPU with one raymarcher. Only the in-scatter term differs between them. In the figure, the
 reference comes first, then single scattering only, the fitted ambient baseline and the network,
-and the row below shows each one's error against the reference, multiplied by four:
+and the row below shows each one's error against the reference, multiplied by four.
+[`writeCloudComparison`](reference/graphics.md#neuralclouds-kt--writecloudcomparison) arranges those panels;
+[`cloudError`](reference/graphics.md#neuralclouds-kt--clouderror) measures the differences:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/neural_clouds_cpu.png" capture="box" open-outputs="true" embed=true timeout="300" padding="12" name="neural-clouds-compare" alt="Four renders of the same cloud from a held-out camera: path-traced reference, single scattering only (dark grey), fitted ambient, and the network (close to the reference); below, error images; and a table of the three errors" macro-file="../../dev_docs/agents/transcripts/neural_clouds.yaml" capture-box="cloud_compare"}
 :::static
@@ -676,16 +678,22 @@ val mask = cloudScene.render(view, w, h, CloudScene.InScatter { _, _, _, _, into
 val file = File.createTempFile("neural_clouds", ".png")
 writeCloudComparison(file, reference, [single, ambient, neural])
 val png = Base64.getEncoder().encodeToString(file.readBytes())
-val rows =
-    ["single scatter" to single, "fitted ambient" to ambient, "network" to neural].joinToString("") { (name, image) ->
+val comparisons = ["single scatter" to single, "fitted ambient" to ambient, "network" to neural]
+val errors =
+    comparisons.joinToString("\n") { (name, image) ->
         val e = cloudError(image, reference, mask)
-        "<tr><td>$name</td><td>${e.relativeMeanAbs.f3}</td><td>${e.rmse.f3}</td></tr>"
+        "| $name | ${e.relativeMeanAbs.f3} | ${e.rmse.f3} |"
     }
-display(
-    "compare",
-    "<img src='data:image/png;base64,$png'>" +
-        "<div>reference | single scatter | fitted ambient | network; below, |error| x4</div>" +
-        "<table><tr><th></th><th>relative MAE</th><th>RMSE</th></tr>$rows</table>",
+// Keep the computed image as an embed; the caption and measured table are Markdown.
+display("compare", "<img style='width:${w * 4}px' src='data:image/png;base64,$png'>")
+markdown(
+    "errors",
+    """
+Top: reference · single scatter · fitted ambient · network. Bottom: absolute error ×4.
+
+| Model | Relative MAE | RMSE |
+| --- | --- | --- |
+$errors""".trimIndent(),
 )
 ```
 
@@ -717,7 +725,7 @@ ndc, aspect, mode, pixel)` picks the in-scatter term or a debug view:
 
 The bottom row is what the network sees and says: its predicted in-scatter, bluish where skylight
 dominates, then two of its inputs, the sun transmittance and the sky visibility. Train again in the
-first box and run the shader box to watch the GPU cloud change. Until a box calls `cloudHere`,
+first box and run the shader box to watch the GPU cloud change. Until a box calls [`cloudHere`](reference/graphics.md#neuralclouds-kt--cloudhere),
 `cloud/network` returns zero, so the shader still compiles and draws single scattering.
 
 The shader evaluates the network at every step of every ray. It gives you a way to see what the
@@ -726,7 +734,7 @@ need to evaluate it.
 
 ### Does the GPU draw the same cloud?
 
-The fragment shader and `CloudScene.render` are meant to be the same raymarcher, and the smoke
+The fragment shader and [`CloudScene.render`](reference/graphics.md#neuralclouds-kt--cloudscene--render) are meant to be the same raymarcher, and the smoke
 test `four.neural-cloud-parity.smoke` checks that they are. It runs `cloudRenderEvery` in a compute
 shader, one invocation per pixel, with the CPU's pixel centres and jitter seeds. It reads the image
 back and compares it with the CPU network render of the held-out view, over the same 4,089 cloud

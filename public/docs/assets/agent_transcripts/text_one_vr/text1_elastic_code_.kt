@@ -33,14 +33,14 @@ val graph = readingDiagram {
         font = face
         scale = .52f
     }
-    val frames =
-        listOf(door, eyes, hands, nonexistence, sipping, taut).associateWith { run ->
-            textFrame("${run.id}-frame", run, standoff = .025f, mode = DiagramTextFrameMode.LINE_UNION) {
-                    width = .0008f
-                    color = vec(1f, 1f, 1f, .22f)
-                }
-                .also { readingFrames.add(it) }
-        }
+    val readings = [door, eyes, hands, nonexistence, sipping, taut]
+    val frames = readings.associateWith { run ->
+        textFrame("${run.id}-frame", run, standoff = .025f, mode = DiagramTextFrameMode.LINE_UNION) {
+                width = .0008f
+                color = vec(1f, 1f, 1f, .22f)
+            }
+            .also { readingFrames.add(it) }
+    }
     val thread = connection(
         "door-thread",
         frames.getValue(door).attach(),
@@ -100,7 +100,7 @@ val graph = readingDiagram {
         color = vec(1f, 1f, 1f, .25f)
     }
     // Endpoints use the same live path anchors, including sliding attachments.
-    for (line in listOf(thread, marginThread, silenceThread, elsewhereThread, tideThread)) endpointDots(line.path)
+    for (line in [thread, marginThread, silenceThread, elsewhereThread, tideThread]) endpointDots(line.path)
 }
 // Each text plane turns about its own physics point. The stage itself stays fixed in the room.
 graph.texts.forEach { it.faceReader = true }
