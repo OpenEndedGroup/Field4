@@ -890,7 +890,7 @@ nothing to copy into `build/`.
 
 ```diffstatic {data-lang=kotlin}
 three(name = "my-scene") {
-    tools("/extension-web/my_motion_tool.js")   // src/personal/web/my_motion_tool.js
+    tools("/extension-web/my_motion_tool.js") // src/personal/web/my_motion_tool.js
     mesh(icosphereMesh())
 }
 ```
