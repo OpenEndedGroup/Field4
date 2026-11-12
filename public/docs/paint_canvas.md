@@ -415,7 +415,7 @@ The box below lays three thick strokes on the left half, folds the canvas down t
 it. The top image is the canvas before the fold, the bottom one after: each stroke is printed onto
 the right half, and the two prints carry opposite ridges where the film split.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/fold.png" alt="two canvases, one above the other. The top one has three thick strokes on its left half: red, blue and yellow, with bristle ridges. In the bottom one each stroke has been printed onto the right half as a mirror image, and both halves are broken by streaky bare patches running away from the fold: where one half kept paint, its mirror is bare" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="fold" embed=true max-width=1200}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/fold.png" alt="two canvases, one above the other. The top one has three thick strokes on its left half: red, blue and yellow, with bristle ridges. In the bottom one each stroke has been printed onto the right half as a mirror image, and both halves are broken by streaky bare patches running away from the fold: where one half kept paint, its mirror is bare" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="fold" embed=true scale=1}
 :::static
 val canvas = PaintCanvas(900, aspect = 1.4, seed = 7)
 val brush = canvas.brush(BrushKind.HogFlat, width = 70.0)
@@ -438,7 +438,7 @@ display("main", canvas.png(wet = true, light = PaintLight.Raking))
 Next, a plate is pressed onto a wet passage and peeled off, and then a thumb is rubbed across three
 stripes, so their colours smear into each other.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/press_rub.png" alt="two canvases, one above the other. In the top one a blue passage of broad strokes is crossed by a thick cream bar; on its left a round patch, where a plate was pressed and peeled, is mottled pale blue with ridged, lifted paint, and the cream bar there is wrinkled. In the bottom one three vertical stripes, red, yellow and blue, are crossed by three horizontal smears dragged to the right, red pulled into yellow and yellow into blue, which turns green where they meet" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="press_rub" embed=true max-width=1200}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/press_rub.png" alt="two canvases, one above the other. In the top one a blue passage of broad strokes is crossed by a thick cream bar; on its left a round patch, where a plate was pressed and peeled, is mottled pale blue with ridged, lifted paint, and the cream bar there is wrinkled. In the bottom one three vertical stripes, red, yellow and blue, are crossed by three horizontal smears dragged to the right, red pulled into yellow and yellow into blue, which turns green where they meet" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="press_rub" embed=true scale=1}
 :::static
 val plate = PaintCanvas(900, aspect = 1.4, seed = 8)
 plate.work(FLine().rect(150, 150, 700, 420), rgb(0.12, 0.3, 0.55), handling = Handling.Broad, stiff = 0.5)
