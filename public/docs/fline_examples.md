@@ -1560,8 +1560,14 @@ The picture views a winding, climbing path from above and to the side. The grey 
 :::static
 // a path that climbs as it winds: x and y on the ground, z up
 val knots = [
-    vec(0, 0, 0), vec(140, -30, 10), vec(240, 40, 30), vec(220, 150, 50),
-    vec(100, 180, 60), vec(20, 120, 75), vec(70, 60, 95), vec(170, 80, 120),
+    vec(0, 0, 0),
+    vec(140, -30, 10),
+    vec(240, 40, 30),
+    vec(220, 150, 50),
+    vec(100, 180, 60),
+    vec(20, 120, 75),
+    vec(70, 60, 95),
+    vec(170, 80, 120),
 ]
 val path = clothoidSplineFrom(knots, samplesPerSegment = 64)
 // its shadow on the ground is the flat spline through the same points
@@ -1570,14 +1576,20 @@ val shadow = clothoidSplineFrom(knots.map { vec(it.x, it.y, 0) }, samplesPerSegm
 // a slanted view from above and to the side: x across, y going back, z up
 fun view(p: Vec3) = vec(p.x + 0.3 * p.y, 240 - 0.6 * p.y - p.z, 0)
 
-val drawnPath = path.transform { view(it) }.apply {
-    thickness = 3.0
-    color = vec(0.5, 0.8, 1.0, 1.0)
-}
-val drawnShadow = shadow.transform { view(it) }.apply {
-    thickness = 1.5
-    color = vec(1.0, 1.0, 1.0, 0.35)
-}
+val drawnPath =
+    path
+        .transform { view(it) }
+        .apply {
+            thickness = 3.0
+            color = vec(0.5, 0.8, 1.0, 1.0)
+        }
+val drawnShadow =
+    shadow
+        .transform { view(it) }
+        .apply {
+            thickness = 1.5
+            color = vec(1.0, 1.0, 1.0, 0.35)
+        }
 val posts = knots.map { k ->
     polylineFrom([view(vec(k.x, k.y, 0)), view(k)]).apply { color = vec(1.0, 0.7, 0.3, 0.8) }
 }
@@ -2623,6 +2635,9 @@ lines(base, left, right, w = 420.0, h = 260.0, fitToSize = true)
 Turn a pen's path and pressure into a filled stroke. These functions build the outline and let you
 compare it with another one.
 
+See [`sweptCircleStroke`](reference/graphics.md#flinethickening-kt--sweptcirclestroke) and [`FLine.bySweptCircleEnveloping`](reference/graphics.md#flinethickening-kt--bysweptcircleenveloping) for the outline controls,
+and [`thinPenSamples`](reference/graphics.md#flinethickening-kt--thinpensamples) and [`penCorners`](reference/graphics.md#flinethickening-kt--pencorners) for preparing tablet samples.
+
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
 | Operation | Behavior |
@@ -2644,12 +2659,13 @@ A pen stroke is a list of samples: where the pen was and how hard it pressed. Gi
 :::static
 // A quick hand-written "o": fourteen pen samples, pressure rising and falling.
 val w = 20.0
-val knots = (0..13).map { i ->
-    val a = 2.2 + 2 * PI * i / 12.5
-    val p = 0.3 + 0.7 * sin(PI * i / 13)
-    val r = w * p.pow(1.75)
-    vec(90 + 70 * cos(a) * (1 + 0.04 * i), 100 + 80 * sin(a), r)
-}
+val knots =
+    (0..13).map { i ->
+        val a = 2.2 + 2 * PI * i / 12.5
+        val p = 0.3 + 0.7 * sin(PI * i / 13)
+        val r = w * p.pow(1.75)
+        vec(90 + 70 * cos(a) * (1 + 0.04 * i), 100 + 80 * sin(a), r)
+    }
 
 fun ink(f: FLine, dx: Double) = (f + vec(dx, 0.0)).apply {
     filled = true
@@ -2668,17 +2684,27 @@ val trapezoids = knots.zipWithNext { a, b -> sweptCircleStroke([a, b]).shell }
 val spline = sweptCircleStroke(knots).shell
 
 val samples = knots.map { k ->
-    fline { moveTo(k.x, k.y); lineTo(k.x + 0.01, k.y) }.apply {
-        pointed = true
-        pointSize = 1.5
-        color = vec(1.0, 0.4, 0.3, 1.0)
+    fline {
+        moveTo(k.x, k.y)
+        lineTo(k.x + 0.01, k.y)
     }
+        .apply {
+            pointed = true
+            pointSize = 1.5
+            color = vec(1.0, 0.4, 0.3, 1.0)
+        }
 }
 
 lines(
-    pills.map { ink(it, 0.0) } + trapezoids.map { ink(it, 220.0) } + ink(spline, 440.0) +
-        samples + samples.map { it + vec(220.0, 0.0) } + samples.map { it + vec(440.0, 0.0) },
-    w = 900.0, h = 300.0, fitToSize = true
+    pills.map { ink(it, 0.0) } +
+        trapezoids.map { ink(it, 220.0) } +
+        ink(spline, 440.0) +
+        samples +
+        samples.map { it + vec(220.0, 0.0) } +
+        samples.map { it + vec(440.0, 0.0) },
+    w = 900.0,
+    h = 300.0,
+    fitToSize = true,
 )
 ```
 
@@ -2698,27 +2724,43 @@ val radius = parameterFromLambda { t, _ -> 2f + 26f * t * t * (1f - t) * 4f }
 val swept = centre.bySweptCircleEnveloping(radius, samples = 200, flatness = 0.02)
 val ribbon = centre.byVariableRibboning(parameterFromLambda { t, p -> 2f * radius.evaluate(t, p) }, samples = 200)
 // reference: the union of 1500 discs along the line
-val reference = centre.byJtsVariableBuffering(numSamples = 1500, distance = { t -> radius.evaluate(t.toFloat(), vec(0f, 0f, 0f)).toDouble() })
+val reference = centre.byJtsVariableBuffering(
+    numSamples = 1500,
+    distance = { t -> radius.evaluate(t.toFloat(), vec(0f, 0f, 0f)).toDouble() },
+)
 
 println("swept envelope: %.3f from the union of discs".format(swept.shell.outlineDistanceTo(reference)))
 println("byVariableRibboning: %.3f".format(ribbon.outlineDistanceTo(reference)))
 
-val circles = (0..16).map { i ->
-    val s = centre.sampleSeries(17)[i]
-    val r = radius.evaluate(s.t, s.point).toDouble()
-    fline { circle(s.point.x.toDouble(), s.point.y.toDouble(), r) }.apply {
-        thickness = 0.8
-        color = vec(1.0, 1.0, 1.0, 0.35)
+val circles =
+    centre.sampleSeries(17).map { s ->
+        val r = radius.evaluate(s.t, s.point).toDouble()
+        fline { circle(s.point.x.toDouble(), s.point.y.toDouble(), r) }
+            .apply {
+                thickness = 0.8
+                color = vec(1.0, 1.0, 1.0, 0.35)
+            }
     }
-}
+val outlines: List<FLine> = [
+    centre.copy().apply { color = vec(1.0, 1.0, 1.0, 0.5) },
+    ribbon.copy().apply {
+        color = vec(1.0, 0.45, 0.3, 1.0)
+        thickness = 1.5
+    },
+    swept.left.copy().apply {
+        color = vec(0.4, 0.9, 1.0, 1.0)
+        thickness = 2.0
+    },
+    swept.right.copy().apply {
+        color = vec(0.4, 0.9, 1.0, 1.0)
+        thickness = 2.0
+    },
+]
 lines(
-    circles + listOf(
-        centre.copy().apply { color = vec(1.0, 1.0, 1.0, 0.5) },
-        ribbon.copy().apply { color = vec(1.0, 0.45, 0.3, 1.0); thickness = 1.5 },
-        swept.left.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
-        swept.right.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
-    ),
-    w = 900.0, h = 380.0, fitToSize = true
+    circles + outlines,
+    w = 900.0,
+    h = 380.0,
+    fitToSize = true,
 )
 ```
 
@@ -2730,10 +2772,13 @@ Where `|r′| ≥ |P′|`, the pen pressing harder faster than it moves, a circl
 :::static
 // The pen nearly stops and presses: around the middle sample the radius changes faster than
 // the centre moves, and the circle swallows itself.
-val knots = listOf(
-    vec(0.0, 0.0, 4.0), vec(60.0, 20.0, 7.0), vec(66.0, 22.0, 30.0),
-    vec(72.0, 20.0, 8.0), vec(150.0, 0.0, 4.0)
-)
+val knots = [
+    vec(0.0, 0.0, 4.0),
+    vec(60.0, 20.0, 7.0),
+    vec(66.0, 22.0, 30.0),
+    vec(72.0, 20.0, 8.0),
+    vec(150.0, 0.0, 4.0),
+]
 val spans = sweptCircleDegenerateSpans(knots)
 println("no envelope on " + spans.joinToString { "%.4f..%.4f".format(it.start, it.endInclusive) })
 
@@ -2744,11 +2789,23 @@ val path = fline {
     for (b in beziers) cubicTo(b[1].x, b[1].y, b[2].x, b[2].y, b[3].x, b[3].y)
 }
 lines(
-    outline.shell.copy().apply { filled = true; stroked = false; color = vec(0.95, 0.95, 0.9, 0.35) },
-    outline.left.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
-    outline.right.copy().apply { color = vec(0.4, 0.9, 1.0, 1.0); thickness = 2.0 },
+    outline.shell.copy().apply {
+        filled = true
+        stroked = false
+        color = vec(0.95, 0.95, 0.9, 0.35)
+    },
+    outline.left.copy().apply {
+        color = vec(0.4, 0.9, 1.0, 1.0)
+        thickness = 2.0
+    },
+    outline.right.copy().apply {
+        color = vec(0.4, 0.9, 1.0, 1.0)
+        thickness = 2.0
+    },
     path.copy().apply { color = vec(1.0, 1.0, 1.0, 0.6) },
-    w = 900.0, h = 320.0, fitToSize = true
+    w = 900.0,
+    h = 320.0,
+    fitToSize = true,
 )
 ```
 
@@ -2768,7 +2825,16 @@ val mark = notation.named("ink")!!
 val knots = mark.points.zip(mark.pressures) { p, pressure -> vec(p.x, p.y, 12.0 * pressure.pow(1.75)) }
 val outline = sweptCircleStroke(knots)
 println("${knots.size} pen samples, ${sweptCircleDegenerateSpans(knots).size} spans without an envelope")
-lines(outline.shell.copy().apply { filled = true; stroked = false; color = vec(0.95, 0.95, 0.9, 1.0) }, w = 900.0, h = 260.0, fitToSize = true)
+lines(
+    outline.shell.copy().apply {
+        filled = true
+        stroked = false
+        color = vec(0.95, 0.95, 0.9, 1.0)
+    },
+    w = 900.0,
+    h = 260.0,
+    fitToSize = true,
+)
 ```
 
 #### Tablet strokes: `thinPenSamples(...)`
@@ -2779,11 +2845,12 @@ A tablet reports a point every pixel or two, with pressure that wobbles a little
 :::static
 // A tablet-like stroke: a point every 0.6 units, and pressure with a little sensor wobble.
 val rnd = java.util.Random(1)
-val raw = (0 until 1000).map { i ->
-    val s = i / 999.0
-    val p = (0.15 + 0.85 * sin(PI * s).pow(0.7) + 0.03 * rnd.nextGaussian()).coerceIn(0.0, 1.0)
-    vec(600 * s, 60 * sin(9 * s) + 0.1 * rnd.nextGaussian(), 12 * p.pow(1.75))
-}
+val raw =
+    (0 until 1000).map { i ->
+        val s = i / 999.0
+        val p = (0.15 + 0.85 * sin(PI * s).pow(0.7) + 0.03 * rnd.nextGaussian()).coerceIn(0.0, 1.0)
+        vec(600 * s, 60 * sin(9 * s) + 0.1 * rnd.nextGaussian(), 12 * p.pow(1.75))
+    }
 val thin = thinPenSamples(raw, tolerance = 0.5)
 
 val rawOutline = sweptCircleStroke(raw, samplesPerSegment = 4).shell
@@ -2800,13 +2867,19 @@ fun dots(knots: List<Vec3>, dy: Double, size: Double) = knots.map { k ->
     fline {
         moveTo(k.x, k.y + dy)
         lineTo(k.x + 0.01, k.y + dy)
-    }.apply {
-        pointed = true
-        pointSize = size
-        color = vec(1.0, 0.4, 0.3, 1.0)
     }
+        .apply {
+            pointed = true
+            pointSize = size
+            color = vec(1.0, 0.4, 0.3, 1.0)
+        }
 }
-lines([ink(rawOutline, 0.0), ink(thinOutline, 170.0)] + dots(raw, 0.0, 0.5) + dots(thin, 170.0, 1.2), w = 900.0, h = 380.0, fitToSize = true)
+lines(
+    [ink(rawOutline, 0.0), ink(thinOutline, 170.0)] + dots(raw, 0.0, 0.5) + dots(thin, 170.0, 1.2),
+    w = 900.0,
+    h = 380.0,
+    fitToSize = true,
+)
 ```
 
 The raw stroke's edge follows the widest circles, so the pressure wobble makes it lumpy. The thinned stroke has a smoother width and uses about sixty knots; its outline is also several times faster to build.
@@ -2821,10 +2894,13 @@ The spline passes smoothly through every knot, rounding off the point of a "v" o
 :::static
 // A "z" written quickly: a sample every 1.5 units along three strokes, pressing less as it goes.
 val turns = [vec(0.0, 0.0), vec(160.0, 0.0), vec(0.0, 140.0), vec(160.0, 140.0)]
-val path = turns.zipWithNext { a, b ->
-    val n = (a.distance(b) / 1.5).toInt()
-    (0 until n).map { j -> a + (b - a) * (j.toDouble() / n) }
-}.flatten() + turns.last()
+val path =
+    turns
+        .zipWithNext { a, b ->
+            val n = (a.distance(b) / 1.5).toInt()
+            (0 until n).map { j -> a + (b - a) * (j.toDouble() / n) }
+        }
+        .flatten() + turns.last()
 val raw = path.mapIndexed { i, p -> vec(p.x, p.y, 9.0 * (0.95 - 0.5 * i / path.size).pow(1.75)) }
 
 val knots = thinPenSamples(raw)

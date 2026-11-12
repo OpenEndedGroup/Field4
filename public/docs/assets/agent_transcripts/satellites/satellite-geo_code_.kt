@@ -1,6 +1,5 @@
 import afield.simulation.orbits.*
 import java.time.Duration
-import kotlin.math.abs
 
 // Every object in the snapshot, near-earth and deep-space.
 val sky = SatelliteCatalogue.bundled()

@@ -813,12 +813,11 @@ prop<ReadingExample>(exampleThree) = ReadingExample(
 <!-- field-box id="text1_drop_caps" index="7" -->
 
 ```edn [field-box id="text1_drop_caps" role="properties"]
-{"id" "text1_drop_caps" "index" 7 "name" "19 · A dropped initial" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "19 · A dropped initial" "_tombstone" false "frame" #afield/rect [650.0 770.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_drop_caps_code_.kt" "lines" 58 "characters" 2020 "sha256" "04625b361c239f70fb356cc84030bb7f6f167d2ac96895f25638c786942c847b"}]}
+{"id" "text1_drop_caps" "index" 7 "name" "19 · A dropped initial" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "19 · A dropped initial" "_tombstone" false "frame" #afield/rect [650.0 770.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_drop_caps_code_.kt" "lines" 57 "characters" 1990 "sha256" "d56bb42da81536acd5075055d2295dd10beff3c43b0d3c717e1a95d8bdf9423d"}]}
 ```
 
 ```kotlin [field-property box="text1_drop_caps" name="code" path="text1_drop_caps_code_.kt"]
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 /*
 Authored line breaks are part of the poem. The first three lines sit beside the initial;
@@ -1106,12 +1105,11 @@ prop<ReadingExample>(exampleOne) = ReadingExample(
 <!-- field-box id="text1_elastic" index="11" -->
 
 ```edn [field-box id="text1_elastic" role="properties"]
-{"id" "text1_elastic" "index" 11 "name" "18 · Elastic sentences" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "18 · Elastic sentences" "_tombstone" false "frame" #afield/rect [650.0 660.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_elastic_code_.kt" "lines" 94 "characters" 3702 "sha256" "77c1d26ba8f65255897aed59534c196df104da9fcc835d9ec93c93463ff6748f"}]}
+{"id" "text1_elastic" "index" 11 "name" "18 · Elastic sentences" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "18 · Elastic sentences" "_tombstone" false "frame" #afield/rect [650.0 660.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_elastic_code_.kt" "lines" 93 "characters" 3672 "sha256" "91997540b0490091d7b4c15d012ec69d753083246659f80855f3b34aec132ec3"}]}
 ```
 
 ```kotlin [field-property box="text1_elastic" name="code" path="text1_elastic_code_.kt"]
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // Fixed landmarks and sliding constraints share one small connection helper. Only the
 // interior nodes have inertia: the two visible endpoints always stay on the measured text.
@@ -1211,7 +1209,7 @@ controlGroup("elastic threads") {
 <!-- field-box id="text1_score" index="12" -->
 
 ```edn [field-box id="text1_score" role="properties"]
-{"id" "text1_score" "index" 12 "name" "6 · Scores / example selector" "parents" ["root" "text1_poem" "text1_example2" "text1_example3" "text1_example4" "text1_typography" "text1_word_blur" "text1_elastic" "text1_drop_caps"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4" #afield/box "text1_typography" #afield/box "text1_word_blur" #afield/box "text1_elastic" #afield/box "text1_drop_caps"} "name" "6 · Scores / example selector" "_tombstone" false "frame" #afield/rect [1200.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_score_code_.kt" "lines" 114 "characters" 5232 "sha256" "518026340d7320a888759d009953cd8990db9c7a6b819187cd194a395057ebf0"}]}
+{"id" "text1_score" "index" 12 "name" "6 · Scores / example selector" "parents" ["root" "text1_poem" "text1_example2" "text1_example3" "text1_example4" "text1_typography" "text1_word_blur" "text1_elastic" "text1_drop_caps"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4" #afield/box "text1_typography" #afield/box "text1_word_blur" #afield/box "text1_elastic" #afield/box "text1_drop_caps"} "name" "6 · Scores / example selector" "_tombstone" false "frame" #afield/rect [1200.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_score_code_.kt" "lines" 114 "characters" 5183 "sha256" "2112c2e9381a67465914b16ea70b08641304244d21912231d625b91b830f835f"}]}
 ```
 
 ```kotlin [field-property box="text1_score" name="code" path="text1_score_code_.kt"]
@@ -1274,7 +1272,7 @@ if (poem.examples.map { it.player } != allExamples.map { it.player }) poem = Rea
 
 fun describe() {
     val e = poem.examples[poem.selected]
-    display("selected example", "<div style='padding:12px;width:440px'><b>${e.title}</b><p>${e.description}</p></div>")
+    markdown("selected example", "### ${e.title}\n\n${e.description}")
 }
 controlGroup("reading spaces") {
     for ((i, e) in allExamples.withIndex()) button(e.title) { down ->

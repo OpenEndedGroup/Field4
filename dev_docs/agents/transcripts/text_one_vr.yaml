@@ -666,7 +666,6 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
 
         // Fixed landmarks and sliding constraints share one small connection helper. Only the
         // interior nodes have inertia: the two visible endpoints always stay on the measured text.
@@ -770,7 +769,6 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        import afield.graphics.text.*
 
         /*
         Authored line breaks are part of the poem. The first three lines sit beside the initial;
@@ -896,7 +894,7 @@ operations:
 
         fun describe() {
             val e = poem.examples[poem.selected]
-            display("selected example", "<div style='padding:12px;width:440px'><b>${e.title}</b><p>${e.description}</p></div>")
+            markdown("selected example", "### ${e.title}\n\n${e.description}")
         }
         controlGroup("reading spaces") {
             for ((i, e) in allExamples.withIndex()) button(e.title) { down ->

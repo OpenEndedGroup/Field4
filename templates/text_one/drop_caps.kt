@@ -1,11 +1,14 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
-// Authored line breaks are part of the poem. The first three lines sit beside the initial;
-// the fourth returns to the paragraph's left margin. Everything is one measured run, with bounded Slug atlases for its render parts.
+/*
+Authored line breaks are part of the poem. The first three lines sit beside the initial;
+the fourth returns to the paragraph's left margin. Everything is one measured run, with bounded Slug atlases for its
+render parts.
+*/
 val body = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
 val graph = readingDiagram {
-    val paragraph = text("paragraph",
+    val paragraph = text(
+        "paragraph",
         "The river carries\nsmall things toward\nthe edge of light\nand brings them home.",
         point("paragraph-point", -.15, .25),
     ) {
@@ -22,8 +25,11 @@ val graph = readingDiagram {
         italic = true
         scale = .45f
     }
-    connection("initial-thread", paragraph.initial.attach(DiagramTextSite.BOUNDARY),
-        aside.attach(DiagramTextSite.LEFT_MARGIN)) {
+    connection(
+        "initial-thread",
+        paragraph.initial.attach(DiagramTextSite.BOUNDARY),
+        aside.attach(DiagramTextSite.LEFT_MARGIN),
+    ) {
         responseSeconds = 1.2f
         bow.set(0f, -.07f, .025f)
         width = .001f

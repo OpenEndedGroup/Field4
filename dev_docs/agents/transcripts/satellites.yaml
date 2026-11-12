@@ -179,7 +179,6 @@ operations:
         code: |
           import afield.simulation.orbits.*
           import java.time.Duration
-          import kotlin.math.abs
 
           // Every object in the snapshot, near-earth and deep-space.
           val sky = SatelliteCatalogue.bundled()
@@ -280,7 +279,6 @@ operations:
       code: |
         import afield.simulation.orbits.*
         import java.time.Duration
-        import kotlin.math.abs
 
         // Every object in the snapshot, near-earth and deep-space.
         val sky = SatelliteCatalogue.bundled()
@@ -438,10 +436,10 @@ operations:
           layout (location = 0) out vec4 fcol;
 
           layout(push_constant) uniform matrices {
-              mat4 p;
-              mat4 m;
-              vec4 eye;
-              vec4 spin;
+              mat4 p; // Clip-from-view projection.
+              mat4 m; // View-from-world camera transform.
+              vec4 eye; // World-space camera position, in Earth radii; w is unused.
+              vec4 spin; // x: Greenwich sidereal angle in radians; yzw unused.
           } pc;
 
           void main()
@@ -520,7 +518,7 @@ operations:
           }
           // Chicago, as a small cross.
           val c = Frames.ecefOf(41.88, -87.63, 30.0)
-          for (d in listOf(Xyz(120.0, 0.0, 0.0), Xyz(0.0, 120.0, 0.0), Xyz(0.0, 0.0, 120.0))) segment(
+          for (d in [Xyz(120.0, 0.0, 0.0), Xyz(0.0, 120.0, 0.0), Xyz(0.0, 0.0, 120.0)]) segment(
               world(Xyz(c.x - d.x, c.y - d.y, c.z - d.z)),
               world(Xyz(c.x + d.x, c.y + d.y, c.z + d.z)),
               vec(1.0, 0.85, 0.3, 1.0),
@@ -625,7 +623,7 @@ operations:
         }
         // Chicago, as a small cross.
         val c = Frames.ecefOf(41.88, -87.63, 30.0)
-        for (d in listOf(Xyz(120.0, 0.0, 0.0), Xyz(0.0, 120.0, 0.0), Xyz(0.0, 0.0, 120.0))) segment(
+        for (d in [Xyz(120.0, 0.0, 0.0), Xyz(0.0, 120.0, 0.0), Xyz(0.0, 0.0, 120.0)]) segment(
             world(Xyz(c.x - d.x, c.y - d.y, c.z - d.z)),
             world(Xyz(c.x + d.x, c.y + d.y, c.z + d.z)),
             vec(1.0, 0.85, 0.3, 1.0),
@@ -700,10 +698,10 @@ operations:
 
           layout(push_constant) uniform Push {
               OrbitData orbits;
-              mat4 p;
-              mat4 m;
-              vec4 eye;
-              vec4 clock;
+              mat4 p; // Clip-from-view projection.
+              mat4 m; // View-from-world camera transform.
+              vec4 eye; // World-space camera position, in Earth radii; w is unused.
+              vec4 clock; // x: minutes since epoch, y: point-size scale, z: selected index, w unused.
           } pc;
 
           layout(location = 0) out vec4 fcol;
@@ -850,13 +848,6 @@ operations:
         h: 100.0
       properties:
         code: |
-          import kotlin.math.asin
-          import kotlin.math.atan2
-          import kotlin.math.cos
-          import kotlin.math.pow
-          import kotlin.math.sin
-          import kotlin.math.sqrt
-
           /*
           `camera` comes from the Earth box above. The flight starts where that box put the camera, 2.6 Earth
           radii above Chicago, and pulls out through the low shell, past the navigation satellites at four
@@ -896,13 +887,6 @@ operations:
       type: code
       strand: tour
       code: |
-        import kotlin.math.asin
-        import kotlin.math.atan2
-        import kotlin.math.cos
-        import kotlin.math.pow
-        import kotlin.math.sin
-        import kotlin.math.sqrt
-
         /*
         `camera` comes from the Earth box above. The flight starts where that box put the camera, 2.6 Earth
         radii above Chicago, and pulls out through the low shell, past the navigation satellites at four

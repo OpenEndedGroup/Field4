@@ -177,7 +177,7 @@ From `code`
 One cubic whose radius swells from 2 to about 17 and back to 2: the envelope against the plain ribbon.
 
 ```edn [field-box id="swept-cubic" role="properties"]
-{"id" "swept-cubic" "index" 3 "name" "2 - Envelope of one cubic" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Envelope of one cubic" "_tombstone" false "frame" #afield/rect [1200.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "swept-cubic_code_.kt" "lines" 49 "characters" 1755 "sha256" "f9a5c02f0b1131501ceaadf75e832b4c0acd212380ecaae86e09b19992861938"}]}
+{"id" "swept-cubic" "index" 3 "name" "2 - Envelope of one cubic" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Envelope of one cubic" "_tombstone" false "frame" #afield/rect [1200.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "swept-cubic_code_.kt" "lines" 48 "characters" 1639 "sha256" "1e923c621222588e98e37116800c2c1d799dc96e4a611203afbe5d0f93f64afd"}]}
 ```
 
 ```kotlin [field-property box="swept-cubic" name="code" path="swept-cubic_code_.kt"]
@@ -200,8 +200,7 @@ println("swept envelope: %.3f from the union of discs".format(swept.shell.outlin
 println("byVariableRibboning: %.3f".format(ribbon.outlineDistanceTo(reference)))
 
 val circles =
-    (0..16).map { i ->
-        val s = centre.sampleSeries(17)[i]
+    centre.sampleSeries(17).map { s ->
         val r = radius.evaluate(s.t, s.point).toDouble()
         fline { circle(s.point.x.toDouble(), s.point.y.toDouble(), r) }
             .apply {
@@ -209,23 +208,23 @@ val circles =
                 color = vec(1.0, 1.0, 1.0, 0.35)
             }
     }
+val outlines: List<FLine> = [
+    centre.copy().apply { color = vec(1.0, 1.0, 1.0, 0.5) },
+    ribbon.copy().apply {
+        color = vec(1.0, 0.45, 0.3, 1.0)
+        thickness = 1.5
+    },
+    swept.left.copy().apply {
+        color = vec(0.4, 0.9, 1.0, 1.0)
+        thickness = 2.0
+    },
+    swept.right.copy().apply {
+        color = vec(0.4, 0.9, 1.0, 1.0)
+        thickness = 2.0
+    },
+]
 lines(
-    circles +
-        listOf(
-            centre.copy().apply { color = vec(1.0, 1.0, 1.0, 0.5) },
-            ribbon.copy().apply {
-                color = vec(1.0, 0.45, 0.3, 1.0)
-                thickness = 1.5
-            },
-            swept.left.copy().apply {
-                color = vec(0.4, 0.9, 1.0, 1.0)
-                thickness = 2.0
-            },
-            swept.right.copy().apply {
-                color = vec(0.4, 0.9, 1.0, 1.0)
-                thickness = 2.0
-            },
-        ),
+    circles + outlines,
     w = 900.0,
     h = 380.0,
     fitToSize = true,
@@ -283,19 +282,19 @@ The pen nearly stops and presses: around the middle sample the radius changes fa
 the centre moves, and the circle swallows itself.
 
 ```edn [field-box id="swept-degenerate" role="properties"]
-{"id" "swept-degenerate" "index" 5 "name" "3 - Where there is no envelope" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Where there is no envelope" "_tombstone" false "frame" #afield/rect [2340.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "swept-degenerate_code_.kt" "lines" 37 "characters" 1123 "sha256" "69d1ce8348dddf73a10587c8bea5537d8f936163ddb08269bbdb0d01a05d2fe6"}]}
+{"id" "swept-degenerate" "index" 5 "name" "3 - Where there is no envelope" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Where there is no envelope" "_tombstone" false "frame" #afield/rect [2340.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "swept-degenerate_code_.kt" "lines" 37 "characters" 1117 "sha256" "0562d25a5340c81e9416da213c4019b5fdd3a9777554e89c2aae1b0b6530bb21"}]}
 ```
 
 ```kotlin [field-property box="swept-degenerate" name="code" path="swept-degenerate_code_.kt"]
 // The pen nearly stops and presses: around the middle sample the radius changes faster than
 // the centre moves, and the circle swallows itself.
-val knots = listOf(
+val knots = [
     vec(0.0, 0.0, 4.0),
     vec(60.0, 20.0, 7.0),
     vec(66.0, 22.0, 30.0),
     vec(72.0, 20.0, 8.0),
     vec(150.0, 0.0, 4.0),
-)
+]
 val spans = sweptCircleDegenerateSpans(knots)
 println("no envelope on " + spans.joinToString { "%.4f..%.4f".format(it.start, it.endInclusive) })
 

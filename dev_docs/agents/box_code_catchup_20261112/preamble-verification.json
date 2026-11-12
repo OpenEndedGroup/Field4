@@ -1,0 +1,15 @@
+{
+  "paths": [
+    "dev_docs/agents/transcripts/alife_grains.yaml",
+    "dev_docs/agents/transcripts/clothoid_spline.yaml",
+    "dev_docs/agents/transcripts/flow_lenia.yaml",
+    "dev_docs/agents/transcripts/kmeans_emeans.yaml",
+    "dev_docs/agents/transcripts/ordered_group_keyframes.yaml",
+    "dev_docs/agents/transcripts/satellites.yaml",
+    "dev_docs/agents/transcripts/text_one_vr.yaml",
+    "dev_docs/agents/transcripts/variable_width_strokes.yaml",
+    "dev_docs/agents/transcripts/variable_width_strokes_gpu.yaml"
+  ],
+  "byteIdentical": true,
+  "policy": "Formatting and revision skip preamble properties and preamble sidecars."
+}

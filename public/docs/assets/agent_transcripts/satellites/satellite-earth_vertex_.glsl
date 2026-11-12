@@ -4,10 +4,10 @@ layout (location = 1) in vec4 col;
 layout (location = 0) out vec4 fcol;
 
 layout(push_constant) uniform matrices {
-    mat4 p;
-    mat4 m;
-    vec4 eye;
-    vec4 spin;
+    mat4 p; // Clip-from-view projection.
+    mat4 m; // View-from-world camera transform.
+    vec4 eye; // World-space camera position, in Earth radii; w is unused.
+    vec4 spin; // x: Greenwich sidereal angle in radians; yzw unused.
 } pc;
 
 void main()

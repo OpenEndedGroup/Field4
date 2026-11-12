@@ -8,7 +8,8 @@ whole run. Font geometry is prepared once; it is not scaled/rasterized anew ever
 
 ```kotlin
 val graph = readingDiagram {
-    val paragraph = text("paragraph",
+    val paragraph = text(
+        "paragraph",
         "The river carries\nsmall things toward\nthe edge of light\nand brings them home.",
         point("paragraph-point", 0, .2),
     ) {
@@ -48,7 +49,8 @@ Measurements account for its lower baseline; no-descender boxes retain its dropp
 Connect a thread to it just like any other span:
 
 ```kotlin
-connection("initial-thread",
+connection(
+    "initial-thread",
     paragraph.initial.attach(DiagramTextSite.BOUNDARY),
     aside.attach(DiagramTextSite.LEFT_MARGIN),
 ) {

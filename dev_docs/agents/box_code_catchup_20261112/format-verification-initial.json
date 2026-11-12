@@ -1,0 +1,23 @@
+{
+  "spans": 96,
+  "uniqueBodies": 73,
+  "formattedBodies": 23,
+  "changedPaths": [
+    "dev_docs/agents/transcripts/ordered_group_keyframes.yaml",
+    "dev_docs/agents/transcripts/satellites.yaml",
+    "dev_docs/agents/transcripts/text_one_vr.yaml",
+    "public/docs/alife_examples.md",
+    "public/docs/fline_examples.md",
+    "public/docs/satellites.md",
+    "templates/text_one/drop_caps.kt",
+    "templates/text_one/elastic_sentences.kt",
+    "templates/text_one/guides/10-elastic-connections.md",
+    "templates/text_one/guides/11-drop-caps.md",
+    "templates/text_one/score.kt",
+    "templates/video_three/looks.kt",
+    "templates/video_three/verify.kt"
+  ],
+  "skips": [],
+  "tokenLiteralsFoldsAndFragmentMarkersVerified": true,
+  "formatter": "Actual Field editor imports, ktfmt and GLSL formatting"
+}

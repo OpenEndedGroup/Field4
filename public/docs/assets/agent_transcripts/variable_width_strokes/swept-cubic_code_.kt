@@ -17,8 +17,7 @@ println("swept envelope: %.3f from the union of discs".format(swept.shell.outlin
 println("byVariableRibboning: %.3f".format(ribbon.outlineDistanceTo(reference)))
 
 val circles =
-    (0..16).map { i ->
-        val s = centre.sampleSeries(17)[i]
+    centre.sampleSeries(17).map { s ->
         val r = radius.evaluate(s.t, s.point).toDouble()
         fline { circle(s.point.x.toDouble(), s.point.y.toDouble(), r) }
             .apply {
@@ -26,23 +25,23 @@ val circles =
                 color = vec(1.0, 1.0, 1.0, 0.35)
             }
     }
+val outlines: List<FLine> = [
+    centre.copy().apply { color = vec(1.0, 1.0, 1.0, 0.5) },
+    ribbon.copy().apply {
+        color = vec(1.0, 0.45, 0.3, 1.0)
+        thickness = 1.5
+    },
+    swept.left.copy().apply {
+        color = vec(0.4, 0.9, 1.0, 1.0)
+        thickness = 2.0
+    },
+    swept.right.copy().apply {
+        color = vec(0.4, 0.9, 1.0, 1.0)
+        thickness = 2.0
+    },
+]
 lines(
-    circles +
-        listOf(
-            centre.copy().apply { color = vec(1.0, 1.0, 1.0, 0.5) },
-            ribbon.copy().apply {
-                color = vec(1.0, 0.45, 0.3, 1.0)
-                thickness = 1.5
-            },
-            swept.left.copy().apply {
-                color = vec(0.4, 0.9, 1.0, 1.0)
-                thickness = 2.0
-            },
-            swept.right.copy().apply {
-                color = vec(0.4, 0.9, 1.0, 1.0)
-                thickness = 2.0
-            },
-        ),
+    circles + outlines,
     w = 900.0,
     h = 380.0,
     fitToSize = true,

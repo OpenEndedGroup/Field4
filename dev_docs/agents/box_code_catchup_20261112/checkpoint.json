@@ -1,0 +1,15 @@
+{
+  "state": "complete; landing precheck green; ready to enqueue",
+  "scope": "scope.json",
+  "reviewed": "All 96 frozen occurrences, sharing mechanical work for 73 exact copies.",
+  "next": "Enqueue codex/docs-code-catchup-nov12; leave the full merged guard to the lander; no push.",
+  "verification": {
+    "precheck": "passed in 1.8 minutes",
+    "gradle": "BUILD SUCCESSFUL in 1m 46s",
+    "documentedApiEvaluation": "passed",
+    "transcriptRegistration": "343 indexed and classified",
+    "publishedCaptures": "two actual captures passed and visually inspected",
+    "offlinePublications": "three actual transcript replays/export passed",
+    "fullPythonToolingSuite": "Not selected by precheck for this diff."
+  }
+}
