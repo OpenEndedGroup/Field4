@@ -546,8 +546,11 @@ display("main", canvas.png(wet = true, light = PaintLight.Raking))
     growth, 1 DLA. It replaced the ridged noise the first fold used, so the pattern now responds to
     where the paint is and how thick it is. `SquishTest` pins that a blow conserves the wet paint and
     that branching rises with contrast; the Rust test `fingers_branch_more_as_the_viscosity_contrast_rises`
-    pins the same on a bare grid. Not modelled: surface tension setting a finger width (the grid
-    cell does), and thin paint pushed into thick paint as a tool of its own.
+    pins the same on a bare grid. The fingers are drawn along the segments they grew,
+    between points jittered inside their cells, at a width set by `ridge` or `tendril`, so they run
+    at any angle; Rust tests pin that a fold's halves are complementary and that the fingers' edges
+    are not aligned with the grid. Not modelled: surface tension choosing the finger width (the
+    caller does), and thin paint pushed into thick paint as a tool of its own.
 
 ## Brushes made to order
 

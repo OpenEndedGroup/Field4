@@ -78,7 +78,8 @@ these hooks:
 - Viscous fingering and blowing (`src/field/fingers.rs`, new): the dielectric breakdown model over
   the wet layer (`Hele`), used by the fold's and the plate's peel in place of a noise texture, and
   `Canvas::blow`, a jet of air that pushes the wet layer (`vol`, `lat`, `hide`, `cover`; scales
-  `solv`) into fingers. Touches no upstream file.
+  `solv`) into fingers. Fingers are drawn along their growth segments between jittered cell points
+  at a caller-set width (`Hele::segments`, `push_out`), not as cells. Touches no upstream file.
 
 ## Taking a newer upstream
 
