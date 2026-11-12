@@ -77,6 +77,12 @@ class Urls(unittest.TestCase):
         self.assertEqual(scout.key_for("https://example.com/a/"), scout.key_for("http://www.example.com/a?ref=hn"))
         self.assertEqual(scout.key_for(None, "123"), "hn-123")
 
+    def test_ledger_keeps_the_www_it_fetches_with(self) -> None:
+        self.assertEqual(scout.fetchable_url("https://www.construction-physics.com/p/x?utm_source=rss#c"),
+                         "https://www.construction-physics.com/p/x")
+        self.assertEqual(scout.key_for("https://www.construction-physics.com/p/x"),
+                         scout.key_for("https://construction-physics.com/p/x"))
+
     def test_github_repo(self) -> None:
         self.assertEqual(scout.github_repo("https://github.com/aatishb/patterncollider/"), ("aatishb", "patterncollider"))
         self.assertIsNone(scout.github_repo("https://github.com/aatishb/patterncollider/blob/main/x.js"))
