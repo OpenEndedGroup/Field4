@@ -26,8 +26,14 @@ training features use random offsets. The cloud was lifted 1 unit (bounds y 1..3
 overlaps the below-horizon ground colour, which is the sky function's lower hemisphere at infinity.
 
 ## Not done / traps
-- GPU network image is checked by eye only (it matches the CPU network render in look); there is no numeric
-  GPU-vs-CPU parity test. `MlpWeights.evaluate` is the fp32 oracle the GLSL accumulates like, so one is easy to add.
-- No frame-time measurement. Per pixel: 48 steps x 6 marches x 16 density evals + the net.
+- GPU parity (2026-11-12, M1 Max / KosmicKrisp): `four.neural-cloud-parity.smoke` (compute shader, CPU pixel
+  centres + ign seeds) gives GPU-vs-CPU network relMAE 8.4e-7 / RMSE 7.0e-7 over 4089 px; a x1.5-scaled network
+  gives 0.32. Writes `build/neural_clouds/gpu_parity.{png,txt}`.
+- Network every Nth lit step (`networkEvery`, `cloudRenderEvery`), vs 48-path reference: N=1 0.0652, 2 0.0656,
+  4 0.0658, 8 0.0640. Wall-clock frame at 1280x800: 21.4 / 23.9 / 21.7 / 17.1 ms (empty frame 9.1 ms), so the
+  timings are noisy and only N=8 is clearly faster. No GPU timestamp queries are used.
+- linux-nvidia (a0, RTX 4090): not measured. The smoke failed with "Unable to initialize GLFW" over ssh, with and
+  without DISPLAY=:0 (probably no XAUTHORITY over ssh).
+- Not done: live controls (sun/density/network on-off) in `cloud_view`; needs the scene constants as push constants.
 - Sky is a two-colour gradient, not `afield.graphics.sky.Atmosphere`; a sun-direction input would let one net cover a moving sun.
 - `#include "cloud/network"` is registered by a *parent* box (`cloudHere`); a box's shaders compile before its code runs.
