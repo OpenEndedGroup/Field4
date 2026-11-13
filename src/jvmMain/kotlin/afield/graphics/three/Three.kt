@@ -368,8 +368,11 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * ```
      *
      * @param groundY the height of the ground; `null` puts it a little below the scene's lowest point.
-     * @param ambientOcclusion darken creases and contact points (screen-space ambient occlusion, three.js's
-     * `SSAOPass`). Drawn in a single view; a contact sheet ([columns]) and X-ray draw without it.
+     * The toolbar's **Realism** button ([controls] `(realism = true)`) turns the same look on and off in
+     * the view; a view that calls `studio` starts with it on.
+     *
+     * @param ambientOcclusion darken creases and contact points (ground-truth ambient occlusion, three.js's
+     * `GTAOPass`). Drawn in a single view; a contact sheet ([columns]) and X-ray draw without it.
      */
     fun studio(
         ground: Boolean = true,
@@ -471,8 +474,9 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         review: Boolean = false,
         parts: Boolean = false,
         light: Boolean = false,
+        realism: Boolean = false,
     ) {
-        controls = ThreeControls(xray, export, linkCamera, review, parts, light)
+        controls = ThreeControls(xray, export, linkCamera, review, parts, light, realism)
     }
 
     /** Put the controls in [controls] on the toolbar; `controls(ThreeControls.ALL)` for every one. */

@@ -399,6 +399,8 @@ internal fun getThreeSurfaceClickCallback(callbackId: String): ((ThreeSurfaceHit
  * @param parts the **Parts** list, for showing, hiding and soloing parts. It appears only when the
  * scene has at least two parts.
  * @param light the **Light** slider, which swings a grazing key light around the figure.
+ * @param realism the **Realism** button: soft shadows, ambient occlusion and studio light, the look of
+ * [ThreeSceneBuilder.studio]. A view that calls `studio(…)` starts with it pressed.
  */
 @Serializable
 data class ThreeControls(
@@ -408,10 +410,12 @@ data class ThreeControls(
     val review: Boolean = false,
     val parts: Boolean = false,
     val light: Boolean = false,
+    val realism: Boolean = false,
 ) {
     companion object {
         /** Every control on. */
-        val ALL = ThreeControls(xray = true, export = true, linkCamera = true, review = true, parts = true, light = true)
+        val ALL = ThreeControls(xray = true, export = true, linkCamera = true, review = true, parts = true, light = true,
+            realism = true)
     }
 }
 
