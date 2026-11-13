@@ -1,0 +1,73 @@
+// Real server-owned graph and DOM; no model calls and no fabricated tool execution.
+const {sendWithReply} = await import('./afield.mjs');
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+const check = (v, label) => { if (!v) throw new Error(label); };
+const wait = async (fn, label) => {
+    for (let i = 0; i < 200; i++) { const value = fn(); if (value) return value; await delay(50); }
+    throw new Error(label);
+};
+try {
+    const box = [...document.querySelectorAll('.box')].find(b => b.name === 'ConversationGarden');
+    check(box, 'fixture box exists');
+    window.openAiChatForBox(box.uid);
+    const root = await wait(() => box.querySelector('.ai-chat-window'), 'chat panel opens');
+    await wait(() => root.querySelector('.ai-chat-messages').textContent.includes('earlier positions'), 'linear history restores');
+    const oldHistory = root.querySelector('.ai-chat-messages').textContent;
+    const button = label => [...root.querySelectorAll('button')].find(b => b.textContent === label);
+    button('Garden').click();
+    const panel = root.querySelector('.conversation-garden');
+    await wait(() => panel.textContent.includes('short trail'), 'structured conversation loads');
+    check(root.querySelector('.ai-chat-messages').offsetHeight === 0, 'linear view hidden');
+    check(panel.querySelectorAll('.garden-node').length === 2, 'reply attached below its paragraph');
+    check(getComputedStyle(panel.querySelector('.garden-agent .ai-chat-markdown')).color === getComputedStyle(panel.querySelector('.garden-agent')).color, 'agent prose retains its cyan voice');
+    check(panel.querySelector('.garden-branch')?.previousElementSibling?.textContent.includes('earlier positions'), 'branch appears at the source paragraph');
+    const input = panel.querySelector('textarea');
+    const chooseParagraph = phrase => [...panel.querySelectorAll('.garden-passage')].find(p => p.textContent.includes(phrase));
+    const colour = chooseParagraph('colour can respond');
+    colour.querySelector('.garden-reply').click();
+    input.value = 'Keep this independent #colour';
+    input.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', altKey: true, bubbles: true, cancelable: true}));
+    await wait(() => panel.querySelectorAll('.garden-node').length === 3, 'Option–Return saves a queued branch');
+    check(panel.textContent.includes('queued'), 'queue status is visible');
+    const rpc = payload => new Promise(resolve => sendWithReply('ai-garden', {uid: box.uid, ...payload}, 'garden-test-' + Math.random(), (_m, r) => {resolve(r);return 'remove';}));
+    let result = await rpc({action: 'read'});
+    check(!result.error, result.error);
+    check(result.garden.nodes.at(-1).status === 'queued', 'queued branch did not dispatch a model');
+    check(result.garden.nodes.at(-1).tags.includes('colour'), 'hashtags stored on server');
+    const view = panel.querySelector('[aria-label="Conversation view"]');
+    view.value = 'outline'; view.dispatchEvent(new Event('change'));
+    check(panel.querySelectorAll('.garden-node').length === 3, 'outline uses the same graph');
+    const filter = panel.querySelector('[aria-label="Filter conversation paths"]');
+    filter.value = '#motion'; filter.dispatchEvent(new Event('input'));
+    check(panel.querySelectorAll('.garden-node').length === 2, 'tag filtering keeps ancestry and excludes sibling');
+    filter.value = ''; filter.dispatchEvent(new Event('input'));
+    panel.querySelector(`article[data-garden-node="${result.garden.nodes.at(-1).id}"] > .garden-node-heading button`).click();
+    check(panel.querySelectorAll('.garden-node').length === 2, 'focused path excludes sibling');
+    check(!panel.querySelector('.garden-body').textContent.includes('Keep the simulation'), 'focused ancestry ends at reply paragraph');
+    button('Path to root').click();
+    const first = chooseParagraph('earlier positions');
+    const prose = first.querySelector('.garden-prose p');
+    const range = document.createRange(); range.selectNodeContents(prose);
+    const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+    first.dispatchEvent(new PointerEvent('pointerup', {bubbles:true}));
+    check(!button('Reply to selection').hidden, 'selection reply affordance appears');
+    button('Reply to selection').click(); selection.removeAllRanges();
+    check(panel.querySelector('.garden-target').textContent.includes('earlier positions'), 'selected quote appears in composer');
+    input.value = 'Follow this quotation #quote'; button('Queue').click();
+    await wait(() => panel.querySelectorAll('.garden-node').length === 4, 'selected-text reply saved');
+    result = await rpc({action:'read'});
+    check(result.garden.nodes.at(-1).anchor.quote.includes('earlier positions'), 'quotation survives server round trip');
+    const edit = panel.querySelector('.garden-edit'); check(edit, 'real code change card');
+    edit.open = true;
+    const then = [...edit.querySelectorAll('button')].find(b => b.textContent === 'Then'); then.click();
+    check(edit.querySelector('pre').textContent === 'val trail = 0.92', 'historical code stays available');
+    button('Garden').click();
+    check(root.querySelector('.ai-chat-messages').textContent === oldHistory, 'ordinary transcript untouched');
+    button('Garden').click();
+    await wait(() => panel.querySelectorAll('.garden-node').length === 4, 'queued replies survive closing and reopening');
+    // Leave a useful reading view for the runner's actual browser screenshot.
+    view.value = 'reading'; filter.value = ''; view.dispatchEvent(new Event('change'));
+    const group = box.querySelector('.outputArea .disclosure-group');
+    window.disclosureInterface(group).setSize('ai-chat', 850, 760);
+    return {ok:true, anchoredReplies:true, selection:true, queue:true, path:true, tags:true, code:true, legacy:true};
+} catch (error) { return {ok:false, reason:String(error)}; }

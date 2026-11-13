@@ -861,6 +861,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "ai4_chat_suspension",
             // The same conversation as a tree with checkpoints (afield.ai.conversation.AiSessionTree).
             "ai4_session",
+            "ai4_garden",
             "fileManagerAccessHistory",
             // The role a box plays in a kit (afield.document.workspace.Kits); a kit's other properties are declared by its record.
             "kitRole"
@@ -912,6 +913,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "notes" to "md",
             "ai4_chat_history" to "md",
             "ai4_session" to "jsonl",
+            "ai4_garden" to "json",
             "metadata" to "yaml"
         )
 

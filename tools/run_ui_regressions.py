@@ -4972,6 +4972,17 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "ChatScroll", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="conversation-garden",
+            description="Structured AI4 paragraph/selection replies, saved queue, root paths, tags and live code references leave the linear chat intact.",
+            document=f"ui-regression-garden-{int(time.time())}",
+            commands=[
+                "new-box --name ConversationGarden --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/conversation-garden.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/conversation-garden.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "ConversationGarden", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="ai-chat-rounds",
             description="A run of tool activity folds to one round line (calls, time, failures, families) that stays open once opened and shows a running turn's live status.",
             document=f"ui-regression-chat-rounds-{int(time.time())}",

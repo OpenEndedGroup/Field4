@@ -66,6 +66,10 @@ object AiBoxConversation {
     /** Called only when there is no live turn for the box in this server. */
     fun recoverInterrupted(box: Box) {
         if (box.getPropertyRaw(RUNNING_PROPERTY) != true) return
+        if (AiConversationGarden.read(box).nodes.any { it.status == "running" }) {
+            AiConversationGarden.recover(box)
+            return
+        }
         write(box, read(box).replace("<<progress-open>>", "<<progress>>") +
             "\n<<progress>>\nPrevious AI turn was interrupted.\nThe saved partial reply is retained; send a message to continue.\n")
         running(box, false)

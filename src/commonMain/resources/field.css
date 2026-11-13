@@ -6474,3 +6474,42 @@ body.mode-editor-only .field-toast {
 #field-figure-host .field-figure-box .field-fline-editor-overlay:not(:has(.field-fline-editor-modegroup:not(.is-hidden))) {
     display: none !important;
 }
+
+/* Structured conversation: cyan agent prose, amber human replies, on black. */
+.garden-bar { display: flex; padding: 3px 10px; border-bottom: 1px solid #292929; }
+.ai-chat-window .garden-bar button, .conversation-garden button, .conversation-garden select, .conversation-garden input {
+    font: inherit; color: #bbb; background: #080808; border: 1px solid #373737; border-radius: 2px; padding: 3px 7px;
+}
+.conversation-garden { display: flex; flex: 1; min-height: 0; flex-direction: column; background: #050505; color: #bbb; font-family: Iosevka, monospace; }
+.conversation-garden[hidden], .garden-open > .ai-chat-messages, .garden-open > .ai-chat-input, .garden-open > .state-tree-toolbar, .garden-open > .state-tree-browser { display: none; }
+.garden-controls, .garden-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 6px 9px; }
+.garden-controls input { flex: 1; min-width: 95px; width: 120px; }
+.garden-status, .garden-model, .garden-node-heading { font-size: 11px; color: #808080; padding: 4px 9px; }
+.garden-status.error, .garden-error { color: #e6a278; }
+.garden-body { flex: 1; overflow: auto; min-height: 100px; max-height: 65vh; padding: 4px 12px; }
+.garden-node { padding: 5px 0 12px; }
+.garden-node-heading { display: flex; gap: 7px; align-items: center; padding-left: 0; flex-wrap: wrap; }
+.garden-human { color: #e9b866; border-left: 2px solid #936824; padding: 5px 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.garden-agent { color: #aad9df; border-left: 1px solid #35646b; }
+.garden-passage { position: relative; padding: 3px 68px 5px 10px; margin: 5px 0; overflow-wrap: anywhere; }
+.garden-prose p { margin: 4px 0; }
+.garden-prose pre, .garden-edit pre { white-space: pre; overflow: auto; max-height: 300px; font: inherit; background: #0b0b0b; padding: 8px; }
+.garden-prose img { max-width: 100%; }
+.conversation-garden .garden-reply { position: absolute; right: 3px; bottom: 4px; opacity: 0; font-size: 11px; margin: 2px 0; color: #d1ac70; }
+.garden-passage:hover > .garden-reply, .garden-passage:focus-within > .garden-reply { opacity: 1; }
+.garden-branch { margin: 7px 0 10px 15px; padding-left: 12px; border-left: 1px solid #514225; }
+.garden-progress { color: #888; font-size: 11px; border-left: 1px solid #303030; }
+.garden-tags { color: #c7a76e; }
+.garden-composer { border-top: 1px solid #333; padding: 6px 9px; }
+.garden-target { color: #ad956d; font-size: 11px; margin-bottom: 5px; overflow-wrap: anywhere; }
+.conversation-garden textarea { box-sizing: border-box; width: 100%; resize: vertical; min-height: 55px; font: inherit; background: #0a0a0a; border: 1px solid #484037; color: #e9c78b; padding: 7px; }
+.garden-composer > select { margin-bottom: 5px; }
+.garden-edit { margin: 9px 0; padding: 6px 9px; border: 1px solid #373737; color: #bbb; }
+.garden-edit summary { cursor: pointer; color: #98bcc2; }
+.garden-outline-summary { color: #a4c4c8; margin: 5px 10px; font-size: 12px; }
+.conversation-garden button:disabled { opacity: .45; }
+.conversation-garden button[aria-pressed="true"] { border-color: #b08e50; color: #e2bc76; }
+.garden-empty { padding: 10px; color: #888; }
+.garden-prose, .garden-prose *, .garden-human, .garden-edit pre { user-select: text; -webkit-user-select: text; }
+
+.garden-passage .ai-chat-markdown { color: inherit; font-size: 12px; }
