@@ -221,7 +221,9 @@ data class AiAssist(
      * (`StudyBuildAwaits`): an id the handler reports once the request has started a turn or been queued in
      * one. The model is told such a message is from Field, not the person.
      */
-    val continuationId: String = ""
+    val continuationId: String = "",
+    /** Opt-in structured conversation turn; isolated from the linear panel. */
+    val gardenNode: String = ""
 )
 
 /** Push-to-talk audio: base64 little-endian float32 mono PCM, plus Whisper's initial prompt. */
