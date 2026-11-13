@@ -328,7 +328,10 @@
 
 .afield-suggest-receiver-doc {
     margin-top: 12px;
-    padding-top: 10px;
+    /* Like the source rows: the rule reaches the pane's right edge, the padding keeps the
+       text column, and the source rows inside still reach the edge through it. */
+    margin-right: -12px;
+    padding: 10px 12px 0 0;
     border-top: 1px solid var(--field-border-soft);
 }
 
