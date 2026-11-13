@@ -17,6 +17,7 @@ drawn from, so a film can wait for a drag or a slider to have reached the view:
 
 ```diffstatic {data-lang=kotlin}
 import afield.geometry.kinematics.RigidMotion
+
 var width = 160.0
 var depth = 100.0
 fun draw() {
@@ -25,19 +26,42 @@ fun draw() {
     three(name = "model", channel = "model", width = 640, height = 480) {
         mesh(body, id = "body", layer = ["Box"], wireframe = false)
         mesh(lid, id = "lid", layer = ["Lid"], wireframe = false)
-        motion("lid", motion = RigidMotion.rotation(vec(0.0, 60.0, -depth / 2), vec(-1.0, 0.0, 0.0), 0.0, 110.0), label = "Lid")
+        motion(
+            "lid",
+            motion = RigidMotion.rotation(vec(0.0, 60.0, -depth / 2), vec(-1.0, 0.0, 0.0), 0.0, 110.0),
+            label = "Lid",
+        )
         timeline(periodSeconds = 4.0)
         metadata("edge", width / 2)
         metadata("depth", depth)
         camera(yaw = 30.0, pitch = 25.0)
     }
     val outline = FLine().rect(-width / 2, -depth / 2, width, depth)
-    val edge = fline { color = vec(1.0, 0.55, 0.15, 1.0); thickness = 4.0; moveTo(vec(width / 2, -depth / 2, 0.0)); lineTo(vec(width / 2, depth / 2, 0.0)) }
-    lines(listOf(outline, edge), channel = "plan", w = 420.0, h = 260.0, framing = LinesFraming.Fixed(-180.0, -100.0, 360.0, 200.0),
-        onDrag = { e -> if (e.phase != LinesDragEvent.Phase.END) { width = (2 * e.x).coerceIn(60.0, 340.0); draw() } })
-    display("size", "<div style='font:15px ui-monospace,monospace;padding:6px'>${"%.0f".format(width)} × ${"%.0f".format(depth)} mm</div>")
+    val edge = fline {
+        color = vec(1.0, 0.55, 0.15, 1.0)
+        thickness = 4.0
+        moveTo(vec(width / 2, -depth / 2, 0.0))
+        lineTo(vec(width / 2, depth / 2, 0.0))
+    }
+    lines(
+        [outline, edge],
+        channel = "plan",
+        w = 420.0,
+        h = 260.0,
+        framing = LinesFraming.Fixed(-180.0, -100.0, 360.0, 200.0),
+        onDrag = { e ->
+            if (e.phase != LinesDragEvent.Phase.END) {
+                width = (2 * e.x).coerceIn(60.0, 340.0)
+                draw()
+            }
+        },
+    )
+    display("size", "<div style='font:15px ui-monospace,monospace;padding:6px'>${width.f0} × ${depth.f0} mm</div>")
 }
-slider("depth", 60.0, 160.0, 1.0, depth) { v -> depth = v; draw() }
+slider("depth", 60.0, 160.0, 1.0, depth) { v ->
+    depth = v
+    draw()
+}
 draw()
 ```
 
