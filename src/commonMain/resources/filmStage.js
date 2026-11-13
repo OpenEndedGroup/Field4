@@ -338,7 +338,7 @@ export async function frame(frameState) {
     }
     for (const w of fs.waits || []) {
         const win = resolveView(w.view).win;
-        const value = w.control ? Number(sliderOf(w.control.box, w.control.label).dataset.value) : w.value;
+        const value = w.control ? (w.scale ?? 1) * Number(sliderOf(w.control.box, w.control.label).dataset.value) : w.value;
         wins.add(win);
         checks.push([`${w.view} metadata ${w.metadata} = ${JSON.stringify(value)}`,
             () => matches(metadataAt(win.FieldViewer.metadata(), w.metadata), value, w.tol)]);

@@ -189,6 +189,13 @@ class FilmTimelineTest {
     }
 
     @Test
+    fun anUntilScalesTheValueForADrawingWhoseAxisRunsTheOtherWay() {
+        val t = timeline("""{"drag": {"box": "b", "channel": "plan"}, "until": {"view": "model", "metadata": "datums.N", "of": "y", "scale": -1},
+            "keys": [{"t": 1, "at": [40, -24]}, {"t": 2, "at": [40, -26]}]}""")
+        assertEquals(25.0, t.frame(15, 1.5, 1.4)["waits"]!!.jsonArray[0].jsonObject["value"]!!.jsonPrimitive.double, 1e-9)
+    }
+
+    @Test
     fun aCaptionFadesInAndOutOverItsFade() {
         val t = timeline("""{"captions": [{"t": 1, "text": "one", "fade": 0.5}, {"t": 3, "text": "two"}]}""")
         assertNull(t.frame(5, 0.5, 0.4)["caption"])

@@ -125,7 +125,8 @@ private sealed interface MotionKey {
 
 private data class ValueKey(val t: Double, val value: List<Double>?, val ease: FilmEase, val release: Boolean)
 
-private data class Until(val view: String, val metadata: String, val of: String, val tol: Double)
+/** Wait until [view]'s metadata at [metadata] is [scale] times the track's value (its [of] coordinate), to [tol]. */
+private data class Until(val view: String, val metadata: String, val of: String, val tol: Double, val scale: Double = 1.0)
 
 /**
  * One press, the moves while it is held, and the release: a run of `at` keys ended by a `release` key (let go at
@@ -254,10 +255,11 @@ class FilmTimeline private constructor(
     private fun Until.wait(value: List<Double>): JsonObject = buildJsonObject {
         put("view", view); put("metadata", metadata); put("tol", tol)
         when (of) {
-            "x" -> put("value", value[0])
-            "y" -> put("value", value.getOrElse(1) { value[0] })
-            else -> put("value", if (value.size == 1) JsonPrimitive(value[0]) else value.json())
+            "x" -> put("value", scale * value[0])
+            "y" -> put("value", scale * value.getOrElse(1) { value[0] })
+            else -> put("value", if (value.size == 1) JsonPrimitive(scale * value[0]) else value.map { scale * it }.json())
         }
+        if (scale != 1.0) put("scale", scale)
     }
 
     private fun cameraAt(view: String, t: Double, initial: FilmPose?): FilmPose? = cameras[view]?.let { cameraAt(it, t, initial) }
@@ -534,11 +536,11 @@ class FilmTimeline private constructor(
 
         private fun until(element: JsonElement?, where: String, regions: Set<String>): Until? {
             val o = element as? JsonObject ?: return if (element == null) null else throw FilmTimelineException("$where is an object")
-            known(o, where, "view", "metadata", "of", "tol")
+            known(o, where, "view", "metadata", "of", "tol", "scale")
             val of = o.string("of", where) ?: "value"
             if (of !in setOf("x", "y", "value")) throw FilmTimelineException("$where: of is x, y or value")
             return Until(view(o["view"], "$where.view", regions), o.string("metadata", where) ?: throw FilmTimelineException("$where names the view's metadata to wait for"),
-                of, o.number("tol", where) ?: 1e-6)
+                of, o.number("tol", where) ?: 1e-6, o.number("scale", where) ?: 1.0)
         }
 
         private fun caption(e: JsonElement, where: String): CaptionKey {

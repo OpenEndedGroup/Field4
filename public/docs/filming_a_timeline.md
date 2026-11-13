@@ -190,7 +190,8 @@ box itself, and the box redraws in its own time, so a `drag` or `control` track 
 ```
 
 The frame then waits until the view's metadata `edge` equals the drag's `x` (to within `tol`, 1e-6 by default);
-for a control, until it equals the slider's value. That is why **Hinge** puts `edge` and `depth` in its view's
+for a control, until it equals the slider's value. `scale` multiplies the value first: `-1` for a drawing whose
+y runs the other way to the number the view reports. That is why **Hinge** puts `edge` and `depth` in its view's
 metadata. No frame is ever taken on a timer: a frame whose box takes a second to rebuild makes the shoot a second
 longer, and the film shows the rebuilt box.
 
