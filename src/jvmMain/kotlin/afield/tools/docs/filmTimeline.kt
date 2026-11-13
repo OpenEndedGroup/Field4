@@ -94,8 +94,11 @@ data class FilmRegion(
 /** The stage: the film page's regions, each bound to one box output, and the caption's place and look. */
 data class FilmStage(val regions: List<FilmRegion>, val json: JsonObject)
 
-/** One thing the server does to a box between two frames: a press, move or release of a drag on its drawing. */
-data class FilmServerAction(val box: String, val channel: String, val phase: String, val x: Double, val y: Double)
+/**
+ * One thing the server does to a box between two frames: a press, move or release of a drag on its drawing, holding
+ * the drawing's named [handle] (a `LinesHandle`) when the track names one.
+ */
+data class FilmServerAction(val box: String, val channel: String, val phase: String, val x: Double, val y: Double, val handle: String? = null)
 
 private sealed interface CameraKey {
     val t: Double
@@ -143,7 +146,7 @@ private class DragGesture(val keys: List<ValueKey>, val release: Double, private
     }
 }
 
-private class DragTrack(val box: String, val channel: String, keys: List<ValueKey>, val until: Until?) {
+private class DragTrack(val box: String, val channel: String, keys: List<ValueKey>, val until: Until?, val handle: String? = null) {
     val gestures: List<DragGesture> = buildList {
         var run = mutableListOf<ValueKey>()
         for (key in keys) {
@@ -240,7 +243,7 @@ class FilmTimeline private constructor(
      */
     fun serverActions(previousT: Double?, t: Double): List<FilmServerAction> = buildList {
         for (d in drags) for (g in d.gestures) {
-            fun act(phase: String, p: List<Double>) = add(FilmServerAction(d.box, d.channel, phase, p[0], p[1]))
+            fun act(phase: String, p: List<Double>) = add(FilmServerAction(d.box, d.channel, phase, p[0], p[1], d.handle))
             val wasDown = previousT != null && g.pressed(previousT)
             val isDown = g.pressed(t)
             val skipped = !wasDown && !isDown && (previousT == null || previousT < g.start) && t >= g.release
@@ -403,12 +406,12 @@ class FilmTimeline private constructor(
                     }
                     "drag" -> {
                         val target = track["drag"] as? JsonObject ?: throw FilmTimelineException("$where: drag is {\"box\": …, \"channel\": …}")
-                        known(target, "$where.drag", "box", "channel")
+                        known(target, "$where.drag", "box", "channel", "handle")
                         val box = target.string("box", "$where.drag") ?: throw FilmTimelineException("$where.drag names a box")
                         val channel = target.string("channel", "$where.drag") ?: "lines"
                         val ks = objects.mapIndexed { j, o -> valueKey(o, times[j], "$where.keys[$j]", point = true) }
                         ks.forEachIndexed { j, k -> if (k.release && (j == 0 || ks[j - 1].release)) throw FilmTimelineException("$where.keys[$j]: a release follows an at key") }
-                        drags += DragTrack(box, channel, ks, until(track["until"], "$where.until", regionIds))
+                        drags += DragTrack(box, channel, ks, until(track["until"], "$where.until", regionIds), target.string("handle", "$where.drag"))
                     }
                     "control" -> {
                         val target = track["control"] as? JsonObject ?: throw FilmTimelineException("$where: control is {\"box\": …, \"label\": …}")

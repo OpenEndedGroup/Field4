@@ -214,7 +214,7 @@ private fun film(browser: Browser, request: AgentPageFilm, timeline: FilmTimelin
         fun time(i: Int) = canvasFlightFrameTime(i, frames, request.fps, request.durationSec)
         fun drags(previousT: Double?, t: Double) {
             for (a in timeline?.serverActions(previousT, t).orEmpty()) {
-                if (!afield.ui.visualization.dragLines(a.box, a.channel, a.phase, a.x, a.y))
+                if (!afield.ui.visualization.dragLines(a.box, a.channel, a.phase, a.x, a.y, a.handle))
                     error("the timeline drags the \"${a.channel}\" drawing of box ${a.box}, which takes no drags (its lines(...) has no onDrag)")
             }
         }
