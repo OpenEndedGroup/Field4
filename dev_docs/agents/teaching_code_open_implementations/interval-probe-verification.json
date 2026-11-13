@@ -1,0 +1,13 @@
+{
+  "passed": [
+    "explicit quadtree matches native tiles, work count and pixels",
+    "smaller render with wider tolerance on rerun"
+  ],
+  "sources": [
+    {
+      "path": "public/docs/stacksl_intervals.md",
+      "name": "stacksl-intervals-ring",
+      "fenceSha256": "74571ad4478c562d75c919056d5e9df3e3898ce53506517323c7ca22c0e3d0d8"
+    }
+  ]
+}

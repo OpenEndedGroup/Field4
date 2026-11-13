@@ -673,7 +673,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**40821 public symbols across 1803 source files**, 24223 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**40822 public symbols across 1803 source files**, 24224 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -700,7 +700,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 40 | 1332 | 729 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 92 | 2517 | 1329 (52%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 129 | 3312 | 1662 (50%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 129 | 3313 | 1663 (50%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 242 | 3365 | 1362 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 96 | 2174 | 822 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
@@ -2263,7 +2263,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>cpu/<wbr></small> [StackSLFit.kt](languages.md#stackslfit-kt) | Languages | 31 | 28 | Gradient descent on a StackSL program's own literals: fit a shader to a picture, then write the fitted numbers back into the program. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [StackSLGalleryHarness.kt](renderers.md#stackslgalleryharness-kt) | Renderers · internal | 8 | 7 | The StackSL gallery on the docs site: one fullscreen fragment per example program, rendered offscreen into a fixed 512² (`OUTPUT_DIM`) target. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>study/<wbr></small> [StackSLGpu.kt](languages.md#stackslgpu-kt) | Languages | 12 | 6 | Where a StackSL study's frames come from: the GPU when a window is running, the CPU reference otherwise. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>cpu/<wbr></small> [StackSLIntervals.kt](languages.md#stackslintervals-kt) | Languages | 28 | 14 | Interval bounds on a fragment shader's colours: a certified range for every pixel in a rectangle, without rendering the pixels. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>cpu/<wbr></small> [StackSLIntervals.kt](languages.md#stackslintervals-kt) | Languages | 29 | 15 | Interval bounds on a fragment shader's colours: a certified range for every pixel in a rectangle, without rendering the pixels. | [Proving What a Shader Draws](../stacksl_intervals.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>cpu/<wbr></small> [StackSLLpipsLoss.kt](languages.md#stacksllpipsloss-kt) | Languages | 15 | 10 | The losses a `StackSLFit` can descend on: mean squared RGB error, LPIPS perceptual distance, and mixtures of the two. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>study/<wbr></small> [StackSLPrograms.kt](languages.md#stackslprograms-kt) | Languages | 39 | 31 | StackSL as a main language for a box's children: compile on run, draw in the window above, and check each run in as a study revision. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stacksl/<wbr></small> [StackSLSmokeTest.kt](examples.md#stackslsmoketest-kt) | Examples · internal | 3 | 0 |  |  |

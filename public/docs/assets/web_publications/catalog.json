@@ -2953,23 +2953,23 @@
     },
     "assets/agent_transcripts/morpho_circuit_search/metadata.edn": {
       "captureDigest": "10be1a0cec353b3208535dfa5556062e9a40241a444682891c330101e0af1d19",
-      "capturedAt": "2026-11-13T09:58:19.815Z",
+      "capturedAt": "2026-11-13T11:05:18.938Z",
       "channels": 4,
       "file": "assets/web_publications/morpho_circuit_search/document/metadata.edn",
       "files": {
-        "assets/web_publications/morpho_circuit_search/document/metadata.edn": "4c483bb63aad93a57f7fd487356abfc87e0391ca7589dba690134a6281af30de",
-        "assets/web_publications/morpho_circuit_search/document/outputs.json": "5e6f5f2f5716aea51b738dd80a34318bbd7ecd180f8606ac7bbdd8624a079160",
-        "assets/web_publications/morpho_circuit_search/outputs/0.html": "b4a4ff030e160668703d067b9963ef696fd1159ff543f359175d4b993392e70b",
-        "assets/web_publications/morpho_circuit_search/outputs/1.html": "6a45e11dcc5fde68794710bc9b746f7767beea2b6f24689b607b806891c57ceb",
-        "assets/web_publications/morpho_circuit_search/outputs/2.html": "18490d388c35d17e5f8871d660d618b03f647c0fd28631b38e5ec7e237cb1855",
-        "assets/web_publications/morpho_circuit_search/outputs/3.html": "3e83e8201e5e303c4e6b99fe8d3589b644b8b4d3667b63bca26085c8cbefac16"
+        "assets/web_publications/morpho_circuit_search/document/metadata.edn": "e694469daa8258fa471b852e2055eb2e7a7ae30dfd12c4d933d013b86281179f",
+        "assets/web_publications/morpho_circuit_search/document/outputs.json": "0bd00f65822a4de84e180677f0abec8ee751358625f45f8b7916ccc61490fa0e",
+        "assets/web_publications/morpho_circuit_search/outputs/0.html": "37ce37d0cbbf3a5ec5ea960967dd09eb622e8f9495f66f8aaec850e2ee890c19",
+        "assets/web_publications/morpho_circuit_search/outputs/1.html": "a1c44c355e30f9adb48a6034327824b28383ee6d58d94f3551c89483da0d7108",
+        "assets/web_publications/morpho_circuit_search/outputs/2.html": "35022ef4546d1fb86fd1484e5969f36dc425c93ccf489c616450311f32d64d50",
+        "assets/web_publications/morpho_circuit_search/outputs/3.html": "8efd6ae3277ee8cc52e2dbce28386394bc9b972bdf3ddb93303945d91aeb6ab2"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/morpho_circuit_search/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/morpho_circuit_search.yaml": "fd6ffe72e6c4d87f0e79dd44708cc5d61637155c947dfd34787ceaf88ad2b4f4",
+        "dev_docs/agents/transcripts/morpho_circuit_search.yaml": "cf82d8e5a6366fe9120d44308774102662740c4122e565c3c4bef21631905667",
         "public/docs/assets/agent_transcripts/morpho_circuit_search/guides/morpho_examples.md": "61e3554f5e1bc77f6a254b6ba6ab82330477ad6665509e982dcbdb8c6aa8d233",
         "public/docs/assets/agent_transcripts/morpho_circuit_search/guides/morpho_search.md": "f7642effc2f0ac2cb540c3b3b7a010435a907caed49ef78afbb4455376941f3a",
         "public/docs/assets/agent_transcripts/morpho_circuit_search/metadata.edn": "30abe102a5231a4f19b990ceffd7c39058ee2897d9fa79cc0e207d4a6a614a6a",

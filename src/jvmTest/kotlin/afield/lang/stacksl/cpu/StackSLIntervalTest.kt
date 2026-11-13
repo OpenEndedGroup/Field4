@@ -3,6 +3,7 @@ package afield.lang.stacksl.cpu
 import java.io.File
 import kotlin.random.Random
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -72,6 +73,36 @@ class StackSLIntervalTest {
         assertTrue(bound.certified, bound.toString())
         for (ch in 0 until 3) assertTrue(bound.hi[ch] - bound.lo[ch] < 1e-6f, "channel $ch is $bound")
         assertTrue(bound.contains(FloatArray(4) { raster.at(5, 7, it) }))
+    }
+
+    @Test
+    fun parsedShaderBoundsMatchSourceAndDoNotShareMutableGlobals() {
+        val glsl = """
+            #version 450
+            layout(location = 0) in vec2 fragUV;
+            layout(location = 0) out vec4 outColor;
+            float v = 0.25;
+            void main() {
+                if (fragUV.x < 0.5) v += 0.5;
+                outColor = vec4(v, v, v, 1.0);
+            }
+        """.trimIndent()
+        val shader = parseGlslShader(glsl)
+        // Revisit the left region after other queries: its global v must start at 0.25 again.
+        for ((x0, x1) in listOf(0 to 20, 43 to 63, 0 to 63, 0 to 20)) {
+            val source = StackSLIntervals.enclosePixels(glsl, x0, 0, x1, 63, 64, 64)
+            val parsed = StackSLIntervals.enclosePixels(shader, x0, 0, x1, 63, 64, 64)
+            assertTrue(parsed.certified)
+            assertContentEquals(source.lo, parsed.lo)
+            assertContentEquals(source.hi, parsed.hi)
+            assertEquals(source.maybeNaN, parsed.maybeNaN)
+            assertEquals(source.maybeDiscarded, parsed.maybeDiscarded)
+            assertEquals(source.refusal, parsed.refusal)
+            if (x1 == 20) {
+                assertEquals(0.75f, parsed.lo[0])
+                assertEquals(0.75f, parsed.hi[0])
+            }
+        }
     }
 
     /** The three-valued branch, on hand-written GLSL: both arms run, and their writes are joined. */

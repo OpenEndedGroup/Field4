@@ -457,5 +457,81 @@
         ]
       }
     ]
+  },
+  "interval-subdivision": {
+    "targets": [
+      {
+        "path": "public/docs/stacksl_intervals.md",
+        "name": "stacksl-intervals-ring",
+        "capture": true,
+        "probes": [
+          {
+            "label": "explicit quadtree matches native tiles, work count and pixels",
+            "assertions": "val expected = StackSLIntervals.tilePicture(program, dim, tolerance, time)\ncheck(tiles.size == expected.tiles.size && enclosures == expected.enclosures)\ncheck(tiles.zip(expected.tiles).all { (a, b) ->\n    a.x == b.x && a.y == b.y && a.size == b.size && a.settled == b.settled &&\n    a.bound.lo.contentEquals(b.bound.lo) && a.bound.hi.contentEquals(b.bound.hi) &&\n    a.bound.maybeNaN == b.bound.maybeNaN && a.bound.maybeDiscarded == b.bound.maybeDiscarded && a.bound.refusal == b.bound.refusal\n})\ncheck(render.rgba.contentEquals(expected.render.rgba))"
+          },
+          {
+            "label": "smaller render with wider tolerance on rerun",
+            "replace": {
+              "val dim = 128": "val dim = 64",
+              "val tolerance = 2f / 255f": "val tolerance = 4f / 255f"
+            },
+            "assertions": "val expected = StackSLIntervals.tilePicture(program, dim, tolerance, time)\ncheck(tiles.size == expected.tiles.size && enclosures == expected.enclosures)\ncheck(tiles.zip(expected.tiles).all { (a, b) ->\n    a.x == b.x && a.y == b.y && a.size == b.size && a.settled == b.settled &&\n    a.bound.lo.contentEquals(b.bound.lo) && a.bound.hi.contentEquals(b.bound.hi) &&\n    a.bound.maybeNaN == b.bound.maybeNaN && a.bound.maybeDiscarded == b.bound.maybeDiscarded && a.bound.refusal == b.bound.refusal\n})\ncheck(render.rgba.contentEquals(expected.render.rgba))"
+          }
+        ]
+      }
+    ]
+  },
+  "morpho-remaining": {
+    "targets": [
+      {
+        "path": "public/docs/morpho_search.md",
+        "name": "morpho-search-recursion",
+        "capture": true,
+        "probes": [
+          {
+            "label": "or-reduce truth tables and seeded grammar",
+            "replace": {},
+            "assertions": "val reference = MorphoProblems.orReduce(widths, maxStatements, designWidth)\ncheck(problem.name == reference.name && problem.about == reference.about)\nfor (width in widths) for (x in 0L until (1L shl width)) {\n    check(spec.oracle(longArrayOf(x), width).contentEquals(reference.spec.oracle(longArrayOf(x), width)))\n}\nfor (seed in [1, 2, 42]) check(problem.generator.random(kotlin.random.Random(seed)).render() == reference.generator.random(kotlin.random.Random(seed)).render())"
+          },
+          {
+            "label": "or-reduce altered widths and grammar on rerun",
+            "replace": {
+              "val widths = [2, 3, 5]": "val widths = [2, 3]",
+              "val maxStatements = 6": "val maxStatements = 4"
+            },
+            "assertions": "val reference = MorphoProblems.orReduce(widths, maxStatements, designWidth)\ncheck(problem.name == reference.name && problem.about == reference.about)\nfor (width in widths) for (x in 0L until (1L shl width)) {\n    check(spec.oracle(longArrayOf(x), width).contentEquals(reference.spec.oracle(longArrayOf(x), width)))\n}\nfor (seed in [1, 2, 42]) check(problem.generator.random(kotlin.random.Random(seed)).render() == reference.generator.random(kotlin.random.Random(seed)).render())"
+          },
+          {
+            "label": "short search with no correct design still renders",
+            "probeUntil": false,
+            "replace": {
+              "val budget = 6000": "val budget = 32"
+            },
+            "assertions": "check(found.isEmpty())\ncheck(cost.isEmpty())"
+          }
+        ],
+        "probeUntil": "println(problem)"
+      },
+      {
+        "path": "public/docs/morpho_search.md",
+        "name": "morpho-search-adder",
+        "capture": true,
+        "probes": [
+          {
+            "label": "free and guided adder oracles and seeded grammar",
+            "replace": {},
+            "assertions": "val references = [MorphoProblems.recursiveAdder(widths, maxStatements, designWidth), MorphoProblems.guidedRecursiveAdder(widths, maxStatements, designWidth)]\nfor ((actual, reference) in [free, guided].zip(references)) {\n    check(actual.name == reference.name && actual.about == reference.about)\n    for (width in widths) for (a in [0L, 1L, (1L shl width)-1]) for (b in [0L, 1L, (1L shl width)-1]) for (c in 0L..1L) {\n        val inputs = longArrayOf(a, b, c)\n        check(actual.spec.oracle(inputs, width).contentEquals(reference.spec.oracle(inputs, width)))\n    }\n    for (seed in [1, 2, 42]) check(actual.generator.random(kotlin.random.Random(seed)).render() == reference.generator.random(kotlin.random.Random(seed)).render())\n}"
+          },
+          {
+            "label": "altered adder grammar on rerun",
+            "replace": {
+              "val maxStatements = 10": "val maxStatements = 8"
+            },
+            "assertions": "val references = [MorphoProblems.recursiveAdder(widths, maxStatements, designWidth), MorphoProblems.guidedRecursiveAdder(widths, maxStatements, designWidth)]\nfor ((actual, reference) in [free, guided].zip(references)) {\n    check(actual.name == reference.name && actual.about == reference.about)\n    for (width in widths) for (a in [0L, 1L, (1L shl width)-1]) for (b in [0L, 1L, (1L shl width)-1]) for (c in 0L..1L) {\n        val inputs = longArrayOf(a, b, c)\n        check(actual.spec.oracle(inputs, width).contentEquals(reference.spec.oracle(inputs, width)))\n    }\n    for (seed in [1, 2, 42]) check(actual.generator.random(kotlin.random.Random(seed)).render() == reference.generator.random(kotlin.random.Random(seed)).render())\n}"
+          }
+        ],
+        "probeUntil": "val budget = 6000"
+      }
+    ]
   }
 }

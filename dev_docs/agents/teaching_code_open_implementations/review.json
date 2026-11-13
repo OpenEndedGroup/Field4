@@ -83,5 +83,20 @@
     "family": "Loris partial explorer starting place",
     "decision": "retain_explicit_api_composition",
     "detail": "Reviewed loris_partial_explorer.yaml: it already supplies source, Loris options, selection of tracks, transformations, run-owned native futures, progress and per-pass output directly. There is no tutorial fixture call to open."
+  },
+  {
+    "family": "MorphoProblems.orReduce/recursiveAdder/guidedRecursiveAdder",
+    "decision": "expand",
+    "detail": "Truth functions, width families, grammar, base cell and the two fixed SPLIT statements are now explicit in both the page and starting place. Full-budget figures preserve outcomes. An empty-cost-plot failure at tiny budgets now reports no correct design without inventing a cost point."
+  },
+  {
+    "family": "KratosDemo and KratosStudyDemo tutorial setup",
+    "decision": "expand",
+    "detail": "Both starting places now show the two-box CSG. The study shows its parameter space, solve plan, probe objective, metrics and closed-form conductivity check. Actual native grid results are identical. Both boxes probe available backends, repairing the missing-local-Python path on macOS. Status uses Markdown."
+  },
+  {
+    "family": "StackSLIntervals.tilePicture",
+    "decision": "expand_first_use_retain_named_reuse",
+    "detail": "The first figure now shows shader expansion, parsing, rendering, interval queries and recursive subdivision. The later noise example reuses the now-taught algorithm by name. A public parsed-shader overload of enclosePixels avoids reparsing per rectangle; tests cover equivalence and per-query state isolation."
   }
 ]
