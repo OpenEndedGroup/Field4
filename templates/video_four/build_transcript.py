@@ -79,7 +79,7 @@ def main():
                     start = code.index('var selectedFile =')
                     end = code.index('\nvar scrubber:', start)
                     # Resolve bundled media through the document, independent of host and workspace location.
-                    fallback = json.dumps(args.video).replace('$', '\\$') if args.video else '"%document/thisLand_3D_SBS.mp4".file.absolutePath'
+                    fallback = json.dumps(args.video).replace('$', '\\$') if args.video else '"%document/thisLand_3D_SBS.mp4".path.toString()'
                     box['properties']['code'] = code[:start] + 'var selectedFile = System.getenv("FIELD_STEREO_VIDEO") ?: ' + fallback + code[end:]
         path = args.output / f'{name}.json'
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
