@@ -78,8 +78,8 @@ def main():
                     code = box['properties']['code']
                     start = code.index('var selectedFile =')
                     end = code.index('\nvar scrubber:', start)
-                    # A home-relative default survives copying the document between hosts.
-                    fallback = json.dumps(args.video).replace('$', '\\$') if args.video else 'java.io.File(System.getProperty("user.home"), "Videos/thisLand_3D_SBS.mp4").absolutePath'
+                    # Resolve bundled media through the document, independent of host and workspace location.
+                    fallback = json.dumps(args.video).replace('$', '\\$') if args.video else '"%document/thisLand_3D_SBS.mp4".file.absolutePath'
                     box['properties']['code'] = code[:start] + 'var selectedFile = System.getenv("FIELD_STEREO_VIDEO") ?: ' + fallback + code[end:]
         path = args.output / f'{name}.json'
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
