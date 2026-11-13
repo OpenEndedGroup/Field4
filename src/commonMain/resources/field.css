@@ -6647,8 +6647,8 @@ body.mode-editor-only .field-toast {
 /* Conversation garden shares the history/palette shell and control tokens. */
 .ai-chat-window.garden-mounted {
     cursor: default;
-    border: var(--fp-border);
-    border-radius: 8px;
+    border: 0;
+    border-radius: 0;
     font-family: var(--field-font);
     font-size: var(--fp-title-size);
     font-weight: 300;
@@ -7006,27 +7006,10 @@ body.mode-editor-only .field-toast {
     .garden-fold-glyph, .garden-quote-anchor::before { transition: none; }
 }
 
-/* Garden reading type stays independent of the surrounding coding UI. */
-@font-face {
-    font-family: "Noto Serif Garden";
-    src: url("/fonts/noto-serif/noto-serif-normal.woff2") format("woff2");
-    font-style: normal;
-    font-weight: 100 900;
-    font-stretch: 62.5% 100%;
-    font-display: swap;
-}
-@font-face {
-    font-family: "Noto Serif Garden";
-    src: url("/fonts/noto-serif/noto-serif-italic.woff2") format("woff2");
-    font-style: italic;
-    font-weight: 100 900;
-    font-stretch: 62.5% 100%;
-    font-display: swap;
-}
+/* Garden prose and drafts use Field's Iosevka typography. */
 .conversation-garden {
-    --garden-reading-font: "Noto Serif Garden", Georgia, serif;
-    --garden-reading-size: 14px;
-    --garden-reading-width: 90%;
+    --garden-reading-font: var(--field-font);
+    --garden-reading-size: var(--fp-title-size);
 }
 .conversation-garden .garden-prose,
 .conversation-garden .garden-fold-label,
@@ -7034,29 +7017,27 @@ body.mode-editor-only .field-toast {
 .conversation-garden textarea {
     font-family: var(--garden-reading-font);
     font-size: var(--garden-reading-size);
-    font-weight: 400;
-    font-stretch: var(--garden-reading-width);
-    line-height: 1.6;
+    font-weight: 300;
+    line-height: 1.5;
 }
-.conversation-garden .garden-prose .ai-chat-markdown { font: inherit; font-stretch: inherit; }
-.conversation-garden .garden-human:not(.garden-passage) { font-family: var(--garden-reading-font); font-size: var(--garden-reading-size); font-weight: 400; font-stretch: var(--garden-reading-width); line-height: 1.6; }
+.conversation-garden .garden-prose .ai-chat-markdown { font: inherit; }
+.conversation-garden .garden-human:not(.garden-passage) { font-family: var(--garden-reading-font); font-size: var(--garden-reading-size); font-weight: 300; line-height: 1.5; }
 .ai-chat-window .conversation-garden .garden-prose pre,
 .ai-chat-window .conversation-garden .garden-prose code,
 .conversation-garden .garden-edit pre {
     font-family: var(--field-font-code);
     font-size: 12px;
-    font-stretch: normal;
     line-height: 1.5;
 }
-.conversation-garden .garden-branch > summary { top: 7px; }
-.conversation-garden .garden-fold-label { top: -3px; }
-
+.conversation-garden .garden-branch > summary { top: 4px; }
+.conversation-garden .garden-fold-label { top: 0; }
 .conversation-garden .garden-prose h1,
 .conversation-garden .garden-prose h2,
-.conversation-garden .garden-prose h3 { font-family: inherit; font-stretch: inherit; }
+.conversation-garden .garden-prose h3 { font-family: inherit; }
 .conversation-garden .garden-prose h1 { font-size: 1.35em; }
 .conversation-garden .garden-prose h2 { font-size: 1.2em; }
 .conversation-garden .garden-prose h3 { font-size: 1.1em; }
+
 /* Light theme: highlight.js. index.html loads github-dark.min.css for every theme; these are the
    matching GitHub light colours, scoped so the dark stylesheet stays untouched. */
 [data-field-theme="light"] .hljs { color: #24292f; background: rgba(var(--field-chalk-rgb), 0.35); }

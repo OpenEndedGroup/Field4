@@ -28,8 +28,8 @@ the edge of its prompt. Escape cancels; the reading area scrolls at its edges. A
 be dropped inside itself or moved while one of its responses is running. Moves preserve the
 original turn context and all written responses; future replies follow the destination ancestry.
 
-Reading prose and drafts use self-hosted variable Noto Serif at 90% width, with normal and italic
-faces; controls and code retain Iosevka. The reading width is set by `--garden-reading-width`.
+Reading prose, drafts, controls and code use Field’s Iosevka font tokens. The reading area
+sits directly inside its output panel, without a second outer frame.
 Agent cyan and human amber use the shared chat colour tokens; panel surfaces and one-pixel
 hover rules use Field panel and border tokens, including the light-theme palette on main.
 

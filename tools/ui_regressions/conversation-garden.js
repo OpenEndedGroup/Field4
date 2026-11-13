@@ -21,18 +21,12 @@ try {
     gardenToggle.click();
     const panel = root.querySelector('.conversation-garden');
     await wait(() => panel.textContent.includes('short trail'), 'structured conversation loads');
-    const readingFonts = await document.fonts.load('400 14px "Noto Serif Garden"');
+    const readingFonts = await document.fonts.load('300 11px "Iosevka Web"');
     await document.fonts.ready;
-    check(readingFonts.length > 0, 'self-hosted Noto Serif loads for reading');
+    check(readingFonts.length > 0, 'Field Iosevka loads for reading');
     const readingStyle = getComputedStyle(panel.querySelector('.garden-prose'));
-    check(readingStyle.fontFamily.includes('Noto Serif Garden') && readingStyle.fontStretch === '90%', 'prose uses the condensed serif width axis');
-    const widthProbe = document.createElement('span');
-    widthProbe.style.cssText = 'position:fixed;visibility:hidden;white-space:nowrap;font:400 14px "Noto Serif Garden";font-stretch:90%';
-    widthProbe.textContent = 'A garden for reading and writing'; document.body.append(widthProbe);
-    const condensed = widthProbe.getBoundingClientRect().width;
-    widthProbe.style.fontStretch = '100%';
-    check(condensed < widthProbe.getBoundingClientRect().width * .99, 'the variable width axis actually narrows rendered text');
-    widthProbe.remove();
+    check(readingStyle.fontFamily.includes('Iosevka'), 'Garden prose uses Field Iosevka');
+    check(getComputedStyle(root).borderTopWidth === '0px', 'Garden adds no extra frame inside the output panel');
     check(root.querySelector('.ai-chat-messages').offsetHeight === 0, 'linear view hidden');
     const openToggle = toggleAppearance();
     check(Object.keys(closedToggle).every(k => typeof closedToggle[k] === 'number' ? Math.abs(closedToggle[k]-openToggle[k]) < .5 : closedToggle[k] === openToggle[k]), 'Garden toggle keeps its placement and style when opened');
@@ -291,7 +285,7 @@ try {
     for (const height of [360, 900, 760]) {
         inter.setSize('ai-chat', 850, height); await delay(80);
         const area = panel.querySelector('.garden-body').getBoundingClientRect(), shell = root.getBoundingClientRect();
-        check(Math.abs(area.bottom - (shell.bottom - 9)) < 3, 'reading well fills resized output without a viewport-height cap');
+        check(Math.abs(area.bottom - (shell.bottom - 4)) < 3, 'reading well fills resized output without a viewport-height cap');
     }
     button('New root').click();
     const body = panel.querySelector('.garden-body'); body.scrollTop = 0;
@@ -307,7 +301,7 @@ try {
     check(getComputedStyle(body).backgroundColor !== darkWell, 'reading surface follows the light palette');
     check(getComputedStyle(panel.querySelector('.garden-agent')).color !== darkAgent, 'agent cyan follows the light palette');
     check(getComputedStyle(panel.querySelector('.garden-human')).color !== darkHuman, 'human amber follows the light palette');
-    check(getComputedStyle(panel.querySelector('.garden-prose')).fontFamily.includes('Noto Serif Garden'), 'theme switching preserves serif reading type');
+    check(getComputedStyle(panel.querySelector('.garden-prose')).fontFamily.includes('Iosevka'), 'theme switching preserves Iosevka reading type');
     gardenToggle.focus();
     check(getComputedStyle(gardenToggle).outlineStyle === 'none' && getComputedStyle(gardenToggle).boxShadow === 'none', 'light-theme Garden toggle has no focus ring');
     input.focus({preventScroll:true});
