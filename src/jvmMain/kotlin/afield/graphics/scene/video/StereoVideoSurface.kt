@@ -44,7 +44,7 @@ class StereoVideoSurface(
     @Volatile
     var brightness = 1f
         set(value) { require(value.isFinite() && value in 0f..16f); field = value }
-    /** Straight-alpha coverage, independent of the headset-clock brightness envelope. */
+    /** Additive light contribution, independent of the headset-clock brightness envelope; zero emits nothing. */
     @Volatile
     var opacity = 1f
         set(value) { require(value.isFinite()); field = value }
@@ -278,10 +278,11 @@ class StereoVideoSurface(
         parameters.depthTest = false
         parameters.depthWrite = false
         parameters.blend = true
+        // Straight RGB carries light; opacity scales its contribution without occluding other screens.
         parameters.srcColor = VK_BLEND_FACTOR_SRC_ALPHA
-        parameters.dstColor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
+        parameters.dstColor = VK_BLEND_FACTOR_ONE
         parameters.srcAlpha = VK_BLEND_FACTOR_ONE
-        parameters.dstAlpha = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
+        parameters.dstAlpha = VK_BLEND_FACTOR_ONE
         val previousUboResolver = parameters.uboResolver
         parameters.uboResolver = { requested ->
             if (requested.name == "ScreenAppearance") requested.apply { uniform(); perFrame = true; hosted() }

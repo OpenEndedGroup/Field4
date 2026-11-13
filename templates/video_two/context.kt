@@ -59,6 +59,20 @@ prop<MultiviewStereoTarget>(stereo) =
         )
 val ownedStereo = stereo
 
+// The editor plane belongs to this room of light too; preserve its opacity as an energy control.
+renderer.runOnQueueThread {
+    stereo.layered.modules.values.forEach { pointer ->
+        check(pointer.reload(pointer.current.parameters.copy(
+            blend = true,
+            srcColor = org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_SRC_ALPHA,
+            dstColor = org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE,
+            srcAlpha = org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE,
+            dstAlpha = org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE,
+            depthTest = false, depthWrite = false)))
+    }
+}
+
+
 if (!headsetMode) {
     stereo.stereoCamera.base.at.set(0f, 0f, 0f)
     stereo.stereoCamera.base.target.set(0f, 0f, -1f)
