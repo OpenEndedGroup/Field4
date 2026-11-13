@@ -6506,7 +6506,7 @@ Run with ./gradlew smokeSolidCraft: builds one design per construction feature a
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="solidcraftbuildersmoketest-kt--solidcraftbuildersmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/solidcraft/SolidCraftBuilderSmokeTest/#L47) |  |
+| <a id="solidcraftbuildersmoketest-kt--solidcraftbuildersmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/solidcraft/SolidCraftBuilderSmokeTest/#L49) |  |
 
 ## SolidCraftSmokeTest.kt { #solidcraftsmoketest-kt }
 
