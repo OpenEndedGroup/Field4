@@ -87,9 +87,9 @@ let warped =
        )
     |> color (vec4 1.0 0.55 0.2 1.0)
 
-hostStaticCall "lines"
-  (thisBox, [straight, warped], "main", 360.0, 240.0, true, false, false, false, hostNull)
-  (hostClass "afield.ui.visualization.SomeSkikoKt")
+thisBox
+  |> hostExt (hostClass "afield.ui.visualization.SomeSkikoKt") "lines"
+       {m = [straight, warped], channel = "main", w = 360.0, h = 240.0, fitToSize = true}
 ```
 
 `transform` calls the function once for each stored point, so this three-point line keeps its three
