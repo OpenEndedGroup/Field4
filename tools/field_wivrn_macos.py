@@ -22,16 +22,75 @@ import hashlib
 import shutil
 import subprocess
 import sys
+import platform
+import tempfile
+import urllib.request
 
 REPO = Path(__file__).resolve().parent.parent
 OPENXR_SDK_URL = 'https://github.com/KhronosGroup/OpenXR-SDK.git'
 OPENXR_SDK_TAG = 'release-1.1.53'
 LOADER_PREFIX = REPO / '.afield-local/openxr'
 DEFAULT_APP = Path('/Applications/WiVRn.app')
+WIVRN_VERSION = '26.9.5'
+WIVRN_URL = f'https://github.com/orchardxr/wivrn-macos/releases/download/v{WIVRN_VERSION}/WiVRn-{WIVRN_VERSION}.zip'
+WIVRN_SHA256 = '779565016a7dd452e1f1d3f3dc8b5aaed4eed92f377eeafd4c5ee8af764a54be'
+SETUP_HINT = 'Run ./field.sh --setup and select WiVRn headset streaming (macOS), then choose BUILD.'
 VIDEOTOOLBOX = {'encoder': 'videotoolbox', 'codec': 'h265'}
 KK_PIN = REPO / 'optional/wivrn-macos/pin.json'
 KK_RUNTIME_DIR = REPO / '.afield-local/wivrn-kk'
 KK_MANIFEST = KK_RUNTIME_DIR / 'openxr_wivrn_kk.json'
+
+
+def default_app(home: Path | None = None) -> Path:
+    """Prefer an installed system app; new installations need no administrator privileges."""
+    user_app = (home or Path.home()) / 'Applications/WiVRn.app'
+    return DEFAULT_APP if DEFAULT_APP.exists() else user_app
+
+
+def verify_archive(archive: Path) -> None:
+    digest = hashlib.sha256()
+    with archive.open('rb') as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b''):
+            digest.update(block)
+    if digest.hexdigest() != WIVRN_SHA256:
+        raise ValueError('WiVRn download checksum mismatch; nothing was installed.')
+
+
+def install_runtime(app: Path) -> Path:
+    """Install the pinned app if absent; never replace an existing app or bypass Gatekeeper."""
+    app = app.expanduser().resolve()
+    if app.exists():
+        return runtime_manifest(app)
+    app.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='.field-wivrn-', dir=app.parent) as folder:
+        work = Path(folder)
+        archive = work / 'WiVRn.zip'
+        print(f'Downloading WiVRn {WIVRN_VERSION}…', flush=True)
+        with urllib.request.urlopen(WIVRN_URL, timeout=60) as response, archive.open('wb') as output:
+            shutil.copyfileobj(response, output)
+        verify_archive(archive)
+        unpacked = work / 'unpacked'
+        # ditto preserves app bundle symlinks, executable permissions and macOS metadata.
+        subprocess.run(['ditto', '-x', '-k', str(archive), str(unpacked)], check=True)
+        candidates = list(unpacked.glob('WiVRn.app'))
+        if len(candidates) != 1:
+            raise ValueError('The WiVRn release does not contain the expected WiVRn.app bundle.')
+        runtime_manifest(candidates[0])
+        candidates[0].rename(app)
+    return runtime_manifest(app)
+
+
+def prepare(app: Path, config: Path) -> None:
+    """Optional first-run preparation; does not start WiVRn or select a global runtime."""
+    if sys.platform != 'darwin' or platform.machine() not in ('arm64', 'aarch64'):
+        raise ValueError('WiVRn macOS preparation requires an Apple silicon Mac.')
+    manifest = install_runtime(app)
+    if not loader_library().is_file():
+        build_loader()
+    if not encoder_configured(config):
+        configure_encoder(config)
+    print(f'WiVRn prepared: {manifest}. Open {app}, allow macOS permissions and connect the headset. '
+          'Restart WiVRn if it was already running so the encoder change applies.')
 
 
 def runtime_manifest(app: Path) -> Path:
@@ -166,7 +225,8 @@ def launch_environment(manifest: Path, loader: Path, environ: dict[str, str],
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    parser.add_argument('--wivrn', type=Path, default=DEFAULT_APP, help='WiVRn.app (default /Applications/WiVRn.app)')
+    parser.add_argument('--wivrn', type=Path, default=default_app(), help='WiVRn.app (auto-detect /Applications or ~/Applications)' )
+    parser.add_argument('--prepare', action='store_true', help='Install missing WiVRn/loader and configure VideoToolbox; used by ./field.sh --setup')
     parser.add_argument('--loader', type=Path, help='libopenxr_loader.dylib to use instead of the one in .afield-local')
     parser.add_argument('--build-loader', action='store_true', help='Build the OpenXR loader into .afield-local/openxr, then exit')
     parser.add_argument('--configure-encoder', action='store_true',
@@ -181,6 +241,9 @@ def main() -> int:
     args = parser.parse_args()
     config = wivrn_config_path(Path.home())
     try:
+        if args.prepare:
+            prepare(args.wivrn, config)
+            return 0
         if args.build_loader:
             print(build_loader())
             return 0
@@ -194,7 +257,7 @@ def main() -> int:
         # The installed app is needed either way: it runs the WiVRn server.
         manifest = runtime_manifest(args.wivrn)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
-        parser.error(str(error))
+        parser.error(f'{error} {SETUP_HINT}')
     loader = (args.loader or loader_library()).expanduser().resolve()
     problems = []
     driver = 'moltenvk'
@@ -215,7 +278,7 @@ def main() -> int:
                           'problems': problems, 'status': 'Launch plan only; nothing was started.'}, indent=2))
         return 0
     if problems:
-        parser.error(' '.join(problems))
+        parser.error(' '.join(problems) + ' ' + SETUP_HINT)
     print(f'Field ({driver}) → WiVRn for macOS. Open WiVRn and connect the headset first; set useHeadset = true in the '
           'VR starting point.', file=sys.stderr, flush=True)
     os.execve(launcher, [str(launcher), *field_args], {**os.environ, **overrides})

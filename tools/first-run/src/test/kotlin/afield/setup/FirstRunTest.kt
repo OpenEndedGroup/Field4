@@ -134,3 +134,24 @@ class FirstRunTest {
         }
     }
 }
+
+class WiVRnPreparationTest {
+    @kotlin.test.Test fun macPreparationUsesTheInstallerRatherThanTheFieldBuild() {
+        kotlin.test.assertEquals(
+            listOf(listOf("python3", "tools/field_wivrn_macos.py", "--prepare")),
+            preparationCommands(setOf("wivrn-macos"), "mac"),
+        )
+        kotlin.test.assertTrue(preparationCommands(setOf("wivrn-macos"), "linux").isEmpty())
+        kotlin.test.assertTrue(preparationCommands(setOf("wivrn-macos"), "windows").isEmpty())
+    }
+
+    @kotlin.test.Test fun macCanSelectMissingBrewPrerequisitesAndInstallThem() {
+        val choices = featureOptions("mac", { it !in setOf("cmake", "python3") },
+            nvidia = false, rustErrors = emptyList(), solidcraftErrors = emptyList(), homebrew = true)
+        val choice = choices.single { it.extra.id == "wivrn-macos" }
+        kotlin.test.assertTrue(choice.enabled)
+        val plan = packagePlan("brew", false, choice.missing.toSet(), setOf("wivrn-macos"), false, "mac")
+        kotlin.test.assertTrue(plan.commands.flatten().containsAll(listOf("cmake", "python@3.12")))
+        kotlin.test.assertTrue(featureOptions("linux").none { it.extra.id == "wivrn-macos" })
+    }
+}

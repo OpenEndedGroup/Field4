@@ -24,6 +24,7 @@ internal fun featureOptions(
     rustErrors: List<String> = paintToolchainErrors(),
     rustup: Boolean = commandWorks("rustup", "show", "active-toolchain"),
     winget: Boolean = false,
+    homebrew: Boolean = false,
     solidcraftErrors: List<String> = solidcraftToolchainErrors(),
 ): List<FeatureOption> = extrasCatalog.mapIndexedNotNull { index, extra ->
     // Keep catalog numbers stable even when a platform-specific feature is omitted.
@@ -44,7 +45,11 @@ internal fun featureOptions(
         }
     }
     FeatureOption(index + 1, extra, tools + if (gpu) listOf("NVIDIA") else emptyList(), missing,
-        if (platform == "windows" && winget) wingetPackages.keys else emptySet())
+        when {
+            platform == "windows" && winget -> wingetPackages.keys
+            platform == "mac" && homebrew && extra.id == "wivrn-macos" -> setOf("cmake", "python3")
+            else -> emptySet()
+        })
 }
 
 internal class FeatureSelection(val options: List<FeatureOption>, initial: Set<String> = emptySet()) {

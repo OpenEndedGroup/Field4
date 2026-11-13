@@ -230,22 +230,28 @@ The path is **Field OpenXR → WiVRn for macOS → Quest**: the Mac renders, the
 encodes with VideoToolbox and streams to the ordinary WiVRn headset app. The starting point, the
 browser panel, controller pointing and grip work as described above.
 
-You need an Apple silicon Mac and the port's `WiVRn.app` in `/Applications`. The WiVRn app on the
-headset must be the same version as the server it connects to: the port is WiVRn 26.9, and a
-headset app installed for a Linux server on another version reports an incompatible server version.
+You need an Apple silicon Mac. The WiVRn headset app must use a compatible server version;
+Field's setup currently installs the macOS port's pinned 26.9.5 release.
 
-Two steps prepare the Mac once. Run them from the Field checkout:
+Run `./field.sh --setup`, select **WiVRn headset streaming**, then choose **INSTALL** for any
+missing Homebrew prerequisites and **BUILD** to prepare WiVRn. Setup verifies the release
+archive's SHA-256, installs a missing app in `~/Applications/WiVRn.app`, builds the Khronos
+OpenXR loader in `.afield-local/openxr`, and configures VideoToolbox HEVC. An existing app in
+`/Applications` or `~/Applications` is retained. New installs need no administrator privileges;
+macOS app approval, permissions and headset pairing still happen in WiVRn.
+
+The same preparation can be run directly after installing Python, CMake and Apple's Command
+Line Tools:
 
 ```diffstatic {data-lang=bash}
-# Build the Khronos OpenXR loader into .afield-local/openxr (needs git and cmake).
-uv run python tools/field_wivrn_macos.py --build-loader
-# Make WiVRn encode with VideoToolbox HEVC.
-uv run python tools/field_wivrn_macos.py --configure-encoder
+python3 tools/field_wivrn_macos.py --prepare
 ```
 
-The first is needed because LWJGL ships no OpenXR loader for macOS. The second edits
-`~/.config/wivrn/config.json`, keeping your other settings: left to choose by itself, WiVRn can
-fall back to its software x264 encoder, which stops the WiVRn server on the first frame.
+LWJGL ships no OpenXR loader for macOS. The encoder setting prevents the automatic software
+x264 fallback that stopped the server in our MoltenVK tests. It edits only the encoder in
+`~/.config/wivrn/config.json`, preserving the other settings. Restart an already running
+WiVRn after changing it. Setup does not select a global OpenXR runtime or change Field's
+Vulkan driver outside the WiVRn launch.
 
 Open WiVRn and pair the headset. In the headset app, add the Mac by its IP address if it is not
 listed, and enter the PIN that the WiVRn window shows while pairing is enabled. Then start Field
