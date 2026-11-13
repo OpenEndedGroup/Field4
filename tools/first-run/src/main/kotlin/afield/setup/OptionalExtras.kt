@@ -60,6 +60,10 @@ internal val extrasCatalog = listOf(
         setOf("python3", "cmake", "git", "xcrun"), platforms = setOf("mac"),
         advice = "Installs pinned WiVRn.app in ~/Applications if missing, builds Field's local OpenXR loader, and selects VideoToolbox HEVC. Keeps an existing app and the global OpenXR runtime. Open WiVRn and pair the headset afterward; macOS permissions are separate.",
         preparation = listOf("python3", "tools/field_wivrn_macos.py", "--prepare")),
+    Extra("wivrn-macos-kk", "WiVRn headset streaming on KosmicKrisp", "Graphics", "optional/wivrn-macos/README.md",
+        setOf("python3", "cmake", "git", "xcrun", "brew"), platforms = setOf("mac"),
+        advice = "Everything WiVRn headset streaming prepares, plus WiVRn's runtime built with Field's patch so Field can stay on KosmicKrisp in VR (launch with --kosmickrisp). Needs Xcode and the LunarG Vulkan SDK in ~/VulkanSDK; installs the port's missing Homebrew build dependencies and clones it into ~/.field4/wivrn-macos. Rebuilds when Field's pin or patch changes.",
+        preparation = listOf("python3", "tools/field_wivrn_macos.py", "--prepare", "--kosmickrisp")),
 )
 
 internal fun platformId(os: String): String = when {
