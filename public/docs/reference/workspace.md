@@ -1400,8 +1400,8 @@ Owns `~/.afield/theme.css` and its delivery to connected clients.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="userthememanager-kt--userthememanager--start"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/UserThemeManager/#L75) |  |
-| <a id="userthememanager-kt--userthememanager--sendto"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sendTo</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="nc">WebSocketSession</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/UserThemeManager/#L98) |  |
+| <a id="userthememanager-kt--userthememanager--start"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/UserThemeManager/#L118) |  |
+| <a id="userthememanager-kt--userthememanager--sendto"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sendTo</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="nc">WebSocketSession</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/UserThemeManager/#L141) |  |
 
 ## agentRouteAccess.kt { #agentrouteaccess-kt }
 
