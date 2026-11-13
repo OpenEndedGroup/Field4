@@ -75,6 +75,11 @@ class SweptClearanceTest {
         assertEquals(100.0, result.minimum.gap, 1e-9)
         assertEquals(500.0, result.minimum.value)
         assertEquals(350.0, result.firstBelow(250.0)!!.value, 0.02)
+        // A probe answers for values of the caller's choosing, the same way.
+        val probe = ClearanceProbe(part, slide, listOf(wall))
+        assertEquals(600.0 - 123.4, probe.at(123.4).gap, 1e-9)
+        assertEquals(30.0, probe.travel(10.0, 40.0))
+        assertEquals(36, part.triangles().size)
         // A slide's travel bound is exact, so the certified bound is the true minimum.
         assertEquals(100.0, result.lowerBound, 1e-9)
     }

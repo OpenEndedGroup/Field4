@@ -79,6 +79,9 @@ r.gaps()                     // one gap per step, for a timeline
 r.toJson()                   // the motion and every step's value, gap and obstacle, for a viewer
 ```
 
+To ask at values of your own choosing, say the angle a slider is dragged to, make a `ClearanceProbe(part, motion,
+obstacles)` once and call `at(value)` for each; it is what `sweptClearance` samples with.
+
 Obstacles are measured against the part's surface. When both are closed and one is wholly inside the other, the
 gap is 0, as it is when they cross; how deep they cross is not measured.
 

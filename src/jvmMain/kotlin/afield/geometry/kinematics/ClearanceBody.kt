@@ -48,6 +48,9 @@ class ClearanceBody private constructor(
     /** The vertices as flat `x, y, z` triples, in the body's own coordinates (a copy). */
     fun vertices(): DoubleArray = positions.copyOf()
 
+    /** The triangles' vertex indices, three per triangle (a copy). */
+    fun triangles(): IntArray = indices.copyOf()
+
     /** The same triangles under another name. */
     fun named(name: String): ClearanceBody = ClearanceBody(name, positions, indices)
 

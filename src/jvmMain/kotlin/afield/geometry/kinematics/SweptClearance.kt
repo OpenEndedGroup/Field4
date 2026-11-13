@@ -134,7 +134,7 @@ fun sweptClearance(
     maxSteps: Int = 100_000,
 ): SweptClearance {
     require(tolerance == null || tolerance > 0.0 && tolerance.isFinite()) { "tolerance must be positive, got $tolerance" }
-    val sweep = Sweep(part, motion, obstacles)
+    val sweep = ClearanceProbe(part, motion, obstacles)
     val values = motion.stepsBy(maxStep).map { it.value }.toMutableList()
     val samples = values.map { sweep.at(it) }.toMutableList()
     if (tolerance != null) {
@@ -207,17 +207,31 @@ internal fun intervalBound(ga: Double, gb: Double, travel: Double): Double {
     return min(min(ga, gb), (ga + gb - travel) / 2)
 }
 
-/** The part placed at one pose after another, against obstacles that stay put. */
-internal class Sweep(val part: ClearanceBody, val motion: RigidMotion, obstacles: List<ClearanceBody>) {
+/**
+ * The gap at one value of a motion at a time: what [sweptClearance] samples with, for a caller that picks its own
+ * values (a viewer following a drag, or a comparison at another engine's angles).
+ *
+ * Obstacles are prepared once, at construction; each [at] poses the part and searches nearest boxes first. Not
+ * thread-safe: make one per thread.
+ */
+class ClearanceProbe(
+    /** The moving part. */
+    val part: ClearanceBody,
+    /** How it moves. */
+    val motion: RigidMotion,
+    obstacles: List<ClearanceBody>,
+) {
     private val posed = PosedBody(part)
     private val fixed = obstacles.map { PosedBody(it).also { p -> p.place(null) } }
     private val vertices = part.positions
 
+    /** An upper bound on how far any point of the part moves between the values [a] and [b]. */
     fun travel(a: Double, b: Double): Double = motion.maxTravel(vertices, a, b)
 
+    /** The nearest approach at the motion value [value] (degrees or distance). */
     fun at(value: Double): ClearanceStep = ClearanceStep(value, motion.parameterOf(value), nearest(motion.poseAt(value)))
 
-    /** The nearest obstacle to the part at [pose], nearest boxes first, stopping when no box can beat the best. */
+    /** The nearest obstacle to the part at [pose], or `null` when there are no obstacles. */
     fun nearest(pose: Matrix4dc): Contact? {
         posed.place(pose)
         if (fixed.isEmpty()) return null
