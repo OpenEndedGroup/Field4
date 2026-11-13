@@ -2317,6 +2317,8 @@ a chord is telling the truth; one that picks the loudest note is not.
 
 `src/jvmMain/kotlin/afield/audio/synth/PatPitchDetection.kt` — [read the source](source/jvmMain/afield/audio/synth/PatPitchDetection/)
 
+**Used in:** [A function, played and read back](../chain_fn_sound_roundtrip.md)
+
 ### Top-level functions { #patpitchdetection-kt-functions }
 
 | Declaration | Summary |

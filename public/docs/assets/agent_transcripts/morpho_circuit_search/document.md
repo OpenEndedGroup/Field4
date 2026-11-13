@@ -109,19 +109,50 @@ showPlaneGrid(
 <!-- field-box id="morpho_search_control" index="1" -->
 
 ```edn [field-box id="morpho_search_control" role="properties"]
-{"id" "morpho_search_control" "index" 1 "name" "Does selection beat sampling? One-bit full adder, three drivers, one budget" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Does selection beat sampling? One-bit full adder, three drivers, one budget" "_tombstone" false "frame" #afield/rect [60.0 60.0 600.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_control_code_.kt" "lines" 49 "characters" 1967 "sha256" "9a87a50fb19d92cdf55ac354c5be37ea2e0302f378f1da51638b7c810b7f0469"}]}
+{"id" "morpho_search_control" "index" 1 "name" "Does selection beat sampling? One-bit full adder, three drivers, one budget" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Does selection beat sampling? One-bit full adder, three drivers, one budget" "_tombstone" false "frame" #afield/rect [60.0 60.0 600.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_control_code_.kt" "lines" 80 "characters" 2876 "sha256" "24459131d91fe5e49abb4ae11ccf8e7d4685b9f3cc24b2bcdbb72792633c0562"}]}
 ```
 
 ```kotlin [field-property box="morpho_search_control" name="code" path="morpho_search_control_code_.kt"]
 import afield.lang.morpho.*
 
 /*
-The whole layer in four lines: a problem is an oracle plus a width family plus a
+A problem is an oracle plus a width family plus a
 grammar, and a driver turns a budget into a program. Nothing about addition is supplied
 except `sum, c_out = a + b + c_in`; the parts list is morpho's own eight standard cells,
 lifted out of tiny_morpho.py rather than copied into Kotlin.
 */
-val problem = MorphoProblems.fullAdderCell()
+val widths = [1]
+val maxStatements = 6
+val rootName = "evolved"
+val palette = MorphoPalette.standard
+val spec = MorphoSpec(
+    name = rootName,
+    inputRoles = [MorphoPortRole.BUS, MorphoPortRole.BUS, MorphoPortRole.BIT],
+    outputRoles = [MorphoPortRole.BUS, MorphoPortRole.BIT],
+    widths = widths,
+) { inputs, width ->
+    val total = inputs[0] + inputs[1] + inputs[2]
+    longArrayOf(total and ((1L shl width) - 1), total ushr width)
+}
+val sketch = MorphoCellSketch(
+    name = rootName,
+    inputs = ["a", "b", "c"],
+    inputRoles = spec.inputRoles,
+    outputRoles = spec.outputRoles,
+    palette = palette,
+    designWidth = 1,
+    allowSplit = false,
+    allowCat = false,
+    allowSelf = false,
+    minStatements = 2,
+    maxStatements = maxStatements,
+)
+val problem = MorphoProblem(
+    "full-adder cell",
+    spec,
+    MorphoProgramGenerator([sketch], palette.declarations()),
+    "straight-line logic at one bit, checked exhaustively; the recursion is not in play",
+)
 val budget = 4000
 println(problem)
 println("palette: " + MorphoPalette.standard.luts.joinToString { it.name })
