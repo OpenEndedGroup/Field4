@@ -2909,6 +2909,20 @@ fun registerBuiltinCommands() {
                 insertFromWorkspace()
             }
         },{
+            id:'use-light-theme',
+            label:"Use Light Theme",
+            detail:"Switch Field to its light colours; remembered for this browser or app",
+            run: () => {
+                window.FieldTheme && window.FieldTheme.set("light")
+            }
+        },{
+            id:'use-dark-theme',
+            label:"Use Dark Theme",
+            detail:"Switch Field back to its dark colours (the default)",
+            run: () => {
+                window.FieldTheme && window.FieldTheme.set("dark")
+            }
+        },{
             id:'open-user-theme',
             label:"Open User Theme",
             detail:"Open ~/.afield/theme.css as an absolute file proxy",

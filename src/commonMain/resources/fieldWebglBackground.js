@@ -67,6 +67,12 @@
             // The world band the pane shows (minX, minY, maxX, maxY); past it, a middle band narrower
             // than its pane is painted flat grey, so the pane reads as deliberately empty there.
             uniform vec4 u_band;
+            // Theme colours (field.css --field-canvas-*-rgb): vignette centre and edge, the dots and
+            // axes drawn over them, and the flat band past a pane's world.
+            uniform vec3 u_center;
+            uniform vec3 u_edge;
+            uniform vec3 u_ink;
+            uniform vec3 u_bandColor;
 
             float hash(vec2 p) {
                 p = fract(p * vec2(0.1031, 0.11369));
@@ -90,9 +96,7 @@
                 vec2 edgeProximity = 1.0 - clamp(edgeDistance / falloff, 0.0, 1.0);
                 float shade = min(length(edgeProximity), 1.0) * 0.28;
 
-                vec3 centerColor = vec3(24.0 / 255.0);
-                vec3 edgeColor = vec3(2.0 / 255.0);
-                vec3 color = mix(centerColor, edgeColor, shade);
+                vec3 color = mix(u_center, u_edge, shade);
 
                 float dither = (hash(frag) - 0.5) * (2.4 / 255.0);
                 color += vec3(dither);
@@ -101,7 +105,7 @@
                 // world is in world units * dpr (frag and u_translation are device pixels).
                 vec2 bandWorld = world / u_dpr;
                 if (bandWorld.x < u_band.x || bandWorld.y < u_band.y || bandWorld.x >= u_band.z || bandWorld.y >= u_band.w) {
-                    gl_FragColor = vec4(vec3(52.0 / 255.0), 1.0);
+                    gl_FragColor = vec4(u_bandColor, 1.0);
                     return;
                 }
                 // Zoomed far out the 25-unit dots would crowd into a haze (under ~9 screen px apart);
@@ -111,11 +115,11 @@
                 float smallDots = dotMask(world, 25.0 * u_dpr, 0.75 * u_dpr, 1.25 * u_dpr) * smallFade;
                 float largeDots = dotMask(world, 100.0 * u_dpr, 1.25 * u_dpr, 2.05 * u_dpr) * largeFade;
                 float dotAlpha = clamp(smallDots * u_dotSmallAlpha + largeDots * u_dotLargeAlpha, 0.0, 0.32);
-                color = mix(color, vec3(1.0), dotAlpha);
+                color = mix(color, u_ink, dotAlpha);
 
                 float axisX = 1.0 - smoothstep(0.45 * u_dpr, 1.05 * u_dpr, abs(frag.x - u_translation.x));
                 float axisY = 1.0 - smoothstep(0.45 * u_dpr, 1.05 * u_dpr, abs(frag.y - u_translation.y));
-                color = mix(color, vec3(1.0), max(axisX, axisY) * u_axisAlpha);
+                color = mix(color, u_ink, max(axisX, axisY) * u_axisAlpha);
 
                 gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
             }
@@ -161,8 +165,31 @@
                 dpr: gl.getUniformLocation(program, "u_dpr"),
                 zoom: gl.getUniformLocation(program, "u_zoom"),
                 pane: gl.getUniformLocation(program, "u_pane"),
-                band: gl.getUniformLocation(program, "u_band")
+                band: gl.getUniformLocation(program, "u_band"),
+                center: gl.getUniformLocation(program, "u_center"),
+                edge: gl.getUniformLocation(program, "u_edge"),
+                ink: gl.getUniformLocation(program, "u_ink"),
+                bandColor: gl.getUniformLocation(program, "u_bandColor")
             };
+
+            // The dark theme's values, for a page that loads this without field.css or theme.js.
+            const DARK_COLORS = {
+                center: [24 / 255, 24 / 255, 24 / 255],
+                edge: [2 / 255, 2 / 255, 2 / 255],
+                ink: [1, 1, 1],
+                band: [52 / 255, 52 / 255, 52 / 255]
+            };
+            function readColors() {
+                const theme = window.FieldTheme;
+                if (!theme || !theme.rgb) return DARK_COLORS;
+                return {
+                    center: theme.rgb("--field-canvas-center-rgb", DARK_COLORS.center),
+                    edge: theme.rgb("--field-canvas-edge-rgb", DARK_COLORS.edge),
+                    ink: theme.rgb("--field-canvas-ink-rgb", DARK_COLORS.ink),
+                    band: theme.rgb("--field-canvas-band-rgb", DARK_COLORS.band)
+                };
+            }
+            let colors = readColors();
 
             const state = {
                 ok: true,
@@ -246,6 +273,10 @@
                     gl.uniform1f(locations.axisAlpha, state.axis);
                     gl.uniform1f(locations.dpr, dpr);
                     gl.uniform1f(locations.zoom, state.zoom);
+                    gl.uniform3fv(locations.center, colors.center);
+                    gl.uniform3fv(locations.edge, colors.edge);
+                    gl.uniform3fv(locations.ink, colors.ink);
+                    gl.uniform3fv(locations.bandColor, colors.band);
                     if (!state.panes) {
                         gl.disable(gl.SCISSOR_TEST);
                         gl.uniform4f(locations.pane, 0, 0, width, height);
@@ -289,6 +320,11 @@
                 // Chromium can reset the offscreen backing surface during a viewport override
                 // without changing the canvas extent. The cached dimensions do not prove that
                 // its pixels survived; repaint even when every logical parameter is unchanged.
+                state.hasFrame = false;
+                rerender();
+            });
+            window.addEventListener("field-theme-change", function () {
+                colors = readColors();
                 state.hasFrame = false;
                 rerender();
             });

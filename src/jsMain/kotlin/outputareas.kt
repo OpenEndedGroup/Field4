@@ -250,7 +250,7 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
         height = "100%"
         minWidth = "0"
         minHeight = "0"
-        border = "1px solid rgba(255,255,255,0.07)"
+        border = "1px solid var(--field-border-subtle)"
         background = "rgba(0,0,0,0.16)"
         boxSizing = "border-box"
         setProperty("touch-action", "none")
@@ -584,7 +584,7 @@ private fun applyLinesFigureChrome(contentRoot: HTMLElement, view: dynamic, chro
             viewport.style.apply {
                 width = "100%"
                 height = "100%"
-                border = "1px solid rgba(255,255,255,0.07)"
+                border = "1px solid var(--field-border-subtle)"
                 background = "rgba(0,0,0,0.16)"
             }
             view.fitPad = null
@@ -789,9 +789,9 @@ fun renderLayersPalette(contentRoot: HTMLElement) {
         width = "50%"
         setProperty("gap", "8px")
         padding = "8px"
-        backgroundColor = "#1c1c1c"
+        backgroundColor = "var(--field-surface-raised)"
         borderRadius = "6px"
-        color = "#f0f0f0"
+        color = "var(--field-fg-body)"
         fontSize = "13px"
         fontWeight = "100"
     }
@@ -818,9 +818,9 @@ fun renderLayersPalette(contentRoot: HTMLElement) {
         btn.textContent = label
         btn.style.apply {
             padding = "4px 8px"
-            backgroundColor = "#2c2c2c"
-            color = "#f0f0f0"
-            border = "1px solid rgba(255,255,255,0.08)"
+            backgroundColor = "var(--field-surface-muted)"
+            color = "var(--field-fg-body)"
+            border = "1px solid var(--field-border-subtle)"
             borderRadius = "4px"
             cursor = "pointer"
         }
@@ -860,8 +860,8 @@ fun renderLayersPalette(contentRoot: HTMLElement) {
                 alignItems = "center"
                 padding = "4px 6px"
                 setProperty("border", "none")
-                setProperty("border-bottom", "1px solid rgba(255,255,255,0.03)")
-                backgroundColor = if (layerName == activeNow) "#22272d" else "transparent"
+                setProperty("border-bottom", "1px solid var(--field-border-muted)")
+                backgroundColor = if (layerName == activeNow) "var(--field-accent-subtle)" else "transparent"
             }
 
             val name = document.createElement("div") as HTMLElement
@@ -887,7 +887,7 @@ fun renderLayersPalette(contentRoot: HTMLElement) {
             eye.style.apply {
                 background = "none"
                 border = "none"
-                color = "#f0f0f0"
+                color = "var(--field-fg-body)"
                 padding = "2px"
                 cursor = "pointer"
                 lineHeight = "1"
@@ -949,7 +949,7 @@ fun renderLayersPalette(contentRoot: HTMLElement) {
     refreshButton.style.apply {
         background = "none"
         border = "none"
-        color = "#f0f0f0"
+        color = "var(--field-fg-body)"
         padding = "4px"
         cursor = "pointer"
         lineHeight = "1"
@@ -1186,7 +1186,7 @@ fun openEditorInOutput(uid: String, property: String) {
     // correctly.
     contentRoot.style.fontSize = "13px"
     contentRoot.style.padding = "0px"
-    contentRoot.style.background = "#000000"
+    contentRoot.style.background = "var(--field-surface)"
 
     // Create the embedded editor
     val editorId = (emb.create as Function<*>).asDynamic().call(emb, editorContainer, uid, property, language, currentValue) as? String
