@@ -335,7 +335,8 @@ data class LinesDragEvent(val x: Double, val y: Double, val phase: Phase) {
     enum class Phase { START, MOVE, END }
 }
 
-private val linesDragCallbacks = afield.runtime.lifecycle.OwnedCallbackRegistry<(LinesDragEvent) -> Unit>("linesDrag")
+/** Each drawing's drag callback; its flag says the point is already in the lines' own coordinates ([dragLines]). */
+private val linesDragCallbacks = afield.runtime.lifecycle.OwnedCallbackRegistry<(LinesDragEvent, Boolean) -> Unit>("linesDrag")
 
 /**
  * Register [callback] for drags on [box]'s [channel] and return the id the viewer sends back. The id
@@ -345,17 +346,30 @@ private val linesDragCallbacks = afield.runtime.lifecycle.OwnedCallbackRegistry<
  */
 internal fun registerLinesDrag(box: Box, channel: String, fit: FitTransform?, callback: (LinesDragEvent) -> Unit): String {
     val id = "lines-drag:${box.id}:$channel"
-    linesDragCallbacks.register(id, { e ->
-        callback(if (fit == null) e else e.copy(x = e.x / fit.scale - fit.offsetX, y = e.y / fit.scale - fit.offsetY))
+    linesDragCallbacks.register(id, { e, own ->
+        callback(if (fit == null || own) e else e.copy(x = e.x / fit.scale - fit.offsetX, y = e.y / fit.scale - fit.offsetY))
     })
     return id
 }
 
+private fun dragPhase(phase: String) = when (phase) { "start" -> LinesDragEvent.Phase.START; "end" -> LinesDragEvent.Phase.END; else -> LinesDragEvent.Phase.MOVE }
+
 /** Deliver a [afield.app.protocol.LinesDrag] from a viewer; false when nothing is registered under its id. */
 internal fun deliverLinesDrag(drag: afield.app.protocol.LinesDrag): Boolean {
     val callback = linesDragCallbacks[drag.id] ?: return false
-    val phase = when (drag.phase) { "start" -> LinesDragEvent.Phase.START; "end" -> LinesDragEvent.Phase.END; else -> LinesDragEvent.Phase.MOVE }
-    callback(LinesDragEvent(drag.x, drag.y, phase))
+    callback(LinesDragEvent(drag.x, drag.y, dragPhase(drag.phase)), false)
+    return true
+}
+
+/**
+ * Drags [channel]'s `lines(..., onDrag = …)` drawing on the box [boxUid] at ([x], [y]) in the lines' own
+ * coordinates (what `onDrag` receives), with [phase] `start`, `move` or `end`: the callback a pointer
+ * reaches, with no pixels in between. A timeline film drags this way (`afield.tools.docs.FilmTimeline`).
+ * False when that drawing takes no drags.
+ */
+internal fun dragLines(boxUid: String, channel: String, phase: String, x: Double, y: Double): Boolean {
+    val callback = linesDragCallbacks["lines-drag:$boxUid:$channel"] ?: return false
+    callback(LinesDragEvent(x, y, dragPhase(phase)), true)
     return true
 }
 

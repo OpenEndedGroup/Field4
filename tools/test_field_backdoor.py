@@ -1951,3 +1951,123 @@ class CaptureSignatureDocTests(unittest.TestCase):
                     f"{command} now answers --help on its own; the claim in FIELD_BACKDOOR.md that "
                     f"a subcommand cannot report its usage is stale and should be removed",
                 )
+
+
+class FilmTimelineBackdoorTests(unittest.IsolatedAsyncioTestCase):
+    """F13 and the timeline film on the backdoor side: progress, `film-page --timeline`, `page-eval --value/--view`."""
+
+    def setUp(self) -> None:
+        self.client = FieldBackdoor(port=1, workspace=None, default_timeout=0.5, logger=_Logger())
+        self.client.scratch = True
+
+    def test_progress_reads_as_a_sentence(self) -> None:
+        from tools.field_backdoor import format_progress
+
+        self.assertEqual(
+            format_progress({"phase": "filming", "done": 120, "total": 300, "ratePerSecond": 15.0, "etaSec": 12.0}),
+            "filming frame 120 of 300, 15.0 a second, about 12 s left",
+        )
+        self.assertEqual(
+            format_progress({"phase": "filming", "done": 1, "total": 1860, "ratePerSecond": 2.0, "etaSec": 929.5}),
+            "filming frame 1 of 1860, 2.0 a second, about 15 min 30 s left",
+        )
+        self.assertEqual(format_progress({"phase": "loading", "done": 0, "total": 9, "detail": "stage laid out"}), "loading (stage laid out)")
+
+    def test_progress_is_printed_per_phase_and_not_every_frame(self) -> None:
+        from tools.field_backdoor import progress_printer
+
+        out = io.StringIO()
+        on = progress_printer("film-page", every=3600.0, stream=out)
+        for done in range(1, 6):
+            on({"phase": "filming", "done": done, "total": 5})
+        on({"phase": "encoding", "done": 5, "total": 5})
+        lines = out.getvalue().splitlines()
+        self.assertEqual(lines, [
+            "field_backdoor.py: film-page: filming frame 1 of 5",
+            "field_backdoor.py: film-page: filming frame 5 of 5",
+            "field_backdoor.py: film-page: encoding frame 5 of 5",
+        ])
+
+    async def test_a_progress_reply_is_heard_and_never_taken_for_the_reply(self) -> None:
+        heard: list[dict] = []
+
+        async def send(name, payload=None, *, reply_to=None, reply_context=None):
+            async def deliver():
+                for message in (
+                    {"name": reply_to, "originalName": "agent-progress", "payload": {"phase": "filming", "done": 1, "total": 2}},
+                    {"name": reply_to, "originalName": "agent-progress", "payload": {"phase": "filming", "done": 2, "total": 2}},
+                    {"name": reply_to, "originalName": "agent-film-page", "payload": {"ok": True}},
+                ):
+                    await asyncio.sleep(0.05)
+                    self.client._apply_event(self.client._build_event(message))
+                    async with self.client.condition:
+                        self.client.condition.notify_all()
+            asyncio.get_running_loop().create_task(deliver())
+            return "uid"
+
+        self.client.send_message = send  # type: ignore[method-assign]
+        # Each step arrives well inside the idle timeout, though the whole takes longer than it.
+        event = await self.client.call_for_single_reply("agent-film-page", {}, timeout=5.0, idle_timeout=0.12, on_progress=heard.append)
+        self.assertEqual(event["payload"], {"ok": True})
+        self.assertEqual([p["done"] for p in heard], [1, 2])
+        self.assertEqual(self.client.last_progress["done"], 2)
+
+    async def test_a_silent_command_still_times_out(self) -> None:
+        async def send(name, payload=None, *, reply_to=None, reply_context=None):
+            return "uid"
+
+        self.client.send_message = send  # type: ignore[method-assign]
+        with self.assertRaises(asyncio.TimeoutError):
+            await self.client.call_for_single_reply("agent-film-page", {}, timeout=5.0, idle_timeout=0.1)
+
+    async def test_film_page_with_a_timeline_films_the_session_and_leaves_its_settings_to_the_timeline(self) -> None:
+        from tools.field_backdoor import dispatch_command
+
+        sent: dict = {}
+
+        async def reply(name, payload, *, timeout, **kwargs):
+            sent.update(payload, _idle=kwargs.get("idle_timeout"))
+            return {"payload": {"ok": True, "encodedFrames": 300}}
+
+        self.client.call_for_single_reply = reply  # type: ignore[method-assign]
+        self.client.box_aliases["hinge"] = "uid-1"
+        with tempfile.TemporaryDirectory() as tmp:
+            timeline = Path(tmp) / "t.film.json"
+            timeline.write_text('{"duration": 10}')
+            line = f"film-page {tmp}/out.mp4 --timeline {timeline} --frames-dir {tmp}/frames --resume"
+            result = await dispatch_command(self.client, parse_command(line), line)
+        self.assertTrue(result["ok"])
+        self.assertEqual(sent["url"], "@session")
+        self.assertEqual((sent["durationSec"], sent["fps"], sent["width"], sent["height"], sent["pixelRatio"]), (0.0, 0, 0, 0, 0.0))
+        self.assertEqual(sent["timeline"], '{"duration": 10}', "the file goes as written, so a resume recognises it")
+        self.assertEqual(sent["boxAliases"], {"hinge": "uid-1"})
+        self.assertTrue(sent["resume"])
+        self.assertTrue(sent["framesDir"].endswith("/frames"))
+        self.assertGreater(sent["_idle"], 120.0)
+
+    async def test_film_page_without_a_timeline_needs_its_url(self) -> None:
+        from tools.field_backdoor import dispatch_command
+
+        with self.assertRaises(BackdoorError):
+            await dispatch_command(self.client, parse_command("film-page /tmp/out.mp4"), "film-page /tmp/out.mp4")
+
+    async def test_page_eval_value_prints_the_value_alone_and_view_names_a_box(self) -> None:
+        from tools.field_backdoor import dispatch_command, print_result
+
+        sent: dict = {}
+
+        async def playwright_input(**kwargs):
+            sent.update(kwargs)
+            return {"ok": True, "result": {"edge": 80}}
+
+        self.client.playwright_input = playwright_input  # type: ignore[method-assign]
+        self.client.boxes["uid-1"] = {"uid": "uid-1", "name": "Hinge"}
+        self.client.box_aliases["hinge"] = "uid-1"
+        line = "page-eval 'FieldViewer.metadata()' --view hinge:model --value"
+        result = await dispatch_command(self.client, parse_command(line), line)
+        self.assertEqual((sent["view_uid"], sent["view_channel"]), ("uid-1", "model"))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            print_result(result, json_mode=True)
+        self.assertEqual(json.loads(out.getvalue()), {"edge": 80})
+        self.assertEqual(len(out.getvalue().strip().splitlines()), 1)
