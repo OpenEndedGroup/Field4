@@ -76,6 +76,9 @@ def main():
                     box['properties']['code'] = code
                 if box.get('box') == 'video1_playback':
                     code = box['properties']['code']
+                    # A copied widget cache must not override the movie path or a recalled transport look.
+                    code = re.sub(r'controlGroup\("([^"\n]+)"\) \{',
+                                  r'controlGroup("\1", restoreValues = false) {', code)
                     start = code.index('var selectedFile =')
                     end = code.index('\nvar scrubber:', start)
                     # Resolve bundled media through the document, independent of host and workspace location.
