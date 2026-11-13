@@ -398,6 +398,39 @@ class KotlinSourcePartitionTest {
     }
 
     @Test
+    fun `a call to a function named context is not a context-parameter prefix`() {
+        // `Ai4ChatAutocomplete.prompt` continues its expression body with `context(…) + … + tail(…)`.
+        // The line starts with `context(`, ends with `)` and balances, so it was read as a
+        // context-parameter list, and the body's last line came out unattributed.
+        val source = """
+            object Prompts {
+                fun prompt(a: String, b: String): String =
+                    context(a, b) + "\n\n" + tail(b)
+
+                context(ctx: String)
+                fun scoped() = ctx
+
+                private fun context(a: String, b: String) = a + b
+                private fun tail(b: String) = b
+            }
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(
+            lineOf(source, "context(a, b) +"),
+            declaration(partition, "prompt").endLine,
+            "the call line ends the expression body above it",
+        )
+        assertEquals(
+            lineOf(source, "context(ctx: String)"),
+            declaration(partition, "scoped").startLine,
+            "a real context-parameter list still starts the function it prefixes",
+        )
+        assertEquals(emptyList(), strandedCode(partition), "nothing is left unattributed")
+    }
+
+    @Test
     fun `a brace-less if used as an expression body keeps its branches`() {
         // The condition's own `)` leaves the brackets level, so `if (…)` on its own reads as a
         // finished declaration; `createLlmBridge` in `LlmBridge.kt` stranded thirteen lines this way.
