@@ -34,6 +34,12 @@ def selected(batch):
         yield found[0]
 
 
+def save_receipt(kind, batch, value):
+    encoded = json.dumps(value, indent=2) + '\n'
+    (OUT / f'{kind}-receipt.json').write_text(encoded)
+    (OUT / f"{kind}-{batch.get('_receiptName', 'unnamed')}-receipt.json").write_text(encoded)
+
+
 def format_batch(batch):
     plans = []
     for n, (target, path, text, match, _) in enumerate(selected(batch)):
@@ -81,8 +87,15 @@ def probe_batch(batch):
         sources.append(dict(path=target['path'], name=target.get('name'), fenceSha256=hashlib.sha256(match[0].encode()).hexdigest()))
         commands.append('new-box --name '+shlex.quote(target.get('name', 'mapping')))
         for n, case in enumerate(target.get('probes', [])):
-            code = match[4] if target.get('probeFullCode') else match[4].split(':::fold', 1)[0]
+            code = match[4]
+            if not target.get('probeFullCode'):
+                code = re.sub(r'^:::fold imports[^\n]*\n(.*?)^:::endfold[ \t]*$', r'\1', code, flags=re.M | re.S)
+                code = code.split(':::fold', 1)[0]
             code = re.sub(r'^[ \t]*:::(?:static|fold[^\n]*|endfold)[ \t]*$', '', code, flags=re.M).strip()
+            until = case.get('probeUntil', target.get('probeUntil'))
+            if until:
+                assert code.count(until) == 1, target
+                code = code.split(until, 1)[0]
             for old, new in case.get('replace', {}).items():
                 assert old in code, (target, old)
                 code = code.replace(old, new)
@@ -104,7 +117,7 @@ def probe_batch(batch):
         args += ['--command', command]
     with (OUT / 'probe-output.json').open('w') as output:
         subprocess.run(args, cwd=ROOT, stdout=output, check=True)
-    (OUT / 'probe-receipt.json').write_text(json.dumps({'passed': cases, 'sources': sources}, indent=2)+'\n')
+    save_receipt('probe', batch, {'passed': cases, 'sources': sources})
     print(f'{len(cases)} actual-code probes passed, with reruns in the same boxes')
 
 
@@ -134,7 +147,7 @@ def capture_batch(batch):
                 records.append(dict(path=target['path'], name=target['name'], asset=options.screenshot, fenceSha256=hashlib.sha256(match[0].encode()).hexdigest()))
         finally:
             state.close()
-    (OUT/'capture-receipt.json').write_text(json.dumps(records, indent=2)+'\n')
+    save_receipt('capture', batch, records)
 
 
 if __name__ == '__main__':
@@ -145,6 +158,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     batch = json.loads((HERE/'batches.json').read_text())[args.batch]
+    batch['_receiptName'] = args.batch + ('-from-' + args.from_target if args.from_target else '')
     if args.from_target:
         start = next(i for i, target in enumerate(batch['targets']) if target.get('name') == args.from_target)
         batch['targets'] = batch['targets'][start:]

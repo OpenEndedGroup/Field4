@@ -113,15 +113,15 @@
     "calls": [
       {
         "call": "KratosDemo.body",
-        "decision": "pending"
+        "decision": "explicit_geometry_study_and_closed_form_verified_with_native_worker"
       },
       {
         "call": "KratosStudyDemo.predictedConductivity",
-        "decision": "pending"
+        "decision": "explicit_geometry_study_and_closed_form_verified_with_native_worker"
       },
       {
         "call": "KratosStudyDemo.study",
-        "decision": "pending"
+        "decision": "explicit_geometry_study_and_closed_form_verified_with_native_worker"
       }
     ]
   },
@@ -131,7 +131,7 @@
     "calls": [
       {
         "call": "KratosDemo.body",
-        "decision": "pending"
+        "decision": "explicit_geometry_study_and_closed_form_verified_with_native_worker"
       }
     ]
   },
