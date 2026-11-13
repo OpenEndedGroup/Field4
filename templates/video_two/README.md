@@ -71,15 +71,15 @@ unrepresentable geometry is rejected atomically, retaining the previous layout.
 
 For example, set one screen to radius 2 / fill 0.5, and another to radius 5 / fill 2, adjusting
 their angle offsets until they overlap. The larger screen sits behind the smaller one. Radius
-also changes physical width and height at the same angular fill. Opacity blends the foreground
-with the pictures behind it; it remains independent of the zoetrope's brightness envelope.
+also changes physical width and height at the same angular fill. Opacity scales each image's emitted light; overlapping pictures add instead of covering one another.
+It remains independent of the zoetrope's brightness envelope.
 New appearance keys include opacity. Layout overrides persist with their own boxes and are not
 changed by appearance recalls.
 
 Screens draw back to front using the mean centre depth in this frame's two eye views, with
-stable screen-number ties. Both eyes use the same order and the Field pane draws last. This is
-whole-screen painter sorting: intersecting or self-wrapping surfaces remain an approximation.
-No previous pose, frame of buffering or depth attachment is introduced.
+stable screen-number ties. Both eyes use the same order and the Field pane draws last. Video surfaces use additive blending (source alpha times RGB, plus destination RGB), with
+depth testing and writes disabled. Their light sum is independent of drawing order, even where
+surfaces intersect. No previous pose, frame of buffering or depth attachment is introduced.
 
 ```kotlin
 carousel.editLayout {
