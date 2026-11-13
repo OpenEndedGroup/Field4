@@ -8,6 +8,10 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class FirstRunTest {
+    @Test fun homebrewFailureNamesTheInterruptedLinkRecovery() {
+        assertTrue(installFailureAdvice("brew").any { "brew unlink" in it && "Cannot link" in it })
+        assertTrue(installFailureAdvice("apt-get").isEmpty())
+    }
     @Test fun browserOnlyWithoutExtrasDoesNotRequireCompilersOrDesktopPackages() {
         assertTrue(packagePlan("apt-get", false, setOf("g++", "cmake"), emptySet(), true).commands.isEmpty())
     }
