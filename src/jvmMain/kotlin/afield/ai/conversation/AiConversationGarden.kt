@@ -20,7 +20,7 @@ object AiConversationGarden {
 
     private fun save(box: Box, garden: ConversationGarden): ConversationGarden {
         check(!box.isInsideInitialized() || !box.inside.readOnly) { "This document is read-only." }
-        val used = garden.nodes.flatMap { n -> (n.context + n.passages).map { it.revision } + n.edits.flatMap { listOf(it.before, it.after) } }.toSet()
+        val used = garden.nodes.flatMap { n -> (n.context + n.replyContext.orEmpty() + n.passages).map { it.revision } + n.edits.flatMap { listOf(it.before, it.after) } }.toSet()
         val kept = garden.copy(revision = garden.revision + 1, texts = garden.texts.filterKeys { it in used })
         box.setPropertyRaw(PROPERTY, json.encodeToString(kept), doResync = false)
         if (box.isInsideInitialized() && box.inside.writesToDisk) box.inside.markSidecarPending(box.id, PROPERTY)
@@ -78,18 +78,24 @@ object AiConversationGarden {
         return out to texts
     }
 
-    @Synchronized fun enqueue(box: Box, prompt: String, anchor: GardenAnchor?, property: String, anchorText: String = ""): Pair<ConversationGarden, String> {
+    /** The human request is independently addressable from the response it prompted. */
+    private fun sourcePassages(node: GardenNode): List<GardenPassage> =
+        (if (node.prompt.isEmpty()) emptyList() else listOf(GardenPassage("${node.id}:request", hash(node.prompt), "you"))) + node.passages
+
+    @Synchronized fun enqueue(box: Box, prompt: String, anchor: GardenAnchor?, property: String, anchorText: String = "", wholeDocument: Boolean = false): Pair<ConversationGarden, String> {
         require(prompt.isNotBlank() && prompt.length <= 100_000) { "Write a reply (at most 100000 characters)." }
         require(property.isNotBlank()) { "Choose a box property." }
         var garden = initialize(box)
         val parent = anchor?.let { a -> garden.nodes.singleOrNull { it.id == a.node } ?: error("Reply source no longer exists.") }
         require(anchor == null || anchor.mode in setOf("through", "whole")) { "Unknown context mode." }
-        val context = if (anchor == null) emptyList() else {
+        val ancestry = if (anchor == null) emptyList() else {
             val sourceNode = requireNotNull(parent)
-            val index = sourceNode.passages.indexOfFirst { it.id == anchor.passage }
+            val sources = sourcePassages(sourceNode)
+            val index = sources.indexOfFirst { it.id == anchor.passage }
             require(index >= 0) { "That paragraph was replaced. Refresh and select it again." }
-            val current = sourceNode.passages[index]
+            val current = sources[index]
             if (current.revision != anchor.revision) {
+                require(current.id != "${sourceNode.id}:request") { "That request changed. Refresh and select it again." }
                 // A reply may arrive after another streaming chunk. Accept only an authentic prefix
                 // of this passage or an earlier revision already pinned by an accepted child.
                 val snapshot = AiImageBlobs.extract(anchorText, box)
@@ -100,18 +106,17 @@ object AiConversationGarden {
                 require(pinned || growing) { "That paragraph changed. Refresh and select it again." }
                 if (growing) garden = garden.copy(texts = garden.texts + (anchor.revision to snapshot))
             }
-            val own = if (anchor.mode == "whole") sourceNode.passages else sourceNode.passages.take(index + 1).map {
+            val own = if (anchor.mode == "whole") sources else sources.take(index + 1).map {
                 if (it.id == anchor.passage) it.copy(revision = anchor.revision) else it
             }
-            val request = if (sourceNode.prompt.isEmpty()) emptyList() else {
-                listOf(GardenPassage("${sourceNode.id}:request", hash(sourceNode.prompt), "you"))
-            }
-            sourceNode.context + request + own
+            (sourceNode.replyContext ?: sourceNode.context) + own
         }
+        val context = if (wholeDocument) garden.nodes.flatMap { sourcePassages(it) } else ancestry
         val texts = garden.texts.toMutableMap()
+        if (wholeDocument) garden.nodes.filter { it.prompt.isNotEmpty() }.forEach { texts[hash(it.prompt)] = it.prompt }
         if (parent != null && parent.prompt.isNotEmpty()) texts[hash(parent.prompt)] = parent.prompt
         val node = GardenNode(id(), prompt.trim(), anchor, context,
-            tags = Regex("(?<![\\p{L}\\p{N}_])#([\\p{L}\\p{N}_-]+)").findAll(prompt).map { it.groupValues[1].lowercase() }.distinct().toList(), property = property)
+            tags = Regex("(?<![\\p{L}\\p{N}_])#([\\p{L}\\p{N}_-]+)").findAll(prompt).map { it.groupValues[1].lowercase() }.distinct().toList(), property = property, contextMode = if (wholeDocument) "document" else "path")
         return save(box, garden.copy(nodes = garden.nodes + node, texts = texts)) to node.id
     }
 
@@ -120,6 +125,75 @@ object AiConversationGarden {
         val node = garden.nodes.single { it.id == nodeId }
         return node.context.joinToString("\n") { "<<${it.role}>>\n${garden.texts.getValue(it.revision)}" } +
             node.anchor?.quote?.takeIf { it.isNotBlank() }?.let { "\n[The new reply is attached to this quotation: $it]\n" }.orEmpty()
+    }
+
+    /** Graft without rewriting what existing agent turns saw; future replies follow the new path. */
+    @Synchronized fun moveBranch(box: Box, nodeId: String, anchor: GardenAnchor?, beforeNode: String = ""): ConversationGarden {
+        val garden = read(box)
+        val moving = garden.nodes.singleOrNull { it.id == nodeId } ?: error("That branch no longer exists.")
+        val subtree = mutableSetOf(nodeId)
+        do {
+            val size = subtree.size
+            garden.nodes.filter { it.anchor?.node in subtree }.forEach { subtree += it.id }
+        } while (subtree.size != size)
+        require(anchor?.node !in subtree) { "A branch cannot be moved inside itself." }
+        require(garden.nodes.none { it.id in subtree && it.status == "running" }) { "Wait for this branch's running response before moving it." }
+        val texts = garden.texts.toMutableMap()
+        fun ancestry(parent: GardenNode, at: GardenAnchor, previous: List<GardenPassage> = emptyList()): List<GardenPassage> {
+            require(at.mode in setOf("through", "whole")) { "Unknown context mode." }
+            val sources = sourcePassages(parent)
+            val index = sources.indexOfFirst { it.id == at.passage }
+            require(index >= 0) { "That destination paragraph no longer exists." }
+            require(texts.containsKey(at.revision) || sources[index].revision == at.revision) { "That destination revision no longer exists." }
+            if (parent.prompt.isNotEmpty()) texts[hash(parent.prompt)] = parent.prompt
+            val own = (if (at.mode == "whole") sources else sources.take(index + 1)).map { ref ->
+                if (ref.id == at.passage) ref.copy(revision = at.revision)
+                else previous.lastOrNull { it.id == ref.id } ?: ref
+            }
+            return (parent.replyContext ?: parent.context) + own
+        }
+        val destination = anchor?.let { at ->
+            val parent = garden.nodes.singleOrNull { it.id == at.node } ?: error("That destination no longer exists.")
+            val current = sourcePassages(parent).singleOrNull { it.id == at.passage }
+            val pinned = garden.nodes.any { n -> (n.context + n.replyContext.orEmpty()).any { it.id == at.passage && it.revision == at.revision } }
+            require(current != null && (current.revision == at.revision || pinned)) { "That destination changed. Drop it again." }
+            ancestry(parent, at)
+        }.orEmpty()
+        val changed = garden.nodes.associateBy { it.id }.toMutableMap()
+        fun relocated(n: GardenNode, context: List<GardenPassage>) = n.copy(
+            context = if (n.status == "queued") context else n.context, replyContext = context)
+        changed[nodeId] = relocated(moving, destination).copy(anchor = anchor)
+        val visited = mutableSetOf(nodeId)
+        while (visited.size < subtree.size) {
+            val ready = garden.nodes.filter { it.id in subtree && it.id !in visited && it.anchor?.node in visited }
+            check(ready.isNotEmpty()) { "Invalid conversation cycle." }
+            ready.forEach { n ->
+                val at = requireNotNull(n.anchor)
+                changed[n.id] = relocated(n, ancestry(changed.getValue(at.node), at, n.context))
+                visited += n.id
+            }
+        }
+        val remaining = garden.nodes.filterNot { it.id in subtree }
+        val before = beforeNode.takeIf { it.isNotEmpty() }?.let { id ->
+            val sibling = remaining.singleOrNull { it.id == id } ?: error("That drop position no longer exists.")
+            require(sibling.anchor?.node == anchor?.node && sibling.anchor?.passage == anchor?.passage) { "Choose a position beside another branch at this paragraph." }
+            remaining.indexOf(sibling)
+        } ?: remaining.size
+        val ordered = remaining.take(before) + garden.nodes.filter { it.id in subtree }.map { changed.getValue(it.id) } + remaining.drop(before)
+        return save(box, garden.copy(nodes = ordered, texts = texts))
+    }
+
+    /** Remove a branch and its descendants; surviving frozen contexts and box edits are untouched. */
+    @Synchronized fun deleteBranch(box: Box, nodeId: String): ConversationGarden {
+        val garden = read(box)
+        require(garden.nodes.any { it.id == nodeId }) { "That branch no longer exists." }
+        val removed = mutableSetOf(nodeId)
+        do {
+            val size = removed.size
+            garden.nodes.filter { it.anchor?.node in removed }.forEach { removed += it.id }
+        } while (removed.size != size)
+        require(garden.nodes.none { it.id in removed && it.status == "running" }) { "Wait for this branch's running response before deleting it." }
+        return save(box, garden.copy(nodes = garden.nodes.filterNot { it.id in removed }))
     }
 
     @Synchronized fun update(box: Box, nodeId: String, markdown: String): ConversationGarden {
@@ -133,7 +207,7 @@ object AiConversationGarden {
         require(status in setOf("running", "complete", "failed", "queued"))
         val garden = read(box)
         require(garden.nodes.any { it.id == nodeId }) { "Unknown reply." }
-        return save(box, garden.copy(nodes = garden.nodes.map { if (it.id == nodeId) it.copy(status = status, error = error) else it }))
+        return save(box, garden.copy(nodes = garden.nodes.map { if (it.id == nodeId) it.copy(status = status, error = error, context = if (status == "running" && it.status == "queued") it.replyContext ?: it.context else it.context) else it }))
     }
 
     @Synchronized fun recover(box: Box): ConversationGarden {
@@ -153,5 +227,9 @@ object AiConversationGarden {
     }
 
     /** Only current text is inlined for transport; stored image references stay content-addressed. */
-    fun forDisplay(box: Box, garden: ConversationGarden): ConversationGarden = garden.copy(texts = garden.texts.mapValues { AiImageBlobs.inline(it.value, box) })
+    fun forDisplay(box: Box, garden: ConversationGarden): ConversationGarden {
+        val texts = garden.texts + garden.nodes.filter { it.prompt.isNotEmpty() }.associate { hash(it.prompt) to it.prompt }
+        return garden.copy(nodes = garden.nodes.map { it.copy(passages = sourcePassages(it)) },
+            texts = texts.mapValues { AiImageBlobs.inline(it.value, box) })
+    }
 }

@@ -2947,4 +2947,23 @@ window.aiChatVoiceTarget = aiChatVoiceTarget;
 window.aiChatVoiceContext = aiChatVoiceContext;
 window.aiChatUpdate = aiChatUpdate;
 window.openAiChatForBox = openAiChatForBox;
+// Copied garden references retain the exact human/agent paragraph address.
+async function revealGardenReference() {
+        if (!location.hash.startsWith("#garden/")) return true;
+        const parts = location.hash.slice(8).split("/").map(decodeURIComponent);
+        if (parts.length !== 3) return true;
+        const chat = openAiChatForBox(parts[0], "code");
+        if (!chat) return false;
+        await chat.garden.reveal(parts[1], parts[2]);
+        return true;
+}
+window.addEventListener("hashchange", () => revealGardenReference());
+if (location.hash.startsWith("#garden/")) {
+        let attempts = 0;
+        const retry = async () => {
+                if (!await revealGardenReference() && ++attempts < 40) setTimeout(retry, 250);
+        };
+        setTimeout(retry, 0);
+}
+
 installControllerChatProjection();

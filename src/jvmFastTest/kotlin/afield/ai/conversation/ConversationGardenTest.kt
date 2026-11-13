@@ -81,6 +81,38 @@ class ConversationGardenTest {
         assertEquals(1, AiConversationGarden.read(b).nodes.size)
     }
 
+    @Test fun promptAndResponseAnchorsHaveDistinctAddressesAndContext() {
+        val b = box()
+        val (_, parent) = AiConversationGarden.enqueue(b, "5", null, "code")
+        AiConversationGarden.update(b, parent, "<<ai>>\n6")
+        val shown = AiConversationGarden.forDisplay(b, AiConversationGarden.read(b)).nodes.single()
+        val request = shown.passages.first()
+        val response = shown.passages.last()
+        assertEquals("you", request.role)
+        assertEquals("ai", response.role)
+        val (_, toPrompt) = AiConversationGarden.enqueue(b, "About your question", GardenAnchor(parent, request.id, request.revision), "code")
+        val (_, toResponse) = AiConversationGarden.enqueue(b, "7", GardenAnchor(parent, response.id, response.revision), "code")
+        assertEquals("<<you>>\n5", AiConversationGarden.context(b, toPrompt))
+        assertEquals("<<you>>\n5\n<<ai>>\n6", AiConversationGarden.context(b, toResponse))
+        val stored = AiConversationGarden.read(b)
+        assertNotEquals(stored.nodes[1].anchor!!.passage, stored.nodes[2].anchor!!.passage)
+        assertEquals(1, stored.nodes.first().passages.size) // virtual request address is a view, not duplicated storage
+    }
+
+    @Test fun wholeDocumentFreezesAllBranchesWithoutDuplicatingAncestry() {
+        val b = box(); val root = source(b)
+        val (_, sibling) = AiConversationGarden.enqueue(b, "Explore shape", anchor(root, 1), "code")
+        AiConversationGarden.update(b, sibling, "<<ai>>\nSibling answer.")
+        val (_, whole) = AiConversationGarden.enqueue(b, "Consider everything", anchor(root, 1), "code", wholeDocument = true)
+        AiConversationGarden.update(b, sibling, "<<ai>>\nLater revision.")
+        val context = AiConversationGarden.context(b, whole)
+        assertContains(context, "Second idea.")
+        assertContains(context, "Sibling answer.")
+        assertFalse(context.contains("Later revision."))
+        assertEquals(1, Regex("First idea").findAll(context).count())
+        assertEquals("document", AiConversationGarden.read(b).nodes.last().contextMode)
+    }
+
     @Test fun fencedCodeWithBlankLinesRemainsOneAddressablePassage() {
         assertEquals(listOf("Opening.", "```kotlin\nval x = 1\n\nprintln(x)\n```", "Closing."),
             AiConversationGarden.paragraphs("Opening.\n\n```kotlin\nval x = 1\n\nprintln(x)\n```\n\nClosing."))
@@ -113,6 +145,61 @@ class ConversationGardenTest {
         assertEquals("val n = 3", target.getPropertyRaw("code"))
     }
 
+    @Test fun movingAGraftKeepsHistoricalContextButNewRepliesFollowTheDestination() {
+        val b = box(); val root = source(b)
+        val (_, a) = AiConversationGarden.enqueue(b, "Branch A", anchor(root, 1), "code")
+        AiConversationGarden.update(b, a, "<<ai>>\nAnswer A.")
+        AiConversationGarden.status(b, a, "complete")
+        val sourceA = AiConversationGarden.read(b).nodes.last()
+        val (_, child) = AiConversationGarden.enqueue(b, "Child A", anchor(sourceA, 0), "code")
+        AiConversationGarden.update(b, child, "<<ai>>\nChild answer.")
+        AiConversationGarden.status(b, child, "complete")
+        val childSource = AiConversationGarden.read(b).nodes.last()
+        val (_, destination) = AiConversationGarden.enqueue(b, "Destination", anchor(root, 2), "code")
+        AiConversationGarden.update(b, destination, "<<ai>>\nDestination answer.")
+        AiConversationGarden.status(b, destination, "complete")
+        val dest = AiConversationGarden.read(b).nodes.last()
+        val originalA = AiConversationGarden.context(b, a)
+        val originalChild = AiConversationGarden.context(b, child)
+        AiConversationGarden.moveBranch(b, a, anchor(dest, 0))
+        assertEquals(originalA, AiConversationGarden.context(b, a))
+        assertEquals(originalChild, AiConversationGarden.context(b, child))
+        val (_, future) = AiConversationGarden.enqueue(b, "Next", anchor(childSource, 0), "code")
+        val newContext = AiConversationGarden.context(b, future)
+        assertContains(newContext, "Destination answer.")
+        assertContains(newContext, "Second idea.")
+        assertContains(newContext, "Child answer.")
+        assertFailsWith<IllegalArgumentException> { AiConversationGarden.moveBranch(b, destination, anchor(childSource, 0)) }
+        assertFailsWith<IllegalArgumentException> { AiConversationGarden.moveBranch(b, a, anchor(dest, 0).copy(revision = "stale")) }
+        val reordered = AiConversationGarden.moveBranch(b, a, anchor(root, 2), beforeNode = destination)
+        assertTrue(reordered.nodes.indexOfFirst { it.id == a } < reordered.nodes.indexOfFirst { it.id == destination })
+        assertEquals(anchor(root, 2), reordered.nodes.single { it.id == a }.anchor)
+        AiConversationGarden.update(b, root.id, "<<you>>\nMake a sketch.\n<<ai>>\nFirst idea. Growing.\n\nSecond idea.")
+        val historical = AiConversationGarden.moveBranch(b, a, anchor(root, 1))
+        assertEquals(anchor(root, 1), historical.nodes.single { it.id == a }.anchor)
+    }
+
+    @Test fun deletingABranchPrunesDescendantsAndPreservesOtherFrozenContextsAndEdits() {
+        val b = box(); val root = source(b)
+        val (_, branch) = AiConversationGarden.enqueue(b, "Discard", anchor(root, 1), "code")
+        AiConversationGarden.update(b, branch, "<<ai>>\nDiscard this answer.")
+        val childSource = AiConversationGarden.read(b).nodes.last()
+        val (_, child) = AiConversationGarden.enqueue(b, "Discard child", anchor(childSource, 0), "code")
+        val (_, sibling) = AiConversationGarden.enqueue(b, "Keep sibling", anchor(root, 1), "code")
+        val frozen = AiConversationGarden.context(b, sibling)
+        b.setPropertyRaw("code", "keep this edit")
+        AiConversationGarden.edit(b, branch, b, "code", "before", "keep this edit")
+        AiConversationGarden.status(b, child, "running")
+        assertFailsWith<IllegalArgumentException> { AiConversationGarden.deleteBranch(b, branch) }
+        AiConversationGarden.status(b, child, "complete")
+        val kept = AiConversationGarden.deleteBranch(b, branch)
+        assertEquals(setOf(root.id, sibling), kept.nodes.map { it.id }.toSet())
+        assertEquals(frozen, AiConversationGarden.context(b, sibling))
+        assertEquals("keep this edit", b.getPropertyRaw("code"))
+        assertFalse(kept.texts.values.contains("Discard this answer."))
+        assertEquals(kept, AiConversationGarden.read(b))
+    }
+
     @Test fun gardenAndFrozenAnchorsSurviveSidecarsAndPortableDocuments() {
         val directory = Files.createTempDirectory("conversation-garden").toFile()
         val root = Box("root")
@@ -121,7 +208,7 @@ class ConversationGardenTest {
         try {
             val b = Box("garden").also { it.inside = session; session.boxes[it.id] = it }
             val imported = source(b)
-            val (_, reply) = AiConversationGarden.enqueue(b, "Keep #this", anchor(imported, 1), "code")
+            val (_, reply) = AiConversationGarden.enqueue(b, "Keep #this", anchor(imported, 1).copy(quote = "First", quoteStart = 0, quoteEnd = 5), "code")
             val expected = AiConversationGarden.read(b)
             assertTrue(session.hasPendingSidecarSave(b.id, AiConversationGarden.PROPERTY))
             val saving = SavingContext()

@@ -1203,7 +1203,9 @@ fun installAi4() {
             when (request.action) {
                 "initialize" -> AiConversationGarden.initialize(target)
                 "read" -> if (key !in activeBoxChats) AiConversationGarden.recover(target) else AiConversationGarden.read(target)
-                "enqueue" -> AiConversationGarden.enqueue(target, request.prompt, request.anchor, request.property, request.anchorText).first
+                "enqueue" -> AiConversationGarden.enqueue(target, request.prompt, request.anchor, request.property, request.anchorText, request.wholeDocument).first
+                "delete" -> AiConversationGarden.deleteBranch(target, request.node)
+                "move" -> AiConversationGarden.moveBranch(target, request.node, request.anchor, request.beforeNode)
                 "run" -> {
                     check(key !in activeBoxChats) { "This box has an agent running. The reply remains queued." }
                     val node = AiConversationGarden.read(target).nodes.single { it.id == request.node }
