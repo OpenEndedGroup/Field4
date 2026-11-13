@@ -15,6 +15,7 @@ import afield.app.client.selectionContextChanged
 import afield.app.client.setSelectedEditorProperty
 import afield.app.protocol.handle
 import kotlinx.browser.document
+import kotlinx.browser.window
 
 internal val monacoPropertyNames = arrayOf(
     "code",
@@ -346,33 +347,66 @@ internal fun proseLineFlags(text: String, cStyle: Boolean): BooleanArray {
     return flags
 }
 
+/** The Monaco theme for Field's current colour theme (theme.js); every editor shares it. */
+fun fieldMonacoThemeName(): String =
+    if (js("window.FieldTheme && window.FieldTheme.isLight()") == true) "field-light" else "dark"
+
+/**
+ * Field's two Monaco themes, "dark" and "field-light", and the switch between them: Monaco's theme
+ * is global, so one `setTheme` on a "field-theme-change" event recolours every editor at once.
+ */
+private fun defineFieldMonacoThemes(monaco: dynamic) {
+    fun stackslRules(colour: String) = arrayOf<dynamic>(
+        js("{ token: 'operator.stacksl.prefix', fontStyle: 'bold' }"),
+        js("{ token: 'operator.stacksl.range', fontStyle: 'bold' }"),
+        js("{ token: 'number.stacksl.modifier', fontStyle: 'bold' }"),
+        js("{ token: 'number.stacksl.option', fontStyle: 'bold' }"),
+        js("{ token: 'number.stacksl.suffix', fontStyle: 'bold' }")
+    ).onEach { it.foreground = colour }
+
+    val darkColors = js("{}")
+    darkColors["editor.background"] = "#1e1e1e"
+    darkColors["editorGutter.background"] = "#000000"
+    darkColors["editor.lineHighlightBackground"] = "#2e2e2e"
+    darkColors["editorCursor.foreground"] = "#ff3b30"
+    darkColors["editorCursor.background"] = "#ff3b30"
+    val dark = js("{}")
+    dark.base = "vs-dark"
+    dark.inherit = true
+    dark.rules = stackslRules("ffcf66")
+    dark.colors = darkColors
+    monaco.editor.defineTheme("dark", dark)
+
+    // The light values follow field.css's [data-field-theme="light"] palette.
+    val lightColors = js("{}")
+    lightColors["editor.background"] = "#fcfcfa"
+    lightColors["editorGutter.background"] = "#ffffff"
+    lightColors["editor.lineHighlightBackground"] = "#efeee9"
+    lightColors["editorLineNumber.foreground"] = "#9a9a9e"
+    lightColors["editorLineNumber.activeForeground"] = "#18181c"
+    lightColors["editorCursor.foreground"] = "#e0261c"
+    lightColors["editorCursor.background"] = "#e0261c"
+    val light = js("{}")
+    light.base = "vs"
+    light.inherit = true
+    light.rules = stackslRules("a86a00")
+    light.colors = lightColors
+    monaco.editor.defineTheme("field-light", light)
+
+    window.addEventListener("field-theme-change", { monaco.editor.setTheme(fieldMonacoThemeName()) })
+    window.asDynamic().fieldMonacoThemeName = ::fieldMonacoThemeName
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun monacoInit(monaco: dynamic): dynamic {
-    val themeColors = js("{}")
-    themeColors["editor.background"] = "#1e1e1e"
-    themeColors["editorGutter.background"] = "#000000"
-    themeColors["editor.lineHighlightBackground"] = "#2e2e2e"
-    themeColors["editorCursor.foreground"] = "#ff3b30"
-    themeColors["editorCursor.background"] = "#ff3b30"
-    val theme = js("{}")
-    theme.base = "vs-dark"
-    theme.inherit = true
-    theme.rules = arrayOf<dynamic>(
-        js("{ token: 'operator.stacksl.prefix', foreground: 'ffcf66', fontStyle: 'bold' }"),
-        js("{ token: 'operator.stacksl.range', foreground: 'ffcf66', fontStyle: 'bold' }"),
-        js("{ token: 'number.stacksl.modifier', foreground: 'ffcf66', fontStyle: 'bold' }"),
-        js("{ token: 'number.stacksl.option', foreground: 'ffcf66', fontStyle: 'bold' }"),
-        js("{ token: 'number.stacksl.suffix', foreground: 'ffcf66', fontStyle: 'bold' }")
-    )
-    theme.colors = themeColors
-    monaco.editor.defineTheme("dark", theme)
+    defineFieldMonacoThemes(monaco)
 
     val container = document.querySelector(".monaco-editor-container") ?: return null
     val options = js("{}")
     options.value = ""
     options.language = "kotlin"
-    options.theme = "dark"
+    options.theme = fieldMonacoThemeName()
     options.automaticLayout = true
     options.selectionClipboard = false
     options.scrollBeyondLastLine = false

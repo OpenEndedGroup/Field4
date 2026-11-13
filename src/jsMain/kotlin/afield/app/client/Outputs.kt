@@ -197,10 +197,10 @@ private fun scheduleKnownOutputRecompute(element: HTMLElement?) {
 
 private fun flash(node: dynamic) {
     node.style.transition = "background 0s"
-    node.style.background = "rgba(255,255,255,0.4)"
+    node.style.background = "var(--field-hover-strong)"
     debounceTimeout("blink" + weakHash(node), 20) {
         node.style.transition = "background 0.3s"
-        node.style.background = "rgba(0,0,0,1)"
+        node.style.background = "var(--field-surface)"
     }
 }
 
@@ -1804,7 +1804,7 @@ fun addOutput(
                 domNodeInner.classList.add("copyable-error-output")
                 appendErrorSuggestions(editor, domNodeInner, suggestions, boxUid, boxProperty)
             }
-            domNodeInner.style.background = "rgba(0,0,0,1)"
+            domNodeInner.style.background = "var(--field-surface)"
             domNodeInner.style.borderRadius = "8px"
             domNodeInner.style.width = "calc( 100% - 8px )"
             domNodeInner.style.padding = "6px 6px 4px 6px"

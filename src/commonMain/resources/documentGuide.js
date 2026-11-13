@@ -166,7 +166,7 @@ function setMode(toSource) {
         const monaco = window.globalMonaco;
         if (!monaco) { message('The editor is still loading'); sourceMode = false; source.hidden = true; reader.hidden = false; return; }
         editor = monaco.editor.create(source, {
-            value:current.draft, language:'markdown', theme:'vs-dark', automaticLayout:true,
+            value:current.draft, language:'markdown', theme:(typeof window.fieldMonacoThemeName==='function' ? window.fieldMonacoThemeName() : 'vs-dark'), automaticLayout:true,
             minimap:{enabled:false}, fontFamily:'Iosevka Web, Iosevka, monospace', fontSize:14,
             wordWrap:'on', scrollBeyondLastLine:false, readOnly:!writable()
         });

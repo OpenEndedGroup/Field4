@@ -7,6 +7,16 @@
     --fp-muted: #8a8a8a;
     --fp-dim: #5c5c5c;
     --fp-card: #242424;
+    --fp-card-quiet: #111111;
+    --fp-card-2: #181818;
+    --fp-card-3: #1f1f1f;
+    --fp-hairline: #2a2a2a;
+    --fp-selected: #303030;
+    --fp-soft: #aaaaaa;
+    --fp-line: #666666;
+    --fp-map-box: #3a3a3a;
+    --fp-map-box-open: #6a6a6a;
+    --fp-map-panel: rgba(216, 216, 216, 0.10);
     --fp-border: 5px solid var(--field-border, #000000);
     --fp-radius: 5px;
     --fp-pad: 8px;
@@ -22,6 +32,31 @@
     --fp-control-hover-fg: #f0f0f0;
     --fp-close-size: 26px;
     --fp-close-glyph: 17px;
+}
+
+/* The light theme (theme.js sets data-field-theme on <html>; field.css holds the rest of it). An
+   iframe panel that does not load theme.js keeps the dark values above. */
+[data-field-theme="light"] {
+    --fp-bg: #ffffff;
+    --fp-fg: #26262a;
+    --fp-muted: #6c6c72;
+    --fp-dim: #9a9aa0;
+    --fp-card: #f1f0ec;
+    --fp-card-quiet: #f6f5f2;
+    --fp-card-2: #f3f2ee;
+    --fp-card-3: #eeede8;
+    --fp-hairline: #e2e1dc;
+    --fp-selected: #e6e5e0;
+    --fp-soft: #55555b;
+    --fp-line: #a8a8ad;
+    --fp-map-box: #d4d3ce;
+    --fp-map-box-open: #a9a8a3;
+    --fp-map-panel: rgba(38, 38, 42, 0.08);
+    --fp-control-border: #d6d5d0;
+    --fp-control-bg: #fafaf8;
+    --fp-control-hover-border: #b4b3ae;
+    --fp-control-hover-bg: #efeee9;
+    --fp-control-hover-fg: #111114;
 }
 
 /* The close button, usable outside a .field-panel shell: the doubled class outranks a host

@@ -44,6 +44,49 @@ object UserThemeManager {
     private const val seedCss = """/* Field user theme tokens.
  * Edit this file while Field is running; changes are applied live.
  * Field applies the field-user-theme class to the document root.
+ *
+ * Rules here outrank Field's built-in themes, so an uncommented palette applies in both the dark
+ * and the light theme ("Use Light Theme" in the command palette). To change only one theme,
+ * scope the rule: .field-user-theme[data-field-theme="light"] { ... }.
+ */
+.field-user-theme {
+    --field-font: "Iosevka Web", monospace;
+    --field-font-system: "Iosevka Web", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --field-font-code: "Iosevka Web", Monaco, Menlo, Consolas, "Courier New", monospace;
+    --field-font-code-fallback: "Iosevka", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+/* The dark palette, for reference; uncomment a line to override it. "black" is the deepest
+   surface and "white" is ink.
+.field-user-theme[data-field-theme="dark"] {
+    --field-black-rgb: 0, 0, 0;
+    --field-white-rgb: 255, 255, 255;
+    --field-base-rgb: 20, 20, 20;
+    --field-editor-rgb: 30, 30, 30;
+    --field-accent-rgb: 72, 201, 255;
+    --field-danger-rgb: 255, 80, 80;
+    --field-warning-rgb: 235, 150, 70;
+    --field-search-rgb: 255, 209, 102;
+    --field-info-rgb: 100, 150, 255;
+    --field-success-rgb: 80, 180, 100;
+}
+*/
+
+/* The light palette, for reference.
+.field-user-theme[data-field-theme="light"] {
+    --field-black-rgb: 255, 255, 255;
+    --field-white-rgb: 24, 24, 28;
+    --field-base-rgb: 238, 237, 233;
+    --field-editor-rgb: 252, 252, 250;
+    --field-accent-rgb: 0, 122, 194;
+}
+*/
+"""
+
+    /** The seed written before the light theme. Its palette pins every theme to dark, so an untouched copy is upgraded to [seedCss]. */
+    private const val legacySeedCss = """/* Field user theme tokens.
+ * Edit this file while Field is running; changes are applied live.
+ * Field applies the field-user-theme class to the document root.
  */
 .field-user-theme {
     --field-font: "Iosevka Web", monospace;
@@ -113,7 +156,10 @@ object UserThemeManager {
             lprintln("info,user-theme", "Created user theme file at ${themeFile.absolutePath}")
         } else {
             val css = themeFile.readText()
-            if (shouldWrapBareThemeCss(css)) {
+            if (css == legacySeedCss) {
+                themeFile.writeText(seedCss)
+                lprintln("info,user-theme", "Upgraded the untouched user theme seed at ${themeFile.absolutePath}")
+            } else if (shouldWrapBareThemeCss(css)) {
                 themeFile.writeText(wrapBareThemeCss(css))
                 lprintln("info,user-theme", "Wrapped user theme file as valid CSS at ${themeFile.absolutePath}")
             }

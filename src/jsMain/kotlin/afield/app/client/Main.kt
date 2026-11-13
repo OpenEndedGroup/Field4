@@ -528,10 +528,10 @@ private fun ensureEmptyDocumentWelcome(): HTMLElement? {
         z-index: 8;
         pointer-events: none;
         text-align: center;
-        color: rgba(255, 255, 255, 0.88);
+        color: var(--field-fg);
         padding: 24px 28px;
         border-radius: 8px;
-        background: rgba(18, 20, 24, 0.42);
+        background: rgba(var(--field-base-rgb), 0.42);
         backdrop-filter: blur(10px);
         opacity: 0;
         transition: opacity 180ms ease, transform 180ms ease;
@@ -540,7 +540,7 @@ private fun ensureEmptyDocumentWelcome(): HTMLElement? {
     """.trimIndent()
     root.innerHTML = """
         <div style="font-size:28px;font-weight:650;line-height:1.15;margin-bottom:8px;">Welcome to Field</div>
-        <div style="font-size:15px;line-height:1.45;color:rgba(255,255,255,0.72);">Press <b style="color:rgba(255,255,255,0.94);">n</b> to make a new box</div>
+        <div style="font-size:15px;line-height:1.45;color:var(--field-fg-soft);">Press <b style="color:var(--field-fg-bright);">n</b> to make a new box</div>
     """.trimIndent()
     mainViewport.appendChild(root)
     emptyDocumentWelcome = root
@@ -3829,12 +3829,13 @@ fun updateBackgroundGrid(translationX: Double, translationY: Double, panning: Bo
 
 fun initializeBackgroundGrid(host: HTMLElement) {
     mainViewport = host
-    host.style.backgroundColor = "rgb(20, 20, 20)"
+    // The theme's canvas colours (field.css --field-canvas-*), so this fallback agrees with the WebGL grid.
+    host.style.backgroundColor = "rgb(var(--field-canvas-center-rgb))"
     host.style.backgroundImage =
-        "linear-gradient(90deg, rgba(255,255,255,var(--axis-alpha)) 1px, rgba(255,255,255,0) 1px), " +
-                "linear-gradient(0deg, rgba(255,255,255,var(--axis-alpha)) 1px, rgba(255,255,255,0) 1px), " +
-                "radial-gradient(circle at 50% 50%, rgba(255,255,255,var(--dot-alpha-25)) 0.8px, rgba(255,255,255,0) 1.2px), " +
-                "radial-gradient(circle at 50% 50%, rgba(255,255,255,var(--dot-alpha-100)) 1.3px, rgba(255,255,255,0) 2.0px), " +
+        "linear-gradient(90deg, rgba(var(--field-canvas-ink-rgb),var(--axis-alpha)) 1px, rgba(var(--field-canvas-ink-rgb),0) 1px), " +
+                "linear-gradient(0deg, rgba(var(--field-canvas-ink-rgb),var(--axis-alpha)) 1px, rgba(var(--field-canvas-ink-rgb),0) 1px), " +
+                "radial-gradient(circle at 50% 50%, rgba(var(--field-canvas-ink-rgb),var(--dot-alpha-25)) 0.8px, rgba(var(--field-canvas-ink-rgb),0) 1.2px), " +
+                "radial-gradient(circle at 50% 50%, rgba(var(--field-canvas-ink-rgb),var(--dot-alpha-100)) 1.3px, rgba(var(--field-canvas-ink-rgb),0) 2.0px), " +
                 "var(--field-vignette-background)"
     host.style.backgroundRepeat = "no-repeat, no-repeat, repeat, repeat, no-repeat"
     host.style.backgroundSize =
@@ -6958,11 +6959,11 @@ suspend fun main() {
             overlay.style.apply {
                 position = "absolute"
                 maxWidth = "400px"
-                backgroundColor = "rgba(32, 32, 36, 0.9)"
-                color = "#e6e6e6"
+                backgroundColor = "var(--field-overlay)"
+                color = "var(--field-fg-body)"
                 padding = "5px 20px 5px 20px"
                 borderRadius = "8px"
-                boxShadow = "0 4px 12px rgba(0, 0, 0, 0.4)"
+                boxShadow = "var(--field-shadow-md)"
                 zIndex = "10000"
                 fontFamily =
                     "\"Iosevka\", \"Iosevka Term\", \"Iosevka Nerd Font\", \"Fira Code\", Menlo, Consolas, monospace"
@@ -7131,7 +7132,7 @@ suspend fun main() {
             style = CssBuilder().apply {
                 width = 100.vw
                 height = 100.vh
-                backgroundColor = rgb(20, 20, 20, 1.0)
+                backgroundColor = Color("var(--field-bg)")
                 padding = Padding(0.px)
                 margin = Margin(0.px)
             }.toString()
@@ -8048,11 +8049,11 @@ fun TagConsumer<HTMLElement>.createBox(
     val d1 = div(classes = "box offline") {
         style = CssBuilder().apply {
             position = Position.absolute
-            color = rgb(255, 255, 255, 0.8)
+            color = Color("var(--field-box-fg)")
             borderRadius = 5.px
             backdropFilter = "blur(3px) saturate(2.5) contrast(1.1) brightness(0.9) hue-rotate(-38deg)"
             border = Border(1.px, BorderStyle.solid, rgb(255, 255, 255, 0.0))
-            backgroundColor = rgb(50, 50, 50, 0.5)
+            backgroundColor = Color("var(--field-box-bg)")
             display = Display.flex
             flexDirection = FlexDirection.row
             flexWrap = FlexWrap.wrap
