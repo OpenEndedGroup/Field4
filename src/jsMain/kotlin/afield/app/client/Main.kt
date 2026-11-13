@@ -2843,7 +2843,22 @@ private fun updateCanvasPanLatchClass() {
     document.body?.classList?.toggle("canvas-pan-latched", canvasWheelLatchTimer != null || canvasDragLatched)
 }
 
+/*
+ * The reverse latch: a wheel gesture an output area took (something in it scrolled, or its content
+ * handled the event) stays with that area until the wheel is idle. Without it, trackpad momentum
+ * that carries a panel to the end of its scroll would hand the rest of the flick to the canvas and
+ * pan the whole document.
+ */
+private var outputWheelLatchTimer: Int? = null
+
+private fun latchOutputWheel() {
+    outputWheelLatchTimer?.let { window.clearTimeout(it) }
+    outputWheelLatchTimer = window.setTimeout({ outputWheelLatchTimer = null }, CANVAS_WHEEL_LATCH_MS)
+}
+
 private fun latchCanvasWheel(pane: CanvasPane) {
+    outputWheelLatchTimer?.let { window.clearTimeout(it) }
+    outputWheelLatchTimer = null
     canvasPanLatchPane = pane
     canvasWheelLatchTimer?.let { window.clearTimeout(it) }
     canvasWheelLatchTimer = window.setTimeout({
@@ -7229,9 +7244,18 @@ suspend fun main() {
         // Over an output panel the wheel belongs to the panel only if something there takes it: its
         // content handled the event, or an element between the target and the panel can still
         // scroll that way. Otherwise a panel that fills the window would trap pan and zoom.
+        val zooming = event.ctrlKey || event.metaKey
         val target = event.target as? HTMLElement
         val area = target?.closest(".outputArea") as? HTMLElement
-        if (area != null && (event.defaultPrevented || (!(event.ctrlKey || event.metaKey) && canScrollWithin(target, area, event.deltaX, event.deltaY)))) {
+        if (area != null && (event.defaultPrevented || (!zooming && canScrollWithin(target, area, event.deltaX, event.deltaY)))) {
+            if (!zooming) latchOutputWheel()
+            return@onwheel null
+        }
+        // The rest of a gesture an output area took (its momentum past the end of the scroll) is
+        // dropped rather than panning the canvas. A pinch is a new gesture and always zooms.
+        if (outputWheelLatchTimer != null && !zooming) {
+            event.preventDefault()
+            latchOutputWheel()
             return@onwheel null
         }
 
