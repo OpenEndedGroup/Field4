@@ -98,6 +98,24 @@ data class ThreeMotionTrack(
     }
 
     companion object {
+        /**
+         * The track of a swept clearance check ([afield.geometry.kinematics.sweptClearance]): its steps' motion
+         * values, gaps and nearest obstacles, so the viewer tints the part exactly where the check found it
+         * close. A step with nothing in reach (an infinite gap) is sent as [farGap].
+         */
+        fun of(
+            clearance: afield.geometry.kinematics.SweptClearance,
+            bands: List<ThreeTintBand>,
+            unit: String = "",
+            points: List<List<Double>> = emptyList(),
+            farGap: Double = 1e9,
+        ) = ThreeMotionTrack(
+            values = clearance.steps.map { it.value },
+            samples = clearance.steps.map { if (it.gap.isFinite()) it.gap else farGap },
+            labels = clearance.steps.map { it.obstacle.orEmpty() }.takeIf { l -> l.any { it.isNotEmpty() } }.orEmpty(),
+            bands = bands, unit = unit, points = points,
+        )
+
         /** Track points from vectors. */
         fun points(vararg p: Vec3): List<List<Double>> = p.map { listOf(it.x.toDouble(), it.y.toDouble(), it.z.toDouble()) }
     }
