@@ -6299,6 +6299,10 @@ function inspectorRefresh() {
     // Restore visibility for ordinary scenes too, including after unhide.
     for(const source of featureSources())source.slot.object.visible=!inspectorState.hidden.has(source.id);
     applyPartStyles(0);
+    // What a hidden part sweeps is not shown, and the readout names only parts in view.
+    if (motionState.tracks) for (const line of motionState.tracks.children)
+        line.visible = motionState.tracksOn && line.userData.entry.slots.some((s) => s.object.visible);
+    if (motionState.entries.length) motionReadout();
     inspectorPartsSync();
     inspectorRebuildOverlay();
 }
