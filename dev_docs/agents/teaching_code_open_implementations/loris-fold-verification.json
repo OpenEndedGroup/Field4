@@ -1,0 +1,29 @@
+{
+  "editorOnlyImportFolds": [
+    {
+      "name": "loris-dialogue",
+      "runnableCodeSha256": "555a39b97b013c9e211d72a22e6bc650737242829099434cb821c9cb4bc3dbfc"
+    },
+    {
+      "name": "loris-whirlpool",
+      "runnableCodeSha256": "cacd379a4fd8c52603b60fa9bca1d8872c3f5a0893ace4eb83871ac142f08836"
+    },
+    {
+      "name": "loris-tonal-edit",
+      "runnableCodeSha256": "d7afd669257b117e4d01a7b898f44f3a40e3721256c778dbfa4a8ae89db63f90"
+    },
+    {
+      "name": "loris-morph-a",
+      "runnableCodeSha256": "3b10cca5f8e00d3d956eeb74fa432dacd7d459261c2bb2fef00d1bb6649756c8"
+    },
+    {
+      "name": "loris-morph-b",
+      "runnableCodeSha256": "06afe983e5beaac09231a6b512456581f7e5518a6605731b5ab6107e1a147f69"
+    },
+    {
+      "name": "loris-morph-result",
+      "runnableCodeSha256": "cb7ccacd319a6f6fc5180923a9739a76bbd93616af2509ce6bd3c5d74867577c"
+    }
+  ],
+  "assertion": "Docs runner extracts byte-identical runnable code before and after import folding."
+}

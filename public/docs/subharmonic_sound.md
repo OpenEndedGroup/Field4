@@ -53,12 +53,22 @@ showSignals(
 A spectrogram of the same clip shows what a laptop speaker hides. Time runs left to right, frequency up to 400 Hz bottom to top, and brighter is louder. The bass and its harmonics are the stacked steps; from three seconds a new step appears under the lowest one, at half its height:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/bass-octave-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-bass-octave-spectrum"}
+:::static
+val seconds = 6f
+val bass = subBassline()
+val tracker = SubharmonicQuadPLL()
+val sub = bass.lowpass(150f).through(Subharmonic(tracker))
+val out = bass + sub * subBetween(3f, 6f) * 1.5f
+val samples = doughRenderMono(out, seconds = seconds)
+
+:::fold draw the spectrum of these samples
 showSpectrogram(
-    SubharmonicSoundDocs.render("bass-octave"),
+    samples,
     maxHz = 400.0,
     channel = "main",
     title = "An octave under a bassline",
 )
+:::endfold
 ```
 
 ![Spectrogram of the bass-octave clip: stepped bass harmonics throughout, with a new line at half the fundamental from three seconds](assets/subharmonic_sound/bass-octave-spectrum.png)
@@ -154,12 +164,30 @@ showSignals(
 In the spectrogram the sub is the lowest line. Look at how cleanly it steps in each three-second section:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/bass-trackers-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-bass-trackers-spectrum"}
+:::static
+val seconds = 12f
+val bass = subBassline()
+val clean = bass.lowpass(150f)
+val zero = SubharmonicZeroCross()
+val pll = SubharmonicPLL(bandwidthHz = 30.0)
+val quiet = SubharmonicPLL(bandwidthHz = 30.0)
+val quad = SubharmonicQuadPLL()
+val subs =
+    clean.through(Subharmonic(zero)) * subBetween(0f, 3f) +
+        clean.through(Subharmonic(pll)) * subBetween(3f, 6f) +
+        (clean * 0.25f).through(Subharmonic(quiet)) * subBetween(6f, 9f) * 4f +
+        clean.through(Subharmonic(quad)) * subBetween(9f, 12f)
+val out = bass * 0.3f + subs * 1.5f
+val samples = doughRenderMono(out, seconds = seconds)
+
+:::fold draw the spectrum of these samples
 showSpectrogram(
-    SubharmonicSoundDocs.render("bass-trackers"),
+    samples,
     maxHz = 400.0,
     channel = "main",
     title = "Four trackers, one bassline",
 )
+:::endfold
 ```
 
 ![Spectrogram of the four-tracker clip: a clean stepped sub line in the first and last sections, a smeared one in the second, a misplaced one in the third](assets/subharmonic_sound/bass-trackers-spectrum.png)
@@ -247,12 +275,38 @@ showSignals(
 The spectrogram shows the division changing under a bassline that does not:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/divisions-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-divisions-spectrum"}
+:::static
+val seconds = 18f
+val bass = subBassline(octave = 2f)
+val clean = bass.lowpass(300f)
+val steps = Param(2f).apply {
+    supplier = {
+        when {
+            time < 3f -> 2f
+            time < 6f -> 3f
+            time < 9f -> 1.5f
+            time < 12f -> 2.03f
+            else -> 2f
+        }
+    }
+}
+val wobble = SineOsc(Param(3f)) * 0.07f * subBetween(12f, 15f)
+val single = SubharmonicQuadPLL()
+val stack = SubharmonicQuadPLL().apply { voices = [SubVoice(2.0, 0.7), SubVoice(3.0, 0.2), SubVoice(4.0, 0.1)] }
+val sub =
+    clean.through(Subharmonic(single, division = steps + wobble)) * subBetween(0f, 15f) +
+        clean.through(Subharmonic(stack)) * subBetween(15f, 18f)
+val out = bass * 0.25f + sub * 1.5f
+val samples = doughRenderMono(out, seconds = seconds)
+
+:::fold draw the spectrum of these samples
 showSpectrogram(
-    SubharmonicSoundDocs.render("divisions"),
+    samples,
     maxHz = 600.0,
     channel = "main",
     title = "One tracker, six divisions",
 )
+:::endfold
 ```
 
 ![Spectrogram of the divisions clip: the bass harmonics unchanged while the lowest line drops to a half, a third and two thirds of the fundamental, then sways, then splits into three](assets/subharmonic_sound/divisions-spectrum.png)
@@ -313,12 +367,24 @@ showSignals(
 Here the spectrogram shows what the speaker cannot. The raw sub in the middle section is a line near 25 Hz; the saturated one in the last section adds harmonics above it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/kick-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-kick-spectrum"}
+:::static
+val seconds = 12f
+val kick = subDirt("bd:3")
+val beat = SamplesSignal(subSequence(12.0, (0 until 24).map { it * 0.5 to kick }))
+val tracker = SubharmonicQuadPLL()
+val sub = beat.lowpass(200f).through(Subharmonic(tracker))
+val audible = sub.through(Saturator(Param(20f))).lowpass(400f)
+val out = beat + sub * subBetween(4f, 8f) * 2f + audible * subBetween(8f, 12f) * 0.5f
+val samples = doughRenderMono(out, seconds = seconds)
+
+:::fold draw the spectrum of these samples
 showSpectrogram(
-    SubharmonicSoundDocs.render("kick"),
+    samples,
     maxHz = 400.0,
     channel = "main",
     title = "Raw and saturated sub under a kick",
 )
+:::endfold
 ```
 
 ![Spectrogram of the kick clip: dry kicks, then a line near 25 Hz under each, then that line with harmonics stacked above it](assets/subharmonic_sound/kick-spectrum.png)
@@ -374,12 +440,25 @@ showSignals(
 In the spectrogram the second half loses the arpy's lowest partials to the highpass, and gains a new line an octave beneath where they were:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/arpy-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-arpy-spectrum"}
+:::static
+val seconds = 8f
+val notes = [0, 2, 4, 3, 0, 1, 4, 2]
+val hits = (0 until 16).map { k -> k * 0.5 to subDirt("arpy:${notes[k % 8]}", rate = 0.5) }
+val arpy = SamplesSignal(subSequence(8.0, hits))
+val tracker = SubharmonicQuadPLL()
+val sub = arpy.lowpass(300f).lowpass(300f).through(Subharmonic(tracker))
+val thin = arpy.highpass(400f)
+val out = arpy * subBetween(0f, 4f) + (thin + sub * 1.5f) * subBetween(4f, 8f)
+val samples = doughRenderMono(out, seconds = seconds)
+
+:::fold draw the spectrum of these samples
 showSpectrogram(
-    SubharmonicSoundDocs.render("arpy"),
+    samples,
     maxHz = 600.0,
     channel = "main",
     title = "A plucked melody and the bass it never had",
 )
+:::endfold
 ```
 
 ![Spectrogram of the arpy clip: plucked notes with full harmonics, then the same notes thinned above 400 Hz with a new low line under each](assets/subharmonic_sound/arpy-spectrum.png)
@@ -464,12 +543,22 @@ display(
 The spectrogram makes the gargle visible: the sub's line jumps around well above the voice's lowest harmonic rather than below it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/film-naive-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-film-naive-spectrum"}
+:::static
+val seconds = 7.5f
+val voice = SamplesSignal(subFilmClip())
+val tracker = SubharmonicZeroCross(minInputHz = 60.0)
+val sub = voice.through(Subharmonic(tracker))
+val out = voice + sub * 1.5f
+val samples = doughRenderMono(out, seconds = seconds)
+
+:::fold draw the spectrum of these samples
 showSpectrogram(
-    SubharmonicSoundDocs.render("film-naive"),
+    samples,
     maxHz = 600.0,
     channel = "main",
     title = "Raw dialogue with a zero-crossing sub",
 )
+:::endfold
 ```
 
 ![Spectrogram of the raw dialogue with its sub: voice harmonics, with a jumping line scattered across them](assets/subharmonic_sound/film-naive-spectrum.png)
@@ -547,12 +636,25 @@ display(
 In the spectrogram the sub follows the shape of each phrase an octave below the voice's lowest harmonic, and turns to a broad smear where the wind comes in:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/film-shaped-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-film-shaped-spectrum"}
+:::static
+val seconds = 13.5f
+val voice = SamplesSignal(subFilmClip())
+val band = voice.highpass(70f).lowpass(280f).lowpass(280f)
+val squared = band.through(Saturator(Param(20f))).lowpass(280f)
+val tracker = SubharmonicQuadPLL(bandwidthHz = 20.0, gateLevel = 0.05)
+val level = EnvelopeFollower(band, attackTime = Param(0.01f), releaseTime = Param(0.08f))
+val sub = squared.through(Subharmonic(tracker)).lowpass(160f) * level
+val out = voice + sub * 3f
+val samples = doughRenderMono(out, seconds = seconds)
+
+:::fold draw the spectrum of these samples
 showSpectrogram(
-    SubharmonicSoundDocs.render("film-shaped"),
+    samples,
     maxHz = 600.0,
     channel = "main",
     title = "Shaped dialogue with a quadrature-PLL sub",
 )
+:::endfold
 ```
 
 ![Spectrogram of the shaped dialogue: a low line tracing each phrase an octave under the voice, and broadband low growl in the last few seconds](assets/subharmonic_sound/film-shaped-spectrum.png)
@@ -821,6 +923,11 @@ where the Dirt-Samples come from.
 
 ## API reference
 
+- Tracking and synthesis:
+  [`Subharmonic`](reference/synthesis.md#subharmonic-kt-subharmonic),
+  [`SubharmonicZeroCross`](reference/synthesis.md#subharmonic-kt-subharmoniczerocross),
+  [`SubharmonicPLL`](reference/synthesis.md#subharmonic-kt-subharmonicpll),
+  [`SubharmonicQuadPLL`](reference/synthesis.md#subharmonic-kt-subharmonicquadpll).
 - Rendering the subharmonic examples:
   [`SubharmonicSoundDocs`](reference/synthesis.md#subharmonicsounddocs-kt-subharmonicsounddocs) —
   [`render`](reference/synthesis.md#subharmonicsounddocs-kt--subharmonicsounddocs--render).

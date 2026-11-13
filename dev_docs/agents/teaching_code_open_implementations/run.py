@@ -81,14 +81,23 @@ def probe_batch(batch):
         sources.append(dict(path=target['path'], name=target.get('name'), fenceSha256=hashlib.sha256(match[0].encode()).hexdigest()))
         commands.append('new-box --name '+shlex.quote(target.get('name', 'mapping')))
         for n, case in enumerate(target.get('probes', [])):
-            code = match[4].split(':::fold', 1)[0].replace(':::static\n', '').strip()
+            code = match[4] if target.get('probeFullCode') else match[4].split(':::fold', 1)[0]
+            code = re.sub(r'^[ \t]*:::(?:static|fold[^\n]*|endfold)[ \t]*$', '', code, flags=re.M).strip()
             for old, new in case.get('replace', {}).items():
                 assert old in code, (target, old)
                 code = code.replace(old, new)
-            code += '\n' + case['assertions'] + '\n'
+            token = f'TEACHING_PROBE_PASSED_{len(cases)}'
+            if case.get('before'):
+                anchor = case['before']
+                assert code.count(anchor) == 1, (target, anchor)
+                code = code.replace(anchor, case['assertions']+'\nprintln(\"'+token+'\")\n'+anchor)
+            else:
+                code += '\n' + case['assertions'] + '\n'
             path = OUT / f'probe-{len(cases)}.kt'
             path.write_text(code)
             commands.append('run @last --file '+shlex.quote(str(path))+' --timeout 180')
+            if case.get('before'):
+                commands.append('wait-output @last --kind all --contains '+token+' --timeout 180')
             cases.append(case['label'])
     args = [sys.executable, 'tools/field_backdoor.py', '--json']
     for command in commands:
@@ -132,7 +141,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['format', 'probe', 'capture'])
     parser.add_argument('batch')
+    parser.add_argument('--from-target', help='Resume at this named target after a focused repair')
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     batch = json.loads((HERE/'batches.json').read_text())[args.batch]
+    if args.from_target:
+        start = next(i for i, target in enumerate(batch['targets']) if target.get('name') == args.from_target)
+        batch['targets'] = batch['targets'][start:]
     {'format': format_batch, 'probe': probe_batch, 'capture': capture_batch}[args.action](batch)

@@ -68,5 +68,20 @@
     "family": "RayTracingDocsHarness hidden figure generators",
     "decision": "retain_capture_support",
     "detail": "ray_tracing_examples.md writes out buffers, acceleration structures, ray-generation/miss/closest-hit shaders and dispatch before its hidden runner fences. Those hidden calls capture the implementation already taught; they are not the visible teaching code. LiveMirrorBallsScene still needs separate review."
+  },
+  {
+    "family": "LorisDocs panels",
+    "decision": "expand_and_capture_visible_implementation",
+    "detail": "All six figure drivers now execute the worked native analysis, edit, distillation, dilation and morph code. The morph retains its explicit peak attenuation. Later hidden panels use the same worked pipeline with a different panel selector. Native algorithms and visualization remain library calls. Default published WAVs match byte for byte; parameter variants and reruns passed."
+  },
+  {
+    "family": "SubharmonicSoundDocs.render spectra",
+    "decision": "expand_graph_and_offline_render",
+    "detail": "All seven spectrograms now construct their sound graph and render its samples directly. Their defaults are sample-identical to the presets, and shorter reruns match prefixes. The earlier tracker plots already expose the same graph."
+  },
+  {
+    "family": "Loris partial explorer starting place",
+    "decision": "retain_explicit_api_composition",
+    "detail": "Reviewed loris_partial_explorer.yaml: it already supplies source, Loris options, selection of tracks, transformations, run-owned native futures, progress and per-pass output directly. There is no tutorial fixture call to open."
   }
 ]
