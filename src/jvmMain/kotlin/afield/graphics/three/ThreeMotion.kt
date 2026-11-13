@@ -81,15 +81,16 @@ data class ThreeMotionTrack(
     @EncodeDefault(EncodeDefault.Mode.NEVER) val unit: String = "",
     @EncodeDefault(EncodeDefault.Mode.NEVER) val decimals: Int = 2,
     /**
-     * Points on the part, in scene coordinates at its drawn pose, whose paths **Tracks** draws through the
-     * steps, each segment in its step's band colour: the corners of a leaf, say.
+     * Points on the part, in its rest coordinates (where the motion's value 0 puts it, as
+     * [afield.geometry.kinematics.RigidMotion] defines), whose paths **Tracks** draws through the steps, each
+     * segment in its step's band colour: the corners of a leaf, say.
      */
     @EncodeDefault(EncodeDefault.Mode.NEVER) val points: List<List<Double>> = emptyList(),
 ) {
     init {
         require(values.isNotEmpty() && values.size == samples.size) { "a motion track needs one sample per value, got ${values.size} values and ${samples.size} samples" }
         require(values.all(Double::isFinite)) { "a motion track's values must be finite" }
-        require(samples.none(Double::isNaN)) { "a motion track's samples must be numbers (±∞ is allowed: nothing in reach)" }
+        require(samples.all(Double::isFinite)) { "a motion track's samples must be finite (JSON has no ∞; write a large value for nothing in reach)" }
         require(labels.isEmpty() || labels.size == values.size) { "a motion track's labels, when given, are one per step" }
         require(bands.zipWithNext().all { (a, b) -> a.below < b.below }) { "a motion track's bands go in increasing order of below" }
         require(points.all { it.size == 3 && it.all(Double::isFinite) }) { "a motion track's points are three finite numbers each" }

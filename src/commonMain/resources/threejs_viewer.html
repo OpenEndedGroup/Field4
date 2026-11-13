@@ -3951,8 +3951,8 @@ function motionTracksBuild() {
         const track = entry.track;
         if (!track || !track.points || !track.points.length || track.values.length < 2) continue;
         const position = [], colour = [];
-        const back = motionInvertRigid(motionPoseAt(entry.motion, entry.at));
-        const poses = track.values.map((v) => motionMultiply(motionPoseAt(entry.motion, v), back));
+        // Track points are in the part's rest coordinates (value 0), so each step's pose places them.
+        const poses = track.values.map((v) => motionPoseAt(entry.motion, v));
         const colourOf = (k) => { const b = motionBandOf(track, k); return b >= 0 ? track.bands[b].color : MOTION_TRACK_PLAIN; };
         for (const p of track.points) for (let k = 0; k + 1 < poses.length; k++) for (const j of [k, k + 1]) {
             const m = poses[j];
