@@ -857,6 +857,11 @@ three(name = "door") {
 }
 ```
 
+A track straight from a clearance check is `ThreeMotionTrack.of(sweptClearance(part, swing, obstacles), bands)`
+([Swept clearance](swept_clearance.md)): its steps' values, gaps and nearest obstacles, so the part turns red
+exactly where the check found it too close. Track points are in the part's rest coordinates, where the motion's
+value 0 puts it.
+
 `motion(...)` names the part ids that move together (a leaf and its glass), and `at` the motion value the
 geometry is drawn at, which **At rest** shows. The motion goes to the viewer as its own JSON, so the viewer
 plays the motion a clearance check walked; the track is plain numbers. From a page, `FieldViewer.motion` has
