@@ -22,10 +22,10 @@ val swing = RigidMotion.rotation(Vector3d(0.0, 0.0, 0.0), Vector3d(0.0, 0.0, 1.0
 // Pulled out along +x by up to 450.
 val pull = RigidMotion.slide(Vector3d(1.0, 0.0, 0.0), 0.0, 450.0)
 
-swing.pose(0.5)              // the Matrix4d half-way through, at 45°
-swing.poseAt(30.0)           // the pose at 30°
-swing.stepsBy(1.0)           // 91 MotionSteps, one per degree
-swing.toJson()               // {"type":"rotation","point":[0.0,0.0,0.0],"axis":[0.0,0.0,1.0],"from":0.0,"to":90.0}
+swing.pose(0.5) // the Matrix4d half-way through, at 45°
+swing.poseAt(30.0) // the pose at 30°
+swing.stepsBy(1.0) // 91 MotionSteps, one per degree
+swing.toJson() // {"type":"rotation","point":[0.0,0.0,0.0],"axis":[0.0,0.0,1.0],"from":0.0,"to":90.0}
 ```
 
 Poses are column-major `Matrix4d`s mapping the part's rest coordinates to where it is, with the translation in
@@ -45,13 +45,13 @@ import afield.math.linalg.Vector3d
 import kotlin.math.sqrt
 
 val slab = Solid.cube(1000.0, 20.0, 100.0)
-val corner = 1100.0 / sqrt(2.0)  // 1100 from the hinge, at 45°
+val corner = 1100.0 / sqrt(2.0) // 1100 from the hinge, at 45°
 val post = Solid.cube(100.0, 100.0, 100.0).translated(corner, corner, 0.0)
 val swing = RigidMotion.rotation(Vector3d(0.0, 0.0, 0.0), Vector3d(0.0, 0.0, 1.0), 0.0, 90.0)
 
-val c = sweptClearance(slab, swing, listOf(post), maxStep = 1.0)
-c.minimum        // ClearanceStep(value=44.0000, gap=99.8325 to obstacle 0)
-c.lowerBound     // 91.1878
+val c = sweptClearance(slab, swing, [post], maxStep = 1.0)
+c.minimum // ClearanceStep(value=44.0000, gap=99.8325 to obstacle 0)
+c.lowerBound // 91.1878
 ```
 
 The slab's far corner is 1000.2 from the hinge, so the true nearest approach is 1100 − 1000.2 = 99.80, at 43.85°.
@@ -61,22 +61,22 @@ gap can fall no faster than the part's farthest point moves, so no pose, sampled
 Give a `tolerance` and the sweep refines the steps where that bound leaves room for something closer:
 
 ```diffstatic {data-lang=kotlin}
-val fine = sweptClearance(slab, swing, listOf(post), maxStep = 1.0, tolerance = 0.01)
-fine.minimum             // ClearanceStep(value=43.8545, gap=99.8000 to obstacle 0)
-fine.lowerBound          // 99.7901: within 0.01 of the minimum, guaranteed
-fine.minimum.contact     // the points: on the slab (707.25, 707.25, 100.0), on the box (777.82, 777.82, 100.0)
-fine.steps.size          // 459, refined only near the minimum
+val fine = sweptClearance(slab, swing, [post], maxStep = 1.0, tolerance = 0.01)
+fine.minimum // ClearanceStep(value=43.8545, gap=99.8000 to obstacle 0)
+fine.lowerBound // 99.7901: within 0.01 of the minimum, guaranteed
+fine.minimum.contact // the points: on the slab (707.25, 707.25, 100.0), on the box (777.82, 777.82, 100.0)
+fine.steps.size // 459, refined only near the minimum
 ```
 
 For "when", pass a `threshold` too. `firstBelow(threshold)` is then the first step closer than it, and no
 earlier pose comes closer than `threshold − tolerance`:
 
 ```diffstatic {data-lang=kotlin}
-val r = sweptClearance(slab, swing, listOf(post), maxStep = 1.0, tolerance = 0.01, threshold = 101.0)
-r.firstBelow(101.0)?.value   // the first angle under 101
-r.keeps(99.0)                // true: the certified bound is over 99
-r.gaps()                     // one gap per step, for a timeline
-r.toJson()                   // the motion and every step's value, gap and obstacle, for a viewer
+val r = sweptClearance(slab, swing, [post], maxStep = 1.0, tolerance = 0.01, threshold = 101.0)
+r.firstBelow(101.0)?.value // the first angle under 101
+r.keeps(99.0) // true: the certified bound is over 99
+r.gaps() // one gap per step, for a timeline
+r.toJson() // the motion and every step's value, gap and obstacle, for a viewer
 ```
 
 To ask at values of your own choosing, say the angle a slider is dragged to, make a `ClearanceProbe(part, motion,
@@ -100,8 +100,8 @@ where the arc's end tangents meet. So the result always contains the true sweep:
 
 ```diffstatic {data-lang=kotlin}
 val swept = sweptVolume(slab, swing, maxStep = 1.0)
-swept.solid.volume       // 8.05732e7, against 8.05712e7 for the exact sweep
-swept.maxOvershoot       // 8.73: a bound on how far it can reach beyond the true sweep
+swept.solid.volume // 8.05732e7, against 8.05712e7 for the exact sweep
+swept.maxOvershoot // 8.73: a bound on how far it can reach beyond the true sweep
 display(swept.solid.toTriMesh())
 ```
 
@@ -118,12 +118,14 @@ everywhere along the motion? It offsets each convex piece of the swept volume by
 with a ball, sized so the ball's faces lie outside the true sphere) and intersects the result with the obstacles.
 
 ```diffstatic {data-lang=kotlin}
-minkowskiClearance(slab, swing, listOf(post), clearance = 85.0, names = listOf("post"))
+minkowskiClearance(slab, swing, [post], clearance = 85.0, names = ["post"])
+
 // MinkowskiClearance(keeps 85.0, resolution 12.80)
 
-val verdict = minkowskiClearance(slab, swing, listOf(post), clearance = 110.0, names = listOf("post"))
-verdict.passes   // false
-verdict.worst    // ClearanceHit(post from 40.00 to 48.00, worst 44.00..45.00, 2.360e+04 in overlap at (788.5, 788.7, 50.0))
+val verdict = minkowskiClearance(slab, swing, [post], clearance = 110.0, names = ["post"])
+verdict.passes // false
+verdict
+    .worst // ClearanceHit(post from 40.00 to 48.00, worst 44.00..45.00, 2.360e+04 in overlap at (788.5, 788.7, 50.0))
 ```
 
 A pass is certain: every pose keeps the clearance. A fail says which obstacle, over which part of the motion and
