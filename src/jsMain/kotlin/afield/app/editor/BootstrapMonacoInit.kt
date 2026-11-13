@@ -377,19 +377,31 @@ private fun defineFieldMonacoThemes(monaco: dynamic) {
     dark.colors = darkColors
     monaco.editor.defineTheme("dark", dark)
 
-    // The light values follow field.css's [data-field-theme="light"] palette.
+    // The light values follow field.css's [data-field-theme="light"] palette: graphite on warm grey,
+    // with chalk for the current line and the selection.
     val lightColors = js("{}")
-    lightColors["editor.background"] = "#fcfcfa"
-    lightColors["editorGutter.background"] = "#ffffff"
-    lightColors["editor.lineHighlightBackground"] = "#efeee9"
-    lightColors["editorLineNumber.foreground"] = "#9a9a9e"
-    lightColors["editorLineNumber.activeForeground"] = "#18181c"
-    lightColors["editorCursor.foreground"] = "#e0261c"
-    lightColors["editorCursor.background"] = "#e0261c"
+    lightColors["editor.background"] = "#c4bfb6"
+    lightColors["editor.foreground"] = "#24211d"
+    lightColors["editorGutter.background"] = "#ccc7be"
+    lightColors["editor.lineHighlightBackground"] = "#cfcbc3"
+    lightColors["editor.lineHighlightBorder"] = "#00000000"
+    lightColors["editor.selectionBackground"] = "#ebe8e1"
+    lightColors["editor.inactiveSelectionBackground"] = "#dcd8d0"
+    lightColors["editorLineNumber.foreground"] = "#7a746b"
+    lightColors["editorLineNumber.activeForeground"] = "#24211d"
+    lightColors["editorCursor.foreground"] = "#a8241e"
+    lightColors["editorCursor.background"] = "#a8241e"
+    lightColors["editorWhitespace.foreground"] = "#a8a39a"
+    lightColors["editorIndentGuide.background1"] = "#b5b0a7"
     val light = js("{}")
     light.base = "vs"
     light.inherit = true
-    light.rules = stackslRules("a86a00")
+    light.rules = stackslRules("8a5200") + arrayOf<dynamic>(
+        js("{ token: 'comment', foreground: '5f6b4e' }"),
+        js("{ token: 'string', foreground: '8c2a1c' }"),
+        js("{ token: 'number', foreground: '1c5c8a' }"),
+        js("{ token: 'keyword', foreground: '2d3f8f' }")
+    )
     light.colors = lightColors
     monaco.editor.defineTheme("field-light", light)
 

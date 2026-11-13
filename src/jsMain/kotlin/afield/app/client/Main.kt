@@ -5613,7 +5613,7 @@ var styles = CssBuilder().apply {
     }
 
     ".selected" {
-        borderColor = important(Color("rgba(var(--field-cyan-rgb), 0.78)"))
+        borderColor = important(Color("var(--field-box-selected-border)"))
     }
 
     ".doubleClickToEdit" {
@@ -8075,7 +8075,7 @@ fun TagConsumer<HTMLElement>.createBox(
             position = Position.absolute
             color = Color("var(--field-box-fg)")
             borderRadius = 5.px
-            backdropFilter = "blur(3px) saturate(2.5) contrast(1.1) brightness(0.9) hue-rotate(-38deg)"
+            backdropFilter = "var(--field-box-backdrop)"
             border = Border(1.px, BorderStyle.solid, rgb(255, 255, 255, 0.0))
             backgroundColor = Color("var(--field-box-bg)")
             display = Display.flex

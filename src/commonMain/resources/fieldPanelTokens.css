@@ -37,26 +37,26 @@
 /* The light theme (theme.js sets data-field-theme on <html>; field.css holds the rest of it). An
    iframe panel that does not load theme.js keeps the dark values above. */
 [data-field-theme="light"] {
-    --fp-bg: #ffffff;
-    --fp-fg: #26262a;
-    --fp-muted: #6c6c72;
-    --fp-dim: #9a9aa0;
-    --fp-card: #f1f0ec;
-    --fp-card-quiet: #f6f5f2;
-    --fp-card-2: #f3f2ee;
-    --fp-card-3: #eeede8;
-    --fp-hairline: #e2e1dc;
-    --fp-selected: #e6e5e0;
-    --fp-soft: #55555b;
-    --fp-line: #a8a8ad;
-    --fp-map-box: #d4d3ce;
-    --fp-map-box-open: #a9a8a3;
-    --fp-map-panel: rgba(38, 38, 42, 0.08);
-    --fp-control-border: #d6d5d0;
-    --fp-control-bg: #fafaf8;
-    --fp-control-hover-border: #b4b3ae;
-    --fp-control-hover-bg: #efeee9;
-    --fp-control-hover-fg: #111114;
+    --fp-bg: #ccc7be;
+    --fp-fg: #24211d;
+    --fp-muted: #5a554d;
+    --fp-dim: #7d776e;
+    --fp-card: #c0bbb2;
+    --fp-card-quiet: #c6c1b8;
+    --fp-card-2: #c3beb5;
+    --fp-card-3: #bdb8af;
+    --fp-hairline: #b0aba2;
+    --fp-selected: #dcd8d0;
+    --fp-soft: #3e3a34;
+    --fp-line: #8f8a81;
+    --fp-map-box: #a8a39a;
+    --fp-map-box-open: #7d776e;
+    --fp-map-panel: rgba(250, 248, 242, 0.35);
+    --fp-control-border: #aaa59c;
+    --fp-control-bg: #d4d0c8;
+    --fp-control-hover-border: #8f8a81;
+    --fp-control-hover-bg: #e6e3dc;
+    --fp-control-hover-fg: #1a1815;
 }
 
 /* The close button, usable outside a .field-panel shell: the doubled class outranks a host
