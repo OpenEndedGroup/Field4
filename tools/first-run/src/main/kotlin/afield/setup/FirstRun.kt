@@ -138,6 +138,21 @@ internal fun findExecutable(name: String, environment: Map<String, String> = Sys
         .firstOrNull { it.isFile && (windows || it.canExecute()) }
 }
 
+/**
+ * Recovery advice printed after a package-manager command fails. Homebrew's commonest first-run
+ * failure is its own state, not Field's request: an earlier interrupted install leaves a keg
+ * poured and linked but unrecorded, so the next install re-pours it and stops at
+ * "Cannot link <formula> / Another version is already linked" even when both versions match.
+ * Unlinking that formula lets the rerun link it cleanly.
+ */
+internal fun installFailureAdvice(manager: String?): List<String> = when (manager) {
+    "brew" -> listOf(
+        "If Homebrew said \"Cannot link <formula>\" and \"Another version is already linked\", an earlier install was interrupted. Run brew unlink <formula> (e.g. brew unlink ca-certificates), then rerun --setup.",
+        "For other Homebrew errors, brew doctor names what it found broken.",
+    )
+    else -> emptyList()
+}
+
 internal fun toolAvailable(name: String): Boolean {
     // Windows' App Execution Alias can exist without an installed Python interpreter.
     if (name == "python" && System.getProperty("os.name").startsWith("Windows")) return commandWorks("python", "--version")
@@ -270,6 +285,7 @@ fun main(args: Array<String>) {
         if (install == "INSTALL") {
             if (plan.commands.any { !runCommand(it, root) }) {
                 println(ui.error("Installation failed. Fix the reported error and rerun --setup."))
+                installFailureAdvice(manager).forEach { ui.paragraph(it, dim = true) }
                 exitProcess(1)
             }
             installed = true
