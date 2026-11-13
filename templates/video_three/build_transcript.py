@@ -35,6 +35,22 @@ def main():
             uid = box['box']
             if uid == 'video1_context':
                 box['properties']['code'] = box['properties']['code'].replace('video_two', 'video_three')
+            elif uid == 'video1_screen':
+                # video_three starts from the neutral 2x / 24 fps collection, independently of
+                # video_two's more demonstrative initial exposure settings.
+                code = box['properties']['code']
+                defaults = {
+                    'accumulationMix': '0f', 'accumulationHalfLife': '0.0',
+                    'accumulationInputWeight': '1.0', 'exposureCadenceEnabled': 'false',
+                    'exposureBlurSigma': '0f', 'exposureBlurMix': '0f',
+                    'exposureDarkening': '0f', 'swapEyes': 'true',
+                }
+                for name, value in defaults.items():
+                    code = re.sub(r'view\.' + name + r' = [^\n]+', 'view.' + name + ' = ' + value, code)
+                code = re.sub(r'carousel.source.speed = [^\n]+',
+                    'carousel.source.speed = 2.0\ncarousel.source.materialFramesPerSecond = 24\n'
+                    'carousel.source.selectiveDecode = false\ncarousel.source.skipNonReferenceFrames = false', code)
+                box['properties']['code'] = code.replace('spacingFrames = 16', 'spacingFrames = 8').replace('carousel.fill = .9f', 'carousel.fill = .97f')
             elif uid == 'video2_looks':
                 box['name'] = 'Whole-ring rules / ordered keyframes'
                 box['properties']['code'] = (here / 'looks.kt').read_text()
@@ -55,6 +71,10 @@ def main():
         connection = operation.get('connect')
         if connection == {'parent': 'video2_looks', 'child': 'video2_motion'}:
             connection.update(parent='video1_screen', child='video2_motion')
+    create.append({'create': {'box': 'video3_geometry', 'name': 'Ring arrangements',
+        'frame': {'x': -1450, 'y': 2143, 'w': 500, 'h': 100},
+        'properties': {'code': (here / 'geometry.kt').read_text()}}})
+    create.append({'connect': {'parent': 'video1_screen', 'child': 'video3_geometry'}})
     create.append({'connect': {'parent': 'video2_motion', 'child': 'video2_looks'}})
     create.append({'connect': {'parent': 'video2_looks', 'child': 'video1_playback'}})
     # Motion now provides the clock to the ordered look pool, rather than registering per-screen keys.
@@ -68,6 +88,8 @@ def main():
                 for key in ('box', 'parent', 'child'):
                     if payload.get(key) == 'video2_looks':
                         payload[key] = 'video3_looks'
+    motion_index = next(i for i, op in enumerate(launch) if op.get('launch', {}).get('box') == 'video2_motion')
+    launch.insert(motion_index + 1, {'launch': {'box': 'video3_geometry'}})
     verify = [{'execute': {'box': 'video3_looks', 'code': (here / 'verify.kt').read_text()}}, {'await': {'wait': 'pending'}}]
     for name, operations in [('verify', verify), ('create', create), ('launch', launch),
                              ('stop', list(reversed([{'stop': op['launch']} for op in launch if 'launch' in op])))]:

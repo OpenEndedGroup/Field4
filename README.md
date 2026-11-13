@@ -19,6 +19,11 @@ Project site and user documentation: https://openendedgroup.com/field4
 
 Field 4 is in active development but is usable for real work, teaching and inspiration.
 
+[Linux → CloudXR → Apple Vision Pro](public/docs/cloudxr_vision_pro.md) is a working route
+for desktop OpenXR scenes over Wi-Fi, with head and hand tracking. With a Mac, Chrome
+connected to the Linux Field server is a usable editor through Mac Virtual Display.
+The [optional native client](native/field-cloudxr/) ships as source without a signing identity.
+
 ## Requirements
 
 The core of Field runs on Apple silicon macOS, glibc Linux (x86-64; ARM64 experimental), or Windows x64

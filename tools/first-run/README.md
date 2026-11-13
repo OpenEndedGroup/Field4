@@ -83,3 +83,12 @@ report are read-only, and no properties file is written.
 Kotlin, JavaScript, Faust, ordinary audio, ONNX Runtime and browser drawing ship with Field.
 They do not require selecting an extra; model files and optional GPU inference libraries are
 separate. Compiler/runtime downloads remain the launchers’ responsibility.
+
+### WiVRn on macOS
+
+`./field.sh --setup` includes **WiVRn headset streaming** on Apple silicon macOS.
+INSTALL offers missing Homebrew Python/CMake prerequisites; BUILD runs
+`python3 tools/field_wivrn_macos.py --prepare` independently of Field's main Gradle build.
+It installs the checksummed, pinned app into `~/Applications` if no app is installed, prepares
+Field's local OpenXR loader and selects VideoToolbox HEVC. Existing apps are retained.
+Open WiVRn and complete macOS permissions and headset pairing afterward.

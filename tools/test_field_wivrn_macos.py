@@ -1,4 +1,5 @@
 """Exercise WiVRn runtime discovery, the encoder setting, and the real launcher environment/argv handoff."""
+import io
 import json
 import os
 from pathlib import Path
@@ -7,9 +8,10 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 from tools.field_wivrn_macos import (configure_encoder, encoder_configured, launch_environment,
-                                     runtime_manifest, write_kk_manifest)
+                                     runtime_manifest, write_kk_manifest, default_app, install_runtime)
 
 
 class FieldWivrnMacosTest(unittest.TestCase):
@@ -60,6 +62,32 @@ class FieldWivrnMacosTest(unittest.TestCase):
         runtime.mkdir()
         manifest = write_kk_manifest(runtime, runtime / 'libopenxr_wivrn.dylib')
         self.assertEqual(json.loads(manifest.read_text())['runtime']['library_path'], './libopenxr_wivrn.dylib')
+
+    def test_existing_app_is_validated_without_download_or_replacement(self):
+        with mock.patch('tools.field_wivrn_macos.urllib.request.urlopen') as download:
+            self.assertEqual(install_runtime(self.app), self.manifest.resolve())
+            download.assert_not_called()
+        self.manifest.write_text('{}')
+        with self.assertRaises(ValueError):
+            install_runtime(self.app)
+        self.assertEqual(self.manifest.read_text(), '{}')
+
+    def test_bad_download_never_reaches_extraction_or_installs_an_app(self):
+        app = self.home / 'Applications/WiVRn.app'
+        with mock.patch('tools.field_wivrn_macos.urllib.request.urlopen', return_value=io.BytesIO(b'wrong archive')), \
+             mock.patch('tools.field_wivrn_macos.subprocess.run') as extract:
+            with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
+                install_runtime(app)
+            extract.assert_not_called()
+        self.assertFalse(app.exists())
+        self.assertEqual(list(app.parent.iterdir()), [])
+
+    def test_default_app_supports_non_admin_user_installation(self):
+        system = self.home / 'system/WiVRn.app'
+        with mock.patch('tools.field_wivrn_macos.DEFAULT_APP', system):
+            self.assertEqual(default_app(self.home), self.home / 'Applications/WiVRn.app')
+            system.mkdir(parents=True)
+            self.assertEqual(default_app(self.home), system)
 
     def test_exec_preserves_arguments_and_scopes_runtime_driver_and_loader(self):
         repo = self.home / 'Field checkout'

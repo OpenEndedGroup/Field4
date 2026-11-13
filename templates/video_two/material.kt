@@ -5,7 +5,17 @@ displayClearAll()
 // Each box owns a real surface pipeline. Its vertex/fragment tabs have standard shader reload.
 val screenIndex = SCREEN_INDEX
 val view = carousel.surfaces[screenIndex]
-val screenModule = moduleHere { +view }
+val screenModule = moduleHere {
+    +view
+    // Add emitted light; opacity controls energy, never foreground occlusion.
+    blend = true
+    srcColor = org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_SRC_ALPHA
+    dstColor = org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE
+    srcAlpha = org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE
+    dstAlpha = org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE
+    depthTest = false
+    depthWrite = false
+}
 view.draw(screenModule)
 
 val controlMirrors = mutableListOf<() -> Unit>()
@@ -114,7 +124,7 @@ controlGroup("screen layout") {
         step = .01,
         initialValue = view.opacity.toDouble(),
         hoverText =
-            "Straight-alpha coverage, independent of the on/off brightness envelope. One is opaque; zero reveals screens behind it. Included in screen looks. Screens are sorted from far to near using this frame's eye views; the Field pane draws last.",
+            "Light contribution, independent of the brightness envelope. Zero emits nothing; one adds the full image. Overlapping screens add light without occlusion. Included in screen looks.",
     ) {
         view.opacity = it.toFloat()
     }.also { h -> controlMirrors += { h.set(view.opacity.toDouble()) } }

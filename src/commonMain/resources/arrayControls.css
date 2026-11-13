@@ -83,17 +83,73 @@
 .field-menu {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
+}
+
+.field-menu > .field-label {
+    flex: 0 0 var(--field-slider-label-width, 126.5px);
+    font-size: 11px;
+    letter-spacing: 0.2px;
+    color: var(--field-accent-text-soft);
 }
 
 .field-menu-select {
-    font-family: var(--field-font);
-    font-size: 12px;
+    flex: 1;
+    min-width: 0;
+    max-width: 100%;
+    font: 400 11px / 1.35 var(--field-font);
+    font-feature-settings: inherit;
     color: var(--field-accent-text-soft);
     background: var(--field-surface);
     border: 1px solid var(--field-accent-border-faint);
-    border-radius: 4px;
-    padding: 2px 6px;
+    border-radius: 3px;
+    padding: 4px 8px;
+    color-scheme: dark;
+}
+
+.field-menu-select:focus-visible {
+    outline: 1px solid var(--field-accent-text-soft);
+    outline-offset: 2px;
+}
+
+/* Keep the popup in the page's typography and palette, including in a VR browser texture.
+   Older browsers retain the ordinary select and its keyboard / touch behaviour. */
+@supports (appearance: base-select) {
+    .field-menu-select,
+    .field-menu-select::picker(select) {
+        appearance: base-select;
+    }
+
+    .field-menu-select::picker(select) {
+        /* Top-layer popups escape the canvas transform; keep their type and spacing at its scale. */
+        zoom: var(--canvas-zoom, 1);
+        font: 400 11px / 1.35 var(--field-font);
+        font-feature-settings: inherit;
+        color: var(--field-accent-text-soft);
+        background: var(--field-surface);
+        border: 1px solid var(--field-accent-border-faint);
+        border-radius: 4px;
+        padding: 3px;
+        max-block-size: min(320px, 60vh);
+        overflow-y: auto;
+    }
+
+    .field-menu-select option {
+        font: inherit;
+        padding: 4px 8px;
+        min-block-size: 24px;
+        box-sizing: border-box;
+        border-radius: 2px;
+    }
+
+    .field-menu-select option:checked {
+        background: var(--field-accent-muted);
+    }
+
+    .field-menu-select option:hover,
+    .field-menu-select option:focus-visible {
+        background: var(--field-accent-border-faint);
+    }
 }
 
 /* Playheads — positions the box writes; never hit-tested. */

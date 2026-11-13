@@ -12,6 +12,7 @@ internal data class Extra(
     val task: String? = null,
     val platforms: Set<String> = setOf("linux", "mac", "windows"),
     val advice: String,
+    val preparation: List<String> = emptyList(),
 )
 
 // Keep the first two numbers stable for existing setup choices. A selected extra is a request,
@@ -55,6 +56,10 @@ internal val extrasCatalog = listOf(
     Extra("closd", "CLoSD physical motion (experimental)", "Workers and models", "optional/motion/README.md", setOf("python3", "uv", "git"), platforms = setOf("linux"), advice = "Separate Python 3.8 environment, NVIDIA GPU and separately licensed Isaac Gym Preview SDK. Start with python3 optional/motion/prepare.py probe closd --directory <development-dir>. CachyOS/RTX 4090 streaming, tether/release and impulse trials have run; other host compatibility needs a fresh smoke test. See the guide; selection never downloads licensed SDKs or weights."),
     Extra("slug", "Slug analytic paths / VR text", "Graphics", "public/docs/slug_paths.md", setOf("git", "compiler"), "buildSlugNative", setOf("linux", "mac"), "Builds the pinned Slughorn C++20 helper used to prepare analytic path and reading-space text data. Downloads source on first build; graphics/runtime support is checked separately."),
     Extra("sentences", "Sentence diagrams / Stanford parser", "Python", "public/docs/sentence_diagrams.md", setOf("python3", "uv"), "prepareSentenceParser", advice = "Creates a separate optional/sentence-parser environment, downloads the English Stanza models and verifies a CPU parse. Model/package downloads need network and disk space; no service is started. Retained-parse drawing and VR examples need none of these downloads. Start python/fieldsentences --serve 9500 with that environment when parsing new text."),
+    Extra("wivrn-macos", "WiVRn headset streaming", "Graphics", "public/docs/field_vr_ide.md",
+        setOf("python3", "cmake", "git", "xcrun"), platforms = setOf("mac"),
+        advice = "Installs pinned WiVRn.app in ~/Applications if missing, builds Field's local OpenXR loader, and selects VideoToolbox HEVC. Keeps an existing app and the global OpenXR runtime. Open WiVRn and pair the headset afterward; macOS permissions are separate.",
+        preparation = listOf("python3", "tools/field_wivrn_macos.py", "--prepare")),
 )
 
 internal fun platformId(os: String): String = when {
@@ -76,7 +81,9 @@ internal fun selectedExtras(answer: String): Set<String> {
 internal fun preparationCommands(extras: Set<String>, platform: String): List<List<String>> {
     val wrapper = if (platform == "windows") listOf("cmd.exe", "/d", "/c", "gradlew.bat") else listOf("./gradlew")
     val tasks = extrasCatalog.filter { it.id in extras && platform in it.platforms }.mapNotNull { it.task }
-    return if (tasks.isEmpty()) emptyList() else listOf(wrapper + listOf("--console=plain", "--max-workers=1") + tasks)
+    val commands = if (tasks.isEmpty()) emptyList() else listOf(wrapper + listOf("--console=plain", "--max-workers=1") + tasks)
+    return commands + extrasCatalog.filter { it.id in extras && platform in it.platforms && it.preparation.isNotEmpty() }
+        .map { it.preparation }
 }
 
 internal fun supportsRust2024(versionOutput: String): Boolean {
