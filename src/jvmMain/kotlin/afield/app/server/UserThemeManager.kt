@@ -52,7 +52,7 @@ object UserThemeManager {
 .field-user-theme {
     --field-font: "Iosevka Web", monospace;
     --field-font-system: "Iosevka Web", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --field-font-code: "Iosevka Web", Monaco, Menlo, Consolas, "Courier New", monospace;
+    --field-font-code: "Iosevka Web", Monaco, Menlo, Consolas, monospace;
     --field-font-code-fallback: "Iosevka", "JetBrains Mono", Menlo, Consolas, monospace;
 }
 
@@ -91,7 +91,7 @@ object UserThemeManager {
 .field-user-theme {
     --field-font: "Iosevka Web", monospace;
     --field-font-system: "Iosevka Web", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --field-font-code: "Iosevka Web", Monaco, Menlo, Consolas, "Courier New", monospace;
+    --field-font-code: "Iosevka Web", Monaco, Menlo, Consolas, monospace;
     --field-font-code-fallback: "Iosevka", "JetBrains Mono", Menlo, Consolas, monospace;
 
     /* Palette: the small set to override for a new theme. */
