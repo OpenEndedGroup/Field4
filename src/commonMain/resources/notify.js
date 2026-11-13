@@ -73,13 +73,13 @@ var notify = (text, cat = "") => {
                 let base = 10;
                 const startup = document.querySelector(".field-startup-progress:not(.field-startup-progress-done)");
                 if (startup) {
-                        base += startup.getBoundingClientRect().height + 6;
+                        base += startup.getBoundingClientRect().height + 4;
                 }
                 // The document-guide launcher (documentGuide.js) is a fixed button in this same
                 // bottom-left corner; stack above it rather than hiding it.
                 const launcher = document.getElementById("document-guide-launcher");
                 if (launcher && launcher.getClientRects().length > 0) {
-                        base = Math.max(base, window.innerHeight - launcher.getBoundingClientRect().top + 6);
+                        base = Math.max(base, window.innerHeight - launcher.getBoundingClientRect().top + 4);
                 }
                 // Measure every bubble before moving any of them: the toasts are position:fixed, so
                 // their heights do not depend on `bottom`, and interleaving the read with the write
@@ -88,7 +88,7 @@ var notify = (text, cat = "") => {
                 const heights = live.map((node) => node.getBoundingClientRect().height);
                 live.forEach((node, i) => {
                         node.style.bottom = `${base}px`;
-                        base += heights[i] + 6;
+                        base += heights[i] + 4;
                 });
         }
 
