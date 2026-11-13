@@ -528,10 +528,10 @@ private fun ensureEmptyDocumentWelcome(): HTMLElement? {
         z-index: 8;
         pointer-events: none;
         text-align: center;
-        color: rgba(255, 255, 255, 0.88);
+        color: var(--field-fg);
         padding: 24px 28px;
         border-radius: 8px;
-        background: rgba(18, 20, 24, 0.42);
+        background: rgba(var(--field-base-rgb), 0.42);
         backdrop-filter: blur(10px);
         opacity: 0;
         transition: opacity 180ms ease, transform 180ms ease;
@@ -540,7 +540,7 @@ private fun ensureEmptyDocumentWelcome(): HTMLElement? {
     """.trimIndent()
     root.innerHTML = """
         <div style="font-size:28px;font-weight:650;line-height:1.15;margin-bottom:8px;">Welcome to Field</div>
-        <div style="font-size:15px;line-height:1.45;color:rgba(255,255,255,0.72);">Press <b style="color:rgba(255,255,255,0.94);">n</b> to make a new box</div>
+        <div style="font-size:15px;line-height:1.45;color:var(--field-fg-soft);">Press <b style="color:var(--field-fg-bright);">n</b> to make a new box</div>
     """.trimIndent()
     mainViewport.appendChild(root)
     emptyDocumentWelcome = root
@@ -2843,7 +2843,22 @@ private fun updateCanvasPanLatchClass() {
     document.body?.classList?.toggle("canvas-pan-latched", canvasWheelLatchTimer != null || canvasDragLatched)
 }
 
+/*
+ * The reverse latch: a wheel gesture an output area took (something in it scrolled, or its content
+ * handled the event) stays with that area until the wheel is idle. Without it, trackpad momentum
+ * that carries a panel to the end of its scroll would hand the rest of the flick to the canvas and
+ * pan the whole document.
+ */
+private var outputWheelLatchTimer: Int? = null
+
+private fun latchOutputWheel() {
+    outputWheelLatchTimer?.let { window.clearTimeout(it) }
+    outputWheelLatchTimer = window.setTimeout({ outputWheelLatchTimer = null }, CANVAS_WHEEL_LATCH_MS)
+}
+
 private fun latchCanvasWheel(pane: CanvasPane) {
+    outputWheelLatchTimer?.let { window.clearTimeout(it) }
+    outputWheelLatchTimer = null
     canvasPanLatchPane = pane
     canvasWheelLatchTimer?.let { window.clearTimeout(it) }
     canvasWheelLatchTimer = window.setTimeout({
@@ -3829,12 +3844,13 @@ fun updateBackgroundGrid(translationX: Double, translationY: Double, panning: Bo
 
 fun initializeBackgroundGrid(host: HTMLElement) {
     mainViewport = host
-    host.style.backgroundColor = "rgb(20, 20, 20)"
+    // The theme's canvas colours (field.css --field-canvas-*), so this fallback agrees with the WebGL grid.
+    host.style.backgroundColor = "rgb(var(--field-canvas-center-rgb))"
     host.style.backgroundImage =
-        "linear-gradient(90deg, rgba(255,255,255,var(--axis-alpha)) 1px, rgba(255,255,255,0) 1px), " +
-                "linear-gradient(0deg, rgba(255,255,255,var(--axis-alpha)) 1px, rgba(255,255,255,0) 1px), " +
-                "radial-gradient(circle at 50% 50%, rgba(255,255,255,var(--dot-alpha-25)) 0.8px, rgba(255,255,255,0) 1.2px), " +
-                "radial-gradient(circle at 50% 50%, rgba(255,255,255,var(--dot-alpha-100)) 1.3px, rgba(255,255,255,0) 2.0px), " +
+        "linear-gradient(90deg, rgba(var(--field-canvas-ink-rgb),var(--axis-alpha)) 1px, rgba(var(--field-canvas-ink-rgb),0) 1px), " +
+                "linear-gradient(0deg, rgba(var(--field-canvas-ink-rgb),var(--axis-alpha)) 1px, rgba(var(--field-canvas-ink-rgb),0) 1px), " +
+                "radial-gradient(circle at 50% 50%, rgba(var(--field-canvas-ink-rgb),var(--dot-alpha-25)) 0.8px, rgba(var(--field-canvas-ink-rgb),0) 1.2px), " +
+                "radial-gradient(circle at 50% 50%, rgba(var(--field-canvas-ink-rgb),var(--dot-alpha-100)) 1.3px, rgba(var(--field-canvas-ink-rgb),0) 2.0px), " +
                 "var(--field-vignette-background)"
     host.style.backgroundRepeat = "no-repeat, no-repeat, repeat, repeat, no-repeat"
     host.style.backgroundSize =
@@ -5597,7 +5613,7 @@ var styles = CssBuilder().apply {
     }
 
     ".selected" {
-        borderColor = important(Color("rgba(var(--field-cyan-rgb), 0.78)"))
+        borderColor = important(Color("var(--field-box-selected-border)"))
     }
 
     ".doubleClickToEdit" {
@@ -6958,11 +6974,11 @@ suspend fun main() {
             overlay.style.apply {
                 position = "absolute"
                 maxWidth = "400px"
-                backgroundColor = "rgba(32, 32, 36, 0.9)"
-                color = "#e6e6e6"
+                backgroundColor = "var(--field-overlay)"
+                color = "var(--field-fg-body)"
                 padding = "5px 20px 5px 20px"
                 borderRadius = "8px"
-                boxShadow = "0 4px 12px rgba(0, 0, 0, 0.4)"
+                boxShadow = "var(--field-shadow-md)"
                 zIndex = "10000"
                 fontFamily =
                     "\"Iosevka\", \"Iosevka Term\", \"Iosevka Nerd Font\", \"Fira Code\", Menlo, Consolas, monospace"
@@ -7131,7 +7147,7 @@ suspend fun main() {
             style = CssBuilder().apply {
                 width = 100.vw
                 height = 100.vh
-                backgroundColor = rgb(20, 20, 20, 1.0)
+                backgroundColor = Color("var(--field-bg)")
                 padding = Padding(0.px)
                 margin = Margin(0.px)
             }.toString()
@@ -7229,9 +7245,18 @@ suspend fun main() {
         // Over an output panel the wheel belongs to the panel only if something there takes it: its
         // content handled the event, or an element between the target and the panel can still
         // scroll that way. Otherwise a panel that fills the window would trap pan and zoom.
+        val zooming = event.ctrlKey || event.metaKey
         val target = event.target as? HTMLElement
         val area = target?.closest(".outputArea") as? HTMLElement
-        if (area != null && (event.defaultPrevented || (!(event.ctrlKey || event.metaKey) && canScrollWithin(target, area, event.deltaX, event.deltaY)))) {
+        if (area != null && (event.defaultPrevented || (!zooming && canScrollWithin(target, area, event.deltaX, event.deltaY)))) {
+            if (!zooming) latchOutputWheel()
+            return@onwheel null
+        }
+        // The rest of a gesture an output area took (its momentum past the end of the scroll) is
+        // dropped rather than panning the canvas. A pinch is a new gesture and always zooms.
+        if (outputWheelLatchTimer != null && !zooming) {
+            event.preventDefault()
+            latchOutputWheel()
             return@onwheel null
         }
 
@@ -8048,11 +8073,11 @@ fun TagConsumer<HTMLElement>.createBox(
     val d1 = div(classes = "box offline") {
         style = CssBuilder().apply {
             position = Position.absolute
-            color = rgb(255, 255, 255, 0.8)
+            color = Color("var(--field-box-fg)")
             borderRadius = 5.px
-            backdropFilter = "blur(3px) saturate(2.5) contrast(1.1) brightness(0.9) hue-rotate(-38deg)"
+            backdropFilter = "var(--field-box-backdrop)"
             border = Border(1.px, BorderStyle.solid, rgb(255, 255, 255, 0.0))
-            backgroundColor = rgb(50, 50, 50, 0.5)
+            backgroundColor = Color("var(--field-box-bg)")
             display = Display.flex
             flexDirection = FlexDirection.row
             flexWrap = FlexWrap.wrap

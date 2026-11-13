@@ -316,8 +316,8 @@ private fun connect_center_with_terminal(
 
 private const val SELECTED_CONNECTION_COLOR = "var(--field-cyan)"
 private const val INCOMING_CONNECTION_COLOR = "var(--field-cyan)"
-private const val OUTGOING_CONNECTION_COLOR = "rgba(235, 150, 70, 0.9)"
-private const val UNSELECTED_CONNECTION_COLOR = "rgba(255,255,255,1.0)"
+private const val OUTGOING_CONNECTION_COLOR = "rgba(var(--field-warning-rgb), 0.9)"
+private const val UNSELECTED_CONNECTION_COLOR = "rgb(var(--field-white-rgb))"
 private const val HIGHLIGHTED_CONNECTION_VISIBILITY = 1.0
 private const val DIMMED_CONNECTION_VISIBILITY = 0.12
 private const val TERMINAL_MARKER_RADIUS = 3.25
@@ -331,7 +331,7 @@ private const val NESTED_PROXY_LABEL_FONT_SIZE = 10
 private const val NESTED_PROXY_LABEL_BG_PAD_X = 3.5
 private const val NESTED_PROXY_LABEL_BG_PAD_Y = 1.5
 private const val NESTED_PROXY_LABEL_BG_RADIUS = 2.5
-private const val NESTED_PROXY_LABEL_BG_FILL = "rgba(0,0,0,0.75)"
+private const val NESTED_PROXY_LABEL_BG_FILL = "rgba(var(--field-black-rgb), 0.75)"
 private const val OFFSCREEN_CONNECTION_LABEL_FONT_SIZE = 10
 private const val OFFSCREEN_CONNECTION_LABEL_OFFSET = 8.0
 private const val OFFSCREEN_CONNECTION_INSET = 10.0
@@ -1594,7 +1594,7 @@ class CanvasGestures(
             line.setAttribute("x2", x2.toString())
             line.setAttribute("y2", y2.toString())
             val stripes = hintStroke(box)
-            line.setAttribute("stroke", stripes ?: "rgba(255,255,255,0.35)")
+            line.setAttribute("stroke", stripes ?: "rgba(var(--field-white-rgb), 0.35)")
             if (stripes != null) line.setAttribute("opacity", "0.75")
             uidOrNull(box)?.let { line.setAttribute("data-box-uid", it) }
             // This layer is drawn in world units; keep the hint 4 screen pixels wide at any zoom.
@@ -2445,7 +2445,7 @@ fun addArrowHeadToCubicSpline(
         close()
         stroke = color ?: SELECTED_CONNECTION_COLOR
         strokeWidth = 2.0+(1-opacity)*2.0
-        fill = color ?: "rgba(255,255,255,$opacity)"
+        fill = color ?: "rgba(var(--field-white-rgb), $opacity)"
         this.path.setAttribute("opacity", opacity.toString())
         appendTo(svg)
     }
@@ -2470,7 +2470,7 @@ fun addArrowHead(svg: SVGElement, tip: Point, heading: Double, opacity: Double =
         close()
         stroke = color ?: SELECTED_CONNECTION_COLOR
         strokeWidth = 2.0 + (1 - opacity) * 2.0
-        fill = color ?: "rgba(255,255,255,$opacity)"
+        fill = color ?: "rgba(var(--field-white-rgb), $opacity)"
         this.path.setAttribute("opacity", opacity.toString())
         appendTo(svg)
     }

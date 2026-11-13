@@ -238,7 +238,7 @@ private fun label(layer: SVGElement, x: Double, y: Double, text: String, color: 
     t.setAttribute("font-size", (11 * px).toString())
     t.setAttribute("font-family", "Iosevka, monospace")
     t.setAttribute("fill", color)
-    t.setAttribute("stroke", "rgba(20, 20, 20, 0.85)")
+    t.setAttribute("stroke", "rgba(var(--field-base-rgb), 0.85)")
     t.setAttribute("stroke-width", (3 * px).toString())
     t.setAttribute("paint-order", "stroke")
     t.textContent = text

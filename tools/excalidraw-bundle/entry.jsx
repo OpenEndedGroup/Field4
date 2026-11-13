@@ -120,10 +120,18 @@ export function mountDrawingLayer(host, opts) {
 
     const onScrollChange = (x, y, zoom) => opts.onCamera(x, y, zoom.value);
 
+    // Field's colour theme (theme.js). Excalidraw's dark theme draws the scene through an inverting
+    // filter, so a scene reads the same way, ink on paper, in either theme.
+    const fieldTheme = () => (window.FieldTheme && window.FieldTheme.isLight() ? "light" : "dark");
+
     function DrawingLayer() {
         const [active, setActive] = useState(pendingActive);
+        const [theme, setTheme] = useState(fieldTheme);
         useEffect(() => {
             setActiveState = setActive;
+            const onTheme = () => setTheme(fieldTheme());
+            window.addEventListener("field-theme-change", onTheme);
+            return () => window.removeEventListener("field-theme-change", onTheme);
         }, []);
         return (
             <Excalidraw
@@ -150,7 +158,7 @@ export function mountDrawingLayer(host, opts) {
                     },
                     scrollToContent: false,
                 }}
-                theme="dark"
+                theme={theme}
                 viewModeEnabled={!active}
                 zenModeEnabled={!active}
                 handleKeyboardGlobally={false}

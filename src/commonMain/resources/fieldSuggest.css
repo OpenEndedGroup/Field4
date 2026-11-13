@@ -230,10 +230,17 @@
     gap: 8px;
     align-items: center;
     margin-top: 10px;
-    padding-top: 8px;
+    /* The rule runs through the doc pane's right padding to its edge, like the pane's own
+       rules; the matching padding keeps the value in line with the text above. */
+    margin-right: -12px;
+    padding: 8px 12px 0 0;
     border-top: 1px solid var(--field-border-soft);
     color: var(--field-fg-dim);
     font-size: 10px;
+}
+
+.afield-suggest-doc-source > :last-child {
+    text-align: right;
 }
 
 .afield-suggest-doc-source code {
@@ -321,7 +328,10 @@
 
 .afield-suggest-receiver-doc {
     margin-top: 12px;
-    padding-top: 10px;
+    /* Like the source rows: the rule reaches the pane's right edge, the padding keeps the
+       text column, and the source rows inside still reach the edge through it. */
+    margin-right: -12px;
+    padding: 10px 12px 0 0;
     border-top: 1px solid var(--field-border-soft);
 }
 
@@ -625,10 +635,17 @@
     gap: 8px;
     align-items: center;
     margin-top: 10px;
-    padding-top: 8px;
+    /* The rule runs through the doc pane's right padding to its edge, like the pane's own
+       rules; the matching padding keeps the value in line with the text above. */
+    margin-right: -14px;
+    padding: 8px 14px 0 0;
     border-top: 1px solid var(--field-border-soft);
     color: var(--field-fg-dim);
     font-size: 10px;
+}
+
+.afield-palette-doc-source > :last-child {
+    text-align: right;
 }
 
 .afield-palette-doc-source code {
@@ -730,19 +747,19 @@
 .afield-line-note {
   margin: 0 0 10px;
   padding: 0 0 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--field-border-subtle);
 }
 .afield-line-note img {
   display: block;
   max-width: 100%;
   max-height: 180px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--field-border-soft);
 }
 .afield-line-note figcaption {
   margin-top: 4px;
   font-size: 11px;
   line-height: 1.35;
-  color: #9a9aa0;
+  color: var(--field-line-note-caption);
 }
 /* What the line came to, in the face value visualizers use; its results in bold and brighter. */
 .afield-line-note-value {
@@ -750,24 +767,24 @@
   font-family: "Iosevka Web", monospace;
   font-size: 12px;
   line-height: 1.4;
-  color: #b8b8be;
+  color: var(--field-line-note-value);
   font-feature-settings: "calt" 1, "dlig" 1;
 }
 .afield-line-note-value strong {
   font-weight: 700;
-  color: #f2f2f5;
+  color: var(--field-line-note-strong);
 }
 .afield-line-note figcaption.afield-line-note-meta {
   margin-top: 2px;
   font-size: 10px;
-  color: #7c7c84;
+  color: var(--field-line-note-meta);
 }
 /* Beside the cursor, smaller, under the word's note. */
 .hoverlay-left .afield-line-note {
   margin: 6px 0 0;
   padding: 6px 0 0;
   border-bottom: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--field-border-subtle);
 }
 /* With no word's note above it, the rule and its gap separate the note from nothing. */
 .hoverlay-left .afield-line-note:first-child {
