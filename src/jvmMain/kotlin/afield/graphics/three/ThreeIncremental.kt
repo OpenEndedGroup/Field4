@@ -68,6 +68,9 @@ internal class ThreeRigidParts {
             val p0 = from.attributes["position"]?.takeIf { it.itemSize == 3 }?.array ?: return null
             val p1 = to.attributes["position"]?.takeIf { it.itemSize == 3 }?.array ?: return null
             if (p0.size != p1.size || p0.size < 3) return null
+            // The same arrays (an unchanged part, prepared once): nothing moved.
+            if (p0 === p1 && from.attributes["normal"]?.array === to.attributes["normal"]?.array &&
+                sameIndex(from.index, to.index) && from.attributes.all { (k, v) -> v.array === to.attributes.getValue(k).array }) return IDENTITY
             if (!sameIndex(from.index, to.index)) return null
             for ((name, a) in from.attributes) {
                 if (name == "position" || name == "normal") continue

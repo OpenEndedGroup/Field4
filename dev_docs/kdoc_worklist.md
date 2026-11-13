@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24168 of 40732 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24183 of 40748 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2039 undocumented entry points** (types, top-level functions and values) and 13809 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2039 undocumented entry points** (types, top-level functions and values) and 13810 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -29,7 +29,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RectSLStudyTools.kt](../src/jvmMain/kotlin/afield/lang/rectsl/study/RectSLStudyTools.kt) | Languages | rectsl_conversation | 14 | 17 | 21% |
 | [Oscillators.kt](../src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt) | Synthesis | explainer_sound, csound, distributions | 13 | 42 | 41% |
 | [StackSLStudyTools.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLStudyTools.kt) | Languages | stacksl_conversation | 13 | 16 | 21% |
-| [ThreeJsViewer.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeJsViewer.kt) | Graphics | three_output, fline_examples | 11 | 70 | 37% |
+| [ThreeJsViewer.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeJsViewer.kt) | Graphics | three_output, fline_examples | 11 | 70 | 38% |
 | [PuppetBrowser.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowser.kt) | Imaging | puppet_browser | 11 | 70 | 10% |
 | [StackSL.kt](../src/jvmMain/kotlin/afield/lang/stacksl/StackSL.kt) | Languages | stacksl_examples | 11 | 47 | 15% |
 | [Filters.kt](../src/jvmMain/kotlin/afield/audio/synth/Filters.kt) | Synthesis | subharmonic_sound, agent_transcripts | 11 | 28 | 15% |
@@ -258,7 +258,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FrameProfile.kt](../src/jvmMain/kotlin/afield/app/diagnostics/FrameProfile.kt) | Workspace | profiling_timeline | 0 | 3 | 66% |
 | [PatPianoRollGallery.kt](../src/jvmMain/kotlin/afield/audio/synth/PatPianoRollGallery.kt) | Patterns | pattern_language | 0 | 3 | 82% |
 | [stdlib_properties.kt](../src/jvmMain/kotlin/afield/document/properties/stdlib_properties.kt) | Workspace | running_code | 0 | 3 | 78% |
-| [Three.kt](../src/jvmMain/kotlin/afield/graphics/three/Three.kt) | Graphics | three_output, geometry_from_disk, polytope_examples | 0 | 3 | 92% |
+| [Three.kt](../src/jvmMain/kotlin/afield/graphics/three/Three.kt) | Graphics | three_output, geometry_from_disk, polytope_examples | 0 | 3 | 93% |
 | [MqttBox.kt](../src/jvmMain/kotlin/afield/io/mqtt/MqttBox.kt) | Networking | mqtt | 0 | 3 | 87% |
 | [Syphon.kt](../src/jvmMain/kotlin/afield/io/syphon/Syphon.kt) | Graphics | syphon | 0 | 3 | 82% |
 | [MorphoSearchFLines.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoSearchFLines.kt) | Languages | morpho_search | 0 | 3 | 72% |
@@ -1156,6 +1156,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ReadingTextBlurEnergySmoke.kt](../src/jvmMain/kotlin/afield/graphics/scene/reading/ReadingTextBlurEnergySmoke.kt) | Graphics | — | 0 | 1 | 50% |
 | [VideoMaterialCadence.kt](../src/jvmMain/kotlin/afield/graphics/scene/video/VideoMaterialCadence.kt) | Graphics | — | 0 | 1 | 66% |
 | [ShaderLearningChecks.kt](../src/jvmMain/kotlin/afield/graphics/shader/learning/ShaderLearningChecks.kt) | Graphics | — | 0 | 1 | 66% |
+| [ThreePartStyle.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreePartStyle.kt) | Graphics | — | 0 | 1 | 87% |
 | [ImageLayouts.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/ImageLayouts.kt) | Graphics | — | 0 | 1 | 75% |
 | [MacHdrActivator.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/MacHdrActivator.kt) | Graphics | — | 0 | 1 | 50% |
 | [PhysicalDevice.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/PhysicalDevice.kt) | Graphics | — | 0 | 1 | 93% |
