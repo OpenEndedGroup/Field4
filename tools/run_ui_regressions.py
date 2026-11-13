@@ -4322,6 +4322,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="three-motion",
+            description="Declared motions play on the standard viewer's timeline: scrub, play, rest, tints and tracks from per-step values, kept across a redraw.",
+            commands=[
+                "new-box --name Motion",
+                shell_join(["run", "@last", "--file", str(REPO_ROOT / "tools/ui_regressions/three-motion.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(REPO_ROOT / "tools/ui_regressions/three-motion.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="three-figure-mode",
             description="A three viewer moved into a presentation figure's host drops its grey background and HUD; on the canvas it keeps both.",
             commands=[

@@ -826,6 +826,42 @@ three(name = "contacts", width = 760, height = 320) {
 A colour a reviewer set on the stored part appearance wins over the box's style. None of layers, metadata or
 styles changes a part's review identity.
 
+## Parts that move
+
+A part can carry a declared motion — an `afield.geometry.kinematics.RigidMotion`, a rotation about an axis or
+a slide along a direction, with a range — and the viewer plays it. The toolbar gets **Play**, a scrubber and
+**At rest**; playing runs every motion from its `from` to its `to` and back on one timeline. A
+`ThreeMotionTrack` gives a value at each step of the motion, a clearance gap say, with the bands that colour
+it: the part glows in its band's colour while it is there, the readout names the worst part and by how much,
+and **Tracks** draws the paths of the track's points coloured step by step.
+
+```diffstatic {data-lang=kotlin}
+val swing = RigidMotion.rotation(vec(0.0, 0.0, 0.0), vec(0.0, 0.0, 1.0), 0.0, 90.0)
+val values = (0..18).map { it * 5.0 }
+val gaps = values.map { 1.1 - 0.9 * Math.cos(Math.toRadians(it)) }
+three(name = "door") {
+    mesh(door, id = "door", wireframe = false)
+    mesh(wall, id = "wall", wireframe = false)
+    motion(
+        "door",
+        motion = swing,
+        track = ThreeMotionTrack(
+            values,
+            gaps,
+            unit = "m",
+            bands = [ThreeTintBand.under(0.3, "under 0.3 m"), ThreeTintBand.near(0.5, "near")],
+            points = ThreeMotionTrack.points(vec(0.9, 0.0, 0.05)),
+        ),
+    )
+    timeline(periodSeconds = 6.0)
+}
+```
+
+`motion(...)` names the part ids that move together (a leaf and its glass), and `at` the motion value the
+geometry is drawn at, which **At rest** shows. The motion goes to the viewer as its own JSON, so the viewer
+plays the motion a clearance check walked; the track is plain numbers. From a page, `FieldViewer.motion` has
+`play()`, `at(t)`, `rest()`, `tracks()` and `status()`. A redraw keeps the timeline where it was.
+
 ## Redrawing a scene as it changes
 
 Call `three { … }` again with the same name and the view on screen is updated rather than replaced, and only
