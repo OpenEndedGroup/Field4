@@ -6,18 +6,58 @@ This runs the GLSL the compiler emits: the same interpreter that renders the [ga
 
 ## Tiles that prove themselves
 
-`StackSLIntervals.tilePicture(program)` renders a program and, beside it, splits the image into squares. A square whose colour range is narrower than the tolerance (two 8-bit levels, by default) is **settled**: proven flat without rendering a single pixel of it. A square that isn't settled is split into four, down to single pixels.
+The box below renders a program and, beside it, splits the image into squares. A square whose colour range is narrower than the tolerance (two 8-bit levels, by default) is **settled**: proven flat without rendering a single pixel of it. A square that isn't settled is split into four, down to single pixels.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stacksl_intervals/ring.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1100" timeout="120" name="stacksl-intervals-ring"}
 :::static
-import afield.lang.stacksl.cpu.StackSLIntervals
+:::fold imports
+import afield.lang.stacksl.cpu.*
 
-display("tiles", StackSLIntervals.tilePicture("p length 0.5 0.08 pulse white *"))
+:::endfold
+
+val program = "p length 0.5 0.08 pulse white *"
+val dim = 128
+val tolerance = 2f / 255f
+val minSize = 1
+val time = 1.75f
+require(dim > 0 && dim and (dim - 1) == 0) { "dim must be a power of two" }
+
+val glsl = StackSLCpu.expandStackAuto(StackSLCpu.stillTemplate(time), program)
+val shader = parseGlslShader(glsl) // reuse the parsed source for every rectangle
+val render = StackSLCpu.renderFragment(glsl, dim, dim)
+val start = System.nanoTime()
+var enclosures = 0
+val tiles = mutableListOf<StackSLTile>()
+fun visit(x: Int, y: Int, size: Int) {
+    val bound = StackSLIntervals.enclosePixels(shader, x, y, x + size - 1, y + size - 1, dim, dim)
+    enclosures++
+    val settled = bound.certified && !bound.maybeNaN && bound.width <= tolerance
+    if (settled || size <= minSize || !bound.certified) {
+        tiles += StackSLTile(x, y, size, bound, settled)
+        return
+    }
+    val half = size / 2
+    visit(x, y, half)
+    visit(x + half, y, half)
+    visit(x, y + half, half)
+    visit(x + half, y + half, half)
+}
+visit(0, 0, dim)
+val elapsedMillis = (System.nanoTime() - start) / 1_000_000
+:::fold put the rendered pixels beside the proven tiles
+val picture = StackSLTilePicture(program, dim, tolerance, tiles, render, enclosures, elapsedMillis)
+display("tiles", picture)
+:::endfold
 ```
 
 The soft ring (left) and its proof (right). Each square on the right is filled with the colour it was proven to have and outlined. The black inside and outside the ring settles in large squares; the squares shrink towards the ring's soft edge, where the colour changes from one pixel to the next. Most of the image is proven by squares bigger than one pixel.
 
 A single pixel is always settled, because a pixel is one input, and one input gives exactly the value the renderer computes.
+
+[`StackSLIntervals`](reference/languages.md#stackslintervals-kt-stackslintervals) also packages this loop as
+[`tilePicture`](reference/languages.md#stackslintervals-kt--stackslintervals--tilepicture), used below.
+[`enclosePixels`](reference/languages.md#stackslintervals-kt--stackslintervals--enclosepixels)
+accepts the parsed shader so subdivision does not parse it again for each square.
 
 ## How fast the bound tightens
 

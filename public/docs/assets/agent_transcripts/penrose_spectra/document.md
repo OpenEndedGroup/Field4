@@ -51,7 +51,7 @@ markdown(
 <!-- field-box id="ps_strike" index="1" -->
 
 ```edn [field-box id="ps_strike" role="properties"]
-{"id" "ps_strike" "index" 1 "name" "5 - strike three vertices" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - strike three vertices" "_tombstone" false "frame" #afield/rect [60.0 1460.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_strike_code_.kt" "lines" 49 "characters" 1920 "sha256" "0b0c2702c29e560b9c534bc3550e7e04ba2c47bc42d3424575f43479938bd158"}]}
+{"id" "ps_strike" "index" 1 "name" "5 - strike three vertices" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - strike three vertices" "_tombstone" false "frame" #afield/rect [60.0 1460.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_strike_code_.kt" "lines" 57 "characters" 2250 "sha256" "57dc1851274a9e209501b08bc8e19152e45b106372b7923381a92710de9c6b2d"}]}
 ```
 
 ```kotlin [field-property box="ps_strike" name="code" path="ps_strike_code_.kt"]
@@ -59,13 +59,21 @@ import afield.audio.modal.*
 
 // A Penrose patch and a square lattice as spring networks with equal stiffness, so E = 0 rings
 // at 220 Hz in both. Each row, top to bottom: strike energy against pitch for one struck vertex.
-val penrose = PenroseSpectraDocs.penrose()
-val square = PenroseSpectraDocs.square()
-val pm = penrose.springModes(PenroseSpectraDocs.STIFFNESS)
-val sm = square.springModes(PenroseSpectraDocs.STIFFNESS)
+val stiffness = 8.0
+val penrose = deBruijnTiling(symmetry = 5, radius = 6.0, scale = 1.0).vertexGraph()
+val square = TilingGraph.squareLattice(radius = 19.0)
+val pm = penrose.springModes(stiffness)
+val sm = square.springModes(stiffness)
+
+// Stay away from the boundary: compare a confined mode's strongest vertex with
+// an unconfined, highly connected vertex in the same interior region.
+val interior = penrose.interior(0.5 * penrose.extent)
+val weights = pm.spectrum.zeroWeights()
+val confined = interior.maxBy { weights[it] }
+val open = interior.filter { weights[it] < 1e-9 }.maxBy { penrose.degree(it) * 1000 - it }
 val strikes = [
-    Triple("Penrose, most confined weight", pm, PenroseSpectraDocs.strikeVertex(penrose, pm, true)),
-    Triple("Penrose, seven-edged vertex", pm, PenroseSpectraDocs.strikeVertex(penrose, pm, false)),
+    Triple("Penrose, most confined weight", pm, confined),
+    Triple("Penrose, seven-edged vertex", pm, open),
     Triple("square lattice, centre", sm, square.nearest(square.centre.first, square.centre.second)),
 ]
 val out = ArrayList<FLine>()

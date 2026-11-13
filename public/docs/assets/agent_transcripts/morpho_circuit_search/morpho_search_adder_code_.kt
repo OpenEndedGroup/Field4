@@ -2,8 +2,52 @@ import afield.lang.morpho.*
 
 // The result this branch set out to get, and did not. Reported because the alternative is
 // to quietly not mention it.
-val free = MorphoProblems.recursiveAdder()
-val guided = MorphoProblems.guidedRecursiveAdder()
+val widths = [2, 4, 8]
+val maxStatements = 10
+val designWidth = 8
+val rootName = "evolved"
+val palette = MorphoPalette.standard
+val spec = MorphoSpec(
+    name = rootName,
+    inputRoles = [MorphoPortRole.BUS, MorphoPortRole.BUS, MorphoPortRole.BIT],
+    outputRoles = [MorphoPortRole.BUS, MorphoPortRole.BIT],
+    widths = widths,
+) { inputs, width ->
+    val total = inputs[0] + inputs[1] + inputs[2]
+    longArrayOf(total and ((1L shl width) - 1), total ushr width)
+}
+val declarations = palette.declarations() + "\n\n" + morphoCellSource("full_adder")
+fun adderProblem(given: List<MorphoStatement>): MorphoProblem {
+    val sketch = MorphoCellSketch(
+        name = rootName,
+        inputs = ["a", "b", "c"],
+        inputRoles = spec.inputRoles,
+        outputRoles = spec.outputRoles,
+        palette = palette,
+        fallback = "full_adder",
+        designWidth = designWidth,
+        minStatements = 3,
+        maxStatements = maxStatements,
+        prologue = given,
+    )
+    val guided = given.isNotEmpty()
+    return MorphoProblem(
+        if (guided) "guided recursive adder" else "recursive adder",
+        spec,
+        MorphoProgramGenerator([sketch], declarations),
+        if (guided) "the two SPLITs are given and unremovable; the recursion and the recombination are searched"
+        else
+            "the divide-and-conquer body, over SPLIT / CAT / self-call / standard cells, with morpho's own full_adder as the given base case",
+    )
+}
+val free = adderProblem([])
+// The guided search receives exactly these two fixed statements; everything else is shared.
+val guided = adderProblem(
+    [
+        MorphoStatement(["a0", "a1"], "SPLIT", ["a"]),
+        MorphoStatement(["b0", "b1"], "SPLIT", ["b"]),
+    ],
+)
 val budget = 6000
 val runs = [
     MorphoSearch.random(free.spec, free.generator, budget, seed = 1),

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "interval",
+    "oldSize": [
+      2472,
+      1467
+    ],
+    "newSize": [
+      2472,
+      1467
+    ],
+    "bytes": 297445,
+    "differentPixels": 106524,
+    "pixelsOver3": 105436,
+    "totalPixels": 3626424
+  },
+  {
+    "name": "recursion",
+    "oldSize": [
+      3093,
+      2898
+    ],
+    "newSize": [
+      3093,
+      2898
+    ],
+    "bytes": 744757,
+    "differentPixels": 1177,
+    "pixelsOver3": 144,
+    "totalPixels": 8963514
+  },
+  {
+    "name": "adder",
+    "oldSize": [
+      2865,
+      1680
+    ],
+    "newSize": [
+      2865,
+      1680
+    ],
+    "bytes": 261736,
+    "differentPixels": 627,
+    "pixelsOver3": 87,
+    "totalPixels": 4813200
+  }
+]

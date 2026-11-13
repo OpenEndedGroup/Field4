@@ -1,0 +1,23 @@
+{
+  "probes": {
+    "passed": [
+      "same graphs, mode weights and chosen strike vertices",
+      "smaller patch, same interior-selection rules"
+    ],
+    "sources": [
+      {
+        "path": "public/docs/debruijn_tilings.md",
+        "name": "penrose-spectra-strike",
+        "fenceSha256": "cf31731bf2ea5eaf04141fbd84cdf80fd90cfaa8ec8ef4c3b560b4369b686a32"
+      }
+    ]
+  },
+  "captures": [
+    {
+      "path": "public/docs/debruijn_tilings.md",
+      "name": "penrose-spectra-strike",
+      "asset": "assets/penrose_spectra/strike.png",
+      "fenceSha256": "cf31731bf2ea5eaf04141fbd84cdf80fd90cfaa8ec8ef4c3b560b4369b686a32"
+    }
+  ]
+}

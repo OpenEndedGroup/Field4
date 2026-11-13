@@ -1,0 +1,13 @@
+{
+  "metricMaxDelta": 0,
+  "changedTargetMatches": true,
+  "objectiveMaxDelta": 0,
+  "launch": "Container",
+  "backgroundBuildCount": 1,
+  "predictionMatches": true,
+  "samples": 4,
+  "sourceSha256": "33c6722cb81c324171a44c4800769e521dd16a88a5a14f50585590c64bdd6f36",
+  "canonicalSource": "dev_docs/agents/transcripts/kratos_parameter_study.yaml",
+  "verifiedFactorySourceSha256": "2191034ac11a2d59665b7897ad43a80efbf9f10a91ccbed7cd7b7eeb3c912c82",
+  "scope": "Actual canonical imports, parameters and factories, followed by real native grid comparisons; worker selection and status UI are verified separately."
+}
