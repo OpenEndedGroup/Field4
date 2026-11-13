@@ -1,0 +1,1424 @@
+[
+  {
+    "id": "dev_docs/agents/demos/path_tracer_instrument/pt_tracer_code_.kt#source",
+    "baselineSha256": "7062b37abed4b6e43a7b05399bd26d96243fda872295afc67244465485d70649",
+    "calls": [
+      {
+        "call": "PathTraceDemo.install",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/demos/skinned_characters/c82c404d-a15d-4f51-a06f-66dfc2a00364_code_.kt#source",
+    "baselineSha256": "09433e1e57c9a0738588e9b8e160e2a3f05f63f4553f962b250f54ce398277a4",
+    "calls": [
+      {
+        "call": "RiggedFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/demos/skinned_characters/drag_time_code_.kt#source",
+    "baselineSha256": "ad1e1a24b34f943b380fc69bd299ef2be4d45b19fc10d4e91db8f8aa3da01e54",
+    "calls": [
+      {
+        "call": "RiggedFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/demos/skinned_characters/gpu_crowd_code_.kt#source",
+    "baselineSha256": "302e3aa45e223fdd8dc38188fa21e8eb1153af26b3ab1945f918e6890df52aed",
+    "calls": [
+      {
+        "call": "RiggedFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/demos/skinned_characters/gpu_skin_code_.kt#source",
+    "baselineSha256": "03b70a205b09fa9ed81e67cd3d4b86420ba568e2d0282e0460fcaba3fb90158a",
+    "calls": [
+      {
+        "call": "RiggedFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/demos/skinned_characters/gpu_twist_code_.kt#source",
+    "baselineSha256": "83dc2db4836915c7870c5f8a1e06b17ee14f46ae00d832a6f2ac4caab71a7e9c",
+    "calls": [
+      {
+        "call": "RiggedFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/demos/skinned_characters/path_trace_code_.kt#source",
+    "baselineSha256": "a655ae7c35d99359ceb78e759bf4b20e51590e2ee911f69b330bb4baa5b93184",
+    "calls": [
+      {
+        "call": "RiggedFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/demos/skinned_characters/rig_facts_code_.kt#source",
+    "baselineSha256": "ca380073e998ea6ca4a728ffecd3fcb8f21850810ec45f829a5c35d060cc54c0",
+    "calls": [
+      {
+        "call": "RiggedFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/drawn_score.yaml#yaml/operations/3/create/properties/code",
+    "baselineSha256": "fc0fce6244537fa26fcbf3ed872ac0b0d3d9f0d546fee8524bc46d641349b10b",
+    "calls": [
+      {
+        "call": "DrawnScoreDocs.interpret",
+        "decision": "reuse_of_implementation_already_shown"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/drawn_score.yaml#yaml/operations/4/create/properties/code",
+    "baselineSha256": "f9872cefa66577c717b09d98bcc64dac0cbafd13bb3925b30e01f67debf8cf5e",
+    "calls": [
+      {
+        "call": "DrawnScoreDocs.interpret",
+        "decision": "reuse_of_implementation_already_shown"
+      },
+      {
+        "call": "DrawnScoreDocs.listen",
+        "decision": "implementation_opened_at_first_use"
+      },
+      {
+        "call": "DrawnScoreDocs.pentatonic",
+        "decision": "reuse_of_implementation_already_shown"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/kratos_parameter_study.yaml#yaml/operations/0/create/properties/code",
+    "baselineSha256": "a6f5c16d02f4645f384b296bbaf3d7cb556433848e1c18ad11f6717bda0f968c",
+    "calls": [
+      {
+        "call": "KratosDemo.body",
+        "decision": "pending"
+      },
+      {
+        "call": "KratosStudyDemo.predictedConductivity",
+        "decision": "pending"
+      },
+      {
+        "call": "KratosStudyDemo.study",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/kratos_thermal_playground.yaml#yaml/operations/0/create/properties/code",
+    "baselineSha256": "fe91a6ec1eda425bc3c432d2e8d3998dab120580d1a2f6168578286ec785e5df",
+    "calls": [
+      {
+        "call": "KratosDemo.body",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/path_tracer_instrument.yaml#yaml/operations/1/create/properties/code",
+    "baselineSha256": "7062b37abed4b6e43a7b05399bd26d96243fda872295afc67244465485d70649",
+    "calls": [
+      {
+        "call": "PathTraceDemo.install",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/path_tracing_glass.yaml#yaml/operations/1/create/properties/code",
+    "baselineSha256": "d0ddb4041d377072233e5c111cbea6b005de56098d8607d3fb2640c893bbb611",
+    "calls": [
+      {
+        "call": "PathTraceGlassDemo.install",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/path_tracing_hidden_environment.yaml#yaml/operations/1/create/properties/code",
+    "baselineSha256": "20bb6540626e2fc0e2559fe317714e6f2559072717000737ac7da3173b8eeca6",
+    "calls": [
+      {
+        "call": "PathTraceDemo.install",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/path_tracing_materials.yaml#yaml/operations/1/create/properties/code",
+    "baselineSha256": "f767b5a269884a701c1c03d9ff07ca541d09715cd61ec9db4285859f685a5e6a",
+    "calls": [
+      {
+        "call": "PathTraceDemo.install",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/pattern_language_composition.yaml#yaml/operations/3/create/properties/code",
+    "baselineSha256": "c91ce3e3137d3c6e8bdc05135403e02a8017592feb2c9a14d5c04c37c97b73d6",
+    "calls": [
+      {
+        "call": "PatSoundDocs.onsetPeaks",
+        "decision": "measurement_primitive_with_visible_inputs"
+      },
+      {
+        "call": "PatSoundDocs.variation",
+        "decision": "measurement_primitive_with_visible_inputs"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/penrose_spectra.yaml#yaml/operations/4/create/properties/code",
+    "baselineSha256": "0cab0ab28c5235add7440aab2e70865820dccc727479b67819e71883238eeb39",
+    "calls": [
+      {
+        "call": "PenroseSpectraDocs.penrose",
+        "decision": "implementation_opened_at_first_use"
+      },
+      {
+        "call": "PenroseSpectraDocs.square",
+        "decision": "implementation_opened_at_first_use"
+      },
+      {
+        "call": "PenroseSpectraDocs.strikeVertex",
+        "decision": "implementation_opened_at_first_use"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/skinned_characters.yaml#yaml/operations/1/create/properties/code",
+    "baselineSha256": "50c48bbaecc07a9a035d295399d8759cd6125a0d1ba22440b4de06f599bfda98",
+    "calls": [
+      {
+        "call": "RiggedFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/skinned_characters.yaml#yaml/operations/2/create/properties/code",
+    "baselineSha256": "ad1e1a24b34f943b380fc69bd299ef2be4d45b19fc10d4e91db8f8aa3da01e54",
+    "calls": [
+      {
+        "call": "RiggedFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/skinned_characters.yaml#yaml/operations/3/create/properties/code",
+    "baselineSha256": "9cf5ef56ed451a7c24d4bd2df9a53ee19564fd33a48ac4d9a511887295ac7af2",
+    "calls": [
+      {
+        "call": "RiggedFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/skinned_characters.yaml#yaml/operations/4/create/properties/code",
+    "baselineSha256": "1dc704e4f8552d3e2f9b9528adb101484e83b9bbe760cf62d3123300dfb30f3b",
+    "calls": [
+      {
+        "call": "RiggedFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/skinned_characters.yaml#yaml/operations/5/create/properties/code",
+    "baselineSha256": "54d585fb68525b107f8cbe7ff0186e49561840dbd9050d20c2d624be45d6346d",
+    "calls": [
+      {
+        "call": "RiggedFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/skinned_characters.yaml#yaml/operations/6/create/properties/code",
+    "baselineSha256": "302e3aa45e223fdd8dc38188fa21e8eb1153af26b3ab1945f918e6890df52aed",
+    "calls": [
+      {
+        "call": "RiggedFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/skinned_characters.yaml#yaml/operations/7/create/properties/code",
+    "baselineSha256": "83dc2db4836915c7870c5f8a1e06b17ee14f46ae00d832a6f2ac4caab71a7e9c",
+    "calls": [
+      {
+        "call": "RiggedFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/skinned_volume_path_trace.yaml#yaml/operations/1/create/properties/code",
+    "baselineSha256": "681ec5898d2163bba3bf87c29eff566adf3a34d8fba71e9ef2bd91848afedc71",
+    "calls": [
+      {
+        "call": "CappedTwistFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      },
+      {
+        "call": "CappedTwistFixture.secondsFor",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/sky_environment.yaml#yaml/operations/6/create/properties/code",
+    "baselineSha256": "c04730afbc11d1f393fe54b5918947c4b1f44cd13db5cdd847e1e6302f473826",
+    "calls": [
+      {
+        "call": "PathTraceDemo.install",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/sound_render_path.yaml#yaml/operations/1/create/properties/code",
+    "baselineSha256": "3273c33ee685de022b879c5453c7ea9260b2395e455ab2207202fbd6ad497e20",
+    "calls": [
+      {
+        "call": "PatSoundDocs.peak",
+        "decision": "measurement_primitive_with_visible_inputs"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/alife_examples.md#fence:2790",
+    "baselineSha256": "f6e0aa00bdb749b24bdfebc8df5326f4bc3bb27d5b771a4cfbf67fbce8c073d2",
+    "calls": [
+      {
+        "call": "GrainSetSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/alife_examples.md#fence:2844",
+    "baselineSha256": "4fc9d9a1ce7c0a571875b9c7fb7dc931b383e3c0984b290b4ac3bb84b4df16c8",
+    "calls": [
+      {
+        "call": "GrainSetSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/alife_examples.md#fence:2907",
+    "baselineSha256": "4680c8098e33bad44edbfb11c8121348b04700d4d17948e6895885e3c0c5d4b2",
+    "calls": [
+      {
+        "call": "GrainSetSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/alife_examples.md#fence:2968",
+    "baselineSha256": "7edabd700ffb08bfb6c3caf488c3c6a41e4ff19befb32e43f11d3dcb7e4a0107",
+    "calls": [
+      {
+        "call": "GrainSetSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/boolean_network_music_examples.md#fence:75",
+    "baselineSha256": "c188b1c13b292dbd1a7d1375094020a5ae5c9869a7d00e7216640dfdcb4abf50",
+    "calls": [
+      {
+        "call": "BooleanNetworkSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/boolean_network_music_examples.md#fence:127",
+    "baselineSha256": "966c4dae1c3a0c93210cf1d70e24d7ccf8d0fad78bc9a6ee7c90388f108eb141",
+    "calls": [
+      {
+        "call": "BooleanNetworkSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/boolean_network_music_examples.md#fence:264",
+    "baselineSha256": "2bc3136ef1043245f8e490b687fd753763ecfe0bbe304a6ef000c4074796f79d",
+    "calls": [
+      {
+        "call": "BooleanNetworkSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/boolean_network_music_examples.md#fence:352",
+    "baselineSha256": "8e473a5c75dd0a781aef4c8ac95b981fec5e261169fbc6e844871b307789c97d",
+    "calls": [
+      {
+        "call": "BooleanNetworkSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/boolean_networks_examples.md#fence:279",
+    "baselineSha256": "13a2f25511afbf17d0be0e96d1a85f45219fe80bb1d803b0752ebcc739d91792",
+    "calls": [
+      {
+        "call": "BooleanNetworkSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_ca_sound.md#fence:115",
+    "baselineSha256": "cc9a15a1c04a6663f131107596dfeb39260a147d0827a854ccb029019349b10b",
+    "calls": [
+      {
+        "call": "CaSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_ca_sound.md#fence:121",
+    "baselineSha256": "912363359519ba69e1acca27723f2bb934556615ff1df99efb068ece41332860",
+    "calls": [
+      {
+        "call": "CaSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_ca_sound.md#fence:184",
+    "baselineSha256": "f2e8d8ed3a7f0dbf137c11a19cf3198a02835ccba444b01e0c54f7e9de76e77c",
+    "calls": [
+      {
+        "call": "CaSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_ca_sound.md#fence:193",
+    "baselineSha256": "e587e611bfeb9dcdf62b127d203a1e77caf80b9b24e7cbec5147315068a3801e",
+    "calls": [
+      {
+        "call": "CaSoundDocs.centreColumnBar",
+        "decision": "implementation_opened_at_first_use"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_drawn_morph.md#fence:152",
+    "baselineSha256": "f3c20ce32cb2d2fd5cc5d9ad54af5c0f8e29a645cdfbe0cacd6b343c9d838fe2",
+    "calls": [
+      {
+        "call": "DrawnMorphDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_drawn_morph.md#fence:158",
+    "baselineSha256": "dac11ec8d51408bc32b105816d61213e39ed249cff03704a533bba06a8d8ba6c",
+    "calls": [
+      {
+        "call": "DrawnMorphDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_drawn_morph.md#fence:168",
+    "baselineSha256": "26afc012b70db88895565c3661a49c90d50264df8f1d72d193c5aab13ac2aeed",
+    "calls": [
+      {
+        "call": "DrawnMorphDocs.morphNotes",
+        "decision": "reuse_of_implementation_already_shown"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_drawn_score.md#fence:125",
+    "baselineSha256": "5f38518de1465989023bd0ea98e05caa025e5bd4afc433cf655aceb22635a4b7",
+    "calls": [
+      {
+        "call": "DrawnScoreDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_drawn_score.md#fence:138",
+    "baselineSha256": "3faa309a49ffa0d4ba9eb514907f6a8c88181f3537e888497b66e4c7160546ac",
+    "calls": [
+      {
+        "call": "DrawnScoreDocs.interpret",
+        "decision": "reuse_of_implementation_already_shown"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_drawn_score.md#fence:164",
+    "baselineSha256": "c2ebb5ee4f0898ac2fbed5b56b5f401a52078f64ca2d5fd5c39429a21ce3a044",
+    "calls": [
+      {
+        "call": "DrawnScoreDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_drawn_score.md#fence:180",
+    "baselineSha256": "0f980973f14003fa55136b790020531560cd9d9e14a6c9a4bf72255f8f1904f8",
+    "calls": [
+      {
+        "call": "DrawnScoreDocs.interpret",
+        "decision": "reuse_of_implementation_already_shown"
+      },
+      {
+        "call": "DrawnScoreDocs.listen",
+        "decision": "implementation_opened_at_first_use"
+      },
+      {
+        "call": "DrawnScoreDocs.sceneNotes",
+        "decision": "independent_oracle"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_fn_sound_roundtrip.md#fence:40",
+    "baselineSha256": "21baa075bdeb9b6045253541bba00b9bfba3d3ad2ef99bcbbb92a8f36bc4af00",
+    "calls": [
+      {
+        "call": "FnSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_fn_sound_roundtrip.md#fence:46",
+    "baselineSha256": "c7fff8b7d1ebceacd2c9f80e604f5bf196d9bf55fbbb98753261bbfad577368c",
+    "calls": [
+      {
+        "call": "FnSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_fn_sound_roundtrip.md#fence:74",
+    "baselineSha256": "d1c60407e4f2a7675b8552bd2683b923c7c3e8cf1d68f5a0ea5f236071fc4d82",
+    "calls": [
+      {
+        "call": "FnSoundDocs.roundTrip",
+        "decision": "implementation_opened_at_first_use"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_fn_sound_roundtrip.md#fence:156",
+    "baselineSha256": "ef964441eae8b6d0f033d77e6545ee76262cb43901267d84aa54dd549ebb9547",
+    "calls": [
+      {
+        "call": "FnSoundDocs.roundTrip",
+        "decision": "implementation_opened_at_first_use"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_lambda_sound.md#fence:26",
+    "baselineSha256": "d8332b7fdce157c13277f32517e7c6fc14f73c121ad02152eb0ee21fdde0e645",
+    "calls": [
+      {
+        "call": "LambdaSoundDocs.trace",
+        "decision": "implementation_opened_at_first_use"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_lambda_sound.md#fence:77",
+    "baselineSha256": "7d163a21d836b04c015b1cbcd35a2367e27fa02f9ae4ed7301ed70fc9eff2730",
+    "calls": [
+      {
+        "call": "LambdaSoundDocs.corpusSweep",
+        "decision": "implementation_opened_at_first_use"
+      },
+      {
+        "call": "LambdaSoundDocs.ruleMultisetIsScheduleInvariant",
+        "decision": "implementation_opened_at_first_use"
+      },
+      {
+        "call": "LambdaSoundDocs.spellingsPerTerm",
+        "decision": "implementation_opened_at_first_use"
+      },
+      {
+        "call": "LambdaSoundDocs.stepCountIsScheduleInvariant",
+        "decision": "implementation_opened_at_first_use"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_lambda_sound.md#fence:136",
+    "baselineSha256": "d899f3578d4633939b0703ec4d57dde03cb003c7b177da5c4c5e626e68346950",
+    "calls": [
+      {
+        "call": "LambdaSoundDocs.answerIsScheduleInvariant",
+        "decision": "implementation_opened_at_first_use"
+      },
+      {
+        "call": "LambdaSoundDocs.betaIsScheduleInvariant",
+        "decision": "implementation_opened_at_first_use"
+      },
+      {
+        "call": "LambdaSoundDocs.traceAllOrders",
+        "decision": "implementation_opened_at_first_use"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_lambda_sound.md#fence:187",
+    "baselineSha256": "5a9bc163c4009f9c3163022dcb724b0ab44877bdaadbe8816350929cdb013cc3",
+    "calls": [
+      {
+        "call": "LambdaSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_lambda_sound.md#fence:194",
+    "baselineSha256": "a195cd5043351a776d0255c7d428339b37eb047a1f820501b5de9550f84b03a6",
+    "calls": [
+      {
+        "call": "LambdaSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_lambda_sound.md#fence:208",
+    "baselineSha256": "3a499888b22659d5749758dd46e65f8e1a6b3f54d6bb7d7436822802d0099721",
+    "calls": [
+      {
+        "call": "LambdaSoundDocs.trace",
+        "decision": "implementation_opened_at_first_use"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_lambda_sound.md#fence:218",
+    "baselineSha256": "4903b43c3c9cdf86857bd10cce4db5eed2b79d0e953c52c14ff30496fc830e74",
+    "calls": [
+      {
+        "call": "LambdaSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_pattern_particles.md#fence:62",
+    "baselineSha256": "8723e216d9b86525e29a1e8f0a9390a1fe138539385eb4ef266d4c19c5f5a765",
+    "calls": [
+      {
+        "call": "PatSynthDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_pattern_particles.md#fence:69",
+    "baselineSha256": "b980b1a27c1b881e1e6e190fb41e4f9e7e549a2c88a6c2d4f5398a09403a46a9",
+    "calls": [
+      {
+        "call": "PatSynthDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_pattern_particles.md#fence:76",
+    "baselineSha256": "98cefe1a7f449e90a4a4be3ab53005738792d7f4d153d9cea8629aac15e019e6",
+    "calls": [
+      {
+        "call": "PatSynthDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_pattern_particles.md#fence:86",
+    "baselineSha256": "f9c06e97a931c7afcbc02ed9c41f8d8a656d459755517c2f0ac6952a5c99f8da",
+    "calls": [
+      {
+        "call": "PatSynthDocs.bandSeries",
+        "decision": "implementation_opened_at_first_use"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_petri_sparks.md#fence:89",
+    "baselineSha256": "e66d0071d4dac9280b61f82ccd1657c354d13cb0130f544dc6c3ddd980be345b",
+    "calls": [
+      {
+        "call": "PetriSparksDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_skinned_volume.md#fence:48",
+    "baselineSha256": "6667783d608bb7be259df9dc8f0cfdf65ddc11dccd772e563c978a575d4a9b85",
+    "calls": [
+      {
+        "call": "CappedTwistFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      },
+      {
+        "call": "CappedTwistFixture.secondsFor",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/chain_skinned_volume.md#fence:92",
+    "baselineSha256": "5dc007fd9a86ebfe1a057efeb45f355b806890006e6535691015035445cf400b",
+    "calls": [
+      {
+        "call": "CappedTwistFixture.locate",
+        "decision": "fixture_input_or_time_conversion"
+      },
+      {
+        "call": "CappedTwistFixture.secondsFor",
+        "decision": "fixture_input_or_time_conversion"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/datalog.md#fence:523",
+    "baselineSha256": "e9c30fc658ad95320da29eddb85156f1c4823ac88132f2c456eaedacd758e6b4",
+    "calls": [
+      {
+        "call": "DatalogRhythmSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/datalog.md#fence:530",
+    "baselineSha256": "75cf6b4c74bc2ff95fa40263decb0e2ec99477848c68fc3d90728801aa37954f",
+    "calls": [
+      {
+        "call": "DatalogRhythmDirtDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/debruijn_tilings.md#fence:795",
+    "baselineSha256": "0cab0ab28c5235add7440aab2e70865820dccc727479b67819e71883238eeb39",
+    "calls": [
+      {
+        "call": "PenroseSpectraDocs.penrose",
+        "decision": "implementation_opened_at_first_use"
+      },
+      {
+        "call": "PenroseSpectraDocs.square",
+        "decision": "implementation_opened_at_first_use"
+      },
+      {
+        "call": "PenroseSpectraDocs.strikeVertex",
+        "decision": "implementation_opened_at_first_use"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/debruijn_tilings.md#fence:849",
+    "baselineSha256": "e934b05f94faeb82741590bb13876daeb9d081d5fc760884b4c8179fa5a2249d",
+    "calls": [
+      {
+        "call": "PenroseSpectraDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/debruijn_tilings.md#fence:855",
+    "baselineSha256": "0a58a58649c047e8924c6c98fb21d8d46f416b1d24256791e9ef48b264697d2b",
+    "calls": [
+      {
+        "call": "PenroseSpectraDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/debruijn_tilings.md#fence:861",
+    "baselineSha256": "e97795c35643afddab8df30ca3a60c5092bdc429151da552b1ca8779c999163c",
+    "calls": [
+      {
+        "call": "PenroseSpectraDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/distributions.md#fence:427",
+    "baselineSha256": "09778a80d37461467e4972d745faf2f1c5d568b2f3aaa29138bef736b10276b3",
+    "calls": [
+      {
+        "call": "DistributionSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/distributions.md#fence:453",
+    "baselineSha256": "46451fc5f800e08ce607f99632a9df65493fe3ccbe322e692d5c6c60f498ec8b",
+    "calls": [
+      {
+        "call": "DistributionSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/distributions.md#fence:494",
+    "baselineSha256": "7ac05c51a4836943f4dcd422592eb13bf1e504f210cd52369cf9a3736c6da425",
+    "calls": [
+      {
+        "call": "DistributionSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/distributions.md#fence:556",
+    "baselineSha256": "fea8756c1ba87407fa8735a86ea44ab387ef87980320407eead9aaba62337f7a",
+    "calls": [
+      {
+        "call": "DistributionSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/distributions.md#fence:649",
+    "baselineSha256": "7589d1478cbbeba6e9bb0fae51c4209d1332b34fd363b170d5ded34b4ea185c3",
+    "calls": [
+      {
+        "call": "DistributionSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/distributions.md#fence:819",
+    "baselineSha256": "38e0af306fc8160d896074a9a4861a83a972eefb74e1b644eb1dbc641a73fc7f",
+    "calls": [
+      {
+        "call": "DistributionSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/eigendrum.md#fence:85",
+    "baselineSha256": "056d4a31a81bad7d986a4bf87644ea0477e2d779a6de5d27c891fe3e9f62251e",
+    "calls": [
+      {
+        "call": "EigendrumDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/eigendrum.md#fence:137",
+    "baselineSha256": "74173bd9e68dfd6d70fea4086c05718e3822e48a574d0bfb6832b3612c1d6a9c",
+    "calls": [
+      {
+        "call": "EigendrumDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/eigendrum.md#fence:141",
+    "baselineSha256": "e345ac44425254b6140d071bbb1b44dea5935cc4b3834dc76cf6a56879d15ffd",
+    "calls": [
+      {
+        "call": "EigendrumDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/eigendrum.md#fence:194",
+    "baselineSha256": "e437ae850c2cebba7edf4dad576d671d6eb1c2598997f50cd175e92b91d9bf02",
+    "calls": [
+      {
+        "call": "EigendrumDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/eigendrum.md#fence:198",
+    "baselineSha256": "6208716fd5da7f08b2f20e3d390a4e0aed640fa91182540f5ce936c6d5b46487",
+    "calls": [
+      {
+        "call": "EigendrumDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/eigendrum.md#fence:370",
+    "baselineSha256": "732ded0096a8bcfc79382f546312d2b5edfd78d47d624a489006c7365b305fb4",
+    "calls": [
+      {
+        "call": "EigendrumDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/eigendrum.md#fence:376",
+    "baselineSha256": "08c244de0c97596340155205ae027e9320c55b982cf4bf5b815b608ef6eeda22",
+    "calls": [
+      {
+        "call": "EigendrumDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/eigendrum.md#fence:554",
+    "baselineSha256": "c061d46fc9bed060a02c94b90e1ace7ff59d9121b609f67a1fdef9c8ff998964",
+    "calls": [
+      {
+        "call": "EigendrumDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/eigendrum.md#fence:605",
+    "baselineSha256": "ce8a6b35ddebad9d4a7490c02eebdeae291fd8f0419b26b89aec7566f249ed2b",
+    "calls": [
+      {
+        "call": "EigendrumDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/explainer_sound.md#fence:85",
+    "baselineSha256": "d57152a12c383fef65dfed17333ec4bc0f80b5d0fa3e2b3aae24e1a41b4e615e",
+    "calls": [
+      {
+        "call": "ExplainerSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/explainer_sound.md#fence:462",
+    "baselineSha256": "0e0fa9b382c7d7c8795554e4089f6e2eb61f15b1f551d23c3dc772e4cfe5bcfd",
+    "calls": [
+      {
+        "call": "ExplainerSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/explainer_sound.md#fence:963",
+    "baselineSha256": "b5f982933984a3fac47efdb398bc57e7f16c2801ce7fc14c6f1ff66610c96c58",
+    "calls": [
+      {
+        "call": "ExplainerSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/explainer_sound.md#fence:1038",
+    "baselineSha256": "a0aa3298d497f5417bad6b8e329844e3bf54437b9984be9b5c2308d203d0f40f",
+    "calls": [
+      {
+        "call": "ExplainerSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/explainer_sound.md#fence:1389",
+    "baselineSha256": "99faa547428a99a5acfd6f6373f9b06e839be5d11832482d2175d4bed494e245",
+    "calls": [
+      {
+        "call": "ExplainerSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/faust.md#fence:37",
+    "baselineSha256": "d2bb956f7aa3221ce2da4a0bb24a0890642a03190ea7e16b8f3a002580cecdd0",
+    "calls": [
+      {
+        "call": "FaustSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/faust.md#fence:231",
+    "baselineSha256": "54a02fe800bb73567be93507474dafdf82009be1c7b832260527a5b8d78e0554",
+    "calls": [
+      {
+        "call": "FaustPolySoundDocs.render",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/faust.md#fence:244",
+    "baselineSha256": "c6f40b894beebba35a57bad991bf887f9331ccd2a50cd01b556eae7944483654",
+    "calls": [
+      {
+        "call": "FaustPolySoundDocs.render",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/faust.md#fence:397",
+    "baselineSha256": "21f0f601bf8c443066f9a3936a15b0645b04a705c74d117c2d440a4e14439aec",
+    "calls": [
+      {
+        "call": "FaustSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/faust.md#fence:403",
+    "baselineSha256": "b5de4140bc19f0e551e051655d6a7c879a8a1d4bc3795b0342e053363a46ebc8",
+    "calls": [
+      {
+        "call": "FaustSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/loris.md#fence:76",
+    "baselineSha256": "92606425698fdc38fd64dd772861380e960a0eb1b36d91c0fdb47fd09cbb006b",
+    "calls": [
+      {
+        "call": "LorisDocs.comparisonHtml",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/loris.md#fence:178",
+    "baselineSha256": "9746fc0d3d1e72d0045c35e5f425eae4709e3e1ee3871cfa40b792834b248554",
+    "calls": [
+      {
+        "call": "LorisDocs.whirlpoolHtml",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/loris.md#fence:245",
+    "baselineSha256": "c35542e50569753a354013b04919298b3ee73a783029a55427092f4134f2c7d1",
+    "calls": [
+      {
+        "call": "LorisDocs.transformedHtml",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/loris.md#fence:454",
+    "baselineSha256": "47eebebdf744f589ffc8c0094ca1d9ce515f24ce0269871658f5d17a7339d2b9",
+    "calls": [
+      {
+        "call": "LorisDocs.morphPanelHtml",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/loris.md#fence:461",
+    "baselineSha256": "31502e4ab195027cf415f61ddc4bd2644ccaa790497dc6d3ad5622ab1e1f1f1d",
+    "calls": [
+      {
+        "call": "LorisDocs.morphPanelHtml",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/loris.md#fence:468",
+    "baselineSha256": "8a4728a586aacdda4b6e59a9b731b864d6eaad556fa670a7e6512b3cf269350e",
+    "calls": [
+      {
+        "call": "LorisDocs.morphPanelHtml",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/orca.md#fence:39",
+    "baselineSha256": "77b3174a2ef61e3f72ab4f50416e2feb3bfd38d4d84c73119f9cc948d90c8ef5",
+    "calls": [
+      {
+        "call": "OrcaSoundDocs.render",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/orca.md#fence:105",
+    "baselineSha256": "fbb8ce6d60229fb0c8075b8576d2b716c2f16a301eb0a2c2ee53bf6373d6c622",
+    "calls": [
+      {
+        "call": "OrcaSoundDocs.render",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/orca.md#fence:142",
+    "baselineSha256": "7419109f1f09af76446822662b070ccd1e91a3db5070171683481285719fe2ce",
+    "calls": [
+      {
+        "call": "OrcaSoundDocs.render",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/orca.md#fence:246",
+    "baselineSha256": "f4063c6052ea5f063bf30adaee2d1aa71e8645836fcce0540a37d3c61a1a6d60",
+    "calls": [
+      {
+        "call": "OrcaSoundDocs.render",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/pat_spatial.md#fence:80",
+    "baselineSha256": "bac9e40b0b352a323ffd6100302b681d6de8cec6781c82ca6f634a1679306d8a",
+    "calls": [
+      {
+        "call": "PatSpatialPlacementDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/pat_spatial.md#fence:137",
+    "baselineSha256": "b91001255d0a2831e3a0133601966249ebe611a6bb83d7f433dea74eccc5f920",
+    "calls": [
+      {
+        "call": "PatSpatialPlacementDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/pat_spatial.md#fence:184",
+    "baselineSha256": "8f5fd1f2a20d3e913f36218ebb79f2858dff0f301c8faf8ea9474caaf2e97fd3",
+    "calls": [
+      {
+        "call": "PatSpatialHeadTrackedDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/pat_spatial.md#fence:199",
+    "baselineSha256": "efc2c9d282ef00cf972e48a765dfbc7c3628846403aba3977583d13f1cd90f5c",
+    "calls": [
+      {
+        "call": "PatSpatialSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/pat_spatial.md#fence:209",
+    "baselineSha256": "d3b801a7bcabffc8906069bbdc7f7b3a0048c31d7491652c46d0cd65856ff193",
+    "calls": [
+      {
+        "call": "PatSpatialSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/path_tracing.md#fence:29",
+    "baselineSha256": "db1bc4d1fbe246ef8be009c02841ebc0d2257384c8966f91e41f676d18722c94",
+    "calls": [
+      {
+        "call": "PathTraceDemo.install",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/path_tracing.md#fence:48",
+    "baselineSha256": "8cd9b1960a4368471e2882ab6cccbd463e53b25557a45e0321cb0fbccee09543",
+    "calls": [
+      {
+        "call": "PathTraceDemo.install",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/path_tracing.md#fence:311",
+    "baselineSha256": "d365d878545a94314e9642f52b1028d3f92665e6affb5e55ddf50bd20ae16a5c",
+    "calls": [
+      {
+        "call": "PathTraceDemo.install",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/path_tracing.md#fence:984",
+    "baselineSha256": "d0b0574f4e38d2e8752bd883d0fe2db73a200e2f7ad518edfdeb726aa7a63f5c",
+    "calls": [
+      {
+        "call": "PathTraceDemo.install",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/path_tracing.md#fence:1018",
+    "baselineSha256": "7de0d6b3738f815fcc152a4ede2f5633a952f8178dad36ad7d65ed72576c1be2",
+    "calls": [
+      {
+        "call": "PathTraceDemo.install",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/path_tracing.md#fence:1097",
+    "baselineSha256": "4274dbf9da3422bc45f878d944d6b4b63ce2fa35d69ab7a58aa5feb86a349d1f",
+    "calls": [
+      {
+        "call": "PathTraceDemo.install",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/path_tracing.md#fence:1525",
+    "baselineSha256": "0234827f03aa898727013a987893f0561ac4cb6e1fe8e815496b8dca00e813e6",
+    "calls": [
+      {
+        "call": "PathTraceDemo.install",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/petri_nets.md#fence:67",
+    "baselineSha256": "efedcfa58757d7e450864e125f5b1eaac3ed70b92fb9d1bad3b69a13ee8115a6",
+    "calls": [
+      {
+        "call": "PetriSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/ray_tracing_examples.md#fence:92",
+    "baselineSha256": "c337f25d675d8ce01666208328cf9e2f0ae2a2f8bb25dcbbb3214857f99f50d4",
+    "calls": [
+      {
+        "call": "RayTracingDocsHarness.htmlForImage",
+        "decision": "hidden_capture_of_pipeline_already_shown"
+      },
+      {
+        "call": "RayTracingDocsHarness.renderUvGradient",
+        "decision": "hidden_capture_of_pipeline_already_shown"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/ray_tracing_examples.md#fence:208",
+    "baselineSha256": "2edc8a3e98b3e97e0707aa64947010e962727264ebf01ce9cd63bf5cd5a67923",
+    "calls": [
+      {
+        "call": "RayTracingDocsHarness.htmlForImage",
+        "decision": "hidden_capture_of_pipeline_already_shown"
+      },
+      {
+        "call": "RayTracingDocsHarness.renderTriangleScene",
+        "decision": "hidden_capture_of_pipeline_already_shown"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/ray_tracing_examples.md#fence:296",
+    "baselineSha256": "f0c4dbcd6151028888899a659d3f904e3552318b5a55fbba8144971d743341d0",
+    "calls": [
+      {
+        "call": "RayTracingDocsHarness.htmlForImage",
+        "decision": "hidden_capture_of_pipeline_already_shown"
+      },
+      {
+        "call": "RayTracingDocsHarness.renderShaderTileScene",
+        "decision": "hidden_capture_of_pipeline_already_shown"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/ray_tracing_examples.md#fence:453",
+    "baselineSha256": "5e24cc61df7933637b37cfe1120dd1ddd23b979312e7902b6e869b9ee1a64f91",
+    "calls": [
+      {
+        "call": "RayTracingDocsHarness.htmlForImage",
+        "decision": "hidden_capture_of_pipeline_already_shown"
+      },
+      {
+        "call": "RayTracingDocsHarness.renderMirrorBallsScene",
+        "decision": "hidden_capture_of_pipeline_already_shown"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/ray_tracing_examples.md#fence:473",
+    "baselineSha256": "5fa9b60a6e8670f699d724b94e6ea1a24869b8652452d212a77d8c2fdbf49ab4",
+    "calls": [
+      {
+        "call": "RayTracingDocsHarness.installMirrorBallsSceneInWindow",
+        "decision": "pending"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/sonic_pi.md#fence:71",
+    "baselineSha256": "617a9dc468abbf028fb9ddf90795c87e4a85cb84746b6d43b2a3cc2a0dbeed37",
+    "calls": [
+      {
+        "call": "SonicPiSoundDocs.renderWav",
+        "decision": "comment_only_capture_annotation"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/subharmonic_sound.md#fence:55",
+    "baselineSha256": "ea976a3262d1acf0c165dd00dc1d77e8845f73e2de40702bd5246b7ac74dd99c",
+    "calls": [
+      {
+        "call": "SubharmonicSoundDocs.render",
+        "decision": "reuse_of_implementation_already_shown"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/subharmonic_sound.md#fence:156",
+    "baselineSha256": "2bf9be47a43bd2f54391505d69ffcac03c8b89997452a896e7f2e86eb1d17218",
+    "calls": [
+      {
+        "call": "SubharmonicSoundDocs.render",
+        "decision": "reuse_of_implementation_already_shown"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/subharmonic_sound.md#fence:249",
+    "baselineSha256": "8606f878730f7e44442b20c709227db35c4732b96d82fe885f0d130ae9310a6d",
+    "calls": [
+      {
+        "call": "SubharmonicSoundDocs.render",
+        "decision": "reuse_of_implementation_already_shown"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/subharmonic_sound.md#fence:315",
+    "baselineSha256": "0c0f0a16aec911f28539d752a1b6e414fe674f7028cb7d50fbc24284fada1a26",
+    "calls": [
+      {
+        "call": "SubharmonicSoundDocs.render",
+        "decision": "reuse_of_implementation_already_shown"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/subharmonic_sound.md#fence:376",
+    "baselineSha256": "2ba1df4baa73ca0a60e894d714cd4a9b882ff469395bc86fcafc68770f9497de",
+    "calls": [
+      {
+        "call": "SubharmonicSoundDocs.render",
+        "decision": "reuse_of_implementation_already_shown"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/subharmonic_sound.md#fence:466",
+    "baselineSha256": "8edb8b614bfe54ce0aa6e3e068a2fd419eb822956f65222d999da0286a4ed6e2",
+    "calls": [
+      {
+        "call": "SubharmonicSoundDocs.render",
+        "decision": "reuse_of_implementation_already_shown"
+      }
+    ]
+  },
+  {
+    "id": "public/docs/subharmonic_sound.md#fence:549",
+    "baselineSha256": "0fd88a6898dc1da41ac9f2fed6138d005bd5669db532f80dd0307fffd07ed3c1",
+    "calls": [
+      {
+        "call": "SubharmonicSoundDocs.render",
+        "decision": "reuse_of_implementation_already_shown"
+      }
+    ]
+  }
+]

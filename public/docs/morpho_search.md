@@ -21,7 +21,38 @@ A problem is what the circuit should compute, the widths to test it at, and the 
 candidate may use. The only thing said about addition is `sum, c_out = a + b + c_in`;
 the cells are morpho's own eight standard ones.
 */
-val problem = MorphoProblems.fullAdderCell()
+val widths = [1]
+val maxStatements = 6
+val rootName = "evolved"
+val palette = MorphoPalette.standard
+val spec = MorphoSpec(
+    name = rootName,
+    inputRoles = [MorphoPortRole.BUS, MorphoPortRole.BUS, MorphoPortRole.BIT],
+    outputRoles = [MorphoPortRole.BUS, MorphoPortRole.BIT],
+    widths = widths,
+) { inputs, width ->
+    val total = inputs[0] + inputs[1] + inputs[2]
+    longArrayOf(total and ((1L shl width) - 1), total ushr width)
+}
+val sketch = MorphoCellSketch(
+    name = rootName,
+    inputs = ["a", "b", "c"],
+    inputRoles = spec.inputRoles,
+    outputRoles = spec.outputRoles,
+    palette = palette,
+    designWidth = 1,
+    allowSplit = false,
+    allowCat = false,
+    allowSelf = false,
+    minStatements = 2,
+    maxStatements = maxStatements,
+)
+val problem = MorphoProblem(
+    "full-adder cell",
+    spec,
+    MorphoProgramGenerator([sketch], palette.declarations()),
+    "straight-line logic at one bit, checked exhaustively; the recursion is not in play",
+)
 val budget = 4000
 println(problem)
 println("palette: " + MorphoPalette.standard.luts.joinToString { it.name })
