@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="morpho_search_recursion" index="0" -->
 
 ```edn [field-box id="morpho_search_recursion" role="properties"]
-{"id" "morpho_search_recursion" "index" 0 "name" "A recursion, found — reducing a bus to one bit, then drawn at three widths" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A recursion, found — reducing a bus to one bit, then drawn at three widths" "_tombstone" false "frame" #afield/rect [60.0 520.0 590.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_recursion_code_.kt" "lines" 87 "characters" 3665 "sha256" "fc312dae97642e0959225c728ed9b65c1e9f92247f807f084e862a090af8cc93"}]}
+{"id" "morpho_search_recursion" "index" 0 "name" "A recursion, found — reducing a bus to one bit, then drawn at three widths" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A recursion, found — reducing a bus to one bit, then drawn at three widths" "_tombstone" false "frame" #afield/rect [60.0 520.0 590.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_recursion_code_.kt" "lines" 120 "characters" 4667 "sha256" "87c3d4297324a59069f153b1585ca8c4e7d6af518c1f48a58f766584bc507cb2"}]}
 ```
 
 ```kotlin [field-property box="morpho_search_recursion" name="code" path="morpho_search_recursion_code_.kt"]
@@ -23,12 +23,42 @@ sizes a LUT cell to its widest operand and broadcasts the narrow ones, so there 
 gate and no combination of gates that turns eight wires into one. The only way down is
 SPLIT, which means every correct answer is divide-and-conquer by construction.
 */
-val problem = MorphoProblems.orReduce()
+val widths = [2, 3, 5]
+val maxStatements = 6
+val designWidth = 8
+val rootName = "evolved"
+val palette = MorphoPalette.standard
+val spec = MorphoSpec(
+    name = rootName,
+    inputRoles = [MorphoPortRole.BUS],
+    outputRoles = [MorphoPortRole.BIT],
+    widths = widths,
+) { inputs, _ ->
+    longArrayOf(if (inputs[0] != 0L) 1L else 0L)
+}
+val sketch = MorphoCellSketch(
+    name = rootName,
+    inputs = ["x"],
+    inputRoles = spec.inputRoles,
+    outputRoles = spec.outputRoles,
+    palette = palette,
+    fallback = "0",
+    designWidth = designWidth,
+    minStatements = 2,
+    maxStatements = maxStatements,
+)
+val problem = MorphoProblem(
+    "or-reduce",
+    spec,
+    MorphoProgramGenerator([sketch], palette.declarations()),
+    "N wires to one bit, which broadcast LUTs cannot do: every correct answer recurses",
+)
 println(problem)
+val budget = 6000
 
 val runs = [
-    MorphoSearch.random(problem.spec, problem.generator, 6000, seed = 2),
-    MorphoSearch.evolve(problem.spec, problem.generator, 6000, seed = 2, mu = 24, lambda = 40),
+    MorphoSearch.random(problem.spec, problem.generator, budget, seed = 2),
+    MorphoSearch.evolve(problem.spec, problem.generator, budget, seed = 2, mu = 24, lambda = 40),
 ]
 runs.forEach { println(it.summary()) }
 
@@ -89,13 +119,16 @@ showPlaneGrid(
     window = morphoUnitWindow(),
 )
 
+val cost = if (found.isEmpty()) emptyList<FLine>() else morphoParetoFLines(found)
+if (found.isEmpty())
+    markdown("search note", "No correct design at this budget; the convergence plot shows the closest attempts.")
 showPlaneGrid(
     "or-reduce — best-so-far bit error vs compiler invocations (log x)\n" + morphoRunCaption(runs) to
         morphoConvergenceFLines(runs),
     "cost of an or-reduce — depth (x) against gates (y)\n" +
         "${found.size} correct designs, ${runs.sumOf { it.front.size }} of them non-dominated. " +
         "A staircase is only drawn when the front has more than one point: for a reduction " +
-        "it usually does not, because cheaper and shallower go together here" to morphoParetoFLines(found),
+        "it usually does not, because cheaper and shallower go together here" to cost,
     channel = "cost",
     columns = 2,
     cellWidth = 430,
@@ -200,7 +233,7 @@ showPlaneGrid(
 <!-- field-box id="morpho_search_adder" index="2" -->
 
 ```edn [field-box id="morpho_search_adder" role="properties"]
-{"id" "morpho_search_adder" "index" 2 "name" "The recursive adder is not found — and the target is provably in the space" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The recursive adder is not found — and the target is provably in the space" "_tombstone" false "frame" #afield/rect [60.0 1020.0 590.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_adder_code_.kt" "lines" 75 "characters" 3042 "sha256" "fe4bf813d43d8195ed48b3f22debc4980b5f391d218274fff4743f65a1207cc3"}]}
+{"id" "morpho_search_adder" "index" 2 "name" "The recursive adder is not found — and the target is provably in the space" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The recursive adder is not found — and the target is provably in the space" "_tombstone" false "frame" #afield/rect [60.0 1020.0 590.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_adder_code_.kt" "lines" 119 "characters" 4683 "sha256" "140ea49c6334233c2d164fa3519a6f494d1a6ec1643922dacffc4c56da3a5ea4"}]}
 ```
 
 ```kotlin [field-property box="morpho_search_adder" name="code" path="morpho_search_adder_code_.kt"]
@@ -208,8 +241,52 @@ import afield.lang.morpho.*
 
 // The result this branch set out to get, and did not. Reported because the alternative is
 // to quietly not mention it.
-val free = MorphoProblems.recursiveAdder()
-val guided = MorphoProblems.guidedRecursiveAdder()
+val widths = [2, 4, 8]
+val maxStatements = 10
+val designWidth = 8
+val rootName = "evolved"
+val palette = MorphoPalette.standard
+val spec = MorphoSpec(
+    name = rootName,
+    inputRoles = [MorphoPortRole.BUS, MorphoPortRole.BUS, MorphoPortRole.BIT],
+    outputRoles = [MorphoPortRole.BUS, MorphoPortRole.BIT],
+    widths = widths,
+) { inputs, width ->
+    val total = inputs[0] + inputs[1] + inputs[2]
+    longArrayOf(total and ((1L shl width) - 1), total ushr width)
+}
+val declarations = palette.declarations() + "\n\n" + morphoCellSource("full_adder")
+fun adderProblem(given: List<MorphoStatement>): MorphoProblem {
+    val sketch = MorphoCellSketch(
+        name = rootName,
+        inputs = ["a", "b", "c"],
+        inputRoles = spec.inputRoles,
+        outputRoles = spec.outputRoles,
+        palette = palette,
+        fallback = "full_adder",
+        designWidth = designWidth,
+        minStatements = 3,
+        maxStatements = maxStatements,
+        prologue = given,
+    )
+    val guided = given.isNotEmpty()
+    return MorphoProblem(
+        if (guided) "guided recursive adder" else "recursive adder",
+        spec,
+        MorphoProgramGenerator([sketch], declarations),
+        if (guided) "the two SPLITs are given and unremovable; the recursion and the recombination are searched"
+        else
+            "the divide-and-conquer body, over SPLIT / CAT / self-call / standard cells, with morpho's own full_adder as the given base case",
+    )
+}
+val free = adderProblem([])
+// The guided search receives exactly these two fixed statements; everything else is shared.
+val guided = adderProblem(
+    [
+        MorphoStatement(["a0", "a1"], "SPLIT", ["a"]),
+        MorphoStatement(["b0", "b1"], "SPLIT", ["b"]),
+    ],
+)
 val budget = 6000
 val runs = [
     MorphoSearch.random(free.spec, free.generator, budget, seed = 1),

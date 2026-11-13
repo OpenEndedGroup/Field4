@@ -2953,16 +2953,16 @@
     },
     "assets/agent_transcripts/morpho_circuit_search/metadata.edn": {
       "captureDigest": "10be1a0cec353b3208535dfa5556062e9a40241a444682891c330101e0af1d19",
-      "capturedAt": "2026-11-13T11:05:18.938Z",
+      "capturedAt": "2026-11-13T11:26:08.511Z",
       "channels": 4,
       "file": "assets/web_publications/morpho_circuit_search/document/metadata.edn",
       "files": {
         "assets/web_publications/morpho_circuit_search/document/metadata.edn": "e694469daa8258fa471b852e2055eb2e7a7ae30dfd12c4d933d013b86281179f",
-        "assets/web_publications/morpho_circuit_search/document/outputs.json": "0bd00f65822a4de84e180677f0abec8ee751358625f45f8b7916ccc61490fa0e",
-        "assets/web_publications/morpho_circuit_search/outputs/0.html": "37ce37d0cbbf3a5ec5ea960967dd09eb622e8f9495f66f8aaec850e2ee890c19",
-        "assets/web_publications/morpho_circuit_search/outputs/1.html": "a1c44c355e30f9adb48a6034327824b28383ee6d58d94f3551c89483da0d7108",
-        "assets/web_publications/morpho_circuit_search/outputs/2.html": "35022ef4546d1fb86fd1484e5969f36dc425c93ccf489c616450311f32d64d50",
-        "assets/web_publications/morpho_circuit_search/outputs/3.html": "8efd6ae3277ee8cc52e2dbce28386394bc9b972bdf3ddb93303945d91aeb6ab2"
+        "assets/web_publications/morpho_circuit_search/document/outputs.json": "00738b6bc7ba8c5f3be6ffc3e828f92eaa7de54263ffe1ba93a2445e5ce3e239",
+        "assets/web_publications/morpho_circuit_search/outputs/0.html": "8662a403b0199bf95f8f1d55b6df115ab55414ca8aaa53a552ac05f55fede961",
+        "assets/web_publications/morpho_circuit_search/outputs/1.html": "efa4383f7f6dd1d697416b946cf216b67e0377f5e758bfe9bdf11c58d5ce77b3",
+        "assets/web_publications/morpho_circuit_search/outputs/2.html": "7200f52f86c81627ceeee3533d9b13d81e8ac2b8a43c19ad3217235d2ded1fd7",
+        "assets/web_publications/morpho_circuit_search/outputs/3.html": "cc60b5db8e917ee86094bedf5c0a64687f31f86a1b02e6f511056c47ba66f884"
       },
       "kinds": [
         "svg"
@@ -2972,10 +2972,10 @@
         "dev_docs/agents/transcripts/morpho_circuit_search.yaml": "cf82d8e5a6366fe9120d44308774102662740c4122e565c3c4bef21631905667",
         "public/docs/assets/agent_transcripts/morpho_circuit_search/guides/morpho_examples.md": "61e3554f5e1bc77f6a254b6ba6ab82330477ad6665509e982dcbdb8c6aa8d233",
         "public/docs/assets/agent_transcripts/morpho_circuit_search/guides/morpho_search.md": "f7642effc2f0ac2cb540c3b3b7a010435a907caed49ef78afbb4455376941f3a",
-        "public/docs/assets/agent_transcripts/morpho_circuit_search/metadata.edn": "30abe102a5231a4f19b990ceffd7c39058ee2897d9fa79cc0e207d4a6a614a6a",
-        "public/docs/assets/agent_transcripts/morpho_circuit_search/morpho_search_adder_code_.kt": "fe4bf813d43d8195ed48b3f22debc4980b5f391d218274fff4743f65a1207cc3",
+        "public/docs/assets/agent_transcripts/morpho_circuit_search/metadata.edn": "ec8a40b7cc76768ebe97c1d6f73e5f83c0e244e15527f7a2b004cf497ebc93e0",
+        "public/docs/assets/agent_transcripts/morpho_circuit_search/morpho_search_adder_code_.kt": "140ea49c6334233c2d164fa3519a6f494d1a6ec1643922dacffc4c56da3a5ea4",
         "public/docs/assets/agent_transcripts/morpho_circuit_search/morpho_search_control_code_.kt": "24459131d91fe5e49abb4ae11ccf8e7d4685b9f3cc24b2bcdbb72792633c0562",
-        "public/docs/assets/agent_transcripts/morpho_circuit_search/morpho_search_recursion_code_.kt": "fc312dae97642e0959225c728ed9b65c1e9f92247f807f084e862a090af8cc93"
+        "public/docs/assets/agent_transcripts/morpho_circuit_search/morpho_search_recursion_code_.kt": "87c3d4297324a59069f153b1585ca8c4e7d6af518c1f48a58f766584bc507cb2"
       }
     },
     "assets/agent_transcripts/neural_clouds/metadata.edn": {

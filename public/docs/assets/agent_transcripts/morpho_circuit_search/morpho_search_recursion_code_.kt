@@ -6,12 +6,42 @@ sizes a LUT cell to its widest operand and broadcasts the narrow ones, so there 
 gate and no combination of gates that turns eight wires into one. The only way down is
 SPLIT, which means every correct answer is divide-and-conquer by construction.
 */
-val problem = MorphoProblems.orReduce()
+val widths = [2, 3, 5]
+val maxStatements = 6
+val designWidth = 8
+val rootName = "evolved"
+val palette = MorphoPalette.standard
+val spec = MorphoSpec(
+    name = rootName,
+    inputRoles = [MorphoPortRole.BUS],
+    outputRoles = [MorphoPortRole.BIT],
+    widths = widths,
+) { inputs, _ ->
+    longArrayOf(if (inputs[0] != 0L) 1L else 0L)
+}
+val sketch = MorphoCellSketch(
+    name = rootName,
+    inputs = ["x"],
+    inputRoles = spec.inputRoles,
+    outputRoles = spec.outputRoles,
+    palette = palette,
+    fallback = "0",
+    designWidth = designWidth,
+    minStatements = 2,
+    maxStatements = maxStatements,
+)
+val problem = MorphoProblem(
+    "or-reduce",
+    spec,
+    MorphoProgramGenerator([sketch], palette.declarations()),
+    "N wires to one bit, which broadcast LUTs cannot do: every correct answer recurses",
+)
 println(problem)
+val budget = 6000
 
 val runs = [
-    MorphoSearch.random(problem.spec, problem.generator, 6000, seed = 2),
-    MorphoSearch.evolve(problem.spec, problem.generator, 6000, seed = 2, mu = 24, lambda = 40),
+    MorphoSearch.random(problem.spec, problem.generator, budget, seed = 2),
+    MorphoSearch.evolve(problem.spec, problem.generator, budget, seed = 2, mu = 24, lambda = 40),
 ]
 runs.forEach { println(it.summary()) }
 
@@ -72,13 +102,16 @@ showPlaneGrid(
     window = morphoUnitWindow(),
 )
 
+val cost = if (found.isEmpty()) emptyList<FLine>() else morphoParetoFLines(found)
+if (found.isEmpty())
+    markdown("search note", "No correct design at this budget; the convergence plot shows the closest attempts.")
 showPlaneGrid(
     "or-reduce — best-so-far bit error vs compiler invocations (log x)\n" + morphoRunCaption(runs) to
         morphoConvergenceFLines(runs),
     "cost of an or-reduce — depth (x) against gates (y)\n" +
         "${found.size} correct designs, ${runs.sumOf { it.front.size }} of them non-dominated. " +
         "A staircase is only drawn when the front has more than one point: for a reduction " +
-        "it usually does not, because cheaper and shallower go together here" to morphoParetoFLines(found),
+        "it usually does not, because cheaper and shallower go together here" to cost,
     channel = "cost",
     columns = 2,
     cellWidth = 430,
