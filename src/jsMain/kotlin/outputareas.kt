@@ -375,23 +375,76 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
     fun dragPoint(event: org.w3c.dom.events.MouseEvent): Pair<Double, Double> {
         val rect = viewport.getBoundingClientRect()
         val shown = if (viewport.offsetWidth > 0) rect.width / viewport.offsetWidth else 1.0
-        val px = (event.clientX - rect.left) / shown
-        val py = (event.clientY - rect.top) / shown
+        // Pointer events carry fractional client coordinates; Kotlin's MouseEvent types them as Int.
+        val px = (((event.asDynamic().clientX as Number).toDouble()) - rect.left) / shown
+        val py = (((event.asDynamic().clientY as Number).toDouble()) - rect.top) / shown
         return ((px - (view.tx as Double)) / (view.scale as Double)) to ((py - (view.ty as Double)) / (view.scale as Double))
     }
-    fun sendDrag(phase: String, point: Pair<Double, Double>) {
+    fun sendDrag(phase: String, point: Pair<Double, Double>, handle: String? = null, own: Boolean = false) {
         val id = view.dragId as? String ?: return
-        send(Message("lines-drag").payload(LinesDrag(id, phase, point.first, point.second)))
+        send(Message("lines-drag").payload(LinesDrag(id, phase, point.first, point.second, handle, own)))
     }
+    view.sendDrag = { phase: String, x: Double, y: Double, handle: String?, own: Boolean -> sendDrag(phase, x to y, handle, own) }
     view.dragPending = null
+    view.dragHandle = null
+    view.grabDx = 0.0
+    view.grabDy = 0.0
+    view.handles = js("[]")
+
+    // Screen pixels per SVG unit, as the drawing is shown now (its zoom, and the canvas's or a figure's scale).
+    fun pixelsPerUnit(): Double {
+        val rect = viewport.getBoundingClientRect()
+        val shown = if (viewport.offsetWidth > 0) rect.width / viewport.offsetWidth else 1.0
+        return (view.scale as Double) * shown
+    }
+
+    // The handle a press at [point] (SVG coordinates) takes: of those within their radius, the highest
+    // priority, and the nearest only among equals. Null when no handle is under the pointer.
+    fun handleAt(point: Pair<Double, Double>): dynamic {
+        val k = pixelsPerUnit()
+        var best: dynamic = null
+        var bestPriority = 0.0
+        var bestDistance = 0.0
+        val handles = view.handles
+        for (i in 0 until (handles.length as Int)) {
+            val h = handles[i]
+            val kind = h.kind as String
+            val r = (h.radius as Number).toDouble()
+            val hx = (h.x as? Number)?.toDouble()
+            val hy = (h.y as? Number)?.toDouble()
+            val along = if (kind == "x") point.second else point.first
+            val from = (h.from as? Number)?.toDouble()
+            val to = (h.to as? Number)?.toDouble()
+            if (kind != "xy" && from != null && to != null && (along < min(from, to) - r / k || along > max(from, to) + r / k)) continue
+            val d = when (kind) {
+                "x" -> kotlin.math.abs(point.first - hx!!) * k
+                "y" -> kotlin.math.abs(point.second - hy!!) * k
+                else -> kotlin.math.hypot(point.first - hx!!, point.second - hy!!) * k
+            }
+            if (d > r) continue
+            val p = (h.priority as Number).toDouble()
+            if (best == null || p > bestPriority || (p == bestPriority && d < bestDistance)) { best = h; bestPriority = p; bestDistance = d }
+        }
+        return best
+    }
+
+    // A held handle's drag carries where the handle goes: the pointer less the offset it was grabbed at.
+    fun heldPoint(point: Pair<Double, Double>): Pair<Double, Double> =
+        if (view.dragHandle == null) point else (point.first - (view.grabDx as Double)) to (point.second - (view.grabDy as Double))
 
     viewport.onpointerdown = { event ->
         if (event.button.toInt() != 0 && event.button.toInt() != 1) {
             null
         } else if (view.dragId != null && event.button.toInt() == 0) {
             view.dragPointerId = event.pointerId
-            viewport.setPointerCapture(event.pointerId)
-            sendDrag("start", dragPoint(event))
+            // A synthetic event's pointer may not be an active one, and capture then throws; the drag goes on.
+            runCatching { viewport.setPointerCapture(event.pointerId) }
+            val point = dragPoint(event)
+            val h = handleAt(point)
+            view.dragHandle = h?.name
+            view.grabDx = if (h != null && h.kind != "y") point.first - (h.x as Number).toDouble() else 0.0
+            view.grabDy = if (h != null && h.kind != "x") point.second - (h.y as Number).toDouble() else 0.0
+            sendDrag("start", heldPoint(point), view.dragHandle as? String)
             event.preventDefault()
             event.stopPropagation()
             null
@@ -411,14 +464,19 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
         if ((view.dragPointerId as? Number)?.toInt() == event.pointerId) {
             // At most one move per frame: the latest point wins.
             val first = view.dragPending == null
-            view.dragPending = dragPoint(event)
+            view.dragPending = heldPoint(dragPoint(event))
             if (first) window.requestAnimationFrame {
                 val point = view.dragPending as? Pair<Double, Double>
                 view.dragPending = null
-                if (point != null && view.dragPointerId != null) sendDrag("move", point)
+                if (point != null && view.dragPointerId != null) sendDrag("move", point, view.dragHandle as? String)
             }
             null
         } else if ((view.panPointerId as? Number)?.toInt() != event.pointerId) {
+            // Hovering: show which way the handle under the pointer drags.
+            if (view.dragId != null && (view.handles.length as Int) > 0) {
+                val h = handleAt(dragPoint(event))
+                viewport.style.cursor = when (h?.kind as? String) { "x" -> "ew-resize"; "y" -> "ns-resize"; "xy" -> "move"; else -> "crosshair" }
+            }
             null
         } else {
             val dx = event.clientX - (view.panLastX as Double)
@@ -436,7 +494,8 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
         if ((view.dragPointerId as? Number)?.toInt() == event.pointerId) {
             view.dragPointerId = null
             view.dragPending = null
-            sendDrag("end", dragPoint(event))
+            sendDrag("end", heldPoint(dragPoint(event)), view.dragHandle as? String)
+            view.dragHandle = null
         }
         if ((view.panPointerId as? Number)?.toInt() == event.pointerId) endPan()
         null
@@ -667,6 +726,9 @@ private fun updatePersistentLinesOutput(contentRoot: HTMLElement, htmlString: St
     view.sourceHeight = sourceHeight
     view.contentBounds = contentBounds
     view.dragId = wrapper.getAttribute("data-afield-drag")?.takeIf { it.isNotBlank() }
+    view.handles = wrapper.getAttribute("data-afield-handles")?.takeIf { it.isNotBlank() }
+        ?.let { runCatching { JSON.parse<dynamic>(it) }.getOrNull() } ?: js("[]")
+    installFieldLines(view)
     (view.viewport as HTMLElement).style.cursor = if (view.dragId != null) "crosshair" else "grab"
     view.updateViewportMetrics()
 
@@ -1137,5 +1199,104 @@ fun openEditorInOutput(uid: String, property: String) {
                 entry.editor.layout()
             }
         }
+    }
+}
+
+/**
+ * `window.FieldLines`: drag a `lines(...)` drawing's named handles from the page, by name and in the lines' own
+ * coordinates, through the same `onDrag` a hand's drag reaches (`LinesHandles.kt`). For a film or a test:
+ *
+ * ```js
+ * const fig = FieldLines.find(boxUid, 'figure');   // or FieldLines.of(element), FieldLines.all()
+ * fig.handles();                                 // [{name, kind, x, y, priority}], own coordinates
+ * fig.drag('split', 22.3);                        // press, move, release
+ * fig.press('split'); fig.move('split', 22.0); fig.move('split', 22.3); fig.release('split');
+ * fig.screen('split');                            // where the handle is drawn, in client pixels
+ * ```
+ *
+ * A point handle's value is `{x, y}`. Each drawing's `api` lives on its viewer root (`.fieldLines`).
+ */
+private fun installFieldLines(view: dynamic) {
+    val root = view.root as HTMLElement
+    if (root.asDynamic().fieldLines == null) {
+        val api = js("({})")
+        api.root = root
+        fun handleNamed(name: String): dynamic {
+            val handles = view.handles
+            for (i in 0 until (handles.length as Int)) if (handles[i].name == name) return handles[i]
+            throw IllegalArgumentException("No handle '$name' on this drawing")
+        }
+        fun own(h: dynamic, value: dynamic): Pair<Double, Double> {
+            val kind = h.kind as String
+            val hx = (h.vx as? Number)?.toDouble() ?: 0.0
+            val hy = (h.vy as? Number)?.toDouble() ?: 0.0
+            return when {
+                value == null || value == undefined -> hx to hy
+                kind == "x" -> (value as Number).toDouble() to hy
+                kind == "y" -> hx to (value as Number).toDouble()
+                else -> (value.x as Number).toDouble() to (value.y as Number).toDouble()
+            }
+        }
+        fun sendOwn(phase: String, name: String, point: Pair<Double, Double>) {
+            (view.sendDrag)(phase, point.first, point.second, name, true)
+        }
+        api.id = { view.dragId }
+        api.handles = {
+            val out = js("[]")
+            val handles = view.handles
+            for (i in 0 until (handles.length as Int)) {
+                val h = handles[i]
+                val o = js("({})")
+                o.name = h.name; o.kind = h.kind; o.priority = h.priority
+                if (h.vx != null) o.x = h.vx
+                if (h.vy != null) o.y = h.vy
+                out.push(o)
+            }
+            out
+        }
+        api.press = { name: String -> val h = handleNamed(name); view.scriptHandle = name; view.scriptLast = own(h, null); sendOwn("start", name, own(h, null)) }
+        api.move = { name: String, value: dynamic ->
+            if (view.scriptHandle != name) api.press(name)
+            val p = own(handleNamed(name), value); view.scriptLast = p; sendOwn("move", name, p)
+        }
+        api.release = { name: String?, value: dynamic ->
+            val held = (name ?: view.scriptHandle) as? String ?: throw IllegalStateException("No handle is held")
+            val p = if (value == null || value == undefined) view.scriptLast as Pair<Double, Double> else own(handleNamed(held), value)
+            view.scriptHandle = null
+            sendOwn("end", held, p)
+        }
+        api.drag = { name: String, value: dynamic -> api.press(name); api.move(name, value); api.release(name, value) }
+        api.screen = { name: String ->
+            val h = handleNamed(name)
+            val viewport = view.viewport as HTMLElement
+            val rect = viewport.getBoundingClientRect()
+            val shown = if (viewport.offsetWidth > 0) rect.width / viewport.offsetWidth else 1.0
+            val sx = (h.x as? Number)?.toDouble()
+            val sy = (h.y as? Number)?.toDouble()
+            val o = js("({})")
+            if (sx != null) o.x = rect.left + (sx * (view.scale as Double) + (view.tx as Double)) * shown
+            if (sy != null) o.y = rect.top + (sy * (view.scale as Double) + (view.ty as Double)) * shown
+            o
+        }
+        root.asDynamic().fieldLines = api
+        root.setAttribute("data-afield-lines-view", "true")
+    }
+    if (window.asDynamic().FieldLines == null) {
+        val g = js("({})")
+        g.all = {
+            val out = js("[]")
+            document.querySelectorAll("[data-afield-lines-view]").asList().forEach { out.push(it.asDynamic().fieldLines) }
+            out
+        }
+        g.find = { uidOrId: String, channel: String? ->
+            val want = if (uidOrId.startsWith("lines-drag:")) uidOrId else "lines-drag:$uidOrId:${channel ?: "lines"}"
+            document.querySelectorAll("[data-afield-lines-view]").asList()
+                .map { it.asDynamic().fieldLines }.firstOrNull { (it.id)() == want }
+        }
+        g.of = { element: Element ->
+            val inside = element.closest("[data-afield-lines-view]") ?: element.querySelector("[data-afield-lines-view]")
+            inside?.asDynamic()?.fieldLines
+        }
+        window.asDynamic().FieldLines = g
     }
 }

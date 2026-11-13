@@ -393,6 +393,11 @@ CPU rasterizer's camera:
 
 The names and meanings match, so one camera can be handed to either renderer.
 
+From the page, a script or a film reads and sets the view's camera directly: `FieldViewer.cameraPose()` returns
+`{eye, target, up, zoom, fov}` in the scene's units, and `FieldViewer.setCamera(pose)` puts the camera there and
+draws at once (`up`, `fov` and `zoom` are optional). A pose set this way holds across the box's redraws, as an orbit
+by hand does, until the box asks for a different `camera(...)`.
+
 ## Contact sheets
 
 For a custom contact sheet, `panel(...)` declares viewports in order, and a `mesh(...)` goes into
