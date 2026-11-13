@@ -41,6 +41,11 @@ Without `documentFile`, the embedded editor does not persist its painting to the
 ## Optional build and source ownership
 
 `optional/patchy-web/pin.json` pins upstream Patchy, Emscripten, Qt, aqtinstall, and Ninja.
+Patchy is pinned by commit to its v1.34 tag (`559633c7`). Its WebAssembly toolchain is the one
+upstream's `wasm-release` preset uses: Emscripten 4.0.7 and Qt 6.10.3 `wasm_multithread`.
+Ninja is 1.13.0, since PyPI has no 1.12 release. Since v1.34, Patchy's right-hand panels form
+its own panel column rather than Qt docks, so the patch hides the duplicate Layers, Channels and
+Paths title rows in `src/ui/panel_column.cpp`.
 `field-bridge.patch` contains Field's changes, including the iframe API, PSD byte exchange,
 and embedded-only dark Qt styling. The small Iosevka subset is a separate build input. There is
 no Patchy source checkout or WebAssembly bundle in this repository.
