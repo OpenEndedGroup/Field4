@@ -1,11 +1,11 @@
 # Moving Parts and Clearance
 
-A door swings, a drawer slides, a hatch lifts. `afield.geometry.kinematics` describes such a motion as data,
-then answers three questions about a part that moves that way past obstacles: how close it comes, where and
-when; what region it passes through; and whether it keeps a given clearance through the whole motion.
+A door swings, a drawer slides, a hatch lifts. How close does it come to everything around it?
+Field can measure the gap throughout a motion, draw the region the part passes through, and check
+whether it keeps a clearance you choose.
 
-All three work on Manifold [`Solid`s](manifold.md) or on triangle meshes, in whatever units you model in. The
-examples on this page use millimetres.
+The tools in `afield.geometry.kinematics` work with Manifold [`Solid`s](manifold.md) or triangle
+meshes, in whatever units you model in. The examples here use millimetres.
 
 ## Describing a motion
 
@@ -34,7 +34,7 @@ needs to play the motion back, and `RigidMotion.fromJson` reads it.
 
 ## How close, where and when
 
-`sweptClearance` poses the part at every step, finds the gap to the nearest obstacle and the two points that
+[`sweptClearance`](reference/graphics.md#sweptclearance-kt--sweptclearance) poses the part at every step, finds the gap to the nearest obstacle and the two points that
 realise it, and keeps them all. Here a slab 1000 long, 20 thick and 100 high swings about its end past a
 100 × 100 box whose nearest corner is 1100 from the hinge, at 45°:
 
@@ -79,8 +79,9 @@ r.gaps() // one gap per step, for a timeline
 r.toJson() // the motion and every step's value, gap and obstacle, for a viewer
 ```
 
-To ask at values of your own choosing, say the angle a slider is dragged to, make a `ClearanceProbe(part, motion,
-obstacles)` once and call `at(value)` for each; it is what `sweptClearance` samples with.
+To measure at values of your own choosing, such as an angle set by a slider, make a
+`ClearanceProbe(part, motion, obstacles)` once and call `at(value)` for each one. This is the same
+probe `sweptClearance` uses for its samples.
 
 Obstacles are measured against the part's surface. When both are closed and one is wholly inside the other, the
 gap is 0, as it is when they cross; how deep they cross is not measured.
@@ -93,7 +94,7 @@ gap is 0, as it is when they cross; how deep they cross is not measured.
 
 ## The swept volume
 
-`sweptVolume` builds the region the part passes through, as a union of convex hulls of successive poses. Over one
+[`sweptVolume`](reference/graphics.md#sweptvolume-kt--sweptvolume) builds the region the part passes through, as a union of convex hulls of successive poses. Over one
 step a point on a rotating part follows an arc, which bulges outside the chord between where it starts and ends;
 each hull also takes a third copy of the part, turned to the middle of the step and pushed out from the axis to
 where the arc's end tangents meet. So the result always contains the true sweep:
@@ -113,7 +114,7 @@ slot; `SweepShape.HULLS` hulls each connected piece whole, which is faster and f
 
 ## Keeping a clearance through the whole motion
 
-`minkowskiClearance` asks the question as a rule: does the part keep at least this much from every obstacle,
+[`minkowskiClearance`](reference/graphics.md#sweptvolume-kt--minkowskiclearance) asks the question as a rule: does the part keep at least this much from every obstacle,
 everywhere along the motion? It offsets each convex piece of the swept volume by the clearance (a Minkowski sum
 with a ball, sized so the ball's faces lie outside the true sphere) and intersects the result with the obstacles.
 

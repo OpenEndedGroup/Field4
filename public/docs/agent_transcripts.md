@@ -4262,8 +4262,8 @@ require version 140 or higher": a message about nothing. Hence `fragmentSource`.
 
 ### imgui_vr_panel
 
-[Dear ImGui as an in-VR panel](imgui_vr_panel.md), in four working lines on top
-of the renderer box: a side-by-side stereo target, the demo panel, and a mouse-driven mock controller.
+[Dear ImGui as an in-VR panel](imgui_vr_panel.md), in two editable boxes: one creates the renderer;
+the other builds a side-by-side stereo target, the panel and a mouse-driven mock controller.
 The ImGui frame goes into a 2048×2048 render-to-texture, onto a world-space quad 1.5 m out, rendered
 once per eye, so the panel has real stereo depth rather than being pasted flat, and the packed
 side-by-side image is blitted to the desktop window. **No headset required**: the mouse aims the ray

@@ -1,12 +1,11 @@
 # Lengths in Millimetres and Inches
 
-A number in Field has no unit. `Length` gives it one: `12.7.mm`, `0.5.inch`, `4.ft` and `3.m` are
-all lengths, they add and compare with each other, and each one reads back in whatever unit you
-ask for. A part drawn up in inches and cut on a machine that wants millimetres can be written with
-no `* 25.4` or `/ 12` anywhere.
+Use `Length` when a dimension needs to carry its unit. `12.7.mm`, `0.5.inch`, `4.ft` and `3.m`
+are all lengths: you can add and compare them, then read the result in the unit you need. Draw a
+part in inches and send its dimensions to a machine that wants millimetres without scattering
+`* 25.4` or `/ 12` through your code.
 
-The lengths are not in a box's default imports, because `.m` and `.ft` on every number would get
-in the way of code that does not want them. Start a box with this line to use them:
+Start a box with this import to use lengths:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -174,10 +173,9 @@ The rounding carries, so 11.99 inches is `1' 0"` rather than `0' 12"`. Fractions
 
 ## Reading a length from text
 
-`Length.parse` reads a length written the way people write them, so a cut list typed in a text
-property or loaded from a file becomes lengths directly. It reads everything the printing
-functions write, and also `1250mm`, `1,250 mm`, `125 cm`, `6 inches`, `6-1/2"`, `4'-6"`,
-`4ft 6in` and typographic primes such as `4′ 6″`:
+`Length.parse` reads the lengths in a cut list, whether you type them into a text property or
+load them from a file. It understands everything the printing functions write, as well as
+`1250mm`, `1,250 mm`, `125 cm`, `6 inches`, `6-1/2"`, `4'-6"`, `4ft 6in` and typographic primes such as `4′ 6″`:
 
 <!--
 FIELD_TEST

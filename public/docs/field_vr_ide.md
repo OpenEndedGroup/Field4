@@ -287,8 +287,8 @@ makes the runtime copy each eye image into WiVRn's IOSurface on the GPU instead 
 which KosmicKrisp can do. The installed `WiVRn.app` still runs the server. The build needs
 Xcode and the [LunarG Vulkan SDK](https://vulkan.lunarg.com/sdk/home#mac) in `~/VulkanSDK`, which
 setup checks for, and the port's Homebrew build dependencies, which setup installs. It rebuilds the
-runtime when Field's pin or patch changes, and `--check` reports a runtime built from an older one. Frame rate and latency come out
-within a few frames per second of MoltenVK.
+runtime when Field's pin or patch changes, and `--check` reports a runtime built from an older one.
+In our tests, the frame rate was within a few frames per second of MoltenVK.
 
 Type with a keyboard attached to the Mac while the companion window has focus, or use the
 in-panel keyboard. WiVRn's headset keyboard and mouse forwarding is Linux-only.

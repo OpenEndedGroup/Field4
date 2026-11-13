@@ -40,8 +40,8 @@ uv run --project . --group backdoor python tools/run_field_tests.py --id example
 
 ## Edit the panel in a box
 
-Run the [editable transcript](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/transcripts/imgui_vr_panel.yaml)
-to create a renderer and a child panel box. Its code shows the texture, quad, per-eye modules and
+Open the [ImGui VR panel starting point](agent_transcripts.md#imgui_vr_panel) for a renderer and a
+child panel box. Its code shows the texture, quad, per-eye modules and
 controller mapping; its `vertex` and `fragment` properties hold the shaders. Native targets are
 cached across reruns, while the named UI callback and eye modules are replaced, so editing the
 button or slider does not create another window.

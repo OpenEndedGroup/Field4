@@ -779,10 +779,8 @@ Hidden geometry is excluded from picking and visible-scene exports, including X-
 
 ## Parts by id: layers, metadata and styles
 
-A mesh's `id` names a part, and everything the view does with parts goes by that id. Give the part a
-`layer` path and the **Parts** list folds by it; give it `metadata` and a viewer tool, or a script in the
-page, finds the part by id with that data beside it, so nothing needs to be hidden in an overlay. A part
-can start `hidden`.
+A mesh's `id` names a part in the viewer. Give it a `layer` path to group it in the **Parts** list,
+or attach `metadata` for a viewer tool or page script to find by id. A part can also start `hidden`.
 
 ```diffstatic {data-lang=kotlin}
 three(name = "house") {
@@ -800,8 +798,8 @@ three(name = "house") {
 }
 ```
 
-What the reader hides, and the part they selected, is kept by id when the box draws the view again,
-however different the new geometry is. `hidden = true` applies only the first time the view sees that id.
+When the box redraws, the viewer remembers which parts you hid and which part you selected, by id,
+even if their geometry has changed. `hidden = true` applies only the first time the view sees that id.
 From the page, `FieldViewer.parts()` lists the parts with their layers, metadata and visibility, and
 `FieldViewer.hidePart(id)` hides one; a viewer tool has the same through `ctx.parts()`, `ctx.part(id)`,
 `ctx.metadata()` and `ctx.hidePart(id)`, with each part's three.js objects.
@@ -874,10 +872,9 @@ plays the motion a clearance check walked; the track is plain numbers. From a pa
 
 ## Redrawing a scene as it changes
 
-Call `three { … }` again with the same name and the view on screen is updated rather than replaced, and only
-what changed is sent. Each part's arrays go out with a content hash, and the viewer fetches only arrays it does
-not already hold, keeps the drawn object of every part whose geometry it has, and builds new objects only for
-parts whose geometry is new:
+Call `three { … }` again with the same name to update the view on screen. Field sends only what
+changed: each part's arrays have a content hash, so the viewer fetches arrays it does not already
+have and keeps the drawn objects whose geometry is unchanged. In particular:
 
 * an unchanged part costs a few hundred bytes of description;
 * a part that only **moved** (turned and moved as a whole, with the same mesh) is found by the server and sent
