@@ -45,7 +45,7 @@ class ThreeFitToTest {
             camera(yaw = 30.0, pitch = 20.0)
         }.payload("fit-to-floor")
         assertEquals(listOf(-0.2f, 0f, -0.2f), payload.bounds!!.min.toList())
-        assertEquals(listOf(0.2f, 0.3f, 0.2f), payload.bounds!!.max.toList())
+        assertEquals(listOf(0.2f, 0.3f, 0.2f), payload.bounds.max.toList())
         assertTrue(payload.fitBounds, "the viewer frames the box's corners, not the floor's points")
         val unfitted = ThreeSceneBuilder(48).apply { mesh(floor); mesh(triangle) }.payload("no-fit")
         assertFalse(unfitted.fitBounds)

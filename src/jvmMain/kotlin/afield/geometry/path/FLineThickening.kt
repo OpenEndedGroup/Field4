@@ -464,7 +464,7 @@ fun sweptCircleDegenerateSpans(knots: List<Vec3>, corners: Collection<Int> = emp
  * keeps the radii as they are.
  */
 fun thinPenSamples(knots: List<Vec3>, tolerance: Double = 0.5, widthSmoothing: Double = 3.0): List<Vec3> {
-    val p = ArrayList<Vec3>(knots.size)
+    val p: MutableList<Vec3> = ArrayList(knots.size)
     for (k in knots) if (p.isEmpty() || p.last().distance(k) > 1e-9) p += Vec3(k)
     if (widthSmoothing > 0 && p.size > 2) {
         val arc = DoubleArray(p.size)

@@ -808,11 +808,11 @@ internal class PianoVoice(
                 if (str[j] >= 0 && data.stringIndex[p] != str[j]) { if (rattleOn[j]) rw[j][p] = 0.0; continue }
                 val exact = cp != null && cp.prep == j
                 val sa = sin(data.na[p] * PI * pos[j])
-                fa *= if (exact && data.na[p] <= COUPLED_MODES && cp!!.byPartial[data.na[p]] != 1.0) cp.byPartial[data.na[p]] else pianoMassFactor(massR[j] * sa * sa)
+                fa *= if (exact && data.na[p] <= COUPLED_MODES && cp.byPartial[data.na[p]] != 1.0) cp.byPartial[data.na[p]] else pianoMassFactor(massR[j] * sa * sa)
                 add += damp[j] * sa * sa
                 if (data.nb[p] > 0) {
                     val sb = sin(data.nb[p] * PI * pos[j])
-                    fb *= if (exact && data.nb[p] <= COUPLED_MODES && cp!!.byPartial[data.nb[p]] != 1.0) cp.byPartial[data.nb[p]] else pianoMassFactor(massR[j] * sb * sb)
+                    fb *= if (exact && data.nb[p] <= COUPLED_MODES && cp.byPartial[data.nb[p]] != 1.0) cp.byPartial[data.nb[p]] else pianoMassFactor(massR[j] * sb * sb)
                     add += damp[j] * sb * sb
                 }
                 if (rattleOn[j]) rw[j][p] = if (data.longitudinal[p]) 0.0 else sa
