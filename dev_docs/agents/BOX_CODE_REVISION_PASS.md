@@ -3,6 +3,9 @@
 How the published box code — transcripts, starting points, demos, lessons, docs fences — gets
 checked and improved, and what an agent revising it is asked.
 
+The compact authoring prompt is [Field box-code house style](BOX_CODE_HOUSE_STYLE.md).
+This document holds the detailed revision and verification process.
+
 ## What is enforced (the gate)
 
 Literal `getPropertyRaw("fragment")` (and other shader-stage) reads in box code now trip

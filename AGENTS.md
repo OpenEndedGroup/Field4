@@ -80,6 +80,9 @@ Top-level layout:
 
 ---
 
+For box-code authoring and review, use the compact, prompt-ready
+[Field box-code house style](dev_docs/agents/BOX_CODE_HOUSE_STYLE.md).
+
 ## 3. Verify changes
 
 Python tooling runs through the repo `uv` environment, so the docs runner and the backdoor share
