@@ -1,0 +1,44 @@
+name: film_timeline
+description: >
+  The hinged box filmed from a timeline file on `public/docs/filming_a_timeline.md`: a box whose plan
+  takes drags (its right edge sets the width), with a depth slider, a 3D view whose lid has a declared
+  motion, and a size readout. The figure's drive script films
+  `public/docs/assets/filming_a_timeline/hinge.film.json` with `ui.filmTimeline`.
+
+  Capture-only, so it lives under transcripts/docs_capture/ (see canvas_flight.yaml).
+operations:
+  - create:
+      box: film_hinge
+      name: Hinge
+      frame: { x: 60.0, y: 60.0, w: 100.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.geometry.kinematics.RigidMotion
+          // A box with a hinged lid. Drag the right edge of its plan to make it wider; the slider sets its depth.
+          var width = 160.0
+          var depth = 100.0
+          fun draw() {
+              val body = boxMesh(width, 60.0, depth).translated(0f, 30f, 0f)
+              val lid = boxMesh(width, 8.0, depth).translated(0f, 64f, 0f)
+              three(name = "model", channel = "model", width = 640, height = 480) {
+                  mesh(body, id = "body", layer = ["Box"], wireframe = false)
+                  mesh(lid, id = "lid", layer = ["Lid"], wireframe = false)
+                  // The lid turns about its back edge, up and over.
+                  motion("lid", motion = RigidMotion.rotation(vec(0.0, 60.0, -depth / 2), vec(-1.0, 0.0, 0.0), 0.0, 110.0), label = "Lid")
+                  timeline(periodSeconds = 4.0)
+                  // What the view was drawn from, for anyone waiting on it.
+                  metadata("edge", width / 2)
+                  metadata("depth", depth)
+                  camera(yaw = 30.0, pitch = 25.0)
+              }
+              val outline = FLine().rect(-width / 2, -depth / 2, width, depth)
+              val edge = fline { color = vec(1.0, 0.55, 0.15, 1.0); thickness = 4.0; moveTo(vec(width / 2, -depth / 2, 0.0)); lineTo(vec(width / 2, depth / 2, 0.0)) }
+              lines(listOf(outline, edge), channel = "plan", w = 420.0, h = 260.0, framing = LinesFraming.Fixed(-180.0, -100.0, 360.0, 200.0),
+                  onDrag = { e -> if (e.phase != LinesDragEvent.Phase.END) { width = (2 * e.x).coerceIn(60.0, 340.0); draw() } })
+              display("size", "<div style='font:15px ui-monospace,monospace;padding:6px'>${"%.0f".format(width)} × ${"%.0f".format(depth)} mm</div>")
+          }
+          slider("depth", 60.0, 160.0, 1.0, depth) { v -> depth = v; draw() }
+          draw()
+  - launch: { box: film_hinge }
+  - wait:
+      millis: 1500

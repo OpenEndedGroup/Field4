@@ -944,7 +944,8 @@ internal fun buildAgentSnapshot(info: SessionInformation): AgentDocumentSnapshot
         readOnly = info.readOnly,
         documentExisted = info.documentExisted,
         attachedToLiveDocument = info.attachedToLiveDocument,
-        executionVerdicts = true
+        executionVerdicts = true,
+        documentUrl = runCatching { buildPlaywrightDocumentUrl(info).replace("user=playwright", "user=agent-page") }.getOrNull()
     )
 }
 
@@ -2123,10 +2124,13 @@ fun installAgentBackdoorHandlers() {
     })
 
     // Any web page filmed frame by frame in a capture context of its own (afield.tools.docs.filmPage).
+    // With a timeline it films the requesting session's document (`@session`), and reports each frame as it goes.
     handlers["agent-film-page"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<afield.app.protocol.AgentPageFilm>(message.payload!!)
+        val info = thisSessionInfo.get()
         playwrightScope.launch {
-            val response = runCatching { afield.tools.docs.filmPage(request) }.getOrElse { throwable ->
+            val progress: (afield.app.protocol.AgentProgress) -> Unit = { p -> reply(Message("agent-progress").payload(p)) }
+            val response = runCatching { afield.tools.docs.filmPage(request, info, progress) }.getOrElse { throwable ->
                 afield.app.protocol.AgentPageFilmResponse(ok = false, url = request.url, path = request.path,
                     message = throwable.message ?: throwable::class.simpleName ?: "page film failed")
             }

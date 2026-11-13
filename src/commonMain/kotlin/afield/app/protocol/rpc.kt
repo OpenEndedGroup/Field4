@@ -825,7 +825,12 @@ data class AgentDocumentSnapshot(
      */
     @EncodeDefault
     val attachedToLiveDocument: Boolean = false,
-    val executionVerdicts: Boolean = false
+    val executionVerdicts: Boolean = false,
+    /**
+     * The url that opens this session's document as another client of it, scratch documents included (their
+     * url carries the session key, made up afresh each run). `film-page @session` films it; any page can open it.
+     */
+    val documentUrl: String? = null
 )
 
 @Serializable
@@ -1055,7 +1060,10 @@ data class AgentPlaywrightInputRequest(
     val filename: String? = null,
     val script: String? = null,
     val scriptMode: String = "expression",
-    val waitMs: Double = 0.0
+    val waitMs: Double = 0.0,
+    /** `pageEval` in a box's output: the box, and its output channel (the first with a three.js view when null). */
+    val viewUid: String? = null,
+    val viewChannel: String? = null
 )
 
 @Serializable
@@ -1516,6 +1524,17 @@ data class AgentCanvasFlight(
  * frame, and released after the last. That orbits a three.js view's OrbitControls, or pans anything
  * that pans by dragging, with trusted input. [prerollFrames] runs that many frames (script and drag)
  * before the first one filmed, so a clip can open exactly where an earlier one, filmed with fewer, ended.
+ *
+ * A [timeline] (the JSON of a timeline file, `afield.tools.docs.FilmTimeline`) drives the film instead of, or as
+ * well as, a frame script: it lays out the stage, and each frame's keys set the views, the controls and the
+ * server's drags, and the frame waits until the views show them. [url] `@session` (optionally followed by
+ * `?query`) is the requesting session's own document, scratch or named, opened as another client of it.
+ *
+ * With a [framesDir] each frame is written there as it is filmed (`frame_000000.jpg` on), and the film is
+ * encoded from the folder at the end: [resume] carries on after the frames already there, and [fromFrame] starts
+ * at that frame (the server replays the drags of the frames before it, so the boxes are where they were). The
+ * folder is removed after a good encode unless [keepFrames]. [frameTimeoutMs] bounds how long one frame may
+ * wait for its views; it is a failure, not a deadline a frame is accepted at.
  */
 @Serializable
 data class AgentPageFilm(
@@ -1534,7 +1553,32 @@ data class AgentPageFilm(
     val dragY: Double? = null,
     val dragDx: Double = 0.0,
     val dragDy: Double = 0.0,
-    val prerollFrames: Int = 0
+    val prerollFrames: Int = 0,
+    val timeline: String? = null,
+    val framesDir: String? = null,
+    val resume: Boolean = false,
+    val fromFrame: Int? = null,
+    val keepFrames: Boolean = false,
+    val frameTimeoutMs: Int = 120_000,
+    /** The backdoor session's box aliases (alias to uid), which a timeline may name boxes by, as well as names and uids. */
+    val boxAliases: Map<String, String> = emptyMap()
+)
+
+/**
+ * How far a long backdoor command has got, sent to the client while it runs (as a reply carrying
+ * `originalName` `agent-progress`, before the command's own reply): frame [done] of [total] in [phase]
+ * ("replaying", "filming", "encoding"), the rate over the last frames and the time left at that rate.
+ */
+@Serializable
+data class AgentProgress(
+    val command: String,
+    val phase: String,
+    val done: Int,
+    val total: Int,
+    val ratePerSecond: Double? = null,
+    val etaSec: Double? = null,
+    val elapsedSec: Double = 0.0,
+    val detail: String = ""
 )
 
 @Serializable
@@ -1548,10 +1592,16 @@ data class AgentPageFilmResponse(
     val encodedFrames: Int? = null,
     val width: Int = 0,
     val height: Int = 0,
-    /** What [AgentPageFilm.setup] returned, as JSON text. */
-    val setupResult: String? = null,
-    /** What the last frame's script returned, as JSON text. */
-    val lastFrameResult: String? = null,
+    /** What [AgentPageFilm.setup] returned, as JSON. */
+    val setupResult: kotlinx.serialization.json.JsonElement? = null,
+    /** What the last frame's script (or the timeline's last frame) returned, as JSON. */
+    val lastFrameResult: kotlinx.serialization.json.JsonElement? = null,
+    /** The stage as the timeline laid it out: each region's kind, place and scale. */
+    val stage: kotlinx.serialization.json.JsonElement? = null,
+    /** The first frame this run filmed (later than 0 when it resumed). */
+    val firstFrame: Int = 0,
+    val framesDir: String? = null,
+    val elapsedSec: Double = 0.0,
     val message: String = ""
 )
 
