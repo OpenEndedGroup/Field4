@@ -286,6 +286,10 @@ $region
      */
     val KNOWN_REGIONS: Map<String, List<String>> = mapOf(
         "panel-pointer" to listOf("panelPointerAt"),
+        "motion-pose" to listOf(
+            "motionPoseAt", "motionValueAt", "motionMultiply", "motionInvertRigid", "motionDelta",
+            "timelineAt", "timelinePhaseOf", "motionStepAt", "motionBandOf",
+        ),
         "planar-tessellation" to listOf(
             "COPLANAR_SINE_OF_ANGLE",
             "COPLANAR_OFFSET_FRACTION",

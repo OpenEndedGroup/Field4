@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T02:52:31.177Z",
+  "capturedAt": "2026-11-13T03:41:06.887Z",
   "documentName": "pattern_condense",
   "outputs": [
     {
@@ -78,7 +78,7 @@
       "warnings": [],
       "kinds": [],
       "width": 479,
-      "height": 475,
+      "height": 258,
       "path": "outputs/6.html"
     }
   ]
