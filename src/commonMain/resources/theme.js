@@ -49,14 +49,41 @@
         }
         if (theme === current) return current;
         current = theme;
-        apply(theme);
-        window.dispatchEvent(new CustomEvent("field-theme-change", { detail: { theme } }));
+        const swap = function () {
+            apply(theme);
+            window.dispatchEvent(new CustomEvent("field-theme-change", { detail: { theme } }));
+        };
+        if (animated(options)) {
+            // A view transition snapshots the whole window, WebGL canvas and Monaco included, swaps the
+            // theme underneath and crossfades the two pictures (field.css, "Theme crossfade"). The swap
+            // waits a beat before the new picture is taken so React (Excalidraw) has re-rendered; rAF
+            // does not run while a transition holds rendering, so that beat is a timeout.
+            const root = document.documentElement;
+            root.classList.add("field-theme-transition");
+            const transition = document.startViewTransition(function () {
+                swap();
+                return new Promise(function (resolve) { setTimeout(resolve, 40); });
+            });
+            transition.finished.finally(function () { root.classList.remove("field-theme-transition"); });
+        } else {
+            swap();
+        }
         return current;
+    }
+
+    // Animate a switch the user asked for, unless the platform cannot, they prefer reduced motion,
+    // or a canvas flight is being filmed (frames must show the flight and nothing else that moves).
+    function animated(options) {
+        if (options && options.animate === false) return false;
+        if (typeof document.startViewTransition !== "function") return false;
+        if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
+        if (document.body && document.body.classList.contains("canvas-flight-recording")) return false;
+        return true;
     }
 
     // Another Field tab or iframe switched: follow it.
     window.addEventListener("storage", function (event) {
-        if (event.key === KEY && THEMES.indexOf(event.newValue) >= 0) set(event.newValue, { persist: false });
+        if (event.key === KEY && THEMES.indexOf(event.newValue) >= 0) set(event.newValue, { persist: false, animate: false });
     });
 
     window.FieldTheme = {
