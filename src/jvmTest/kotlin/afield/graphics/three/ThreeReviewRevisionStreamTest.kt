@@ -34,7 +34,7 @@ import kotlin.test.assertFails
 import kotlin.test.assertNotEquals
 
 /**
- * [threeReviewRevision] streams its text into the digest; it must produce the very revisions the old
+ * [threeLegacyReviewRevision] streams its text into the digest; it must produce the very revisions the old
  * tree-and-string implementation did, or every stored note on an ordinary mesh or FLine view would read
  * as made against older geometry.
  *
@@ -70,7 +70,7 @@ class ThreeReviewRevisionStreamTest {
     }
 
     private fun assertSameRevision(payload: ThreeGeometryPayload, what: String) =
-        assertEquals(treeRevision(payload), threeReviewRevision(payload), what)
+        assertEquals(treeRevision(payload), threeLegacyReviewRevision(payload), what)
 
     private val square = TriMesh(floatArrayOf(0f, 0f, 0f, 1f, 0f, 0f, 1f, 1f, 0f, 0f, 1f, 0f), intArrayOf(0, 1, 2, 0, 2, 3))
 
@@ -120,7 +120,7 @@ class ThreeReviewRevisionStreamTest {
         val extra = ThreeSceneBuilder(24).apply { mesh(icosphereMesh(1), id = "fixture") }.payload("t").drawables.single()
         val inspector = ThreeInspector(artifactDigest = "digest-\"of\"-the-solids", parts = mapOf("panel" to topology))
         val alone = ThreeGeometryPayload(uid = "t", drawables = listOf(solid), inspector = inspector)
-        assertEquals("digest-\"of\"-the-solids", threeReviewRevision(alone), "solids alone are their artifact digest")
+        assertEquals("digest-\"of\"-the-solids", threeLegacyReviewRevision(alone), "solids alone are their artifact digest")
         assertSameRevision(alone, "solids alone")
         assertSameRevision(alone.copy(drawables = listOf(solid, extra)), "solids beside another mesh")
         assertSameRevision(alone.copy(lines = ThreeGeometryData(mapOf("position" to ThreeAttribute(3, floatArrayOf(0f, 0f, 0f, 1f, 1f, 1f))))), "solids beside FLines")
@@ -147,15 +147,15 @@ class ThreeReviewRevisionStreamTest {
         assertSameRevision(payload, "ignored keys everywhere")
         // ...and a value that is not ignored still counts: the guard against a filter that drops too much.
         val moved = payload.copy(fills = ThreeGeometryData(attributes + ("position" to ThreeAttribute(3, floatArrayOf(0f, 1f, 2.5f)))))
-        assertNotEquals(threeReviewRevision(payload), threeReviewRevision(moved))
+        assertNotEquals(threeLegacyReviewRevision(payload), threeLegacyReviewRevision(moved))
         val relabelled = payload.copy(drawables = payload.drawables.map { it.copy(label = "renamed", callbackId = "other") })
-        assertEquals(threeReviewRevision(payload), threeReviewRevision(relabelled), "presentation changed the revision")
+        assertEquals(threeLegacyReviewRevision(payload), threeLegacyReviewRevision(relabelled), "presentation changed the revision")
     }
 
     @Test
     fun aNonFiniteValueStillFails() {
         val payload = ThreeGeometryPayload(uid = "t", lines = ThreeGeometryData(mapOf("position" to ThreeAttribute(3, floatArrayOf(0f, Float.NaN, 0f)))))
         assertFails { treeRevision(payload) }
-        assertFails { threeReviewRevision(payload) }
+        assertFails { threeLegacyReviewRevision(payload) }
     }
 }

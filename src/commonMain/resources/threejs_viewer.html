@@ -3460,9 +3460,18 @@ function flineRoleForObject(object) {
 function surfaceHitFor(entry, hit) {
     const surface = entry && entry.surface;
     if (!surface || !surface.positions || !hit) return null;
-    const tri = surfacePickTriangle(surface.positions, surface.index, hit.faceIndex);
+    let tri = surfacePickTriangle(surface.positions, surface.index, hit.faceIndex);
     if (!tri) return null;
-    const p = hit.point;
+    let p = hit.point;
+    // A part placed by a transform (a rigid move the server sent as one) has its arrays in its own frame;
+    // the hit is resolved where the part stands, without any explode offset, as for an untransformed part.
+    const placed = entry.meshes && entry.meshes[0] && entry.meshes[0].matrixAutoUpdate === false ? entry.meshes[0] : null;
+    if (placed) {
+        const base = slotBaseMatrixOf(placed);
+        const toBase = base.clone().multiply(placed.matrixWorld.clone().invert());
+        p = p.clone().applyMatrix4(toBase);
+        tri = tri.map((c) => new THREE.Vector3(c[0], c[1], c[2]).applyMatrix4(base).toArray());
+    }
     const point = [p.x, p.y, p.z];
     const ray = raycaster && raycaster.ray ? raycaster.ray.direction : null;
     const record = surfacePickClassify(
@@ -3472,6 +3481,11 @@ function surfaceHitFor(entry, hit) {
         ray ? [ray.x, ray.y, ray.z] : null
     );
     return { surface: surface, tri: tri, point: point, record: record };
+}
+
+function slotBaseMatrixOf(object) {
+    const slot = payloadGeometrySlots.drawables.find((s) => s && s.object === object);
+    return slot && slot.baseMatrix ? slot.baseMatrix : object.matrix;
 }
 
 /** A surface hit as the `three-surface-click` wire record — the sibling of `intersectionForHit`. */
@@ -3788,27 +3802,10 @@ function applyPartStyles(panelIndex) {
 
 /** Tear down every drawable slot — called before a payload rebuilds them. */
 function clearDrawableSlots() {
-    payloadGeometrySlots.drawables.forEach((slot) => {
-        if (!slot) return;
-        disposeStyleMaterials(slot);
-        if (slot.wire) {
-            if (slot.object) slot.object.remove(slot.wire);
-            slot.wire.geometry.dispose();
-            slot.wire.material.dispose();
-        }
-        removeSlot(slot);
-    });
+    payloadGeometrySlots.drawables.forEach((slot) => { if (slot) disposeDrawableSlot(slot); });
     payloadGeometrySlots.drawables = [];
 }
 
-/**
- * Build the scene's ThreeDrawables.
- *
- * Rebuilt wholesale rather than updated in place: a drawable list can change length and change
- * materials between payloads, which is exactly the case `updateGeometryInPlace` refuses. The
- * in-place path still carries the frame-by-frame load, because that is the FLine geometry above and
- * it is what a slider actually drives.
- */
 /**
  * Everything about a drawable except its colours, as a key: when the key of every drawable matches
  * what is on screen, only colours (or other per-vertex values) changed, and they are written into the
@@ -3851,91 +3848,188 @@ function updateDrawablesInPlace(list) {
     return true;
 }
 
+/**
+ * Everything about a drawable that its built object depends on, as a key: its arrays (by the hashes the
+ * server sent, colours and alphas aside, which are written in place), index, kind, style, hover and pick.
+ * Not its id, panel, group, callback or transform, which a reused slot simply takes on. Null when an array
+ * came without a hash, which is never reused.
+ */
+function drawableGeometryKey(d) {
+    const g = d && d.geometry;
+    if (!g) return null;
+    const attrs = [];
+    for (const [name, spec] of Object.entries(g.attributes || {})) {
+        if (!spec || !spec.hash) return null;
+        attrs.push([name, name === 'color' || name === 'alpha' ? spec.array.length : spec.hash]);
+    }
+    if (g.index && !g.index.hash) return null;
+    return JSON.stringify([d.style, d.pickable, d.hoverColor ? Array.from(d.hoverColor) : null, attrs, g.index ? g.index.hash : null]);
+}
+
+/**
+ * Build the scene's ThreeDrawables, keeping every slot whose geometry the new list still has.
+ *
+ * Each new drawable takes an old slot with the same `drawableGeometryKey` when there is one — the part that
+ * did not change, or moved and came as a transform on the same arrays, or was only restyled — and is
+ * rebuilt only when there is not. A reused slot takes the new drawable's transform, panel, group and ids,
+ * and its colours in place. So a drag that reshapes three parts of two hundred builds three objects, not two
+ * hundred, and uploads nothing else to the GPU. Old slots nothing claimed are disposed.
+ */
 function addPayloadDrawables(list) {
-    if (window.fieldThreeWireReuse !== false && updateDrawablesInPlace(list)) { window.fieldThreeWireStats.inPlace = true; return; }
-    window.fieldThreeWireStats.inPlace = false;
-    clearDrawableSlots();
-    if (!Array.isArray(list) || !list.length) return;
-
-    list.forEach((d, index) => {
+    const stats = window.fieldThreeWireStats;
+    if (window.fieldThreeWireReuse !== false && updateDrawablesInPlace(list)) {
+        stats.inPlace = true; stats.builtSlots = 0; stats.reusedSlots = list.length; return;
+    }
+    stats.inPlace = false;
+    if (window.fieldThreeWireReuse === false || !Array.isArray(list) || !list.length) clearDrawableSlots();
+    const pool = new Map();
+    for (const slot of payloadGeometrySlots.drawables) {
+        if (!slot) continue;
+        const key = slot.geometryKey;
+        if (!key) { disposeDrawableSlot(slot); continue; }
+        if (!pool.has(key)) pool.set(key, []);
+        pool.get(key).push(slot);
+    }
+    payloadGeometrySlots.drawables = [];
+    let built = 0, reused = 0;
+    (Array.isArray(list) ? list : []).forEach((d, index) => {
         if (!d || !d.geometry) return;
-        const kind = (d.style && d.style.kind) || 'surface';
-        const ObjectClass = kind === 'lines' ? THREE.LineSegments : (kind === 'points' ? THREE.Points : THREE.Mesh);
-        const defaults = {
-            color: { itemSize: 3, fill: [1, 1, 1] },
-            alpha: { itemSize: 1, fill: 1 }
-        };
-        if (kind === 'points') defaults.size = { itemSize: 1, fill: 3 };
-
-        const slot = upsertGeometrySlot(null, d.geometry, {
-            kind: 'drawable-' + index,
-            ObjectClass: ObjectClass,
-            // Normals come from Kotlin (toThreeDrawable), matching what the CPU rasterizer shades.
-            // Recomputing here would be an unconditional smooth average and would round every hard
-            // edge off a cube.
-            computeNormals: false,
-            defaults: defaults,
-            makeMaterial: () => {
-                if (kind === 'lines') return makeLineMaterial();
-                if (kind === 'points') return makePointMaterial();
-                return makeSurfaceMaterial(d.style, d.hoverColor);
-            },
-            // `setInteractiveHover` reaches for this by name on whatever mesh it was handed, so a
-            // hovering solid has to carry it exactly as an interactive FLine fill does.
-            //
-            // A part's own x-ray opacity (ThreePartAppearance.xrayOpacity) belongs here too. It sat in the
-            // interactive-lines options from 2026-10-04 to 10-07, where `d` is not defined: every
-            // clickable stroked FLine threw on build, and no part's x-ray opacity was ever applied.
-            configureObject: (object, material) => {
-                object.userData.interactiveMat = material;
-                if (Number.isFinite(d.style?.xrayOpacity)) material.userData.fieldXrayOpacity = d.style.xrayOpacity;
-            }
-        });
-        if (!slot) return;
-
-        slot.panel = (d.panel === undefined || d.panel === null) ? 0 : d.panel;
-        slot.label = d.label || null;
-        slot.partId = d.id || d.label || String(index);
-        slotIdentity(slot, d);
-        slot.group = Number.isFinite(d.group) ? d.group : -1;
-        // The drawable's own kind, kept because `slot.kind` is the upsert cache key (`drawable-3`) and
-        // says nothing about whether this is a surface. The section's cut outline needs to know.
-        slot.kindOfDraw = kind;
-        slot.topologyKey = drawableTopologyKey(d);
-        slot.attributeHashes = {color: d.geometry.attributes?.color?.hash || null, alpha: d.geometry.attributes?.alpha?.hash || null};
-        slot.fitSample = fitSampleOf(d.geometry);
-        // What a shot moves: explode offsets (an `explode` attribute beside `position`) and x-ray (a solid
-        // opacity to mix the authored one from). The base positions are kept so explode 0 is exact.
-        const explodeAttribute = slot.object.geometry.getAttribute('explode');
-        const positionAttribute = slot.object.geometry.getAttribute('position');
-        if (explodeAttribute && positionAttribute && explodeAttribute.array.length === positionAttribute.array.length) {
-            slot.explode = {base: Float32Array.from(positionAttribute.array), offsets: explodeAttribute.array, applied: 0};
-            // An exploded part leaves the bounds three.js culls by; culling it would blink it out at the edges.
-            slot.object.frustumCulled = false;
-        }
-        if (kind === 'surface' && Number.isFinite(d.style?.solidOpacity)) {
-            slot.shotOpacity = {solid: d.style.solidOpacity, authored: slot.material.opacity};
-        }
-        if (d.transform && d.transform.length === 16) {
-            slot.object.matrixAutoUpdate = false;
-            slot.object.matrix.fromArray(d.transform);
-        }
-        slot.object.updateMatrixWorld(true);
-        slot.baseMatrix = slot.object.matrix.clone();
-        if (kind === 'surface' && d.style && d.style.wireframe) {
-            slot.wire = makeWireframeOverlay(slot.object.geometry, d.style);
-            slot.object.add(slot.wire);
-        }
-        // A pickable surface joins the interactive set — `renderPayloadGeometry` collects these and
-        // appends them *after* the FLine entries, so a mixed scene's solid and its annotations are both
-        // in the same raycast and the measure tool can span the two. Only surfaces: a `lines` or
-        // `points` drawable has no element structure to classify a hit against, and pretending
-        // otherwise would report a triangle that is not there.
-        if (kind === 'surface' && d.pickable) {
-            slot.entry = surfaceEntry(d, [slot.object], index, drawableGeometryArrays(slot.object.geometry));
-        }
-        payloadGeometrySlots.drawables.push(slot);
+        const key = drawableGeometryKey(d);
+        // Prefer the slot that had this part's id, so a part keeps its own object when two parts share geometry.
+        const candidates = key ? pool.get(key) : null;
+        let at = candidates ? candidates.findIndex((s) => s.partId === (d.id || d.label || String(index))) : -1;
+        if (candidates && candidates.length && at < 0) at = 0;
+        const slot = at >= 0 ? candidates.splice(at, 1)[0] : null;
+        if (slot) { reuseDrawableSlot(slot, d, index); reused += 1; payloadGeometrySlots.drawables.push(slot); return; }
+        const fresh = buildDrawableSlot(d, index);
+        if (fresh) { built += 1; payloadGeometrySlots.drawables.push(fresh); }
     });
+    pool.forEach((slots) => slots.forEach(disposeDrawableSlot));
+    stats.builtSlots = built; stats.reusedSlots = reused;
+}
+
+function disposeDrawableSlot(slot) {
+    disposeStyleMaterials(slot);
+    if (slot.wire) {
+        if (slot.object) slot.object.remove(slot.wire);
+        slot.wire.geometry.dispose();
+        slot.wire.material.dispose();
+    }
+    removeSlot(slot);
+}
+
+/** Where a drawable sits: its transform, or none. Sets the slot's base matrix, which explode offsets from. */
+function placeDrawableSlot(slot, d) {
+    if (d.transform && d.transform.length === 16) {
+        slot.object.matrixAutoUpdate = false;
+        slot.object.matrix.fromArray(d.transform);
+    } else if (slot.object.matrixAutoUpdate === false) {
+        slot.object.matrixAutoUpdate = true;
+        slot.object.position.set(0, 0, 0); slot.object.quaternion.identity(); slot.object.scale.set(1, 1, 1);
+        slot.object.updateMatrix();
+    }
+    slot.object.updateMatrixWorld(true);
+    slot.baseMatrix = slot.object.matrix.clone();
+}
+
+/** A slot whose geometry the new drawable [d] shares, made [d]'s. */
+function reuseDrawableSlot(slot, d, index) {
+    slot.panel = (d.panel === undefined || d.panel === null) ? 0 : d.panel;
+    slot.label = d.label || null;
+    slot.partId = d.id || d.label || String(index);
+    slotIdentity(slot, d);
+    slot.group = Number.isFinite(d.group) ? d.group : -1;
+    slot.topologyKey = drawableTopologyKey(d);
+    const geometry = slot.object.geometry;
+    for (const name of ['color', 'alpha']) {
+        const spec = d.geometry.attributes && d.geometry.attributes[name];
+        const attribute = geometry.getAttribute(name);
+        if (!spec || !spec.array || !attribute || attribute.array.length !== spec.array.length) continue;
+        if (spec.hash && slot.attributeHashes[name] === spec.hash) continue;
+        attribute.array.set(spec.array, 0);
+        markAttributeUpdated(attribute, spec.array.length);
+        slot.attributeHashes[name] = spec.hash || null;
+    }
+    placeDrawableSlot(slot, d);
+    if (slot.kindOfDraw === 'surface' && d.pickable) {
+        slot.entry = surfaceEntry(d, [slot.object], index, drawableGeometryArrays(slot.object.geometry));
+    } else slot.entry = null;
+}
+
+/** One ThreeDrawable built from scratch; null when it has nothing to draw. */
+function buildDrawableSlot(d, index) {
+    const kind = (d.style && d.style.kind) || 'surface';
+    const ObjectClass = kind === 'lines' ? THREE.LineSegments : (kind === 'points' ? THREE.Points : THREE.Mesh);
+    const defaults = {
+        color: { itemSize: 3, fill: [1, 1, 1] },
+        alpha: { itemSize: 1, fill: 1 }
+    };
+    if (kind === 'points') defaults.size = { itemSize: 1, fill: 3 };
+
+    const slot = upsertGeometrySlot(null, d.geometry, {
+        kind: 'drawable-' + index,
+        ObjectClass: ObjectClass,
+        // Normals come from Kotlin (toThreeDrawable), matching what the CPU rasterizer shades.
+        // Recomputing here would be an unconditional smooth average and would round every hard
+        // edge off a cube.
+        computeNormals: false,
+        defaults: defaults,
+        makeMaterial: () => {
+            if (kind === 'lines') return makeLineMaterial();
+            if (kind === 'points') return makePointMaterial();
+            return makeSurfaceMaterial(d.style, d.hoverColor);
+        },
+        // `setInteractiveHover` reaches for this by name on whatever mesh it was handed, so a
+        // hovering solid has to carry it exactly as an interactive FLine fill does.
+        //
+        // A part's own x-ray opacity (ThreePartAppearance.xrayOpacity) belongs here too. It sat in the
+        // interactive-lines options from 2026-10-04 to 10-07, where `d` is not defined: every
+        // clickable stroked FLine threw on build, and no part's x-ray opacity was ever applied.
+        configureObject: (object, material) => {
+            object.userData.interactiveMat = material;
+            if (Number.isFinite(d.style?.xrayOpacity)) material.userData.fieldXrayOpacity = d.style.xrayOpacity;
+        }
+    });
+    if (!slot) return null;
+
+    slot.panel = (d.panel === undefined || d.panel === null) ? 0 : d.panel;
+    slot.label = d.label || null;
+    slot.partId = d.id || d.label || String(index);
+    slotIdentity(slot, d);
+    slot.group = Number.isFinite(d.group) ? d.group : -1;
+    // The drawable's own kind, kept because `slot.kind` is the upsert cache key (`drawable-3`) and
+    // says nothing about whether this is a surface. The section's cut outline needs to know.
+    slot.kindOfDraw = kind;
+    slot.topologyKey = drawableTopologyKey(d);
+    slot.geometryKey = drawableGeometryKey(d);
+    slot.attributeHashes = {color: d.geometry.attributes?.color?.hash || null, alpha: d.geometry.attributes?.alpha?.hash || null};
+    slot.fitSample = fitSampleOf(d.geometry);
+    // What a shot moves: explode offsets (an `explode` attribute beside `position`) and x-ray (a solid
+    // opacity to mix the authored one from). The base positions are kept so explode 0 is exact.
+    const explodeAttribute = slot.object.geometry.getAttribute('explode');
+    const positionAttribute = slot.object.geometry.getAttribute('position');
+    if (explodeAttribute && positionAttribute && explodeAttribute.array.length === positionAttribute.array.length) {
+        slot.explode = {base: Float32Array.from(positionAttribute.array), offsets: explodeAttribute.array, applied: 0};
+        // An exploded part leaves the bounds three.js culls by; culling it would blink it out at the edges.
+        slot.object.frustumCulled = false;
+    }
+    if (kind === 'surface' && Number.isFinite(d.style?.solidOpacity)) {
+        slot.shotOpacity = {solid: d.style.solidOpacity, authored: slot.material.opacity};
+    }
+    placeDrawableSlot(slot, d);
+    if (kind === 'surface' && d.style && d.style.wireframe) {
+        slot.wire = makeWireframeOverlay(slot.object.geometry, d.style);
+        slot.object.add(slot.wire);
+    }
+    // A pickable surface joins the interactive set — `renderPayloadGeometry` collects these and
+    // appends them *after* the FLine entries, so a mixed scene's solid and its annotations are both
+    // in the same raycast and the measure tool can span the two. Only surfaces: a `lines` or
+    // `points` drawable has no element structure to classify a hit against, and pretending
+    // otherwise would report a triangle that is not there.
+    if (kind === 'surface' && d.pickable) {
+        slot.entry = surfaceEntry(d, [slot.object], index, drawableGeometryArrays(slot.object.geometry));
+    }
+    return slot;
 }
 
 /**
@@ -4778,24 +4872,32 @@ function inspectorCapture(payload) {
             }
         });
     });
+    const groupCount = (spec.groups || []).length;
+    const lines = explodeGroupCentroids(allPositions, allGroups, groupCount);
     // Drawables contribute to their group's centroid too, or a solid grouped with an FLine annotation
-    // would slide to the annotation's centroid rather than to the pair's.
-    (payload.drawables || []).forEach((d) => {
-        const group = Number.isFinite(d.group) ? d.group : -1;
-        if (group < 0) return;
-        const array = d.geometry && d.geometry.attributes && d.geometry.attributes.position
-            ? d.geometry.attributes.position.array : null;
-        if (!array) return;
-        for (let i = 0; i + 2 < array.length; i += 3) {
-            const point = new THREE.Vector3(array[i], array[i + 1], array[i + 2]);
-            if (d.transform) point.applyMatrix4(new THREE.Matrix4().fromArray(d.transform));
-            allPositions.push(point.x, point.y, point.z);
-            allGroups.push(group);
-        }
+    // would slide to the annotation's centroid rather than to the pair's. Each slot's vertex sum is worked
+    // out once, when it is built, and placed by its matrix: the mean of moved points is the moved mean.
+    const sums = lines.centroids.map((c, g) => c ? [c[0] * lines.counts[g], c[1] * lines.counts[g], c[2] * lines.counts[g]] : [0, 0, 0]);
+    const counts = lines.counts.slice();
+    payloadGeometrySlots.drawables.forEach((slot) => {
+        const group = slot && Number.isFinite(slot.group) ? slot.group : -1;
+        if (group < 0 || group >= groupCount || !slot.object) return;
+        const local = slotVertexSum(slot);
+        if (!local.count) return;
+        const mean = new THREE.Vector3(local.x / local.count, local.y / local.count, local.z / local.count).applyMatrix4(slot.baseMatrix || new THREE.Matrix4());
+        sums[group][0] += mean.x * local.count; sums[group][1] += mean.y * local.count; sums[group][2] += mean.z * local.count;
+        counts[group] += local.count;
     });
-    inspectorState.centroids = explodeGroupCentroids(
-        allPositions, allGroups, (spec.groups || []).length
-    ).centroids;
+    inspectorState.centroids = sums.map((sum, g) => counts[g] ? [sum[0] / counts[g], sum[1] / counts[g], sum[2] / counts[g]] : null);
+}
+
+/** The sum of a slot's own (untransformed, unexploded) vertex positions, kept on the slot. */
+function slotVertexSum(slot) {
+    if (slot.vertexSum) return slot.vertexSum;
+    const position = slot.explode ? slot.explode.base : slot.object.geometry.getAttribute('position')?.array;
+    let x = 0, y = 0, z = 0, count = 0;
+    if (position) for (let i = 0; i + 2 < position.length; i += 3) { x += position[i]; y += position[i + 1]; z += position[i + 2]; count += 1; }
+    return slot.vertexSum = {x, y, z, count};
 }
 
 /** Every geometry the explode has to move, as `{ object, base, groups }`. */
@@ -5794,8 +5896,16 @@ function inspectorPartsChange(node, solo, visible) {
     }
     inspectorRefresh(); inspectorPartsSync();
 }
+let partHudSignature = null;
 function inspectorPartHud() {
     const host = document.getElementById('part-inspector');
+    // A redraw whose parts, folders and controls are as they were keeps the list it has (and its scroll and
+    // open folders), and only its checkboxes are brought up to date: rebuilding it was a few milliseconds of
+    // every drag frame on a scene of a hundred parts.
+    const signature = JSON.stringify([inspectorPartTree(), controlShown('parts'), controlShown('light'),
+        ((inspectorState.spec || {}).assembly || []).length, inspectorState.assemblyStep]);
+    if (signature === partHudSignature && host.childElementCount) { inspectorPartsSync(); return; }
+    partHudSignature = signature;
     const wasOpen = host.querySelector('details')?.open || false;
     const scroll = host.querySelector('.part-list')?.scrollTop || 0;
     host.replaceChildren(); partControls = [];
@@ -6526,8 +6636,12 @@ function wireAssemble(table, reuse, missing, partial) {
 
 /** The arrays of the last geometry drawn, by content hash, for the next message to reuse. */
 let wireHeldArrays = new Map();
-/** What the last geometry message cost: bytes fetched, buffers reused, and milliseconds to apply. */
-window.fieldThreeWireStats = {messages: 0, fetchedBytes: 0, reusedBuffers: 0, applyMs: 0, inPlace: false};
+/**
+ * What the last geometry message cost: bytes fetched, buffers reused, milliseconds to parse and apply, the
+ * drawable objects built and kept, and when (`performance.timeOrigin + now()`) it arrived and its buffers did.
+ */
+window.fieldThreeWireStats = {messages: 0, fetchedBytes: 0, reusedBuffers: 0, applyMs: 0, inPlace: false,
+    builtSlots: 0, reusedSlots: 0, receivedAt: 0, fetchedAt: 0, parseMs: 0, descriptionBytes: 0};
 
 let wireState = null;
 
@@ -6585,6 +6699,7 @@ async function wirePump() {
                     }
                     if (!bytes) { wireState = wireAbandon(wireState); continue; }
                     window.fieldThreeWireStats.fetchedBytes = bytes.byteLength;
+                    window.fieldThreeWireStats.fetchedAt = performance.timeOrigin + performance.now();
                     window.fieldThreeWireStats.reusedBuffers = reuse.size;
                     const full = reuse.size ? wireAssemble(table, reuse, missing, bytes) : bytes;
                     const entries = table.entries || [];
@@ -6751,7 +6866,13 @@ function connectWs() {
     ws.addEventListener('open', () => sendMessage({ type: 'hello', buffers: 1 }));
     ws.addEventListener('message', (event) => {
         let message = null;
+        const arrived = performance.timeOrigin + performance.now();
         try { message = JSON.parse(event.data); } catch (_) { return; }
+        if (message && message.type === 'three/geometry') {
+            window.fieldThreeWireStats.receivedAt = arrived;
+            window.fieldThreeWireStats.parseMs = performance.timeOrigin + performance.now() - arrived;
+            window.fieldThreeWireStats.descriptionBytes = event.data.length;
+        }
         if(message.type==='three-review-ack'){featureSaving=false; featureHud(); featureMessage(message.message,!message.ok);return;}
         if (message.type === 'three/snapshot-request') { answerSnapshot(message.id); return; }
         wireReceive(message);

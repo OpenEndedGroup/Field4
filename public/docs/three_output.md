@@ -813,6 +813,27 @@ three(name = "contacts", width = 760, height = 320) {
 A colour a reviewer set on the stored part appearance wins over the box's style. None of layers, metadata or
 styles changes a part's review identity.
 
+## Redrawing a scene as it changes
+
+Call `three { … }` again with the same name and the view on screen is updated rather than replaced, and only
+what changed is sent. Each part's arrays go out with a content hash, and the viewer fetches only arrays it does
+not already hold, keeps the drawn object of every part whose geometry it has, and builds new objects only for
+parts whose geometry is new:
+
+* an unchanged part costs a few hundred bytes of description;
+* a part that only **moved** (turned and moved as a whole, with the same mesh) is found by the server and sent
+  as a `transform` on the geometry the viewer already has, so nothing is fetched for it;
+* a change of `style`, `metadata`, a label or the camera sends no geometry at all.
+
+So a slider that reshapes a few parts of a large assembly redraws in the time those few parts take. A drag on a
+200-part scene that reshapes three parts and moves five each step redraws in about 35 ms from the slider to the
+next frame, where re-sending the whole scene took about 215 ms; `tools/ui_regressions/three-drag-bench.kt` is
+the measurement (`run_ui_regressions.py --id three-drag-bench`). The viewer reports what the last
+update cost in its window's `fieldThreeWireStats` (bytes fetched, objects built and kept, milliseconds), and the
+server's `lastUpdate` on the view returned by `three` says how many parts went out as transforms.
+
+A part is matched to its previous self by its `id`, so give moving parts ids.
+
 ## Editing a curve before an expensive operation
 
 `threeLines(curves, editable = true, width = 1000, onEditCommitted = { edited -> … })`
