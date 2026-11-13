@@ -61,7 +61,7 @@ The contour tree is built from two simpler trees. The **join tree** (`ContourTre
 floods the landscape from below: a lake starts at every pit, lakes join at saddles, and everything
 is one lake when the water passes the highest point. The **split tree** (`ContourTrees.splitTree`)
 does the same from the top down, with islands. Each sees only half the story: the join tree
-records joins and the split tree splits. `ContourTrees.contourTree` merges the two by Carr,
+records joins and the split tree splits. [`ContourTrees.contourTree`](reference/graphics.md#contourtrees-kt--contourtrees--contourtree) merges the two by Carr,
 Snoeyink and Axen's method (2003), peeling off one leaf at a time, so it records both.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/contour_trees/join-split-contour.png" alt="three tree plots of one landscape of seven hills and three hollows: the join tree branches only at the bottom, the split tree only at the top, and the contour tree branches at both ends" wait="5" timeout="240" capture="box" open-outputs="true" padding="20" name="contour-tree-join-split" embed=true}
@@ -132,7 +132,7 @@ showImgGrid(
 
 ## What you get
 
-A `ScalarTree` has `nodes` (each a `TreeNode` with its pixel position, `value` and `type`:
+A [`ScalarTree`](reference/graphics.md#contourtrees-kt-scalartree) has `nodes` (each a `TreeNode` with its pixel position, `value` and `type`:
 `MINIMUM`, `MAXIMUM`, `SADDLE`, or `ROOT` for the end of a merge tree) and `arcs` (each a
 `TreeArc` from a `lower` node to an `upper` one, with the pixels it owns as `vertices`).
 `arcOfPixel` gives every pixel's arc, and `arcsAt(node)` the arcs meeting at a node.
@@ -146,3 +146,11 @@ space, nodes carrying their `type` and `value`, so it chains into the other geom
     fewer arc than nodes), that every pixel belongs to an arc, and that it has exactly the join
     tree's minima and the split tree's maxima. Peeling leaves in the wrong direction reports dozens
     of spurious maxima on a two-peak field, and that check fails on it.
+
+## API reference
+
+- Constructing the contour tree: [`ContourTrees`](reference/graphics.md#contourtrees-kt-contourtrees).
+- Persistence simplification and segmentation:
+  [`ScalarTree`](reference/graphics.md#contourtrees-kt-scalartree) —
+  [`segmentationImage`](reference/graphics.md#contourtrees-kt--scalartree--segmentationimage),
+  [`simplify`](reference/graphics.md#contourtrees-kt--scalartree--simplify).

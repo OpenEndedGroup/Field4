@@ -20,8 +20,8 @@ what changes when you change the scheduler.
 two, which is 2³. Most of its reactions are not β-steps (applying a function to its argument)
 but the bookkeeping that keeps sharing
 correct: fans copying, and scope delimiters (the agents that mark where a shared function body
-begins and ends) moving and closing. The box below reduces it and plots the size of the net after
-each reaction.
+begins and ends) moving and closing. The box below calls
+[`LambdaSoundDocs.trace`](reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--trace-2) and plots the size of the net after each reaction.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/one_reduction.png" wait="10" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="180" name="chain-lambda-one" embed=true alt="A two-trace plot over eighty-six reactions: an agent count that climbs from about nineteen to a peak of forty-six around reactions thirty-five and forty-five and then falls, in steps, to twenty-six, and a lower trace of covered pairs that rises to fifteen and comes back down to zero, above a table giving the term, nineteen agents and three fans compiled, eighty-six reactions of which eight are beta, the rule tally led by delim-delim, and the answer λa. λb. a applied eight times to b"}
 :::static
@@ -68,6 +68,11 @@ and the scheduler's job is to pick among them.
 change, but the reaction count and the number of times each rule fires stay the same. The box below
 reduces every term in the λ front end's corpus under all four schedulers and fails if any term
 breaks either rule.
+
+[`LambdaSoundDocs.corpusSweep`](reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--corpussweep) runs the reductions;
+[`LambdaSoundDocs.stepCountIsScheduleInvariant`](reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--stepcountisscheduleinvariant) and
+[`LambdaSoundDocs.ruleMultisetIsScheduleInvariant`](reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--rulemultisetisscheduleinvariant) check the two claims.
+[`LambdaSoundDocs.spellingsPerTerm`](reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--spellingsperterm) counts the different condensed notations.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/sweep.png" wait="25" capture="box" open-outputs="true" w="1180" h="560" padding="18" timeout="300" name="chain-lambda-sweep" embed=true alt="A table of twenty-two corpus terms sorted by reaction count, from church-pred-three at 127 down to self-apply-identity at 10: every term but the last condenses to four distinct notations across the four schedulers, the last to three, and the FIRST_FOUND spellings are long mixtures of single strikes, rests and the odd replicate"}
 :::static
@@ -123,7 +128,10 @@ every path.
 
 Because the order differs, the β-steps land in different places, and `patCondense` can return a
 different notation for each scheduler. The box below takes `three two` under all four schedulers
-and draws where its β-steps fall.
+and draws where its β-steps fall. It uses
+[`LambdaSoundDocs.traceAllOrders`](reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--traceallorders), then checks the answers with
+[`LambdaSoundDocs.answerIsScheduleInvariant`](reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--answerisscheduleinvariant) and the β-step counts with
+[`LambdaSoundDocs.betaIsScheduleInvariant`](reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--betaisscheduleinvariant).
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/four_schedules.png" wait="14" capture="box" open-outputs="true" w="1180" h="420" padding="18" timeout="240" name="chain-lambda-four" embed=true alt="Four coloured piano-roll lanes of one cycle each, all with eight strikes in eighty-six slots but in visibly different places: FIRST_FOUND spreads four through the first half and packs its last four together near the end, LEFTMOST_BY_ID and HIGHEST_PAIR_ENERGY break theirs into pairs, and RIGHTMOST_BY_ID puts four early and spreads its last four out singly. Below, all four read back as the same answer, and a table gives every scheduler the same eighty-six reactions and eight betas against four different condensed notations and compressions of 0.20, 0.28, 0.26 and 0.27, all four signed for by the search"}
 :::static

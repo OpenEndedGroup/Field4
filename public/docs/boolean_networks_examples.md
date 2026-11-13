@@ -284,3 +284,8 @@ hat, clap and percussion lanes as `bd`, `sn`, `hh`, `cp` and `perc`. The 16 step
 For the next step, where those grids become `NoteProcess` objects and live Dirt triggers, continue with [Boolean network music examples](boolean_network_music_examples.md). For related work where static structure and measured behavior are plotted together, continue with [Values over time (interpolants, keyframes, correlations & estimation)](interpolants_examples.md) and [Sorting networks examples](sorting_networks_examples.md).
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`booleannetworks.kt`](reference/data.md#booleannetworks-kt). Start from [what's already in the box](reference/index.md).*
+
+## API reference
+
+- Attractors and musical events: [`BooleanNetwork`](reference/data.md#booleannetworks-kt-booleannetwork) —
+  [`findAttractors`](reference/data.md#booleannetworks-kt--findattractors).

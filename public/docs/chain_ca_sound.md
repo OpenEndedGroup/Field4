@@ -25,7 +25,7 @@ of the two bars below.
 Rule 90 is `left XOR right`. From a single live cell its space-time diagram is Pascal's triangle
 mod 2, which is where the second column of the figure below comes from: `binomialParity` computes
 what row 20 should be from Kummer's theorem, without stepping anything, and
-[`CaSoundDocs.gasketBar`](reference/patterns.md#casounddocs-kt-casounddocs) compares the real CA
+[`CaSoundDocs.gasketBar`](reference/patterns.md#casounddocs-kt--casounddocs--gasketbar) compares the real CA
 with it cell by cell.
 
 Rule 30's centre column has no such formula.
@@ -117,7 +117,7 @@ numbers measure that difference.
 
 Row *n* of Pascal's triangle mod 2 has exactly `2^popcount(n)` odd entries: its population is a
 power of two, with the binary digit sum of the generation index as its exponent.
-`CaSoundDocs.gasketScale` counts the real CA's rows and maps that digit sum to a degree of a minor
+[`CaSoundDocs.gasketScale`](reference/patterns.md#casounddocs-kt--casounddocs--gasketscale) counts the real CA's rows and maps that digit sum to a degree of a minor
 pentatonic. The tune is the binary expansion of 0, 1, 2, … read out loud: it falls
 back to the root at every power of two and climbs through the carries in between.
 
@@ -213,3 +213,7 @@ notation ends up sorting the rules the same way the usual classification does.
 Implementation and parameter details for the helpers used above:
 
 - [`CaSoundDocs.centreColumnBar`](reference/patterns.md#casounddocs-kt--casounddocs--centrecolumnbar)
+
+- CA patterns and population measurements: [`CaSoundDocs`](reference/patterns.md#casounddocs-kt-casounddocs) —
+  [`gasketPopulations`](reference/patterns.md#casounddocs-kt--casounddocs--gasketpopulations),
+  [`rule30Bar`](reference/patterns.md#casounddocs-kt--casounddocs--rule30bar).

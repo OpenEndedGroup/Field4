@@ -113,3 +113,8 @@ producing slivers.
 * [Progressive Path Tracing](path_tracing.md) for the tracer.
 * [A polytope, cut open, and traced](chain_polytope_render.md) is the same last two hops with a
   Conway operator chain at the front instead of a simulation.
+
+- Constructing cloth, strands and collision constraints:
+  [`SimdVerlet`](reference/simulation.md#simdverlet-kt-simdverlet) —
+  [`addCloth`](reference/simulation.md#cloth-kt--addcloth),
+  [`addColliders`](reference/simulation.md#simdverletcolliders-kt--addcolliders).

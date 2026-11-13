@@ -526,3 +526,11 @@ so any change runs the analysis again. Provenance is available on every result, 
 [published example manifest](assets/loris/provenance.json) records the source hash, controls and
 transformation used for the sounds above. Audio remains at its native source rate; place it on
 a 48 kHz project through an explicitly recorded conversion when needed.
+
+## API reference
+
+- The analysis and resynthesis panels: [`LorisDocs`](reference/audio.md#lorisdocs-kt-lorisdocs) —
+  [`comparisonHtml`](reference/audio.md#lorisdocs-kt--lorisdocs--comparisonhtml),
+  [`morphPanelHtml`](reference/audio.md#lorisdocs-kt--lorisdocs--morphpanelhtml),
+  [`transformedHtml`](reference/audio.md#lorisdocs-kt--lorisdocs--transformedhtml),
+  [`whirlpoolHtml`](reference/audio.md#lorisdocs-kt--lorisdocs--whirlpoolhtml).

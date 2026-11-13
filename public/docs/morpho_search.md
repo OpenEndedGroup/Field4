@@ -4,9 +4,9 @@ Describe what you want a circuit to compute and Field can search for a
 [MorphoHDL](morpho_examples.md) program that does it. The result is source code you can read, edit
 and run in a Morpho box.
 
-The search tools live in `afield.lang.morpho`. `MorphoSpec` and `MorphoEvaluator` describe and
+The search tools live in `afield.lang.morpho`. `MorphoSpec` and [`MorphoEvaluator`](reference/languages.md#morphospec-kt-morphoevaluator) describe and
 check the task; `MorphoGenome` and `MorphoProgramGenerator` produce candidates and variations;
-`MorphoSearch` offers random sampling, hill climbing, a (μ+λ) population and a width curriculum.
+[`MorphoSearch`](reference/languages.md#morphosearch-kt-morphosearch) offers random sampling, hill climbing, a (μ+λ) population and a width curriculum.
 
 The genome is **MorphoHDL source text**. Every candidate is compiled by MorphoHDL's own
 `compileModule()` and run by `MorphoSim`. What the search finds is the program itself, ready to
@@ -317,3 +317,21 @@ showPlaneGrid(
 - [MorphoHDL in Field](morpho_examples.md) for writing and drawing MorphoHDL circuits.
 - [morpho_circuit_search](agent_transcripts.md#morpho_circuit_search), a starting point with these
   searches as boxes you can run.
+
+## API reference
+
+- Growing and evaluating the circuit: [`MorphoCircuit`](reference/languages.md#morphocircuit-kt-morphocircuit)
+  — [`growFully`](reference/languages.md#morphocircuit-kt--morphocircuit--growfully).
+- Evaluating circuit fitness: [`MorphoEvaluator`](reference/languages.md#morphospec-kt-morphoevaluator) —
+  [`evaluate`](reference/languages.md#morphospec-kt--morphoevaluator--evaluate).
+- The circuit-search problems and generators:
+  [`MorphoProblems`](reference/languages.md#morphoproblems-kt-morphoproblems) —
+  [`fullAdderCell`](reference/languages.md#morphoproblems-kt--morphoproblems--fulladdercell),
+  [`guidedRecursiveAdder`](reference/languages.md#morphoproblems-kt--morphoproblems--guidedrecursiveadder),
+  [`orReduce`](reference/languages.md#morphoproblems-kt--morphoproblems--orreduce),
+  [`recursiveAdder`](reference/languages.md#morphoproblems-kt--morphoproblems--recursiveadder).
+- Searching and testing circuits: [`MorphoSearch`](reference/languages.md#morphosearch-kt-morphosearch) —
+  [`evolve`](reference/languages.md#morphosearch-kt--morphosearch--evolve),
+  [`generalization`](reference/languages.md#morphosearch-kt--morphosearch--generalization),
+  [`hillClimb`](reference/languages.md#morphosearch-kt--morphosearch--hillclimb),
+  [`random`](reference/languages.md#morphosearch-kt--morphosearch--random).

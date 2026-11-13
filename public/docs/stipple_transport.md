@@ -207,3 +207,12 @@ movie-conditioned architecture. Field exposes `unsafeBlendWeights` for the same 
 The grey reference in these figures is C, shown for comparison. Neither blend is reliably useful. Shared training ancestry can help align internal
 representations; independent models can permute hidden units while representing similar functions.
 For animation, use the movie-conditioned field above.
+
+## API reference
+
+- Transporting points through the learned field:
+  [`StippleTransport`](reference/machine-learning.md#stippletransport-kt-stippletransport) —
+  [`flowMap`](reference/machine-learning.md#stippletransport-kt--stippletransport--flowmap),
+  [`pathsFrom`](reference/machine-learning.md#stippletransport-kt--stippletransport--pathsfrom),
+  [`transport`](reference/machine-learning.md#stippletransport-kt--stippletransport--transport),
+  [`velocity`](reference/machine-learning.md#stippletransport-kt--stippletransport--velocity).

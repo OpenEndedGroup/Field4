@@ -28,7 +28,8 @@ Run the interactive desktop preview (move the mouse to aim the ray, left-click t
 ./gradlew runImGuiVrPanelDemo
 ```
 
-Or run the automated smoke, which builds the whole pipeline on a real Vulkan window and checks that
+The [`ImGuiVrPanelDemo`](reference/examples.md#imguivrpaneldemo-kt-imguivrpaneldemo) helper wires the pipeline in
+[`build()`](reference/examples.md#imguivrpaneldemo-kt--imguivrpaneldemo--build). Run the automated smoke to exercise it on a real Vulkan window and check that
 a ray aimed at the panel centre lands exactly at its centre:
 
 ```diffstatic {data-lang=bash}

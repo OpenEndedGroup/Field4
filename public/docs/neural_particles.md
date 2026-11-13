@@ -53,11 +53,11 @@ section 4, and tier two is sections 5 to 7.
 | file | what is in it |
 |---|---|
 | [`afield/simulation/particles/neuralparticles.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/simulation/particles/neuralparticles.kt) | `MlpWeights`, `MlpWeights.glsl`, `FlowMatchExport`, `blendWith`, `MlpAgreement` — the network-to-shader bridge |
-| [`afield/simulation/particles/neuralparticles_system.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/simulation/particles/neuralparticles_system.kt) | `ShaderNeuralParticles`, `NeuralParticleSettings` — tier one, as a running system |
+| [`afield/simulation/particles/neuralparticles_system.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/simulation/particles/neuralparticles_system.kt) | [`ShaderNeuralParticles`](reference/machine-learning.md#neuralparticles-system-kt-shaderneuralparticles), `NeuralParticleSettings` — tier one, as a running system |
 | [`afield/ai/learning/flowmatching.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ai/learning/flowmatching.kt) | `flowMatch`, `contourComponents`, `mixtureSource` — the CPU half, shared with [Flow matching](flow_matching.md) |
 | [`afield/ai/learning/deepsets.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ai/learning/deepsets.kt) | `trainDeepSets`, `trainEquivariant`, and their GLSL emitters — tier two's learned rule |
 | [`afield/graphics/vulkan/util/GpuNeighbourGrid.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/graphics/vulkan/util/GpuNeighbourGrid.kt) | hash, sort, ranges: the neighbour search both flocks share |
-| [`afield/simulation/physics/ShaderBoids.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/simulation/physics/ShaderBoids.kt) | `ShaderBoids`, `BoidSettings`: the written rule and the learned one, in one system |
+| [`afield/simulation/physics/ShaderBoids.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/simulation/physics/ShaderBoids.kt) | [`ShaderBoids`](reference/simulation.md#shaderboids-kt-shaderboids), `BoidSettings`: the written rule and the learned one, in one system |
 
 Four transcripts open as complete documents from [Agent transcripts](agent_transcripts.md) or the
 welcome screen: **`neural_particles`**, **`learned_boids`**, **`letter_interpolation`** and
@@ -562,3 +562,14 @@ built on. The API is in [Machine learning](reference/machine-learning.md) and
     The measurements quoted on this page are in [`dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md). The
     figures are screenshots of the live system, because the native window capture takes stills
     only.
+
+## API reference
+
+- Sampling and integrating the learned flow:
+  [`FlowMatchField`](reference/machine-learning.md#flowmatching-kt-flowmatchfield) —
+  [`export`](reference/machine-learning.md#flowmatching-kt--flowmatchfield--export).
+- Installing the GPU boid drawing pass: [`ShaderBoids`](reference/simulation.md#shaderboids-kt-shaderboids) —
+  [`installDrawInto`](reference/simulation.md#shaderboids-kt--shaderboids--installdrawinto).
+- Installing the learned particle simulation:
+  [`ShaderNeuralParticles`](reference/machine-learning.md#neuralparticles-system-kt-shaderneuralparticles) —
+  [`installInto`](reference/machine-learning.md#neuralparticles-system-kt--shaderneuralparticles--installinto).

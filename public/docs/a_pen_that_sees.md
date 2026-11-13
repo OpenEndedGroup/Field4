@@ -444,3 +444,8 @@ stroke, down and back up beside itself, so at every point the line beside it say
     long steps and never lifts. Forking the pen once per proposal took ten seconds for a word;
     proposals are now drawn straight from the pen's prediction, which is the same thing and costs
     nothing.
+
+## API reference
+
+- Loading the pen model: [`PenModel`](reference/machine-learning.md#pen-kt-penmodel) —
+  [`bundled`](reference/machine-learning.md#pen-kt--penmodel-companion--bundled).

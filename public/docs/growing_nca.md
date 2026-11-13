@@ -11,7 +11,7 @@ Field ships two trained rules, `GrowingNca.pretrained("flower")` and
 
 ## Grow it, cut it, watch it heal
 
-`GrowingNca` holds the grid and the network. `step()` advances it one step, `damage(x, y, radius)`
+[`GrowingNca`](reference/alife.md#growing-nca-kt-growingnca) holds the grid and the network. `step()` advances it one step, `damage(x, y, radius)`
 zeroes a disc of cells, and `argb()` / `png()` turn the colour channels into a picture. This box
 grows the flower from one cell, cuts a disc out of the top, and keeps stepping. It prints the error
 against the target picture at each snapshot and shows all seven side by side:
@@ -245,7 +245,7 @@ $$
 
 and the cells perceive the world turned by θ. The article's fourth experiment shows that the
 trained rule then grows its picture turned by θ, without retraining. `rotation` sets θ in radians,
-and a positive angle turns the picture anticlockwise on screen. `GrowingNca.rotateTarget` turns
+and a positive angle turns the picture anticlockwise on screen. [`GrowingNca.rotateTarget`](reference/alife.md#growing-nca-kt--growingnca-companion--rotatetarget) turns
 the target the same way, so there is something to score the result against. This box grows the
 flower at eight angles. Under each flower it shows the error against the turned target, then, in
 brackets, the error the upright flower would have against that same target:
@@ -540,7 +540,7 @@ hole:
 
 The flower was drawn by the training script itself. For a rule of your own, draw the picture in a
 box with FLines, in the 40 × 40 square the trainer pads to 64 × 64. Pixels are the units, y points
-down, and each filled line is painted in its own `color`. `GrowingNca.targetFromFLines` rasterises
+down, and each filled line is painted in its own `color`. [`GrowingNca.targetFromFLines`](reference/alife.md#growing-nca-kt--growingnca-companion--targetfromflines) rasterises
 them, antialiased, into the premultiplied RGBA the trainer expects, and `writeTarget` saves that as
 JSON. This box draws a fish:
 
@@ -704,3 +704,11 @@ Implementation and parameter details for the helpers used above:
 
 - [`WindowBrush.install`](reference/alife.md#growing-nca-kt--windowbrush--install)
 - [`WindowBrush`](reference/alife.md#growing-nca-kt-windowbrush)
+
+- Growing, damaging and measuring the cellular automaton:
+  [`GrowingNca`](reference/alife.md#growing-nca-kt-growingnca) —
+  [`damage`](reference/alife.md#growing-nca-kt--growingnca--damage),
+  [`loss`](reference/alife.md#growing-nca-kt--growingnca--loss),
+  [`pretrained`](reference/alife.md#growing-nca-kt--growingnca-companion--pretrained),
+  [`pretrainedTarget`](reference/alife.md#growing-nca-kt--growingnca-companion--pretrainedtarget),
+  [`step`](reference/alife.md#growing-nca-kt--growingnca--step).

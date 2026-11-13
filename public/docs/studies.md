@@ -10,7 +10,7 @@ You can work on a study with AI4: try the conversations about [a function](funct
 studies share, and how to turn a box in your own document into a study.
 
 Everything here is in `afield.study.source`: `LiveStudy` and `registerStudyTools` in `LiveStudy.kt`,
-`SourceFramesStudy` in `SourceFramesStudy.kt`.
+[`SourceFramesStudy`](reference/workspace.md#sourceframesstudy-kt-sourceframesstudy) in `SourceFramesStudy.kt`.
 
 ## The ten verbs
 
@@ -322,7 +322,7 @@ StackSL, RectSL and stack.auto studies, so a result reads the same whichever pro
 ## Build derived results without blocking edits
 
 Some results take longer than an edit: a checked mesh, an export, or an analysis that consumes
-another stage's output. `StudyBuilds` gives these operations a persistent attempt history and an
+another stage's output. [`StudyBuilds`](reference/workspace.md#studybuilds-kt-studybuilds) gives these operations a persistent attempt history and an
 explicit **Build** button. The editable source stays in its existing study.
 
 For an existing `SourceStudy` named `design`, this small stage writes a report from the exact
@@ -920,3 +920,14 @@ without starting Field.
 Implementation and parameter details for the helpers used above:
 
 - [`StudyBuildView`](reference/workspace.md#studybuilds-kt-studybuildview)
+
+- Editing, inspecting and comparing source variants:
+  [`SourceFramesStudy`](reference/workspace.md#sourceframesstudy-kt-sourceframesstudy) —
+  [`edit`](reference/workspace.md#sourceframesstudy-kt--sourceframesstudy--edit),
+  [`inspect`](reference/workspace.md#sourceframesstudy-kt--sourceframesstudy--inspect),
+  [`setNumbers`](reference/workspace.md#sourceframesstudy-kt--sourceframesstudy--setnumbers),
+  [`sweep`](reference/workspace.md#sourceframesstudy-kt--sourceframesstudy--sweep),
+  [`tryVariants`](reference/workspace.md#sourceframesstudy-kt--sourceframesstudy--tryvariants).
+- Starting and awaiting derived builds: [`StudyBuilds`](reference/workspace.md#studybuilds-kt-studybuilds) —
+  [`await`](reference/workspace.md#studybuilds-kt--studybuilds--await),
+  [`start`](reference/workspace.md#studybuilds-kt--studybuilds--start).

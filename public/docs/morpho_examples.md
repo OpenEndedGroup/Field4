@@ -466,3 +466,10 @@ fraction of a second.
 - How this bridge to a foreign runtime was built, step by step, is in
   [`dev_docs/MORPHO_LANGUAGE_BRIDGE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/MORPHO_LANGUAGE_BRIDGE.md),
   for anyone hosting another language.
+
+## API reference
+
+- Growing and evaluating the circuit: [`MorphoCircuit`](reference/languages.md#morphocircuit-kt-morphocircuit)
+  — [`evaluateOne`](reference/languages.md#morphocircuit-kt--morphocircuit--evaluateone),
+  [`growFully`](reference/languages.md#morphocircuit-kt--morphocircuit--growfully),
+  [`step`](reference/languages.md#morphocircuit-kt--morphocircuit--step).

@@ -445,3 +445,13 @@ subsequence that spans two examples is no subsequence at all.
   here (`motifs`, `discords`, the exclusion zone of `m/4`) follow its conventions where they could.
 - A starting point with these scenes as boxes is in the
   [agent transcript gallery](agent_transcripts.md#matrix_profile).
+
+## API reference
+
+- Finding motifs and discords: [`MatrixProfile`](reference/math.md#matrixprofile-kt-matrixprofile) —
+  [`discords`](reference/math.md#matrixprofile-kt--matrixprofile--discords),
+  [`motifs`](reference/math.md#matrixprofile-kt--matrixprofile--motifs).
+- Computing the multivariate profile and motifs:
+  [`MultiMatrixProfile`](reference/math.md#multidimensional-kt-multimatrixprofile) —
+  [`motifs`](reference/math.md#multidimensional-kt--multimatrixprofile--motifs),
+  [`profile`](reference/math.md#multidimensional-kt--multimatrixprofile--profile).

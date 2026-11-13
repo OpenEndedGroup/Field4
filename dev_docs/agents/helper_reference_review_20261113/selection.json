@@ -1,0 +1,2658 @@
+[
+  {
+    "type": "BoidFlock",
+    "method": "BoidFlock.order",
+    "reason": "Initialising the flock and measuring alignment",
+    "classTarget": "reference/alife.md#alife-agents-kt-boidflock",
+    "methodTarget": "reference/alife.md#alife-agents-kt--boidflock--order",
+    "pages": [
+      "public/docs/agent_transcripts.md#alife_worked_example",
+      "public/docs/alife_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/alife_worked_example.yaml#yaml/operations/5/create/properties/code",
+      "public/docs/alife_examples.md#fence:1205"
+    ]
+  },
+  {
+    "type": "BoidFlock",
+    "method": "BoidFlock.random",
+    "reason": "Initialising the flock and measuring alignment",
+    "classTarget": "reference/alife.md#alife-agents-kt-boidflock",
+    "methodTarget": "reference/alife.md#alife-agents-kt--boidflock-companion--random",
+    "pages": [
+      "public/docs/agent_transcripts.md#alife_worked_example",
+      "public/docs/alife_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/alife_worked_example.yaml#yaml/operations/15/create/properties/code",
+      "dev_docs/agents/transcripts/alife_worked_example.yaml#yaml/operations/5/create/properties/code",
+      "public/docs/alife_examples.md#fence:1205",
+      "public/docs/alife_examples.md#fence:1275"
+    ]
+  },
+  {
+    "type": "BooleanNetwork",
+    "method": "BooleanNetwork.asNoteProcess",
+    "reason": "Attractors and musical events",
+    "classTarget": "reference/data.md#booleannetworks-kt-booleannetwork",
+    "methodTarget": "reference/patterns.md#booleannetworksequencing-kt--asnoteprocess",
+    "pages": [
+      "public/docs/boolean_network_music_examples.md"
+    ],
+    "examples": [
+      "public/docs/boolean_network_music_examples.md#fence:84"
+    ]
+  },
+  {
+    "type": "BooleanNetwork",
+    "method": "BooleanNetwork.findAttractors",
+    "reason": "Attractors and musical events",
+    "classTarget": "reference/data.md#booleannetworks-kt-booleannetwork",
+    "methodTarget": "reference/data.md#booleannetworks-kt--findattractors",
+    "pages": [
+      "public/docs/boolean_network_music_examples.md",
+      "public/docs/boolean_networks_examples.md"
+    ],
+    "examples": [
+      "public/docs/boolean_network_music_examples.md#fence:360",
+      "public/docs/boolean_network_music_examples.md#fence:84",
+      "public/docs/boolean_networks_examples.md#fence:9"
+    ]
+  },
+  {
+    "type": "BooleanNetwork",
+    "method": "BooleanNetwork.respondAhead",
+    "reason": "Attractors and musical events",
+    "classTarget": "reference/data.md#booleannetworks-kt-booleannetwork",
+    "methodTarget": "reference/patterns.md#booleannetworksequencing-kt--respondahead",
+    "pages": [
+      "public/docs/boolean_network_music_examples.md"
+    ],
+    "examples": [
+      "public/docs/boolean_network_music_examples.md#fence:360"
+    ]
+  },
+  {
+    "type": "CaSoundDocs",
+    "method": "CaSoundDocs.centreColumnBar",
+    "reason": "CA patterns and population measurements",
+    "classTarget": "reference/patterns.md#casounddocs-kt-casounddocs",
+    "methodTarget": "reference/patterns.md#casounddocs-kt--casounddocs--centrecolumnbar",
+    "pages": [
+      "public/docs/chain_ca_sound.md"
+    ],
+    "examples": [
+      "public/docs/chain_ca_sound.md#fence:164"
+    ]
+  },
+  {
+    "type": "CaSoundDocs",
+    "method": "CaSoundDocs.gasketBar",
+    "reason": "CA patterns and population measurements",
+    "classTarget": "reference/patterns.md#casounddocs-kt-casounddocs",
+    "methodTarget": "reference/patterns.md#casounddocs-kt--casounddocs--gasketbar",
+    "pages": [
+      "public/docs/chain_ca_sound.md"
+    ],
+    "examples": [
+      "public/docs/chain_ca_sound.md#fence:33"
+    ]
+  },
+  {
+    "type": "CaSoundDocs",
+    "method": "CaSoundDocs.gasketPopulations",
+    "reason": "CA patterns and population measurements",
+    "classTarget": "reference/patterns.md#casounddocs-kt-casounddocs",
+    "methodTarget": "reference/patterns.md#casounddocs-kt--casounddocs--gasketpopulations",
+    "pages": [
+      "public/docs/chain_ca_sound.md"
+    ],
+    "examples": [
+      "public/docs/chain_ca_sound.md#fence:124"
+    ]
+  },
+  {
+    "type": "CaSoundDocs",
+    "method": "CaSoundDocs.gasketScale",
+    "reason": "CA patterns and population measurements",
+    "classTarget": "reference/patterns.md#casounddocs-kt-casounddocs",
+    "methodTarget": "reference/patterns.md#casounddocs-kt--casounddocs--gasketscale",
+    "pages": [
+      "public/docs/chain_ca_sound.md"
+    ],
+    "examples": [
+      "public/docs/chain_ca_sound.md#fence:124"
+    ]
+  },
+  {
+    "type": "CaSoundDocs",
+    "method": "CaSoundDocs.rule30Bar",
+    "reason": "CA patterns and population measurements",
+    "classTarget": "reference/patterns.md#casounddocs-kt-casounddocs",
+    "methodTarget": "reference/patterns.md#casounddocs-kt--casounddocs--rule30bar",
+    "pages": [
+      "public/docs/chain_ca_sound.md"
+    ],
+    "examples": [
+      "public/docs/chain_ca_sound.md#fence:33"
+    ]
+  },
+  {
+    "type": "ContourTrees",
+    "method": "ContourTrees.contourTree",
+    "reason": "Constructing the contour tree",
+    "classTarget": "reference/graphics.md#contourtrees-kt-contourtrees",
+    "methodTarget": "reference/graphics.md#contourtrees-kt--contourtrees--contourtree",
+    "pages": [
+      "public/docs/agent_transcripts.md#contour_trees_explorer",
+      "public/docs/contour_trees.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/contour_trees_explorer.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/contour_trees.md#fence:117",
+      "public/docs/contour_trees.md#fence:13"
+    ]
+  },
+  {
+    "type": "DirectLightingDemo",
+    "method": "DirectLightingDemo.animate",
+    "reason": "The animated lighting study",
+    "classTarget": "reference/graphics.md#directlightingdemo-kt-directlightingdemo",
+    "methodTarget": "reference/graphics.md#directlightingdemo-kt--directlightingdemo--animate",
+    "pages": [
+      "public/docs/direct_lighting.md"
+    ],
+    "examples": [
+      "public/docs/direct_lighting.md#fence:88"
+    ]
+  },
+  {
+    "type": "DrawnMorphDocs",
+    "method": "DrawnMorphDocs.morphNotes",
+    "reason": "Notes from corresponding strokes",
+    "classTarget": "reference/patterns.md#drawnmorphdocs-kt-drawnmorphdocs",
+    "methodTarget": "reference/patterns.md#drawnmorphdocs-kt--drawnmorphdocs--morphnotes",
+    "pages": [
+      "public/docs/chain_drawn_morph.md"
+    ],
+    "examples": [
+      "public/docs/chain_drawn_morph.md#fence:168"
+    ]
+  },
+  {
+    "type": "DrawnScoreDocs",
+    "method": "DrawnScoreDocs.interpret",
+    "reason": "Interpreting and checking a drawn score",
+    "classTarget": "reference/patterns.md#drawnscoredocs-kt-drawnscoredocs",
+    "methodTarget": "reference/patterns.md#drawnscoredocs-kt--drawnscoredocs--interpret",
+    "pages": [
+      "public/docs/agent_transcripts.md#drawn_score",
+      "public/docs/chain_drawn_score.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/drawn_score.yaml#yaml/operations/3/create/properties/code",
+      "dev_docs/agents/transcripts/drawn_score.yaml#yaml/operations/4/create/properties/code",
+      "public/docs/chain_drawn_score.md#fence:138",
+      "public/docs/chain_drawn_score.md#fence:180"
+    ]
+  },
+  {
+    "type": "DrawnScoreDocs",
+    "method": "DrawnScoreDocs.listen",
+    "reason": "Interpreting and checking a drawn score",
+    "classTarget": "reference/patterns.md#drawnscoredocs-kt-drawnscoredocs",
+    "methodTarget": "reference/patterns.md#drawnscoredocs-kt--drawnscoredocs--listen",
+    "pages": [
+      "public/docs/agent_transcripts.md#drawn_score",
+      "public/docs/chain_drawn_score.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/drawn_score.yaml#yaml/operations/4/create/properties/code",
+      "public/docs/chain_drawn_score.md#fence:180"
+    ]
+  },
+  {
+    "type": "DrawnScoreDocs",
+    "method": "DrawnScoreDocs.pentatonic",
+    "reason": "Interpreting and checking a drawn score",
+    "classTarget": "reference/patterns.md#drawnscoredocs-kt-drawnscoredocs",
+    "methodTarget": "reference/patterns.md#drawnscoredocs-kt--drawnscoredocs--pentatonic",
+    "pages": [
+      "public/docs/agent_transcripts.md#drawn_score",
+      "public/docs/chain_drawn_score.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/drawn_score.yaml#yaml/operations/4/create/properties/code"
+    ]
+  },
+  {
+    "type": "DrawnScoreDocs",
+    "method": "DrawnScoreDocs.sceneNotes",
+    "reason": "Interpreting and checking a drawn score",
+    "classTarget": "reference/patterns.md#drawnscoredocs-kt-drawnscoredocs",
+    "methodTarget": "reference/patterns.md#drawnscoredocs-kt--drawnscoredocs--scenenotes",
+    "pages": [
+      "public/docs/chain_drawn_score.md"
+    ],
+    "examples": [
+      "public/docs/chain_drawn_score.md#fence:180"
+    ]
+  },
+  {
+    "type": "FabricateScenePlanner",
+    "method": "FabricateScenePlanner.plan",
+    "reason": "Planning the render passes",
+    "classTarget": "reference/renderers.md#fabricaterenderplan-kt-fabricatesceneplanner",
+    "methodTarget": "reference/renderers.md#fabricaterenderplan-kt--fabricatesceneplanner--plan",
+    "pages": [
+      "public/docs/fabricate_renderer.md"
+    ],
+    "examples": [
+      "public/docs/fabricate_renderer.md#fence:143"
+    ]
+  },
+  {
+    "type": "FlowLeniaPresets",
+    "method": "FlowLeniaPresets.cell",
+    "reason": "The preset Flow Lenia species",
+    "classTarget": "reference/alife.md#alife-flow-lenia-kt-flowleniapresets",
+    "methodTarget": "reference/alife.md#alife-flow-lenia-kt--flowleniapresets--cell",
+    "pages": [
+      "public/docs/agent_transcripts.md#flow_lenia",
+      "public/docs/alife_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/2/create/properties/code",
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/3/create/properties/code",
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/5/create/properties/code",
+      "public/docs/alife_examples.md#fence:1115",
+      "public/docs/alife_examples.md#fence:854",
+      "public/docs/alife_examples.md#fence:892",
+      "public/docs/alife_examples.md#fence:927",
+      "public/docs/alife_examples.md#fence:972"
+    ]
+  },
+  {
+    "type": "FlowLeniaPresets",
+    "method": "FlowLeniaPresets.crescent",
+    "reason": "The preset Flow Lenia species",
+    "classTarget": "reference/alife.md#alife-flow-lenia-kt-flowleniapresets",
+    "methodTarget": "reference/alife.md#alife-flow-lenia-kt--flowleniapresets--crescent",
+    "pages": [
+      "public/docs/agent_transcripts.md#flow_lenia",
+      "public/docs/alife_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/4/create/properties/code",
+      "public/docs/alife_examples.md#fence:1033",
+      "public/docs/alife_examples.md#fence:1070"
+    ]
+  },
+  {
+    "type": "FlowLeniaPresets",
+    "method": "FlowLeniaPresets.rings",
+    "reason": "The preset Flow Lenia species",
+    "classTarget": "reference/alife.md#alife-flow-lenia-kt-flowleniapresets",
+    "methodTarget": "reference/alife.md#alife-flow-lenia-kt--flowleniapresets--rings",
+    "pages": [
+      "public/docs/agent_transcripts.md#flow_lenia",
+      "public/docs/alife_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/2/create/properties/code",
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/3/create/properties/code",
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/5/create/properties/code",
+      "public/docs/alife_examples.md#fence:1115",
+      "public/docs/alife_examples.md#fence:854",
+      "public/docs/alife_examples.md#fence:892",
+      "public/docs/alife_examples.md#fence:927",
+      "public/docs/alife_examples.md#fence:972"
+    ]
+  },
+  {
+    "type": "FlowLeniaPresets",
+    "method": "FlowLeniaPresets.wanderers",
+    "reason": "The preset Flow Lenia species",
+    "classTarget": "reference/alife.md#alife-flow-lenia-kt-flowleniapresets",
+    "methodTarget": "reference/alife.md#alife-flow-lenia-kt--flowleniapresets--wanderers",
+    "pages": [
+      "public/docs/agent_transcripts.md#flow_lenia",
+      "public/docs/alife_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/5/create/properties/code",
+      "public/docs/alife_examples.md#fence:1115",
+      "public/docs/alife_examples.md#fence:854",
+      "public/docs/alife_examples.md#fence:972"
+    ]
+  },
+  {
+    "type": "FlowLeniaWorld",
+    "method": "FlowLeniaWorld.step",
+    "reason": "Advancing the mass-conserving simulation",
+    "classTarget": "reference/alife.md#alife-flow-lenia-kt-flowleniaworld",
+    "methodTarget": "reference/alife.md#alife-flow-lenia-kt--flowleniaworld--step",
+    "pages": [
+      "public/docs/agent_transcripts.md#flow_lenia",
+      "public/docs/alife_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/0/create/properties/code"
+    ]
+  },
+  {
+    "type": "FlowLeniaWorld",
+    "method": "FlowLeniaWorld.totalMass",
+    "reason": "Advancing the mass-conserving simulation",
+    "classTarget": "reference/alife.md#alife-flow-lenia-kt-flowleniaworld",
+    "methodTarget": "reference/alife.md#alife-flow-lenia-kt--flowleniaworld--totalmass",
+    "pages": [
+      "public/docs/agent_transcripts.md#flow_lenia",
+      "public/docs/alife_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/flow_lenia.yaml#yaml/operations/0/create/properties/code"
+    ]
+  },
+  {
+    "type": "FlowMatchField",
+    "method": "FlowMatchField.export",
+    "reason": "Sampling and integrating the learned flow",
+    "classTarget": "reference/machine-learning.md#flowmatching-kt-flowmatchfield",
+    "methodTarget": "reference/machine-learning.md#flowmatching-kt--flowmatchfield--export",
+    "pages": [
+      "public/docs/agent_transcripts.md#neural_particles",
+      "public/docs/neural_particles.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/neural_particles.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/neural_particles.md#fence:74"
+    ]
+  },
+  {
+    "type": "FlowMatchField",
+    "method": "FlowMatchField.paths",
+    "reason": "Sampling and integrating the learned flow",
+    "classTarget": "reference/machine-learning.md#flowmatching-kt-flowmatchfield",
+    "methodTarget": "reference/machine-learning.md#flowmatching-kt--flowmatchfield--paths",
+    "pages": [
+      "public/docs/flow_matching.md"
+    ],
+    "examples": [
+      "public/docs/flow_matching.md#fence:18"
+    ]
+  },
+  {
+    "type": "FlowMatchField",
+    "method": "FlowMatchField.sample",
+    "reason": "Sampling and integrating the learned flow",
+    "classTarget": "reference/machine-learning.md#flowmatching-kt-flowmatchfield",
+    "methodTarget": "reference/machine-learning.md#flowmatching-kt--flowmatchfield--sample",
+    "pages": [
+      "public/docs/agent_transcripts.md#flow_islands",
+      "public/docs/chain_flow_islands.md",
+      "public/docs/flow_matching.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/flow_islands.yaml#yaml/operations/0/create/properties/code",
+      "public/docs/chain_flow_islands.md#fence:24",
+      "public/docs/flow_matching.md#fence:18"
+    ]
+  },
+  {
+    "type": "FlowMatchField",
+    "method": "FlowMatchField.transport",
+    "reason": "Sampling and integrating the learned flow",
+    "classTarget": "reference/machine-learning.md#flowmatching-kt-flowmatchfield",
+    "methodTarget": "reference/machine-learning.md#flowmatching-kt--flowmatchfield--transport",
+    "pages": [
+      "public/docs/flow_matching.md"
+    ],
+    "examples": [
+      "public/docs/flow_matching.md#fence:18"
+    ]
+  },
+  {
+    "type": "GrowingNca",
+    "method": "GrowingNca.damage",
+    "reason": "Growing, damaging and measuring the cellular automaton",
+    "classTarget": "reference/alife.md#growing-nca-kt-growingnca",
+    "methodTarget": "reference/alife.md#growing-nca-kt--growingnca--damage",
+    "pages": [
+      "public/docs/agent_transcripts.md#growing_nca",
+      "public/docs/growing_nca.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/1/create/properties/code"
+    ]
+  },
+  {
+    "type": "GrowingNca",
+    "method": "GrowingNca.loss",
+    "reason": "Growing, damaging and measuring the cellular automaton",
+    "classTarget": "reference/alife.md#growing-nca-kt-growingnca",
+    "methodTarget": "reference/alife.md#growing-nca-kt--growingnca--loss",
+    "pages": [
+      "public/docs/agent_transcripts.md#growing_nca",
+      "public/docs/growing_nca.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/4/create/properties/code",
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/5/create/properties/code",
+      "public/docs/growing_nca.md#fence:253",
+      "public/docs/growing_nca.md#fence:299"
+    ]
+  },
+  {
+    "type": "GrowingNca",
+    "method": "GrowingNca.pretrained",
+    "reason": "Growing, damaging and measuring the cellular automaton",
+    "classTarget": "reference/alife.md#growing-nca-kt-growingnca",
+    "methodTarget": "reference/alife.md#growing-nca-kt--growingnca-companion--pretrained",
+    "pages": [
+      "public/docs/agent_transcripts.md#growing_nca",
+      "public/docs/growing_nca.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/4/create/properties/code",
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/5/create/properties/code",
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/6/create/properties/code",
+      "public/docs/growing_nca.md#fence:253",
+      "public/docs/growing_nca.md#fence:299",
+      "public/docs/growing_nca.md#fence:348",
+      "public/docs/growing_nca.md#fence:658"
+    ]
+  },
+  {
+    "type": "GrowingNca",
+    "method": "GrowingNca.pretrainedTarget",
+    "reason": "Growing, damaging and measuring the cellular automaton",
+    "classTarget": "reference/alife.md#growing-nca-kt-growingnca",
+    "methodTarget": "reference/alife.md#growing-nca-kt--growingnca-companion--pretrainedtarget",
+    "pages": [
+      "public/docs/agent_transcripts.md#growing_nca",
+      "public/docs/growing_nca.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/4/create/properties/code",
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/5/create/properties/code",
+      "public/docs/growing_nca.md#fence:253",
+      "public/docs/growing_nca.md#fence:299",
+      "public/docs/growing_nca.md#fence:658"
+    ]
+  },
+  {
+    "type": "GrowingNca",
+    "method": "GrowingNca.rotateTarget",
+    "reason": "Growing, damaging and measuring the cellular automaton",
+    "classTarget": "reference/alife.md#growing-nca-kt-growingnca",
+    "methodTarget": "reference/alife.md#growing-nca-kt--growingnca-companion--rotatetarget",
+    "pages": [
+      "public/docs/agent_transcripts.md#growing_nca",
+      "public/docs/growing_nca.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/4/create/properties/code",
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/5/create/properties/code",
+      "public/docs/growing_nca.md#fence:253",
+      "public/docs/growing_nca.md#fence:299",
+      "public/docs/growing_nca.md#fence:658"
+    ]
+  },
+  {
+    "type": "GrowingNca",
+    "method": "GrowingNca.step",
+    "reason": "Growing, damaging and measuring the cellular automaton",
+    "classTarget": "reference/alife.md#growing-nca-kt-growingnca",
+    "methodTarget": "reference/alife.md#growing-nca-kt--growingnca--step",
+    "pages": [
+      "public/docs/agent_transcripts.md#growing_nca",
+      "public/docs/growing_nca.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/4/create/properties/code",
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/5/create/properties/code",
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/6/create/properties/code",
+      "public/docs/growing_nca.md#fence:253",
+      "public/docs/growing_nca.md#fence:299",
+      "public/docs/growing_nca.md#fence:348"
+    ]
+  },
+  {
+    "type": "GrowingNca",
+    "method": "GrowingNca.targetFromFLines",
+    "reason": "Growing, damaging and measuring the cellular automaton",
+    "classTarget": "reference/alife.md#growing-nca-kt-growingnca",
+    "methodTarget": "reference/alife.md#growing-nca-kt--growingnca-companion--targetfromflines",
+    "pages": [
+      "public/docs/agent_transcripts.md#growing_nca",
+      "public/docs/growing_nca.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/growing_nca.yaml#yaml/operations/8/create/properties/code",
+      "public/docs/growing_nca.md#fence:547"
+    ]
+  },
+  {
+    "type": "ImGuiVrPanelDemo",
+    "method": "ImGuiVrPanelDemo.build",
+    "reason": "Building the stereo panel scene",
+    "classTarget": "reference/examples.md#imguivrpaneldemo-kt-imguivrpaneldemo",
+    "methodTarget": "reference/examples.md#imguivrpaneldemo-kt--imguivrpaneldemo--build",
+    "pages": [
+      "public/docs/agent_transcripts.md#imgui_vr_panel",
+      "public/docs/imgui_vr_panel.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/imgui_vr_panel.yaml#yaml/operations/1/create/properties/code"
+    ]
+  },
+  {
+    "type": "Lambda",
+    "method": "Lambda.duplicatedConstantDemo",
+    "reason": "Interaction rules and example nets",
+    "classTarget": "reference/visualization.md#interactionnets-kt-lambda",
+    "methodTarget": "reference/visualization.md#interactionnets-kt--lambda--duplicatedconstantdemo",
+    "pages": [
+      "public/docs/interaction_nets_examples.md"
+    ],
+    "examples": [
+      "public/docs/interaction_nets_examples.md#fence:171"
+    ]
+  },
+  {
+    "type": "Lambda",
+    "method": "Lambda.eraseApplicationDemo",
+    "reason": "Interaction rules and example nets",
+    "classTarget": "reference/visualization.md#interactionnets-kt-lambda",
+    "methodTarget": "reference/visualization.md#interactionnets-kt--lambda--eraseapplicationdemo",
+    "pages": [
+      "public/docs/interaction_nets_examples.md"
+    ],
+    "examples": [
+      "public/docs/interaction_nets_examples.md#fence:214"
+    ]
+  },
+  {
+    "type": "Lambda",
+    "method": "Lambda.rules",
+    "reason": "Interaction rules and example nets",
+    "classTarget": "reference/visualization.md#interactionnets-kt-lambda",
+    "methodTarget": "reference/visualization.md#interactionnets-kt--lambda--rules",
+    "pages": [
+      "public/docs/interaction_nets_examples.md"
+    ],
+    "examples": [
+      "public/docs/interaction_nets_examples.md#fence:109",
+      "public/docs/interaction_nets_examples.md#fence:171",
+      "public/docs/interaction_nets_examples.md#fence:214",
+      "public/docs/interaction_nets_examples.md#fence:259",
+      "public/docs/interaction_nets_examples.md#fence:53"
+    ]
+  },
+  {
+    "type": "LambdaSoundDocs",
+    "method": "LambdaSoundDocs.answerIsScheduleInvariant",
+    "reason": "Recorded reductions and scheduler comparisons",
+    "classTarget": "reference/patterns.md#lambdasounddocs-kt-lambdasounddocs",
+    "methodTarget": "reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--answerisscheduleinvariant",
+    "pages": [
+      "public/docs/chain_lambda_sound.md"
+    ],
+    "examples": [
+      "public/docs/chain_lambda_sound.md#fence:128"
+    ]
+  },
+  {
+    "type": "LambdaSoundDocs",
+    "method": "LambdaSoundDocs.betaIsScheduleInvariant",
+    "reason": "Recorded reductions and scheduler comparisons",
+    "classTarget": "reference/patterns.md#lambdasounddocs-kt-lambdasounddocs",
+    "methodTarget": "reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--betaisscheduleinvariant",
+    "pages": [
+      "public/docs/chain_lambda_sound.md"
+    ],
+    "examples": [
+      "public/docs/chain_lambda_sound.md#fence:128"
+    ]
+  },
+  {
+    "type": "LambdaSoundDocs",
+    "method": "LambdaSoundDocs.corpusSweep",
+    "reason": "Recorded reductions and scheduler comparisons",
+    "classTarget": "reference/patterns.md#lambdasounddocs-kt-lambdasounddocs",
+    "methodTarget": "reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--corpussweep",
+    "pages": [
+      "public/docs/chain_lambda_sound.md"
+    ],
+    "examples": [
+      "public/docs/chain_lambda_sound.md#fence:72"
+    ]
+  },
+  {
+    "type": "LambdaSoundDocs",
+    "method": "LambdaSoundDocs.ruleMultisetIsScheduleInvariant",
+    "reason": "Recorded reductions and scheduler comparisons",
+    "classTarget": "reference/patterns.md#lambdasounddocs-kt-lambdasounddocs",
+    "methodTarget": "reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--rulemultisetisscheduleinvariant",
+    "pages": [
+      "public/docs/chain_lambda_sound.md"
+    ],
+    "examples": [
+      "public/docs/chain_lambda_sound.md#fence:72"
+    ]
+  },
+  {
+    "type": "LambdaSoundDocs",
+    "method": "LambdaSoundDocs.spellingsPerTerm",
+    "reason": "Recorded reductions and scheduler comparisons",
+    "classTarget": "reference/patterns.md#lambdasounddocs-kt-lambdasounddocs",
+    "methodTarget": "reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--spellingsperterm",
+    "pages": [
+      "public/docs/chain_lambda_sound.md"
+    ],
+    "examples": [
+      "public/docs/chain_lambda_sound.md#fence:72"
+    ]
+  },
+  {
+    "type": "LambdaSoundDocs",
+    "method": "LambdaSoundDocs.stepCountIsScheduleInvariant",
+    "reason": "Recorded reductions and scheduler comparisons",
+    "classTarget": "reference/patterns.md#lambdasounddocs-kt-lambdasounddocs",
+    "methodTarget": "reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--stepcountisscheduleinvariant",
+    "pages": [
+      "public/docs/chain_lambda_sound.md"
+    ],
+    "examples": [
+      "public/docs/chain_lambda_sound.md#fence:72"
+    ]
+  },
+  {
+    "type": "LambdaSoundDocs",
+    "method": "LambdaSoundDocs.trace",
+    "reason": "Recorded reductions and scheduler comparisons",
+    "classTarget": "reference/patterns.md#lambdasounddocs-kt-lambdasounddocs",
+    "methodTarget": "reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--trace-2",
+    "pages": [
+      "public/docs/chain_lambda_sound.md"
+    ],
+    "examples": [
+      "public/docs/chain_lambda_sound.md#fence:200",
+      "public/docs/chain_lambda_sound.md#fence:26"
+    ]
+  },
+  {
+    "type": "LambdaSoundDocs",
+    "method": "LambdaSoundDocs.traceAllOrders",
+    "reason": "Recorded reductions and scheduler comparisons",
+    "classTarget": "reference/patterns.md#lambdasounddocs-kt-lambdasounddocs",
+    "methodTarget": "reference/patterns.md#lambdasounddocs-kt--lambdasounddocs--traceallorders",
+    "pages": [
+      "public/docs/chain_lambda_sound.md"
+    ],
+    "examples": [
+      "public/docs/chain_lambda_sound.md#fence:128"
+    ]
+  },
+  {
+    "type": "LambdaTerms",
+    "method": "LambdaTerms.alphaEquivalent",
+    "reason": "Parsing, reducing and checking lambda terms",
+    "classTarget": "reference/visualization.md#lambdaterms-kt-lambdaterms",
+    "methodTarget": "reference/visualization.md#lambdaterms-kt--lambdaterms--alphaequivalent",
+    "pages": [
+      "public/docs/agent_transcripts.md#interaction_nets_lambda",
+      "public/docs/interaction_nets_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/demos/interaction_nets_lambda/lambda-normalise_code_.kt#source",
+      "dev_docs/agents/transcripts/interaction_nets_lambda.yaml#yaml/operations/0/create/properties/code"
+    ]
+  },
+  {
+    "type": "LambdaTerms",
+    "method": "LambdaTerms.compile",
+    "reason": "Parsing, reducing and checking lambda terms",
+    "classTarget": "reference/visualization.md#lambdaterms-kt-lambdaterms",
+    "methodTarget": "reference/visualization.md#lambdaterms-kt--lambdaterms--compile",
+    "pages": [
+      "public/docs/agent_transcripts.md#interaction_nets_lambda",
+      "public/docs/interaction_nets_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/demos/interaction_nets_lambda/lambda-normalise_code_.kt#source",
+      "dev_docs/agents/transcripts/interaction_nets_lambda.yaml#yaml/operations/0/create/properties/code"
+    ]
+  },
+  {
+    "type": "LambdaTerms",
+    "method": "LambdaTerms.normalise",
+    "reason": "Parsing, reducing and checking lambda terms",
+    "classTarget": "reference/visualization.md#lambdaterms-kt-lambdaterms",
+    "methodTarget": "reference/visualization.md#lambdaterms-kt--lambdaterms--normalise",
+    "pages": [
+      "public/docs/agent_transcripts.md#interaction_nets_lambda",
+      "public/docs/interaction_nets_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/demos/interaction_nets_lambda/lambda-normalise_code_.kt#source",
+      "dev_docs/agents/demos/interaction_nets_lambda/lambda-oracle_code_.kt#source",
+      "dev_docs/agents/transcripts/interaction_nets_lambda.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/interaction_nets_lambda.yaml#yaml/operations/2/create/properties/code"
+    ]
+  },
+  {
+    "type": "LambdaTerms",
+    "method": "LambdaTerms.parse",
+    "reason": "Parsing, reducing and checking lambda terms",
+    "classTarget": "reference/visualization.md#lambdaterms-kt-lambdaterms",
+    "methodTarget": "reference/visualization.md#lambdaterms-kt--lambdaterms--parse",
+    "pages": [
+      "public/docs/agent_transcripts.md#interaction_nets_lambda",
+      "public/docs/interaction_nets_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/demos/interaction_nets_lambda/lambda-normalise_code_.kt#source",
+      "dev_docs/agents/demos/interaction_nets_lambda/lambda-oracle_code_.kt#source",
+      "dev_docs/agents/transcripts/interaction_nets_lambda.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/interaction_nets_lambda.yaml#yaml/operations/2/create/properties/code"
+    ]
+  },
+  {
+    "type": "LambdaTerms",
+    "method": "LambdaTerms.referenceNormalOrder",
+    "reason": "Parsing, reducing and checking lambda terms",
+    "classTarget": "reference/visualization.md#lambdaterms-kt-lambdaterms",
+    "methodTarget": "reference/visualization.md#lambdaterms-kt--lambdaterms--referencenormalorder",
+    "pages": [
+      "public/docs/agent_transcripts.md#interaction_nets_lambda",
+      "public/docs/interaction_nets_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/demos/interaction_nets_lambda/lambda-normalise_code_.kt#source",
+      "dev_docs/agents/demos/interaction_nets_lambda/lambda-oracle_code_.kt#source",
+      "dev_docs/agents/transcripts/interaction_nets_lambda.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/interaction_nets_lambda.yaml#yaml/operations/2/create/properties/code"
+    ]
+  },
+  {
+    "type": "LambdaTerms",
+    "method": "LambdaTerms.substitute",
+    "reason": "Parsing, reducing and checking lambda terms",
+    "classTarget": "reference/visualization.md#lambdaterms-kt-lambdaterms",
+    "methodTarget": "reference/visualization.md#lambdaterms-kt--lambdaterms--substitute",
+    "pages": [
+      "public/docs/agent_transcripts.md#interaction_nets_lambda"
+    ],
+    "examples": [
+      "dev_docs/agents/demos/interaction_nets_lambda/lambda-oracle_code_.kt#source",
+      "dev_docs/agents/transcripts/interaction_nets_lambda.yaml#yaml/operations/2/create/properties/code"
+    ]
+  },
+  {
+    "type": "LeniaCreature",
+    "method": "LeniaCreature.seed",
+    "reason": "Seeding the catalogue lifeform",
+    "classTarget": "reference/alife.md#alife-continuous-kt-leniacreature",
+    "methodTarget": "reference/alife.md#alife-continuous-kt--leniacreature--seed",
+    "pages": [
+      "public/docs/agent_transcripts.md#alife_worked_example",
+      "public/docs/alife_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/alife_worked_example.yaml#yaml/operations/14/create/properties/code",
+      "public/docs/alife_examples.md#fence:3245",
+      "public/docs/alife_examples.md#fence:664"
+    ]
+  },
+  {
+    "type": "LeniaPresets",
+    "method": "LeniaPresets.orbium",
+    "reason": "The catalogue lifeform",
+    "classTarget": "reference/alife.md#alife-continuous-kt-leniapresets",
+    "methodTarget": "reference/alife.md#alife-continuous-kt--leniapresets--orbium",
+    "pages": [
+      "public/docs/agent_transcripts.md#alife_worked_example",
+      "public/docs/alife_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/alife_worked_example.yaml#yaml/operations/14/create/properties/code",
+      "public/docs/alife_examples.md#fence:3245",
+      "public/docs/alife_examples.md#fence:664"
+    ]
+  },
+  {
+    "type": "LorisDocs",
+    "method": "LorisDocs.comparisonHtml",
+    "reason": "The analysis and resynthesis panels",
+    "classTarget": "reference/audio.md#lorisdocs-kt-lorisdocs",
+    "methodTarget": "reference/audio.md#lorisdocs-kt--lorisdocs--comparisonhtml",
+    "pages": [
+      "public/docs/loris.md"
+    ],
+    "examples": [
+      "public/docs/loris.md#fence:76"
+    ]
+  },
+  {
+    "type": "LorisDocs",
+    "method": "LorisDocs.morphPanelHtml",
+    "reason": "The analysis and resynthesis panels",
+    "classTarget": "reference/audio.md#lorisdocs-kt-lorisdocs",
+    "methodTarget": "reference/audio.md#lorisdocs-kt--lorisdocs--morphpanelhtml",
+    "pages": [
+      "public/docs/loris.md"
+    ],
+    "examples": [
+      "public/docs/loris.md#fence:454",
+      "public/docs/loris.md#fence:461",
+      "public/docs/loris.md#fence:468"
+    ]
+  },
+  {
+    "type": "LorisDocs",
+    "method": "LorisDocs.transformedHtml",
+    "reason": "The analysis and resynthesis panels",
+    "classTarget": "reference/audio.md#lorisdocs-kt-lorisdocs",
+    "methodTarget": "reference/audio.md#lorisdocs-kt--lorisdocs--transformedhtml",
+    "pages": [
+      "public/docs/loris.md"
+    ],
+    "examples": [
+      "public/docs/loris.md#fence:245"
+    ]
+  },
+  {
+    "type": "LorisDocs",
+    "method": "LorisDocs.whirlpoolHtml",
+    "reason": "The analysis and resynthesis panels",
+    "classTarget": "reference/audio.md#lorisdocs-kt-lorisdocs",
+    "methodTarget": "reference/audio.md#lorisdocs-kt--lorisdocs--whirlpoolhtml",
+    "pages": [
+      "public/docs/loris.md"
+    ],
+    "examples": [
+      "public/docs/loris.md#fence:178"
+    ]
+  },
+  {
+    "type": "LpPolygon",
+    "method": "LpPolygon.centralFan",
+    "reason": "Planar optimisation paths",
+    "classTarget": "reference/graphics.md#lp-trajectories-kt-lppolygon",
+    "methodTarget": "reference/graphics.md#lp-trajectories-kt--centralfan",
+    "pages": [
+      "public/docs/agent_transcripts.md#lp_curves",
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lp_curves.yaml#yaml/operations/0/create/properties/code",
+      "public/docs/lp_curves.md#fence:343",
+      "public/docs/lp_curves.md#fence:67"
+    ]
+  },
+  {
+    "type": "LpPolygon",
+    "method": "LpPolygon.centralPath",
+    "reason": "Planar optimisation paths",
+    "classTarget": "reference/graphics.md#lp-trajectories-kt-lppolygon",
+    "methodTarget": "reference/graphics.md#lp-trajectories-kt--centralpath",
+    "pages": [
+      "public/docs/agent_transcripts.md#lp_curves",
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lp_curves.yaml#yaml/operations/0/create/properties/code",
+      "public/docs/lp_curves.md#fence:23",
+      "public/docs/lp_curves.md#fence:96"
+    ]
+  },
+  {
+    "type": "LpPolygon",
+    "method": "LpPolygon.cuttingPlanes",
+    "reason": "Planar optimisation paths",
+    "classTarget": "reference/graphics.md#lp-trajectories-kt-lppolygon",
+    "methodTarget": "reference/graphics.md#lp-trajectories-kt--cuttingplanes",
+    "pages": [
+      "public/docs/agent_transcripts.md#lp_curves",
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lp_curves.yaml#yaml/operations/0/create/properties/code",
+      "public/docs/lp_curves.md#fence:232"
+    ]
+  },
+  {
+    "type": "LpPolygon",
+    "method": "LpPolygon.ellipsoid",
+    "reason": "Planar optimisation paths",
+    "classTarget": "reference/graphics.md#lp-trajectories-kt-lppolygon",
+    "methodTarget": "reference/graphics.md#lp-trajectories-kt--ellipsoid",
+    "pages": [
+      "public/docs/agent_transcripts.md#lp_curves",
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lp_curves.yaml#yaml/operations/0/create/properties/code",
+      "public/docs/lp_curves.md#fence:177"
+    ]
+  },
+  {
+    "type": "LpPolygon",
+    "method": "LpPolygon.fanMap",
+    "reason": "Planar optimisation paths",
+    "classTarget": "reference/graphics.md#lp-trajectories-kt-lppolygon",
+    "methodTarget": "reference/graphics.md#lp-fan-map-kt--fanmap",
+    "pages": [
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "public/docs/lp_curves.md#fence:494"
+    ]
+  },
+  {
+    "type": "LpPolygon",
+    "method": "LpPolygon.pdhg",
+    "reason": "Planar optimisation paths",
+    "classTarget": "reference/graphics.md#lp-trajectories-kt-lppolygon",
+    "methodTarget": "reference/graphics.md#lp-trajectories-kt--pdhg",
+    "pages": [
+      "public/docs/agent_transcripts.md#lp_curves",
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lp_curves.yaml#yaml/operations/0/create/properties/code",
+      "public/docs/lp_curves.md#fence:149"
+    ]
+  },
+  {
+    "type": "LpPolygon",
+    "method": "LpPolygon.primalDual",
+    "reason": "Planar optimisation paths",
+    "classTarget": "reference/graphics.md#lp-trajectories-kt-lppolygon",
+    "methodTarget": "reference/graphics.md#lp-trajectories-kt--primaldual",
+    "pages": [
+      "public/docs/agent_transcripts.md#lp_curves",
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lp_curves.yaml#yaml/operations/0/create/properties/code",
+      "public/docs/lp_curves.md#fence:23"
+    ]
+  },
+  {
+    "type": "LpPolygon",
+    "method": "LpPolygon.simplexWalk",
+    "reason": "Planar optimisation paths",
+    "classTarget": "reference/graphics.md#lp-trajectories-kt-lppolygon",
+    "methodTarget": "reference/graphics.md#lp-trajectories-kt--simplexwalk",
+    "pages": [
+      "public/docs/agent_transcripts.md#lp_curves",
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lp_curves.yaml#yaml/operations/0/create/properties/code",
+      "public/docs/lp_curves.md#fence:177",
+      "public/docs/lp_curves.md#fence:23"
+    ]
+  },
+  {
+    "type": "LpPolytope",
+    "method": "LpPolytope.centralFan",
+    "reason": "Polytope construction and optimisation paths",
+    "classTarget": "reference/graphics.md#lp-polytope-kt-lppolytope",
+    "methodTarget": "reference/graphics.md#lp-polytope-kt--centralfan",
+    "pages": [
+      "public/docs/agent_transcripts.md#lp_curves_3d",
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lp_curves_3d.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/lp_curves.md#fence:584",
+      "public/docs/lp_curves.md#fence:627"
+    ]
+  },
+  {
+    "type": "LpPolytope",
+    "method": "LpPolytope.centralPath",
+    "reason": "Polytope construction and optimisation paths",
+    "classTarget": "reference/graphics.md#lp-polytope-kt-lppolytope",
+    "methodTarget": "reference/graphics.md#lp-polytope-kt--centralpath",
+    "pages": [
+      "public/docs/agent_transcripts.md#lp_curves_3d",
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lp_curves_3d.yaml#yaml/operations/0/create/properties/code"
+    ]
+  },
+  {
+    "type": "LpPolytope",
+    "method": "LpPolytope.cuttingPlanes",
+    "reason": "Polytope construction and optimisation paths",
+    "classTarget": "reference/graphics.md#lp-polytope-kt-lppolytope",
+    "methodTarget": "reference/graphics.md#lp-polytope-kt--cuttingplanes",
+    "pages": [
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "public/docs/lp_curves.md#fence:754"
+    ]
+  },
+  {
+    "type": "LpPolytope",
+    "method": "LpPolytope.ellipsoid",
+    "reason": "Polytope construction and optimisation paths",
+    "classTarget": "reference/graphics.md#lp-polytope-kt-lppolytope",
+    "methodTarget": "reference/graphics.md#lp-polytope-kt--ellipsoid",
+    "pages": [
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "public/docs/lp_curves.md#fence:720"
+    ]
+  },
+  {
+    "type": "LpPolytope",
+    "method": "LpPolytope.hull",
+    "reason": "Polytope construction and optimisation paths",
+    "classTarget": "reference/graphics.md#lp-polytope-kt-lppolytope",
+    "methodTarget": "reference/graphics.md#lp-polytope-kt--lppolytope-companion--hull",
+    "pages": [
+      "public/docs/agent_transcripts.md#lp_curves_3d",
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lp_curves_3d.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/lp_curves_3d.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/lp_curves.md#fence:584",
+      "public/docs/lp_curves.md#fence:627"
+    ]
+  },
+  {
+    "type": "LpPolytope",
+    "method": "LpPolytope.pdhg",
+    "reason": "Polytope construction and optimisation paths",
+    "classTarget": "reference/graphics.md#lp-polytope-kt-lppolytope",
+    "methodTarget": "reference/graphics.md#lp-polytope-kt--pdhg",
+    "pages": [
+      "public/docs/agent_transcripts.md#lp_curves_3d",
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lp_curves_3d.yaml#yaml/operations/0/create/properties/code"
+    ]
+  },
+  {
+    "type": "LpPolytope",
+    "method": "LpPolytope.primalDual",
+    "reason": "Polytope construction and optimisation paths",
+    "classTarget": "reference/graphics.md#lp-polytope-kt-lppolytope",
+    "methodTarget": "reference/graphics.md#lp-polytope-kt--primaldual",
+    "pages": [
+      "public/docs/agent_transcripts.md#lp_curves_3d",
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lp_curves_3d.yaml#yaml/operations/0/create/properties/code"
+    ]
+  },
+  {
+    "type": "LpPolytope",
+    "method": "LpPolytope.simplexWalk",
+    "reason": "Polytope construction and optimisation paths",
+    "classTarget": "reference/graphics.md#lp-polytope-kt-lppolytope",
+    "methodTarget": "reference/graphics.md#lp-polytope-kt--simplexwalk",
+    "pages": [
+      "public/docs/agent_transcripts.md#lp_curves_3d",
+      "public/docs/lp_curves.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lp_curves_3d.yaml#yaml/operations/0/create/properties/code"
+    ]
+  },
+  {
+    "type": "MatrixProfile",
+    "method": "MatrixProfile.discords",
+    "reason": "Finding motifs and discords",
+    "classTarget": "reference/math.md#matrixprofile-kt-matrixprofile",
+    "methodTarget": "reference/math.md#matrixprofile-kt--matrixprofile--discords",
+    "pages": [
+      "public/docs/agent_transcripts.md#matrix_profile",
+      "public/docs/matrix_profile.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/matrix_profile.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/matrix_profile.md#fence:91"
+    ]
+  },
+  {
+    "type": "MatrixProfile",
+    "method": "MatrixProfile.motifs",
+    "reason": "Finding motifs and discords",
+    "classTarget": "reference/math.md#matrixprofile-kt-matrixprofile",
+    "methodTarget": "reference/math.md#matrixprofile-kt--matrixprofile--motifs",
+    "pages": [
+      "public/docs/agent_transcripts.md#matrix_profile",
+      "public/docs/matrix_profile.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/matrix_profile.yaml#yaml/operations/0/create/properties/code",
+      "public/docs/matrix_profile.md#fence:149",
+      "public/docs/matrix_profile.md#fence:37"
+    ]
+  },
+  {
+    "type": "MorphoCircuit",
+    "method": "MorphoCircuit.evaluateOne",
+    "reason": "Growing and evaluating the circuit",
+    "classTarget": "reference/languages.md#morphocircuit-kt-morphocircuit",
+    "methodTarget": "reference/languages.md#morphocircuit-kt--morphocircuit--evaluateone",
+    "pages": [
+      "public/docs/morpho_examples.md"
+    ],
+    "examples": [
+      "public/docs/morpho_examples.md#fence:141"
+    ]
+  },
+  {
+    "type": "MorphoCircuit",
+    "method": "MorphoCircuit.growFully",
+    "reason": "Growing and evaluating the circuit",
+    "classTarget": "reference/languages.md#morphocircuit-kt-morphocircuit",
+    "methodTarget": "reference/languages.md#morphocircuit-kt--morphocircuit--growfully",
+    "pages": [
+      "public/docs/agent_transcripts.md#morpho_circuit_search",
+      "public/docs/morpho_examples.md",
+      "public/docs/morpho_search.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/morpho_examples.md#fence:141",
+      "public/docs/morpho_examples.md#fence:27",
+      "public/docs/morpho_examples.md#fence:362",
+      "public/docs/morpho_examples.md#fence:397",
+      "public/docs/morpho_search.md#fence:105"
+    ]
+  },
+  {
+    "type": "MorphoCircuit",
+    "method": "MorphoCircuit.step",
+    "reason": "Growing and evaluating the circuit",
+    "classTarget": "reference/languages.md#morphocircuit-kt-morphocircuit",
+    "methodTarget": "reference/languages.md#morphocircuit-kt--morphocircuit--step",
+    "pages": [
+      "public/docs/morpho_examples.md"
+    ],
+    "examples": [
+      "public/docs/morpho_examples.md#fence:176",
+      "public/docs/morpho_examples.md#fence:297"
+    ]
+  },
+  {
+    "type": "MorphoEvaluator",
+    "method": "MorphoEvaluator.evaluate",
+    "reason": "Evaluating circuit fitness",
+    "classTarget": "reference/languages.md#morphospec-kt-morphoevaluator",
+    "methodTarget": "reference/languages.md#morphospec-kt--morphoevaluator--evaluate",
+    "pages": [
+      "public/docs/agent_transcripts.md#morpho_circuit_search",
+      "public/docs/morpho_search.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/morpho_search.md#fence:234"
+    ]
+  },
+  {
+    "type": "MorphoProblems",
+    "method": "MorphoProblems.fullAdderCell",
+    "reason": "The circuit-search problems and generators",
+    "classTarget": "reference/languages.md#morphoproblems-kt-morphoproblems",
+    "methodTarget": "reference/languages.md#morphoproblems-kt--morphoproblems--fulladdercell",
+    "pages": [
+      "public/docs/agent_transcripts.md#morpho_circuit_search",
+      "public/docs/morpho_search.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/0/create/properties/code",
+      "public/docs/morpho_search.md#fence:15"
+    ]
+  },
+  {
+    "type": "MorphoProblems",
+    "method": "MorphoProblems.guidedRecursiveAdder",
+    "reason": "The circuit-search problems and generators",
+    "classTarget": "reference/languages.md#morphoproblems-kt-morphoproblems",
+    "methodTarget": "reference/languages.md#morphoproblems-kt--morphoproblems--guidedrecursiveadder",
+    "pages": [
+      "public/docs/agent_transcripts.md#morpho_circuit_search",
+      "public/docs/morpho_search.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/morpho_search.md#fence:234"
+    ]
+  },
+  {
+    "type": "MorphoProblems",
+    "method": "MorphoProblems.orReduce",
+    "reason": "The circuit-search problems and generators",
+    "classTarget": "reference/languages.md#morphoproblems-kt-morphoproblems",
+    "methodTarget": "reference/languages.md#morphoproblems-kt--morphoproblems--orreduce",
+    "pages": [
+      "public/docs/agent_transcripts.md#morpho_circuit_search",
+      "public/docs/morpho_search.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/morpho_search.md#fence:105"
+    ]
+  },
+  {
+    "type": "MorphoProblems",
+    "method": "MorphoProblems.recursiveAdder",
+    "reason": "The circuit-search problems and generators",
+    "classTarget": "reference/languages.md#morphoproblems-kt-morphoproblems",
+    "methodTarget": "reference/languages.md#morphoproblems-kt--morphoproblems--recursiveadder",
+    "pages": [
+      "public/docs/agent_transcripts.md#morpho_circuit_search",
+      "public/docs/morpho_search.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/morpho_search.md#fence:234"
+    ]
+  },
+  {
+    "type": "MorphoSearch",
+    "method": "MorphoSearch.evolve",
+    "reason": "Searching and testing circuits",
+    "classTarget": "reference/languages.md#morphosearch-kt-morphosearch",
+    "methodTarget": "reference/languages.md#morphosearch-kt--morphosearch--evolve",
+    "pages": [
+      "public/docs/agent_transcripts.md#morpho_circuit_search",
+      "public/docs/morpho_search.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/morpho_search.md#fence:105",
+      "public/docs/morpho_search.md#fence:15",
+      "public/docs/morpho_search.md#fence:234"
+    ]
+  },
+  {
+    "type": "MorphoSearch",
+    "method": "MorphoSearch.generalization",
+    "reason": "Searching and testing circuits",
+    "classTarget": "reference/languages.md#morphosearch-kt-morphosearch",
+    "methodTarget": "reference/languages.md#morphosearch-kt--morphosearch--generalization",
+    "pages": [
+      "public/docs/agent_transcripts.md#morpho_circuit_search",
+      "public/docs/morpho_search.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/morpho_search.md#fence:105",
+      "public/docs/morpho_search.md#fence:234"
+    ]
+  },
+  {
+    "type": "MorphoSearch",
+    "method": "MorphoSearch.hillClimb",
+    "reason": "Searching and testing circuits",
+    "classTarget": "reference/languages.md#morphosearch-kt-morphosearch",
+    "methodTarget": "reference/languages.md#morphosearch-kt--morphosearch--hillclimb",
+    "pages": [
+      "public/docs/agent_transcripts.md#morpho_circuit_search",
+      "public/docs/morpho_search.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/morpho_search.md#fence:15",
+      "public/docs/morpho_search.md#fence:234"
+    ]
+  },
+  {
+    "type": "MorphoSearch",
+    "method": "MorphoSearch.random",
+    "reason": "Searching and testing circuits",
+    "classTarget": "reference/languages.md#morphosearch-kt-morphosearch",
+    "methodTarget": "reference/languages.md#morphosearch-kt--morphosearch--random",
+    "pages": [
+      "public/docs/agent_transcripts.md#morpho_circuit_search",
+      "public/docs/morpho_search.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/morpho_circuit_search.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/morpho_search.md#fence:105",
+      "public/docs/morpho_search.md#fence:15",
+      "public/docs/morpho_search.md#fence:234"
+    ]
+  },
+  {
+    "type": "MorseSmale",
+    "method": "MorseSmale.build",
+    "reason": "Constructing the Morse–Smale complex",
+    "classTarget": "reference/graphics.md#morsesmale-kt-morsesmale",
+    "methodTarget": "reference/graphics.md#morsesmale-kt--morsesmale--build",
+    "pages": [
+      "public/docs/agent_transcripts.md#morse_smale_explorer",
+      "public/docs/morse_smale.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/morse_smale_explorer.yaml#yaml/operations/0/create/properties/code",
+      "public/docs/morse_smale.md#fence:149",
+      "public/docs/morse_smale.md#fence:71"
+    ]
+  },
+  {
+    "type": "MorseSmale",
+    "method": "MorseSmale.compute",
+    "reason": "Constructing the Morse–Smale complex",
+    "classTarget": "reference/graphics.md#morsesmale-kt-morsesmale",
+    "methodTarget": "reference/graphics.md#morsesmale-kt--morsesmale--compute",
+    "pages": [
+      "public/docs/agent_transcripts.md#morse_smale_explorer",
+      "public/docs/geometry_chains.md",
+      "public/docs/morse_smale.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/morse_smale_explorer.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/geometry_chains.md#fence:24",
+      "public/docs/morse_smale.md#fence:120",
+      "public/docs/morse_smale.md#fence:16",
+      "public/docs/morse_smale.md#fence:188"
+    ]
+  },
+  {
+    "type": "MorseSmale",
+    "method": "MorseSmale.computeAsync",
+    "reason": "Constructing the Morse–Smale complex",
+    "classTarget": "reference/graphics.md#morsesmale-kt-morsesmale",
+    "methodTarget": "reference/graphics.md#morsesmale-kt--morsesmale--computeasync",
+    "pages": [
+      "public/docs/morse_smale.md"
+    ],
+    "examples": [
+      "public/docs/morse_smale.md#fence:264"
+    ]
+  },
+  {
+    "type": "MultiMatrixProfile",
+    "method": "MultiMatrixProfile.motifs",
+    "reason": "Computing the multivariate profile and motifs",
+    "classTarget": "reference/math.md#multidimensional-kt-multimatrixprofile",
+    "methodTarget": "reference/math.md#multidimensional-kt--multimatrixprofile--motifs",
+    "pages": [
+      "public/docs/agent_transcripts.md#matrix_profile",
+      "public/docs/matrix_profile.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/matrix_profile.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/matrix_profile.md#fence:322"
+    ]
+  },
+  {
+    "type": "MultiMatrixProfile",
+    "method": "MultiMatrixProfile.profile",
+    "reason": "Computing the multivariate profile and motifs",
+    "classTarget": "reference/math.md#multidimensional-kt-multimatrixprofile",
+    "methodTarget": "reference/math.md#multidimensional-kt--multimatrixprofile--profile",
+    "pages": [
+      "public/docs/agent_transcripts.md#matrix_profile",
+      "public/docs/matrix_profile.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/matrix_profile.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/matrix_profile.md#fence:322"
+    ]
+  },
+  {
+    "type": "ParticleLenia",
+    "method": "ParticleLenia.currentEnergy",
+    "reason": "Initialising and evolving Particle Lenia",
+    "classTarget": "reference/alife.md#alife-particle-lenia-kt-particlelenia",
+    "methodTarget": "reference/alife.md#alife-particle-lenia-kt--particlelenia--currentenergy",
+    "pages": [
+      "public/docs/agent_transcripts.md#particle_lenia",
+      "public/docs/particle_lenia.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/particle_lenia.yaml#yaml/operations/0/create/properties/code",
+      "public/docs/particle_lenia.md#fence:60"
+    ]
+  },
+  {
+    "type": "ParticleLenia",
+    "method": "ParticleLenia.random",
+    "reason": "Initialising and evolving Particle Lenia",
+    "classTarget": "reference/alife.md#alife-particle-lenia-kt-particlelenia",
+    "methodTarget": "reference/alife.md#alife-particle-lenia-kt--particlelenia-companion--random",
+    "pages": [
+      "public/docs/agent_transcripts.md#particle_lenia",
+      "public/docs/particle_lenia.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/particle_lenia.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/particle_lenia.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/particle_lenia.yaml#yaml/operations/2/create/properties/code",
+      "dev_docs/agents/transcripts/particle_lenia.yaml#yaml/operations/4/create/properties/code",
+      "dev_docs/agents/transcripts/particle_lenia.yaml#yaml/operations/6/create/properties/code",
+      "public/docs/particle_lenia.md#fence:107",
+      "public/docs/particle_lenia.md#fence:283",
+      "public/docs/particle_lenia.md#fence:35",
+      "public/docs/particle_lenia.md#fence:451",
+      "public/docs/particle_lenia.md#fence:60"
+    ]
+  },
+  {
+    "type": "ParticleLenia",
+    "method": "ParticleLenia.stepTimes",
+    "reason": "Initialising and evolving Particle Lenia",
+    "classTarget": "reference/alife.md#alife-particle-lenia-kt-particlelenia",
+    "methodTarget": "reference/alife.md#alife-particle-lenia-kt--particlelenia--steptimes",
+    "pages": [
+      "public/docs/agent_transcripts.md#particle_lenia",
+      "public/docs/particle_lenia.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/particle_lenia.yaml#yaml/operations/0/create/properties/code",
+      "public/docs/particle_lenia.md#fence:60"
+    ]
+  },
+  {
+    "type": "PatSoundDocs",
+    "method": "PatSoundDocs.onsetPeaks",
+    "reason": "Measurements of rendered sound",
+    "classTarget": "reference/patterns.md#patsounddocs-kt-patsounddocs",
+    "methodTarget": "reference/patterns.md#patsounddocs-kt--patsounddocs--onsetpeaks",
+    "pages": [
+      "public/docs/agent_transcripts.md#pattern_language_composition"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/pattern_language_composition.yaml#yaml/operations/3/create/properties/code"
+    ]
+  },
+  {
+    "type": "PatSoundDocs",
+    "method": "PatSoundDocs.variation",
+    "reason": "Measurements of rendered sound",
+    "classTarget": "reference/patterns.md#patsounddocs-kt-patsounddocs",
+    "methodTarget": "reference/patterns.md#patsounddocs-kt--patsounddocs--variation",
+    "pages": [
+      "public/docs/agent_transcripts.md#pattern_language_composition"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/pattern_language_composition.yaml#yaml/operations/3/create/properties/code"
+    ]
+  },
+  {
+    "type": "PatSynthDocs",
+    "method": "PatSynthDocs.bandSeries",
+    "reason": "Band measurements from the rendered scene",
+    "classTarget": "reference/patterns.md#patsynthdocs-kt-patsynthdocs",
+    "methodTarget": "reference/patterns.md#patsynthdocs-kt--patsynthdocs--bandseries",
+    "pages": [
+      "public/docs/chain_pattern_particles.md"
+    ],
+    "examples": [
+      "public/docs/chain_pattern_particles.md#fence:86"
+    ]
+  },
+  {
+    "type": "PathTraceDemo",
+    "method": "PathTraceDemo.install",
+    "reason": "Installing the material-study scene",
+    "classTarget": "reference/renderers.md#pathtracegpusmoke-kt-pathtracedemo",
+    "methodTarget": "reference/renderers.md#pathtracegpusmoke-kt--pathtracedemo--install",
+    "pages": [
+      "public/docs/agent_transcripts.md#path_tracer_instrument",
+      "public/docs/agent_transcripts.md#path_tracing_hidden_environment",
+      "public/docs/agent_transcripts.md#path_tracing_materials",
+      "public/docs/agent_transcripts.md#sky_environment",
+      "public/docs/path_tracing.md"
+    ],
+    "examples": [
+      "dev_docs/agents/demos/path_tracer_instrument/pt_tracer_code_.kt#source",
+      "dev_docs/agents/transcripts/path_tracer_instrument.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/path_tracing_hidden_environment.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/path_tracing_materials.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/sky_environment.yaml#yaml/operations/6/create/properties/code",
+      "public/docs/path_tracing.md#fence:1525",
+      "public/docs/path_tracing.md#fence:29",
+      "public/docs/path_tracing.md#fence:311",
+      "public/docs/path_tracing.md#fence:48"
+    ]
+  },
+  {
+    "type": "PathTraceGlassDemo",
+    "method": "PathTraceGlassDemo.install",
+    "reason": "Installing the glass-study scene",
+    "classTarget": "reference/renderers.md#pathtraceglassdemo-kt-pathtraceglassdemo",
+    "methodTarget": "reference/renderers.md#pathtraceglassdemo-kt--pathtraceglassdemo--install",
+    "pages": [
+      "public/docs/agent_transcripts.md#path_tracing_glass",
+      "public/docs/path_tracing.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/path_tracing_glass.yaml#yaml/operations/1/create/properties/code"
+    ]
+  },
+  {
+    "type": "PenDrawings",
+    "method": "PenDrawings.boids",
+    "reason": "Generating the training drawings",
+    "classTarget": "reference/machine-learning.md#corpora-kt-pendrawings",
+    "methodTarget": "reference/machine-learning.md#corpora-kt--pendrawings--boids",
+    "pages": [
+      "public/docs/agent_transcripts.md#teaching_a_pen",
+      "public/docs/teaching_a_pen.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/teaching_a_pen.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/teaching_a_pen.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/teaching_a_pen.md#fence:110",
+      "public/docs/teaching_a_pen.md#fence:22"
+    ]
+  },
+  {
+    "type": "PenDrawings",
+    "method": "PenDrawings.harmonograph",
+    "reason": "Generating the training drawings",
+    "classTarget": "reference/machine-learning.md#corpora-kt-pendrawings",
+    "methodTarget": "reference/machine-learning.md#corpora-kt--pendrawings--harmonograph",
+    "pages": [
+      "public/docs/agent_transcripts.md#teaching_a_pen",
+      "public/docs/teaching_a_pen.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/teaching_a_pen.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/teaching_a_pen.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/teaching_a_pen.md#fence:110",
+      "public/docs/teaching_a_pen.md#fence:22"
+    ]
+  },
+  {
+    "type": "PenDrawings",
+    "method": "PenDrawings.hershey",
+    "reason": "Generating the training drawings",
+    "classTarget": "reference/machine-learning.md#corpora-kt-pendrawings",
+    "methodTarget": "reference/machine-learning.md#corpora-kt--pendrawings--hershey",
+    "pages": [
+      "public/docs/agent_transcripts.md#teaching_a_pen",
+      "public/docs/teaching_a_pen.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/teaching_a_pen.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/teaching_a_pen.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/teaching_a_pen.md#fence:110",
+      "public/docs/teaching_a_pen.md#fence:22"
+    ]
+  },
+  {
+    "type": "PenDrawings",
+    "method": "PenDrawings.plant",
+    "reason": "Generating the training drawings",
+    "classTarget": "reference/machine-learning.md#corpora-kt-pendrawings",
+    "methodTarget": "reference/machine-learning.md#corpora-kt--pendrawings--plant",
+    "pages": [
+      "public/docs/agent_transcripts.md#teaching_a_pen",
+      "public/docs/teaching_a_pen.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/teaching_a_pen.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/teaching_a_pen.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/teaching_a_pen.md#fence:110",
+      "public/docs/teaching_a_pen.md#fence:22"
+    ]
+  },
+  {
+    "type": "PenDrawings",
+    "method": "PenDrawings.truchet",
+    "reason": "Generating the training drawings",
+    "classTarget": "reference/machine-learning.md#corpora-kt-pendrawings",
+    "methodTarget": "reference/machine-learning.md#corpora-kt--pendrawings--truchet",
+    "pages": [
+      "public/docs/agent_transcripts.md#teaching_a_pen",
+      "public/docs/teaching_a_pen.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/teaching_a_pen.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/teaching_a_pen.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/teaching_a_pen.md#fence:110",
+      "public/docs/teaching_a_pen.md#fence:22"
+    ]
+  },
+  {
+    "type": "PenDrawings",
+    "method": "PenDrawings.twoHands",
+    "reason": "Generating the training drawings",
+    "classTarget": "reference/machine-learning.md#corpora-kt-pendrawings",
+    "methodTarget": "reference/machine-learning.md#corpora-kt--pendrawings--twohands",
+    "pages": [
+      "public/docs/agent_transcripts.md#teaching_a_pen",
+      "public/docs/teaching_a_pen.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/teaching_a_pen.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/teaching_a_pen.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/teaching_a_pen.md#fence:110",
+      "public/docs/teaching_a_pen.md#fence:22"
+    ]
+  },
+  {
+    "type": "PenModel",
+    "method": "PenModel.bundled",
+    "reason": "Loading the pen model",
+    "classTarget": "reference/machine-learning.md#pen-kt-penmodel",
+    "methodTarget": "reference/machine-learning.md#pen-kt--penmodel-companion--bundled",
+    "pages": [
+      "public/docs/a_pen_that_sees.md",
+      "public/docs/agent_transcripts.md#a_pen_that_sees",
+      "public/docs/agent_transcripts.md#teaching_a_pen",
+      "public/docs/teaching_a_pen.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/a_pen_that_sees.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/a_pen_that_sees.yaml#yaml/operations/3/create/properties/code",
+      "dev_docs/agents/transcripts/a_pen_that_sees.yaml#yaml/operations/7/create/properties/code",
+      "dev_docs/agents/transcripts/teaching_a_pen.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/teaching_a_pen.yaml#yaml/operations/2/create/properties/code",
+      "dev_docs/agents/transcripts/teaching_a_pen.yaml#yaml/operations/5/create/properties/code",
+      "public/docs/a_pen_that_sees.md#fence:203",
+      "public/docs/a_pen_that_sees.md#fence:22",
+      "public/docs/a_pen_that_sees.md#fence:305",
+      "public/docs/teaching_a_pen.md#fence:110",
+      "public/docs/teaching_a_pen.md#fence:161",
+      "public/docs/teaching_a_pen.md#fence:318"
+    ]
+  },
+  {
+    "type": "PenModel",
+    "method": "PenModel.load",
+    "reason": "Loading the pen model",
+    "classTarget": "reference/machine-learning.md#pen-kt-penmodel",
+    "methodTarget": "reference/machine-learning.md#pen-kt--penmodel-companion--load",
+    "pages": [
+      "public/docs/teaching_a_pen.md"
+    ],
+    "examples": [
+      "public/docs/teaching_a_pen.md#fence:99"
+    ]
+  },
+  {
+    "type": "PhotoToSolidChain",
+    "method": "PhotoToSolidChain.depthMapOf",
+    "reason": "Constructing the depth map and solid",
+    "classTarget": "reference/examples.md#phototosolidchain-kt-phototosolidchain",
+    "methodTarget": "reference/examples.md#phototosolidchain-kt--phototosolidchain--depthmapof",
+    "pages": [
+      "public/docs/agent_transcripts.md#photo_to_solid_chain"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/photo_to_solid_chain.yaml#yaml/operations/0/create/properties/code"
+    ]
+  },
+  {
+    "type": "PhotoToSolidChain",
+    "method": "PhotoToSolidChain.marchedPlaque",
+    "reason": "Constructing the depth map and solid",
+    "classTarget": "reference/examples.md#phototosolidchain-kt-phototosolidchain",
+    "methodTarget": "reference/examples.md#phototosolidchain-kt--phototosolidchain--marchedplaque",
+    "pages": [
+      "public/docs/agent_transcripts.md#photo_to_solid_chain"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/photo_to_solid_chain.yaml#yaml/operations/3/create/properties/code"
+    ]
+  },
+  {
+    "type": "PhotoToSolidChain",
+    "method": "PhotoToSolidChain.mount",
+    "reason": "Constructing the depth map and solid",
+    "classTarget": "reference/examples.md#phototosolidchain-kt-phototosolidchain",
+    "methodTarget": "reference/examples.md#phototosolidchain-kt--phototosolidchain--mount",
+    "pages": [
+      "public/docs/agent_transcripts.md#photo_to_solid_chain"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/photo_to_solid_chain.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/photo_to_solid_chain.yaml#yaml/operations/3/create/properties/code"
+    ]
+  },
+  {
+    "type": "PopulationSearch",
+    "method": "PopulationSearch.evolve",
+    "reason": "Population search and its random baseline",
+    "classTarget": "reference/search.md#populationsearch-kt-populationsearch",
+    "methodTarget": "reference/search.md#populationsearch-kt--populationsearch--evolve",
+    "pages": [
+      "public/docs/agent_transcripts.md#braitenberg_where_next",
+      "public/docs/braitenberg_vehicles.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/braitenberg_where_next.yaml#yaml/operations/4/create/properties/code",
+      "public/docs/braitenberg_vehicles.md#fence:446"
+    ]
+  },
+  {
+    "type": "PopulationSearch",
+    "method": "PopulationSearch.hillClimb",
+    "reason": "Population search and its random baseline",
+    "classTarget": "reference/search.md#populationsearch-kt-populationsearch",
+    "methodTarget": "reference/search.md#populationsearch-kt--populationsearch--hillclimb",
+    "pages": [
+      "public/docs/alife_examples.md"
+    ],
+    "examples": [
+      "public/docs/alife_examples.md#fence:1070"
+    ]
+  },
+  {
+    "type": "PopulationSearch",
+    "method": "PopulationSearch.mapElites",
+    "reason": "Population search and its random baseline",
+    "classTarget": "reference/search.md#populationsearch-kt-populationsearch",
+    "methodTarget": "reference/search.md#populationsearch-kt--populationsearch--mapelites",
+    "pages": [
+      "public/docs/agent_transcripts.md#alife_grains",
+      "public/docs/alife_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/alife_grains.yaml#yaml/operations/5/create/properties/code",
+      "public/docs/alife_examples.md#fence:2988"
+    ]
+  },
+  {
+    "type": "PopulationSearch",
+    "method": "PopulationSearch.random",
+    "reason": "Population search and its random baseline",
+    "classTarget": "reference/search.md#populationsearch-kt-populationsearch",
+    "methodTarget": "reference/search.md#populationsearch-kt--populationsearch--random",
+    "pages": [
+      "public/docs/agent_transcripts.md#braitenberg_where_next",
+      "public/docs/alife_examples.md",
+      "public/docs/braitenberg_vehicles.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/braitenberg_where_next.yaml#yaml/operations/4/create/properties/code",
+      "public/docs/alife_examples.md#fence:1070",
+      "public/docs/braitenberg_vehicles.md#fence:446"
+    ]
+  },
+  {
+    "type": "PrincipalCurves",
+    "method": "PrincipalCurves.create",
+    "reason": "Fitting a principal forest",
+    "classTarget": "reference/graphics.md#principalcurves-kt-principalcurves",
+    "methodTarget": "reference/graphics.md#principalcurves-kt--principalcurves--create",
+    "pages": [
+      "public/docs/principal_curves.md"
+    ],
+    "examples": [
+      "public/docs/principal_curves.md#fence:76"
+    ]
+  },
+  {
+    "type": "PrincipalCurves",
+    "method": "PrincipalCurves.fit",
+    "reason": "Fitting a principal forest",
+    "classTarget": "reference/graphics.md#principalcurves-kt-principalcurves",
+    "methodTarget": "reference/graphics.md#principalcurves-kt--principalcurves--fit",
+    "pages": [
+      "public/docs/agent_transcripts.md#principal_curves_explorer",
+      "public/docs/geometry_chains.md",
+      "public/docs/principal_curves.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/principal_curves_explorer.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/principal_curves_explorer.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/geometry_chains.md#fence:24",
+      "public/docs/principal_curves.md#fence:14"
+    ]
+  },
+  {
+    "type": "PrincipalForest",
+    "method": "PrincipalForest.fit",
+    "reason": "Initialising and refining the forest",
+    "classTarget": "reference/graphics.md#principalcurves-kt-principalforest",
+    "methodTarget": "reference/graphics.md#principalcurves-kt--principalforest--fit",
+    "pages": [
+      "public/docs/principal_curves.md"
+    ],
+    "examples": [
+      "public/docs/principal_curves.md#fence:76"
+    ]
+  },
+  {
+    "type": "PrincipalForest",
+    "method": "PrincipalForest.initFromFLines",
+    "reason": "Initialising and refining the forest",
+    "classTarget": "reference/graphics.md#principalcurves-kt-principalforest",
+    "methodTarget": "reference/graphics.md#principalcurves-kt--principalforest--initfromflines",
+    "pages": [
+      "public/docs/principal_curves.md"
+    ],
+    "examples": [
+      "public/docs/principal_curves.md#fence:76"
+    ]
+  },
+  {
+    "type": "PrincipalForest",
+    "method": "PrincipalForest.refine",
+    "reason": "Initialising and refining the forest",
+    "classTarget": "reference/graphics.md#principalcurves-kt-principalforest",
+    "methodTarget": "reference/graphics.md#principalcurves-kt--principalforest--refine",
+    "pages": [
+      "public/docs/agent_transcripts.md#principal_curves_explorer",
+      "public/docs/principal_curves.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/principal_curves_explorer.yaml#yaml/operations/2/create/properties/code"
+    ]
+  },
+  {
+    "type": "ProceduralSplats",
+    "method": "ProceduralSplats.coralBranches",
+    "reason": "Generating the example splat clouds",
+    "classTarget": "reference/renderers.md#proceduralsplats-kt-proceduralsplats",
+    "methodTarget": "reference/renderers.md#proceduralsplats-kt--proceduralsplats--coralbranches",
+    "pages": [
+      "public/docs/agent_transcripts.md#splat_shader"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/splat_shader.yaml#yaml/operations/6/create/properties/code"
+    ]
+  },
+  {
+    "type": "ProceduralSplats",
+    "method": "ProceduralSplats.fernPlume",
+    "reason": "Generating the example splat clouds",
+    "classTarget": "reference/renderers.md#proceduralsplats-kt-proceduralsplats",
+    "methodTarget": "reference/renderers.md#proceduralsplats-kt--proceduralsplats--fernplume",
+    "pages": [
+      "public/docs/agent_transcripts.md#splat_shader"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/splat_shader.yaml#yaml/operations/5/create/properties/code"
+    ]
+  },
+  {
+    "type": "ProceduralSplats",
+    "method": "ProceduralSplats.icosphereShell",
+    "reason": "Generating the example splat clouds",
+    "classTarget": "reference/renderers.md#proceduralsplats-kt-proceduralsplats",
+    "methodTarget": "reference/renderers.md#proceduralsplats-kt--proceduralsplats--icosphereshell",
+    "pages": [
+      "public/docs/agent_transcripts.md#splat_shader"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/splat_shader.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/splat_shader.yaml#yaml/operations/3/create/properties/code"
+    ]
+  },
+  {
+    "type": "ProceduralSplats",
+    "method": "ProceduralSplats.nautilusShell",
+    "reason": "Generating the example splat clouds",
+    "classTarget": "reference/renderers.md#proceduralsplats-kt-proceduralsplats",
+    "methodTarget": "reference/renderers.md#proceduralsplats-kt--proceduralsplats--nautilusshell",
+    "pages": [
+      "public/docs/agent_transcripts.md#splat_shader"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/splat_shader.yaml#yaml/operations/7/create/properties/code"
+    ]
+  },
+  {
+    "type": "ProceduralSplats",
+    "method": "ProceduralSplats.phyllotaxisBloom",
+    "reason": "Generating the example splat clouds",
+    "classTarget": "reference/renderers.md#proceduralsplats-kt-proceduralsplats",
+    "methodTarget": "reference/renderers.md#proceduralsplats-kt--proceduralsplats--phyllotaxisbloom",
+    "pages": [
+      "public/docs/agent_transcripts.md#splat_shader"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/splat_shader.yaml#yaml/operations/2/create/properties/code"
+    ]
+  },
+  {
+    "type": "ProceduralSplats",
+    "method": "ProceduralSplats.torusBraid",
+    "reason": "Generating the example splat clouds",
+    "classTarget": "reference/renderers.md#proceduralsplats-kt-proceduralsplats",
+    "methodTarget": "reference/renderers.md#proceduralsplats-kt--proceduralsplats--torusbraid",
+    "pages": [
+      "public/docs/agent_transcripts.md#splat_shader"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/splat_shader.yaml#yaml/operations/4/create/properties/code"
+    ]
+  },
+  {
+    "type": "RayTracingDocsHarness",
+    "method": "RayTracingDocsHarness.installMirrorBallsSceneInWindow",
+    "reason": "Rendering and installing the ray-tracing scenes",
+    "classTarget": "reference/renderers.md#raytracingdocsharness-kt-raytracingdocsharness",
+    "methodTarget": "reference/renderers.md#raytracingdocsharness-kt--raytracingdocsharness--installmirrorballssceneinwindow",
+    "pages": [
+      "public/docs/ray_tracing_examples.md"
+    ],
+    "examples": [
+      "public/docs/ray_tracing_examples.md#fence:473"
+    ]
+  },
+  {
+    "type": "RayTracingDocsHarness",
+    "method": "RayTracingDocsHarness.renderMirrorBallsScene",
+    "reason": "Rendering and installing the ray-tracing scenes",
+    "classTarget": "reference/renderers.md#raytracingdocsharness-kt-raytracingdocsharness",
+    "methodTarget": "reference/renderers.md#raytracingdocsharness-kt--raytracingdocsharness--rendermirrorballsscene",
+    "pages": [
+      "public/docs/ray_tracing_examples.md"
+    ],
+    "examples": [
+      "public/docs/ray_tracing_examples.md#fence:453"
+    ]
+  },
+  {
+    "type": "RayTracingDocsHarness",
+    "method": "RayTracingDocsHarness.renderShaderTileScene",
+    "reason": "Rendering and installing the ray-tracing scenes",
+    "classTarget": "reference/renderers.md#raytracingdocsharness-kt-raytracingdocsharness",
+    "methodTarget": "reference/renderers.md#raytracingdocsharness-kt--raytracingdocsharness--rendershadertilescene",
+    "pages": [
+      "public/docs/ray_tracing_examples.md"
+    ],
+    "examples": [
+      "public/docs/ray_tracing_examples.md#fence:296"
+    ]
+  },
+  {
+    "type": "RayTracingDocsHarness",
+    "method": "RayTracingDocsHarness.renderTriangleScene",
+    "reason": "Rendering and installing the ray-tracing scenes",
+    "classTarget": "reference/renderers.md#raytracingdocsharness-kt-raytracingdocsharness",
+    "methodTarget": "reference/renderers.md#raytracingdocsharness-kt--raytracingdocsharness--rendertrianglescene",
+    "pages": [
+      "public/docs/ray_tracing_examples.md"
+    ],
+    "examples": [
+      "public/docs/ray_tracing_examples.md#fence:208"
+    ]
+  },
+  {
+    "type": "RayTracingDocsHarness",
+    "method": "RayTracingDocsHarness.renderUvGradient",
+    "reason": "Rendering and installing the ray-tracing scenes",
+    "classTarget": "reference/renderers.md#raytracingdocsharness-kt-raytracingdocsharness",
+    "methodTarget": "reference/renderers.md#raytracingdocsharness-kt--raytracingdocsharness--renderuvgradient",
+    "pages": [
+      "public/docs/ray_tracing_examples.md"
+    ],
+    "examples": [
+      "public/docs/ray_tracing_examples.md#fence:92"
+    ]
+  },
+  {
+    "type": "ReconstructionDemo",
+    "method": "ReconstructionDemo.reset",
+    "reason": "Rebuilding the reconstruction experiment",
+    "classTarget": "reference/imaging.md#reconstructiondemo-kt-reconstructiondemo",
+    "methodTarget": "reference/imaging.md#reconstructiondemo-kt--reconstructiondemo--reset",
+    "pages": [
+      "public/docs/neural_reconstruction.md"
+    ],
+    "examples": [
+      "public/docs/neural_reconstruction.md#fence:87"
+    ]
+  },
+  {
+    "type": "ScalarTree",
+    "method": "ScalarTree.segmentationImage",
+    "reason": "Persistence simplification and segmentation",
+    "classTarget": "reference/graphics.md#contourtrees-kt-scalartree",
+    "methodTarget": "reference/graphics.md#contourtrees-kt--scalartree--segmentationimage",
+    "pages": [
+      "public/docs/contour_trees.md"
+    ],
+    "examples": [
+      "public/docs/contour_trees.md#fence:13"
+    ]
+  },
+  {
+    "type": "ScalarTree",
+    "method": "ScalarTree.simplify",
+    "reason": "Persistence simplification and segmentation",
+    "classTarget": "reference/graphics.md#contourtrees-kt-scalartree",
+    "methodTarget": "reference/graphics.md#contourtrees-kt--scalartree--simplify",
+    "pages": [
+      "public/docs/agent_transcripts.md#contour_trees_explorer",
+      "public/docs/contour_trees.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/contour_trees_explorer.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/contour_trees.md#fence:117"
+    ]
+  },
+  {
+    "type": "SceneOnARig",
+    "method": "SceneOnARig.aliasing",
+    "reason": "Measuring the lighting round trip",
+    "classTarget": "reference/lighting.md#sceneonarig-kt-sceneonarig",
+    "methodTarget": "reference/lighting.md#sceneonarig-kt--sceneonarig--aliasing",
+    "pages": [
+      "public/docs/agent_transcripts.md#chain_scene_to_light",
+      "public/docs/chain_scene_to_light.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/chain_scene_to_light.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/chain_scene_to_light.md#fence:191"
+    ]
+  },
+  {
+    "type": "SceneOnARig",
+    "method": "SceneOnARig.decodeErrors",
+    "reason": "Measuring the lighting round trip",
+    "classTarget": "reference/lighting.md#sceneonarig-kt-sceneonarig",
+    "methodTarget": "reference/lighting.md#sceneonarig-kt--sceneonarig--decodeerrors",
+    "pages": [
+      "public/docs/chain_scene_to_light.md"
+    ],
+    "examples": [
+      "public/docs/chain_scene_to_light.md#fence:121"
+    ]
+  },
+  {
+    "type": "SceneOnARig",
+    "method": "SceneOnARig.roundTrip",
+    "reason": "Measuring the lighting round trip",
+    "classTarget": "reference/lighting.md#sceneonarig-kt-sceneonarig",
+    "methodTarget": "reference/lighting.md#sceneonarig-kt--sceneonarig--roundtrip-2",
+    "pages": [
+      "public/docs/agent_transcripts.md#chain_scene_to_light",
+      "public/docs/chain_scene_to_light.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/chain_scene_to_light.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/chain_scene_to_light.md#fence:121"
+    ]
+  },
+  {
+    "type": "SceneOnARig",
+    "method": "SceneOnARig.timing",
+    "reason": "Measuring the lighting round trip",
+    "classTarget": "reference/lighting.md#sceneonarig-kt-sceneonarig",
+    "methodTarget": "reference/lighting.md#sceneonarig-kt--sceneonarig--timing-2",
+    "pages": [
+      "public/docs/chain_scene_to_light.md"
+    ],
+    "examples": [
+      "public/docs/chain_scene_to_light.md#fence:121"
+    ]
+  },
+  {
+    "type": "ShaderBoids",
+    "method": "ShaderBoids.installDrawInto",
+    "reason": "Installing the GPU boid drawing pass",
+    "classTarget": "reference/simulation.md#shaderboids-kt-shaderboids",
+    "methodTarget": "reference/simulation.md#shaderboids-kt--shaderboids--installdrawinto",
+    "pages": [
+      "public/docs/neural_particles.md"
+    ],
+    "examples": [
+      "public/docs/neural_particles.md#fence:334"
+    ]
+  },
+  {
+    "type": "ShaderDlaSystem",
+    "method": "ShaderDlaSystem.installInto",
+    "reason": "Installing the diffusion-limited aggregation system",
+    "classTarget": "reference/alife.md#alife-dla-kt-shaderdlasystem",
+    "methodTarget": "reference/alife.md#alife-dla-kt--shaderdlasystem--installinto",
+    "pages": [
+      "public/docs/afield_four_graphics.md"
+    ],
+    "examples": [
+      "public/docs/afield_four_graphics.md#fence:1534",
+      "public/docs/assets/canonical_graphics/e39270ec-8faf-4d26-8f4e-ce4d23ec4af1_code_.kt#source"
+    ]
+  },
+  {
+    "type": "ShaderForestFireSystem",
+    "method": "ShaderForestFireSystem.addFireInput",
+    "reason": "Installing and feeding the forest-fire simulation",
+    "classTarget": "reference/alife.md#alife-fire-kt-shaderforestfiresystem",
+    "methodTarget": "reference/alife.md#alife-fire-kt--shaderforestfiresystem--addfireinput",
+    "pages": [
+      "public/docs/afield_four_graphics.md",
+      "public/docs/agent_transcripts.md#forest_fire"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/forest_fire.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/afield_four_graphics.md#fence:1830",
+      "public/docs/assets/canonical_graphics/9df25333-3cb1-4bba-b628-b34c7ba61909_code_.kt#source"
+    ]
+  },
+  {
+    "type": "ShaderForestFireSystem",
+    "method": "ShaderForestFireSystem.fireInputParameters",
+    "reason": "Installing and feeding the forest-fire simulation",
+    "classTarget": "reference/alife.md#alife-fire-kt-shaderforestfiresystem",
+    "methodTarget": "reference/alife.md#alife-fire-kt--shaderforestfiresystem--fireinputparameters",
+    "pages": [
+      "public/docs/afield_four_graphics.md",
+      "public/docs/agent_transcripts.md#forest_fire"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/forest_fire.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/afield_four_graphics.md#fence:1830",
+      "public/docs/assets/canonical_graphics/9df25333-3cb1-4bba-b628-b34c7ba61909_code_.kt#source"
+    ]
+  },
+  {
+    "type": "ShaderForestFireSystem",
+    "method": "ShaderForestFireSystem.installInto",
+    "reason": "Installing and feeding the forest-fire simulation",
+    "classTarget": "reference/alife.md#alife-fire-kt-shaderforestfiresystem",
+    "methodTarget": "reference/alife.md#alife-fire-kt--shaderforestfiresystem--installinto",
+    "pages": [
+      "public/docs/afield_four_graphics.md",
+      "public/docs/agent_transcripts.md#forest_fire"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/forest_fire.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/afield_four_graphics.md#fence:1808",
+      "public/docs/assets/canonical_graphics/0f95328a-7214-44a2-acb6-f22c01261e96_code_.kt#source"
+    ]
+  },
+  {
+    "type": "ShaderLatticeBoltzmannSystem",
+    "method": "ShaderLatticeBoltzmannSystem.addControls",
+    "reason": "Installing and controlling the fluid simulation",
+    "classTarget": "reference/alife.md#alife-lbm-kt-shaderlatticeboltzmannsystem",
+    "methodTarget": "reference/alife.md#alife-lbm-kt--shaderlatticeboltzmannsystem--addcontrols",
+    "pages": [
+      "public/docs/afield_four_graphics.md",
+      "public/docs/agent_transcripts.md#lattice_boltzmann_cylinder"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lattice_boltzmann_cylinder.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/afield_four_graphics.md#fence:1760",
+      "public/docs/assets/canonical_graphics/72b68fa7-a8c3-4d4a-964d-2f66306692e3_code_.kt#source"
+    ]
+  },
+  {
+    "type": "ShaderLatticeBoltzmannSystem",
+    "method": "ShaderLatticeBoltzmannSystem.controlsParameters",
+    "reason": "Installing and controlling the fluid simulation",
+    "classTarget": "reference/alife.md#alife-lbm-kt-shaderlatticeboltzmannsystem",
+    "methodTarget": "reference/alife.md#alife-lbm-kt--shaderlatticeboltzmannsystem--controlsparameters",
+    "pages": [
+      "public/docs/afield_four_graphics.md",
+      "public/docs/agent_transcripts.md#lattice_boltzmann_cylinder"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lattice_boltzmann_cylinder.yaml#yaml/operations/2/create/properties/code",
+      "public/docs/afield_four_graphics.md#fence:1760",
+      "public/docs/assets/canonical_graphics/72b68fa7-a8c3-4d4a-964d-2f66306692e3_code_.kt#source"
+    ]
+  },
+  {
+    "type": "ShaderLatticeBoltzmannSystem",
+    "method": "ShaderLatticeBoltzmannSystem.installInto",
+    "reason": "Installing and controlling the fluid simulation",
+    "classTarget": "reference/alife.md#alife-lbm-kt-shaderlatticeboltzmannsystem",
+    "methodTarget": "reference/alife.md#alife-lbm-kt--shaderlatticeboltzmannsystem--installinto",
+    "pages": [
+      "public/docs/afield_four_graphics.md",
+      "public/docs/agent_transcripts.md#lattice_boltzmann_cylinder"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/lattice_boltzmann_cylinder.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/afield_four_graphics.md#fence:1732",
+      "public/docs/assets/canonical_graphics/b09e32ea-79a6-40a7-bb7a-99e6723081ad_code_.kt#source"
+    ]
+  },
+  {
+    "type": "ShaderNeuralParticles",
+    "method": "ShaderNeuralParticles.installInto",
+    "reason": "Installing the learned particle simulation",
+    "classTarget": "reference/machine-learning.md#neuralparticles-system-kt-shaderneuralparticles",
+    "methodTarget": "reference/machine-learning.md#neuralparticles-system-kt--shaderneuralparticles--installinto",
+    "pages": [
+      "public/docs/neural_particles.md"
+    ],
+    "examples": [
+      "public/docs/neural_particles.md#fence:90"
+    ]
+  },
+  {
+    "type": "ShaderPhysarumSystem",
+    "method": "ShaderPhysarumSystem.installInto",
+    "reason": "Installing the GPU slime-mould simulation",
+    "classTarget": "reference/alife.md#alife-physarum-gpu-kt-shaderphysarumsystem",
+    "methodTarget": "reference/alife.md#alife-physarum-gpu-kt--shaderphysarumsystem--installinto",
+    "pages": [
+      "public/docs/agent_transcripts.md#gpu_physarum",
+      "public/docs/agent_transcripts.md#gpu_physarum_networks",
+      "public/docs/agent_transcripts.md#gpu_stigmergy",
+      "public/docs/alife_examples.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/gpu_physarum.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/gpu_physarum_networks.yaml#yaml/operations/2/create/properties/code",
+      "dev_docs/agents/transcripts/gpu_stigmergy.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/alife_examples.md#fence:1456",
+      "public/docs/alife_examples.md#fence:1500",
+      "public/docs/alife_examples.md#fence:1731",
+      "public/docs/assets/canonical_graphics/7c3e9a51-2f4b-4d8e-9a61-5b0c8e4f1d27_code_.kt#source"
+    ]
+  },
+  {
+    "type": "ShaderTraining",
+    "method": "ShaderTraining.capture",
+    "reason": "Capturing examples and training the shader",
+    "classTarget": "reference/graphics.md#shadertraining-kt-shadertraining",
+    "methodTarget": "reference/graphics.md#shadertraining-kt--shadertraining--capture",
+    "pages": [
+      "public/docs/learned_shader.md"
+    ],
+    "examples": [
+      "public/docs/learned_shader.md#fence:66"
+    ]
+  },
+  {
+    "type": "ShaderTraining",
+    "method": "ShaderTraining.trainAsync",
+    "reason": "Capturing examples and training the shader",
+    "classTarget": "reference/graphics.md#shadertraining-kt-shadertraining",
+    "methodTarget": "reference/graphics.md#shadertraining-kt--shadertraining--trainasync",
+    "pages": [
+      "public/docs/learned_shader.md"
+    ],
+    "examples": [
+      "public/docs/learned_shader.md#fence:88"
+    ]
+  },
+  {
+    "type": "SimdVerlet",
+    "method": "SimdVerlet.addCloth",
+    "reason": "Constructing cloth, strands and collision constraints",
+    "classTarget": "reference/simulation.md#simdverlet-kt-simdverlet",
+    "methodTarget": "reference/simulation.md#cloth-kt--addcloth",
+    "pages": [
+      "public/docs/agent_transcripts.md#cloth_simdverlet_start",
+      "public/docs/agent_transcripts.md#simdverlet_world",
+      "public/docs/animation_time_model.md",
+      "public/docs/chain_physics_render.md",
+      "public/docs/physics.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/cloth_simdverlet_start.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/simdverlet_world.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/simdverlet_world.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/simdverlet_world.yaml#yaml/operations/3/create/properties/code",
+      "public/docs/animation_time_model.md#fence:345",
+      "public/docs/chain_physics_render.md#fence:23"
+    ]
+  },
+  {
+    "type": "SimdVerlet",
+    "method": "SimdVerlet.addColliders",
+    "reason": "Constructing cloth, strands and collision constraints",
+    "classTarget": "reference/simulation.md#simdverlet-kt-simdverlet",
+    "methodTarget": "reference/simulation.md#simdverletcolliders-kt--addcolliders",
+    "pages": [
+      "public/docs/agent_transcripts.md#simdverlet_world",
+      "public/docs/chain_physics_render.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/simdverlet_world.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/simdverlet_world.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/simdverlet_world.yaml#yaml/operations/3/create/properties/code",
+      "public/docs/chain_physics_render.md#fence:23"
+    ]
+  },
+  {
+    "type": "SimdVerlet",
+    "method": "SimdVerlet.addStrand",
+    "reason": "Constructing cloth, strands and collision constraints",
+    "classTarget": "reference/simulation.md#simdverlet-kt-simdverlet",
+    "methodTarget": "reference/simulation.md#strand-kt--addstrand",
+    "pages": [
+      "public/docs/agent_transcripts.md#simdverlet_world"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/simdverlet_world.yaml#yaml/operations/3/create/properties/code"
+    ]
+  },
+  {
+    "type": "SourceFramesStudy",
+    "method": "SourceFramesStudy.edit",
+    "reason": "Editing, inspecting and comparing source variants",
+    "classTarget": "reference/workspace.md#sourceframesstudy-kt-sourceframesstudy",
+    "methodTarget": "reference/workspace.md#sourceframesstudy-kt--sourceframesstudy--edit",
+    "pages": [
+      "public/docs/agent_transcripts.md#studies_rings",
+      "public/docs/studies.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/studies_rings.yaml#yaml/operations/1/create/properties/code"
+    ]
+  },
+  {
+    "type": "SourceFramesStudy",
+    "method": "SourceFramesStudy.inspect",
+    "reason": "Editing, inspecting and comparing source variants",
+    "classTarget": "reference/workspace.md#sourceframesstudy-kt-sourceframesstudy",
+    "methodTarget": "reference/workspace.md#sourceframesstudy-kt--sourceframesstudy--inspect",
+    "pages": [
+      "public/docs/agent_transcripts.md#studies_rings",
+      "public/docs/studies.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/studies_rings.yaml#yaml/operations/0/create/properties/code",
+      "dev_docs/agents/transcripts/studies_rings.yaml#yaml/operations/1/create/properties/code",
+      "dev_docs/agents/transcripts/studies_rings.yaml#yaml/operations/2/create/properties/code"
+    ]
+  },
+  {
+    "type": "SourceFramesStudy",
+    "method": "SourceFramesStudy.setNumbers",
+    "reason": "Editing, inspecting and comparing source variants",
+    "classTarget": "reference/workspace.md#sourceframesstudy-kt-sourceframesstudy",
+    "methodTarget": "reference/workspace.md#sourceframesstudy-kt--sourceframesstudy--setnumbers",
+    "pages": [
+      "public/docs/agent_transcripts.md#studies_rings",
+      "public/docs/studies.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/studies_rings.yaml#yaml/operations/1/create/properties/code"
+    ]
+  },
+  {
+    "type": "SourceFramesStudy",
+    "method": "SourceFramesStudy.sweep",
+    "reason": "Editing, inspecting and comparing source variants",
+    "classTarget": "reference/workspace.md#sourceframesstudy-kt-sourceframesstudy",
+    "methodTarget": "reference/workspace.md#sourceframesstudy-kt--sourceframesstudy--sweep",
+    "pages": [
+      "public/docs/agent_transcripts.md#studies_rings",
+      "public/docs/studies.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/studies_rings.yaml#yaml/operations/2/create/properties/code"
+    ]
+  },
+  {
+    "type": "SourceFramesStudy",
+    "method": "SourceFramesStudy.tryVariants",
+    "reason": "Editing, inspecting and comparing source variants",
+    "classTarget": "reference/workspace.md#sourceframesstudy-kt-sourceframesstudy",
+    "methodTarget": "reference/workspace.md#sourceframesstudy-kt--sourceframesstudy--tryvariants",
+    "pages": [
+      "public/docs/agent_transcripts.md#studies_rings",
+      "public/docs/studies.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/studies_rings.yaml#yaml/operations/2/create/properties/code"
+    ]
+  },
+  {
+    "type": "StackSLEvolution",
+    "method": "StackSLEvolution.fit",
+    "reason": "Running evolution and fitting the programs",
+    "classTarget": "reference/search.md#stackslevolution-kt-stackslevolution",
+    "methodTarget": "reference/search.md#stackslevolution-kt--stackslevolution--fit",
+    "pages": [
+      "public/docs/stacksl_evolve.md"
+    ],
+    "examples": [
+      "public/docs/stacksl_evolve.md#fence:153"
+    ]
+  },
+  {
+    "type": "StackSLEvolution",
+    "method": "StackSLEvolution.runTo",
+    "reason": "Running evolution and fitting the programs",
+    "classTarget": "reference/search.md#stackslevolution-kt-stackslevolution",
+    "methodTarget": "reference/search.md#stackslevolution-kt--stackslevolution--runto",
+    "pages": [
+      "public/docs/stacksl_evolve.md"
+    ],
+    "examples": [
+      "public/docs/stacksl_evolve.md#fence:49",
+      "public/docs/stacksl_evolve.md#fence:75"
+    ]
+  },
+  {
+    "type": "StackSLFit",
+    "method": "StackSLFit.fit",
+    "reason": "Fitting the numbers in a shader program",
+    "classTarget": "reference/languages.md#stackslfit-kt-stackslfit",
+    "methodTarget": "reference/languages.md#stackslfit-kt--stackslfit--fit",
+    "pages": [
+      "public/docs/stacksl_examples.md"
+    ],
+    "examples": [
+      "public/docs/stacksl_examples.md#fence:1323"
+    ]
+  },
+  {
+    "type": "StippleTransport",
+    "method": "StippleTransport.flowMap",
+    "reason": "Transporting points through the learned field",
+    "classTarget": "reference/machine-learning.md#stippletransport-kt-stippletransport",
+    "methodTarget": "reference/machine-learning.md#stippletransport-kt--stippletransport--flowmap",
+    "pages": [
+      "public/docs/stipple_transport.md"
+    ],
+    "examples": [
+      "public/docs/stipple_transport.md#fence:130"
+    ]
+  },
+  {
+    "type": "StippleTransport",
+    "method": "StippleTransport.pathsFrom",
+    "reason": "Transporting points through the learned field",
+    "classTarget": "reference/machine-learning.md#stippletransport-kt-stippletransport",
+    "methodTarget": "reference/machine-learning.md#stippletransport-kt--stippletransport--pathsfrom",
+    "pages": [
+      "public/docs/stipple_transport.md"
+    ],
+    "examples": [
+      "public/docs/stipple_transport.md#fence:130"
+    ]
+  },
+  {
+    "type": "StippleTransport",
+    "method": "StippleTransport.transport",
+    "reason": "Transporting points through the learned field",
+    "classTarget": "reference/machine-learning.md#stippletransport-kt-stippletransport",
+    "methodTarget": "reference/machine-learning.md#stippletransport-kt--stippletransport--transport",
+    "pages": [
+      "public/docs/stipple_transport.md"
+    ],
+    "examples": [
+      "public/docs/stipple_transport.md#fence:130"
+    ]
+  },
+  {
+    "type": "StippleTransport",
+    "method": "StippleTransport.velocity",
+    "reason": "Transporting points through the learned field",
+    "classTarget": "reference/machine-learning.md#stippletransport-kt-stippletransport",
+    "methodTarget": "reference/machine-learning.md#stippletransport-kt--stippletransport--velocity",
+    "pages": [
+      "public/docs/stipple_transport.md"
+    ],
+    "examples": [
+      "public/docs/stipple_transport.md#fence:130"
+    ]
+  },
+  {
+    "type": "Stippler",
+    "method": "Stippler.step",
+    "reason": "Relaxing the stipple distribution",
+    "classTarget": "reference/graphics.md#stippling-kt-stippler",
+    "methodTarget": "reference/graphics.md#stippling-kt--stippler--step",
+    "pages": [
+      "public/docs/agent_transcripts.md#stippling"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/stippling.yaml#yaml/operations/1/create/properties/code"
+    ]
+  },
+  {
+    "type": "StudyBuilds",
+    "method": "StudyBuilds.await",
+    "reason": "Starting and awaiting derived builds",
+    "classTarget": "reference/workspace.md#studybuilds-kt-studybuilds",
+    "methodTarget": "reference/workspace.md#studybuilds-kt--studybuilds--await",
+    "pages": [
+      "public/docs/studies.md"
+    ],
+    "examples": [
+      "public/docs/studies.md#fence:331",
+      "public/docs/studies.md#fence:540",
+      "public/docs/studies.md#fence:650",
+      "public/docs/studies.md#fence:710",
+      "public/docs/studies.md#fence:843"
+    ]
+  },
+  {
+    "type": "StudyBuilds",
+    "method": "StudyBuilds.start",
+    "reason": "Starting and awaiting derived builds",
+    "classTarget": "reference/workspace.md#studybuilds-kt-studybuilds",
+    "methodTarget": "reference/workspace.md#studybuilds-kt--studybuilds--start",
+    "pages": [
+      "public/docs/studies.md"
+    ],
+    "examples": [
+      "public/docs/studies.md#fence:331",
+      "public/docs/studies.md#fence:540",
+      "public/docs/studies.md#fence:604",
+      "public/docs/studies.md#fence:650",
+      "public/docs/studies.md#fence:710",
+      "public/docs/studies.md#fence:769",
+      "public/docs/studies.md#fence:843"
+    ]
+  },
+  {
+    "type": "SubharmonicSoundDocs",
+    "method": "SubharmonicSoundDocs.render",
+    "reason": "Rendering the subharmonic examples",
+    "classTarget": "reference/synthesis.md#subharmonicsounddocs-kt-subharmonicsounddocs",
+    "methodTarget": "reference/synthesis.md#subharmonicsounddocs-kt--subharmonicsounddocs--render",
+    "pages": [
+      "public/docs/subharmonic_sound.md"
+    ],
+    "examples": [
+      "public/docs/subharmonic_sound.md#fence:156",
+      "public/docs/subharmonic_sound.md#fence:249",
+      "public/docs/subharmonic_sound.md#fence:315",
+      "public/docs/subharmonic_sound.md#fence:376",
+      "public/docs/subharmonic_sound.md#fence:466",
+      "public/docs/subharmonic_sound.md#fence:549",
+      "public/docs/subharmonic_sound.md#fence:55"
+    ]
+  },
+  {
+    "type": "VariableMarkovOracle",
+    "method": "VariableMarkovOracle.build",
+    "reason": "Building the temporal model and scanning thresholds",
+    "classTarget": "reference/math.md#variablemarkovoracle-kt-variablemarkovoracle",
+    "methodTarget": "reference/math.md#variablemarkovoracle-kt--variablemarkovoracle-companion--build",
+    "pages": [
+      "public/docs/agent_transcripts.md#temporal_memory",
+      "public/docs/temporal_memory.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/temporal_memory.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/temporal_memory.md#fence:182",
+      "public/docs/temporal_memory.md#fence:393",
+      "public/docs/temporal_memory.md#fence:48"
+    ]
+  },
+  {
+    "type": "VariableMarkovOracle",
+    "method": "VariableMarkovOracle.thresholdScan",
+    "reason": "Building the temporal model and scanning thresholds",
+    "classTarget": "reference/math.md#variablemarkovoracle-kt-variablemarkovoracle",
+    "methodTarget": "reference/math.md#variablemarkovoracle-kt--variablemarkovoracle-companion--thresholdscan",
+    "pages": [
+      "public/docs/temporal_memory.md"
+    ],
+    "examples": [
+      "public/docs/temporal_memory.md#fence:114"
+    ]
+  },
+  {
+    "type": "VectorFieldTopology",
+    "method": "VectorFieldTopology.compute",
+    "reason": "Extracting critical points and streamlines",
+    "classTarget": "reference/graphics.md#vectorfieldtopology-kt-vectorfieldtopology",
+    "methodTarget": "reference/graphics.md#vectorfieldtopology-kt--vectorfieldtopology-companion--compute",
+    "pages": [
+      "public/docs/agent_transcripts.md#vector_field_explorer",
+      "public/docs/vector_field_topology.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/vector_field_explorer.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/vector_field_topology.md#fence:118",
+      "public/docs/vector_field_topology.md#fence:158",
+      "public/docs/vector_field_topology.md#fence:206",
+      "public/docs/vector_field_topology.md#fence:72"
+    ]
+  },
+  {
+    "type": "VectorFieldTopology",
+    "method": "VectorFieldTopology.gradientOf",
+    "reason": "Extracting critical points and streamlines",
+    "classTarget": "reference/graphics.md#vectorfieldtopology-kt-vectorfieldtopology",
+    "methodTarget": "reference/graphics.md#vectorfieldtopology-kt--vectorfieldtopology-companion--gradientof",
+    "pages": [
+      "public/docs/agent_transcripts.md#vector_field_explorer",
+      "public/docs/vector_field_topology.md"
+    ],
+    "examples": [
+      "dev_docs/agents/transcripts/vector_field_explorer.yaml#yaml/operations/1/create/properties/code",
+      "public/docs/vector_field_topology.md#fence:72"
+    ]
+  },
+  {
+    "type": "VectorFieldTopology",
+    "method": "VectorFieldTopology.streamlines",
+    "reason": "Extracting critical points and streamlines",
+    "classTarget": "reference/graphics.md#vectorfieldtopology-kt-vectorfieldtopology",
+    "methodTarget": "reference/graphics.md#vectorfieldtopology-kt--vectorfieldtopology--streamlines",
+    "pages": [
+      "public/docs/vector_field_topology.md"
+    ],
+    "examples": [
+      "public/docs/vector_field_topology.md#fence:118",
+      "public/docs/vector_field_topology.md#fence:158"
+    ]
+  }
+]
