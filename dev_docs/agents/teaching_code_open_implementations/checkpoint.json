@@ -1,7 +1,7 @@
 {
   "baseline": "d1d2cd52ffcdf0013ad15323d56d7bcd6aef89fa",
   "pilotLanded": "9eb8de139",
-  "status": "source_work_complete_pending_landing",
+  "status": "complete",
   "policy": "Expose the domain transformations being taught, preserve default behavior and captures, keep useful engine and IO abstractions, leave generated preambles and historical copies alone.",
   "authoredKotlinOccurrences": 4532,
   "wrapperCandidateOccurrences": 133,
@@ -144,14 +144,15 @@
     },
     {
       "id": "rig-measurement",
-      "status": "behavior_and_capture_verified",
+      "status": "landed",
       "paths": [
         "public/docs/chain_scene_to_light.md",
         "dev_docs/agents/transcripts/chain_scene_to_light.yaml"
       ],
       "verifiedProbes": 2,
       "captures": 1,
-      "wireRoundTrip": "9 frames, 132 fixtures, 9216 slots compared, zero changed"
+      "wireRoundTrip": "9 frames, 132 fixtures, 9216 slots compared, zero changed",
+      "landingCommit": "0539414c0"
     }
   ],
   "domains": {
@@ -219,7 +220,9 @@
     {
       "number": 5,
       "scope": "final coverage and mirrors",
-      "status": "ready_for_precheck"
+      "status": "landed",
+      "commit": "0539414c0",
+      "queueId": "20261113-142121-codex-teaching-code-final-coverage"
     }
   ],
   "audioVerification": {
@@ -281,6 +284,17 @@
     "canonicalWireRoundTrip": "passed: 0 of 9216 slots changed",
     "figure": "recaptured and inspected; same dimensions, same numerical curves/table, smaller file; rendering/layout pixel differences recorded",
     "formatting": "actual import/ktfmt on the page body and canonical transcript",
-    "site": "Passed: 4481 local references and 57146 fragment pairs resolve, with one registered theme exception."
+    "site": "Passed: 4481 local references and 57146 fragment pairs resolve, with one registered theme exception.",
+    "precheck": "Passed in 1.1 min; authored examples, formatting, source anchors, asset budget and documented API evaluation green.",
+    "landing": "Landed 0539414c0; full generated-artifact guard passed."
+  },
+  "completion": {
+    "sourceWork": "complete",
+    "delivery": "All five delivery batches landed on local main. Landing journal is authoritative for queue history.",
+    "defaultAndEditedParameterCases": 60,
+    "additionalEvidence": "Real thermal-grid solver comparison, native thermal UI, loopback sACN (0 of 9216 slots changed), and inspected native Vulkan/stereo renders.",
+    "recapturedFigures": 26,
+    "frozenWrapperCallsPending": 0,
+    "remainingWork": []
   }
 }
