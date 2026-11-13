@@ -1,0 +1,109 @@
+{
+  "baseline": "d1d2cd52ffcdf0013ad15323d56d7bcd6aef89fa",
+  "pilotLanded": "9eb8de139",
+  "status": "in_progress",
+  "policy": "Expose the domain transformations being taught, preserve default behavior and captures, keep useful engine and IO abstractions, leave generated preambles and historical copies alone.",
+  "authoredKotlinOccurrences": 4532,
+  "wrapperCandidateOccurrences": 133,
+  "note": "Candidates include hidden capture support and comment-only mentions; these counts are not confirmed defects. Other API families from the previous reference review remain in scope.",
+  "batches": [
+    {
+      "id": "sound-chains",
+      "status": "behavior_and_captures_verified",
+      "paths": [
+        "public/docs/chain_ca_sound.md",
+        "public/docs/chain_lambda_sound.md",
+        "public/docs/chain_pattern_particles.md"
+      ],
+      "verifiedProbes": 8,
+      "captures": 3,
+      "notes": "Default values match helpers exactly. Figures have identical dimensions and visually identical data, with sparse rendering-detail pixel differences. Full site build and landing checks are pending."
+    },
+    {
+      "id": "function-roundtrip",
+      "status": "behavior_and_capture_verified",
+      "paths": [
+        "public/docs/chain_fn_sound_roundtrip.md"
+      ],
+      "verifiedProbes": 2,
+      "captures": 1,
+      "notes": "Both encodings produce byte-identical WAVs and exactly equal recovered frames, lag estimates and certified containment counts; also verified with a changed input function."
+    },
+    {
+      "id": "morpho-problem",
+      "status": "behavior_and_capture_verified",
+      "paths": [
+        "public/docs/morpho_search.md",
+        "dev_docs/agents/transcripts/morpho_circuit_search.yaml"
+      ],
+      "verifiedProbes": 2,
+      "captures": 1,
+      "notes": "All eight truth-table rows and three seeded generator outputs match, including a smaller grammar; full default-budget capture preserves the 1789/598 solution counts."
+    },
+    {
+      "id": "lambda-checks",
+      "status": "behavior_and_capture_verified",
+      "paths": [
+        "public/docs/chain_lambda_sound.md"
+      ],
+      "verifiedProbes": 4,
+      "captures": 2
+    },
+    {
+      "id": "drawn-listening",
+      "status": "behavior_and_capture_verified",
+      "paths": [
+        "public/docs/chain_drawn_score.md",
+        "dev_docs/agents/transcripts/drawn_score.yaml"
+      ],
+      "verifiedProbes": 2,
+      "captures": 1
+    },
+    {
+      "id": "penrose-strikes",
+      "status": "behavior_and_capture_verified",
+      "paths": [
+        "public/docs/debruijn_tilings.md",
+        "dev_docs/agents/transcripts/penrose_spectra.yaml"
+      ],
+      "verifiedProbes": 2,
+      "captures": 1
+    }
+  ],
+  "domains": {
+    "sound-chains": "reviewed: first-use algorithms opened; later trace reuse and hidden audio hooks retained",
+    "drawn-score-and-morph": "reviewed: listening opened; previously taught interpretation, tuning and point-cloud loops retained by name",
+    "audio-analysis-and-instruments": "pending",
+    "simulation-and-search": "pending",
+    "geometry-and-optimisation": "pending",
+    "learned-models-and-training": "pending",
+    "rendered-scenes-and-shaders": "pending",
+    "workspace-studies-and-builds": "pending",
+    "starting-place-and-demo-mirrors": "pending",
+    "remaining-corpus-review": "pending"
+  },
+  "verification": {
+    "actualCodeProbesPassed": 20,
+    "inspectedFigureRecaptures": 9,
+    "canonicalTranscriptReplay": {
+      "drawn_score": {
+        "applied": 10,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "publicationsRefreshed": {
+      "drawn_score": 5,
+      "morpho_circuit_search": 4,
+      "penrose_spectra": 15
+    },
+    "siteLinks": "passed on final build; 4476 local references and 57051 fragment pairs resolve, with one registered theme exception",
+    "assetBudget": "passed; scale=2 capture fits the normal budget and obsolete exception removed",
+    "landing": "ready for precheck"
+  },
+  "wrapperReview": {
+    "pendingCallOccurrences": 24,
+    "ledger": "wrapper-review.json",
+    "note": "Wrapper-name candidates are one input to review, not the whole corpus. Morpho presets and other short API examples remain included in the domain review."
+  }
+}

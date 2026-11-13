@@ -1,0 +1,23 @@
+{
+  "probes": {
+    "passed": [
+      "drawn score onsets and median pitches",
+      "slower score rerun with matching detector measurements"
+    ]
+  },
+  "captures": [
+    {
+      "path": "public/docs/chain_drawn_score.md",
+      "name": "chain-drawn-score-heard",
+      "asset": "assets/chain_drawn_score/heard.png",
+      "fenceSha256": "103f08d8a73f95fb7121eefdcae28166486ce13245ca4d5ce7c0772a284797d4"
+    }
+  ],
+  "canonicalTranscriptReplay": {
+    "path": "dev_docs/agents/transcripts/drawn_score.yaml",
+    "applied": 10,
+    "skipped": 0,
+    "errors": 0,
+    "realExecution": true
+  }
+}

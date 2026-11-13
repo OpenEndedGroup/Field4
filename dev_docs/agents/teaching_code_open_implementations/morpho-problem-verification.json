@@ -1,0 +1,16 @@
+{
+  "probes": {
+    "passed": [
+      "explicit full-adder truth table and seeded generator",
+      "changed grammar budget"
+    ]
+  },
+  "captures": [
+    {
+      "path": "public/docs/morpho_search.md",
+      "name": "morpho-search-control",
+      "asset": "assets/morpho_examples/search-control.png",
+      "fenceSha256": "3609fab1be3de5486c8d457aaa0decb2dce1e62692ffc04000533658d0dc51e0"
+    }
+  ]
+}

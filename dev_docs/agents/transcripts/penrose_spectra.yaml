@@ -198,13 +198,21 @@ operations:
 
           // A Penrose patch and a square lattice as spring networks with equal stiffness, so E = 0 rings
           // at 220 Hz in both. Each row, top to bottom: strike energy against pitch for one struck vertex.
-          val penrose = PenroseSpectraDocs.penrose()
-          val square = PenroseSpectraDocs.square()
-          val pm = penrose.springModes(PenroseSpectraDocs.STIFFNESS)
-          val sm = square.springModes(PenroseSpectraDocs.STIFFNESS)
+          val stiffness = 8.0
+          val penrose = deBruijnTiling(symmetry = 5, radius = 6.0, scale = 1.0).vertexGraph()
+          val square = TilingGraph.squareLattice(radius = 19.0)
+          val pm = penrose.springModes(stiffness)
+          val sm = square.springModes(stiffness)
+
+          // Stay away from the boundary: compare a confined mode's strongest vertex with
+          // an unconfined, highly connected vertex in the same interior region.
+          val interior = penrose.interior(0.5 * penrose.extent)
+          val weights = pm.spectrum.zeroWeights()
+          val confined = interior.maxBy { weights[it] }
+          val open = interior.filter { weights[it] < 1e-9 }.maxBy { penrose.degree(it) * 1000 - it }
           val strikes = [
-              Triple("Penrose, most confined weight", pm, PenroseSpectraDocs.strikeVertex(penrose, pm, true)),
-              Triple("Penrose, seven-edged vertex", pm, PenroseSpectraDocs.strikeVertex(penrose, pm, false)),
+              Triple("Penrose, most confined weight", pm, confined),
+              Triple("Penrose, seven-edged vertex", pm, open),
               Triple("square lattice, centre", sm, square.nearest(square.centre.first, square.centre.second)),
           ]
           val out = ArrayList<FLine>()

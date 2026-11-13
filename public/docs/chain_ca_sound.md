@@ -192,15 +192,23 @@ above are one row of this.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/survey.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-ca-survey" embed=true alt="A four-column table of six elementary rules sorted by compression: rules 30 and 45 near 0.8 with long notations full of groupings, then rule 250 at 0.13, rule 90 at 0.10, and rules 110 and 150 at 0.06 with one-token spellings"}
 :::static
-// The same six rules the harness surveys, so the page and the FIELD_TEST cannot disagree.
-val bars = CaSoundDocs.CONDENSATION_SURVEY.map { CaSoundDocs.centreColumnBar(it) }
+val rules = [30, 45, 90, 110, 150, 250]
+val steps = 32
+val atom = "x"
+val columns = rules.map { rule ->
+    elementaryCa(rule, width = 2 * steps + 3, generations = steps, wrap = false).centerColumn().map { it == 1 }
+}
+val bars = columns.map { patCondense(it, atom) }
 
 :::fold lay the six out, worst compression first
 val rows =
-    CaSoundDocs.CONDENSATION_SURVEY.zip(bars)
-        .sortedByDescending { (_, bar) -> bar.compression }
-        .joinToString("\n") { (rule, bar) ->
-            "| $rule | ${bar.onsets} of ${bar.steps} | ${bar.compression.f2} | " + "`${bar.condensation.notation}` |"
+    rules.indices
+        .sortedByDescending { bars[it].compression }
+        .joinToString("\n") { i ->
+            val rule = rules[i]
+            val bar = bars[i]
+            val mask = columns[i]
+            "| $rule | ${mask.count { it }} of ${mask.size} | ${bar.compression.f2} | `${bar.notation}` |"
         }
 markdown(
     "survey",

@@ -1,0 +1,215 @@
+{
+  "sound-chains": {
+    "targets": [
+      {
+        "path": "public/docs/chain_ca_sound.md",
+        "name": "chain-ca-survey",
+        "capture": true,
+        "probes": [
+          {
+            "label": "CA default columns and condensation",
+            "assertions": "check(rules == CaSoundDocs.CONDENSATION_SURVEY)\ncheck(columns == rules.map { CaSoundDocs.centreColumnBar(it, steps, atom).mask })\ncheck(bars.zip(rules).all { (bar, rule) -> bar.compression == CaSoundDocs.centreColumnBar(rule, steps, atom).compression })"
+          },
+          {
+            "label": "CA shorter columns and changed atom",
+            "replace": {
+              "val steps = 32": "val steps = 16",
+              "val atom = \"x\"": "val atom = \"hh\""
+            },
+            "assertions": "check(columns == rules.map { CaSoundDocs.centreColumnBar(it, steps, atom).mask })"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/chain_pattern_particles.md",
+        "name": "chain-pattern-bands",
+        "capture": true,
+        "probes": [
+          {
+            "label": "band audio and default overlapping windows",
+            "assertions": "val referenceAudio = PatSynthDocs.SCENES.first { it.name == \"seam-bands\" }.render()\ncheck(audio.left.contentEquals(referenceAudio.left) && audio.right.contentEquals(referenceAudio.right))\nval referenceSeries = PatSynthDocs.bandSeries(audio, logBands(4, lowHz = 70.0, highHz = 8000.0, sampleRate = sampleRate), windowFrames, hopFrames)\ncheck(series.size == referenceSeries.size && series.zip(referenceSeries).all { (a, b) -> a.contentEquals(b) })"
+          },
+          {
+            "label": "band shorter windows and hops",
+            "replace": {
+              "val windowFrames = 2048": "val windowFrames = 1024",
+              "val hopFrames = 256": "val hopFrames = 128"
+            },
+            "assertions": "val referenceSeries = PatSynthDocs.bandSeries(audio, logBands(4, lowHz = 70.0, highHz = 8000.0, sampleRate = sampleRate), windowFrames, hopFrames)\ncheck(series.size == referenceSeries.size && series.zip(referenceSeries).all { (a, b) -> a.contentEquals(b) })"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/chain_lambda_sound.md",
+        "name": "chain-lambda-one",
+        "capture": true,
+        "probes": [
+          {
+            "label": "lambda default reaction trace",
+            "assertions": "val reference = LambdaSoundDocs.trace(name, order, maxSteps)\ncheck(initialNodes == reference.initialNodes)\ncheck(beats.size == reference.beats.size)\ncheck(beats.zip(reference.beats).all { (a, b) -> a.index == b.index && a.rule == b.rule && a.kinds == b.kinds && a.nodes == b.nodes && a.activePairs == b.activePairs && a.reduciblePairs == b.reduciblePairs })\ncheck(LambdaTerms.alphaEquivalent(LambdaTerms.readback(compiled), reference.result))"
+          },
+          {
+            "label": "lambda changed term and scheduler",
+            "replace": {
+              "\"church-exp-two-cubed\"": "\"erase-argument\"",
+              "ActivationOrder.FIRST_FOUND": "ActivationOrder.RIGHTMOST_BY_ID"
+            },
+            "assertions": "val reference = LambdaSoundDocs.trace(name, order, maxSteps)\ncheck(initialNodes == reference.initialNodes)\ncheck(beats.size == reference.beats.size)\ncheck(beats.zip(reference.beats).all { (a, b) -> a.index == b.index && a.rule == b.rule && a.kinds == b.kinds && a.nodes == b.nodes && a.activePairs == b.activePairs && a.reduciblePairs == b.reduciblePairs })\ncheck(LambdaTerms.alphaEquivalent(LambdaTerms.readback(compiled), reference.result))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/chain_lambda_sound.md",
+        "contains": "val intervals =",
+        "capture": false,
+        "probes": [
+          {
+            "label": "lambda reaction-to-pitch mapping",
+            "assertions": "check(notes == LambdaSoundDocs.trace(name).melody)"
+          },
+          {
+            "label": "lambda melody transposition",
+            "replace": {
+              "val root = 45": "val root = 57"
+            },
+            "assertions": "check(notes == LambdaSoundDocs.trace(name).melody.map { it + 12 })"
+          }
+        ]
+      }
+    ]
+  },
+  "function-roundtrip": {
+    "targets": [
+      {
+        "path": "public/docs/chain_fn_sound_roundtrip.md",
+        "name": "chain-fn-roundtrip",
+        "capture": true,
+        "probes": [
+          {
+            "label": "function roundtrip wave bytes, recovered frames, delay and bounds",
+            "assertions": "for (actual in [loud, pitch]) {\n    val expected = FnSoundDocs.roundTrip(actual.encoding, FnSoundDocs.Route.PER_SAMPLE, dir = java.io.File(dir, \"reference\"), fn = f)\n    check(actual.wav.readBytes().contentEquals(expected.wav.readBytes()))\n    check(actual.frames == expected.frames)\n    check(actual.bestLagSamples == expected.bestLagSamples)\n    check(actual.insideCount == expected.insideCount)\n}"
+          },
+          {
+            "label": "changed input function, same render-and-read pipeline",
+            "replace": {
+              "val f = FnSoundDocs.contour() // the formula above": "val f = with(Functions) { FnSoundDocs.contour().scaleY(0.8) }"
+            },
+            "assertions": "for (actual in [loud, pitch]) {\n    val expected = FnSoundDocs.roundTrip(actual.encoding, FnSoundDocs.Route.PER_SAMPLE, dir = java.io.File(dir, \"reference\"), fn = f)\n    check(actual.wav.readBytes().contentEquals(expected.wav.readBytes()))\n    check(actual.frames == expected.frames)\n    check(actual.bestLagSamples == expected.bestLagSamples)\n    check(actual.insideCount == expected.insideCount)\n}"
+          }
+        ]
+      }
+    ]
+  },
+  "morpho-problem": {
+    "targets": [
+      {
+        "path": "public/docs/morpho_search.md",
+        "name": "morpho-search-control",
+        "capture": true,
+        "probes": [
+          {
+            "label": "explicit full-adder truth table and seeded generator",
+            "replace": {
+              "val budget = 4000": "val budget = 32"
+            },
+            "assertions": "val reference = MorphoProblems.fullAdderCell(maxStatements)\ncheck(spec.widths == reference.spec.widths)\nfor (a in 0L..1L) for (b in 0L..1L) for (c in 0L..1L) {\n    val input = longArrayOf(a, b, c)\n    check(spec.oracle(input, 1).contentEquals(reference.spec.oracle(input, 1)))\n}\nfor (seed in [1, 2, 42]) {\n    check(problem.generator.random(kotlin.random.Random(seed)).render() == reference.generator.random(kotlin.random.Random(seed)).render())\n}"
+          },
+          {
+            "label": "changed grammar budget",
+            "replace": {
+              "val budget = 4000": "val budget = 32",
+              "val maxStatements = 6": "val maxStatements = 4"
+            },
+            "assertions": "val reference = MorphoProblems.fullAdderCell(maxStatements)\ncheck(spec.widths == reference.spec.widths)\nfor (a in 0L..1L) for (b in 0L..1L) for (c in 0L..1L) {\n    val input = longArrayOf(a, b, c)\n    check(spec.oracle(input, 1).contentEquals(reference.spec.oracle(input, 1)))\n}\nfor (seed in [1, 2, 42]) {\n    check(problem.generator.random(kotlin.random.Random(seed)).render() == reference.generator.random(kotlin.random.Random(seed)).render())\n}"
+          }
+        ]
+      }
+    ]
+  },
+  "lambda-checks": {
+    "targets": [
+      {
+        "path": "public/docs/chain_lambda_sound.md",
+        "name": "chain-lambda-sweep",
+        "capture": true,
+        "probes": [
+          {
+            "label": "corpus reaction counts, rule multisets and spellings",
+            "assertions": "check(counts == LambdaSoundDocs.stepCountIsScheduleInvariant(sweep))\ncheck(multisets == LambdaSoundDocs.ruleMultisetIsScheduleInvariant(sweep))\ncheck(spellings == LambdaSoundDocs.spellingsPerTerm(sweep))"
+          },
+          {
+            "label": "smaller corpus and two schedulers on rerun",
+            "replace": {
+              "val names = LambdaTerms.corpus().keys": "val names = LambdaTerms.corpus().keys.take(3)",
+              "ActivationOrder.HIGHEST_PAIR_ENERGY,": "",
+              "ActivationOrder.RIGHTMOST_BY_ID,": ""
+            },
+            "assertions": "check(sweep.size == 3)\ncheck(sweep.values.all { it.size == 2 })\ncheck(counts == LambdaSoundDocs.stepCountIsScheduleInvariant(sweep))\ncheck(multisets == LambdaSoundDocs.ruleMultisetIsScheduleInvariant(sweep))\ncheck(spellings == LambdaSoundDocs.spellingsPerTerm(sweep))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/chain_lambda_sound.md",
+        "name": "chain-lambda-four",
+        "capture": true,
+        "probes": [
+          {
+            "label": "four schedule answers and beta counts",
+            "assertions": "check(answer == LambdaSoundDocs.answerIsScheduleInvariant(traces))\ncheck(betas == LambdaSoundDocs.betaIsScheduleInvariant(traces))"
+          },
+          {
+            "label": "changed term, same independent oracle checks",
+            "replace": {
+              "val name = \"church-exp-two-cubed\"": "val name = \"erase-argument\""
+            },
+            "assertions": "check(answer == LambdaSoundDocs.answerIsScheduleInvariant(traces))\ncheck(betas == LambdaSoundDocs.betaIsScheduleInvariant(traces))"
+          }
+        ]
+      }
+    ]
+  },
+  "drawn-listening": {
+    "targets": [
+      {
+        "path": "public/docs/chain_drawn_score.md",
+        "name": "chain-drawn-score-heard",
+        "capture": true,
+        "probes": [
+          {
+            "label": "drawn score onsets and median pitches",
+            "assertions": "val reference = DrawnScoreDocs.listen(audio, notes, cycles, cps, voice.sustain)\ncheck(heard.heard.size == reference.heard.size)\ncheck(heard.heard.zip(reference.heard).all { (a, b) -> a.note == b.note && a.scheduledSeconds.toBits() == b.scheduledSeconds.toBits() && a.onsetSeconds.toBits() == b.onsetSeconds.toBits() && a.heardMidi.toBits() == b.heardMidi.toBits() })\ncheck(heard.frames == reference.frames)\ncheck(heard.onsetsDetected == reference.onsetsDetected)\ncheck(heard.trace() == reference.trace())"
+          },
+          {
+            "label": "slower score rerun with matching detector measurements",
+            "replace": {
+              "val cps = 0.25": "val cps = 0.2"
+            },
+            "assertions": "val reference = DrawnScoreDocs.listen(audio, notes, cycles, cps, voice.sustain)\ncheck(heard.heard.size == reference.heard.size)\ncheck(heard.heard.zip(reference.heard).all { (a, b) -> a.note == b.note && a.scheduledSeconds.toBits() == b.scheduledSeconds.toBits() && a.onsetSeconds.toBits() == b.onsetSeconds.toBits() && a.heardMidi.toBits() == b.heardMidi.toBits() })\ncheck(heard.frames == reference.frames)\ncheck(heard.onsetsDetected == reference.onsetsDetected)\ncheck(heard.trace() == reference.trace())"
+          }
+        ]
+      }
+    ]
+  },
+  "penrose-strikes": {
+    "targets": [
+      {
+        "path": "public/docs/debruijn_tilings.md",
+        "name": "penrose-spectra-strike",
+        "capture": true,
+        "probes": [
+          {
+            "label": "same graphs, mode weights and chosen strike vertices",
+            "assertions": "check(penrose.vertexCount == PenroseSpectraDocs.penrose().vertexCount)\ncheck(square.vertexCount == PenroseSpectraDocs.square().vertexCount)\ncheck(confined == PenroseSpectraDocs.strikeVertex(penrose, pm, true))\ncheck(open == PenroseSpectraDocs.strikeVertex(penrose, pm, false))\ncheck(stiffness == PenroseSpectraDocs.STIFFNESS)"
+          },
+          {
+            "label": "smaller patch, same interior-selection rules",
+            "replace": {
+              "radius = 6.0": "radius = 5.0"
+            },
+            "assertions": "check(confined == PenroseSpectraDocs.strikeVertex(penrose, pm, true))\ncheck(open == PenroseSpectraDocs.strikeVertex(penrose, pm, false))"
+          }
+        ]
+      }
+    ]
+  }
+}

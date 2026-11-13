@@ -1,0 +1,17 @@
+{
+  "probes": {
+    "passed": [
+      "function roundtrip wave bytes, recovered frames, delay and bounds",
+      "changed input function, same render-and-read pipeline"
+    ]
+  },
+  "captures": [
+    {
+      "path": "public/docs/chain_fn_sound_roundtrip.md",
+      "name": "chain-fn-roundtrip",
+      "asset": "assets/chain_fn_sound_roundtrip/roundtrip.png",
+      "fenceSha256": "105260b12f09ccedf82c1b0361d364baa21afacf0d45bf5558182c7c4e9c7af6"
+    }
+  ],
+  "captureScale": 2
+}

@@ -85,15 +85,30 @@ oscillator.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_pattern_particles/bands.png" alt="A line plot titled 'four bands of one bar, the numbers the shader reads', four traces over two seconds against a legend of 70 Hz, 340 Hz, 1.6 kHz and 8 kHz. The 70 Hz trace spikes sixteen times, to about 0.32; the 340 Hz trace spikes with it at about two thirds the height; the 1.6 kHz and 8 kHz traces stay busier and flatter, hovering around 0.05 and 0.1" wait="8" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="120" name="chain-pattern-bands" embed=true}
 :::static
-// The same scene the .wav above is, and the same scene the GPU figure plays.
-val scene = PatSynthDocs.SCENES.first { it.name == "seam-bands" }
-val audio = scene.render()
-
-val split = logBands(4, lowHz = 70.0, highHz = 8000.0, sampleRate = PatSynthDocs.SR)
-val series = PatSynthDocs.bandSeries(audio, split, windowFrames = 2048, hopFrames = 256)
+val sampleRate = 44_100
+val windowFrames = 2048
+val hopFrames = 256
+val pattern = stack(pat("bd*4"), pat("~ 52 ~ 52"), pat("hh*16"))
+val audio = patSynthRenderStereo(
+    pattern,
+    cycles = 4,
+    cps = 2.0,
+    voice = patVoice(wave = PatWave.SQUARE, decay = 0.012, sustain = 0.08),
+    sampleRate = sampleRate,
+    blockFrames = 128,
+)
+val mono = audio.mono
+val split = logBands(4, lowHz = 70.0, highHz = 8000.0, sampleRate = sampleRate)
+val series = mutableListOf<DoubleArray>()
+var at = 0
+// Each window advances the same filter bank; overlapping windows retain its state.
+while (at + windowFrames <= mono.size) {
+    series += split.measure(mono.copyOfRange(at, at + windowFrames))
+    at += hopFrames
+}
 
 :::fold four bands against time
-val seconds = series.indices.map { it * 256.0 / PatSynthDocs.SR }
+val seconds = series.indices.map { it * hopFrames.toDouble() / sampleRate }
 showSignals(
     "70 Hz" to series.map { it[0] },
     "340 Hz" to series.map { it[1] },
