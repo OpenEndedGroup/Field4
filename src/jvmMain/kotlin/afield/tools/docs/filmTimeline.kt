@@ -210,10 +210,12 @@ class FilmTimeline private constructor(
             }
         })
         val waits = buildJsonArray {
+            // Only a move changes the box: a press where the drag starts, or a held point, waits for nothing.
             for (d in drags) for (g in d.gestures) {
                 if (d.until == null || !g.pressed(t)) continue
                 val point = g.point(t)
-                if (previousT == null || !g.pressed(previousT) || g.point(previousT) != point) add(d.until.wait(point))
+                val before = if (previousT != null && g.pressed(previousT)) g.point(previousT) else g.first
+                if (point != before) add(d.until.wait(point))
             }
             for (c in controls) {
                 val now = valueAt(c.keys, t) ?: continue

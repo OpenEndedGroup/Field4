@@ -1,6 +1,21 @@
-package afield.tools.docs
+package afield.tools.film
 
 import afield.app.protocol.AgentPageFilm
+import afield.tools.docs.FilmEase
+import afield.tools.docs.FilmPose
+import afield.tools.docs.FilmRate
+import afield.tools.docs.FilmTimeline
+import afield.tools.docs.FilmTimelineException
+import afield.tools.docs.canvasFlightFrameTime
+import afield.tools.docs.filmFrameFile
+import afield.tools.docs.filmManifest
+import afield.tools.docs.firstMissingFrame
+import afield.tools.docs.manifestDifferences
+import afield.tools.docs.resolveFilmUrl
+import afield.tools.docs.resolveTimelineBoxes
+import afield.tools.docs.sessionFilmUrl
+import afield.tools.docs.timelineAt
+import afield.tools.docs.withTimelineDefaults
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.double
@@ -19,7 +34,10 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** The timeline file format ([FilmTimeline]) and the frame loop's pure parts (pageFilm.kt). */
+/**
+ * The timeline file format ([FilmTimeline]) and the frame loop's pure parts (pageFilm.kt). Not a citation guard, so
+ * outside `afield.tools.docs`, whose test sources GateInputDeclarationTest holds to citationGates' inputs.
+ */
 class FilmTimelineTest {
     private fun timeline(tracks: String, stage: String = STAGE) =
         FilmTimeline.parse("""{"format": "field-film-timeline/1", "duration": 4, "fps": 10, "stage": $stage, "tracks": [$tracks]}""")
@@ -185,6 +203,8 @@ class FilmTimelineTest {
         assertEquals(15.0, pressed[0].jsonObject["value"]!!.jsonPrimitive.double, 1e-9)
         assertEquals("depth", pressed[1].jsonObject["control"]!!.jsonObject["label"]!!.jsonPrimitive.content)
         assertNull(t.frame(24, 2.4, 2.3)["waits"], "a held drag and a still control wait for nothing")
+        assertEquals(listOf("depth"), t.frame(10, 1.0, 0.9)["waits"]!!.jsonArray.map { it.jsonObject["metadata"]!!.jsonPrimitive.content },
+            "a press where the drag starts moves nothing, so only the control's first value is waited for")
         assertEquals(20.0, (t.frame(24, 2.4, 2.3)["controls"] as JsonArray)[0].jsonObject["value"]!!.jsonPrimitive.double)
     }
 
