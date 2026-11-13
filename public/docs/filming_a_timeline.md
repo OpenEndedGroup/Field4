@@ -173,7 +173,7 @@ page is hidden. The outputs are Field's own, so they keep updating while the box
 | `"camera": view` | `pose`: `{eye, target, up, fov}`; or `orbit`: `{degreesPerSecond, eye, target, up}`, turning about the target and up axis from the key's time. An orbit with no eye starts from wherever the camera is, the view's own camera for the first key. `arc: [x, y, z]` swings the eye that far out halfway into the key |
 | `"parts": view` | `hide` or `show`: a list of part ids, or `{"ids": […], "layer": […]}`, a layer path every part under it shares |
 | `"motion": view` | `value` from 0 to 1 (every declared motion of the view at that point of its range); `play: {period, shape}` (the view's own `swing`, `loop` or `once`, played on the film's time); `rest: true`; `tracks: true` or `false` |
-| `"drag": {box, channel}` | `at: [x, y]` in the drawing's own coordinates (what its `onDrag` receives), then `release: true`. The first `at` presses, each later frame moves, the release lets go; with no release the drag lets go after its last key |
+| `"drag": {box, channel, handle}` | `at: [x, y]` in the drawing's own coordinates (what its `onDrag` receives), then `release: true`. The first `at` presses, each later frame moves, the release lets go; with no release the drag lets go after its last key. With `handle`, the drag holds that named handle of the drawing (`lines(..., handles = …)`) however close another lies |
 | `"control": {box, label}` | `value`: the slider with that label is set to it, snapped to its step as a hand's drag would be |
 | `"captions"` | a list of `{t, text, fade}`; a caption fades in over `fade` seconds and out before the next |
 

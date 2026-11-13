@@ -1,15 +1,15 @@
 # Optional Patchy Web build
 
 `field-bridge.patch` is the complete Field change to the upstream Patchy source at the
-revision in `pin.json`. It contains the iframe RPC and PSD byte bridge; it does not contain
-Patchy itself. Regenerate it from a Patchy checkout with:
+revision in `pin.json`, the Patchy v1.34 tag. It contains the iframe RPC and PSD byte
+bridge; it does not contain Patchy itself. Regenerate it from a Patchy checkout with:
 
 ```sh
-git diff --binary b81377425c54ff9eca30e180d3cd9e6f11eb17da -- \
+git diff --binary 559633c750526101988debceb57ce0983337c4f3 -- \
   CMakeLists.txt src/app/field_web_bridge.cpp src/app/field_web_bridge.hpp \
-  src/app/main.cpp src/ui/dialog_utils.cpp src/ui/main_window_ai_selection.cpp \
-  src/ui/main_window_actions.cpp src/ui/main_window_docks.cpp \
-  src/ui/main_window_sessions.cpp src/ui/main_window_theme.cpp src/ui/theme_palette.cpp \
+  src/app/main.cpp src/ui/dialog_utils.cpp src/ui/main_window_actions.cpp \
+  src/ui/main_window_sessions.cpp src/ui/main_window_theme.cpp \
+  src/ui/panel_column.cpp src/ui/theme_palette.cpp \
   > /path/to/Field4/optional/patchy-web/field-bridge.patch
 ```
 

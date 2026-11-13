@@ -587,6 +587,14 @@ Pass `framing = LinesFraming.fixed(0.0, 0.0, 640.0, 300.0)` to choose the frame 
 A figure can animate and be dragged at once. `lines(..., onDrag = { e -> ... })` hands the box each
 press, move and release on the drawing as `LinesDragEvent(x, y, phase)`, in the lines' own
 coordinates, while the box goes on redrawing every frame: pull a ringing string aside and let go.
+
+To make a figure's parts draggable by name, pass `handles = listOf(LinesHandle.x("split", splitX), ...)` with
+`onDrag`. A handle is bound to an x value (a vertical line), a y value (a horizontal line) or both (a point). A press
+takes the handle under the pointer, the highest `priority` first when handles overlap, and the events of that drag
+carry `e.handle` and `e.value`, where the handle is being put. Code drags a handle by name at an exact value:
+`dragHandle("split", to = 22.3, channel = ...)` from a box, or `FieldLines.of(element).drag("split", 22.3)` from
+the page.
+
 `editable = true` is for drawings whose own points the reader moves; in a figure it shows no editing
 tools unless the box also asks for `drawing = true`, and lines marked `fixed = true` stay put.
 

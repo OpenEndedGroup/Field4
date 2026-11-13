@@ -52,7 +52,7 @@ it costs no frames. This replaces the shape four scratch boxes were written in l
 to learn what the log already knows.
 
 ```edn [field-box id="pt_tracer" role="properties"]
-{"id" "pt_tracer" "index" 1 "name" "The tracer, with a log" "parents" ["root" "pt_renderer"] "children" ["pt_instrument" "pt_plot" "pt_swap" "pt_restore"] "properties" {"children" #{#afield/box "pt_instrument" #afield/box "pt_plot" #afield/box "pt_swap" #afield/box "pt_restore"} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "The tracer, with a log" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_tracer_code_.kt" "lines" 26 "characters" 918 "sha256" "454c659259b4c58cf4e9d69040cd80c1db474926db996f007c15950f71611e6b"}]}
+{"id" "pt_tracer" "index" 1 "name" "The tracer, with a log" "parents" ["root" "pt_renderer"] "children" ["pt_instrument" "pt_plot" "pt_swap" "pt_restore"] "properties" {"children" #{#afield/box "pt_instrument" #afield/box "pt_plot" #afield/box "pt_swap" #afield/box "pt_restore"} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "The tracer, with a log" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_tracer_code_.kt" "lines" 48 "characters" 1939 "sha256" "e1dfaaed1abef269d4a672f7c69ea65234c67cf31eddf16d4791b3a0ffdb0d7c"}]}
 ```
 
 ```kotlin [field-property box="pt_tracer" name="code" path="pt_tracer_code_.kt"]
@@ -65,15 +65,37 @@ it costs no frames. This replaces the shape four scratch boxes were written in l
 to learn what the log already knows.
 */
 import afield.graphics.scene.fabricated.*
-import java.io.File
+import afield.graphics.vulkan.util.Camera
 
 prop<PathTracingRenderer>(tracer)
 prop<PathTraceConvergence>(log)
 
-tracer = PathTraceDemo.install(
+val scene = PathTraceScene()
+// Colours are linear RGB; the sphere materials end with roughness.
+val floor = scene.material(PathTraceMaterial.diffuse(0.48f, 0.48f, 0.48f))
+val red = scene.material(PathTraceMaterial.plastic(0.65f, 0.055f, 0.025f, 0.22f))
+val gold = scene.material(PathTraceMaterial.metal(0.95f, 0.7f, 0.3f, 0.12f))
+val rough = scene.material(PathTraceMaterial.metal(0.55f, 0.65f, 0.8f, 0.55f))
+// A floor and three independently editable spheres.
+scene.quad(Vector3f(-15f, 0f, -15f), Vector3f(-15f, 0f, 15f), Vector3f(15f, 0f, 15f), Vector3f(15f, 0f, -15f), floor)
+scene.sphere(Vector3f(-1.7f, 0.8f, 0f), 0.8f, red, 48, 24)
+scene.sphere(Vector3f(0f, 0.8f, 0f), 0.8f, gold, 48, 24)
+scene.sphere(Vector3f(1.7f, 0.8f, 0f), 0.8f, rough, 48, 24)
+val camera = Camera(renderer).also {
+    it.at.set(3.5f, 2.4f, 7.5f)
+    it.target.set(0f, 0.65f, 0f)
+    it.p.fov = 0.62
+}
+
+val environment = PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
+tracer = PathTracingRenderer(
     renderer,
-    File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath,
-)
+    scene,
+    environment,
+    width = 640,
+    height = 360,
+    camera = camera,
+).install()
 tracer.samplesPerFrame = 1
 tracer.maxBounces = 5
 tracer.indirectClamp = 10f
