@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T01:33:33.091Z",
+  "capturedAt": "2026-11-13T03:15:24.745Z",
   "documentName": "dependency_length",
   "outputs": [
     {
@@ -34,7 +34,7 @@
       "warnings": [],
       "kinds": [],
       "width": 480,
-      "height": 532,
+      "height": 328,
       "path": "outputs/2.html"
     },
     {
