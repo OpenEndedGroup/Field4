@@ -5,7 +5,8 @@
     "calls": [
       {
         "call": "PathTraceDemo.install",
-        "decision": "pending"
+        "decision": "opened_scene_and_camera",
+        "detail": "Explicit materials, geometry, camera and environment in the teaching box; PathTracingRenderer retains native ownership. Native equivalence and rerun verification recorded separately."
       }
     ]
   },
@@ -141,7 +142,8 @@
     "calls": [
       {
         "call": "PathTraceDemo.install",
-        "decision": "pending"
+        "decision": "opened_scene_and_camera",
+        "detail": "Explicit materials, geometry, camera and environment in the teaching box; PathTracingRenderer retains native ownership. Native equivalence and rerun verification recorded separately."
       }
     ]
   },
@@ -151,7 +153,8 @@
     "calls": [
       {
         "call": "PathTraceGlassDemo.install",
-        "decision": "pending"
+        "decision": "opened_scene_and_camera",
+        "detail": "Explicit materials, geometry, camera and environment in the teaching box; PathTracingRenderer retains native ownership. Native equivalence and rerun verification recorded separately."
       }
     ]
   },
@@ -161,7 +164,8 @@
     "calls": [
       {
         "call": "PathTraceDemo.install",
-        "decision": "pending"
+        "decision": "opened_scene_and_camera",
+        "detail": "Explicit materials, geometry, camera and environment in the teaching box; PathTracingRenderer retains native ownership. Native equivalence and rerun verification recorded separately."
       }
     ]
   },
@@ -171,7 +175,8 @@
     "calls": [
       {
         "call": "PathTraceDemo.install",
-        "decision": "pending"
+        "decision": "opened_scene_and_camera",
+        "detail": "Explicit materials, geometry, camera and environment in the teaching box; PathTracingRenderer retains native ownership. Native equivalence and rerun verification recorded separately."
       }
     ]
   },
@@ -297,7 +302,8 @@
     "calls": [
       {
         "call": "PathTraceDemo.install",
-        "decision": "pending"
+        "decision": "opened_scene_and_camera",
+        "detail": "Explicit materials, geometry, camera and environment in the teaching box; PathTracingRenderer retains native ownership. Native equivalence and rerun verification recorded separately."
       }
     ]
   },
@@ -1201,7 +1207,8 @@
     "calls": [
       {
         "call": "PathTraceDemo.install",
-        "decision": "pending"
+        "decision": "opened_scene_and_camera",
+        "detail": "Explicit materials, geometry, camera and environment in the teaching box; PathTracingRenderer retains native ownership. Native equivalence and rerun verification recorded separately."
       }
     ]
   },
@@ -1211,7 +1218,8 @@
     "calls": [
       {
         "call": "PathTraceDemo.install",
-        "decision": "pending"
+        "decision": "opened_scene_and_camera",
+        "detail": "Explicit materials, geometry, camera and environment in the teaching box; PathTracingRenderer retains native ownership. Native equivalence and rerun verification recorded separately."
       }
     ]
   },
@@ -1221,7 +1229,8 @@
     "calls": [
       {
         "call": "PathTraceDemo.install",
-        "decision": "pending"
+        "decision": "opened_scene_and_camera",
+        "detail": "Explicit materials, geometry, camera and environment in the teaching box; PathTracingRenderer retains native ownership. Native equivalence and rerun verification recorded separately."
       }
     ]
   },
@@ -1231,7 +1240,8 @@
     "calls": [
       {
         "call": "PathTraceDemo.install",
-        "decision": "pending"
+        "decision": "reuse_in_hidden_capture_after_scene_is_taught",
+        "detail": "Motion and integrator figures reuse the same explicitly taught material scene; their changing feature remains visible."
       }
     ]
   },
@@ -1241,7 +1251,8 @@
     "calls": [
       {
         "call": "PathTraceDemo.install",
-        "decision": "pending"
+        "decision": "reuse_in_hidden_capture_after_scene_is_taught",
+        "detail": "Motion and integrator figures reuse the same explicitly taught material scene; their changing feature remains visible."
       }
     ]
   },
@@ -1251,7 +1262,8 @@
     "calls": [
       {
         "call": "PathTraceDemo.install",
-        "decision": "pending"
+        "decision": "reuse_in_hidden_capture_after_scene_is_taught",
+        "detail": "Motion and integrator figures reuse the same explicitly taught material scene; their changing feature remains visible."
       }
     ]
   },
@@ -1261,7 +1273,8 @@
     "calls": [
       {
         "call": "PathTraceDemo.install",
-        "decision": "pending"
+        "decision": "reuse_in_hidden_capture_after_scene_is_taught",
+        "detail": "Motion and integrator figures reuse the same explicitly taught material scene; their changing feature remains visible."
       }
     ]
   },
@@ -1337,7 +1350,8 @@
     "calls": [
       {
         "call": "RayTracingDocsHarness.installMirrorBallsSceneInWindow",
-        "decision": "pending"
+        "decision": "reuse_live_owned_scene_after_pipeline_is_taught",
+        "detail": "The page already exposes floor/sphere BLAS, instances, TLAS, SBT groups, intersection and reflection shaders. The live installer owns replacement, retirement and animation; edits use sphere/setSphere and animate directly."
       }
     ]
   },

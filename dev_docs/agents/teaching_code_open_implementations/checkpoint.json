@@ -160,9 +160,9 @@
     "landing": "landed: 00ce61ca8, generated refresh 54d9869ff3; precheck and full guard passed"
   },
   "wrapperReview": {
-    "pendingCallOccurrences": 14,
+    "pendingCallOccurrences": 0,
     "ledger": "wrapper-review.json",
-    "note": "Wrapper-name candidates are one input to review, not the whole corpus. Morpho presets and other short API examples remain included in the domain review."
+    "note": "All frozen wrapper-name call occurrences classified; broader short-body/domain coverage remains a separate final review."
   },
   "phasePlan": [
     {
@@ -180,12 +180,13 @@
     {
       "number": 3,
       "scope": "simulation and numerical examples",
-      "status": "ready_for_precheck"
+      "status": "landed",
+      "commit": "94c700ca7"
     },
     {
       "number": 4,
       "scope": "rendered scenes and VR",
-      "status": "pending"
+      "status": "ready_for_precheck"
     },
     {
       "number": 5,
@@ -215,12 +216,26 @@
       "changedTargetMatches": true
     },
     "nativePlayground": "Actual default container solve and browser screenshot passed; box stopped after capture.",
-    "nativeEnvironment": "Existing podman-machine-default started for verification; owner/cleanup record in build/teaching-code-open-implementations/podman-owner.json. Keep until landing, then stop only when unrelated containers are absent.",
+    "nativeEnvironment": "Owned Podman VM stopped after landing; no running containers remained.",
     "site": "passed: 4480 local references and 57116 fragment pairs resolve, with one registered theme exception",
     "precheck": "pending",
-    "landing": "pending",
+    "landing": "landed 94c700ca7; full guard passed",
     "idioms": "passed",
     "assetBudget": "passed",
     "publications": "morpho_circuit_search refreshed: 4 real output channels"
+  },
+  "renderedVerification": {
+    "nativeCasesPassed": 7,
+    "nativeEvidence": [
+      "material-native-verification.json",
+      "glass-native-verification.json",
+      "vr-native-verification.json"
+    ],
+    "defaultData": "Exact packed scene geometry, materials, BVH and camera against both previous installers. Real compute-BVH default and altered-parameter renders inspected.",
+    "vr": "Actual stereo rendering, centre ray UV, editable gain/label, same texture on control edits, fresh texture on font-key change; explicit cached cleanup exercised.",
+    "formatting": "Actual import/ktfmt and GLSL formatting; generated demo metadata refreshed. No preamble edits.",
+    "publications": "Three changed path-tracing publications refreshed through the real runner.",
+    "site": "Full build and installed-site link gate passed; see build/teaching-code-open-implementations/site-rendered.log",
+    "profiles": "Linux/NVIDIA figure assets retained under their existing hardware profiles; Mac native render checks are separate evidence."
   }
 }

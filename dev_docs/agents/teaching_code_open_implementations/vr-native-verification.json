@@ -1,0 +1,20 @@
+{
+  "source": "dev_docs/agents/transcripts/imgui_vr_panel.yaml",
+  "sha256": "244681d9e9e18cf079d711a7f7cc452f1323af713b402ae0764407123b5ef62f",
+  "centerRayUv": [
+    0.5,
+    0.5
+  ],
+  "defaultGain": 0.5,
+  "editedGain": 0.75,
+  "sameTextureOnControlRerun": true,
+  "replacedTextureOnFontRerun": true,
+  "defaultFontPixels": 96,
+  "editedFontPixels": 80,
+  "nativeImages": [
+    "vr-default.png",
+    "vr-controls.png",
+    "vr-font.png"
+  ],
+  "log": "build/teaching-code-open-implementations/vr-verification.log"
+}

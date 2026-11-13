@@ -33,8 +33,70 @@ The [`ImGuiVrPanelDemo`](reference/examples.md#imguivrpaneldemo-kt-imguivrpaneld
 a ray aimed at the panel centre lands exactly at its centre:
 
 ```diffstatic {data-lang=bash}
-python3 tools/run_field_tests.py --id examples.four.imgui-vr-panel-smoke
+uv run --project . --group backdoor python tools/run_field_tests.py --id examples.four.imgui-vr-panel-smoke
 ```
+
+## Edit the panel in a box
+
+Run the [editable transcript](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/transcripts/imgui_vr_panel.yaml)
+to create a renderer and a child panel box. Its code shows the texture, quad, per-eye modules and
+controller mapping; its `vertex` and `fragment` properties hold the shaders. Native targets are
+cached across reruns, while the named UI callback and eye modules are replaced, so editing the
+button or slider does not create another window.
+
+The panel box registers this UI on its `imgui` texture. Change the label, add a control, or use
+`gain.get()` in your own scene:
+
+```diffstatic {data-lang=kotlin}
+imgui.addUi("panel") {
+    gui {
+        ImGui.setNextWindowSize(1960f, 1960f)
+        ImGui.setNextWindowPos(44f, 44f)
+    }
+    window("Field · VR Panel") {
+        ImGui.text("Dear ImGui, rendered to a texture,")
+        ImGui.text("mapped onto a quad, shown in both eyes.")
+        ImGui.separator()
+        if (ImGui.button("  Click me  ")) clicks++
+        ImGui.sameLine()
+        ImGui.text("clicks: $clicks")
+        ImGui.checkbox("show grid", showGrid)
+        ImGui.sliderFloat("gain", gain.data, 0f, 1f)
+        ImGui.separator()
+        if (hitActive) {
+            ImGui.text("ray hit  u=%.3f  v=%.3f".format(hitU, hitV))
+        } else {
+            ImGui.text("ray hit  (off panel)")
+        }
+    }
+}
+```
+
+The same box places an `ImGuiPanel` 1.5 metres in front of the eyes and handles the ray explicitly:
+
+```diffstatic {data-lang=kotlin}
+fun updateRayHit() {
+    val ctrl = sbs.controllerState()
+    if (!ctrl.active || !ctrl.poseValid) {
+        hitActive = false
+        imgui.injectPointer(imgui.width * 2f, imgui.height * 2f, false)
+        return
+    }
+    val (origin, dir) = ImGuiPanel.controllerRay(ctrl)
+    val hit = panel.interact(origin, dir, ctrl.selectPressed || ctrl.triggerPressed)
+    if (hit != null && hit.onPanel) {
+        hitActive = true
+        hitU = hit.u
+        hitV = hit.v
+    } else {
+        hitActive = false
+    }
+}
+```
+
+`updateRayHit()` runs alongside the per-eye MVP update. The two eyes have separate draw modules,
+but use the same panel texture and controller. The transcript keeps this wiring editable rather
+than hiding it inside the standalone demo.
 
 ## The pipeline
 
@@ -89,3 +151,12 @@ this way.
 
 The developer-facing writeup (the `ImGuiPanel` helper API, the render-graph wiring, and the
 capture gotchas) lives in [`dev_docs/imgui_vr_panel.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/imgui_vr_panel.md).
+
+## API reference
+
+- [`ImGuiRenderToTexture`](reference/graphics.md#imguirendertotexture-kt-imguirendertotexture) and
+  [`addUi`](reference/graphics.md#imguirendertotexture-kt--imguirendertotexture--addui): texture and named UI callbacks.
+- [`ImGuiPanel`](reference/graphics.md#imguipanel-kt-imguipanel) and
+  [`interact`](reference/graphics.md#imguipanel-kt--imguipanel--interact): panel geometry, hit testing and pointer injection.
+- [`SideBySideStereoTarget`](reference/graphics.md#sidebysidestereotarget-kt-sidebysidestereotarget) and
+  [`registerModule`](reference/graphics.md#sidebysidestereotarget-kt--sidebysidestereotarget--registermodule): one draw module per eye.

@@ -17,3 +17,10 @@ hand edits. Canonical transcripts and authored copies are reviewed together.
 
 A retained abstraction needs a concrete reason in the review ledger. An unverified
 edit remains pending; a queued branch is not a landed batch.
+
+Native scene checks read the exact canonical transcript rather than a copied scene:
+`uv run --group docs python dev_docs/agents/teaching_code_open_implementations/verify_rendered.py material`
+(or `glass`). They compare packed triangles, materials, BVH and camera with the old installer,
+render on the real device, then launch a parameter edit in the same box. `verify_vr.py` checks the
+actual stereo panel, centre-ray UV, control edits, and texture reuse/recreation across reruns.
+Their images and raw logs stay under `build/`; inspected receipts are committed beside this file.

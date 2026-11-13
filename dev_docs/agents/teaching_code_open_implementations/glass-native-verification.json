@@ -1,0 +1,18 @@
+{
+  "source": "dev_docs/agents/transcripts/path_tracing_glass.yaml",
+  "sha256": "457963fcae05c751d990318dab00a6964eecacc1f384b27540655ea4c741caf5",
+  "defaultPackedGeometryMaterialsBvhCameraEqual": true,
+  "defaultTriangleCountEqual": true,
+  "parameterRerun": true,
+  "resolution": [
+    320,
+    180
+  ],
+  "convergenceSamples": 32,
+  "comparison": "Exact packed triangles/materials/BVH and camera against the original installer; real Vulkan render, then changed material/geometry in the same box.",
+  "nativeImages": [
+    "glass-default.png",
+    "glass-variant.png"
+  ],
+  "log": "build/teaching-code-open-implementations/glass-verification.log"
+}
