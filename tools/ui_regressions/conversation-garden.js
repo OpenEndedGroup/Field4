@@ -297,5 +297,19 @@ try {
     const body = panel.querySelector('.garden-body'); body.scrollTop = 0;
     const well = body.getBoundingClientRect(), rule = root.querySelector('.garden-bar').getBoundingClientRect();
     check(Math.abs(well.left-rule.left) < 1 && Math.abs(well.right-rule.right) < 1, 'reading area spans the full header rule width');
-    return {ok:true, anchoredReplies:true, selection:true, queue:true, path:true, tags:true, code:true, legacy:true, inline:true, marking:true, folds:true, sizing:true};
+    check(window.FieldTheme, 'merged checkout exposes the real theme runtime');
+    window.FieldTheme.set('dark', {persist:false, animate:false}); await delay(80);
+    const darkWell = getComputedStyle(body).backgroundColor;
+    const darkAgent = getComputedStyle(panel.querySelector('.garden-agent')).color;
+    const darkHuman = getComputedStyle(panel.querySelector('.garden-human')).color;
+    window.FieldTheme.set('light', {persist:false, animate:false}); await delay(240);
+    check(document.documentElement.dataset.fieldTheme === 'light', 'real light theme is active');
+    check(getComputedStyle(body).backgroundColor !== darkWell, 'reading surface follows the light palette');
+    check(getComputedStyle(panel.querySelector('.garden-agent')).color !== darkAgent, 'agent cyan follows the light palette');
+    check(getComputedStyle(panel.querySelector('.garden-human')).color !== darkHuman, 'human amber follows the light palette');
+    check(getComputedStyle(panel.querySelector('.garden-prose')).fontFamily.includes('Noto Serif Garden'), 'theme switching preserves serif reading type');
+    gardenToggle.focus();
+    check(getComputedStyle(gardenToggle).outlineStyle === 'none' && getComputedStyle(gardenToggle).boxShadow === 'none', 'light-theme Garden toggle has no focus ring');
+    input.focus({preventScroll:true});
+    return {ok:true, anchoredReplies:true, selection:true, queue:true, path:true, tags:true, code:true, legacy:true, inline:true, marking:true, folds:true, sizing:true, lightTheme:true};
 } catch (error) { return {ok:false, reason:String(error)}; }
