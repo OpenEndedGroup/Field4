@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24241 of 40852 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24245 of 40867 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2039 undocumented entry points** (types, top-level functions and values) and 13856 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2040 undocumented entry points** (types, top-level functions and values) and 13866 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -23,8 +23,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Boxes.kt](../src/jvmMain/kotlin/afield/document/graph/Boxes.kt) | Workspace | ai4_tools, keybindings, keyframer_examples | 23 | 40 | 30% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/simulation/automata/wfc.kt) | Data | wfc_examples | 20 | 67 | 29% |
 | [FabricateScene.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricateScene.kt) | Renderers | fabricate_renderer, geometry_from_disk | 19 | 114 | 5% |
+| [FieldGraphTools.kt](../src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt) | AI4 | ai4_tools, ai4_experiments | 18 | 96 | 16% |
 | [KotlinScriptEngine.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinScriptEngine.kt) | Workspace | changelog, running_code, agent_transcripts | 18 | 42 | 25% |
-| [FieldGraphTools.kt](../src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt) | AI4 | ai4_tools, ai4_experiments | 17 | 94 | 16% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/data/graph/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 16 | 109 | 20% |
 | [RectSLStudyTools.kt](../src/jvmMain/kotlin/afield/lang/rectsl/study/RectSLStudyTools.kt) | Languages | rectsl_conversation | 14 | 17 | 21% |
 | [Oscillators.kt](../src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt) | Synthesis | explainer_sound, csound, distributions | 13 | 42 | 41% |
@@ -734,6 +734,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [HardwareOpticalFlow.kt](../src/jvmMain/kotlin/afield/media/vision/HardwareOpticalFlow.kt) | Imaging | — | 0 | 9 | 35% |
 | [ReactiveRuns.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/ReactiveRuns.kt) | Workspace | — | 0 | 9 | 67% |
 | [decorations.kt](../src/jvmMain/kotlin/afield/ui/output/decorations.kt) | Visualization | — | 0 | 9 | 71% |
+| [AiConversationGarden.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiConversationGarden.kt) | AI4 | — | 0 | 8 | 27% |
 | [hatch.kt](../src/jvmMain/kotlin/afield/ai/learning/pen/hatch.kt) | Machine learning | — | 0 | 8 | 46% |
 | [UserMemory.kt](../src/jvmMain/kotlin/afield/ai/memory/UserMemory.kt) | Machine learning | — | 0 | 8 | 66% |
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/data/graph/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
@@ -1222,21 +1223,22 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | Declaration | Kind | Where |
 | --- | --- | --- |
 | `ListBoxesRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:56` |
-| `NewBoxRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:60` |
-| `DeleteBoxRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:71` |
-| `SetBoxPropertyRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:75` |
-| `PatchBoxTextRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:84` |
-| `GetBoxPropertyRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:99` |
-| `ConnectBoxesRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:103` |
-| `DisconnectBoxesRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:107` |
-| `RunBoxRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:111` |
-| `LaunchBoxRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:120` |
-| `StopBoxRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:130` |
-| `ReadBoxOutputRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:134` |
-| `ViewBoxOutputRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:146` |
-| `FieldBoxSummary` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:156` |
-| `FieldOutputEntry` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:167` |
-| `FieldGraphTools` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:307` |
+| `ReadConversationGardenRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:60` |
+| `NewBoxRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:64` |
+| `DeleteBoxRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:75` |
+| `SetBoxPropertyRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:79` |
+| `PatchBoxTextRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:88` |
+| `GetBoxPropertyRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:103` |
+| `ConnectBoxesRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:107` |
+| `DisconnectBoxesRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:111` |
+| `RunBoxRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:115` |
+| `LaunchBoxRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:124` |
+| `StopBoxRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:134` |
+| `ReadBoxOutputRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:138` |
+| `ViewBoxOutputRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:150` |
+| `FieldBoxSummary` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:160` |
+| `FieldOutputEntry` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:171` |
+| `FieldGraphTools` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:311` |
 | `BlockBoundary` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:51` |
 | `LogSink` | interface | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:53` |
 | `NotifyLog` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:204` |
@@ -1340,6 +1342,5 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `SineOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:62` |
 | `SawOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:113` |
 | `SquareOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:140` |
-| `PulseOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:167` |
 
-…and **1919 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1920 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
