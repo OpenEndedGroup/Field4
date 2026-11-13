@@ -24,18 +24,35 @@ of the two bars below.
 
 Rule 90 is `left XOR right`. From a single live cell its space-time diagram is Pascal's triangle
 mod 2, which is where the second column of the figure below comes from: `binomialParity` computes
-what row 20 should be from Kummer's theorem, without stepping anything, and
-[`CaSoundDocs.gasketBar`](reference/patterns.md#casounddocs-kt--casounddocs--gasketbar) compares the real CA
-with it cell by cell.
+what the chosen row should be from Kummer's theorem, without stepping anything. The code below
+samples every other cell of that row, checks each against the formula, then passes the resulting
+mask to `patCondense`. Change `generation` to choose another row; change `atom` to change what
+its live cells play. [`CaSoundDocs.gasketBar`](reference/patterns.md#casounddocs-kt--casounddocs--gasketbar)
+is the packaged version of this derivation.
 
 Rule 30's centre column has no such formula.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/rules.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-ca-rules" embed=true alt="Two black-and-white space-time diagrams, rule 90's nested Sierpinski triangles and rule 30's chaotic fan, above a two-lane piano roll of one cycle each and a table giving both bars' step count, onset count, condensed notation and compression"}
 :::static
-// Both derivations run the real stepper. gasketBar additionally checks its row against
-// binomialParity before returning, so a wrong answer here throws rather than plays.
-val gasket = CaSoundDocs.gasketBar(20)
-val chaos = CaSoundDocs.rule30Bar(32)
+val generation = 20
+val steps = 32
+val atom = "x"
+
+val rule90 = elementaryCa(90, width = 97, generations = 24, wrap = false)
+require(generation in 0 until rule90.height)
+val centre = rule90.width / 2
+// From one seed, rule 90 reaches only every other cell of each row.
+val gasketMask =
+    (0..generation).map { k ->
+        val cell = rule90.at(centre - generation + 2 * k, generation)
+        check(cell == binomialParity(generation, k))
+        cell == 1
+    }
+val rule30 = elementaryCa(30, width = 2 * steps + 3, generations = steps, wrap = false)
+val chaosMask = rule30.centerColumn().map { it == 1 }
+
+val gasket = patCondense(gasketMask, atom)
+val chaos = patCondense(chaosMask, atom)
 
 :::fold the two space-time diagrams, the two bars, and the two notations
 /*
@@ -45,23 +62,24 @@ image. `toImg(2)` is the STATE COUNT, not a scale: upscaleNearest is what makes 
 visible, and passing the upscale to toImg instead dims the live cells to 1/7 grey with no error.
 */
 showImg(
-    elementaryCa(90, 97, 24).toImg(2).upscaleNearest(9),
+    rule90.toImg(2).upscaleNearest(9),
     channel = "rule 90",
     maxSide = 1000,
-    caption = "rule 90, 24 generations. Row 20, the fourth from the bottom, is the bar.",
+    caption = "rule 90, ${rule90.height} generations. Row $generation is the bar.",
 )
 showImg(
-    elementaryCa(30, 67, 32).toImg(2).upscaleNearest(9),
+    rule30.toImg(2).upscaleNearest(9),
     channel = "rule 30",
     maxSide = 1000,
-    caption = "rule 30, 32 generations. The centre column, straight down the middle, is the bar.",
+    caption = "rule 30, ${rule30.height} generations. The centre column is the bar.",
 )
 
 showPatRollOf(
-    "rule 90 row 20" to gasket.pattern,
+    "rule 90 row $generation" to gasket.pattern,
     "rule 30 column" to chaos.pattern,
     title = "the two bars, one cycle each",
-    subtitle = "${gasket.onsets} of ${gasket.steps} steps against ${chaos.onsets} of ${chaos.steps}",
+    subtitle =
+        "${gasketMask.count { it }} of ${gasketMask.size} steps against ${chaosMask.count { it }} of ${chaosMask.size}",
     cycles = 1,
     channel = "bars",
 )
@@ -69,13 +87,13 @@ showPatRollOf(
 markdown(
     "notation",
     """
-| | rule 90, row 20 | rule 30, centre column |
+| | rule 90, row $generation | rule 30, centre column |
 |---|---|---|
-| steps | ${gasket.steps} | ${chaos.steps} |
-| onsets | ${gasket.onsets} | ${chaos.onsets} |
-| shortest notation | `${gasket.condensation.notation}` | `${chaos.condensation.notation}` |
+| steps | ${gasketMask.size} | ${chaosMask.size} |
+| onsets | ${gasketMask.count { it }} | ${chaosMask.count { it }} |
+| shortest notation | `${gasket.notation}` | `${chaos.notation}` |
 | against a flat spelling | ${gasket.compression.f2} | ${chaos.compression.f2} |
-| the search signed for it | ${gasket.condensation.exact} | ${chaos.condensation.exact} |
+| the search signed for it | ${gasket.exact} | ${chaos.exact} |
 """,
     width = 1000,
 )
@@ -84,7 +102,7 @@ markdown(
 
 Rule 90's row condenses to two Euclidean figures (`x(k,n)` spreads *k* hits as evenly as
 possible over *n* steps; a third number rotates the figure) with a rest between them, and the second is the
-first turned: `x(2,7)` and `x(2,7,5)` are the same two-in-seven pattern at two rotations. Pascal's
+first turned: the two figures have two hits in seven steps, at different rotations. Pascal's
 triangle is symmetric in *k*, so the bar reads the same backwards, and the condenser finds that
 symmetry without knowing anything about binomial coefficients.
 
@@ -117,25 +135,32 @@ numbers measure that difference.
 
 Row *n* of Pascal's triangle mod 2 has exactly `2^popcount(n)` odd entries: its population is a
 power of two, with the binary digit sum of the generation index as its exponent.
-[`CaSoundDocs.gasketScale`](reference/patterns.md#casounddocs-kt--casounddocs--gasketscale) counts the real CA's rows and maps that digit sum to a degree of a minor
-pentatonic. The tune is the binary expansion of 0, 1, 2, … read out loud: it falls
-back to the root at every power of two and climbs through the carries in between.
+Count the live cells in each row, then read each power of two as a scale degree: one cell is
+degree zero, two cells degree one, four cells degree two. `root` sets the MIDI note of degree zero,
+and `scale` supplies the semitone offsets. The tune is the binary expansion of 0, 1, 2, … read out
+loud: it falls back to the root at every power of two and climbs through the carries in between.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/scale.png" wait="8" capture="box" open-outputs="true" w="1180" h="280" padding="18" timeout="120" name="chain-ca-scale" embed=true alt="A sawtooth-shaped trace of rule 90's row populations climbing to 32 at generation 31 and dropping back to 2 at every power of two, above a single-cycle piano roll of 32 notes on six pitches with the same shape"}
 :::static
-/*
-gasketPopulations counts the real space-time diagram and throws unless every row's count is
-2^popcount(n), so reaching the next line is the check. Plotting the formula as a second trace
-would put it exactly under this one and show nothing.
-*/
-val populations = CaSoundDocs.gasketPopulations()
-val notes = CaSoundDocs.gasketScale()
+val generations = 32
+val root = 45
+val scale = [0, 3, 5, 7, 10, 12] // minor pentatonic, with the octave
+
+val space = elementaryCa(90, width = 2 * generations + 3, generations = generations, wrap = false)
+val populations =
+    (0 until generations).map { n ->
+        val ones = (0 until space.width).count { x -> space.at(x, n) == 1 }
+        check(ones == 1 shl Integer.bitCount(n))
+        ones
+    }
+val degrees = populations.map { log2(it.toDouble()).toInt() }
+val notes = degrees.map { root + scale[it.coerceAtMost(scale.lastIndex)] }
 
 :::fold the populations, and the melody they become
 showSignals(
     "live cells per generation" to populations,
     // Short, because a plotly title wider than the plot is clipped rather than wrapped. The
-    // claim that this equals 2^popcount(n) is the `check` inside gasketPopulations, not a caption.
+    // equality with 2^popcount(n) is checked above, before this plot is made.
     title = "rule 90: live cells per generation",
     xTitle = "generation",
     channel = "populations",
@@ -151,6 +176,10 @@ showPatRollOf(
 )
 :::endfold
 ```
+
+[`CaSoundDocs.gasketPopulations`](reference/patterns.md#casounddocs-kt--casounddocs--gasketpopulations)
+and [`CaSoundDocs.gasketScale`](reference/patterns.md#casounddocs-kt--casounddocs--gasketscale)
+package the same counting and pitch mapping for reuse.
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/chain_ca_sound/gasket-scale.wav" audio-spec="gasket-scale" audio-renderer="afield.audio.synth.CaSoundDocs" embed=true hidden=true name="chain-ca-scale-audio"}
 // Offline-rendered by CaSoundDocs.renderWav("gasket-scale").
