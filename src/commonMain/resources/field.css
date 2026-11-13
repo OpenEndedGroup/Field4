@@ -44,6 +44,26 @@
     /* A box on the canvas: translucent over the background, set inline by createBox (Main.kt). */
     --field-box-bg: rgba(50, 50, 50, 0.5);
     --field-box-fg: rgba(var(--field-white-rgb), 0.8);
+    --field-box-backdrop: blur(3px) saturate(2.5) contrast(1.1) brightness(0.9) hue-rotate(-38deg);
+    --field-box-selected-border: rgba(var(--field-cyan-rgb), 0.78);
+
+    /* Highlights drawn in "chalk": white in the dark theme, where they already were. */
+    --field-chalk-rgb: 255, 255, 255;
+
+    /* The ambient help beside the cursor darkens what is behind it before its panel is laid on. */
+    --field-hoverlay-backdrop: blur(10px) brightness(0.0);
+
+    /* A line note in the ambient help (fieldSuggest.css): caption, value, its bold results, meta. */
+    --field-line-note-caption: #9a9aa0;
+    --field-line-note-value: #b8b8be;
+    --field-line-note-strong: #f2f2f5;
+    --field-line-note-meta: #7c7c84;
+
+    /* Toasts (notify.js), bottom left. */
+    --field-toast-bg: rgba(0, 0, 0, 0.98);
+    --field-toast-border: rgba(var(--field-accent-rgb), 0.26);
+    --field-toast-shadow: none;
+    --field-toast-stale-opacity: 0.72;
 
     /* Surfaces derived from the palette. */
     --field-bg: rgb(var(--field-base-rgb));
@@ -189,79 +209,119 @@
     --field-text-soft: var(--field-accent-text);
 }
 
-/* Light theme. `theme.js` sets data-field-theme on <html> from the "Use Light Theme" command and
-   keeps it in localStorage. Most of the palette keeps its dark-theme meaning, inverted: "black" is
-   the deepest surface (now the whitest paper) and "white" is ink. The tokens after the palette are
-   the ones where inversion alone reads wrong: borders that were drawn in the surface colour, and
-   accent/status text that was mixed towards white for contrast on black. */
+/* Light theme: chalk and pencil on a warm mid-grey ground. `theme.js` sets data-field-theme on <html>
+   from the "Use Light Theme" command and keeps it in localStorage. The palette keeps its dark-theme
+   meaning: "black" is the deepest surface (here a pale warm grey, a little lighter than the ground)
+   and "white" is ink (warm graphite). The tokens after the palette are the ones where that swap alone
+   reads wrong: borders that were drawn in the surface colour, accent and status text mixed towards
+   white for contrast on black, and chalk (--field-chalk-rgb) for highlights and selection. */
 [data-field-theme="light"] {
     color-scheme: light;
 
-    --field-black-rgb: 255, 255, 255;
-    --field-white-rgb: 24, 24, 28;
-    --field-base-rgb: 238, 237, 233;
-    --field-editor-rgb: 252, 252, 250;
-    --field-accent-rgb: 0, 122, 194;
-    --field-danger-rgb: 205, 40, 40;
-    --field-warning-rgb: 196, 104, 16;
-    --field-search-rgb: 214, 160, 0;
-    --field-info-rgb: 40, 90, 210;
-    --field-success-rgb: 30, 140, 60;
-    --field-shadow-rgb: 40, 36, 30;
+    --field-black-rgb: 204, 199, 190;
+    --field-white-rgb: 36, 33, 29;
+    --field-base-rgb: 172, 167, 158;
+    --field-editor-rgb: 196, 191, 182;
+    --field-accent-rgb: 28, 92, 138;
+    --field-danger-rgb: 168, 36, 30;
+    --field-warning-rgb: 150, 82, 14;
+    --field-search-rgb: 168, 120, 0;
+    --field-info-rgb: 34, 74, 150;
+    --field-success-rgb: 30, 110, 50;
+    --field-shadow-rgb: 46, 40, 32;
+    --field-chalk-rgb: 250, 248, 242;
 
-    --field-canvas-center-rgb: 242, 241, 237;
-    --field-canvas-edge-rgb: 222, 220, 214;
-    --field-canvas-ink-rgb: 0, 0, 0;
-    --field-canvas-band-rgb: 214, 212, 206;
+    --field-canvas-center-rgb: 172, 167, 158;
+    --field-canvas-edge-rgb: 156, 151, 142;
+    --field-canvas-ink-rgb: 36, 33, 29;
+    --field-canvas-band-rgb: 146, 141, 133;
 
-    --field-box-bg: rgba(255, 255, 255, 0.72);
+    /* Boxes: a shade darker than the ground, graphite titles and edges, a chalk ring when selected. */
+    --field-box-bg: rgba(140, 135, 126, 0.62);
+    --field-box-fg: rgba(var(--field-white-rgb), 0.9);
+    --field-box-backdrop: blur(3px);
+    --field-box-selected-border: rgba(var(--field-chalk-rgb), 0.95);
+    /* The light theme also chalks the box's 5px frame (.box::before) when it is selected. */
+    --field-box-selected-frame: rgba(var(--field-chalk-rgb), 0.85);
 
-    --field-panel: rgba(var(--field-black-rgb), 0.82);
-    --field-panel-soft: rgba(var(--field-black-rgb), 0.6);
-    --field-panel-strong: rgba(var(--field-black-rgb), 0.9);
-    --field-panel-solid: rgba(var(--field-black-rgb), 0.96);
+    --field-surface-quiet: rgb(var(--field-editor-rgb));
+    --field-surface-raised: color-mix(in srgb, rgb(var(--field-black-rgb)) 50%, rgb(var(--field-chalk-rgb)));
+    --field-surface-muted: color-mix(in srgb, rgb(var(--field-black-rgb)) 70%, rgb(var(--field-base-rgb)));
+    --field-panel: rgba(var(--field-black-rgb), 0.88);
+    --field-panel-soft: rgba(var(--field-black-rgb), 0.7);
+    --field-panel-strong: rgba(var(--field-black-rgb), 0.94);
+    --field-panel-solid: rgba(var(--field-black-rgb), 0.97);
+    --field-overlay: rgba(var(--field-black-rgb), 0.96);
+    --field-tray-bg: rgba(var(--field-black-rgb), 0.96);
 
-    --field-border: rgba(var(--field-white-rgb), 0.18);
-    --field-border-dark-strong: rgba(var(--field-white-rgb), 0.16);
-    --field-border-dark-solid: rgba(var(--field-white-rgb), 0.28);
-    --field-border-muted: rgba(var(--field-white-rgb), 0.07);
-    --field-border-subtle: rgba(var(--field-white-rgb), 0.1);
-    --field-border-soft: rgba(var(--field-white-rgb), 0.13);
-    --field-border-medium: rgba(var(--field-white-rgb), 0.18);
-    --field-border-strong: rgba(var(--field-white-rgb), 0.26);
-    --field-hover: rgba(var(--field-white-rgb), 0.06);
-    --field-hover-soft: rgba(var(--field-white-rgb), 0.04);
-    --field-hover-medium: rgba(var(--field-white-rgb), 0.08);
-    --field-hover-strong: rgba(var(--field-white-rgb), 0.12);
-    --field-scrollbar-thumb-dark: rgba(var(--field-white-rgb), 0.18);
+    --field-fg-strong: rgb(var(--field-white-rgb));
+    --field-fg-inverse: rgb(var(--field-white-rgb));
+    --field-fg-soft: rgba(var(--field-white-rgb), 0.78);
+    --field-fg-muted: rgba(var(--field-white-rgb), 0.68);
+    --field-fg-dim: rgba(var(--field-white-rgb), 0.56);
 
-    --field-accent-text: color-mix(in srgb, rgb(var(--field-accent-rgb)) 85%, rgb(var(--field-white-rgb)));
-    --field-accent-text-soft: color-mix(in srgb, rgb(var(--field-accent-rgb)) 75%, rgb(var(--field-white-rgb)));
+    --field-border: rgba(var(--field-white-rgb), 0.2);
+    --field-border-dark-strong: rgba(var(--field-white-rgb), 0.3);
+    --field-border-dark-solid: rgba(var(--field-white-rgb), 0.4);
+    --field-border-muted: rgba(var(--field-white-rgb), 0.08);
+    --field-border-subtle: rgba(var(--field-white-rgb), 0.11);
+    --field-border-soft: rgba(var(--field-white-rgb), 0.14);
+    --field-border-medium: rgba(var(--field-white-rgb), 0.2);
+    --field-border-strong: rgba(var(--field-white-rgb), 0.28);
+    --field-border-selected: rgba(var(--field-chalk-rgb), 0.95);
+    --field-hover: rgba(var(--field-chalk-rgb), 0.22);
+    --field-hover-soft: rgba(var(--field-chalk-rgb), 0.14);
+    --field-hover-medium: rgba(var(--field-chalk-rgb), 0.3);
+    --field-hover-strong: rgba(var(--field-chalk-rgb), 0.45);
+    --field-scrollbar-thumb-dark: rgba(var(--field-white-rgb), 0.22);
+    --field-scrollbar-thumb: rgba(var(--field-white-rgb), 0.28);
+    --field-scrollbar-thumb-hover: rgba(var(--field-white-rgb), 0.42);
+
+    --field-accent-text: color-mix(in srgb, rgb(var(--field-accent-rgb)) 88%, rgb(var(--field-white-rgb)));
+    --field-accent-text-soft: color-mix(in srgb, rgb(var(--field-accent-rgb)) 80%, rgb(var(--field-white-rgb)));
     --field-accent-link: rgb(var(--field-accent-rgb));
     --field-accent-link-hover: color-mix(in srgb, rgb(var(--field-accent-rgb)) 70%, rgb(var(--field-white-rgb)));
-    --field-accent-pale: color-mix(in srgb, rgb(var(--field-accent-rgb)) 14%, rgb(var(--field-black-rgb)));
-    --field-danger-deep: color-mix(in srgb, rgb(var(--field-danger-rgb)) 18%, rgb(var(--field-black-rgb)));
-    --field-danger-bg: rgba(var(--field-danger-rgb), 0.14);
-    --field-code-accent: color-mix(in srgb, rgb(var(--field-warning-rgb)) 85%, rgb(var(--field-white-rgb)));
-    --field-fg-on-warning: rgb(var(--field-black-rgb));
-    --field-type-params: color-mix(in srgb, rgb(var(--field-info-rgb)) 70%, rgb(var(--field-white-rgb)));
-    --field-type-name: color-mix(in srgb, rgb(var(--field-info-rgb)) 40%, rgb(var(--field-white-rgb)));
-    --field-syntax-int: color-mix(in srgb, rgb(var(--field-danger-rgb)) 80%, rgb(var(--field-white-rgb)));
-    --field-syntax-float: color-mix(in srgb, rgb(var(--field-warning-rgb)) 80%, rgb(var(--field-white-rgb)));
-    --field-debug-title: color-mix(in srgb, rgb(var(--field-info-rgb)) 75%, rgb(var(--field-white-rgb)));
-    --field-debug-pill-bg: rgba(var(--field-info-rgb), 0.14);
-    --field-debug-pill-fg: color-mix(in srgb, rgb(var(--field-info-rgb)) 70%, rgb(var(--field-white-rgb)));
-    --field-debug-body: color-mix(in srgb, rgb(var(--field-info-rgb)) 50%, rgb(var(--field-white-rgb)));
-    --field-keycast-fg: color-mix(in srgb, rgb(var(--field-accent-rgb)) 40%, rgb(var(--field-white-rgb)));
-    --field-marking-bg: rgba(var(--field-white-rgb), 0.05);
+    --field-accent-pale: color-mix(in srgb, rgb(var(--field-accent-rgb)) 18%, rgb(var(--field-black-rgb)));
+    --field-accent-subtle: rgba(var(--field-accent-rgb), 0.14);
+    --field-danger-deep: color-mix(in srgb, rgb(var(--field-danger-rgb)) 22%, rgb(var(--field-black-rgb)));
+    --field-danger-bg: rgba(var(--field-danger-rgb), 0.16);
+    --field-code-accent: color-mix(in srgb, rgb(var(--field-warning-rgb)) 88%, rgb(var(--field-white-rgb)));
+    --field-fg-on-warning: rgb(var(--field-chalk-rgb));
+    --field-selection: rgb(var(--field-chalk-rgb));
+    --field-search-active-soft: rgba(var(--field-chalk-rgb), 0.35);
+    --field-type-params: color-mix(in srgb, rgb(var(--field-info-rgb)) 75%, rgb(var(--field-white-rgb)));
+    --field-type-name: color-mix(in srgb, rgb(var(--field-info-rgb)) 45%, rgb(var(--field-white-rgb)));
+    --field-syntax-int: color-mix(in srgb, rgb(var(--field-danger-rgb)) 85%, rgb(var(--field-white-rgb)));
+    --field-syntax-float: color-mix(in srgb, rgb(var(--field-warning-rgb)) 85%, rgb(var(--field-white-rgb)));
+    --field-line-number: rgba(var(--field-white-rgb), 0.5);
+    --field-line-number-active: rgb(var(--field-white-rgb));
+    --field-debug-title: color-mix(in srgb, rgb(var(--field-info-rgb)) 80%, rgb(var(--field-white-rgb)));
+    --field-debug-pill-bg: rgba(var(--field-info-rgb), 0.16);
+    --field-debug-pill-fg: color-mix(in srgb, rgb(var(--field-info-rgb)) 75%, rgb(var(--field-white-rgb)));
+    --field-debug-body: color-mix(in srgb, rgb(var(--field-info-rgb)) 55%, rgb(var(--field-white-rgb)));
+    --field-keycast-fg: color-mix(in srgb, rgb(var(--field-accent-rgb)) 45%, rgb(var(--field-white-rgb)));
+    --field-marking-bg: rgba(var(--field-chalk-rgb), 0.18);
     --field-marking-hover-fg: rgb(var(--field-white-rgb));
+    --field-marking-active-bg: rgba(var(--field-chalk-rgb), 0.85);
+    --field-marking-active-fg: rgb(var(--field-white-rgb));
 
-    --field-shadow-sm: 0 1px 2px rgba(var(--field-shadow-rgb), 0.12);
-    --field-shadow-md: 0 4px 12px rgba(var(--field-shadow-rgb), 0.14);
-    --field-shadow-lg: 0 8px 30px rgba(var(--field-shadow-rgb), 0.16);
-    --field-shadow-tray: 0 0 30px rgba(var(--field-shadow-rgb), 0.22);
-    --field-shadow-inset: rgba(var(--field-shadow-rgb), 0.12);
-    --field-text-shadow-strong: 0 1px 4px rgba(var(--field-black-rgb), 0.8);
+    --field-line-note-caption: rgba(var(--field-white-rgb), 0.62);
+    --field-line-note-value: rgba(var(--field-white-rgb), 0.78);
+    --field-line-note-strong: rgb(var(--field-white-rgb));
+    --field-line-note-meta: rgba(var(--field-white-rgb), 0.55);
+
+    --field-toast-bg: rgba(var(--field-black-rgb), 0.97);
+    --field-toast-border: rgba(var(--field-white-rgb), 0.16);
+    --field-toast-shadow: 0 2px 10px rgba(var(--field-shadow-rgb), 0.2);
+    --field-toast-stale-opacity: 0.88;
+    --field-hoverlay-backdrop: blur(10px);
+
+    --field-shadow-sm: 0 1px 2px rgba(var(--field-shadow-rgb), 0.18);
+    --field-shadow-md: 0 4px 12px rgba(var(--field-shadow-rgb), 0.2);
+    --field-shadow-lg: 0 8px 30px rgba(var(--field-shadow-rgb), 0.22);
+    --field-shadow-tray: 0 0 30px rgba(var(--field-shadow-rgb), 0.28);
+    --field-shadow-inset: rgba(var(--field-shadow-rgb), 0.16);
+    --field-text-shadow-strong: 0 1px 4px rgba(var(--field-chalk-rgb), 0.6);
 }
 
 /* Output areas. */
@@ -4316,6 +4376,10 @@ accent so it marks the control without boxing it in.
    is set by CanvasCamera.applyTransforms). It is a descendant of the .box, so a press on it reaches
    interact.js, whose 20 px edge margin, measured against the box's own rect, then picks the resize
    edge. z-index -1 keeps it under the box's content; the child selector outranks `.box *`. */
+[data-field-theme="light"] .box.selected::before {
+    border-color: var(--field-box-selected-frame);
+}
+
 .box > .box-resize-halo {
     position: absolute;
     inset: calc(-8px / var(--canvas-zoom, 1));
@@ -5094,7 +5158,7 @@ kbd {
 }
 
 .hoverlay {
-    backdrop-filter: blur(10px) brightness(0.0);
+    backdrop-filter: var(--field-hoverlay-backdrop);
     position: absolute;
     bottom: 0px;
     right: 0px;
@@ -5112,7 +5176,7 @@ kbd {
 }
 
 .hoverlay-left {
-    backdrop-filter: blur(10px) brightness(0.0);
+    backdrop-filter: var(--field-hoverlay-backdrop);
     position: absolute;
     bottom: 0px;
     left: 35px;
@@ -5369,10 +5433,11 @@ kbd {
     width: fit-content;
     max-width: min(420px, calc(100vw - 20px));
     padding: 9px 11px;
-    border: 1px solid rgba(var(--field-accent-rgb), 0.26);
+    border: 1px solid var(--field-toast-border);
     border-radius: 6px;
     /* The same black as the drawing layer's Excalidraw islands (see "Excalidraw, dressed as Field"). */
-    background: rgba(0, 0, 0, 0.98);
+    background: var(--field-toast-bg);
+    box-shadow: var(--field-toast-shadow);
     color: var(--field-fg);
     font-family: var(--field-font-system);
     font-size: 12px;
@@ -5409,7 +5474,7 @@ body.canvas-flight-recording .monaco-editor .cursor {
 
 .bubble.field-toast-stale,
 .field-toast.field-toast-stale {
-    opacity: 0.72;
+    opacity: var(--field-toast-stale-opacity);
     border-color: rgba(var(--field-white-rgb), 0.12);
 }
 
@@ -6605,7 +6670,7 @@ body.mode-editor-only .field-toast {
 
 /* Light theme: highlight.js. index.html loads github-dark.min.css for every theme; these are the
    matching GitHub light colours, scoped so the dark stylesheet stays untouched. */
-[data-field-theme="light"] .hljs { color: #24292f; background: #f6f8fa; }
+[data-field-theme="light"] .hljs { color: #24292f; background: rgba(var(--field-chalk-rgb), 0.35); }
 [data-field-theme="light"] .hljs-doctag,
 [data-field-theme="light"] .hljs-keyword,
 [data-field-theme="light"] .hljs-meta .hljs-keyword,
