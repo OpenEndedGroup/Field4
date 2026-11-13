@@ -432,6 +432,61 @@ class MeshCoreTest {
     }
 
     @Test
+    fun openEdgesReadTheSurfaceNotTheVertexNumbering() {
+        assertEquals(emptyList(), boxMesh().openEdges())
+        assertTrue(boxMesh().isClosed())
+        val soup = icosphereMesh(2).flatShaded()
+        assertTrue(soup.topology().boundaryEdges.isNotEmpty(), "read by its indices, a soup is all border")
+        assertEquals(emptyList(), soup.openEdges(), "but its surface is closed")
+        assertTrue(soup.isClosed())
+        // An open tube: two rims, each edge once and named low-index first.
+        val tube = cylinderMesh(16, caps = false)
+        val rims = tube.openEdges()
+        assertEquals(32, rims.size, tube.summary())
+        assertTrue(rims.all { (a, b) -> a < b })
+        assertEquals(rims.size, rims.toSet().size)
+        assertTrue(!tube.isClosed())
+        assertEquals(3, TriMesh.ofTriangles(listOf(Triple(Vec3(0f, 0f, 0f), Vec3(1f, 0f, 0f), Vec3(0f, 1f, 0f)))).openEdges().size)
+    }
+
+    @Test
+    fun openEdgesWeldWithinTheirTolerance() {
+        // Two triangles meant to share the edge (1,0,0)-(0,1,0), one of them nudged 1e-4 off it.
+        val e = 1e-4f
+        val pair = TriMesh(
+            floatArrayOf(0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f, 0f, 1f + e, 0f, 0f, 1f, 1f, 0f, 0f, 1f + e, 0f),
+            intArrayOf(0, 1, 2, 3, 4, 5),
+        )
+        assertEquals(6, pair.openEdges(0.0).size, "unwelded: two separate triangles")
+        assertEquals(4, pair.openEdges(1e-3).size, "welded at 1e-3: one quad's border")
+    }
+
+    @Test
+    fun planarFacesFindABoxsSixSidesAndMeasureATwist() {
+        for (box in listOf(boxMesh(2.0, 1.0, 0.5), boxMesh(2.0, 1.0, 0.5).flatShaded())) {
+            val faces = box.planarFaces()
+            assertEquals(6, faces.size, "$faces")
+            assertTrue(faces.all { it.triangles.size == 2 && it.outOfPlane < 1e-6 }, "$faces")
+            assertEquals(box.surfaceArea(), faces.sumOf { it.area }, 1e-9)
+            assertEquals(2.0, faces.first().area, 1e-6, "largest first: a 2 x 1 side")
+        }
+        // A quad with one corner lifted by h: one face with an angle that admits the twist, and an
+        // out-of-plane distance in model units — h/4 at each corner for this symmetric quad.
+        val h = 0.02f
+        val quad = TriMesh(
+            floatArrayOf(0f, 0f, 0f, 1f, 0f, 0f, 1f, 1f, h, 0f, 1f, 0f),
+            intArrayOf(0, 1, 2, 0, 2, 3),
+        )
+        val twisted = quad.planarFaces(angleDegrees = 5.0)
+        assertEquals(1, twisted.size)
+        assertEquals(h / 4.0, twisted.single().outOfPlane, 1e-4, "${twisted.single()}")
+        // A stricter angle calls the two halves two faces, each trivially flat.
+        val strict = quad.planarFaces(angleDegrees = 0.1)
+        assertEquals(2, strict.size)
+        assertTrue(strict.all { it.outOfPlane < 1e-7 })
+    }
+
+    @Test
     fun fixWindingRepairsBothAScrambledAndAnInvertedMesh() {
         val good = icosphereMesh(2)
         // Scramble: flip half the triangles' winding, which makes neighbours disagree.

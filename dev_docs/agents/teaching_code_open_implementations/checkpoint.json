@@ -1,0 +1,226 @@
+{
+  "baseline": "d1d2cd52ffcdf0013ad15323d56d7bcd6aef89fa",
+  "pilotLanded": "9eb8de139",
+  "status": "in_progress",
+  "policy": "Expose the domain transformations being taught, preserve default behavior and captures, keep useful engine and IO abstractions, leave generated preambles and historical copies alone.",
+  "authoredKotlinOccurrences": 4532,
+  "wrapperCandidateOccurrences": 133,
+  "note": "Candidates include hidden capture support and comment-only mentions; these counts are not confirmed defects. Other API families from the previous reference review remain in scope.",
+  "batches": [
+    {
+      "id": "sound-chains",
+      "status": "landed",
+      "paths": [
+        "public/docs/chain_ca_sound.md",
+        "public/docs/chain_lambda_sound.md",
+        "public/docs/chain_pattern_particles.md"
+      ],
+      "verifiedProbes": 8,
+      "captures": 3,
+      "notes": "Default values match helpers exactly. Figures have identical dimensions and visually identical data, with sparse rendering-detail pixel differences. Site build, precheck and full landing guard passed.",
+      "landingCommit": "00ce61ca8"
+    },
+    {
+      "id": "function-roundtrip",
+      "status": "landed",
+      "paths": [
+        "public/docs/chain_fn_sound_roundtrip.md"
+      ],
+      "verifiedProbes": 2,
+      "captures": 1,
+      "notes": "Both encodings produce byte-identical WAVs and exactly equal recovered frames, lag estimates and certified containment counts; also verified with a changed input function.",
+      "landingCommit": "00ce61ca8"
+    },
+    {
+      "id": "morpho-problem",
+      "status": "landed",
+      "paths": [
+        "public/docs/morpho_search.md",
+        "dev_docs/agents/transcripts/morpho_circuit_search.yaml"
+      ],
+      "verifiedProbes": 2,
+      "captures": 1,
+      "notes": "All eight truth-table rows and three seeded generator outputs match, including a smaller grammar; full default-budget capture preserves the 1789/598 solution counts.",
+      "landingCommit": "00ce61ca8"
+    },
+    {
+      "id": "lambda-checks",
+      "status": "landed",
+      "paths": [
+        "public/docs/chain_lambda_sound.md"
+      ],
+      "verifiedProbes": 4,
+      "captures": 2,
+      "landingCommit": "00ce61ca8"
+    },
+    {
+      "id": "drawn-listening",
+      "status": "landed",
+      "paths": [
+        "public/docs/chain_drawn_score.md",
+        "dev_docs/agents/transcripts/drawn_score.yaml"
+      ],
+      "verifiedProbes": 2,
+      "captures": 1,
+      "landingCommit": "00ce61ca8"
+    },
+    {
+      "id": "penrose-strikes",
+      "status": "landed",
+      "paths": [
+        "public/docs/debruijn_tilings.md",
+        "dev_docs/agents/transcripts/penrose_spectra.yaml"
+      ],
+      "verifiedProbes": 2,
+      "captures": 1,
+      "landingCommit": "00ce61ca8"
+    },
+    {
+      "id": "loris-audio",
+      "status": "landed",
+      "paths": [
+        "public/docs/loris.md"
+      ],
+      "verifiedProbes": 10,
+      "captures": 6,
+      "notes": "Default published WAVs match byte for byte. Model/partial mappings match; analysis resolution, window, pitch scale and morph-envelope reruns passed. All actual worked-code figures inspected. Dialogue recaptured at scale 2; obsolete size exception removed.",
+      "landingCommit": "f3768a707"
+    },
+    {
+      "id": "subharmonic-spectra",
+      "status": "landed",
+      "paths": [
+        "public/docs/subharmonic_sound.md"
+      ],
+      "verifiedProbes": 14,
+      "captures": 7,
+      "notes": "All explicit signal graphs produce exactly equal samples, including shorter render prefixes; all seven actual spectrogram captures inspected.",
+      "landingCommit": "f3768a707"
+    },
+    {
+      "id": "interval-subdivision",
+      "status": "behavior_and_capture_verified",
+      "paths": [
+        "public/docs/stacksl_intervals.md"
+      ],
+      "verifiedProbes": 2,
+      "captures": 1,
+      "notes": "Parsed-shader overload has focused regression coverage. Visible loop matches native tiles, bounds, work count and RGBA pixels; smaller render/tolerance rerun passed. Timing caption varies per execution."
+    },
+    {
+      "id": "morpho-remaining",
+      "status": "behavior_and_captures_verified",
+      "paths": [
+        "public/docs/morpho_search.md",
+        "dev_docs/agents/transcripts/morpho_circuit_search.yaml"
+      ],
+      "verifiedProbes": 5,
+      "captures": 2,
+      "notes": "Truth functions, grammar and fixed prologue match presets. Default full-budget figures inspected; tiny-budget empty-cost-plot failure repaired and exercised."
+    },
+    {
+      "id": "thermal-study",
+      "status": "native_behavior_and_ui_verified",
+      "paths": [
+        "dev_docs/agents/transcripts/kratos_parameter_study.yaml",
+        "dev_docs/agents/transcripts/kratos_thermal_playground.yaml"
+      ],
+      "notes": "Four real native designs match preset with zero objective/temperature delta; one background grid build. Plain-source factory, parameter plan, target change and closed form verified. Default playground live UI captured with working container selection and Markdown diagnostics."
+    }
+  ],
+  "domains": {
+    "sound-chains": "reviewed: first-use algorithms opened; later trace reuse and hidden audio hooks retained",
+    "drawn-score-and-morph": "reviewed: listening opened; previously taught interpretation, tuning and point-cloud loops retained by name",
+    "audio-analysis-and-instruments": "reviewed: six native Loris pipelines and seven subharmonic graph/spectrum examples opened; existing explicit partial explorer retained",
+    "simulation-and-search": "reviewed: Morpho or-reduce and both adder grammars, Kratos body/study/measurement exposed; other engine primitives retained",
+    "geometry-and-optimisation": "pending",
+    "learned-models-and-training": "pending",
+    "rendered-scenes-and-shaders": "pending",
+    "workspace-studies-and-builds": "pending",
+    "starting-place-and-demo-mirrors": "pending",
+    "remaining-corpus-review": "pending"
+  },
+  "verification": {
+    "actualCodeProbesPassed": 20,
+    "inspectedFigureRecaptures": 9,
+    "canonicalTranscriptReplay": {
+      "drawn_score": {
+        "applied": 10,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "publicationsRefreshed": {
+      "drawn_score": 5,
+      "morpho_circuit_search": 4,
+      "penrose_spectra": 15
+    },
+    "siteLinks": "passed on final build; 4476 local references and 57051 fragment pairs resolve, with one registered theme exception",
+    "assetBudget": "passed; scale=2 capture fits the normal budget and obsolete exception removed",
+    "landing": "landed: 00ce61ca8, generated refresh 54d9869ff3; precheck and full guard passed"
+  },
+  "wrapperReview": {
+    "pendingCallOccurrences": 14,
+    "ledger": "wrapper-review.json",
+    "note": "Wrapper-name candidates are one input to review, not the whole corpus. Morpho presets and other short API examples remain included in the domain review."
+  },
+  "phasePlan": [
+    {
+      "number": 1,
+      "scope": "sound, search and tiling",
+      "status": "landed",
+      "commit": "00ce61ca8"
+    },
+    {
+      "number": 2,
+      "scope": "audio analysis",
+      "status": "landed",
+      "commit": "f3768a707"
+    },
+    {
+      "number": 3,
+      "scope": "simulation and numerical examples",
+      "status": "ready_for_precheck"
+    },
+    {
+      "number": 4,
+      "scope": "rendered scenes and VR",
+      "status": "pending"
+    },
+    {
+      "number": 5,
+      "scope": "final coverage and mirrors",
+      "status": "pending"
+    }
+  ],
+  "audioVerification": {
+    "actualCodeProbesPassed": 24,
+    "inspectedFigureRecaptures": 13,
+    "idioms": "passed",
+    "assetBudget": "passed",
+    "site": "passed: 4480 local references and 57113 fragment pairs resolve, with one registered theme exception",
+    "precheck": "passed",
+    "landing": "landed f3768a707, full guard passed"
+  },
+  "numericalVerification": {
+    "intervalUnitTests": "StackSLIntervalTest passed, including parsed-source equivalence and machine state isolation",
+    "actualCodeProbesPassed": 7,
+    "defaultFiguresCapturedAndInspected": 3,
+    "nativeThermalComparison": {
+      "fourDesignGrid": true,
+      "objectiveMaxDelta": 0,
+      "temperatureMetricMaxDelta": 0,
+      "backgroundBuildCount": 1,
+      "predictionMatches": true,
+      "changedTargetMatches": true
+    },
+    "nativePlayground": "Actual default container solve and browser screenshot passed; box stopped after capture.",
+    "nativeEnvironment": "Existing podman-machine-default started for verification; owner/cleanup record in build/teaching-code-open-implementations/podman-owner.json. Keep until landing, then stop only when unrelated containers are absent.",
+    "site": "passed: 4480 local references and 57116 fragment pairs resolve, with one registered theme exception",
+    "precheck": "pending",
+    "landing": "pending",
+    "idioms": "passed",
+    "assetBudget": "passed",
+    "publications": "morpho_circuit_search refreshed: 4 real output channels"
+  }
+}

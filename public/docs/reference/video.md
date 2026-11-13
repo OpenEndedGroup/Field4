@@ -4,7 +4,7 @@
 
 Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output.
 
-14 source file(s), 192 public symbol(s), 192 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+14 source file(s), 195 public symbol(s), 194 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -240,6 +240,12 @@ already running finds a backend installed after it started.
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StreamDiffusionSupport</span><span class="p">(</span><span class="k">val</span> <span class="n">available</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/media/video/diffusion/StreamDiffusionSupport/#L29)
 
 Availability without creating GPU allocations, starting Python, or loading model weights.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="streamdiffusionsupport-kt--streamdiffusionsupport-companion--configuredroot"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">configuredRoot</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span></code>](source/jvmMain/afield/media/video/diffusion/StreamDiffusionSupport/#L36) | The backend root: `FIELD_STREAMDIFFUSION_ROOT`, or else the path written in [`rootFile`](video.md#streamdiffusionsupport-kt--streamdiffusionsupport-companion--rootfile), which is read on every call so a running Field picks up a newly installed backend. No default model download or machine-specific installation path. |
+| <a id="streamdiffusionsupport-kt--streamdiffusionsupport-companion--rootfile"></a>[<code class="highlight"><span class="k">val</span> <span class="n">rootFile</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/media/video/diffusion/StreamDiffusionSupport/#L41) | `~/.afield/streamdiffusion-root.txt`: one line, the backend's installation directory. |
+| <a id="streamdiffusionsupport-kt--streamdiffusionsupport-companion--probe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">probe</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nc">StreamDiffusionConfig</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">StreamDiffusionSupport</span></code>](source/jvmMain/afield/media/video/diffusion/StreamDiffusionSupport/#L43) |  |
 
 ## StreamDiffusionTemporalOutput.kt { #streamdiffusiontemporaloutput-kt }
 

@@ -408,7 +408,7 @@ loop {
 Everything above except the grab and the two lines that drive it is
 the [`cloth_simdverlet_start`](agent_transcripts.md#cloth_simdverlet_start) starting point: open it from the welcome screen
 and the sheet is already hanging. `addCloth` builds a `Cloth`, a grid of particles inside the
-`SimdVerlet` you already have, and `SimdVerlet.debugLines()` draws the solver's own state, so a mis-wired constraint
+[`SimdVerlet`](reference/simulation.md#simdverlet-kt-simdverlet) you already have, and `SimdVerlet.debugLines()` draws the solver's own state, so a mis-wired constraint
 or a missing pin is easy to see.
 
 See also [Particles, Cloth & Constraints](physics.md), the page about the solver itself. It explains
@@ -1105,3 +1105,9 @@ To see it running, open the [`frames_lifecycle`](agent_transcripts.md#frames_lif
 point from the welcome screen. Its four boxes start, stop, re-run and clean up a frame loop.
 
 Next on the Tour, [Drawing with FLines](fline_examples.md) builds the lines and shapes a loop like these can move.
+
+## API reference
+
+- Constructing cloth, strands and collision constraints:
+  [`SimdVerlet`](reference/simulation.md#simdverlet-kt-simdverlet) —
+  [`addCloth`](reference/simulation.md#cloth-kt--addcloth).

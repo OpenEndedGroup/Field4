@@ -681,6 +681,8 @@ class FieldBackdoor:
         self.reply_contexts: dict[str, dict[str, Any]] = {}
         self.document_name: str | None = None
         self.scratch = False
+        self.last_progress: dict[str, Any] | None = None
+        self.document_url: str | None = None
         self.read_only = False
         # Tri-state on purpose: None is "no server has told us", not "no".
         self.document_existed: bool | None = None
@@ -1295,6 +1297,8 @@ class FieldBackdoor:
         # have thrown that distinction away exactly as the missing @EncodeDefault did.
         self.document_existed = snapshot.get("documentExisted")
         self.attached_to_live_document = snapshot.get("attachedToLiveDocument")
+        # Opens this session's document as another client, scratch included (`film-page @session`).
+        self.document_url = snapshot.get("documentUrl")
         self.session_key = next_session_key
         self.boxes = {}
         self._running_state_seen = {}
@@ -1433,6 +1437,8 @@ class FieldBackdoor:
         script: str | None = None,
         script_mode: str = "expression",
         wait_ms: float = 0.0,
+        view_uid: str | None = None,
+        view_channel: str | None = None,
     ) -> dict[str, Any]:
         resolved_uid = self.require_box_reference(uid)[0] if uid is not None else None
         self.logger.log(
@@ -1466,6 +1472,8 @@ class FieldBackdoor:
                 "script": script,
                 "scriptMode": script_mode,
                 "waitMs": wait_ms,
+                "viewUid": view_uid,
+                "viewChannel": view_channel,
             },
             timeout=timeout,
         )
@@ -1972,20 +1980,56 @@ class FieldBackdoor:
             await self.websocket.send(json.dumps(message))
         return uid
 
-    async def call_for_single_reply(self, name: str, payload: Any, *, timeout: float, reply_context: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def call_for_single_reply(
+        self,
+        name: str,
+        payload: Any,
+        *,
+        timeout: float,
+        reply_context: dict[str, Any] | None = None,
+        on_progress: Any = None,
+        idle_timeout: float | None = None,
+    ) -> dict[str, Any]:
+        """Send [name] and wait for its reply.
+
+        A long command reports how far it has got with interim replies whose `originalName` is
+        `agent-progress` (`AgentProgress` in rpc.kt); they go to [on_progress], never count as the
+        reply, and with [idle_timeout] each one extends the wait: the command then fails only when
+        it goes [idle_timeout] seconds without news, or [timeout] passes in all.
+        """
         reply_name = f"reply_{uuid.uuid4().hex}"
         start_seq = self.event_seq
         self.logger.log("call_for_single_reply_start", name=name, replyName=reply_name, timeout=timeout)
         await self.send_message(name, payload, reply_to=reply_name, reply_context=reply_context)
+        heard = {"seq": start_seq, "at": time.monotonic()}
 
         def predicate():
             for event in self.events_since(start_seq):
-                if event["messageName"] == reply_name:
-                    return event
+                if event["messageName"] != reply_name:
+                    continue
+                if event.get("originalName") == "agent-progress":
+                    if event["seq"] > heard["seq"]:
+                        heard["seq"] = event["seq"]
+                        heard["at"] = time.monotonic()
+                        self.last_progress = event.get("payload")
+                        if on_progress is not None:
+                            on_progress(event.get("payload") or {})
+                    continue
+                return event
             return None
 
+        deadline = time.monotonic() + timeout
         try:
-            return await self.wait_for(predicate, timeout, f"reply:{name}:{reply_name}")
+            while True:
+                remaining = deadline - time.monotonic()
+                wait = remaining if idle_timeout is None else min(remaining, idle_timeout)
+                try:
+                    return await self.wait_for(predicate, max(wait, 0.001), f"reply:{name}:{reply_name}")
+                except asyncio.TimeoutError:
+                    quiet = time.monotonic() - heard["at"]
+                    if idle_timeout is not None and time.monotonic() < deadline and quiet < idle_timeout:
+                        continue
+                    raise
         finally:
             self.reply_contexts.pop(reply_name, None)
             self.logger.log("call_for_single_reply_end", name=name, replyName=reply_name)
@@ -3582,12 +3626,18 @@ def build_command_parser() -> argparse.ArgumentParser:
     wait_native_renderer.add_argument("--timeout", type=float)
 
     film_page = subparsers.add_parser("film-page", add_help=False)
-    film_page.add_argument("url")
+    film_page.add_argument("url", nargs="?", help="the page; `@session` (the default with --timeline) is this session's document")
     film_page.add_argument("path")
-    film_page.add_argument("--duration", type=float, default=10.0)
-    film_page.add_argument("--fps", type=int, default=30)
-    film_page.add_argument("--size", default="1920x1080", help="WxH pixels of film")
-    film_page.add_argument("--pixel-ratio", type=float, default=1.0)
+    film_page.add_argument("--duration", type=float, help="seconds; 10, or the timeline's")
+    film_page.add_argument("--fps", type=int, help="30, or the timeline's")
+    film_page.add_argument("--size", help="WxH pixels of film; 1920x1080, or the timeline's")
+    film_page.add_argument("--pixel-ratio", type=float, help="1, or the timeline's")
+    film_page.add_argument("--timeline", help="a timeline file (JSON) of keys at film time: the stage, cameras, parts, motions, drags, captions")
+    film_page.add_argument("--frames-dir", help="write each frame here and encode the film from the folder at the end")
+    film_page.add_argument("--resume", action="store_true", help="carry on after the frames already in --frames-dir")
+    film_page.add_argument("--from-frame", type=int, help="start at this frame (0-based), replaying the drags before it")
+    film_page.add_argument("--keep-frames", action="store_true", help="keep --frames-dir after a good encode")
+    film_page.add_argument("--frame-timeout", type=float, default=120.0, help="seconds one timeline frame may wait for its views")
     film_page.add_argument("--setup-file", help="JavaScript: an `async () => ...` run once after load")
     film_page.add_argument("--frame-file", help="JavaScript: a `(t, i, n) => ...` run before every frame")
     film_page.add_argument("--settle-ms", type=int, default=0)
@@ -3707,6 +3757,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     page_eval.add_argument("--file")
     page_eval.add_argument("--body", action="store_true")
     page_eval.add_argument("--wait-ms", type=float, default=0.0)
+    page_eval.add_argument("--view", help="BOX[:CHANNEL]: run in that box's output: inside a three.js view's own page, else with `view` bound to the output")
+    page_eval.add_argument("--value", action="store_true", help="print only the script's value, as one line of JSON")
     page_eval.add_argument("--timeout", type=float)
 
     publication = subparsers.add_parser("publish-document", add_help=False)
@@ -4171,6 +4223,7 @@ async def dispatch_command(
             "scratchLifetime": "invocation" if client.scratch else None,
             "scratchPortReuse": False if client.scratch else None,
             "sessionKey": client.session_key,
+            "documentUrl": client.document_url,
             "boxCount": len(client.boxes),
             "runningBoxes": running,
             "lastBoxUid": client.last_box_uid,
@@ -4460,21 +4513,46 @@ async def dispatch_command(
         return result
 
     if args.command == "film-page":
-        match = re.fullmatch(r"(\d+)x(\d+)", args.size)
-        if not match:
-            raise BackdoorError(f"film-page --size takes WxH, got {args.size!r}")
+        timeline_text = None
+        if args.timeline:
+            timeline_text = client.read_text_source(args.timeline, command_line=command_line)
+            try:
+                json.loads(timeline_text)
+            except json.JSONDecodeError as exc:
+                raise BackdoorError(f"film-page --timeline {args.timeline} is not JSON: {exc}") from exc
+        url = args.url or ("@session" if timeline_text is not None else None)
+        if url is None:
+            raise BackdoorError("film-page takes a url and a path (the url may be left out with --timeline: it is then @session)")
+        size = args.size or (None if timeline_text is not None else "1920x1080")
+        width = height = 0
+        if size is not None:
+            match = re.fullmatch(r"(\d+)x(\d+)", size)
+            if not match:
+                raise BackdoorError(f"film-page --size takes WxH, got {size!r}")
+            width, height = int(match.group(1)), int(match.group(2))
+        unset = timeline_text is not None
+        duration = args.duration if args.duration is not None else (0.0 if unset else 10.0)
+        fps = args.fps if args.fps is not None else (0 if unset else 30)
         payload: dict[str, Any] = {
-            "url": args.url,
+            "url": url,
             "path": str(Path(args.path).expanduser().resolve()),
-            "durationSec": args.duration,
-            "fps": args.fps,
-            "width": int(match.group(1)),
-            "height": int(match.group(2)),
-            "pixelRatio": args.pixel_ratio,
+            "durationSec": duration,
+            "fps": fps,
+            "width": width,
+            "height": height,
+            "pixelRatio": args.pixel_ratio if args.pixel_ratio is not None else (0.0 if unset else 1.0),
             "settleMs": args.settle_ms,
             "loadTimeoutMs": args.load_timeout_ms,
             "setup": Path(args.setup_file).read_text() if args.setup_file else None,
             "frame": Path(args.frame_file).read_text() if args.frame_file else None,
+            "timeline": timeline_text,
+            "framesDir": str(Path(args.frames_dir).expanduser().resolve()) if args.frames_dir else None,
+            "resume": bool(args.resume),
+            "fromFrame": args.from_frame,
+            "keepFrames": bool(args.keep_frames),
+            "frameTimeoutMs": int(args.frame_timeout * 1000),
+            # A timeline may name boxes by this session's aliases; the server resolves them, and names, to uids.
+            "boxAliases": dict(client.box_aliases),
         }
         payload["prerollFrames"] = args.preroll_frames
         if args.drag:
@@ -4483,10 +4561,14 @@ async def dispatch_command(
         if args.drag_from:
             x, y = (float(v) for v in args.drag_from.split(","))
             payload.update(dragX=x, dragY=y)
-        timeout = max(command_timeout(args.timeout, client.default_timeout), 90.0 + args.duration * args.fps * 0.75)
-        timeout += args.preroll_frames * 0.2
-        client.logger.log("film_page_start", url=args.url, path=payload["path"], timeout=timeout)
-        event = await client.call_for_single_reply("agent-film-page", payload, timeout=timeout)
+        # The film reports every frame, so it fails only after going quiet for longer than a frame may
+        # wait (and the page may take to load), not after a guess at the length of the whole shoot.
+        timeout = max(command_timeout(args.timeout, client.default_timeout), 6 * 3600.0)
+        idle = max(args.frame_timeout, args.load_timeout_ms / 1000.0) + 60.0
+        client.logger.log("film_page_start", url=url, path=payload["path"], timeout=timeout, idle=idle)
+        event = await client.call_for_single_reply(
+            "agent-film-page", payload, timeout=timeout, idle_timeout=idle, on_progress=progress_printer("film-page"),
+        )
         data = event["payload"] if isinstance(event.get("payload"), dict) else {"ok": False, "message": "invalid reply"}
         ok = bool(data.get("ok"))
         if args.expect_frames is not None and data.get("encodedFrames") != args.expect_frames:
@@ -5069,12 +5151,18 @@ async def dispatch_command(
         else:
             script = args.script
         timeout = args.timeout or client.default_timeout
+        view_uid = view_channel = None
+        if args.view:
+            box, _, view_channel = args.view.partition(":")
+            view_uid = client.require_box_reference(box)[0]
         data = await client.playwright_input(
             action="pageEval",
             script=script,
             script_mode="body" if args.body else "expression",
             timeout=timeout,
             wait_ms=args.wait_ms,
+            view_uid=view_uid,
+            view_channel=view_channel or None,
         )
         warning = page_eval_body_warning(script) if args.body else None
         if warning is not None:
@@ -5083,6 +5171,9 @@ async def dispatch_command(
             print(f"field_backdoor.py: warning: {warning}", file=sys.stderr, flush=True)
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])
+        if args.value:
+            # The value alone, one line of JSON on stdout: `json.loads` of the line is the answer.
+            result["printValue"] = True
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
 
@@ -5294,9 +5385,46 @@ def render_event(event: dict[str, Any]) -> str:
     return f"{prefix} {json.dumps(payload, ensure_ascii=True)}"
 
 
+def format_progress(progress: dict[str, Any]) -> str:
+    """`filming frame 120 of 1860, 6.3 a second, about 4 min 36 s left` from an `AgentProgress`."""
+    phase = progress.get("phase") or "working"
+    done, total = progress.get("done"), progress.get("total")
+    text = phase
+    if isinstance(done, int) and isinstance(total, int) and total > 0 and phase != "loading":
+        text += f" frame {done} of {total}"
+    rate, eta = progress.get("ratePerSecond"), progress.get("etaSec")
+    if isinstance(rate, (int, float)) and rate > 0 and phase == "filming":
+        text += f", {rate:.1f} a second"
+        if isinstance(eta, (int, float)) and eta > 0:
+            minutes, seconds = divmod(int(round(eta)), 60)
+            text += f", about {minutes} min {seconds} s left" if minutes else f", about {seconds} s left"
+    if progress.get("detail"):
+        text += f" ({progress['detail']})"
+    return text
+
+
+def progress_printer(label: str, *, every: float = 2.0, stream: Any = None):
+    """A callback printing a long command's progress to stderr: each phase, the last frame, and every [every] s."""
+    state: dict[str, Any] = {"at": -1e9, "phase": None}
+
+    def on_progress(progress: dict[str, Any]) -> None:
+        now = time.monotonic()
+        last = progress.get("done") == progress.get("total") and progress.get("phase") == "filming"
+        if progress.get("phase") != state["phase"] or last or now - state["at"] >= every:
+            state["at"], state["phase"] = now, progress.get("phase")
+            print(f"field_backdoor.py: {label}: {format_progress(progress)}", file=stream or sys.stderr, flush=True)
+
+    return on_progress
+
+
 def print_result(result: dict[str, Any], *, json_mode: bool, logger: SessionLogger | None = None) -> None:
     if logger is not None:
         logger.log("print_result", jsonMode=json_mode, result=result)
+    if result.get("printValue"):
+        if result["ok"]:
+            print(json.dumps((result.get("data") or {}).get("result"), ensure_ascii=True))
+            return
+        result = {k: v for k, v in result.items() if k != "printValue"}
     if json_mode:
         print(json.dumps(result, indent=2, ensure_ascii=True))
         return

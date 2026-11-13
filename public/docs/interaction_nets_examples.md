@@ -1,6 +1,6 @@
 # Interaction Nets examples
 
-An interaction net is a graph you compute with by rewriting it. Each node is an agent with one *principal* port and some auxiliaries; wherever two principal ports are wired to each other you have an active pair, and a rule says what that pair becomes. `Lambda` is a ready-made vocabulary of agents — `APP`, `LAM`, `DUP`, `DELIM`, `ERASE`, `VAR`, `ROOT`, `CONST` — and `Lambda.rules()` is a rule book covering it.
+An interaction net is a graph you compute with by rewriting it. Each node is an agent with one *principal* port and some auxiliaries; wherever two principal ports are wired to each other you have an active pair, and a rule says what that pair becomes. [`Lambda`](reference/visualization.md#interactionnets-kt-lambda) is a ready-made vocabulary of agents — `APP`, `LAM`, `DUP`, `DELIM`, `ERASE`, `VAR`, `ROOT`, `CONST` — and [`Lambda.rules()`](reference/visualization.md#interactionnets-kt--lambda--rules) is a rule book covering it.
 
 Build a net with `net { }`, wiring ports with `to`; call `relax` to let the force-directed layout settle; and hand it to `Reducer(Lambda.rules())`, whose `stepDetailed` fires one reaction and returns what changed. Draw it with `toFLines`, or summarise it as a card with `summaryHtml`. The single-step examples below each show three cards over a before-and-after drawing; [Reference](#reference) lists the whole API.
 
@@ -376,9 +376,17 @@ Looking at it:
 
 </div>
 
-`Lambda.duplicatedConstantDemo()` and `Lambda.eraseApplicationDemo()` build the nets used in the duplication and erasure examples above.
+[`Lambda.duplicatedConstantDemo()`](reference/visualization.md#interactionnets-kt--lambda--duplicatedconstantdemo) and [`Lambda.eraseApplicationDemo()`](reference/visualization.md#interactionnets-kt--lambda--eraseapplicationdemo) build the nets used in the duplication and erasure examples above.
 
 See also: [A λ-term you can hear](chain_lambda_sound.md), [Petri nets](petri_nets.md).
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`interactionnets.kt`](reference/visualization.md#interactionnets-kt). To normalise terms, draw a reduction and check the reducer against an ordinary evaluator in
 Field, open the [interaction_nets_lambda](agent_transcripts.md#interaction_nets_lambda) starting point.*
+
+- Parsing, reducing and checking lambda terms:
+  [`LambdaTerms`](reference/visualization.md#lambdaterms-kt-lambdaterms) —
+  [`alphaEquivalent`](reference/visualization.md#lambdaterms-kt--lambdaterms--alphaequivalent),
+  [`compile`](reference/visualization.md#lambdaterms-kt--lambdaterms--compile),
+  [`normalise`](reference/visualization.md#lambdaterms-kt--lambdaterms--normalise),
+  [`parse`](reference/visualization.md#lambdaterms-kt--lambdaterms--parse),
+  [`referenceNormalOrder`](reference/visualization.md#lambdaterms-kt--lambdaterms--referencenormalorder).

@@ -603,3 +603,7 @@ Implementation and parameter details for the helpers used above:
 
 - [`PopulationSearch.evolve`](reference/search.md#populationsearch-kt--populationsearch--evolve)
 - [`PopulationSearch`](reference/search.md#populationsearch-kt-populationsearch)
+
+- Population search and its random baseline:
+  [`PopulationSearch`](reference/search.md#populationsearch-kt-populationsearch) —
+  [`random`](reference/search.md#populationsearch-kt--populationsearch--random).

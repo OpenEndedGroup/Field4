@@ -44,8 +44,12 @@ Choose **Per-line rectangle union** in **Text frames** for a stepped outline fol
 one measured rectangle per line:
 
 ```kotlin
-val frame = textFrame("frame", paragraph, standoff = .025f,
-    mode = DiagramTextFrameMode.LINE_UNION) {
+val frame = textFrame(
+    "frame",
+    paragraph,
+    standoff = .025f,
+    mode = DiagramTextFrameMode.LINE_UNION,
+) {
     width = .0008f
 }
 connection("thread", frame.attach(), otherFrame.attach())

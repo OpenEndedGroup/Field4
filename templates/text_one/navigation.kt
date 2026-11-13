@@ -1,5 +1,5 @@
-import afield.graphics.vulkan.targets.OpenXRHmdTarget.Hand
 import afield.graphics.scene.reading.readingWalk
+import afield.graphics.vulkan.targets.OpenXRHmdTarget.Hand
 
 // Translate the reading world opposite the virtual reader; the room and browser remain tracked.
 val navigationDrawing = drawing
@@ -24,14 +24,21 @@ val navigationUpdate: () -> Unit = {
         val stick = xr.controllerState(Hand.LEFT)
         if (stick.active) {
             val eye = stereo.eyeViewMatrix(0).invert()
-            val movement = readingWalk(stick.thumbstickX, stick.thumbstickY,
-                vec(-eye.m20, -eye.m21, -eye.m22), dt.toDouble(), readingWalkSpeed)
+            val movement = readingWalk(
+                stick.thumbstickX,
+                stick.thumbstickY,
+                vec(-eye.m20, -eye.m21, -eye.m22),
+                dt.toDouble(),
+                readingWalkSpeed,
+            )
             navigationDrawing.origin.sub(movement)
         }
     }
 }
 navigationDrawing.beforeUpdate = navigationUpdate
 
-loop { frame() }.end {
-    if (navigationDrawing.beforeUpdate === navigationUpdate) navigationDrawing.beforeUpdate = previousNavigationUpdate
-}
+loop { frame() }
+    .end {
+        if (navigationDrawing.beforeUpdate === navigationUpdate)
+            navigationDrawing.beforeUpdate = previousNavigationUpdate
+    }

@@ -8,7 +8,8 @@ render parts.
 val body = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)
 val readingFrames = mutableListOf<DiagramTextFrame>()
 val graph = readingDiagram {
-    val paragraph = text("paragraph",
+    val paragraph = text(
+        "paragraph",
         "When the door closed behind me\nand I saw my eyes were going\nto be useless in the dark,\nI took myself in hand.",
         point("paragraph-point", -.15, .25),
     ) {
@@ -31,9 +32,12 @@ val graph = readingDiagram {
     val asideFrame = textFrame("aside-frame", aside, standoff = .025f, mode = DiagramTextFrameMode.LINE_UNION) {
         color = vec(1f, 1f, 1f, .22f)
     }
-    readingFrames.addAll(listOf(paragraphFrame, asideFrame))
-    val thread = connection("initial-thread", paragraphFrame.attach(),
-        asideFrame.attach(DiagramTextSite.LEFT_MARGIN)) {
+    readingFrames.addAll([paragraphFrame, asideFrame])
+    val thread = connection(
+        "initial-thread",
+        paragraphFrame.attach(),
+        asideFrame.attach(DiagramTextSite.LEFT_MARGIN),
+    ) {
         responseSeconds = 1.2f
         bow.set(0f, -.07f, .025f)
         width = .001f

@@ -402,7 +402,7 @@ asymmetry is the other easy mistake: the `-window` commands take the box through
 | `record-editor` | `uid path` | `--property --padding --open-outputs --expect-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
 | `record-box` | `uid path` | `--property --padding --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
 | `canvas-flight` | `stops` | `--leg --hold --orbit --record --fps --size --pixel-ratio --expect-frames --timeout` |
-| `film-page` | `url path` | `--duration --fps --size --pixel-ratio --setup-file --frame-file --settle-ms --load-timeout-ms --drag --drag-from --preroll-frames --expect-frames --timeout` |
+| `film-page` | `[url] path` | `--duration --fps --size --pixel-ratio --timeline --frames-dir --resume --from-frame --keep-frames --frame-timeout --setup-file --frame-file --settle-ms --load-timeout-ms --drag --drag-from --preroll-frames --expect-frames --timeout` |
 <!-- END CAPTURE SIGNATURES -->
 
 ```bash
@@ -433,6 +433,11 @@ What each family actually captures:
   since it will be null). The body is not async: to `await`, write
   `return (async () => { ...; return {...}; })();` and the promise is awaited for you.
   Example: `page-eval --body --file probe.js` then `screenshot-window out.png`.
+  `--value` prints the value alone as one line of JSON (`json.loads(line)` is the answer; no
+  scraping of the result object). `--view BOX[:CHANNEL]` runs the script in a box's output,
+  the box named by alias, name or uid: inside a three.js view's own page (so `FieldViewer` and
+  `FieldInspector` are globals), or for any other output with `view` bound to its element.
+  `page-eval --view house 'FieldViewer.metadata()' --value` reads a view's metadata.
   `@JsExport` functions are module exports, not `window` globals, so reach them through
   their key chord or palette action rather than calling them by name.
 
@@ -445,6 +450,17 @@ What each family actually captures:
   `async () => ...` run once, `--frame-file` a `(t, i, n) => ...` run before every frame, and
   `--drag DX,DY` drags the real mouse that far per frame (orbits a three.js page);
   `--preroll-frames` runs frames before the first one filmed, so clips can continue one another.
+  `--timeline <file.json>` films the session's own document from a timeline file instead (the url
+  may be left out: it is `@session`, which also works on `--scratch`): a stage of regions bound to
+  box outputs, and keys for cameras, parts, motions, drags, sliders and captions; each frame waits
+  until the views show it (`public/docs/filming_a_timeline.md`). `--frames-dir` writes frames to a
+  folder and encodes at the end; `--resume` carries on after the last frame written, `--from-frame K`
+  starts at K. The command prints its progress to stderr (`filming frame 120 of 300, 15.0 a second,
+  about 12 s left`) and fails only after going quiet for longer than `--frame-timeout`.
+- Long commands report progress as interim replies with `originalName` `agent-progress`
+  (`AgentProgress` in rpc.kt); `call_for_single_reply(..., on_progress=, idle_timeout=)` hears them.
+- `status` and `open` report `documentUrl`: the url that opens this session's document as another
+  client, scratch documents (whose url carries a session key made up per run) included.
 - `viewport WxH` sizes the capture page (`default` restores it), for saving bookmarks in a window
   shaped like the film.
 

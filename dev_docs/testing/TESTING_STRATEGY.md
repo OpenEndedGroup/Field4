@@ -16,6 +16,7 @@ fails, that is not a valid reason to skip `--with-playwright`,
 | Situation | Command | What it proves |
 | --- | --- | --- |
 | Kotlin/JVM compile check | `./gradlew compileKotlinJvm` | Source compiles without starting the full app UI. |
+| Fast JVM-only unit tests | `./gradlew fastTest` (narrow with `--tests 'afield.geometry.*'` or `-PfastTestRoots=src/personal/fastTest`) | kotlin.test classes in `src/jvmFastTest` and every personal/extension `fastTest` root pass, without jvmTest's compilation or a Field server. |
 | Complete compiler-warning audit | `./gradlew --no-daemon --rerun-tasks warningGates` | Force-compiles the JVM, JS, JVM-test, and standalone default-completion source sets so incremental caching cannot hide warnings. |
 | Complete deterministic repository certification | `./gradlew certify` | Runs the full `check` graph with continuation enabled, so JVM/JS tests, documentation contracts, generated-source drift guards, and Python tool tests all receive a verdict even when an independent task fails. Benchmark/measurement fixtures remain excluded. |
 | Generated artifacts and documentation contracts before commit | `uv run --project . --frozen python tools/check_staged_generated_artifacts.py` | Selects every generated-artifact or citation/documentation guard affected by staged paths and rejects a worktree/index mismatch. Install it as the shared pre-commit and post-merge hooks with `uv run --project . --frozen python tools/install_git_hooks.py`; both hooks use this same pinned interpreter. |
@@ -128,7 +129,15 @@ Idle-sleep prevention does not override lid closure or replace the continuous pr
 
 The smoke and docs capture runners sample power and display state every 15 seconds,
 including while starting Field and between tests. Long verification requires AC or
-at least 80% battery. A native-window capture or `graphicsContext` smoke also needs
+at least 80% battery. The smoke runner applies that rule by test size
+(`smoke_size` in `tools/discover_field_tests.py`). A test is **short** when its `timeoutSec` is
+at most 60 (the default is 20), and short tests run on battery at any charge. A test is **long**
+when its `timeoutSec` is over 60 or its annotation says `size: long`; a long test is NOT RUN below
+80% on battery, and loss of power during it is an interruption. `size: short` with a budget over 60
+is a discovery error, so an unmarked slow test stays gated. `--allow-battery <id>` (repeatable, and
+only for selected ids) runs a named long test on battery anyway. Each result records its `size` and
+`requiresPower`. Native prerequisite builds are gated whenever any selected test is. The docs runner
+keeps the AC-or-80% rule for every capture. A native-window capture or `graphicsContext` smoke also needs
 an online primary display; standalone JVM smokes opening a `Window` declare
 `requiresDisplay: true` in their `FIELD_TEST` annotation. Headless Playwright
 captures (`box`, `window`, `editor`, `ui`) do not need a physical display merely
@@ -189,6 +198,34 @@ it does not certify compiler diagnostics from `build.gradle.kts` itself.
 Gradle process ownership and daemon cleanup rules live in `AGENTS.md`.
 Do not replace runtime checks with Gradle-only checks when the change affects
 websocket RPC, live-code execution, Monaco, output areas, or rendering.
+
+### Fast JVM-only lane
+
+`./gradlew fastTest` compiles and runs kotlin.test classes in one test JVM. It has its own
+compilation, so a run costs only its own sources, not jvmTest's thousand test files, and it
+starts no Field server. It is for code that needs no running Field: geometry, solvers, parsers,
+and domain models built on them. Manifold-backed solids work in it: the lane takes every `Test`
+task's worker setup (JVM args, Smile and Steam Audio natives, the tree-write guard), and
+`ManifoldLibrary` finds `libmanifoldc` as it does in jvmTest. A test should skip and say why when
+`ManifoldLibrary.isAvailable` is false, as `FastLaneSolidTest` does.
+
+Sources are `src/jvmFastTest/kotlin`, plus `fastTest/kotlin` under `src/personal` and under every
+`AFIELD_EXTENSION_DIRS` / `-PfieldExtensionDirs` root. The compilation is associated with core and,
+when one exists, with the personal compilation (`personalJar`'s sources), so personal and extension
+tests see `internal` declarations in the code they test. Kit jars are on its classpath too.
+
+```bash
+./gradlew fastTest                                                    # every fastTest root
+./gradlew fastTest --tests 'afield.geometry.solid.manifold.*'         # one package
+./gradlew fastTest -PfastTestRoots=src/personal/fastTest              # one root (path-separated list)
+AFIELD_EXTENSION_DIRS=~/my-extension ./gradlew fastTest -PfastTestRoots=$HOME/my-extension/fastTest
+```
+
+A `--tests` pattern that matches nothing fails the task rather than passing it. The public example
+is `src/jvmFastTest/kotlin/afield/geometry/solid/manifold/FastLaneSolidTest.kt`; with core already
+compiled, `./gradlew fastTest --tests 'afield.geometry.solid.manifold.FastLaneSolidTest'` runs it
+in about 6 s (measured warm: core compiled, Gradle daemon running). `fastTest` is not part of `check`: personal and extension roots are local, and a
+landing must not depend on them. Put a test that should guard `main` in jvmTest.
 
 ### 2. Field Backdoor Runtime Checks
 
@@ -278,6 +315,41 @@ Artifacts:
 Supported runner shapes:
 - `jvm-main` for standalone smoke entrypoints
 - `backdoor-box` for scratch-box snippets
+
+#### Structured check records
+
+A smoke can state its assertions as check records instead of a pass sentence:
+`afield.tools.testing.Checks` (`src/jvmMain/kotlin/afield/tools/testing/Checks.kt`) makes one
+`CheckRecord` per assertion: `name`, `measured`, `expected` (a value, or a description of the rule),
+`tolerance`, `passed`, `note`, and `provenance` (who or what states the rule: an architect's
+sentence, a standard, a saved model, a solver target). Each record is printed as it is made, as one
+line `FIELD_CHECK {json}`. In a box that line goes to the box's output; in a `jvm-main` entrypoint
+it goes to stdout. The runner reads those lines from a `jvm-main`'s stdout and from a box's `output`
+events. It prints a table of each test's records under its result line, writes them into
+`results.json` (`results[].checks`, with `checkCount` and `failedChecks` at the top), fails a
+test with any failed record, and names every failed record under `Failed checks:` in the summary.
+A malformed `FIELD_CHECK` line fails the test as well; it is never skipped.
+
+```kotlin
+import afield.tools.testing.Checks
+
+val checks = Checks()
+checks.near("cost", result.cost, 0.0, tolerance = 1e-10, provenance = "solver convergence target")
+checks.equal("joint count", skeleton.size, 27, provenance = "skeleton definition")
+checks.that("area grew", shapedArea, "> base + 0.025", note = "shaped=$shaped") { it > baseArea + 0.025 }
+checks.requireAll()  // a jvm-main then exits non-zero, naming each failed check
+```
+
+`stdlib.least-squares-fmchirp.smoke` (`LeastSquaresAndFMChirpSmokeTest.kt`) is the worked
+example. Keep an `expect.stdoutContains` / `outputContains` sentence as well, so that a smoke that
+never reaches its checks still fails.
+
+Personal and extension smokes use the same API. `src/personal` and `AFIELD_EXTENSION_DIRS`
+roots compile against core (`personalJar`), so `import afield.tools.testing.Checks` works there
+unchanged, and `run-jvm-main` puts the personal jar on the launched JVM's classpath. `src/personal/kotlin`
+is a default discovery root, so its `FIELD_TEST` blocks are catalogued with the public ones; pass an
+extension root with `--refresh-catalog --root <dir>/kotlin` (repeatable; `--root` replaces the
+default roots for that run). Nothing about checks is specific to the public tree.
 
 ### Deliberately accepted JVM test failures
 

@@ -8,7 +8,7 @@ structure written down as a graph. Its nodes are the **critical points**: every 
 downhill to pits along the valleys. Between them, the grid divides into **basins**, the regions
 that drain to each pit, and **peaks**, the regions that climb to each maximum.
 
-`MorseSmale.compute` takes an `Img` and returns all of that as Field geometry. This example builds a
+[`MorseSmale.compute`](reference/graphics.md#morsesmale-kt--morsesmale--compute) takes an `Img` and returns all of that as Field geometry. This example builds a
 field from three hills and two pits, then draws its complex over it. Ascending separatrices (to
 maxima) are red, descending ones (to minima) blue. Maxima are red dots, minima blue and saddles
 green:
@@ -64,7 +64,7 @@ ground. Simplifying at persistence *p* cancels every pair of critical points who
 below *p*, and reroutes the separatrices around them, so what remains is the structure that
 stands out by more than *p*.
 
-The example below puts noise over the same five bumps. `MorseSmale.build` computes the complex
+The example below puts noise over the same five bumps. [`MorseSmale.build`](reference/graphics.md#morsesmale-kt--morsesmale--build) computes the complex
 once, along with the order in which every pair would cancel. `simplify(p)` then reads off the
 complex at any threshold without recomputing it:
 
@@ -257,7 +257,7 @@ as both its ends survive. Animations and other objects can be keyed to them.
 
 ## Running it off the main thread
 
-`MorseSmale.computeAsync` and `MorseSmale.buildAsync` do the work on a worker thread and return a
+[`MorseSmale.computeAsync`](reference/graphics.md#morsesmale-kt--morsesmale--computeasync) and `MorseSmale.buildAsync` do the work on a worker thread and return a
 `CompletableFuture`, which is what `runAsync` takes. The box stays responsive while a large field is
 analysed, and the result is shown when it arrives:
 
@@ -307,3 +307,7 @@ diagram is computed separately and always pairs every critical point.
     the grid's squares along the other diagonal, so the script flips the field vertically before
     handing it over. Without the flip the diagrams differ, which is how we know the triangulation
     matters. `MorseSmaleBenchmark` times each stage at 512², 1024² and 2048².
+
+## API reference
+
+- Constructing the Morse–Smale complex: [`MorseSmale`](reference/graphics.md#morsesmale-kt-morsesmale).

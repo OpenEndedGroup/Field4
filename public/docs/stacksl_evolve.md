@@ -44,7 +44,7 @@ Simple, high-contrast pictures work best: flat shapes, a few colours, structure 
 
 ## A search you can steer
 
-`evolveStackSLTowards` runs to its budget and returns. `StackSLEvolution` is the same kind of search held as an object, so you can run some generations, look, change something and carry on. Here it runs 600 renders toward the disc target and shows the leaders:
+`evolveStackSLTowards` runs to its budget and returns. [`StackSLEvolution`](reference/search.md#stackslevolution-kt-stackslevolution) is the same kind of search held as an object, so you can run some generations, look, change something and carry on. Here it runs 600 renders toward the disc target and shows the leaders:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stacksl_evolve/steer.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1100" timeout="600" name="stacksl-evolve-steer"}
 :::static
@@ -278,3 +278,10 @@ Without the watchmaker, these are the five built-in targets' best programs at 1,
 
 ??? aside "Why the targets are made in Kotlin, not taken from the StackSL gallery"
     A gallery still is a picture some StackSL program already makes, so searching for it would be a program-recovery task, and a good score could mean either "the search works" or "it rediscovered a short program from its own vocabulary". The built-in targets are drawn with arithmetic StackSL has no single word for. Each one can still be drawn by a hand-written program of 7 to 19 words, which the smoke test checks, so a target the search fails on is one it could have reached.
+
+## API reference
+
+- Running evolution and fitting the programs:
+  [`StackSLEvolution`](reference/search.md#stackslevolution-kt-stackslevolution) —
+  [`fit`](reference/search.md#stackslevolution-kt--stackslevolution--fit),
+  [`runTo`](reference/search.md#stackslevolution-kt--stackslevolution--runto).

@@ -39,8 +39,17 @@ an interactive embed. Use collection literals when their element types remain cl
 A short example can legitimately delegate to a substantial helper. When it does, link the helper
 class and the method doing the work to their actual reference entries, preferably from the nearby
 explanation. Check both anchors. A class-only or source-file-only link does not explain which
-operation the example relies on. Expose useful controls and intermediate results in the example
-where they help a reader change it; avoid hiding the entire lesson behind a named demo object.
+operation the example relies on. Put the transformation the lesson teaches in the box: selecting
+inputs, iterating, measuring and mapping results should be visible and editable. Name useful
+intermediate values so a reader can inspect them. Fold output setup and keep ordinary library
+algorithms, native operations and resource ownership behind their public APIs. A later reuse can
+stay concise when its implementation is already taught in the same example.
+
+Preserve default results while opening an example. Compare with its previous implementation,
+exercise meaningful parameter changes and reruns, and recapture affected figures through the
+docs runner. Inspect those captures. The [cellular-automaton pilot](EXAMPLE_MEAT_PILOT_20261113.md)
+and the [corpus pass checkpoint](teaching_code_open_implementations/README.md) record this process.
+Generated preambles remain owned by their generator.
 
 ## Census and rehearsal
 
@@ -153,15 +162,16 @@ fragment, and see the result soon? In particular:
   reason to remain. Shortening a raw call is not a successful revision. If a normal task
   requires an escape hatch, report the missing API or convention as a helper idea.
 - **The creative values are on top.** A number someone will want to change (a speed, a colour,
-  a count) is a named `var` near the top of the box, or a control, and not a literal buried in
+  a count) is a named value near the top of the box, or a control, and not a literal buried in
   a lambda deep inside the code.
-- **Useful lines can run alone.** A declaration and a later assignment to the same value can
-  deliberately have the same initial value. In `var x = 10; x = 10; frames { x++; print(x) }`,
-  the assignment is a live reset point: change its `10` to `11` and Alt-Enter that line to
-  update the variable the running loop captured. Re-executing the declaration creates a new
-  variable while the loop keeps the old one. Preserve these reset points, and identify which
-  lines can change a running example without rebuilding its setup. Judge an edit by the time
-  to find the creative value, get feedback and rerun confidently; line count is only a clue.
+- **Useful lines can run alone.** For a mutable control captured by running code, a compatible
+  `var` redeclaration now updates older mutable backing fields in that Kotlin engine. This is
+  implemented by `KotlinInterface2`; the [runtime verification](repl_variable_rebinding/README.md)
+  covers retained closures, failed initializers, type changes and engine isolation. Use that
+  declaration as the edit point. Immutable snapshots and delegated properties retain their own
+  semantics. Show which later mapping or rendering lines need a rerun after an input changes.
+  Judge an edit by the time to find the creative value, get feedback and rerun confidently;
+  line count is only a clue.
 - **Collection literals.** House style uses `[a, b, c]` where a collection literal can express
   the intended type, including list arguments, loop inputs and chained collection operations.
   Prefer it to `listOf(...)`; check inference/overloads in the actual box compiler. Keep a factory

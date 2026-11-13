@@ -83,14 +83,14 @@ impl Canvas {
     }
 
     /// mm³ in one buffer pixel holding `coats` of wet paint.
-    fn mm3_per_coat_px(&self) -> f64 {
+    pub(crate) fn mm3_per_coat_px(&self) -> f64 {
         let mm_px = self.mm_per_unit as f64 / self.f.scale as f64;
         // a coat is the crate's unit layer (`surface::COAT_UM` µm)
         mm_px * mm_px * crate::surface::COAT_UM as f64 * 1e-3
     }
 
     /// Move `v` coats of the wet paint at `from` (its own mixture) onto `to`.
-    fn move_paint(&mut self, from: usize, to: usize, v: f32) {
+    pub(crate) fn move_paint(&mut self, from: usize, to: usize, v: f32) {
         if v <= 0.0 {
             return;
         }
@@ -107,7 +107,7 @@ impl Canvas {
     /// Let pressed paint spread for `steps` steps where `contact` (per buffer pixel, 0..1) says
     /// something presses on it: a thin-film flow from thick to thin, faster in thicker, more open
     /// and more fluid paint. Moves paint, never makes or loses it. Returns the coats moved.
-    fn spread_pressed(&mut self, contact: &[f32], steps: usize, rate: f32, b: (usize, usize, usize, usize)) -> f64 {
+    pub(crate) fn spread_pressed(&mut self, contact: &[f32], steps: usize, rate: f32, b: (usize, usize, usize, usize)) -> f64 {
         let w = self.f.w;
         let (x0, y0, x1, y1) = b;
         if steps == 0 || x0 >= x1 || y0 >= y1 {

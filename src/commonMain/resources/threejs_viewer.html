@@ -266,6 +266,10 @@
         /* The inspector's three controls. Deliberately the same visual language as the edit tools:
            the point of this pane is that measuring, sectioning and exploding are the same *kind* of
            thing as selecting a vertex, not a separate mode you have to go somewhere else for. */
+        .motion-readout {
+            user-select: text; max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            display: inline-block; line-height: 28px;
+        }
         .hud-slider {
             display: inline-flex;
             align-items: center;
@@ -421,6 +425,15 @@
             <button type="button" class="hud-button" id="camera-link" aria-label="Link camera" aria-pressed="false" disabled title="Link cameras with other opted-in views in this document">Link camera</button>
             <span id="glb-status" role="status" aria-live="polite"></span>
         </div>
+        <div class="hud-group hidden" id="motion-tools" aria-label="Motions">
+            <button type="button" class="hud-button" id="motion-play" aria-pressed="false" title="Play every declared motion from its start to its end and back">Play</button>
+            <label class="hud-slider" id="motion-scrub-wrap">open
+                <input type="range" id="motion-scrub" min="0" max="1000" value="0" aria-label="How far along its motion every moving part is">
+            </label>
+            <button type="button" class="hud-button hidden" id="motion-tracks" aria-pressed="false" title="Show the paths the moving parts sweep, coloured by the value at each step">Tracks</button>
+            <button type="button" class="hud-button" id="motion-rest" title="Put every moving part back where the model has it">At rest</button>
+            <span class="hud-slider motion-readout" id="motion-readout" role="status"></span>
+        </div>
         <div id="viewer-tools"></div>
         <div class="hud-group hidden" id="feature-tools">
         </div>
@@ -568,12 +581,55 @@ const viewerTools = createViewerTools({
         return {THREE, camera, controls, overlays, inspector: window.FieldInspector, surface: renderer.domElement,
             interactionBusy: () => featureModeEl.value !== 'off' || inspectorState.measuring,
             sources: () => featureSources().map(s => ({id:s.id, label:s.label, object:s.slot.object})),
+            // Parts by their stable id, with the layer path and metadata the box gave them.
+            parts: () => viewerParts(), part: id => viewerParts().find(p => p.id === id) || null,
+            metadata: () => payloadState?.metadata ?? null,
+            hidePart: (id, hidden=true) => setPartHidden(id, hidden),
+            motion: () => motionStatus(),
             release: () => scene.remove(overlays)};
     }
 });
 let captureState = {ready:false, error:null, revision:null};
+/**
+ * Put the camera at `pose` ({eye, target}, and optionally up, fov and zoom; what `cameraPose()` returns) and draw
+ * at once. The pose holds across the box's redraws as a person's orbit does, until the box asks for a different
+ * camera. Returns the pose now shown.
+ */
+function setCamera(pose) {
+    const vec = (v, what) => {
+        if (!Array.isArray(v) || v.length !== 3 || !v.every(Number.isFinite)) throw new Error(`setCamera: ${what} must be [x, y, z]`);
+        return v;
+    };
+    const eye = vec(pose?.eye, 'eye'), target = vec(pose?.target, 'target');
+    if (eye.every((v, i) => v === target[i])) throw new Error('setCamera: eye and target are the same point');
+    const up = pose.up == null ? camera.up.toArray() : vec(pose.up, 'up');
+    if (up.every(v => v === 0)) throw new Error('setCamera: up must be nonzero');
+    if (pose.fov != null && !(Number.isFinite(pose.fov) && pose.fov > 0 && pose.fov < 180)) throw new Error('setCamera: fov must be between 0 and 180');
+    if (pose.zoom != null && !(Number.isFinite(pose.zoom) && pose.zoom > 0)) throw new Error('setCamera: zoom must be positive');
+    // No inertia carried over from a person's orbit, as a linked view's pose arrives.
+    const damping = controls.enableDamping;
+    controls.enableDamping = false; controls.update();
+    camera.position.fromArray(eye); controls.target.fromArray(target); cameraUp(up);
+    if (pose.fov != null) camera.fov = pose.fov;
+    if (pose.zoom != null) camera.zoom = pose.zoom;
+    const distance = camera.position.distanceTo(controls.target);
+    controls.minDistance = Math.min(controls.minDistance, distance * .5);
+    controls.maxDistance = Math.max(controls.maxDistance, distance * 2);
+    camera.updateProjectionMatrix(); controls.update(); controls.enableDamping = damping;
+    cameraWasMoved = true;
+    render();
+    return window.FieldViewer.cameraPose();
+}
 window.FieldViewer = Object.freeze({followStatus: () => cameraFollow.status(),
-    cameraPose: () => ({eye:camera.position.toArray(), target:controls.target.toArray(), zoom:camera.zoom}),
+    parts: () => viewerParts().map(({objects, ...part}) => featureClone(part)),
+    metadata: () => featureClone(payloadState?.metadata ?? null),
+    hidePart: (id, hidden=true) => setPartHidden(id, hidden),
+    partStyle: (id, panel=0) => featureClone(partStyleFor(id, panel)),
+    motion: Object.freeze({play: (on=true) => motionPlay(on), at: (t) => motionScrub(t), rest: () => motionRest(),
+        tracks: (on=true) => motionTracks(on), status: () => featureClone(motionStatus())}),
+    cameraPose: () => ({eye:camera.position.toArray(), target:controls.target.toArray(), up:camera.up.toArray(),
+        zoom:camera.zoom, fov:camera.fov}),
+    setCamera,
     renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools,
     snapshotImage: () => { render(); return renderer.domElement.toDataURL('image/png'); },
     snapshotForPublication,
@@ -3452,9 +3508,18 @@ function flineRoleForObject(object) {
 function surfaceHitFor(entry, hit) {
     const surface = entry && entry.surface;
     if (!surface || !surface.positions || !hit) return null;
-    const tri = surfacePickTriangle(surface.positions, surface.index, hit.faceIndex);
+    let tri = surfacePickTriangle(surface.positions, surface.index, hit.faceIndex);
     if (!tri) return null;
-    const p = hit.point;
+    let p = hit.point;
+    // A part placed by a transform (a rigid move the server sent as one) has its arrays in its own frame;
+    // the hit is resolved where the part stands, without any explode offset, as for an untransformed part.
+    const placed = entry.meshes && entry.meshes[0] && entry.meshes[0].matrixAutoUpdate === false ? entry.meshes[0] : null;
+    if (placed) {
+        const base = slotBaseMatrixOf(placed);
+        const toBase = base.clone().multiply(placed.matrixWorld.clone().invert());
+        p = p.clone().applyMatrix4(toBase);
+        tri = tri.map((c) => new THREE.Vector3(c[0], c[1], c[2]).applyMatrix4(base).toArray());
+    }
     const point = [p.x, p.y, p.z];
     const ray = raycaster && raycaster.ray ? raycaster.ray.direction : null;
     const record = surfacePickClassify(
@@ -3464,6 +3529,11 @@ function surfaceHitFor(entry, hit) {
         ray ? [ray.x, ray.y, ray.z] : null
     );
     return { surface: surface, tri: tri, point: point, record: record };
+}
+
+function slotBaseMatrixOf(object) {
+    const slot = payloadGeometrySlots.drawables.find((s) => s && s.object === object);
+    return slot && slot.baseMatrix ? slot.baseMatrix : object.matrix;
 }
 
 /** A surface hit as the `three-surface-click` wire record — the sibling of `intersectionForHit`. */
@@ -3650,28 +3720,428 @@ function addPayloadPoints(data) {
     });
 }
 
+// [viewer-region motion-pose] BEGIN
+// Declared motions (ThreeMotion.kt), as data: `RigidMotion.toJson()` for the motion, plain numbers for the
+// per-step track. Pure — no DOM, no THREE — so `ThreeMotionPoseParityTest` runs it against
+// `afield.geometry.kinematics.RigidMotion.poseAt`, which is the definition it follows.
+
+/** The column-major 4×4 pose of [motion] at [value] (degrees for a rotation, distance for a slide). */
+function motionPoseAt(motion, value) {
+    if (motion && motion.type === 'slide') {
+        const d = motion.direction, n = Math.hypot(d[0], d[1], d[2]) || 1;
+        return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, d[0] / n * value, d[1] / n * value, d[2] / n * value, 1];
+    }
+    const a = value * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), k = 1 - c;
+    const ax = motion.axis, n = Math.hypot(ax[0], ax[1], ax[2]) || 1;
+    const x = ax[0] / n, y = ax[1] / n, z = ax[2] / n;
+    // Rodrigues, p' = R (p - point) + point; mCR = column C, row R, as RigidMotion.Rotation writes it.
+    const r00 = c + x * x * k, r01 = y * x * k + z * s, r02 = z * x * k - y * s;
+    const r10 = x * y * k - z * s, r11 = c + y * y * k, r12 = z * y * k + x * s;
+    const r20 = x * z * k + y * s, r21 = y * z * k - x * s, r22 = c + z * z * k;
+    const [px, py, pz] = motion.point;
+    return [r00, r01, r02, 0, r10, r11, r12, 0, r20, r21, r22, 0,
+        px - (r00 * px + r10 * py + r20 * pz), py - (r01 * px + r11 * py + r21 * pz), pz - (r02 * px + r12 * py + r22 * pz), 1];
+}
+
+/** The motion's value at parameter [t]: `from` at 0, `to` at 1. */
+function motionValueAt(motion, t) { return motion.from + (motion.to - motion.from) * t; }
+
+/** a · b, column-major 4×4. */
+function motionMultiply(a, b) {
+    const out = new Array(16).fill(0);
+    for (let col = 0; col < 4; col++) for (let row = 0; row < 4; row++) {
+        let sum = 0;
+        for (let k = 0; k < 4; k++) sum += a[k * 4 + row] * b[col * 4 + k];
+        out[col * 4 + row] = sum;
+    }
+    return out;
+}
+
+/** The inverse of a rigid pose: the transposed rotation, and the translation taken back through it. */
+function motionInvertRigid(m) {
+    const t = [m[12], m[13], m[14]];
+    return [m[0], m[4], m[8], 0, m[1], m[5], m[9], 0, m[2], m[6], m[10], 0,
+        -(m[0] * t[0] + m[1] * t[1] + m[2] * t[2]), -(m[4] * t[0] + m[5] * t[1] + m[6] * t[2]), -(m[8] * t[0] + m[9] * t[1] + m[10] * t[2]), 1];
+}
+
+/** Where a part drawn at the motion value [at] is moved to show it at [value]: pose(value) · pose(at)⁻¹. */
+function motionDelta(motion, at, value) { return motionMultiply(motionPoseAt(motion, value), motionInvertRigid(motionPoseAt(motion, at))); }
+
+/** The timeline's parameter at phase [u] of one period: SWING opens, holds, closes and holds; LOOP and ONCE run up. */
+function timelineAt(shape, u) {
+    const ease = (x) => x * x * (3 - 2 * x);
+    if (shape === 'LOOP' || shape === 'ONCE') return Math.max(0, Math.min(1, u));
+    const p = ((u % 1) + 1) % 1;
+    if (p < 0.4) return ease(p / 0.4);
+    if (p < 0.5) return 1;
+    if (p < 0.9) return 1 - ease((p - 0.5) / 0.4);
+    return 0;
+}
+
+/** The phase at which SWING first reaches [t] on its opening stroke, so play resumes from a scrubbed pose. */
+function timelinePhaseOf(shape, t) {
+    if (shape === 'LOOP' || shape === 'ONCE') return Math.max(0, Math.min(1, t));
+    let lo = 0, hi = 0.4;
+    for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (timelineAt(shape, mid) < t) lo = mid; else hi = mid; }
+    return (lo + hi) / 2;
+}
+
+/** The step of [track] nearest the motion value [value]. */
+function motionStepAt(track, value) {
+    let best = 0;
+    for (let k = 1; k < track.values.length; k++) if (Math.abs(track.values[k] - value) < Math.abs(track.values[best] - value)) best = k;
+    return best;
+}
+
+/** Which of [track]'s bands step [k]'s sample is in, or -1. */
+function motionBandOf(track, k) {
+    const v = track.samples[k], bands = track.bands || [];
+    for (let i = 0; i < bands.length; i++) if (v < bands[i].below) return i;
+    return -1;
+}
+// [viewer-region motion-pose] END
+
+// [motion player] The standard viewer's timeline: Play, a scrubber, At rest and Tracks, for every part a box
+// declared a motion for. The rest pose is each motion's drawn value (`at`); playing runs every motion from its
+// `from` to its `to` together on one parameter.
+const motionState = {entries: [], timeline: null, mode: 'rest', t: 0, playing: false, clock0: 0, raf: null,
+    tracksOn: false, tracks: null, autoplayed: false};
+const motionToolsEl = document.getElementById('motion-tools'), motionPlayEl = document.getElementById('motion-play');
+const motionScrubEl = document.getElementById('motion-scrub'), motionRestEl = document.getElementById('motion-rest');
+const motionTracksEl = document.getElementById('motion-tracks'), motionReadoutEl = document.getElementById('motion-readout');
+const MOTION_TRACK_PLAIN = [0.1, 0.5, 0.55];
+
+function motionsConfigure(payload) {
+    const motions = Array.isArray(payload.motions) ? payload.motions : [];
+    const bySlot = new Map();
+    for (const slot of payloadGeometrySlots.drawables) if (slot && slot.stableId) {
+        if (!bySlot.has(slot.stableId)) bySlot.set(slot.stableId, []);
+        bySlot.get(slot.stableId).push(slot);
+    }
+    // A part that no longer moves goes back to its base, without its motion's tint.
+    for (const slot of payloadGeometrySlots.drawables) if (slot && slot.motionMatrix) {
+        slot.motionMatrix.identity(); placeMovingSlot(slot); motionTint(slot, null); slot.motionMatrix = null;
+    }
+    motionState.entries = motions.map((m) => ({...m, at: Number.isFinite(m.at) ? m.at : 0,
+        slots: (m.parts || []).flatMap((id) => bySlot.get(id) || []), label: m.label || (m.parts || [])[0] || ''}));
+    for (const entry of motionState.entries) for (const slot of entry.slots) {
+        slot.motionMatrix = new THREE.Matrix4();
+        if (slot.object.matrixAutoUpdate) { slot.object.updateMatrix(); slot.object.matrixAutoUpdate = false; }
+    }
+    motionState.timeline = motions.length ? (payload.timeline || {periodSeconds: 7, shape: 'SWING'}) : null;
+    motionToolsEl.classList.toggle('hidden', !motions.length || payload.hud === false);
+    motionPlayEl.dataset.label = motionState.timeline?.playLabel || 'Play';
+    motionTracksEl.classList.toggle('hidden', !motionState.entries.some((e) => e.track?.points?.length));
+    if (!motions.length) { motionPlay(false); motionTracksDispose(); motionState.mode = 'rest'; }
+    else if (motionState.tracksOn) motionTracksBuild();
+    motionsApply();
+    if (motions.length && motionState.timeline.autoplay && !motionState.autoplayed) { motionState.autoplayed = true; motionPlay(true); }
+    motionHud();
+}
+
+/** A moving slot's matrix: its motion, on its base, then any explode offset. */
+function placeMovingSlot(slot) {
+    const o = slot.explodeOffset || [0, 0, 0];
+    slot.object.matrix.copy(slot.baseMatrix || new THREE.Matrix4()).premultiply(slot.motionMatrix);
+    slot.object.matrix.elements[12] += o[0]; slot.object.matrix.elements[13] += o[1]; slot.object.matrix.elements[14] += o[2];
+    slot.object.matrixWorldNeedsUpdate = true;
+}
+
+function motionEntryValue(entry) {
+    return motionState.mode === 'rest' ? entry.at : motionValueAt(entry.motion, motionState.t);
+}
+
+function motionTint(slot, colour) {
+    const materials = [slot.material, ...(slot.styleMaterials ? slot.styleMaterials.values() : [])];
+    for (const m of materials) {
+        if (!m || !m.emissive) continue;
+        if (m.userData.motionEmissive === undefined) m.userData.motionEmissive = m.emissive.getHex();
+        if (colour) m.emissive.setRGB(colour[0] * 0.75, colour[1] * 0.75, colour[2] * 0.75);
+        else m.emissive.setHex(m.userData.motionEmissive);
+    }
+}
+
+/** Every motion's pose and tint at the current mode and parameter. */
+function motionsApply() {
+    for (const entry of motionState.entries) {
+        const value = motionEntryValue(entry);
+        const delta = motionDelta(entry.motion, entry.at, value);
+        const track = entry.track;
+        const k = track ? motionStepAt(track, value) : -1;
+        const band = track && k >= 0 ? motionBandOf(track, k) : -1;
+        entry.value = value; entry.step = k; entry.band = band;
+        const tint = motionState.mode !== 'rest' && band >= 0 && track.bands[band].tint !== false ? track.bands[band].color : null;
+        for (const slot of entry.slots) {
+            slot.motionMatrix.fromArray(delta);
+            placeMovingSlot(slot);
+            motionTint(slot, tint);
+        }
+    }
+    if (motionState.tracks) for (const line of motionState.tracks.children)
+        line.visible = motionState.tracksOn && line.userData.entry.slots.some((s) => s.object.visible);
+    motionReadout();
+    if (document.activeElement !== motionScrubEl) motionScrubEl.value = String(Math.round((motionState.mode === 'rest' ? 0 : motionState.t) * 1000));
+    requestRender();
+}
+
+function motionFormat(entry, k) {
+    const track = entry.track, unit = track.unit ? ' ' + track.unit : '';
+    const sample = track.samples[k], value = track.values[k];
+    const where = track.labels && track.labels[k] ? ' from ' + track.labels[k] : '';
+    const at = entry.motion.type === 'rotation' ? Math.round(value) + '°' : value.toFixed(track.decimals ?? 2);
+    return entry.label + ' ' + (Number.isFinite(sample) ? sample.toFixed(track.decimals ?? 2) : '∞') + unit + where + ' at ' + at;
+}
+
+function motionStatus() {
+    return {mode: motionState.mode, t: motionState.t, playing: motionState.playing, tracks: motionState.tracksOn,
+        readout: motionReadoutEl.textContent,
+        parts: motionState.entries.map((e) => ({parts: e.parts, label: e.label, value: e.value, step: e.step, band: e.band,
+            sample: e.track && e.step >= 0 ? e.track.samples[e.step] : null, bandLabel: e.band >= 0 ? e.track.bands[e.band].label : null}))};
+}
+
+function motionReadout() {
+    const entries = motionState.entries;
+    if (!entries.length) { motionReadoutEl.textContent = ''; return; }
+    const tinting = (e, k) => { const b = motionBandOf(e.track, k); return b >= 0 && e.track.bands[b].tint !== false; };
+    if (motionState.mode === 'rest') {
+        const tracked = entries.filter((e) => e.track && (e.track.bands || []).some((b) => b.tint !== false));
+        const reach = tracked.map((e) => ({e, k: e.track.samples.findIndex((_, k) => tinting(e, k))})).filter((x) => x.k >= 0);
+        const band = tracked[0]?.track.bands.find((b) => b.tint !== false);
+        motionReadoutEl.textContent = tracked.length ? reach.length + ' of ' + tracked.length + ' motions reach ' + (band.label || 'a tinted band') : '';
+        motionReadoutEl.title = reach.map(({e, k}) => e.label + ' from ' + (e.motion.type === 'rotation' ? Math.round(e.track.values[k]) + '°' : e.track.values[k])).join('\n');
+        return;
+    }
+    const hits = entries.filter((e) => e.track && e.band >= 0 && e.track.bands[e.band].tint !== false && e.slots.some((s) => s.object.visible))
+        .sort((a, b) => a.track.samples[a.step] - b.track.samples[b.step]).map((e) => motionFormat(e, e.step));
+    motionReadoutEl.textContent = hits.length ? hits[0] + (hits.length > 1 ? '  +' + (hits.length - 1) : '') : (entries.some((e) => e.track) ? 'all clear' : '');
+    motionReadoutEl.title = hits.join('\n');
+}
+
+function motionHud() {
+    motionPlayEl.textContent = motionState.playing ? 'Pause' : (motionPlayEl.dataset.label || 'Play');
+    motionPlayEl.setAttribute('aria-pressed', String(motionState.playing));
+    motionPlayEl.classList.toggle('is-active', motionState.playing);
+    motionTracksEl.setAttribute('aria-pressed', String(motionState.tracksOn));
+    motionTracksEl.classList.toggle('is-active', motionState.tracksOn);
+}
+
+function motionTick(now) {
+    motionState.raf = null;
+    if (!motionState.playing) return;
+    const tl = motionState.timeline;
+    const u = (now - motionState.clock0) / 1000 / tl.periodSeconds;
+    motionState.t = timelineAt(tl.shape, tl.shape === 'LOOP' ? u % 1 : u);
+    motionsApply();
+    if (tl.shape === 'ONCE' && u >= 1) { motionPlay(false); return; }
+    motionState.raf = requestAnimationFrame(motionTick);
+}
+
+function motionPlay(on = true) {
+    motionState.playing = !!on && !!motionState.entries.length;
+    if (motionState.playing) {
+        if (motionState.mode === 'rest') { motionState.mode = 'play'; motionState.t = 0; }
+        motionState.mode = 'play';
+        const tl = motionState.timeline;
+        const t = tl.shape === 'ONCE' && motionState.t >= 1 ? 0 : motionState.t;
+        motionState.clock0 = performance.now() - timelinePhaseOf(tl.shape, t) * tl.periodSeconds * 1000;
+        if (!motionState.raf) motionState.raf = requestAnimationFrame(motionTick);
+    } else if (motionState.raf) { cancelAnimationFrame(motionState.raf); motionState.raf = null; }
+    motionHud();
+    return motionStatus();
+}
+
+function motionScrub(t) {
+    if (!Number.isFinite(t)) throw new Error('A motion parameter is a number in 0..1');
+    motionPlay(false);
+    motionState.mode = 'play'; motionState.t = Math.max(0, Math.min(1, t));
+    motionsApply();
+    return motionStatus();
+}
+
+function motionRest() { motionPlay(false); motionState.mode = 'rest'; motionsApply(); return motionStatus(); }
+
+function motionTracks(on = true) {
+    motionState.tracksOn = !!on;
+    if (motionState.tracksOn) motionTracksBuild(); else motionTracksDispose();
+    motionsApply(); motionHud();
+    return motionStatus();
+}
+
+function motionTracksDispose() {
+    if (!motionState.tracks) return;
+    for (const line of motionState.tracks.children) { line.geometry.dispose(); line.material.dispose(); }
+    scene.remove(motionState.tracks);
+    motionState.tracks = null;
+}
+
+/** The paths each track's points sweep through the steps, each segment in its step's band colour. */
+function motionTracksBuild() {
+    motionTracksDispose();
+    const root = new THREE.Group();
+    root.name = 'motion-tracks';
+    for (const entry of motionState.entries) {
+        const track = entry.track;
+        if (!track || !track.points || !track.points.length || track.values.length < 2) continue;
+        const position = [], colour = [];
+        // Track points are in the part's rest coordinates (value 0), so each step's pose places them.
+        const poses = track.values.map((v) => motionPoseAt(entry.motion, v));
+        const colourOf = (k) => { const b = motionBandOf(track, k); return b >= 0 ? track.bands[b].color : MOTION_TRACK_PLAIN; };
+        for (const p of track.points) for (let k = 0; k + 1 < poses.length; k++) for (const j of [k, k + 1]) {
+            const m = poses[j];
+            position.push(m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12], m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13], m[2] * p[0] + m[6] * p[1] + m[10] * p[2] + m[14]);
+            colour.push(...colourOf(j));
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colour, 3));
+        const line = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({vertexColors: true, depthTest: false, transparent: true, opacity: 0.9}));
+        line.renderOrder = 900;
+        line.userData.entry = entry;
+        root.add(line);
+    }
+    motionState.tracks = root;
+    scene.add(root);
+}
+
+motionPlayEl.addEventListener('click', () => motionPlay(!motionState.playing));
+motionRestEl.addEventListener('click', () => motionRest());
+motionTracksEl.addEventListener('click', () => motionTracks(!motionState.tracksOn));
+motionScrubEl.addEventListener('input', () => motionScrub(Number(motionScrubEl.value) / 1000));
+
+// [part identity] A part is every drawable with one `id`. Its layer path, metadata and starting visibility
+// come from the box (ThreeDrawable.layer/metadata/hidden); what the reader hides or selects is remembered by
+// that id, so a redraw of the same view keeps it even though every feature source id is new.
+function slotIdentity(slot, d) {
+    slot.stableId = (d && typeof d.id === 'string' && d.id) ? d.id : null;
+    slot.layer = Array.isArray(d?.layer) ? d.layer.filter((x) => typeof x === 'string' && x) : [];
+    slot.metadata = d?.metadata ?? null;
+    slot.initiallyHidden = !!d?.hidden;
+    slot.drawStyle = d?.style || {};
+    slot.hoverColor = d?.hoverColor || null;
+    slot.appearance = !!d?.appearanceApplied;
+    if (slot.styleKey !== undefined && slot.styleAppearance !== slot.appearance) disposeStyleMaterials(slot);
+    slot.styleAppearance = slot.appearance;
+}
+const partMemory = {seen: new Set(), hidden: new Set(), selected: null};
+/** Before a new artifact replaces the slots: which parts (by id) are hidden, and which one is selected. */
+function partMemoryRecord() {
+    const sources = featureSources(), byPart = new Map();
+    for (const s of sources) {
+        const id = s.slot.stableId;
+        if (!id) continue;
+        if (!byPart.has(id)) byPart.set(id, []);
+        byPart.get(id).push(s.id);
+    }
+    for (const [id, ids] of byPart) {
+        partMemory.seen.add(id);
+        if (ids.every((f) => inspectorState.hidden.has(f))) partMemory.hidden.add(id); else partMemory.hidden.delete(id);
+    }
+    const selected = sources.find((s) => s.id === inspectorState.selectedPart);
+    partMemory.selected = selected?.slot.stableId || null;
+}
+/** After: hide what was hidden by id, hide new parts that start hidden, and keep the selected part. */
+function partMemoryRestore(newArtifact) {
+    featureSourceCache = null;
+    const sources = featureSources();
+    for (const s of sources) {
+        const id = s.slot.stableId;
+        if (!id) continue;
+        const hide = partMemory.seen.has(id) ? (newArtifact && partMemory.hidden.has(id)) : s.slot.initiallyHidden;
+        if (hide) inspectorState.hidden.add(s.id);
+    }
+    for (const s of sources) if (s.slot.stableId) {
+        if (!partMemory.seen.has(s.slot.stableId) && s.slot.initiallyHidden) partMemory.hidden.add(s.slot.stableId);
+        partMemory.seen.add(s.slot.stableId);
+    }
+    if (partMemory.selected && !inspectorState.selectedPart) {
+        inspectorState.selectedPart = (sources.find((s) => s.slot.stableId === partMemory.selected && s.slot.object.isMesh) ||
+            sources.find((s) => s.slot.stableId === partMemory.selected))?.id || null;
+    }
+}
+/** The parts of the view by stable id: what a tool or a script finds a part by. */
+function viewerParts() {
+    const parts = new Map();
+    for (const s of featureSources()) {
+        const id = s.slot.stableId;
+        if (!id) continue;
+        let part = parts.get(id);
+        if (!part) parts.set(id, part = {id, label: s.slot.label || id, layer: s.slot.layer, metadata: s.slot.metadata,
+            panels: [], sources: [], objects: [], visible: false});
+        part.sources.push(s.id);
+        part.objects.push(s.slot.object);
+        if (!part.panels.includes(s.slot.panel)) part.panels.push(s.slot.panel);
+        part.visible = part.visible || !inspectorState.hidden.has(s.id);
+    }
+    return [...parts.values()];
+}
+function setPartHidden(id, hidden = true) {
+    const part = viewerParts().find((p) => p.id === id);
+    if (!part) throw new Error('Unknown part ' + id);
+    partSolo = null;
+    for (const f of part.sources) { if (hidden) inspectorState.hidden.add(f); else inspectorState.hidden.delete(f); }
+    inspectorRefresh(); inspectorPartHud();
+    return inspectorSnapshot();
+}
+
+// [part styles] ThreePartStyle, from the box: scene-wide (`payload.partStyles`) or a panel's own
+// (`panels[i].partStyles`, which wins there). Applied by swapping in a material made for the style, once per
+// part and style, so a restyle or a panel change is a pointer swap and never touches the geometry.
+const PART_STYLE_HIGHLIGHT = [0.95, 0.12, 0.08], PART_STYLE_MUTED = [0.62, 0.64, 0.66];
+function partStyleFor(id, panelIndex) {
+    if (!id || !payloadState) return null;
+    const panel = (payloadState.panels || [])[panelIndex];
+    return panel?.partStyles?.[id] || payloadState.partStyles?.[id] || null;
+}
+function disposeStyleMaterials(slot) {
+    if (!slot.styleMaterials) return;
+    if (slot.object && slot.material && slot.object.material !== slot.material) slot.object.material = slot.material;
+    slot.styleMaterials.forEach((m) => m.dispose());
+    slot.styleMaterials = null;
+}
+function styledMaterial(slot, style) {
+    const key = JSON.stringify(style);
+    slot.styleMaterials = slot.styleMaterials || new Map();
+    if (slot.styleMaterials.has(key)) return slot.styleMaterials.get(key);
+    const base = slot.material, kind = slot.kindOfDraw;
+    const muted = style.emphasis === 'MUTED', highlight = style.emphasis === 'HIGHLIGHT';
+    const colour = slot.appearance ? null : (style.color || (muted ? PART_STYLE_MUTED : highlight ? PART_STYLE_HIGHLIGHT : null));
+    const opacity = Number.isFinite(style.opacity) ? style.opacity : muted ? 0.18 : (base.opacity ?? 1);
+    let material = base;
+    if (kind === 'surface') {
+        material = makeSurfaceMaterial({...slot.drawStyle, opacity, depthWrite: opacity >= 0.999 && slot.drawStyle.depthWrite !== false}, slot.hoverColor);
+        if (colour) { material.color.setRGB(colour[0], colour[1], colour[2]); material.vertexColors = false; }
+        if (highlight && material.emissive) {
+            const glow = colour || style.color || PART_STYLE_HIGHLIGHT;
+            material.emissive.setRGB(glow[0] * 0.45, glow[1] * 0.45, glow[2] * 0.45); material.emissiveIntensity = 1;
+        }
+        material.userData = {...(base.userData || {})};
+        material.clippingPlanes = base.clippingPlanes;
+    } else if (kind === 'lines' && (colour || Number.isFinite(style.opacity) || muted)) {
+        const c = colour || [0.08, 0.1, 0.12];
+        material = new THREE.LineBasicMaterial({color: new THREE.Color(c[0], c[1], c[2]), transparent: true,
+            opacity: Math.min(1, opacity * (muted ? 1.6 : 1)), depthWrite: false, clippingPlanes: base.clippingPlanes});
+    }
+    slot.styleMaterials.set(key, material);
+    return material;
+}
+/** Put each part in the material its style asks for in panel [panelIndex] (0 for a single view). */
+function applyPartStyles(panelIndex) {
+    const any = payloadState && (Object.keys(payloadState.partStyles || {}).length ||
+        (payloadState.panels || []).some((p) => p && p.partStyles && Object.keys(p.partStyles).length));
+    for (const slot of payloadGeometrySlots.drawables) {
+        if (!slot || !slot.object || !slot.material) continue;
+        const style = any ? partStyleFor(slot.stableId, panelIndex) : null;
+        const material = style ? styledMaterial(slot, style) : slot.material;
+        if (slot.object.material !== material) slot.object.material = material;
+    }
+}
+
 /** Tear down every drawable slot — called before a payload rebuilds them. */
 function clearDrawableSlots() {
-    payloadGeometrySlots.drawables.forEach((slot) => {
-        if (!slot) return;
-        if (slot.wire) {
-            if (slot.object) slot.object.remove(slot.wire);
-            slot.wire.geometry.dispose();
-            slot.wire.material.dispose();
-        }
-        removeSlot(slot);
-    });
+    payloadGeometrySlots.drawables.forEach((slot) => { if (slot) disposeDrawableSlot(slot); });
     payloadGeometrySlots.drawables = [];
 }
 
-/**
- * Build the scene's ThreeDrawables.
- *
- * Rebuilt wholesale rather than updated in place: a drawable list can change length and change
- * materials between payloads, which is exactly the case `updateGeometryInPlace` refuses. The
- * in-place path still carries the frame-by-frame load, because that is the FLine geometry above and
- * it is what a slider actually drives.
- */
 /**
  * Everything about a drawable except its colours, as a key: when the key of every drawable matches
  * what is on screen, only colours (or other per-vertex values) changed, and they are written into the
@@ -3699,6 +4169,7 @@ function updateDrawablesInPlace(list) {
     const keys = list.map(drawableTopologyKey);
     if (keys.some((k, i) => !k || !slots[i] || slots[i].topologyKey !== k)) return false;
     list.forEach((d, i) => {
+        slotIdentity(slots[i], d);
         const geometry = slots[i].object.geometry;
         for (const name of ['color', 'alpha']) {
             const spec = d.geometry.attributes && d.geometry.attributes[name];
@@ -3713,90 +4184,188 @@ function updateDrawablesInPlace(list) {
     return true;
 }
 
+/**
+ * Everything about a drawable that its built object depends on, as a key: its arrays (by the hashes the
+ * server sent, colours and alphas aside, which are written in place), index, kind, style, hover and pick.
+ * Not its id, panel, group, callback or transform, which a reused slot simply takes on. Null when an array
+ * came without a hash, which is never reused.
+ */
+function drawableGeometryKey(d) {
+    const g = d && d.geometry;
+    if (!g) return null;
+    const attrs = [];
+    for (const [name, spec] of Object.entries(g.attributes || {})) {
+        if (!spec || !spec.hash) return null;
+        attrs.push([name, name === 'color' || name === 'alpha' ? spec.array.length : spec.hash]);
+    }
+    if (g.index && !g.index.hash) return null;
+    return JSON.stringify([d.style, d.pickable, d.hoverColor ? Array.from(d.hoverColor) : null, attrs, g.index ? g.index.hash : null]);
+}
+
+/**
+ * Build the scene's ThreeDrawables, keeping every slot whose geometry the new list still has.
+ *
+ * Each new drawable takes an old slot with the same `drawableGeometryKey` when there is one — the part that
+ * did not change, or moved and came as a transform on the same arrays, or was only restyled — and is
+ * rebuilt only when there is not. A reused slot takes the new drawable's transform, panel, group and ids,
+ * and its colours in place. So a drag that reshapes three parts of two hundred builds three objects, not two
+ * hundred, and uploads nothing else to the GPU. Old slots nothing claimed are disposed.
+ */
 function addPayloadDrawables(list) {
-    if (window.fieldThreeWireReuse !== false && updateDrawablesInPlace(list)) { window.fieldThreeWireStats.inPlace = true; return; }
-    window.fieldThreeWireStats.inPlace = false;
-    clearDrawableSlots();
-    if (!Array.isArray(list) || !list.length) return;
-
-    list.forEach((d, index) => {
+    const stats = window.fieldThreeWireStats;
+    if (window.fieldThreeWireReuse !== false && updateDrawablesInPlace(list)) {
+        stats.inPlace = true; stats.builtSlots = 0; stats.reusedSlots = list.length; return;
+    }
+    stats.inPlace = false;
+    if (window.fieldThreeWireReuse === false || !Array.isArray(list) || !list.length) clearDrawableSlots();
+    const pool = new Map();
+    for (const slot of payloadGeometrySlots.drawables) {
+        if (!slot) continue;
+        const key = slot.geometryKey;
+        if (!key) { disposeDrawableSlot(slot); continue; }
+        if (!pool.has(key)) pool.set(key, []);
+        pool.get(key).push(slot);
+    }
+    payloadGeometrySlots.drawables = [];
+    let built = 0, reused = 0;
+    (Array.isArray(list) ? list : []).forEach((d, index) => {
         if (!d || !d.geometry) return;
-        const kind = (d.style && d.style.kind) || 'surface';
-        const ObjectClass = kind === 'lines' ? THREE.LineSegments : (kind === 'points' ? THREE.Points : THREE.Mesh);
-        const defaults = {
-            color: { itemSize: 3, fill: [1, 1, 1] },
-            alpha: { itemSize: 1, fill: 1 }
-        };
-        if (kind === 'points') defaults.size = { itemSize: 1, fill: 3 };
-
-        const slot = upsertGeometrySlot(null, d.geometry, {
-            kind: 'drawable-' + index,
-            ObjectClass: ObjectClass,
-            // Normals come from Kotlin (toThreeDrawable), matching what the CPU rasterizer shades.
-            // Recomputing here would be an unconditional smooth average and would round every hard
-            // edge off a cube.
-            computeNormals: false,
-            defaults: defaults,
-            makeMaterial: () => {
-                if (kind === 'lines') return makeLineMaterial();
-                if (kind === 'points') return makePointMaterial();
-                return makeSurfaceMaterial(d.style, d.hoverColor);
-            },
-            // `setInteractiveHover` reaches for this by name on whatever mesh it was handed, so a
-            // hovering solid has to carry it exactly as an interactive FLine fill does.
-            //
-            // A part's own x-ray opacity (ThreePartAppearance.xrayOpacity) belongs here too. It sat in the
-            // interactive-lines options from 2026-10-04 to 10-07, where `d` is not defined: every
-            // clickable stroked FLine threw on build, and no part's x-ray opacity was ever applied.
-            configureObject: (object, material) => {
-                object.userData.interactiveMat = material;
-                if (Number.isFinite(d.style?.xrayOpacity)) material.userData.fieldXrayOpacity = d.style.xrayOpacity;
-            }
-        });
-        if (!slot) return;
-
-        slot.panel = (d.panel === undefined || d.panel === null) ? 0 : d.panel;
-        slot.label = d.label || null;
-        slot.partId = d.id || d.label || String(index);
-        slot.group = Number.isFinite(d.group) ? d.group : -1;
-        // The drawable's own kind, kept because `slot.kind` is the upsert cache key (`drawable-3`) and
-        // says nothing about whether this is a surface. The section's cut outline needs to know.
-        slot.kindOfDraw = kind;
-        slot.topologyKey = drawableTopologyKey(d);
-        slot.attributeHashes = {color: d.geometry.attributes?.color?.hash || null, alpha: d.geometry.attributes?.alpha?.hash || null};
-        slot.fitSample = fitSampleOf(d.geometry);
-        // What a shot moves: explode offsets (an `explode` attribute beside `position`) and x-ray (a solid
-        // opacity to mix the authored one from). The base positions are kept so explode 0 is exact.
-        const explodeAttribute = slot.object.geometry.getAttribute('explode');
-        const positionAttribute = slot.object.geometry.getAttribute('position');
-        if (explodeAttribute && positionAttribute && explodeAttribute.array.length === positionAttribute.array.length) {
-            slot.explode = {base: Float32Array.from(positionAttribute.array), offsets: explodeAttribute.array, applied: 0};
-            // An exploded part leaves the bounds three.js culls by; culling it would blink it out at the edges.
-            slot.object.frustumCulled = false;
-        }
-        if (kind === 'surface' && Number.isFinite(d.style?.solidOpacity)) {
-            slot.shotOpacity = {solid: d.style.solidOpacity, authored: slot.material.opacity};
-        }
-        if (d.transform && d.transform.length === 16) {
-            slot.object.matrixAutoUpdate = false;
-            slot.object.matrix.fromArray(d.transform);
-        }
-        slot.object.updateMatrixWorld(true);
-        slot.baseMatrix = slot.object.matrix.clone();
-        if (kind === 'surface' && d.style && d.style.wireframe) {
-            slot.wire = makeWireframeOverlay(slot.object.geometry, d.style);
-            slot.object.add(slot.wire);
-        }
-        // A pickable surface joins the interactive set — `renderPayloadGeometry` collects these and
-        // appends them *after* the FLine entries, so a mixed scene's solid and its annotations are both
-        // in the same raycast and the measure tool can span the two. Only surfaces: a `lines` or
-        // `points` drawable has no element structure to classify a hit against, and pretending
-        // otherwise would report a triangle that is not there.
-        if (kind === 'surface' && d.pickable) {
-            slot.entry = surfaceEntry(d, [slot.object], index, drawableGeometryArrays(slot.object.geometry));
-        }
-        payloadGeometrySlots.drawables.push(slot);
+        const key = drawableGeometryKey(d);
+        // Prefer the slot that had this part's id, so a part keeps its own object when two parts share geometry.
+        const candidates = key ? pool.get(key) : null;
+        let at = candidates ? candidates.findIndex((s) => s.partId === (d.id || d.label || String(index))) : -1;
+        if (candidates && candidates.length && at < 0) at = 0;
+        const slot = at >= 0 ? candidates.splice(at, 1)[0] : null;
+        if (slot) { reuseDrawableSlot(slot, d, index); reused += 1; payloadGeometrySlots.drawables.push(slot); return; }
+        const fresh = buildDrawableSlot(d, index);
+        if (fresh) { built += 1; payloadGeometrySlots.drawables.push(fresh); }
     });
+    pool.forEach((slots) => slots.forEach(disposeDrawableSlot));
+    stats.builtSlots = built; stats.reusedSlots = reused;
+}
+
+function disposeDrawableSlot(slot) {
+    disposeStyleMaterials(slot);
+    if (slot.wire) {
+        if (slot.object) slot.object.remove(slot.wire);
+        slot.wire.geometry.dispose();
+        slot.wire.material.dispose();
+    }
+    removeSlot(slot);
+}
+
+/** Where a drawable sits: its transform, or none. Sets the slot's base matrix, which explode offsets from. */
+function placeDrawableSlot(slot, d) {
+    if (d.transform && d.transform.length === 16) {
+        slot.object.matrixAutoUpdate = false;
+        slot.object.matrix.fromArray(d.transform);
+    } else if (slot.object.matrixAutoUpdate === false) {
+        slot.object.matrixAutoUpdate = true;
+        slot.object.position.set(0, 0, 0); slot.object.quaternion.identity(); slot.object.scale.set(1, 1, 1);
+        slot.object.updateMatrix();
+    }
+    slot.object.updateMatrixWorld(true);
+    slot.baseMatrix = slot.object.matrix.clone();
+}
+
+/** A slot whose geometry the new drawable [d] shares, made [d]'s. */
+function reuseDrawableSlot(slot, d, index) {
+    slot.panel = (d.panel === undefined || d.panel === null) ? 0 : d.panel;
+    slot.label = d.label || null;
+    slot.partId = d.id || d.label || String(index);
+    slotIdentity(slot, d);
+    slot.group = Number.isFinite(d.group) ? d.group : -1;
+    slot.topologyKey = drawableTopologyKey(d);
+    const geometry = slot.object.geometry;
+    for (const name of ['color', 'alpha']) {
+        const spec = d.geometry.attributes && d.geometry.attributes[name];
+        const attribute = geometry.getAttribute(name);
+        if (!spec || !spec.array || !attribute || attribute.array.length !== spec.array.length) continue;
+        if (spec.hash && slot.attributeHashes[name] === spec.hash) continue;
+        attribute.array.set(spec.array, 0);
+        markAttributeUpdated(attribute, spec.array.length);
+        slot.attributeHashes[name] = spec.hash || null;
+    }
+    placeDrawableSlot(slot, d);
+    if (slot.kindOfDraw === 'surface' && d.pickable) {
+        slot.entry = surfaceEntry(d, [slot.object], index, drawableGeometryArrays(slot.object.geometry));
+    } else slot.entry = null;
+}
+
+/** One ThreeDrawable built from scratch; null when it has nothing to draw. */
+function buildDrawableSlot(d, index) {
+    const kind = (d.style && d.style.kind) || 'surface';
+    const ObjectClass = kind === 'lines' ? THREE.LineSegments : (kind === 'points' ? THREE.Points : THREE.Mesh);
+    const defaults = {
+        color: { itemSize: 3, fill: [1, 1, 1] },
+        alpha: { itemSize: 1, fill: 1 }
+    };
+    if (kind === 'points') defaults.size = { itemSize: 1, fill: 3 };
+
+    const slot = upsertGeometrySlot(null, d.geometry, {
+        kind: 'drawable-' + index,
+        ObjectClass: ObjectClass,
+        // Normals come from Kotlin (toThreeDrawable), matching what the CPU rasterizer shades.
+        // Recomputing here would be an unconditional smooth average and would round every hard
+        // edge off a cube.
+        computeNormals: false,
+        defaults: defaults,
+        makeMaterial: () => {
+            if (kind === 'lines') return makeLineMaterial();
+            if (kind === 'points') return makePointMaterial();
+            return makeSurfaceMaterial(d.style, d.hoverColor);
+        },
+        // `setInteractiveHover` reaches for this by name on whatever mesh it was handed, so a
+        // hovering solid has to carry it exactly as an interactive FLine fill does.
+        //
+        // A part's own x-ray opacity (ThreePartAppearance.xrayOpacity) belongs here too. It sat in the
+        // interactive-lines options from 2026-10-04 to 10-07, where `d` is not defined: every
+        // clickable stroked FLine threw on build, and no part's x-ray opacity was ever applied.
+        configureObject: (object, material) => {
+            object.userData.interactiveMat = material;
+            if (Number.isFinite(d.style?.xrayOpacity)) material.userData.fieldXrayOpacity = d.style.xrayOpacity;
+        }
+    });
+    if (!slot) return null;
+
+    slot.panel = (d.panel === undefined || d.panel === null) ? 0 : d.panel;
+    slot.label = d.label || null;
+    slot.partId = d.id || d.label || String(index);
+    slotIdentity(slot, d);
+    slot.group = Number.isFinite(d.group) ? d.group : -1;
+    // The drawable's own kind, kept because `slot.kind` is the upsert cache key (`drawable-3`) and
+    // says nothing about whether this is a surface. The section's cut outline needs to know.
+    slot.kindOfDraw = kind;
+    slot.topologyKey = drawableTopologyKey(d);
+    slot.geometryKey = drawableGeometryKey(d);
+    slot.attributeHashes = {color: d.geometry.attributes?.color?.hash || null, alpha: d.geometry.attributes?.alpha?.hash || null};
+    slot.fitSample = fitSampleOf(d.geometry);
+    // What a shot moves: explode offsets (an `explode` attribute beside `position`) and x-ray (a solid
+    // opacity to mix the authored one from). The base positions are kept so explode 0 is exact.
+    const explodeAttribute = slot.object.geometry.getAttribute('explode');
+    const positionAttribute = slot.object.geometry.getAttribute('position');
+    if (explodeAttribute && positionAttribute && explodeAttribute.array.length === positionAttribute.array.length) {
+        slot.explode = {base: Float32Array.from(positionAttribute.array), offsets: explodeAttribute.array, applied: 0};
+        // An exploded part leaves the bounds three.js culls by; culling it would blink it out at the edges.
+        slot.object.frustumCulled = false;
+    }
+    if (kind === 'surface' && Number.isFinite(d.style?.solidOpacity)) {
+        slot.shotOpacity = {solid: d.style.solidOpacity, authored: slot.material.opacity};
+    }
+    placeDrawableSlot(slot, d);
+    if (kind === 'surface' && d.style && d.style.wireframe) {
+        slot.wire = makeWireframeOverlay(slot.object.geometry, d.style);
+        slot.object.add(slot.wire);
+    }
+    // A pickable surface joins the interactive set — `renderPayloadGeometry` collects these and
+    // appends them *after* the FLine entries, so a mixed scene's solid and its annotations are both
+    // in the same raycast and the measure tool can span the two. Only surfaces: a `lines` or
+    // `points` drawable has no element structure to classify a hit against, and pretending
+    // otherwise would report a triangle that is not there.
+    if (kind === 'surface' && d.pickable) {
+        slot.entry = surfaceEntry(d, [slot.object], index, drawableGeometryArrays(slot.object.geometry));
+    }
+    return slot;
 }
 
 /**
@@ -4586,12 +5155,14 @@ function inspectorCapture(payload) {
     const spec = payload.inspector || {enabled:false,artifactDigest:payload.revision,section:{},renderOrigin:[0,0,0]};
     const artifact = spec.artifactDigest || payload.revision;
     // Assembly visibility belongs to the canonical parts; notes belong to the whole mixed scene.
-    if (!artifact || artifact !== previousArtifact) { inspectorState.hidden = new Set(); inspectorState.assemblyStep = null; }
+    const newArtifact = !artifact || artifact !== previousArtifact;
+    if (newArtifact) { inspectorState.hidden = new Set(); inspectorState.assemblyStep = null; }
     inspectorState.spec = spec;
     if (!previousRevision || previousRevision !== featureIdentity()) {
         inspectorState.selectedPart = null; inspectorState.selectedTriangle = null;
         inspectorState.selection = null; featureNoteEl.value='';
     }
+    partMemoryRestore(newArtifact);
     inspectorState.bounds = payload.bounds || null;
     inspectorState.diagonal = inspectorDiagonal(payload.bounds);
     inspectorState.picked = [];
@@ -4637,24 +5208,32 @@ function inspectorCapture(payload) {
             }
         });
     });
+    const groupCount = (spec.groups || []).length;
+    const lines = explodeGroupCentroids(allPositions, allGroups, groupCount);
     // Drawables contribute to their group's centroid too, or a solid grouped with an FLine annotation
-    // would slide to the annotation's centroid rather than to the pair's.
-    (payload.drawables || []).forEach((d) => {
-        const group = Number.isFinite(d.group) ? d.group : -1;
-        if (group < 0) return;
-        const array = d.geometry && d.geometry.attributes && d.geometry.attributes.position
-            ? d.geometry.attributes.position.array : null;
-        if (!array) return;
-        for (let i = 0; i + 2 < array.length; i += 3) {
-            const point = new THREE.Vector3(array[i], array[i + 1], array[i + 2]);
-            if (d.transform) point.applyMatrix4(new THREE.Matrix4().fromArray(d.transform));
-            allPositions.push(point.x, point.y, point.z);
-            allGroups.push(group);
-        }
+    // would slide to the annotation's centroid rather than to the pair's. Each slot's vertex sum is worked
+    // out once, when it is built, and placed by its matrix: the mean of moved points is the moved mean.
+    const sums = lines.centroids.map((c, g) => c ? [c[0] * lines.counts[g], c[1] * lines.counts[g], c[2] * lines.counts[g]] : [0, 0, 0]);
+    const counts = lines.counts.slice();
+    payloadGeometrySlots.drawables.forEach((slot) => {
+        const group = slot && Number.isFinite(slot.group) ? slot.group : -1;
+        if (group < 0 || group >= groupCount || !slot.object) return;
+        const local = slotVertexSum(slot);
+        if (!local.count) return;
+        const mean = new THREE.Vector3(local.x / local.count, local.y / local.count, local.z / local.count).applyMatrix4(slot.baseMatrix || new THREE.Matrix4());
+        sums[group][0] += mean.x * local.count; sums[group][1] += mean.y * local.count; sums[group][2] += mean.z * local.count;
+        counts[group] += local.count;
     });
-    inspectorState.centroids = explodeGroupCentroids(
-        allPositions, allGroups, (spec.groups || []).length
-    ).centroids;
+    inspectorState.centroids = sums.map((sum, g) => counts[g] ? [sum[0] / counts[g], sum[1] / counts[g], sum[2] / counts[g]] : null);
+}
+
+/** The sum of a slot's own (untransformed, unexploded) vertex positions, kept on the slot. */
+function slotVertexSum(slot) {
+    if (slot.vertexSum) return slot.vertexSum;
+    const position = slot.explode ? slot.explode.base : slot.object.geometry.getAttribute('position')?.array;
+    let x = 0, y = 0, z = 0, count = 0;
+    if (position) for (let i = 0; i + 2 < position.length; i += 3) { x += position[i]; y += position[i + 1]; z += position[i + 2]; count += 1; }
+    return slot.vertexSum = {x, y, z, count};
 }
 
 /** Every geometry the explode has to move, as `{ object, base, groups }`. */
@@ -4699,6 +5278,7 @@ function inspectorClippableMaterials() {
     payloadGeometrySlots.drawables.forEach((slot) => {
         if (!slot) return;
         if (slot.material) out.push(slot.material);
+        if (slot.styleMaterials) slot.styleMaterials.forEach((m) => out.push(m));
         if (slot.wire && slot.wire.material) out.push(slot.wire.material);
     });
     return out;
@@ -4737,7 +5317,10 @@ function inspectorApplyExplode() {
                 offset = spec.assembly[index].displacement.map(v => v * fraction);
             } else offset = [0,0,0];
         }
-        if (slot.object.matrixAutoUpdate === false) {
+        if (slot.motionMatrix) {
+            slot.explodeOffset = offset;
+            placeMovingSlot(slot);
+        } else if (slot.object.matrixAutoUpdate === false) {
             slot.object.matrix.copy(slot.baseMatrix);
             slot.object.matrix.elements[12] += offset[0];
             slot.object.matrix.elements[13] += offset[1];
@@ -5602,7 +6185,8 @@ function inspectorPartTree() {
         const key = group >= 0 ? 'group:' + group : kind === 'drawable' ? 'mesh:' + (source.source.id || source.id)
             : kind === 'fline' ? 'fline:' + source.source.index : source.id;
         if (!logical.has(key)) {
-            const path = paths[source.source.id] || paths[groups[group]] || paths[source.id];
+            const path = paths[source.source.id] || paths[groups[group]] || paths[source.id] ||
+                (slot.layer && slot.layer.length ? slot.layer : null);
             logical.set(key, {key, label: groups[group] || source.label, ids: [], path: Array.isArray(path) ? path :
                 [kind === 'drawable' ? 'Meshes' : kind === 'fline' ? 'FLines' : 'Guides']});
         }
@@ -5651,8 +6235,16 @@ function inspectorPartsChange(node, solo, visible) {
     }
     inspectorRefresh(); inspectorPartsSync();
 }
+let partHudSignature = null;
 function inspectorPartHud() {
     const host = document.getElementById('part-inspector');
+    // A redraw whose parts, folders and controls are as they were keeps the list it has (and its scroll and
+    // open folders), and only its checkboxes are brought up to date: rebuilding it was a few milliseconds of
+    // every drag frame on a scene of a hundred parts.
+    const signature = JSON.stringify([inspectorPartTree(), controlShown('parts'), controlShown('light'),
+        ((inspectorState.spec || {}).assembly || []).length, inspectorState.assemblyStep]);
+    if (signature === partHudSignature && host.childElementCount) { inspectorPartsSync(); return; }
+    partHudSignature = signature;
     const wasOpen = host.querySelector('details')?.open || false;
     const scroll = host.querySelector('.part-list')?.scrollTop || 0;
     host.replaceChildren(); partControls = [];
@@ -5721,6 +6313,7 @@ window.FieldInspector = Object.freeze({ snapshot: inspectorSnapshot, restore: in
         return {partId:s.partId, visible:s.object.visible, min:bounds.min.toArray(), max:bounds.max.toArray(), matrix:s.object.matrixWorld.toArray()};
     }),
     hide: (id, hidden=true) => { if(!inspectorPartIds().includes(id))throw new Error('Unknown part'); partSolo=null;if(hidden)inspectorState.hidden.add(id);else inspectorState.hidden.delete(id);inspectorRefresh();inspectorPartHud();return inspectorSnapshot(); },
+    hidePart: (id, hidden=true) => setPartHidden(id, hidden),
     section: (normal, fraction=.5) => inspectorRestore({...inspectorSnapshot(), sectionNormal:normal, sectionEnabled:true, sectionFraction:fraction}),
     assembly: step => inspectorRestore({...inspectorSnapshot(), assemblyStep:step}),
     xray: (enabled=true, opacity=xrayState.opacity) => inspectorRestore({...inspectorSnapshot(), xray:enabled, xrayOpacity:opacity}),
@@ -5737,6 +6330,11 @@ function inspectorRefresh() {
     inspectorApplySection();
     // Restore visibility for ordinary scenes too, including after unhide.
     for(const source of featureSources())source.slot.object.visible=!inspectorState.hidden.has(source.id);
+    applyPartStyles(0);
+    // What a hidden part sweeps is not shown, and the readout names only parts in view.
+    if (motionState.tracks) for (const line of motionState.tracks.children)
+        line.visible = motionState.tracksOn && line.userData.entry.slots.some((s) => s.object.visible);
+    if (motionState.entries.length) motionReadout();
     inspectorPartsSync();
     inspectorRebuildOverlay();
 }
@@ -6290,7 +6888,8 @@ function partAppearancePayload(payload, parts) {
             geometry: {...d.geometry, attributes: {...d.geometry.attributes,
                 color: {itemSize: 3, array: color, type: 'Float32Array', normalized: false}}},
             style: {...(d.style || {}), unlit: !!style.unlit,
-                xrayOpacity: Number.isFinite(style.xrayOpacity) ? style.xrayOpacity : null}
+                xrayOpacity: Number.isFinite(style.xrayOpacity) ? style.xrayOpacity : null},
+            appearanceApplied: true
         };
     })};
 }
@@ -6380,8 +6979,12 @@ function wireAssemble(table, reuse, missing, partial) {
 
 /** The arrays of the last geometry drawn, by content hash, for the next message to reuse. */
 let wireHeldArrays = new Map();
-/** What the last geometry message cost: bytes fetched, buffers reused, and milliseconds to apply. */
-window.fieldThreeWireStats = {messages: 0, fetchedBytes: 0, reusedBuffers: 0, applyMs: 0, inPlace: false};
+/**
+ * What the last geometry message cost: bytes fetched, buffers reused, milliseconds to parse and apply, the
+ * drawable objects built and kept, and when (`performance.timeOrigin + now()`) it arrived and its buffers did.
+ */
+window.fieldThreeWireStats = {messages: 0, fetchedBytes: 0, reusedBuffers: 0, applyMs: 0, inPlace: false,
+    builtSlots: 0, reusedSlots: 0, receivedAt: 0, fetchedAt: 0, parseMs: 0, descriptionBytes: 0};
 
 let wireState = null;
 
@@ -6439,6 +7042,7 @@ async function wirePump() {
                     }
                     if (!bytes) { wireState = wireAbandon(wireState); continue; }
                     window.fieldThreeWireStats.fetchedBytes = bytes.byteLength;
+                    window.fieldThreeWireStats.fetchedAt = performance.timeOrigin + performance.now();
                     window.fieldThreeWireStats.reusedBuffers = reuse.size;
                     const full = reuse.size ? wireAssemble(table, reuse, missing, bytes) : bytes;
                     const entries = table.entries || [];
@@ -6476,6 +7080,7 @@ function applyGeometry(payload) {
     editorState.marquee = null;
     hideMarquee();
 
+    partMemoryRecord();
     updateMeta(payload.meta);
     applyPickThresholds(payload.bounds);
     editorState.scene = payload.scene ? JSON.parse(JSON.stringify(payload.scene)) : null;
@@ -6523,6 +7128,7 @@ function applyGeometry(payload) {
     // Last, because it reads the geometry the steps above created and because framing the camera first
     // means the first dimension is offset across the view the user is actually going to see.
     inspectorCapture(payload);
+    motionsConfigure(payload);
     inspectorPartHud();
     viewerTools.sync(payload.toolModules || []).then(async () => {
         if (payloadState !== payload) return;
@@ -6604,7 +7210,13 @@ function connectWs() {
     ws.addEventListener('open', () => sendMessage({ type: 'hello', buffers: 1 }));
     ws.addEventListener('message', (event) => {
         let message = null;
+        const arrived = performance.timeOrigin + performance.now();
         try { message = JSON.parse(event.data); } catch (_) { return; }
+        if (message && message.type === 'three/geometry') {
+            window.fieldThreeWireStats.receivedAt = arrived;
+            window.fieldThreeWireStats.parseMs = performance.timeOrigin + performance.now() - arrived;
+            window.fieldThreeWireStats.descriptionBytes = event.data.length;
+        }
         if(message.type==='three-review-ack'){featureSaving=false; featureHud(); featureMessage(message.message,!message.ok);return;}
         if (message.type === 'three/snapshot-request') { answerSnapshot(message.id); return; }
         wireReceive(message);
@@ -7242,6 +7854,7 @@ function setPanelVisibility(index) {
         if (!slot || !slot.object) return;
         slot.object.visible = inspectorDrawableVisible(slot, ordinal) && (slot.panel === -1 || slot.panel === index);
     });
+    applyPartStyles(index);
     // A picked feature is highlighted in the panel it was picked in, not wherever its world position falls.
     inspectorRoot.children.forEach((child) => {
         if (child.userData.featurePanel != null) child.visible = child.userData.featurePanel === index;

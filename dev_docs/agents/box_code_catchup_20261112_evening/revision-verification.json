@@ -1,0 +1,313 @@
+{
+  "changes": [
+    {
+      "path": "dev_docs/agents/transcripts/neural_clouds.yaml",
+      "body": 2,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 1,
+      "handmadeTableRemoved": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/paint_fold_press.yaml",
+      "body": 0,
+      "collectionFactoriesRemoved": 1,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/paint_fold_press.yaml",
+      "body": 2,
+      "collectionFactoriesRemoved": 1,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 2,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "body": 1,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "body": 6,
+      "collectionFactoriesRemoved": 1,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "body": 7,
+      "collectionFactoriesRemoved": 2,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "body": 8,
+      "collectionFactoriesRemoved": 1,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "body": 9,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 1,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "body": 10,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "body": 11,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "body": 12,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "body": 13,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "body": 14,
+      "collectionFactoriesRemoved": 1,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "body": 39,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 1,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "body": 40,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 1,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "body": 44,
+      "collectionFactoriesRemoved": 1,
+      "htmlCardsRemoved": 3,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "public/docs/paint_canvas.md",
+      "body": 10,
+      "collectionFactoriesRemoved": 1,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "public/docs/path_tracing.md",
+      "body": 19,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 1,
+      "handmadeTableRemoved": 1
+    },
+    {
+      "path": "templates/text_one/body_interaction.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 1,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/context.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 2,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/drawing.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 1,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/drop_caps.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 1,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/elastic_sentences.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 2,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/example_four.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/example_one.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/example_two.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/frustum_readings.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/frustum_two_faces.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/global_controls.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 1,
+      "htmlCardsRemoved": 3,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/guides/10-elastic-connections.md",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/guides/11-drop-caps.md",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/guides/13-text-frames.md",
+      "body": 2,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/guides/14-frosted-frames.md",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/guides/17-mechanical-text-holders.md",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/guides/17-mechanical-text-holders.md",
+      "body": 1,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/guides/17-mechanical-text-holders.md",
+      "body": 2,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/navigation.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/overstroke_rectangle.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/overstroke_union.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/score.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 1,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/two_readings.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 1,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/typography_playground.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 0,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    },
+    {
+      "path": "templates/text_one/word_blur.kt",
+      "body": 0,
+      "collectionFactoriesRemoved": 1,
+      "htmlCardsRemoved": 0,
+      "handmadeTableRemoved": 0
+    }
+  ],
+  "note": "Textual deltas count source copies separately; mechanical-only changes have zero semantic deltas."
+}

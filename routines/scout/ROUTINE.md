@@ -12,7 +12,7 @@ cost: one agent for up to an hour and a half; a few MB a day of page text in the
 journal: nightly/scout-journal
 reports: git:nightly/scout-journal:reports
 verdict: (?m)^Outcome: (.+)$
-status-command: python3 tools/scout.py status
+status-command: uv run python tools/scout.py status
 ---
 
 # Idea scout
@@ -28,10 +28,11 @@ The scheduler's prompt gives you `$REPO` and `$WORKTREE_BASE`. `$JOURNAL` is
 `$WORKTREE_BASE/scout-journal`, a worktree of the orphan branch `nightly/scout-journal`. Every
 `tools/scout.py` command below defaults to that journal.
 
-1. **Make sure the journal exists:** `python3 $REPO/tools/scout.py init`. It attaches the branch, or
+1. **Make sure the journal exists:** `uv run --project $REPO python $REPO/tools/scout.py init`. It attaches the branch, or
    on a machine's first run creates it with a `.gitignore`, `SCRATCHPAD.md` and empty folders. Then
    read `$JOURNAL/SCRATCHPAD.md` in full, especially Marc's verdicts, which are the best guide to
-   his taste.
+   his taste. Run `tools/scout.py` through `uv run`, never the bare `python3` on `PATH`: an
+   interpreter with an old OpenSSL fails some feeds (CDM) with an SSL handshake error.
 2. **Follow the playbook.** Read `$REPO/routines/scout/PLAYBOOK.md` in full and follow it top to
    bottom: verdicts, harvest, title pass, fetch, read and write cards, ingest, digest, report,
    commit the journal.

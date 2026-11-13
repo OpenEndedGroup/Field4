@@ -1,6 +1,5 @@
 import afield.graphics.scene.body.*
 import afield.graphics.vulkan.Target
-import kotlin.math.*
 
 // These are persistent, inherited Field properties. Re-running this box keeps the controls' values.
 prop<Boolean>(readingBodyEnabled, true)
@@ -211,9 +210,9 @@ loop {
     if (now - lastBodyStats > 1_000_000_000L) {
         lastBodyStats = now
         val stats = bodyInteractionStats
-        display(
+        markdown(
             "body diagnostics",
-            "<div style='padding:12px;width:440px'>${stats["bones"]?.toInt() ?: 0} tracked bones · ${stats["nodes"]?.toInt() ?: 0} SIMD nodes · ${stats["pushing"]?.toInt() ?: 0} pushing. Bright dots and bone-to-node lines mark applied force. Dim dots are pinned. Contact uses these nodes; thread interior nodes and glyph outlines are not tested.</div>",
+            "${stats["bones"]?.toInt() ?: 0} tracked bones · ${stats["nodes"]?.toInt() ?: 0} SIMD nodes · ${stats["pushing"]?.toInt() ?: 0} pushing. Bright dots and bone-to-node lines mark applied force. Dim dots are pinned. Contact uses these nodes; thread interior nodes and glyph outlines are not tested.",
         )
     }
     frame()

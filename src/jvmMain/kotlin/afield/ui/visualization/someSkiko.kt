@@ -110,7 +110,7 @@ fun linesToHTML(
 /** [linesToHTML] framed on [frame] (source coordinates) rather than on these lines' own bounds. */
 internal fun linesToHTML(
     lines: List<FLine>, w: Double, h: Double, fitToSize: Boolean, frame: afield.app.protocol.Rect?,
-    callbackKey: String? = null, dragId: String? = null
+    callbackKey: String? = null, dragId: String? = null, handles: String? = null
 ): String {
     val renderable = lines.renderableLines()
     val fit = computeFitTransform(renderable, w, h, fitToSize, frame)
@@ -119,11 +119,11 @@ internal fun linesToHTML(
         wrapLinesOutput(
             buildInteractiveSVG(pairs, w, h, fit, callbackKey),
             frame?.let { framedBounds(it, fit, w, h, keepOrigin = true) } ?: pairs.map { it.second }.combinedRenderableBoundsOrNull(),
-            dragId
+            dragId, handles
         )
     } else {
         val scaled = renderable.map { it.applyFit(fit) }
-        wrapLinesOutput(drawToSVG(scaled, w, h), frame?.let { framedBounds(it, fit, w, h) } ?: renderedSvgBoundsFor(scaled, w, h), dragId)
+        wrapLinesOutput(drawToSVG(scaled, w, h), frame?.let { framedBounds(it, fit, w, h) } ?: renderedSvgBoundsFor(scaled, w, h), dragId, handles)
     }
 }
 
@@ -157,6 +157,7 @@ fun Box.lines(
     framing: LinesFraming = LinesFraming.Auto,
     onDrag: ((LinesDragEvent) -> Unit)? = null,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
+    handles: List<LinesHandle> = emptyList(),
 ): EditableFLineViewState? {
     val lines = m.asList().renderableLines()
     val frame = linesFrame(channel, lines, framing)
@@ -169,7 +170,8 @@ fun Box.lines(
     }
     val fit = computeFitTransform(lines, w, h, fitToSize, frame)
     display(channel, linesToHTML(lines, w, h, fitToSize, frame, callbackKey = "$id/$channel",
-        dragId = onDrag?.let { registerLinesDrag(this, channel, fit, it) }))
+        dragId = onDrag?.let { registerLinesDrag(this, channel, fit, it, handles) },
+        handles = if (onDrag != null) linesHandlesAttribute(handles, fit) else null))
     return null
 }
 
@@ -203,6 +205,7 @@ fun Box.lines(
     framing: LinesFraming = LinesFraming.Auto,
     onDrag: ((LinesDragEvent) -> Unit)? = null,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
+    handles: List<LinesHandle> = emptyList(),
 ): EditableFLineViewState? {
     val lines = m.renderableLines()
     val frame = linesFrame(channel, lines, framing)
@@ -215,7 +218,8 @@ fun Box.lines(
     }
     val fit = computeFitTransform(lines, w, h, fitToSize, frame)
     display(channel, linesToHTML(lines, w, h, fitToSize, frame, callbackKey = "$id/$channel",
-        dragId = onDrag?.let { registerLinesDrag(this, channel, fit, it) }))
+        dragId = onDrag?.let { registerLinesDrag(this, channel, fit, it, handles) },
+        handles = if (onDrag != null) linesHandlesAttribute(handles, fit) else null))
     return null
 }
 
@@ -318,45 +322,33 @@ private fun emptySvg(w: Double, h: Double): String {
     return """<svg xmlns="http://www.w3.org/2000/svg" width="$width" height="$height" style="overflow:visible"/>"""
 }
 
-private fun wrapLinesOutput(svg: String, bounds: afield.app.protocol.Rect? = null, dragId: String? = null): String {
+private fun wrapLinesOutput(svg: String, bounds: afield.app.protocol.Rect? = null, dragId: String? = null, handles: String? = null): String {
     val boundsAttrs = bounds?.let {
         """ data-afield-bounds-x="${jsonN(it.x)}" data-afield-bounds-y="${jsonN(it.y)}" data-afield-bounds-w="${jsonN(it.w)}" data-afield-bounds-h="${jsonN(it.h)}""""
     } ?: ""
-    val dragAttr = dragId?.let { """ data-afield-drag="${it.replace("&", "&amp;").replace("\"", "&quot;")}"""" } ?: ""
-    return """<div class="afield-lines-output" data-afield-lines-output="true"$boundsAttrs$dragAttr>$svg</div>"""
+    fun attr(v: String) = v.replace("&", "&amp;").replace("\"", "&quot;")
+    val dragAttr = dragId?.let { """ data-afield-drag="${attr(it)}"""" } ?: ""
+    val handlesAttr = handles?.let { """ data-afield-handles="${attr(it)}"""" } ?: ""
+    return """<div class="afield-lines-output" data-afield-lines-output="true"$boundsAttrs$dragAttr$handlesAttr>$svg</div>"""
 }
 
 /**
  * A pointer dragged across a `lines(...)` drawing, in the lines' own coordinates: [phase] is
  * [Phase.START] on press, [Phase.MOVE] while the pointer moves pressed (at most once a frame), and
  * [Phase.END] on release.
+ *
+ * [handle] is the name of the [LinesHandle] the drag holds, the same on every event of one drag,
+ * or null when the press took no handle. A handle drag's [x] and [y] are where the handle is being
+ * put (the pointer less the offset it was grabbed at), so a handle never jumps on press; [value]
+ * reads the one that matters for a handle bound to x or to y.
  */
-data class LinesDragEvent(val x: Double, val y: Double, val phase: Phase) {
+data class LinesDragEvent(
+    val x: Double, val y: Double, val phase: Phase,
+    val handle: String? = null,
+    /** [x] for a drag holding a handle bound to x, [y] for one bound to y, otherwise [x]. */
+    val value: Double = x,
+) {
     enum class Phase { START, MOVE, END }
-}
-
-private val linesDragCallbacks = afield.runtime.lifecycle.OwnedCallbackRegistry<(LinesDragEvent) -> Unit>("linesDrag")
-
-/**
- * Register [callback] for drags on [box]'s [channel] and return the id the viewer sends back. The id
- * is the box and channel, so a drawing redisplayed every frame replaces its callback instead of
- * adding one; [fit] is that display's fit, undone on the way back so the callback sees the lines'
- * own coordinates.
- */
-internal fun registerLinesDrag(box: Box, channel: String, fit: FitTransform?, callback: (LinesDragEvent) -> Unit): String {
-    val id = "lines-drag:${box.id}:$channel"
-    linesDragCallbacks.register(id, { e ->
-        callback(if (fit == null) e else e.copy(x = e.x / fit.scale - fit.offsetX, y = e.y / fit.scale - fit.offsetY))
-    })
-    return id
-}
-
-/** Deliver a [afield.app.protocol.LinesDrag] from a viewer; false when nothing is registered under its id. */
-internal fun deliverLinesDrag(drag: afield.app.protocol.LinesDrag): Boolean {
-    val callback = linesDragCallbacks[drag.id] ?: return false
-    val phase = when (drag.phase) { "start" -> LinesDragEvent.Phase.START; "end" -> LinesDragEvent.Phase.END; else -> LinesDragEvent.Phase.MOVE }
-    callback(LinesDragEvent(drag.x, drag.y, phase))
-    return true
 }
 
 private fun renderedSvgBoundsFor(lines: Collection<FLine>, w: Double, h: Double): afield.app.protocol.Rect? {

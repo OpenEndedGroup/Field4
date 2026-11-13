@@ -1,0 +1,17 @@
+{
+  "publications": [
+    {
+      "name": "paint_fold_press",
+      "ok": true,
+      "channels": 9,
+      "warnings": []
+    },
+    {
+      "name": "neural_clouds",
+      "ok": true,
+      "channels": 1,
+      "warnings": []
+    }
+  ],
+  "method": "Normal repository publication refresh; retained native recipe captures follow existing policy."
+}

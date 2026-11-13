@@ -8,7 +8,8 @@ whole run. Font geometry is prepared once; it is not scaled/rasterized anew ever
 
 ```kotlin
 val graph = readingDiagram {
-    val paragraph = text("paragraph",
+    val paragraph = text(
+        "paragraph",
         "When the door closed behind me\nand I saw my eyes were going\nto be useless in the dark,\nI took myself in hand.",
         point("paragraph-point", 0, .2),
     ) {

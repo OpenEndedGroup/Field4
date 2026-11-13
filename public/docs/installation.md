@@ -380,8 +380,10 @@ scheduled tasks, `launchd` or `cron`.
 
 Kotlin code you reuse across documents can live in your own project, outside the Field checkout.
 Set `AFIELD_EXTENSION_DIRS` (or Gradle's `-PfieldExtensionDirs`) to one or more directories,
-separated by `:` on macOS and Linux or `;` on Windows. Each directory holds `kotlin/`,
-`resources/`, or both. If a directory is missing, the build stops and names it. To launch Field
+separated by `:` on macOS and Linux or `;` on Windows. Each directory holds any of `kotlin/`,
+`resources/` and `web/`. If a directory is missing, the build stops and names it. Field serves
+the files in `web/` at `/extension-web/`, which is how a project ships its own
+[3D viewer tools](three_output.md#serving-your-own-tools). To launch Field
 with one extension directory and a workspace from the same project:
 
 ```diffstatic {data-lang=bash}

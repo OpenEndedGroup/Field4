@@ -126,7 +126,7 @@ further down can find each one. Two cycles:
 // Offline-rendered by DrawnScoreDocs.renderWav("drawn-score").
 ```
 
-`DrawnScoreDocs.interpret` is the same loop, which the later boxes on this page call. The same
+[`DrawnScoreDocs.interpret`](reference/patterns.md#drawnscoredocs-kt--drawnscoredocs--interpret) is the same loop, which the later boxes on this page call. The same
 reading also ships as `score.toPattern()`, for when its defaults are what you want.
 
 ## The same drawing, read another way
@@ -180,9 +180,39 @@ middle, and the table is the measurement:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_score/heard.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-drawn-score-heard" embed=true alt="Two traces of MIDI pitch against seconds over two cycles, the drawn pitch and the heard pitch lying on top of each other through the piano roll, the sixteen-step glissando staircase and the held note, above a table of onset and pitch errors"}
 notation { drawnScore() }
 val notes = DrawnScoreDocs.interpret(notation.space("score", x = 0.0..8.0, y = 84.0..48.0)) // the loop above
+val sampleRate = 44100
+val beats = 8.0
+val cycles = 2
+val cps = 0.25
+val onsetTolerance = 0.030 // seconds: allow the detector's window to lead the strike
 val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.4)
-val audio = patRenderStereo(patTimed(notes, beats = 8.0), cycles = 2, cps = 0.25, voice = voice)
-val heard = DrawnScoreDocs.listen(audio, notes)
+val audio = patRenderStereo(patTimed(notes, beats = beats), cycles = cycles, cps = cps, voice = voice)
+val mono = audio.mono
+val secondsPerBeat = 1.0 / cps / beats
+val onsets = PatSoundDocs.onsetPeaks(mono, threshold = 0.05).map { it.start.toDouble() / sampleRate }
+val frames = patF0Frames(mono, sampleRate, minHz = 220.0, maxHz = 900.0)
+val measured =
+    (0 until cycles).flatMap { cycle ->
+        notes.map { note ->
+            val start = (cycle * beats + note.start) * secondsPerBeat
+            val hold = (note.end - note.start) * secondsPerBeat * voice.sustain
+            val onset =
+                onsets.minByOrNull { abs(it - start) }?.takeIf { abs(it - start) <= onsetTolerance } ?: Double.NaN
+            // Use only voiced frames wholly inside the held portion, away from its edges.
+            val pitches =
+                frames
+                    .filter { frame ->
+                        val a = frame.startSample.toDouble() / sampleRate
+                        val b = (frame.startSample + frame.spanSamples).toDouble() / sampleRate
+                        frame.voiced && a >= start + 0.004 && b <= start + hold - 0.002
+                    }
+                    .map { it.midi }
+                    .sorted()
+            val midi = if (pitches.isEmpty()) Double.NaN else pitches[pitches.size / 2]
+            DrawnScoreDocs.Heard(note, start, onset, midi)
+        }
+    }
+val heard = DrawnScoreDocs.Listening(measured, onsets.size, frames)
 notation.clear() // read and played: take the marks down so they do not lie over the plot
 
 :::fold plot it, and compare it with the published clip's reading
@@ -247,3 +277,9 @@ A frame you make yourself with Excalidraw's frame tool works too, once you renam
   upstream of the same pattern and the same voice.
 * [A Function, Played and Read Back](chain_fn_sound_roundtrip.md) for the pitch detector, and the
   delay in how it reports time.
+
+- Interpreting and checking a drawn score:
+  [`DrawnScoreDocs`](reference/patterns.md#drawnscoredocs-kt-drawnscoredocs) —
+  [`listen`](reference/patterns.md#drawnscoredocs-kt--drawnscoredocs--listen),
+  [`pentatonic`](reference/patterns.md#drawnscoredocs-kt--drawnscoredocs--pentatonic),
+  [`sceneNotes`](reference/patterns.md#drawnscoredocs-kt--drawnscoredocs--scenenotes).

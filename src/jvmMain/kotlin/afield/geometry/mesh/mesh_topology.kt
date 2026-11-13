@@ -49,6 +49,9 @@ import afield.runtime.execution.cell
 import afield.runtime.execution.start
 import kotlin.math.abs
 import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sqrt
 import kotlin.math.roundToLong
 
 /**
@@ -384,6 +387,62 @@ fun TriMesh.genus(): Int? = surfaceTopology().genus
 /** Each open border as an [afield.geometry.path.FLine]-ready ring of vertex indices. */
 fun TriMesh.boundaryLoops(): List<List<Int>> = topology().boundaryLoops
 
+/**
+ * The weld tolerance [openEdges], [isClosed], [planarFaces] and [decimate] use unless told
+ * otherwise: a millionth of the bounding-box diagonal. Relative to the mesh, so one default serves
+ * every unit — 0.01 for a 10 m house modelled in millimetres, about 3.5e-6 for a unit sphere — and it
+ * sits well above float rounding at that scale and far below any feature a model means to have.
+ */
+fun TriMesh.defaultWeldTolerance(): Double {
+    val b = boundsArray()
+    val dx = b[3] - b[0]; val dy = b[4] - b[1]; val dz = b[5] - b[2]
+    return 1e-6 * sqrt(dx * dx + dy * dy + dz * dz)
+}
+
+/**
+ * The edges of the **surface** that only one triangle uses: its holes and open borders.
+ *
+ * Unlike [MeshTopology.boundaryEdges], which reads the indices as they are, this counts vertices
+ * within [tolerance] of each other as one vertex, so a split-normal seam, a per-face CAD export or
+ * a triangle soup is not reported as open where its pieces meet. Triangles that weld down to a line
+ * or a point have no area and are left out. An edge three triangles share is non-manifold but not
+ * open, and is not listed (see [MeshTopology.nonManifoldEdges]).
+ *
+ * ```kotlin
+ * icosphereMesh(2).flatShaded().openEdges().size    // 0: every seam welds shut
+ * cylinderMesh(caps = false).openEdges().size       // 64: two rims of 32
+ * ```
+ *
+ * @param tolerance absolute weld distance; `0` merges only exactly coincident positions.
+ * @return each open edge once, as `(low, high)` vertex indices of this mesh. A welded group is
+ *   named by its lowest-numbered vertex.
+ */
+fun TriMesh.openEdges(tolerance: Double = defaultWeldTolerance()): List<Pair<Int, Int>> {
+    if (triangleCount == 0) return emptyList()
+    val (remap, kept) = weldGroups(tolerance)
+    val count = LinkedHashMap<Long, Int>()
+    val stride = (vertexCount + 1).toLong()
+    for (t in 0 until triangleCount) {
+        val a = kept[remap[ia(t)]]; val b = kept[remap[ib(t)]]; val c = kept[remap[ic(t)]]
+        if (a == b || b == c || a == c) continue
+        for ((u, v) in arrayOf(a to b, b to c, c to a)) {
+            val key = min(u, v).toLong() * stride + max(u, v)
+            count[key] = (count[key] ?: 0) + 1
+        }
+    }
+    return count.entries.filter { it.value == 1 }.map { (it.key / stride).toInt() to (it.key % stride).toInt() }
+}
+
+/**
+ * True when the surface has no [openEdges]: every edge, once vertices within [tolerance] are welded,
+ * has a triangle on both sides.
+ *
+ * Weaker than [isWatertight], which also requires a manifold and welds only exact duplicates of an
+ * attributed mesh: two cubes sharing an edge are closed and not watertight. This is the question
+ * "would water leak out", asked of the geometry rather than of how its vertices are numbered.
+ */
+fun TriMesh.isClosed(tolerance: Double = defaultWeldTolerance()): Boolean = openEdges(tolerance).isEmpty()
+
 // ==============================================================================================
 // Repairs
 // ==============================================================================================
@@ -405,6 +464,34 @@ fun TriMesh.boundaryLoops(): List<List<Int>> = topology().boundaryLoops
  */
 fun TriMesh.weld(tolerance: Double = 1e-6): TriMesh {
     if (vertexCount == 0) return this
+    val (remap, keptOriginal) = weldGroups(tolerance)
+    val n = keptOriginal.size
+    if (n == vertexCount) {
+        // Nothing merged; still renumbering would be a pointless copy.
+        return this
+    }
+    val pos = FloatArray(n * 3)
+    val nor = if (normals != null) FloatArray(n * 3) else null
+    val tex = if (uvs != null) FloatArray(n * 2) else null
+    val col = if (colors != null) FloatArray(n * 3) else null
+    keptOriginal.forEachIndexed { d, src ->
+        for (k in 0..2) {
+            pos[d * 3 + k] = positions[src * 3 + k]
+            nor?.set(d * 3 + k, normals!![src * 3 + k])
+            col?.set(d * 3 + k, colors!![src * 3 + k])
+        }
+        if (tex != null) { tex[d * 2] = uvs!![src * 2]; tex[d * 2 + 1] = uvs[src * 2 + 1] }
+    }
+    val idx = IntArray(indices.size) { remap[indices[it]] }
+    return TriMesh(pos, idx, nor, tex, col)
+}
+
+/**
+ * [weld]'s grouping without the rebuild: for each vertex, the index of its group, and for each
+ * group, the first vertex in it. [openEdges] and [TriMesh.planarFaces] read the surface through
+ * this, so they answer in the mesh's own vertex numbering.
+ */
+internal fun TriMesh.weldGroups(tolerance: Double): Pair<IntArray, List<Int>> {
     val tol = tolerance.coerceAtLeast(0.0)
     val cell = if (tol <= 0.0) 0.0 else tol
     val tol2 = (tol * tol).toFloat()
@@ -454,26 +541,7 @@ fun TriMesh.weld(tolerance: Double = 1e-6): TriMesh {
             keptOriginal.add(v)
         }
     }
-
-    val n = keptOriginal.size
-    if (n == vertexCount) {
-        // Nothing merged; still renumbering would be a pointless copy.
-        return this
-    }
-    val pos = FloatArray(n * 3)
-    val nor = if (normals != null) FloatArray(n * 3) else null
-    val tex = if (uvs != null) FloatArray(n * 2) else null
-    val col = if (colors != null) FloatArray(n * 3) else null
-    keptOriginal.forEachIndexed { d, src ->
-        for (k in 0..2) {
-            pos[d * 3 + k] = positions[src * 3 + k]
-            nor?.set(d * 3 + k, normals!![src * 3 + k])
-            col?.set(d * 3 + k, colors!![src * 3 + k])
-        }
-        if (tex != null) { tex[d * 2] = uvs!![src * 2]; tex[d * 2 + 1] = uvs[src * 2 + 1] }
-    }
-    val idx = IntArray(indices.size) { remap[indices[it]] }
-    return TriMesh(pos, idx, nor, tex, col)
+    return remap to keptOriginal
 }
 
 /**

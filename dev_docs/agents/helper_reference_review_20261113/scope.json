@@ -1,0 +1,11 @@
+{
+  "head": "a8c389e4bdf328b2beb07940fbcc2d93735d06e5",
+  "authoredKotlinOccurrences": 4517,
+  "exactBodies": 3854,
+  "candidates": 1319,
+  "candidateExactBodies": 1103,
+  "findingKinds": {
+    "inline-only-source": 44,
+    "partial-yaml-fence": 1
+  }
+}

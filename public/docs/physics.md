@@ -601,7 +601,7 @@ cloths in one simulation therefore share a single set, and `sim.step(dt, damping
 iterations)` solves it.
 
 **`cloth.step(...)` steps the whole simulation.** It is a convenience for the common case where the
-cloth *is* the simulation. With other systems in the same `SimdVerlet`, drive it yourself.
+cloth *is* the simulation. With other systems in the same [`SimdVerlet`](reference/simulation.md#simdverlet-kt-simdverlet), drive it yourself.
 
 **A cloth is a contiguous index range.** Its particles are `[base, base + count)`, and both the
 slots and the curvature sweep are written in those terms. Appending particles after a cloth is fine;
@@ -843,3 +843,9 @@ that a sheet has begun to vibrate before it becomes visible as motion.
     rationale and the list of runnable entry points;
     [`SIMDVERLET_5_WORLD.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/physics/SIMDVERLET_5_WORLD.md) has the argument and measurements behind
     colliders as projections.
+
+## API reference
+
+- Constructing cloth, strands and collision constraints:
+  [`SimdVerlet`](reference/simulation.md#simdverlet-kt-simdverlet) —
+  [`addCloth`](reference/simulation.md#cloth-kt--addcloth).

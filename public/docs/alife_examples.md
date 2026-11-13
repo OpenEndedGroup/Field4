@@ -2979,7 +2979,7 @@ taken from a recording is always about 1.
 
 #### A map of grain sets instead of one winner
 
-`PopulationSearch.evolve` returns the one set that scores best. `PopulationSearch.mapElites` keeps
+`PopulationSearch.evolve` returns the one set that scores best. [`PopulationSearch.mapElites`](reference/search.md#populationsearch-kt--populationsearch--mapelites) keeps
 the best set of each *kind*: it divides two statistics into a grid and keeps the highest-scoring set
 in every cell. `grainSetObjective(behaviour = [...])` chooses the two statistics, here pitch spread
 across and polyphony up, so the grid runs from narrow, thin sets at the bottom left to wide, thick
@@ -3377,3 +3377,16 @@ Implementation and parameter details for the helpers used above:
 - [`LifeRuleGenome`](reference/alife.md#alife-evolve-kt-liferulegenome)
 - [`PopulationSearch.hillClimb`](reference/search.md#populationsearch-kt--populationsearch--hillclimb)
 - [`PopulationSearch.random`](reference/search.md#populationsearch-kt--populationsearch--random)
+
+- Initialising the flock and measuring alignment: [`BoidFlock`](reference/alife.md#alife-agents-kt-boidflock)
+  — [`order`](reference/alife.md#alife-agents-kt--boidflock--order),
+  [`random`](reference/alife.md#alife-agents-kt--boidflock-companion--random).
+- The preset Flow Lenia species:
+  [`FlowLeniaPresets`](reference/alife.md#alife-flow-lenia-kt-flowleniapresets).
+- Advancing the mass-conserving simulation:
+  [`FlowLeniaWorld`](reference/alife.md#alife-flow-lenia-kt-flowleniaworld) —
+  [`totalMass`](reference/alife.md#alife-flow-lenia-kt--flowleniaworld--totalmass).
+- Seeding the catalogue lifeform: [`LeniaCreature`](reference/alife.md#alife-continuous-kt-leniacreature) —
+  [`seed`](reference/alife.md#alife-continuous-kt--leniacreature--seed).
+- The catalogue lifeform: [`LeniaPresets`](reference/alife.md#alife-continuous-kt-leniapresets) —
+  [`orbium`](reference/alife.md#alife-continuous-kt--leniapresets--orbium).

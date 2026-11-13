@@ -154,6 +154,7 @@ data class ThreeDrawStyle(
  * They are read now; see [pickable], which is the one field that had to be added, and
  * `// [viewer-region surface-hit-picking]` for what a hit on a surface resolves to.
  */
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 @Serializable
 data class ThreeDrawable(
     val geometry: ThreeGeometryData,
@@ -201,6 +202,22 @@ data class ThreeDrawable(
      * a *picture* that would gain nothing and pay for it. Opting in is one named argument.
      */
     val pickable: Boolean = false,
+    /**
+     * Where the part sits in the scene's layer tree, outermost first: `listOf("Ground floor", "Doors")`.
+     * The viewer's Parts list folds by it, and viewer tools read it from `parts()`. Presentation only:
+     * left out of the review revision.
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val layer: List<String> = emptyList(),
+    /** Free metadata for the part, as JSON, handed to viewer tools with the part. Left out of the revision. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val metadata: kotlinx.serialization.json.JsonObject? = null,
+    /**
+     * Start hidden. The viewer applies it the first time it sees a part with this [id]; after that the
+     * reader's choice in the Parts list is kept by id, across every later artifact of the view.
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val hidden: Boolean = false,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeDrawable",
@@ -540,6 +557,7 @@ data class ThreeShotSpec(
  * So a panel is a *viewport*, not a document: one context, `setScissorTest` and a per-panel
  * `setViewport` in the render loop. It also happens to be much faster.
  */
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 @Serializable
 data class ThreePanel(
     val camera: ThreeCameraSpec? = null,
@@ -562,6 +580,12 @@ data class ThreePanel(
      * panel framed at one scale, so `threeGrid(sharedScale = true)` sets this.
      */
     val fitBounds: Boolean = false,
+    /**
+     * This panel's own part styles, by [ThreeDrawable.id], over the scene's ([ThreeGeometryPayload.partStyles]).
+     * A part drawn in every panel (`panel = -1`) can be red in one close-up and muted in the next.
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val partStyles: Map<String, ThreePartStyle> = emptyMap(),
 )
 
 /**
@@ -606,6 +630,77 @@ fun TriMesh.toThreeDrawable(
     pickable: Boolean = false,
     explode: FloatArray? = null,
 ): ThreeDrawable {
+    val prepared = ThreePreparedMeshes.prepare(this, creaseAngleDegrees, explode)
+    return ThreeDrawable(
+        geometry = prepared,
+        style = style,
+        label = label,
+        group = group,
+        panel = panel,
+        callbackId = callbackId,
+        hoverColor = hoverColor,
+        id = id,
+        pickable = pickable || callbackId.isNotEmpty() || hoverColor != null,
+    )
+}
+
+/**
+ * The viewer's geometry for a mesh, made once per distinct mesh: a box that re-sends a scene re-sends mostly the
+ * same meshes, and crease shading a mesh without normals is by far the dearest step (about 170 ms for 140k
+ * triangles, against 0.4 ms to hash them). Keyed by a 128-bit hash of the mesh's arrays, so an equal mesh built
+ * afresh is found too; the arrays handed back are shared, which also lets the wire and the rigid-move check see
+ * that nothing changed without reading them. Bounded at 32M floats, least recently used first out.
+ */
+internal object ThreePreparedMeshes {
+    private const val LIMIT_FLOATS = 32L shl 20
+    private class Entry(val geometry: ThreeGeometryData, val floats: Long)
+    private val entries = object : LinkedHashMap<String, Entry>(64, 0.75f, true) {}
+    private var floats = 0L
+
+    fun prepare(mesh: TriMesh, creaseAngleDegrees: Double, explode: FloatArray?): ThreeGeometryData {
+        val key = keyOf(mesh, creaseAngleDegrees, explode)
+        synchronized(this) { entries[key]?.let { return it.geometry } }
+        val geometry = mesh.prepareThreeGeometry(creaseAngleDegrees, explode)
+        val size = geometry.attributes.values.sumOf { it.array.size.toLong() } + (geometry.index?.array?.size ?: 0)
+        synchronized(this) {
+            entries.put(key, Entry(geometry, size))?.let { floats -= it.floats }
+            floats += size
+            val it = entries.values.iterator()
+            while (floats > LIMIT_FLOATS && it.hasNext()) { floats -= it.next().floats; it.remove() }
+        }
+        return geometry
+    }
+
+    /**
+     * The key of a mesh handed over before, by identity. A [TriMesh] is a value — its arrays are never written
+     * after construction — so the same object has the same key, and a box that keeps its unchanged meshes and
+     * re-sends them costs nothing to hash. Weak, so it holds no mesh alive; it holds keys, not geometry, so the
+     * bound above still decides what geometry is kept.
+     */
+    private class Seen(val crease: Double, val key: String)
+    private val seen = java.util.WeakHashMap<TriMesh, Seen>()
+
+    private fun keyOf(mesh: TriMesh, crease: Double, explode: FloatArray?): String {
+        // Explode offsets are a plain array the caller may reuse, so a mesh with them is always hashed.
+        if (explode != null) return key(mesh, crease, explode)
+        synchronized(seen) { seen[mesh]?.takeIf { it.crease == crease }?.let { return it.key } }
+        val key = key(mesh, crease, null)
+        synchronized(seen) { seen[mesh] = Seen(crease, key) }
+        return key
+    }
+
+    private fun key(mesh: TriMesh, crease: Double, explode: FloatArray?): String {
+        var a = -0x340d631b7bdddcdbL; var b = 0x2545F4914F6CDD1DL
+        fun mix(v: Long) { a = (a xor v) * 0x100000001b3L; b = (b + v) * -0x61c8864680b583ebL; b = b xor (b ushr 29) }
+        fun floats(tag: Long, f: FloatArray?) { mix(tag); mix(f?.size?.toLong() ?: -1L); f?.forEach { mix(java.lang.Float.floatToRawIntBits(it).toLong()) } }
+        floats(1, mesh.positions); floats(2, mesh.normals); floats(3, mesh.colors); floats(4, explode)
+        mix(5); mix(mesh.indices.size.toLong()); mesh.indices.forEach { mix(it.toLong()) }
+        mix(java.lang.Double.doubleToRawLongBits(crease))
+        return java.lang.Long.toHexString(a) + java.lang.Long.toHexString(b)
+    }
+}
+
+private fun TriMesh.prepareThreeGeometry(creaseAngleDegrees: Double, explode: FloatArray?): ThreeGeometryData {
     val ready = if (hasNormals) this else shadedNormals(creaseAngleDegrees)
     val n = ready.vertexCount
     // Explode offsets belong to vertices, and the shading above may split a vertex at a crease. It keeps the
@@ -657,22 +752,12 @@ fun TriMesh.toThreeDrawable(
         "alpha" to ThreeAttribute(itemSize = 1, array = FloatArray(n) { 1f }),
     ) + (explodeOffsets?.let { mapOf("explode" to ThreeAttribute(itemSize = 3, array = it)) } ?: emptyMap())
     val maxIndex = ready.indices.maxOrNull() ?: 0
-    return ThreeDrawable(
-        geometry = ThreeGeometryData(
-            attributes = attributes,
-            index = ThreeIndex(
-                type = if (maxIndex > 65535) "Uint32Array" else "Uint16Array",
-                array = ready.indices.copyOf(),
-            ),
+    return ThreeGeometryData(
+        attributes = attributes,
+        index = ThreeIndex(
+            type = if (maxIndex > 65535) "Uint32Array" else "Uint16Array",
+            array = ready.indices.copyOf(),
         ),
-        style = style,
-        label = label,
-        group = group,
-        panel = panel,
-        callbackId = callbackId,
-        hoverColor = hoverColor,
-        id = id,
-        pickable = pickable || callbackId.isNotEmpty() || hoverColor != null,
     )
 }
 

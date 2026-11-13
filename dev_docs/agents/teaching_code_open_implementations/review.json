@@ -1,0 +1,102 @@
+[
+  {
+    "family": "CaSoundDocs",
+    "decision": "expand",
+    "detail": "The survey hid column extraction and condensation. The row-to-rhythm and population-to-pitch examples were opened by the landed pilot; the remaining survey now shows its masks and condensation."
+  },
+  {
+    "family": "PatSynthDocs.bandSeries",
+    "decision": "expand",
+    "detail": "The lesson concerns the numbers a shader reads. The example now shows its pattern, voice, offline render, overlapping windows, filter-bank measurement and time axis."
+  },
+  {
+    "family": "LambdaSoundDocs.trace and melody",
+    "decision": "expand",
+    "detail": "The page now shows parsing, net compilation, reaction recording, readback, and event-kind-to-pitch mapping. Beat and Trace remain report data records."
+  },
+  {
+    "family": "DrawnScoreDocs.interpret and pentatonic",
+    "decision": "retain_named_reuse",
+    "detail": "The complete interpretation and tuning loops are visible on chain_drawn_score.md. Later calls explicitly refer back to those loops. The previously hidden listen measurement has now been opened in the page and canonical transcript."
+  },
+  {
+    "family": "DrawnMorphDocs.morphNotes",
+    "decision": "retain_named_reuse",
+    "detail": "chain_drawn_morph.md already spells out the complete loop deriving MIDI from interpolated-cloud spread. The later helper calls compare two pairings of that already-taught loop."
+  },
+  {
+    "family": "DrawnScoreDocs.sceneNotes",
+    "decision": "retain_oracle",
+    "detail": "Used to check the example against the independently prepared published clip; it does not supply the example being taught."
+  },
+  {
+    "family": "renderWav mentions in hidden audio fences",
+    "decision": "retain_capture_support",
+    "detail": "These are comments describing the real audio-renderer hook, not opaque learner code. The corresponding visible sound graphs and mappings must be reviewed separately."
+  },
+  {
+    "family": "RiggedFixture.locate and CappedTwistFixture.locate/secondsFor",
+    "decision": "retain_data_selection",
+    "detail": "Reviewed CPU pose, matrix/dual-quaternion comparison, GPU instancing, import and volume call sites. The fixture locators select committed glTF inputs; the examples expose their pose time, methods, palettes, uploads and volume measurements. secondsFor converts degrees to the fixture clip time; it is not the skinning algorithm."
+  },
+  {
+    "family": "LambdaSoundDocs schedule and corpus checks",
+    "decision": "expand",
+    "detail": "The page now constructs the scheduler/corpus sweep, compares distinct reaction counts and rule tallies, and checks independent normal-order readbacks and beta counts. trace is named reuse of the recorder taught earlier on the page."
+  },
+  {
+    "family": "FnSoundDocs.roundTrip",
+    "decision": "expand_first_use_retain_later_reuse",
+    "detail": "The first figure now shows synthesis, WAV IO, frame timing, RMS/YIN recovery and mappings. Later four-route comparisons reuse this implementation by name; the independent four-route helper remains their oracle."
+  },
+  {
+    "family": "DrawnScoreDocs.listen",
+    "decision": "expand",
+    "detail": "Both the page and starting-place transcript now show onset detection, held-frame selection, median pitch and matching tolerance. Listening and Heard remain report records."
+  },
+  {
+    "family": "MorphoProblems.fullAdderCell",
+    "decision": "expand",
+    "detail": "The first search example and canonical transcript now show the exhaustive truth function and grammar, with the same seeds and default search budget."
+  },
+  {
+    "family": "PenroseSpectraDocs geometry and strike choice",
+    "decision": "expand",
+    "detail": "Both page and canonical transcript show patch/control construction, shared stiffness, interior selection, zero-mode weights and confined/open vertex selection. The eigenvalue solver remains a library algorithm."
+  },
+  {
+    "family": "RayTracingDocsHarness hidden figure generators",
+    "decision": "retain_capture_support",
+    "detail": "ray_tracing_examples.md writes out buffers, acceleration structures, ray-generation/miss/closest-hit shaders and dispatch before its hidden runner fences. Those hidden calls capture the implementation already taught; they are not the visible teaching code. LiveMirrorBallsScene still needs separate review."
+  },
+  {
+    "family": "LorisDocs panels",
+    "decision": "expand_and_capture_visible_implementation",
+    "detail": "All six figure drivers now execute the worked native analysis, edit, distillation, dilation and morph code. The morph retains its explicit peak attenuation. Later hidden panels use the same worked pipeline with a different panel selector. Native algorithms and visualization remain library calls. Default published WAVs match byte for byte; parameter variants and reruns passed."
+  },
+  {
+    "family": "SubharmonicSoundDocs.render spectra",
+    "decision": "expand_graph_and_offline_render",
+    "detail": "All seven spectrograms now construct their sound graph and render its samples directly. Their defaults are sample-identical to the presets, and shorter reruns match prefixes. The earlier tracker plots already expose the same graph."
+  },
+  {
+    "family": "Loris partial explorer starting place",
+    "decision": "retain_explicit_api_composition",
+    "detail": "Reviewed loris_partial_explorer.yaml: it already supplies source, Loris options, selection of tracks, transformations, run-owned native futures, progress and per-pass output directly. There is no tutorial fixture call to open."
+  },
+  {
+    "family": "MorphoProblems.orReduce/recursiveAdder/guidedRecursiveAdder",
+    "decision": "expand",
+    "detail": "Truth functions, width families, grammar, base cell and the two fixed SPLIT statements are now explicit in both the page and starting place. Full-budget figures preserve outcomes. An empty-cost-plot failure at tiny budgets now reports no correct design without inventing a cost point."
+  },
+  {
+    "family": "KratosDemo and KratosStudyDemo tutorial setup",
+    "decision": "expand",
+    "detail": "Both starting places now show the two-box CSG. The study shows its parameter space, solve plan, probe objective, metrics and closed-form conductivity check. Actual native grid results are identical. Both boxes probe available backends, repairing the missing-local-Python path on macOS. Status uses Markdown."
+  },
+  {
+    "family": "StackSLIntervals.tilePicture",
+    "decision": "expand_first_use_retain_named_reuse",
+    "detail": "The first figure now shows shader expansion, parsing, rendering, interval queries and recursive subdivision. The later noise example reuses the now-taught algorithm by name. A public parsed-shader overload of enclosePixels avoids reparsing per rectangle; tests cover equivalence and per-query state isolation."
+  }
+]

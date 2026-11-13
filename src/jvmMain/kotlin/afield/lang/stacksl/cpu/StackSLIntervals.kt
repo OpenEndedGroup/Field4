@@ -58,7 +58,8 @@ object StackSLIntervals {
     /**
      * Bound every pixel `x0..x1 × y0..y1` (inclusive) of a [width] × [height] render of [glsl], a
      * complete fragment shader writing `outColor` from `fragUV`, as `StackSLCpu.renderFragment`
-     * runs it.
+     * runs it. For repeated queries, parse once with [parseGlslShader] and use the overload
+     * taking a [GlslShader]; each query still gets a fresh execution machine.
      */
     fun enclosePixels(
         glsl: String,
@@ -67,11 +68,16 @@ object StackSLIntervals {
         uniforms: Map<String, GlslValue> = emptyMap(),
     ): StackSLRegionBound = enclosePixels(parseGlslShader(glsl), x0, y0, x1, y1, width, height, uniforms)
 
-    private fun enclosePixels(
+    /**
+     * Query another rectangle of an already parsed shader without parsing its source again.
+     * Each query gets a fresh machine; assignments in one region cannot affect the next.
+     * The coordinates and guarantees are the same as the source-string overload.
+     */
+    fun enclosePixels(
         shader: GlslShader,
         x0: Int, y0: Int, x1: Int, y1: Int,
         width: Int, height: Int,
-        uniforms: Map<String, GlslValue>,
+        uniforms: Map<String, GlslValue> = emptyMap(),
     ): StackSLRegionBound {
         // fragUV is monotone in the pixel index along each axis, so the corners' fragUVs bracket
         // every pixel centre inside, computed exactly as StackSLCpu.fragUvAt computes them.

@@ -1,0 +1,75 @@
+name: paint_blow_fingers
+description: >
+  Two boxes that push wet paint with air on a PaintCanvas. The first lays a thick blue film and
+  blows a straw across it along a curve: before and after, the paint cleared to a thin film along
+  the path, tendrils branching off it with thick rims. The second puffs air at one point with three
+  viscosity contrasts, from a compact blot to a branching tree (viscous fingering, the
+  Saffman–Taylor instability, grown on the paint, not a texture).  Each box reports the paint moved, how branched the
+  fingers were, and the wet paint before and after. The paint library is optional —
+  `./gradlew buildPaintNative` builds it — and without it every box says so and stops.
+docs:
+  - page: paint_canvas.md
+    why: "The Blowing paint section explains these calls."
+operations:
+  - create:
+      box: paint_blow
+      name: "Paint — blow a straw across wet paint"
+      frame: { x: 80.0, y: 80.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          run {
+              if (!PaintCanvas.isAvailable) {
+                  markdown(PaintLibrary.describe())
+                  return@run
+              }
+
+              val canvas = PaintCanvas(900, aspect = 1.4, seed = 11)
+              val brush = canvas.brush(BrushKind.HogFlat, width = 120.0)
+              brush.load(rgb(0.1, 0.18, 0.55), amount = 5.0, stiff = 0.3)
+              for (y in listOf(220, 330, 440, 550)) canvas.stroke(
+                  FLine().moveTo(120, y).lineTo(880, y),
+                  brush,
+                  pressure = 1.0..1.0,
+              )
+              display("before", canvas.png(wet = true, light = PaintLight.Raking))
+
+              val wet = canvas.wetMm3
+              // a straw, blown along a curve through the film
+              val path = FLine().moveTo(150, 480).cubicTo(350, 250, 600, 600, 850, 300)
+              val blown = canvas.blow(path, radius = 14.0, pressure = 0.9, tendril = 9.0)
+              display("main", canvas.png(wet = true, light = PaintLight.Raking))
+              markdown(
+                  "blow moved %.1f mm³ at %d places, branching %.2f; wet paint %.2f mm³ before, %.2f after"
+                      .format(blown.movedMm3, blown.stations, blown.branching, wet, canvas.wetMm3),
+              )
+          }
+  - create:
+      box: paint_blow_contrast
+      name: "Paint — one puff, three viscosity contrasts"
+      frame: { x: 80.0, y: 2400.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          run {
+              if (!PaintCanvas.isAvailable) {
+                  markdown(PaintLibrary.describe())
+                  return@run
+              }
+
+              val canvas = PaintCanvas(900, aspect = 2.4, seed = 12)
+              val brush = canvas.brush(BrushKind.HogFlat, width = 130.0)
+              brush.load(rgb(0.1, 0.18, 0.55), amount = 5.0, stiff = 0.3)
+              for (y in listOf(140, 260)) canvas.stroke(FLine().moveTo(60, y).lineTo(940, y), brush, pressure = 1.0..1.0)
+              val report = StringBuilder()
+              for ((x, contrast) in listOf(170.0 to 1.5, 500.0 to 8.0, 830.0 to 200.0)) {
+                  val b = canvas.blow(
+                      FLine().moveTo(x, 200).lineTo(x + 2, 200),
+                      radius = 16.0,
+                      pressure = 1.0,
+                      contrast = contrast,
+                      tendril = 8.0,
+                  )
+                  report.append("contrast %.1f: branching %.2f  \n".format(contrast, b.branching))
+              }
+              display("main", canvas.png(wet = true, light = PaintLight.Raking))
+              markdown(report.toString())
+          }

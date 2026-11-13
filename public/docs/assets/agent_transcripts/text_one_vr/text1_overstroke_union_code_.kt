@@ -1,5 +1,4 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // Verbatim excerpts from the source passage; only the line breaks are authored here.
 val face = Typefaces.named("Noto Serif", 100, strict = true).withWeight(300.0)

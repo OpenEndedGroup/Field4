@@ -1,0 +1,51 @@
+{
+  "format": "field-film-timeline/1",
+  "//": "A hinged box, filmed: its plan dragged wider and back, its depth slider moved, its lid swung, its lid hidden and shown.",
+  "duration": 10,
+  "fps": 30,
+  "size": [1280, 720],
+  "stage": {
+    "background": "#101316",
+    "regions": [
+      {"id": "model", "box": "Hinge", "channel": "model", "rect": [520, 20, 740, 680]},
+      {"id": "plan", "box": "Hinge", "channel": "plan", "rect": [20, 20, 480, 300]},
+      {"id": "slider", "box": "Hinge", "channel": "controls", "rect": [20, 340, 480, 50]},
+      {"id": "size", "box": "Hinge", "channel": "size", "rect": [20, 400, 480, 50], "scale": 1.6}
+    ],
+    "caption": {"rect": [20, 560, 480, 140], "style": {"font": "500 26px/1.3 system-ui, sans-serif", "color": "#e8eef2"}}
+  },
+  "tracks": [
+    {"camera": "model", "keys": [
+      {"t": 0, "orbit": {"eye": [290, 300, 500], "target": [0, 34, 0], "up": [0, 1, 0], "degreesPerSecond": 12}},
+      {"t": 8.5, "pose": {"eye": [-300, 290, 430], "target": [0, 40, 0], "up": [0, 1, 0]}, "ease": "inOut"}
+    ]},
+    {"drag": {"box": "Hinge", "channel": "plan"}, "until": {"view": "model", "metadata": "edge", "of": "x"}, "keys": [
+      {"t": 1.0, "at": [80, 0]},
+      {"t": 2.5, "at": [140, 0], "ease": "inOut"},
+      {"t": 3.0, "at": [140, 0]},
+      {"t": 4.0, "at": [80, 0], "ease": "inOut"},
+      {"t": 4.1, "release": true}
+    ]},
+    {"control": {"box": "Hinge", "label": "depth"}, "until": {"view": "model", "metadata": "depth"}, "keys": [
+      {"t": 4.5, "value": 100},
+      {"t": 5.5, "value": 150, "ease": "inOut"},
+      {"t": 6.2, "value": 100, "ease": "inOut"}
+    ]},
+    {"motion": "model", "keys": [
+      {"t": 6.5, "value": 0},
+      {"t": 7.7, "value": 1, "ease": "inOut"},
+      {"t": 9.4, "value": 0, "ease": "inOut"}
+    ]},
+    {"parts": "model", "keys": [
+      {"t": 7.9, "hide": ["lid"]},
+      {"t": 8.7, "show": {"layer": ["Lid"]}}
+    ]},
+    {"captions": [
+      {"t": 0.2, "text": "A box with a hinged lid", "fade": 0.3},
+      {"t": 1.0, "text": "Its plan, dragged wider and back", "fade": 0.3},
+      {"t": 4.4, "text": "Its depth slider", "fade": 0.3},
+      {"t": 6.5, "text": "Its lid, on its declared motion", "fade": 0.3},
+      {"t": 7.9, "text": "The lid hidden by its part id, and shown", "fade": 0.3}
+    ]}
+  ]
+}

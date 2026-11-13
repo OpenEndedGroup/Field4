@@ -449,7 +449,25 @@ def iter_candidate_files(root: Path) -> list[Path]:
     return files
 
 
+# A test is short, and so may run on battery, only when its own `timeoutSec` bounds it to this.
+# `size: long` gates a shorter test too; `size: short` cannot lift a longer budget's gate.
+SHORT_TEST_MAX_TIMEOUT_SEC = 60.0
+
+
+def smoke_size(test: dict[str, Any]) -> str:
+    """`short` or `long`: the declared `size`, else what `timeoutSec` (default 20) allows."""
+    if test.get("size") in {"short", "long"}:
+        return str(test["size"])
+    return "long" if float(test.get("timeoutSec") or 20.0) > SHORT_TEST_MAX_TIMEOUT_SEC else "short"
+
+
 def validate_annotation(path: Path, line_no: int, annotation: dict[str, Any]) -> dict[str, Any]:
+    if "size" in annotation:
+        if annotation["size"] not in {"short", "long"}:
+            raise ParseError(f"{path}:{line_no}: size must be short or long")
+        if annotation["size"] == "short" and float(annotation.get("timeoutSec") or 20.0) > SHORT_TEST_MAX_TIMEOUT_SEC:
+            raise ParseError(f"{path}:{line_no}: size: short needs timeoutSec <= {SHORT_TEST_MAX_TIMEOUT_SEC:g}; "
+                             "a longer budget is a long test")
     if "requiresDisplay" in annotation and not isinstance(annotation["requiresDisplay"], bool):
         raise ParseError(f"{path}:{line_no}: requiresDisplay must be true or false")
     # A string here ("yes") would read as false and quietly put the test back to running without a
