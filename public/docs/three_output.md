@@ -393,6 +393,11 @@ CPU rasterizer's camera:
 
 The names and meanings match, so one camera can be handed to either renderer.
 
+From the page, a script or a film reads and sets the view's camera directly: `FieldViewer.cameraPose()` returns
+`{eye, target, up, zoom, fov}` in the scene's units, and `FieldViewer.setCamera(pose)` puts the camera there and
+draws at once (`up`, `fov` and `zoom` are optional). A pose set this way holds across the box's redraws, as an orbit
+by hand does, until the box asks for a different `camera(...)`.
+
 ## Contact sheets
 
 For a custom contact sheet, `panel(...)` declares viewports in order, and a `mesh(...)` goes into
@@ -887,6 +892,13 @@ update cost in its window's `fieldThreeWireStats` (bytes fetched, objects built 
 server's `lastUpdate` on the view returned by `three` says how many parts went out as transforms.
 
 A part is matched to its previous self by its `id`, so give moving parts ids.
+
+When the box knows a part only moved, it can say so: pass the **same** mesh each redraw with
+`mesh(m, id = "carriage", transform = translation(x, 0.0, 0.0))` (or any column-major 4×4 matrix). The mesh is
+prepared once, nothing about it is hashed or compared again, and the viewer only moves its object. A `TriMesh`
+is a value whose arrays are never changed, so a mesh object handed over again is known to be the same mesh. On a
+large assembly whose parts mostly ride along with a few that reshape, keeping the riding parts as unchanged meshes
+placed by transforms, and the reshaping ones as small meshes of their own, is what keeps a drag step short.
 
 ## Editing a curve before an expensive operation
 

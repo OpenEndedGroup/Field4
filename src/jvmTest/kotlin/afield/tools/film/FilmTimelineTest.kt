@@ -175,6 +175,15 @@ class FilmTimelineTest {
         assertEquals("end@6.0,5.0", made.last())
         assertEquals(2, made.count { it.startsWith("start") }); assertEquals(2, made.count { it.startsWith("end") })
         assertEquals("b", t.serverActions(null, 1.0).single().box)
+        assertNull(t.serverActions(null, 1.0).single().handle, "a drag that names no handle holds none")
+    }
+
+    @Test
+    fun aDragCanHoldANamedHandle() {
+        val t = timeline("""{"drag": {"box": "b", "channel": "plan", "handle": "split"}, "keys": [{"t": 0, "at": [10, 0]}, {"t": 1, "at": [12.5, 0]}]}""")
+        val made = (0..12).flatMap { i -> t.serverActions(if (i == 0) null else (i - 1) / 10.0, i / 10.0) }
+        assertEquals(setOf("split"), made.map { it.handle }.toSet(), "every press, move and release holds the handle")
+        assertEquals(12.5, made.last().x)
     }
 
     @Test

@@ -4312,6 +4312,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="lines-handles",
+            description="Named drag handles on a lines drawing: a press on two nearly coincident handles takes the higher priority one, and a drag by name always takes the named one, at the exact value.",
+            commands=[
+                "new-box --name LinesHandles",
+                shell_join(["run", "@last", "--file", str(REPO_ROOT / "tools/ui_regressions/lines-handles.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(REPO_ROOT / "tools/ui_regressions/lines-handles.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="three-drag-bench",
             description="A datum drag on a 200-part scene (3 parts reshaped, 5 moved, per step) redraws within 50 ms median, end to end.",
             commands=[

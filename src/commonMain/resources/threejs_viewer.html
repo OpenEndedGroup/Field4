@@ -590,6 +590,36 @@ const viewerTools = createViewerTools({
     }
 });
 let captureState = {ready:false, error:null, revision:null};
+/**
+ * Put the camera at `pose` ({eye, target}, and optionally up, fov and zoom; what `cameraPose()` returns) and draw
+ * at once. The pose holds across the box's redraws as a person's orbit does, until the box asks for a different
+ * camera. Returns the pose now shown.
+ */
+function setCamera(pose) {
+    const vec = (v, what) => {
+        if (!Array.isArray(v) || v.length !== 3 || !v.every(Number.isFinite)) throw new Error(`setCamera: ${what} must be [x, y, z]`);
+        return v;
+    };
+    const eye = vec(pose?.eye, 'eye'), target = vec(pose?.target, 'target');
+    if (eye.every((v, i) => v === target[i])) throw new Error('setCamera: eye and target are the same point');
+    const up = pose.up == null ? camera.up.toArray() : vec(pose.up, 'up');
+    if (up.every(v => v === 0)) throw new Error('setCamera: up must be nonzero');
+    if (pose.fov != null && !(Number.isFinite(pose.fov) && pose.fov > 0 && pose.fov < 180)) throw new Error('setCamera: fov must be between 0 and 180');
+    if (pose.zoom != null && !(Number.isFinite(pose.zoom) && pose.zoom > 0)) throw new Error('setCamera: zoom must be positive');
+    // No inertia carried over from a person's orbit, as a linked view's pose arrives.
+    const damping = controls.enableDamping;
+    controls.enableDamping = false; controls.update();
+    camera.position.fromArray(eye); controls.target.fromArray(target); cameraUp(up);
+    if (pose.fov != null) camera.fov = pose.fov;
+    if (pose.zoom != null) camera.zoom = pose.zoom;
+    const distance = camera.position.distanceTo(controls.target);
+    controls.minDistance = Math.min(controls.minDistance, distance * .5);
+    controls.maxDistance = Math.max(controls.maxDistance, distance * 2);
+    camera.updateProjectionMatrix(); controls.update(); controls.enableDamping = damping;
+    cameraWasMoved = true;
+    render();
+    return window.FieldViewer.cameraPose();
+}
 window.FieldViewer = Object.freeze({followStatus: () => cameraFollow.status(),
     parts: () => viewerParts().map(({objects, ...part}) => featureClone(part)),
     metadata: () => featureClone(payloadState?.metadata ?? null),
@@ -597,7 +627,9 @@ window.FieldViewer = Object.freeze({followStatus: () => cameraFollow.status(),
     partStyle: (id, panel=0) => featureClone(partStyleFor(id, panel)),
     motion: Object.freeze({play: (on=true) => motionPlay(on), at: (t) => motionScrub(t), rest: () => motionRest(),
         tracks: (on=true) => motionTracks(on), status: () => featureClone(motionStatus())}),
-    cameraPose: () => ({eye:camera.position.toArray(), target:controls.target.toArray(), zoom:camera.zoom}),
+    cameraPose: () => ({eye:camera.position.toArray(), target:controls.target.toArray(), up:camera.up.toArray(),
+        zoom:camera.zoom, fov:camera.fov}),
+    setCamera,
     renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools,
     snapshotImage: () => { render(); return renderer.domElement.toDataURL('image/png'); },
     snapshotForPublication,

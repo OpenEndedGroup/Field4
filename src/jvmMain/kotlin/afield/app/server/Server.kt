@@ -3773,13 +3773,8 @@ class Server {
 
             handlers["lines-drag"] = mutableSetOf({ message, _ ->
                 val drag = Json.decodeFromJsonElement<LinesDrag>(message.payload!!)
-                GlobalScope.launch {
-                    try {
-                        if (!afield.ui.visualization.deliverLinesDrag(drag)) lprintln("debug,fline", "No drag callback for ${drag.id}")
-                    } catch (e: Exception) {
-                        lprintln("error,fline", "Error in lines drag callback: ${e.message}")
-                    }
-                }
+                // In order per drawing, off this thread; a queued move is replaced by a newer one.
+                afield.ui.visualization.receiveLinesDrag(drag)
                 Handled.yes
             })
 
@@ -6582,4 +6577,6 @@ internal fun Application.installFieldApiSameSiteGuard() {
 internal val ORDERED_CONTROL_MESSAGES = setOf(
     "slider-update", "button-update", "output-request",
     "vec2-update", "checkbox-update", "string-update", "color-update", "array-update",
+    // A drag's press, moves and release; its handler only queues them (LinesHandles.kt), so it never holds the line.
+    "lines-drag",
 )

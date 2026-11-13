@@ -36,6 +36,18 @@ canvas.dispatchEvent(new w.WheelEvent('wheel',{deltaY:120,clientX:rect.x+rect.wi
 await settles();
 expect(JSON.stringify(api.snapshot().camera)!==JSON.stringify(camera),'Zoom changes the actual camera');
 expect(stats().frames>before,'Camera movement redraws and settles');
+// The light camera API: setCamera draws the pose it is given at once, and cameraPose reads it back.
+const pose={eye:[40,-260,180],target:[5,0,0],up:[0,0,1],fov:40};
+before=stats().frames;
+const shown=w.FieldViewer.setCamera(pose);
+const near=(a,b)=>a.every((v,i)=>Math.abs(v-b[i])<1e-6);
+const read=w.FieldViewer.cameraPose();
+expect(near(read.eye,pose.eye)&&near(read.target,pose.target)&&near(read.up,pose.up)&&read.fov===40,'cameraPose reads back the pose setCamera set');
+expect(near(shown.eye,read.eye),'setCamera returns the pose now shown');
+let refused=false;try{w.FieldViewer.setCamera({eye:[0,0,0],target:[0,0,0]})}catch(_){refused=true}
+expect(refused&&near(w.FieldViewer.cameraPose().eye,pose.eye),'A degenerate pose is refused and leaves the camera');
+await settles();
+expect(near(w.FieldViewer.cameraPose().eye,pose.eye),'The pose holds once the view settles (no inertia)');
 before=stats().frames;
 const oldStyle=frame.getAttribute('style');frame.style.setProperty('width','620px','important');await settles();
 expect(stats().frames>before,'Real iframe resize redraws');
