@@ -24,7 +24,11 @@ data class GardenAnchor(
     @EncodeDefault
     val quote: String = "",
     @EncodeDefault
-    val mode: String = "through"
+    val mode: String = "through",
+    @EncodeDefault
+    val quoteStart: Int = -1,
+    @EncodeDefault
+    val quoteEnd: Int = -1
 )
 
 @Serializable
@@ -51,7 +55,12 @@ data class GardenNode(
     @EncodeDefault
     val edits: List<GardenEdit> = emptyList(),
     @EncodeDefault
-    val error: String = ""
+    val error: String = "",
+    @EncodeDefault
+    val contextMode: String = "path",
+    /** Future replies after a move; context remains the record of the original agent run. */
+    @EncodeDefault
+    val replyContext: List<GardenPassage>? = null
 )
 
 @Serializable
@@ -83,7 +92,11 @@ data class GardenRequest(
     @EncodeDefault
     val anchorText: String = "",
     @EncodeDefault
-    val knownRevision: Long = -1
+    val knownRevision: Long = -1,
+    @EncodeDefault
+    val wholeDocument: Boolean = false,
+    @EncodeDefault
+    val beforeNode: String = ""
 )
 
 @Serializable

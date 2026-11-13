@@ -673,7 +673,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**40867 public symbols across 1806 source files**, 24245 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**40869 public symbols across 1806 source files**, 24247 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -702,7 +702,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 129 | 3313 | 1663 (50%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 242 | 3365 | 1362 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [AI4](ai4.md) | 97 | 2189 | 826 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
+| [AI4](ai4.md) | 97 | 2191 | 828 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 186 | 43 (23%) |  |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
@@ -759,7 +759,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>macros/<wbr></small> [ai_macro.kt](workspace.md#ai-macro-kt) | Workspace | 17 | 1 | The `ai("...")` macro, which asks a language model to write the body of the function it is called in and caches the result in the box's attic. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiBoxConversation.kt](ai4.md#aiboxconversation-kt) | AI4 | 14 | 5 | Where an AI4 chat transcript is stored: on the box for a box's chat, and in a file beside the document for the document chat. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiChatFenceCatalog.kt](ai4.md#aichatfencecatalog-kt) | AI4 | 0 | 0 | The fenced blocks AI4 chat draws as pictures rather than printing as code, read on the JVM from the same catalog the browser renderers read. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiConversationGarden.kt](ai4.md#aiconversationgarden-kt) | AI4 | 11 | 3 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiConversationGarden.kt](ai4.md#aiconversationgarden-kt) | AI4 | 13 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiLiveConversation.kt](ai4.md#ailiveconversation-kt) | AI4 | 0 | 0 | The running transcript of one AI4 chat turn, assembled in the order things happened. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiRateLimitRecovery.kt](ai4.md#airatelimitrecovery-kt) | AI4 | 0 | 0 | Keeps an AI4 turn alive through a provider's rate limits and brief outages by retrying the one model request that failed, never the tool round or the user's turn around it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiRequestLedger.kt](ai4.md#airequestledger-kt) | AI4 | 0 | 0 | The on-disk accounting record for every AI4 model request: which endpoint answered, how many tokens it billed, how long it took and how it ended, with none of the prompt and none of the reply. |  |
