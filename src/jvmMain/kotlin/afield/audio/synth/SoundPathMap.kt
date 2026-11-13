@@ -334,6 +334,18 @@ object SoundPathMap {
             page = "public/docs/eigendrum.md",
         ),
 
+        SoundPath(
+            id = "grains",
+            role = Role.MAKES, timing = Timing.OFFLINE, onSeam = false,
+            needs = "nothing (a recording to granulate is optional)",
+            channels = "stereo",
+            what = "a list of grains — onset, length, pitch, gain, pan — each a Hann-windowed burst of a " +
+                "three-harmonic sine or of a recording, summed straight into a buffer",
+            file = "src/jvmMain/kotlin/afield/simulation/agents/alife_grains.kt",
+            entryPoint = "fun renderGrains",
+            page = "public/docs/alife_examples.md",
+        ),
+
         // ── things that take samples out ───────────────────────────────────────────────────
 
         SoundPath(
@@ -475,8 +487,10 @@ object SoundPathMap {
      * also render offline. This was caught by the marker before the map declared the route.
      * Eleven with `modal-drum`, the eigendrum page's modal synthesis, which the docs-audio-producer
      * and inline-audio-player markers caught when it landed undeclared.
+     * Twelve with `grains` (2026-11-13): alife_examples.md's grain sets, summed into a buffer by
+     * renderGrains. The docs-audio-producer marker caught GrainSetSoundDocs landing undeclared.
      */
-    const val SOURCE_COUNT = 11
+    const val SOURCE_COUNT = 12
 
     /** How many ways samples leave this process. Five, of which three are separate OpenAL contexts. */
     const val SINK_COUNT = 5
@@ -596,6 +610,14 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/synth/PatSpatialPlacementDocs.kt" to "pat-spatial",
                 "src/jvmMain/kotlin/afield/audio/modal/EigendrumDocs.kt" to "modal-drum",
                 "src/jvmMain/kotlin/afield/audio/modal/PenroseSpectraDocs.kt" to "modal-drum",
+                // Landed 11-09..11-13 without a declaration; caught by this marker on 11-13.
+                "src/jvmMain/kotlin/afield/audio/synth/ExplainerSoundDocs.kt" to "signal-graph",
+                // Piano is a StereoNode: the same graph, rendered offline a block at a time.
+                "src/jvmMain/kotlin/afield/audio/synth/PianoDocs.kt" to "signal-graph",
+                "src/jvmMain/kotlin/afield/audio/synth/TrackedBodyDocs.kt" to "pat-stand-in",
+                // Five pattern scenes on patVoice; held-pitch is a SineOsc graph (DocsAudioProvenance.originOf).
+                "src/jvmMain/kotlin/afield/math/distribution/DistributionSoundDocs.kt" to "pat-stand-in",
+                "src/jvmMain/kotlin/afield/simulation/agents/alife_grains.kt" to "grains",
             ),
         ),
         Marker(
@@ -614,6 +636,10 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/synth/CsoundBox.kt" to "box-output-player",
                 // DrumModes.modeTable puts one player per mode in a table cell, not one per box.
                 "src/jvmMain/kotlin/afield/audio/modal/Eigendrum.kt" to "modal-drum",
+                // PianoRender.wav() hands display(...) the bytes; no <audio> tag of its own.
+                "src/jvmMain/kotlin/afield/audio/synth/Piano.kt" to "signal-graph",
+                // GrainAudio.wav(), the same: bytes for display(...), no tag of its own.
+                "src/jvmMain/kotlin/afield/simulation/agents/alife_grains.kt" to "grains",
             ),
         ),
         Marker(
@@ -632,6 +658,8 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/synth/Sampling.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/audio/synth/Visualizers.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/audio/synth/DoughDsp.kt" to "signal-graph",
+                // Piano is a StereoNode whose controls are Params; audio(Piano()) plays it like any graph.
+                "src/jvmMain/kotlin/afield/audio/synth/Piano.kt" to "signal-graph",
                 // One file per path, for the four sources that reach the seam through a node.
                 "src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/audio/synth/Dough.kt" to "dough-engine",
