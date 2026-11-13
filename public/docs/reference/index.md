@@ -447,7 +447,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - curves
     - [principal](graphics.md#principalcurves-kt)
 - [euclid](graphics.md#elements-kt)
-- [kinematics](graphics.md#rigidmotion-kt)
+- [kinematics](graphics.md#clearancebody-kt)
 - [leaper](graphics.md#uncrossedleaperdrawing-kt)
 - *mesh* — [Graphics](graphics.md#geometrybuilder-kt) · [Math](math.md#linalg-mesh-kt) · [Simulation](simulation.md#tetmeshviews-kt)
     - *tetgen* — [Graphics](graphics.md#tetgensolid-kt) · [Simulation](simulation.md#tetmeshviews-kt)
@@ -673,7 +673,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**40644 public symbols across 1795 source files**, 24081 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**40732 public symbols across 1799 source files**, 24168 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -686,7 +686,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2520 | 1900 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1123 | 528 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 405 | 9998 | 6264 (62%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 409 | 10086 | 6351 (62%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 844 | 448 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -931,6 +931,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr>chatlog/<wbr></small> [ChatlogTools.kt](ai4.md#chatlogtools-kt) | AI4 | 14 | 9 | Chat-log tools: AI4 agents that read chats and write lenses |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr>chatlog/<wbr></small> [ChatLogViews.kt](ai4.md#chatlogviews-kt) | AI4 | 12 | 10 | What an agent reads of a chat |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>testing/<wbr></small> [Checks.kt](workspace.md#checks-kt) | Workspace · internal | 21 | 7 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>kinematics/<wbr></small> [ClearanceBody.kt](graphics.md#clearancebody-kt) | Graphics | 25 | 24 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [Clip.kt](machine-learning.md#clip-kt) | Machine learning | 37 | 32 | CLIP, as a source of *directions in meaning*. | [Depth and CLIP: neural vision in a box](../onnx.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [ClipSmokeTest.kt](machine-learning.md#clipsmoketest-kt) | Machine learning · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>clojure/<wbr></small> [ClojureInterface.kt](languages.md#clojureinterface-kt) | Languages | 54 | 28 | Clojure as a Field main language: a box whose source is Clojure, evaluated by the real Clojure runtime on this JVM. |  |
@@ -2350,6 +2351,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [superpc.kt](graphics.md#superpc-kt) | Graphics | 22 | 15 | Push constants as a Kotlin class, and the GLSL that reads them back. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [Surface.kt](graphics.md#surface-kt) | Graphics | 3 | 0 | The Vulkan presentation surface for a GLFW window. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [SwapChain.kt](graphics.md#swapchain-kt) | Graphics | 21 | 21 | The window's presentation chain: `SwapChain` creates the swapchain images and their views for a surface, acquires the next image each frame and presents it on a `Queue.PresentQueue`. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>kinematics/<wbr></small> [SweptClearance.kt](graphics.md#sweptclearance-kt) | Graphics | 28 | 28 | Swept clearance: a part, moving by a `RigidMotion`, past obstacles — how close does it come, where, and when? | [Moving Parts and Clearance](../swept_clearance.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>kinematics/<wbr></small> [SweptVolume.kt](graphics.md#sweptvolume-kt) | Graphics | 35 | 35 | Swept volumes and clearance as a Minkowski offset. | [Moving Parts and Clearance](../swept_clearance.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [SymbolAtTool.kt](ai4.md#symbolattool-kt) | AI4 | 22 | 6 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [Symmetry.kt](polytopes.md#symmetry-kt) | Polytopes | 32 | 17 | Symmetry as a combinatorial fact, and as something a solver can be asked for. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [synth.kt](synthesis.md#synth-kt) | Synthesis | 80 | 22 | The terse surface a box imports: `audio { … }` to close a graph, `.p` to make a number a `Param`, and lowercase names for the things reached for constantly. | [Sound](../explainer_sound.md), [Pure Data](../pure_data.md), [How to make sound in Field](../sound_paths.md) |
@@ -2412,6 +2415,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>automation/<wbr></small> [transcript.kt](workspace.md#transcript-kt) | Workspace · internal | 18 | 0 | Keeps a per-document log of what ran in each box, for activity summaries and the transcript view. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [Transforms.kt](polytopes.md#transforms-kt) | Polytopes | 83 | 64 | The Conway operator algebra: thirteen named operations that rewrite a polyhedron's combinatorics, each paired with a policy for giving the result coordinates. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [transport.kt](graphics.md#transport-kt) | Graphics | 29 | 28 | Optimal transport between point sets: which source goes to which target, or how much of each source goes to each target, at the least total cost. | [Optimal Transport](../optimal_transport.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>kinematics/<wbr></small> [TriangleDistance.kt](graphics.md#triangledistance-kt) | Graphics | 0 | 0 | The double-precision triangle machinery under `ClearanceBody`: an axis-aligned box tree over a body's triangles (`TriangleTree`) and the exact distance between two triangles (`TriangleQuery`). |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>osc/<wbr></small> [tuio.kt](data.md#tuio-kt) | Data | 10 | 3 | A minimal TUIO receiver. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [TurnSuspension.kt](ai4.md#turnsuspension-kt) | AI4 | 21 | 11 | How a tool result ends a model's turn early so the conversation can wait for study builds without spending model calls. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [TutorialCodeTools.kt](ai4.md#tutorialcodetools-kt) | AI4 | 10 | 10 | Finding tutorial code: a worked example of box code to start from. |  |
