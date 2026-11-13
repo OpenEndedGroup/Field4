@@ -6712,3 +6712,12 @@ body.mode-editor-only .field-toast {
 [data-field-theme="light"] .hljs-bullet { color: #953800; }
 [data-field-theme="light"] .hljs-addition { color: #116329; background-color: #dafbe1; }
 [data-field-theme="light"] .hljs-deletion { color: #82071e; background-color: #ffebe9; }
+
+/* Theme crossfade: theme.js switches inside document.startViewTransition, so the old and new
+   pictures of the whole window fade into each other. Scoped by the class theme.js holds for the
+   duration, so no other view transition inherits this timing. */
+html.field-theme-transition::view-transition-old(root),
+html.field-theme-transition::view-transition-new(root) {
+    animation-duration: 520ms;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
