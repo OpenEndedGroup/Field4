@@ -33,9 +33,49 @@ import java.util.UUID
  * every solid is unchanged.
  */
 
-/** The SHA-256 a note is filed under, over one streamed JSON string. */
+/**
+ * The revision a note is filed under: the geometry's identity, worked out from the wire split rather than
+ * from the numbers as text.
+ *
+ * Until 2026-11-13 it was [threeLegacyReviewRevision], a SHA-256 of the whole geometry written out as JSON
+ * text, which on a 200-part scene took 170 ms of every update — most of a drag frame. This one hashes the
+ * same structure with every numeric array replaced by its type, length and 64-bit content hash, which the
+ * wire works out anyway (and, for a part re-sent as it was, already has). Same rules: presentation
+ * ([REVISION_IGNORED]) is left out, canonical solids keep their double-boundary digest, and solids alone
+ * are their digest unchanged. It is prefixed `r2-`, so a note made before it is told apart
+ * ([ThreeGeometryViewState] still recognises one on unchanged geometry).
+ */
 @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
-internal fun threeReviewRevision(payload: ThreeGeometryPayload): String {
+internal fun threeReviewRevision(payload: ThreeGeometryPayload, hashes: ThreeArrayHashes = ThreeArrayHashes()): String {
+    val canonicalDigest = payload.inspector?.artifactDigest
+    val geometryPayload = if (canonicalDigest == null) payload else {
+        val canonicalParts = payload.inspector.parts.keys
+        payload.copy(drawables = payload.drawables.filterNot { it.id in canonicalParts })
+    }
+    if (canonicalDigest != null && geometryPayload.lines == null && geometryPayload.fills == null &&
+        geometryPayload.points == null && geometryPayload.drawables.isEmpty() &&
+        geometryPayload.interactive.isEmpty() && geometryPayload.scene == null) return canonicalDigest
+    // Only the keys a revision covers, so the split's buffer table holds exactly their arrays.
+    val covered = ThreeGeometryPayload(uid = "", lines = geometryPayload.lines, fills = geometryPayload.fills,
+        points = geometryPayload.points, interactive = geometryPayload.interactive, scene = geometryPayload.scene,
+        drawables = geometryPayload.drawables)
+    val split = covered.splitForWire("revision", hashes)
+    val digest = MessageDigest.getInstance("SHA-256")
+    digest.update("field-three-revision-2\n".toByteArray())
+    val text = RevisionText(digest)
+    text.open(canonicalDigest?.let { "\"canonicalDigest\":" + Json.encodeToString(String.serializer(), it) })
+    revisionJson.encodeToStream(ThreeGeometryPayload.serializer(), split.description, text)
+    text.finish()
+    for (entry in split.description.buffers?.entries.orEmpty()) digest.update("\n${entry.type}:${entry.count}:${entry.hash}".toByteArray())
+    return "r2-" + digest.digest().joinToString("") { "%02x".format(it) }
+}
+
+/**
+ * The revision as it was until 2026-11-13: the SHA-256 of one streamed JSON string of the whole geometry.
+ * Kept so a note filed under it is still recognised on the geometry it was made against.
+ */
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+internal fun threeLegacyReviewRevision(payload: ThreeGeometryPayload): String {
     val canonicalDigest = payload.inspector?.artifactDigest
     val geometryPayload = if (canonicalDigest == null) payload else {
         val canonicalParts = payload.inspector.parts.keys
@@ -270,6 +310,10 @@ internal class ThreeReviewInbox(private val uid: String) {
     }
     private fun imageDirectory(): java.nio.file.Path = owner?.takeIf { it.isInsideInitialized() && !it.inside.ephemeral }
         ?.let { java.nio.file.Path.of(it.inside.filename).resolve(".geometry-review") } ?: transientImages
+
+    /** Revisions this view's stored notes were filed under before revisions were prefixed `r2-`. */
+    @Synchronized fun legacyNoteRevisions(): Set<String> = storedNotes().filter(::belongs)
+        .mapNotNull { it["artifactDigest"]?.jsonPrimitive?.contentOrNull }.filterNot { it.startsWith("r2-") }.toSet()
 
     @Synchronized fun image(hash: String): ByteArray? = ThreeReviewEvidence.read(hash, storedNotes().filter(::belongs), imageDirectory())
 
