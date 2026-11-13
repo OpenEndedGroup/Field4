@@ -262,6 +262,7 @@ nav:
     - Geometry & Solids:
       - Meshes & 3D Geometry: mesh_examples.md
       - Solids & Booleans (Manifold): manifold.md
+      - Moving Parts and Clearance: swept_clearance.md
       - Parametric CAD (SolidCraft): solidcraft.md
       - Tetrahedral Meshing (TetGen): tetgen.md
       - Morse–Smale Complexes: morse_smale.md
