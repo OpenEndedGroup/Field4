@@ -1,7 +1,7 @@
 {
   "baseline": "d1d2cd52ffcdf0013ad15323d56d7bcd6aef89fa",
   "pilotLanded": "9eb8de139",
-  "status": "in_progress",
+  "status": "source_work_complete_pending_landing",
   "policy": "Expose the domain transformations being taught, preserve default behavior and captures, keep useful engine and IO abstractions, leave generated preambles and historical copies alone.",
   "authoredKotlinOccurrences": 4532,
   "wrapperCandidateOccurrences": 133,
@@ -99,33 +99,59 @@
     },
     {
       "id": "interval-subdivision",
-      "status": "behavior_and_capture_verified",
+      "status": "landed",
       "paths": [
         "public/docs/stacksl_intervals.md"
       ],
       "verifiedProbes": 2,
       "captures": 1,
-      "notes": "Parsed-shader overload has focused regression coverage. Visible loop matches native tiles, bounds, work count and RGBA pixels; smaller render/tolerance rerun passed. Timing caption varies per execution."
+      "notes": "Parsed-shader overload has focused regression coverage. Visible loop matches native tiles, bounds, work count and RGBA pixels; smaller render/tolerance rerun passed. Timing caption varies per execution.",
+      "landingCommit": "94c700ca7"
     },
     {
       "id": "morpho-remaining",
-      "status": "behavior_and_captures_verified",
+      "status": "landed",
       "paths": [
         "public/docs/morpho_search.md",
         "dev_docs/agents/transcripts/morpho_circuit_search.yaml"
       ],
       "verifiedProbes": 5,
       "captures": 2,
-      "notes": "Truth functions, grammar and fixed prologue match presets. Default full-budget figures inspected; tiny-budget empty-cost-plot failure repaired and exercised."
+      "notes": "Truth functions, grammar and fixed prologue match presets. Default full-budget figures inspected; tiny-budget empty-cost-plot failure repaired and exercised.",
+      "landingCommit": "94c700ca7"
     },
     {
       "id": "thermal-study",
-      "status": "native_behavior_and_ui_verified",
+      "status": "landed",
       "paths": [
         "dev_docs/agents/transcripts/kratos_parameter_study.yaml",
         "dev_docs/agents/transcripts/kratos_thermal_playground.yaml"
       ],
-      "notes": "Four real native designs match preset with zero objective/temperature delta; one background grid build. Plain-source factory, parameter plan, target change and closed form verified. Default playground live UI captured with working container selection and Markdown diagnostics."
+      "notes": "Four real native designs match preset with zero objective/temperature delta; one background grid build. Plain-source factory, parameter plan, target change and closed form verified. Default playground live UI captured with working container selection and Markdown diagnostics.",
+      "landingCommit": "94c700ca7"
+    },
+    {
+      "id": "path-scenes",
+      "status": "landed",
+      "queueId": "20261113-140646-codex-teaching-code-rendered-implementations",
+      "paths": [
+        "public/docs/path_tracing.md",
+        "public/docs/imgui_vr_panel.md",
+        "public/docs/ray_tracing_examples.md"
+      ],
+      "nativeCasesPassed": 7,
+      "landingCommit": "33150a7b1"
+    },
+    {
+      "id": "rig-measurement",
+      "status": "behavior_and_capture_verified",
+      "paths": [
+        "public/docs/chain_scene_to_light.md",
+        "dev_docs/agents/transcripts/chain_scene_to_light.yaml"
+      ],
+      "verifiedProbes": 2,
+      "captures": 1,
+      "wireRoundTrip": "9 frames, 132 fixtures, 9216 slots compared, zero changed"
     }
   ],
   "domains": {
@@ -186,12 +212,14 @@
     {
       "number": 4,
       "scope": "rendered scenes and VR",
-      "status": "ready_for_precheck"
+      "status": "landed",
+      "queueId": "20261113-140646-codex-teaching-code-rendered-implementations",
+      "commit": "33150a7b1"
     },
     {
       "number": 5,
       "scope": "final coverage and mirrors",
-      "status": "pending"
+      "status": "ready_for_precheck"
     }
   ],
   "audioVerification": {
@@ -236,6 +264,23 @@
     "formatting": "Actual import/ktfmt and GLSL formatting; generated demo metadata refreshed. No preamble edits.",
     "publications": "Three changed path-tracing publications refreshed through the real runner.",
     "site": "Full build and installed-site link gate passed; see build/teaching-code-open-implementations/site-rendered.log",
-    "profiles": "Linux/NVIDIA figure assets retained under their existing hardware profiles; Mac native render checks are separate evidence."
+    "profiles": "Linux/NVIDIA figure assets retained under their existing hardware profiles; Mac native render checks are separate evidence.",
+    "precheck": "Passed; 1806 Python tests passed, native API coverage declared, publications merged atomically.",
+    "landing": "Landed 33150a7b1; full guard passed."
+  },
+  "coverageReview": {
+    "file": "coverage-review.json",
+    "wrapperNameCallsPending": 0,
+    "broaderShortBodies": 1324,
+    "broaderTypes": 412,
+    "additionalOpening": "SceneOnARig.aliasing; exact arrays, width/sample-count rerun, real figure and canonical sACN measurement verified.",
+    "scope": "Frozen corpus and identified short-body families; incoming main changes are preserved for compatibility without reopening the corpus."
+  },
+  "finalVerification": {
+    "actualCodeProbesPassed": 2,
+    "canonicalWireRoundTrip": "passed: 0 of 9216 slots changed",
+    "figure": "recaptured and inspected; same dimensions, same numerical curves/table, smaller file; rendering/layout pixel differences recorded",
+    "formatting": "actual import/ktfmt on the page body and canonical transcript",
+    "site": "Passed: 4481 local references and 57146 fragment pairs resolve, with one registered theme exception."
   }
 }
