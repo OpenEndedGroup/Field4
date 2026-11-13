@@ -187,6 +187,15 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        // The editable stereo panel needs an active ImGui context and Vulkan targets. Its canonical
+        // transcript is COMPILE_ONLY in CI; verify_vr.py runs the actual controls, ray mapping and
+        // texture replacement on the native docs host (vr-native-verification.json).
+        "injectPointer" to "imgui_vr_panel.md; pointer injection needs a live ImGui context and texture; native stereo/ray checks exercise the actual callback",
+        "sameLine" to "imgui_vr_panel.md; immediate-mode layout runs inside the live texture's ImGui frame, unavailable in headless CI; inspected native panel capture",
+        "setNextWindowPos" to "imgui_vr_panel.md; native ImGui window layout requires an active frame; verify_vr.py renders the canonical UI",
+        "setNextWindowSize" to "imgui_vr_panel.md; native ImGui window layout requires an active frame; verify_vr.py renders the canonical UI",
+        "sliderFloat" to "imgui_vr_panel.md; native ImGui control needs a live frame; default and edited gain values checked in the rendered canonical panel",
+        "updateRayHit" to "imgui_vr_panel.md; document-local callback reads stereo controller state and injects its panel hit into live ImGui; native renderer and centre-ray checks run outside headless CI",
         // The explainer talks (2026-11-10): explainer_sound, explainer_cameras and explainer_lights are
         // COMPILE_ONLY because their deck boxes open Electron audience windows and play sound. Their
         // figure boxes are published on explainer_*.md, where the docs runner runs and captures each one.
