@@ -145,6 +145,15 @@ class WiVRnPreparationTest {
         kotlin.test.assertTrue(preparationCommands(setOf("wivrn-macos"), "windows").isEmpty())
     }
 
+    @kotlin.test.Test fun kosmicKrispPreparationAlsoBuildsThePatchedRuntime() {
+        kotlin.test.assertEquals(
+            listOf(listOf("python3", "tools/field_wivrn_macos.py", "--prepare", "--kosmickrisp")),
+            preparationCommands(setOf("wivrn-macos-kk"), "mac"),
+        )
+        kotlin.test.assertTrue(preparationCommands(setOf("wivrn-macos-kk"), "linux").isEmpty())
+        kotlin.test.assertTrue("brew" in extraTools(setOf("wivrn-macos-kk"), "mac"))
+    }
+
     @kotlin.test.Test fun macWiVRnDoesNotReinstallAvailablePythonOrCommandLineTools() {
         val plan = packagePlan("brew", true, setOf("cmake"),
             setOf("openxr", "slug", "wivrn-macos"), false, "mac")

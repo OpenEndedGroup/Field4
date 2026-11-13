@@ -271,20 +271,23 @@ which KosmicKrisp does not provide. Your default OpenXR runtime and Field's defa
 left as they were. Set `useHeadset = true` in starter box 1, then launch box 1 followed by box 2.
 Restart Field to leave OpenXR mode.
 
-To stay on KosmicKrisp, build a patched copy of WiVRn's runtime once, then launch with
-`--kosmickrisp`:
+To stay on KosmicKrisp, select **WiVRn headset streaming on KosmicKrisp** in `./field.sh --setup`
+as well, which also builds a patched copy of WiVRn's runtime, then launch with `--kosmickrisp`:
 
 ```diffstatic {data-lang=bash}
-# Clone the pinned WiVRn for macOS into ~/.field4/wivrn-macos and build its runtime with Field's patch.
-uv run python tools/field_wivrn_macos.py --build-kk-runtime
+# The same preparation run directly: also clone the pinned WiVRn for macOS into ~/.field4/wivrn-macos
+# and build its runtime with Field's patch.
+python3 tools/field_wivrn_macos.py --prepare --kosmickrisp
 # Launch Field on KosmicKrisp with that runtime.
 uv run python tools/field_wivrn_macos.py --kosmickrisp -- /path/to/workspace -d Field-VR-IDE
 ```
 
 [The patch](https://github.com/OpenEndedGroup/Field4/blob/main/optional/wivrn-macos/README.md)
 makes the runtime copy each eye image into WiVRn's IOSurface on the GPU instead of wrapping it,
-which KosmicKrisp can do. The installed `WiVRn.app` still runs the server. The build needs the
-port's Homebrew build dependencies, Xcode and the Vulkan SDK. Frame rate and latency come out
+which KosmicKrisp can do. The installed `WiVRn.app` still runs the server. The build needs
+Xcode and the [LunarG Vulkan SDK](https://vulkan.lunarg.com/sdk/home#mac) in `~/VulkanSDK`, which
+setup checks for, and the port's Homebrew build dependencies, which setup installs. It rebuilds the
+runtime when Field's pin or patch changes, and `--check` reports a runtime built from an older one. Frame rate and latency come out
 within a few frames per second of MoltenVK.
 
 Type with a keyboard attached to the Mac while the companion window has focus, or use the

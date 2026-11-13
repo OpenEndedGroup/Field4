@@ -20,11 +20,15 @@ is derived from the socket path, so a patched client connects to the released `W
 Build it, and use it, with the launcher:
 
 ```sh
-uv run python tools/field_wivrn_macos.py --build-kk-runtime
+python3 tools/field_wivrn_macos.py --prepare --kosmickrisp
 uv run python tools/field_wivrn_macos.py --kosmickrisp -- /path/to/workspace -d Field-VR-IDE
 ```
 
-`--build-kk-runtime` clones the pinned port into `~/.field4/wivrn-macos/`, applies its patch series
+`--prepare --kosmickrisp` (which `./field.sh --setup` runs for **WiVRn headset streaming on
+KosmicKrisp**) does the MoltenVK route's preparation if it is not done,
+checks Xcode and the Vulkan SDK, installs the port's missing Homebrew build dependencies, and runs
+the build below unless the installed runtime's `build-info.json` already matches `pin.json` and the
+patch. `--build-kk-runtime` runs only the build: it clones the pinned port into `~/.field4/wivrn-macos/`, applies its patch series
 and this patch, builds only the `openxr_wivrn` target with the port's
 `scripts/build-wivrn.sh --client-arm64`, and installs the library and a runtime manifest in
 `.afield-local/wivrn-kk/`. It needs the port's Homebrew build dependencies (its `Brewfile`, minus

@@ -47,7 +47,7 @@ internal fun featureOptions(
     FeatureOption(index + 1, extra, tools + if (gpu) listOf("NVIDIA") else emptyList(), missing,
         when {
             platform == "windows" && winget -> wingetPackages.keys
-            platform == "mac" && homebrew && extra.id == "wivrn-macos" -> setOf("cmake", "python3")
+            platform == "mac" && homebrew && extra.id in setOf("wivrn-macos", "wivrn-macos-kk") -> setOf("cmake", "python3")
             else -> emptySet()
         })
 }
