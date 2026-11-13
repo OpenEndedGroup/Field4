@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T02:04:28.351Z",
+  "capturedAt": "2026-11-13T02:54:01.653Z",
   "documentName": "keyframer_worked_example",
   "outputs": [
     {
@@ -26,11 +26,11 @@
     {
       "uid": "keyframe_updatecode",
       "channel": "code",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
       "width": 396,
-      "height": 147,
+      "height": 158,
       "path": "outputs/2.html"
     },
     {

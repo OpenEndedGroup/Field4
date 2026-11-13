@@ -687,14 +687,25 @@ class ThreeGeometryViewState(val uid: String) {
      * view's from here on, and must not be changed. When two updates overlap, the one that started last is
      * the one that stays, as it was when the whole of this was synchronized.
      */
-    fun update(payload: ThreeGeometryPayload) {
-        val costs = threeWireCosts(payload)
+    fun update(update: ThreeGeometryPayload) {
+        val costs = threeWireCosts(update)
         val estimate = costs.sumOf { it.bytes }
         if (estimate > payloadLimitBytes) throw threePayloadTooLarge(uid, estimate, payloadLimitBytes, costs, measured = false)
         val generation = UUID.randomUUID().toString()
+        val began = System.nanoTime()
+        // Parts that only moved go out as the geometry the viewer holds, with a transform (ThreeIncremental.kt),
+        // and the arrays of last time's parts are not hashed again.
+        val payload: ThreeGeometryPayload
+        val hashes: ThreeArrayHashes
+        synchronized(incremental) {
+            payload = incremental.rigid.apply(update)
+            hashes = ThreeArrayHashes(incremental.hashes)
+            incremental.hashes = hashes
+        }
         // Split first: it names a NaN's part and attribute, where the revision's encoder would not.
-        val split = payload.splitForWire(generation)
-        val revision = threeReviewRevision(payload)
+        val split = payload.splitForWire(generation, hashes)
+        val revision = revisionFor(payload, hashes)
+        hashes.settle()
         val ticket: Long
         val appearance: Map<String, ThreePartAppearance>
         synchronized(this) {
@@ -735,6 +746,9 @@ class ThreeGeometryViewState(val uid: String) {
             published?.let { old -> old.buffers?.let { recentBuffers.addLast(old.generation to it) } }
             while (recentBuffers.size > RECENT_GENERATIONS) recentBuffers.removeFirst()
             published = next
+            lastUpdate = ThreeUpdateStats(payload.drawables.size, incremental.rigid.lastRigidMoves,
+                split.description.buffers?.entries?.size ?: 0, description.size.toLong(), split.buffers?.bytes ?: 0L,
+                (System.nanoTime() - began) / 1e6)
             onBroadcast?.invoke(description)
             sessions.forEach { if (it in bufferSessions) sendTo(it, description) else sendNative(it, next) }
             // Global listeners (native "subscribe-all" viewers) see every view's updates, including
@@ -744,6 +758,35 @@ class ThreeGeometryViewState(val uid: String) {
             val current = storedAppearance()[appearanceKey()].orEmpty()
             if (current != appearance) broadcast(appearanceMessage(replace = true, parts = current))
         }
+    }
+
+    /** What a view keeps between updates to send only what changed: see [ThreeRigidParts]. */
+    private class Incremental {
+        val rigid = ThreeRigidParts()
+        var hashes = ThreeArrayHashes()
+    }
+    private val incremental = Incremental()
+
+    /** The last update: parts, rigid moves sent as transforms, buffers, bytes, and milliseconds to publish. */
+    @Volatile var lastUpdate: ThreeUpdateStats? = null
+        private set
+
+    /**
+     * Whether this view's revision is the pre-2026-11-13 one ([threeLegacyReviewRevision]): `null` until the
+     * first update decides. It is, for as long as the view lives, when a note filed under the old revision
+     * matches the geometry it is first shown with, so a note on unchanged geometry stays current. Otherwise
+     * the old revision is never worked out again.
+     */
+    private var legacyRevision: Boolean? = null
+
+    private fun revisionFor(payload: ThreeGeometryPayload, hashes: ThreeArrayHashes): String {
+        val revision = threeReviewRevision(payload, hashes)
+        if (!revision.startsWith("r2-")) return revision
+        val legacy = legacyRevision ?: run {
+            val old = reviewInbox.legacyNoteRevisions()
+            (old.isNotEmpty() && threeLegacyReviewRevision(payload) in old).also { legacyRevision = it }
+        }
+        return if (legacy) threeLegacyReviewRevision(payload) else revision
     }
 
     /** The buffers for [generation], while it is the view's current or a recent geometry; `null` once long superseded. */
@@ -908,6 +951,18 @@ fun threeGeometryReviews(uid: String, includeResolved: Boolean = false): kotlinx
 
 internal fun updateThreeGeometryReview(uid: String, request: kotlinx.serialization.json.JsonObject): kotlinx.serialization.json.JsonObject? =
     (knownThreeViews[uid]?.reviewInbox ?: customGeometryReviewInbox(uid))?.updateNote(request)
+
+/** What one [ThreeGeometryViewState.update] sent. */
+data class ThreeUpdateStats(
+    val drawables: Int,
+    /** Parts that moved rigidly and went out as a transform on the geometry the viewer holds. */
+    val rigidMoves: Int,
+    val buffers: Int,
+    val descriptionBytes: Long,
+    /** Every buffer of the generation; a viewer fetches only those it does not hold. */
+    val bufferBytes: Long,
+    val publishMs: Double,
+)
 
 /** What `/three-buffers` serves: a view's current buffers, for the generation its description named. */
 internal fun threeGeometryBuffers(uid: String, generation: String): ThreeGeometryBuffers? = knownThreeViews[uid]?.buffers(generation)

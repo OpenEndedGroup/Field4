@@ -200,6 +200,8 @@ internal fun ThreeWireSource.contentHash(): String {
 /** One numeric array, as the buffer response carries it. Holds the payload's own array, never a copy. */
 internal sealed class ThreeWireSource(val type: String, val count: Int, val width: Int) {
     val byteLength: Long get() = count.toLong() * width
+    /** The array this reads, for identity. */
+    val array: Any get() = when (this) { is Floats -> values; is Doubles -> values; is Ints -> values; is Pairs -> values }
     class Floats(val values: FloatArray) : ThreeWireSource("Float32Array", values.size, 4)
     class Doubles(val values: DoubleArray) : ThreeWireSource("Float64Array", values.size, 8)
     class Ints(type: String, width: Int, val values: IntArray) : ThreeWireSource(type, values.size, width)
@@ -229,14 +231,17 @@ internal class ThreeGeometryBuffers(val bytes: Long, private val sources: List<T
 /** A payload split for the wire: the [description] to encode, and the arrays its references point into. */
 internal class ThreeWireSplit(val description: ThreeGeometryPayload, val buffers: ThreeGeometryBuffers?)
 
-private class Splitter {
+private class Splitter(private val hashes: ThreeArrayHashes) {
     val sources = ArrayList<ThreeWireSource>()
     val entries = ArrayList<ThreeWireBuffer>()
     var bytes = 0L
 
     fun add(source: ThreeWireSource): Int {
         val offset = (bytes + 7) / 8 * 8
-        entries += ThreeWireBuffer(source.type, offset, source.count, source.contentHash())
+        // Keyed by the array itself: a part re-sent with the arrays it had last time (an unchanged part, or a
+        // rigid move sent as a transform) is not hashed again.
+        val hash = hashes.of(source)
+        entries += ThreeWireBuffer(source.type, offset, source.count, hash)
         sources += source
         bytes = offset + source.byteLength
         return sources.size - 1
@@ -287,8 +292,11 @@ private class Splitter {
  * Every FLine and drawable array goes to the buffers, and so does a solid's exact topology. What stays
  * JSON is structure: an editable scene's nodes, interactive vertices, topology strings, styles.
  */
-internal fun ThreeGeometryPayload.splitForWire(generation: String): ThreeWireSplit {
-    val splitter = Splitter()
+internal fun ThreeGeometryPayload.splitForWire(
+    generation: String,
+    hashes: ThreeArrayHashes = ThreeArrayHashes(),
+): ThreeWireSplit {
+    val splitter = Splitter(hashes)
     val description = copy(
         lines = splitter.geometry(lines, "FLine lines"),
         fills = splitter.geometry(fills, "FLine fills"),
@@ -310,6 +318,21 @@ internal fun ThreeGeometryPayload.splitForWire(generation: String): ThreeWireSpl
         description.copy(buffers = ThreeWireBuffers(generation, splitter.bytes, splitter.entries)),
         ThreeGeometryBuffers(splitter.bytes, splitter.sources),
     )
+}
+
+/**
+ * Content hashes ([ThreeWireBuffer.hash]) by array identity and wire type (one IntArray can go out as Uint16 in
+ * one place and Int32 in another). A view keeps the last update's, so the arrays of a part that is re-sent as it
+ * was — unchanged, or moved rigidly and sent as a transform — are not hashed again.
+ */
+internal class ThreeArrayHashes(private var previous: ThreeArrayHashes? = null) {
+    private val known = java.util.IdentityHashMap<Any, HashMap<String, String>>()
+    fun of(source: ThreeWireSource): String = known.getOrPut(source.array) { HashMap(2) }.getOrPut(source.type) {
+        previous?.known?.get(source.array)?.get(source.type) ?: source.contentHash()
+    }
+
+    /** Stop consulting the previous update's hashes, so only the arrays this one used are kept. */
+    fun settle() { previous = null }
 }
 
 /**
