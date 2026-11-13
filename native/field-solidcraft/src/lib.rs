@@ -9,6 +9,7 @@ use std::ptr;
 use solidcraft_doc::{Document, Model};
 use solidcraft_geom::Mesh;
 use solidcraft_io::Format;
+use solidcraft_kernel::MeshTolerance;
 
 const ABI_VERSION: u32 = 1;
 
@@ -194,7 +195,7 @@ pub unsafe extern "C" fn field_solidcraft_mesh(
             triangles,
             tri_face,
             ..
-        } = body.body.tessellate(tolerance).map_err(|e| e.to_string())?;
+        } = body.body.mesh(&MeshTolerance::chord(tolerance)).map_err(|e| e.to_string())?;
         if tri_face.len() != triangles.len() {
             return Err(format!(
                 "tessellation returned {} face IDs for {} triangles",
