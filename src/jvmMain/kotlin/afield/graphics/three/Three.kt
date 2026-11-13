@@ -88,6 +88,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal var controls: ThreeControls = ThreeControls()
     internal val partStyles = LinkedHashMap<String, ThreePartStyle>()
     internal val sceneMetadata = LinkedHashMap<String, Any?>()
+    internal val motions = ArrayList<ThreePartMotion>()
+    internal var timeline: ThreeTimeline? = null
     private var helpersExplicit: Boolean? = null
 
     /**
@@ -218,6 +220,40 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     fun style(id: String, style: ThreePartStyle) {
         require(id.isNotBlank()) { "a part style needs the part's id" }
         partStyles[id] = style
+    }
+
+    /**
+     * Declare that the parts [parts] move together by [motion] ([afield.geometry.kinematics.RigidMotion]), for
+     * the viewer to play on its timeline. Their geometry is drawn at the motion value [at] (a door modelled ajar
+     * at 30° says `at = 30.0`); **At rest** shows them there. [track] carries a value per step of the motion — a
+     * clearance gap — and the bands that tint the part by it. See [ThreeMotionTrack].
+     */
+    fun motion(
+        vararg parts: String,
+        motion: afield.geometry.kinematics.RigidMotion,
+        at: Double = 0.0,
+        track: ThreeMotionTrack? = null,
+        label: String? = null,
+    ) {
+        require(parts.isNotEmpty() && parts.none { it.isBlank() }) { "a motion names the ids of the parts it moves" }
+        require(at.isFinite()) { "a motion's drawn value must be finite" }
+        val moving = motions.flatMap { it.parts }.toSet()
+        parts.firstOrNull { it in moving }?.let { throw IllegalArgumentException("part '$it' already has a motion") }
+        motions += ThreePartMotion(parts.toList(), motion.toThreeJson(), at, track, label)
+        if (timeline == null) timeline = ThreeTimeline()
+    }
+
+    /**
+     * How the motions play: one loop of [periodSeconds], in [shape] ([ThreeTimelineShape.SWING] opens, holds,
+     * closes and holds). [autoplay] starts it when the view opens; [playLabel] is the play button's word.
+     */
+    fun timeline(
+        periodSeconds: Double = 7.0,
+        shape: ThreeTimelineShape = ThreeTimelineShape.SWING,
+        autoplay: Boolean = false,
+        playLabel: String = "Play",
+    ) {
+        timeline = ThreeTimeline(periodSeconds, shape, autoplay, playLabel)
     }
 
     /**
@@ -624,6 +660,9 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         (partStyles.keys + panels.flatMap { it.partStyles.keys }).firstOrNull { it !in ids }?.let {
             throw IllegalArgumentException("a part style names '$it', which no mesh in this scene has as its id")
         }
+        motions.flatMap { it.parts }.firstOrNull { it !in ids }?.let {
+            throw IllegalArgumentException("a motion moves '$it', which no mesh in this scene has as its id")
+        }
         require(cameraLink == null || panels.size <= 1) {
             "linkCamera() needs a single-view scene; a contact sheet of ${panels.size} panels keeps its own cameras"
         }
@@ -665,6 +704,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             controls = controls,
             partStyles = partStyles.toMap(),
             metadata = threeMetadataObject(sceneMetadata, "scene metadata"),
+            motions = motions.toList(),
+            timeline = if (motions.isEmpty()) null else timeline,
         )
     }
 

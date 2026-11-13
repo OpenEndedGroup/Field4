@@ -547,6 +547,12 @@ data class ThreeGeometryPayload(
     /** Scene-level free metadata for viewer tools. See [ThreeSceneBuilder.metadata]. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val metadata: kotlinx.serialization.json.JsonObject? = null,
+    /** Parts that move, for the viewer to play. See [ThreeSceneBuilder.motion]. Presentation, not geometry. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val motions: List<ThreePartMotion> = emptyList(),
+    /** The timeline the [motions] play on. See [ThreeSceneBuilder.timeline]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val timeline: ThreeTimeline? = null,
     /** Text pinned to points in the scene. See [ThreeSceneBuilder.label]. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val labels: List<ThreeLabel> = emptyList(),
