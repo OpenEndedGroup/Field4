@@ -145,6 +145,15 @@ class WiVRnPreparationTest {
         kotlin.test.assertTrue(preparationCommands(setOf("wivrn-macos"), "windows").isEmpty())
     }
 
+    @kotlin.test.Test fun macWiVRnDoesNotReinstallAvailablePythonOrCommandLineTools() {
+        val plan = packagePlan("brew", true, setOf("cmake"),
+            setOf("openxr", "slug", "wivrn-macos"), false, "mac")
+        kotlin.test.assertEquals(listOf(listOf("brew", "install", "--", "cmake")), plan.commands)
+        kotlin.test.assertFalse(plan.notes.any { "xcode-select" in it })
+        val ready = packagePlan("brew", true, emptySet(), setOf("wivrn-macos"), false, "mac")
+        kotlin.test.assertTrue(ready.commands.isEmpty())
+    }
+
     @kotlin.test.Test fun macCanSelectMissingBrewPrerequisitesAndInstallThem() {
         val choices = featureOptions("mac", { it !in setOf("cmake", "python3") },
             nvidia = false, rustErrors = emptyList(), solidcraftErrors = emptyList(), homebrew = true)
