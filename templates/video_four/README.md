@@ -42,7 +42,8 @@ runtime selected elsewhere does not capture this session. The system's runtime s
 
 ## macOS → WiVRn
 
-Install/configure WiVRn and the OpenXR loader as described in
+Run `./field.sh --setup`, select **WiVRn headset streaming**, and choose **BUILD**
+to install WiVRn and prepare the OpenXR loader. Details are in
 [the macOS WiVRn guide](../../public/docs/field_vr_ide.md). Start WiVRn.app and connect the
 headset. The same commands above delegate to `tools/field_wivrn_macos.py`, which selects the
 local runtime, loader and MoltenVK. `--check` performs a preflight without starting Field.

@@ -49,8 +49,8 @@ internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String
     val notes = mutableListOf<String>()
     val commands = mutableListOf<List<String>>()
     if (manager != null && manager != "brew") packages += missing.filter { it in setOf("curl", "tar", "gzip") }
-    val native = extras.any { it in setOf("ceres", "tetgen", "libpd", "csound", "paint", "syphon", "docs", "tracker", "patchy-web") }
-    val python = extras.any { it in setOf("python", "cv", "voice", "sentences", "ceres", "tetgen", "libpd", "csound", "docs", "tracker", "patchy-web") }
+    val native = extras.any { it in setOf("ceres", "tetgen", "libpd", "csound", "paint", "syphon", "docs", "tracker", "patchy-web", "wivrn-macos") }
+    val python = extras.any { it in setOf("python", "cv", "voice", "sentences", "ceres", "tetgen", "libpd", "csound", "docs", "tracker", "patchy-web", "wivrn-macos") }
     val buildMissing = (desktop || native) && missing.any { it in setOf("g++", "cmake", "make", "xcrun") }
     when (manager) {
         "apt-get" -> {
@@ -233,7 +233,7 @@ fun main(args: Array<String>) {
     val mode = readAnswer("Choose 1 or 2 [$defaultMode]: ")?.ifEmpty { defaultMode } ?: return
     if (mode !in setOf("1", "2")) { println(ui.error("Choose 1 or 2. No changes made.")); exitProcess(1) }
     ui.section(2, "Make it yours")
-    val options = featureOptions(platform, winget = manager == "winget")
+    val options = featureOptions(platform, winget = manager == "winget", homebrew = manager == "brew")
     val remembered = previous.getProperty("extras", "").split(',').filter(String::isNotEmpty).toSet()
     val extras = selectFeatures(options, remembered) ?: return
     val applicable = extrasCatalog.filter { it.id in extras && platform in it.platforms }.map { it.id }.toSet()
@@ -291,7 +291,7 @@ fun main(args: Array<String>) {
     if (prepare.isNotEmpty() && !deferPreparation) {
         if (readAnswer("BUILD to prepare the displayed extras / Enter for later: ") == "BUILD") {
             // Only tools for executable preparations gate BUILD; guidance-only selections do not.
-            val buildExtras = extrasCatalog.filter { it.id in applicable && it.task != null }.map { it.id }.toSet()
+            val buildExtras = extrasCatalog.filter { it.id in applicable && (it.task != null || it.preparation.isNotEmpty()) }.map { it.id }.toSet()
             val buildMissing = extraTools(buildExtras, platform).filter { !toolAvailable(it) }
             if (!ready || buildMissing.isNotEmpty()) {
                 println(ui.error("Cannot prepare yet. Resolve core prerequisites/LFS and missing build tools: ${buildMissing.joinToString()}. Rerun --setup."))
@@ -318,7 +318,7 @@ fun main(args: Array<String>) {
         setProperty("completed", ready.toString())
         setProperty("launchMode", if (mode == "1") "desktop" else "server-only")
         setProperty("extras", extras.sorted().joinToString(","))
-        setProperty("preparedExtras", if (built) extrasCatalog.filter { it.id in applicable && it.task != null }.joinToString(",") { it.id } else "")
+        setProperty("preparedExtras", if (built) extrasCatalog.filter { it.id in applicable && (it.task != null || it.preparation.isNotEmpty()) }.joinToString(",") { it.id } else "")
     }
     config.parentFile.mkdirs()
     config.outputStream().use { settings.store(it, "Field first-run choices; no credentials") }
