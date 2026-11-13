@@ -35,7 +35,7 @@ and assert on, instead of a render you eyeball.
 | how many holes | `genus` | `contourCount` |
 | the mesh size | `triangleCount`, `vertexCount` | `vertexCount` |
 | the extent | `bounds`, an `AxisAlignedBoundingBox3D` | `bounds`, a corner pair |
-| the clearance between two of them | `minGap(other, searchLength)` | — |
+| the clearance between two of them | `minGap(other, searchLength)`; for one in motion, [`sweptClearance`](swept_clearance.md) | — |
 | whether it worked | `status`, `isEmpty` | `isEmpty` |
 
 </div>
