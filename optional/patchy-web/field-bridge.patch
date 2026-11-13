@@ -1,8 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index f99ad12..e7bbaff 100644
+index 9d3e859d..7a6d342d 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -1441,6 +1441,7 @@ ${PATCHY_LUPDATE_MANIFEST_SOURCES}
+@@ -2006,6 +2006,7 @@ ${PATCHY_LUPDATE_MANIFEST_SOURCES}
        # qt_add_executable generates the wasm deployment sidecars (patchy.html,
        # qtloader.js) that a plain add_executable does not.
        qt_add_executable(patchy src/app/main.cpp)
@@ -12,7 +12,7 @@ index f99ad12..e7bbaff 100644
        # Flatten runs the strip compositor on the main thread, up to 16 strips;
 diff --git a/src/app/field_web_bridge.cpp b/src/app/field_web_bridge.cpp
 new file mode 100644
-index 0000000..de3e470
+index 00000000..de3e4704
 --- /dev/null
 +++ b/src/app/field_web_bridge.cpp
 @@ -0,0 +1,168 @@
@@ -186,7 +186,7 @@ index 0000000..de3e470
 +}  // namespace patchy
 diff --git a/src/app/field_web_bridge.hpp b/src/app/field_web_bridge.hpp
 new file mode 100644
-index 0000000..74e612a
+index 00000000..74e612a3
 --- /dev/null
 +++ b/src/app/field_web_bridge.hpp
 @@ -0,0 +1,25 @@
@@ -216,30 +216,20 @@ index 0000000..74e612a
 +
 +}  // namespace patchy
 diff --git a/src/app/main.cpp b/src/app/main.cpp
-index e3951f9..8a8f09c 100644
+index edbc75b2..905c9965 100644
 --- a/src/app/main.cpp
 +++ b/src/app/main.cpp
-@@ -14,6 +14,9 @@
- #include "ui/stress_test.hpp"
- #include "ui/theme_manager.hpp"
+@@ -26,6 +26,9 @@
  #include "ui/user_fonts.hpp"
+ #include "ui/wayland_pointer_cursor.hpp"
+ #include "ui/wayland_popup_anchor.hpp"
 +#ifdef Q_OS_WASM
 +#include "app/field_web_bridge.hpp"
 +#endif
- #ifdef PATCHY_MCP_EXECUTABLE
+ #ifndef Q_OS_WASM
  #include "app/mcp_server.hpp"
  #include <QTemporaryDir>
-@@ -51,6 +54,9 @@
- #include <optional>
- 
- #include "patchy_version.hpp"
-+#ifdef Q_OS_WASM
-+#include "app/field_web_bridge.hpp"
-+#endif
- 
- namespace {
- 
-@@ -302,6 +308,15 @@ QFont application_font() {
+@@ -284,6 +287,15 @@ QFont application_font() {
    // language is resolved. Point size stays Qt's default; the browser's
    // devicePixelRatio drives scaling on wasm.
    auto font = QFontDatabase::systemFont(QFontDatabase::GeneralFont);
@@ -255,9 +245,9 @@ index e3951f9..8a8f09c 100644
    if (QFontDatabase::families().contains(QStringLiteral("Noto Sans"))) {
      QStringList families{QStringLiteral("Noto Sans")};
      families += patchy::ui::wasm_cjk_fallback_families(
-@@ -428,6 +443,12 @@ int main(int argc, char* argv[]) {
-   // After the language: on wasm the app font's CJK fallback order depends on it.
-   app.setFont(application_font());
+@@ -593,6 +605,12 @@ int main(int argc, char* argv[]) {
+   ui_font_phase.end();
+   patchy::startup_trace::Scope theme_phase("theme.load");
    patchy::ui::ThemeManager::instance().load_saved_preference();
 +#ifdef Q_OS_WASM
 +  if (patchy::field_web_bridge_available()) {
@@ -265,12 +255,12 @@ index e3951f9..8a8f09c 100644
 +        patchy::ui::ColorSchemePreference::Dark, /*persist=*/false);
 +  }
 +#endif
- 
- #ifdef PATCHY_MCP_EXECUTABLE
-   if (connector_settings.isValid()) { return patchy::run_mcp_server(app); }
-@@ -828,6 +849,13 @@ int main(int argc, char* argv[]) {
-       qWarning("Patchy MCP attachment: %s", qPrintable(mcp_attachment->error()));
-     }
+   theme_phase.end();
+ #ifndef Q_OS_WASM
+   // A headless run on Windows draws text through the offscreen platform, whose font database
+@@ -1075,6 +1093,13 @@ int main(int argc, char* argv[]) {
+     const patchy::startup_trace::Scope menu_entry_phase("appimage.menu_entry");
+     window.begin_appimage_menu_entry_startup();
    }
 +#endif
 +#ifdef Q_OS_WASM
@@ -280,13 +270,13 @@ index e3951f9..8a8f09c 100644
 +    field_web_bridge = std::make_unique<patchy::FieldWebBridge>(window);
 +  }
  #endif
-   const int exec_result = app.exec();
-   // The window (declared after `app`) is destroyed before the application object; drop
+   // Everything above runs nested event processing before the main loop exists: opening a
+   // file from the command line shows its "Opening ..." progress and pumps events until the
 diff --git a/src/ui/dialog_utils.cpp b/src/ui/dialog_utils.cpp
-index ef54b24..5cbf706 100644
+index fa38a95a..f52dc52d 100644
 --- a/src/ui/dialog_utils.cpp
 +++ b/src/ui/dialog_utils.cpp
-@@ -8,6 +8,7 @@
+@@ -11,6 +11,7 @@
  #include "ui/window_effects.hpp"
  
  #ifdef Q_OS_WASM
@@ -294,7 +284,7 @@ index ef54b24..5cbf706 100644
  #include "ui/dialog_utils_wasm.hpp"
  #endif
  
-@@ -2393,6 +2394,9 @@ QString get_save_file_name(QWidget* parent, const QString& caption, const QStrin
+@@ -4438,6 +4439,9 @@ QString get_existing_directory(QWidget* parent, const QString& caption, const QS
  
  void offer_browser_download_for_saved_file(const QString& path) {
  #ifdef Q_OS_WASM
@@ -305,20 +295,20 @@ index ef54b24..5cbf706 100644
  #else
    // Desktop builds write real files; there is nothing to offer.
 diff --git a/src/ui/main_window_actions.cpp b/src/ui/main_window_actions.cpp
-index ca02980..405f2c0 100644
+index 342ff01d..e5429a77 100644
 --- a/src/ui/main_window_actions.cpp
 +++ b/src/ui/main_window_actions.cpp
-@@ -14,6 +14,9 @@
- #include "ui/main_window.hpp"
+@@ -27,6 +27,9 @@
+ #include "ui/canvas_widget.hpp"
  #include "ui/main_window_shared.hpp"
  #include "ui/main_window_actions_internal.hpp"
 +#ifdef Q_OS_WASM
 +#include "app/field_web_bridge.hpp"
 +#endif
  
- #include "core/blend_math.hpp"
- #include "core/layer_metadata.hpp"
-@@ -627,7 +630,14 @@ void MainWindow::retranslate_ui() {
+ #include "ui/blend_mode_ui.hpp"
+ #include "ui/brush_presets.hpp"
+@@ -508,7 +511,14 @@ void MainWindow::retranslate_ui() {
    // Chinese does not need a page reload. Every other platform has system fonts and
    // leaves the choice to Qt.
    if (QFontDatabase::families().contains(QStringLiteral("Noto Sans"))) {
@@ -334,67 +324,23 @@ index ca02980..405f2c0 100644
      families += wasm_cjk_fallback_families(LocalizationManager::instance().current_language());
      if (QApplication::font().families() != families) {
        auto font = QApplication::font();
-diff --git a/src/ui/main_window_ai_selection.cpp b/src/ui/main_window_ai_selection.cpp
-index c591222..c877be8 100644
---- a/src/ui/main_window_ai_selection.cpp
-+++ b/src/ui/main_window_ai_selection.cpp
-@@ -113,7 +113,9 @@ void configure_automatic_selection_models() {
- namespace {
- 
- // Persisted settings key (never rename): the first-use offer was shown.
-+#ifndef Q_OS_WASM
- constexpr auto kHighQualityOfferedKey = "automaticSelection/highQualityModelOffered";
-+#endif
- 
- // Decimal megabytes, as download sizes are usually given.
- int megabytes(qint64 bytes) {
-diff --git a/src/ui/main_window_docks.cpp b/src/ui/main_window_docks.cpp
-index 500d179..99b6a7d 100644
---- a/src/ui/main_window_docks.cpp
-+++ b/src/ui/main_window_docks.cpp
-@@ -10,6 +10,7 @@
- #include "ui/main_window_shared.hpp"
- #include "ui/modifier_names.hpp"
- #include "ui/paths_panel.hpp"
-+#include "app/field_web_bridge.hpp"
- 
- #include "core/blend_math.hpp"
- #include "core/layer_metadata.hpp"
-@@ -379,6 +380,20 @@ void install_collapsible_dock_title(QDockWidget* dock,
-   }
-   layout->addWidget(label, 1);
- 
-+#ifdef Q_OS_WASM
-+  // Field embeds the top three panels as a tab group. Their tab already names
-+  // the active panel, so the second collapsible title wastes an entire row.
-+  // Keep the dock and its resize handle; only remove this duplicate chrome.
-+  if (patchy::field_web_bridge_available() &&
-+      (object_prefix == QStringLiteral("layers") || object_prefix == QStringLiteral("channels") ||
-+       object_prefix == QStringLiteral("paths"))) {
-+    toggle->hide();
-+    label->hide();
-+    layout->setContentsMargins(0, 0, 0, 0);
-+    title->setFixedHeight(0);
-+  }
-+#endif
-+
-   const auto expanded_boost_height = std::max(expanded_minimum_height, expanded_preferred_height);
-   const auto apply_expanded_state = [dock, content, toggle, expanded_boost_height,
-                                      expanded_maximum_height,
 diff --git a/src/ui/main_window_sessions.cpp b/src/ui/main_window_sessions.cpp
-index 291a644..6ab1fb1 100644
+index d9ecd74b..52eabdda 100644
 --- a/src/ui/main_window_sessions.cpp
 +++ b/src/ui/main_window_sessions.cpp
-@@ -7,6 +7,8 @@
- #include "ui/main_window.hpp"
+@@ -17,6 +17,11 @@
+ #include "ui/document_save_coordinator.hpp"
  #include "ui/main_window_shared.hpp"
  #include "ui/custom_shape_library.hpp"
 +#include "ui/action_icons.hpp"
++#ifdef Q_OS_WASM
 +#include "app/field_web_bridge.hpp"
++#include <QToolButton>
++#endif
  
- #include "core/blend_math.hpp"
- #include "core/layer_metadata.hpp"
-@@ -394,6 +396,27 @@ void MainWindow::add_document_session(Document document, QString title, QString
+ #include "core/smart_object.hpp"
+ #include "core/layer_tree.hpp"
+@@ -300,6 +305,27 @@ void MainWindow::add_document_session(Document document, QString title, QString
          bind_tooltip(button, QT_TR_NOOP("Close Tab"));
        }
      }
@@ -423,27 +369,27 @@ index 291a644..6ab1fb1 100644
        document_tabs_->setCurrentIndex(tab_index);
      }
 diff --git a/src/ui/main_window_theme.cpp b/src/ui/main_window_theme.cpp
-index 1ee74fb..cf443d8 100644
+index fe2e3669..bc30dace 100644
 --- a/src/ui/main_window_theme.cpp
 +++ b/src/ui/main_window_theme.cpp
-@@ -6,6 +6,9 @@
- 
- #include "ui/main_window.hpp"
+@@ -9,6 +9,9 @@
+ #include "ui/window_effects.hpp"
  #include "ui/main_window_shared.hpp"
+ #include "ui/canvas_widget.hpp"
 +#ifdef Q_OS_WASM
 +#include "app/field_web_bridge.hpp"
 +#endif
- 
- #include "core/blend_math.hpp"
- #include "core/layer_metadata.hpp"
-@@ -1179,6 +1182,42 @@ QString photoshop_style() {
-   const auto generation = theme_generation();
-   if (generation != cached_generation) {
-     cached = apply_theme_tokens(photoshop_style_template());
+ #include "ui/dialog_utils.hpp"
+ #include "ui/document_float_window.hpp"
+ #include "ui/theme_apply_trace.hpp"
+@@ -1409,6 +1412,42 @@ QString photoshop_style(double tool_palette_factor) {
+       sheet += QStringLiteral("\nQMainWindow { border: %1px solid @window_border; }\n")
+                    .arg(frameless_window_edge_width());
+     }
 +#ifdef Q_OS_WASM
 +    if (patchy::field_web_bridge_available() && active_color_scheme() == ColorScheme::Dark) {
-+      cached += apply_theme_tokens(QStringLiteral(R"(
-+        QWidget, QMainWindow, QMenuBar, QMenu, QDockWidget { font-size: 11px; }
++      sheet += QStringLiteral(R"(
++        QWidget, QMainWindow, QMenuBar, QMenu { font-size: 11px; }
 +        QMenuBar { min-height: 26px; max-height: 26px; padding-left: 8px; border: 0; }
 +        QMenuBar::item { min-height: 26px; padding: 0 7px; margin: 0; }
 +        QMenu { border: 0; }
@@ -473,14 +419,48 @@ index 1ee74fb..cf443d8 100644
 +          background: @button_hover_bg;
 +        }
 +        QScrollBar::handle:vertical, QScrollBar::handle:horizontal { border: 0; }
-+      )"));
++      )");
 +    }
 +#endif
+     cached = apply_theme_tokens(sheet) + theme_panel_background_stylesheet();
      cached_generation = generation;
+     cached_factor = tool_palette_factor;
+diff --git a/src/ui/panel_column.cpp b/src/ui/panel_column.cpp
+index 8072b412..a6953f95 100644
+--- a/src/ui/panel_column.cpp
++++ b/src/ui/panel_column.cpp
+@@ -2,6 +2,9 @@
+ 
+ #include "ui/main_window_shared.hpp"
+ #include "ui/theme_qss.hpp"
++#ifdef Q_OS_WASM
++#include "app/field_web_bridge.hpp"
++#endif
+ 
+ #include <QApplication>
+ #include <QEvent>
+@@ -315,6 +318,19 @@ PanelColumn::Page* PanelColumn::build_page(Section& section, const PanelSpec& sp
+     header_layout->addWidget(spec.header_widget);
    }
-   return cached;
+   layout->addWidget(page->header);
++#ifdef Q_OS_WASM
++  // Field embeds the Layers, Channels and Paths tab group. Its tab already names
++  // the active panel, so the title row under it wastes an entire row. Keep the
++  // page; only remove this duplicate chrome.
++  if (patchy::field_web_bridge_available() &&
++      (spec.object_prefix == QStringLiteral("layers") || spec.object_prefix == QStringLiteral("channels") ||
++       spec.object_prefix == QStringLiteral("paths"))) {
++    page->toggle->hide();
++    page->label->hide();
++    header_layout->setContentsMargins(0, 0, 0, 0);
++    page->header->setFixedHeight(0);
++  }
++#endif
+   // A drag on the title row (the label passes its presses up) moves the section.
+   page->header->installEventFilter(this);
+ 
 diff --git a/src/ui/theme_palette.cpp b/src/ui/theme_palette.cpp
-index 7835586..0b81a97 100644
+index 3716e004..f693d82c 100644
 --- a/src/ui/theme_palette.cpp
 +++ b/src/ui/theme_palette.cpp
 @@ -13,6 +13,9 @@
@@ -493,7 +473,7 @@ index 7835586..0b81a97 100644
  
  #include <algorithm>
  #include <array>
-@@ -679,7 +682,84 @@ const ThemePalette& theme(ColorScheme scheme) {
+@@ -815,7 +818,84 @@ const ThemePalette& theme(ColorScheme scheme) {
    return scheme == ColorScheme::Light ? light_palette() : dark_palette();
  }
  
