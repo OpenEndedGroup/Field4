@@ -1,12 +1,11 @@
 # Filming a Timeline
 
-A timeline file says what a film shows at every moment: where each 3D view's camera is, which parts are
-hidden, how far a declared motion has gone, what a box's slider or the drag on its drawing is set to, and what
-the captions say. It also says where each box output sits on the frame. The backdoor's `film-page` plays it one
-frame at a time, so a film of a document comes out the same every time you shoot it, however slow the machine.
+A timeline lets you film a Field document: place its outputs in the frame, move a 3D camera, show
+or hide parts, drag a drawing, change a slider and add captions. The backdoor's `film-page` plays
+it one frame at a time, waiting for the requested views before it captures each frame. The film
+comes out the same each time, however long the machine takes to draw it.
 
-This page films one box: a box with a hinged lid, a plan whose right edge you can drag to make it wider, a depth
-slider, and a readout of its size.
+We'll film a hinged box with a plan you can drag wider, a depth slider and a readout of its size.
 
 ## The box
 
@@ -67,7 +66,7 @@ draw()
 
 ## The film
 
-This is [the timeline](assets/filming_a_timeline/hinge.film.json) below, filmed at 1280 by 720:
+Here is [the timeline](assets/filming_a_timeline/hinge.film.json) in action, filmed at 1280 by 720:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1280x720" hide-toasts=true video="assets/filming_a_timeline/hinge.mp4" fps="30" transcript="../../dev_docs/agents/transcripts/docs_capture/film_timeline.yaml" padding="0" wait="0" timeout="300" embed=true hidden=true name="film-timeline-hinge" alt="A ten-second film on a dark stage. On the left, the box's plan, its depth slider and a size readout; on the right, its 3D view, turning slowly. The plan's orange right edge is dragged out and back, and the box in 3D widens and narrows with it; the depth slider moves and the box deepens and returns; the lid swings open on its hinge and closes; the lid is hidden and shown again. A caption at the bottom left names each step."}
 // Film the timeline file with the frame-by-frame filmer `film-page --timeline` uses.
@@ -143,9 +142,9 @@ The top level:
 | `tracks` | the keys, one track per thing that changes |
 | `"//"` | a comment, anywhere a field can go |
 
-Every key has a time `t` in seconds. A key with an `ease` (`linear`, the default; `in`, `out`, `inOut`, or
-`step`) is arrived at from the key before it along that curve. Before a track's first key it leaves what it
-controls alone, and after its last key it holds that key.
+Every key has a time `t` in seconds. Its `ease` controls how it is reached from the previous key:
+`linear` is the default; you can also use `in`, `out`, `inOut` or `step`. Before the first key, a
+track leaves its target alone. After the last, it holds that key's value.
 
 ### The stage
 
@@ -181,9 +180,9 @@ A view is a region's `id`, or `{"box": …, "channel": …}` for a 3D view that 
 
 ### Waiting for the view
 
-Before Field captures a frame it waits until every view shows what that frame asked for: the camera reads back
-as asked, the parts and the motion are as asked, and the view has drawn since. A drag or a control changes the
-box itself, and the box redraws in its own time, so a `drag` or `control` track can say what to wait for:
+Before capturing a frame, Field waits for each view to draw with the requested camera, parts and
+motion. A drag or control changes the box itself, which redraws in its own time. To wait for that
+redraw as well, a `drag` or `control` track can name a value in the view's metadata:
 
 ```diffstatic {data-lang=json}
 "until": {"view": "model", "metadata": "edge", "of": "x"}

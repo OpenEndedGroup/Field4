@@ -4,24 +4,23 @@ Render an OpenXR scene on Linux and view it on Apple Vision Pro through NVIDIA C
 and Apple's Foveated Streaming framework. Field uses its existing Vulkan renderer and
 multiview eye targets; the Vision Pro client handles the stream and native tracking.
 
-This is a working route for taking a desktop OpenXR scene onto AVP over Wi-Fi. The tested
-editing setup is also usable for real work: **Field on Linux → Chrome on a Mac → Mac Virtual
-Display in Vision Pro**, alongside the streamed scene. That editing setup requires a Mac;
-the scene still renders on Linux. Other connected browsers can edit the same live document.
+You can work on the scene while you see it in the headset. In the tested setup, Field runs on
+Linux and Chrome opens its document on a Mac. **Mac Virtual Display** brings that browser into
+Vision Pro alongside the streamed scene. The Mac is needed for this editing setup; Linux still
+renders the scene. Other connected browsers can edit the same live document.
 
-[Apple's Mac Virtual Display](https://support.apple.com/en-ie/118521) requires a Mac;
-there is no supported Linux sender. A separate AVP remote-desktop
-viewer would normally be [hidden while this app's immersive space is open](https://developer.apple.com/documentation/swiftui/immersive-spaces), so Linux desktop
-streaming through another AVP app is not an established substitute here. Mac Virtual Display
-has its own developer setting for use inside immersive apps: **Settings → Developer → Allow
-Mac Virtual Display**. The client itself also offers optional IDE surfaces, described below.
+To use [Mac Virtual Display](https://support.apple.com/en-ie/118521) inside the immersive app,
+enable **Settings → Developer → Allow Mac Virtual Display** on the headset. A separate Vision Pro
+remote-desktop viewer would normally be [hidden while the immersive space is open](https://developer.apple.com/documentation/swiftui/immersive-spaces),
+so we have not established a Linux-only substitute for this editing setup. The CloudXR client also
+offers optional IDE surfaces, described below.
 
 ## Starting point
 
-The `cloudxr_one` starter draws a red 40 cm cube 1.5 m ahead, on black, with a desktop eye-image
-preview. It **does not draw the IDE on a texture by default**. Its three boxes configure the
-room, draw the cube and advance frames. The cube's vertex and fragment tabs are editable
-and support the normal shader reload command.
+Start with `cloudxr_one`: its three boxes configure the room, draw a red 40 cm cube 1.5 m ahead,
+and advance frames. A desktop preview shows the eye image. You can edit the cube's vertex and
+fragment tabs and reload the shaders as usual. The starter does not draw the IDE on a texture
+unless you enable the panel.
 
 - [Starter source and import instructions](https://github.com/OpenEndedGroup/Field4/tree/main/templates/cloudxr_one)
 - [Linux host setup](https://github.com/OpenEndedGroup/Field4/tree/main/tools/cloudxr)
@@ -55,11 +54,11 @@ reproduces in a plain native TextEditor and Apple's message demo, independently 
 Monaco or WebKit. Raw keyboard transitions stop too, although accepting a system completion
 suggestion can insert text. An ordinary local immersive space does not trigger it.
 
-Pause/disconnect, focus changes and scene activation did not recover typing. The exact
-responsible component is not established. Use the laptop browser for editing; the native
-browser and Vulkan panel remain optional interfaces, not keyboard-complete IDEs on this setup.
-[Reproduction notes](https://github.com/OpenEndedGroup/Field4/tree/main/tools/cloudxr/diagnostics/keyboard-repro)
-record the tests without publishing private device logs.
+For now, use the laptop browser to edit. The native browser and Vulkan panel remain useful for
+viewing and gestures, but neither provides a complete keyboard-driven IDE on this setup. Pausing or
+disconnecting the stream, changing focus and reactivating the scene did not restore typing; we do
+not yet know which component is responsible. The [reproduction notes](https://github.com/OpenEndedGroup/Field4/tree/main/tools/cloudxr/diagnostics/keyboard-repro)
+record what was tested.
 
 ## What has been tested
 
