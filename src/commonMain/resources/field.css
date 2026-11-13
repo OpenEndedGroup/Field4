@@ -16,7 +16,7 @@
     /* Typography. */
     --field-font: "Iosevka Web", monospace;
     --field-font-system: "Iosevka Web", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --field-font-code: "Iosevka Web", Monaco, Menlo, Consolas, "Courier New", monospace;
+    --field-font-code: "Iosevka Web", Monaco, Menlo, Consolas, monospace;
     --field-font-code-fallback: "Iosevka", "JetBrains Mono", Menlo, Consolas, monospace;
     --field-font-weight: 300;
 
@@ -323,6 +323,18 @@
     --field-shadow-tray: 0 0 30px rgba(var(--field-shadow-rgb), 0.28);
     --field-shadow-inset: rgba(var(--field-shadow-rgb), 0.16);
     --field-text-shadow-strong: 0 1px 4px rgba(var(--field-chalk-rgb), 0.6);
+}
+
+/* No Courier. Form controls do not inherit a font, and code/kbd/samp/tt take the browser's generic
+   `monospace`, which is Courier on macOS; either shows up the moment a rule forgets a family (the box
+   chat's textarea did). `:where` keeps this at zero specificity, so every rule that names a family wins.
+   The Electron shell also repoints the generic itself (FIELD_DEFAULT_FONT_FAMILY in electron/main.js). */
+:where(textarea, input, select, button) {
+    font-family: var(--field-font);
+}
+
+:where(code, kbd, samp, tt) {
+    font-family: var(--field-font-code), var(--field-font-code-fallback);
 }
 
 /* Output areas. */
@@ -1061,6 +1073,8 @@ pre code {
     border: 0;
     border-radius: 8px;
     padding: 8px;
+    /* A textarea does not inherit its font; without this Chromium's UA `monospace` (Courier on macOS) shows. */
+    font-family: var(--field-font);
     font-size: 10px;
     /*resize: vertical;*/
     min-height: 96px;
@@ -5715,7 +5729,7 @@ body.canvas-flight-recording .monaco-editor .cursor {
 
 .quickpick-detail-pane .quickpick-detail-body {
     white-space: normal;
-    font-family: var(--monaco-monospace-font, Monaco, Menlo, Consolas, "Courier New", monospace);
+    font-family: var(--monaco-monospace-font, Monaco, Menlo, Consolas, monospace);
     font-size: 11px;
     line-height: 1.4;
     overflow-y: auto;
