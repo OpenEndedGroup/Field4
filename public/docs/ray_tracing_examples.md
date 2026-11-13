@@ -468,7 +468,9 @@ start(captureScene)
 ## Keep the mirrors live
 
 In a box connected to a running renderer, install the scene once under a name, then edit its
-instances or animate them. Re-evaluating the installation replaces that named scene safely.
+instances or animate them. This reuses the floor/sphere hit groups and TLAS construction shown
+above; the installer owns their live GPU resources. Re-evaluating the installation replaces that
+named scene safely.
 
 ```diffstatic {data-lang=kotlin}
 import afield.graphics.scene.fabricated.RayTracingDocsHarness

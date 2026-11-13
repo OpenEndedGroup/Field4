@@ -3492,12 +3492,12 @@
     },
     "assets/agent_transcripts/path_tracing_glass/metadata.edn": {
       "captureDigest": "58fcc1ef888c978c5cb3a605b8b702759eb5fcc8e3358c6f72e9cd064537d98b",
-      "capturedAt": "2026-11-13T09:32:27.347Z",
+      "capturedAt": "2026-11-13T12:56:23.380Z",
       "channels": 1,
       "file": "assets/web_publications/path_tracing_glass/document/metadata.edn",
       "files": {
-        "assets/web_publications/path_tracing_glass/document/metadata.edn": "26eb3256b703dad5052fefb6b8b972bec74b55746bd23db825bf827e7d279e27",
-        "assets/web_publications/path_tracing_glass/document/outputs.json": "910de1f384c733473a3518c49b114f1ec20df6b72b4ec8669f2728ea587ebc38",
+        "assets/web_publications/path_tracing_glass/document/metadata.edn": "b42c19cfca5c0cd2ae6d4c54e1e12918c496ac1337e6f2162403020934cade73",
+        "assets/web_publications/path_tracing_glass/document/outputs.json": "a27127665ea64d0f111510a154546459ee3099fd30f2505387a9651300282d58",
         "assets/web_publications/path_tracing_glass/outputs/0.html": "9851065e049c4272d3250f8254a34f79660ca022dc673833145c480a06cfad12"
       },
       "kinds": [
@@ -3505,10 +3505,10 @@
       ],
       "outputs": "assets/web_publications/path_tracing_glass/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/path_tracing_glass.yaml": "ac87035f4829b28981339ade26adf9fe5c47dc5c65a86472f68c7db6cf8098cf",
+        "dev_docs/agents/transcripts/path_tracing_glass.yaml": "4af4c51678b4b42bfc9b1d2bebd9b451868e18b64bce4fad70dd81dd3f9b3a12",
         "public/docs/assets/agent_transcripts/path_tracing_glass/guides/path_tracing-clear-tinted-thin-and-frosted-glass.md": "20522f3ff8d040e155ce25644b614290171a4c93a8b810b36dd4200ebfe4bd24",
-        "public/docs/assets/agent_transcripts/path_tracing_glass/metadata.edn": "a5c332be39dab45bf9c7c038404267a5d699496762d8ab5dc381bf233ac4c4b9",
-        "public/docs/assets/agent_transcripts/path_tracing_glass/path_trace_glass_code_.kt": "5d766ed17986573226a0406b6120e31ee11b6ed1da9dc5e97d841f543361de1a",
+        "public/docs/assets/agent_transcripts/path_tracing_glass/metadata.edn": "8055973a2af28a6ca95751e2378006f82482b7966c4d144576b0e3c0dca6f030",
+        "public/docs/assets/agent_transcripts/path_tracing_glass/path_trace_glass_code_.kt": "457963fcae05c751d990318dab00a6964eecacc1f384b27540655ea4c741caf5",
         "public/docs/assets/agent_transcripts/path_tracing_glass/path_trace_renderer_code_.kt": "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9",
         "public/docs/assets/path_tracing/glass.png": "5faa55bb0e61928cc87eab0209ea9ed700a16e890e99bfaf62c901bce14a517a",
         "public/docs/path_tracing.md#capture-box=path_trace_glass": "f7fa78ed8536c24446fbe04a77098d5314a1b793df2ad437d41b1d2711313b4c"
@@ -3548,12 +3548,12 @@
     },
     "assets/agent_transcripts/path_tracing_hidden_environment/metadata.edn": {
       "captureDigest": "58fcc1ef888c978c5cb3a605b8b702759eb5fcc8e3358c6f72e9cd064537d98b",
-      "capturedAt": "2026-11-13T09:32:22.060Z",
+      "capturedAt": "2026-11-13T12:56:17.695Z",
       "channels": 1,
       "file": "assets/web_publications/path_tracing_hidden_environment/document/metadata.edn",
       "files": {
-        "assets/web_publications/path_tracing_hidden_environment/document/metadata.edn": "d86536e68cfded20788385b58e05b29f22d6ed601e2156eae307f762a6ebf235",
-        "assets/web_publications/path_tracing_hidden_environment/document/outputs.json": "61178081ab92ac05177fe5d77ba286981fff06d0abeb3bc1b69ec3171d6b71db",
+        "assets/web_publications/path_tracing_hidden_environment/document/metadata.edn": "0426681161fcefd8ce76defef174e7629afe2a7279802142a92a31aa3e1a266c",
+        "assets/web_publications/path_tracing_hidden_environment/document/outputs.json": "c05b2bb003b6f700bb3db48a325d8eb0397c8fe07b445cdd6b63594fb2d5c908",
         "assets/web_publications/path_tracing_hidden_environment/outputs/0.html": "5495cea955a079388b5715df4c071c75b3b72dcfa5f957637dac6fd3247ee1e3"
       },
       "kinds": [
@@ -3561,10 +3561,10 @@
       ],
       "outputs": "assets/web_publications/path_tracing_hidden_environment/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/path_tracing_hidden_environment.yaml": "5c27b1baa264991dc131a4a890f553878009250d4893be07371573a9e81cd7de",
+        "dev_docs/agents/transcripts/path_tracing_hidden_environment.yaml": "46b1c66a7333c0fd66576ed38fb76f8931cb9c23cde06d62fac95dddebb5e517",
         "public/docs/assets/agent_transcripts/path_tracing_hidden_environment/guides/path_tracing-environment-lighting-without-a-visible-sky.md": "1e28ef023083ed190943620f26eeafecd9d9b68d519caf6aeefd747ba4c117b8",
-        "public/docs/assets/agent_transcripts/path_tracing_hidden_environment/metadata.edn": "43949f5ef21725663ab193465e90cc4ff4b416e334d301d188352c5f2546c79e",
-        "public/docs/assets/agent_transcripts/path_tracing_hidden_environment/path_trace_hidden_environment_code_.kt": "9803893402681c2315563f5cc5824e6dd72b7a3aee4da57acdebdd592c8d13bb",
+        "public/docs/assets/agent_transcripts/path_tracing_hidden_environment/metadata.edn": "db637a09c1323159e120bb0f3f52f466e3e47b805d466f2cb709f1f1f63f2ad9",
+        "public/docs/assets/agent_transcripts/path_tracing_hidden_environment/path_trace_hidden_environment_code_.kt": "700d356182e626affb9527004ced3044d0928b419e457870c1302c76b020ac56",
         "public/docs/assets/agent_transcripts/path_tracing_hidden_environment/path_trace_renderer_code_.kt": "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9",
         "public/docs/assets/path_tracing/hidden_environment.png": "e972d9a85ff61cc1a79e9d5c31fa6ba6ba39b583bd1c79bf312d1042461f3f1d",
         "public/docs/path_tracing.md#capture-box=path_trace_hidden_environment": "530b3fc53ce07564ef678ef6214e32b8fb91103e9faa68034e67de3fe3794321"
@@ -3576,12 +3576,12 @@
     },
     "assets/agent_transcripts/path_tracing_materials/metadata.edn": {
       "captureDigest": "58fcc1ef888c978c5cb3a605b8b702759eb5fcc8e3358c6f72e9cd064537d98b",
-      "capturedAt": "2026-11-13T09:31:46.456Z",
+      "capturedAt": "2026-11-13T12:56:12.069Z",
       "channels": 1,
       "file": "assets/web_publications/path_tracing_materials/document/metadata.edn",
       "files": {
-        "assets/web_publications/path_tracing_materials/document/metadata.edn": "809b6004221493e47ef387c6c63fae531f5ab1faaeec3cbcf3ed68ff27cf9301",
-        "assets/web_publications/path_tracing_materials/document/outputs.json": "ae96e932be3806f5971584f1b621ef1e5f14f4e3f4936201a677570b76a287d0",
+        "assets/web_publications/path_tracing_materials/document/metadata.edn": "bf222ed8e9592f038f222426ce858b0a8d12add049372fbf5b8fe1b13f7567ad",
+        "assets/web_publications/path_tracing_materials/document/outputs.json": "8719bb623b11b4150a374e4c59dcdae762f1eb00893e5c6d57b328e26c8eb443",
         "assets/web_publications/path_tracing_materials/outputs/0.html": "94b8d4d916fba19b714a5093aedeb9077d69082410afd801c22f126dd1d3f024"
       },
       "kinds": [
@@ -3589,10 +3589,10 @@
       ],
       "outputs": "assets/web_publications/path_tracing_materials/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/path_tracing_materials.yaml": "0abb4ef778b4bcb7c75f6db71170de3fb7c6cb592cb01eaa74ebf4b235d819ad",
+        "dev_docs/agents/transcripts/path_tracing_materials.yaml": "55f7ba8e968f7772928b616c136ef5414b22d2c71ee87c767ecd5d0baf1670ac",
         "public/docs/assets/agent_transcripts/path_tracing_materials/guides/path_tracing-start-with-the-material-study.md": "74fe3009538c9b884e75c59b051e8de62cf1582da5ce69834c504e1e3f9e2940",
-        "public/docs/assets/agent_transcripts/path_tracing_materials/metadata.edn": "51d1b9b4ff662aa34c80c0473b5d962bcc2690df549077f44366a949fe3002f1",
-        "public/docs/assets/agent_transcripts/path_tracing_materials/path_trace_materials_code_.kt": "43b0c2afd59e91e76808f6fe30172b00cc83d4a995062bc0ccda805436b22075",
+        "public/docs/assets/agent_transcripts/path_tracing_materials/metadata.edn": "9be10287671ee9129a56b27d939744004dfbf9c9d598a7b51d1655571076a0e0",
+        "public/docs/assets/agent_transcripts/path_tracing_materials/path_trace_materials_code_.kt": "78d0fb60abb05b7bb30faa08244aaa1be4abeff017a8bb67e28fbc6f70616263",
         "public/docs/assets/agent_transcripts/path_tracing_materials/path_trace_renderer_code_.kt": "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9",
         "public/docs/assets/path_tracing/materials.png": "b3b7bc104da366da23a8fb2d0ce18673ba605ab74408bd913873e126e04534db",
         "public/docs/path_tracing.md#capture-box=path_trace_materials": "7eec65c204ee54c190c71bbfcbcb28b68bb141d64b23a3555bdc60b142b0d746"

@@ -533,5 +533,29 @@
         "probeUntil": "val budget = 6000"
       }
     ]
+  },
+  "path-scenes": {
+    "targets": [
+      {
+        "path": "public/docs/path_tracing.md",
+        "contains": "// A floor and three independently editable spheres."
+      },
+      {
+        "path": "public/docs/path_tracing.md",
+        "contains": "requestedBackend = PathTracingRenderer.Backend.RAY_QUERY"
+      },
+      {
+        "path": "public/docs/path_tracing.md",
+        "contains": "val sky = PathTraceEnvironment.fromAtmosphere"
+      },
+      {
+        "path": "public/docs/imgui_vr_panel.md",
+        "contains": "imgui.addUi(\"panel\")"
+      },
+      {
+        "path": "public/docs/imgui_vr_panel.md",
+        "contains": "fun updateRayHit()"
+      }
+    ]
   }
 }

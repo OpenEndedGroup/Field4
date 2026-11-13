@@ -98,5 +98,20 @@
     "family": "StackSLIntervals.tilePicture",
     "decision": "expand_first_use_retain_named_reuse",
     "detail": "The first figure now shows shader expansion, parsing, rendering, interval queries and recursive subdivision. The later noise example reuses the now-taught algorithm by name. A public parsed-shader overload of enclosePixels avoids reparsing per rectangle; tests cover equivalence and per-query state isolation."
+  },
+  {
+    "family": "PathTraceDemo and PathTraceGlassDemo",
+    "decision": "open_creative_scene_and_camera",
+    "detail": "First material lesson, five canonical transcripts and saved instrument sidecar now show actual materials, world geometry, camera and environment. Backend/sky examples reuse that visible scene through the real renderer constructor. Hidden motion/integrator drivers retain named scene reuse after teaching it."
+  },
+  {
+    "family": "ImGuiVrPanelDemo.build",
+    "decision": "open_ui_geometry_shader_and_ray_composition",
+    "detail": "The canonical panel now exposes controls, RTT configuration, quad geometry, GLSL properties, separate per-eye modules and ray-to-UV injection. Cached native targets have explicit cleanup and key changes; UI state and callbacks remain editable. Public page shows the exact UI and ray mapping, with class/method links."
+  },
+  {
+    "family": "RayTracingDocsHarness.LiveMirrorBallsScene",
+    "decision": "retain_resource_ownership_after_pipeline_is_taught",
+    "detail": "The page spells out geometry buffers, BLASes, instance transforms, TLAS, SBT groups, ray/sphere intersection and recursive reflection. The later live installer adds owned replacement/retirement and editable instance animation, linked to its full reference."
   }
 ]
