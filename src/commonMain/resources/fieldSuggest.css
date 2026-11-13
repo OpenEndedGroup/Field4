@@ -625,10 +625,17 @@
     gap: 8px;
     align-items: center;
     margin-top: 10px;
-    padding-top: 8px;
+    /* The rule runs through the doc pane's right padding to its edge, like the pane's own
+       rules; the matching padding keeps the value in line with the text above. */
+    margin-right: -14px;
+    padding: 8px 14px 0 0;
     border-top: 1px solid var(--field-border-soft);
     color: var(--field-fg-dim);
     font-size: 10px;
+}
+
+.afield-palette-doc-source > :last-child {
+    text-align: right;
 }
 
 .afield-palette-doc-source code {
