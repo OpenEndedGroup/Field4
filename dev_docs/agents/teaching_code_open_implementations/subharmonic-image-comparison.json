@@ -1,0 +1,121 @@
+[
+  {
+    "name": "bass-octave",
+    "beforeSize": [
+      2232,
+      1548
+    ],
+    "afterSize": [
+      2232,
+      1548
+    ],
+    "differenceBoundingBox": [
+      73,
+      71,
+      2073,
+      1467
+    ]
+  },
+  {
+    "name": "bass-trackers",
+    "beforeSize": [
+      2232,
+      1548
+    ],
+    "afterSize": [
+      2232,
+      1548
+    ],
+    "differenceBoundingBox": [
+      73,
+      71,
+      2073,
+      1467
+    ]
+  },
+  {
+    "name": "divisions",
+    "beforeSize": [
+      2232,
+      1548
+    ],
+    "afterSize": [
+      2232,
+      1548
+    ],
+    "differenceBoundingBox": [
+      48,
+      71,
+      2232,
+      1548
+    ]
+  },
+  {
+    "name": "kick",
+    "beforeSize": [
+      2232,
+      1548
+    ],
+    "afterSize": [
+      2232,
+      1548
+    ],
+    "differenceBoundingBox": [
+      73,
+      71,
+      2073,
+      1467
+    ]
+  },
+  {
+    "name": "arpy",
+    "beforeSize": [
+      2232,
+      1548
+    ],
+    "afterSize": [
+      2232,
+      1548
+    ],
+    "differenceBoundingBox": [
+      73,
+      71,
+      2073,
+      1467
+    ]
+  },
+  {
+    "name": "film-naive",
+    "beforeSize": [
+      2232,
+      1548
+    ],
+    "afterSize": [
+      2232,
+      1548
+    ],
+    "differenceBoundingBox": [
+      73,
+      71,
+      2073,
+      1467
+    ]
+  },
+  {
+    "name": "film-shaped",
+    "beforeSize": [
+      2232,
+      1548
+    ],
+    "afterSize": [
+      2232,
+      1548
+    ],
+    "differenceBoundingBox": [
+      73,
+      71,
+      2073,
+      1467
+    ]
+  }
+]

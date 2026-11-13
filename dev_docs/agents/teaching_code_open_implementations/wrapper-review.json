@@ -1051,7 +1051,7 @@
     "calls": [
       {
         "call": "LorisDocs.comparisonHtml",
-        "decision": "pending"
+        "decision": "implementation_opened_and_actual_source_captured"
       }
     ]
   },
@@ -1061,7 +1061,7 @@
     "calls": [
       {
         "call": "LorisDocs.whirlpoolHtml",
-        "decision": "pending"
+        "decision": "implementation_opened_and_actual_source_captured"
       }
     ]
   },
@@ -1071,7 +1071,7 @@
     "calls": [
       {
         "call": "LorisDocs.transformedHtml",
-        "decision": "pending"
+        "decision": "implementation_opened_and_actual_source_captured"
       }
     ]
   },
@@ -1081,7 +1081,7 @@
     "calls": [
       {
         "call": "LorisDocs.morphPanelHtml",
-        "decision": "pending"
+        "decision": "implementation_opened_and_actual_source_captured"
       }
     ]
   },
@@ -1091,7 +1091,7 @@
     "calls": [
       {
         "call": "LorisDocs.morphPanelHtml",
-        "decision": "pending"
+        "decision": "implementation_opened_and_actual_source_captured"
       }
     ]
   },
@@ -1101,7 +1101,7 @@
     "calls": [
       {
         "call": "LorisDocs.morphPanelHtml",
-        "decision": "pending"
+        "decision": "implementation_opened_and_actual_source_captured"
       }
     ]
   },
@@ -1357,7 +1357,7 @@
     "calls": [
       {
         "call": "SubharmonicSoundDocs.render",
-        "decision": "reuse_of_implementation_already_shown"
+        "decision": "explicit_graph_render_and_spectrum"
       }
     ]
   },
@@ -1367,7 +1367,7 @@
     "calls": [
       {
         "call": "SubharmonicSoundDocs.render",
-        "decision": "reuse_of_implementation_already_shown"
+        "decision": "explicit_graph_render_and_spectrum"
       }
     ]
   },
@@ -1377,7 +1377,7 @@
     "calls": [
       {
         "call": "SubharmonicSoundDocs.render",
-        "decision": "reuse_of_implementation_already_shown"
+        "decision": "explicit_graph_render_and_spectrum"
       }
     ]
   },
@@ -1387,7 +1387,7 @@
     "calls": [
       {
         "call": "SubharmonicSoundDocs.render",
-        "decision": "reuse_of_implementation_already_shown"
+        "decision": "explicit_graph_render_and_spectrum"
       }
     ]
   },
@@ -1397,7 +1397,7 @@
     "calls": [
       {
         "call": "SubharmonicSoundDocs.render",
-        "decision": "reuse_of_implementation_already_shown"
+        "decision": "explicit_graph_render_and_spectrum"
       }
     ]
   },
@@ -1407,7 +1407,7 @@
     "calls": [
       {
         "call": "SubharmonicSoundDocs.render",
-        "decision": "reuse_of_implementation_already_shown"
+        "decision": "explicit_graph_render_and_spectrum"
       }
     ]
   },
@@ -1417,7 +1417,7 @@
     "calls": [
       {
         "call": "SubharmonicSoundDocs.render",
-        "decision": "reuse_of_implementation_already_shown"
+        "decision": "explicit_graph_render_and_spectrum"
       }
     ]
   }

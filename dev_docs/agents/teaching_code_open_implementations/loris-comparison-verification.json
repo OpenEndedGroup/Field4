@@ -1,0 +1,11 @@
+{
+  "passed": [
+    "dialogue analysis and published reconstruction PCM",
+    "changed analysis resolution on rerun"
+  ],
+  "probeSourceSha256": [
+    "7a80f97bc1021b822abf200da51801c7ac2b154537d414c325d318f9b229c71d",
+    "8e8961eb91f41ad302fce4552f7513bd2d3543c80691a598264312e917b43b08"
+  ],
+  "note": "The first two asynchronous probes passed. The following whirlpool oracle call had an incorrect arity in the probe configuration; it was repaired without changing the example."
+}

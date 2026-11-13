@@ -211,5 +211,251 @@
         ]
       }
     ]
+  },
+  "loris-audio": {
+    "targets": [
+      {
+        "path": "public/docs/loris.md",
+        "name": "loris-dialogue",
+        "capture": true,
+        "probeFullCode": true,
+        "probes": [
+          {
+            "label": "dialogue analysis and published reconstruction PCM",
+            "before": "val sync =",
+            "assertions": "check(options == LorisDocs.options)\ncheck(result.model == client.analyze(wav.samples, wav.sampleRate, LorisDocs.options).model)\nval checkWav = java.nio.file.Files.createTempFile(\"field-loris-teaching-\", \".wav\").toFile()\ntry {\n    afield.audio.engine.WavFloatArrayWriter.writeMono16(checkWav.path, result.samples, result.model.sampleRate)\n    check(checkWav.readBytes().contentEquals(java.io.File(\"public/docs/assets/loris/reconstruction.wav\").readBytes())) { \"PCM differs from the published reconstruction.wav\" }\n} finally { checkWav.delete() }"
+          },
+          {
+            "label": "changed analysis resolution on rerun",
+            "before": "val sync =",
+            "assertions": "check(options == LorisDocs.options.copy(resolutionHz = 45.0))\ncheck(result.model == client.analyze(wav.samples, wav.sampleRate, LorisDocs.options.copy(resolutionHz = 45.0)).model)",
+            "replace": {
+              "resolutionHz = 35.0": "resolutionHz = 45.0"
+            }
+          }
+        ]
+      },
+      {
+        "path": "public/docs/loris.md",
+        "name": "loris-whirlpool",
+        "capture": true,
+        "probeFullCode": true,
+        "probes": [
+          {
+            "label": "explicit whirlpool breakpoint mapping and published PCM",
+            "before": "display(\n",
+            "assertions": "val expectedModel = model.spectralWhirlpool(chunkStart, chunkDuration)\ncheck(changed == expectedModel)\ncheck(edited.samples.contentEquals(client.synthesize(expectedModel).samples))\nval checkWav = java.nio.file.Files.createTempFile(\"field-loris-teaching-\", \".wav\").toFile()\ntry {\n    afield.audio.engine.WavFloatArrayWriter.writeMono16(checkWav.path, edited.samples, edited.model.sampleRate)\n    check(checkWav.readBytes().contentEquals(java.io.File(\"public/docs/assets/loris/spectral-whirlpool.wav\").readBytes())) { \"PCM differs from the published spectral-whirlpool.wav\" }\n} finally { checkWav.delete() }"
+          },
+          {
+            "label": "moved whirlpool window on rerun",
+            "before": "display(\n",
+            "assertions": "val expectedModel = model.spectralWhirlpool(chunkStart, chunkDuration)\ncheck(changed == expectedModel)\ncheck(edited.samples.contentEquals(client.synthesize(expectedModel).samples))",
+            "replace": {
+              "val chunkStart = 6.0": "val chunkStart = 5.0",
+              "val chunkDuration = 3.0": "val chunkDuration = 2.0"
+            }
+          }
+        ]
+      },
+      {
+        "path": "public/docs/loris.md",
+        "name": "loris-tonal-edit",
+        "capture": true,
+        "probeFullCode": true,
+        "probes": [
+          {
+            "label": "tonal transformation and published PCM",
+            "before": "display(\n",
+            "assertions": "check(edited.samples.contentEquals(client.synthesize(analyzed.model.transformed(frequencyScale = frequencyScale, bandwidthScale = bandwidthScale, gain = gain)).samples))\nval checkWav = java.nio.file.Files.createTempFile(\"field-loris-teaching-\", \".wav\").toFile()\ntry {\n    afield.audio.engine.WavFloatArrayWriter.writeMono16(checkWav.path, edited.samples, edited.model.sampleRate)\n    check(checkWav.readBytes().contentEquals(java.io.File(\"public/docs/assets/loris/three-quarter-tonal.wav\").readBytes())) { \"PCM differs from the published three-quarter-tonal.wav\" }\n} finally { checkWav.delete() }"
+          },
+          {
+            "label": "changed pitch scale on rerun",
+            "before": "display(\n",
+            "assertions": "check(edited.samples.contentEquals(client.synthesize(analyzed.model.transformed(frequencyScale = frequencyScale, bandwidthScale = bandwidthScale, gain = gain)).samples))",
+            "replace": {
+              "val frequencyScale = 0.75": "val frequencyScale = 0.9"
+            }
+          }
+        ]
+      },
+      {
+        "path": "public/docs/loris.md",
+        "name": "loris-morph-a",
+        "capture": true,
+        "probeFullCode": true,
+        "probes": [
+          {
+            "label": "distilled, aligned and morphed models and published PCM",
+            "before": "val result = when",
+            "assertions": "val expectedA = client.distill(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0))\nval expectedB = client.distill(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0))\nval expectedAligned = client.dilate(expectedB.model, [0.0, expectedB.model.loudestTimeSeconds(), end], [0.0, expectedA.model.loudestTimeSeconds(), end], durationSeconds = end)\nval expectedRaw = client.morph(expectedA.model.dropUnlabeled(), expectedAligned.model.dropUnlabeled(), LorisEnvelope.ramp(morphStart, morphEnd))\nval expectedGain = if (expectedRaw.peak > 0.95f) 0.95 / expectedRaw.peak else 1.0\nval expected = if (expectedGain == 1.0) expectedRaw else client.synthesize(expectedRaw.model.transformed(gain = expectedGain))\ncheck(a == expectedA.model && b == expectedB.model && aligned == expectedAligned.model)\ncheck(morphed.model == expected.model && morphed.samples.contentEquals(expected.samples))\nval checkWav = java.nio.file.Files.createTempFile(\"field-loris-teaching-\", \".wav\").toFile()\ntry {\n    afield.audio.engine.WavFloatArrayWriter.writeMono16(checkWav.path, morphed.samples, morphed.model.sampleRate)\n    check(checkWav.readBytes().contentEquals(java.io.File(\"public/docs/assets/loris/morph-a-to-b.wav\").readBytes())) { \"PCM differs from the published morph-a-to-b.wav\" }\n} finally { checkWav.delete() }"
+          },
+          {
+            "label": "changed morph envelope on rerun",
+            "before": "val result = when",
+            "assertions": "val expectedA = client.distill(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0))\nval expectedB = client.distill(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0))\nval expectedAligned = client.dilate(expectedB.model, [0.0, expectedB.model.loudestTimeSeconds(), end], [0.0, expectedA.model.loudestTimeSeconds(), end], durationSeconds = end)\nval expectedRaw = client.morph(expectedA.model.dropUnlabeled(), expectedAligned.model.dropUnlabeled(), LorisEnvelope.ramp(morphStart, morphEnd))\nval expectedGain = if (expectedRaw.peak > 0.95f) 0.95 / expectedRaw.peak else 1.0\nval expected = if (expectedGain == 1.0) expectedRaw else client.synthesize(expectedRaw.model.transformed(gain = expectedGain))\ncheck(a == expectedA.model && b == expectedB.model && aligned == expectedAligned.model)\ncheck(morphed.model == expected.model && morphed.samples.contentEquals(expected.samples))",
+            "replace": {
+              "val morphStart = 0.4": "val morphStart = 0.6",
+              "val morphEnd = 1.6": "val morphEnd = 1.4"
+            }
+          }
+        ]
+      },
+      {
+        "path": "public/docs/loris.md",
+        "name": "loris-morph-b",
+        "capture": true,
+        "probeFullCode": true,
+        "probes": [
+          {
+            "label": "phrase B uses the same explicit morph pipeline",
+            "before": "val result = when",
+            "assertions": "val expectedA = client.distill(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0))\nval expectedB = client.distill(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0))\nval expectedAligned = client.dilate(expectedB.model, [0.0, expectedB.model.loudestTimeSeconds(), end], [0.0, expectedA.model.loudestTimeSeconds(), end], durationSeconds = end)\nval expectedRaw = client.morph(expectedA.model.dropUnlabeled(), expectedAligned.model.dropUnlabeled(), LorisEnvelope.ramp(morphStart, morphEnd))\nval expectedGain = if (expectedRaw.peak > 0.95f) 0.95 / expectedRaw.peak else 1.0\nval expected = if (expectedGain == 1.0) expectedRaw else client.synthesize(expectedRaw.model.transformed(gain = expectedGain))\ncheck(a == expectedA.model && b == expectedB.model && aligned == expectedAligned.model)\ncheck(morphed.model == expected.model && morphed.samples.contentEquals(expected.samples))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/loris.md",
+        "name": "loris-morph-result",
+        "capture": true,
+        "probeFullCode": true,
+        "probes": [
+          {
+            "label": "morph view uses the same explicit morph pipeline",
+            "before": "val result = when",
+            "assertions": "val expectedA = client.distill(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0))\nval expectedB = client.distill(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0))\nval expectedAligned = client.dilate(expectedB.model, [0.0, expectedB.model.loudestTimeSeconds(), end], [0.0, expectedA.model.loudestTimeSeconds(), end], durationSeconds = end)\nval expectedRaw = client.morph(expectedA.model.dropUnlabeled(), expectedAligned.model.dropUnlabeled(), LorisEnvelope.ramp(morphStart, morphEnd))\nval expectedGain = if (expectedRaw.peak > 0.95f) 0.95 / expectedRaw.peak else 1.0\nval expected = if (expectedGain == 1.0) expectedRaw else client.synthesize(expectedRaw.model.transformed(gain = expectedGain))\ncheck(a == expectedA.model && b == expectedB.model && aligned == expectedAligned.model)\ncheck(morphed.model == expected.model && morphed.samples.contentEquals(expected.samples))"
+          }
+        ]
+      }
+    ]
+  },
+  "subharmonic-spectra": {
+    "targets": [
+      {
+        "path": "public/docs/subharmonic_sound.md",
+        "name": "subharmonic-bass-octave-spectrum",
+        "capture": true,
+        "probes": [
+          {
+            "label": "bass-octave: explicit graph samples match the scene",
+            "assertions": "check(samples.contentEquals(SubharmonicSoundDocs.render(\"bass-octave\")))"
+          },
+          {
+            "label": "bass-octave: shorter render on rerun",
+            "replace": {
+              "val seconds = 6f": "val seconds = 3f"
+            },
+            "assertions": "val expected = SubharmonicSoundDocs.render(\"bass-octave\")\ncheck(samples.size < expected.size)\ncheck(samples.contentEquals(expected.copyOf(samples.size)))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/subharmonic_sound.md",
+        "name": "subharmonic-bass-trackers-spectrum",
+        "capture": true,
+        "probes": [
+          {
+            "label": "bass-trackers: explicit graph samples match the scene",
+            "assertions": "check(samples.contentEquals(SubharmonicSoundDocs.render(\"bass-trackers\")))"
+          },
+          {
+            "label": "bass-trackers: shorter render on rerun",
+            "replace": {
+              "val seconds = 12f": "val seconds = 6f"
+            },
+            "assertions": "val expected = SubharmonicSoundDocs.render(\"bass-trackers\")\ncheck(samples.size < expected.size)\ncheck(samples.contentEquals(expected.copyOf(samples.size)))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/subharmonic_sound.md",
+        "name": "subharmonic-divisions-spectrum",
+        "capture": true,
+        "probes": [
+          {
+            "label": "divisions: explicit graph samples match the scene",
+            "assertions": "check(samples.contentEquals(SubharmonicSoundDocs.render(\"divisions\")))"
+          },
+          {
+            "label": "divisions: shorter render on rerun",
+            "replace": {
+              "val seconds = 18f": "val seconds = 9f"
+            },
+            "assertions": "val expected = SubharmonicSoundDocs.render(\"divisions\")\ncheck(samples.size < expected.size)\ncheck(samples.contentEquals(expected.copyOf(samples.size)))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/subharmonic_sound.md",
+        "name": "subharmonic-kick-spectrum",
+        "capture": true,
+        "probes": [
+          {
+            "label": "kick: explicit graph samples match the scene",
+            "assertions": "check(samples.contentEquals(SubharmonicSoundDocs.render(\"kick\")))"
+          },
+          {
+            "label": "kick: shorter render on rerun",
+            "replace": {
+              "val seconds = 12f": "val seconds = 6f"
+            },
+            "assertions": "val expected = SubharmonicSoundDocs.render(\"kick\")\ncheck(samples.size < expected.size)\ncheck(samples.contentEquals(expected.copyOf(samples.size)))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/subharmonic_sound.md",
+        "name": "subharmonic-arpy-spectrum",
+        "capture": true,
+        "probes": [
+          {
+            "label": "arpy: explicit graph samples match the scene",
+            "assertions": "check(samples.contentEquals(SubharmonicSoundDocs.render(\"arpy\")))"
+          },
+          {
+            "label": "arpy: shorter render on rerun",
+            "replace": {
+              "val seconds = 8f": "val seconds = 4f"
+            },
+            "assertions": "val expected = SubharmonicSoundDocs.render(\"arpy\")\ncheck(samples.size < expected.size)\ncheck(samples.contentEquals(expected.copyOf(samples.size)))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/subharmonic_sound.md",
+        "name": "subharmonic-film-naive-spectrum",
+        "capture": true,
+        "probes": [
+          {
+            "label": "film-naive: explicit graph samples match the scene",
+            "assertions": "check(samples.contentEquals(SubharmonicSoundDocs.render(\"film-naive\")))"
+          },
+          {
+            "label": "film-naive: shorter render on rerun",
+            "replace": {
+              "val seconds = 7.5f": "val seconds = 3.75f"
+            },
+            "assertions": "val expected = SubharmonicSoundDocs.render(\"film-naive\")\ncheck(samples.size < expected.size)\ncheck(samples.contentEquals(expected.copyOf(samples.size)))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/subharmonic_sound.md",
+        "name": "subharmonic-film-shaped-spectrum",
+        "capture": true,
+        "probes": [
+          {
+            "label": "film-shaped: explicit graph samples match the scene",
+            "assertions": "check(samples.contentEquals(SubharmonicSoundDocs.render(\"film-shaped\")))"
+          },
+          {
+            "label": "film-shaped: shorter render on rerun",
+            "replace": {
+              "val seconds = 13.5f": "val seconds = 6.75f"
+            },
+            "assertions": "val expected = SubharmonicSoundDocs.render(\"film-shaped\")\ncheck(samples.size < expected.size)\ncheck(samples.contentEquals(expected.copyOf(samples.size)))"
+          }
+        ]
+      }
+    ]
   }
 }
