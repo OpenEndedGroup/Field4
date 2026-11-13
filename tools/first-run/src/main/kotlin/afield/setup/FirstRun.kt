@@ -99,7 +99,7 @@ internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String
         }
         "brew" -> {
             if ("git-lfs" in missing) packages += "git-lfs"
-            if (python) packages += "python@3.12"
+            if (python && "python3" in missing) packages += "python@3.12"
             if ("cmake" in missing && native) packages += "cmake"
             if (missing.any { it in setOf("cargo", "rustc") }) packages += "rust"
             if ("csound" in extras) packages += listOf("flex", "bison", "pkg-config", "libsndfile")
@@ -108,7 +108,7 @@ internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String
             if ("lua" in extras) packages += "luajit"
             if ("polyvector" in extras) packages += listOf("opencv", "boost", "eigen")
             if (packages.isNotEmpty()) commands += listOf("brew", "install", "--") + packages
-            if (buildMissing || "python" in extras) notes += "Apple Command Line Tools: xcode-select --install (finish Apple's dialog, then rerun setup)."
+            if ("xcrun" in missing) notes += "Apple Command Line Tools: xcode-select --install (finish Apple's dialog, then rerun setup)."
             if ("vulkan" in extras) notes += "Use the welcome page's Vulkan panel for macOS SDK/driver setup; Linux Vulkan packages do not apply."
         }
         else -> {
