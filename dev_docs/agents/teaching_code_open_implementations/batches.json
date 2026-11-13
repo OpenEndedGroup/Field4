@@ -557,5 +557,29 @@
         "contains": "fun updateRayHit()"
       }
     ]
+  },
+  "rig-measurement": {
+    "targets": [
+      {
+        "path": "public/docs/chain_scene_to_light.md",
+        "name": "chain-scene-to-light-aliasing",
+        "capture": true,
+        "probes": [
+          {
+            "label": "default light totals and peaks exactly match the original measurement",
+            "replace": {},
+            "assertions": "val expected = SceneOnARig.aliasing(frameCount, line)\ncheck(point.total.contentEquals(expected.first.total) && point.peak.contentEquals(expected.first.peak))\ncheck(area.total.contentEquals(expected.second.total) && area.peak.contentEquals(expected.second.peak))"
+          },
+          {
+            "label": "wider line and fewer samples on rerun",
+            "replace": {
+              "val frameCount = 121": "val frameCount = 61",
+              "val lineWidth = 0.25": "val lineWidth = 0.5"
+            },
+            "assertions": "val expected = SceneOnARig.aliasing(frameCount, line)\ncheck(point.total.contentEquals(expected.first.total) && point.peak.contentEquals(expected.first.peak))\ncheck(area.total.contentEquals(expected.second.total) && area.peak.contentEquals(expected.second.peak))\ncheck(lineTruth == 4.0)"
+          }
+        ]
+      }
+    ]
   }
 }

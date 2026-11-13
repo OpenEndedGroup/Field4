@@ -67,7 +67,7 @@
   {
     "family": "RayTracingDocsHarness hidden figure generators",
     "decision": "retain_capture_support",
-    "detail": "ray_tracing_examples.md writes out buffers, acceleration structures, ray-generation/miss/closest-hit shaders and dispatch before its hidden runner fences. Those hidden calls capture the implementation already taught; they are not the visible teaching code. LiveMirrorBallsScene still needs separate review."
+    "detail": "ray_tracing_examples.md writes out buffers, acceleration structures, ray-generation/miss/closest-hit shaders and dispatch before its hidden runner fences. Those hidden calls capture the implementation already taught; they are not the visible teaching code. The live owned scene is reviewed separately below."
   },
   {
     "family": "LorisDocs panels",
@@ -113,5 +113,10 @@
     "family": "RayTracingDocsHarness.LiveMirrorBallsScene",
     "decision": "retain_resource_ownership_after_pipeline_is_taught",
     "detail": "The page spells out geometry buffers, BLASes, instance transforms, TLAS, SBT groups, ray/sphere intersection and recursive reflection. The later live installer adds owned replacement/retirement and editable instance animation, linked to its full reference."
+  },
+  {
+    "family": "SceneOnARig.aliasing",
+    "decision": "open_sampling_and_light_measurement",
+    "detail": "An additional case from the broader short-body census. The page and canonical measurement box now expose line width, frame count, the linear-light scene, resize-before-sampling comparison, and fixture mean/peak accumulation. Both arrays match the original measurement exactly at defaults and altered width/frame count. The canonical box also performs a real zero-error sACN loopback; the actual figure was recaptured and inspected."
   }
 ]

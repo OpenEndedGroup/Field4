@@ -1,0 +1,161 @@
+{
+  "sourceInventoryBaseline": "d1d2cd52ffcdf0013ad15323d56d7bcd6aef89fa",
+  "authoredKotlinOccurrences": 4532,
+  "wrapperNameCandidates": 133,
+  "broaderShortBodyOccurrences": 1324,
+  "broaderTypes": 412,
+  "note": "This is a domain review of the short-body census in addition to the frozen wrapper-name ledger. Core APIs are not defects merely because a snippet is short. The initial corpus inventory is not a claim that every one of its lines was newly edited.",
+  "groups": [
+    {
+      "decision": "catalogue_and_fixture_inputs",
+      "types": [
+        "LeniaPresets",
+        "FlowLeniaPresets",
+        "RiggedFixture",
+        "CappedTwistFixture",
+        "OpticsScene"
+      ],
+      "reason": "Named specimen data or test geometry; the downstream evolution, skinning, ray collection and measurements stay explicit.",
+      "candidateOccurrences": 31,
+      "representatives": [
+        {
+          "id": "dev_docs/agents/demos/skinned_characters/c82c404d-a15d-4f51-a06f-66dfc2a00364_code_.kt#source",
+          "codeSha256": "09433e1e57c9a0738588e9b8e160e2a3f05f63f4553f962b250f54ce398277a4"
+        },
+        {
+          "id": "dev_docs/agents/demos/skinned_characters/gpu_skin_code_.kt#source",
+          "codeSha256": "03b70a205b09fa9ed81e67cd3d4b86420ba568e2d0282e0460fcaba3fb90158a"
+        }
+      ]
+    },
+    {
+      "decision": "native_pipeline_lifecycle",
+      "types": [
+        "DirectLightingDemo",
+        "ReconstructionDemo",
+        "OpenDlssNrStudy",
+        "StandardRenderer",
+        "FabricateScenePlanner"
+      ],
+      "reason": "Retain native pipeline ownership and planner algorithms. Canonical scene/shader properties and budgets are editable; do not copy Vulkan/SDK internals into tutorials.",
+      "candidateOccurrences": 13,
+      "representatives": [
+        {
+          "id": "dev_docs/agents/transcripts/four_morton_quadtree.yaml#yaml/operations/1/create/properties/code",
+          "codeSha256": "18573cbbd3167426455e0bd38c48cb4701e71b3570693584e78d471ca21cd8ce"
+        },
+        {
+          "id": "dev_docs/agents/transcripts/four_simulation_chain.yaml#yaml/operations/1/create/properties/code",
+          "codeSha256": "c51c45c4783db3f430fb450e2abab24a7c32a2dc9a255fddcb599ca836314e66"
+        }
+      ]
+    },
+    {
+      "decision": "explicit_user_callbacks",
+      "types": [
+        "SourceFramesStudy",
+        "SourceStudy",
+        "StudyBuilds",
+        "StudyKnobs",
+        "FunctionStudies"
+      ],
+      "reason": "Examples provide their source, fixtures, render/stage callbacks and concrete transforms. APIs coordinate revisions, jobs or cached source builds.",
+      "candidateOccurrences": 14,
+      "representatives": [
+        {
+          "id": "dev_docs/agents/transcripts/studies_rings.yaml#yaml/operations/0/create/properties/code",
+          "codeSha256": "5f3270d449b0407d4c9588b0e79b008ba26ecfadd0a8c3e7574d43600e1323c6"
+        },
+        {
+          "id": "dev_docs/agents/transcripts/studies_rings.yaml#yaml/operations/1/create/properties/code",
+          "codeSha256": "ae0ded1e6dd9896bc262b37dc0bdc9b7bd8c3b12e6cebcc24e6999e714320ecc"
+        }
+      ]
+    },
+    {
+      "decision": "explicit_objectives_and_genomes",
+      "types": [
+        "PopulationSearch",
+        "SearchComparison",
+        "VehicleSearchComparison",
+        "StackSLEvolution",
+        "StackSLTargets",
+        "StackSLWires",
+        "CodeBlendPlan"
+      ],
+      "reason": "Keep real search/compiler primitives. Programs, genomes, objectives, budgets, seeds and snapshot choices are visible; engine stepping/undo semantics must remain intact.",
+      "candidateOccurrences": 23,
+      "representatives": [
+        {
+          "id": "dev_docs/agents/transcripts/alife_grains.yaml#yaml/operations/5/create/properties/code",
+          "codeSha256": "6b2ff3086eb7ea95405c7f5d2b31266704a7d7aabfa485b14c60990fb06779b9"
+        },
+        {
+          "id": "dev_docs/agents/transcripts/alife_search_comparison.yaml#yaml/operations/0/create/properties/code",
+          "codeSha256": "695317eece20ba744ef069fb75f86401759fff472fb425b243ad215f99c9e25e"
+        }
+      ]
+    },
+    {
+      "decision": "named_reuse_or_capture_support",
+      "types": [
+        "DrawnScoreDocs",
+        "DrawnMorphDocs",
+        "PhotoToSolidChain",
+        "PathTraceGpuSmoke",
+        "PathTraceEmitterGpuSmoke",
+        "PathTraceMediumGpuSmoke",
+        "ReadingGallery",
+        "ReadingDiagramPlayer"
+      ],
+      "reason": "Previously taught transforms or explicitly labelled fixture/capture/verification paths; visible lesson code remains the implementation.",
+      "candidateOccurrences": 23,
+      "representatives": [
+        {
+          "id": "dev_docs/agents/demos/path_tracing_emitters/verify.yaml#yaml/operations/1/create/properties/code",
+          "codeSha256": "5183699a02f6308acbae99bfa7df9b76fb6d48869f4e778f00dc5a49527ddd78"
+        },
+        {
+          "id": "dev_docs/agents/demos/path_tracing_medium/verify.yaml#yaml/operations/1/create/properties/code",
+          "codeSha256": "3c347d5ff64c00a12f5545e2af18e9947d64c0d510e29a9a64702493d48d6510"
+        }
+      ]
+    },
+    {
+      "decision": "measurement_primitives",
+      "types": [
+        "PatSoundDocs"
+      ],
+      "reason": "Pattern synthesis and extraction are explicit; onset analysis and standard variation statistics remain named analysis operations rather than copied DSP.",
+      "candidateOccurrences": 2,
+      "representatives": [
+        {
+          "id": "dev_docs/agents/transcripts/pattern_language_composition.yaml#yaml/operations/3/create/properties/code",
+          "codeSha256": "c91ce3e3137d3c6e8bdc05135403e02a8017592feb2c9a14d5c04c37c97b73d6"
+        },
+        {
+          "id": "dev_docs/agents/transcripts/sound_render_path.yaml#yaml/operations/1/create/properties/code",
+          "codeSha256": "3273c33ee685de022b879c5453c7ea9260b2395e455ab2207202fbd6ad497e20"
+        }
+      ]
+    },
+    {
+      "decision": "additional_opening",
+      "types": [
+        "SceneOnARig"
+      ],
+      "reason": "The sampling-comparison loop is an additional genuine opacity case outside the wrapper-name regex. Open it in the page and canonical measurement box, with exact array comparisons and an altered-width rerun. Retain roundTrip after the earlier explicit send/receive example; timing/decode methods remain named measurement instruments.",
+      "candidateOccurrences": 3,
+      "representatives": [
+        {
+          "id": "dev_docs/agents/transcripts/chain_scene_to_light.yaml#yaml/operations/2/create/properties/code",
+          "codeSha256": "7f858f6dd396304db609bc54458526e0d1ae0ae9e4836dee0eba4979cfe6d640"
+        },
+        {
+          "id": "public/docs/chain_scene_to_light.md#fence:121",
+          "codeSha256": "c081cfa284b8ed2887731ebd4749e26c868c2278b370e0337efcbe4416cb527a"
+        }
+      ]
+    }
+  ]
+}
