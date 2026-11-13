@@ -537,6 +537,16 @@ data class ThreeGeometryPayload(
      */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val partAppearance: Map<String, ThreePartAppearance> = emptyMap(),
+    /**
+     * Part styles the box set, by [ThreeDrawable.id]: colour, opacity and emphasis, applied by the viewer as
+     * materials, so a style change re-sends no geometry. A [ThreePanel.partStyles] entry wins in its panel;
+     * a stored [partAppearance] colour wins over both. See [ThreeSceneBuilder.style].
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val partStyles: Map<String, ThreePartStyle> = emptyMap(),
+    /** Scene-level free metadata for viewer tools. See [ThreeSceneBuilder.metadata]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val metadata: kotlinx.serialization.json.JsonObject? = null,
     /** Text pinned to points in the scene. See [ThreeSceneBuilder.label]. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val labels: List<ThreeLabel> = emptyList(),

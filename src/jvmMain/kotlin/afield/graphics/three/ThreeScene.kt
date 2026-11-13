@@ -154,6 +154,7 @@ data class ThreeDrawStyle(
  * They are read now; see [pickable], which is the one field that had to be added, and
  * `// [viewer-region surface-hit-picking]` for what a hit on a surface resolves to.
  */
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 @Serializable
 data class ThreeDrawable(
     val geometry: ThreeGeometryData,
@@ -201,6 +202,22 @@ data class ThreeDrawable(
      * a *picture* that would gain nothing and pay for it. Opting in is one named argument.
      */
     val pickable: Boolean = false,
+    /**
+     * Where the part sits in the scene's layer tree, outermost first: `listOf("Ground floor", "Doors")`.
+     * The viewer's Parts list folds by it, and viewer tools read it from `parts()`. Presentation only:
+     * left out of the review revision.
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val layer: List<String> = emptyList(),
+    /** Free metadata for the part, as JSON, handed to viewer tools with the part. Left out of the revision. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val metadata: kotlinx.serialization.json.JsonObject? = null,
+    /**
+     * Start hidden. The viewer applies it the first time it sees a part with this [id]; after that the
+     * reader's choice in the Parts list is kept by id, across every later artifact of the view.
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val hidden: Boolean = false,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeDrawable",
@@ -540,6 +557,7 @@ data class ThreeShotSpec(
  * So a panel is a *viewport*, not a document: one context, `setScissorTest` and a per-panel
  * `setViewport` in the render loop. It also happens to be much faster.
  */
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 @Serializable
 data class ThreePanel(
     val camera: ThreeCameraSpec? = null,
@@ -562,6 +580,12 @@ data class ThreePanel(
      * panel framed at one scale, so `threeGrid(sharedScale = true)` sets this.
      */
     val fitBounds: Boolean = false,
+    /**
+     * This panel's own part styles, by [ThreeDrawable.id], over the scene's ([ThreeGeometryPayload.partStyles]).
+     * A part drawn in every panel (`panel = -1`) can be red in one close-up and muted in the next.
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val partStyles: Map<String, ThreePartStyle> = emptyMap(),
 )
 
 /**

@@ -568,11 +568,19 @@ const viewerTools = createViewerTools({
         return {THREE, camera, controls, overlays, inspector: window.FieldInspector, surface: renderer.domElement,
             interactionBusy: () => featureModeEl.value !== 'off' || inspectorState.measuring,
             sources: () => featureSources().map(s => ({id:s.id, label:s.label, object:s.slot.object})),
+            // Parts by their stable id, with the layer path and metadata the box gave them.
+            parts: () => viewerParts(), part: id => viewerParts().find(p => p.id === id) || null,
+            metadata: () => payloadState?.metadata ?? null,
+            hidePart: (id, hidden=true) => setPartHidden(id, hidden),
             release: () => scene.remove(overlays)};
     }
 });
 let captureState = {ready:false, error:null, revision:null};
 window.FieldViewer = Object.freeze({followStatus: () => cameraFollow.status(),
+    parts: () => viewerParts().map(({objects, ...part}) => featureClone(part)),
+    metadata: () => featureClone(payloadState?.metadata ?? null),
+    hidePart: (id, hidden=true) => setPartHidden(id, hidden),
+    partStyle: (id, panel=0) => featureClone(partStyleFor(id, panel)),
     cameraPose: () => ({eye:camera.position.toArray(), target:controls.target.toArray(), zoom:camera.zoom}),
     renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools,
     snapshotImage: () => { render(); return renderer.domElement.toDataURL('image/png'); },
@@ -3650,10 +3658,139 @@ function addPayloadPoints(data) {
     });
 }
 
+// [part identity] A part is every drawable with one `id`. Its layer path, metadata and starting visibility
+// come from the box (ThreeDrawable.layer/metadata/hidden); what the reader hides or selects is remembered by
+// that id, so a redraw of the same view keeps it even though every feature source id is new.
+function slotIdentity(slot, d) {
+    slot.stableId = (d && typeof d.id === 'string' && d.id) ? d.id : null;
+    slot.layer = Array.isArray(d?.layer) ? d.layer.filter((x) => typeof x === 'string' && x) : [];
+    slot.metadata = d?.metadata ?? null;
+    slot.initiallyHidden = !!d?.hidden;
+    slot.drawStyle = d?.style || {};
+    slot.hoverColor = d?.hoverColor || null;
+    slot.appearance = !!d?.appearanceApplied;
+    if (slot.styleKey !== undefined && slot.styleAppearance !== slot.appearance) disposeStyleMaterials(slot);
+    slot.styleAppearance = slot.appearance;
+}
+const partMemory = {seen: new Set(), hidden: new Set(), selected: null};
+/** Before a new artifact replaces the slots: which parts (by id) are hidden, and which one is selected. */
+function partMemoryRecord() {
+    const sources = featureSources(), byPart = new Map();
+    for (const s of sources) {
+        const id = s.slot.stableId;
+        if (!id) continue;
+        if (!byPart.has(id)) byPart.set(id, []);
+        byPart.get(id).push(s.id);
+    }
+    for (const [id, ids] of byPart) {
+        partMemory.seen.add(id);
+        if (ids.every((f) => inspectorState.hidden.has(f))) partMemory.hidden.add(id); else partMemory.hidden.delete(id);
+    }
+    const selected = sources.find((s) => s.id === inspectorState.selectedPart);
+    partMemory.selected = selected?.slot.stableId || null;
+}
+/** After: hide what was hidden by id, hide new parts that start hidden, and keep the selected part. */
+function partMemoryRestore(newArtifact) {
+    featureSourceCache = null;
+    const sources = featureSources();
+    for (const s of sources) {
+        const id = s.slot.stableId;
+        if (!id) continue;
+        const hide = partMemory.seen.has(id) ? (newArtifact && partMemory.hidden.has(id)) : s.slot.initiallyHidden;
+        if (hide) inspectorState.hidden.add(s.id);
+    }
+    for (const s of sources) if (s.slot.stableId) {
+        if (!partMemory.seen.has(s.slot.stableId) && s.slot.initiallyHidden) partMemory.hidden.add(s.slot.stableId);
+        partMemory.seen.add(s.slot.stableId);
+    }
+    if (partMemory.selected && !inspectorState.selectedPart) {
+        inspectorState.selectedPart = (sources.find((s) => s.slot.stableId === partMemory.selected && s.slot.object.isMesh) ||
+            sources.find((s) => s.slot.stableId === partMemory.selected))?.id || null;
+    }
+}
+/** The parts of the view by stable id: what a tool or a script finds a part by. */
+function viewerParts() {
+    const parts = new Map();
+    for (const s of featureSources()) {
+        const id = s.slot.stableId;
+        if (!id) continue;
+        let part = parts.get(id);
+        if (!part) parts.set(id, part = {id, label: s.slot.label || id, layer: s.slot.layer, metadata: s.slot.metadata,
+            panels: [], sources: [], objects: [], visible: false});
+        part.sources.push(s.id);
+        part.objects.push(s.slot.object);
+        if (!part.panels.includes(s.slot.panel)) part.panels.push(s.slot.panel);
+        part.visible = part.visible || !inspectorState.hidden.has(s.id);
+    }
+    return [...parts.values()];
+}
+function setPartHidden(id, hidden = true) {
+    const part = viewerParts().find((p) => p.id === id);
+    if (!part) throw new Error('Unknown part ' + id);
+    partSolo = null;
+    for (const f of part.sources) { if (hidden) inspectorState.hidden.add(f); else inspectorState.hidden.delete(f); }
+    inspectorRefresh(); inspectorPartHud();
+    return inspectorSnapshot();
+}
+
+// [part styles] ThreePartStyle, from the box: scene-wide (`payload.partStyles`) or a panel's own
+// (`panels[i].partStyles`, which wins there). Applied by swapping in a material made for the style, once per
+// part and style, so a restyle or a panel change is a pointer swap and never touches the geometry.
+const PART_STYLE_HIGHLIGHT = [0.95, 0.12, 0.08], PART_STYLE_MUTED = [0.62, 0.64, 0.66];
+function partStyleFor(id, panelIndex) {
+    if (!id || !payloadState) return null;
+    const panel = (payloadState.panels || [])[panelIndex];
+    return panel?.partStyles?.[id] || payloadState.partStyles?.[id] || null;
+}
+function disposeStyleMaterials(slot) {
+    if (!slot.styleMaterials) return;
+    if (slot.object && slot.material && slot.object.material !== slot.material) slot.object.material = slot.material;
+    slot.styleMaterials.forEach((m) => m.dispose());
+    slot.styleMaterials = null;
+}
+function styledMaterial(slot, style) {
+    const key = JSON.stringify(style);
+    slot.styleMaterials = slot.styleMaterials || new Map();
+    if (slot.styleMaterials.has(key)) return slot.styleMaterials.get(key);
+    const base = slot.material, kind = slot.kindOfDraw;
+    const muted = style.emphasis === 'MUTED', highlight = style.emphasis === 'HIGHLIGHT';
+    const colour = slot.appearance ? null : (style.color || (muted ? PART_STYLE_MUTED : highlight ? PART_STYLE_HIGHLIGHT : null));
+    const opacity = Number.isFinite(style.opacity) ? style.opacity : muted ? 0.18 : (base.opacity ?? 1);
+    let material = base;
+    if (kind === 'surface') {
+        material = makeSurfaceMaterial({...slot.drawStyle, opacity, depthWrite: opacity >= 0.999 && slot.drawStyle.depthWrite !== false}, slot.hoverColor);
+        if (colour) { material.color.setRGB(colour[0], colour[1], colour[2]); material.vertexColors = false; }
+        if (highlight && material.emissive) {
+            const glow = colour || style.color || PART_STYLE_HIGHLIGHT;
+            material.emissive.setRGB(glow[0] * 0.45, glow[1] * 0.45, glow[2] * 0.45); material.emissiveIntensity = 1;
+        }
+        material.userData = {...(base.userData || {})};
+        material.clippingPlanes = base.clippingPlanes;
+    } else if (kind === 'lines' && (colour || Number.isFinite(style.opacity) || muted)) {
+        const c = colour || [0.08, 0.1, 0.12];
+        material = new THREE.LineBasicMaterial({color: new THREE.Color(c[0], c[1], c[2]), transparent: true,
+            opacity: Math.min(1, opacity * (muted ? 1.6 : 1)), depthWrite: false, clippingPlanes: base.clippingPlanes});
+    }
+    slot.styleMaterials.set(key, material);
+    return material;
+}
+/** Put each part in the material its style asks for in panel [panelIndex] (0 for a single view). */
+function applyPartStyles(panelIndex) {
+    const any = payloadState && (Object.keys(payloadState.partStyles || {}).length ||
+        (payloadState.panels || []).some((p) => p && p.partStyles && Object.keys(p.partStyles).length));
+    for (const slot of payloadGeometrySlots.drawables) {
+        if (!slot || !slot.object || !slot.material) continue;
+        const style = any ? partStyleFor(slot.stableId, panelIndex) : null;
+        const material = style ? styledMaterial(slot, style) : slot.material;
+        if (slot.object.material !== material) slot.object.material = material;
+    }
+}
+
 /** Tear down every drawable slot — called before a payload rebuilds them. */
 function clearDrawableSlots() {
     payloadGeometrySlots.drawables.forEach((slot) => {
         if (!slot) return;
+        disposeStyleMaterials(slot);
         if (slot.wire) {
             if (slot.object) slot.object.remove(slot.wire);
             slot.wire.geometry.dispose();
@@ -3699,6 +3836,7 @@ function updateDrawablesInPlace(list) {
     const keys = list.map(drawableTopologyKey);
     if (keys.some((k, i) => !k || !slots[i] || slots[i].topologyKey !== k)) return false;
     list.forEach((d, i) => {
+        slotIdentity(slots[i], d);
         const geometry = slots[i].object.geometry;
         for (const name of ['color', 'alpha']) {
             const spec = d.geometry.attributes && d.geometry.attributes[name];
@@ -3758,6 +3896,7 @@ function addPayloadDrawables(list) {
         slot.panel = (d.panel === undefined || d.panel === null) ? 0 : d.panel;
         slot.label = d.label || null;
         slot.partId = d.id || d.label || String(index);
+        slotIdentity(slot, d);
         slot.group = Number.isFinite(d.group) ? d.group : -1;
         // The drawable's own kind, kept because `slot.kind` is the upsert cache key (`drawable-3`) and
         // says nothing about whether this is a surface. The section's cut outline needs to know.
@@ -4586,12 +4725,14 @@ function inspectorCapture(payload) {
     const spec = payload.inspector || {enabled:false,artifactDigest:payload.revision,section:{},renderOrigin:[0,0,0]};
     const artifact = spec.artifactDigest || payload.revision;
     // Assembly visibility belongs to the canonical parts; notes belong to the whole mixed scene.
-    if (!artifact || artifact !== previousArtifact) { inspectorState.hidden = new Set(); inspectorState.assemblyStep = null; }
+    const newArtifact = !artifact || artifact !== previousArtifact;
+    if (newArtifact) { inspectorState.hidden = new Set(); inspectorState.assemblyStep = null; }
     inspectorState.spec = spec;
     if (!previousRevision || previousRevision !== featureIdentity()) {
         inspectorState.selectedPart = null; inspectorState.selectedTriangle = null;
         inspectorState.selection = null; featureNoteEl.value='';
     }
+    partMemoryRestore(newArtifact);
     inspectorState.bounds = payload.bounds || null;
     inspectorState.diagonal = inspectorDiagonal(payload.bounds);
     inspectorState.picked = [];
@@ -4699,6 +4840,7 @@ function inspectorClippableMaterials() {
     payloadGeometrySlots.drawables.forEach((slot) => {
         if (!slot) return;
         if (slot.material) out.push(slot.material);
+        if (slot.styleMaterials) slot.styleMaterials.forEach((m) => out.push(m));
         if (slot.wire && slot.wire.material) out.push(slot.wire.material);
     });
     return out;
@@ -5602,7 +5744,8 @@ function inspectorPartTree() {
         const key = group >= 0 ? 'group:' + group : kind === 'drawable' ? 'mesh:' + (source.source.id || source.id)
             : kind === 'fline' ? 'fline:' + source.source.index : source.id;
         if (!logical.has(key)) {
-            const path = paths[source.source.id] || paths[groups[group]] || paths[source.id];
+            const path = paths[source.source.id] || paths[groups[group]] || paths[source.id] ||
+                (slot.layer && slot.layer.length ? slot.layer : null);
             logical.set(key, {key, label: groups[group] || source.label, ids: [], path: Array.isArray(path) ? path :
                 [kind === 'drawable' ? 'Meshes' : kind === 'fline' ? 'FLines' : 'Guides']});
         }
@@ -5721,6 +5864,7 @@ window.FieldInspector = Object.freeze({ snapshot: inspectorSnapshot, restore: in
         return {partId:s.partId, visible:s.object.visible, min:bounds.min.toArray(), max:bounds.max.toArray(), matrix:s.object.matrixWorld.toArray()};
     }),
     hide: (id, hidden=true) => { if(!inspectorPartIds().includes(id))throw new Error('Unknown part'); partSolo=null;if(hidden)inspectorState.hidden.add(id);else inspectorState.hidden.delete(id);inspectorRefresh();inspectorPartHud();return inspectorSnapshot(); },
+    hidePart: (id, hidden=true) => setPartHidden(id, hidden),
     section: (normal, fraction=.5) => inspectorRestore({...inspectorSnapshot(), sectionNormal:normal, sectionEnabled:true, sectionFraction:fraction}),
     assembly: step => inspectorRestore({...inspectorSnapshot(), assemblyStep:step}),
     xray: (enabled=true, opacity=xrayState.opacity) => inspectorRestore({...inspectorSnapshot(), xray:enabled, xrayOpacity:opacity}),
@@ -5737,6 +5881,7 @@ function inspectorRefresh() {
     inspectorApplySection();
     // Restore visibility for ordinary scenes too, including after unhide.
     for(const source of featureSources())source.slot.object.visible=!inspectorState.hidden.has(source.id);
+    applyPartStyles(0);
     inspectorPartsSync();
     inspectorRebuildOverlay();
 }
@@ -6290,7 +6435,8 @@ function partAppearancePayload(payload, parts) {
             geometry: {...d.geometry, attributes: {...d.geometry.attributes,
                 color: {itemSize: 3, array: color, type: 'Float32Array', normalized: false}}},
             style: {...(d.style || {}), unlit: !!style.unlit,
-                xrayOpacity: Number.isFinite(style.xrayOpacity) ? style.xrayOpacity : null}
+                xrayOpacity: Number.isFinite(style.xrayOpacity) ? style.xrayOpacity : null},
+            appearanceApplied: true
         };
     })};
 }
@@ -6476,6 +6622,7 @@ function applyGeometry(payload) {
     editorState.marquee = null;
     hideMarquee();
 
+    partMemoryRecord();
     updateMeta(payload.meta);
     applyPickThresholds(payload.bounds);
     editorState.scene = payload.scene ? JSON.parse(JSON.stringify(payload.scene)) : null;
@@ -7242,6 +7389,7 @@ function setPanelVisibility(index) {
         if (!slot || !slot.object) return;
         slot.object.visible = inspectorDrawableVisible(slot, ordinal) && (slot.panel === -1 || slot.panel === index);
     });
+    applyPartStyles(index);
     // A picked feature is highlighted in the panel it was picked in, not wherever its world position falls.
     inspectorRoot.children.forEach((child) => {
         if (child.userData.featurePanel != null) child.visible = child.userData.featurePanel === index;
