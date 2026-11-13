@@ -4302,6 +4302,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="three-part-identity",
+            description="Part ids, layer paths and metadata reach the viewer; hidden and selected parts survive a redraw by id; per-panel part styles.",
+            commands=[
+                "new-box --name PartIdentity",
+                shell_join(["run", "@last", "--file", str(REPO_ROOT / "tools/ui_regressions/three-part-identity.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(REPO_ROOT / "tools/ui_regressions/three-part-identity.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="three-figure-mode",
             description="A three viewer moved into a presentation figure's host drops its grey background and HUD; on the canvas it keeps both.",
             commands=[

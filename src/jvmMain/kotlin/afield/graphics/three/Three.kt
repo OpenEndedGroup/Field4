@@ -86,6 +86,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal var note: String? = null
     internal var hud: Boolean = true
     internal var controls: ThreeControls = ThreeControls()
+    internal val partStyles = LinkedHashMap<String, ThreePartStyle>()
+    internal val sceneMetadata = LinkedHashMap<String, Any?>()
     private var helpersExplicit: Boolean? = null
 
     /**
@@ -140,6 +142,12 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * @param edgeColor the outline's colour (its alpha is not used); `null` is a near-black.
      * @param material base colour, roughness, metalness and emission ([ThreeSurfaceMaterial]); `null` is the
      * viewer's usual plain white.
+     * @param layer the part's place in the scene's layer tree, outermost first; the Parts list folds by it.
+     * @param metadata free data for the part (strings, numbers, booleans, lists and maps), handed to viewer
+     * tools with it — `ctx.parts()` in a tool, `FieldViewer.parts()` from a page.
+     * @param hidden start hidden. Applied the first time the view sees this [id]; after that the reader's
+     * choice is kept by id across every later redraw.
+     * @param style colour, opacity and emphasis by part id, as [style] sets them. Needs an [id].
      */
     fun mesh(
         mesh: TriMesh,
@@ -161,6 +169,10 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         edges: Boolean = false,
         edgeColor: Vec4? = null,
         material: ThreeSurfaceMaterial? = null,
+        layer: List<String> = emptyList(),
+        metadata: Map<String, Any?> = emptyMap(),
+        hidden: Boolean = false,
+        style: ThreePartStyle? = null,
     ) {
         require(solidOpacity == null || (solidOpacity.isFinite() && solidOpacity in 0.0..1.0)) {
             "solidOpacity must be between 0 and 1, got $solidOpacity"
@@ -183,11 +195,38 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             callbackId = onClick?.let { registerThreeSurfaceClickCallback(it) } ?: "",
             hoverColor = hoverColor?.let { floatArrayOf(it.x, it.y, it.z, it.w) },
             pickable = pickable,
-        )
+        ).withIdentity(layer, metadata, hidden)
         if (edges) drawables += mesh.toThreeEdgeDrawable(
             color = edgeColor?.let { floatArrayOf(it.x, it.y, it.z) } ?: floatArrayOf(.08f, .1f, .12f),
             panel = panel, group = group, id = id, explode = explode,
-        )
+        ).withIdentity(layer, metadata, hidden)
+        if (style != null) style(id, style)
+    }
+
+    private fun ThreeDrawable.withIdentity(layer: List<String>, metadata: Map<String, Any?>, hidden: Boolean): ThreeDrawable {
+        require(layer.all { it.isNotBlank() }) { "a layer path's names must not be blank, got $layer" }
+        if (layer.isEmpty() && metadata.isEmpty() && !hidden) return this
+        require(id.isNotBlank() || (metadata.isEmpty() && !hidden)) { "metadata and hidden need the part's id" }
+        return copy(layer = layer.toList(), metadata = threeMetadataObject(metadata, "metadata of '$id'"), hidden = hidden)
+    }
+
+    /**
+     * Style the part [id] in every panel: its colour, opacity and emphasis ([ThreePartStyle]). The viewer
+     * draws it with a material of its own, so a box that only restyles parts sends no geometry. A panel's
+     * own `styles` win in that panel.
+     */
+    fun style(id: String, style: ThreePartStyle) {
+        require(id.isNotBlank()) { "a part style needs the part's id" }
+        partStyles[id] = style
+    }
+
+    /**
+     * Scene-level free metadata for viewer tools (`ctx.metadata()`), as JSON: the inputs the picture was
+     * made from, say, so a script can wait for the view of the pose it asked for.
+     */
+    fun metadata(key: String, value: Any?) {
+        require(key.isNotBlank()) { "a metadata key must not be blank" }
+        sceneMetadata[key] = value
     }
 
     /**
@@ -491,9 +530,12 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         camera: ThreeCameraSpec? = null,
         bounds: ThreeBounds? = null,
         fitBounds: Boolean = false,
+        styles: Map<String, ThreePartStyle> = emptyMap(),
     ) {
+        require(styles.keys.none { it.isBlank() }) { "a panel's part styles are keyed by part id" }
         panels += ThreePanel(
             camera = camera, title = title, caption = caption, facts = facts, bounds = bounds, fitBounds = fitBounds,
+            partStyles = styles.toMap(),
         )
     }
 
@@ -578,6 +620,10 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         // the FLine half contributed rather than replacing it.
         val drawableTriangles = drawables.sumOf { (it.geometry.index?.array?.size ?: 0) / 3 }
         require(cameraFollow == null || panels.size <= 1) { "Camera follow requires a single view" }
+        val ids = drawables.mapTo(HashSet()) { it.id }
+        (partStyles.keys + panels.flatMap { it.partStyles.keys }).firstOrNull { it !in ids }?.let {
+            throw IllegalArgumentException("a part style names '$it', which no mesh in this scene has as its id")
+        }
         require(cameraLink == null || panels.size <= 1) {
             "linkCamera() needs a single-view scene; a contact sheet of ${panels.size} panels keeps its own cameras"
         }
@@ -617,6 +663,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             note = note,
             hud = hud,
             controls = controls,
+            partStyles = partStyles.toMap(),
+            metadata = threeMetadataObject(sceneMetadata, "scene metadata"),
         )
     }
 

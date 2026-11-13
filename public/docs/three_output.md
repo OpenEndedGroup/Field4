@@ -772,6 +772,60 @@ Uncategorised meshes, interactive FLines, and batched guides have their own fold
 A batched guide buffer is one selectable entry: it does not claim per-line visibility.
 Hidden geometry is excluded from picking and visible-scene exports, including X-ray views.
 
+## Parts by id: layers, metadata and styles
+
+A mesh's `id` names a part, and everything the view does with parts goes by that id. Give the part a
+`layer` path and the **Parts** list folds by it; give it `metadata` and a viewer tool, or a script in the
+page, finds the part by id with that data beside it, so nothing needs to be hidden in an overlay. A part
+can start `hidden`.
+
+```diffstatic {data-lang=kotlin}
+three(name = "house") {
+    mesh(walls, id = "walls", layer = ["Ground floor"], wireframe = false)
+    mesh(
+        door,
+        id = "door-1",
+        layer = ["Ground floor", "Doors"],
+        wireframe = false,
+        metadata = mapOf("hinge" to listOf(3.8, 0.0, 0.0), "swing" to 90),
+    )
+    mesh(roof, id = "roof", layer = ["Roof"], hidden = true, wireframe = false)
+    metadata("datum", 2.4) // scene-level, for tools: ctx.metadata()
+    controls(parts = true)
+}
+```
+
+What the reader hides, and the part they selected, is kept by id when the box draws the view again,
+however different the new geometry is. `hidden = true` applies only the first time the view sees that id.
+From the page, `FieldViewer.parts()` lists the parts with their layers, metadata and visibility, and
+`FieldViewer.hidePart(id)` hides one; a viewer tool has the same through `ctx.parts()`, `ctx.part(id)`,
+`ctx.metadata()` and `ctx.hidePart(id)`, with each part's three.js objects.
+
+`style(id, ThreePartStyle)` sets a part's colour, opacity and emphasis (`ThreePartStyle.highlight()`,
+`ThreePartStyle.muted()`). The viewer draws a style as a material on the geometry it already has, so a box
+that only restyles parts sends no geometry. In a contact sheet each `panel(styles = …)` styles parts for that
+panel alone, so close-ups of one assembly can each show their own pair in red:
+
+```diffstatic {data-lang=kotlin}
+three(name = "contacts", width = 760, height = 320) {
+    for ((id, m) in pipes) mesh(m, id = id, panel = -1, wireframe = false)
+    columns(2)
+    panel(
+        title = "a meets b",
+        styles =
+            mapOf("a" to ThreePartStyle.highlight(), "b" to ThreePartStyle.highlight(), "c" to ThreePartStyle.muted()),
+    )
+    panel(
+        title = "b meets c",
+        styles =
+            mapOf("b" to ThreePartStyle.highlight(), "c" to ThreePartStyle.highlight(), "a" to ThreePartStyle.muted()),
+    )
+}
+```
+
+A colour a reviewer set on the stored part appearance wins over the box's style. None of layers, metadata or
+styles changes a part's review identity.
+
 ## Editing a curve before an expensive operation
 
 `threeLines(curves, editable = true, width = 1000, onEditCommitted = { edited -> … })`

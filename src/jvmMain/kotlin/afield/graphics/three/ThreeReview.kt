@@ -58,7 +58,7 @@ private val revisionJson = Json { encodeDefaults = true }
 
 /** The payload keys a revision covers, and the keys it ignores at every depth. */
 private val REVISION_KEYS = setOf("lines", "fills", "points", "drawables", "interactive", "scene")
-private val REVISION_IGNORED = setOf("callbackId", "sessionId", "hoverColor", "style", "label")
+private val REVISION_IGNORED = setOf("callbackId", "sessionId", "hoverColor", "style", "label", "layer", "metadata", "hidden")
 
 /**
  * The text a revision hashes, fed to [digest] as kotlinx writes the payload, never held whole.
