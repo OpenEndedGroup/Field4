@@ -354,3 +354,10 @@ Field loads the compiled SPIR-V and frozen weights; it does not load the SDK at 
 To place the learned output in a larger image pipeline, see [From modules to reconstruction](reconstruction_plumbing.md). It shows the render-target and pass ordering for DLAA/SR and RR, including which guides must still come from your scene.
 
 For training directly from a live render target on the GPU, see [GPU shader learning](gpu_shader_learning.md). It saves the same frozen weight format and uses the same editable host shader.
+
+## API reference
+
+- Capturing examples and training the shader:
+  [`ShaderTraining`](reference/graphics.md#shadertraining-kt-shadertraining) —
+  [`capture`](reference/graphics.md#shadertraining-kt--shadertraining--capture),
+  [`trainAsync`](reference/graphics.md#shadertraining-kt--shadertraining--trainasync).

@@ -8,7 +8,7 @@ The most demanding scene on the page is `assets/fabricate_demo/ToyCar.glb`, pair
 
 ??? aside "How the captures on this page are made"
     The docs runner drives `StandardRendererDocsHarness`: it builds `FabricateNode` and `FabricateMaterial`
-    state, binds renderer meshes to node world transforms, asks `FabricateScenePlanner` for the draw and
+    state, binds renderer meshes to node world transforms, asks [`FabricateScenePlanner`](reference/renderers.md#fabricaterenderplan-kt-fabricatesceneplanner) for the draw and
     material queues, then attaches the `FabricateFrameGraph` for capture.
 
 The common pattern is:
@@ -843,3 +843,7 @@ Implementation and parameter details for the helpers used above:
 
 - [`StandardRenderer.Config`](reference/renderers.md#standardrenderer-kt--standardrenderer--config)
 - [`SkyEnvironment.drive`](reference/graphics.md#skyenvironment-kt--skyenvironment--drive)
+
+- Planning the render passes:
+  [`FabricateScenePlanner`](reference/renderers.md#fabricaterenderplan-kt-fabricatesceneplanner) —
+  [`plan`](reference/renderers.md#fabricaterenderplan-kt--fabricatesceneplanner--plan).

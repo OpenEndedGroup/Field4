@@ -1584,6 +1584,10 @@ Implementation and parameter details for the helpers used above:
 
 - [`PathTraceDemo`](reference/renderers.md#pathtracegpusmoke-kt-pathtracedemo)
 
+- Installing the glass-study scene:
+  [`PathTraceGlassDemo`](reference/renderers.md#pathtraceglassdemo-kt-pathtraceglassdemo) —
+  [`install`](reference/renderers.md#pathtraceglassdemo-kt--pathtraceglassdemo--install).
+
 ## Where to go next
 
 - [Neural particles](neural_particles.md) trains a velocity field with the same `VectorMLP` and runs it in a compute shader.

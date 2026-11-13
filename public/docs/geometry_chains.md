@@ -247,3 +247,10 @@ do between one stroke and the next, cannot be traced, and it is listed in `trace
 rather than drawn in; `traced.satisfied` is true only when nothing is missing. A required node
 that tracing stopped short of is joined to the nearest traced junction on its curve within `reach`
 pixels (12 by default).
+
+## API reference
+
+- Constructing the Morse–Smale complex: [`MorseSmale`](reference/graphics.md#morsesmale-kt-morsesmale) —
+  [`compute`](reference/graphics.md#morsesmale-kt--morsesmale--compute).
+- Fitting a principal forest: [`PrincipalCurves`](reference/graphics.md#principalcurves-kt-principalcurves) —
+  [`fit`](reference/graphics.md#principalcurves-kt--principalcurves--fit).

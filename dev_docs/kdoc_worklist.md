@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 23990 of 40533 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24045 of 40588 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2039 undocumented entry points** (types, top-level functions and values) and 13795 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -88,7 +88,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Mesh.kt](../src/jvmMain/kotlin/afield/graphics/render/Mesh.kt) | Graphics | afield_four_graphics, field_probes, fieldml_host_bridge | 2 | 10 | 55% |
 | [actors.kt](../src/jvmMain/kotlin/afield/runtime/execution/actors.kt) | Internal | terminal | 2 | 8 | 62% |
 | [GpuSchema.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/GpuSchema.kt) | Graphics | gpu_schema | 2 | 0 | 96% |
-| [MatrixProfile.kt](../src/jvmMain/kotlin/afield/math/matrixprofile/MatrixProfile.kt) | Math | matrix_profile | 2 | 0 | 86% |
+| [MatrixProfile.kt](../src/jvmMain/kotlin/afield/math/matrixprofile/MatrixProfile.kt) | Math | matrix_profile, agent_transcripts | 2 | 0 | 86% |
 | [Decorations.kt](../src/jvmMain/kotlin/afield/graphics/text/sentences/Decorations.kt) | Graphics | fline_examples | 1 | 64 | 23% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/math/functions/Functions.kt) | Math | functions_examples | 1 | 47 | 84% |
 | [NeuralClouds.kt](../src/jvmMain/kotlin/afield/graphics/volume/NeuralClouds.kt) | Graphics | path_tracing | 1 | 19 | 66% |
@@ -151,7 +151,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [alife_grains.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_grains.kt) | ALife | alife_examples | 0 | 20 | 73% |
 | [CameraOptics.kt](../src/jvmMain/kotlin/afield/simulation/optics/CameraOptics.kt) | Simulation | explainer_cameras | 0 | 20 | 72% |
 | [Orca.kt](../src/jvmMain/kotlin/afield/audio/synth/Orca.kt) | Patterns | orca | 0 | 19 | 67% |
-| [PrincipalCurves.kt](../src/jvmMain/kotlin/afield/geometry/curves/principal/PrincipalCurves.kt) | Graphics | principal_curves, geometry_chains | 0 | 19 | 65% |
+| [PrincipalCurves.kt](../src/jvmMain/kotlin/afield/geometry/curves/principal/PrincipalCurves.kt) | Graphics | principal_curves, geometry_chains, agent_transcripts | 0 | 19 | 65% |
 | [Transforms.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Transforms.kt) | Polytopes | polytope_examples | 0 | 19 | 77% |
 | [DirectLighting.kt](../src/jvmMain/kotlin/afield/graphics/render/lighting/DirectLighting.kt) | Graphics | direct_lighting | 0 | 19 | 26% |
 | [FunctionEvolve.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionEvolve.kt) | Function | functions_examples | 0 | 19 | 50% |
@@ -216,7 +216,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RealizationSolver.kt](../src/jvmMain/kotlin/afield/geometry/polytope/RealizationSolver.kt) | Polytopes | polytope_examples | 0 | 7 | 80% |
 | [Solid.kt](../src/jvmMain/kotlin/afield/geometry/solid/manifold/Solid.kt) | Graphics | manifold | 0 | 7 | 89% |
 | [Mapper.kt](../src/jvmMain/kotlin/afield/geometry/topology/mapper/Mapper.kt) | Graphics | mapper | 0 | 7 | 62% |
-| [ContourTrees.kt](../src/jvmMain/kotlin/afield/geometry/topology/trees/ContourTrees.kt) | Graphics | contour_trees | 0 | 7 | 58% |
+| [ContourTrees.kt](../src/jvmMain/kotlin/afield/geometry/topology/trees/ContourTrees.kt) | Graphics | contour_trees, agent_transcripts | 0 | 7 | 58% |
 | [ClusterGeometry.kt](../src/jvmMain/kotlin/afield/graphics/render/ClusterGeometry.kt) | Graphics | computed_ray_geometry | 0 | 7 | 41% |
 | [OpaqueRayScene.kt](../src/jvmMain/kotlin/afield/graphics/render/lighting/OpaqueRayScene.kt) | Graphics | direct_lighting | 0 | 7 | 36% |
 | [BodyGeometry.kt](../src/jvmMain/kotlin/afield/graphics/scene/body/BodyGeometry.kt) | Graphics | body_tracking, chain_tracked_body | 0 | 7 | 61% |
@@ -266,7 +266,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FunctionRewritePattern.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionRewritePattern.kt) | Function | functions_examples | 0 | 3 | 78% |
 | [GaussianProcess.kt](../src/jvmMain/kotlin/afield/math/gp/GaussianProcess.kt) | Math | gaussian_processes | 0 | 3 | 94% |
 | [RunScope.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/RunScope.kt) | Workspace | audio_ai_analysis, audio_ai_corpus_microscope, audio_ai_spectral_embeddings | 0 | 3 | 88% |
-| [alife_flow_lenia.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_flow_lenia.kt) | ALife | alife_examples | 0 | 3 | 90% |
+| [alife_flow_lenia.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_flow_lenia.kt) | ALife | alife_examples, agent_transcripts | 0 | 3 | 90% |
 | [alife_particle_lenia_motion.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_particle_lenia_motion.kt) | ALife | particle_lenia | 0 | 3 | 90% |
 | [alife_physarum_gpu.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_physarum_gpu.kt) | ALife | agent_transcripts, alife_examples | 0 | 3 | 93% |
 | [PatchyWeb.kt](../src/jvmMain/kotlin/afield/app/server/PatchyWeb.kt) | Graphics | patchy | 0 | 2 | 81% |
@@ -280,7 +280,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [CameraPose.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/CameraPose.kt) | Graphics | keyframer_examples | 0 | 2 | 87% |
 | [SolidField.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidField.kt) | Graphics | solid_notation | 0 | 2 | 80% |
 | [autodiff_optimize.kt](../src/jvmMain/kotlin/afield/math/autodiff/autodiff_optimize.kt) | Math | autodiff_examples | 0 | 2 | 94% |
-| [alife_continuous.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_continuous.kt) | ALife | alife_examples | 0 | 2 | 91% |
+| [alife_continuous.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_continuous.kt) | ALife | alife_examples, agent_transcripts | 0 | 2 | 91% |
 | [alife_networks.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_networks.kt) | ALife | alife_examples | 0 | 2 | 90% |
 | [terminalOutput.kt](../src/jvmMain/kotlin/afield/ui/output/terminalOutput.kt) | Visualization | terminal | 0 | 2 | 80% |
 | [PresentationFigures.kt](../src/jvmMain/kotlin/afield/ui/slides/PresentationFigures.kt) | Visualization | presentation_studio | 0 | 2 | 66% |

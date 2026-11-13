@@ -5,7 +5,7 @@ has a skeleton. It has points where it stops: **sources** it pours out of, **sin
 **foci** it spirals around, **centres** it circles, and **saddles** where it arrives from two sides
 and leaves to the other two. From each saddle four streamlines, the **separatrices**, run to the
 other points or off the frame, and they divide the frame into regions where every streamline starts
-in the same place and ends in the same place. `VectorFieldTopology` finds all of these and gives
+in the same place and ends in the same place. [`VectorFieldTopology`](reference/graphics.md#vectorfieldtopology-kt-vectorfieldtopology) finds all of these and gives
 them back as points and FLines.
 
 This example makes a flow from a few swirls, sources and sinks, and draws its topology over a
@@ -60,7 +60,7 @@ in, and complex eigenvalues add the spiral.
 
 ## The gradient of an image
 
-Any scalar field gives a flow: its gradient, which runs uphill. `VectorFieldTopology.gradientOf`
+Any scalar field gives a flow: its gradient, which runs uphill. [`VectorFieldTopology.gradientOf`](reference/graphics.md#vectorfieldtopology-kt--vectorfieldtopology-companion--gradientof)
 computes it. The gradient's sinks are the field's peaks, its sources the pits, and its separatrices
 are the ridges and valleys between them: the same skeleton a [Morse–Smale complex](morse_smale.md)
 finds, here from plain Kotlin. With `rotate = true` the gradient is turned a quarter turn so the flow
@@ -253,3 +253,10 @@ showImgGrid(
     cellSide = 720,
 )
 ```
+
+## API reference
+
+- Extracting critical points and streamlines:
+  [`VectorFieldTopology`](reference/graphics.md#vectorfieldtopology-kt-vectorfieldtopology) —
+  [`compute`](reference/graphics.md#vectorfieldtopology-kt--vectorfieldtopology-companion--compute),
+  [`streamlines`](reference/graphics.md#vectorfieldtopology-kt--vectorfieldtopology--streamlines).

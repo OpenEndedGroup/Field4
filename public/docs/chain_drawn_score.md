@@ -126,7 +126,7 @@ further down can find each one. Two cycles:
 // Offline-rendered by DrawnScoreDocs.renderWav("drawn-score").
 ```
 
-`DrawnScoreDocs.interpret` is the same loop, which the later boxes on this page call. The same
+[`DrawnScoreDocs.interpret`](reference/patterns.md#drawnscoredocs-kt--drawnscoredocs--interpret) is the same loop, which the later boxes on this page call. The same
 reading also ships as `score.toPattern()`, for when its defaults are what you want.
 
 ## The same drawing, read another way
@@ -247,3 +247,9 @@ A frame you make yourself with Excalidraw's frame tool works too, once you renam
   upstream of the same pattern and the same voice.
 * [A Function, Played and Read Back](chain_fn_sound_roundtrip.md) for the pitch detector, and the
   delay in how it reports time.
+
+- Interpreting and checking a drawn score:
+  [`DrawnScoreDocs`](reference/patterns.md#drawnscoredocs-kt-drawnscoredocs) —
+  [`listen`](reference/patterns.md#drawnscoredocs-kt--drawnscoredocs--listen),
+  [`pentatonic`](reference/patterns.md#drawnscoredocs-kt--drawnscoredocs--pentatonic),
+  [`sceneNotes`](reference/patterns.md#drawnscoredocs-kt--drawnscoredocs--scenenotes).

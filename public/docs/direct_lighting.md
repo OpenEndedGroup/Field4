@@ -205,3 +205,9 @@ replacement resets reservoir history.
     The captures use Reinhard tone mapping and gamma; the checks use unclamped FP32 RGB.
     The optional SDK pins, exact toolchain and DLSS feasibility investigation live in the
     same developer documentation directory.
+
+## API reference
+
+- The animated lighting study:
+  [`DirectLightingDemo`](reference/graphics.md#directlightingdemo-kt-directlightingdemo) —
+  [`animate`](reference/graphics.md#directlightingdemo-kt--directlightingdemo--animate).

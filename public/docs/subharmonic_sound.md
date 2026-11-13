@@ -818,3 +818,9 @@ where the Dirt-Samples come from.
     It is committed as `assets/subharmonic_sound/notld-barbara-source.wav` and read by
     `subFilmClip()`. Every number this page gives about the trackers is checked by the
     `synth.subharmonic.sound` smoke test, which renders each clip and measures it.
+
+## API reference
+
+- Rendering the subharmonic examples:
+  [`SubharmonicSoundDocs`](reference/synthesis.md#subharmonicsounddocs-kt-subharmonicsounddocs) —
+  [`render`](reference/synthesis.md#subharmonicsounddocs-kt--subharmonicsounddocs--render).
