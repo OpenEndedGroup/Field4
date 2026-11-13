@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T02:06:43.733Z",
+  "capturedAt": "2026-11-13T02:55:59.566Z",
   "documentName": "frames_lifecycle",
   "outputs": [
     {
@@ -9,7 +9,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 466,
+      "width": 460,
       "height": 75,
       "path": "outputs/0.html"
     },
