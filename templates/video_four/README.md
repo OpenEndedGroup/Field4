@@ -23,9 +23,11 @@ Creation does not start a renderer. Connect the headset to WiVRn before running
 `macro run start-video-four`. Stop with the generated `stop.json` macro before relaunching;
 changing eye resolution or switching desktop/headset mode requires a fresh Field process.
 
-The default movie is `~/Videos/thisLand_3D_SBS.mp4` on either host. Override it with
+Put the default movie at `video_four/files/thisLand_3D_SBS.mp4`.
+The transport resolves `%document/thisLand_3D_SBS.mp4` through `FileManager`, so the
+same document works after copying it to another machine or workspace. Override it with
 `FIELD_STEREO_VIDEO` at startup, `--video` when generating, or **Full SBS file** in the
-transport box. Media is external to the document. Full SBS retains its native per-eye aspect;
+transport box. Full SBS retains its native per-eye aspect;
 no horizontal squeeze is assumed. Playback is silent.
 
 ## Linux → WiVRn
@@ -66,5 +68,6 @@ Box 1 reports that format and prints a warning for an eight-bit handoff. An eigh
 handoff is usable but is not end-to-end ten-bit. Encoder/stream precision is a separate WiVRn
 setting, and the desktop mirror can quantize to its display format.
 
-When copying a document, include its `files/` directory: that holds the ordered looks and ring
-arrangements. Keep media outside the document and avoid copying history/screenshots/backups.
+When copying a document, include its `files/` directory: that holds the movie, ordered looks and ring
+arrangements. The movie is document data, not a repository asset. Avoid copying
+history/screenshots/backups.
