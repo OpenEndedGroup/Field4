@@ -236,13 +236,14 @@
     --field-canvas-ink-rgb: 36, 33, 29;
     --field-canvas-band-rgb: 146, 141, 133;
 
-    /* Boxes: a shade darker than the ground, graphite titles and edges, a chalk ring when selected. */
+    /* Boxes: a shade darker than the ground, graphite titles and edges, a gutter-coloured ring when selected. */
     --field-box-bg: rgba(140, 135, 126, 0.62);
     --field-box-fg: rgba(var(--field-white-rgb), 0.9);
     --field-box-backdrop: blur(3px);
-    --field-box-selected-border: rgba(var(--field-chalk-rgb), 0.95);
-    /* The light theme also chalks the box's 5px frame (.box::before) when it is selected. */
-    --field-box-selected-frame: rgba(var(--field-chalk-rgb), 0.85);
+    --field-box-selected-border: rgb(var(--field-black-rgb));
+    /* The light theme also draws the box's 5px frame (.box::before) when it is selected, in the
+       editor gutter's colour (BootstrapMonacoInit.kt: editorGutter.background). */
+    --field-box-selected-frame: rgb(var(--field-black-rgb));
 
     --field-surface-quiet: rgb(var(--field-editor-rgb));
     --field-surface-raised: color-mix(in srgb, rgb(var(--field-black-rgb)) 50%, rgb(var(--field-chalk-rgb)));
