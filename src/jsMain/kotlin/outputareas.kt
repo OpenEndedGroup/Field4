@@ -462,13 +462,22 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
 
     viewport.onpointermove = { event ->
         if ((view.dragPointerId as? Number)?.toInt() == event.pointerId) {
-            // At most one move per frame: the latest point wins.
-            val first = view.dragPending == null
-            view.dragPending = heldPoint(dragPoint(event))
-            if (first) window.requestAnimationFrame {
-                val point = view.dragPending as? Pair<Double, Double>
-                view.dragPending = null
-                if (point != null && view.dragPointerId != null) sendDrag("move", point, view.dragHandle as? String)
+            // At most one move per frame, the latest point winning; the first of a frame goes at once, not a
+            // frame late, so a drag's latency is the box's and not the display's.
+            val point = heldPoint(dragPoint(event))
+            if (view.dragFrameBusy == true) view.dragPending = point
+            else {
+                view.dragFrameBusy = true
+                sendDrag("move", point, view.dragHandle as? String)
+                fun frameTick() {
+                    val next = view.dragPending as? Pair<Double, Double>
+                    view.dragPending = null
+                    if (next != null && view.dragPointerId != null) {
+                        sendDrag("move", next, view.dragHandle as? String)
+                        window.requestAnimationFrame { frameTick() }
+                    } else view.dragFrameBusy = false
+                }
+                window.requestAnimationFrame { frameTick() }
             }
             null
         } else if ((view.panPointerId as? Number)?.toInt() != event.pointerId) {
@@ -494,6 +503,7 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
         if ((view.dragPointerId as? Number)?.toInt() == event.pointerId) {
             view.dragPointerId = null
             view.dragPending = null
+            view.dragFrameBusy = false
             sendDrag("end", heldPoint(dragPoint(event)), view.dragHandle as? String)
             view.dragHandle = null
         }

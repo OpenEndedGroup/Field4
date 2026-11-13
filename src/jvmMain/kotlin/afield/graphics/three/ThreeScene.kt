@@ -658,7 +658,7 @@ internal object ThreePreparedMeshes {
     private var floats = 0L
 
     fun prepare(mesh: TriMesh, creaseAngleDegrees: Double, explode: FloatArray?): ThreeGeometryData {
-        val key = key(mesh, creaseAngleDegrees, explode)
+        val key = keyOf(mesh, creaseAngleDegrees, explode)
         synchronized(this) { entries[key]?.let { return it.geometry } }
         val geometry = mesh.prepareThreeGeometry(creaseAngleDegrees, explode)
         val size = geometry.attributes.values.sumOf { it.array.size.toLong() } + (geometry.index?.array?.size ?: 0)
@@ -669,6 +669,24 @@ internal object ThreePreparedMeshes {
             while (floats > LIMIT_FLOATS && it.hasNext()) { floats -= it.next().floats; it.remove() }
         }
         return geometry
+    }
+
+    /**
+     * The key of a mesh handed over before, by identity. A [TriMesh] is a value — its arrays are never written
+     * after construction — so the same object has the same key, and a box that keeps its unchanged meshes and
+     * re-sends them costs nothing to hash. Weak, so it holds no mesh alive; it holds keys, not geometry, so the
+     * bound above still decides what geometry is kept.
+     */
+    private class Seen(val crease: Double, val key: String)
+    private val seen = java.util.WeakHashMap<TriMesh, Seen>()
+
+    private fun keyOf(mesh: TriMesh, crease: Double, explode: FloatArray?): String {
+        // Explode offsets are a plain array the caller may reuse, so a mesh with them is always hashed.
+        if (explode != null) return key(mesh, crease, explode)
+        synchronized(seen) { seen[mesh]?.takeIf { it.crease == crease }?.let { return it.key } }
+        val key = key(mesh, crease, null)
+        synchronized(seen) { seen[mesh] = Seen(crease, key) }
+        return key
     }
 
     private fun key(mesh: TriMesh, crease: Double, explode: FloatArray?): String {

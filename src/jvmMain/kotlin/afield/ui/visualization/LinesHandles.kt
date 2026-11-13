@@ -151,6 +151,14 @@ internal fun deliverLinesDrag(drag: LinesDrag): Boolean {
     return true
 }
 
+/**
+ * Drag [channel]'s drawing on the box [boxUid] at ([x], [y]) in the lines' own coordinates, with [phase] `start`,
+ * `move` or `end`, holding [handle] (a [LinesHandle] name) or none: the callback a pointer reaches, with no pixels
+ * in between. For a timeline film, which names boxes by uid. False when that drawing takes no drags.
+ */
+internal fun dragLines(boxUid: String, channel: String, phase: String, x: Double, y: Double, handle: String? = null): Boolean =
+    deliverLinesDrag(LinesDrag("lines-drag:$boxUid:$channel", phase, x, y, handle = handle, own = true))
+
 private class DragLane {
     val pending = ArrayDeque<LinesDrag>()
     var draining = false

@@ -893,6 +893,13 @@ server's `lastUpdate` on the view returned by `three` says how many parts went o
 
 A part is matched to its previous self by its `id`, so give moving parts ids.
 
+When the box knows a part only moved, it can say so: pass the **same** mesh each redraw with
+`mesh(m, id = "carriage", transform = translation(x, 0.0, 0.0))` (or any column-major 4×4 matrix). The mesh is
+prepared once, nothing about it is hashed or compared again, and the viewer only moves its object. A `TriMesh`
+is a value whose arrays are never changed, so a mesh object handed over again is known to be the same mesh. On a
+large assembly whose parts mostly ride along with a few that reshape, keeping the riding parts as unchanged meshes
+placed by transforms, and the reshaping ones as small meshes of their own, is what keeps a drag step short.
+
 ## Editing a curve before an expensive operation
 
 `threeLines(curves, editable = true, width = 1000, onEditCommitted = { edited -> … })`
