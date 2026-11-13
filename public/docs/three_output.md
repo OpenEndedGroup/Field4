@@ -781,11 +781,16 @@ can start `hidden`.
 
 ```diffstatic {data-lang=kotlin}
 three(name = "house") {
-    mesh(walls, id = "walls", layer = listOf("Ground floor"), wireframe = false)
-    mesh(door, id = "door-1", layer = listOf("Ground floor", "Doors"), wireframe = false,
-        metadata = mapOf("hinge" to listOf(3.8, 0.0, 0.0), "swing" to 90))
-    mesh(roof, id = "roof", layer = listOf("Roof"), hidden = true, wireframe = false)
-    metadata("datum", 2.4)            // scene-level, for tools: ctx.metadata()
+    mesh(walls, id = "walls", layer = ["Ground floor"], wireframe = false)
+    mesh(
+        door,
+        id = "door-1",
+        layer = ["Ground floor", "Doors"],
+        wireframe = false,
+        metadata = mapOf("hinge" to listOf(3.8, 0.0, 0.0), "swing" to 90),
+    )
+    mesh(roof, id = "roof", layer = ["Roof"], hidden = true, wireframe = false)
+    metadata("datum", 2.4) // scene-level, for tools: ctx.metadata()
     controls(parts = true)
 }
 ```
@@ -805,8 +810,16 @@ panel alone, so close-ups of one assembly can each show their own pair in red:
 three(name = "contacts", width = 760, height = 320) {
     for ((id, m) in pipes) mesh(m, id = id, panel = -1, wireframe = false)
     columns(2)
-    panel(title = "a meets b", styles = mapOf("a" to ThreePartStyle.highlight(), "b" to ThreePartStyle.highlight(), "c" to ThreePartStyle.muted()))
-    panel(title = "b meets c", styles = mapOf("b" to ThreePartStyle.highlight(), "c" to ThreePartStyle.highlight(), "a" to ThreePartStyle.muted()))
+    panel(
+        title = "a meets b",
+        styles =
+            mapOf("a" to ThreePartStyle.highlight(), "b" to ThreePartStyle.highlight(), "c" to ThreePartStyle.muted()),
+    )
+    panel(
+        title = "b meets c",
+        styles =
+            mapOf("b" to ThreePartStyle.highlight(), "c" to ThreePartStyle.highlight(), "a" to ThreePartStyle.muted()),
+    )
 }
 ```
 
