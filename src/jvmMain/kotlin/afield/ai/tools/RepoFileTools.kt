@@ -264,7 +264,7 @@ class RepoFileTools(val scope: RepoScope) {
         const val MAX_LIST = 500
         const val MAX_SEARCH_FILES = 20_000
         /** Gitignored trees that are still source and are searched in a git checkout: the local-only personal layer. */
-        private val IGNORED_BUT_SEARCHED = listOf("src/personal")
+        internal val IGNORED_BUT_SEARCHED = listOf("src/personal")
         private val SKIPPED_DIRS = setOf(".git", "node_modules", "build", ".gradle", ".venv", ".kotlin")
 
         /**

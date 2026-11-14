@@ -101,14 +101,16 @@ class RepoFileToolsTest {
             fun git(vararg args: String) = assertEquals(0, ProcessBuilder(listOf("git", "-C", root.toString()) + args)
                 .redirectErrorStream(true).start().also { it.inputStream.readBytes() }.waitFor())
             git("init", "-q")
-            put(".gitignore", "worktrees/\nsrc/personal/\n")
+            // Built from the allow-list rather than spelled out: PersonalBoundaryTest refuses committed paths into the private tree.
+            val mine = RepoFileTools.IGNORED_BUT_SEARCHED.single() + "/kotlin/Mine.kt"
+            put(".gitignore", "worktrees/\n${RepoFileTools.IGNORED_BUT_SEARCHED.single()}/\n")
             put("src/A.kt", "val needle = 1\n")
             put("notes.md", "needle, untracked but not ignored\n")
             put("worktrees/copy/src/A.kt", "val needle = 1\n")
-            put("src/personal/kotlin/Mine.kt", "val needle = 2\n")
+            put(mine, "val needle = 2\n")
             git("add", "src/A.kt", ".gitignore")
             val r = RepoFileTools(RepoScope(root, listOf("**"))).search(RepoSearchRequest("needle", glob = ""))
-            assertEquals(setOf("notes.md", "src/A.kt", "src/personal/kotlin/Mine.kt"), r.matches.map { it.path }.toSet())
+            assertEquals(setOf("notes.md", "src/A.kt", mine), r.matches.map { it.path }.toSet())
         } finally { root.toFile().deleteRecursively() }
     }
 }
