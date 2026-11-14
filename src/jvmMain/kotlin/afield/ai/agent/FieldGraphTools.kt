@@ -554,7 +554,11 @@ class FieldGraphTools(
         when (raw) {
             is String -> FieldGraphResult(true, "${req.property} of '${box.name}' (${raw.length} chars).",
                 uid = box.id, name = box.name, property = req.property, value = raw)
-            null -> FieldGraphResult(false, "'${box.name}' has no property '${req.property}'.",
+            null -> FieldGraphResult(false, "'${box.name}' has no property '${req.property}'. " +
+                (if (afield.app.server.fileProxyTargetOrNull(box) != null)
+                    "It is a file box: read its file with AttachmentRequest file=\"${box.id}\" (PDFs come back as text). " else "") +
+                "Text properties it has: " +
+                box.properties.entries.filter { it.value is String && !it.key.startsWith("_") }.map { it.key }.sorted().joinToString().ifEmpty { "none" } + ".",
                 uid = box.id, name = box.name, property = req.property)
             else -> FieldGraphResult(false, "'${req.property}' on '${box.name}' is a ${raw.javaClass.simpleName}, not text.",
                 uid = box.id, name = box.name, property = req.property, value = raw.toString().take(400))
