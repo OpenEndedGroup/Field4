@@ -134,13 +134,14 @@ and the Vulkan memory model (`Device.supportsCooperativeMatrix`; turn it off wit
   matrix loads need the plain layout.
 
 `afield.oidn.portable=true` / `AFIELD_OIDN_PORTABLE=1` forces the portable kernels. Measured with
-the same harness, scene and reference as on the Mac. Times are fence-timed medians of 15; GPU
-timestamps do work on NVIDIA and agree to about 0.2 ms.
+the same harness, scene and reference as on the Mac, on an otherwise idle GPU (only the
+compositor). Times are fence-timed medians of 15, repeated twice. GPU timestamps work on NVIDIA
+and read about 0.9 ms lower, since they exclude submission.
 
 | 1920×1080, RTX 4090, driver 620.70 | ms per denoise |
 | --- | --- |
-| **Field, cooperative matrix** | **15.2** (a later run under heavier load from other jobs: 18.1) |
-| Field, portable kernels | 16.0 |
+| **Field, cooperative matrix** | **15.5–15.8** (GPU timestamps 14.6–14.9) |
+| Field, portable kernels | 16.0 (GPU timestamps 16.0) |
 | Native OIDN 2.5.1, CUDA device, `quality=high` | 6.5 |
 | Native OIDN, CUDA, `quality=balanced` | 4.9 |
 | Native OIDN, CPU | ~430 |
@@ -150,17 +151,17 @@ timestamps do work on NVIDIA and agree to about 0.2 ms.
   spp, equal to native to 0.002 dB.
 - **The portable kernels are already fast here.** At 16 ms, dec_conv1a runs at about 32 TFLOPS,
   so the Mac's 0.7 s is specific to KosmicKrisp/M1, not a property of the kernel. Cooperative
-  matrices buy only 5% as written: the largest layer goes from 5.4 to 4.1 ms. They cost twice the
+  matrices buy only about 5% as written: the largest layer goes from 5.4 to 3.8 ms, but dec_conv1b
+gets slower (2.2 to 3.2 ms), and the separate upsample/concat passes cost 0.7 ms. They cost twice the
   memory (1.66 GB against 0.87 GB), because channels are padded and the concat tensors are
   materialised.
 - **Wider tiles were slower.** Two or four 16-pixel tiles per subgroup, sharing each weight tile,
-  ran 1.6× and 2.1× slower (28.4 and 37.6 ms), consistent with register spill. The default stays
-  at one (`AFIELD_OIDN_MATRIX_TILES`).
-- **Per layer (matrix path, ms):** dec_conv1a 4.1, dec_conv1b 3.2, dec_conv2a 1.9, dec_conv2b 1.0,
-  enc_conv1 1.0, dec_conv3a 0.7, up1 0.5; everything else is under 0.35.
-- **a0 is shared.** Other GPU jobs started and stopped during these runs, and twice
-  `vkCreateDevice` returned `VK_ERROR_INITIALIZATION_FAILED` until retried. The 15.2 / 18.1 spread
-  is that load, so treat these numbers as ±20%.
+  ran at 28.4 and 37.6 ms, consistent with register spill. Even the generalised kernel at one tile
+  took 18.1 ms, against 15.5 for this explicit form, so the explicit form was kept.
+- **Per layer (matrix path, ms):** dec_conv1a 3.8, dec_conv1b 3.2, dec_conv2a 1.9, dec_conv2b 1.0,
+  enc_conv1 1.0, dec_conv3a 0.7, up1 0.5; everything else is under 0.4.
+- **Contention:** earlier runs, made while other GPU jobs shared a0, twice failed `vkCreateDevice`
+  with `VK_ERROR_INITIALIZATION_FAILED` until retried. The table is from the idle machine.
 
 Raw JSON: [`oidn_compute/rtx4090/`](oidn_compute/rtx4090/).
 
@@ -168,7 +169,7 @@ Raw JSON: [`oidn_compute/rtx4090/`](oidn_compute/rtx4090/).
 
 Roughly in order of value.
 
-0. **NVIDIA:** 2.3× behind native CUDA OIDN (15 against 6.5 ms). Next steps:
+0. **NVIDIA:** 2.4× behind native CUDA OIDN (15.5 against 6.5 ms). Next steps:
    - stage A and B tiles through shared memory, so the four subgroups of a workgroup reuse them
      instead of each streaming from L1/L2;
    - fuse the upsample + concat into the conv's A loads.

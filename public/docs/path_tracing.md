@@ -1445,7 +1445,7 @@ Denoise differ by about 1/40 of one 8-bit level.
 
 | GPU, 1920 × 1080 | One denoise | Scratch memory |
 | --- | ---: | ---: |
-| NVIDIA RTX 4090, cooperative matrices (tensor cores) | 15 ms | 1.7 GB |
+| NVIDIA RTX 4090, cooperative matrices (tensor cores) | 15.5 ms | 1.7 GB |
 | NVIDIA RTX 4090, portable kernels | 16 ms | 870 MB |
 | Apple M1 Max, KosmicKrisp | 0.7 s | 870 MB |
 
