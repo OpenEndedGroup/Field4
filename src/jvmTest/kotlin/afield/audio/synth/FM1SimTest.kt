@@ -227,6 +227,10 @@ class FM1SimTest {
         assertTrue(px.count { (it and 0xffffff) != 0 } > 2000)
         assertTrue(sim.screenPng().size > 1000)
         assertTrue(sim.knobs().any { it.first == "LEVEL" }, "${sim.knobs()}")
+        val before = sim.screenRevision
+        sim.start(); p.rms(0.5)
+        assertTrue(sim.screenRevision > before, "a running sequencer redraws the screen")
+        assertEquals(3 * FM1Sim.SCREEN, javax.imageio.ImageIO.read(sim.screenPng(3).inputStream()).width)
     }
 
     @Test

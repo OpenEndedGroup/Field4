@@ -233,23 +233,39 @@ fm1.close()
 With `MidiOut.ONLY` the FM-1's sequencer plays something else: drain its notes in a loop and hand them
 to a Faust instrument or a MIDI device.
 
-## The screen
+## The front panel
 
-`fm1.screenPng(scale)` is a picture of the FM-1's LCD as it is now, which `display` shows in the box's
-output. This loads factory project 4 and shows its screen at three times its size:
+`fm1Panel(fm1)` puts the FM-1's front panel in the box: its screen, redrawn whenever the firmware draws
+on it, and rows of buttons below that press the panel's buttons, play its 27 keys and turn its seven
+encoders. The buttons are held while the mouse is down, as the real ones are. Return the panel with the
+simulator's node and the box plays the FM-1 and shows it:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fm1/screen.png" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" wait-output-channel="screen" w="760" timeout="240" embed=true name="fm1-screen" alt="the FM-1's LCD at three times its size: CHIP PARADE at 142 BPM, stopped at step 01 of 64, its eight tracks listed with their sources (PSG YM, PSG AY, 808 KIT, MARIMBA and four muted PSG tracks) and step patterns, and LEVEL 64, SOURCE PSG, STEP 01 and BPM 142 along the bottom"}
-val fm1 = FM1Sim.create()
+```diffstatic {data-lang=kotlin}
+val fm1 = FM1Sim.shared
 fm1.preset(4)
-val l = FloatArray(4800)
-val r = FloatArray(4800)
-repeat(5) { fm1.render(l, r, 4800, 48000f) }
+fm1.start()
 
-display("screen", fm1.screenPng(scale = 3))
-fm1.close()
+fm1.node + fm1Panel(fm1)
 ```
 
-`fm1.knobs()` has the labels and values the screen shows beside the encoders, as text.
+This is the screen of factory project 4, CHIP PARADE, running for eight seconds. Here the panel has a
+simulator of its own that nothing else plays, so `pull = true` lets the panel keep it running, `end`
+closes it when the box stops, and `controls = false` leaves the buttons out of the picture:
+
+```diffstatic_runner {data-lang=kotlin video="assets/fm1/panel.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" wait-output-channel="screen" execution="launch" duration="8" fps="20" timeout="300" w="900" embed=true name="fm1-panel" alt="the FM-1's screen playing CHIP PARADE at 142 BPM: the step counter runs through the 64 steps and the page flips every sixteen, while a highlight walks along each track's row of step lights and the track meters jump with the notes"}
+val fm1 = FM1Sim.create()
+fm1.preset(4)
+fm1.start()
+
+fm1Panel(fm1, controls = false, pull = true).end { fm1.close() }
+```
+
+With the buttons, the box's output has the screen above three groups of hold buttons: the fourteen
+panel buttons (PLAY, REC, SEQ, ARP, HOME, EDIT, SEL, SAVE, FX, ENV, LFO, GLO and the two octave
+buttons), the 27 keys from C1 to D3, and a `◀` and `▶` for each of the seven encoders, with a level
+slider at the end. `scale` sets how large the screen is drawn (2 by default, for a 480-pixel screen). For a single picture, `fm1.screenPng(scale)` returns the
+screen as it is now as a PNG, which `display` shows, and `fm1.knobs()` has the labels and values the
+screen shows beside the encoders, as text.
 
 ## Saving projects
 
@@ -344,8 +360,8 @@ the patterns and the MIDI handling above are Field's own Kotlin.
 * **No clock sync.** A Field pattern keeps time with the project through `cps`, from the project's
   tempo, and both start together if started together, but neither follows the other's clock.
 * **The sampler can't take Field's audio yet.** The sampler plays its factory samples.
-* **The screen is a snapshot.** `screenPng()` shows the LCD when it is called; there is no live panel
-  that follows it or takes clicks.
+* **The panel is buttons, not the drawing.** Clicks go to the rows of buttons below the screen, not to
+  the screen itself, and the knob and encoders are buttons and a slider rather than dials.
 * **The firmware can't be edited from a box.** The module is built once and shipped with Field;
   changing the firmware's C means rebuilding it with the WASI SDK by hand (`PROVENANCE.md`).
 
@@ -358,8 +374,8 @@ the patterns and the MIDI handling above are Field's own Kotlin.
 * The starting-point document `fm1_simulator` in [Agent transcripts](agent_transcripts.md) opens these
   boxes on a canvas.
 * The source: `src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt` (the simulator, MIDI, the screen and
-  projects), `FM1Patterns.kt` (patterns in, MIDI clips out) and `FM1Voice.kt` (DX7 voices); what was
-  left out and why is in `dev_docs/FM1.md`.
+  projects), `FM1Panel.kt` (the live panel), `FM1Patterns.kt` (patterns in, MIDI clips out) and
+  `FM1Voice.kt` (DX7 voices); what was left out and why is in `dev_docs/FM1.md`.
 
 What to build next, most useful first:
 
@@ -367,8 +383,8 @@ What to build next, most useful first:
   render or a recording into it, so a pattern on a sampler track plays Field's own sounds.
 * **MIDI clock both ways**: let the FM-1's sequencer follow Field's clock, or Field's patterns follow
   the FM-1's, so tempo changes on either side carry over.
-* **A live screen panel**: a canvas panel that redraws the LCD as it changes and turns clicks into
-  button and encoder presses.
+* **A panel drawn like the device**: buttons, keys and encoders laid out where the FM-1 has them,
+  around the screen, with dials that turn by dragging and the step lights the firmware sets.
 * **Microtonal tuning**: write the project's tuning block from Field, so drawn pitches between the
   semitones play as drawn.
 * **Separate track outputs**: export the firmware's per-track buffers, which needs a rebuild of the

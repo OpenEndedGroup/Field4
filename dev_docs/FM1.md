@@ -68,6 +68,8 @@ what a user does not need: why things are the way they are, and what was left an
   that `importProject` keeps. Writing one from Field means decoding `tuning_tables_valid` in
   `app/project.c`.
 - **Comparison with the hardware.** Still none; nobody here has an FM-1.
-- **A live LCD panel.** `screenPng()` is a snapshot; a box can redraw it in a loop, but a panel
-  that follows `sim_frame_revision` and takes clicks on the drawn controls would be a frontend
-  feature (a `FieldPanel`), out of scope for this round.
+- **A panel drawn like the device.** `fm1Panel` (`FM1Panel.kt`) shows the LCD live, redrawn when
+  `sim_frame_revision` moves (at most `maxFps` a second), with the panel buttons, 27 keys and
+  encoders as rows of `controlGroup` hold-keys. Clicks on the drawn screen itself, dials that turn by
+  dragging, and the 41 LEDs (`sim_state` bytes 168..208) laid out where the device has them would be a
+  custom HTML output (an image map over the PNG, with its own `send`), not more Kotlin.

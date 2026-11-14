@@ -62,19 +62,19 @@ for (slot in 0 until 4) {
 From `code`
 
 The M-VAVE FM-1's open-firmware simulator in Field's audio engine. Launch this box to hear
-it; stop the box and it leaves the mix.
+it and see its front panel, live; stop the box and it leaves the mix.
 
 Change the project slot (0 to 15) and re-run: the simulator is shared, so the new project
 loads into the same one. start() starts from the first step whether it was playing or not.
 
 ```edn [field-box id="fm1_play" role="properties"]
-{"id" "fm1_play" "index" 1 "name" "FM-1, playing" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "FM-1, playing" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fm1_play_code_.kt" "lines" 14 "characters" 395 "sha256" "473de0c2df530dcebb7f22795141f6c61cc813c1cc0d715ce914e233fd11611c"}]}
+{"id" "fm1_play" "index" 1 "name" "FM-1, playing" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "FM-1, playing" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fm1_play_code_.kt" "lines" 14 "characters" 441 "sha256" "07ea96f0f04a79921b9e4e4e4f07368e73a073fdd1eeb8dafb22509c5bba986e"}]}
 ```
 
 ```kotlin [field-property box="fm1_play" name="code" path="fm1_play_code_.kt"]
 /*
 The M-VAVE FM-1's open-firmware simulator in Field's audio engine. Launch this box to hear
-it; stop the box and it leaves the mix.
+it and see its front panel, live; stop the box and it leaves the mix.
 
 Change the project slot (0 to 15) and re-run: the simulator is shared, so the new project
 loads into the same one. start() starts from the first step whether it was playing or not.
@@ -85,7 +85,7 @@ fm1.preset(1)
 fm1.start()
 fm1.level(0.8)
 
-fm1.node
+fm1.node + fm1Panel(fm1)
 ```
 
 ## 3. the screen

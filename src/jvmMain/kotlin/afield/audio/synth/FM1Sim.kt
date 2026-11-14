@@ -533,6 +533,9 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
      */
     val cps: Double get() = bpm / 240.0
 
+    /** A count that goes up whenever the firmware draws on the LCD, so a viewer redraws only on change. */
+    val screenRevision: Long get() = between { it.getMember("sim_frame_revision").execute().asLong() }
+
     /** The LCD as ARGB pixels, [SCREEN] by [SCREEN], row by row from the top. */
     fun screen(): IntArray = between { e ->
         val raw = readBytes(e.getMember("sim_pixels").execute().asLong(), SCREEN * SCREEN * 2)

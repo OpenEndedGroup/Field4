@@ -3,8 +3,9 @@ description: >
   Loadable demo of FM1Sim (afield/audio/synth/FM1Sim.kt): the M-VAVE FM-1 pocket synth's browser
   simulator, compiled from its open firmware (github.com/m-vave/fm1_open) to a WebAssembly module with
   no imports, running in the GraalVM js+wasm context Faust uses.
-    1. FM-1, playing     — a factory project with its sequencer running, returned as the box's last
-       expression so launching the box puts it in the mix and stopping it takes it out. Re-running
+    1. FM-1, playing     — a factory project with its sequencer running and its front panel (the live
+       screen and its buttons), returned as the box's last expression so launching the box puts it in
+       the mix and stopping it takes it out. Re-running
        keeps the same simulator, so the pattern carries on while you edit.
     2. offline, four projects — each factory project rendered offline for three seconds after PLAY,
        printed as a level trace in 100 ms steps, so the patterns are visible without a sound card.
@@ -27,7 +28,7 @@ operations:
         code: |
           /*
           The M-VAVE FM-1's open-firmware simulator in Field's audio engine. Launch this box to hear
-          it; stop the box and it leaves the mix.
+          it and see its front panel, live; stop the box and it leaves the mix.
 
           Change the project slot (0 to 15) and re-run: the simulator is shared, so the new project
           loads into the same one. start() starts from the first step whether it was playing or not.
@@ -38,7 +39,7 @@ operations:
           fm1.start()
           fm1.level(0.8)
 
-          fm1.node
+          fm1.node + fm1Panel(fm1)
   - create:
       box: fm1_offline
       name: offline, four projects
