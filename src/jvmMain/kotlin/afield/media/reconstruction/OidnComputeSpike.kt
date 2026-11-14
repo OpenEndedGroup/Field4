@@ -100,7 +100,7 @@ object OidnComputeSpike {
             PathTracingRenderer(renderer,scene,PathTraceEnvironment.constant(.02f,.025f,.04f),width,height,camera,
                 PathTracingRenderer.Backend.COMPUTE_BVH,name="oidn-path").use { tracer ->
                 val c0=System.nanoTime();val den=OidnComputeDenoiser(tracer,weights).also { it.denoiseAt=0;it.show=false }
-                report.put("denoiserBuildMs",ms(c0)).put("activationBytes",den.activationBytes)
+                report.put("denoiserBuildMs",ms(c0)).put("activationBytes",den.activationBytes).put("cooperativeMatrix",den.cooperativeMatrix)
                 renderer.renderList.preTargets["oidn"]=Target { c,i -> tracer.render(c,i);den.render(c,i) }
                 pump(2);tracer.reset("start");pump(1)
                 val timing=JSONArray()

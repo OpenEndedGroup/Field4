@@ -114,16 +114,36 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
         return Pass(module, mesh, label)
     }
 
+    /**
+     * Run the convolutions as cooperative-matrix multiplies (16x16x16 fp16 in, fp32 accumulate; tensor cores on
+     * NVIDIA) when the device has `VK_KHR_cooperative_matrix`. Otherwise, and with `afield.oidn.portable=true`,
+     * the portable kernels run. Both give the same image to within fp16 rounding.
+     */
+    val cooperativeMatrix: Boolean = renderer.device.supportsCooperativeMatrix && !java.lang.Boolean.getBoolean("afield.oidn.portable")
+
+    /** Channels-last fp16 activation with a one-pixel zero border, channels padded to 16: one 3x3 tap is a strided matrix load. */
+    private inner class Nhwc(val level: Int, val real: Int, val c: Int = (real + 15) / 16 * 16) {
+        val w = pw shr level; val h = ph shr level
+        // Slack after the last row: a 16-pixel tile that runs past the right edge reads (and discards) it.
+        val buf = buffer(((h + 2L) * (w + 2) + (w + 2) + 64) * c * 2).also { activationBytes += it.requestedSize; zeroed += it }
+    }
+    private val zeroed = ArrayList<VulkanBuffer>()
+
     init {
         val tza = Tza(weights?.let { Files.readAllBytes(it) } ?: requireNotNull(OidnComputeDenoiser::class.java.getResourceAsStream(DEFAULT_WEIGHTS)) {
             "Open Image Denoise weights are missing from Field's resources ($DEFAULT_WEIGHTS)" }.use { it.readBytes() })
-        val input = Act(0, 9)
         auxPass = pass("aux", AUX, (width + 15) / 16, (height + 15) / 16, 1,
             mapOf("frame" to frame.buffer, "albedo" to albedo, "normal" to normal, "width" to width, "height" to height))
         val nbx = (width + 15) / 16; val nby = (height + 15) / 16
         passes += pass("autoexposure-bins", AE_BINS, (nbx + 15) / 16, (nby + 15) / 16, 1,
             mapOf("color" to tracer.accumulationBuffer, "bins" to bins, "width" to width, "height" to height, "nbx" to nbx, "nby" to nby))
         passes += pass("autoexposure-reduce", AE_REDUCE, 1, 1, 1, mapOf("bins" to bins, "scale" to scale, "count" to nbx * nby))
+        if (cooperativeMatrix) buildMatrixNetwork(tza) else buildPortableNetwork(tza)
+        if (zeroed.isNotEmpty()) submit { c -> zeroed.forEach { vkCmdFillBuffer(c.vkCommandBuffer, it.buffer, 0L, VK_WHOLE_SIZE, 0) } }
+    }
+
+    private fun buildPortableNetwork(tza: Tza) {
+        val input = Act(0, 9)
         passes += pass("input", INPUT, pw / 16, ph / 16, 1, mapOf("color" to tracer.accumulationBuffer, "albedo" to albedo,
             "normal" to normal, "scale" to scale, "dst" to input.buf, "width" to width, "height" to height, "pw" to pw, "ph" to ph))
 
@@ -173,6 +193,56 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
         val d0 = conv("dec_conv0", d1b, null, false, false)
         passes += pass("output", OUTPUT, (width + 15) / 16, (height + 15) / 16, 1,
             mapOf("src" to d0.buf, "scale" to scale, "dst" to denoised, "width" to width, "height" to height, "pw" to pw, "ph" to ph))
+    }
+
+    private fun buildMatrixNetwork(tza: Tza) {
+        val input = Nhwc(0, 9)
+        passes += pass("input", INPUT_NHWC, pw / 16, ph / 16, 1, mapOf("color" to tracer.accumulationBuffer, "albedo" to albedo,
+            "normal" to normal, "scale" to scale, "dst" to input.buf, "width" to width, "height" to height, "pw" to pw, "ph" to ph))
+        // [split] is where the concat's second input starts, in real channels; the first input's width is a multiple of 16.
+        fun conv(name: String, src: Nhwc, split: Int? = null): Nhwc {
+            val w = tza.tensors.getValue("$name.weight"); val bias = tza.tensors.getValue("$name.bias")
+            val oc = w.dims[0]; val ic = w.dims[1]
+            val ci = src.c; val co = (oc + 15) / 16 * 16; val kb = ci / 16; val nt = co / 16
+            val out = Nhwc(src.level, oc, co)
+            // B tiles: [tap][k block][n tile] of 16x16 row-major (k rows, n columns), fp16.
+            val packed = ShortArray(9 * kb * nt * 256)
+            for (o in 0 until oc) for (i in 0 until ic) for (t in 0 until 9) {
+                val p = if (split == null || i < split) i else split + (i - split)
+                check(p < ci) { "$name: channel $i maps past $ci" }
+                packed[((t * kb + p / 16) * nt + o / 16) * 256 + (p % 16) * 16 + o % 16] = java.lang.Float.floatToFloat16(w.data[(o * ic + i) * 9 + t])
+            }
+            val wb = buffer(packed.size * 2L, host = true).also { b -> b.mapAndWrite_bytes { packed.forEach { putShort(it) } } }
+            val bb = buffer(co * 4L, host = true).also { b -> b.mapAndWrite_bytes { for (o in 0 until co) putFloat(if (o < oc) bias.data[o] else 0f) } }
+            passes += pass(name, convMatrix(ci, co), (src.w + 63) / 64, src.h, 1,
+                mapOf("src" to src.buf, "wt" to wb, "bias" to bb, "dst" to out.buf, "w" to src.w, "h" to src.h))
+            return out
+        }
+        fun pool(name: String, src: Nhwc): Nhwc {
+            val out = Nhwc(src.level + 1, src.real, src.c); val g = src.c / 4
+            passes += pass(name, POOL_NHWC, (out.w * g + 63) / 64, out.h, 1, mapOf("src" to src.buf, "dst" to out.buf, "w" to out.w, "h" to out.h, "g" to g))
+            return out
+        }
+        fun upcat(name: String, a: Nhwc, b: Nhwc): Nhwc {
+            check(a.c == a.real && a.level == b.level + 1)
+            val out = Nhwc(b.level, a.c + b.c, a.c + b.c)
+            passes += pass(name, UPCAT_NHWC, (out.w * (out.c / 4) + 63) / 64, out.h, 1,
+                mapOf("a" to a.buf, "b" to b.buf, "dst" to out.buf, "w" to out.w, "h" to out.h, "ga" to a.c / 4, "gb" to b.c / 4))
+            return out
+        }
+        val e0 = conv("enc_conv0", input)
+        val p1 = pool("pool1", conv("enc_conv1", e0))
+        val p2 = pool("pool2", conv("enc_conv2", p1))
+        val p3 = pool("pool3", conv("enc_conv3", p2))
+        val p4 = pool("pool4", conv("enc_conv4", p3))
+        val e5b = conv("enc_conv5b", conv("enc_conv5a", p4))
+        val d4b = conv("dec_conv4b", conv("dec_conv4a", upcat("up4", e5b, p3), split = e5b.c))
+        val d3b = conv("dec_conv3b", conv("dec_conv3a", upcat("up3", d4b, p2), split = d4b.c))
+        val d2b = conv("dec_conv2b", conv("dec_conv2a", upcat("up2", d3b, p1), split = d3b.c))
+        val d1b = conv("dec_conv1b", conv("dec_conv1a", upcat("up1", d2b, input), split = d2b.c))
+        val d0 = conv("dec_conv0", d1b)
+        passes += pass("output", OUTPUT_NHWC, (width + 15) / 16, (height + 15) / 16, 1,
+            mapOf("src" to d0.buf, "scale" to scale, "dst" to denoised, "width" to width, "height" to height, "pw" to pw, "c" to d0.c))
     }
 
     /** Display texture: the denoised buffer copied into an RTT the same way PathTraceFrameOutput fills its images. */
@@ -453,6 +523,113 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
             void main(){
               ivec2 p=ivec2(gl_GlobalInvocationID.xy); if(p.x>=pc.width||p.y>=pc.height) return;
               vec3 d=unpack4(pc.src.v[p.y*pc.pw+p.x]).rgb; float s=pc.scale.v[0];
+              d=vec3(puInverse(sanitize(d.r,0.0,3.4e38)),puInverse(sanitize(d.g,0.0,3.4e38)),puInverse(sanitize(d.b,0.0,3.4e38)))/s;
+              pc.dst.v[p.y*pc.width+p.x]=vec4(d,1.0);
+            }
+        """
+
+        private const val HEAD16 = """#version 460
+            #extension GL_EXT_buffer_reference : require
+            #extension GL_EXT_shader_16bit_storage : require
+            #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+            layout(buffer_reference, std430, buffer_reference_align=16) buffer Vec4s { vec4 v[]; };
+            layout(buffer_reference, std430, buffer_reference_align=8) buffer H4s { f16vec4 v[]; };
+            layout(buffer_reference, std430, buffer_reference_align=4) buffer Floats { float v[]; };
+        """
+
+        /** As [INPUT], into a 16-channel NHWC tensor with a zero border. */
+        private val INPUT_NHWC = HEAD16 + PU + """
+            layout(local_size_x=16, local_size_y=16) in;
+            layout(push_constant) uniform P { Vec4s color; Vec4s albedo; Vec4s normal; Floats scale; H4s dst; int width; int height; int pw; int ph; } pc;
+            void main(){
+              ivec2 p=ivec2(gl_GlobalInvocationID.xy); if(p.x>=pc.pw||p.y>=pc.ph) return;
+              vec3 c=vec3(0.0), a=vec3(0.0), n=vec3(0.0);
+              if(p.x<pc.width&&p.y<pc.height){
+                int i=p.y*pc.width+p.x; float s=pc.scale.v[0]; vec3 col=pc.color.v[i].rgb*s;
+                c=vec3(puForward(sanitize(col.r,0.0,3.4e38)),puForward(sanitize(col.g,0.0,3.4e38)),puForward(sanitize(col.b,0.0,3.4e38)));
+                vec3 al=pc.albedo.v[i].rgb; a=vec3(sanitize(al.r,0.0,1.0),sanitize(al.g,0.0,1.0),sanitize(al.b,0.0,1.0));
+                vec3 nr=pc.normal.v[i].xyz; n=vec3(sanitize(nr.x,-1.0,1.0),sanitize(nr.y,-1.0,1.0),sanitize(nr.z,-1.0,1.0))*0.5+0.5;
+              }
+              int j=((p.y+1)*(pc.pw+2)+p.x+1)*4;
+              pc.dst.v[j]=f16vec4(vec4(c,a.r)); pc.dst.v[j+1]=f16vec4(vec4(a.gb,n.rg)); pc.dst.v[j+2]=f16vec4(vec4(n.b,0.0,0.0,0.0)); pc.dst.v[j+3]=f16vec4(0.0);
+            }
+        """
+
+        /**
+         * 3x3 conv + bias + ReLU as an implicit GEMM on cooperative matrices. Each subgroup owns 16 consecutive pixels of
+         * one row and every output channel; for each tap and 16-channel block it loads one A tile straight from the
+         * bordered NHWC input (row stride = channels) and multiplies it into CO/16 fp32 accumulators.
+         */
+        private fun convMatrix(ci: Int, co: Int) = """#version 460
+            #extension GL_KHR_cooperative_matrix : require
+            #extension GL_KHR_memory_scope_semantics : require
+            #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+            #extension GL_EXT_shader_16bit_storage : require
+            #extension GL_EXT_buffer_reference : require
+            #extension GL_KHR_shader_subgroup_basic : require
+            const int CI=$ci, CO=$co, KB=CI/16, NT=CO/16;
+            layout(local_size_x=128) in;
+            layout(buffer_reference, std430, buffer_reference_align=16) buffer F16s { float16_t v[]; };
+            layout(buffer_reference, std430, buffer_reference_align=16) buffer F32s { float v[]; };
+            layout(push_constant) uniform P { F16s src; F16s wt; F32s bias; F16s dst; int w; int h; } pc;
+            shared float sh[4*16*CO];
+            void main(){
+              int sg=int(gl_SubgroupID), lane=int(gl_SubgroupInvocationID);
+              int x0=int(gl_WorkGroupID.x)*64+sg*16, y=int(gl_WorkGroupID.y);
+              if(x0>=pc.w) return;
+              coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> acc[NT];
+              for(int n=0;n<NT;n++) acc[n]=coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(0.0);
+              int rw=pc.w+2;
+              for(int t=0;t<9;t++){
+                int ky=t/3, kx=t-ky*3;
+                uint abase=uint(((y+ky)*rw+x0+kx)*CI);
+                for(int kb=0;kb<KB;kb++){
+                  coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseA> a;
+                  coopMatLoad(a,pc.src.v,abase+uint(kb*16),uint(CI),gl_CooperativeMatrixLayoutRowMajor);
+                  for(int n=0;n<NT;n++){
+                    coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseB> b;
+                    coopMatLoad(b,pc.wt.v,uint(((t*KB+kb)*NT+n)*256),16u,gl_CooperativeMatrixLayoutRowMajor);
+                    acc[n]=coopMatMulAdd(a,b,acc[n]);
+                  }
+                }
+              }
+              int sb=sg*16*CO;
+              for(int n=0;n<NT;n++) coopMatStore(acc[n],sh,uint(sb+n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor);
+              subgroupMemoryBarrierShared(); subgroupBarrier();
+              for(int i=lane;i<16*CO;i+=32){ int m=i/CO, o=i-m*CO; if(x0+m>=pc.w) continue;
+                pc.dst.v[((y+1)*rw+x0+m+1)*CO+o]=float16_t(max(sh[sb+i]+pc.bias.v[o],0.0)); }
+            }
+        """
+
+        private val POOL_NHWC = HEAD16 + """
+            layout(local_size_x=64) in;
+            layout(push_constant) uniform P { H4s src; H4s dst; int w; int h; int g; } pc;
+            void main(){
+              int i=int(gl_GlobalInvocationID.x), y=int(gl_GlobalInvocationID.y); if(i>=pc.w*pc.g||y>=pc.h) return;
+              int x=i/pc.g, k=i-x*pc.g; int sw=2*pc.w+2, dw=pc.w+2;
+              int s=((2*y+1)*sw+2*x+1)*pc.g+k, r=sw*pc.g;
+              pc.dst.v[((y+1)*dw+x+1)*pc.g+k]=max(max(pc.src.v[s],pc.src.v[s+pc.g]),max(pc.src.v[s+r],pc.src.v[s+r+pc.g]));
+            }
+        """
+
+        /** Nearest 2x upsample of A next to B, channels A then B. */
+        private val UPCAT_NHWC = HEAD16 + """
+            layout(local_size_x=64) in;
+            layout(push_constant) uniform P { H4s a; H4s b; H4s dst; int w; int h; int ga; int gb; } pc;
+            void main(){
+              int g=pc.ga+pc.gb; int i=int(gl_GlobalInvocationID.x), y=int(gl_GlobalInvocationID.y); if(i>=pc.w*g||y>=pc.h) return;
+              int x=i/g, k=i-x*g;
+              f16vec4 v = k<pc.ga ? pc.a.v[((y/2+1)*(pc.w/2+2)+x/2+1)*pc.ga+k] : pc.b.v[((y+1)*(pc.w+2)+x+1)*pc.gb+k-pc.ga];
+              pc.dst.v[((y+1)*(pc.w+2)+x+1)*g+k]=v;
+            }
+        """
+
+        private val OUTPUT_NHWC = HEAD16 + PU + """
+            layout(local_size_x=16, local_size_y=16) in;
+            layout(push_constant) uniform P { H4s src; Floats scale; Vec4s dst; int width; int height; int pw; int c; } pc;
+            void main(){
+              ivec2 p=ivec2(gl_GlobalInvocationID.xy); if(p.x>=pc.width||p.y>=pc.height) return;
+              vec3 d=vec3(pc.src.v[((p.y+1)*(pc.pw+2)+p.x+1)*(pc.c/4)].rgb); float s=pc.scale.v[0];
               d=vec3(puInverse(sanitize(d.r,0.0,3.4e38)),puInverse(sanitize(d.g,0.0,3.4e38)),puInverse(sanitize(d.b,0.0,3.4e38)))/s;
               pc.dst.v[p.y*pc.width+p.x]=vec4(d,1.0);
             }
