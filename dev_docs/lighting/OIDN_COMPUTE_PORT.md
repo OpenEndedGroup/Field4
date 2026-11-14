@@ -165,6 +165,60 @@ gets slower (2.2 to 3.2 ms), and the separate upsample/concat passes cost 0.7 ms
 
 Raw JSON: [`oidn_compute/rtx4090/`](oidn_compute/rtx4090/).
 
+### Is Field the bottleneck? No: the kernel is
+
+`OidnComputeSpike --peaks` dispatches microbenchmarks through the same `ComputeModule` /
+`ComputeMesh` path the denoiser uses, timed with a fence:
+
+| Through Field on the RTX 4090 | Measured | RTX 4090 spec (at 2.52 GHz boost) |
+| --- | ---: | ---: |
+| Cooperative-matrix MMA, fp16 → fp32 accumulate | 177 TFLOPS | 165 |
+| Cooperative-matrix MMA, fp16 → fp16 accumulate | 353 TFLOPS | 330 |
+| Copy kernel, 1 GiB in + 1 GiB out | 922 GB/s | 1008 |
+
+The card clocks up to 3.1 GHz, which is why the tensor rows beat the spec. So Field's Vulkan path
+reaches the tensor cores and the memory at full rate:
+
+- **No overhead beyond the hardware:** submission and barriers cost about 0.9 ms of the 15.5,
+  robust buffer access is off, and validation was off in these runs.
+- **Where the gap is:** the denoiser's convolutions average about 35 TFLOPS of the 177 available
+  (262 GMAC in 14.7 ms of GPU time). Native OIDN's 6.5 ms is about 80 TFLOPS.
+- **Precision is not the gap.** fp16 accumulation, which doubles peak on GeForce, gave 15.2 ms (no
+  gain) at about 3× the error against native (RMSE 0.0138 against 0.0040), so it was not kept.
+- **What closes it is CUTLASS-style tiling:** stage A and B tiles in shared memory per workgroup and
+  double-buffer them, so the four subgroups share each load. OIDN's CUDA device is built on
+  CUTLASS. Each subgroup here loads its own A and B straight from L1/L2, so the convs are bound by
+  load latency, not by MMA rate. That is ordinary kernel work, possible in GLSL with cooperative
+  matrices.
+- **Side finding:** turning on shaderc's performance optimisation (Field compiles at level zero)
+  makes the path tracer's shader fail to compile (`error null`). That is worth its own look before
+  anyone flips the default.
+
+### CUDA from Field
+
+LWJGL's CUDA module stops at 3.3.6, and Field is on 3.4.3. So CUDA in Field means FFM against
+`libcuda.so` (the driver API, a stable C ABI) and optionally `libnvrtc`, the same pattern as
+`NgxNative` and `OidnSpike`'s `Oidn`. The Vulkan side already exists: `Image.exportOpaqueFd` /
+`VulkanExternalMemory` export opaque fds for the NVENC helper, whose comments record what
+`cuImportExternalMemory` needs (exact size, dedicated allocation). On a0 the driver library is
+present but no toolkit: no nvcc, no NVRTC outside conda environments.
+
+Three concrete uses, in order of payoff:
+
+1. **Native OIDN on CUDA, zero-copy.** Export the accumulation and guide buffers as fds and pass
+   them to `oidnNewSharedBufferFromFD`. Synchronise with an exported timeline semaphore and
+   `oidnNewSharedSemaphoreFromFD`. That gets 6.5 ms (4.9 balanced) with no readback, and needs no
+   CUDA bindings at all, only the OIDN FFM binding already in the spike.
+2. **A small driver-API binding:**
+   - `cuInit`, primary context, `cuModuleLoadData` / `cuLaunchKernel`;
+   - `cuImportExternalMemory` / `cuExternalMemoryGetMappedBuffer` and
+     `cuImportExternalSemaphore` / `cuSignalExternalSemaphoresAsync` for interop;
+   - device matching by UUID (`VkPhysicalDeviceIDProperties.deviceUUID` against `cuDeviceGetUuid`).
+
+   About 30 entry points. Kernels arrive as PTX, either from NVRTC at runtime or shipped prebuilt.
+3. **Libraries on top of 2:** cuBLAS/cuDNN, or ONNX Runtime's CUDA provider, sharing memory with
+   the renderer.
+
 ## What's left before productising
 
 Roughly in order of value.

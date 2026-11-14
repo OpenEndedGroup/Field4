@@ -1,0 +1,9 @@
+{
+  "tensorTflops_acc_float": 177.20591577457245,
+  "tensorMs_acc_float16_t": 12.460424,
+  "copyGBps": 922.4982378968169,
+  "tensorMs_acc_float": 24.818847,
+  "copyMs": 2.3279,
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "tensorTflops_acc_float16_t": 352.9612243615466
+}

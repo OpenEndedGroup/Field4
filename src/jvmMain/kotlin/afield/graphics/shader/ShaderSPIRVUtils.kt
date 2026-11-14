@@ -245,9 +245,6 @@ object ShaderSPIRVUtils {
         Shaderc.shaderc_compile_options_set_target_env(
             opts, Shaderc.shaderc_target_env_vulkan, Shaderc.shaderc_env_version_vulkan_1_3
         )
-        // Measurement knob: shaderc's default is no SPIR-V optimisation; drivers optimise again anyway.
-        if (System.getenv("AFIELD_SHADERC_OPTIMIZE") == "performance")
-            Shaderc.shaderc_compile_options_set_optimization_level(opts, Shaderc.shaderc_optimization_level_performance)
         Shaderc.shaderc_compile_options_set_target_spirv(
             opts, Shaderc.shaderc_spirv_version_1_5
         )
