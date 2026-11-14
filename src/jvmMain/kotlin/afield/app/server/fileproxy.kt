@@ -148,6 +148,37 @@ private fun readProxyText(file: File): Pair<String, String>? {
     return text to languageForFile(file.name)
 }
 
+/**
+ * The text of [file] for a reader such as an AI4 attachment: the file itself when it decodes as
+ * text, the PDFBox text layer, one `--- Page n ---` block per page, for a PDF. Returns the text and
+ * its language, or `null` for a binary file with no text to give (a scanned PDF needs OCR).
+ *
+ * This is never written into a file box's `contents`: [writeFileProxyContents] writes that property
+ * back to the file, which would replace the PDF with its text.
+ */
+fun readFileAsText(file: File): Pair<String, String>? {
+    if (!file.isFile) return null
+    if (file.extension.equals("pdf", ignoreCase = true)) {
+        val text = runCatching {
+            org.apache.pdfbox.Loader.loadPDF(file).use { doc ->
+                val stripper = org.apache.pdfbox.text.PDFTextStripper()
+                (1..doc.numberOfPages).joinToString("\n\n") { page ->
+                    stripper.startPage = page
+                    stripper.endPage = page
+                    "--- Page $page ---\n" + stripper.getText(doc).trim()
+                }
+            }
+        }.getOrNull() ?: return null
+        return text.takeIf { it.lines().any { line -> line.isNotBlank() && !line.startsWith("--- Page ") } }
+            ?.let { it to "plaintext" }
+    }
+    return readProxyText(file)
+}
+
+/** The file a file box stands for, or `null` when [box] is not a file box or its path is invalid. */
+fun fileProxyTargetOrNull(box: Box): File? =
+    if (box.isFileProxy()) runCatching { resolveFileProxyTarget(box) }.getOrNull() else null
+
 private fun Box.isFileProxy(): Boolean =
     getPropertyRaw("file_proxy_mode") is String && getPropertyRaw("file_proxy_path") is String
 

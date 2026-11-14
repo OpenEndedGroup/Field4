@@ -202,7 +202,7 @@ ${ctx.documentGuides.catalogueContext()}
 
     if (ctx.attachments.isNotEmpty() || ctx.resolveAttachment != null) {
         ad("tools.attachments", "- ListAttachments: lists available attached context files.")
-        ad("tools.attachments", "- AttachmentRequest: read bounded source excerpts by name/path/ref (6000 characters by default). Use find with a literal function name or error text to jump to relevant code; searchMatched=false explicitly reports a miss. Increase maxChars only when broader context is necessary. Continue with nextOffset and expectedSourceHash; isExcerpt means this is not the whole file and must not be used as a full-file replacement. Responses may suggest relatedGuides and relatedExamples.")
+        ad("tools.attachments", "- AttachmentRequest: read bounded source excerpts by name/path/ref (6000 characters by default). A file box's uid or name, or a file path, reads that file; PDFs come back as their extracted text. Use find with a literal function name or error text to jump to relevant code; searchMatched=false explicitly reports a miss. Increase maxChars only when broader context is necessary. Continue with nextOffset and expectedSourceHash; isExcerpt means this is not the whole file and must not be used as a full-file replacement. Responses may suggest relatedGuides and relatedExamples.")
     }
 
     val isKotlin = lang.name.equals("Kotlin", ignoreCase = true)

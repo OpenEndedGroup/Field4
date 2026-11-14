@@ -1802,6 +1802,14 @@ fun installAi4() {
 
             GlslIncludeLibraryIndex.resolveAttachment(requested)?.let { return@attachmentResolver it }
 
+            // A file box, named by uid or by name: read the file it stands for.
+            (boxByIdOrNull(requested) ?: box.inside.boxes.values.singleOrNull { it.name == requested })
+                ?.let(::fileProxyTargetOrNull)
+                ?.let { target ->
+                    val (content, language) = readFileAsText(target) ?: return@attachmentResolver null
+                    return@attachmentResolver AttachmentResponse(file = target.path, language = language, content = content)
+                }
+
             val candidatePaths = linkedSetOf<Path>()
             val requestedPath = runCatching { Paths.get(requested) }.getOrNull()
             if (requestedPath != null) {
@@ -1818,11 +1826,13 @@ fun installAi4() {
 
             for (candidate in candidatePaths) {
                 if (!Files.exists(candidate) || !Files.isRegularFile(candidate)) continue
-                val content = runCatching { Files.readString(candidate, StandardCharsets.UTF_8) }.getOrNull() ?: continue
+                val isPdf = candidate.toString().endsWith(".pdf", ignoreCase = true)
+                val content = if (isPdf) readFileAsText(candidate.toFile())?.first ?: continue
+                    else runCatching { Files.readString(candidate, StandardCharsets.UTF_8) }.getOrNull() ?: continue
                 val related = RelatedContextDiscovery.forPath(candidate.toString())
                 return@attachmentResolver AttachmentResponse(
                     file = candidate.toString(),
-                    language = languageForFilePath(candidate),
+                    language = if (isPdf) "plaintext" else languageForFilePath(candidate),
                     content = content,
                     relatedGuides = related.guides,
                     relatedExamples = related.examples
