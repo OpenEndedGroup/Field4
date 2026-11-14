@@ -1130,6 +1130,8 @@ kotlin {
                 implementation("org.jetbrains.trove4j:trove4j:20160824")
                 implementation("org.json:json:20240303")
                 implementation("org.xerial:sqlite-jdbc:3.47.2.0")
+                // PDF text for AI4's AttachmentRequest on file boxes (readFileAsText in fileproxy.kt).
+                implementation("org.apache.pdfbox:pdfbox:3.0.2")
                 implementation("org.apache.lucene:lucene-core:$luceneVersion")
                 implementation("org.apache.lucene:lucene-analysis-common:$luceneVersion")
                 implementation("org.apache.lucene:lucene-queryparser:$luceneVersion")
