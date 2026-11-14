@@ -287,6 +287,10 @@ object DemoTranscriptExecSmokeTest {
         // The playing box and the deliberately-broken box are NOT executed by the transcript — one
         // opens an audio device, the other fails on purpose — so neither can trip this harness.
         "faust_voice",
+        // The FM-1 synth's open-firmware simulator (wasm in GraalWasm). Only the two offline boxes run:
+        // four factory projects rendered in 4800-frame blocks, and the LCD shown as a PNG, with no audio
+        // device. The playing box and the pattern box return a live node and are not executed.
+        "fm1_simulator",
         // Faust as a polyphonic instrument that a `Pat` pattern plays. Four of its five boxes render
         // offline through the same `FaustVoiceBank` the audio thread uses, in 128-frame blocks, into WAV
         // bytes and a plot — so no audio device and no GPU. The fifth returns a live launch and is not

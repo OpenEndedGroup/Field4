@@ -1771,6 +1771,28 @@
         "public/docs/assets/agent_transcripts/flow_lenia/metadata.edn": "0f7bad77162bb728f2dfa57acedd095b38ea040ac13ac0937d8b0dd8469b5840"
       }
     },
+    "assets/agent_transcripts/fm1_simulator/metadata.edn": {
+      "captureDigest": "0fcbf6e3c3eeb6960f58f3cb82dba685d3fdbb401ac1028834bf2ba785bb3849",
+      "capturedAt": "2026-11-14T19:59:13.451Z",
+      "channels": 1,
+      "file": "assets/web_publications/fm1_simulator/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fm1_simulator/document/metadata.edn": "cd5c6914b878fc7fc33f4a4f66995b6b46f62df8fd2cf851e4c9c1ce10378b02",
+        "assets/web_publications/fm1_simulator/document/outputs.json": "79978ed46c91bbe171cd736b137954670a90b452fadcf2a3b2358d605635a91f",
+        "assets/web_publications/fm1_simulator/outputs/0.html": "9a6eb74d3e78928ac4b803aba9b462f9c3c79d9862881e7214ddc6d3bcc3d1db"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/fm1_simulator/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/fm1_simulator.yaml": "6db7be5e3bdd28eda48d03e46bdb43b01e836df274ac1949245fdb7420fcb12b",
+        "public/docs/assets/agent_transcripts/fm1_simulator/fm1_offline_code_.kt": "0515777811cd708b2d05ab810d1e9fdd659dadfd5f848ea10771644f4172c2b3",
+        "public/docs/assets/agent_transcripts/fm1_simulator/fm1_pattern_code_.kt": "160c4f6141ff792f39483bfeb44491eb76c273b419224dc95fc6b14ed276de21",
+        "public/docs/assets/agent_transcripts/fm1_simulator/fm1_play_code_.kt": "07ea96f0f04a79921b9e4e4e4f07368e73a073fdd1eeb8dafb22509c5bba986e",
+        "public/docs/assets/agent_transcripts/fm1_simulator/fm1_screen_code_.kt": "e749f886c576a34bfc08156f53cdd4b18eb67140545e2e07f73ed54c4dd00090",
+        "public/docs/assets/agent_transcripts/fm1_simulator/guides/faust.md": "532e4b87c5704047e793863ce01db55f7c5ade419a19a8e0b357b880026527d6",
+        "public/docs/assets/agent_transcripts/fm1_simulator/metadata.edn": "19cd884bbeaf769efa99901dc92b59724dd8a353df19d149f77ae4e84282b551"
+      }
+    },
     "assets/agent_transcripts/fn_differentiable_fit_demo/metadata.edn": {
       "captureDigest": "378c0b1419ccd7187ddfa26faf20f5b11145a5bc319131f8e80cc22ca5f72722",
       "capturedAt": "2026-11-14T22:38:45.893Z",

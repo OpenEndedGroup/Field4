@@ -310,6 +310,7 @@ nav:
       - "Audio Curves: Sound as a Few Controls": audio_curves.md
       - Sonic Pi: sonic_pi.md
       - Faust: faust.md
+      - FM-1 simulator: fm1.md
       - Pure Data: pure_data.md
       - Csound: csound.md
       - ORCA: orca.md

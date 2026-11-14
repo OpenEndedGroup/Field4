@@ -978,8 +978,21 @@ object Wavetables {
 // ═══════════════════════════════════════════════════════════════════
 
 
-class WhiteNoise : Signal() {
+/**
+ * Uniform white noise in -1..1.
+ *
+ * With a [seed], the same seed gives the same noise on every render, which is what a sound that is
+ * rendered offline and published needs (`WhiteNoise(seed = 1)`); without one it is different each
+ * time.
+ */
+class WhiteNoise(seed: Long? = null) : Signal() {
+    private val seeded = seed?.let { java.util.SplittableRandom(it) }
+
     override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        if (seeded != null) {
+            for (i in 0 until numFrames) output[i] = (seeded.nextDouble() * 2.0 - 1.0).toFloat()
+            return
+        }
         val rng = ThreadLocalRandom.current()
         for (i in 0 until numFrames) {
             output[i] = (rng.nextFloat() * 2f - 1f)
