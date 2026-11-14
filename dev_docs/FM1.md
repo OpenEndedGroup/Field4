@@ -42,14 +42,21 @@ what a user does not need: why things are the way they are, and what was left an
 - **Real-time cost**: `FM1SoundDocs.realtimeFactor()` prints the factor in the
   `synth.fm1.sound` smoke test.
 
+- **Field audio on the sampler's pads** (`FM1Samples.kt`, `FM1Sim.sample`). The bank layout comes
+  from `app/samples.c`: a 512-byte header (`FM1S`, version 1, size, CRC-32 over the bank with bytes
+  12..19 as zero, commit word 0, rate 32000, sixteen `offset/frames/bytes/name[16]` entries packed in
+  order, entries 8..15 empty), then SEA5 blocks of 228 bytes per 320 frames. Compression uses the
+  firmware's own `sim_sample_encode`, so Field does not carry a second SEA5 encoder. A bank is
+  capped at `GROOVE_SAMPLE_LIMIT` (446,464 bytes, about 19.5 s), not the region's full 466,944,
+  because a larger header size makes `groove_fm_library_init` block the DX7 voice library and
+  `tuning_blocked` refuse tuning writes. The new bank is written to `sim_flash() + 69632` with
+  `writeBufferLong` (polyglot buffers have no bulk write), then `sim_sample_bank` re-reads it. If the
+  firmware refuses it, the old bytes go back, because `groove_samples_init` has already unbound every
+  pad. The factory bank rebuilds byte for byte through `FM1SampleBank.parse`/`bytes`. The pad
+  notes are `sample_notes` in `web/synth/sample_metadata.inc`.
+
 ## Not done, and why
 
-- **Field audio into the FM-1's sampler.** The exports exist (`sim_sample_alloc`,
-  `sim_sample_encode`, `sim_sample_bank`), but a bank is a flash region with its own header and
-  table at `GROOVE_SAMPLE_OFFSET` that the web page's JavaScript assembles, and that JavaScript is
-  not in the firmware repository. Doing it means reading `app/samples.c` and `sampledrum_encode`
-  to lay out the bank. Plan: build the region in Kotlin, write it with `memory.writeBuffer` at
-  `sim_flash() + GROOVE_SAMPLE_OFFSET`, call `sim_sample_bank(bytes)`, check status 2.
 - **Per-track stems.** The firmware mixes the eight tracks (and their reverb/delay sends) inside
   `render_stereo`; `sim_render` returns the mix only. Stems need a firmware change (an export of
   the per-track scratch buffers) and a rebuild, or eight simulators each soloing one track, which
@@ -68,6 +75,13 @@ what a user does not need: why things are the way they are, and what was left an
   that `importProject` keeps. Writing one from Field means decoding `tuning_tables_valid` in
   `app/project.c`.
 - **Comparison with the hardware.** Still none; nobody here has an FM-1.
+- **Recording into a pad live.** `sample(pad, audio, rate)` takes a finished buffer. Taking a
+  box's output as it plays would need a tap on the audio thread that hands frames to a
+  non-audio thread, then one `sample` call at the end. Writing the bank holds the audio thread for
+  tens of milliseconds, so it cannot happen block by block.
+- **Per-pad tune, level, length and choke from Field.** These are the sampler engine's pots
+  (`sampledrum_set`), reached only through the panel's EDIT page; the simulator exports no setter.
+  `encoder()` on that page reaches them, but by screen position, not by name.
 - **A panel drawn like the device.** `fm1Panel` (`FM1Panel.kt`) shows the LCD live, redrawn when
   `sim_frame_revision` moves (at most `maxFps` a second), with the panel buttons, 27 keys and
   encoders as rows of `controlGroup` hold-keys. Clicks on the drawn screen itself, dials that turn by

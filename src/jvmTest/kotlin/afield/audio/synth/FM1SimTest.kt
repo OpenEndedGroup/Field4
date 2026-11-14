@@ -250,4 +250,111 @@ class FM1SimTest {
             assertTrue(pa.any { it != 0f })
         }
     }
+
+    /** Power of [x] at [hz] (sampled at [sr]), by Goertzel. */
+    private fun power(x: FloatArray, hz: Double, sr: Double): Double {
+        val w = 2 * Math.PI * hz / sr; val c = 2 * kotlin.math.cos(w)
+        var s1 = 0.0; var s2 = 0.0
+        for (v in x) { val s0 = v + c * s1 - s2; s2 = s1; s1 = s0 }
+        return s1 * s1 + s2 * s2 - c * s1 * s2
+    }
+
+    private fun sine(hz: Double, seconds: Double, sr: Int) =
+        FloatArray((seconds * sr).toInt()) { (0.7 * kotlin.math.sin(2 * Math.PI * hz * it / sr)).toFloat() }
+
+    @Test
+    fun theFactorySampleBankParsesAndRebuildsByteForByte() = FM1Sim.create().use { sim ->
+        val bank = sim.sampleBank()
+        val pads = bank.describe()
+        assertEquals(8, pads.size)
+        assertTrue(pads.all { !it.empty && it.name.isNotEmpty() }, "the factory fills every pad: $pads")
+        assertEquals(listOf(36, 38, 37, 41, 47, 48, 42, 46), pads.map { it.note })
+        val again = FM1SampleBank.parse(bank.bytes())
+        assertTrue(again.bytes().contentEquals(bank.bytes()), "parse and bytes are inverses")
+    }
+
+    @Test
+    fun fieldAudioOnAPadPlaysOnASamplerTrackAtItsOwnPitch() = FM1Sim.create().use { sim ->
+        sim.preset(0)
+        sim.source(0, FM1Sim.SourceType.SAMPLER)
+        sim.sample(0, sine(440.0, 1.0, 48_000), 48_000.0, "SINE440")
+        val p = Pull(sim, 44_100)
+        p.take(0.2)
+        assertEquals(FM1Sim.SourceType.SAMPLER, sim.tracks()[0].source)
+        val pads = sim.samples()
+        assertEquals("SINE440", pads[0].name)
+        assertEquals(32_000, pads[0].frames, "one second at 32 kHz")
+        assertEquals(0.0, p.rms(0.2), 1e-6, "silent before the note")
+        sim.note(0, 36, seconds = 0.6, velocity = 127)
+        val x = p.take(0.5)
+        val at = power(x, 440.0, 44_100.0)
+        assertTrue(at > 20 * power(x, 466.16, 44_100.0) && at > 20 * power(x, 415.3, 44_100.0),
+            "bd plays the 440 Hz sine at 440 Hz, not a semitone off")
+    }
+
+    @Test
+    fun replacingOnePadKeepsTheOthersAndClearingSilencesIt() = FM1Sim.create().use { sim ->
+        val before = sim.sampleBank()
+        sim.sample(2, sine(220.0, 0.25, 32_000), 32_000.0, "rim tone")
+        val after = sim.sampleBank()
+        for (i in listOf(0, 1, 3, 4, 5, 6, 7)) {
+            assertEquals(before.pads[i].name, after.pads[i].name)
+            assertTrue(before.pads[i].data.contentEquals(after.pads[i].data), "pad $i is untouched")
+        }
+        assertEquals("rim tone", after.pads[2].name)
+        sim.clearSample(2)
+        assertTrue(sim.samples()[2].empty)
+        sim.preset(0); sim.source(0, FM1Sim.SourceType.SAMPLER)
+        val p = Pull(sim, 44_100); p.take(0.2)
+        sim.note(0, 37, seconds = 0.3, velocity = 127)
+        assertEquals(0.0, p.rms(0.3), 1e-6, "an empty pad is silent")
+        sim.factorySamples()
+        assertTrue(sim.sampleBank().bytes().contentEquals(before.bytes()), "and the factory bank comes back")
+    }
+
+    @Test
+    fun aBankTooLongForFlashIsRefusedAndLeavesThePadsAlone() = FM1Sim.create().use { sim ->
+        val before = sim.sampleBank().bytes()
+        val twelve = sine(100.0, 12.0, 32_000)
+        sim.sample(0, twelve, 32_000.0, "A")
+        val failure = runCatching { sim.sample(1, twelve, 32_000.0, "B") }.exceptionOrNull()
+        assertTrue(failure is IllegalStateException && "bank holds" in failure.message!!, "24 s does not fit: $failure")
+        assertEquals("A", sim.samples()[0].name, "pad 0 is still the first 12 s")
+        assertTrue(!sim.sampleBank().bytes().contentEquals(before))
+    }
+
+    @Test
+    fun resamplingTo32kHzKeepsLengthAndRemovesWhatWouldAlias() {
+        val pcm = FM1SampleBank.toPcm(sine(1000.0, 0.5, 48_000), 48_000.0)
+        assertEquals(16_000, pcm.size)
+        val x = FloatArray(pcm.size) { pcm[it] / 32768f }
+        assertTrue(power(x, 1000.0, 32_000.0) > 1e3 * power(x, 1100.0, 32_000.0), "1 kHz stays 1 kHz")
+        // 20 kHz at 48 kHz would fold to 12 kHz at 32 kHz without the low-pass.
+        val hi = FM1SampleBank.toPcm(sine(20_000.0, 0.5, 48_000), 48_000.0)
+        val rms = sqrt(hi.sumOf { (it / 32768.0) * (it / 32768.0) } / hi.size)
+        assertTrue(rms < 0.01, "20 kHz is filtered out, not folded down (rms $rms)")
+        val nan = FM1SampleBank.toPcm(floatArrayOf(Float.NaN, 2f, -2f), 32_000.0)
+        assertEquals(listOf<Short>(0, 32767, -32767), nan.toList())
+    }
+
+    @Test
+    fun aDrumTrackTurnedSamplerPlaysItsSequenceOnTheNewPads() {
+        // Deterministic renders, so the difference between them is only what the sampler plays.
+        fun render(kit: Boolean): FloatArray = FM1Sim.create().use { sim ->
+            sim.preset(1)
+            for (pad in 0 until 8) sim.clearSample(pad)
+            if (kit) sim.sample(0, sine(60.0, 0.3, 32_000), 32_000.0, "LOW")
+            sim.source(1, FM1Sim.SourceType.SAMPLER)
+            val p = Pull(sim, 44_100); p.take(0.2)
+            sim.start()
+            p.take(2.0)
+        }
+        val without = render(false)
+        val with = render(true)
+        val diff = FloatArray(with.size) { with[it] - without[it] }
+        val rms = sqrt(diff.sumOf { it.toDouble() * it } / diff.size)
+        assertTrue(rms > 0.005, "ACID ALLEY's kick steps play pad 0 (rms of the difference $rms)")
+        assertTrue(power(diff, 60.0, 44_100.0) > 20 * power(diff, 90.0, 44_100.0), "and what they play is the 60 Hz pad")
+    }
 }
+

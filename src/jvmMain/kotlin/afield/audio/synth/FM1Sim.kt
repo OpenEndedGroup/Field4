@@ -9,6 +9,8 @@ import org.graalvm.polyglot.Source
 import org.graalvm.polyglot.Value
 import java.io.Closeable
 import java.io.File
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.PriorityQueue
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -112,6 +114,9 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
 
         /** Events kept for [drainMidi] before the oldest are dropped. */
         const val MIDI_OUT_CAPACITY: Int = 8192
+
+        /** Where the sample bank starts in the simulator's flash (`GROOVE_SAMPLE_OFFSET`). */
+        private const val SAMPLE_OFFSET: Long = 69_632L
     }
 
     /** Panel button indices, in the simulator's numbering. */
@@ -275,6 +280,14 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
 
     private fun writeFile(bytes: ByteArray) {
         for (i in bytes.indices) memory.writeBufferByte(fileBuffer + i, bytes[i])
+    }
+
+    /** Write [bytes] into wasm memory at [ptr], eight at a time: polyglot buffers have no bulk write. */
+    private fun writeBytes(ptr: Long, bytes: ByteArray) {
+        val b = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+        var i = 0
+        while (i + 8 <= bytes.size) { memory.writeBufferLong(ByteOrder.LITTLE_ENDIAN, ptr + i, b.getLong(i)); i += 8 }
+        while (i < bytes.size) { memory.writeBufferByte(ptr + i, bytes[i]); i++ }
     }
 
     private fun cString(ptr: Long, max: Int = 64): String {
@@ -651,6 +664,128 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
     fun voice(track: Int, voice: Dx7Voice) {
         requireTrack(track)
         at(blocksRendered) { e -> send(e, voice.toSysex(channelOf(e, track))) }
+    }
+
+    // ── the sampler's pads ─────────────────────────────────────────────────────────────────
+
+    /** The sample bank in the simulator's flash now. */
+    fun sampleBank(): FM1SampleBank = between { e ->
+        val flash = e.getMember("sim_flash").execute().asLong()
+        FM1SampleBank.parse(readBytes(flash + SAMPLE_OFFSET, FM1SampleBank.LIMIT))
+    }
+
+    /** The eight pads a sampler track plays: their notes, names and lengths. */
+    fun samples(): List<FM1Pad> = sampleBank().describe()
+
+    /**
+     * Put [audio] (mono, at [sampleRate]) on sampler pad [pad] (0..7), named [name]; every
+     * sampler track then plays it on the pad's note (`bd`, `sd`, `rim`, `lt`, `mt`, `ht`, `hh`,
+     * `oh`, see [FM1SampleBank.PAD_NOTES]).
+     *
+     * ```kotlin
+     * val hit = renderSignalsOffline(0.4, SineOsc(110.p) * Env.perc(0.001, 0.35), sampleRate = 32_000)[0]
+     * fm1.sample(0, hit, 32_000.0, "SINE")
+     * ```
+     *
+     * The audio is resampled to 32 kHz and compressed by the firmware's own SEA5 encoder, as the
+     * device's web editor does; the other seven pads are kept. The eight share about 19.5 seconds.
+     * The new bank is written to the simulator's flash between two audio blocks: a few seconds of
+     * audio holds the audio thread for some tens of milliseconds, so load pads before a
+     * performance rather than during one.
+     */
+    fun sample(pad: Int, audio: FloatArray, sampleRate: Double, name: String = "FIELD") {
+        require(pad in 0 until FM1SampleBank.PADS) { "FM1Sim: sampler pads are 0 until ${FM1SampleBank.PADS}, not $pad" }
+        val pcm = FM1SampleBank.toPcm(audio, sampleRate)
+        require(pcm.isNotEmpty()) { "FM1Sim: no audio to put on pad $pad; clearSample($pad) empties it" }
+        val clean = name.filter { it.code in 32..126 }.take(FM1SampleBank.NAME_CHARS)
+        between { e ->
+            val ptr = e.getMember("sim_sample_alloc").execute(pcm.size).asLong()
+            check(ptr != 0L) { "FM1Sim: the simulator could not allocate ${pcm.size} frames" }
+            // The encoder reads whole 320-frame blocks; pad the last one with silence.
+            val padded = FM1SampleBank.encodedBytes(pcm.size) / FM1SampleBank.CHUNK_BYTES * FM1SampleBank.CHUNK_FRAMES
+            val raw = ByteBuffer.allocate(padded * 2).order(ByteOrder.LITTLE_ENDIAN)
+            for (s in pcm) raw.putShort(s)
+            writeBytes(ptr, raw.array())
+            val encoded = e.getMember("sim_sample_encode").execute().asLong()
+            check(encoded != 0L) { "FM1Sim: the simulator's encoder failed" }
+            val n = e.int("sim_sample_bytes")
+            val data = readBytes(encoded, n)
+            e.getMember("sim_sample_alloc").execute(0) // frees the input and the encoded copy
+            writeBank(e, bankIn(e).with(pad, FM1SampleBank.Pad(clean, pcm.size, data)))
+        }
+    }
+
+    /** Load an audio file (WAV, AIFF, AU) onto pad [pad]; channels are mixed to mono. */
+    fun sample(pad: Int, file: File, name: String = file.nameWithoutExtension.uppercase()) {
+        val (mono, rate) = javax.sound.sampled.AudioSystem.getAudioInputStream(file).use { source ->
+            val f = source.format
+            val pcm = javax.sound.sampled.AudioFormat(f.sampleRate, 16, f.channels, true, false)
+            javax.sound.sampled.AudioSystem.getAudioInputStream(pcm, source).use { s ->
+                val b = ByteBuffer.wrap(s.readAllBytes()).order(ByteOrder.LITTLE_ENDIAN)
+                val frames = b.capacity() / (2 * f.channels)
+                FloatArray(frames) { i ->
+                    var sum = 0f
+                    for (c in 0 until f.channels) sum += b.getShort((i * f.channels + c) * 2) / 32768f
+                    sum / f.channels
+                } to f.sampleRate.toDouble()
+            }
+        }
+        sample(pad, mono, rate, name)
+    }
+
+    /**
+     * Render [signal] for [seconds] and put it on pad [pad]: a Field sound becomes a drum the
+     * FM-1's sequencer plays. The signal is rendered offline at 32 kHz in a context of its own, so
+     * do not pass one the audio thread is also playing.
+     */
+    fun sample(pad: Int, seconds: Double, signal: Signal, name: String = "FIELD") {
+        require(seconds.isFinite() && seconds > 0.0) { "FM1Sim: seconds must be finite and > 0, was $seconds" }
+        sample(pad, renderSignalsOffline(seconds, signal, sampleRate = FM1SampleBank.RATE)[0], FM1SampleBank.RATE.toDouble(), name)
+    }
+
+    /** Empty pad [pad]; its note goes silent on sampler tracks. */
+    fun clearSample(pad: Int) {
+        require(pad in 0 until FM1SampleBank.PADS) { "FM1Sim: sampler pads are 0 until ${FM1SampleBank.PADS}, not $pad" }
+        between { e -> writeBank(e, bankIn(e).with(pad, FM1SampleBank.EMPTY)) }
+    }
+
+    /** Replace the whole bank, for instance with one [sampleBank] returned earlier or read from a file. */
+    fun setSampleBank(bank: FM1SampleBank) = between { e -> writeBank(e, bank) }
+
+    /** Put the factory sample bank back, keeping projects and voices. */
+    fun factorySamples() = between { e ->
+        val ptr = e.getMember("sim_factory").execute().asLong()
+        val n = e.int("sim_factory_size")
+        writeBank(e, FM1SampleBank.parse(readBytes(ptr, n)))
+    }
+
+    /** Make [track] a sampler track (its source [SourceType.SAMPLER]), or another [source]. */
+    fun source(track: Int, source: SourceType) {
+        requireTrack(track)
+        require(source != SourceType.UNKNOWN) { "FM1Sim: UNKNOWN is not a source a track can hold" }
+        call("sim_select", track, source.ordinal)
+    }
+
+    private fun bankIn(e: Value): FM1SampleBank {
+        val flash = e.getMember("sim_flash").execute().asLong()
+        return FM1SampleBank.parse(readBytes(flash + SAMPLE_OFFSET, FM1SampleBank.LIMIT))
+    }
+
+    /**
+     * Write [bank] into the sample region of flash and have the firmware re-read it. The bank is
+     * assembled (and its size checked) before anything is written; if the firmware still refuses
+     * it, the previous bank is put back so the pads are never left pointing at a half-written one.
+     */
+    private fun writeBank(e: Value, bank: FM1SampleBank) {
+        val bytes = bank.bytes()
+        val flash = e.getMember("sim_flash").execute().asLong()
+        val before = readBytes(flash + SAMPLE_OFFSET, FM1SampleBank.LIMIT)
+        writeBytes(flash + SAMPLE_OFFSET, bytes)
+        if (e.int("sim_sample_bank", bytes.size) != 0) {
+            writeBytes(flash + SAMPLE_OFFSET, before)
+            val restored = e.int("sim_sample_bank", FM1SampleBank.parse(before).size)
+            error("FM1Sim: the firmware rejected the sample bank" + if (restored != 0) " (and the old one)" else "")
+        }
     }
 
     // ── MIDI out ───────────────────────────────────────────────────────────────────────────

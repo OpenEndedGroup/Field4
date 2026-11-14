@@ -64,6 +64,11 @@ object FM1SoundDocs {
             sim.modulate(0, FM1Sim.CC.CUTOFF, SineOsc(0.25.p) * 0.5 + 0.5)
             sim.start()
         },
+        "field-kit" to Figure(1) { sim ->
+            fieldKit(sim)
+            sim.source(1, FM1Sim.SourceType.SAMPLER)
+            sim.start()
+        },
         "voice-morph" to Figure(0, seconds = 8.0) { sim ->
             val piano = sim.voices(0)[0]
             val bell = bell(piano)
@@ -74,6 +79,21 @@ object FM1SoundDocs {
             }
         },
     )
+
+    /**
+     * Put a drum kit made of Field signals on the FM-1's sampler pads: a kick that falls from 150 to
+     * 45 Hz, a snare of tone and high-passed noise, closed and open hats of noise above 7 kHz.
+     */
+    fun fieldKit(sim: FM1Sim) {
+        val kick = SineOsc(Param(0f).modulate(Line(150f, 45f, 0.09f))) * perc(0.45) * 0.9
+        val snare = (SineOsc(185.p) * perc(0.08) * 0.5 + WhiteNoise(seed = 1).highpass(1800f) * perc(0.18) * 0.6)
+        val hat = WhiteNoise(seed = 2).highpass(7000f) * perc(0.05) * 0.7
+        val open = WhiteNoise(seed = 3).highpass(7000f) * perc(0.35) * 0.6
+        sim.sample(0, 0.5, kick, "FIELD KICK")
+        sim.sample(1, 0.3, snare, "FIELD SNARE")
+        sim.sample(6, 0.1, hat, "FIELD HAT")
+        sim.sample(7, 0.45, open, "FIELD OPEN")
+    }
 
     /** Queue [voice] for track 0 at [atSeconds], on the simulator's clock. */
     private fun FM1Sim.morphStep(voice: Dx7Voice, atSeconds: Double) {

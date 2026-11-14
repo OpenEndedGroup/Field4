@@ -206,6 +206,49 @@ after which `program(track, bank * 32 + i)` plays its voices. `fm1.setVoices(ban
 voices of your own, and `Dx7Voice.bankSysex(voices)` makes a `.syx` file of them for a real DX7 or an
 editor.
 
+## Field sounds on the sampler's pads
+
+A track whose source is the sampler plays eight pads, one per drum note: `bd` (36), `sd` (38), `rim`
+(37), `lt` (41), `mt` (47), `ht` (48), `hh` (42) and `oh` (46), pads 0 to 7. `fm1.sample(pad, seconds,
+signal, name)` renders a Field signal and puts it on a pad. `fm1.source(track, FM1Sim.SourceType.SAMPLER)`
+turns a track into a sampler track, keeping its sequence. This builds a kit from Field's oscillators and
+noise and plays ACID ALLEY's drum part on it:
+
+```diffstatic {data-lang=kotlin}
+val fm1 = FM1Sim.shared
+fm1.preset(1) // ACID ALLEY: track 1 is the 808
+
+val kick = SineOsc(Param(0f).modulate(Line(150f, 45f, 0.09f))) * perc(0.45) * 0.9
+val snare = SineOsc(185.p) * perc(0.08) * 0.5 + WhiteNoise(seed = 1).highpass(1800f) * perc(0.18) * 0.6
+val hat = WhiteNoise(seed = 2).highpass(7000f) * perc(0.05) * 0.7
+val open = WhiteNoise(seed = 3).highpass(7000f) * perc(0.35) * 0.6
+
+fm1.sample(0, 0.5, kick, "FIELD KICK")
+fm1.sample(1, 0.3, snare, "FIELD SNARE")
+fm1.sample(6, 0.1, hat, "FIELD HAT")
+fm1.sample(7, 0.45, open, "FIELD OPEN")
+
+fm1.source(1, FM1Sim.SourceType.SAMPLER)
+fm1.start()
+fm1.node
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/fm1/field-kit.wav" audio-spec="field-kit" audio-renderer="afield.audio.synth.FM1SoundDocs" embed=true hidden=true name="fm1-field-kit"}
+// FM1SoundDocs.renderWav("field-kit", …): ACID ALLEY with track 1 on the sampler and Field's kit on its pads
+```
+
+The pads not given a sound keep the factory's voice samples (HEY, WAH, HAHA, YOI). `fm1.samples()` lists all eight with their names and
+lengths. `fm1.sample(pad, file)` loads a WAV or AIFF file, and `fm1.sample(pad, audio, sampleRate, name)`
+takes a `FloatArray`, such as a recording or one channel of `renderSignalsOffline`. `fm1.clearSample(pad)`
+empties a pad and `fm1.factorySamples()` puts the factory kit back.
+
+The audio is converted the way the FM-1's own editor converts it: mixed to mono, resampled to 32 kHz and
+compressed with the firmware's SEA5 encoder, about 7 bits a sample. The eight pads share 19.5 seconds,
+and a sample that would overflow that is refused, leaving the pads as they were. A sample plays at its own pitch and
+length: the firmware's per-pad tune, level, length and choke keep their defaults, since Field has no
+way to set them yet. `fm1.sampleBank()` returns the whole bank and
+`fm1.setSampleBank(bank)` writes one back, so a kit can be kept beside a project.
+
 ## The FM-1's sequence as MIDI
 
 A track can send its notes out of the simulator as well as, or instead of, playing them:
@@ -359,7 +402,9 @@ the patterns and the MIDI handling above are Field's own Kotlin.
   some tracks muted is the way round it, at the cost of a second simulator.
 * **No clock sync.** A Field pattern keeps time with the project through `cps`, from the project's
   tempo, and both start together if started together, but neither follows the other's clock.
-* **The sampler can't take Field's audio yet.** The sampler plays its factory samples.
+* **Eight pads, 19.5 seconds, 32 kHz mono.** The sampler's pads are drum hits, one per note, not a
+  keyboard sampler: a pad plays at one pitch whatever note a pattern asks for, and stereo is mixed to
+  mono on the way in.
 * **The panel is buttons, not the drawing.** Clicks go to the rows of buttons below the screen, not to
   the screen itself, and the knob and encoders are buttons and a slider rather than dials.
 * **The firmware can't be edited from a box.** The module is built once and shipped with Field;
@@ -375,12 +420,12 @@ the patterns and the MIDI handling above are Field's own Kotlin.
   boxes on a canvas.
 * The source: `src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt` (the simulator, MIDI, the screen and
   projects), `FM1Panel.kt` (the live panel), `FM1Patterns.kt` (patterns in, MIDI clips out) and
-  `FM1Voice.kt` (DX7 voices); what was left out and why is in `dev_docs/FM1.md`.
+  `FM1Voice.kt` (DX7 voices) and `FM1Samples.kt` (the sampler's bank); what was left out and why is in `dev_docs/FM1.md`.
 
 What to build next, most useful first:
 
-* **Field audio into the sampler**: lay out the sample bank the firmware reads and write a Field
-  render or a recording into it, so a pattern on a sampler track plays Field's own sounds.
+* **Recording into a pad live**: take a box's audio output or a microphone straight onto a pad while
+  the FM-1 plays, rather than rendering a signal offline first.
 * **MIDI clock both ways**: let the FM-1's sequencer follow Field's clock, or Field's patterns follow
   the FM-1's, so tempo changes on either side carry over.
 * **A panel drawn like the device**: buttons, keys and encoders laid out where the FM-1 has them,
