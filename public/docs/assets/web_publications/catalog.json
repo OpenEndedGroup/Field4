@@ -6183,27 +6183,28 @@
       }
     },
     "assets/three_output_gallery/metadata.edn": {
-      "captureDigest": "0fcbf6e3c3eeb6960f58f3cb82dba685d3fdbb401ac1028834bf2ba785bb3849",
-      "capturedAt": "2026-11-14T02:06:02.882Z",
-      "channels": 7,
+      "captureDigest": "378c0b1419ccd7187ddfa26faf20f5b11145a5bc319131f8e80cc22ca5f72722",
+      "capturedAt": "2026-11-14T11:12:28.101Z",
+      "channels": 8,
       "file": "assets/web_publications/three_output_gallery/document/metadata.edn",
       "files": {
-        "assets/web_publications/three_output_gallery/document/metadata.edn": "60769018cf027263928fdd0e23666c4c3329f73c7c7f4af103b40c49492c1741",
-        "assets/web_publications/three_output_gallery/document/outputs.json": "bc78379821ce2604c1a26877618e3f781fc2628b59d5e343a1bcae5cad2e5cbb",
-        "assets/web_publications/three_output_gallery/outputs/0.html": "7c7ebdf845dbfeb7d7a55c48b043b271645ddd3fc505f9012107086f5c8c7e05",
-        "assets/web_publications/three_output_gallery/outputs/1.html": "900fc9aadbb4059356366e17827e88772c0f81f4d17f3b3836f8b1f5cd0ddfc2",
-        "assets/web_publications/three_output_gallery/outputs/2.html": "ecd66d9841221cef72f138d6ab9a5805419a5d841a9142ef54bb3cc9e8d87286",
-        "assets/web_publications/three_output_gallery/outputs/3.html": "0fd932cd705629cc1f3e5b27dff1b3c39623a4fdb59de2efbd8f46993b0efd55",
-        "assets/web_publications/three_output_gallery/outputs/4.html": "14c9a0246dd0b92c519cf7fe7e343b333cee74ed3c2f9e650ff51290c6b4fd5d",
-        "assets/web_publications/three_output_gallery/outputs/5.html": "86f21fac837fc33859dad04ba7fd1c9924914c9d875bf87a42def8d9d8a474c5",
-        "assets/web_publications/three_output_gallery/outputs/6.html": "4478254e2e35d81e4e61d16deeff00448b0ba3713258c00ffbc752e641f0ecde"
+        "assets/web_publications/three_output_gallery/document/metadata.edn": "da4c05f70cebd75dfd510960cf10bb3904c3da19301e058d43cfbbe0c81a0cbf",
+        "assets/web_publications/three_output_gallery/document/outputs.json": "e77943711b412e36854a128b43e11a6560ec98319c35ea377accdd7fac7d2518",
+        "assets/web_publications/three_output_gallery/outputs/0.html": "c356ada76201f3bfe769dc81db198a6b88af77b77ebdbf9724774566eea6eb83",
+        "assets/web_publications/three_output_gallery/outputs/1.html": "6859b8f250fd644d619113d8515f3375faaf9f1eeb9c6326f5c897e3b5aa676e",
+        "assets/web_publications/three_output_gallery/outputs/2.html": "b5ab884bbef87d4494c08b4e38faeeb18f54cc19081871e63ba6e79f0c06bbb9",
+        "assets/web_publications/three_output_gallery/outputs/3.html": "52426f4d6c3c2aecfd5941fedaa2fbfd66c7d241a3adf7e30b9d21746b7295f6",
+        "assets/web_publications/three_output_gallery/outputs/4.html": "e54ec4cbbba01bea0e1ace4e95a9c51fd9116741b45fe83716f2688c357e367b",
+        "assets/web_publications/three_output_gallery/outputs/5.html": "6c7209ca5e48ea5e7abfa9582162e761ed1bd103f2b924dfa3d051de85d970ed",
+        "assets/web_publications/three_output_gallery/outputs/6.html": "99f0c01fcc614a3778ed7bb7239a7cb313c08d76562fa2f326831b09fb4f5dd7",
+        "assets/web_publications/three_output_gallery/outputs/7.html": "d85b31162c3e0a393443168745621eb20cdc86f6dc2b9e7cbf4aa9add0450597"
       },
       "kinds": [
         "three"
       ],
       "outputs": "assets/web_publications/three_output_gallery/document/outputs.json",
       "sources": {
-        "public/docs/assets/three_output_gallery/metadata.edn": "e9c81f362ab355b43d94e64b6c2324cc6e8cb47bfab054d3b884c6054e5dcb37"
+        "public/docs/assets/three_output_gallery/metadata.edn": "3cbf8f5a8a71bc3a045b1c48a5b8e29c729c0ec3bca82f09f4eab98fcb8d4593"
       }
     }
   },

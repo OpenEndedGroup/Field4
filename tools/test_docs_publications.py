@@ -272,6 +272,54 @@ class PublicationRefreshTest(unittest.TestCase):
             self.assertEqual(publications.sync_publications()['refreshed'], 1)
         self.assertEqual(len(calls), 2)
 
+    def test_a_bare_backdoor_timeout_gets_one_fresh_session_retry(self):
+        calls = []
+        async def capture(recipes, **kwargs):
+            calls.append(recipes)
+            if len(calls) == 1:
+                return [{'name': 'example', 'ok': False, 'error': 'TimeoutError'}]
+            self.record()
+            return [{'name': 'example', 'ok': True, 'channels': 0}]
+        with patch.object(publications, 'capture', new=AsyncMock(side_effect=capture)):
+            self.assertEqual(publications.sync_publications()['refreshed'], 1)
+        self.assertEqual(len(calls), 2)
+
+    def fake_backdoor(self, collisions: int):
+        import field_backdoor as fb
+        started = []
+        class Backdoor:
+            def __init__(self, *, port, **_kwargs):
+                self.port, self.managed_process = port, object()
+                started.append(self)
+            async def ensure_server(self):
+                if len(started) <= collisions:
+                    raise fb.BackdoorError(f"Port {self.port} {publications.PORT_COLLISION}: the server belongs to elsewhere")
+            async def connect(self): pass
+            async def close(self): pass
+        class Log:
+            def __init__(self, *_args): pass
+            def close(self): pass
+        ports = iter(range(9479, 9490))
+        return started, patch.multiple(fb, FieldBackdoor=Backdoor, SessionLogger=Log,
+                                       resolve_cli_port=lambda *_a, **_k: (next(ports), 'automation-default'))
+
+    def test_a_port_taken_by_another_checkout_starts_on_the_next_free_port(self):
+        import asyncio
+        started, fakes = self.fake_backdoor(collisions=1)
+        with fakes, patch.object(publications, 'publication_node', return_value=None):
+            self.assertEqual(asyncio.run(publications.capture([], port=None, force=True)), [])
+        self.assertEqual([b.port for b in started], [9479, 9480])
+
+    def test_an_explicit_port_or_a_port_that_stays_taken_still_fails(self):
+        import asyncio
+        import field_backdoor as fb
+        for port, collisions, attempts in ((9600, 1, 1), (None, 99, publications.PORT_COLLISION_ATTEMPTS)):
+            started, fakes = self.fake_backdoor(collisions=collisions)
+            with fakes, patch.object(publications, 'publication_node', return_value=None):
+                with self.assertRaisesRegex(fb.BackdoorError, 'did not start'):
+                    asyncio.run(publications.capture([], port=port, force=True))
+            self.assertEqual(len(started), attempts)
+
     def test_a_real_failure_is_not_retried(self):
         with patch.object(publications, 'capture', new=AsyncMock(return_value=[
                 {'name': 'example', 'ok': False, 'error': 'Box interrupted: compile error'}])) as runner:
