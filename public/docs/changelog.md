@@ -6,6 +6,58 @@ fixes and wording changes, open **Changelog** on the Welcome screen.
 
 ## November 2026
 
+<!-- changelog: eda344b7aa..4f7c62cb60 -->
+### Realism and path tracing in the 3D viewer, a denoiser, and a light theme
+
+*13–14 November 2026*
+
+- **Realism and Path trace buttons** in the three.js viewer: soft fitted shadows, ambient
+  occlusion and room light, then the same scene traced progressively.
+  [Realism and path tracing](three_output.md#realism-and-path-tracing).
+- **Denoising a still**: Open Image Denoise runs as Vulkan compute on a path-traced image.
+  [Denoising a still](path_tracing.md#denoising-a-still).
+- **A light theme**, chosen from the command palette, with a crossfade between light and dark.
+- AI4 can read file boxes and PDFs you attach.
+
+<!-- changelog: 8586443660..0b27e131e9 -->
+### Vision Pro streaming, and video rooms in a headset
+
+*13 November 2026*
+
+- **Linux to Apple Vision Pro**: stream an OpenXR scene through NVIDIA CloudXR. [Linux to Apple Vision Pro](cloudxr_vision_pro.md).
+- **Video rooms** set up through WiVRn on Linux and macOS, prepared by first-run setup.
+  [Stereo video in a room](stereo_video.md).
+- **Editable ImGui panels in VR**, rewritten. [ImGui VR panel](imgui_vr_panel.md).
+- Named drag handles on line drawings, which timeline films can drive.
+
+<!-- changelog: 04777c7eae..94c700ca77 -->
+### Swept clearance, filmed timelines and moving parts
+
+*13 November 2026*
+
+- **Moving parts and clearance**: measure how close a swinging or sliding part comes to everything
+  around it, and draw the region it sweeps. [Moving Parts and Clearance](swept_clearance.md).
+- **Filming a timeline**: film a document frame by frame, moving the camera, dragging drawings and
+  changing sliders, the same every time. [Filming a timeline](filming_a_timeline.md).
+- **Parts in the three.js viewer** keep their identity, styles and visibility, move along a timeline
+  with a scrubber and tracks, and redraw incrementally.
+  [Parts that move](three_output.md#parts-that-move).
+- Several example pages now show the code behind their sound, search and tiling examples.
+
+<!-- changelog: 187b494ed9..a47a4a6caa -->
+### Neural clouds, VR on the Mac, blown paint and typed lengths
+
+*12–13 November 2026*
+
+- **Neural multiple scattering** lights a raymarched cloud, on the CPU and the GPU.
+  [Neural clouds](path_tracing.md#neural-multiple-scattering-in-a-raymarched-cloud).
+- **VR on macOS** through WiVRn to a Quest, with a launcher. [macOS through WiVRn](field_vr_ide.md#macos-through-wivrn).
+- **Blowing paint** spreads wet paint into branching fingers. [Blowing paint](paint_canvas.md#blowing-paint).
+- **Typed lengths**: `Length` with `.mm`, `.inch` and `.ft`, and feet-and-inch formatting.
+  [Lengths](lengths.md).
+- Decimation welds first and never opens a surface.
+  [Decimate to a budget](mesh_examples.md#decimate-to-a-budget-and-know-the-price).
+
 <!-- changelog: 7b54e8d393..b95d2066d5 -->
 ### Flow Lenia, pen strokes and fold-and-press paint
 
