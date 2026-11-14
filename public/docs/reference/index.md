@@ -673,14 +673,14 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**40873 public symbols across 1806 source files**, 24249 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**40903 public symbols across 1809 source files**, 24264 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
 | [Examples](examples.md) | 238 | 750 | 328 (43%) | Runnable examples, galleries and verification programs. |
-| [Internal](internal.md) | 21 | 159 | 57 (35%) | Implementation details explicitly marked Internal by their source. |
+| [Internal](internal.md) | 24 | 189 | 72 (38%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 216 | 208 (96%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 18 | 453 | 282 (62%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
@@ -1730,6 +1730,9 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr></small> [OctreeBarnesHut.kt](simulation.md#octreebarneshut-kt) | Simulation | 10 | 10 | Approximate inverse-square forces over a particle cloud, by summarising distant groups as a single mass each. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [Off.kt](polytopes.md#off-kt) | Polytopes | 1 | 1 | The one-way bridge to OFF, the plain-text polygon interchange format that Geomview and most polyhedron tooling read. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [offlineImport.kt](workspace.md#offlineimport-kt) | Workspace · internal | 1 | 1 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [OidnCompute.kt](internal.md#oidncompute-kt) | Internal · internal | 25 | 13 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [OidnComputeSpike.kt](internal.md#oidncomputespike-kt) | Internal · internal | 3 | 1 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [OidnSpike.kt](internal.md#oidnspike-kt) | Internal · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [OnnxRuntime.kt](machine-learning.md#onnxruntime-kt) | Machine learning | 21 | 16 | ONNX models, running inside Field. | [Depth and CLIP: neural vision in a box](../onnx.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [OnnxSmokeTest.kt](machine-learning.md#onnxsmoketest-kt) | Machine learning · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>lighting/<wbr></small> [OpaqueRayScene.kt](graphics.md#opaquerayscene-kt) | Graphics | 11 | 4 | Opaque triangle geometry for ray-query visibility, as used by `DirectLighting` for shadows. | [Direct lighting](../direct_lighting.md) |

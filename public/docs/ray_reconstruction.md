@@ -4,6 +4,9 @@ Ray Reconstruction turns raw samples from [RTXDI](direct_lighting.md) into a tem
 reconstructed image. In this lighting experiment you can compare it with Field's spatial filter,
 and with that filter followed by DLAA.
 
+It needs an NVIDIA GPU. The path tracer can also [denoise a still](path_tracing.md#denoising-a-still)
+once on any Vulkan GPU.
+
 ![Field RTXDI lighting reconstructed at 1920 × 1080](assets/ray_reconstruction/ray_reconstruction.png)
 
 ## Open the experiment

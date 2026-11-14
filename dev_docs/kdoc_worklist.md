@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24249 of 40873 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24264 of 40903 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2040 undocumented entry points** (types, top-level functions and values) and 13868 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2040 undocumented entry points** (types, top-level functions and values) and 13883 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -692,6 +692,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StackSLCpuGallery.kt](../src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLCpuGallery.kt) | Languages | — | 0 | 12 | 58% |
 | [PuppetBrowserVrPanel.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowserVrPanel.kt) | Imaging | — | 0 | 12 | 20% |
 | [PuppetBrowserWindowPanel.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowserWindowPanel.kt) | Imaging | — | 0 | 12 | 20% |
+| [OidnCompute.kt](../src/jvmMain/kotlin/afield/media/reconstruction/OidnCompute.kt) | Internal | — | 0 | 12 | 52% |
 | [LifecycleLedger.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/LifecycleLedger.kt) | Workspace | — | 0 | 12 | 48% |
 | [alife_script.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_script.kt) | ALife | — | 0 | 12 | 90% |
 | [SimdVerletDyn4jBridge.kt](../src/jvmMain/kotlin/afield/simulation/physics/SimdVerletDyn4jBridge.kt) | Simulation | — | 0 | 12 | 45% |
@@ -977,6 +978,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FfmCeresBackend.kt](../src/jvmMain/kotlin/afield/math/optimization/ceres/FfmCeresBackend.kt) | Internal | — | 0 | 2 | 66% |
 | [LinuxExternalBrowserSurface.kt](../src/jvmMain/kotlin/afield/media/browser/LinuxExternalBrowserSurface.kt) | Imaging | — | 0 | 2 | 33% |
 | [WindowsExternalBrowserSurface.kt](../src/jvmMain/kotlin/afield/media/browser/WindowsExternalBrowserSurface.kt) | Imaging | — | 0 | 2 | 33% |
+| [OidnComputeSpike.kt](../src/jvmMain/kotlin/afield/media/reconstruction/OidnComputeSpike.kt) | Internal | — | 0 | 2 | 33% |
 | [WebRTCSignaling.kt](../src/jvmMain/kotlin/afield/media/webrtc/WebRTCSignaling.kt) | Imaging | — | 0 | 2 | 70% |
 | [CompletionCorpus.kt](../src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt) | Workspace | — | 0 | 2 | 88% |
 | [CompiledSnippetTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/CompiledSnippetTest.kt) | Workspace | — | 0 | 2 | 33% |
@@ -1180,6 +1182,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DistLive.kt](../src/jvmMain/kotlin/afield/math/distribution/DistLive.kt) | Math | — | 0 | 1 | 85% |
 | [GpVectorProcess.kt](../src/jvmMain/kotlin/afield/math/gp/GpVectorProcess.kt) | Math | — | 0 | 1 | 94% |
 | [NeuralToolsFallbackSmoke.kt](../src/jvmMain/kotlin/afield/media/reconstruction/NeuralToolsFallbackSmoke.kt) | Imaging | — | 0 | 1 | 50% |
+| [OidnSpike.kt](../src/jvmMain/kotlin/afield/media/reconstruction/OidnSpike.kt) | Internal | — | 0 | 1 | 50% |
 | [PathTracedReconstructionSmoke.kt](../src/jvmMain/kotlin/afield/media/reconstruction/PathTracedReconstructionSmoke.kt) | Imaging | — | 0 | 1 | 50% |
 | [ReconstructionMotionGpuSmoke.kt](../src/jvmMain/kotlin/afield/media/reconstruction/ReconstructionMotionGpuSmoke.kt) | Imaging | — | 0 | 1 | 50% |
 | [ReconstructionSmoke.kt](../src/jvmMain/kotlin/afield/media/reconstruction/ReconstructionSmoke.kt) | Imaging | — | 0 | 1 | 50% |
