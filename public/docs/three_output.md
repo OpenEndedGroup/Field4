@@ -339,11 +339,19 @@ when the box runs again.
 
 `controls(pathTrace = true)` adds **Path trace**, which traces the same scene on the GPU with
 [three-gpu-pathtracer](https://github.com/gkjohnson/three-gpu-pathtracer). Light bounces between
-surfaces, so the underside of a roof picks up light reflected off the floor below it. The image
-starts grainy and clears as samples accumulate; the button shows the count, and tracing stops at
-512 samples per pixel. While you orbit, or while a part moves, the Realism view draws instead,
-and the traced image fades back in once the view is still. Lines, points and handles are drawn
-over the traced image and hidden where a surface is in front of them.
+surfaces, so the underside of a roof picks up light reflected off the floor below it. Lines,
+points and handles are drawn over the traced image and hidden where a surface is in front of them.
+
+Where the browser offers WebGPU, the tracer runs as compute
+shaders. It stops at 32 samples per pixel and runs
+[Open Image Denoise](https://www.openimagedenoise.org/) over the result, which turns that still-grainy
+image into a clean one, usually within a few seconds. The button shows the count and then
+**denoised**. While you orbit, the view drops to a coarse traced preview and sharpens when you
+stop; a part that moves is updated in place. The first trace after opening a view takes a few
+seconds longer while the tracer compiles, and the Realism view draws meanwhile.
+
+Without WebGPU the same button traces on WebGL: slower, with no denoising, the image clearing as
+samples accumulate up to 512 per pixel, and the Realism view drawing whenever anything moves.
 
 ```diffstatic {data-lang=kotlin}
 three {
