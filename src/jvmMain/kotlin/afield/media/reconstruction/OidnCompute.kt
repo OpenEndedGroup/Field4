@@ -216,8 +216,7 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
             }
             val wb = buffer(packed.size * 2L, host = true).also { b -> b.mapAndWrite_bytes { packed.forEach { putShort(it) } } }
             val bb = buffer(co * 4L, host = true).also { b -> b.mapAndWrite_bytes { for (o in 0 until co) putFloat(if (o < oc) bias.data[o] else 0f) } }
-            val mt = MATRIX_TILES
-            passes += pass(name, convMatrix(ci, co, mt), (src.w + 64 * mt - 1) / (64 * mt), src.h, 1,
+            passes += pass(name, convMatrix(ci, co), (src.w + 63) / 64, src.h, 1,
                 mapOf("src" to src.buf, "wt" to wb, "bias" to bb, "dst" to out.buf, "w" to src.w, "h" to src.h))
             return out
         }
@@ -383,8 +382,6 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
     companion object {
         /** OIDN's `rt_hdr_alb_nrm` weights (Apache-2.0), as vendored with oidn-webgpu 0.6.0. */
         const val DEFAULT_WEIGHTS = "/vendor/oidn-webgpu/0.6.0/rt_hdr_alb_nrm.tza"
-        /** 16-pixel tiles per subgroup in the cooperative-matrix conv (`AFIELD_OIDN_MATRIX_TILES`). On an RTX 4090, 2 and 4 were 1.6x and 2.1x slower than 1. */
-        internal val MATRIX_TILES = System.getenv("AFIELD_OIDN_MATRIX_TILES")?.toIntOrNull() ?: 1
         private fun puForward(y: Double) = when {
             y <= 1.5794576e-6 -> 1.41283765e3 * y
             y <= 3.22087631e-2 -> 1.64593172 * y.pow(4.31384981e-1) - 2.94139609e-3
@@ -561,18 +558,18 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
         """
 
         /**
-         * 3x3 conv + bias + ReLU as an implicit GEMM on cooperative matrices. Each subgroup owns MT*16 consecutive pixels
-         * of one row and every output channel; for each tap and 16-channel block it loads MT A tiles straight from the
-         * bordered NHWC input (row stride = channels), and each weight tile it loads feeds all MT of them.
+         * 3x3 conv + bias + ReLU as an implicit GEMM on cooperative matrices. Each subgroup owns 16 consecutive pixels of
+         * one row and every output channel; for each tap and 16-channel block it loads one A tile straight from the
+         * bordered NHWC input (row stride = channels) and multiplies it into CO/16 fp32 accumulators.
          */
-        private fun convMatrix(ci: Int, co: Int, mt: Int) = """#version 460
+        private fun convMatrix(ci: Int, co: Int) = """#version 460
             #extension GL_KHR_cooperative_matrix : require
             #extension GL_KHR_memory_scope_semantics : require
             #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
             #extension GL_EXT_shader_16bit_storage : require
             #extension GL_EXT_buffer_reference : require
             #extension GL_KHR_shader_subgroup_basic : require
-            const int CI=$ci, CO=$co, KB=CI/16, NT=CO/16, MT=$mt, PX=16*MT;
+            const int CI=$ci, CO=$co, KB=CI/16, NT=CO/16;
             layout(local_size_x=128) in;
             layout(buffer_reference, std430, buffer_reference_align=16) buffer F16s { float16_t v[]; };
             layout(buffer_reference, std430, buffer_reference_align=16) buffer F32s { float v[]; };
@@ -580,33 +577,29 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
             shared float sh[4*16*CO];
             void main(){
               int sg=int(gl_SubgroupID), lane=int(gl_SubgroupInvocationID);
-              int x0=int(gl_WorkGroupID.x)*4*PX+sg*PX, y=int(gl_WorkGroupID.y);
+              int x0=int(gl_WorkGroupID.x)*64+sg*16, y=int(gl_WorkGroupID.y);
               if(x0>=pc.w) return;
-              coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> acc[MT*NT];
-              for(int n=0;n<MT*NT;n++) acc[n]=coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(0.0);
+              coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> acc[NT];
+              for(int n=0;n<NT;n++) acc[n]=coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(0.0);
               int rw=pc.w+2;
               for(int t=0;t<9;t++){
                 int ky=t/3, kx=t-ky*3;
                 uint abase=uint(((y+ky)*rw+x0+kx)*CI);
                 for(int kb=0;kb<KB;kb++){
-                  coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseA> a[MT];
-                  for(int m=0;m<MT;m++) coopMatLoad(a[m],pc.src.v,abase+uint(m*16*CI+kb*16),uint(CI),gl_CooperativeMatrixLayoutRowMajor);
+                  coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseA> a;
+                  coopMatLoad(a,pc.src.v,abase+uint(kb*16),uint(CI),gl_CooperativeMatrixLayoutRowMajor);
                   for(int n=0;n<NT;n++){
                     coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseB> b;
                     coopMatLoad(b,pc.wt.v,uint(((t*KB+kb)*NT+n)*256),16u,gl_CooperativeMatrixLayoutRowMajor);
-                    for(int m=0;m<MT;m++) acc[m*NT+n]=coopMatMulAdd(a[m],b,acc[m*NT+n]);
+                    acc[n]=coopMatMulAdd(a,b,acc[n]);
                   }
                 }
               }
               int sb=sg*16*CO;
-              for(int m=0;m<MT;m++){
-                for(int n=0;n<NT;n++) coopMatStore(acc[m*NT+n],sh,uint(sb+n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor);
-                subgroupMemoryBarrierShared(); subgroupBarrier();
-                int xm=x0+m*16;
-                for(int i=lane;i<16*CO;i+=32){ int r=i/CO, o=i-r*CO; if(xm+r>=pc.w) continue;
-                  pc.dst.v[((y+1)*rw+xm+r+1)*CO+o]=float16_t(max(sh[sb+i]+pc.bias.v[o],0.0)); }
-                subgroupMemoryBarrierShared(); subgroupBarrier();
-              }
+              for(int n=0;n<NT;n++) coopMatStore(acc[n],sh,uint(sb+n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor);
+              subgroupMemoryBarrierShared(); subgroupBarrier();
+              for(int i=lane;i<16*CO;i+=32){ int m=i/CO, o=i-m*CO; if(x0+m>=pc.w) continue;
+                pc.dst.v[((y+1)*rw+x0+m+1)*CO+o]=float16_t(max(sh[sb+i]+pc.bias.v[o],0.0)); }
             }
         """
 
