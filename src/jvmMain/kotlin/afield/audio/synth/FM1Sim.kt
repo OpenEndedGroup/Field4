@@ -20,12 +20,17 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * ```kotlin
  * val fm1 = FM1Sim.shared
- * fm1.preset(0)          // "NEON KEYS"
- * fm1.key(0, true)       // hold the lowest key
+ *
+ * fm1.preset(1)                     // a factory project: change the slot (0..3) and re-run
+ * if (!fm1.isPlaying) fm1.play()    // PLAY/STOP is a toggle, so only press it when stopped
+ * fm1.level(0.8)
+ *
  * fm1.node
  * ```
  *
- * Returning `fm1.node` from a box plays it. It is the simulator, not the hardware: the device runs a
+ * Launching the box plays it, and the pattern keeps going across re-runs; stopping the box takes it
+ * out of the mix. [whiteKey] plays a note on top, [tap] presses any [Button], and [key], [encoder]
+ * and [step] reach the rest of the panel. It is the simulator, not the hardware: the device runs a
  * closed engine library that the web build leaves out, so the two may differ.
  *
  * ## One context, shared, single-threaded
@@ -61,10 +66,27 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
 
         /** Keyboard keys, by the index `sim_control(1, …)` takes. */
         const val KEYS: Int = 27
+
+        /** Key indices of the sixteen white keys, left to right (the panel's step keys 01-16). */
+        val WHITE_KEYS: IntArray = intArrayOf(0, 2, 4, 6, 7, 9, 11, 12, 14, 16, 18, 19, 21, 23, 24, 26)
     }
 
     private val closed = AtomicBoolean(false)
-    private val pending = ConcurrentLinkedQueue<(Value) -> Unit>()
+    /** A queued call and how many simulator blocks after it is drained it should run. */
+    private class Pending(val delayBlocks: Int, val call: (Value) -> Unit)
+
+    private val pending = ConcurrentLinkedQueue<Pending>()
+
+    /** Calls waiting for their block, owned by the audio thread: (due block, call). */
+    private val waiting = ArrayList<Pair<Long, (Value) -> Unit>>()
+    /** Simulator blocks rendered so far; zero means nothing has pulled audio from it yet. */
+    @Volatile var blocksRendered = 0L
+        private set
+
+    @Volatile private var playingSnapshot = false
+
+    /** Whether the sequencer is running, as of the last few blocks rendered. */
+    val isPlaying: Boolean get() = playingSnapshot
 
     private val context: Context = Context.newBuilder("js", "wasm")
         .allowExperimentalOptions(true)
@@ -77,6 +99,7 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
 
     private val exports: Value
     private val fnRender: Value
+    private val fnState: Value
     private val memory: Value
 
     private val scratch = ByteArray(BLOCK * 2 * 4)
@@ -104,6 +127,7 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
             )
             exports.getMember("_initialize")?.takeIf { it.canExecute() }?.execute()
             fnRender = exports.getMember("sim_render")
+            fnState = exports.getMember("sim_state")
             memory = exports.getMember("memory").getMember("buffer")
             check(memory.hasBufferElements()) { "FM1Sim: wasm memory has no buffer interop" }
             check(exports.getMember("sim_block_frames").execute().asInt() == BLOCK)
@@ -116,11 +140,48 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
     }
 
     /** Queue a call against the module's exports; it runs on the audio thread before the next block. */
-    private fun queue(call: (Value) -> Unit) {
-        if (!closed.get()) pending.add(call)
+    private fun queue(delayBlocks: Int = 0, call: (Value) -> Unit) {
+        if (!closed.get()) pending.add(Pending(delayBlocks, call))
     }
 
     private fun call(name: String, vararg args: Any) = queue { it.getMember(name).execute(*args) }
+
+    private fun callLater(delayBlocks: Int, name: String, vararg args: Any) =
+        queue(delayBlocks) { it.getMember(name).execute(*args) }
+
+    /**
+     * Press and release panel button `index`, holding it for about 23 ms.
+     *
+     * The firmware polls its controls every 10 ms of simulated time, so a press and release in the
+     * same block would never be seen; the release is queued eight blocks later.
+     */
+    fun tap(index: Int) {
+        require(index in 0 until BUTTONS) { "FM1Sim: button $index is outside 0 until $BUTTONS" }
+        call("sim_control", 0, index, 1)
+        callLater(8, "sim_control", 0, index, 0)
+    }
+
+    /** Start or stop the sequencer, as the PLAY/STOP button does. */
+    fun play() = tap(Button.PLAY)
+
+    /**
+     * Play white key `n` (1..16) for `blocks` simulator blocks (128 frames each).
+     *
+     * The sixteen white keys are also the step keys, numbered 01-16 on the panel.
+     */
+    fun whiteKey(n: Int, blocks: Int = 40) {
+        require(n in 1..WHITE_KEYS.size) { "FM1Sim: white key $n is outside 1..${WHITE_KEYS.size}" }
+        val index = WHITE_KEYS[n - 1]
+        call("sim_control", 1, index, 1)
+        callLater(blocks, "sim_control", 1, index, 0)
+    }
+
+    /** Panel button indices, in the simulator's numbering. */
+    object Button {
+        const val OCT_DOWN = 0; const val OCT_UP = 1
+        const val FX = 2; const val SEL = 3; const val ENV = 4; const val LFO = 5; const val EDIT = 6; const val GLO = 7
+        const val HOME = 8; const val SAVE = 9; const val ARP = 10; const val SEQ = 11; const val PLAY = 12; const val REC = 13
+    }
 
     /** Restart the simulator; `clear` wipes stored projects and reloads the factory samples. */
     fun boot(clear: Boolean = false) = call("sim_boot", if (clear) 1 else 0)
@@ -158,13 +219,27 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
     /** Pull one 44.1 kHz block out of the module. Caller has entered the context. */
     private fun renderBlock() {
         while (true) {
-            val c = pending.poll() ?: break
-            c(exports)
+            val p = pending.poll() ?: break
+            if (p.delayBlocks <= 0) p.call(exports) else waiting.add(blocksRendered + p.delayBlocks to p.call)
+        }
+        if (waiting.isNotEmpty()) {
+            val due = waiting.filter { it.first <= blocksRendered }
+            if (due.isNotEmpty()) {
+                waiting.removeAll(due)
+                due.forEach { it.second(exports) }
+            }
         }
         val ptr = fnRender.execute().asLong()
         memory.readBuffer(ptr, scratch, 0, scratch.size)
         scratchFloats.position(0)
         scratchFloats.get(block, 0, block.size)
+        // Byte 14 of the screen snapshot is the transport, as the web page reads it. Sampled every
+        // 32 blocks (~93 ms), since taking the snapshot is not free.
+        if (blocksRendered % 32 == 0L) {
+            val state = fnState.execute().asLong()
+            playingSnapshot = memory.readBufferByte(state + 14) != 0.toByte()
+        }
+        blocksRendered++
     }
 
     /**
