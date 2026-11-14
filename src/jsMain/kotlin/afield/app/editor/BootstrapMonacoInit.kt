@@ -15,6 +15,7 @@ import afield.app.client.selectionContextChanged
 import afield.app.client.setSelectedEditorProperty
 import afield.app.protocol.handle
 import kotlinx.browser.document
+import kotlinx.browser.window
 
 internal val monacoPropertyNames = arrayOf(
     "code",
@@ -346,33 +347,78 @@ internal fun proseLineFlags(text: String, cStyle: Boolean): BooleanArray {
     return flags
 }
 
+/** The Monaco theme for Field's current colour theme (theme.js); every editor shares it. */
+fun fieldMonacoThemeName(): String =
+    if (js("window.FieldTheme && window.FieldTheme.isLight()") == true) "field-light" else "dark"
+
+/**
+ * Field's two Monaco themes, "dark" and "field-light", and the switch between them: Monaco's theme
+ * is global, so one `setTheme` on a "field-theme-change" event recolours every editor at once.
+ */
+private fun defineFieldMonacoThemes(monaco: dynamic) {
+    fun stackslRules(colour: String) = arrayOf<dynamic>(
+        js("{ token: 'operator.stacksl.prefix', fontStyle: 'bold' }"),
+        js("{ token: 'operator.stacksl.range', fontStyle: 'bold' }"),
+        js("{ token: 'number.stacksl.modifier', fontStyle: 'bold' }"),
+        js("{ token: 'number.stacksl.option', fontStyle: 'bold' }"),
+        js("{ token: 'number.stacksl.suffix', fontStyle: 'bold' }")
+    ).onEach { it.foreground = colour }
+
+    val darkColors = js("{}")
+    darkColors["editor.background"] = "#1e1e1e"
+    darkColors["editorGutter.background"] = "#000000"
+    darkColors["editor.lineHighlightBackground"] = "#2e2e2e"
+    darkColors["editorCursor.foreground"] = "#ff3b30"
+    darkColors["editorCursor.background"] = "#ff3b30"
+    val dark = js("{}")
+    dark.base = "vs-dark"
+    dark.inherit = true
+    dark.rules = stackslRules("ffcf66")
+    dark.colors = darkColors
+    monaco.editor.defineTheme("dark", dark)
+
+    // The light values follow field.css's [data-field-theme="light"] palette: graphite on warm grey,
+    // with chalk for the current line and the selection.
+    val lightColors = js("{}")
+    lightColors["editor.background"] = "#c4bfb6"
+    lightColors["editor.foreground"] = "#24211d"
+    lightColors["editorGutter.background"] = "#ccc7be"
+    lightColors["editor.lineHighlightBackground"] = "#cfcbc3"
+    lightColors["editor.lineHighlightBorder"] = "#00000000"
+    lightColors["editor.selectionBackground"] = "#ebe8e1"
+    lightColors["editor.inactiveSelectionBackground"] = "#dcd8d0"
+    lightColors["editorLineNumber.foreground"] = "#7a746b"
+    lightColors["editorLineNumber.activeForeground"] = "#24211d"
+    lightColors["editorCursor.foreground"] = "#a8241e"
+    lightColors["editorCursor.background"] = "#a8241e"
+    lightColors["editorWhitespace.foreground"] = "#a8a39a"
+    lightColors["editorIndentGuide.background1"] = "#b5b0a7"
+    val light = js("{}")
+    light.base = "vs"
+    light.inherit = true
+    light.rules = stackslRules("8a5200") + arrayOf<dynamic>(
+        js("{ token: 'comment', foreground: '5f6b4e' }"),
+        js("{ token: 'string', foreground: '8c2a1c' }"),
+        js("{ token: 'number', foreground: '1c5c8a' }"),
+        js("{ token: 'keyword', foreground: '2d3f8f' }")
+    )
+    light.colors = lightColors
+    monaco.editor.defineTheme("field-light", light)
+
+    window.addEventListener("field-theme-change", { monaco.editor.setTheme(fieldMonacoThemeName()) })
+    window.asDynamic().fieldMonacoThemeName = ::fieldMonacoThemeName
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun monacoInit(monaco: dynamic): dynamic {
-    val themeColors = js("{}")
-    themeColors["editor.background"] = "#1e1e1e"
-    themeColors["editorGutter.background"] = "#000000"
-    themeColors["editor.lineHighlightBackground"] = "#2e2e2e"
-    themeColors["editorCursor.foreground"] = "#ff3b30"
-    themeColors["editorCursor.background"] = "#ff3b30"
-    val theme = js("{}")
-    theme.base = "vs-dark"
-    theme.inherit = true
-    theme.rules = arrayOf<dynamic>(
-        js("{ token: 'operator.stacksl.prefix', foreground: 'ffcf66', fontStyle: 'bold' }"),
-        js("{ token: 'operator.stacksl.range', foreground: 'ffcf66', fontStyle: 'bold' }"),
-        js("{ token: 'number.stacksl.modifier', foreground: 'ffcf66', fontStyle: 'bold' }"),
-        js("{ token: 'number.stacksl.option', foreground: 'ffcf66', fontStyle: 'bold' }"),
-        js("{ token: 'number.stacksl.suffix', foreground: 'ffcf66', fontStyle: 'bold' }")
-    )
-    theme.colors = themeColors
-    monaco.editor.defineTheme("dark", theme)
+    defineFieldMonacoThemes(monaco)
 
     val container = document.querySelector(".monaco-editor-container") ?: return null
     val options = js("{}")
     options.value = ""
     options.language = "kotlin"
-    options.theme = "dark"
+    options.theme = fieldMonacoThemeName()
     options.automaticLayout = true
     options.selectionClipboard = false
     options.scrollBeyondLastLine = false

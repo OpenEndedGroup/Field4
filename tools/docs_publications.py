@@ -33,9 +33,13 @@ PILOTS = ("fline_examples", "three_output_gallery", "canonical_graphics") + FIEL
 # capture digest) stalled them on four landing attempts in a row, one of them on an idle host.
 # A Pen That Sees joined on 2026-11-10: its `ps_measure` box ("seeing against blind, measured")
 # stalled the watchdog at 30 s in the full refreshes of 2026-11-07 and 2026-11-10.
+# Flow Lenia joined on 2026-11-14: its transcript launches six simulations and awaits them all,
+# which took 262 s on a0 (Linux), past the 180 s transcript limit, and bounced the origin sync there.
+# Long-compute transcripts get LONG_TRANSCRIPT_SECONDS for that run instead.
 LONG_COMPUTE = frozenset({"petri_tala_layout", "morpho_circuit_search", "alife_evolution",
                           "braitenberg_brain_search", "braitenberg_where_next", "stacksl_fit_demo",
-                          "a_pen_that_sees"})
+                          "a_pen_that_sees", "flow_lenia"})
+LONG_TRANSCRIPT_SECONDS = 900
 # Failures that say nothing about the document, so they get one retry in a fresh Field session:
 # a capture that ran out of time, and a WebSocket the session dropped mid-capture (1006, no close
 # frame). The drop bounced full refreshes on 2026-11-07 (box_graph_demo), 2026-11-08
@@ -616,7 +620,8 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                     elif transcript := recipe.get("transcript"):
                         await client.macro_transcript_command(command="write", name=name,
                             content=(ROOT / transcript).read_text(), timeout=60)
-                        result = await client.macro_transcript_command(command="run", name=name, timeout=180)
+                        result = await client.macro_transcript_command(command="run", name=name,
+                            timeout=LONG_TRANSCRIPT_SECONDS if recipe.get('longCompute') else 180)
                         if not result.get("success"):
                             raise RuntimeError(json.dumps(result)[:3500])
                         import yaml

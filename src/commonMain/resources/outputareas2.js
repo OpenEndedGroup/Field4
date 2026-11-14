@@ -1,3 +1,4 @@
+import { mountConversationGarden } from "./conversationGarden.js";
 import { mountStateTreeBrowser } from "./stateTreeBrowser.js";
 import { aiChatMarkdownToHtml, aiChatHistoryToHtml, aiChatSetToolFamilies, send, sendWithReply } from "./afield.mjs";
 import { renderAiChatFences } from "./aiChatFenceRenderers.js";
@@ -1990,6 +1991,7 @@ function ensureAiChat(container, uid, property) {
                         existing.root.dataset.property = existing.property || "code";
                         if (changedBox) {
                                 existing.stateBrowser?.reset();
+                                existing.garden?.reset();
                                 container.__aiChatHistory = controllerChatHistory.get(uid) || "";
                                 renderChatMessages(existing.messages, container.__aiChatHistory);
                                 restoreAiChat(container, uid);
@@ -2522,13 +2524,27 @@ function ensureAiChat(container, uid, property) {
                         textarea.focus();
                 }
         });
+        const garden = mountConversationGarden(root, {
+                chatUid, chatProperty,
+                markdown: aiChatMarkdownToHtml,
+                decorate: node => { decorateAfieldLinks(node); applyCodeHighlight(node); renderAiChatFences(node); typesetAiChatMath(node); },
+                openBox: (uid, property) => {
+                        selectBoxByUidFromOutput(uid, property);
+                },
+                request: payload => new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => reject(new Error("Garden request timed out. Refresh before retrying.")), 30000);
+                        sendWithReply("ai-garden", payload, `ai-garden-${Date.now()}-${Math.random()}`, (_m, reply) => {
+                                clearTimeout(timeout); resolve(reply); return "remove";
+                        });
+                })
+        });
         mountLocalAiFeedback(root);
         root.appendChild(messages);
         root.appendChild(inputWrap);
         container.innerHTML = "";
         container.appendChild(root);
 
-        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code", micButton, stateBrowser, submit: submitPrompt};
+        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code", micButton, stateBrowser, garden, submit: submitPrompt};
         restoreAiChat(container, uid);
         return container.__aiChat;
 }
@@ -2931,4 +2947,23 @@ window.aiChatVoiceTarget = aiChatVoiceTarget;
 window.aiChatVoiceContext = aiChatVoiceContext;
 window.aiChatUpdate = aiChatUpdate;
 window.openAiChatForBox = openAiChatForBox;
+// Copied garden references retain the exact human/agent paragraph address.
+async function revealGardenReference() {
+        if (!location.hash.startsWith("#garden/")) return true;
+        const parts = location.hash.slice(8).split("/").map(decodeURIComponent);
+        if (parts.length !== 3) return true;
+        const chat = openAiChatForBox(parts[0], "code");
+        if (!chat) return false;
+        await chat.garden.reveal(parts[1], parts[2]);
+        return true;
+}
+window.addEventListener("hashchange", () => revealGardenReference());
+if (location.hash.startsWith("#garden/")) {
+        let attempts = 0;
+        const retry = async () => {
+                if (!await revealGardenReference() && ++attempts < 40) setTimeout(retry, 250);
+        };
+        setTimeout(retry, 0);
+}
+
 installControllerChatProjection();

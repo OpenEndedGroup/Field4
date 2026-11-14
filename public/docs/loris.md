@@ -73,9 +73,53 @@ its values, and clicking a track moves both players to that time. The wheel zoom
 playhead, dragging pans, and all time returns to the whole excerpt. The two players do not play
 together, so you can switch between them to compare.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/dialogue-partials.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="180" w="1080" h="1100" embed=true name="loris-dialogue" alt="Real film dialogue source waveform, frequency-balanced Loris partial tracks across 0–24000 Hz on an ERB axis with local blue-to-amber bandwidth colors, full-band/detail controls, and reconstruction playback."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/dialogue-partials.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="180" w="1080" h="1100" embed=true name="loris-dialogue" scale="2" alt="Real film dialogue source waveform, frequency-balanced Loris partial tracks across 0–24000 Hz on an ERB axis with local blue-to-amber bandwidth colors, full-band/detail controls, and reconstruction playback." wait-output="true" wait-output-contains="loris-film-comparison"}
 :::static
-display("source, partials, reconstruction", LorisDocs.comparisonHtml())
+:::fold imports
+import afield.audio.engine.WavFloatArrayLoader
+import kotlinx.coroutines.*
+import kotlinx.coroutines.future.await
+:::endfold
+
+val client = cached { LorisClient() }
+val source = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
+val options = LorisOptions(
+    resolutionHz = 35.0,
+    windowWidthHz = 80.0,
+    hopSeconds = 0.005,
+    frequencyDriftHz = 50.0,
+    amplitudeFloorDb = -55.0,
+)
+go {
+    try {
+        val wav = runInterruptible(Dispatchers.IO) { WavFloatArrayLoader.loadWavToFloatArray(source.toString()) }
+        val result = client.analyzeAsync(wav.samples, wav.sampleRate, options).await()
+        // Both players and the partial map follow one shared time cursor.
+        val sync = "loris-film-comparison"
+:::fold source player and reconstructed partials
+        display(
+            "source, partials, reconstruction",
+            AudioVisualizer.renderSamplesHtml(
+                wav.samples,
+                wav.sampleRate,
+                AudioVisualizerOptions(width = 1000, waveformHeight = 95, syncGroup = sync),
+                label = "Source · Night of the Living Dead (1968) · mono 48 kHz",
+            ) +
+                result.visualizationHtml(
+                    LorisViewOptions(
+                        height = 400,
+                        syncGroup = sync,
+                        label = "Film dialogue · irregular partial trajectories",
+                    ),
+                ),
+        )
+:::endfold
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Throwable) {
+        markdown("error", "Loris failed: ${(failure.message ?: failure.toString()).md}")
+    }
+}
 ```
 
 Source:
@@ -109,13 +153,20 @@ This box analyzes the WAV, edits the partials, waits for the resynthesis, and pl
 model with a player for its sound. Each breakpoint keeps its stored phase, so expect some smearing
 of attacks. The frequency cap in the code keeps every partial below half the sample rate.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/spectral-whirlpool.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="180" w="1080" h="900" embed=false name="loris-whirlpool" alt="Actual resynthesis of a localized spectral whirlpool: partial frequencies swirl through 6–9 seconds with amber noise bandwidth, plotted across the full native frequency band above its edited waveform and player." wait-output="true" wait-output-contains="loris-whirlpool"}
+:::static
+:::fold imports
 import kotlinx.coroutines.*
 import kotlinx.coroutines.future.await
+:::endfold
 
 val client = cached { LorisClient() }
 val chunkStart = 6.0
 val chunkDuration = 3.0
+val octaveDepth = 1.5
+val sweepCycles = 4.0
+val shutterHz = 12.0
+val targetBandwidth = 0.85
 go {
     try {
         val analyzed =
@@ -128,7 +179,7 @@ go {
                         frequencyDriftHz = 50.0,
                         amplitudeFloorDb = -55.0,
                     ),
-                    onProgress = { if (isActive) display("status", it) },
+                    onProgress = { if (isActive) print(it) },
                 )
                 .await()
         val model = analyzed.model
@@ -142,26 +193,32 @@ go {
                                 if (u <= 0.0 || u >= 1.0) point
                                 else {
                                     val envelope = sin(PI * u).pow(2)
-                                    val octaves = 1.5 * envelope * sin(2 * PI * 4 * u)
-                                    val shutter = .25 + .75 * (.5 + .5 * sin(2 * PI * 12 * chunkDuration * u))
+                                    val octaves = octaveDepth * envelope * sin(2 * PI * sweepCycles * u)
+                                    val shutter =
+                                        .25 + .75 * (.5 + .5 * sin(2 * PI * shutterHz * chunkDuration * u))
                                     point.copy(
                                         frequencyHz = (point.frequencyHz * 2.0.pow(octaves)).coerceAtMost(
                                             model.sampleRate * .49,
                                         ),
                                         amplitude = point.amplitude * (1 - envelope + envelope * shutter),
-                                        bandwidth = point.bandwidth * (1 - envelope) + .85 * envelope,
+                                        bandwidth = point.bandwidth * (1 - envelope) + targetBandwidth * envelope,
                                     )
                                 }
                             },
                     )
                 },
         )
-        display("status", "Resynthesizing the whirlpool…")
+        print("Resynthesizing the whirlpool…")
         val edited = client.synthesizeAsync(changed).await()
         display(
             "edited tracks and sound",
             edited.visualizationHtml(
-                LorisViewOptions(height = 400, syncGroup = "my-whirlpool"),
+                LorisViewOptions(
+                    height = 400,
+                    syncGroup = "loris-whirlpool",
+                    label =
+                        "${chunkStart.f0}–${(chunkStart + chunkDuration).f0} seconds · ±${(octaveDepth * 12).f0}-semitone whirlpool / ${shutterHz.f0} Hz shutter / noisy core",
+                ),
             ),
         )
     } catch (cancelled: CancellationException) {
@@ -175,10 +232,7 @@ go {
 Here is the gesture on the film excerpt. Compare seconds 6–9 with the reconstruction above: the
 amber, noisy middle and the twisting tracks are what you hear.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/spectral-whirlpool.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="180" w="1080" h="900" embed=true name="loris-whirlpool" alt="Actual resynthesis of a localized spectral whirlpool: partial frequencies swirl through 6–9 seconds with amber noise bandwidth, plotted across the full native frequency band above its edited waveform and player."}
-:::static
-display("edited tracks and sound", LorisDocs.whirlpoolHtml())
-```
+![Actual resynthesis of a localized spectral whirlpool: partial frequencies swirl through 6–9 seconds with amber noise bandwidth, plotted across the full native frequency band above its edited waveform and player.](assets/loris/spectral-whirlpool.png)
 
 <audio controls preload="metadata" src="assets/loris/spectral-whirlpool.wav"></audio>
 
@@ -192,11 +246,17 @@ This box analyzes the source, lowers every partial's frequency to three quarters
 noise bandwidth, then renders and displays the changed model. The breakpoints keep their stored
 phases, so attacks change character more than a dedicated pitch shifter would make them.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/tonal-edit.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="180" w="1080" h="720" embed=false name="loris-tonal-edit" alt="Loris partial map and waveform of the film dialogue lowered to 0.75 of its original partial frequencies, with noise bandwidth removed; frequency spacing is ERB." wait-output="true" wait-output-contains="loris-tonal-edit"}
+:::static
+:::fold imports
 import kotlinx.coroutines.*
 import kotlinx.coroutines.future.await
+:::endfold
 
 val client = cached { LorisClient() }
+val frequencyScale = 0.75
+val bandwidthScale = 0.0
+val gain = 0.8
 go {
     try {
         val analyzed =
@@ -209,26 +269,28 @@ go {
                         frequencyDriftHz = 50.0,
                         amplitudeFloorDb = -55.0,
                     ),
-                    onProgress = { if (isActive) display("status", it) },
+                    onProgress = { if (isActive) print(it) },
                 )
                 .await()
-        display("status", "Resynthesizing changed envelopes…")
+        print("Resynthesizing changed envelopes…")
         val edited =
             client
                 .synthesizeAsync(
                     analyzed.model.transformed(
-                        frequencyScale = 0.75,
-                        bandwidthScale = 0.0,
-                        gain = 0.8,
+                        frequencyScale = frequencyScale,
+                        bandwidthScale = bandwidthScale,
+                        gain = gain,
                     ),
                 )
                 .await()
         display(
-            "changed sound",
+            "changed partials and sound",
             edited.visualizationHtml(
                 LorisViewOptions(
+                    height = 340,
                     axis = LorisFrequencyAxis.ERB,
-                    syncGroup = "changed-partials",
+                    syncGroup = "loris-tonal-edit",
+                    label = "Frequency × $frequencyScale · noise bandwidth × ${bandwidthScale.f0} · gain × $gain",
                 ),
             ),
         )
@@ -242,10 +304,7 @@ go {
 
 Here is that edit. Every segment is blue, because the edit set every bandwidth to zero:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/tonal-edit.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="180" w="1080" h="720" embed=true name="loris-tonal-edit" alt="Loris partial map and waveform of the film dialogue lowered to 0.75 of its original partial frequencies, with noise bandwidth removed; frequency spacing is ERB."}
-:::static
-display("changed partials and sound", LorisDocs.transformedHtml())
-```
+![Loris partial map and waveform of the film dialogue lowered to 0.75 of its original partial frequencies, with noise bandwidth removed; frequency spacing is ERB.](assets/loris/tonal-edit.png)
 
 <audio controls preload="metadata" src="assets/loris/three-quarter-tonal.wav"></audio>
 
@@ -399,11 +458,18 @@ This box takes two two-second phrases from the film, labels each against its own
 fundamental, moves the loudest moment of the second onto the loudest moment of the first, and
 morphs from the first to the second between 0.4 and 1.6 seconds:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/morph-a.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="240" w="1080" h="900" embed=false name="loris-morph-a" alt="Loris partial map, 0–5000 Hz over two seconds, of phrase A distilled to one track per harmonic, with its reconstruction waveform and player." wait-output="true" wait-output-contains="loris-morph"}
+:::static
+:::fold imports
 import kotlinx.coroutines.*
 import kotlinx.coroutines.future.await
+:::endfold
 
 val client = cached { LorisClient() }
+val panel = 0 // 0: phrase A, 1: aligned phrase B, 2: the morph
+val morphStart = 0.4
+val morphEnd = 1.6
+require(panel in 0..2)
 go {
     try {
         val analyzed =
@@ -416,27 +482,58 @@ go {
                         frequencyDriftHz = 50.0,
                         amplitudeFloorDb = -55.0,
                     ),
-                    onProgress = { if (isActive) display("status", it) },
+                    onProgress = { if (isActive) print(it) },
                 )
                 .await()
         val film = analyzed.model
-        val a = client.distillAsync(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0)).await().model
-        val b = client.distillAsync(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0)).await().model
-        display("labels", "A ${a.labelCounts()}  B ${b.labelCounts()}")
+        val sourcePhrase = client.distillAsync(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0)).await()
+        val a = sourcePhrase.model
+        val targetPhrase = client.distillAsync(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0)).await()
+        val b = targetPhrase.model
+        print("A ${a.labelCounts()}  B ${b.labelCounts()}")
         val end = a.durationSeconds
-        val aligned =
-            runInterruptible(Dispatchers.IO) {
-                    client.dilate(
-                        b,
-                        [0.0, b.loudestTimeSeconds(), end],
-                        [0.0, a.loudestTimeSeconds(), end],
-                        durationSeconds = end,
-                    )
-                }
-                .model
-        val morphed =
-            client.morphAsync(a.dropUnlabeled(), aligned.dropUnlabeled(), LorisEnvelope.ramp(0.4, 1.6)).await()
-        display("morph", morphed.visualizationHtml(LorisViewOptions(maximumHz = 5000.0, syncGroup = "my-morph")))
+        val alignedPhrase = runInterruptible(Dispatchers.IO) {
+            client.dilate(
+                b,
+                [0.0, b.loudestTimeSeconds(), end],
+                [0.0, a.loudestTimeSeconds(), end],
+                durationSeconds = end,
+            )
+        }
+
+        val aligned = alignedPhrase.model
+        val raw =
+            client
+                .morphAsync(a.dropUnlabeled(), aligned.dropUnlabeled(), LorisEnvelope.ramp(morphStart, morphEnd))
+                .await()
+        // Keep the reconstructed peak below full scale with explicit gain, never clipping.
+        val gain = if (raw.peak > 0.95f) 0.95 / raw.peak else 1.0
+        val morphed = if (gain == 1.0) raw else client.synthesizeAsync(raw.model.transformed(gain = gain)).await()
+        val result = when (panel) {
+            0 -> sourcePhrase
+            1 -> alignedPhrase
+            else -> morphed
+        }
+:::fold display the selected phrase or morph
+        val labels = [
+            "Phrase A · film 1.6–3.6 s · distilled",
+            "Phrase B · film 11.5–13.5 s · distilled, loudest moment dilated onto A's",
+            "Morph · A → B between $morphStart and $morphEnd s",
+        ]
+        val channels = ["phrase A", "phrase B", "morph"]
+        display(
+            channels[panel],
+            result.visualizationHtml(
+                LorisViewOptions(
+                    height = 260,
+                    minimumHz = 0.0,
+                    maximumHz = 5000.0,
+                    syncGroup = "loris-morph",
+                    label = labels[panel],
+                ),
+            ),
+        )
+:::endfold
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (failure: Throwable) {
@@ -451,23 +548,178 @@ and Loris crossfades them instead.
 
 Phrase A, film seconds 1.6–3.6, distilled:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/morph-a.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="240" w="1080" h="900" embed=true name="loris-morph-a" alt="Loris partial map, 0–5000 Hz over two seconds, of phrase A distilled to one track per harmonic, with its reconstruction waveform and player."}
-:::static
-display("phrase A", LorisDocs.morphPanelHtml(0))
-```
+![Loris partial map, 0–5000 Hz over two seconds, of phrase A distilled to one track per harmonic, with its reconstruction waveform and player.](assets/loris/morph-a.png)
 
 Phrase B, film seconds 11.5–13.5, distilled and dilated so its loudest moment meets A's:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/morph-b.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="240" w="1080" h="900" embed=true name="loris-morph-b" alt="Loris partial map of phrase B, distilled and time-dilated onto phrase A, with its reconstruction waveform and player."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/morph-b.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="240" w="1080" h="900" embed=true name="loris-morph-b" alt="Loris partial map of phrase B, distilled and time-dilated onto phrase A, with its reconstruction waveform and player." hidden=true wait-output="true" wait-output-contains="loris-morph"}
 :::static
-display("phrase B", LorisDocs.morphPanelHtml(1))
+:::fold imports
+import kotlinx.coroutines.*
+import kotlinx.coroutines.future.await
+:::endfold
+
+val client = cached { LorisClient() }
+val panel = 1 // 0: phrase A, 1: aligned phrase B, 2: the morph
+val morphStart = 0.4
+val morphEnd = 1.6
+require(panel in 0..2)
+go {
+    try {
+        val analyzed =
+            client
+                .analyzeWavAsync(
+                    "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
+                    options = LorisOptions(
+                        resolutionHz = 35.0,
+                        windowWidthHz = 80.0,
+                        frequencyDriftHz = 50.0,
+                        amplitudeFloorDb = -55.0,
+                    ),
+                    onProgress = { if (isActive) print(it) },
+                )
+                .await()
+        val film = analyzed.model
+        val sourcePhrase = client.distillAsync(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0)).await()
+        val a = sourcePhrase.model
+        val targetPhrase = client.distillAsync(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0)).await()
+        val b = targetPhrase.model
+        print("A ${a.labelCounts()}  B ${b.labelCounts()}")
+        val end = a.durationSeconds
+        val alignedPhrase = runInterruptible(Dispatchers.IO) {
+            client.dilate(
+                b,
+                [0.0, b.loudestTimeSeconds(), end],
+                [0.0, a.loudestTimeSeconds(), end],
+                durationSeconds = end,
+            )
+        }
+
+        val aligned = alignedPhrase.model
+        val raw =
+            client
+                .morphAsync(a.dropUnlabeled(), aligned.dropUnlabeled(), LorisEnvelope.ramp(morphStart, morphEnd))
+                .await()
+        // Keep the reconstructed peak below full scale with explicit gain, never clipping.
+        val gain = if (raw.peak > 0.95f) 0.95 / raw.peak else 1.0
+        val morphed = if (gain == 1.0) raw else client.synthesizeAsync(raw.model.transformed(gain = gain)).await()
+        val result = when (panel) {
+            0 -> sourcePhrase
+            1 -> alignedPhrase
+            else -> morphed
+        }
+:::fold display the selected phrase or morph
+        val labels = [
+            "Phrase A · film 1.6–3.6 s · distilled",
+            "Phrase B · film 11.5–13.5 s · distilled, loudest moment dilated onto A's",
+            "Morph · A → B between $morphStart and $morphEnd s",
+        ]
+        val channels = ["phrase A", "phrase B", "morph"]
+        display(
+            channels[panel],
+            result.visualizationHtml(
+                LorisViewOptions(
+                    height = 260,
+                    minimumHz = 0.0,
+                    maximumHz = 5000.0,
+                    syncGroup = "loris-morph",
+                    label = labels[panel],
+                ),
+            ),
+        )
+:::endfold
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Throwable) {
+        markdown("error", "Loris failed: ${(failure.message ?: failure.toString()).md}")
+    }
+}
 ```
 
 The morph, from A to B between 0.4 and 1.6 seconds:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/morph-result.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="240" w="1080" h="900" embed=true name="loris-morph-result" alt="Loris partial map of the morph of phrase A into phrase B, with its waveform and player."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/morph-result.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="240" w="1080" h="900" embed=true name="loris-morph-result" alt="Loris partial map of the morph of phrase A into phrase B, with its waveform and player." hidden=true wait-output="true" wait-output-contains="loris-morph"}
 :::static
-display("morph", LorisDocs.morphPanelHtml(2))
+:::fold imports
+import kotlinx.coroutines.*
+import kotlinx.coroutines.future.await
+:::endfold
+
+val client = cached { LorisClient() }
+val panel = 2 // 0: phrase A, 1: aligned phrase B, 2: the morph
+val morphStart = 0.4
+val morphEnd = 1.6
+require(panel in 0..2)
+go {
+    try {
+        val analyzed =
+            client
+                .analyzeWavAsync(
+                    "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
+                    options = LorisOptions(
+                        resolutionHz = 35.0,
+                        windowWidthHz = 80.0,
+                        frequencyDriftHz = 50.0,
+                        amplitudeFloorDb = -55.0,
+                    ),
+                    onProgress = { if (isActive) print(it) },
+                )
+                .await()
+        val film = analyzed.model
+        val sourcePhrase = client.distillAsync(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0)).await()
+        val a = sourcePhrase.model
+        val targetPhrase = client.distillAsync(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0)).await()
+        val b = targetPhrase.model
+        print("A ${a.labelCounts()}  B ${b.labelCounts()}")
+        val end = a.durationSeconds
+        val alignedPhrase = runInterruptible(Dispatchers.IO) {
+            client.dilate(
+                b,
+                [0.0, b.loudestTimeSeconds(), end],
+                [0.0, a.loudestTimeSeconds(), end],
+                durationSeconds = end,
+            )
+        }
+
+        val aligned = alignedPhrase.model
+        val raw =
+            client
+                .morphAsync(a.dropUnlabeled(), aligned.dropUnlabeled(), LorisEnvelope.ramp(morphStart, morphEnd))
+                .await()
+        // Keep the reconstructed peak below full scale with explicit gain, never clipping.
+        val gain = if (raw.peak > 0.95f) 0.95 / raw.peak else 1.0
+        val morphed = if (gain == 1.0) raw else client.synthesizeAsync(raw.model.transformed(gain = gain)).await()
+        val result = when (panel) {
+            0 -> sourcePhrase
+            1 -> alignedPhrase
+            else -> morphed
+        }
+:::fold display the selected phrase or morph
+        val labels = [
+            "Phrase A · film 1.6–3.6 s · distilled",
+            "Phrase B · film 11.5–13.5 s · distilled, loudest moment dilated onto A's",
+            "Morph · A → B between $morphStart and $morphEnd s",
+        ]
+        val channels = ["phrase A", "phrase B", "morph"]
+        display(
+            channels[panel],
+            result.visualizationHtml(
+                LorisViewOptions(
+                    height = 260,
+                    minimumHz = 0.0,
+                    maximumHz = 5000.0,
+                    syncGroup = "loris-morph",
+                    label = labels[panel],
+                ),
+            ),
+        )
+:::endfold
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Throwable) {
+        markdown("error", "Loris failed: ${(failure.message ?: failure.toString()).md}")
+    }
+}
 ```
 
 <audio controls preload="metadata" src="assets/loris/morph-a-to-b.wav"></audio>
@@ -526,3 +778,16 @@ so any change runs the analysis again. Provenance is available on every result, 
 [published example manifest](assets/loris/provenance.json) records the source hash, controls and
 transformation used for the sounds above. Audio remains at its native source rate; place it on
 a 48 kHz project through an explicitly recorded conversion when needed.
+
+## API reference
+
+- Analysis and resynthesis: [`LorisClient`](reference/audio.md#loris-kt-lorisclient) —
+  [`analyzeAsync`](reference/audio.md#loris-kt--lorisclient--analyzeasync),
+  [`analyzeWavAsync`](reference/audio.md#loris-kt--lorisclient--analyzewavasync),
+  [`synthesizeAsync`](reference/audio.md#loris-kt--lorisclient--synthesizeasync).
+- Phrase alignment and morphing:
+  [`distillAsync`](reference/audio.md#loris-kt--lorisclient--distillasync),
+  [`dilate`](reference/audio.md#loris-kt--lorisclient--dilate),
+  [`morphAsync`](reference/audio.md#loris-kt--lorisclient--morphasync).
+- Editing breakpoint data: [`LorisModel`](reference/audio.md#loris-kt-lorismodel) —
+  [`transformed`](reference/audio.md#loris-kt--lorismodel--transformed).

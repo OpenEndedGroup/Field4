@@ -399,6 +399,12 @@ internal fun getThreeSurfaceClickCallback(callbackId: String): ((ThreeSurfaceHit
  * @param parts the **Parts** list, for showing, hiding and soloing parts. It appears only when the
  * scene has at least two parts.
  * @param light the **Light** slider, which swings a grazing key light around the figure.
+ * @param realism the **Realism** button: soft shadows, ambient occlusion and studio light, the look of
+ * [ThreeSceneBuilder.studio]. A view that calls `studio(…)` starts with it pressed.
+ * @param pathTrace the **Path trace** button: the Realism scene traced progressively on the GPU
+ * (three-gpu-pathtracer), with light that bounces and soft shadows. It refines while the view is
+ * still and falls back to the Realism raster while it moves. Single views only, and not in a
+ * published page.
  */
 @Serializable
 data class ThreeControls(
@@ -408,10 +414,13 @@ data class ThreeControls(
     val review: Boolean = false,
     val parts: Boolean = false,
     val light: Boolean = false,
+    val realism: Boolean = false,
+    val pathTrace: Boolean = false,
 ) {
     companion object {
         /** Every control on. */
-        val ALL = ThreeControls(xray = true, export = true, linkCamera = true, review = true, parts = true, light = true)
+        val ALL = ThreeControls(xray = true, export = true, linkCamera = true, review = true, parts = true, light = true,
+            realism = true, pathTrace = true)
     }
 }
 
@@ -537,6 +546,22 @@ data class ThreeGeometryPayload(
      */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val partAppearance: Map<String, ThreePartAppearance> = emptyMap(),
+    /**
+     * Part styles the box set, by [ThreeDrawable.id]: colour, opacity and emphasis, applied by the viewer as
+     * materials, so a style change re-sends no geometry. A [ThreePanel.partStyles] entry wins in its panel;
+     * a stored [partAppearance] colour wins over both. See [ThreeSceneBuilder.style].
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val partStyles: Map<String, ThreePartStyle> = emptyMap(),
+    /** Scene-level free metadata for viewer tools. See [ThreeSceneBuilder.metadata]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val metadata: kotlinx.serialization.json.JsonObject? = null,
+    /** Parts that move, for the viewer to play. See [ThreeSceneBuilder.motion]. Presentation, not geometry. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val motions: List<ThreePartMotion> = emptyList(),
+    /** The timeline the [motions] play on. See [ThreeSceneBuilder.timeline]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val timeline: ThreeTimeline? = null,
     /** Text pinned to points in the scene. See [ThreeSceneBuilder.label]. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val labels: List<ThreeLabel> = emptyList(),
@@ -677,14 +702,25 @@ class ThreeGeometryViewState(val uid: String) {
      * view's from here on, and must not be changed. When two updates overlap, the one that started last is
      * the one that stays, as it was when the whole of this was synchronized.
      */
-    fun update(payload: ThreeGeometryPayload) {
-        val costs = threeWireCosts(payload)
+    fun update(update: ThreeGeometryPayload) {
+        val costs = threeWireCosts(update)
         val estimate = costs.sumOf { it.bytes }
         if (estimate > payloadLimitBytes) throw threePayloadTooLarge(uid, estimate, payloadLimitBytes, costs, measured = false)
         val generation = UUID.randomUUID().toString()
+        val began = System.nanoTime()
+        // Parts that only moved go out as the geometry the viewer holds, with a transform (ThreeIncremental.kt),
+        // and the arrays of last time's parts are not hashed again.
+        val payload: ThreeGeometryPayload
+        val hashes: ThreeArrayHashes
+        synchronized(incremental) {
+            payload = incremental.rigid.apply(update)
+            hashes = ThreeArrayHashes(incremental.hashes)
+            incremental.hashes = hashes
+        }
         // Split first: it names a NaN's part and attribute, where the revision's encoder would not.
-        val split = payload.splitForWire(generation)
-        val revision = threeReviewRevision(payload)
+        val split = payload.splitForWire(generation, hashes)
+        val revision = revisionFor(payload, hashes)
+        hashes.settle()
         val ticket: Long
         val appearance: Map<String, ThreePartAppearance>
         synchronized(this) {
@@ -725,6 +761,9 @@ class ThreeGeometryViewState(val uid: String) {
             published?.let { old -> old.buffers?.let { recentBuffers.addLast(old.generation to it) } }
             while (recentBuffers.size > RECENT_GENERATIONS) recentBuffers.removeFirst()
             published = next
+            lastUpdate = ThreeUpdateStats(payload.drawables.size, incremental.rigid.lastRigidMoves,
+                split.description.buffers?.entries?.size ?: 0, description.size.toLong(), split.buffers?.bytes ?: 0L,
+                (System.nanoTime() - began) / 1e6)
             onBroadcast?.invoke(description)
             sessions.forEach { if (it in bufferSessions) sendTo(it, description) else sendNative(it, next) }
             // Global listeners (native "subscribe-all" viewers) see every view's updates, including
@@ -734,6 +773,35 @@ class ThreeGeometryViewState(val uid: String) {
             val current = storedAppearance()[appearanceKey()].orEmpty()
             if (current != appearance) broadcast(appearanceMessage(replace = true, parts = current))
         }
+    }
+
+    /** What a view keeps between updates to send only what changed: see [ThreeRigidParts]. */
+    private class Incremental {
+        val rigid = ThreeRigidParts()
+        var hashes = ThreeArrayHashes()
+    }
+    private val incremental = Incremental()
+
+    /** The last update: parts, rigid moves sent as transforms, buffers, bytes, and milliseconds to publish. */
+    @Volatile var lastUpdate: ThreeUpdateStats? = null
+        private set
+
+    /**
+     * Whether this view's revision is the pre-2026-11-13 one ([threeLegacyReviewRevision]): `null` until the
+     * first update decides. It is, for as long as the view lives, when a note filed under the old revision
+     * matches the geometry it is first shown with, so a note on unchanged geometry stays current. Otherwise
+     * the old revision is never worked out again.
+     */
+    private var legacyRevision: Boolean? = null
+
+    private fun revisionFor(payload: ThreeGeometryPayload, hashes: ThreeArrayHashes): String {
+        val revision = threeReviewRevision(payload, hashes)
+        if (!revision.startsWith("r2-")) return revision
+        val legacy = legacyRevision ?: run {
+            val old = reviewInbox.legacyNoteRevisions()
+            (old.isNotEmpty() && threeLegacyReviewRevision(payload) in old).also { legacyRevision = it }
+        }
+        return if (legacy) threeLegacyReviewRevision(payload) else revision
     }
 
     /** The buffers for [generation], while it is the view's current or a recent geometry; `null` once long superseded. */
@@ -898,6 +966,18 @@ fun threeGeometryReviews(uid: String, includeResolved: Boolean = false): kotlinx
 
 internal fun updateThreeGeometryReview(uid: String, request: kotlinx.serialization.json.JsonObject): kotlinx.serialization.json.JsonObject? =
     (knownThreeViews[uid]?.reviewInbox ?: customGeometryReviewInbox(uid))?.updateNote(request)
+
+/** What one [ThreeGeometryViewState.update] sent. */
+data class ThreeUpdateStats(
+    val drawables: Int,
+    /** Parts that moved rigidly and went out as a transform on the geometry the viewer holds. */
+    val rigidMoves: Int,
+    val buffers: Int,
+    val descriptionBytes: Long,
+    /** Every buffer of the generation; a viewer fetches only those it does not hold. */
+    val bufferBytes: Long,
+    val publishMs: Double,
+)
 
 /** What `/three-buffers` serves: a view's current buffers, for the generation its description named. */
 internal fun threeGeometryBuffers(uid: String, generation: String): ThreeGeometryBuffers? = knownThreeViews[uid]?.buffers(generation)

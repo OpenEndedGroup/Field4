@@ -1,0 +1,15 @@
+{
+  "beforeDimensions": [
+    3453,
+    3924
+  ],
+  "afterDimensions": [
+    3453,
+    3924
+  ],
+  "inspected": true,
+  "defaultMetrics": "point total/peak and area total/peak arrays exactly match SceneOnARig.aliasing(frameCount, line), including changed line width and frame count.",
+  "differingPixels": 4702779,
+  "pixelsDifferingByMoreThan3": 4473819,
+  "figureBytes": 2032504
+}

@@ -254,8 +254,14 @@ class CloudScene(
      * Raymarches the cloud through [camera] with [steps] steps per ray, single scattering from the
      * sun plus [inScatter] for everything else. Rows run in parallel; each row's random stream is
      * seeded from [seed] and its index, so a render is reproducible.
+     *
+     * [networkEvery] = N evaluates the features and [inScatter] only on every Nth step that has
+     * cloud in it, holding the last in-scatter in between; the steps in between march only the
+     * sun transmittance (one optical depth instead of six). `cloudRenderEvery` in [glslScene] does
+     * the same, so the speed/quality trade can be measured on the GPU and checked here.
      */
-    fun render(camera: Camera, width: Int, height: Int, inScatter: InScatter, seed: Long = 1L): Image {
+    fun render(camera: Camera, width: Int, height: Int, inScatter: InScatter, seed: Long = 1L, networkEvery: Int = 1): Image {
+        require(networkEvery >= 1) { "networkEvery must be at least 1, was $networkEvery" }
         val image = Image(width, height)
         val aspect = width.toDouble() / height
         IntStream.range(0, height).parallel().forEach { row ->
@@ -267,7 +273,7 @@ class CloudScene(
                 val u = (col + 0.5) / width * 2.0 - 1.0
                 val v = 1.0 - (row + 0.5) / height * 2.0
                 val d = camera.ray(u, v, aspect)
-                val rgb = march(camera.eye, d, ign(col.toDouble(), row.toDouble()), ign(col + 5.588, row + 5.588), inScatter, random, f, ms)
+                val rgb = march(camera.eye, d, ign(col.toDouble(), row.toDouble()), ign(col + 5.588, row + 5.588), inScatter, random, f, ms, networkEvery)
                 sky(d, skyRgb)
                 val at = (row * width + col) * 3
                 for (c in 0..2) image.rgb[at + c] = (rgb[c] + rgb[3] * skyRgb[c]).toFloat()
@@ -277,7 +283,7 @@ class CloudScene(
     }
 
     /** Returns in-scattered radiance (three values) and the remaining transmittance (fourth). */
-    private fun march(eye: DoubleArray, d: DoubleArray, jitter: Double, featureJitter: Double, inScatter: InScatter, random: SplittableRandom, f: DoubleArray, ms: DoubleArray): DoubleArray {
+    private fun march(eye: DoubleArray, d: DoubleArray, jitter: Double, featureJitter: Double, inScatter: InScatter, random: SplittableRandom, f: DoubleArray, ms: DoubleArray, networkEvery: Int = 1): DoubleArray {
         val result = doubleArrayOf(0.0, 0.0, 0.0, 1.0)
         val s = span(eye, d) ?: return result
         val steps = min(MAX_STEPS, kotlin.math.ceil((s[1] - s[0]) / STEP).toInt().coerceAtLeast(1))
@@ -285,14 +291,20 @@ class CloudScene(
         val w = doubleArrayOf(-d[0], -d[1], -d[2])
         val phaseSun = hg(dot(w, sun), g)
         val p = DoubleArray(3)
+        var lit = 0
+        ms.fill(0.0)
         for (i in 0 until steps) {
             val t = s[0] + (i + jitter) * dt
             for (a in 0..2) p[a] = eye[a] + d[a] * t
             val rho = density(p)
             if (rho <= 0.0) continue
             val ext = sigma * rho
-            features(p, w, f, featureJitter)
-            inScatter.at(p, w, f, random, ms)
+            if (lit++ % networkEvery == 0) {
+                features(p, w, f, featureJitter)
+                inScatter.at(p, w, f, random, ms)
+            } else {
+                f[4] = exp(-opticalDepth(p, sun, jitter = featureJitter))
+            }
             val stepT = exp(-ext * dt)
             // ∫ T(s) σs L ds over the step, with L constant across it
             val weight = result[3] * albedo * (1.0 - stepT)
@@ -314,6 +326,9 @@ class CloudScene(
      * only, [MODE_AMBIENT] plus the fitted ambient term, [MODE_NETWORK] plus the network, and three debug
      * views — [MODE_DEBUG_INSCATTER] the network's predicted in-scatter, [MODE_DEBUG_SUN] the sun
      * transmittance and [MODE_DEBUG_SKY] the sky visibility, each averaged along the ray by opacity.
+     *
+     * `cloudRenderEvery(..., pixel, int networkEvery)` is the same with the features and the
+     * in-scatter term evaluated only every `networkEvery`th lit step, as `render(networkEvery = N)`.
      */
     fun glslScene(): String {
         fun f(v: Double) = glslLiteral(v)
@@ -395,7 +410,7 @@ vec3 cloudRay(vec3 eye, vec3 target, float fovY, vec2 ndc, float aspect) {
 
 float cloudIgn(vec2 px) { return fract(52.9829189 * fract(0.06711056 * px.x + 0.00583715 * px.y)); }
 
-vec3 cloudRender(vec3 eye, vec3 target, float fovY, vec2 ndc, float aspect, int mode, vec2 pixel) {
+vec3 cloudRenderEvery(vec3 eye, vec3 target, float fovY, vec2 ndc, float aspect, int mode, vec2 pixel, int networkEvery) {
     vec3 d = cloudRay(eye, target, fovY, ndc, aspect);
     vec3 radiance = vec3(0.0), debug = vec3(0.0);
     float T = 1.0, t0, t1;
@@ -405,15 +420,20 @@ vec3 cloudRender(vec3 eye, vec3 target, float fovY, vec2 ndc, float aspect, int 
         float jitter = cloudIgn(pixel), featureJitter = cloudIgn(pixel + 5.588);
         vec3 w = -d;
         float phaseSun = cloudHg(dot(w, CLOUD_SUN), CLOUD_G);
+        int lit = 0;
+        vec3 ms = vec3(0.0);
+        float f[10];
         for (int i = 0; i < steps; ++i) {
             vec3 p = eye + d * (t0 + (float(i) + jitter) * dt);
             float rho = cloudDensity(p);
             if (rho <= 0.0) continue;
-            float f[10];
-            cloudFeatures(p, w, featureJitter, f);
-            vec3 ms = vec3(0.0);
-            if (mode == $MODE_AMBIENT) ms = cloudAmbient(f);
-            else if (mode >= $MODE_NETWORK) ms = cloudNetwork(f);
+            if (lit++ % networkEvery == 0) {
+                cloudFeatures(p, w, featureJitter, f);
+                if (mode == $MODE_AMBIENT) ms = cloudAmbient(f);
+                else if (mode >= $MODE_NETWORK) ms = cloudNetwork(f);
+            } else {
+                f[4] = exp(-cloudOpticalDepth(p, CLOUD_SUN, 1e30, featureJitter));
+            }
             float stepT = exp(-CLOUD_SIGMA * rho * dt);
             float weight = T * CLOUD_ALBEDO * (1.0 - stepT);
             radiance += weight * (CLOUD_SUN_COLOR * f[4] * phaseSun + ms);
@@ -425,6 +445,10 @@ vec3 cloudRender(vec3 eye, vec3 target, float fovY, vec2 ndc, float aspect, int 
     }
     if (mode >= $MODE_DEBUG_INSCATTER) return debug;
     return radiance + T * cloudSky(d);
+}
+
+vec3 cloudRender(vec3 eye, vec3 target, float fovY, vec2 ndc, float aspect, int mode, vec2 pixel) {
+    return cloudRenderEvery(eye, target, fovY, ndc, aspect, mode, pixel, 1);
 }
 """.trimStart()
     }

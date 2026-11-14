@@ -1,0 +1,13 @@
+{
+  "passed": [
+    "default light totals and peaks exactly match the original measurement",
+    "wider line and fewer samples on rerun"
+  ],
+  "sources": [
+    {
+      "path": "public/docs/chain_scene_to_light.md",
+      "name": "chain-scene-to-light-aliasing",
+      "fenceSha256": "b815e505946c90a04c997c5cd1097f44c24c048a1daed18cb027d84ed356cd5a"
+    }
+  ]
+}

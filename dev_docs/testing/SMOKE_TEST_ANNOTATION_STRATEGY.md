@@ -118,6 +118,11 @@ visual-diff baseline.
 The runner also fails ordinary execution errors and missing expected output
 unless explicitly allowed.
 
+Structured checks need no annotation key. Every `FIELD_CHECK {json}` line a test prints through
+`afield.tools.testing.Checks` (stdout for `jvm-main`, box output for `backdoor-box`) becomes a
+row in that test's `checks` in `results.json`, and a failed or malformed record fails the test.
+See "Structured check records" in `TESTING_STRATEGY.md`.
+
 ## Commands
 
 ```bash
@@ -130,6 +135,11 @@ Selection flags are `--id`, `--tag`, and `--runner` (repeatable). There is no
 `--id-prefix` and no top-level `--timeout`; duration belongs in `timeoutSec`.
 `--no-prewarm` tells the runner to rely on a server already serving `--port`
 rather than starting and retaining one for the run.
+
+`size: long` marks a test that the battery rule gates even though its `timeoutSec` is 60 or
+less; a `timeoutSec` over 60 already makes a test long, and `size: short` cannot override it.
+Short tests run on battery, long ones need AC or 80%, and `--allow-battery <id>` lets one named
+long test run on battery (`TESTING_STRATEGY.md`, "Continuous verification prerequisites").
 
 Platform `skipOn` entries are reported as skips. Keep opt-outs narrow and leave
 the reason beside the owning annotation.

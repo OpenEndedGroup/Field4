@@ -42,9 +42,9 @@ showImgGrid(
 )
 ```
 
-`PrincipalCurves.fit` takes the points as a flat array (x, y, x, y, … or x, y, z, … with
+[`PrincipalCurves.fit`](reference/graphics.md#principalcurves-kt--principalcurves--fit) takes the points as a flat array (x, y, x, y, … or x, y, z, … with
 `dimension = 3`), optional per-point weights, how many separate curves to start with, and how many
-nodes to use in all. It returns a `PrincipalForest`. `toFLines()` draws the curves as smooth
+nodes to use in all. It returns a [`PrincipalForest`](reference/graphics.md#principalcurves-kt-principalforest). `toFLines()` draws the curves as smooth
 splines through the forest's nodes, and `pointsFLine()` draws the input points.
 
 A fitted curve stops a little inside its last points, by about half the spacing between its
@@ -298,3 +298,13 @@ statistics, and pinning, splitting and replacing points.
     that no edge joins two strands. Four of the twelve failed that before each starting curve was
     given half its share of nodes. `PrincipalCurvesBenchmark` times growth at 10⁴, 10⁵ and 10⁶
     points in 2D and 3D: a 40-node tree through a million 3D points grows in about six seconds.
+
+## API reference
+
+- Fitting a principal forest: [`PrincipalCurves`](reference/graphics.md#principalcurves-kt-principalcurves) —
+  [`create`](reference/graphics.md#principalcurves-kt--principalcurves--create).
+- Initialising and refining the forest:
+  [`PrincipalForest`](reference/graphics.md#principalcurves-kt-principalforest) —
+  [`fit`](reference/graphics.md#principalcurves-kt--principalforest--fit),
+  [`initFromFLines`](reference/graphics.md#principalcurves-kt--principalforest--initfromflines),
+  [`refine`](reference/graphics.md#principalcurves-kt--principalforest--refine).

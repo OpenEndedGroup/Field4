@@ -109,17 +109,53 @@ From `code`
 Play both readings again, then take the sound apart: an onset per strike, a pitch per note.
 
 ```edn [field-box id="ds_listen" role="properties"]
-{"id" "ds_listen" "index" 3 "name" "listen back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "listen back" "_tombstone" false "frame" #afield/rect [860.0 500.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ds_listen_code_.kt" "lines" 17 "characters" 746 "sha256" "94f69ba501e5781c5fb5f9c20a953e66241fb9ecf5ef6830e5a53d8d90eead95"}]}
+{"id" "ds_listen" "index" 3 "name" "listen back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "listen back" "_tombstone" false "frame" #afield/rect [860.0 500.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ds_listen_code_.kt" "lines" 53 "characters" 2602 "sha256" "af2eb55ea90549dba21f37b8062a1904d24fde17bae81818fb0d3b5ef31d089e"}]}
 ```
 
 ```kotlin [field-property box="ds_listen" name="code" path="ds_listen_code_.kt"]
 // Play both readings again, then take the sound apart: an onset per strike, a pitch per note.
 val notes = DrawnScoreDocs.interpret(notation.space("score", x = 0.0..8.0, y = 84.0..48.0))
 val tuned = DrawnScoreDocs.pentatonic(notes)
-val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.4)
-val heard = [notes, tuned].map {
-    DrawnScoreDocs.listen(patRenderStereo(patTimed(it, beats = 8.0), cycles = 2, cps = 0.25, voice = voice), it)
+fun listen(audio: PatSoundDocs.Stereo, notes: List<TimedNote>): DrawnScoreDocs.Listening {
+    val sampleRate = 44100
+    val beats = 8.0
+    val cycles = 2
+    val cps = 0.25
+    val onsetTolerance = 0.030 // seconds: allow the detector's window to lead the strike
+    val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.4)
+    val mono = audio.mono
+    val secondsPerBeat = 1.0 / cps / beats
+    val onsets = PatSoundDocs.onsetPeaks(mono, threshold = 0.05).map { it.start.toDouble() / sampleRate }
+    val frames = patF0Frames(mono, sampleRate, minHz = 220.0, maxHz = 900.0)
+    val measured =
+        (0 until cycles).flatMap { cycle ->
+            notes.map { note ->
+                val start = (cycle * beats + note.start) * secondsPerBeat
+                val hold = (note.end - note.start) * secondsPerBeat * voice.sustain
+                val onset =
+                    onsets.minByOrNull { abs(it - start) }?.takeIf { abs(it - start) <= onsetTolerance } ?: Double.NaN
+                // Use only voiced frames wholly inside the held portion, away from its edges.
+                val pitches =
+                    frames
+                        .filter { frame ->
+                            val a = frame.startSample.toDouble() / sampleRate
+                            val b = (frame.startSample + frame.spanSamples).toDouble() / sampleRate
+                            frame.voiced && a >= start + 0.004 && b <= start + hold - 0.002
+                        }
+                        .map { it.midi }
+                        .sorted()
+                val midi = if (pitches.isEmpty()) Double.NaN else pitches[pitches.size / 2]
+                DrawnScoreDocs.Heard(note, start, onset, midi)
+            }
+        }
+    return DrawnScoreDocs.Listening(measured, onsets.size, frames)
 }
+val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.4)
+val heard =
+    [notes, tuned].map { reading ->
+        val audio = patRenderStereo(patTimed(reading, beats = 8.0), cycles = 2, cps = 0.25, voice = voice)
+        listen(audio, reading)
+    }
 val trace = heard[0].trace()
 showSignals(
     "drawn" to trace.map { it.third },

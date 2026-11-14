@@ -1,5 +1,4 @@
 import afield.graphics.scene.reading.*
-import afield.graphics.text.*
 
 // 1 · Marked breath. Whole runs, two selected words and an arclength bead.
 // Verbatim fragments of the supplied passage; font preparation happens before playback.

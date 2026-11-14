@@ -92,3 +92,8 @@ INSTALL offers missing Homebrew Python/CMake prerequisites; BUILD runs
 It installs the checksummed, pinned app into `~/Applications` if no app is installed, prepares
 Field's local OpenXR loader and selects VideoToolbox HEVC. Existing apps are retained.
 Open WiVRn and complete macOS permissions and headset pairing afterward.
+
+**WiVRn headset streaming on KosmicKrisp** runs `--prepare --kosmickrisp` instead, which also
+builds WiVRn's runtime with Field's patch (`optional/wivrn-macos/README.md`) so Field can stay on
+KosmicKrisp in VR. It needs Xcode and the LunarG Vulkan SDK in `~/VulkanSDK`, installs the port's
+missing Homebrew build dependencies, and rebuilds the runtime when Field's pin or patch changes.

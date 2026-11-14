@@ -8,6 +8,10 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class FirstRunTest {
+    @Test fun homebrewFailureNamesTheInterruptedLinkRecovery() {
+        assertTrue(installFailureAdvice("brew").any { "brew unlink" in it && "Cannot link" in it })
+        assertTrue(installFailureAdvice("apt-get").isEmpty())
+    }
     @Test fun browserOnlyWithoutExtrasDoesNotRequireCompilersOrDesktopPackages() {
         assertTrue(packagePlan("apt-get", false, setOf("g++", "cmake"), emptySet(), true).commands.isEmpty())
     }
@@ -143,6 +147,15 @@ class WiVRnPreparationTest {
         )
         kotlin.test.assertTrue(preparationCommands(setOf("wivrn-macos"), "linux").isEmpty())
         kotlin.test.assertTrue(preparationCommands(setOf("wivrn-macos"), "windows").isEmpty())
+    }
+
+    @kotlin.test.Test fun kosmicKrispPreparationAlsoBuildsThePatchedRuntime() {
+        kotlin.test.assertEquals(
+            listOf(listOf("python3", "tools/field_wivrn_macos.py", "--prepare", "--kosmickrisp")),
+            preparationCommands(setOf("wivrn-macos-kk"), "mac"),
+        )
+        kotlin.test.assertTrue(preparationCommands(setOf("wivrn-macos-kk"), "linux").isEmpty())
+        kotlin.test.assertTrue("brew" in extraTools(setOf("wivrn-macos-kk"), "mac"))
     }
 
     @kotlin.test.Test fun macWiVRnDoesNotReinstallAvailablePythonOrCommandLineTools() {

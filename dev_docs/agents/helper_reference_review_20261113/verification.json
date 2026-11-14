@@ -1,0 +1,240 @@
+{
+  "baseline": "a8c389e4bdf328b2beb07940fbcc2d93735d06e5",
+  "helpers": 61,
+  "selectedMethods": 176,
+  "pages": 46,
+  "checkedDestinations": 404,
+  "fences": 723,
+  "preserved": [
+    {
+      "path": "public/docs/a_pen_that_sees.md",
+      "fences": 9,
+      "sha256": "8f8af0228cea9c99fd24e2f3d4784aede43b75a7b9e59e623c6aee3b3ea903c1"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "fences": 76,
+      "sha256": "5e4ae1cc3008e191cf050e7661bd19be2df0d5ae98f2b73cc2d4e824ad52b741"
+    },
+    {
+      "path": "public/docs/agent_transcripts.md",
+      "fences": 38,
+      "sha256": "f060d8091a9b1ed1d8ad383b3a51eb448ba863c4cc5287e5ecb43f5d6bb0aac7"
+    },
+    {
+      "path": "public/docs/alife_examples.md",
+      "fences": 61,
+      "sha256": "b70ef1f689ee58bd0b73d8c8b81a0d2cd6df3d564e3642644fad8952abfa2538"
+    },
+    {
+      "path": "public/docs/animation_time_model.md",
+      "fences": 20,
+      "sha256": "fcec5da68eb3180bfbe3fe3941216c184bd77eb37d2901b65c631d04770ac995"
+    },
+    {
+      "path": "public/docs/boolean_network_music_examples.md",
+      "fences": 9,
+      "sha256": "77012ba0b4b8c2520d2fb38e2f862c5f0f9f4cd049ffadd03e58e8abe7d50106"
+    },
+    {
+      "path": "public/docs/boolean_networks_examples.md",
+      "fences": 5,
+      "sha256": "9d99d820d2fb5c7168a936b657ccdc367efc880c7773856c5c0527c49edb7ad8"
+    },
+    {
+      "path": "public/docs/braitenberg_vehicles.md",
+      "fences": 12,
+      "sha256": "923361e0e06094edcf2c2873988bfbf7dc9571f3cdac06b3fd859464ad4a946b"
+    },
+    {
+      "path": "public/docs/chain_ca_sound.md",
+      "fences": 7,
+      "sha256": "5d7f7612c45ba42eb8d5076fab9b650999c66032d011728b8f470d605b87d963"
+    },
+    {
+      "path": "public/docs/chain_drawn_morph.md",
+      "fences": 8,
+      "sha256": "6afeb7dfe29263741eb3b40a155dbbb605b26221a3f88fe2ef81bcb716de07c2"
+    },
+    {
+      "path": "public/docs/chain_drawn_score.md",
+      "fences": 8,
+      "sha256": "17b080aa6659d69800f56fed5345cbdf9f4c5997143accbd4f343e0901bd8c99"
+    },
+    {
+      "path": "public/docs/chain_flow_islands.md",
+      "fences": 7,
+      "sha256": "247d383a034098e613fa5bc5e02e333bae9edced40fe886a566348b7c59ace3f"
+    },
+    {
+      "path": "public/docs/chain_lambda_sound.md",
+      "fences": 7,
+      "sha256": "b1c6be5d162cb0d040927c0b0d7f7a357745d7e611e75e8fcedbb8c860b3ac75"
+    },
+    {
+      "path": "public/docs/chain_pattern_particles.md",
+      "fences": 9,
+      "sha256": "3cbd051639ed6a45442d48ccb135febcfb3ed9b688f73eeaa3e3bd406c4bad53"
+    },
+    {
+      "path": "public/docs/chain_physics_render.md",
+      "fences": 5,
+      "sha256": "4dedc510f073016ce9ec67429ba4616d6e99b3217090ecdeb6cf0ae6275b434d"
+    },
+    {
+      "path": "public/docs/chain_scene_to_light.md",
+      "fences": 6,
+      "sha256": "77c76d5cfa6cdc6b0daa4fc171066634a8db6a09332b63fab8278f69eab91752"
+    },
+    {
+      "path": "public/docs/contour_trees.md",
+      "fences": 3,
+      "sha256": "6bf9552a4544c70d81d85eb99b9ec2f5c2417a62e5e48a897dd126ee55fbdb25"
+    },
+    {
+      "path": "public/docs/direct_lighting.md",
+      "fences": 4,
+      "sha256": "6458284da7650580e4788eed44ab221497e1ef0ea8360f4661e5b4f9cc29d74a"
+    },
+    {
+      "path": "public/docs/fabricate_renderer.md",
+      "fences": 38,
+      "sha256": "0c64f0490188eeb9f45af2c03db97146b8a66f40c5c2cd428d2b9d816ae29c76"
+    },
+    {
+      "path": "public/docs/flow_matching.md",
+      "fences": 8,
+      "sha256": "1bf90fac634239a8b84c0489b7415921429e0830c0ef30bfd6fd794deeefe461"
+    },
+    {
+      "path": "public/docs/geometry_chains.md",
+      "fences": 3,
+      "sha256": "bcda9c195ab345cc3a0f418263a200cb02f79924f792748ebc2978cbea012897"
+    },
+    {
+      "path": "public/docs/growing_nca.md",
+      "fences": 13,
+      "sha256": "1b19e77cce07f51d5d65f6ffe51a5b01dfe5ab69b75c2355e83ddcdadf3ea77e"
+    },
+    {
+      "path": "public/docs/imgui_vr_panel.md",
+      "fences": 3,
+      "sha256": "c0ce96cd5e34e33543a31a30ea5c8e1eea3b4fc2acbde24ccfb9272c39eb2fad"
+    },
+    {
+      "path": "public/docs/interaction_nets_examples.md",
+      "fences": 5,
+      "sha256": "40a699d27902c397b0fe414d61e4bfd345570239289c526d83635efb2fe7bea9"
+    },
+    {
+      "path": "public/docs/learned_shader.md",
+      "fences": 13,
+      "sha256": "0556ef0c4bc5af7d9f7eac51eb095316c5b82697f23fa2ced7091bea3c06c846"
+    },
+    {
+      "path": "public/docs/loris.md",
+      "fences": 14,
+      "sha256": "d584b834aaa7ca91f3e044ca21a8241555449c93858454e609a34c01f10601f2"
+    },
+    {
+      "path": "public/docs/lp_curves.md",
+      "fences": 16,
+      "sha256": "73d0076188ab3d50cbcb4fb403d669a47dc0705c2ed49d5ef751da200657398c"
+    },
+    {
+      "path": "public/docs/matrix_profile.md",
+      "fences": 8,
+      "sha256": "6428133b62bbc4c28fc095108ea0fb8c93d9584d0114088407850867da7603c6"
+    },
+    {
+      "path": "public/docs/morpho_examples.md",
+      "fences": 10,
+      "sha256": "1925f93f1b9188ab0e52c90ca0243af5ccaa7aae85c8b8bfb796acbb8d3a5157"
+    },
+    {
+      "path": "public/docs/morpho_search.md",
+      "fences": 3,
+      "sha256": "05a740e62547b09933100bba5226e2c6ea00ba76d672162adfa432bbdf2b611c"
+    },
+    {
+      "path": "public/docs/morse_smale.md",
+      "fences": 6,
+      "sha256": "a6fa5a6d64bf460081e0b54200282cb31c1273522a01cb4a670c05fee48c81e3"
+    },
+    {
+      "path": "public/docs/neural_particles.md",
+      "fences": 15,
+      "sha256": "ac203e16bae203039ccd4e627b11bafd4f5b6619268d976ca5e45ad7802587fc"
+    },
+    {
+      "path": "public/docs/neural_reconstruction.md",
+      "fences": 4,
+      "sha256": "0dc089b0018e173b3cddc1f97656bc4d7ffc8c975e680e16923ff88bd398c08c"
+    },
+    {
+      "path": "public/docs/particle_lenia.md",
+      "fences": 10,
+      "sha256": "f99ff827a5011fde623a8c005d8b3411d6aff5969f0b8230d5b376b682f88ade"
+    },
+    {
+      "path": "public/docs/path_tracing.md",
+      "fences": 41,
+      "sha256": "528c35c270eae08fae167cf8da70053c8a82760d8562f7ec5b81a18d8e3c1537"
+    },
+    {
+      "path": "public/docs/physics.md",
+      "fences": 7,
+      "sha256": "bd869204d838ca92ef08a6ac13a7b0996a28482e07e33e366c78468f618967f6"
+    },
+    {
+      "path": "public/docs/principal_curves.md",
+      "fences": 5,
+      "sha256": "8e02657ec57aa73f1b3ed9e4fdf857fdada6e951a773ee52682bc8b92cc2a1e9"
+    },
+    {
+      "path": "public/docs/ray_tracing_examples.md",
+      "fences": 20,
+      "sha256": "e80426aa81e2a6f99ede8474657a06797a152da6c89a9b49bb37bdcca6155273"
+    },
+    {
+      "path": "public/docs/stacksl_evolve.md",
+      "fences": 9,
+      "sha256": "00f89f096f68ed2567fd42d98769e30ef0bb2e3c1a4ada8b61a68466cbdf5d6a"
+    },
+    {
+      "path": "public/docs/stacksl_examples.md",
+      "fences": 102,
+      "sha256": "57448d7fd2e7e3105ab8c062eca3d5239949044279d3fb263a5401dc5e07d2d3"
+    },
+    {
+      "path": "public/docs/stipple_transport.md",
+      "fences": 2,
+      "sha256": "f36c77c64071f05907c9713948517d5613a989fe0ca2db7f0f1771f7170b9786"
+    },
+    {
+      "path": "public/docs/studies.md",
+      "fences": 14,
+      "sha256": "2228f2678c7eebb28ab2d7f9f82580c3c1a4ba39a17c7e4714f92f5345726cc7"
+    },
+    {
+      "path": "public/docs/subharmonic_sound.md",
+      "fences": 29,
+      "sha256": "164bc6dbc79a322e1c0ed21a2fbd43cf07c16cace222411322e81aa2a108c903"
+    },
+    {
+      "path": "public/docs/teaching_a_pen.md",
+      "fences": 12,
+      "sha256": "fa21bfacfc7ca227af80f7c5206798afa62ddaa86c3dd275b57d418bbf64260f"
+    },
+    {
+      "path": "public/docs/temporal_memory.md",
+      "fences": 13,
+      "sha256": "26abaefe9aead25f7abea944f8b5f3ade0f79d21a8fa8f30f3e5cbe24cf25a13"
+    },
+    {
+      "path": "public/docs/vector_field_topology.md",
+      "fences": 6,
+      "sha256": "4bd5762d387b3cbedf99b33bfdc6f69b59d502df044f10b5618335328488e0c0"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "verdicts": [
+    {
+      "command": "macro write thermal_probe --file dev_docs/agents/transcripts/kratos_thermal_playground.yaml",
+      "ok": true
+    },
+    {
+      "command": "macro run thermal_probe",
+      "ok": true
+    },
+    {
+      "command": "wait-output kratos_thermal --kind display --contains \"Result revision\" --timeout 180",
+      "ok": true
+    },
+    {
+      "command": "screenshot-box kratos_thermal /Users/marc/.codex/worktrees/docs-code-catchup-nov12-evening/field4/build/teaching-code-open-implementations/kratos-playground.png",
+      "ok": true
+    },
+    {
+      "command": "stop kratos_thermal",
+      "ok": true
+    }
+  ],
+  "actualNativeSolve": true,
+  "workingLaunch": "Container selected through Kratos.probeAny",
+  "privateDocument": "teaching_thermal_verification",
+  "screenshot": "build/teaching-code-open-implementations/kratos-playground.png",
+  "boxStoppedAfterCapture": true,
+  "statusFormatting": "Markdown, temperatures to two decimals and timings to one decimal"
+}

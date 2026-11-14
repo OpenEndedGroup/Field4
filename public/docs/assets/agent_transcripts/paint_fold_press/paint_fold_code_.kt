@@ -6,11 +6,11 @@ run {
 
     val canvas = PaintCanvas(900, aspect = 1.4, seed = 7)
     val brush = canvas.brush(BrushKind.HogFlat, width = 70.0)
-    val blobs = listOf(
+    val blobs = [
         rgb(0.75, 0.1, 0.08) to FLine().moveTo(300, 150).cubicTo(380, 200, 440, 260, 500, 290),
         rgb(0.1, 0.2, 0.6) to FLine().moveTo(230, 360).cubicTo(330, 320, 420, 400, 490, 430),
         rgb(0.95, 0.75, 0.15) to FLine().moveTo(340, 560).lineTo(500, 520),
-    )
+    ]
     for ((color, line) in blobs) {
         brush.load(color, amount = 4.0, stiff = 0.5)
         canvas.stroke(line, brush, pressure = 1.0..1.0)

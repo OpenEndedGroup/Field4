@@ -117,4 +117,8 @@ The [measurement record](assets/path_traced_reconstruction/measurements.json) co
 
 This adapter supports **opaque diffuse and glossy surfaces with a pinhole camera**. It explicitly rejects transmission/coverage materials, participating media, fog and depth of field. Those effects need different correspondence and guide treatment; use the progressive path-tracing modes for them. Scene geometry is a snapshot: changing geometry recreates the tracer rather than implying that object motion vectors have been supplied.
 
+Ray Reconstruction needs an NVIDIA GPU and reconstructs every frame. For a single clean still on any
+Vulkan GPU, including a Mac, [denoise the accumulated image](path_tracing.md#denoising-a-still)
+instead. It reads the same guides.
+
 RR is optional. It may suppress an intentional noisy or unstable appearance, and a lower static error does not prove that every moving highlight remains faithful. Keep the raw view and test your own shader edits and abrupt changes.

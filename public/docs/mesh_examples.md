@@ -151,6 +151,14 @@ manifoldness as well; the Euler characteristic alone cannot establish that a mes
 `isWatertight()`, `isManifold()`, `eulerCharacteristic()`, `genus()`, `boundaryLoops()`,
 `surfaceArea()`, `signedVolume()`, and `topology()` gives you the object they all delegate to.
 
+Those read the mesh's vertex numbering. To ask about the surface instead, use `openEdges()` and
+`isClosed()`: they first treat vertices closer than `defaultWeldTolerance()` (a millionth of the
+bounding-box diagonal) as one vertex. With that, a mesh exported face by face from a CAD package
+reports only its real holes, not every seam between faces. `planarFaces(angleDegrees)` groups
+connected triangles that face the same way into faces. For each face it reports `outOfPlane`: how
+far its vertices lie from one plane, in the mesh's own units. A wall panel that should be flat and
+reports 2 is 2 units out of true.
+
 The other half of "looking at what you got" is checking the geometry against an answer you already
 know. This box marches a sphere, whose volume should converge to 4/3 π, at two resolutions, beside
 a drilled solid and a gyroid:
@@ -331,6 +339,13 @@ quadric of its incident face planes, every candidate collapse is scored by the e
 position, and the cheapest is taken until the budget is met. Collapses are vetoed by the **link
 condition** (so the mesh cannot go non-manifold), by a normal-flip test, and by a shape test that
 defers a collapse which would produce a sliver.
+
+`decimate` welds the mesh before it starts (`weldTolerance`, by default `defaultWeldTolerance()`),
+so a mesh made of unshared pieces is reduced as one surface. Without the weld, the two sides of
+each seam are reduced separately and pull apart. Decimation also never opens a surface: if the
+result has more `openEdges()` than the welded input, `decimate` runs again with twice the budget.
+In the worst case it returns the welded mesh unreduced. A closed mesh therefore stays closed, at
+the cost of an occasional result above the target.
 
 After reducing the triangle count, check the *deviation*: how far either mesh's vertices sit from
 the other's surface. `maxDeviation(a, b)` measures both directions, so you can see how much shape
@@ -658,6 +673,9 @@ Inspect connectivity before treating a mesh as a solid.
 | `val boundaryLoops: List<BoundaryLoopInfo>` | Every open boundary loop, measured — see [`BoundaryLoopInfo`](reference/graphics.md#mesh-repair-kt-boundaryloopinfo). Largest first. [API](reference/graphics.md#mesh-repair-kt). |
 | `val components: List<MeshComponentInfo>` | Each connected piece, measured — see [`MeshComponentInfo`](reference/graphics.md#mesh-repair-kt-meshcomponentinfo). Largest first. [API](reference/graphics.md#mesh-repair-kt). |
 | `fun TriMesh.weld(tolerance: Double = 1e-6): TriMesh` | Merge vertices closer together than `tolerance` and renumber the triangles onto the survivors. [API](reference/graphics.md#mesh-topology-kt). |
+| `fun TriMesh.defaultWeldTolerance(): Double` | The weld tolerance `openEdges`, `isClosed`, `planarFaces` and `decimate` use unless told otherwise: a millionth of the bounding-box diagonal. [API](reference/graphics.md#mesh-topology-kt). |
+| `fun TriMesh.openEdges(tolerance: Double = defaultWeldTolerance()): List<Pair<Int, Int>>` | The edges of the **surface** that only one triangle uses: its holes and open borders. [API](reference/graphics.md#mesh-topology-kt). |
+| `fun TriMesh.isClosed(tolerance: Double = defaultWeldTolerance()): Boolean` | True when the surface has no `openEdges`: every edge, once vertices within `tolerance` are welded, has a triangle on both sides. [API](reference/graphics.md#mesh-topology-kt). |
 | `fun TriMesh.fixWinding(): TriMesh` | Make the winding consistent across the whole mesh, then make it point **outward**. [API](reference/graphics.md#mesh-topology-kt). |
 | `fun TriMesh.removeDegenerateTriangles(areaEpsilon: Double = 1e-14): TriMesh` | Drop triangles with no area — a repeated index, or three collinear corners — and any vertex that leaves unreferenced. [API](reference/graphics.md#mesh-topology-kt). |
 | `fun TriMesh.removeUnusedVertices(): TriMesh` | Drop vertices no triangle references, renumbering the rest. [API](reference/graphics.md#mesh-topology-kt). |
@@ -755,7 +773,7 @@ Change surface normals, density or smoothness.
 | `fun TriMesh.loopSubdivide(times: Int = 1): TriMesh` | Loop subdivision, `times` rounds: every triangle becomes four, and every old vertex moves toward the average of its neighbours by the Loop weights. [API](reference/graphics.md#mesh-process-kt). |
 | `fun TriMesh.laplacianSmooth(iterations: Int = 1, lambda: Double = 0.5, cotangent: Boolean = false, preserveBoundary: Boolean = true): TriMesh` | Laplacian smoothing: each vertex moved `lambda` of the way toward the weighted average of its neighbours, `iterations` times. [API](reference/graphics.md#mesh-process-kt). |
 | `fun TriMesh.taubinSmooth(iterations: Int = 10, lambda: Double = 0.5, mu: Double = -0.53, cotangent: Boolean = false, preserveBoundary: Boolean = true): TriMesh` | Taubin λ/μ smoothing: a shrinking pass at `+λ` followed by an inflating pass at `-μ`, `iterations` times. [API](reference/graphics.md#mesh-process-kt). |
-| `fun TriMesh.decimate(targetTriangles: Int, maxError: Double? = null): TriMesh` | Simplify to at most `targetTriangles` by quadric-error-metric edge collapse. [API](reference/graphics.md#mesh-process-kt). |
+| `fun TriMesh.decimate(targetTriangles: Int, maxError: Double? = null, weldTolerance: Double = defaultWeldTolerance()): TriMesh` | Simplify towards `targetTriangles` by quadric-error-metric edge collapse, without increasing the number of open edges. [API](reference/graphics.md#mesh-process-kt). |
 | `fun TriMesh.quality(): MeshQuality` | Measure this mesh's triangle shapes — see [`MeshQuality`](reference/graphics.md#mesh-process-kt-meshquality). [API](reference/graphics.md#mesh-process-kt). |
 | `MeshQuality` | How well-shaped a mesh's triangles are — the number to look at before and after a remesh, a decimation or a marching pass. [API](reference/graphics.md#mesh-process-kt). |
 
@@ -777,6 +795,8 @@ Measure a surface or query where points and rays meet it.
 | `fun TriMesh.mixedVertexAreas(): DoubleArray` | Per-vertex **mixed Voronoi area** — the area each vertex "owns", the denominator both curvatures need. [API](reference/graphics.md#mesh-measure-kt). |
 | `fun TriMesh.gaussianCurvature(): DoubleArray` | Discrete Gaussian curvature per vertex: the angle deficit \( 2\pi - \sum\theta \) divided by the vertex's mixed area. [API](reference/graphics.md#mesh-measure-kt). |
 | `fun TriMesh.meanCurvature(): DoubleArray` | Discrete mean curvature per vertex, signed against the surface normal: half the magnitude of the cotangent Laplacian, divided by the mixed area. [API](reference/graphics.md#mesh-measure-kt). |
+| `PlanarFace` | One flat face of a mesh — a connected run of triangles facing the same way — and how far its vertices stray from the plane they share. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun TriMesh.planarFaces(angleDegrees: Double = 1.0, weldTolerance: Double = defaultWeldTolerance()): List<PlanarFace>` | The mesh's faces in the CAD sense — connected groups of triangles that face the same way — each with the distance its vertices lie out of its plane. [API](reference/graphics.md#mesh-measure-kt). |
 | `MeshBvh` | A bounding-volume hierarchy over a mesh's triangles: build once, query many times. [API](reference/graphics.md#mesh-measure-kt). |
 | `fun TriMesh.bvh(leafSize: Int = 8): MeshBvh` | Build a [`MeshBvh`](reference/graphics.md#mesh-measure-kt-meshbvh) over this mesh. Hold on to it — building is the expensive part. [API](reference/graphics.md#mesh-measure-kt). |
 | `fun TriMesh.raycast(origin: Vec3, direction: Vec3): RayHit?` | One-shot ray query. Builds a BVH, so use `bvh` directly for more than a handful of rays. [API](reference/graphics.md#mesh-measure-kt). |

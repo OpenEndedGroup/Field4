@@ -13,6 +13,7 @@ import kotlin.math.sin
 /** Run with ./gradlew smokeSolidCraft: builds one design per construction feature and checks its geometry. */
 object SolidCraftBuilderSmokeTest {
     private val report = StringBuilder()
+    private val failures = mutableListOf<IllegalStateException>()
 
     private fun body(design: SolidCraftDesign, index: Int = 0): JSONObject = design.summary().getJSONArray("bodies").getJSONObject(index)
 
@@ -25,7 +26,8 @@ object SolidCraftBuilderSmokeTest {
                 report.append("  $label: ${mesh.faceIds.size} triangles\n")
             }
         } catch (t: Throwable) {
-            throw IllegalStateException("$label failed: ${t.message}\n${builder.json()}", t)
+            // Every case runs, so one rev shows everything it broke; main fails at the end.
+            failures += IllegalStateException("$label failed: ${t.message}\n${builder.json()}", t)
         }
     }
 
@@ -101,7 +103,9 @@ object SolidCraftBuilderSmokeTest {
         // Sweep along a 3D wire made from a Field FLine: a trefoil knot stopped one step short of its
         // start. Since v0.30 a closed path is sewn shut, which needs the profile to come back unturned,
         // and a knot turns it (about 127°); the open knot is a capped tube. The profile is drawn on the
-        // plane square to the knot's start, so the tube is true: volume = πr² × length.
+        // plane square to the knot's start, so the tube is true: volume = πr² × length. The wire is
+        // sampled at its default 1 mm: since v0.41 sweeps go through SMLib, which refuses this tube
+        // (status 1001) at 0.5 mm and builds it at 1, 1.5 and 2 mm, within 0.1% of the closed form.
         val knot = FLine().moveTo(0f, -8f, 0f).also { l ->
             for (i in 1..239) {
                 val t = i / 240.0 * 2 * PI
@@ -111,12 +115,21 @@ object SolidCraftBuilderSmokeTest {
         val knotLength = knot.cursor().lengthD().toDouble()
         case("sweep along FLine trefoil", solidCraft {
             val section = sketch(planeSquareTo(knot)) { circle(0.0, 0.0, 2.5) }
-            sweep(section, sketch("XY") { wire(knot, spacing = 0.5f) })
-        }) { d -> near("trefoil tube volume", body(d).getDouble("volume"), PI * 2.5 * 2.5 * knotLength, 3e-2) }
+            sweep(section, sketch("XY") { wire(knot) })
+        }) { d -> near("trefoil tube volume", body(d).getDouble("volume"), PI * 2.5 * 2.5 * knotLength, 1e-3) }
 
-        // A sweep caps both ends even when its path closes, so a ring is two half sweeps joined:
-        // the join removes the touching caps, leaving exactly a torus's area, genus 1. (The same join
-        // on the trefoil's freeform halves fails in SolidCraft v0.15.0 after minutes: "no result".)
+        // A sweep round a closed path joins its end to its start with no caps (since v0.41): a circle
+        // path gives exactly a torus's area, genus 1.
+        case("ring from one sweep round a circle", solidCraft {
+            sweep(sketch("XZ") { circle(20.0, 0.0, 2.5) }, sketch("XY") { circle(0.0, 0.0, 20.0) })
+        }) { d ->
+            near("torus area", body(d).getDouble("area"), 4 * PI * PI * 20.0 * 2.5, 1e-3)
+            val m = d.mesh(0, 0.05).toTriMesh().weld()
+            check(m.isWatertight() && m.genus() == 1) { "ring is not a closed genus-1 solid: genus ${m.genus()}" }
+        }
+
+        // Two half sweeps joined make the same ring: the join removes the touching caps. (At v0.41 the
+        // same join on the trefoil's freeform halves is refused by SMLib's check of the result.)
         case("ring from two joined half sweeps", solidCraft {
             sweep(sketch("XZ") { circle(20.0, 0.0, 2.5) }, sketch("XY") { arc(0.0, 0.0, 20.0, 0.0, -20.0, 0.0) })
             sweep(sketch("XZ") { circle(-20.0, 0.0, 2.5) }, sketch("XY") { arc(0.0, 0.0, -20.0, 0.0, 20.0, 0.0) }, operation = SolidCraftOperation.JOIN)
@@ -188,6 +201,12 @@ object SolidCraftBuilderSmokeTest {
         val bad = runCatching { solidCraft { extrude(sketch { line(0.0, 0.0, 10.0, 0.0) }, "5") }.open() }.exceptionOrNull()
         check(bad != null) { "an extrude of an open curve unexpectedly evaluated" }
 
+        if (failures.isNotEmpty()) {
+            failures.forEach { System.err.println(it.message) }
+            val first = failures.first()
+            failures.drop(1).forEach(first::addSuppressed)
+            throw IllegalStateException("${failures.size} SolidCraft builder case(s) failed; passed:\n$report", first)
+        }
         print("SolidCraft builder smoke passed:\n$report")
     }
 }

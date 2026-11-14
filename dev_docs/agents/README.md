@@ -25,6 +25,9 @@ Two hard boundaries keep that split clean:
 The repo-wide entry point is [`../../AGENTS.md`](../../AGENTS.md); this folder is the
 detailed reference it points into.
 
+For authoring and review, use the compact, prompt-ready
+[box-code house style](BOX_CODE_HOUSE_STYLE.md).
+
 ## I want to…
 
 | Goal | Read | In one line |

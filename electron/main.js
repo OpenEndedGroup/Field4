@@ -19,6 +19,13 @@ const APP_ICON_ICO = path.join(__dirname, "Field4.ico");
 const APP_ICON_1024 = path.join(__dirname, "icon-1024.png");
 const TAB_STRIP_PRELOAD = path.join(__dirname, "tabstrip-preload.js");
 const FIELD_PRELOAD = path.join(__dirname, "field-preload.js");
+// Chromium's generic `monospace` is Courier on macOS. It shows wherever a page names no font (a bare
+// <textarea>, <pre>, <code>) or a stack falls through to `monospace` before Iosevka Web has loaded.
+// Point the generic at a real coding font for every page, iframe included, in a Field tab.
+const FIELD_DEFAULT_FONT_FAMILY = {
+  monospace:
+    process.platform === "darwin" ? "Menlo" : process.platform === "win32" ? "Consolas" : "DejaVu Sans Mono",
+};
 const TAB_STRIP_HEIGHT = 44;
 const TAB_STRIP_REVEAL_ZONE_HEIGHT = 6;
 const TAB_TRAFFIC_LIGHT_INSET = process.platform === "darwin" ? 88 : 12;
@@ -1168,6 +1175,7 @@ function createMainWindow() {
           preload: FIELD_PRELOAD,
           contextIsolation: true,
           sandbox: false,
+          defaultFontFamily: FIELD_DEFAULT_FONT_FAMILY,
         },
       }),
     };

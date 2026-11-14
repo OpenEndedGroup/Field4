@@ -609,3 +609,11 @@ and does not tell you.
 See also [Stipple transport](stipple_transport.md), which carries a uniform
 sheet onto a stippled image and animates between images with one network, trained in PyTorch and
 queried from Field without Python.
+
+## API reference
+
+- Sampling and integrating the learned flow:
+  [`FlowMatchField`](reference/machine-learning.md#flowmatching-kt-flowmatchfield) —
+  [`paths`](reference/machine-learning.md#flowmatching-kt--flowmatchfield--paths),
+  [`sample`](reference/machine-learning.md#flowmatching-kt--flowmatchfield--sample),
+  [`transport`](reference/machine-learning.md#flowmatching-kt--flowmatchfield--transport).

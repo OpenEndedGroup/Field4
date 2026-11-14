@@ -202,7 +202,7 @@ ${ctx.documentGuides.catalogueContext()}
 
     if (ctx.attachments.isNotEmpty() || ctx.resolveAttachment != null) {
         ad("tools.attachments", "- ListAttachments: lists available attached context files.")
-        ad("tools.attachments", "- AttachmentRequest: read bounded source excerpts by name/path/ref (6000 characters by default). Use find with a literal function name or error text to jump to relevant code; searchMatched=false explicitly reports a miss. Increase maxChars only when broader context is necessary. Continue with nextOffset and expectedSourceHash; isExcerpt means this is not the whole file and must not be used as a full-file replacement. Responses may suggest relatedGuides and relatedExamples.")
+        ad("tools.attachments", "- AttachmentRequest: read bounded source excerpts by name/path/ref (6000 characters by default). A file box's uid or name, or a file path, reads that file; PDFs come back as their extracted text. Use find with a literal function name or error text to jump to relevant code; searchMatched=false explicitly reports a miss. Increase maxChars only when broader context is necessary. Continue with nextOffset and expectedSourceHash; isExcerpt means this is not the whole file and must not be used as a full-file replacement. Responses may suggest relatedGuides and relatedExamples.")
     }
 
     val isKotlin = lang.name.equals("Kotlin", ignoreCase = true)
@@ -382,6 +382,7 @@ fun fieldGraphToolGuidance(editorTurn: Boolean, seesOutput: Boolean = true): Str
     appendLine("- Box graph and execution (act on the live document directly; each change is recorded like a UI edit):")
     appendLine("  - ListBoxesRequest, NewBoxRequest(name, code, parent), DeleteBoxRequest, ConnectBoxesRequest(parent, child), DisconnectBoxesRequest.")
     appendLine("  - GetBoxPropertyRequest / SetBoxPropertyRequest (whole text) / PatchBoxTextRequest (find+replace, or a line range) for a box's `code` or other text property.")
+    appendLine("  - Something the user names in this document (a box, a dropped file, a PDF) is found with ListBoxesRequest, not a search; read a file box with AttachmentRequest(file = its uid). Semantic, workspace and repo searches span every document and Field's source: use them only for what this document does not hold.")
     appendLine("  - RunBoxRequest runs a box once and waits for ITS verdict; LaunchBoxRequest starts one that keeps running (`loop { }`, animation); StopBoxRequest stops it; ReadBoxOutputRequest reads what it printed or displayed since a marker, and can wait for text.")
     if (seesOutput) appendLine("  - ViewBoxOutputRequest(box) captures what the box's output panels SHOW and attaches the picture, with its measured colours. After running a box that displays HTML, SVG, a table, a chart or a drawing, look at it before you say it is done, and fix what does not match the request: printed text and HTML source do not tell you what was drawn.")
     appendLine("  - Run/Launch compile the code themselves. `success: false` carries the compiler/runtime diagnostics in `error` and `errors`: fix and run again. Never claim a box works unless a Run/Launch result said success.")

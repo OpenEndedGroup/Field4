@@ -9,9 +9,14 @@ Read `dev_docs/scout/BACKFILL_2026-11-06.md` once if this is your first run on a
 journal's `reports/` is empty). It is the year-long test this routine was designed from, and its
 cards are the standard to write to.
 
+To shorten the commands below, define a shell function, not a variable: the agent's shell is
+zsh, which does not word-split `$S`, so `S="uv run ... scout.py"; $S harvest` fails with "no such
+file or directory". `S(){ uv run --project $REPO python $REPO/tools/scout.py "$@"; }` works in
+zsh and bash.
+
 ## 1. Marc's verdicts
 
-`python3 $REPO/tools/scout.py verdicts`
+`uv run --project $REPO python $REPO/tools/scout.py verdicts`
 
 This reads every digest in `$JOURNAL/digests/` for `verdict:` lines Marc has filled in. `yes` goes
 to `approved.md` (the self-improve loop's scout backlog), `no` is recorded, and `later` puts the link
@@ -21,7 +26,7 @@ missed something; a `yes: with the drawing layer` tells you what kind of "What F
 
 ## 2. Harvest
 
-`python3 $REPO/tools/scout.py harvest`
+`uv run --project $REPO python $REPO/tools/scout.py harvest`
 
 It collects from `routines/scout/sources.json`: every HN story above 15 points (the `hn.min_points` floor); HN title and URL
 queries for topics Field already works on, with a one-point floor; lobste.rs tags; and a list of
@@ -32,10 +37,10 @@ with the same failure belong in `SCRATCHPAD.md` as a sources fix for Marc.
 
 ## 3. The title pass: drop only the plainly off-domain
 
-`python3 $REPO/tools/scout.py triage-list > $JOURNAL/titles.tsv`
+`uv run --project $REPO python $REPO/tools/scout.py triage-list > $JOURNAL/titles.tsv`
 
 The columns are key, title, domain and points, plus any topic tags. Write `$JOURNAL/drop.tsv` listing the keys
-to **drop**, one per line, then run `python3 $REPO/tools/scout.py triage --drop $JOURNAL/drop.tsv`,
+to **drop**, one per line, then run `uv run --project $REPO python $REPO/tools/scout.py triage --drop $JOURNAL/drop.tsv`,
 which queues everything else for reading. (`*.tsv` is not committed.)
 
 Drop a title only when no page behind it could matter to a live-coding environment for graphics,
@@ -53,7 +58,7 @@ two thirds of the HN stories and almost nothing from the feeds.
 
 ## 4. Fetch
 
-`python3 $REPO/tools/scout.py fetch`
+`uv run --project $REPO python $REPO/tools/scout.py fetch`
 
 It fetches up to 40 queued pages (topic hits first, then by points) to `$JOURNAL/pages/<key>.txt`,
 and runs any watch checks that are due. A YouTube or Vimeo link is read through `yt-dlp` (on `PATH`): the page holds its title, channel, chapters, description and English captions as text, then its HN or lobste.rs discussion, and the video itself is saved as `pages/<key>.mp4` (480p, at most 400 MB, deleted after 14 days; `fetch --no-video-download` skips it). Judge a talk from its captions. When yt-dlp fails the page says so and keeps the discussion. GitHub repos arrive as their README plus license, stars,
@@ -65,7 +70,7 @@ when the discussion suggests a real explainer. Whatever stays queued is fetched 
 
 ## 5. Read every page and write a card
 
-`python3 $REPO/tools/scout.py reading-list` lists `key`, page path and title for each fetched page.
+`uv run --project $REPO python $REPO/tools/scout.py reading-list` lists `key`, page path and title for each fetched page.
 Read the whole page file, then write `$JOURNAL/cards/<key>.md`. Every page gets a file, even a drop.
 A row marked `[watch: page changed]` is a watched link whose page moved: read the new page and
 replace its old card.
@@ -150,12 +155,12 @@ Rules for the fields:
 - Write plainly, in the voice of `dev_docs/agents/DOCS_WRITING_RULES.md`: no hype, no invented
   vocabulary, and no claims the page doesn't support.
 
-Then run `python3 $REPO/tools/scout.py ingest-cards`. It validates every card for a fetched page
+Then run `uv run --project $REPO python $REPO/tools/scout.py ingest-cards`. It validates every card for a fetched page
 and records it. Fix every `FAULT` line and run it again until there are none.
 
 ## 6. Digest
 
-`python3 $REPO/tools/scout.py digest`
+`uv run --project $REPO python $REPO/tools/scout.py digest`
 
 Once three days have passed since the last digest and at least three cards are waiting, it writes
 `$JOURNAL/digests/<date>.md`. New ideas come first, then news touching work Field already has, each

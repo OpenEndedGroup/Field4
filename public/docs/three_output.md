@@ -136,9 +136,11 @@ three {
 ```
 
 `xray` is the **X-ray** button, `export` is **Export GLB**, `linkCamera` is **Link camera**,
-`review` is **Pick** with its notes, `parts` is the **Parts** list and `light` is the **Light**
-slider. `controls(ThreeControls.ALL)` asks for every one. `threeLines(...)` and
-`threeInspect(...)` take the same choice as a `controls = ThreeControls(...)` argument.
+`review` is **Pick** with its notes, `parts` is the **Parts** list, `light` is the **Light**
+slider, `realism` is **Realism** and `pathTrace` is **Path trace**
+([below](#realism-and-path-tracing)). `controls(ThreeControls.ALL)` asks for every one.
+`threeLines(...)` and `threeInspect(...)` take the same choice as a `controls = ThreeControls(...)`
+argument.
 
 Press **E** in any view to show all the controls it did not ask for; press it again to put them
 away. That way you can still pick a feature or export a file from a figure that was made only to
@@ -326,6 +328,35 @@ three(name = "studio", channel = "studio", width = 560, height = 420) {
 view. A contact sheet and X-ray draw without it, and `studio(ambientOcclusion = false)` turns it off.
 `geometry { }` uses this look for its models; see the `madp_geometry` starting point.
 
+### Realism and path tracing
+
+`controls(realism = true)` puts a **Realism** button on the toolbar that turns the studio look on
+and off from the view, so you can compare a model plain and lit without editing the box. It works
+in Y-up and Z-up views. A view that calls `studio()` starts with it pressed and uses that
+call's settings. Any other view gets soft shadows, ambient occlusion and the light of a neutral
+room, which keeps faces the key light misses from going flat. The button keeps its last setting
+when the box runs again.
+
+`controls(pathTrace = true)` adds **Path trace**, which traces the same scene on the GPU with
+[three-gpu-pathtracer](https://github.com/gkjohnson/three-gpu-pathtracer). Light bounces between
+surfaces, so the underside of a roof picks up light reflected off the floor below it. The image
+starts grainy and clears as samples accumulate; the button shows the count, and tracing stops at
+512 samples per pixel. While you orbit, or while a part moves, the Realism view draws instead,
+and the traced image fades back in once the view is still. Lines, points and handles are drawn
+over the traced image and hidden where a surface is in front of them.
+
+```diffstatic {data-lang=kotlin}
+three {
+    mesh(model, wireframe = false)
+    controls(realism = true, pathTrace = true)
+}
+```
+
+!!! note
+    Path tracing traces surfaces with a standard material that are not close to fully transparent;
+    other surfaces are drawn over the traced image. It draws in a single view, not in a contact
+    sheet, X-ray, or a published page. It is heavy on the GPU, so it stays off until you press it.
+
 ### One scene, two kinds of thing
 
 A gyroid marched inside a finite box is an **open** surface. Where it reaches the edge of the
@@ -392,6 +423,11 @@ CPU rasterizer's camera:
 - **`fieldOfViewDegrees`** — vertical. Smaller is a longer lens and less perspective.
 
 The names and meanings match, so one camera can be handed to either renderer.
+
+From the page, a script or a film reads and sets the view's camera directly: `FieldViewer.cameraPose()` returns
+`{eye, target, up, zoom, fov}` in the scene's units, and `FieldViewer.setCamera(pose)` puts the camera there and
+draws at once (`up`, `fov` and `zoom` are optional). A pose set this way holds across the box's redraws, as an orbit
+by hand does, until the box asks for a different `camera(...)`.
 
 ## Contact sheets
 
@@ -532,7 +568,7 @@ lists them all, and what each is for:
 
 | path | what it draws | where the pixels are made | reach for it when |
 |---|---|---|---|
-| `three`, `threeGrid`, `threeTurntable`, `threeLines`, `threeInspect` — `afield/graphics/three/Three.kt`, `ThreeJsViewer.kt` | FLines and `TriMesh`es together, in 3D | **WebGL** (three.js r184, vendored) in a `/threejs` iframe inside the box output | you want to turn it; you want a solid and its annotations in one scene. The default for the whole `showMesh` family |
+| `three`, `threeGrid`, `threeTurntable`, `threeLines`, `threeInspect` — `afield/graphics/three/Three.kt`, `ThreeJsViewer.kt` | FLines and `TriMesh`es together, in 3D | **WebGL** (three.js r187, vendored) in a `/threejs` iframe inside the box output | you want to turn it; you want a solid and its annotations in one scene. The default for the whole `showMesh` family |
 | `renderPng`, `renderPixels`, `toFigureHtml`, `toHTML`, `showMeshDiagnosis`, `MeshRenderer.CPU` — `afield/graphics/visionos/VisionGeometryPreview.kt` | one `TriMesh`, fixed camera, still | **CPU z-buffer in the JVM**, AWT-free, encoded by `PngEncoder` | you need the same pixels twice (see below); there is no WebGL context to spare; you want a pixel buffer to composite by hand |
 | `lines`, `l`, `drawToSVG`, `inspect` — `afield/ui/visualization/someSkiko.kt` | FLines, **2D only** | **SVG text** emitted by a Skia recording canvas; the browser rasterizes it | 2D figures: crisp at any zoom, tiny payload, headless-safe |
 | `lines(editable = true)`, and the automatic upgrade when an FLine has `onClick` or `hoverColor` — `FLineEditableSvg.kt` | the same, plus click / hover / drag / freehand | SVG in the browser, plus a server-side edit session | direct manipulation of control points; a figure you can click to name |
@@ -772,6 +808,126 @@ Uncategorised meshes, interactive FLines, and batched guides have their own fold
 A batched guide buffer is one selectable entry: it does not claim per-line visibility.
 Hidden geometry is excluded from picking and visible-scene exports, including X-ray views.
 
+## Parts by id: layers, metadata and styles
+
+A mesh's `id` names a part in the viewer. Give it a `layer` path to group it in the **Parts** list,
+or attach `metadata` for a viewer tool or page script to find by id. A part can also start `hidden`.
+
+```diffstatic {data-lang=kotlin}
+three(name = "house") {
+    mesh(walls, id = "walls", layer = ["Ground floor"], wireframe = false)
+    mesh(
+        door,
+        id = "door-1",
+        layer = ["Ground floor", "Doors"],
+        wireframe = false,
+        metadata = mapOf("hinge" to listOf(3.8, 0.0, 0.0), "swing" to 90),
+    )
+    mesh(roof, id = "roof", layer = ["Roof"], hidden = true, wireframe = false)
+    metadata("datum", 2.4) // scene-level, for tools: ctx.metadata()
+    controls(parts = true)
+}
+```
+
+When the box redraws, the viewer remembers which parts you hid and which part you selected, by id,
+even if their geometry has changed. `hidden = true` applies only the first time the view sees that id.
+From the page, `FieldViewer.parts()` lists the parts with their layers, metadata and visibility, and
+`FieldViewer.hidePart(id)` hides one; a viewer tool has the same through `ctx.parts()`, `ctx.part(id)`,
+`ctx.metadata()` and `ctx.hidePart(id)`, with each part's three.js objects.
+
+`style(id, ThreePartStyle)` sets a part's colour, opacity and emphasis (`ThreePartStyle.highlight()`,
+`ThreePartStyle.muted()`). The viewer draws a style as a material on the geometry it already has, so a box
+that only restyles parts sends no geometry. In a contact sheet each `panel(styles = …)` styles parts for that
+panel alone, so close-ups of one assembly can each show their own pair in red:
+
+```diffstatic {data-lang=kotlin}
+three(name = "contacts", width = 760, height = 320) {
+    for ((id, m) in pipes) mesh(m, id = id, panel = -1, wireframe = false)
+    columns(2)
+    panel(
+        title = "a meets b",
+        styles =
+            mapOf("a" to ThreePartStyle.highlight(), "b" to ThreePartStyle.highlight(), "c" to ThreePartStyle.muted()),
+    )
+    panel(
+        title = "b meets c",
+        styles =
+            mapOf("b" to ThreePartStyle.highlight(), "c" to ThreePartStyle.highlight(), "a" to ThreePartStyle.muted()),
+    )
+}
+```
+
+A colour a reviewer set on the stored part appearance wins over the box's style. None of layers, metadata or
+styles changes a part's review identity.
+
+## Parts that move
+
+A part can carry a declared motion — an `afield.geometry.kinematics.RigidMotion`, a rotation about an axis or
+a slide along a direction, with a range — and the viewer plays it. The toolbar gets **Play**, a scrubber and
+**At rest**; playing runs every motion from its `from` to its `to` and back on one timeline. A
+`ThreeMotionTrack` gives a value at each step of the motion, a clearance gap say, with the bands that colour
+it: the part glows in its band's colour while it is there, the readout names the worst part and by how much,
+and **Tracks** draws the paths of the track's points coloured step by step.
+
+```diffstatic {data-lang=kotlin}
+val swing = RigidMotion.rotation(vec(0.0, 0.0, 0.0), vec(0.0, 0.0, 1.0), 0.0, 90.0)
+val values = (0..18).map { it * 5.0 }
+val gaps = values.map { 1.1 - 0.9 * Math.cos(Math.toRadians(it)) }
+three(name = "door") {
+    mesh(door, id = "door", wireframe = false)
+    mesh(wall, id = "wall", wireframe = false)
+    motion(
+        "door",
+        motion = swing,
+        track = ThreeMotionTrack(
+            values,
+            gaps,
+            unit = "m",
+            bands = [ThreeTintBand.under(0.3, "under 0.3 m"), ThreeTintBand.near(0.5, "near")],
+            points = ThreeMotionTrack.points(vec(0.9, 0.0, 0.05)),
+        ),
+    )
+    timeline(periodSeconds = 6.0)
+}
+```
+
+A track straight from a clearance check is `ThreeMotionTrack.of(sweptClearance(part, swing, obstacles), bands)`
+([Swept clearance](swept_clearance.md)): its steps' values, gaps and nearest obstacles, so the part turns red
+exactly where the check found it too close. Track points are in the part's rest coordinates, where the motion's
+value 0 puts it.
+
+`motion(...)` names the part ids that move together (a leaf and its glass), and `at` the motion value the
+geometry is drawn at, which **At rest** shows. The motion goes to the viewer as its own JSON, so the viewer
+plays the motion a clearance check walked; the track is plain numbers. From a page, `FieldViewer.motion` has
+`play()`, `at(t)`, `rest()`, `tracks()` and `status()`. A redraw keeps the timeline where it was.
+
+## Redrawing a scene as it changes
+
+Call `three { … }` again with the same name to update the view on screen. Field sends only what
+changed: each part's arrays have a content hash, so the viewer fetches arrays it does not already
+have and keeps the drawn objects whose geometry is unchanged. In particular:
+
+* an unchanged part costs a few hundred bytes of description;
+* a part that only **moved** (turned and moved as a whole, with the same mesh) is found by the server and sent
+  as a `transform` on the geometry the viewer already has, so nothing is fetched for it;
+* a change of `style`, `metadata`, a label or the camera sends no geometry at all.
+
+So a slider that reshapes a few parts of a large assembly redraws in the time those few parts take. A drag on a
+200-part scene that reshapes three parts and moves five each step redraws in about 35 ms from the slider to the
+next frame, where re-sending the whole scene took about 215 ms; `tools/ui_regressions/three-drag-bench.kt` is
+the measurement (`run_ui_regressions.py --id three-drag-bench`). The viewer reports what the last
+update cost in its window's `fieldThreeWireStats` (bytes fetched, objects built and kept, milliseconds), and the
+server's `lastUpdate` on the view returned by `three` says how many parts went out as transforms.
+
+A part is matched to its previous self by its `id`, so give moving parts ids.
+
+When the box knows a part only moved, it can say so: pass the **same** mesh each redraw with
+`mesh(m, id = "carriage", transform = translation(x, 0.0, 0.0))` (or any column-major 4×4 matrix). The mesh is
+prepared once, nothing about it is hashed or compared again, and the viewer only moves its object. A `TriMesh`
+is a value whose arrays are never changed, so a mesh object handed over again is known to be the same mesh. On a
+large assembly whose parts mostly ride along with a few that reshape, keeping the riding parts as unchanged meshes
+placed by transforms, and the reshaping ones as small meshes of their own, is what keeps a drag step short.
+
 ## Editing a curve before an expensive operation
 
 `threeLines(curves, editable = true, width = 1000, onEditCommitted = { edited -> … })`
@@ -806,7 +962,7 @@ positions, normals and triangles it already has, downloads only the colours and 
 mesh on screen instead of rebuilding it. A 10,000-vertex sphere relit this way downloads 123 kB per
 redraw instead of 533 kB.
 
-Three.js ships with Field (`src/commonMain/resources/vendor/three/0.184.0/`), so the viewer works
+Three.js ships with Field (`src/commonMain/resources/vendor/three/0.187.0/`), so the viewer works
 offline.
 
 ## Play with it
@@ -872,6 +1028,31 @@ for (i in 0 until 120) {
 check(pressed.contains("true")) { "Reference axes button never appeared: " + pressed }
 ui.pause(1500)
 ```
+
+### Serving your own tools
+
+A tool that belongs to your project rather than to Field goes in a web folder that Field serves
+at `/extension-web/`. Field looks in these places in order and serves the first match:
+
+- `src/personal/web/` in the Field checkout;
+- `web/` in each [extension directory](installation.md#project-owned-kotlin-extensions) named by
+  `AFIELD_EXTENSION_DIRS` (or `-PfieldExtensionDirs`), next to its `kotlin/` and `resources/`;
+- each folder listed in `AFIELD_WEB_DIRS`, separated by `:` (`;` on Windows), served as it is.
+
+Name the tool by its path under the folder. `tools` appends a hash of the file's contents, so
+after you edit the file, the next run of the box loads the new version. Field sends these
+files with `Cache-Control: no-store`, so reloading the page fetches them again too. There is
+nothing to copy into `build/`.
+
+```diffstatic {data-lang=kotlin}
+three(name = "my-scene") {
+    tools("/extension-web/my_motion_tool.js") // my_motion_tool.js in a web folder
+    mesh(icosphereMesh())
+}
+```
+
+The hash covers only the module `tools` names. If that module imports other files, a reload
+picks up changes to them, but a redraw without a reload does not.
 
 Each module exports a default factory returning a descriptor with a unique `id`.
 `mount(context)` receives a toolbar element, `THREE`, the camera and controls,

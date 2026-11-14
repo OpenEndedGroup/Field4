@@ -62,7 +62,6 @@ val graph = readingDiagram {
             radius = if (n.leaf) .0025f else .004f
             shape = DiagramPointShape.RING
         }
-
     }
     val particles = mutableMapOf<Int, DiagramParticle>()
     val words =

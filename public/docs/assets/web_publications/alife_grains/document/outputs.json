@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-11T16:34:04.606Z",
+  "capturedAt": "2026-11-14T02:24:30.596Z",
   "documentName": "alife_grains",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 473,
-      "height": 56,
+      "height": 54,
       "path": "outputs/0.html"
     },
     {
@@ -24,7 +24,7 @@
         "svg"
       ],
       "width": 473,
-      "height": 56,
+      "height": 54,
       "path": "outputs/1.html"
     },
     {
@@ -36,7 +36,7 @@
         "svg"
       ],
       "width": 473,
-      "height": 56,
+      "height": 54,
       "path": "outputs/2.html"
     },
     {
@@ -48,7 +48,7 @@
         "svg"
       ],
       "width": 473,
-      "height": 56,
+      "height": 54,
       "path": "outputs/3.html"
     },
     {
@@ -123,8 +123,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 254,
-      "height": 52,
+      "width": 262,
+      "height": 50,
       "path": "outputs/10.html"
     },
     {

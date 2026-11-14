@@ -79,9 +79,9 @@ loop {
     val now = System.nanoTime()
     if (now - lastStats > 1_000_000_000L) {
         lastStats = now
-        display(
+        markdown(
             "frame",
-            "<div style='padding:12px;width:440px'>${if (drawing.textBlurNeedsRebuild) "Blur capacity changed: rebuild Drawing. " else ""}Frost: ${drawing.frost.activeSurfaces} active / ${drawing.frost.allocatedSurfaces} cached · ${drawing.frost.allocatedBytes / (1024 * 1024)} MiB · ${drawing.frost.omittedSurfaces} over budget. Text caches: ${drawing.textBlurConfig.width}×${drawing.textBlurConfig.height}, minimum ${drawing.textBlurConfig.minimumSize}px, max ${2*drawing.textBlurConfig.maximumRadius+1} taps, ${drawing.textBlurCacheBytes/(1024*1024)} MiB. Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.</div>",
+            "${if (drawing.textBlurNeedsRebuild) "Blur capacity changed: rebuild Drawing. " else ""}Frost: ${drawing.frost.activeSurfaces} active / ${drawing.frost.allocatedSurfaces} cached · ${drawing.frost.allocatedBytes / (1024 * 1024)} MiB · ${drawing.frost.omittedSurfaces} over budget. Text caches: ${drawing.textBlurConfig.width}×${drawing.textBlurConfig.height}, minimum ${drawing.textBlurConfig.minimumSize}px, max ${2*drawing.textBlurConfig.maximumRadius+1} taps, ${drawing.textBlurCacheBytes/(1024*1024)} MiB. Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.",
         )
     }
     frame()

@@ -4,7 +4,7 @@
 
 Light sources, fixtures and control protocols for working with physical and rendered lighting.
 
-8 source file(s), 206 public symbol(s), 206 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+8 source file(s), 216 public symbol(s), 208 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -84,6 +84,7 @@ An Art-Net 4 port-address: the 15-bit universe number, split Net (7 bits) : SubN
 | <a id="artnet-kt--portaddress--universe"></a>[<code class="highlight"><span class="k">val</span> <span class="n">universe</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/io/dmx/ArtNet/#L360) | Bits 3..0. |
 | <a id="artnet-kt--portaddress--subuni"></a>[<code class="highlight"><span class="k">val</span> <span class="n">subUni</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/io/dmx/ArtNet/#L363) | The `SubUni` byte of ArtDmx: SubNet in the high nibble, Universe in the low. |
 | <a id="artnet-kt--portaddress--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/io/dmx/ArtNet/#L366) | `Net:SubNet:Universe` in decimal, the way Art-Net addresses are written: universe 1 is `0:0:1`. |
+| <a id="artnet-kt--portaddress-companion--of"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">of</span><span class="p">(</span><span class="n">net</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">subUni</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/io/dmx/ArtNet/#L370) | From the two bytes ArtDmx carries: `Net` and `SubUni`. |
 
 ## DmxBox.kt { #dmxbox-kt }
 
@@ -358,6 +359,14 @@ The channel layout of a kind of fixture: which [`Slot`](lighting.md#patch-kt-slo
 | <a id="patch-kt--fixtureprofile--hascolour"></a>[<code class="highlight"><span class="k">val</span> <span class="n">hasColour</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/io/dmx/Patch/#L79) | True if any slot carries colour (so `Slot.DIMMER` is a master, not the whole light). |
 | <a id="patch-kt--fixtureprofile--withgamma"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">withGamma</span><span class="p">(</span><span class="n">gamma</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/io/dmx/Patch/#L82) | The same layout with a different `gamma`. |
 | <a id="patch-kt--fixtureprofile--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/io/dmx/Patch/#L85) | The profile name and how many slots it occupies. |
+| <a id="patch-kt--fixtureprofile-companion--rgb"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">RGB</span></code>](source/jvmMain/afield/io/dmx/Patch/#L88) |  |
+| <a id="patch-kt--fixtureprofile-companion--grb"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">GRB</span></code>](source/jvmMain/afield/io/dmx/Patch/#L89) |  |
+| <a id="patch-kt--fixtureprofile-companion--rgbw"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">RGBW</span></code>](source/jvmMain/afield/io/dmx/Patch/#L90) |  |
+| <a id="patch-kt--fixtureprofile-companion--rgbwa"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">RGBWA</span></code>](source/jvmMain/afield/io/dmx/Patch/#L91) |  |
+| <a id="patch-kt--fixtureprofile-companion--dimmer"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">DIMMER</span></code>](source/jvmMain/afield/io/dmx/Patch/#L92) |  |
+| <a id="patch-kt--fixtureprofile-companion--dimmer16"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">DIMMER16</span></code>](source/jvmMain/afield/io/dmx/Patch/#L93) |  |
+| <a id="patch-kt--fixtureprofile-companion--rgb16"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">RGB16</span></code>](source/jvmMain/afield/io/dmx/Patch/#L94) |  |
+| <a id="patch-kt--fixtureprofile-companion--drgb"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">DRGB</span></code>](source/jvmMain/afield/io/dmx/Patch/#L95) |  |
 
 ### Fixture { #patch-kt-fixture }
 
@@ -487,6 +496,7 @@ The E1.31 §6.7.2 sequence-number rule, per source per universe.
 | --- | --- |
 | <a id="sacn-kt--sacnsequence--accept"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">accept</span><span class="p">(</span><span class="n">sequence</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/io/dmx/Sacn/#L348) | Returns true to accept `sequence` (and remember it), false to discard the packet. |
 | <a id="sacn-kt--sacnsequence--reset"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/io/dmx/Sacn/#L358) | Forget the last sequence number, e.g. after the source timed out. |
+| <a id="sacn-kt--sacnsequence-companion--isnewer"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">isNewer</span><span class="p">(</span><span class="n">last</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">next</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/io/dmx/Sacn/#L362) | The stateless form of the rule: would `next` be accepted after `last`? |
 
 ## SceneOnARig.kt { #sceneonarig-kt }
 

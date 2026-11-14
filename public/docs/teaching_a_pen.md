@@ -15,7 +15,7 @@ for **teaching a pen**.
 
 A pen learns from the *order* a drawing was made in: which way each stroke went, where the pen
 lifted, where it went down again. A scan of a drawing has none of that. A drawing that Field
-generates has all of it, because the code that drew it moved in an order. `PenDrawings` holds six
+generates has all of it, because the code that drew it moved in an order. [`PenDrawings`](reference/machine-learning.md#corpora-kt-pendrawings) holds six
 such generators and `HersheyFont` reads the Hershey fonts, single-stroke lettering from 1967
 designed for pen plotters. Here are three drawings from each.
 
@@ -391,3 +391,16 @@ with the commands under [Training on a corpus](#training-on-a-corpus).
     in eight hundred points, so they ship in half precision. And `curliness` first measured the
     raw points, where it mostly counted jitter; `rounder` trained on that came out *less* curly
     than the pen it started from.
+
+## API reference
+
+- Generating the training drawings: [`PenDrawings`](reference/machine-learning.md#corpora-kt-pendrawings) —
+  [`boids`](reference/machine-learning.md#corpora-kt--pendrawings--boids),
+  [`harmonograph`](reference/machine-learning.md#corpora-kt--pendrawings--harmonograph),
+  [`hershey`](reference/machine-learning.md#corpora-kt--pendrawings--hershey),
+  [`plant`](reference/machine-learning.md#corpora-kt--pendrawings--plant),
+  [`truchet`](reference/machine-learning.md#corpora-kt--pendrawings--truchet),
+  [`twoHands`](reference/machine-learning.md#corpora-kt--pendrawings--twohands).
+- Loading the pen model: [`PenModel`](reference/machine-learning.md#pen-kt-penmodel) —
+  [`bundled`](reference/machine-learning.md#pen-kt--penmodel-companion--bundled),
+  [`load`](reference/machine-learning.md#pen-kt--penmodel-companion--load).

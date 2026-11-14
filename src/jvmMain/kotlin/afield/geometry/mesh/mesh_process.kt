@@ -528,6 +528,18 @@ private const val OPTIMUM_STRAY = 0.5
  *  - **Boundary planes.** Each boundary edge contributes a heavily-weighted virtual plane
  *    perpendicular to the surface, so an open mesh keeps its border curve instead of eroding it.
  *
+ * Two more keep a closed surface closed:
+ *
+ *  - **Weld first.** Vertices within [weldTolerance] are merged before anything else. A mesh whose
+ *    pieces arrive unshared — a CAD export meshed face by face, a split-normal or flat-shaded mesh, an
+ *    STL — otherwise reads as many open patches, each seam gets boundary planes, and the two sides of
+ *    every seam collapse independently and pull apart: a closed sofa came back with holes.
+ *  - **Never open.** The result's [openEdges] (at [weldTolerance]) are counted against the welded
+ *    input's. If the decimation added any, it is run again with twice the budget, and so on up to the
+ *    welded mesh itself, which is returned when no smaller result stays as closed as the input. So a
+ *    closed input always gives a closed result, and an open one never gains a hole; the price is a
+ *    result above [targetTriangles] in the rare case that guard fires.
+ *
  * Returns early — without reaching the target — when every remaining collapse is vetoed. That is
  * documented behaviour rather than a violated postcondition, so check [TriMesh.triangleCount] if the
  * exact budget matters. Normals are recomputed; uvs and colours are dropped.
@@ -535,9 +547,28 @@ private const val OPTIMUM_STRAY = 0.5
  * @param targetTriangles the budget. Values at or above the current count return the mesh unchanged.
  * @param maxError stop early if the cheapest available collapse costs more than this (in squared
  *   distance units). `null` means "spend whatever it takes to hit the target".
+ * @param weldTolerance absolute distance within which vertices are one vertex, for the weld and for
+ *   the closedness check. The default is [defaultWeldTolerance], a millionth of the bounds diagonal;
+ *   `0.0` welds only exact duplicates.
  */
-fun TriMesh.decimate(targetTriangles: Int, maxError: Double? = null): TriMesh {
+fun TriMesh.decimate(targetTriangles: Int, maxError: Double? = null, weldTolerance: Double = defaultWeldTolerance()): TriMesh {
     require(targetTriangles >= 1) { "targetTriangles must be >= 1, got $targetTriangles" }
+    if (triangleCount <= targetTriangles) return this
+    val welded = weld(weldTolerance)
+    // A triangle the weld folded onto a line has no area and no place in the surface.
+    fun spans(t: Int) = welded.ia(t) != welded.ib(t) && welded.ib(t) != welded.ic(t) && welded.ia(t) != welded.ic(t)
+    val surface = if ((0 until welded.triangleCount).all(::spans)) welded else welded.filterTriangles(::spans)
+    val openBefore = surface.openEdges(weldTolerance).size
+    var budget = targetTriangles
+    while (true) {
+        val out = surface.collapseEdges(budget, maxError)
+        if (budget >= surface.triangleCount || out.openEdges(weldTolerance).size <= openBefore) return out
+        budget = min(surface.triangleCount, budget * 2)
+    }
+}
+
+/** [decimate]'s edge collapse proper, on a mesh that is already welded. */
+private fun TriMesh.collapseEdges(targetTriangles: Int, maxError: Double?): TriMesh {
     if (triangleCount <= targetTriangles) return this
 
     val pos = DoubleArray(vertexCount * 3) { positions[it].toDouble() }

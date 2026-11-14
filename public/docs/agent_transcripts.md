@@ -159,6 +159,9 @@ drawing panels, one the pen hatches beside and one it fills with cracks. Pure CP
 
 ![A field of fine pale lines on black: dense columns of trembling vertical strokes laid side by side, each a run of passes echoing one another](assets/a_pen_that_sees/field.png)
 
+- Loading the pen model: [`PenModel`](reference/machine-learning.md#pen-kt-penmodel) —
+  [`bundled`](reference/machine-learning.md#pen-kt--penmodel-companion--bundled).
+
 [Open →](offline.html?file=assets/agent_transcripts/a_pen_that_sees/metadata.edn)
 
 ### eigendrum
@@ -206,6 +209,16 @@ pen know which hand it is in (and sixteen of them held, forcing one hand), a gri
 click to keep as a corpus, and the handwriting pen fine-tuned on its own curliest work. Pure CPU.
 
 ![Six rows of pale line drawings, the corpora the pens learn from: Hershey lettering in three fonts; three harmonograph figures of decaying loops; three branching plants; three panels of Truchet tiles whose quarter-circle arcs join into winding curves; three tangles of flocking trails; and two lines alternating words of small loops with words of sharp zigzags](assets/teaching_a_pen/corpora.png)
+
+- Generating the training drawings: [`PenDrawings`](reference/machine-learning.md#corpora-kt-pendrawings) —
+  [`boids`](reference/machine-learning.md#corpora-kt--pendrawings--boids),
+  [`harmonograph`](reference/machine-learning.md#corpora-kt--pendrawings--harmonograph),
+  [`hershey`](reference/machine-learning.md#corpora-kt--pendrawings--hershey),
+  [`plant`](reference/machine-learning.md#corpora-kt--pendrawings--plant),
+  [`truchet`](reference/machine-learning.md#corpora-kt--pendrawings--truchet),
+  [`twoHands`](reference/machine-learning.md#corpora-kt--pendrawings--twohands).
+- Loading the pen model: [`PenModel`](reference/machine-learning.md#pen-kt-penmodel) —
+  [`bundled`](reference/machine-learning.md#pen-kt--penmodel-companion--bundled).
 
 [Open →](offline.html?file=assets/agent_transcripts/teaching_a_pen/metadata.edn)
 
@@ -319,6 +332,14 @@ of examples where only one has a step, found by `contrastProfile(...).platos()`.
 own signal from a fixed seed, so replace that with your own data.
 See [Motifs, Discords and Contrast](matrix_profile.md).
 
+- Finding motifs and discords: [`MatrixProfile`](reference/math.md#matrixprofile-kt-matrixprofile) —
+  [`discords`](reference/math.md#matrixprofile-kt--matrixprofile--discords),
+  [`motifs`](reference/math.md#matrixprofile-kt--matrixprofile--motifs).
+- Computing the multivariate profile and motifs:
+  [`MultiMatrixProfile`](reference/math.md#multidimensional-kt-multimatrixprofile) —
+  [`motifs`](reference/math.md#multidimensional-kt--multimatrixprofile--motifs),
+  [`profile`](reference/math.md#multidimensional-kt--multimatrixprofile--profile).
+
 [Open →](offline.html?file=assets/agent_transcripts/matrix_profile/metadata.edn)
 
 ### ai4_chat_archive
@@ -415,6 +436,12 @@ and plots what was heard against what was drawn. Draw your own notes in the fram
 after `score` again. The replay runs all five headless: the drawing is data on the server and the
 audio an offline buffer. See [A Drawn Score, Heard](chain_drawn_score.md).
 
+- Interpreting and checking a drawn score:
+  [`DrawnScoreDocs`](reference/patterns.md#drawnscoredocs-kt-drawnscoredocs) —
+  [`interpret`](reference/patterns.md#drawnscoredocs-kt--drawnscoredocs--interpret),
+  [`listen`](reference/patterns.md#drawnscoredocs-kt--drawnscoredocs--listen),
+  [`pentatonic`](reference/patterns.md#drawnscoredocs-kt--drawnscoredocs--pentatonic).
+
 [Open →](offline.html?file=assets/agent_transcripts/drawn_score/metadata.edn)
 
 ### chain_tracked_body
@@ -461,7 +488,7 @@ ui.pause(1500)
 ### studies_rings
 
 A study in three boxes. `rings` holds three numbers in a property, a ring count, the brightness of
-the dark bands and a warmth, and its code makes a `SourceFramesStudy` of that property with a CPU
+the dark bands and a warmth, and its code makes a [`SourceFramesStudy`](reference/workspace.md#sourceframesstudy-kt-sourceframesstudy) of that property with a CPU
 painter and passes it to `registerStudyTools`, so the document's AI4 chat gets the ten Rings tools.
 `change it` finds the study with `fromContextWithNameOrNull`, checks the property in as the first
 revision if there is none, and flips warmth with SetNumbers on each run, showing the new revision over
@@ -472,6 +499,14 @@ candidates, 15 rings and lighter dark bands, without publishing either. All thre
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/studies_rings.png" capture="box" open-outputs="true" embed=true hidden=true timeout="300" padding="12" name="gallery-studies-rings" alt="The change it box's output: the rings study's new revision, blue rings, above its parent, the same rings in warm orange, and their difference image" macro-file="../../dev_docs/agents/transcripts/studies_rings.yaml" capture-box="rings_change"}
 // The transcript builds the three boxes and runs them; this is change it's output.
 ```
+
+- Editing, inspecting and comparing source variants:
+  [`SourceFramesStudy`](reference/workspace.md#sourceframesstudy-kt-sourceframesstudy) —
+  [`edit`](reference/workspace.md#sourceframesstudy-kt--sourceframesstudy--edit),
+  [`inspect`](reference/workspace.md#sourceframesstudy-kt--sourceframesstudy--inspect),
+  [`setNumbers`](reference/workspace.md#sourceframesstudy-kt--sourceframesstudy--setnumbers),
+  [`sweep`](reference/workspace.md#sourceframesstudy-kt--sourceframesstudy--sweep),
+  [`tryVariants`](reference/workspace.md#sourceframesstudy-kt--sourceframesstudy--tryvariants).
 
 [Open →](offline.html?file=assets/agent_transcripts/studies_rings/metadata.edn)
 
@@ -508,7 +543,7 @@ its parent.
 
 ### cloth_simdverlet_start
 
-The starting place for cloth: a `SimdVerlet`, a 20 x 10 cloth put into
+The starting place for cloth: a [`SimdVerlet`](reference/simulation.md#simdverlet-kt-simdverlet), a 20 x 10 cloth put into
 it with `sim.addCloth(...)`, an explicit `loop { }` that runs the physics, and
 `sim.debugLines()` (a segment per distance constraint, a dot per particle, the pins in red, a
 whisker per velocity) through `showPlane`, so the whole scene is CPU physics and Skia SVG with no
@@ -519,6 +554,10 @@ run to completion, so CI launches it, advances 90 runloop frames, and stops it.
 [Particles, Cloth & Constraints](physics.md) explains the physics and derives that ladder.
 
 ![Four panels of the same cloth at stiffness-times-iterations products of 6, 64, 320 and 960, on one shared window so the rungs are comparable: at product 6 the sheet has stretched into a tall narrow web, at 64 it is a recognisable but slack cloth, and at 320 and 960 it is a sheet with shallow festoons between the pins. Each caption gives the product and the worst strain reached over four hundred frames](assets/physics/tuning_ladder.png)
+
+- Constructing cloth, strands and collision constraints:
+  [`SimdVerlet`](reference/simulation.md#simdverlet-kt-simdverlet) —
+  [`addCloth`](reference/simulation.md#cloth-kt--addcloth).
 
 [Open →](offline.html?file=assets/agent_transcripts/cloth_simdverlet_start/metadata.edn)
 
@@ -534,6 +573,12 @@ holds and touches nothing, at `0.25f` a rip opens where the rope pulls and the p
 sphere and the floor, and both ends of that sentence are asserted by
 `SimdVerletTearingTest.theWholeWorldLayerInOneSceneBehavesAsTheDemoSaysItWill`. Like the cloth, it
 `launch`es rather than executes.
+
+- Constructing cloth, strands and collision constraints:
+  [`SimdVerlet`](reference/simulation.md#simdverlet-kt-simdverlet) —
+  [`addCloth`](reference/simulation.md#cloth-kt--addcloth),
+  [`addColliders`](reference/simulation.md#simdverletcolliders-kt--addcolliders),
+  [`addStrand`](reference/simulation.md#strand-kt--addstrand).
 
 [Open →](offline.html?file=assets/agent_transcripts/simdverlet_world/metadata.edn)
 
@@ -578,6 +623,10 @@ Three boxes, and a flow-matching generator graded by a Datalog program. `fi_clou
 clouds to `Datalog` as facts, counts the target points near each sample, calls a sample with none a
 stray, and labels the connected pieces with and without the strays; `fi_draw` draws the samples
 coloured by piece, strays in red. See [the walkthrough](chain_flow_islands.md).
+
+- Sampling and integrating the learned flow:
+  [`FlowMatchField`](reference/machine-learning.md#flowmatching-kt-flowmatchfield) —
+  [`sample`](reference/machine-learning.md#flowmatching-kt--flowmatchfield--sample).
 
 [Open →](offline.html?file=assets/agent_transcripts/flow_islands/metadata.edn)
 
@@ -712,6 +761,10 @@ deterministic CPU voice into an inline player, so there is no audio device and n
 this file.
 
 ![Piano roll showing the three structure-choice combinators producing four, two and three events](assets/pattern_language/structure-choice.png)
+
+- Measurements of rendered sound: [`PatSoundDocs`](reference/patterns.md#patsounddocs-kt-patsounddocs) —
+  [`onsetPeaks`](reference/patterns.md#patsounddocs-kt--patsounddocs--onsetpeaks),
+  [`variation`](reference/patterns.md#patsounddocs-kt--patsounddocs--variation).
 
 [Open →](offline.html?file=assets/agent_transcripts/pattern_language_composition/metadata.edn)
 
@@ -1135,6 +1188,10 @@ with sliders for three of the targets that re-run the search. Box 3 is interacti
 children with players, and a text field naming the parents of the next generation. The remaining
 boxes shape grains, take a target from a recording and map a range of evolved sets.
 
+- Population search and its random baseline:
+  [`PopulationSearch`](reference/search.md#populationsearch-kt-populationsearch) —
+  [`mapElites`](reference/search.md#populationsearch-kt--populationsearch--mapelites).
+
 [Open →](offline.html?file=assets/agent_transcripts/alife_grains/metadata.edn)
 
 ### kmeans_emeans
@@ -1196,6 +1253,12 @@ static). Box 5 maps 24 growth curves by what their creature does. Box 6 searches
 glider with `PopulationSearch` beside a random-sampling control and checks both winners on five
 held-out seeds; it takes a few minutes. Box 7 animates the evolved glider. All seven are pure CPU.
 
+- Initialising and evolving Particle Lenia:
+  [`ParticleLenia`](reference/alife.md#alife-particle-lenia-kt-particlelenia) —
+  [`currentEnergy`](reference/alife.md#alife-particle-lenia-kt--particlelenia--currentenergy),
+  [`random`](reference/alife.md#alife-particle-lenia-kt--particlelenia-companion--random),
+  [`stepTimes`](reference/alife.md#alife-particle-lenia-kt--particlelenia--steptimes).
+
 [Open →](offline.html?file=assets/agent_transcripts/particle_lenia/metadata.edn)
 
 ### flow_lenia
@@ -1206,6 +1269,16 @@ Box 0 runs three species for 200 steps and prints the worst relative change in t
 meeting a cell with sampled mixing and a plot of each species' mass, and the same pair blending
 under mean mixing with the parameter field drawn. Box 4 follows a crescent at higher resolution;
 box 5 compares mutation with a neutral control. All six run on the CPU.
+
+- The preset Flow Lenia species: [`FlowLeniaPresets`](reference/alife.md#alife-flow-lenia-kt-flowleniapresets)
+  — [`cell`](reference/alife.md#alife-flow-lenia-kt--flowleniapresets--cell),
+  [`crescent`](reference/alife.md#alife-flow-lenia-kt--flowleniapresets--crescent),
+  [`rings`](reference/alife.md#alife-flow-lenia-kt--flowleniapresets--rings),
+  [`wanderers`](reference/alife.md#alife-flow-lenia-kt--flowleniapresets--wanderers).
+- Advancing the mass-conserving simulation:
+  [`FlowLeniaWorld`](reference/alife.md#alife-flow-lenia-kt-flowleniaworld) —
+  [`step`](reference/alife.md#alife-flow-lenia-kt--flowleniaworld--step),
+  [`totalMass`](reference/alife.md#alife-flow-lenia-kt--flowleniaworld--totalmass).
 
 [Open →](offline.html?file=assets/agent_transcripts/flow_lenia/metadata.edn)
 
@@ -1242,6 +1315,14 @@ rather than run: a `Frames` that is only built never runs. None of the twenty op
 
 ![Two magma-coloured trail fields from the same 6000 agents: the sensing population has drawn a branching network of bright filaments and closed loops, the blind control is a featureless uniform disc](assets/alife_examples/physarum.png)
 
+- Initialising the flock and measuring alignment: [`BoidFlock`](reference/alife.md#alife-agents-kt-boidflock)
+  — [`order`](reference/alife.md#alife-agents-kt--boidflock--order),
+  [`random`](reference/alife.md#alife-agents-kt--boidflock-companion--random).
+- Seeding the catalogue lifeform: [`LeniaCreature`](reference/alife.md#alife-continuous-kt-leniacreature) —
+  [`seed`](reference/alife.md#alife-continuous-kt--leniacreature--seed).
+- The catalogue lifeform: [`LeniaPresets`](reference/alife.md#alife-continuous-kt-leniapresets) —
+  [`orbium`](reference/alife.md#alife-continuous-kt--leniapresets--orbium).
+
 [Open →](offline.html?file=assets/agent_transcripts/alife_worked_example/metadata.edn)
 
 ### alife_tree_growth
@@ -1264,10 +1345,15 @@ tunes `Activation.BUMP` aggressors with `orbitBias` to circle the lamps at four 
 each population's `OrbitRadii` histogram. Box 2 puts a `speedCost` into the learning reward at four
 prices. Box 3 runs learning and homeostasis separately and together from one seed. Box 4 is launched:
 it trains a population on still lamps, then sets the lamps drifting and plays it beside Braitenberg's
-lovers. Box 5 searches the four wiring weights with `VehicleWiringGenome` on `PopulationSearch`, with a
+lovers. Box 5 searches the four wiring weights with `VehicleWiringGenome` on [`PopulationSearch`](reference/search.md#populationsearch-kt-populationsearch), with a
 random-sampling control at the same budget. All five run on the CPU.
 
 ![Four populations of vehicles circling four lamps on rings of increasing size, each beside a histogram of distance to the nearest lamp](assets/braitenberg_vehicles/orbits.png)
+
+- Population search and its random baseline:
+  [`PopulationSearch`](reference/search.md#populationsearch-kt-populationsearch) —
+  [`evolve`](reference/search.md#populationsearch-kt--populationsearch--evolve),
+  [`random`](reference/search.md#populationsearch-kt--populationsearch--random).
 
 [Open →](offline.html?file=assets/agent_transcripts/braitenberg_where_next/metadata.edn)
 
@@ -1408,6 +1494,9 @@ but 6000 dots come to 15 MB of SVG, which is too much for a box that redraws eve
 // The transcript builds both boxes and runs them; this capture is its stipple_hello box.
 ```
 
+- Relaxing the stipple distribution: [`Stippler`](reference/graphics.md#stippling-kt-stippler) —
+  [`step`](reference/graphics.md#stippling-kt--stippler--step).
+
 [Open →](offline.html?file=assets/agent_transcripts/stippling/metadata.edn)
 
 ### viz_showheatmap
@@ -1493,13 +1582,22 @@ ends.
 // The transcript runs every route and the fan map and launches the turning objective; this is every route's output.
 ```
 
+- Planar optimisation paths: [`LpPolygon`](reference/graphics.md#lp-trajectories-kt-lppolygon) —
+  [`centralFan`](reference/graphics.md#lp-trajectories-kt--centralfan),
+  [`centralPath`](reference/graphics.md#lp-trajectories-kt--centralpath),
+  [`cuttingPlanes`](reference/graphics.md#lp-trajectories-kt--cuttingplanes),
+  [`ellipsoid`](reference/graphics.md#lp-trajectories-kt--ellipsoid),
+  [`pdhg`](reference/graphics.md#lp-trajectories-kt--pdhg),
+  [`primalDual`](reference/graphics.md#lp-trajectories-kt--primaldual),
+  [`simplexWalk`](reference/graphics.md#lp-trajectories-kt--simplexwalk).
+
 [Open →](offline.html?file=assets/agent_transcripts/lp_curves/metadata.edn)
 
 ### lp_curves_3d
 
 The same methods in three dimensions, the companion to
 [Linear programs as curves, in three dimensions](lp_curves.md#in-three-dimensions). *Every route* takes the convex hull of a
-seeded point cloud as an `LpPolytope` and draws the central path, the primal-dual iterates, the
+seeded point cloud as an [`LpPolytope`](reference/graphics.md#lp-polytope-kt-lppolytope) and draws the central path, the primal-dual iterates, the
 simplex walk along the hull's edges and a PDHG spiral to one vertex, in a `three { }` scene you can
 orbit. *A fan of central paths* draws one path per direction over the sphere and turns it on a
 turntable. Change the direction or the seed and run it again.
@@ -1507,6 +1605,15 @@ turntable. Change the direction or the seed and run it again.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/lp_curves_3d_fan.png" capture="box" open-outputs="true" wait="6.0" embed=true hidden=true timeout="180" padding="12" name="gallery-lp-curves-3d-fan" alt="A translucent faceted solid with grey edges and a bundle of rainbow-coloured central paths leaving a common point inside it and fanning out to every corner" macro-file="../../dev_docs/agents/transcripts/lp_curves_3d.yaml" capture-box="lp3_fan"}
 // The transcript builds and runs both boxes; this is the fan box, caught mid-turn.
 ```
+
+- Polytope construction and optimisation paths:
+  [`LpPolytope`](reference/graphics.md#lp-polytope-kt-lppolytope) —
+  [`centralFan`](reference/graphics.md#lp-polytope-kt--centralfan),
+  [`centralPath`](reference/graphics.md#lp-polytope-kt--centralpath),
+  [`hull`](reference/graphics.md#lp-polytope-kt--lppolytope-companion--hull),
+  [`pdhg`](reference/graphics.md#lp-polytope-kt--pdhg),
+  [`primalDual`](reference/graphics.md#lp-polytope-kt--primaldual),
+  [`simplexWalk`](reference/graphics.md#lp-polytope-kt--simplexwalk).
 
 [Open →](offline.html?file=assets/agent_transcripts/lp_curves_3d/metadata.edn)
 
@@ -1673,6 +1780,15 @@ nothing bounds how many times a fan may be copied. `dev_docs/INTERACTION_NETS_LA
 write-up, and `tools/run_field_tests.py --id stdlib.lambda-terms.smoke` asserts the same three claims
 headlessly.
 
+- Parsing, reducing and checking lambda terms:
+  [`LambdaTerms`](reference/visualization.md#lambdaterms-kt-lambdaterms) —
+  [`alphaEquivalent`](reference/visualization.md#lambdaterms-kt--lambdaterms--alphaequivalent),
+  [`compile`](reference/visualization.md#lambdaterms-kt--lambdaterms--compile),
+  [`normalise`](reference/visualization.md#lambdaterms-kt--lambdaterms--normalise),
+  [`parse`](reference/visualization.md#lambdaterms-kt--lambdaterms--parse),
+  [`referenceNormalOrder`](reference/visualization.md#lambdaterms-kt--lambdaterms--referencenormalorder),
+  [`substitute`](reference/visualization.md#lambdaterms-kt--lambdaterms--substitute).
+
 [Open →](offline.html?file=assets/agent_transcripts/interaction_nets_lambda/metadata.edn)
 
 ### confluence_grid
@@ -1720,6 +1836,22 @@ is provably inside the search space. The cost plane shows the two reference desi
 search found.
 
 ![Four search drivers on a recursive eight-bit adder, every curve flattening short of zero, beside a cost plane holding only the two reference designs and nothing the search found](assets/morpho_examples/search-adder.png)
+
+- Growing and evaluating the circuit: [`MorphoCircuit`](reference/languages.md#morphocircuit-kt-morphocircuit)
+  — [`growFully`](reference/languages.md#morphocircuit-kt--morphocircuit--growfully).
+- Evaluating circuit fitness: [`MorphoEvaluator`](reference/languages.md#morphospec-kt-morphoevaluator) —
+  [`evaluate`](reference/languages.md#morphospec-kt--morphoevaluator--evaluate).
+- The circuit-search problems and generators:
+  [`MorphoProblems`](reference/languages.md#morphoproblems-kt-morphoproblems) —
+  [`fullAdderCell`](reference/languages.md#morphoproblems-kt--morphoproblems--fulladdercell),
+  [`guidedRecursiveAdder`](reference/languages.md#morphoproblems-kt--morphoproblems--guidedrecursiveadder),
+  [`orReduce`](reference/languages.md#morphoproblems-kt--morphoproblems--orreduce),
+  [`recursiveAdder`](reference/languages.md#morphoproblems-kt--morphoproblems--recursiveadder).
+- Searching and testing circuits: [`MorphoSearch`](reference/languages.md#morphosearch-kt-morphosearch) —
+  [`evolve`](reference/languages.md#morphosearch-kt--morphosearch--evolve),
+  [`generalization`](reference/languages.md#morphosearch-kt--morphosearch--generalization),
+  [`hillClimb`](reference/languages.md#morphosearch-kt--morphosearch--hillclimb),
+  [`random`](reference/languages.md#morphosearch-kt--morphosearch--random).
 
 [Open →](offline.html?file=assets/agent_transcripts/morpho_circuit_search/metadata.edn)
 
@@ -2048,6 +2180,17 @@ and chalk* sketches a vase in 2B, hatches its shadow side in 4B and rules a chal
 
 [Open →](offline.html?file=assets/agent_transcripts/paint_canvas/metadata.edn)
 
+### paint_blow_fingers
+
+Two boxes that push wet paint [with air](paint_canvas.md#blowing-paint). *Blow a straw across wet
+paint* blows along a curve through a thick blue film, clearing a track with tendrils and rims. *One
+puff, three viscosity contrasts* blows at three points, from compact fingers to long branching ones,
+and reports how far each spreads. Each box shows the canvas and reports the paint moved; the wet
+paint is the same before and after. Both need the optional paint library
+(`./gradlew buildPaintNative`).
+
+[Open →](offline.html?file=assets/agent_transcripts/paint_blow_fingers/metadata.edn)
+
 ### paint_fold_press
 
 Three boxes that move wet paint [without a brush](paint_canvas.md#folding-pressing-and-rubbing).
@@ -2081,6 +2224,12 @@ solid — the two agree to about one marching cell. Every picture is `TriMesh.re
 — a CPU rasteriser, AWT-free through `PngEncoder` — so there is no Window and no Renderer.
 
 ![Three renders of the same pale wireframed relief plaque on a dark background: from above, where the room reads as a shallow basin with a raised near edge and raised side walls; from three-quarters, where the flat base slab shows under the relief; and edge-on along the rim, where the slab and the vertical skirt joining it to the surface are clearest](assets/chain_photo_to_solid/plaque.png)
+
+- Constructing the depth map and solid:
+  [`PhotoToSolidChain`](reference/examples.md#phototosolidchain-kt-phototosolidchain) —
+  [`depthMapOf`](reference/examples.md#phototosolidchain-kt--phototosolidchain--depthmapof),
+  [`marchedPlaque`](reference/examples.md#phototosolidchain-kt--phototosolidchain--marchedplaque),
+  [`mount`](reference/examples.md#phototosolidchain-kt--phototosolidchain--mount).
 
 [Open →](offline.html?file=assets/agent_transcripts/photo_to_solid_chain/metadata.edn)
 
@@ -2646,6 +2795,12 @@ with a slider that prunes branches by persistence. The second divides the bright
 print into contour-tree regions, lightly and strongly simplified. Plain Kotlin, no optional
 libraries.
 
+- Constructing the contour tree: [`ContourTrees`](reference/graphics.md#contourtrees-kt-contourtrees) —
+  [`contourTree`](reference/graphics.md#contourtrees-kt--contourtrees--contourtree).
+- Persistence simplification and segmentation:
+  [`ScalarTree`](reference/graphics.md#contourtrees-kt-scalartree) —
+  [`simplify`](reference/graphics.md#contourtrees-kt--scalartree--simplify).
+
 [Open →](offline.html?file=assets/agent_transcripts/contour_trees_explorer/metadata.edn)
 
 ### vector_field_explorer
@@ -2654,6 +2809,11 @@ libraries.
 sources and sinks and draws its critical points and separatrices over streamlines, with a slider
 that scales the swirl. The second draws the ridges and valleys of the leaf print's brightness as
 the topology of its gradient, with a blur slider. Plain Kotlin, no optional libraries.
+
+- Extracting critical points and streamlines:
+  [`VectorFieldTopology`](reference/graphics.md#vectorfieldtopology-kt-vectorfieldtopology) —
+  [`compute`](reference/graphics.md#vectorfieldtopology-kt--vectorfieldtopology-companion--compute),
+  [`gradientOf`](reference/graphics.md#vectorfieldtopology-kt--vectorfieldtopology-companion--gradientof).
 
 [Open →](offline.html?file=assets/agent_transcripts/vector_field_explorer/metadata.edn)
 
@@ -2704,6 +2864,10 @@ by Timestral, with coverage, repetition and join roughness for each. Boxes 5 and
 Timestral worker, which needs `TimestralSession.install()` once.
 See [Continuing a Gesture](temporal_memory.md).
 
+- Building the temporal model and scanning thresholds:
+  [`VariableMarkovOracle`](reference/math.md#variablemarkovoracle-kt-variablemarkovoracle) —
+  [`build`](reference/math.md#variablemarkovoracle-kt--variablemarkovoracle-companion--build).
+
 [Open →](offline.html?file=assets/agent_transcripts/temporal_memory/metadata.edn)
 
 ### ai_tool_demo
@@ -2723,6 +2887,10 @@ fixture and send it on a 44 Hz clock; launch `2. Receiver` to draw the rig lit b
 `3. Measure` for a round trip of nine frames and a thin line sampled two ways. Edit the scene in the
 first box and launch it again to see the change reach the second. See
 [A RectSL Scene on a Light Rig](chain_scene_to_light.md).
+
+- Measuring the lighting round trip: [`SceneOnARig`](reference/lighting.md#sceneonarig-kt-sceneonarig) —
+  [`aliasing`](reference/lighting.md#sceneonarig-kt--sceneonarig--aliasing),
+  [`roundTrip`](reference/lighting.md#sceneonarig-kt--sceneonarig--roundtrip-2).
 
 [Open →](offline.html?file=assets/agent_transcripts/chain_scene_to_light/metadata.edn)
 
@@ -3269,6 +3437,10 @@ recomputes the field and its complex on every frame, colouring each critical poi
 keeps its colour while it stays on the same grid cell. The third prints one saddle's four
 separatrices as a table. Needs the optional native library: `./gradlew buildMorseSmaleNative`.
 
+- Constructing the Morse–Smale complex: [`MorseSmale`](reference/graphics.md#morsesmale-kt-morsesmale) —
+  [`build`](reference/graphics.md#morsesmale-kt--morsesmale--build),
+  [`compute`](reference/graphics.md#morsesmale-kt--morsesmale--compute).
+
 [Open →](offline.html?file=assets/agent_transcripts/morse_smale_explorer/metadata.edn)
 
 ### principal_curves_explorer
@@ -3279,6 +3451,12 @@ scattered. The second fits the green pixels of the leaf print as a branching tre
 launched, moves 2000 points along a travelling wave and refines one forest five iterations a frame
 to follow them, never regrowing it. Needs the optional native library:
 `./gradlew buildPrincipalCurvesNative`.
+
+- Fitting a principal forest: [`PrincipalCurves`](reference/graphics.md#principalcurves-kt-principalcurves) —
+  [`fit`](reference/graphics.md#principalcurves-kt--principalcurves--fit).
+- Initialising and refining the forest:
+  [`PrincipalForest`](reference/graphics.md#principalcurves-kt-principalforest) —
+  [`refine`](reference/graphics.md#principalcurves-kt--principalforest--refine).
 
 [Open →](offline.html?file=assets/agent_transcripts/principal_curves_explorer/metadata.edn)
 
@@ -3614,6 +3792,15 @@ Moving splats in the vertex shader instead would draw many neighbouring pairs in
 // The transcript builds every box and launches the renderer and the passthrough.
 ```
 
+- Generating the example splat clouds:
+  [`ProceduralSplats`](reference/renderers.md#proceduralsplats-kt-proceduralsplats) —
+  [`coralBranches`](reference/renderers.md#proceduralsplats-kt--proceduralsplats--coralbranches),
+  [`fernPlume`](reference/renderers.md#proceduralsplats-kt--proceduralsplats--fernplume),
+  [`icosphereShell`](reference/renderers.md#proceduralsplats-kt--proceduralsplats--icosphereshell),
+  [`nautilusShell`](reference/renderers.md#proceduralsplats-kt--proceduralsplats--nautilusshell),
+  [`phyllotaxisBloom`](reference/renderers.md#proceduralsplats-kt--proceduralsplats--phyllotaxisbloom),
+  [`torusBraid`](reference/renderers.md#proceduralsplats-kt--proceduralsplats--torusbraid).
+
 [Open →](offline.html?file=assets/agent_transcripts/splat_shader/metadata.edn)
 
 ### mega_texture_wall
@@ -3860,7 +4047,7 @@ view.
 ### lattice_boltzmann_cylinder
 
 A **lattice Boltzmann fluid** in a wind tunnel, with a cylinder in the way. Three boxes: a renderer
-that opens its own window, a fluid box that builds a `ShaderLatticeBoltzmannSystem` and publishes it as
+that opens its own window, a fluid box that builds a [`ShaderLatticeBoltzmannSystem`](reference/alife.md#alife-lbm-kt-shaderlatticeboltzmannsystem) and publishes it as
 `lbm`, and a cylinder box beneath it whose fragment shader draws into the fluid's control texture: a
 solid disc, walls top and bottom, and stripes at the left edge that release dye and hold the wind
 steady. Within a minute or so the wake behind the cylinder starts shedding a von Kármán vortex
@@ -3871,12 +4058,18 @@ same two boxes are lessons 10 and 10b of `canonical_graphics`;
 
 ![Vorticity behind a white cylinder in a dark wind tunnel: the flow divides round it and the shear layers behind it have rolled up into a street of alternating orange and blue vortices](assets/afield_four_graphics/10-lattice-boltzmann.png)
 
+- Installing and controlling the fluid simulation:
+  [`ShaderLatticeBoltzmannSystem`](reference/alife.md#alife-lbm-kt-shaderlatticeboltzmannsystem) —
+  [`addControls`](reference/alife.md#alife-lbm-kt--shaderlatticeboltzmannsystem--addcontrols),
+  [`controlsParameters`](reference/alife.md#alife-lbm-kt--shaderlatticeboltzmannsystem--controlsparameters),
+  [`installInto`](reference/alife.md#alife-lbm-kt--shaderlatticeboltzmannsystem--installinto).
+
 [Open →](offline.html?file=assets/agent_transcripts/lattice_boltzmann_cylinder/metadata.edn)
 
 ### forest_fire
 
 A **forest fire** on the GPU, in a square window. A renderer box, a forest box that builds a
-`ShaderForestFireSystem` and publishes it as `fire`, and a fire-starter box beneath it whose fragment
+[`ShaderForestFireSystem`](reference/alife.md#alife-fire-kt-shaderforestfiresystem) and publishes it as `fire`, and a fire-starter box beneath it whose fragment
 shader keeps two points lit in the fire's ignition texture, one red and one green. Burnt trees
 recover, so each point sends out a train of ragged rings, one per recovery time, and where the two
 trains meet they interleave. Red recovers faster, so its rings come more often. The forest box's
@@ -3885,12 +4078,18 @@ trains meet they interleave. Red recovers faster, so its rings come more often. 
 
 ![A square forest crowded with ragged concentric rings of red and green fire, the two trains interleaved where they have met](assets/afield_four_graphics/11-forest-fire.png)
 
+- Installing and feeding the forest-fire simulation:
+  [`ShaderForestFireSystem`](reference/alife.md#alife-fire-kt-shaderforestfiresystem) —
+  [`addFireInput`](reference/alife.md#alife-fire-kt--shaderforestfiresystem--addfireinput),
+  [`fireInputParameters`](reference/alife.md#alife-fire-kt--shaderforestfiresystem--fireinputparameters),
+  [`installInto`](reference/alife.md#alife-fire-kt--shaderforestfiresystem--installinto).
+
 [Open →](offline.html?file=assets/agent_transcripts/forest_fire/metadata.edn)
 
 ### gpu_physarum
 
 **Physarum on the GPU**: a million agents on a `TrailField`, in a square window. A renderer box; a
-slime box that builds a two-species `ShaderPhysarumSystem` and publishes it as `physarum`, its
+slime box that builds a two-species [`ShaderPhysarumSystem`](reference/alife.md#alife-physarum-gpu-kt-shaderphysarumsystem) and publishes it as `physarum`, its
 `vertex` tab holding the agent rule; a weather box that sets the trail's wind and half-life and the
 agents' jitter while it runs; and a reset box that empties the trail and scatters the agents again.
 Amber and cyan transport networks form within a few hundred frames, each species avoiding the
@@ -3899,12 +4098,16 @@ through the slime box.
 
 ![Two interleaved transport networks, one amber and one cyan, made of rounded filaments that avoid each other](assets/alife_examples/physarum-gpu.png)
 
+- Installing the GPU slime-mould simulation:
+  [`ShaderPhysarumSystem`](reference/alife.md#alife-physarum-gpu-kt-shaderphysarumsystem) —
+  [`installInto`](reference/alife.md#alife-physarum-gpu-kt--shaderphysarumsystem--installinto).
+
 [Open →](offline.html?file=assets/agent_transcripts/gpu_physarum/metadata.edn)
 
 ### gpu_stigmergy
 
 **Several species on one stigmergy field**, on the GPU. A renderer box; a slime box that builds a
-three-species `ShaderPhysarumSystem` whose `attraction` matrix makes each species follow its own
+three-species [`ShaderPhysarumSystem`](reference/alife.md#alife-physarum-gpu-kt-shaderphysarumsystem) whose `attraction` matrix makes each species follow its own
 trail and avoid the others', so they pack a `TrailField` into an amber, cyan and pink labyrinth; a
 followers box whose 20,000 `TrailFollowers` climb amber and flee cyan, beading the amber roads in
 white; a chase box that rewrites the deposit and attraction matrices live so the cyan species
@@ -3913,6 +4116,10 @@ lays the amber species' scent; and a reset box.
 slime and followers boxes.
 
 ![Amber, cyan and pink roads packed into a labyrinth whose colours never cross, the amber ones beaded with small white particles](assets/alife_examples/stigmergy-species.png)
+
+- Installing the GPU slime-mould simulation:
+  [`ShaderPhysarumSystem`](reference/alife.md#alife-physarum-gpu-kt-shaderphysarumsystem) —
+  [`installInto`](reference/alife.md#alife-physarum-gpu-kt--shaderphysarumsystem--installinto).
 
 [Open →](offline.html?file=assets/agent_transcripts/gpu_stigmergy/metadata.edn)
 
@@ -3927,6 +4134,10 @@ extracts the network with `TransportNetwork.extract` and prints its cost against
 spanning tree, stretch and fault tolerance beside the MST and Delaunay controls, with a slider for
 the trail's half-life; and a reset box.
 [Drawing the food](alife_examples.md#drawing-the-food) walks through the map and slime boxes.
+
+- Installing the GPU slime-mould simulation:
+  [`ShaderPhysarumSystem`](reference/alife.md#alife-physarum-gpu-kt-shaderphysarumsystem) —
+  [`installInto`](reference/alife.md#alife-physarum-gpu-kt--shaderphysarumsystem--installinto).
 
 [Open →](offline.html?file=assets/agent_transcripts/gpu_physarum_networks/metadata.edn)
 
@@ -4051,8 +4262,8 @@ require version 140 or higher": a message about nothing. Hence `fragmentSource`.
 
 ### imgui_vr_panel
 
-[Dear ImGui as an in-VR panel](imgui_vr_panel.md), in four working lines on top
-of the renderer box: a side-by-side stereo target, the demo panel, and a mouse-driven mock controller.
+[Dear ImGui as an in-VR panel](imgui_vr_panel.md), in two editable boxes: one creates the renderer;
+the other builds a side-by-side stereo target, the panel and a mouse-driven mock controller.
 The ImGui frame goes into a 2048×2048 render-to-texture, onto a world-space quad 1.5 m out, rendered
 once per eye, so the panel has real stereo depth rather than being pasted flat, and the packed
 side-by-side image is blitted to the desktop window. **No headset required**: the mouse aims the ray
@@ -4060,6 +4271,10 @@ and clicking presses. On Windows and Linux the same image feeds real eye swapcha
 transcript does not exercise.
 
 ![The full packed side-by-side stereo frame: the ImGui panel rendered twice, one per eye, against black](assets/imgui_vr_panel/imgui-vr-panel.png)
+
+- Building the stereo panel scene:
+  [`ImGuiVrPanelDemo`](reference/examples.md#imguivrpaneldemo-kt-imguivrpaneldemo) —
+  [`build`](reference/examples.md#imguivrpaneldemo-kt--imguivrpaneldemo--build).
 
 [Open →](offline.html?file=assets/agent_transcripts/imgui_vr_panel/metadata.edn)
 
@@ -4291,6 +4506,10 @@ pass to put it on screen.
 
 ![Plastic, polished gold and rough metal spheres lit by a Venice sunset environment, rendered by the compute path tracer](assets/path_tracing/materials.png)
 
+- Installing the material-study scene:
+  [`PathTraceDemo`](reference/renderers.md#pathtracegpusmoke-kt-pathtracedemo) —
+  [`install`](reference/renderers.md#pathtracegpusmoke-kt--pathtracedemo--install).
+
 [Open →](offline.html?file=assets/agent_transcripts/path_tracing_materials/metadata.edn)
 
 ### path_tracing_glass
@@ -4299,6 +4518,10 @@ Clear, absorbing and frosted glass spheres, plus a thin blue pane, over
 a checkerboard and striped background. Shows the difference between solid refraction and thin glass.
 
 ![Clear, green absorbing and frosted glass spheres beside a thin blue pane, over a checkerboard and striped background](assets/path_tracing/glass.png)
+
+- Installing the glass-study scene:
+  [`PathTraceGlassDemo`](reference/renderers.md#pathtraceglassdemo-kt-pathtraceglassdemo) —
+  [`install`](reference/renderers.md#pathtraceglassdemo-kt--pathtraceglassdemo--install).
 
 [Open →](offline.html?file=assets/agent_transcripts/path_tracing_glass/metadata.edn)
 
@@ -4317,6 +4540,10 @@ Keeps the environment's illumination and reflections while
 primary camera rays see a black background. The same output can carry transparent coverage for compositing.
 
 ![The sunset environment illuminates and reflects in three PBR spheres while camera-visible sky pixels are black](assets/path_tracing/hidden_environment.png)
+
+- Installing the material-study scene:
+  [`PathTraceDemo`](reference/renderers.md#pathtracegpusmoke-kt-pathtracedemo) —
+  [`install`](reference/renderers.md#pathtracegpusmoke-kt--pathtracedemo--install).
 
 [Open →](offline.html?file=assets/agent_transcripts/path_tracing_hidden_environment/metadata.edn)
 
@@ -4471,6 +4698,10 @@ subject is one line, `display("output", tracer)`, which shows the running tracer
 registered value printer rather than as a bare object. Boxes 4 and 5 swap the integrator
 underneath the instrument and put it back, which is the part a printed line cannot do.
 
+- Installing the material-study scene:
+  [`PathTraceDemo`](reference/renderers.md#pathtracegpusmoke-kt-pathtracedemo) —
+  [`install`](reference/renderers.md#pathtracegpusmoke-kt--pathtracedemo--install).
+
 [Open →](offline.html?file=assets/agent_transcripts/path_tracer_instrument/metadata.edn)
 
 ### path_tracing_emitters
@@ -4534,6 +4765,10 @@ CPU integrator per particle.
 
 ![The word FIELD assembled from warm gold particles on black](assets/neural_particles/word.png)
 
+- Sampling and integrating the learned flow:
+  [`FlowMatchField`](reference/machine-learning.md#flowmatching-kt-flowmatchfield) —
+  [`export`](reference/machine-learning.md#flowmatching-kt--flowmatchfield--export).
+
 [Open →](offline.html?file=assets/agent_transcripts/neural_particles/metadata.edn)
 
 ### growing_nca
@@ -4549,6 +4784,16 @@ with the left mouse button. See [Growing Neural Cellular Automata](growing_nca.m
 macro write growing_nca --file dev_docs/agents/transcripts/growing_nca.yaml
 macro run growing_nca
 ```
+
+- Growing, damaging and measuring the cellular automaton:
+  [`GrowingNca`](reference/alife.md#growing-nca-kt-growingnca) —
+  [`damage`](reference/alife.md#growing-nca-kt--growingnca--damage),
+  [`loss`](reference/alife.md#growing-nca-kt--growingnca--loss),
+  [`pretrained`](reference/alife.md#growing-nca-kt--growingnca-companion--pretrained),
+  [`pretrainedTarget`](reference/alife.md#growing-nca-kt--growingnca-companion--pretrainedtarget),
+  [`rotateTarget`](reference/alife.md#growing-nca-kt--growingnca-companion--rotatetarget),
+  [`step`](reference/alife.md#growing-nca-kt--growingnca--step),
+  [`targetFromFLines`](reference/alife.md#growing-nca-kt--growingnca-companion--targetfromflines).
 
 [Open →](offline.html?file=assets/agent_transcripts/growing_nca/metadata.edn)
 
@@ -4596,6 +4841,10 @@ passes through. Two sliders move the sun; reflections, image-based light and bac
 macro write sky_environment --file dev_docs/agents/transcripts/sky_environment.yaml
 macro run sky_environment
 ```
+
+- Installing the material-study scene:
+  [`PathTraceDemo`](reference/renderers.md#pathtracegpusmoke-kt-pathtracedemo) —
+  [`install`](reference/renderers.md#pathtracegpusmoke-kt--pathtracedemo--install).
 
 [Open →](offline.html?file=assets/agent_transcripts/sky_environment/metadata.edn)
 

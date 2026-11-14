@@ -1,0 +1,21 @@
+{
+  "passed": [
+    "or-reduce truth tables and seeded grammar",
+    "or-reduce altered widths and grammar on rerun",
+    "short search with no correct design still renders",
+    "free and guided adder oracles and seeded grammar",
+    "altered adder grammar on rerun"
+  ],
+  "sources": [
+    {
+      "path": "public/docs/morpho_search.md",
+      "name": "morpho-search-recursion",
+      "fenceSha256": "b4f7a06c1e2fa33b20a5b3e73c3ea8928f2ef8e159232603acafa3a51641bb1c"
+    },
+    {
+      "path": "public/docs/morpho_search.md",
+      "name": "morpho-search-adder",
+      "fenceSha256": "f0d7ff055cec359a1944bb68b64cef09132c31e72720a4c833141be4ed5b4126"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "source": "dev_docs/agents/transcripts/chain_scene_to_light.yaml",
+  "box": "rig_measure",
+  "sha256": "2fa384680dfb2533b68e7616d86d51ba2d7fbb4455debafcee6b2cefde12595f",
+  "ok": true,
+  "timedOut": false,
+  "output": [
+    "RoundTrip RoundTrip(9 frames x 132 fixtures, 0 of 9216 slots differ, worst grid 0.500 levels, worst wash 0.500 \u2026 +8 chars\n",
+    "point samples: dark in 91 of 121 frames, light on the rig 0.00..8.00\n",
+    "area average:  dark in 0 frames, light on the rig 2.000..2.000 (the line is worth 2.0)\n"
+  ],
+  "verdicts": [
+    {
+      "success": true,
+      "mode": "run"
+    }
+  ]
+}

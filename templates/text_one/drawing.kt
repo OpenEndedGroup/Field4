@@ -29,7 +29,8 @@ val passes = mapOf(
     "reading-composite" to compositeModuleFactory,
 )
 
-prop<StereoDiagramRenderer>(drawing) = StereoDiagramRenderer(renderer, stereo, poem, textBlurConfig = pendingTextCacheQuality(), moduleFactories = passes)
+prop<StereoDiagramRenderer>(drawing) =
+    StereoDiagramRenderer(renderer, stereo, poem, textBlurConfig = pendingTextCacheQuality(), moduleFactories = passes)
 val ownedDrawing = drawing
 
 rootProp<Boolean>(showSkeleton, false)
@@ -41,25 +42,33 @@ rootProp<Float>(frostBlackLevel, .012f)
 rootProp<Float>(frostBlurGamma, 1f)
 val frostScenePreparation = drawing.compositor.beforeScene
 val frostFloorValue: () -> Float = { root.frostBlackLevel }
-drawing.compositor.beforeScene = afield.graphics.vulkan.Target { command, index ->
-    drawing.frost.blurGamma = root.frostBlurGamma
-    frostScenePreparation?.render(command, index)
-    drawing.compositor.sharp.modules.filterKeys { it.startsWith("reading-frost-") }.values.forEach { pass ->
-        pass.current.liveUniformStructures.getValue("FrostTone").bind("globalBlackLevel", frostFloorValue)
+drawing.compositor.beforeScene =
+    afield.graphics.vulkan.Target { command, index ->
+        drawing.frost.blurGamma = root.frostBlurGamma
+        frostScenePreparation?.render(command, index)
+        drawing.compositor.sharp.modules
+            .filterKeys { it.startsWith("reading-frost-") }
+            .values
+            .forEach { pass ->
+                pass.current.liveUniformStructures.getValue("FrostTone").bind("globalBlackLevel", frostFloorValue)
+            }
     }
-}
 
 // These controls shape already-filtered text coverage; neither changes its cache nor its timing.
 rootProp<Float>(textBlurGain, 1f)
 rootProp<Float>(textBlurContrast, 1f)
 val textBlurToneValue: () -> Vector4f = { vec(root.textBlurGain, root.textBlurContrast, 0f, 0f) }
 val prepareTextAndFrost = drawing.compositor.beforeScene
-drawing.compositor.beforeScene = afield.graphics.vulkan.Target { command, index ->
-    drawing.compositor.sharp.modules.filterKeys { it.startsWith("reading-local-blur-") }.values.forEach { pass ->
-        pass.current.liveUniformStructures.getValue("TextBlurTone").bind("appearance", textBlurToneValue)
+drawing.compositor.beforeScene =
+    afield.graphics.vulkan.Target { command, index ->
+        drawing.compositor.sharp.modules
+            .filterKeys { it.startsWith("reading-local-blur-") }
+            .values
+            .forEach { pass ->
+                pass.current.liveUniformStructures.getValue("TextBlurTone").bind("appearance", textBlurToneValue)
+            }
+        prepareTextAndFrost?.render(command, index)
     }
-    prepareTextAndFrost?.render(command, index)
-}
 
 // Optional perceptual dither for downstream display quantization; zero keeps it disabled.
 
@@ -70,9 +79,9 @@ loop {
     val now = System.nanoTime()
     if (now - lastStats > 1_000_000_000L) {
         lastStats = now
-        display(
+        markdown(
             "frame",
-            "<div style='padding:12px;width:440px'>${if (drawing.textBlurNeedsRebuild) "Blur capacity changed: rebuild Drawing. " else ""}Frost: ${drawing.frost.activeSurfaces} active / ${drawing.frost.allocatedSurfaces} cached · ${drawing.frost.allocatedBytes / (1024 * 1024)} MiB · ${drawing.frost.omittedSurfaces} over budget. Text caches: ${drawing.textBlurConfig.width}×${drawing.textBlurConfig.height}, minimum ${drawing.textBlurConfig.minimumSize}px, max ${2*drawing.textBlurConfig.maximumRadius+1} taps, ${drawing.textBlurCacheBytes/(1024*1024)} MiB. Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.</div>",
+            "${if (drawing.textBlurNeedsRebuild) "Blur capacity changed: rebuild Drawing. " else ""}Frost: ${drawing.frost.activeSurfaces} active / ${drawing.frost.allocatedSurfaces} cached · ${drawing.frost.allocatedBytes / (1024 * 1024)} MiB · ${drawing.frost.omittedSurfaces} over budget. Text caches: ${drawing.textBlurConfig.width}×${drawing.textBlurConfig.height}, minimum ${drawing.textBlurConfig.minimumSize}px, max ${2*drawing.textBlurConfig.maximumRadius+1} taps, ${drawing.textBlurCacheBytes/(1024*1024)} MiB. Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.",
         )
     }
     frame()

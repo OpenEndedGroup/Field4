@@ -69,7 +69,7 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-53 routes, 40 of them with no route-specific guard. `guard` is computed from the handler
+54 routes, 41 of them with no route-specific guard. `guard` is computed from the handler
 body by the docs-route vocabulary the mutating census also uses
 (`docsAnnotations.kt:739#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
 `docsAnnotations.kt:723#fun ApplicationCall.refuseUnlessLocalDocsClient`); there is no `install(Authentication)`
@@ -137,6 +137,7 @@ mutation; it is a different one.
 | `GET /controllers/controls` | `controllers.kt` | none |
 | `GET /controllers/outputs` | `controllers.kt` | none |
 | `GET /docs-pass-site/{...}` | `docsPass.kt` | loopback + same-site |
+| `GET /extension-web/{...}` | `extensionWeb.kt` | none |
 | `GET /field-audio/{...}` | `fieldAudioProxy.kt` | none |
 | `GET /field-docs/{...}` | `docsAnnotations.kt` | loopback |
 | `GET /health` | `Server.kt` | none |
@@ -150,10 +151,10 @@ mutation; it is a different one.
 | `GET /three-review` | `Server.kt` | loopback + same-site |
 | `GET /three-review-image` | `Server.kt` | loopback + same-site |
 
-### The five that serve files off disk, which deserve reading twice
+### The six that serve files off disk, which deserve reading twice
 
-`/project/{...}`, `/min/{...}`, `/local/{...}`, `/field-docs/{...}` and
-`/api/document-guide-asset` turn a URL into a path on your machine. Four enforce path
+`/project/{...}`, `/min/{...}`, `/extension-web/{...}`, `/local/{...}`, `/field-docs/{...}` and
+`/api/document-guide-asset` turn a URL into a path on your machine. Five enforce path
 boundaries and one does not:
 
 - `Server.kt#project file not found or outside project directory` canonicalises the
@@ -162,6 +163,9 @@ boundaries and one does not:
   `/tmp/workspace-evil` for workspace `/tmp/workspace`;
 - `Server.kt#Monaco asset not found` does the same for `/min/`, against the Monaco
   directory;
+- `extensionWeb.kt#fun resolve` does the same for `/extension-web/`, against each registered
+  web folder in turn (`src/personal/web`, extension roots' `web/`, `AFIELD_WEB_DIRS`), after
+  `URI.getPath` has decoded the request, so `%2e%2e` is checked as `..`;
 - `docsAnnotations.kt#Two independent checks now` checks both encodings: after a
   percent-encoding bug let `%2e%2e` through a textual `..` check, it now checks the
   *decoded* path textually **and** re-checks the assembled URI after `URI.normalize`;
@@ -305,7 +309,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `agent_backdoor.kt` | 28 |
 | `history.kt` | 14 |
 | `executing.kt` | 10 |
-| `Ai4Installer.kt` | 11 |
+| `Ai4Installer.kt` | 12 |
 | `importing.kt` | 4 |
 | `NotationServer.kt` | 3 |
 | `templating.kt` | 3 |
@@ -334,7 +338,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `agent_backdoor.kt` | the agent path: read/write boxes, run transcripts, screenshot, macros. The published automation surface |
 | `history.kt` | the document history store — versions, screenshots, restore |
 | `executing.kt` | **box execution.** `launch-all`, `launch-batch`, `launch-fragment`, `stop-box`, `stop-all`, `interrupt-box`. This is arbitrary Kotlin in Field's own JVM |
-| `Ai4Installer.kt` | AI chat sessions and tool use; reads or clears the attached document’s per-box saved chat, reports the last turn’s context metadata (`ai-chat-context`, no text), rewinds or switches a chat’s branches, and — when asked — undoes a rewound turn’s recorded edits and created boxes (`ai-chat-rewind-world`), reads the attached document’s saved state trees and bounded state details (`ai-state-tree`, including read/inspect callbacks registered by box code; no restore or fork), runs a document’s agent-extension chat commands (`ai-chat-command`, box code), suggests a completion of the chat draft from the fast model (`ai-chat-suggest`), and reads the saved document chat (`chat_history`, `<document>/ai4_document_chat.md`, which `chat_input` appends to), behind the existing `/ws` boundary |
+| `Ai4Installer.kt` | AI chat sessions and tool use; reads, initializes and queues anchored conversation-garden replies or dispatches them through the existing agent harness (`ai-garden`, attached document and box); reads or clears the attached document’s per-box saved chat, reports the last turn’s context metadata (`ai-chat-context`, no text), rewinds or switches a chat’s branches, and — when asked — undoes a rewound turn’s recorded edits and created boxes (`ai-chat-rewind-world`), reads the attached document’s saved state trees and bounded state details (`ai-state-tree`, including read/inspect callbacks registered by box code; no restore or fork), runs a document’s agent-extension chat commands (`ai-chat-command`, box code), suggests a completion of the chat draft from the fast model (`ai-chat-suggest`), and reads the saved document chat (`chat_history`, `<document>/ai4_document_chat.md`, which `chat_input` appends to), behind the existing `/ws` boundary |
 | `importing.kt` | notebook and EDN import — parses foreign documents into boxes |
 | `NotationServer.kt` | the attached document's drawing (the root box's `drawing` property): merges a client's scene into it, records the drawing-layer selection (memory only), anchors marks to boxes. No reach beyond what `set-string` on `root.drawing` already had; it runs box code only as the `onNotation` reactions that box code itself registered |
 | `StrokeSketch.kt` | `stroke-layer-ack`: a window says it has drawn the last stroke-layer frame, which only lets the next frame be sent to it. Reads nothing, writes nothing, runs no code |
@@ -412,6 +416,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `ai-chat-command` | `Ai4Installer.kt` |
 | `ai-chat-context` | `Ai4Installer.kt` |
 | `ai-chat-history` | `Ai4Installer.kt` |
+| `ai-garden` | `Ai4Installer.kt` |
 | `ai-chat-rewind-world` | `Ai4Installer.kt` |
 | `ai-chat-screenshot` | `Ai4Installer.kt` |
 | `ai-chat-suggest` | `Ai4Installer.kt` |

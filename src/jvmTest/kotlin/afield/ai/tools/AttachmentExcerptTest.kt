@@ -124,4 +124,25 @@ class AttachmentExcerptTest {
         assertEquals(51, hit.matchLine)
         assertTrue("data class ByrneStyle" in hit.content)
     }
+
+    /** A PDF reads as its text layer, one block per page, so an agent can quote a document's PDF. */
+    @Test fun pdfReadsAsItsTextLayerPageByPage() {
+        val pdf = kotlin.io.path.createTempFile("attachment", ".pdf").toFile().apply { deleteOnExit() }
+        org.apache.pdfbox.pdmodel.PDDocument().use { doc ->
+            for (words in listOf("Visitor Guidelines", "Acknowledgment Form")) {
+                val page = org.apache.pdfbox.pdmodel.PDPage().also(doc::addPage)
+                org.apache.pdfbox.pdmodel.PDPageContentStream(doc, page).use { s ->
+                    s.beginText()
+                    s.setFont(org.apache.pdfbox.pdmodel.font.PDType1Font(org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA), 12f)
+                    s.newLineAtOffset(72f, 700f)
+                    s.showText(words)
+                    s.endText()
+                }
+            }
+            doc.save(pdf)
+        }
+        val (text, language) = assertNotNull(afield.app.server.readFileAsText(pdf))
+        assertEquals("plaintext", language)
+        assertEquals("--- Page 1 ---\nVisitor Guidelines\n\n--- Page 2 ---\nAcknowledgment Form", text)
+    }
 }

@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rig_measure" index="0" -->
 
 ```edn [field-box id="rig_measure" role="properties"]
-{"id" "rig_measure" "index" 0 "name" "3. Measure: round trip and aliasing (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Measure: round trip and aliasing (run)" "_tombstone" false "frame" #afield/rect [60.0 560.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_measure_code_.kt" "lines" 17 "characters" 632 "sha256" "b5a1df3be5d954ee1063fe69396be562330ef37b06c7c26b602e7b6323e904d2"}]}
+{"id" "rig_measure" "index" 0 "name" "3. Measure: round trip and aliasing (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Measure: round trip and aliasing (run)" "_tombstone" false "frame" #afield/rect [60.0 560.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_measure_code_.kt" "lines" 59 "characters" 2079 "sha256" "2fa384680dfb2533b68e7616d86d51ba2d7fbb4455debafcee6b2cefde12595f"}]}
 ```
 
 ```kotlin [field-property box="rig_measure" name="code" path="rig_measure_code_.kt"]
 import afield.io.dmx.*
+import afield.lang.rectsl.*
 
 /*
 The page's measurements, on this machine: nine frames sent and received back on a free port the
@@ -25,12 +26,53 @@ sampled two ways.
 val trip = SceneOnARig.roundTrip()
 println(trip)
 
-val (point, area) = SceneOnARig.aliasing()
+val frameCount = 121
+val lineWidth = 0.25
+val frameWidth = 256
+val frameHeight = 128
+val line = RectSLImager(
+    """
+    #rectsl
+    ->wall 16 8 abstract
+    ->background 0x000000
+    ->duration 4
+    ->fps 30
+
+    "sweep" rect
+      $lineWidth 8 ->wh
+      0xffffff solid ->fill
+      '( 0=-8  4=8 ) linear ->x
+    ;""".trimIndent(),
+)
+val sampleRig = SceneOnARig.Rig()
+val point = SceneOnARig.SamplingTrace("point", DoubleArray(frameCount), DoubleArray(frameCount))
+val area = SceneOnARig.SamplingTrace("area", DoubleArray(frameCount), DoubleArray(frameCount))
+val lineTruth = lineWidth * SceneOnARig.ROWS
+
+// Keep the line wholly on the wall; compare both routes at exactly the same times.
+for (k in 0 until frameCount) {
+    val t = 0.5 + 3.0 * k / (frameCount - 1.0)
+    val image = line.frame(t, frameWidth, frameHeight, linear = true)
+    for ((trace, averageFirst) in [point to false, area to true]) {
+        val sampled = if (averageFirst) image.resize(SceneOnARig.COLS, SceneOnARig.ROWS) else image
+        sampleRig.patch.mapImage(sampled, only = sampleRig.grid)
+        var total = 0.0
+        var peak = 0.0
+        for (fixture in sampleRig.grid) {
+            // A fully white fixture contributes one unit of light.
+            val brightness = (fixture.color.x + fixture.color.y + fixture.color.z) / 3.0
+            total += brightness
+            peak = maxOf(peak, brightness)
+        }
+        trace.total[k] = total
+        trace.peak[k] = peak
+    }
+}
 println(
     "point samples: dark in ${point.darkFrames} of ${point.total.size} frames, light on the rig ${point.min.f2}..${point.max.f2}",
 )
 println(
-    "area average:  dark in ${area.darkFrames} frames, light on the rig ${area.min.f3}..${area.max.f3} (the line is worth ${SceneOnARig.LINE_TRUTH})",
+    "area average:  dark in ${area.darkFrames} frames, light on the rig ${area.min.f3}..${area.max.f3} (the line is worth ${lineTruth})",
 )
 ```
 

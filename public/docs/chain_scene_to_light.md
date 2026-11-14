@@ -193,7 +193,49 @@ the full frame, and the frame shrunk to 16 × 8 by area averaging (`Img.resize`)
 import afield.io.dmx.*
 import afield.lang.rectsl.*
 
-val (point, area) = SceneOnARig.aliasing()
+val frameCount = 121
+val lineWidth = 0.25
+val frameWidth = 256
+val frameHeight = 128
+val line = RectSLImager(
+    """
+    #rectsl
+    ->wall 16 8 abstract
+    ->background 0x000000
+    ->duration 4
+    ->fps 30
+
+    "sweep" rect
+      $lineWidth 8 ->wh
+      0xffffff solid ->fill
+      '( 0=-8  4=8 ) linear ->x
+    ;
+    """.trimIndent(),
+)
+val sampleRig = SceneOnARig.Rig()
+val point = SceneOnARig.SamplingTrace("point", DoubleArray(frameCount), DoubleArray(frameCount))
+val area = SceneOnARig.SamplingTrace("area", DoubleArray(frameCount), DoubleArray(frameCount))
+val lineTruth = lineWidth * SceneOnARig.ROWS
+
+// Keep the line wholly on the wall; compare both routes at exactly the same times.
+for (k in 0 until frameCount) {
+    val t = 0.5 + 3.0 * k / (frameCount - 1.0)
+    val image = line.frame(t, frameWidth, frameHeight, linear = true)
+    for ((trace, averageFirst) in [point to false, area to true]) {
+        val sampled = if (averageFirst) image.resize(SceneOnARig.COLS, SceneOnARig.ROWS) else image
+        sampleRig.patch.mapImage(sampled, only = sampleRig.grid)
+        var total = 0.0
+        var peak = 0.0
+        for (fixture in sampleRig.grid) {
+            // A fully white fixture contributes one unit of light.
+            val brightness = (fixture.color.x + fixture.color.y + fixture.color.z) / 3.0
+            total += brightness
+            peak = maxOf(peak, brightness)
+        }
+        trace.total[k] = total
+        trace.peak[k] = peak
+    }
+}
 
 :::fold plot both routes, and show the rig at an instant the point samples miss
 val times = (0 until point.total.size).map { 0.5 + 3.0 * it / (point.total.size - 1.0) }
@@ -202,15 +244,15 @@ showSignals(
     "area average to 16 × 8 first" to area.total.toList(),
     x = times,
     channel = "light on the rig",
-    // No third trace for the truth: it is 2.0, exactly under the area-averaged route.
-    title = "Light on the grid; the line is worth ${SceneOnARig.LINE_TRUTH}",
+    // Area averaging tracks lineTruth; a separate trace would lie on top of it.
+    title = "Light on the grid; the line is worth ${lineTruth}",
     xTitle = "seconds",
     yTitle = "fully lit fixtures",
 )
 
 // The first instant at which the point-sampled rig is dark.
 val k = point.peak.indexOfFirst { it < 0.01 }.coerceAtLeast(0)
-val frame = RectSLImager(SceneOnARig.LINE).frame(times[k], 256, 128, linear = true)
+val frame = line.frame(times[k], frameWidth, frameHeight, linear = true)
 val rig = SceneOnARig.Rig()
 rig.show(frame, area = false)
 showPatch(rig.patch, channel = "point samples at t = ${times[k].f3} s", w = 540.0, h = 300.0)
@@ -229,6 +271,10 @@ markdown(
 )
 :::endfold
 ```
+
+Try changing `lineWidth` from `0.25` to `0.5` and rerunning the box: the expected total
+`lineTruth` rises from two to four fully lit fixtures. `frameCount` changes how densely the sweep
+is measured; both routes still see the same frames and times.
 
 Both rigs in the figure are coloured from linear light and drawn as it is, so the area-averaged
 column is dim: each of those fixtures carries an eighth of a white one, the line's quarter split
@@ -283,3 +329,11 @@ for multicast.
   outputs and inputs, and `showUniverse`.
 * [A RectSL Animation as a Solid](chain_rectsl_spacetime.md) is the neighbouring chain: the same
   language read as a volume over *(x, y, t)* instead of a sequence of frames.
+
+- Trace data and grid layout: [`SamplingTrace`](reference/lighting.md#sceneonarig-kt--sceneonarig--samplingtrace)
+  and [`Rig`](reference/lighting.md#sceneonarig-kt--sceneonarig--rig).
+- Measuring the lighting round trip: [`SceneOnARig`](reference/lighting.md#sceneonarig-kt-sceneonarig) —
+  [`aliasing`](reference/lighting.md#sceneonarig-kt--sceneonarig--aliasing),
+  [`decodeErrors`](reference/lighting.md#sceneonarig-kt--sceneonarig--decodeerrors),
+  [`roundTrip`](reference/lighting.md#sceneonarig-kt--sceneonarig--roundtrip-2),
+  [`timing`](reference/lighting.md#sceneonarig-kt--sceneonarig--timing-2).

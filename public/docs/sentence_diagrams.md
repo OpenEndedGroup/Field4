@@ -180,8 +180,8 @@ displayOpen("diagram")
 
 ## From geometry to a shallow-3D reading space
 
-[Open text_one](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn) for eight
-related reading spaces: **Marked breath**, **Constituency canopy**, **Dependency undertow**,
+[Open text_one](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn) for thirteen
+related reading spaces, including: **Marked breath**, **Constituency canopy**, **Dependency undertow**,
 **Sentence furniture**, **A room for words**, and **Words becoming weather**. Sentence furniture
 crossfades its structural drawing into a complete reading line; the typography playground
 combines inline styles, multiple faces and text-relative geometry. Select an example in
@@ -254,6 +254,11 @@ fresh pose at an absolute time, so scrubbing backward does not accumulate edits.
 only the score leaves the physics, prepared outlines and renderer alive. Stop Drawing before
 rebuilding graph topology or fonts. The example source and detailed guide are in
 `templates/text_one/`.
+
+Build the scene with [`ReadingDiagram`](reference/graphics.md#diagramdsl-kt-readingdiagram).
+[`ReadingDiagramPlayer.prepare`](reference/graphics.md#readingdiagramplayer-kt--readingdiagramplayer-companion--prepare) prepares its native text once;
+[`textFrame`](reference/graphics.md#diagramtextframe-kt--textframe) fits a surround to a run, and
+[`textFrustum`](reference/graphics.md#diagramtextfrustum-kt--textfrustum) joins two text faces into a holder.
 
 ### Typography and geometry in the words’ coordinate system
 
@@ -634,18 +639,16 @@ The document's **Drop caps** guide covers multi-letter initials, typography and 
 
 ## Mechanical text holders
 
-The reading-space starting document includes two frames with eight outward corner
-extensions and two wireframe text frusta. Overstroke combines a fraction of each
-bounding side with a constant distance in metres. A stepped surround keeps its
-original frosted silhouette and sliding attachments; its internal rectlet seams
-never generate extension marks.
+The reading-space starting point has frames around its text, with lines extending outward
+from the corners. You can set their length as a fraction of the frame's side plus a distance
+in metres. A stepped surround keeps its frosted silhouette and sliding attachments; only its
+outer corners get these extensions.
 
-`textFrustum` joins two fitted, frosted text rectangles with four rails. A common
-aspect keeps the end shapes similar, while their physics anchors and font scales
-set depth and taper. The holder can fade, blur and move as an assembly, or animate
-its end texts independently. Complete lines crossfade without drawing themselves in.
-Examples 10–13 and the document’s **Mechanical text holders** guide contain the
-builder and score recipes.
+`textFrustum` joins two fitted, frosted text rectangles with four rails. The ends share an
+aspect ratio, while their physics anchors and font scales set the depth and taper. You can fade,
+blur and move the holder as a whole, or animate the text at each end independently. Complete
+lines crossfade without drawing themselves in. Examples 10–13 and the document's **Mechanical
+text holders** guide show how to build and animate them.
 
 ## API reference
 

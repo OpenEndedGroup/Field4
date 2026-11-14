@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # Animation
 
-10 source file(s), 178 public symbol(s), 41 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+10 source file(s), 186 public symbol(s), 43 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -37,6 +37,8 @@ Motion uses metres, seconds, right handed Y-up coordinates and xyzw quaternions.
 | <a id="motion-kt--motioncoordinates--moment"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">moment</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L47) |  |
 | <a id="motion-kt--motioncoordinates--rotation"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">rotation</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="nc">Quat</span><span class="p">)</span><span class="p">:</span> <span class="nc">Quat</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L48) |  |
 | <a id="motion-kt--motioncoordinates--json"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">json</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">JSONObject</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L53) |  |
+| <a id="motion-kt--motioncoordinates-companion--fromjson"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">fromJson</span><span class="p">(</span><span class="n">j</span><span class="p">:</span> <span class="nc">JSONObject</span><span class="p">)</span><span class="p">:</span> <span class="nc">MotionCoordinates</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L57) |  |
+| <a id="motion-kt--motioncoordinates-companion--isaacgym"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">isaacGym</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L63) | Isaac Gym's Z-up world mapped by a proper rotation: (x,y,z) -> (x,z,-y). |
 
 ### MotionBody { #motion-kt-motionbody }
 
@@ -69,6 +71,7 @@ Runtime joint order and rest transforms. Reuses Field's scene hierarchy rather t
 | <a id="motion-kt--motionskeleton--body"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">body</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">MotionBody</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L117) |  |
 | <a id="motion-kt--motionskeleton--sceneskeleton"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sceneSkeleton</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">GltfSkinning</span><span class="p">.</span><span class="nc">Skeleton</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L119) |  |
 | <a id="motion-kt--motionskeleton--json"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">json</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L124) |  |
+| <a id="motion-kt--motionskeleton-companion--fromjson"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">fromJson</span><span class="p">(</span><span class="n">j</span><span class="p">:</span> <span class="nc">JSONObject</span><span class="p">)</span><span class="p">:</span> <span class="nc">MotionSkeleton</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L128) |  |
 
 ### MotionPose { #motion-kt-motionpose }
 
@@ -86,6 +89,7 @@ Lists are copied on construction. Display code may create mutable Field vectors 
 | <a id="motion-kt--motionpose--position"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">position</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L156) |  |
 | <a id="motion-kt--motionpose--rotation"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">rotation</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Quat</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L157) |  |
 | <a id="motion-kt--motionpose--json"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">json</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L161) |  |
+| <a id="motion-kt--motionpose-companion--fromjson"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">fromJson</span><span class="p">(</span><span class="n">j</span><span class="p">:</span> <span class="nc">JSONObject</span><span class="p">)</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L163) |  |
 
 ### MotionFrame { #motion-kt-motionframe }
 
@@ -98,6 +102,7 @@ Lists are copied on construction. Display code may create mutable Field vectors 
 | <a id="motion-kt--motionframe--contacts"></a>[<code class="highlight"><span class="k">val</span> <span class="n">contacts</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L173) |  |
 | <a id="motion-kt--motionframe--diagnostics"></a>[<code class="highlight"><span class="k">val</span> <span class="n">diagnostics</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L174) |  |
 | <a id="motion-kt--motionframe--json"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">json</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L183) |  |
+| <a id="motion-kt--motionframe-companion--fromjson"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">fromJson</span><span class="p">(</span><span class="n">j</span><span class="p">:</span> <span class="nc">JSONObject</span><span class="p">)</span><span class="p">:</span> <span class="nc">MotionFrame</span></code>](source/jvmMain/afield/animation/mocap/Motion/#L187) |  |
 
 ### TimedRootPoint { #motion-kt-timedrootpoint }
 
@@ -231,6 +236,7 @@ Constants: `PROMPT`, `ROOT_PLAN`, `JOINT_TARGETS`, `ATTACH`, `UPDATE_ATTACHMENT`
 | Declaration | Summary |
 | --- | --- |
 | <a id="motioncommands-kt--motioncapabilities--require"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">require</span><span class="p">(</span><span class="n">operation</span><span class="p">:</span> <span class="nc">MotionOperation</span><span class="p">)</span></code>](source/jvmMain/afield/animation/mocap/MotionCommands/#L12) |  |
+| <a id="motioncommands-kt--motioncapabilities-companion--fromjson"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">fromJson</span><span class="p">(</span><span class="n">j</span><span class="p">:</span> <span class="nc">JSONObject</span><span class="p">)</span></code>](source/jvmMain/afield/animation/mocap/MotionCommands/#L16) |  |
 
 ### JointTarget { #motioncommands-kt-jointtarget }
 
@@ -433,7 +439,7 @@ Blocking backend boundary, invoked only by MotionSession's owned daemon thread. 
 
 [<code class="highlight"><span class="k">class</span> <span class="nf">MotionSession</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">MotionBackend</span><span class="p">,</span> <span class="k">val</span> <span class="n">queueCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span> <span class="k">val</span> <span class="n">buffer</span><span class="p">:</span> <span class="nc">MotionBuffer</span> <span class="o">=</span> <span class="nc">MotionBuffer</span><span class="p">(</span><span class="p">)</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/animation/mocap/MotionSession/#L39)
 
-One small optional motion facade. No inference or simulator work runs on Field's frame thread. Commands are bounded; path/target replacements coalesce only before the next ordered event. Subscriptions run on the worker thread and must be short; rendering reads [`buffer`](animation.md#motionsession-kt--motionsession--buffer) snapshots. Construction in a box registers with its existing RunScope (stop/re-run/document close). Live ARDY/CLoSD drivers require separately validated model environments; `replay` needs neither.
+One small optional motion facade. No inference or simulator work runs on Field's frame thread. Commands are bounded; path/target replacements coalesce only before the next ordered event. Subscriptions run on the worker thread and must be short; rendering reads [`buffer`](animation.md#motionsession-kt--motionsession--buffer) snapshots. Construction in a box registers with its existing RunScope (stop/re-run/document close). Live ARDY/CLoSD drivers require separately validated model environments; [`replay`](animation.md#motionsession-kt--motionsession-companion--replay) needs neither.
 
 | Declaration | Summary |
 | --- | --- |
@@ -457,6 +463,8 @@ One small optional motion facade. No inference or simulator work runs on Field's
 | <a id="motionsession-kt--motionsession--visibledelaypercentile"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">visibleDelayPercentile</span><span class="p">(</span><span class="n">fraction</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code>](source/jvmMain/afield/animation/mocap/MotionSession/#L123) |  |
 | <a id="motionsession-kt--motionsession--queued"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">queued</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/animation/mocap/MotionSession/#L128) |  |
 | <a id="motionsession-kt--motionsession--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/animation/mocap/MotionSession/#L224) | Nonblocking on Field's runloop; the backend must make its close unblock pending I/O. |
+| <a id="motionsession-kt--motionsession-companion--replay"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">replay</span><span class="p">(</span><span class="n">clip</span><span class="p">:</span> <span class="nc">MotionClip</span><span class="p">)</span></code>](source/jvmMain/afield/animation/mocap/MotionSession/#L240) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">replay</span><span class="p">(</span><span class="n">recording</span><span class="p">:</span> <span class="nc">MotionRecording</span><span class="p">)</span></code>](source/jvmMain/afield/animation/mocap/MotionSession/#L242) | Replay poses and actual intervention/reset events from a portable recording. |
 
 ## MotionView.kt { #motionview-kt }
 

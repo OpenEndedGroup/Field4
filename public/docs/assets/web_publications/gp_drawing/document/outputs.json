@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-11T16:21:09.362Z",
+  "capturedAt": "2026-11-14T02:36:08.681Z",
   "documentName": "gp_drawing",
   "outputs": [
     {
@@ -32,7 +32,7 @@
         "svg"
       ],
       "width": 1576,
-      "height": 496,
+      "height": 490,
       "path": "outputs/2.html"
     },
     {
@@ -56,7 +56,7 @@
         "svg"
       ],
       "width": 536,
-      "height": 108,
+      "height": 104,
       "path": "outputs/4.html"
     },
     {

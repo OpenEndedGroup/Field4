@@ -385,11 +385,11 @@ display("main", canvas.png(wet = true, light = PaintLight.Raking))
 
 ## Folding, pressing and rubbing
 
-Three gestures move wet paint with no tool in it at all. They come from Dan Fountain's
-[Fold & Squish](https://danfountain.com/blog/paint-that-squishes), where thick paint is folded,
+You can also move wet paint by folding the canvas, pressing a plate onto it or rubbing it with a
+thumb. These gestures come from Dan Fountain's [Fold & Squish](https://danfountain.com/blog/paint-that-squishes), where thick paint is folded,
 squashed, rubbed and peeled. Field follows the method he describes; none of its code is used.
 
-- `canvas.fold(x, y, dx, dy)` folds the canvas along the line through `(x, y)` running toward
+- [`canvas.fold(x, y, dx, dy)`](reference/graphics.md#paintcanvas-kt--paintcanvas--fold) folds the canvas along the line through `(x, y)` running toward
   `(dx, dy)`. The half on the left of that direction is pressed onto the other half, then the canvas
   is opened again. Where the paint on a point and on its mirror image is thick enough to meet through
   the gap the `pressure` leaves, the two films swap `transfer` of themselves (0.5 makes them one
@@ -398,10 +398,10 @@ squashed, rubbed and peeled. Field follows the method he describes; none of its 
   `peel = 0`, and in branching ridges `ridge` units apart as `peel` rises. Where one side keeps a
   ridge, its mirror is bare. Past `peel = 0.67` the film splits wholly. A fold along x or y prints
   an exact mirror image; a diagonal fold is mirrored to within a pixel.
-- `canvas.press(x, y, radius)` presses a flat plate onto the paint and peels it off toward
+- [`canvas.press(x, y, radius)`](reference/graphics.md#paintcanvas-kt--paintcanvas--press) presses a flat plate onto the paint and peels it off toward
   `(dx, dy)`. The plate takes `take` of the film it touched, unevenly, in the same kind of ridges. This
   is a monotype pull, or a palm pressed down and lifted.
-- `canvas.rub(line, radius, pressure)` drags a thumb along a line. It picks up the paint that stands
+- [`canvas.rub(line, radius, pressure)`](reference/graphics.md#paintcanvas-kt--paintcanvas--rub) drags a thumb along a line. It picks up the paint that stands
   above the film a light touch rides on and lays it down further along. The paint is drawn out and
   thins as it goes, in streaks where the skin presses harder, and colours smear into each other.
 
@@ -411,7 +411,7 @@ and the mm³ taken off it (`liftedMm3`, what a plate took or a thumb still holds
 lowers it by exactly what the plate reports. Paint that has started to set moves less, and dry paint
 does not move.
 
-The box below lays three thick strokes on the left half, folds the canvas down the middle and opens
+The [`PaintCanvas`](reference/graphics.md#paintcanvas-kt-paintcanvas) example below lays three thick strokes on the left half, folds the canvas down the middle and opens
 it. The top image is the canvas before the fold, the bottom one after: each stroke is printed onto
 the right half, and the two prints carry opposite ridges where the film split.
 
@@ -450,7 +450,8 @@ display("main", plate.png(wet = true, light = PaintLight.Raking))
 
 val thumb = PaintCanvas(900, aspect = 1.4, seed = 9)
 val brush = thumb.brush(BrushKind.HogFlat, width = 60.0)
-for ((i, color) in listOf(rgb(0.8, 0.15, 0.1), rgb(0.95, 0.75, 0.15), rgb(0.1, 0.25, 0.6)).withIndex()) {
+val palette = [rgb(0.8, 0.15, 0.1), rgb(0.95, 0.75, 0.15), rgb(0.1, 0.25, 0.6)]
+for ((i, color) in palette.withIndex()) {
     brush.load(color, amount = 3.0, stiff = 0.4)
     thumb.stroke(FLine().moveTo(180 + i * 70, 150).lineTo(180 + i * 70, 560), brush, pressure = 1.0..1.0)
 }
@@ -474,9 +475,73 @@ gesture, and each shows the canvas before and after.
     pigment, height, wetness and drift on the GPU. Field's engine is single-threaded Rust. On a
     1600 × 1280 canvas on an M-series Mac a fold takes about 160 ms, a plate 60 ms and a rub 30 ms,
     against 530 ms for one heavy brush stroke. So the gestures are not the bottleneck; the brushes
-    are. Blowing (drift of fluid paint) was not added. The tests (`SquishTest`, and the Rust tests in
+    are. Blowing came later (next section). The tests (`SquishTest`, and the Rust tests in
     `squish.rs`) check that paint is conserved, that an even fold prints a mirror image, and that a
     peel leaves complementary ridges.
+
+### Blowing paint
+
+Air pushed into wet paint does not advance as a straight front. Wherever the front bulges a little,
+the paint ahead gives way more easily, so the bulge grows, and the front breaks into fingers that
+split again: viscous fingering, the Saffman–Taylor instability. The more viscous the paint is than
+what pushes into it, the more the fingers branch.
+
+[`canvas.blow(line, radius, pressure)`](reference/graphics.md#paintcanvas-kt--paintcanvas--blow) blows air through a straw or an airbrush along any FLine. Where
+the jet meets wet paint, the paint runs away ahead of it, more along the direction of travel than
+back, and the air follows it in as fingers about `tendril` units wide. `contrast` sets how much more
+viscous the paint is than the air: 1 gives a compact blot, 100 or more a branching tree. Leave it
+out and it comes from the paint, so thinned paint throws finer tendrils than stiff paint. The paint
+the air passes is pushed to the tendrils' sides and tips, so a thin film is left behind with thick
+rims at the edges, and the solvent in that film evaporates faster. Paint is moved, never made or
+lost: `canvas.wetMm3` is the same before and after. `blow` returns a `Blown` with the mm³ moved and
+`branching`, how far the fingers spread for their area (about 1 for a round blot, 2 or more for a
+branching tree).
+
+The box below lays a thick blue film and blows across it along a curve. The top image is before,
+the bottom one after.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/blow.png" alt="two canvases, one above the other. The top one has a broad, thick band of blue paint with bristle ridges. In the bottom one a curved path has been blown across the band: the paint is cleared along it to a thin pale film, with short, fine tendrils fraying out from both edges of the track into the blue and dark rims of pushed-up paint along them" wait="30" capture="box" open-outputs="true" padding="20" requires="paint" name="blow" embed=true scale=1}
+:::static
+val canvas = PaintCanvas(900, aspect = 1.4, seed = 11)
+val brush = canvas.brush(BrushKind.HogFlat, width = 120.0)
+brush.load(rgb(0.1, 0.18, 0.55), amount = 5.0, stiff = 0.3)
+for (y in [220, 330, 440, 550]) canvas.stroke(FLine().moveTo(120, y).lineTo(880, y), brush, pressure = 1.0..1.0)
+display("before", canvas.png(wet = true, light = PaintLight.Raking))
+
+// a straw, blown along a curve through the film
+canvas.blow(FLine().moveTo(150, 480).cubicTo(350, 250, 600, 600, 850, 300), radius = 14.0, pressure = 0.9, tendril = 9.0)
+display("main", canvas.png(wet = true, light = PaintLight.Raking))
+```
+
+The same puff of air at one point, into the same film, with three viscosity contrasts: 1.5, 8 and
+200, left to right.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/blow_contrast.png" alt="a canvas with a thick blue band and three blown spots in a row. each spot is a small round clearing with thin, pale, branching fingers running out from it into the paint; the left spot's fingers stay closer to it and the right spot's reach furthest" wait="30" capture="box" open-outputs="true" padding="20" requires="paint" name="blow_contrast" embed=true scale=1}
+:::static
+val canvas = PaintCanvas(900, aspect = 2.4, seed = 12)
+val brush = canvas.brush(BrushKind.HogFlat, width = 130.0)
+brush.load(rgb(0.1, 0.18, 0.55), amount = 5.0, stiff = 0.3)
+for (y in [140, 260]) canvas.stroke(FLine().moveTo(60, y).lineTo(940, y), brush, pressure = 1.0..1.0)
+for ((x, contrast) in [170.0 to 1.5, 500.0 to 8.0, 830.0 to 200.0]) {
+    canvas.blow(FLine().moveTo(x, 200).lineTo(x + 2, 200), radius = 16.0, pressure = 1.0, contrast = contrast, tendril = 8.0)
+}
+display("main", canvas.png(wet = true, light = PaintLight.Raking))
+```
+
+The [paint_blow_fingers](agent_transcripts.md#paint_blow_fingers) starting point gives you both
+examples to try and change.
+
+??? aside "How the fingers are grown"
+    The pattern is the dielectric breakdown model (Niemeyer, Pietronero and Wiesmann, 1984) on a
+    coarse grid over the wet film (`native/field-paint/vendor/paint/src/field/fingers.rs`). The
+    pressure in the paint obeys Darcy's law in a thin gap, with the paint's mobility from its
+    stiffness and how far it has set, held at the edge of the jet's reach. The front advances a cell
+    at a time, chosen with probability proportional to the local pressure gradient raised to
+    `eta = 1.5 (1 - 1/contrast)`: 0 is Eden growth, 1 DLA. Each finger is drawn along the segment it
+    grew, between points jittered inside their cells, `tendril` wide, so fingers run at any angle;
+    the paint in a finger's way is pushed out to its sides and tip. `SquishTest` pins that a blow
+    conserves the wet paint and that branching rises with contrast. The same fingering was tried for
+    the fold's and plate's peel and set aside: the ridged peel read better.
 
 ## Brushes made to order
 
@@ -681,9 +746,8 @@ Implementation and parameter details for the helpers used above:
 
 ## Where to go next
 
-[Watercolour and ink](watercolor.md), where water on paper moves by itself,
-[Brushes with moving hairs](paint_gestures.md), whose hairs bend, splay and flick under timed
-gestures of the hand, [Drawing with FLines](fline_examples.md), [Colors](colors_examples.md),
-[Drawn Strokes Become Paint](chain_drawn_paint.md), which paints strokes drawn on the drawing
-layer with the pen's pressure, and [AI4 paints](ai4_painting.md), where the AI chat paints on this
-canvas.
+Try [watercolour and ink](watercolor.md), where water on paper moves by itself, or
+[brushes with moving hairs](paint_gestures.md) that bend, splay and flick under timed gestures.
+[Drawn Strokes Become Paint](chain_drawn_paint.md) paints the strokes you draw with a pen, using
+its pressure; in [AI4 paints](ai4_painting.md), the AI chat paints on this canvas. For more on the
+building blocks, see [Drawing with FLines](fline_examples.md) and [Colors](colors_examples.md).

@@ -1,0 +1,12 @@
+{
+  "spans": 86,
+  "uniqueBodies": 63,
+  "formattedBodies": 1,
+  "changedPaths": [
+    "dev_docs/agents/transcripts/text_one_vr.yaml",
+    "templates/text_one/elastic_sentences.kt"
+  ],
+  "skips": [],
+  "tokenLiteralsFoldsAndFragmentMarkersVerified": true,
+  "formatter": "Actual Field editor imports, ktfmt and GLSL formatting"
+}

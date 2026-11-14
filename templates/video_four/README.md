@@ -49,6 +49,11 @@ to install WiVRn and prepare the OpenXR loader. Details are in
 [the macOS WiVRn guide](../../public/docs/field_vr_ide.md). Start WiVRn.app and connect the
 headset. The same commands above delegate to `tools/field_wivrn_macos.py`, which selects the
 local runtime, loader and MoltenVK. `--check` performs a preflight without starting Field.
+
+To render on KosmicKrisp instead of MoltenVK, also select **WiVRn headset streaming on
+KosmicKrisp** in `./field.sh --setup` (or run `python tools/field_video_four.py --prepare --kosmickrisp`),
+which builds WiVRn's runtime with Field's patch (`optional/wivrn-macos/README.md`). Then launch with
+`python tools/field_video_four.py --kosmickrisp`.
 The Field checkout must contain the shared stereo-video APIs used by `video_three`.
 
 `--workspace /path/to/AFieldWorkspace` selects another documents root.

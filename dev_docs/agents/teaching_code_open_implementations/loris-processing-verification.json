@@ -1,0 +1,39 @@
+{
+  "passed": [
+    "explicit whirlpool breakpoint mapping and published PCM",
+    "moved whirlpool window on rerun",
+    "tonal transformation and published PCM",
+    "changed pitch scale on rerun",
+    "distilled, aligned and morphed models and published PCM",
+    "changed morph envelope on rerun",
+    "phrase B uses the same explicit morph pipeline",
+    "morph view uses the same explicit morph pipeline"
+  ],
+  "sources": [
+    {
+      "path": "public/docs/loris.md",
+      "name": "loris-whirlpool",
+      "fenceSha256": "241b532e77c28d43be0d076d150956ae50ecd0bdab347eed5ee070a03a9790f4"
+    },
+    {
+      "path": "public/docs/loris.md",
+      "name": "loris-tonal-edit",
+      "fenceSha256": "d8547c54d53d7a72a3c56537b2e999e3f1e4ea1d3e0c6bf2d3efde683a38e9f7"
+    },
+    {
+      "path": "public/docs/loris.md",
+      "name": "loris-morph-a",
+      "fenceSha256": "efa9f3a46a2976e3b2d3f1f3250d3700ea2467ba2f089ccbb1279a80297244c4"
+    },
+    {
+      "path": "public/docs/loris.md",
+      "name": "loris-morph-b",
+      "fenceSha256": "e3e1048e24d7cd8b4214ecae9de8edb07e2329d0cb4c057de9d655a85a30ef41"
+    },
+    {
+      "path": "public/docs/loris.md",
+      "name": "loris-morph-result",
+      "fenceSha256": "73a4986d52f073582ba836315c1ef03f3674249f023d495938ec2ac3e6b02d98"
+    }
+  ]
+}

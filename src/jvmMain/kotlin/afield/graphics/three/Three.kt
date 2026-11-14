@@ -2,6 +2,7 @@
 
 package afield.graphics.three
 
+import afield.app.server.ExtensionWeb
 import afield.geometry.path.div
 import afield.geometry.path.minus
 import afield.geometry.path.plus
@@ -85,6 +86,10 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal var note: String? = null
     internal var hud: Boolean = true
     internal var controls: ThreeControls = ThreeControls()
+    internal val partStyles = LinkedHashMap<String, ThreePartStyle>()
+    internal val sceneMetadata = LinkedHashMap<String, Any?>()
+    internal val motions = ArrayList<ThreePartMotion>()
+    internal var timeline: ThreeTimeline? = null
     private var helpersExplicit: Boolean? = null
 
     /**
@@ -139,6 +144,16 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * @param edgeColor the outline's colour (its alpha is not used); `null` is a near-black.
      * @param material base colour, roughness, metalness and emission ([ThreeSurfaceMaterial]); `null` is the
      * viewer's usual plain white.
+     * @param layer the part's place in the scene's layer tree, outermost first; the Parts list folds by it.
+     * @param metadata free data for the part (strings, numbers, booleans, lists and maps), handed to viewer
+     * tools with it — `ctx.parts()` in a tool, `FieldViewer.parts()` from a page.
+     * @param hidden start hidden. Applied the first time the view sees this [id]; after that the reader's
+     * choice is kept by id across every later redraw.
+     * @param style colour, opacity and emphasis by part id, as [style] sets them. Needs an [id].
+     * @param transform where the mesh is placed: 16 floats, a column-major 4×4 matrix (as three.js's
+     * `Matrix4.fromArray` reads it), or `null` for where its positions are. A part that moves while its shape
+     * stays the same is cheapest given as the **same** mesh each redraw with a new transform: nothing is prepared,
+     * hashed afresh or fetched for it, and the viewer only moves its object. [translation] makes one.
      */
     fun mesh(
         mesh: TriMesh,
@@ -160,7 +175,15 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         edges: Boolean = false,
         edgeColor: Vec4? = null,
         material: ThreeSurfaceMaterial? = null,
+        layer: List<String> = emptyList(),
+        metadata: Map<String, Any?> = emptyMap(),
+        hidden: Boolean = false,
+        style: ThreePartStyle? = null,
+        transform: FloatArray? = null,
     ) {
+        require(transform == null || (transform.size == 16 && transform.all { it.isFinite() })) {
+            "transform must be 16 finite floats (a column-major 4x4 matrix)"
+        }
         require(solidOpacity == null || (solidOpacity.isFinite() && solidOpacity in 0.0..1.0)) {
             "solidOpacity must be between 0 and 1, got $solidOpacity"
         }
@@ -182,23 +205,95 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             callbackId = onClick?.let { registerThreeSurfaceClickCallback(it) } ?: "",
             hoverColor = hoverColor?.let { floatArrayOf(it.x, it.y, it.z, it.w) },
             pickable = pickable,
-        )
+        ).withIdentity(layer, metadata, hidden).placed(transform)
         if (edges) drawables += mesh.toThreeEdgeDrawable(
             color = edgeColor?.let { floatArrayOf(it.x, it.y, it.z) } ?: floatArrayOf(.08f, .1f, .12f),
             panel = panel, group = group, id = id, explode = explode,
-        )
+        ).withIdentity(layer, metadata, hidden).placed(transform)
+        if (style != null) style(id, style)
+    }
+
+    private fun ThreeDrawable.placed(transform: FloatArray?): ThreeDrawable =
+        if (transform == null) this else copy(transform = transform.copyOf())
+
+    /** A [mesh] `transform` that moves by ([x], [y], [z]) in the scene's units. */
+    fun translation(x: Double, y: Double, z: Double = 0.0): FloatArray =
+        floatArrayOf(1f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f, 0f, x.toFloat(), y.toFloat(), z.toFloat(), 1f)
+
+    private fun ThreeDrawable.withIdentity(layer: List<String>, metadata: Map<String, Any?>, hidden: Boolean): ThreeDrawable {
+        require(layer.all { it.isNotBlank() }) { "a layer path's names must not be blank, got $layer" }
+        if (layer.isEmpty() && metadata.isEmpty() && !hidden) return this
+        require(id.isNotBlank() || (metadata.isEmpty() && !hidden)) { "metadata and hidden need the part's id" }
+        return copy(layer = layer.toList(), metadata = threeMetadataObject(metadata, "metadata of '$id'"), hidden = hidden)
+    }
+
+    /**
+     * Style the part [id] in every panel: its colour, opacity and emphasis ([ThreePartStyle]). The viewer
+     * draws it with a material of its own, so a box that only restyles parts sends no geometry. A panel's
+     * own `styles` win in that panel.
+     */
+    fun style(id: String, style: ThreePartStyle) {
+        require(id.isNotBlank()) { "a part style needs the part's id" }
+        partStyles[id] = style
+    }
+
+    /**
+     * Declare that the parts [parts] move together by [motion] ([afield.geometry.kinematics.RigidMotion]), for
+     * the viewer to play on its timeline. Their geometry is drawn at the motion value [at] (a door modelled ajar
+     * at 30° says `at = 30.0`); **At rest** shows them there. [track] carries a value per step of the motion — a
+     * clearance gap — and the bands that tint the part by it. See [ThreeMotionTrack].
+     */
+    fun motion(
+        vararg parts: String,
+        motion: afield.geometry.kinematics.RigidMotion,
+        at: Double = 0.0,
+        track: ThreeMotionTrack? = null,
+        label: String? = null,
+    ) {
+        require(parts.isNotEmpty() && parts.none { it.isBlank() }) { "a motion names the ids of the parts it moves" }
+        require(at.isFinite()) { "a motion's drawn value must be finite" }
+        val moving = motions.flatMap { it.parts }.toSet()
+        parts.firstOrNull { it in moving }?.let { throw IllegalArgumentException("part '$it' already has a motion") }
+        motions += ThreePartMotion(parts.toList(), motion.toThreeJson(), at, track, label)
+        if (timeline == null) timeline = ThreeTimeline()
+    }
+
+    /**
+     * How the motions play: one loop of [periodSeconds], in [shape] ([ThreeTimelineShape.SWING] opens, holds,
+     * closes and holds). [autoplay] starts it when the view opens; [playLabel] is the play button's word.
+     */
+    fun timeline(
+        periodSeconds: Double = 7.0,
+        shape: ThreeTimelineShape = ThreeTimelineShape.SWING,
+        autoplay: Boolean = false,
+        playLabel: String = "Play",
+    ) {
+        timeline = ThreeTimeline(periodSeconds, shape, autoplay, playLabel)
+    }
+
+    /**
+     * Scene-level free metadata for viewer tools (`ctx.metadata()`), as JSON: the inputs the picture was
+     * made from, say, so a script can wait for the view of the pose it asked for.
+     */
+    fun metadata(key: String, value: Any?) {
+        require(key.isNotBlank()) { "a metadata key must not be blank" }
+        sceneMetadata[key] = value
     }
 
     /**
      * Install optional viewer tools from same-origin ES-module paths. Each module exports a
      * default factory returning a tool descriptor. Modules run with the viewer's privileges;
      * supply only trusted application code. A saved review never imports a module on its own.
+     *
+     * A path under `/extension-web/` names a file in a registered web folder (`src/personal/web`,
+     * an extension root's `web/`, `AFIELD_WEB_DIRS`; see [afield.app.server.ExtensionWeb]) and gets
+     * `?v=<hash of its contents>` appended here, so an edited tool loads on the next redraw.
      */
     fun tools(vararg modules: String) {
         require(modules.all { it.startsWith("/") && !it.startsWith("//") && '\\' !in it }) {
             "Viewer tools need absolute same-origin paths"
         }
-        toolModules += modules.filterNot { it in toolModules }
+        toolModules += modules.map(ExtensionWeb::versioned).distinct().filterNot { it in toolModules }
     }
 
     /** Add FLines. They keep every behaviour they have in [Box.threeLines] — picking, hover, fills. */
@@ -273,8 +368,11 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * ```
      *
      * @param groundY the height of the ground; `null` puts it a little below the scene's lowest point.
-     * @param ambientOcclusion darken creases and contact points (screen-space ambient occlusion, three.js's
-     * `SSAOPass`). Drawn in a single view; a contact sheet ([columns]) and X-ray draw without it.
+     * The toolbar's **Realism** button ([controls] `(realism = true)`) turns the same look on and off in
+     * the view; a view that calls `studio` starts with it on.
+     *
+     * @param ambientOcclusion darken creases and contact points (ground-truth ambient occlusion, three.js's
+     * `GTAOPass`). Drawn in a single view; a contact sheet ([columns]) and X-ray draw without it.
      */
     fun studio(
         ground: Boolean = true,
@@ -376,8 +474,10 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         review: Boolean = false,
         parts: Boolean = false,
         light: Boolean = false,
+        realism: Boolean = false,
+        pathTrace: Boolean = false,
     ) {
-        controls = ThreeControls(xray, export, linkCamera, review, parts, light)
+        controls = ThreeControls(xray, export, linkCamera, review, parts, light, realism, pathTrace)
     }
 
     /** Put the controls in [controls] on the toolbar; `controls(ThreeControls.ALL)` for every one. */
@@ -486,9 +586,12 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         camera: ThreeCameraSpec? = null,
         bounds: ThreeBounds? = null,
         fitBounds: Boolean = false,
+        styles: Map<String, ThreePartStyle> = emptyMap(),
     ) {
+        require(styles.keys.none { it.isBlank() }) { "a panel's part styles are keyed by part id" }
         panels += ThreePanel(
             camera = camera, title = title, caption = caption, facts = facts, bounds = bounds, fitBounds = fitBounds,
+            partStyles = styles.toMap(),
         )
     }
 
@@ -573,6 +676,13 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         // the FLine half contributed rather than replacing it.
         val drawableTriangles = drawables.sumOf { (it.geometry.index?.array?.size ?: 0) / 3 }
         require(cameraFollow == null || panels.size <= 1) { "Camera follow requires a single view" }
+        val ids = drawables.mapTo(HashSet()) { it.id }
+        (partStyles.keys + panels.flatMap { it.partStyles.keys }).firstOrNull { it !in ids }?.let {
+            throw IllegalArgumentException("a part style names '$it', which no mesh in this scene has as its id")
+        }
+        motions.flatMap { it.parts }.firstOrNull { it !in ids }?.let {
+            throw IllegalArgumentException("a motion moves '$it', which no mesh in this scene has as its id")
+        }
         require(cameraLink == null || panels.size <= 1) {
             "linkCamera() needs a single-view scene; a contact sheet of ${panels.size} panels keeps its own cameras"
         }
@@ -612,6 +722,10 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             note = note,
             hud = hud,
             controls = controls,
+            partStyles = partStyles.toMap(),
+            metadata = threeMetadataObject(sceneMetadata, "scene metadata"),
+            motions = motions.toList(),
+            timeline = if (motions.isEmpty()) null else timeline,
         )
     }
 

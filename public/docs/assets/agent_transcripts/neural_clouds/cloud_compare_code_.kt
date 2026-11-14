@@ -18,14 +18,20 @@ val mask = cloudScene.render(view, w, h, CloudScene.InScatter { _, _, _, _, into
 val file = File.createTempFile("neural_clouds", ".png")
 writeCloudComparison(file, reference, [single, ambient, neural])
 val png = Base64.getEncoder().encodeToString(file.readBytes())
-val rows =
-    ["single scatter" to single, "fitted ambient" to ambient, "network" to neural].joinToString("") { (name, image) ->
+val comparisons = ["single scatter" to single, "fitted ambient" to ambient, "network" to neural]
+val errors =
+    comparisons.joinToString("\n") { (name, image) ->
         val e = cloudError(image, reference, mask)
-        "<tr><td>$name</td><td>${e.relativeMeanAbs.f3}</td><td>${e.rmse.f3}</td></tr>"
+        "| $name | ${e.relativeMeanAbs.f3} | ${e.rmse.f3} |"
     }
-display(
-    "compare",
-    "<img style='width:100%' src='data:image/png;base64,$png'>" +
-        "<div>reference | single scatter | fitted ambient | network; below, |error| x4</div>" +
-        "<table><tr><th></th><th>relative MAE</th><th>RMSE</th></tr>$rows</table>",
+// Keep the computed image as an embed; the caption and measured table are Markdown.
+display("compare", "<img style='width:${w * 4}px' src='data:image/png;base64,$png'>")
+markdown(
+    "errors",
+    """
+Top: reference · single scatter · fitted ambient · network. Bottom: absolute error ×4.
+
+| Model | Relative MAE | RMSE |
+| --- | --- | --- |
+$errors""".trimIndent(),
 )

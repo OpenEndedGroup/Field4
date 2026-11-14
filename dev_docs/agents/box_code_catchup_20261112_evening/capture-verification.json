@@ -1,0 +1,22 @@
+{
+  "captures": [
+    {
+      "page": "paint_canvas.md",
+      "name": "press_rub",
+      "status": "passed",
+      "screenshot": "assets/paint_canvas/press_rub.png",
+      "video": null,
+      "sourceFingerprint": "88718340aaa1cabfb6822573a7c98dda1d437e4452d6c996d8f63b16dc52819a"
+    },
+    {
+      "page": "path_tracing.md",
+      "name": "neural-clouds-compare",
+      "status": "passed",
+      "screenshot": "assets/path_tracing/neural_clouds_cpu.png",
+      "video": null,
+      "sourceFingerprint": "bf99ca72f2ce8bf9123ed70c1f17e0f47179e37f0a29587f502d617411ebdc4a"
+    }
+  ],
+  "method": "Normal RunnerState capture_with_environment and transactional publication; actual authored fence and transcript.",
+  "visualInspection": "Paint press/rub output inspected; final cloud comparison with an explicit 800 CSS pixel image width inspected. Computed panels, error images and measured Markdown table are correct, with no Field error marker."
+}

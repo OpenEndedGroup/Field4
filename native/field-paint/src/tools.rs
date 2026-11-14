@@ -640,6 +640,24 @@ pub extern "C" fn field_paint_rub(c: *mut Studio, xy: *const f32, n: i32, radius
     })
 }
 
+/// Blow air along `xy` (`n` points, canvas units) at `pressure`, the jet `radius` across, fingers
+/// `tendril` wide, viscosity `contrast` (NaN: from the paint): `Canvas::blow`. Writes
+/// `[moved mm³, branching, stations]` to `out`.
+#[unsafe(no_mangle)]
+pub extern "C" fn field_paint_blow(c: *mut Studio, xy: *const f32, n: i32, radius: f32, pressure: f32, contrast: f32, tendril: f32, seed: u64, out: *mut f64) -> i32 {
+    guard(-1, || {
+        let st = unsafe { &mut *c };
+        let pts = points(xy, n)?;
+        if !(radius.is_finite() && radius > 0.0 && tendril.is_finite() && tendril > 0.0 && pressure.is_finite()) {
+            return Err("a blow needs a positive radius and tendril width and a finite pressure".into());
+        }
+        let contrast = if contrast.is_nan() { None } else { Some(contrast) };
+        let r = st.canvas.blow(&pts, radius, pressure, contrast, tendril, seed);
+        unsafe { *out = r.moved_mm3; *out.add(1) = r.branching as f64; *out.add(2) = r.stations as f64; }
+        Ok(0)
+    })
+}
+
 /// All the wet paint on the canvas, mm³ (`Canvas::wet_mm3`); negative on error.
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_wet_mm3(c: *mut Studio) -> f64 {

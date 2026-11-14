@@ -172,6 +172,8 @@ function createEmbeddedEditor(container, uid, property, language, initialValue) 
 
 	const editor = monacoApi.editor.create(container, {
 		...EMBEDDED_EDITOR_OPTIONS,
+		// Monaco's theme is global: creating an editor with "dark" would undo a light theme.
+		theme: typeof window.fieldMonacoThemeName === "function" ? window.fieldMonacoThemeName() : EMBEDDED_EDITOR_OPTIONS.theme,
 		language: lang,
 		value: value,
 	});
