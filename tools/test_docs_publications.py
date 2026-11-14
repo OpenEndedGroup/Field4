@@ -339,5 +339,49 @@ class LongComputeNamesRealRecipes(unittest.TestCase):
                 self.assertIn(name, recipes, f'{name} is no longer a publication recipe; drop it from LONG_COMPUTE')
                 self.assertTrue(recipes[name]['longCompute'])
 
+
+class PersistentPropertyListIsNotACaptureInput(unittest.TestCase):
+    """2026-11-14: a new persistent property (`ai4_garden`) rewrote the list at the end of every
+    materialized transcript, and every landing that rematerialized them recaptured all ~200
+    publications for an hour, then bounced on a slow page."""
+
+    SOURCE = 'public/docs/assets/agent_transcripts/demo/metadata.edn'
+    OLD = b'{"version" 2 "boxes" [{"id" "a"}] "persistentProperties" ["frame" "code"]}'
+
+    def setUp(self):
+        self.root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        git = lambda *a: subprocess.run(['git', *a], cwd=self.root, check=True, capture_output=True)
+        git('init', '-q')
+        (self.root / self.SOURCE).parent.mkdir(parents=True)
+        (self.root / self.SOURCE).write_bytes(self.OLD)
+        git('add', '-A')
+        git('-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'base')
+        self.index = {'documents': {'assets/agent_transcripts/demo/metadata.edn': {
+            'sources': {self.SOURCE: hashlib.sha256(self.OLD).hexdigest()}}}}
+        self.enterContext(patch.multiple(publications, ROOT=self.root))
+
+    def rematerialize(self, text: bytes) -> list[str]:
+        (self.root / self.SOURCE).write_bytes(text)
+        return publications.adopt_persistent_list_changes(self.index)
+
+    def recorded(self) -> str:
+        return self.index['documents']['assets/agent_transcripts/demo/metadata.edn']['sources'][self.SOURCE]
+
+    def test_a_new_persistent_property_is_recorded_without_a_recapture(self):
+        new = self.OLD.replace(b'"code"]', b'"code" "ai4_garden"]')
+        self.assertEqual(self.rematerialize(new), [self.SOURCE])
+        self.assertEqual(self.recorded(), hashlib.sha256(new).hexdigest())
+
+    def test_a_change_to_the_document_itself_still_makes_it_stale(self):
+        new = self.OLD.replace(b'"a"', b'"b"').replace(b'"code"]', b'"code" "ai4_garden"]')
+        self.assertEqual(self.rematerialize(new), [])
+        self.assertEqual(self.recorded(), hashlib.sha256(self.OLD).hexdigest())
+
+    def test_a_record_that_is_not_the_committed_file_is_left_alone(self):
+        self.index['documents']['assets/agent_transcripts/demo/metadata.edn']['sources'][self.SOURCE] = 'f' * 64
+        self.assertEqual(self.rematerialize(self.OLD.replace(b'"code"]', b'"code" "x"]')), [])
+        self.assertEqual(self.recorded(), 'f' * 64)
+
+
 if __name__ == '__main__':
     unittest.main()
