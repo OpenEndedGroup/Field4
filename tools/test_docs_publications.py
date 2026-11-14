@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import subprocess
 import hashlib
@@ -299,16 +300,18 @@ class PublicationRefreshTest(unittest.TestCase):
         class Log:
             def __init__(self, *_args): pass
             def close(self): pass
-        ports = iter(range(9479, 9490))
-        return started, patch.multiple(fb, FieldBackdoor=Backdoor, SessionLogger=Log,
-                                       resolve_cli_port=lambda *_a, **_k: (next(ports), 'automation-default'))
+        ports = iter(range(9620, 9640))
+        fakes = contextlib.ExitStack()
+        fakes.enter_context(patch.multiple(fb, FieldBackdoor=Backdoor, SessionLogger=Log))
+        fakes.enter_context(patch.object(publications, 'publication_port', lambda: next(ports)))
+        return started, fakes
 
     def test_a_port_taken_by_another_checkout_starts_on_the_next_free_port(self):
         import asyncio
         started, fakes = self.fake_backdoor(collisions=1)
         with fakes, patch.object(publications, 'publication_node', return_value=None):
             self.assertEqual(asyncio.run(publications.capture([], port=None, force=True)), [])
-        self.assertEqual([b.port for b in started], [9479, 9480])
+        self.assertEqual([b.port for b in started], [9620, 9621])
 
     def test_an_explicit_port_or_a_port_that_stays_taken_still_fails(self):
         import asyncio
