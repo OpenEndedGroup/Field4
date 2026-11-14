@@ -58,7 +58,7 @@ class FieldPublicationTest(unittest.TestCase):
             const entries=[...files].filter(([p])=>p.endsWith('.js'));
             entries.push(['viewer.js',Buffer.from(files.get('threejs_viewer.html').toString().match(/<script type="module">([\\s\\S]*?)<\\/script>/)[1])]);
             for(const [p,bytes] of entries){const m=new vm.SourceTextModule(rewriteViewerImports(bytes.toString(),p,names));for(const spec of m.dependencySpecifiers)if(!spec.startsWith('field-publication/'))throw new Error('External module: '+spec);}
-            files.delete('vendor/three/0.184.0/addons/controls/OrbitControls.js');
+            files.delete('vendor/three/0.187.0/addons/controls/OrbitControls.js');
             let failed=false;try{prepareThreePublication(files)}catch(e){failed=e.message.includes('Unbundled viewer dependency')}
             if(!failed)throw new Error('Missing viewer dependency was not rejected');
         """.replace("MODULE", json.dumps(source_url))

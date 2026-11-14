@@ -482,8 +482,8 @@ if (window.location.protocol === 'file:') {
 <script type="importmap">
     {
         "imports": {
-            "three": "/vendor/three/0.184.0/three.module.js",
-            "three/addons/": "/vendor/three/0.184.0/addons/"
+            "three": "/vendor/three/0.187.0/three.module.js",
+            "three/addons/": "/vendor/three/0.187.0/addons/"
         }
     }
 </script>
@@ -758,7 +758,7 @@ controls.panSpeed = 0.6;
 controls.addEventListener('change', requestRender);
 let cameraWasMoved = false;
 controls.addEventListener('start', () => { cameraWasMoved = true; });
-// OrbitControls 0.184 caches the up-axis basis on construction. Keep that basis in
+// OrbitControls (0.184 through 0.187) caches the up-axis basis on construction. Keep that basis in
 // sync when a linked view or saved camera uses a different canonical up direction.
 function cameraUp(up) {
     camera.up.fromArray(up).normalize();
@@ -970,7 +970,7 @@ function drawStudio(spec, bounds, upAxis) {
     const shadows = on && spec.shadows !== false;
     if (renderer.shadowMap.enabled !== shadows) {
         renderer.shadowMap.enabled = shadows;
-        // three 0.184 filters PCF with a rotated Vogel disk of `shadow.radius` texels; PCFSoft is gone.
+        // three (since 0.184) filters PCF with a rotated Vogel disk of `shadow.radius` texels; PCFSoft is gone.
         renderer.shadowMap.type = THREE.PCFShadowMap;
         // Shadow support is compiled into each program, so a switch has to recompile them.
         scene.traverse(o => { if (o.material && !Array.isArray(o.material)) o.material.needsUpdate = true; });
