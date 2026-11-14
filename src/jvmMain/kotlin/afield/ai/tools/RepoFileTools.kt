@@ -141,6 +141,13 @@ class RepoFileTools(val scope: RepoScope) {
     /** Files under the root the job may read, in path order; [limit] caps it. Skipped directories are not entered. */
     private fun walk(glob: String, limit: Int): Pair<List<Path>, Boolean> {
         val filter = matcher(glob)
+        gitFiles()?.let { tracked ->
+            val hits = tracked.filter { rel ->
+                filter.matches(rel) && readers.any { it.matches(rel) } &&
+                    root.resolve(rel).let { Files.isRegularFile(it, NOFOLLOW_LINKS) }
+            }.map(root::resolve).sortedBy { relative(it) }
+            return hits.take(limit) to (hits.size <= limit)
+        }
         val out = ArrayList<Path>()
         var complete = true
         Files.walkFileTree(root, object : java.nio.file.SimpleFileVisitor<Path>() {
@@ -160,6 +167,23 @@ class RepoFileTools(val scope: RepoScope) {
             override fun visitFileFailed(file: Path, exc: java.io.IOException) = java.nio.file.FileVisitResult.CONTINUE
         })
         return out.sortedBy { relative(it) } to complete
+    }
+
+    /**
+     * In a git checkout, the files git counts as source: tracked plus untracked-but-not-ignored
+     * (`git ls-files -co --exclude-standard`), relative to the root. A plain walk of the Field
+     * checkout met 181k files under the ignored `.claude/worktrees` before `src/`, and the
+     * [MAX_SEARCH_FILES] cap then cut the search off there. `null` outside git, or if git fails.
+     */
+    private fun gitFiles(): List<Path>? {
+        if (!Files.exists(root.resolve(".git"), NOFOLLOW_LINKS)) return null
+        return runCatching {
+            val p = ProcessBuilder("git", "-C", root.toString(), "ls-files", "-co", "--exclude-standard", "-z")
+                .redirectError(ProcessBuilder.Redirect.DISCARD).start()
+            val out = p.inputStream.readBytes().toString(Charsets.UTF_8)
+            if (!p.waitFor(30, java.util.concurrent.TimeUnit.SECONDS) || p.exitValue() != 0) return null
+            out.split('\u0000').filter { it.isNotEmpty() }.map { Path.of(it) }
+        }.getOrNull()
     }
 
     fun list(req: RepoListFilesRequest): RepoListResult = guarded({ RepoListResult(false, it) }) {

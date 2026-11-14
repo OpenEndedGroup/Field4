@@ -92,4 +92,22 @@ class RepoFileToolsTest {
         assertEquals(0, none.filesSearched)
         assertTrue("nothing was searched" in none.message, none.message)
     }
+
+    /** In a git checkout only what git counts as source is searched: never ignored trees such as other worktrees. */
+    @Test fun aGitCheckoutSearchesTrackedAndUnignoredFilesOnly() {
+        val root = Files.createTempDirectory("field-repo-git")
+        try {
+            fun put(path: String, text: String) = root.resolve(path).also { Files.createDirectories(it.parent); Files.writeString(it, text) }
+            fun git(vararg args: String) = assertEquals(0, ProcessBuilder(listOf("git", "-C", root.toString()) + args)
+                .redirectErrorStream(true).start().also { it.inputStream.readBytes() }.waitFor())
+            git("init", "-q")
+            put(".gitignore", "worktrees/\n")
+            put("src/A.kt", "val needle = 1\n")
+            put("notes.md", "needle, untracked but not ignored\n")
+            put("worktrees/copy/src/A.kt", "val needle = 1\n")
+            git("add", "src/A.kt", ".gitignore")
+            val r = RepoFileTools(RepoScope(root, listOf("**"))).search(RepoSearchRequest("needle", glob = ""))
+            assertEquals(setOf("notes.md", "src/A.kt"), r.matches.map { it.path }.toSet())
+        } finally { root.toFile().deleteRecursively() }
+    }
 }
