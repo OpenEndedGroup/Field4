@@ -7,6 +7,16 @@ NVIDIA driver, every entry point fails with a reason and the proof skips.
 
 ## The pieces
 
+- `src/jvmMain/kotlin/afield/cuda/CudaVulkan.kt`: the box-facing layer the user guide
+  (`public/docs/cuda.md`) and the `cuda_particles` starting point teach. `forRenderer` caches one
+  session per renderer and closes it in `beforeDeviceCleanup`. `sharedBuffer` is keyed by name and
+  size, `compile`/`module` by source, `everyFrame` by name. `everyFrame` puts a wait for the last
+  kernel and a signal after the frame onto the frame submission (`externalGraphicsSync`), then
+  enqueues the kernel behind that signal. It uses one timeline, and the blocking `run` uses a
+  second, because a timeline's signals have to be submitted in increasing order and a frame's
+  signal is submitted after it is recorded. The frame path does no queue-family ownership
+  transfers; the semaphores give the execution and memory ordering, and NVIDIA keeps exclusive
+  buffers' contents across the external family. `run` does do the transfers.
 - `src/jvmMain/kotlin/afield/cuda/CudaDriver.kt`: about 40 driver entry points from `libcuda.so.1`.
   It covers `cuInit`, devices with their names, UUIDs and compute capability, the primary context
   (`current { }` push/pops it around every call, so any thread may use it), streams, events,
@@ -97,6 +107,19 @@ an exported buffer and signals. The path tracer then resolves its `output` textu
 
 The expected values are computed on the CPU. Both kernels avoid anything the CPU cannot reproduce
 bit for bit (IEEE division, no FMA contraction), so the comparison is exact.
+
+Proof 3 checks `CudaVulkan`: `forRenderer` returns one session on the Vulkan GPU, a second
+`sharedBuffer` call with the same name returns the same buffer, `run`'s writes are visible to Vulkan
+afterwards, and `everyFrame` ran on all 30 pumped frames, leaving the last frame's value in every
+cell. The entrypoint is the `cuda.interop.smoke` FIELD_TEST; it skips (exit 0) without CUDA.
+
+## Docs and starting point
+
+`public/docs/cuda.md` ("CUDA Beside the Renderer") is built around `dev_docs/agents/transcripts/cuda_particles.yaml`.
+That scene is a renderer, a CUDA box (NVRTC-compiled `seed` and `flow` kernels, `everyFrame`) and
+lesson 3b's particle drawing reading the shared buffer. Its figure is `capture-profile="linux-nvidia"`
+and was captured on a0 (`FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_CAPTURE_PROFILES=linux-nvidia
+... build_zensical_docs.py --page cuda.md`). The transcript is COMPILE_ONLY in CI.
 
 ## Not done
 

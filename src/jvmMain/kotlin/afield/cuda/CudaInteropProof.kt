@@ -49,6 +49,18 @@ import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.system.exitProcess
 
+/*
+FIELD_TEST
+id: cuda.interop.smoke
+runner: jvm-main
+entrypoint: afield.cuda.CudaInteropProof
+timeoutSec: 600
+tags: [graphics, cuda, smoke]
+expect:
+  exitCode: 0
+  stdoutContains:
+    - "CUDA INTEROP"
+*/
 object CudaInteropProof {
     /** `field_fill(float4* out, uint width, uint height, float t)`: out[y*width+x] = (x/width, y/height, t, 1). Hand-written PTX, JIT-compiled by the driver. */
     val FILL_PTX = """
@@ -275,6 +287,30 @@ object CudaInteropProof {
                     m.close()
                 })
             }.onFailure { println("NVRTC VARIANT SKIPPED: ${it.message}"); proof2.put("nvrtcSkipped", it.message) }
+
+            // ---- Proof 3: the box-facing session. run{} once, then everyFrame between frames.
+            val proof3 = JSONObject(); report.put("cudaVulkan", proof3)
+            val session = CudaVulkan.forRenderer(renderer)
+            expect(session.device.uuid.contentEquals(vkUuid) && CudaVulkan.forRenderer(renderer) === session, "CudaVulkan.forRenderer: one session per renderer, on the Vulkan GPU")
+            val cells = 4096
+            val strip = session.sharedBuffer("strip", cells * 16L)
+            expect(session.sharedBuffer("strip", cells * 16L) === strip, "sharedBuffer returns the same buffer for the same name and size")
+            val stepper = rings.map { session.compile(RINGS_CU, listOf("--fmad=false")).function("field_rings") }.getOrNull()
+            val filler = session.module(FILL_PTX).function("field_fill")
+            proof3.put("runMs", session.run { s -> filler.launch(Triple((cells + 255) / 256, 1, 1), Triple(256, 1, 1), s, strip.pointer, cells, 1, -1f) })
+            val afterRun = den.read(strip.buffer)
+            expect((0 until cells).all { afterRun[it * 4 + 2] == -1f }, "CudaVulkan.run: the kernel's writes are visible to Vulkan afterwards")
+            var frameT = 0f
+            val before = session.framesWithCuda
+            session.everyFrame("strip") { s -> frameT += 1f; filler.launch(Triple((cells + 255) / 256, 1, 1), Triple(256, 1, 1), s, strip.pointer, cells, 1, frameT) }
+            pump(30)
+            session.stopEveryFrame("strip"); pump(2); renderer.graphQueue.waitIdle(); session.stream.synchronize()
+            val afterFrames = den.read(strip.buffer)
+            val ran = session.framesWithCuda - before
+            expect(ran >= 30 && afterFrames[2] == frameT && (0 until cells).all { afterFrames[it * 4 + 2] == frameT },
+                "CudaVulkan.everyFrame: ran on $ran frames, buffer holds the last frame's value ${afterFrames[2]} (expected $frameT)")
+            proof3.put("framesWithCuda", ran).put("nvrtcModule", stepper != null)
+            session.close()
 
             stream.synchronize(); renderer.graphQueue.waitIdle()
             fill.close(); start.close(); end.close(); csem.close(); mem.close(); stream.close(); ctx.close()

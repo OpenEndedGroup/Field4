@@ -1449,6 +1449,10 @@ Denoise differ by about 1/40 of one 8-bit level.
 | NVIDIA RTX 4090, portable kernels | 16 ms | 870 MB |
 | Apple M1 Max, KosmicKrisp | 0.7 s | 870 MB |
 
+On Linux with an NVIDIA GPU, Intel's native Open Image Denoise can also denoise the tracer's
+buffers in place on CUDA, in 7 ms at this size: see
+[CUDA Beside the Renderer](cuda.md#native-open-image-denoise-on-cuda).
+
 The denoiser uses `VK_KHR_cooperative_matrix` when the device has it. `denoiser.cooperativeMatrix`
 says which path it took. Tracing slows only on the frame that runs the denoise, plus a small pass
 each frame that averages the albedo and normal.

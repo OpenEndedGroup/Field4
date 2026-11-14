@@ -4,7 +4,7 @@
 
 Implementation details explicitly marked Internal by their source. They remain available to browse here, but are not intended as entry points for code written in a Field box.
 
-27 source file(s), 215 public symbol(s), 94 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+25 source file(s), 195 public symbol(s), 77 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -49,58 +49,9 @@ A named command shown for a box; `target` runs with the boxes it was invoked on.
 
 `src/jvmMain/kotlin/afield/app/server/FieldBrowserHosts.kt` — [read the source](source/jvmMain/afield/app/server/FieldBrowserHosts/)
 
-## CudaDriver.kt { #cudadriver-kt }
-
-A small binding of NVIDIA's CUDA driver API (`libcuda.so`) over `java.lang.foreign`, for running
-kernels on the GPU Field's Vulkan renderer draws with and sharing that renderer's memory without
-copies.
-
-LWJGL's CUDA module stops at 3.3.6 and Field is on 3.4.x, so this binds the driver library
-directly, the way `NgxNative` and the OIDN yardstick do. It covers about thirty entry points:
-initialisation, device lookup by UUID (so the CUDA device is the one behind a Vulkan physical
-device), the primary context, streams and events, PTX modules and kernel launch, device memory
-for tests, and external memory and semaphore import, which is how a Vulkan buffer exported as an
-opaque fd and a Vulkan timeline semaphore become a `CUdeviceptr` and a CUDA wait/signal.
-
-Optional everywhere: `CudaDriver.loaded` is a `Result` that fails with a reason on macOS, on a
-machine without the NVIDIA driver, or with `FIELD_CUDA_DISABLE=1`. Nothing here needs the CUDA
-toolkit; kernels arrive as PTX, either shipped as text or compiled at runtime by [`Nvrtc`](internal.md#nvrtc-kt-nvrtc).
-Notes and measurements: `dev_docs/graphics/CUDA_DRIVER_FFM.md`.
-
-`src/jvmMain/kotlin/afield/cuda/CudaDriver.kt` — [read the source](source/jvmMain/afield/cuda/CudaDriver/)
-
-### CudaException { #cudadriver-kt-cudaexception }
-
-[<code class="highlight"><span class="k">class</span> <span class="nf">CudaException</span><span class="p">(</span><span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">call</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="s">&quot;$call failed: $message ($code)&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L28)
-
-A `CUresult` other than `CUDA_SUCCESS`, with the driver's name and description for it.
-
-### CudaDriver { #cudadriver-kt-cudadriver }
-
-[<code class="highlight"><span class="k">class</span> <span class="nc">CudaDriver</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="n">library</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L34)
-
-The loaded driver library and its entry points. Obtain it through [`loaded`](internal.md#cudadriver-kt--cudadriver-companion--loaded); every wrapper class below holds a reference back to it.
-
-| Declaration | Summary |
-| --- | --- |
-| <a id="cudadriver-kt--cudadriver--ok"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">ok</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="n">call</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L86) | Throw [`CudaException`](internal.md#cudadriver-kt-cudaexception) unless `code` is `CUDA_SUCCESS`. |
-| <a id="cudadriver-kt--cudadriver--driverversion"></a>[<code class="highlight"><span class="k">val</span> <span class="n">driverVersion</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L105) | The driver's CUDA version, e.g. 13000 for CUDA 13.0. |
-| <a id="cudadriver-kt--cudadriver--devices"></a>[<code class="highlight"><span class="k">val</span> <span class="n">devices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CudaDevice</span><span class="p">&gt;</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L108) | Every CUDA device, in driver ordinal order. |
-| <a id="cudadriver-kt--cudadriver--devicebyuuid"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">deviceByUuid</span><span class="p">(</span><span class="n">uuid</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">CudaDevice</span><span class="o">?</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L120) | The CUDA device whose UUID is `uuid` — for Vulkan, `VkPhysicalDeviceIDProperties.deviceUUID`. |
-| <a id="cudadriver-kt--cudadriver--cudadevice"></a>[<code class="highlight"><span class="k">class</span> <span class="nc">CudaDevice</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">driver</span><span class="p">:</span> <span class="nc">CudaDriver</span><span class="p">,</span> <span class="k">val</span> <span class="n">ordinal</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">handle</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">uuid</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">computeCapability</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L123) | One CUDA device. `computeCapability` is major × 10 + minor (89 for Ada). |
-| <a id="cudadriver-kt--cudadriver--cudacontext"></a>[<code class="highlight"><span class="k">class</span> <span class="nc">CudaContext</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">device</span><span class="p">:</span> <span class="nc">CudaDevice</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">handle</span><span class="p">:</span> <span class="nc">MemorySegment</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L141) | A retained primary context. Every method makes it current on the calling thread for its duration (push/pop), so it can be used from any thread, Field's render thread included. |
-| <a id="cudadriver-kt--cudadriver--cudastream"></a>[<code class="highlight"><span class="k">class</span> <span class="nc">CudaStream</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">context</span><span class="p">:</span> <span class="nc">CudaContext</span><span class="p">,</span> <span class="k">val</span> <span class="n">handle</span><span class="p">:</span> <span class="nc">MemorySegment</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L254) |  |
-| <a id="cudadriver-kt--cudadriver--cudaevent"></a>[<code class="highlight"><span class="k">class</span> <span class="nc">CudaEvent</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">context</span><span class="p">:</span> <span class="nc">CudaContext</span><span class="p">,</span> <span class="k">val</span> <span class="n">handle</span><span class="p">:</span> <span class="nc">MemorySegment</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L261) | A timing event. `elapsedMs` needs both events recorded and the later one complete. |
-| <a id="cudadriver-kt--cudadriver--cudamodule"></a>[<code class="highlight"><span class="k">class</span> <span class="nc">CudaModule</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">context</span><span class="p">:</span> <span class="nc">CudaContext</span><span class="p">,</span> <span class="k">val</span> <span class="n">handle</span><span class="p">:</span> <span class="nc">MemorySegment</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L273) |  |
-| <a id="cudadriver-kt--cudadriver--cudafunction"></a>[<code class="highlight"><span class="k">class</span> <span class="nc">CudaFunction</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">module</span><span class="p">:</span> <span class="nc">CudaModule</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">handle</span><span class="p">:</span> <span class="nc">MemorySegment</span><span class="p">)</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L287) | A kernel. `launch` takes its arguments in declaration order as `Int`, `Float`, `Long` (a `CUdeviceptr` or 64-bit integer) or `Double`, which must match the kernel's parameter types. |
-| <a id="cudadriver-kt--cudadriver--cudamemory"></a>[<code class="highlight"><span class="k">class</span> <span class="nc">CudaMemory</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">context</span><span class="p">:</span> <span class="nc">CudaContext</span><span class="p">,</span> <span class="k">val</span> <span class="n">pointer</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">bytes</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L309) |  |
-| <a id="cudadriver-kt--cudadriver--cudaexternalmemory"></a>[<code class="highlight"><span class="k">class</span> <span class="nc">CudaExternalMemory</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">context</span><span class="p">:</span> <span class="nc">CudaContext</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">handle</span><span class="p">:</span> <span class="nc">MemorySegment</span><span class="p">,</span> <span class="k">val</span> <span class="n">pointer</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L314) | Vulkan memory seen from CUDA: `pointer` addresses all `size` bytes of it. Close before Vulkan frees the memory. |
-| <a id="cudadriver-kt--cudadriver--cudaexternalsemaphore"></a>[<code class="highlight"><span class="k">class</span> <span class="nc">CudaExternalSemaphore</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">context</span><span class="p">:</span> <span class="nc">CudaContext</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">handle</span><span class="p">:</span> <span class="nc">MemorySegment</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L327) | A Vulkan semaphore seen from CUDA. For a timeline, `signal` and `wait` take the counter value. |
-| <a id="cudadriver-kt--cudadriver-companion--loaded"></a>[<code class="highlight"><span class="k">val</span> <span class="n">loaded</span><span class="p">:</span> <span class="nc">Result</span><span class="p">&lt;</span><span class="nc">CudaDriver</span><span class="p">&gt;</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/cuda/CudaDriver/#L355) | The driver, loaded on first use, or the reason it is not available. `FIELD_CUDA_LIBRARY` names a specific `libcuda.so`; otherwise the loader's `libcuda.so.1` is used. |
-
 ## CudaInteropProof.kt { #cudainteropproof-kt }
 
-The proof that [`CudaDriver`](internal.md#cudadriver-kt-cudadriver) and Field's Vulkan renderer share memory on the same GPU with no
+The proof that [`CudaDriver`](graphics.md#cudadriver-kt-cudadriver) and Field's Vulkan renderer share memory on the same GPU with no
 copies, and the measurements behind `dev_docs/graphics/CUDA_DRIVER_FFM.md`.
 
 Two proofs, each checked by reading the memory back from both sides:
@@ -113,7 +64,7 @@ Two proofs, each checked by reading the memory back from both sides:
    back through Vulkan and through OIDN (they must agree bit for bit) and compared with Field's
    Vulkan port of the same network on the same inputs.
 2. **A CUDA kernel writing a buffer Field displays.** A PTX kernel shipped as text (and, when
-   [`Nvrtc`](internal.md#nvrtc-kt-nvrtc) is found, a CUDA C kernel compiled at runtime) fills an exported Vulkan buffer; Field's
+   [`Nvrtc`](graphics.md#nvrtc-kt-nvrtc) is found, a CUDA C kernel compiled at runtime) fills an exported Vulkan buffer; Field's
    path tracer then resolves its `output` texture from that buffer, and the texture is read back and
    compared with the values the kernel must have written.
 
@@ -125,40 +76,15 @@ it runs proof 2 alone.
 
 ### CudaInteropProof { #cudainteropproof-kt-cudainteropproof }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">CudaInteropProof</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L52)
+[<code class="highlight"><span class="k">object</span> <span class="nc">CudaInteropProof</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L64)
 
-The proof that [`CudaDriver`](internal.md#cudadriver-kt-cudadriver) and Field's Vulkan renderer share memory on the same GPU with no copies, and the measurements behind `dev_docs/graphics/CUDA_DRIVER_FFM.md`.
-
-| Declaration | Summary |
-| --- | --- |
-| <a id="cudainteropproof-kt--cudainteropproof--fill-ptx"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">FILL&#95;PTX</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L54) | `field_fill(float4* out, uint width, uint height, float t)`: out[y*width+x] = (x/width, y/height, t, 1). Hand-written PTX, JIT-compiled by the driver. |
-| <a id="cudainteropproof-kt--cudainteropproof--rings-cu"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">RINGS&#95;CU</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L105) | The NVRTC kernel: a radial pattern, with FMA contraction off so the CPU can predict every bit. |
-| <a id="cudainteropproof-kt--cudainteropproof--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L122) |  |
-
-## Nvrtc.kt { #nvrtc-kt }
-
-NVIDIA's runtime CUDA C++ compiler (`libnvrtc`) over `java.lang.foreign`: CUDA C source in, PTX
-out, for `CudaDriver.CudaContext.module`.
-
-NVRTC ships with the CUDA toolkit, not with the driver, so a machine with only the driver has no
-NVRTC on the loader path. `Nvrtc.loaded` therefore looks in three places, in order:
-`FIELD_NVRTC_LIBRARY`, the loader (`libnvrtc.so`, then `.so.13`, `.so.12`), and the conda package
-caches under `~/.local/share/{micromamba,mamba}` and `~/miniforge3`/`~/mambaforge`, where PyTorch
-and CuPy environments leave a `cuda-nvrtc` package. Without any of them, ship PTX instead.
-
-`src/jvmMain/kotlin/afield/cuda/Nvrtc.kt` — [read the source](source/jvmMain/afield/cuda/Nvrtc/)
-
-### Nvrtc { #nvrtc-kt-nvrtc }
-
-[<code class="highlight"><span class="k">class</span> <span class="nc">Nvrtc</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">lookup</span><span class="p">:</span> <span class="nc">SymbolLookup</span><span class="p">,</span> <span class="k">val</span> <span class="n">library</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/cuda/Nvrtc/#L23)
-
-One loaded NVRTC library; [`compile`](internal.md#nvrtc-kt--nvrtc--compile) turns CUDA C into PTX.
+The proof that [`CudaDriver`](graphics.md#cudadriver-kt-cudadriver) and Field's Vulkan renderer share memory on the same GPU with no copies, and the measurements behind `dev_docs/graphics/CUDA_DRIVER_FFM.md`.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="nvrtc-kt--nvrtc--version"></a>[<code class="highlight"><span class="k">val</span> <span class="n">version</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/cuda/Nvrtc/#L43) | NVRTC's version as `major.minor`. |
-| <a id="nvrtc-kt--nvrtc--compile"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">compile</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">computeCapability</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;field.cu&quot;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/cuda/Nvrtc/#L53) | Compile `source` to PTX for compute capability `computeCapability` (89 for an RTX 4090). A compile error throws with NVRTC's log. Name kernels `extern "C"` so `CudaDriver.CudaModule.function` finds them unmangled. |
-| <a id="nvrtc-kt--nvrtc-companion--loaded"></a>[<code class="highlight"><span class="k">val</span> <span class="n">loaded</span><span class="p">:</span> <span class="nc">Result</span><span class="p">&lt;</span><span class="nc">Nvrtc</span><span class="p">&gt;</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/cuda/Nvrtc/#L89) | The first NVRTC that loads, or the places tried. |
+| <a id="cudainteropproof-kt--cudainteropproof--fill-ptx"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">FILL&#95;PTX</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L66) | `field_fill(float4* out, uint width, uint height, float t)`: out[y*width+x] = (x/width, y/height, t, 1). Hand-written PTX, JIT-compiled by the driver. |
+| <a id="cudainteropproof-kt--cudainteropproof--rings-cu"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">RINGS&#95;CU</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L117) | The NVRTC kernel: a radial pattern, with FMA contraction off so the CPU can predict every bit. |
+| <a id="cudainteropproof-kt--cudainteropproof--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L134) |  |
 
 ## binding.kt { #binding-kt }
 

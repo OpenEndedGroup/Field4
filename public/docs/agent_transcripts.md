@@ -5044,6 +5044,20 @@ and, beneath it, `ShaderParticleLenia` running 6400 particles in 64 clusters und
 
 [Open →](offline.html?file=assets/agent_transcripts/particle_lenia_gpu/metadata.edn)
 
+### cuda_particles
+
+**A CUDA kernel moving 200,000 particles that a Field mesh draws**, from the same GPU buffer. Three
+boxes: a renderer, a box that compiles two CUDA C kernels with NVRTC and runs one between every two
+frames, and lesson 3b's particle drawing reading the buffer the kernel writes. Linux with an NVIDIA
+GPU only; elsewhere the CUDA box stops with the reason. See
+[CUDA Beside the Renderer](cuda.md#a-kernel-that-moves-particles).
+
+![Two hundred thousand coloured dots, scattered as a disc and folded by a CUDA kernel's flow, drawn by a Field mesh from the same GPU buffer](assets/cuda/particles.png)
+
+- The CUDA session: [`CudaVulkan`](reference/graphics.md#cudavulkan-kt-cudavulkan).
+
+[Open →](offline.html?file=assets/agent_transcripts/cuda_particles/metadata.edn)
+
 ## Graphics building blocks
 
 <!-- transcript-index: verified-by = compile -->

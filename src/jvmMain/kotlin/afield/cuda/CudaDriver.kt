@@ -1,4 +1,4 @@
-@file:afield.runtime.completion.CompletionCategory("Internal")
+@file:afield.runtime.completion.CompletionCategory("Graphics")
 /**
  * A small binding of NVIDIA's CUDA driver API (`libcuda.so`) over `java.lang.foreign`, for running
  * kernels on the GPU Field's Vulkan renderer draws with and sharing that renderer's memory without
@@ -286,6 +286,10 @@ class CudaDriver private constructor(library: Path?) {
      */
     class CudaFunction internal constructor(val module: CudaModule, val name: String, val handle: MemorySegment) {
         private val d = module.context.device.driver
+        /** A one-dimensional launch: [blocks] blocks of [threads] threads each. */
+        fun launch(blocks: Int, threads: Int, stream: CudaStream?, vararg args: Any) =
+            launch(Triple(blocks, 1, 1), Triple(threads, 1, 1), stream, *args)
+
         fun launch(grid: Triple<Int, Int, Int>, block: Triple<Int, Int, Int>, stream: CudaStream?, vararg args: Any, sharedBytes: Int = 0) =
             module.context.current {
                 Arena.ofConfined().use { a ->

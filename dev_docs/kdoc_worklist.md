@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24301 of 40945 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24314 of 40959 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2040 undocumented entry points** (types, top-level functions and values) and 13888 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2040 undocumented entry points** (types, top-level functions and values) and 13889 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -863,7 +863,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [LiveProbeClient.kt](../src/jvmMain/kotlin/afield/app/diagnostics/debug/LiveProbeClient.kt) | Workspace | — | 0 | 3 | 25% |
 | [MarfGallery.kt](../src/jvmMain/kotlin/afield/audio/synth/MarfGallery.kt) | Patterns | — | 0 | 3 | 72% |
 | [PatSynthDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/PatSynthDocs.kt) | Patterns | — | 0 | 3 | 62% |
-| [CudaDriver.kt](../src/jvmMain/kotlin/afield/cuda/CudaDriver.kt) | Internal | — | 0 | 3 | 81% |
+| [CudaDriver.kt](../src/jvmMain/kotlin/afield/cuda/CudaDriver.kt) | Graphics | — | 0 | 3 | 81% |
 | [DatalogRhythmDirtDocs.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogRhythmDirtDocs.kt) | Languages | — | 0 | 3 | 25% |
 | [PersistedFingerprint.kt](../src/jvmMain/kotlin/afield/document/persistence/PersistedFingerprint.kt) | Workspace | — | 0 | 3 | 62% |
 | [GpuSchemaSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/four/GpuSchemaSmokeTest.kt) | Examples | — | 0 | 3 | 25% |
@@ -1021,6 +1021,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [TrackedPhaseSignal.kt](../src/jvmMain/kotlin/afield/audio/synth/TrackedPhaseSignal.kt) | Synthesis | — | 0 | 1 | 66% |
 | [ToneKotlinJs.kt](../src/jvmMain/kotlin/afield/audio/tone/ToneKotlinJs.kt) | Audio | — | 0 | 1 | 75% |
 | [CudaInteropProof.kt](../src/jvmMain/kotlin/afield/cuda/CudaInteropProof.kt) | Internal | — | 0 | 1 | 75% |
+| [CudaVulkan.kt](../src/jvmMain/kotlin/afield/cuda/CudaVulkan.kt) | Graphics | — | 0 | 1 | 92% |
 | [ContextWhy.kt](../src/jvmMain/kotlin/afield/document/context/ContextWhy.kt) | Workspace | — | 0 | 1 | 80% |
 | [WhyAnswer.kt](../src/jvmMain/kotlin/afield/document/context/WhyAnswer.kt) | Workspace | — | 0 | 1 | 87% |
 | [why.kt](../src/jvmMain/kotlin/afield/document/context/why.kt) | Workspace | — | 0 | 1 | 75% |

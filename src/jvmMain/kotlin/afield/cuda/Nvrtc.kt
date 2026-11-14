@@ -1,4 +1,4 @@
-@file:afield.runtime.completion.CompletionCategory("Internal")
+@file:afield.runtime.completion.CompletionCategory("Graphics")
 /**
  * NVIDIA's runtime CUDA C++ compiler (`libnvrtc`) over `java.lang.foreign`: CUDA C source in, PTX
  * out, for [CudaDriver.CudaContext.module].

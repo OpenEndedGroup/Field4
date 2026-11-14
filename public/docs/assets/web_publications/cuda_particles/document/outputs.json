@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-14T16:46:09.158Z",
+  "documentName": "cuda_particles",
+  "outputs": [
+    {
+      "uid": "cuda_flow",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 1600,
+      "height": 900,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}
