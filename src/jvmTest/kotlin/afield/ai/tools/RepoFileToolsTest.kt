@@ -82,4 +82,14 @@ class RepoFileToolsTest {
         assertEquals(listOf(RepoMatch("docs/page.md", 2, "two needle")), r.matches)
         assertFalse(f.tools.search(RepoSearchRequest("(", regex = true)).success)
     }
+
+    /** Models send optional strings as "": the mdcontext turn's `glob: ""` searched 0 files in 9.5 s and read as a clean miss. */
+    @Test fun blankGlobSearchesEverythingAndAnEmptyGlobMatchSaysSo() = Fixture(read = listOf("docs/*.md")).use { f ->
+        val all = f.tools.search(RepoSearchRequest("needle", glob = ""))
+        assertEquals(setOf("docs/other.md", "docs/page.md"), all.matches.map { it.path }.toSet())
+        assertEquals(listOf("docs/other.md", "docs/page.md"), f.tools.list(RepoListFilesRequest(glob = " ")).files)
+        val none = f.tools.search(RepoSearchRequest("needle", glob = "nowhere/**"))
+        assertEquals(0, none.filesSearched)
+        assertTrue("nothing was searched" in none.message, none.message)
+    }
 }

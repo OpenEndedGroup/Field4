@@ -82,7 +82,9 @@ class RepoFileTools(val scope: RepoScope) {
     /** Paths this job wrote, in order, for the job's report. */
     val written: MutableList<String> = java.util.Collections.synchronizedList(ArrayList())
 
-    private fun matcher(glob: String): PathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + glob.trim().removePrefix("./"))
+    /** A blank glob means every file: models fill optional strings with "", and `glob:` alone matches nothing. */
+    private fun matcher(glob: String): PathMatcher =
+        FileSystems.getDefault().getPathMatcher("glob:" + glob.trim().removePrefix("./").ifEmpty { "**" })
 
     /** [raw] as a confined absolute path, or [RepoPathRefused]. */
     fun resolve(raw: String, write: Boolean): Path {
@@ -186,6 +188,8 @@ class RepoFileTools(val scope: RepoScope) {
                 }
             }
         }
+        if (files.isEmpty()) return@guarded RepoSearchResult(true,
+            "no readable file matches glob '${req.glob}', so nothing was searched; widen or drop the glob", matches, walkedAll, 0)
         RepoSearchResult(true, "${matches.size} match(es) in $searched file(s)", matches, walkedAll, searched)
     }
 
