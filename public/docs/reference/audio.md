@@ -4,7 +4,7 @@
 
 Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. `SoundPathMap.kt` is the one to read first: the declared, re-derived-from-the-code map of every route Field has from a box to something audible, which [Making a sound in Field: every path there is](../sound_paths.md) renders as a page. [Sonic Pi](../sonic_pi.md) covers owned mode in full.
 
-93 source file(s), 2526 public symbol(s), 1338 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+93 source file(s), 2528 public symbol(s), 1340 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -4203,20 +4203,22 @@ Numeric checks on the dough DSP ports in DoughDsp.kt.
 
 ### FM1SoundDocs { #fm1sounddocs-kt-fm1sounddocs }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">FM1SoundDocs</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L26)
+[<code class="highlight"><span class="k">object</span> <span class="nc">FM1SoundDocs</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L28)
 
-The clips on `fm1.md`: factory projects 0 and 1 of the FM-1 simulator, with the sequencer started the way a person starts it, by tapping PLAY.
+The clips on `fm1.md`, each rendered offline from a fresh `FM1Sim.create` through [`FM1SimNode`](synthesis.md#fm1sim-kt-fm1simnode) in 128-frame blocks at 48 kHz with no audio device: the same render path a launched box plays.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="fm1sounddocs-kt--fm1sounddocs--sr"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SR</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L29) | Sample rate of every clip. |
-| <a id="fm1sounddocs-kt--fm1sounddocs--block"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">BLOCK</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L32) | Frames per block, the audio engine's. |
-| <a id="fm1sounddocs-kt--fm1sounddocs--settle-seconds"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SETTLE&#95;SECONDS</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L35) | Seconds the project is left to load before PLAY is tapped. |
-| <a id="fm1sounddocs-kt--fm1sounddocs--play-seconds"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">PLAY&#95;SECONDS</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L38) | Seconds of the running sequencer in each clip. |
-| <a id="fm1sounddocs-kt--fm1sounddocs--figures"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">FIGURES</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L41) | The clips, by the name their fences ask for, and the project slot each plays. |
-| <a id="fm1sounddocs-kt--fm1sounddocs--render"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">FloatArray</span><span class="p">,</span> <span class="nc">FloatArray</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L44) | Renders clip `name` as left and right channels: the running sequencer, without the settle. |
-| <a id="fm1sounddocs-kt--fm1sounddocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L76) | Offline-renders clip `name` to a stereo 16-bit WAV at `outPath`: the docs fence's entry point. |
-| <a id="fm1sounddocs-kt--fm1sounddocs--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L84) | Renders each clip twice and checks it is sound and that the two renders are identical. |
+| <a id="fm1sounddocs-kt--fm1sounddocs--sr"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SR</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L31) | Sample rate of every clip. |
+| <a id="fm1sounddocs-kt--fm1sounddocs--block"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">BLOCK</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L34) | Frames per block, the audio engine's. |
+| <a id="fm1sounddocs-kt--fm1sounddocs--settle-seconds"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SETTLE&#95;SECONDS</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L37) | Seconds the project is left to load before anything starts. |
+| <a id="fm1sounddocs-kt--fm1sounddocs--play-seconds"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">PLAY&#95;SECONDS</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L40) | Seconds of each clip. |
+| <a id="fm1sounddocs-kt--fm1sounddocs--bell"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">bell</span><span class="p">(</span><span class="n">piano</span><span class="p">:</span> <span class="nc">Dx7Voice</span><span class="p">)</span><span class="p">:</span> <span class="nc">Dx7Voice</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L46) | The bell `voiceMorph` ends on: the factory piano with a brighter algorithm and inharmonic ratios. |
+| <a id="fm1sounddocs-kt--fm1sounddocs--figures"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">FIGURES</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L86) | The clips, by the name their fences ask for. |
+| <a id="fm1sounddocs-kt--fm1sounddocs--render"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">FloatArray</span><span class="p">,</span> <span class="nc">FloatArray</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L89) | Renders clip `name` as left and right channels, without the settle. |
+| <a id="fm1sounddocs-kt--fm1sounddocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L121) | Offline-renders clip `name` to a stereo 16-bit WAV at `outPath`: the docs fence's entry point. |
+| <a id="fm1sounddocs-kt--fm1sounddocs--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L129) | Renders each clip twice and checks it is sound and that the two renders are identical. |
+| <a id="fm1sounddocs-kt--fm1sounddocs--realtimefactor"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">realtimeFactor</span><span class="p">(</span><span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/audio/synth/FM1SoundDocs/#L146) | How many seconds of a playing factory project one second of this thread renders at 48 kHz, after two warm-up seconds for GraalWasm's compiler: above 1 keeps up with the audio engine. |
 
 ## FaustPolySmokeTest.kt { #faustpolysmoketest-kt }
 
@@ -4546,7 +4548,7 @@ render. Nothing fakes a device.
 
 `src/jvmMain/kotlin/afield/audio/synth/MidiDevices.kt` — [read the source](source/jvmMain/afield/audio/synth/MidiDevices/)
 
-**Used in:** [SMPTE Timecode: LTC and MIDI Time Code](../smpte_timecode.md)
+**Used in:** [SMPTE Timecode: LTC and MIDI Time Code](../smpte_timecode.md), [FM-1 simulator](../fm1.md)
 
 ### Top-level functions { #mididevices-kt-functions }
 
@@ -4679,6 +4681,8 @@ landed on. Field's y axis grows *downward*, so a higher pitch draws at a smaller
 that yields an upside-down roll that still looks plausible.
 
 `src/jvmMain/kotlin/afield/audio/synth/MidiPat.kt` — [read the source](source/jvmMain/afield/audio/synth/MidiPat/)
+
+**Used in:** [FM-1 simulator](../fm1.md)
 
 ### Top-level functions { #midipat-kt-functions }
 

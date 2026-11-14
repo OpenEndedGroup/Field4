@@ -65,7 +65,7 @@ class DocsAudioProvenanceGuardTest {
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 23,
             Origin.FAUST to 6,
-            Origin.FM1_SIM to 2,
+            Origin.FM1_SIM to 5,
             Origin.DOUGH_WASM to 2,
             Origin.STEAM_AUDIO_HRTF to 3,
             Origin.SONIC_PI to 1,
@@ -302,7 +302,10 @@ class DocsAudioProvenanceGuardTest {
          *
          * `fm1.md` added two (2026-11-14), [Origin.FM1_SIM]: [FM1SoundDocs] plays factory projects 0 and 1
          * of the FM-1 simulator offline after tapping PLAY.
+         *
+         * `fm1.md` added three more (2026-11-14), [Origin.FM1_SIM]: a Field pattern on a DX7 track, a sine
+         * on the 303's cutoff, and a chord through eight DX7 voices between a piano and a bell.
          */
-        const val EXPECTED_FENCE_COUNT = 112
+        const val EXPECTED_FENCE_COUNT = 115
     }
 }

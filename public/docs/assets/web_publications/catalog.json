@@ -1772,6 +1772,26 @@
         "public/docs/assets/agent_transcripts/flow_lenia/metadata.edn": "0f7bad77162bb728f2dfa57acedd095b38ea040ac13ac0937d8b0dd8469b5840"
       }
     },
+    "assets/agent_transcripts/fm1_simulator/metadata.edn": {
+      "captureDigest": "0fcbf6e3c3eeb6960f58f3cb82dba685d3fdbb401ac1028834bf2ba785bb3849",
+      "capturedAt": "2026-11-14T18:55:52.830Z",
+      "channels": 1,
+      "file": "assets/web_publications/fm1_simulator/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fm1_simulator/document/metadata.edn": "0d48d308aa43b0b5ab3f9424b32fe08fcd8ae0b0d6a868e74e4edc86f0807242",
+        "assets/web_publications/fm1_simulator/document/outputs.json": "0c9dc7355e023712703c6a6db0bfbe010b78f690379f27e373ad4dbb4c846d60",
+        "assets/web_publications/fm1_simulator/outputs/0.html": "a65f0861d8a964962d51f4cf9b1bce7b05827361e626b51af51bc3caffa4a5cb"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/fm1_simulator/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/fm1_simulator.yaml": "6b4dc80f08f36d7bf9de644ac305c5b076177fc5f0803269572318ddf9f3dc39",
+        "public/docs/assets/agent_transcripts/fm1_simulator/fm1_offline_code_.kt": "8e5171c99d389dcf97c6f54bf6cd4710bf5453bded0df4735dbe071d0738f39e",
+        "public/docs/assets/agent_transcripts/fm1_simulator/fm1_play_code_.kt": "9b365a54817dc1cf0550717b5a13f6e0b54c38bfeb199ada0ba009caab0ca700",
+        "public/docs/assets/agent_transcripts/fm1_simulator/guides/faust.md": "532e4b87c5704047e793863ce01db55f7c5ade419a19a8e0b357b880026527d6",
+        "public/docs/assets/agent_transcripts/fm1_simulator/metadata.edn": "c843e475cb378df23247974cba7c88a4379ccaf6458ba955612e159138b29abe"
+      }
+    },
     "assets/agent_transcripts/fn_differentiable_fit_demo/metadata.edn": {
       "captureDigest": "0fcbf6e3c3eeb6960f58f3cb82dba685d3fdbb401ac1028834bf2ba785bb3849",
       "capturedAt": "2026-11-14T02:12:54.489Z",
@@ -6275,18 +6295,6 @@
         "public/docs/assets/agent_transcripts/evolving_water_bugs/ground_crawler_code_.kt": "29aafb8e7e930f8979ebcfb5f545ef16381963796e8c478d19bf7222758d0a5f",
         "public/docs/assets/agent_transcripts/evolving_water_bugs/metadata.edn": "5e3343495349cf9bf0bd842ee4abdbff2dc8ca924943ed929eada87da5e6b939",
         "public/docs/assets/agent_transcripts/evolving_water_bugs/water_bug_code_.kt": "a0922b2cab974892b5e975d4b173e76614b425bd6e9d4bc7f91123b08d303f56"
-      }
-    },
-    "assets/agent_transcripts/fm1_simulator/metadata.edn": {
-      "captureDigest": "0fcbf6e3c3eeb6960f58f3cb82dba685d3fdbb401ac1028834bf2ba785bb3849",
-      "channels": 0,
-      "reason": "No output-area channels; the code remains available.",
-      "sources": {
-        "dev_docs/agents/transcripts/fm1_simulator.yaml": "e0f329fbdc49db5d7021518283a74c16f5ba30b1e1cb5be9961f2a03c8fec98a",
-        "public/docs/assets/agent_transcripts/fm1_simulator/fm1_offline_code_.kt": "8e5171c99d389dcf97c6f54bf6cd4710bf5453bded0df4735dbe071d0738f39e",
-        "public/docs/assets/agent_transcripts/fm1_simulator/fm1_play_code_.kt": "9b365a54817dc1cf0550717b5a13f6e0b54c38bfeb199ada0ba009caab0ca700",
-        "public/docs/assets/agent_transcripts/fm1_simulator/guides/faust.md": "532e4b87c5704047e793863ce01db55f7c5ade419a19a8e0b357b880026527d6",
-        "public/docs/assets/agent_transcripts/fm1_simulator/metadata.edn": "c843e475cb378df23247974cba7c88a4379ccaf6458ba955612e159138b29abe"
       }
     },
     "assets/agent_transcripts/history_box_story/metadata.edn": {

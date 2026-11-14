@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-14T18:55:52.830Z",
+  "documentName": "fm1_simulator",
+  "outputs": [
+    {
+      "uid": "fm1_screen",
+      "channel": "screen",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 732,
+      "height": 728,
+      "path": "outputs/0.html"
+    }
+  ]
+}

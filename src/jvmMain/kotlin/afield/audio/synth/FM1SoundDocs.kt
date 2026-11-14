@@ -17,11 +17,13 @@ expect:
 */
 
 /**
- * The clips on `fm1.md`: factory projects 0 and 1 of the FM-1 simulator, with the sequencer started
- * the way a person starts it, by tapping PLAY.
+ * The clips on `fm1.md`, each rendered offline from a fresh [FM1Sim.create] through [FM1SimNode] in
+ * 128-frame blocks at 48 kHz with no audio device: the same render path a launched box plays.
  *
- * Each clip gets its own [FM1Sim] from [FM1Sim.create], pulled through [FM1SimNode] in 128-frame
- * blocks at 48 kHz with no audio device, so it is the same render path a launched box plays.
+ * `project-0` and `project-1` are factory projects with PLAY tapped. The others put Field in front
+ * of the simulator: `pattern` lays a Field pattern on ACID ALLEY's DX7 track, `cutoff-lfo` lets a
+ * slow sine turn the 303's filter, and `voice-morph` plays one phrase eight times while the voice
+ * moves from the factory piano to a bell built in Field.
  */
 object FM1SoundDocs {
 
@@ -31,20 +33,63 @@ object FM1SoundDocs {
     /** Frames per block, the audio engine's. */
     const val BLOCK = 128
 
-    /** Seconds the project is left to load before PLAY is tapped. */
+    /** Seconds the project is left to load before anything starts. */
     const val SETTLE_SECONDS = 0.5
 
-    /** Seconds of the running sequencer in each clip. */
+    /** Seconds of each clip. */
     const val PLAY_SECONDS = 6.0
 
-    /** The clips, by the name their fences ask for, and the project slot each plays. */
-    val FIGURES: Map<String, Int> = mapOf("project-0" to 0, "project-1" to 1)
+    /** A clip: the factory project it starts from, how long it runs, and what it does once loaded. */
+    private class Figure(val slot: Int, val seconds: Double = PLAY_SECONDS, val begin: (FM1Sim) -> Unit)
 
-    /** Renders clip [name] as left and right channels: the running sequencer, without the settle. */
+    /** The bell [voiceMorph] ends on: the factory piano with a brighter algorithm and inharmonic ratios. */
+    fun bell(piano: Dx7Voice): Dx7Voice = piano.copy().apply {
+        algorithm = 5
+        feedback = 6
+        op(2).coarse = 7
+        op(4).coarse = 3
+        op(4).fine = 41
+        op(6).coarse = 11
+        name = "BELLPIANO"
+    }
+
+    private val figures: Map<String, Figure> = linkedMapOf(
+        "project-0" to Figure(0) { it.play() },
+        "project-1" to Figure(1) { it.play() },
+        "pattern" to Figure(1) { sim ->
+            sim.start()
+            sim.schedule(pat("<c5 ef5> ~ [g5 bf5] ~ c6 ~ g5 ~"), track = 2, cycles = 3, cps = sim.cps)
+        },
+        "cutoff-lfo" to Figure(1) { sim ->
+            sim.modulate(0, FM1Sim.CC.CUTOFF, SineOsc(0.25.p) * 0.5 + 0.5)
+            sim.start()
+        },
+        "voice-morph" to Figure(0, seconds = 8.0) { sim ->
+            val piano = sim.voices(0)[0]
+            val bell = bell(piano)
+            for (k in 0 until 8) {
+                val at = k * 1.0
+                sim.morphStep(piano.lerp(bell, k / 7.0), at)
+                sim.chord(0, listOf(60, 64, 67), seconds = 0.7, afterSeconds = at + 0.05)
+            }
+        },
+    )
+
+    /** Queue [voice] for track 0 at [atSeconds], on the simulator's clock. */
+    private fun FM1Sim.morphStep(voice: Dx7Voice, atSeconds: Double) {
+        val block = blocksRendered + FM1Sim.blocks(atSeconds)
+        val sysex = voice.toSysex(0)
+        midiAt(block, *IntArray(sysex.size) { sysex[it].toInt() and 0xff })
+    }
+
+    /** The clips, by the name their fences ask for. */
+    val FIGURES: Set<String> get() = figures.keys
+
+    /** Renders clip [name] as left and right channels, without the settle. */
     fun render(name: String): Pair<FloatArray, FloatArray> {
-        val slot = FIGURES[name] ?: error("unknown FM1SoundDocs figure '$name'; known: ${FIGURES.keys}")
+        val fig = figures[name] ?: error("unknown FM1SoundDocs figure '$name'; known: ${figures.keys}")
         FM1Sim.create().use { sim ->
-            sim.preset(slot)
+            sim.preset(fig.slot)
             val node = FM1SimNode(sim)
             val ctx = SynthContext(SR.toFloat(), BLOCK)
             val l = FloatArray(BLOCK)
@@ -56,8 +101,8 @@ object FM1SoundDocs {
                 node.render(l, r, BLOCK, ctx)
             }
             repeat((SETTLE_SECONDS * SR / BLOCK).toInt()) { pull() }
-            sim.play()
-            val frames = (PLAY_SECONDS * SR).toInt()
+            fig.begin(sim)
+            val frames = (fig.seconds * SR).toInt()
             val left = FloatArray(frames)
             val right = FloatArray(frames)
             var at = 0
@@ -82,7 +127,7 @@ object FM1SoundDocs {
     /** Renders each clip twice and checks it is sound and that the two renders are identical. */
     @JvmStatic
     fun main(args: Array<String>) {
-        for (name in FIGURES.keys) {
+        for (name in FIGURES) {
             val (a, _) = render(name)
             val (b, _) = render(name)
             val peak = a.maxOf { kotlin.math.abs(it) }
@@ -90,6 +135,24 @@ object FM1SoundDocs {
             check(a.contentEquals(b)) { "$name: two renders differ, so a published clip could not be reproduced" }
             println("$name: ${a.size} frames, peak ${"%.3f".format(peak)}, deterministic")
         }
+        println("fm1 renders ${"%.1f".format(realtimeFactor())}x faster than real time")
         println("fm1 sound docs rendered")
+    }
+
+    /**
+     * How many seconds of a playing factory project one second of this thread renders at 48 kHz,
+     * after two warm-up seconds for GraalWasm's compiler: above 1 keeps up with the audio engine.
+     */
+    fun realtimeFactor(seconds: Double = 10.0, slot: Int = 1): Double = FM1Sim.create().use { sim ->
+        sim.preset(slot)
+        val l = FloatArray(4800)
+        val r = FloatArray(4800)
+        repeat(5) { sim.render(l, r, 4800, SR.toFloat()) }
+        sim.start()
+        repeat(20) { sim.render(l, r, 4800, SR.toFloat()) }
+        val n = (seconds * 10).toInt()
+        val t0 = System.nanoTime()
+        repeat(n) { sim.render(l, r, 4800, SR.toFloat()) }
+        seconds / ((System.nanoTime() - t0) / 1e9)
     }
 }

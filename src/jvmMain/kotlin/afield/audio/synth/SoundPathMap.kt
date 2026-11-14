@@ -249,8 +249,8 @@ object SoundPathMap {
             needs = "nothing (the simulator is vendored as WebAssembly)",
             channels = "stereo, rendered at 44.1 kHz and resampled",
             what = "the M-VAVE FM-1 pocket synth's browser simulator, built from its open firmware: an " +
-                "8-track, 64-step sequencer with FM, 303, 808, pluck, PSG and sampler voices, driven " +
-                "through its own panel buttons and keys",
+                "8-track, 64-step sequencer with FM, 303, 808, pluck, PSG and sampler voices, played " +
+                "by MIDI note on any track, by Field patterns and signals, or through its own panel",
             file = "src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt",
             entryPoint = "class FM1SimNode",
             page = "public/docs/fm1.md",

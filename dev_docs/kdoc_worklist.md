@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24284 of 40911 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24379 of 41014 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2040 undocumented entry points** (types, top-level functions and values) and 13870 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2040 undocumented entry points** (types, top-level functions and values) and 13873 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -162,7 +162,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [MorseSmale.kt](../src/jvmMain/kotlin/afield/geometry/topology/morsesmale/MorseSmale.kt) | Graphics | morse_smale, topology_tracking | 0 | 18 | 58% |
 | [SolidInverse.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidInverse.kt) | Graphics | solid_notation | 0 | 18 | 60% |
 | [DoughDsp.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughDsp.kt) | Synthesis | dough_dsp_sound | 0 | 17 | 70% |
-| [MidiDevices.kt](../src/jvmMain/kotlin/afield/audio/synth/MidiDevices.kt) | Audio | smpte_timecode | 0 | 17 | 65% |
+| [MidiDevices.kt](../src/jvmMain/kotlin/afield/audio/synth/MidiDevices.kt) | Audio | smpte_timecode, fm1 | 0 | 17 | 65% |
 | [Piano.kt](../src/jvmMain/kotlin/afield/audio/synth/Piano.kt) | Synthesis | sound | 0 | 17 | 68% |
 | [Polyvector.kt](../src/jvmMain/kotlin/afield/geometry/vectorize/polyvector/Polyvector.kt) | Graphics | polyvector | 0 | 17 | 59% |
 | [osc.kt](../src/jvmMain/kotlin/afield/io/osc/osc.kt) | Audio | osc | 0 | 17 | 50% |
@@ -231,6 +231,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [LinesHandles.kt](../src/jvmMain/kotlin/afield/ui/visualization/LinesHandles.kt) | Visualization | presentation_studio | 0 | 7 | 56% |
 | [someSkiko.kt](../src/jvmMain/kotlin/afield/ui/visualization/someSkiko.kt) | Visualization | filming_a_timeline, presentation_studio, explainer_lights | 0 | 7 | 63% |
 | [LorisVisualizer.kt](../src/jvmMain/kotlin/afield/audio/analysis/loris/LorisVisualizer.kt) | Visualization | loris | 0 | 6 | 45% |
+| [MidiPat.kt](../src/jvmMain/kotlin/afield/audio/synth/MidiPat.kt) | Audio | fm1 | 0 | 6 | 66% |
 | [FLineWiggle.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineWiggle.kt) | Graphics | fline_examples | 0 | 6 | 53% |
 | [ManifoldNative.kt](../src/jvmMain/kotlin/afield/geometry/solid/manifold/ManifoldNative.kt) | Internal | manifold | 0 | 6 | 73% |
 | [simplePLYSupport.kt](../src/jvmMain/kotlin/afield/graphics/scene/simplePLYSupport.kt) | Graphics | geometry_from_disk | 0 | 6 | 60% |
@@ -780,7 +781,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ReflectionEffect.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/ReflectionEffect.kt) | Audio | — | 0 | 6 | 82% |
 | [DoughDspPlotGallery.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughDspPlotGallery.kt) | Audio | — | 0 | 6 | 25% |
 | [FaustDsp.kt](../src/jvmMain/kotlin/afield/audio/synth/FaustDsp.kt) | Synthesis | — | 0 | 6 | 56% |
-| [MidiPat.kt](../src/jvmMain/kotlin/afield/audio/synth/MidiPat.kt) | Audio | — | 0 | 6 | 66% |
 | [PatOnsetDetection.kt](../src/jvmMain/kotlin/afield/audio/synth/PatOnsetDetection.kt) | Patterns | — | 0 | 6 | 57% |
 | [jsonparsing.kt](../src/jvmMain/kotlin/afield/data/formats/jsonparsing.kt) | Data | — | 0 | 6 | 66% |
 | [growing.kt](../src/jvmMain/kotlin/afield/data/graph/growing.kt) | Data | — | 0 | 6 | 57% |
@@ -809,6 +809,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AudioBuffer.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/AudioBuffer.kt) | Audio | — | 0 | 5 | 82% |
 | [BinauralEffect.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/BinauralEffect.kt) | Audio | — | 0 | 5 | 70% |
 | [DirectEffect.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/DirectEffect.kt) | Audio | — | 0 | 5 | 78% |
+| [FM1Sim.kt](../src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt) | Synthesis | — | 0 | 5 | 92% |
 | [DatalogWhyNot.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogWhyNot.kt) | Languages | — | 0 | 5 | 62% |
 | [ClothSimulationExample.kt](../src/jvmMain/kotlin/afield/examples/ClothSimulationExample.kt) | Examples | — | 0 | 5 | 50% |
 | [PhysarumNetworkGpuSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/PhysarumNetworkGpuSmoke.kt) | Examples | — | 0 | 5 | 16% |
@@ -915,7 +916,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [CaSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/CaSoundDocs.kt) | Patterns | — | 0 | 2 | 85% |
 | [DoughDspSmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughDspSmokeTest.kt) | Audio | — | 0 | 2 | 33% |
 | [DoughLive.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughLive.kt) | Synthesis | — | 0 | 2 | 93% |
-| [FM1Sim.kt](../src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt) | Synthesis | — | 0 | 2 | 89% |
 | [FaustPolySmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/FaustPolySmokeTest.kt) | Audio | — | 0 | 2 | 33% |
 | [LambdaSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/LambdaSoundDocs.kt) | Patterns | — | 0 | 2 | 93% |
 | [PatClock.kt](../src/jvmMain/kotlin/afield/audio/synth/PatClock.kt) | Patterns | — | 0 | 2 | 80% |

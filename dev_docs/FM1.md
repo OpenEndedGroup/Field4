@@ -1,0 +1,73 @@
+# FM-1 simulator: decisions and open items
+
+`FM1Sim` (`src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt`) hosts the M-VAVE FM-1's open-firmware
+browser simulator (`src/jvmMain/resources/fm1/fm1-sim.wasm`, built from github.com/m-vave/fm1_open
+at `4c7496d`) in a GraalVM js+wasm context. The user page is `public/docs/fm1.md`; this file holds
+what a user does not need: why things are the way they are, and what was left and why.
+
+## What the second round did (2026-11-14)
+
+- **MIDI in, by track.** Every track listens on a channel (`sim_midi_setting(track, 1)`); notes,
+  CCs, bend and program changes go through `sim_midi` (bytes written to `sim_file()`). The
+  firmware's input queue holds 64 messages per block; a 64-note chord in one block would overflow
+  it and the firmware resets its MIDI state. Nothing in Field sends that much.
+- **Scheduling on the simulator's block clock.** Calls carry an absolute due block and sit in a
+  priority queue drained before each `sim_render`. Timing resolution is one simulator block
+  (128 frames, 2.9 ms): the firmware renders whole blocks and has no sub-block event time, so this
+  is the floor without changing the C.
+- **Synchronous reads.** `tracks()`, `screen()`, `exportProject()`, `voices()` take a lock that the
+  audio thread also holds while it renders, so they run between two blocks. GraalVM forbids
+  *simultaneous* entry from two threads, not sequential entry; the lock makes it sequential. A
+  read holds the audio thread for the time of one memory copy (115 kB for the screen).
+- **Start/stop are MIDI FA/FC**, not the PLAY toggle. Note: if a track's MIDI clock-out is ever
+  turned on, `groove_midi_clock_accept` rejects an incoming Start, so `start()` would stop working.
+  Nothing in Field turns clock-out on.
+- **Factory projects: 16**, not the 4 the first page said (`sim_factory_name` names 0..15).
+- **Patterns** via `fm1NotesForArc` / `FM1PatternFeeder` (`FM1Patterns.kt`), the shape of
+  `faustNotesForArc` / `FaustPatternFeeder`. Drum names map to the 808 notes in
+  `web/engine/sound.c` (`drum_notes`). Pitch is rounded: the DX7 core has a per-note `cents`
+  argument but the MIDI path always passes the tuning table's value.
+- **Signals turn controllers** (`modulate`), sampled once per audio block inside `FM1SimNode`, on
+  the audio thread, with the real `SynthContext`, so it obeys the AGENTS.md rule about synth
+  graphs being audio-thread-owned.
+- **DX7 voices** (`FM1Voice.kt`): VCED/VMEM codec matching `groove_fm_unpack`/`groove_fm_pack`,
+  single-voice SysEx (163 bytes, accepted by `app/transfer.c`), 32-voice banks into
+  `sim_library_write`. Values past a parameter's range are held at its end because the firmware
+  would otherwise reject the whole voice (the only failure the clamp guards).
+- **MIDI out** via `sim_midi_capture` and per-track mode (`sim_midi_edit(track, 0, …)`: 0 off,
+  1 local + MIDI, 2 MIDI only). The web build mirrors to ports 1 and 2; Field keeps port 1.
+- **Resampling** is Catmull-Rom four-point instead of linear. Exact at 44.1 kHz (tested), two
+  simulator frames of extra latency. This changed every rendered sample, so the two original
+  clips were recaptured.
+- **Real-time cost**: `FM1SoundDocs.realtimeFactor()` prints the factor in the
+  `synth.fm1.sound` smoke test.
+
+## Not done, and why
+
+- **Field audio into the FM-1's sampler.** The exports exist (`sim_sample_alloc`,
+  `sim_sample_encode`, `sim_sample_bank`), but a bank is a flash region with its own header and
+  table at `GROOVE_SAMPLE_OFFSET` that the web page's JavaScript assembles, and that JavaScript is
+  not in the firmware repository. Doing it means reading `app/samples.c` and `sampledrum_encode`
+  to lay out the bank. Plan: build the region in Kotlin, write it with `memory.writeBuffer` at
+  `sim_flash() + GROOVE_SAMPLE_OFFSET`, call `sim_sample_bank(bytes)`, check status 2.
+- **Per-track stems.** The firmware mixes the eight tracks (and their reverb/delay sends) inside
+  `render_stereo`; `sim_render` returns the mix only. Stems need a firmware change (an export of
+  the per-track scratch buffers) and a rebuild, or eight simulators each soloing one track, which
+  costs eight times the CPU and loses the shared effects.
+- **Live-coding the firmware.** Rebuilding needs Homebrew clang + wasm-ld and the WASI SDK
+  sysroot (`PROVENANCE.md`), about a minute of compile, and swapping a module mid-performance
+  loses all simulator state unless the project is exported and re-imported around the swap
+  (`exportProject`/`importProject` now make that possible). Not worth it before someone wants to
+  change the voice C.
+- **MIDI clock both ways.** FM-1 → Field: turn on clock-out (setting 5) and read `F8` from
+  `drainMidi()`; but that disables `start()` (above). Field → FM-1: set clock source (setting 6,
+  which also switches the clock mode to MIDI) and send `F8` 24 times a beat on the block clock.
+  `cps` (from the project's bpm) covers the common case of a Field pattern in time with the FM-1's
+  sequencer, so the clock was left.
+- **Microtones.** The project format carries a 200-byte tuning block (`GROOVE_TUNING_BLOCK_BYTES`)
+  that `importProject` keeps. Writing one from Field means decoding `tuning_tables_valid` in
+  `app/project.c`.
+- **Comparison with the hardware.** Still none; nobody here has an FM-1.
+- **A live LCD panel.** `screenPng()` is a snapshot; a box can redraw it in a loop, but a panel
+  that follows `sim_frame_revision` and takes clicks on the drawn controls would be a frontend
+  feature (a `FieldPanel`), out of scope for this round.

@@ -8,7 +8,12 @@ description: >
        keeps the same simulator, so the pattern carries on while you edit.
     2. offline, four projects — each factory project rendered offline for three seconds after PLAY,
        printed as a level trace in 100 ms steps, so the patterns are visible without a sound card.
-  Only box 2 is executed by this transcript; box 1 opens an audio device, so click it yourself.
+    3. a pattern on track 2 — a Field pattern laid over ACID ALLEY's DX7 track, one cycle to the
+       project's bar, with a sine turning the 303's filter.
+    4. the screen — the FM-1's LCD for factory project 4, rendered offline and shown at three times
+       its size.
+  Boxes 2 and 4 are executed by this transcript; boxes 1 and 3 open an audio device, so click them
+  yourself.
   The simulator is not the hardware: the device runs a closed engine library the web build leaves out.
 docs:
   - page: faust.md
@@ -24,13 +29,13 @@ operations:
           The M-VAVE FM-1's open-firmware simulator in Field's audio engine. Launch this box to hear
           it; stop the box and it leaves the mix.
 
-          Change the project slot (0..3) and re-run: the simulator is shared, so the new project
-          loads while the transport keeps its state. PLAY/STOP is a toggle, hence the check.
+          Change the project slot (0 to 15) and re-run: the simulator is shared, so the new project
+          loads into the same one. start() starts from the first step whether it was playing or not.
           */
           val fm1 = FM1Sim.shared
 
           fm1.preset(1)
-          if (!fm1.isPlaying) fm1.play()
+          fm1.start()
           fm1.level(0.8)
 
           fm1.node
@@ -56,7 +61,7 @@ operations:
               val sim = FM1Sim.create()
               sim.preset(slot)
               repeat(5) { sim.render(l, r, 4800, 48000f) }
-              sim.play()
+              sim.start()
               val levels = (0 until 30).map {
                   sim.render(l, r, 4800, 48000f)
                   kotlin.math.sqrt(l.indices.sumOf { i -> (l[i] * l[i] + r[i] * r[i]).toDouble() } / (2 * l.size))
@@ -65,7 +70,47 @@ operations:
               println("project $slot  playing=${sim.isPlaying}  $trace")
               sim.close()
           }
+  - create:
+      box: fm1_pattern
+      name: a pattern on track 2
+      frame: { x: 80.0, y: 260.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          A Field pattern on ACID ALLEY's DX7 track (track 2), one cycle to the project's bar, while a
+          slow sine turns the 303's filter on track 0. Launch it to hear it; re-run with another
+          pattern and it replaces this one.
+          */
+          val fm1 = FM1Sim.shared
+          fm1.preset(1)
+          fm1.start()
+          fm1.play(pat("<c5 ef5> ~ [g5 bf5] ~ c6 ~ g5 ~"), track = 2)
+          fm1.modulate(0, FM1Sim.CC.CUTOFF, SineOsc(0.25.p) * 0.5 + 0.5)
+
+          fm1.node
+  - create:
+      box: fm1_screen
+      name: the screen
+      frame: { x: 480.0, y: 260.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          The FM-1's LCD for factory project 4, from a private simulator rendered offline for half a
+          second, shown at three times its size.
+          */
+          val fm1 = FM1Sim.create()
+          fm1.preset(4)
+          val l = FloatArray(4800)
+          val r = FloatArray(4800)
+          repeat(5) { fm1.render(l, r, 4800, 48000f) }
+
+          display("screen", fm1.screenPng(scale = 3))
+          fm1.close()
   - execute:
       box: fm1_offline
+  - await:
+      wait: pending
+  - execute:
+      box: fm1_screen
   - await:
       wait: pending

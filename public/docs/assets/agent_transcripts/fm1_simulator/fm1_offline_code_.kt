@@ -14,7 +14,7 @@ for (slot in 0 until 4) {
     val sim = FM1Sim.create()
     sim.preset(slot)
     repeat(5) { sim.render(l, r, 4800, 48000f) }
-    sim.play()
+    sim.start()
     val levels = (0 until 30).map {
         sim.render(l, r, 4800, 48000f)
         kotlin.math.sqrt(l.indices.sumOf { i -> (l[i] * l[i] + r[i] * r[i]).toDouble() } / (2 * l.size))
