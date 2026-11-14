@@ -1443,9 +1443,15 @@ though. At very low counts it smooths a glossy coat's fine detail along with the
 PSNR is against a 1024-sample reference, on display values. Field's output and native Open Image
 Denoise differ by about 1/40 of one 8-bit level.
 
-At 1920 × 1080 one denoise takes **0.7 s** on an Apple M1 Max under KosmicKrisp. Measure it on
-your own GPU. It costs about 870 MB of scratch memory at that size. Tracing slows only on the one
-frame that runs it, plus a small pass each frame that averages the albedo and normal.
+| GPU, 1920 × 1080 | One denoise | Scratch memory |
+| --- | ---: | ---: |
+| NVIDIA RTX 4090, cooperative matrices (tensor cores) | 15.5 ms | 1.7 GB |
+| NVIDIA RTX 4090, portable kernels | 16 ms | 870 MB |
+| Apple M1 Max, KosmicKrisp | 0.7 s | 870 MB |
+
+The denoiser uses `VK_KHR_cooperative_matrix` when the device has it. `denoiser.cooperativeMatrix`
+says which path it took. Tracing slows only on the frame that runs the denoise, plus a small pass
+each frame that averages the albedo and normal.
 
 !!! note "Opaque scenes"
     The denoiser reads the same per-pixel guides as [Ray Reconstruction](path_traced_reconstruction.md),
@@ -1456,7 +1462,8 @@ frame that runs it, plus a small pass each frame that averages the albedo and no
 
     `OidnComputeSpike` traces this scene at 1920 × 1080, denoises it on the GPU at each sample
     count, and runs native Open Image Denoise 2.5.1 on the CPU over the identical colour, albedo and
-    normal. The figure is that harness's output, not a runner capture. The network topology, weight
+    normal. The figure is that harness's output, not a runner capture. On the RTX 4090 native
+    Open Image Denoise on CUDA takes 6.5 ms, so Field's path is within 2.5× of it there. The network topology, weight
     format and transfer curve follow Open Image Denoise and
     [oidn-webgpu](https://github.com/pissang/oidn-webgpu). The kernels, the timing method and what
     is left are in

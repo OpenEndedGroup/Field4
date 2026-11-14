@@ -4,6 +4,7 @@ package afield.media.reconstruction
 import afield.document.graph.Box
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.Target
+import afield.graphics.render.*
 import afield.graphics.scene.fabricated.*
 import afield.graphics.vulkan.util.Camera
 import afield.graphics.vulkan.util.Options
@@ -69,7 +70,75 @@ object OidnComputeSpike {
         File(folder,"api-check.json").writeText(result.toString(2));println(result.toString(2));println("OIDN API CHECK DONE");exitProcess(0)
     }
 
+    /** Peak cooperative-matrix throughput (fp32 and fp16 accumulators) and copy bandwidth, dispatched through Field's ComputeModule. */
+    private fun devicePeaks(folder: File) {
+        Options.enableVR=false;Options.enableHDR=false;Options.enableRayTracing=false;Options.validate=false;Options.doVulkanSDK()
+        val window=Window("Field device peaks");val renderer=Renderer(window)
+        val result=JSONObject().put("gpu",renderer.device.physicalDevice.vkPhysicalDeviceProperties.deviceNameString())
+        try {
+            fun buffer(bytes: Long)=afield.graphics.vulkan.buffers.VulkanBuffer(renderer,bytes,
+                org.lwjgl.vulkan.VK13.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT or org.lwjgl.vulkan.VK13.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                org.lwjgl.vulkan.VK13.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,needsDeviceAddress=true)
+            fun module(src: String,gx: Int,push: Map<String,Any>): Pair<afield.graphics.render.ComputeModulePointer,afield.graphics.render.ComputeMesh> {
+                val errors=ArrayList<String>()
+                val m=afield.graphics.render.ComputeModule(afield.graphics.render.Parameters(renderer,name="peak",compute=src,errorHandler={ e,_ -> errors+=e })).pointer()
+                check(m.current.valid) { errors.joinToString("\n") }
+                val mesh=afield.graphics.render.ComputeMesh(renderer,m).also { it.x=gx }
+                m+="d" to mesh;mesh.push.setMembers(m.current.ci.pushConstants.flatMap { it.members });push.forEach { (k,v) -> mesh.push[k]=v }
+                return m to mesh
+            }
+            fun time(m: afield.graphics.render.ComputeModulePointer): Double {
+                fun once(): Double { val cmd=afield.graphics.vulkan.device.CommandBuffer(renderer.commandPool,true,true);val fence=afield.graphics.vulkan.device.Fence(renderer.device,false)
+                    try { cmd.beginRecording();m.current.render(cmd,afield.math.linalg.Rectanglef());cmd.endRecording();val t0=System.nanoTime()
+                        org.lwjgl.system.MemoryStack.stackPush().use { renderer.graphQueue.submit(it.pointers(cmd.vkCommandBuffer),null,null,null,fence) };fence.fenceWait()
+                        return (System.nanoTime()-t0)/1e6 } finally { fence.cleanup();cmd.cleanup() } }
+                repeat(3) { once() };return median((1..10).map { once() })
+            }
+            val sink=buffer(1L shl 20)
+            if(renderer.device.supportsCooperativeMatrix) for(acc in listOf("float","float16_t")) {
+                val iters=4096;val groups=4096
+                val src="""#version 460
+                    #extension GL_KHR_cooperative_matrix : require
+                    #extension GL_KHR_memory_scope_semantics : require
+                    #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+                    #extension GL_EXT_shader_16bit_storage : require
+                    #extension GL_EXT_buffer_reference : require
+                    layout(local_size_x=128) in;
+                    layout(buffer_reference,std430,buffer_reference_align=16) buffer S { float v[]; };
+                    layout(push_constant) uniform P { S sink; int iters; } pc;
+                    void main(){
+                      coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseA> a=coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseA>(float16_t(0.001*float(gl_WorkGroupID.x&7u)));
+                      coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseB> b=coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseB>(float16_t(0.002));
+                      coopmat<$acc,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> c0=coopmat<$acc,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(0.0),c1=c0,c2=c0,c3=c0,c4=c0,c5=c0,c6=c0,c7=c0;
+                      for(int i=0;i<pc.iters;i++){ c0=coopMatMulAdd(a,b,c0);c1=coopMatMulAdd(a,b,c1);c2=coopMatMulAdd(a,b,c2);c3=coopMatMulAdd(a,b,c3);
+                        c4=coopMatMulAdd(a,b,c4);c5=coopMatMulAdd(a,b,c5);c6=coopMatMulAdd(a,b,c6);c7=coopMatMulAdd(a,b,c7); }
+                      coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> s=coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(c0)+coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(c1)
+                        +coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(c2)+coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(c3)
+                        +coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(c4)+coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(c5)
+                        +coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(c6)+coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(c7);
+                      coopMatStore(s,pc.sink.v,(gl_WorkGroupID.x&63u)*256u,16u,gl_CooperativeMatrixLayoutRowMajor);
+                    }"""
+                val (m,_)=module(src,groups,mapOf("sink" to sink,"iters" to iters))
+                val ms=time(m);val flops=groups.toDouble()*4*iters*8*2*16*16*16
+                result.put("tensorTflops_acc_$acc",flops/(ms/1e3)/1e12).put("tensorMs_acc_$acc",ms)
+                m.current.cleanup()
+            }
+            // Copy bandwidth: 1 GiB read + 1 GiB write of vec4.
+            val n=1L shl 26;val a=buffer(n*16);val b=buffer(n*16)
+            val (cm,_)=module("""#version 460
+                #extension GL_EXT_buffer_reference : require
+                layout(local_size_x=256) in;
+                layout(buffer_reference,std430,buffer_reference_align=16) buffer V { vec4 v[]; };
+                layout(push_constant) uniform P { V src; V dst; } pc;
+                void main(){ uint i=gl_GlobalInvocationID.x; pc.dst.v[i]=pc.src.v[i]+vec4(1.0); }""",(n/256).toInt(),mapOf("src" to a,"dst" to b))
+            val cms=time(cm);result.put("copyGBps",2.0*n*16/(cms/1e3)/1e9).put("copyMs",cms)
+            cm.current.cleanup();a.cleanup();b.cleanup();sink.cleanup()
+        } finally { renderer.cleanup();window.cleanup() }
+        File(folder,"peaks.json").writeText(result.toString(2));println(result.toString(2));println("PEAKS DONE");exitProcess(0)
+    }
+
     @JvmStatic fun main(args: Array<String>) {
+        if("--peaks" in args) { devicePeaks(File(args.last { !it.startsWith("--") }).also { it.mkdirs() });return }
         if("--api-check" in args) { apiCheck(File(args.last { !it.startsWith("--") }).also { it.mkdirs() });return }
         val oidnDir=Path.of(args[0]);val weights=args[1].takeIf { it!="default" }?.let { Path.of(it) };val folder=File(args[2]).also { it.mkdirs() }
         val timingOnly="--timing-only" in args
@@ -100,7 +169,7 @@ object OidnComputeSpike {
             PathTracingRenderer(renderer,scene,PathTraceEnvironment.constant(.02f,.025f,.04f),width,height,camera,
                 PathTracingRenderer.Backend.COMPUTE_BVH,name="oidn-path").use { tracer ->
                 val c0=System.nanoTime();val den=OidnComputeDenoiser(tracer,weights).also { it.denoiseAt=0;it.show=false }
-                report.put("denoiserBuildMs",ms(c0)).put("activationBytes",den.activationBytes)
+                report.put("denoiserBuildMs",ms(c0)).put("activationBytes",den.activationBytes).put("cooperativeMatrix",den.cooperativeMatrix)
                 renderer.renderList.preTargets["oidn"]=Target { c,i -> tracer.render(c,i);den.render(c,i) }
                 pump(2);tracer.reset("start");pump(1)
                 val timing=JSONArray()
