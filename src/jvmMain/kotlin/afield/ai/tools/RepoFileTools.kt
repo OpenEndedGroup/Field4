@@ -182,8 +182,18 @@ class RepoFileTools(val scope: RepoScope) {
                 .redirectError(ProcessBuilder.Redirect.DISCARD).start()
             val out = p.inputStream.readBytes().toString(Charsets.UTF_8)
             if (!p.waitFor(30, java.util.concurrent.TimeUnit.SECONDS) || p.exitValue() != 0) return null
-            out.split('\u0000').filter { it.isNotEmpty() }.map { Path.of(it) }
-        }.getOrNull()
+            val listed = out.split('\u0000').filter { it.isNotEmpty() }.map { Path.of(it) }
+            listed + IGNORED_BUT_SEARCHED.flatMap { dir ->
+                val start = root.resolve(dir)
+                if (!Files.isDirectory(start, NOFOLLOW_LINKS)) emptyList()
+                else Files.walk(start).use { s ->
+                    s.filter { Files.isRegularFile(it, NOFOLLOW_LINKS) }
+                        .map { root.relativize(it) }
+                        .filter { rel -> rel.none { it.toString() in SKIPPED_DIRS } }
+                        .toList()
+                }
+            }
+        }.getOrNull()?.distinct()
     }
 
     fun list(req: RepoListFilesRequest): RepoListResult = guarded({ RepoListResult(false, it) }) {
@@ -253,6 +263,8 @@ class RepoFileTools(val scope: RepoScope) {
         const val MAX_LINES = 2000
         const val MAX_LIST = 500
         const val MAX_SEARCH_FILES = 20_000
+        /** Gitignored trees that are still source and are searched in a git checkout: the local-only personal layer. */
+        private val IGNORED_BUT_SEARCHED = listOf("src/personal")
         private val SKIPPED_DIRS = setOf(".git", "node_modules", "build", ".gradle", ".venv", ".kotlin")
 
         /**
