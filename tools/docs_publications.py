@@ -40,7 +40,12 @@ LONG_COMPUTE = frozenset({"petri_tala_layout", "morpho_circuit_search", "alife_e
 # a capture that ran out of time, and a WebSocket the session dropped mid-capture (1006, no close
 # frame). The drop bounced full refreshes on 2026-11-07 (box_graph_demo), 2026-11-08
 # (spreadsheet_constraints) and 2026-11-10 (fline_exact_booleans), a different document each time.
-TRANSIENT_CAPTURE_ERRORS = ("Output capture exceeded", "ConnectionClosedError", "code=1006")
+# A bare TimeoutError (a backdoor wait that ran out) is the same kind: flow_lenia hit it in two
+# refreshes on 2026-11-14 and captured cleanly in the run between.
+TRANSIENT_CAPTURE_ERRORS = ("Output capture exceeded", "ConnectionClosedError", "code=1006", "TimeoutError")
+# The backdoor's refusal when another checkout's Field answers the port this one started on.
+PORT_COLLISION = "is answered by a Field this session did not start"
+PORT_COLLISION_ATTEMPTS = 3
 
 
 def publication_node() -> str | None:
@@ -555,6 +560,20 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
             if not recipe.get("transcript") or recipe.get('retainedNative'):
                 shutil.copytree((DOCS / recipe["source"]).parent, workspace / recipe["name"])
         async def start(watchdog_ms: int = 30000):
+            # Each restart picks a port anew, and another checkout can bind it while this Field
+            # builds; the backdoor then stops ours rather than talk to theirs. That says nothing
+            # about the documents (it bounced 2026-11-14's three viewer landing twice), so take
+            # the next free port. An explicit --port is the caller's to keep.
+            for attempt in range(1, PORT_COLLISION_ATTEMPTS + 1):
+                try:
+                    return await start_once(watchdog_ms)
+                except fb.BackdoorError as error:
+                    if port is not None or PORT_COLLISION not in str(error) or attempt == PORT_COLLISION_ATTEMPTS:
+                        raise
+                    print(f"Port taken by another checkout's Field; starting on the next free port "
+                          f"(attempt {attempt + 1}/{PORT_COLLISION_ATTEMPTS})", flush=True)
+
+        async def start_once(watchdog_ms: int):
             log = fb.SessionLogger(fb.LOG_ROOT, ["docs-publications"])
             client = fb.FieldBackdoor(port=port or fb.resolve_cli_port(None, attach_existing=False)[0],
                                      workspace=str(workspace), logger=log, default_timeout=180)
@@ -602,6 +621,7 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                 if opened >= 16 or wanted_budget != budget:
                     await client.close()
                     log.close()
+                    client = None  # if the restart fails, the finally below has nothing left to close
                     budget = wanted_budget
                     client, log = await start(budget)
                     opened = 0
@@ -713,8 +733,9 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                     if recipe.get('longCompute'):
                         opened = 16
         finally:
-            await client.close()
-            log.close()
+            if client is not None:
+                await client.close()
+                log.close()
     return report
 
 
