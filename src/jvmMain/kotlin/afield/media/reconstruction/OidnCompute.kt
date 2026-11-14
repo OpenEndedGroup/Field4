@@ -561,10 +561,11 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
         private val CM_W = System.getenv("AFIELD_OIDN_CM_W")?.toInt() ?: 64
         /** Shared-memory stride of one staged pixel, in 16-byte units (2 = packed; 3 pads against bank conflicts). */
         private val CM_PS = System.getenv("AFIELD_OIDN_CM_PS")?.toInt() ?: 2
+        private val CM_EPI = System.getenv("AFIELD_OIDN_CM_EPI") == "1"
         private val CM_H4 = System.getenv("AFIELD_OIDN_CM_H4") == "1"
         private val CM_BPS = System.getenv("AFIELD_OIDN_CM_BPS")?.toInt() ?: 2
         /** Weight-row stride in 16-byte units, padded only while A and B still fit in 48 KB of shared memory. */
-        private fun bps(co: Int) = if (9 * (co / 16) * 16 * CM_BPS * 16 + (CM_R + 2) * (CM_W + 2) * CM_PS * 16 <= 49152) CM_BPS else 2
+        private fun bps(co: Int) = if (9 * (co / 16) * 16 * CM_BPS * 16 + (CM_R + 2) * (CM_W + 2) * CM_PS * 16 + (if (CM_EPI) CM_R * CM_W * 64 else 0) <= 49152) CM_BPS else 2
 
         /**
          * 3x3 conv + bias + ReLU as an implicit GEMM on cooperative matrices (16x16x16 fp16 in, fp32 accumulate).
@@ -592,6 +593,10 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
             layout(buffer_reference, std430, buffer_reference_align=16) buffer F32s { float v[]; };
             layout(push_constant) uniform P { U4s src; U4s src2; U4s wt; F32s bias; F16s dst; int w; int h; } pc;
             #define H4 ${if (CM_H4) 1 else 0}
+            #define EPI ${if (CM_EPI) 1 else 0}
+            #if EPI
+            shared float shE[NSG*256];
+            #endif
             #if H4
             const int U=2; shared f16vec4 shA[PR*PW*PS*U]; shared f16vec4 shB[9*NT*16*BPS*U];
             #define ST(sh,j,v) { sh[2*(j)]=f16vec4(unpackFloat2x16(v.x),unpackFloat2x16(v.y)); sh[2*(j)+1]=f16vec4(unpackFloat2x16(v.z),unpackFloat2x16(v.w)); }
@@ -643,6 +648,15 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
                 }
               }
               barrier();
+              #if EPI
+              for(int n=0;n<NT;n++){
+                coopMatStore(acc[n],shE,uint(sg*256),16u,gl_CooperativeMatrixLayoutRowMajor);
+                subgroupMemoryBarrierShared(); subgroupBarrier();
+                if(y<pc.h) for(int i=lane;i<256;i+=32){ int m=i>>4, c=i&15; if(x0+m<pc.w)
+                  pc.dst.v[((y+1)*rw+x0+m+1)*CO+n*16+c]=float16_t(max(shE[sg*256+i],0.0)); }
+                subgroupMemoryBarrierShared(); subgroupBarrier();
+              }
+              #else
               bool full=x0+16<=pc.w;
               for(int n=0;n<NT;n++){
                 for(int i=0;i<acc[n].length();i++) acc[n][i]=max(acc[n][i],0.0);
@@ -662,6 +676,7 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
                   subgroupMemoryBarrierShared(); subgroupBarrier();
                 }
               }
+              #endif
             }
         """
         private fun convMatrix1(ci: Int, co: Int, ca: Int) = """#version 460
