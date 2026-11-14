@@ -119,11 +119,62 @@ Two kernel revisions were measured and both were **slower** on KosmicKrisp, so n
 The one kept stages one 4-channel chunk per barrier and computes 2×2 pixels × 8 channels per invocation in
 explicitly named accumulators.
 
+## RTX 4090 (Linux, a0): the cooperative-matrix path
+
+On NVIDIA the device now enables `VK_KHR_cooperative_matrix`, together with 16-bit storage buffers
+and the Vulkan memory model (`Device.supportsCooperativeMatrix`; turn it off with
+`afield.cooperativeMatrix.disabled`). With it, `OidnComputeDenoiser` builds a second network:
+
+- **Layout:** activations are channels-last (NHWC) fp16 with a one-pixel zero border and channels
+  padded to 16.
+- **Conv as implicit GEMM:** a 3×3 tap of a 16-pixel row segment is then one strided 16×16 matrix
+  load. Each subgroup owns 16 pixels × all output channels, with 16×16×16 fp16 MMAs into fp32
+  accumulators, and bias + ReLU run in a shared-memory epilogue.
+- **Separate passes:** upsample + concat and max-pool are cheap passes of their own, because the
+  matrix loads need the plain layout.
+
+`afield.oidn.portable=true` / `AFIELD_OIDN_PORTABLE=1` forces the portable kernels. Measured with
+the same harness, scene and reference as on the Mac. Times are fence-timed medians of 15; GPU
+timestamps do work on NVIDIA and agree to about 0.2 ms.
+
+| 1920×1080, RTX 4090, driver 620.70 | ms per denoise |
+| --- | --- |
+| **Field, cooperative matrix** | **15.2** (a later run under heavier load from other jobs: 18.1) |
+| Field, portable kernels | 16.0 |
+| Native OIDN 2.5.1, CUDA device, `quality=high` | 6.5 |
+| Native OIDN, CUDA, `quality=balanced` | 4.9 |
+| Native OIDN, CPU | ~430 |
+
+- **Quality** is the same as on the Mac. Against native OIDN on identical inputs: 76.6 dB, mean
+  display difference 1.0e‑4. PSNR against the reference is 38.12 / 38.50 / 38.71 dB at 8 / 32 / 128
+  spp, equal to native to 0.002 dB.
+- **The portable kernels are already fast here.** At 16 ms, dec_conv1a runs at about 32 TFLOPS,
+  so the Mac's 0.7 s is specific to KosmicKrisp/M1, not a property of the kernel. Cooperative
+  matrices buy only 5% as written: the largest layer goes from 5.4 to 4.1 ms. They cost twice the
+  memory (1.66 GB against 0.87 GB), because channels are padded and the concat tensors are
+  materialised.
+- **Wider tiles were slower.** Two or four 16-pixel tiles per subgroup, sharing each weight tile,
+  ran 1.6× and 2.1× slower (28.4 and 37.6 ms), consistent with register spill. The default stays
+  at one (`AFIELD_OIDN_MATRIX_TILES`).
+- **Per layer (matrix path, ms):** dec_conv1a 4.1, dec_conv1b 3.2, dec_conv2a 1.9, dec_conv2b 1.0,
+  enc_conv1 1.0, dec_conv3a 0.7, up1 0.5; everything else is under 0.35.
+- **a0 is shared.** Other GPU jobs started and stopped during these runs, and twice
+  `vkCreateDevice` returned `VK_ERROR_INITIALIZATION_FAILED` until retried. The 15.2 / 18.1 spread
+  is that load, so treat these numbers as ±20%.
+
+Raw JSON: [`oidn_compute/rtx4090/`](oidn_compute/rtx4090/).
+
 ## What's left before productising
 
 Roughly in order of value.
 
-1. **Speed (the main gap).** The convs are compute-bound at about 7% of peak, so the kernel is where the gains
+0. **NVIDIA:** 2.3× behind native CUDA OIDN (15 against 6.5 ms). Next steps:
+   - stage A and B tiles through shared memory, so the four subgroups of a workgroup reuse them
+     instead of each streaming from L1/L2;
+   - fuse the upsample + concat into the conv's A loads.
+
+   Native's `quality=balanced` (4.9 ms) shows there is headroom even within OIDN.
+1. **Speed on the Mac (the main gap).** The convs are compute-bound at about 7% of peak, so the kernel is where the gains
    are.
    - **Implicit-GEMM tiling:** a register-blocked GEMM over (pixels × output channels) × (input channels × 9),
      with weights staged once per tile rather than per chunk.

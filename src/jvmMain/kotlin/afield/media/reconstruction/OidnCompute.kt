@@ -383,8 +383,8 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
     companion object {
         /** OIDN's `rt_hdr_alb_nrm` weights (Apache-2.0), as vendored with oidn-webgpu 0.6.0. */
         const val DEFAULT_WEIGHTS = "/vendor/oidn-webgpu/0.6.0/rt_hdr_alb_nrm.tza"
-        /** 16-pixel tiles per subgroup in the cooperative-matrix conv (`AFIELD_OIDN_MATRIX_TILES`, for measuring). */
-        internal val MATRIX_TILES = System.getenv("AFIELD_OIDN_MATRIX_TILES")?.toIntOrNull() ?: 2
+        /** 16-pixel tiles per subgroup in the cooperative-matrix conv (`AFIELD_OIDN_MATRIX_TILES`). On an RTX 4090, 2 and 4 were 1.6x and 2.1x slower than 1. */
+        internal val MATRIX_TILES = System.getenv("AFIELD_OIDN_MATRIX_TILES")?.toIntOrNull() ?: 1
         private fun puForward(y: Double) = when {
             y <= 1.5794576e-6 -> 1.41283765e3 * y
             y <= 3.22087631e-2 -> 1.64593172 * y.pow(4.31384981e-1) - 2.94139609e-3
