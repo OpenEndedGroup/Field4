@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T08:58:33.101Z",
+  "capturedAt": "2026-11-14T11:23:17.938Z",
   "documentName": "stippling",
   "outputs": [
     {
@@ -10,7 +10,7 @@
       "warnings": [],
       "kinds": [],
       "width": 492,
-      "height": 368,
+      "height": 40,
       "path": "outputs/0.html"
     },
     {
@@ -20,7 +20,7 @@
       "warnings": [],
       "kinds": [],
       "width": 492,
-      "height": 368,
+      "height": 40,
       "path": "outputs/1.html"
     },
     {
@@ -30,7 +30,7 @@
       "warnings": [],
       "kinds": [],
       "width": 492,
-      "height": 368,
+      "height": 40,
       "path": "outputs/2.html"
     },
     {

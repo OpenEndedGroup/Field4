@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T09:00:54.538Z",
+  "capturedAt": "2026-11-14T11:25:36.673Z",
   "documentName": "pitch_transcription_roundtrip",
   "outputs": [
     {
@@ -82,7 +82,7 @@
     {
       "uid": "pitch_roundtrip_refusal",
       "channel": "named",
-      "open": true,
+      "open": false,
       "warnings": [],
       "kinds": [],
       "width": 200,
@@ -178,7 +178,7 @@
       "warnings": [],
       "kinds": [],
       "width": 461,
-      "height": 535,
+      "height": 531,
       "path": "outputs/16.html"
     },
     {

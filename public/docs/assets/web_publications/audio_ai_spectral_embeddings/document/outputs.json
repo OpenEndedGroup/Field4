@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T09:03:44.937Z",
+  "capturedAt": "2026-11-14T11:27:27.899Z",
   "documentName": "audio_ai_spectral_embeddings",
   "outputs": [
     {
@@ -20,7 +20,7 @@
       "warnings": [],
       "kinds": [],
       "width": 768,
-      "height": 438,
+      "height": 40,
       "path": "outputs/1.html"
     },
     {

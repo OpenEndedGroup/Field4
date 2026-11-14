@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T08:51:07.693Z",
+  "capturedAt": "2026-11-14T11:16:18.971Z",
   "documentName": "particle_video_reader",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 536,
-      "height": 368,
+      "height": 354,
       "path": "outputs/0.html"
     },
     {

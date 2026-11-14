@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T09:24:39.467Z",
+  "capturedAt": "2026-11-14T11:47:48.164Z",
   "documentName": "learned_pen",
   "outputs": [
     {
@@ -34,7 +34,7 @@
         "svg"
       ],
       "width": 473,
-      "height": 56,
+      "height": 54,
       "path": "outputs/2.html"
     },
     {
@@ -58,7 +58,7 @@
         "svg"
       ],
       "width": 536,
-      "height": 108,
+      "height": 104,
       "path": "outputs/4.html"
     },
     {
@@ -94,7 +94,7 @@
         "svg"
       ],
       "width": 473,
-      "height": 56,
+      "height": 54,
       "path": "outputs/7.html"
     }
   ]

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T08:59:40.090Z",
+  "capturedAt": "2026-11-14T11:24:28.508Z",
   "documentName": "sound_path_map",
   "outputs": [
     {
@@ -15,7 +15,7 @@
         "svg"
       ],
       "width": 1008,
-      "height": 333,
+      "height": 131,
       "path": "outputs/0.html"
     },
     {
@@ -30,7 +30,7 @@
         "svg"
       ],
       "width": 1008,
-      "height": 333,
+      "height": 131,
       "path": "outputs/1.html"
     },
     {
@@ -45,13 +45,13 @@
         "svg"
       ],
       "width": 1008,
-      "height": 333,
+      "height": 131,
       "path": "outputs/2.html"
     },
     {
       "uid": "sound_map_compare",
       "channel": "plot",
-      "open": true,
+      "open": false,
       "warnings": [],
       "kinds": [
         "plotly"

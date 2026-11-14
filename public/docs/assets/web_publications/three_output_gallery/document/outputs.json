@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T08:46:57.625Z",
+  "capturedAt": "2026-11-14T11:12:28.101Z",
   "documentName": "three_output_gallery",
   "outputs": [
     {
@@ -28,6 +28,18 @@
       "path": "outputs/1.html"
     },
     {
+      "uid": "three-output-path-trace",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 768,
+      "height": 448,
+      "path": "outputs/2.html"
+    },
+    {
       "uid": "three-output-renderers",
       "channel": "three.js - the default",
       "open": true,
@@ -37,7 +49,7 @@
       ],
       "width": 528,
       "height": 408,
-      "path": "outputs/2.html"
+      "path": "outputs/3.html"
     },
     {
       "uid": "three-output-renderers",
@@ -47,7 +59,7 @@
       "kinds": [],
       "width": 532,
       "height": 466,
-      "path": "outputs/3.html"
+      "path": "outputs/4.html"
     },
     {
       "uid": "three-output-winding",
@@ -59,17 +71,17 @@
       ],
       "width": 480,
       "height": 388,
-      "path": "outputs/4.html"
+      "path": "outputs/5.html"
     },
     {
       "uid": "three-output-winding",
       "channel": "the CPU rasterizer",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
       "width": 468,
-      "height": 445,
-      "path": "outputs/5.html"
+      "height": 446,
+      "path": "outputs/6.html"
     },
     {
       "uid": "three-output-turntable",
@@ -81,7 +93,7 @@
       ],
       "width": 1552,
       "height": 298,
-      "path": "outputs/6.html"
+      "path": "outputs/7.html"
     }
   ]
 }
