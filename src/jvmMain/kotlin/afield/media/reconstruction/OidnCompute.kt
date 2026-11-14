@@ -631,16 +631,16 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
               xw=int(gl_WorkGroupID.x)*W; yw=int(gl_WorkGroupID.y)*R; rw=pc.w+2;
               int x0=xw+cx, y=yw+ry;
               coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> acc[NT];
-              for(int n=0;n<NT;n++) coopMatLoad(acc[n],pc.bias.v,uint(n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor);
+              [[unroll]] for(int n=0;n<NT;n++) coopMatLoad(acc[n],pc.bias.v,uint(n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor);
               fetch(0);
               for(int kb=0;kb<KB;kb++){
                 barrier(); put(); barrier();
                 if(kb+1<KB) fetch(kb+1);
-                for(int t=0;t<9;t++){
+                [[unroll]] for(int t=0;t<9;t++){
                   int ky=t/3, kx=t-ky*3;
                   coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseA> a;
                   coopMatLoad(a,shA,uint(((ry+ky)*PW+cx+kx)*PS*U),uint(PS*U),gl_CooperativeMatrixLayoutRowMajor);
-                  for(int n=0;n<NT;n++){
+                  [[unroll]] for(int n=0;n<NT;n++){
                     coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseB> b;
                     coopMatLoad(b,shB,uint((t*NT+n)*16*BPS*U),uint(BPS*U),gl_CooperativeMatrixLayoutRowMajor);
                     acc[n]=coopMatMulAdd(a,b,acc[n]);
@@ -649,7 +649,7 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
               }
               barrier();
               #if EPI
-              for(int n=0;n<NT;n++){
+              [[unroll]] for(int n=0;n<NT;n++){
                 coopMatStore(acc[n],shE,uint(sg*256),16u,gl_CooperativeMatrixLayoutRowMajor);
                 subgroupMemoryBarrierShared(); subgroupBarrier();
                 if(y<pc.h) for(int i=lane;i<256;i+=32){ int m=i>>4, c=i&15; if(x0+m<pc.w)
@@ -658,8 +658,8 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
               }
               #else
               bool full=x0+16<=pc.w;
-              for(int n=0;n<NT;n++){
-                for(int i=0;i<acc[n].length();i++) acc[n][i]=max(acc[n][i],0.0);
+              [[unroll]] for(int n=0;n<NT;n++){
+                [[unroll]] for(int i=0;i<acc[n].length();i++) acc[n][i]=max(acc[n][i],0.0);
                 coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> o=coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(acc[n]);
                 if(y>=pc.h||x0>=pc.w) continue;
                 if(full) coopMatStore(o,pc.dst.v,uint(((y+1)*rw+x0+1)*CO+n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor);
@@ -686,6 +686,7 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
             #extension GL_EXT_shader_16bit_storage : require
             #extension GL_EXT_buffer_reference : require
             #extension GL_KHR_shader_subgroup_basic : require
+            #extension GL_EXT_control_flow_attributes : require
             const int CI=$ci, CO=$co, KB=CI/16, NT=CO/16, CA=$ca, KA=CA/16, CB=CI-CA; const bool UP=CA>0;
             const int R=$CM_R, W=$CM_W, SX=W/16, PW=W+2, PR=R+2, NSG=R*SX, PS=$CM_PS, BPS=${bps(co)}, NTH=NSG*32;
             layout(local_size_x=NTH) in;
@@ -701,7 +702,7 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
               int xw=int(gl_WorkGroupID.x)*W, yw=int(gl_WorkGroupID.y)*R;
               int x0=xw+cx, y=yw+ry, rw=pc.w+2;
               coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> acc[NT];
-              for(int n=0;n<NT;n++) coopMatLoad(acc[n],pc.bias.v,uint(n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor);
+              [[unroll]] for(int n=0;n<NT;n++) coopMatLoad(acc[n],pc.bias.v,uint(n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor);
               for(int kb=0;kb<KB;kb++){
                 barrier();
                 for(int i=tid;i<PR*PW*2;i+=NTH){
@@ -716,11 +717,11 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
                 }
                 for(int i=tid;i<9*NT*32;i+=NTH) shB[(i>>1)*BPS+(i&1)]=pc.wt.v[kb*9*NT*32+i];
                 barrier();
-                for(int t=0;t<9;t++){
+                [[unroll]] for(int t=0;t<9;t++){
                   int ky=t/3, kx=t-ky*3;
                   coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseA> a;
                   coopMatLoad(a,shA,uint(((ry+ky)*PW+cx+kx)*PS),uint(PS),gl_CooperativeMatrixLayoutRowMajor);
-                  for(int n=0;n<NT;n++){
+                  [[unroll]] for(int n=0;n<NT;n++){
                     coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseB> b;
                     coopMatLoad(b,shB,uint((t*NT+n)*16*BPS),uint(BPS),gl_CooperativeMatrixLayoutRowMajor);
                     acc[n]=coopMatMulAdd(a,b,acc[n]);
@@ -729,8 +730,8 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
               }
               barrier();
               bool full=x0+16<=pc.w;
-              for(int n=0;n<NT;n++){
-                for(int i=0;i<acc[n].length();i++) acc[n][i]=max(acc[n][i],0.0);
+              [[unroll]] for(int n=0;n<NT;n++){
+                [[unroll]] for(int i=0;i<acc[n].length();i++) acc[n][i]=max(acc[n][i],0.0);
                 coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> o=coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(acc[n]);
                 if(y>=pc.h||x0>=pc.w) continue;
                 if(full) coopMatStore(o,pc.dst.v,uint(((y+1)*rw+x0+1)*CO+n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor);
