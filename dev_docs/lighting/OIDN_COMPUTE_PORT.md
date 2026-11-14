@@ -196,6 +196,11 @@ reaches the tensor cores and the memory at full rate:
 
 ### CUDA from Field
 
+Done, for items 1 and 2 below: see [`dev_docs/graphics/CUDA_DRIVER_FFM.md`](../graphics/CUDA_DRIVER_FFM.md).
+Native OIDN on CUDA now runs zero-copy on the tracer's accumulation buffer and this port's guides,
+at 7.0 ms for the Vulkan round trip (6.5 ms for the filter alone) on the 4090; `afield.cuda.CudaInteropProof`
+is the harness.
+
 LWJGL's CUDA module stops at 3.3.6, and Field is on 3.4.3. So CUDA in Field means FFM against
 `libcuda.so` (the driver API, a stable C ABI) and optionally `libnvrtc`, the same pattern as
 `NgxNative` and `OidnSpike`'s `Oidn`. The Vulkan side already exists: `Image.exportOpaqueFd` /

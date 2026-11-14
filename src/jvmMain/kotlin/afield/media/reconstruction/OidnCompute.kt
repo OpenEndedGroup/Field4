@@ -67,7 +67,9 @@ internal class Tza(bytes: ByteArray) {
  * upsample, concat and max-pool folded into them, and the inverse transfer. [weights] defaults to the
  * `rt_hdr_alb_nrm` weights in Field's resources. Opaque scenes only, as for the frame output it reads.
  */
-class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null, val name: String = "${tracer.name}-denoise") : Target, AutoCloseable {
+class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null, val name: String = "${tracer.name}-denoise",
+                          /** Allocate [albedo] and [normal] exportable as opaque fds, for a CUDA consumer such as native OIDN (Linux). */
+                          val exportGuides: Boolean = false) : Target, AutoCloseable {
     val renderer: Renderer = tracer.renderer
     val frame: PathTraceFrameOutput = tracer.enableFrameOutput()
     val width = tracer.width
@@ -77,10 +79,10 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
     private val owned = ArrayList<() -> Unit>()
     /** Device bytes held by the fp16 activations. */
     var activationBytes: Long = 0; private set
-    private fun buffer(bytes: Long, host: Boolean = false) = VulkanBuffer(renderer, bytes,
+    private fun buffer(bytes: Long, host: Boolean = false, export: Boolean = false) = VulkanBuffer(renderer, bytes,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT or VK_BUFFER_USAGE_TRANSFER_SRC_BIT or VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         if (host) VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT else VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        needsDeviceAddress = true).also { owned += { it.cleanup() } }
+        needsDeviceAddress = true, exportOpaqueFd = export).also { owned += { it.cleanup() } }
 
     /** A chunked fp16 activation: [chunks][h][w] of 4 channels packed as two packHalf2x16 words. */
     private inner class Act(val level: Int, val channels: Int, val chunks: Int = (channels + 3) / 4) {
@@ -88,8 +90,8 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
         val buf = buffer(chunks.toLong() * w * h * 8).also { activationBytes += it.requestedSize }
     }
 
-    val albedo = buffer(width.toLong() * height * 16)
-    val normal = buffer(width.toLong() * height * 16)
+    val albedo = buffer(width.toLong() * height * 16, export = exportGuides)
+    val normal = buffer(width.toLong() * height * 16, export = exportGuides)
     val denoised = buffer(width.toLong() * height * 16)
     private val bins = buffer(((width + 15) / 16).toLong() * ((height + 15) / 16) * 8)
     val scale = buffer(16)

@@ -381,6 +381,14 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 <div class="reference-map-group" markdown="1">
 
+### cuda
+
+- [Internal](internal.md#cudadriver-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
 ### data
 
 - [collections](workspace.md#stdlib-collections-kt)
@@ -673,21 +681,21 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**40906 public symbols across 1809 source files**, 24267 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**40945 public symbols across 1813 source files**, 24301 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
 | [Examples](examples.md) | 238 | 750 | 328 (43%) | Runnable examples, galleries and verification programs. |
-| [Internal](internal.md) | 24 | 190 | 73 (38%) | Implementation details explicitly marked Internal by their source. |
+| [Internal](internal.md) | 27 | 215 | 94 (43%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 216 | 208 (96%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 18 | 453 | 282 (62%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2520 | 1900 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1123 | 528 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 413 | 10158 | 6402 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
-| [Renderers](renderers.md) | 46 | 844 | 448 (53%) | Turning a scene into pixels on a Vulkan device. |
+| [Graphics](graphics.md) | 414 | 10171 | 6414 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Renderers](renderers.md) | 46 | 845 | 449 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 55 | 1772 | 1029 (58%) | Making a shape behave. |
@@ -1012,6 +1020,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>csound/<wbr></small> [CsoundVocabulary.kt](audio.md#csoundvocabulary-kt) | Audio | 22 | 16 | The opcode list a Csound box completes against, generated from libcsound and joined with the Csound Reference Manual's descriptions. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr></small> [CSVReader.kt](simulation.md#csvreader-kt) | Simulation | 11 | 6 | A reader for motion-capture CSV, and a clip that samples it at an arbitrary time. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr>planning/<wbr></small> [CubicBezier3D.kt](math.md#cubicbezier3d-kt) | Math | 5 | 5 | A double-precision 3D cubic Bézier for planning paths with a minimum turning radius. |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>cuda/<wbr></small> [CudaDriver.kt](internal.md#cudadriver-kt) | Internal · internal | 16 | 13 | A small binding of NVIDIA's CUDA driver API (`libcuda.so`) over `java.lang.foreign`, for running kernels on the GPU Field's Vulkan renderer draws with and sharing that renderer's memory without copies. |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>cuda/<wbr></small> [CudaInteropProof.kt](internal.md#cudainteropproof-kt) | Internal · internal | 4 | 3 | The proof that `CudaDriver` and Field's Vulkan renderer share memory on the same GPU with no copies, and the measurements behind `dev_docs/graphics/CUDA_DRIVER_FFM.md`. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [CustomMarking.kt](workspace.md#custommarking-kt) | Workspace · internal | 4 | 1 | Custom marking menus: `Box.customMarking` maps a direction and a label to a callback, and the frontend shows the entries as a radial menu on the box. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>layout/<wbr></small> [D2Layout.kt](visualization.md#d2layout-kt) | Visualization | 16 | 9 | Field's client for the `native/field-d2-layout` helper — d2's layout engines, TALA in particular, over a one-shot subprocess. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>notation/<wbr></small> [DarkThemeColour.kt](visualization.md#darkthemecolour-kt) | Visualization | 4 | 3 | Colour correction for marks written from code, so that they show as asked under the drawing layer's dark theme rather than as their inverted, hue-rotated selves. |  |
@@ -1153,6 +1163,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [ExportedAcrossBatchLaunchSmokeTest.kt](examples.md#exportedacrossbatchlaunchsmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [ExportedAnnotationExample.kt](examples.md#exportedannotationexample-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [ExportedAnnotationTest.kt](examples.md#exportedannotationtest-kt) | Examples | 3 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [ExportedTimelineSemaphore.kt](graphics.md#exportedtimelinesemaphore-kt) | Graphics | 10 | 9 | A Vulkan timeline semaphore exported as an opaque POSIX fd, the synchronisation half of sharing GPU memory with CUDA or native OIDN on Linux, and the queue submission that waits on and signals it. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [ExportedTypeNames.kt](workspace.md#exportedtypenames-kt) | Workspace · internal | 3 | 3 | Renders the source-level type name that `@exported` writes into a consuming box's preamble. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [ExportedTypeNamesSmokeTest.kt](workspace.md#exportedtypenamessmoketest-kt) | Workspace · internal | 6 | 2 | Smoke for `ExportedTypeNames`, which decides the type text `@exported` splices into another box's preamble. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>ast/<wbr></small> [Expr.kt](languages.md#expr-kt) | Languages | 92 | 35 | FieldML's surface syntax tree: one node per piece of written syntax, each carrying the source range it was parsed from. | [FieldML stage by stage](../fieldml_stages.md) |
@@ -1727,10 +1738,11 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [NumericFormatting.kt](visualization.md#numericformatting-kt) | Visualization | 10 | 10 | Fixed-point number formatting for string templates: `x.f2` is `x` with two decimal places, from `f0` to `f9`, always with a `.` decimal point regardless of the machine's locale. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>python/<wbr></small> [numpy.kt](data.md#numpy-kt) | Data | 37 | 32 | Reader for NumPy's `.npy` and `.npz` on-disk formats. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>python/<wbr></small> [NumpyShared.kt](languages.md#numpyshared-kt) | Languages | 24 | 17 | Shared memory between Python boxes and Kotlin boxes: images and line sets that numpy writes in place and Kotlin reads without copying through a serializer. |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>cuda/<wbr></small> [Nvrtc.kt](internal.md#nvrtc-kt) | Internal · internal | 4 | 4 | NVIDIA's runtime CUDA C++ compiler (`libnvrtc`) over `java.lang.foreign`: CUDA C source in, PTX out, for `CudaDriver.CudaContext.module`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr></small> [OctreeBarnesHut.kt](simulation.md#octreebarneshut-kt) | Simulation | 10 | 10 | Approximate inverse-square forces over a particle cloud, by summarising distant groups as a single mass each. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [Off.kt](polytopes.md#off-kt) | Polytopes | 1 | 1 | The one-way bridge to OFF, the plain-text polygon interchange format that Geomview and most polyhedron tooling read. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [offlineImport.kt](workspace.md#offlineimport-kt) | Workspace · internal | 1 | 1 |  |  |
-| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [OidnCompute.kt](internal.md#oidncompute-kt) | Internal · internal | 26 | 14 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [OidnCompute.kt](internal.md#oidncompute-kt) | Internal · internal | 27 | 15 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [OidnComputeSpike.kt](internal.md#oidncomputespike-kt) | Internal · internal | 3 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [OidnSpike.kt](internal.md#oidnspike-kt) | Internal · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [OnnxRuntime.kt](machine-learning.md#onnxruntime-kt) | Machine learning | 21 | 16 | ONNX models, running inside Field. | [Depth and CLIP: neural vision in a box](../onnx.md) |
@@ -1832,7 +1844,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [PathTraceTemporalGpuSmoke.kt](renderers.md#pathtracetemporalgpusmoke-kt) | Renderers · internal | 3 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [PathTraceTestMain.kt](renderers.md#pathtracetestmain-kt) | Renderers · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [PathTraceTriMesh.kt](renderers.md#pathtracetrimesh-kt) | Renderers | 9 | 9 | `TriMesh` into `PathTraceScene`, so that anything in Field which produces a mesh can be traced. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [PathTracingRenderer.kt](renderers.md#pathtracingrenderer-kt) | Renderers | 58 | 41 | The path tracer itself: BVH upload, the two traversal backends, accumulation, and the history reprojection that keeps an image usable while a camera moves. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [PathTracingRenderer.kt](renderers.md#pathtracingrenderer-kt) | Renderers | 59 | 42 | The path tracer itself: BVH upload, the two traversal backends, accumulation, and the history reprojection that keeps an image usable while a camera moves. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [PatKolakoski.kt](patterns.md#patkolakoski-kt) | Patterns | 7 | 7 | Kolakoski rhythms: a bar whose own run lengths are written into it. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [Agent transcript gallery](../agent_transcripts.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [PatMiniNotation.kt](patterns.md#patmininotation-kt) | Patterns | 17 | 15 | The **mini-notation catalogue**: the forms a `pat("…")` string can take, one entry each, with the piano roll and the audio clip the documentation publishes under it. | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [PatOnsetDetection.kt](patterns.md#patonsetdetection-kt) | Patterns | 14 | 8 | Where a rendered pattern's notes actually start, measured from the audio. |  |
@@ -2490,7 +2502,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr></small> [VolumetricNoise.kt](languages.md#volumetricnoise-kt) | Languages | 45 | 26 | StackSL's volumetric noise family: `noise3`, `fbm3`, `fbmd3`, `warp3`, `curl3`, `worley3`, `noise4`, `fbm4` — eight words that work as true 3D and 4D fields. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stacksl/<wbr></small> [VolumetricNoisePreview.kt](examples.md#volumetricnoisepreview-kt) | Examples | 3 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [voronoi.kt](graphics.md#voronoi-kt) | Graphics | 63 | 63 | Practical 3D Voronoi and approximate 3D multiplicatively weighted Voronoi ("CircularDirichlet") for Kotlin + Field linalg. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Meshes and 3D geometry](../mesh_examples.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>buffers/<wbr></small> [VulkanBuffer.kt](graphics.md#vulkanbuffer-kt) | Graphics | 66 | 11 | A block of GPU memory, and the ways to hand one to a shader. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>buffers/<wbr></small> [VulkanBuffer.kt](graphics.md#vulkanbuffer-kt) | Graphics | 69 | 14 | A block of GPU memory, and the ways to hand one to a shader. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr></small> [VulkanExternalMemory.kt](graphics.md#vulkanexternalmemory-kt) | Graphics | 4 | 4 | Exports a render-to-texture color image as a POSIX file descriptor, so the Linux `field-encode-linux` helper can import it into CUDA and encode it with NVENC. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [VulkanNames.kt](graphics.md#vulkannames-kt) | Graphics | 3 | 0 | Debug names and command-buffer labels for Vulkan objects, as seen in validation messages and frame debuggers such as RenderDoc. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [VulkanProbe.kt](graphics.md#vulkanprobe-kt) | Graphics | 28 | 27 | Reports what Vulkan this machine offers: loader, instance, devices, validation layers, the SDK and, on macOS, the KosmicKrisp driver. |  |
