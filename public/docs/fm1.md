@@ -17,8 +17,8 @@ expression, so launching the box puts it in the mix:
 ```diffstatic {data-lang=kotlin}
 val fm1 = FM1Sim.shared
 
-fm1.preset(1)                     // a factory project: change the slot (0..3) and re-run
-if (!fm1.isPlaying) fm1.play()    // PLAY/STOP is a toggle, so only press it when stopped
+fm1.preset(1) // a factory project: change the slot (0..3) and re-run
+if (!fm1.isPlaying) fm1.play() // PLAY/STOP is a toggle, so only press it when stopped
 fm1.level(0.8)
 
 fm1.node
