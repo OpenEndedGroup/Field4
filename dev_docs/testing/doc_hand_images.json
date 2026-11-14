@@ -177,6 +177,7 @@
   "assets/path_tracing/atmosphere_high.png",
   "assets/path_tracing/atmosphere_sunset.png",
   "assets/path_tracing/atmosphere_twilight.png",
+  "assets/path_tracing/denoise/crops.jpg",
   "assets/path_tracing/emitter_off.png",
   "assets/path_tracing/emitter_on.png",
   "assets/path_tracing/medium_depthfog.png",
