@@ -47,6 +47,12 @@ internal suspend fun captureNativePublication(source: ExportWebDocumentResult, t
     return source.copy(nativeImages = images, warnings = warnings)
 }
 
+/**
+ * three's WebGPU build, vendored beside `three.core.js` for the live viewer's WebGPU path tracer. A publication
+ * never path traces, so it does not ship them (`WEBGPU_ONLY` in `publication-three.js` keeps them out of the bundle).
+ */
+private val WEBGPU_ONLY_THREE = setOf("three.webgpu.js", "three.tsl.js")
+
 /** Enumerate canonical assets so a publication includes Monaco's lazy modules and local fonts. */
 internal fun webPublicationAssets(): List<String> {
     val common = File("src/commonMain/resources")
@@ -59,7 +65,7 @@ internal fun webPublicationAssets(): List<String> {
         .forEach { paths.add("woff2/iosevka-$it.woff2") }
     listOf(File(js, "monaco/min") to "min", File(common, "vendor/three") to "vendor/three").forEach { (dir, prefix) ->
         require(dir.isDirectory) { "Missing publication assets: $dir" }
-        dir.walkTopDown().filter { it.isFile }.forEach { file ->
+        dir.walkTopDown().filter { it.isFile && it.name !in WEBGPU_ONLY_THREE }.forEach { file ->
             paths.add("$prefix/${file.relativeTo(dir).invariantSeparatorsPath}")
         }
     }

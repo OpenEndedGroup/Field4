@@ -46,16 +46,17 @@ class FieldPublicationTest(unittest.TestCase):
         source_url = "data:text/javascript;base64," + base64.b64encode(module).decode()
         script = """
             import fs from 'node:fs'; import path from 'node:path'; import vm from 'node:vm';
-            const {prepareThreePublication,rewriteViewerImports}=await import(MODULE);
+            const {prepareThreePublication,rewriteViewerImports,WEBGPU_ONLY}=await import(MODULE);
             const root='src/commonMain/resources',files=new Map();
             for(const name of ['threejs_viewer.html','threejs_tools.js','threejs_camera_link.js','threejs_shot.js','threejs_export.js','geometry_review_inbox.js','geometry_review_controls.js']) files.set(name,fs.readFileSync(path.join(root,name)));
             function add(dir){for(const item of fs.readdirSync(path.join(root,dir),{withFileTypes:true})){const name=dir+'/'+item.name;if(item.isDirectory())add(name);else files.set(name,fs.readFileSync(path.join(root,name)));}}
             add('vendor/three');
             const prepared=prepareThreePublication(files);
             if(!prepared.runtime.includes('createObjectURL')||!prepared.template.includes('id="part-inspector"'))throw new Error('Viewer not bundled');
+            if(prepared.sourcePaths.some(p=>/three\\.(webgpu|tsl)\\.js$/.test(p)))throw new Error('WebGPU three was bundled into a publication');
             if(/<script\\b/.test(prepared.template)||prepared.template.includes('@import'))throw new Error('Original scripts or server fonts survived');
             const names=new Set(prepared.sourcePaths.filter(p=>p.endsWith('.js')));names.add('viewer.js');
-            const entries=[...files].filter(([p])=>p.endsWith('.js'));
+            const entries=[...files].filter(([p])=>p.endsWith('.js')&&!WEBGPU_ONLY.has(p));
             entries.push(['viewer.js',Buffer.from(files.get('threejs_viewer.html').toString().match(/<script type="module">([\\s\\S]*?)<\\/script>/)[1])]);
             for(const [p,bytes] of entries){const m=new vm.SourceTextModule(rewriteViewerImports(bytes.toString(),p,names));for(const spec of m.dependencySpecifiers)if(!spec.startsWith('field-publication/'))throw new Error('External module: '+spec);}
             files.delete('vendor/three/0.187.0/addons/controls/OrbitControls.js');

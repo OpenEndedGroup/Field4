@@ -1,0 +1,278 @@
+{
+  "auxAccumulateWallMs": 36430.736417,
+  "referenceSpp": 1024,
+  "devices": [
+    {
+      "newDeviceMs": 25.275667,
+      "device": "metal",
+      "runs": [
+        {
+          "spp": 8,
+          "psnr": 38.124473349075934,
+          "commitMs": 171.389041,
+          "downloadMs": 16.924125,
+          "executeMsMin": 60.521583,
+          "executeMsMedian": 60.723875,
+          "variant": "high",
+          "firstExecuteMs": 1581.183208,
+          "auxPrefilterMs": 0,
+          "mse": 0.01562285341914431,
+          "uploadMs": 69.236667
+        },
+        {
+          "spp": 8,
+          "psnr": 38.124473349075934,
+          "commitMs": 12.21575,
+          "downloadMs": 15.179042,
+          "executeMsMin": 60.601834,
+          "executeMsMedian": 60.795708,
+          "variant": "balanced",
+          "firstExecuteMs": 209.359125,
+          "auxPrefilterMs": 0,
+          "mse": 0.01562285341914431,
+          "uploadMs": 69.236667
+        },
+        {
+          "spp": 8,
+          "psnr": 38.272842107777905,
+          "commitMs": 164.55275000000006,
+          "downloadMs": 16.722083,
+          "executeMsMin": 131.898375,
+          "executeMsMedian": 132.147375,
+          "variant": "cleanAux-high",
+          "firstExecuteMs": 590.61975,
+          "auxPrefilterMs": 885.520209,
+          "mse": 0.006506038333022014,
+          "uploadMs": 69.236667
+        },
+        {
+          "spp": 32,
+          "psnr": 38.49641523658045,
+          "commitMs": 12.216167,
+          "downloadMs": 11.828875,
+          "executeMsMin": 60.610792,
+          "executeMsMedian": 60.727917,
+          "variant": "high",
+          "firstExecuteMs": 206.618625,
+          "auxPrefilterMs": 0,
+          "mse": 0.012872293567751264,
+          "uploadMs": 62.469333
+        },
+        {
+          "spp": 32,
+          "psnr": 38.49641523658045,
+          "commitMs": 17.156167,
+          "downloadMs": 11.560458,
+          "executeMsMin": 60.985792,
+          "executeMsMedian": 61.127958,
+          "variant": "balanced",
+          "firstExecuteMs": 217.813416,
+          "auxPrefilterMs": 0,
+          "mse": 0.012872293567751264,
+          "uploadMs": 62.469333
+        },
+        {
+          "spp": 32,
+          "psnr": 38.645786473062685,
+          "commitMs": 55.00187500000004,
+          "downloadMs": 19.670917,
+          "executeMsMin": 131.380042,
+          "executeMsMedian": 131.815959,
+          "variant": "cleanAux-high",
+          "firstExecuteMs": 455.371166,
+          "auxPrefilterMs": 537.961875,
+          "mse": 0.0056567091831443445,
+          "uploadMs": 62.469333
+        },
+        {
+          "spp": 128,
+          "psnr": 38.707556205841406,
+          "commitMs": 13.783917,
+          "downloadMs": 12.003916,
+          "executeMsMin": 60.465375,
+          "executeMsMedian": 60.5555,
+          "variant": "high",
+          "firstExecuteMs": 218.27925,
+          "auxPrefilterMs": 0,
+          "mse": 0.010325042539989738,
+          "uploadMs": 67.148083
+        },
+        {
+          "spp": 128,
+          "psnr": 38.707556205841406,
+          "commitMs": 12.7595,
+          "downloadMs": 11.993166,
+          "executeMsMin": 60.720709,
+          "executeMsMedian": 61.020333,
+          "variant": "balanced",
+          "firstExecuteMs": 218.462833,
+          "auxPrefilterMs": 0,
+          "mse": 0.010325042539989738,
+          "uploadMs": 67.148083
+        },
+        {
+          "spp": 128,
+          "psnr": 38.81469958679779,
+          "commitMs": 50.923542,
+          "downloadMs": 19.396084,
+          "executeMsMin": 131.768458,
+          "executeMsMedian": 131.81725,
+          "variant": "cleanAux-high",
+          "firstExecuteMs": 469.239958,
+          "auxPrefilterMs": 581.546583,
+          "mse": 0.00476786215219967,
+          "uploadMs": 67.148083
+        }
+      ]
+    },
+    {
+      "newDeviceMs": 33.578208,
+      "device": "cpu",
+      "runs": [
+        {
+          "spp": 8,
+          "psnr": 38.12576388359395,
+          "commitMs": 3.271,
+          "downloadMs": 7.274833,
+          "executeMsMin": 457.930875,
+          "executeMsMedian": 495.209584,
+          "variant": "high",
+          "firstExecuteMs": 568.24025,
+          "auxPrefilterMs": 0,
+          "mse": 0.01553862787147756,
+          "uploadMs": 48.735542
+        },
+        {
+          "spp": 8,
+          "psnr": 38.12576388359395,
+          "commitMs": 0.882417,
+          "downloadMs": 8.06625,
+          "executeMsMin": 460.591167,
+          "executeMsMedian": 488.470375,
+          "variant": "balanced",
+          "firstExecuteMs": 683.26225,
+          "auxPrefilterMs": 0,
+          "mse": 0.01553862787147756,
+          "uploadMs": 48.735542
+        },
+        {
+          "spp": 8,
+          "psnr": 38.27419753949195,
+          "commitMs": 38.09691699999985,
+          "downloadMs": 7.95175,
+          "executeMsMin": 1146.539708,
+          "executeMsMedian": 1317.699333,
+          "variant": "cleanAux-high",
+          "firstExecuteMs": 1725.23825,
+          "auxPrefilterMs": 2585.190167,
+          "mse": 0.006472790313293208,
+          "uploadMs": 48.735542
+        },
+        {
+          "spp": 32,
+          "psnr": 38.49705573643253,
+          "commitMs": 0.620667,
+          "downloadMs": 8.197167,
+          "executeMsMin": 458.2885,
+          "executeMsMedian": 530.302083,
+          "variant": "high",
+          "firstExecuteMs": 466.630709,
+          "auxPrefilterMs": 0,
+          "mse": 0.01285643324367899,
+          "uploadMs": 34.626416
+        },
+        {
+          "spp": 32,
+          "psnr": 38.49705573643253,
+          "commitMs": 0.579208,
+          "downloadMs": 7.604667,
+          "executeMsMin": 465.392416,
+          "executeMsMedian": 496.794291,
+          "variant": "balanced",
+          "firstExecuteMs": 453.053,
+          "auxPrefilterMs": 0,
+          "mse": 0.01285643324367899,
+          "uploadMs": 34.626416
+        },
+        {
+          "spp": 32,
+          "psnr": 38.6469656775678,
+          "commitMs": 5.440458999999919,
+          "downloadMs": 8.307875,
+          "executeMsMin": 1102.935625,
+          "executeMsMedian": 1530.243375,
+          "variant": "cleanAux-high",
+          "firstExecuteMs": 1469.321458,
+          "auxPrefilterMs": 2587.241958,
+          "mse": 0.005674982583345809,
+          "uploadMs": 34.626416
+        },
+        {
+          "spp": 128,
+          "psnr": 38.70829148272926,
+          "commitMs": 1.093167,
+          "downloadMs": 7.479125,
+          "executeMsMin": 455.214459,
+          "executeMsMedian": 457.292167,
+          "variant": "high",
+          "firstExecuteMs": 549.533334,
+          "auxPrefilterMs": 0,
+          "mse": 0.010320440834542002,
+          "uploadMs": 32.274583
+        },
+        {
+          "spp": 128,
+          "psnr": 38.70829148272926,
+          "commitMs": 0.5825,
+          "downloadMs": 8.358291,
+          "executeMsMin": 488.775583,
+          "executeMsMedian": 503.034792,
+          "variant": "balanced",
+          "firstExecuteMs": 504.469708,
+          "auxPrefilterMs": 0,
+          "mse": 0.010320440834542002,
+          "uploadMs": 32.274583
+        },
+        {
+          "spp": 128,
+          "psnr": 38.815674237734335,
+          "commitMs": 5.015166000000136,
+          "downloadMs": 7.964708,
+          "executeMsMin": 1115.636167,
+          "executeMsMedian": 1157.711292,
+          "variant": "cleanAux-high",
+          "firstExecuteMs": 1143.328125,
+          "auxPrefilterMs": 2292.604125,
+          "mse": 0.0047740563460022456,
+          "uploadMs": 32.274583
+        }
+      ]
+    }
+  ],
+  "metalVsCpuMaxAbsDiff128": 0.3883438,
+  "noisy": [
+    {
+      "spp": 8,
+      "psnr": 29.50893812803365,
+      "mse": 0.00919488287017678
+    },
+    {
+      "spp": 32,
+      "psnr": 30.760810445160807,
+      "mse": 0.0016140473487705382
+    },
+    {
+      "spp": 128,
+      "psnr": 33.298986488257334,
+      "mse": 3.9581283964225E-4
+    }
+  ],
+  "gpu": "Apple M1 Max",
+  "auxReadbackMs": 35688.260419000006,
+  "colorReadbackMs": 1806.5305,
+  "width": 1920,
+  "referenceWallMs": 231707.666834,
+  "backend": "COMPUTE_BVH",
+  "vkDriver": "/Users/marc/VulkanSDK/1.4.363.0/macOS/share/vulkan/icd.d/libkosmickrisp_icd.json",
+  "height": 1080
+}

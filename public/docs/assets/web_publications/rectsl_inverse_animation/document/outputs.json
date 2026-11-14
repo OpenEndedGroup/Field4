@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T02:45:53.059Z",
+  "capturedAt": "2026-11-14T23:28:58.697Z",
   "documentName": "rectsl_inverse_animation",
   "outputs": [
     {
@@ -30,7 +30,7 @@
       "warnings": [],
       "kinds": [],
       "width": 419,
-      "height": 355,
+      "height": 150,
       "path": "outputs/2.html"
     }
   ]
