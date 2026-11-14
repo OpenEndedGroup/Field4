@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T02:30:47.903Z",
+  "capturedAt": "2026-11-14T20:59:29.082Z",
   "documentName": "arclength_spacing_demo",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 918,
-      "height": 611,
+      "height": 609,
       "path": "outputs/0.html"
     },
     {
@@ -24,7 +24,7 @@
         "svg"
       ],
       "width": 918,
-      "height": 611,
+      "height": 609,
       "path": "outputs/1.html"
     }
   ]

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T02:45:49.211Z",
+  "capturedAt": "2026-11-14T21:11:38.233Z",
   "documentName": "sorting_networks",
   "outputs": [
     {
@@ -23,7 +23,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 712,
+      "width": 718,
       "height": 488,
       "path": "outputs/1.html"
     }

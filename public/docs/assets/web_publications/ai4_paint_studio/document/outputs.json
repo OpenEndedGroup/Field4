@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T02:45:09.510Z",
+  "capturedAt": "2026-11-14T21:11:03.223Z",
   "documentName": "ai4_paint_studio",
   "outputs": [
     {
@@ -9,7 +9,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 469,
+      "width": 449,
       "height": 45,
       "path": "outputs/0.html"
     }

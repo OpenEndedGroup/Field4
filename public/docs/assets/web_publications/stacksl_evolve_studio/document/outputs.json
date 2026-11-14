@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T02:45:26.713Z",
+  "capturedAt": "2026-11-14T21:11:15.616Z",
   "documentName": "stacksl_evolve_studio",
   "outputs": [
     {
@@ -9,7 +9,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 450,
+      "width": 448,
       "height": 201,
       "path": "outputs/0.html"
     },

@@ -1,18 +1,18 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T02:19:49.356Z",
+  "capturedAt": "2026-11-14T20:47:32.851Z",
   "documentName": "audio_ai_gesture_board",
   "outputs": [
     {
       "uid": "draw_the_gesture",
       "channel": "main",
-      "open": true,
+      "open": false,
       "warnings": [],
       "kinds": [
         "svg"
       ],
-      "width": 1146,
-      "height": 706,
+      "width": 1121,
+      "height": 707,
       "path": "outputs/0.html"
     }
   ]

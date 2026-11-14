@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T02:12:18.225Z",
+  "capturedAt": "2026-11-14T20:41:12.841Z",
   "documentName": "inertial_movement",
   "outputs": [
     {
@@ -11,7 +11,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 712,
+      "width": 759,
       "height": 458,
       "path": "outputs/0.html"
     },
@@ -35,8 +35,8 @@
       "kinds": [
         "svg"
       ],
-      "width": 538,
-      "height": 385,
+      "width": 542,
+      "height": 384,
       "path": "outputs/2.html"
     },
     {
@@ -47,7 +47,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 712,
+      "width": 722,
       "height": 458,
       "path": "outputs/3.html"
     }

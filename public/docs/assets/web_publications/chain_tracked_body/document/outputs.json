@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T02:10:21.349Z",
+  "capturedAt": "2026-11-14T20:39:26.499Z",
   "documentName": "chain_tracked_body",
   "outputs": [
     {
@@ -31,7 +31,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 259,
+      "width": 283,
       "height": 67,
       "path": "outputs/2.html"
     },

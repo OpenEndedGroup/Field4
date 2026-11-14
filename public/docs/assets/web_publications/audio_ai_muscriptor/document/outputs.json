@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T02:20:00.420Z",
+  "capturedAt": "2026-11-14T20:47:45.124Z",
   "documentName": "audio_ai_muscriptor",
   "outputs": [
     {
@@ -26,16 +26,16 @@
     {
       "uid": "muscriptor_visualizer_gallery",
       "channel": "transcription",
-      "open": true,
+      "open": false,
       "warnings": [
         "Live media omitted"
       ],
       "kinds": [
-        "plotly",
-        "svg"
+        "svg",
+        "plotly"
       ],
       "width": 1048,
-      "height": 816,
+      "height": 710,
       "path": "outputs/2.html"
     }
   ]

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T02:24:30.596Z",
+  "capturedAt": "2026-11-14T20:51:40.367Z",
   "documentName": "alife_grains",
   "outputs": [
     {
@@ -57,8 +57,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 410,
-      "height": 46,
+      "width": 448,
+      "height": 47,
       "path": "outputs/4.html"
     },
     {
@@ -123,7 +123,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 262,
+      "width": 277,
       "height": 50,
       "path": "outputs/10.html"
     },
@@ -219,8 +219,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 209,
-      "height": 98,
+      "width": 227,
+      "height": 99,
       "path": "outputs/19.html"
     },
     {

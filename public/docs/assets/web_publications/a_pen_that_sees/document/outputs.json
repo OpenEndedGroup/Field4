@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T02:42:25.271Z",
+  "capturedAt": "2026-11-14T21:08:36.159Z",
   "documentName": "a_pen_that_sees",
   "outputs": [
     {
@@ -103,7 +103,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 282,
+      "width": 272,
       "height": 77,
       "path": "outputs/8.html"
     },
