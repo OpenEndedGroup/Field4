@@ -1445,7 +1445,7 @@ Denoise differ by about 1/40 of one 8-bit level.
 
 | GPU, 1920 × 1080 | One denoise | Scratch memory |
 | --- | ---: | ---: |
-| NVIDIA RTX 4090, cooperative matrices (tensor cores) | 15.5 ms | 1.7 GB |
+| NVIDIA RTX 4090, cooperative matrices (tensor cores) | 5.3 ms | 1.1 GB |
 | NVIDIA RTX 4090, portable kernels | 16 ms | 870 MB |
 | Apple M1 Max, KosmicKrisp | 0.7 s | 870 MB |
 
@@ -1463,7 +1463,7 @@ each frame that averages the albedo and normal.
     `OidnComputeSpike` traces this scene at 1920 × 1080, denoises it on the GPU at each sample
     count, and runs native Open Image Denoise 2.5.1 on the CPU over the identical colour, albedo and
     normal. The figure is that harness's output, not a runner capture. On the RTX 4090 native
-    Open Image Denoise on CUDA takes 6.5 ms, so Field's path is within 2.5× of it there. The network topology, weight
+    Open Image Denoise on CUDA takes 6.5 ms at its default quality, so Field's path is slightly faster there. The network topology, weight
     format and transfer curve follow Open Image Denoise and
     [oidn-webgpu](https://github.com/pissang/oidn-webgpu). The kernels, the timing method and what
     is left are in

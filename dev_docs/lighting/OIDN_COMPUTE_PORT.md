@@ -127,41 +127,58 @@ and the Vulkan memory model (`Device.supportsCooperativeMatrix`; turn it off wit
 
 - **Layout:** activations are channels-last (NHWC) fp16 with a one-pixel zero border and channels
   padded to 16.
-- **Conv as implicit GEMM:** a 3×3 tap of a 16-pixel row segment is then one strided 16×16 matrix
-  load. Each subgroup owns 16 pixels × all output channels, with 16×16×16 fp16 MMAs into fp32
-  accumulators, and bias + ReLU run in a shared-memory epilogue.
-- **Separate passes:** upsample + concat and max-pool are cheap passes of their own, because the
-  matrix loads need the plain layout.
+- **Conv as implicit GEMM, tiled through shared memory:** a workgroup of eight subgroups owns 2 rows ×
+  64 pixels and every output channel; each subgroup owns 16 pixels of one row. For each 16-channel
+  input block the workgroup stages once, in shared memory, the 4 × 66-pixel input patch (16 fp16 per
+  pixel, so one 3×3 tap of a subgroup's pixels is a contiguous 16×16 A tile) and that block's weights
+  for all nine taps. Every subgroup then runs its 9 × CO/16 MMAs (16×16×16 fp16 into fp32) from
+  there. Accumulators start from the bias (a 16-row copy, one strided load), ReLU runs per element,
+  and full tiles store straight to the output as fp16.
+- **Upsample + concat fused into the staging:** for the decoder convs the first channels of the patch
+  are read at half resolution from the coarser tensor and the rest from the skip tensor, so neither
+  pass nor concat tensor exists. Max-pool is still a small pass of its own.
 
 `afield.oidn.portable=true` / `AFIELD_OIDN_PORTABLE=1` forces the portable kernels. Measured with
-the same harness, scene and reference as on the Mac, on an otherwise idle GPU (only the
-compositor). Times are fence-timed medians of 15, repeated twice. GPU timestamps work on NVIDIA
-and read about 0.9 ms lower, since they exclude submission.
+the same harness, scene and reference as on the Mac. Times are fence-timed medians of 15, each
+repeated twice; GPU timestamps exclude submission. The tiled rows were measured while unrelated jobs
+shared a0. Their GPU timestamps were identical in both runs (5.12 ms), but one run's fenced median
+read 10.6 ms against a minimum of 5.27 ms, so the table gives the uncontended run.
 
 | 1920×1080, RTX 4090, driver 620.70 | ms per denoise |
 | --- | --- |
-| **Field, cooperative matrix** | **15.5–15.8** (GPU timestamps 14.6–14.9) |
-| Field, portable kernels | 16.0 (GPU timestamps 16.0) |
+| **Field, cooperative matrix, shared-memory tiles** | **5.3** (GPU timestamps 5.12) |
+| Field, cooperative matrix, previous kernel (per-subgroup global loads) | 15.5–15.8 (GPU timestamps 14.6–14.9) |
+| Field, portable kernels | 16.0–16.4 (GPU timestamps 16.0) |
 | Native OIDN 2.5.1, CUDA device, `quality=high` | 6.5 |
 | Native OIDN, CUDA, `quality=balanced` | 4.9 |
 | Native OIDN, CPU | ~430 |
 
-- **Quality** is the same as on the Mac. Against native OIDN on identical inputs: 76.6 dB, mean
-  display difference 1.0e‑4. PSNR against the reference is 38.12 / 38.50 / 38.71 dB at 8 / 32 / 128
-  spp, equal to native to 0.002 dB.
-- **The portable kernels are already fast here.** At 16 ms, dec_conv1a runs at about 32 TFLOPS,
-  so the Mac's 0.7 s is specific to KosmicKrisp/M1, not a property of the kernel. Cooperative
-  matrices buy only about 5% as written: the largest layer goes from 5.4 to 3.8 ms, but dec_conv1b
-gets slower (2.2 to 3.2 ms), and the separate upsample/concat passes cost 0.7 ms. They cost twice the
-  memory (1.66 GB against 0.87 GB), because channels are padded and the concat tensors are
-  materialised.
-- **Wider tiles were slower.** Two or four 16-pixel tiles per subgroup, sharing each weight tile,
-  ran at 28.4 and 37.6 ms, consistent with register spill. Even the generalised kernel at one tile
-  took 18.1 ms, against 15.5 for this explicit form, so the explicit form was kept.
-- **Per layer (matrix path, ms):** dec_conv1a 3.8, dec_conv1b 3.2, dec_conv2a 1.9, dec_conv2b 1.0,
-  enc_conv1 1.0, dec_conv3a 0.7, up1 0.5; everything else is under 0.4.
-- **Contention:** earlier runs, made while other GPU jobs shared a0, twice failed `vkCreateDevice`
-  with `VK_ERROR_INITIALIZATION_FAILED` until retried. The table is from the idle machine.
+- **Quality** is unchanged: linear RMSE against native OIDN (CPU) on identical 8-spp inputs is
+  0.00395, against 0.00399 for the previous kernel. Earlier, against the same reference: 76.6 dB
+  to native, and PSNR 38.12 / 38.50 / 38.71 dB at 8 / 32 / 128 spp, equal to native to 0.002 dB.
+- **Faster than native OIDN on CUDA at `quality=high`:** 5.3 against 6.5 ms. The 16 convs take
+  4.57 ms of GPU time, about 115 TFLOPS of the 177 measured.
+- **Less memory:** 1.13 GB of activations, against 1.66 GB, since the concat tensors are gone. The
+  portable kernels still use 0.87 GB.
+- **Per layer (GPU timestamps, ms):** dec_conv1a 1.35 (from 3.8), dec_conv1b 0.60 (from 3.2),
+  dec_conv2a 0.55 (from 1.9), enc_conv1 0.30, dec_conv2b 0.30, dec_conv3a 0.28, enc_conv2 0.24,
+  dec_conv0 0.22, enc_conv0 0.20, pool1 0.19; everything else is under 0.18.
+- **`[[unroll]]` on the tap and tile loops is what makes the tiled kernel fast.** Without it, the
+  same tiled kernel ran at 32.8 ms, twice as slow as the old one. Its time tracked the number of
+  16-channel input blocks rather than the output channels, which suggests NVIDIA's compiler was
+  indexing the accumulator array dynamically. Unrolling does nothing for the old kernel
+  (14.3 ms GPU with it), so the 2.8× is the tiling.
+- **Measured and not kept** (all with the unrolled loops, GPU ms): prefetching the next block into
+  registers while multiplying the current one, 5.13; rows padded to 48 bytes against shared-memory
+  bank conflicts, 5.16; f16vec4 rather than uvec4 shared arrays (before unrolling, 32.3); an fp32
+  shared-memory epilogue, 5.30; 1 × 128-pixel tiles, 5.29; 4 × 64-pixel tiles (16 subgroups),
+  5.41. Shared memory is 49152 bytes per workgroup on this driver, which rules out
+  double-buffering the 112-channel layers' weights.
+- **Wider per-subgroup tiles in the old kernel were slower.** Two or four 16-pixel tiles per
+  subgroup, sharing each weight tile in registers, ran at 28.4 and 37.6 ms. That is consistent with
+  register spill, and possibly with the same dynamic indexing.
+- **Contention:** runs made while other GPU jobs shared a0 twice failed `vkCreateDevice` with
+  `VK_ERROR_INITIALIZATION_FAILED` until retried.
 
 Raw JSON: [`oidn_compute/rtx4090/`](oidn_compute/rtx4090/).
 
@@ -179,17 +196,16 @@ Raw JSON: [`oidn_compute/rtx4090/`](oidn_compute/rtx4090/).
 The card clocks up to 3.1 GHz, which is why the tensor rows beat the spec. So Field's Vulkan path
 reaches the tensor cores and the memory at full rate:
 
-- **No overhead beyond the hardware:** submission and barriers cost about 0.9 ms of the 15.5,
+- **No overhead beyond the hardware:** submission and barriers cost about 0.9 ms of the old kernel's 15.5,
   robust buffer access is off, and validation was off in these runs.
-- **Where the gap is:** the denoiser's convolutions average about 35 TFLOPS of the 177 available
-  (262 GMAC in 14.7 ms of GPU time). Native OIDN's 6.5 ms is about 80 TFLOPS.
-- **Precision is not the gap.** fp16 accumulation, which doubles peak on GeForce, gave 15.2 ms (no
+- **Where the gap was:** the previous kernel's convolutions averaged about 35 TFLOPS of the 177
+  available (262 GMAC in 14.7 ms of GPU time). Native OIDN's 6.5 ms is about 80 TFLOPS.
+- **Precision was not the gap.** fp16 accumulation, which doubles peak on GeForce, gave 15.2 ms (no
   gain) at about 3× the error against native (RMSE 0.0138 against 0.0040), so it was not kept.
-- **What closes it is CUTLASS-style tiling:** stage A and B tiles in shared memory per workgroup and
-  double-buffer them, so the four subgroups share each load. OIDN's CUDA device is built on
-  CUTLASS. Each subgroup here loads its own A and B straight from L1/L2, so the convs are bound by
-  load latency, not by MMA rate. That is ordinary kernel work, possible in GLSL with cooperative
-  matrices.
+- **CUTLASS-style tiling closed it.** Each subgroup used to load its own A and B tiles straight from
+  L1/L2, so the convs were bound by load latency, not by MMA rate. Staging both in shared memory
+  once per workgroup (above) brings them to about 115 TFLOPS. OIDN's CUDA device is built on
+  CUTLASS.
 - **Side finding:** turning on shaderc's performance optimisation (Field compiles at level zero)
   makes the path tracer's shader fail to compile (`error null`). That is worth its own look before
   anyone flips the default.
@@ -223,12 +239,13 @@ Three concrete uses, in order of payoff:
 
 Roughly in order of value.
 
-0. **NVIDIA:** 2.4× behind native CUDA OIDN (15.5 against 6.5 ms). Next steps:
-   - stage A and B tiles through shared memory, so the four subgroups of a workgroup reuse them
-     instead of each streaming from L1/L2;
-   - fuse the upsample + concat into the conv's A loads.
+0. **NVIDIA:** 5.3 ms, ahead of native CUDA OIDN's `quality=high` (6.5 ms) but behind
+   `quality=balanced` (4.9 ms). What remains:
+   - fuse max-pool into the conv epilogue (pool1 alone is 0.19 ms);
+   - the convs reach about 115 of 177 TFLOPS. Deeper pipelining would need asynchronous copies,
+     which GLSL does not expose;
+   - native's balanced network, if its weights fit the same graph.
 
-   Native's `quality=balanced` (4.9 ms) shows there is headroom even within OIDN.
 1. **Speed on the Mac (the main gap).** The convs are compute-bound at about 7% of peak, so the kernel is where the gains
    are.
    - **Implicit-GEMM tiling:** a register-blocked GEMM over (pixels × output channels) × (input channels × 9),
