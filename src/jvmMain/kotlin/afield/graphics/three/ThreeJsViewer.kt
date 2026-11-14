@@ -401,6 +401,10 @@ internal fun getThreeSurfaceClickCallback(callbackId: String): ((ThreeSurfaceHit
  * @param light the **Light** slider, which swings a grazing key light around the figure.
  * @param realism the **Realism** button: soft shadows, ambient occlusion and studio light, the look of
  * [ThreeSceneBuilder.studio]. A view that calls `studio(…)` starts with it pressed.
+ * @param pathTrace the **Path trace** button: the Realism scene traced progressively on the GPU
+ * (three-gpu-pathtracer), with light that bounces and soft shadows. It refines while the view is
+ * still and falls back to the Realism raster while it moves. Single views only, and not in a
+ * published page.
  */
 @Serializable
 data class ThreeControls(
@@ -411,11 +415,12 @@ data class ThreeControls(
     val parts: Boolean = false,
     val light: Boolean = false,
     val realism: Boolean = false,
+    val pathTrace: Boolean = false,
 ) {
     companion object {
         /** Every control on. */
         val ALL = ThreeControls(xray = true, export = true, linkCamera = true, review = true, parts = true, light = true,
-            realism = true)
+            realism = true, pathTrace = true)
     }
 }
 

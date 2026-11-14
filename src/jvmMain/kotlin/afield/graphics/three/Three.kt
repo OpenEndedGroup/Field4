@@ -475,8 +475,9 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         parts: Boolean = false,
         light: Boolean = false,
         realism: Boolean = false,
+        pathTrace: Boolean = false,
     ) {
-        controls = ThreeControls(xray, export, linkCamera, review, parts, light, realism)
+        controls = ThreeControls(xray, export, linkCamera, review, parts, light, realism, pathTrace)
     }
 
     /** Put the controls in [controls] on the toolbar; `controls(ThreeControls.ALL)` for every one. */

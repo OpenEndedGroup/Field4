@@ -136,9 +136,11 @@ three {
 ```
 
 `xray` is the **X-ray** button, `export` is **Export GLB**, `linkCamera` is **Link camera**,
-`review` is **Pick** with its notes, `parts` is the **Parts** list and `light` is the **Light**
-slider. `controls(ThreeControls.ALL)` asks for every one. `threeLines(...)` and
-`threeInspect(...)` take the same choice as a `controls = ThreeControls(...)` argument.
+`review` is **Pick** with its notes, `parts` is the **Parts** list, `light` is the **Light**
+slider, `realism` is **Realism** and `pathTrace` is **Path trace**
+([below](#realism-and-path-tracing)). `controls(ThreeControls.ALL)` asks for every one.
+`threeLines(...)` and `threeInspect(...)` take the same choice as a `controls = ThreeControls(...)`
+argument.
 
 Press **E** in any view to show all the controls it did not ask for; press it again to put them
 away. That way you can still pick a feature or export a file from a figure that was made only to
@@ -325,6 +327,35 @@ three(name = "studio", channel = "studio", width = 560, height = 420) {
 `studio()` switches off the reference grid and axis tripod. Ambient occlusion draws in a single
 view. A contact sheet and X-ray draw without it, and `studio(ambientOcclusion = false)` turns it off.
 `geometry { }` uses this look for its models; see the `madp_geometry` starting point.
+
+### Realism and path tracing
+
+`controls(realism = true)` puts a **Realism** button on the toolbar that turns the studio look on
+and off from the view, so you can compare a model plain and lit without editing the box. It works
+in Y-up and Z-up views. A view that calls `studio()` starts with it pressed and uses that
+call's settings. Any other view gets soft shadows, ambient occlusion and the light of a neutral
+room, which keeps faces the key light misses from going flat. The button keeps its last setting
+when the box runs again.
+
+`controls(pathTrace = true)` adds **Path trace**, which traces the same scene on the GPU with
+[three-gpu-pathtracer](https://github.com/gkjohnson/three-gpu-pathtracer). Light bounces between
+surfaces, so the underside of a roof picks up light reflected off the floor below it. The image
+starts grainy and clears as samples accumulate; the button shows the count, and tracing stops at
+512 samples per pixel. While you orbit, or while a part moves, the Realism view draws instead,
+and the traced image fades back in once the view is still. Lines, points and handles are drawn
+over the traced image and hidden where a surface is in front of them.
+
+```diffstatic {data-lang=kotlin}
+three {
+    mesh(model, wireframe = false)
+    controls(realism = true, pathTrace = true)
+}
+```
+
+!!! note
+    Path tracing traces surfaces with a standard material that are not close to fully transparent;
+    other surfaces are drawn over the traced image. It draws in a single view, not in a contact
+    sheet, X-ray, or a published page. It is heavy on the GPU, so it stays off until you press it.
 
 ### One scene, two kinds of thing
 

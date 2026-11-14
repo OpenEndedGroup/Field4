@@ -323,7 +323,9 @@
         #hud .hud-group, #hud .hud-button { border: 0; background: #000; }
         #hud button:focus-visible, #feature-review button:focus-visible,
         #hud select:focus-visible { color: var(--accent); }
-        #hud #xray-toggle.is-active, #hud #realism-toggle.is-active, #hud #camera-link.is-active { background: var(--accent); color: #000; }
+        #hud #xray-toggle.is-active, #hud #realism-toggle.is-active, #hud #path-trace-toggle.is-active, #hud #camera-link.is-active { background: var(--accent); color: #000; }
+        #hud #path-trace-readout { margin-left: .5em; font-weight: 400; opacity: .75; }
+        #hud #path-trace-readout:empty { display: none; }
         #xray-tools { flex-wrap: wrap; }
         #viewer-tools { display: contents; }
         .viewer-tool { user-select: none; }
@@ -422,6 +424,7 @@
                 <b id="xray-readout">12%</b>
             </label>
             <button type="button" class="hud-button" id="realism-toggle" aria-pressed="false" title="Soft shadows, ambient occlusion and studio light">Realism</button>
+            <button type="button" class="hud-button" id="path-trace-toggle" aria-pressed="false" title="Trace the Realism scene progressively: light that bounces, soft shadows from every light">Path trace<b id="path-trace-readout"></b></button>
             <button type="button" class="hud-button" id="export-glb" title="Download visible geometry with its current positions and materials">Export GLB</button>
             <button type="button" class="hud-button" id="camera-link" aria-label="Link camera" aria-pressed="false" disabled title="Link cameras with other opted-in views in this document">Link camera</button>
             <span id="glb-status" role="status" aria-live="polite"></span>
@@ -483,7 +486,10 @@ if (window.location.protocol === 'file:') {
     {
         "imports": {
             "three": "/vendor/three/0.187.0/three.module.js",
-            "three/addons/": "/vendor/three/0.187.0/addons/"
+            "three/addons/": "/vendor/three/0.187.0/addons/",
+            "three/examples/jsm/": "/vendor/three/0.187.0/addons/",
+            "three-mesh-bvh": "/vendor/three-mesh-bvh/0.9.18/index.module.js",
+            "three-gpu-pathtracer": "/vendor/three-gpu-pathtracer/0.0.28/index.module.js"
         }
     }
 </script>
@@ -519,8 +525,17 @@ const xrayOpacity = document.getElementById('xray-opacity');
 const realismState = {user: urlParams.get('realism') === '1' ? true : (urlParams.get('realism') === '0' ? false : null),
     payload: null, bounds: null, upAxis: 'Y', helpers: true};
 const realismToggle = document.getElementById('realism-toggle');
-function realismOn() { return realismState.user ?? !!realismState.payload; }
-realismToggle.addEventListener('click', () => { realismState.user = !realismOn(); applyRealism(); requestRender(); });
+// Path tracing draws the Realism scene, so it holds Realism on while it is on.
+const pathTraceState = {on: urlParams.get('pathtrace') === '1'};
+const pathTraceToggle = document.getElementById('path-trace-toggle');
+function realismOn() { return pathTraceState.on || (realismState.user ?? !!realismState.payload); }
+realismToggle.addEventListener('click', () => {
+    const on = !realismOn();
+    realismState.user = on;
+    if (!on) pathTraceState.on = false;
+    applyRealism(); requestRender();
+});
+pathTraceToggle.addEventListener('click', () => { pathTraceState.on = !pathTraceState.on; applyRealism(); requestRender(); });
 // Which of the viewer's own controls the toolbar shows (`ThreeControls` in ThreeJsViewer.kt). None unless
 // the box asked, so a plain view is a picture you can orbit. E shows every one until it is pressed
 // again; `hud(false)` hides the HUD whatever this says. A view set up for linking or inspecting shows
@@ -535,12 +550,18 @@ function controlShown(name) {
 function controlsHud() { xrayHud(); featureHud(); inspectorPartHud(); }
 function xrayHud() {
     const xray = controlShown('xray'), glb = controlShown('export'), link = controlShown('linkCamera');
-    const realism = controlShown('realism');
+    const realism = controlShown('realism') || controlShown('pathTrace');
     document.getElementById('xray-tools').classList.toggle('hidden', !(xray || glb || link || realism));
     xrayToggle.classList.toggle('hidden', !xray);
     realismToggle.classList.toggle('hidden', !realism);
     realismToggle.classList.toggle('is-active', realismOn());
     realismToggle.setAttribute('aria-pressed', String(realismOn()));
+    // A publication bundles only three itself, so its views draw without path tracing.
+    const pathTraceShown = controlShown('pathTrace') && !isPublication;
+    pathTraceToggle.classList.toggle('hidden', !pathTraceShown);
+    pathTraceToggle.classList.toggle('is-active', pathTraceState.on);
+    pathTraceToggle.setAttribute('aria-pressed', String(pathTraceState.on));
+    document.getElementById('path-trace-readout').classList.toggle('hidden', !pathTraceState.on);
     document.getElementById('export-glb').classList.toggle('hidden', !glb);
     document.getElementById('camera-link').classList.toggle('hidden', !link);
     xrayToggle.classList.toggle('is-active', xrayState.enabled);
@@ -1033,16 +1054,20 @@ function syncStudioShadows() {
         if (o.isMesh && o.material?.isMeshStandardMaterial && o.castShadow !== shadows) { o.castShadow = shadows; o.receiveShadow = shadows; }
     });
 }
-// Image-based light from three's neutral RoomEnvironment, prefiltered once (PMREM) on first use.
+// Image-based light from three's neutral RoomEnvironment, captured once into a cube map on first use.
+// The rasteriser prefilters a cube environment itself (PMREM); the path tracer turns it into an
+// equirect, so both draw the same room. The tracer has no hemisphere light, so it is given more of
+// the room to stand in for that fill.
 const studioEnv = {texture: null, loading: null};
 function applyStudioEnvironment(on) {
     if (!on) { if (scene.environment === studioEnv.texture) scene.environment = null; return; }
-    if (studioEnv.texture) { scene.environment = studioEnv.texture; scene.environmentIntensity = 0.3; return; }
+    if (studioEnv.texture) { scene.environment = studioEnv.texture; scene.environmentIntensity = pathTraceState.on ? 0.75 : 0.3; return; }
     studioEnv.loading ??= import('three/addons/environments/RoomEnvironment.js').then(({RoomEnvironment}) => {
-        const pmrem = new THREE.PMREMGenerator(renderer);
         const room = new RoomEnvironment();
-        studioEnv.texture = pmrem.fromScene(room, 0.04).texture;
-        room.dispose?.(); pmrem.dispose();
+        const target = new THREE.WebGLCubeRenderTarget(256, {type: THREE.HalfFloatType});
+        new THREE.CubeCamera(0.1, 100, target).update(renderer, room);
+        room.dispose?.();
+        studioEnv.texture = target.texture;
         applyRealism(); requestRender();
     }).catch(error => console.warn('three viewer: studio environment light is unavailable', error));
 }
@@ -1090,6 +1115,147 @@ function renderStudioAo() {
     studioAo.composer.render();
 }
 // [viewer-region studio] END
+
+// [viewer-region pathtrace] BEGIN
+// **Path trace**: the Realism scene — its key and rim lights, the room's light and the ground — traced
+// progressively by three-gpu-pathtracer (vendored with three-mesh-bvh, loaded the first time it is
+// pressed). Samples accumulate while nothing changes; until the first few are in, and whenever the
+// camera, a surface or a part moves, the Realism raster view draws instead and the traced image fades
+// back in over it. Only lit surfaces are traced (MeshStandardMaterial, not see-through); lines,
+// points, selection overlays and handles are drawn over the traced image, hidden where a surface is
+// in front of them. One view only, like ambient occlusion; X-ray draws without it.
+const PATH_TRACE_MAX_SAMPLES = 512;
+// Named through constants, not quoted in `import(…)`: a publication bundles only three and rewrites
+// every literal import in this file (publication-three.js), and its views never path trace.
+const PATH_TRACE_MODULES = {shim: '/vendor/three-gpu-pathtracer/0.0.28/cube_uv_reflection_fragment.js', tracer: 'three-gpu-pathtracer'};
+const pathTrace = {tracer: null, loading: null, failed: null, sceneKey: null, cameraKey: null, envKey: null,
+    rebuildAt: 0, pending: null, depthOnly: new THREE.MeshBasicMaterial({colorWrite: false, side: THREE.DoubleSide})};
+function pathTraceActive() {
+    return pathTraceState.on && !isPublication && panelState.cameras.length <= 1 && !xrayState.enabled && studioRoot.visible;
+}
+function loadPathTracer() {
+    if (pathTrace.loading) return pathTrace.loading;
+    // three 0.187 dropped a shader chunk the tracer's WebGL materials still include; see the shim.
+    pathTrace.loading = import(PATH_TRACE_MODULES.shim).then(({cubeUvReflectionFragment}) => {
+        THREE.ShaderChunk.cube_uv_reflection_fragment ??= cubeUvReflectionFragment;
+        return import(PATH_TRACE_MODULES.tracer);
+    }).then(({WebGLPathTracer}) => {
+        const tracer = new WebGLPathTracer(renderer);
+        tracer.minSamples = 3;
+        tracer.renderDelay = 120;
+        tracer.fadeDuration = 400;
+        tracer.bounces = 6;
+        tracer.tiles.set(2, 2);
+        // Before the first samples, and while the view moves, the tracer shows the Realism raster.
+        tracer.rasterizeSceneCallback = () => renderPathTraceRaster();
+        pathTrace.tracer = tracer;
+        pathTrace.sceneKey = null;
+        requestRender();
+    }).catch(error => {
+        pathTrace.failed = String(error?.message || error);
+        console.warn('three viewer: path tracing is unavailable', error);
+        xrayHud();
+    });
+    return pathTrace.loading;
+}
+/** What the tracer sees: lit, opaque-enough surfaces and the studio ground. Everything else is raster. */
+function pathTraced(o) {
+    if (!o.isMesh || !o.visible) return false;
+    if (o === studioGround) return studioGround.visible && studioRoot.visible;
+    const m = o.material;
+    return !Array.isArray(m) && !!m?.isMeshStandardMaterial && m.opacity > 0.05;
+}
+function eachPathTraced(fn) {
+    baseGeometryRoot.traverseVisible(o => { if (pathTraced(o)) fn(o); });
+    if (pathTraced(studioGround)) fn(studioGround);
+}
+/** A number that changes when anything the tracer baked does: geometry, placement or material. */
+function pathTraceSceneKey() {
+    let h = 17;
+    const mix = v => { h = (Math.imul(h, 31) + (Number.isFinite(v) ? Math.round(v * 1e4) : 0)) | 0; };
+    eachPathTraced(o => {
+        const g = o.geometry, m = o.material, p = g.getAttribute('position');
+        mix(o.id); mix(g.id); mix(p?.version ?? 0); mix(p?.count ?? 0); mix(g.index?.version ?? 0);
+        for (const e of o.matrixWorld.elements) mix(e);
+        mix(m.id); mix(m.version); mix(m.color.getHex()); mix(m.opacity); mix(m.roughness); mix(m.metalness);
+    });
+    for (const light of [studioKey, studioRim]) { mix(light.intensity); for (const e of light.matrixWorld.elements) mix(e); }
+    return h;
+}
+function pathTraceCameraKey() {
+    let h = 7;
+    for (const e of camera.matrixWorld.elements) h = (Math.imul(h, 31) + Math.round(e * 1e5)) | 0;
+    for (const e of camera.projectionMatrix.elements) h = (Math.imul(h, 31) + Math.round(e * 1e5)) | 0;
+    return h + container.clientWidth * 7919 + container.clientHeight;
+}
+/** Bake the traced surfaces into the tracer's BVH: hide everything else while its generator walks the scene. */
+function rebuildPathTraceScene() {
+    const hidden = [];
+    scene.traverse(o => { if (o.visible && o.isMesh && !pathTraced(o)) { o.visible = false; hidden.push(o); } });
+    // A fresh scene generator for every bake. Its incremental cache keeps the previous BVH when a re-run
+    // replaces the meshes' geometries, and the tracer then draws the new scene nearly black. `_generator`
+    // is private to WebGLPathTracer 0.0.28; recheck when the vendored copy changes.
+    if (pathTrace.baked) pathTrace.tracer._generator = new pathTrace.tracer._generator.constructor();
+    pathTrace.baked = true;
+    try { pathTrace.tracer.setScene(scene, camera); }
+    finally { for (const o of hidden) o.visible = true; }
+    pathTrace.cameraKey = pathTraceCameraKey();
+    pathTrace.envKey = pathTraceEnvKey();
+}
+function pathTraceEnvKey() { return `${scene.environment?.uuid}|${scene.environmentIntensity}`; }
+function renderPathTraceRaster() {
+    if (studioAoActive()) renderStudioAo();
+    else { renderer.setViewport(0, 0, container.clientWidth, container.clientHeight); renderGeometry(camera); }
+}
+/** One frame: re-bake or re-aim when something changed, add a sample, then draw the overlays on top. */
+function renderPathTrace() {
+    const tracer = pathTrace.tracer;
+    if (!tracer) { loadPathTracer(); renderPathTraceRaster(); return; }
+    camera.updateMatrixWorld();
+    scene.updateMatrixWorld();
+    const sceneKey = pathTraceSceneKey(), now = performance.now();
+    if (sceneKey !== pathTrace.sceneKey) {
+        // While a surface keeps moving (a drag, an explode), wait for it to settle before re-baking;
+        // the first bake happens at once.
+        if (sceneKey !== pathTrace.pending) { pathTrace.pending = sceneKey; pathTrace.rebuildAt = now + (pathTrace.sceneKey === null ? 0 : 180); }
+        if (now < pathTrace.rebuildAt) { renderPathTraceRaster(); updatePathTraceReadout(null); requestRender(); return; }
+        rebuildPathTraceScene();
+        pathTrace.sceneKey = sceneKey; pathTrace.pending = null;
+    }
+    const cameraKey = pathTraceCameraKey();
+    if (cameraKey !== pathTrace.cameraKey) { tracer.updateCamera(); pathTrace.cameraKey = cameraKey; }
+    const envKey = pathTraceEnvKey();
+    if (envKey !== pathTrace.envKey) { tracer.updateEnvironment(); pathTrace.envKey = envKey; }
+    const autoClear = renderer.autoClear;
+    renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
+    tracer.renderSample();
+    renderer.autoClear = autoClear;
+    renderPathTraceOverlay();
+    updatePathTraceReadout(tracer.samples);
+    if (tracer.samples < PATH_TRACE_MAX_SAMPLES || tracer.isCompiling) requestRender();
+}
+/** Lines, points, sprites and untraced meshes over the traced image, depth-tested against the traced surfaces. */
+function renderPathTraceOverlay() {
+    let overlay = false;
+    scene.traverseVisible(o => {
+        if (o === studioGrid ? studioGrid.visible : (o.isLine || o.isPoints || o.isSprite || (o.isMesh && !pathTraced(o) && o.material?.opacity > 0))) overlay = true;
+    });
+    if (!overlay) return;
+    const swapped = [], environment = scene.environment, background = scene.background, autoClear = renderer.autoClear;
+    eachPathTraced(o => { swapped.push([o, o.material]); o.material = pathTrace.depthOnly; });
+    scene.environment = null; scene.background = null; renderer.autoClear = false;
+    try { renderer.clearDepth(); renderer.render(scene, camera); }
+    finally {
+        for (const [o, m] of swapped) o.material = m;
+        scene.environment = environment; scene.background = background; renderer.autoClear = autoClear;
+    }
+}
+const pathTraceReadout = document.getElementById('path-trace-readout');
+function updatePathTraceReadout(samples) {
+    const text = pathTrace.failed ? 'unavailable' : samples === null ? '…' : `${Math.min(samples, PATH_TRACE_MAX_SAMPLES) | 0} spp`;
+    if (pathTraceReadout.textContent !== text) pathTraceReadout.textContent = text;
+}
+// [viewer-region pathtrace] END
 
 // [viewer-region labels] BEGIN
 // Text anchored to points in the scene (`payload.labels`), an HTML block in a corner (`payload.overlays`),
@@ -8050,6 +8216,7 @@ function render() {
 
     if (renderer.shadowMap.enabled) syncStudioShadows();
     if (panelState.cameras.length > 1) renderPanels();
+    else if (pathTraceActive()) renderPathTrace();
     else if (studioAoActive()) renderStudioAo();
     else {
         renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
