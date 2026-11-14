@@ -1,5 +1,5 @@
 /** Bundle the canonical viewer's modules into local Blob URLs, including inside opaque sandboxes. */
-const THREE_ROOT = 'vendor/three/0.184.0/';
+const THREE_ROOT = 'vendor/three/0.187.0/';
 const literal = value => JSON.stringify(value).replace(/</g,'\\u003c');
 const moduleId = path => 'field-publication/' + path;
 

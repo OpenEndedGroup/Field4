@@ -401,9 +401,9 @@ Two things about that comparison are worth knowing before extending it.
   by *necessity* — the viewer's three.js came from a CDN, and the only in-repo copy was an incomplete
   vendoring that could not be loaded at all. **That reason expired on 2026-08-15** and the sentence
   stating it outlived it: `533918561` replaced the CDN import map with a vendored one, and `90230b1f4`
-  moved it to r184. Every clause of the old justification is now false — there is no CDN import
-  (`threejs_viewer.html:363#/vendor/three/0.184.0/three.module.js`), the copy it called incomplete no
-  longer exists, and the `src/commonMain/resources/vendor/three/0.184.0/three.core.js` whose absence was
+  moved it to r184 (since r187). Every clause of the old justification is now false — there is no CDN import
+  (`threejs_viewer.html:488#/vendor/three/0.187.0/three.module.js`), the copy it called incomplete no
+  longer exists, and the `src/commonMain/resources/vendor/three/0.187.0/three.core.js` whose absence was
   the whole argument is committed. A shim over the real `ShapeUtils` has become possible.
 
     It is still deliberately not what runs, for reasons that are now positive rather than forced —

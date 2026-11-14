@@ -323,7 +323,7 @@
         #hud .hud-group, #hud .hud-button { border: 0; background: #000; }
         #hud button:focus-visible, #feature-review button:focus-visible,
         #hud select:focus-visible { color: var(--accent); }
-        #hud #xray-toggle.is-active, #hud #camera-link.is-active { background: var(--accent); color: #000; }
+        #hud #xray-toggle.is-active, #hud #realism-toggle.is-active, #hud #camera-link.is-active { background: var(--accent); color: #000; }
         #xray-tools { flex-wrap: wrap; }
         #viewer-tools { display: contents; }
         .viewer-tool { user-select: none; }
@@ -421,6 +421,7 @@
                 <input type="range" id="xray-opacity" min="3" max="100" value="12" aria-label="X-ray surface opacity">
                 <b id="xray-readout">12%</b>
             </label>
+            <button type="button" class="hud-button" id="realism-toggle" aria-pressed="false" title="Soft shadows, ambient occlusion and studio light">Realism</button>
             <button type="button" class="hud-button" id="export-glb" title="Download visible geometry with its current positions and materials">Export GLB</button>
             <button type="button" class="hud-button" id="camera-link" aria-label="Link camera" aria-pressed="false" disabled title="Link cameras with other opted-in views in this document">Link camera</button>
             <span id="glb-status" role="status" aria-live="polite"></span>
@@ -481,8 +482,8 @@ if (window.location.protocol === 'file:') {
 <script type="importmap">
     {
         "imports": {
-            "three": "/vendor/three/0.184.0/three.module.js",
-            "three/addons/": "/vendor/three/0.184.0/addons/"
+            "three": "/vendor/three/0.187.0/three.module.js",
+            "three/addons/": "/vendor/three/0.187.0/addons/"
         }
     }
 </script>
@@ -514,6 +515,12 @@ if (isPublication) {
 const xrayState = { enabled: urlParams.get('xray') === '1', opacity: .12 };
 const xrayToggle = document.getElementById('xray-toggle');
 const xrayOpacity = document.getElementById('xray-opacity');
+// The Realism button's state; the studio region below draws it.
+const realismState = {user: urlParams.get('realism') === '1' ? true : (urlParams.get('realism') === '0' ? false : null),
+    payload: null, bounds: null, upAxis: 'Y', helpers: true};
+const realismToggle = document.getElementById('realism-toggle');
+function realismOn() { return realismState.user ?? !!realismState.payload; }
+realismToggle.addEventListener('click', () => { realismState.user = !realismOn(); applyRealism(); requestRender(); });
 // Which of the viewer's own controls the toolbar shows (`ThreeControls` in ThreeJsViewer.kt). None unless
 // the box asked, so a plain view is a picture you can orbit. E shows every one until it is pressed
 // again; `hud(false)` hides the HUD whatever this says. A view set up for linking or inspecting shows
@@ -528,8 +535,12 @@ function controlShown(name) {
 function controlsHud() { xrayHud(); featureHud(); inspectorPartHud(); }
 function xrayHud() {
     const xray = controlShown('xray'), glb = controlShown('export'), link = controlShown('linkCamera');
-    document.getElementById('xray-tools').classList.toggle('hidden', !(xray || glb || link));
+    const realism = controlShown('realism');
+    document.getElementById('xray-tools').classList.toggle('hidden', !(xray || glb || link || realism));
     xrayToggle.classList.toggle('hidden', !xray);
+    realismToggle.classList.toggle('hidden', !realism);
+    realismToggle.classList.toggle('is-active', realismOn());
+    realismToggle.setAttribute('aria-pressed', String(realismOn()));
     document.getElementById('export-glb').classList.toggle('hidden', !glb);
     document.getElementById('camera-link').classList.toggle('hidden', !link);
     xrayToggle.classList.toggle('is-active', xrayState.enabled);
@@ -747,7 +758,7 @@ controls.panSpeed = 0.6;
 controls.addEventListener('change', requestRender);
 let cameraWasMoved = false;
 controls.addEventListener('start', () => { cameraWasMoved = true; });
-// OrbitControls 0.184 caches the up-axis basis on construction. Keep that basis in
+// OrbitControls (0.184 through 0.187) caches the up-axis basis on construction. Keep that basis in
 // sync when a linked view or saved camera uses a different canonical up direction.
 function cameraUp(up) {
     camera.up.fromArray(up).normalize();
@@ -909,18 +920,24 @@ axes.renderOrder = 1;
 scene.add(axes);
 
 // [viewer-region studio] BEGIN
-// `studio(…)`: the look of a model on a plinth. ACES tone mapping, a shadow-casting key with a hemisphere
-// fill and a cool rim, a dark ground that receives the shadows and a faint grid on it. The rig is the
-// one the madp geometry toolbox lights its triangles with, placed relative to the scene's bounds (it
-// was tuned for a scene about 4.5 units in radius), so a model of any size is lit the same way. With no
-// studio the ambient/key/rim above draw, exactly as before, and nothing casts a shadow.
+// `studio(…)` and the toolbar's **Realism** button: the look of a model on a plinth. ACES tone mapping, a
+// shadow-casting key with a hemisphere fill and a cool rim, a dark ground that receives the shadows, a
+// faint grid on it, and ground-truth ambient occlusion (GTAO). The rig is the one the madp geometry
+// toolbox lights its triangles with, placed relative to the scene's bounds (it was tuned for a scene about
+// 4.5 units in radius), so a model of any size is lit the same way, and turned with the view's up axis.
+// With no studio the ambient/key/rim above draw, exactly as before, and nothing casts a shadow.
+//
+// Realism is the studio on demand. A box that calls `studio(…)` starts with it on and its own settings;
+// any other view starts with it off, and the button turns on `REALISM_STUDIO`, which adds image-based
+// light from a neutral room so faces that the key does not reach still read as lit surfaces. Whichever
+// way the button was last pressed holds across re-runs of the box.
+const REALISM_STUDIO = {ground: true, grid: false, shadows: true, ambientOcclusion: true, environment: true, exposure: 0.8};
 const studioRoot = new THREE.Group();
 studioRoot.visible = false;
 scene.add(studioRoot);
 const studioHemi = new THREE.HemisphereLight(0xd7ecff, 0x17120e, 1.6);
 const studioKey = new THREE.DirectionalLight(0xffffff, 3.1);
 studioKey.castShadow = true;
-studioKey.shadow.mapSize.set(2048, 2048);
 const studioRim = new THREE.DirectionalLight(0x87bfff, 0.7);
 const studioGround = new THREE.Mesh(new THREE.PlaneGeometry(1, 1),
     new THREE.MeshStandardMaterial({color: 0x08090a, roughness: 0.92, metalness: 0.02}));
@@ -930,7 +947,21 @@ const studioGrid = new THREE.GridHelper(1, 40, 0x22333a, 0x151d20);
 studioGrid.material.transparent = true;
 studioGrid.material.opacity = 0.28;
 studioRoot.add(studioHemi, studioKey, studioKey.target, studioRim, studioRim.target, studioGround, studioGrid);
-function applyStudio(spec, bounds) {
+/** What the payload asked for; the button decides whether it, the realism default, or nothing is drawn. */
+function applyStudio(spec, bounds, upAxis, helpers) {
+    Object.assign(realismState, {payload: spec || null, bounds: bounds || null, upAxis: upAxis === 'Z' ? 'Z' : 'Y', helpers});
+    applyRealism();
+}
+function applyRealism() {
+    const on = realismOn();
+    const spec = on ? (realismState.payload || REALISM_STUDIO) : null;
+    // A studio of the box's own hides the reference grid and tripod in Kotlin (`helpers`); the button's
+    // studio hides them here, and gives them back when it is turned off.
+    grid.visible = axes.visible = realismState.helpers && !(on && !realismState.payload);
+    drawStudio(spec, realismState.bounds, realismState.upAxis);
+    xrayHud();
+}
+function drawStudio(spec, bounds, upAxis) {
     const on = !!spec;
     studioRoot.visible = on;
     ambientLight.visible = keyLight.visible = rimLight.visible = !on;
@@ -939,14 +970,23 @@ function applyStudio(spec, bounds) {
     const shadows = on && spec.shadows !== false;
     if (renderer.shadowMap.enabled !== shadows) {
         renderer.shadowMap.enabled = shadows;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        // three (since 0.184) filters PCF with a rotated Vogel disk of `shadow.radius` texels; PCFSoft is gone.
+        renderer.shadowMap.type = THREE.PCFShadowMap;
         // Shadow support is compiled into each program, so a switch has to recompile them.
         scene.traverse(o => { if (o.material && !Array.isArray(o.material)) o.material.needsUpdate = true; });
     }
+    applyStudioEnvironment(on && !!spec.environment);
     studioAo.wanted = on && spec.ambientOcclusion !== false;
     if (studioAo.wanted) loadStudioAo();
+    syncStudioShadows();
     if (!on) return;
-    const min = bounds?.min || [-1, -1, -1], max = bounds?.max || [1, 1, 1];
+    // The rig is laid out Y-up in studioRoot's frame; a Z-up view turns the whole of it a quarter turn
+    // about X, so local (x, y, z) is world (x, -z, y) and the bounds come in as (x, z, -y).
+    const zUp = upAxis === 'Z';
+    studioRoot.rotation.set(zUp ? Math.PI / 2 : 0, 0, 0);
+    studioRoot.updateMatrixWorld(true);
+    let min = bounds?.min || [-1, -1, -1], max = bounds?.max || [1, 1, 1];
+    if (zUp) [min, max] = [[min[0], min[2], -max[1]], [max[0], max[2], -min[1]]];
     const cx = (min[0] + max[0]) / 2, cz = (min[2] + max[2]) / 2;
     const radius = Math.max(1e-3, 0.5 * Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]));
     const k = radius / 4.5;
@@ -954,13 +994,24 @@ function applyStudio(spec, bounds) {
     const cy = groundY + 1.25 * k;
     studioKey.position.set(cx + 4.5 * k, cy + 7 * k, cz + 4.2 * k);
     studioKey.target.position.set(cx, cy, cz);
-    const sc = studioKey.shadow.camera;
-    sc.near = 0.5 * k; sc.far = 24 * k; sc.left = sc.bottom = -8 * k; sc.right = sc.top = 8 * k;
+    // The shadow camera is fitted to the model rather than the ground, so the map's texels go where the
+    // shadows fall, and the map is as large as the GPU allows up to 4096².
+    const mapSize = Math.min(4096, renderer.capabilities.maxTextureSize || 2048);
+    if (studioKey.shadow.mapSize.x !== mapSize) {
+        studioKey.shadow.mapSize.set(mapSize, mapSize);
+        studioKey.shadow.map?.dispose(); studioKey.shadow.map = null;
+    }
+    const sc = studioKey.shadow.camera, reach = 1.35 * radius;
+    sc.near = 0.5 * k; sc.far = 24 * k; sc.left = sc.bottom = -reach; sc.right = sc.top = reach;
     sc.updateProjectionMatrix();
-    // A small normal offset keeps a faceted surface from shadowing itself in stripes (acne).
+    // A small normal offset keeps a faceted surface from shadowing itself in stripes (acne); the radius
+    // softens the edge by a few texels without blurring contact.
     studioKey.shadow.normalBias = 0.02 * k;
+    studioKey.shadow.bias = -0.0001;
+    studioKey.shadow.radius = 3;
     studioRim.position.set(cx - 5 * k, cy + 3 * k, cz - 4 * k);
     studioRim.target.position.set(cx, cy, cz);
+    studioHemi.intensity = spec.environment ? 0.5 : 1.6;
     studioGround.visible = spec.ground !== false;
     studioGround.material.color.set(spec.groundColor || '#08090a');
     studioGround.position.set(cx, groundY, cz);
@@ -968,46 +1019,74 @@ function applyStudio(spec, bounds) {
     studioGrid.visible = spec.grid !== false;
     studioGrid.position.set(cx, groundY + 0.005 * k, cz);
     studioGrid.scale.setScalar(20 * k);
+    // GTAO measures in world units: a reach of a few percent of the scene finds the creases, corners and
+    // contacts without greying whole faces. The clip box keeps it off the far ground.
+    studioAo.radius = 0.12 * radius;
+    studioAo.clip = new THREE.Box3().setFromArray([min[0], groundY, min[2], max[0], max[1], max[2]])
+        .expandByScalar(2 * studioAo.radius).applyMatrix4(studioRoot.matrixWorld);
+    configureStudioAo();
+}
+/** Meshes arrive after the studio does (incremental edits, editable rebuilds), so this runs per frame. */
+function syncStudioShadows() {
+    const shadows = renderer.shadowMap.enabled;
     baseGeometryRoot.traverse(o => {
-        if (o.isMesh && o.material?.isMeshStandardMaterial) { o.castShadow = shadows; o.receiveShadow = shadows; }
+        if (o.isMesh && o.material?.isMeshStandardMaterial && o.castShadow !== shadows) { o.castShadow = shadows; o.receiveShadow = shadows; }
     });
 }
-// Ambient occlusion, as the toolbox has it: RenderPass → SSAOPass → OutputPass (tone mapping and sRGB),
-// loaded from the vendored add-ons the first time a studio asks for it, so other views never fetch them.
-// One view only: a contact sheet's panels and X-ray draw directly, as before.
-const studioAo = {wanted: false, composer: null, pass: null, loading: null};
+// Image-based light from three's neutral RoomEnvironment, prefiltered once (PMREM) on first use.
+const studioEnv = {texture: null, loading: null};
+function applyStudioEnvironment(on) {
+    if (!on) { if (scene.environment === studioEnv.texture) scene.environment = null; return; }
+    if (studioEnv.texture) { scene.environment = studioEnv.texture; scene.environmentIntensity = 0.3; return; }
+    studioEnv.loading ??= import('three/addons/environments/RoomEnvironment.js').then(({RoomEnvironment}) => {
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        const room = new RoomEnvironment();
+        studioEnv.texture = pmrem.fromScene(room, 0.04).texture;
+        room.dispose?.(); pmrem.dispose();
+        applyRealism(); requestRender();
+    }).catch(error => console.warn('three viewer: studio environment light is unavailable', error));
+}
+// Ambient occlusion: RenderPass → GTAOPass (denoised) → OutputPass (tone mapping and sRGB), into a 4×
+// multisampled target so edges stay antialiased, loaded from the vendored add-ons the first time a
+// studio asks for it, so other views never fetch them. One view only: a contact sheet's panels and X-ray
+// draw directly.
+const studioAo = {wanted: false, composer: null, pass: null, loading: null, radius: 0.25, clip: null};
 function loadStudioAo() {
     if (studioAo.loading) return studioAo.loading;
     studioAo.loading = Promise.all([
         import('three/addons/postprocessing/EffectComposer.js'),
         import('three/addons/postprocessing/RenderPass.js'),
-        import('three/addons/postprocessing/SSAOPass.js'),
+        import('three/addons/postprocessing/GTAOPass.js'),
         import('three/addons/postprocessing/OutputPass.js'),
-    ]).then(([{EffectComposer}, {RenderPass}, {SSAOPass}, {OutputPass}]) => {
+    ]).then(([{EffectComposer}, {RenderPass}, {GTAOPass}, {OutputPass}]) => {
         const w = Math.max(1, container.clientWidth), h = Math.max(1, container.clientHeight);
-        const composer = new EffectComposer(renderer);
+        const target = new THREE.WebGLRenderTarget(w, h, {type: THREE.HalfFloatType, samples: 4});
+        const composer = new EffectComposer(renderer, target);
         composer.setPixelRatio(getDpr());
         composer.setSize(w, h);
-        const pass = new SSAOPass(scene, camera, w, h);
-        pass.kernelRadius = 12;
+        const pass = new GTAOPass(scene, camera, w, h);
+        pass.output = GTAOPass.OUTPUT.Default;
         composer.addPass(new RenderPass(scene, camera));
         composer.addPass(pass);
         composer.addPass(new OutputPass());
         studioAo.composer = composer; studioAo.pass = pass;
+        configureStudioAo();
         requestRender();
     }).catch(error => console.warn('three viewer: ambient occlusion is unavailable', error));
     return studioAo.loading;
+}
+function configureStudioAo() {
+    const pass = studioAo.pass;
+    if (!pass) return;
+    pass.updateGtaoMaterial({radius: studioAo.radius, thickness: 2 * studioAo.radius, distanceExponent: 1,
+        distanceFallOff: 1, scale: 2.2, samples: 16});
+    pass.updatePdMaterial({lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, radiusExponent: 1, rings: 2, samples: 16});
+    pass.setSceneClipBox(studioAo.clip);
 }
 function studioAoActive() {
     return studioAo.wanted && !!studioAo.composer && studioRoot.visible && panelState.cameras.length <= 1 && !xrayState.enabled;
 }
 function renderStudioAo() {
-    // SSAO compares depths as fractions of far - near. The toolbox's thresholds (0.001, 0.075) were set
-    // for its camera, near = d / 100 and far = d * 100 at distance d, so they are rescaled to this one.
-    const d = camera.position.distanceTo(controls.target);
-    const scale = (d * 100 - d / 100) / Math.max(1e-9, camera.far - camera.near);
-    studioAo.pass.minDistance = 0.001 * scale;
-    studioAo.pass.maxDistance = Math.min(1, 0.075 * scale);
     studioAo.composer.render();
 }
 // [viewer-region studio] END
@@ -7098,7 +7177,7 @@ function applyGeometry(payload) {
     const wantHelpers = payload.helpers !== false;
     grid.visible = wantHelpers;
     axes.visible = wantHelpers;
-    applyStudio(payload.studio, payload.bounds);
+    applyStudio(payload.studio, payload.bounds, payload.camera?.upAxis, wantHelpers);
     applyLabels(payload);
     if (!hasFramedInitialGeometry && payload.bounds && payload.autoFrame !== false) {
         frameBounds(payload.bounds);
@@ -7969,6 +8048,7 @@ function render() {
     const interactivePointer = editorState.mode === 'camera' ? updateInteractiveHover() : false;
     if (editorState.mode === 'camera') renderer.domElement.style.cursor = interactivePointer ? 'pointer' : '';
 
+    if (renderer.shadowMap.enabled) syncStudioShadows();
     if (panelState.cameras.length > 1) renderPanels();
     else if (studioAoActive()) renderStudioAo();
     else {
