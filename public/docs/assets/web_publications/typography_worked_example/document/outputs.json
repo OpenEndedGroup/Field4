@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T09:24:21.091Z",
+  "capturedAt": "2026-11-14T02:40:43.038Z",
   "documentName": "typography_worked_example",
   "outputs": [
     {
@@ -31,7 +31,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 352,
+      "width": 348,
       "height": 236,
       "path": "outputs/2.html"
     },

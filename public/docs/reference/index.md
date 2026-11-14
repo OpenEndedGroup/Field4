@@ -673,7 +673,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**40869 public symbols across 1806 source files**, 24247 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**40871 public symbols across 1806 source files**, 24247 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -686,7 +686,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2520 | 1900 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1123 | 528 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 413 | 10154 | 6400 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 413 | 10156 | 6400 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 844 | 448 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -2381,7 +2381,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [ThreeFeatureReviewWorkout.kt](examples.md#threefeaturereviewworkout-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeIncremental.kt](graphics.md#threeincremental-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeJsInspector.kt](graphics.md#threejsinspector-kt) | Graphics | 99 | 31 | Measure, section and explode controls for the Three.js viewer, so a 3D preview of something to be built can be inspected without re-running its box. | [FLine examples (Field graphics)](../fline_examples.md), [Three.js scenes with `three { … }`](../three_output.md), [Point to geometry, keep the context](../geometry_review.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeJsViewer.kt](graphics.md#threejsviewer-kt) | Graphics | 154 | 61 | The Three.js viewer's server side: the geometry payload it is sent, the live state of each view, and `Box.threeLines`, which puts a viewer in a box's output area. | [Three.js scenes with `three { … }`](../three_output.md), [FLine examples (Field graphics)](../fline_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeJsViewer.kt](graphics.md#threejsviewer-kt) | Graphics | 156 | 61 | The Three.js viewer's server side: the geometry payload it is sent, the live state of each view, and `Box.threeLines`, which puts a viewer in a box's output area. | [Three.js scenes with `three { … }`](../three_output.md), [FLine examples (Field graphics)](../fline_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeMotion.kt](graphics.md#threemotion-kt) | Graphics | 29 | 19 | Declared motions in the standard viewer: parts that turn or slide, played on a timeline with a scrubber, and tinted by a value measured at each step of the motion. | [Three.js scenes with `three { … }`](../three_output.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreePartAppearance.kt](graphics.md#threepartappearance-kt) | Graphics | 4 | 4 | Presentation overrides for a named part of a three-dimensional view. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreePartStyle.kt](graphics.md#threepartstyle-kt) | Graphics | 8 | 7 |  |  |

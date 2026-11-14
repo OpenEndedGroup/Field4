@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T12:03:13.117Z",
+  "capturedAt": "2026-11-14T02:43:47.199Z",
   "documentName": "penrose_spectra",
   "outputs": [
     {
@@ -54,7 +54,7 @@
         "svg"
       ],
       "width": 473,
-      "height": 56,
+      "height": 54,
       "path": "outputs/4.html"
     },
     {
@@ -66,7 +66,7 @@
         "svg"
       ],
       "width": 473,
-      "height": 56,
+      "height": 54,
       "path": "outputs/5.html"
     },
     {
