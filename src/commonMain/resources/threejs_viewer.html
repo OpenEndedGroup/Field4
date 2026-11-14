@@ -525,17 +525,21 @@ const xrayOpacity = document.getElementById('xray-opacity');
 const realismState = {user: urlParams.get('realism') === '1' ? true : (urlParams.get('realism') === '0' ? false : null),
     payload: null, bounds: null, upAxis: 'Y', helpers: true};
 const realismToggle = document.getElementById('realism-toggle');
-// Path tracing draws the Realism scene, so it holds Realism on while it is on.
-const pathTraceState = {on: urlParams.get('pathtrace') === '1'};
+// Path tracing draws the Realism scene, so it holds Realism on while it is on. Like Realism, it starts as the
+// box asks (`studio(pathTrace = true)`) and keeps the reader's last press across runs (`user`).
+const pathTraceState = {on: urlParams.get('pathtrace') === '1', user: null};
 const pathTraceToggle = document.getElementById('path-trace-toggle');
 function realismOn() { return pathTraceState.on || (realismState.user ?? !!realismState.payload); }
 realismToggle.addEventListener('click', () => {
     const on = !realismOn();
     realismState.user = on;
-    if (!on) pathTraceState.on = false;
+    if (!on) pathTraceState.on = pathTraceState.user = false;
     applyRealism(); requestRender();
 });
-pathTraceToggle.addEventListener('click', () => { pathTraceState.on = !pathTraceState.on; applyRealism(); requestRender(); });
+pathTraceToggle.addEventListener('click', () => {
+    pathTraceState.on = pathTraceState.user = !pathTraceState.on;
+    applyRealism(); requestRender();
+});
 // Which of the viewer's own controls the toolbar shows (`ThreeControls` in ThreeJsViewer.kt). None unless
 // the box asked, so a plain view is a picture you can orbit. E shows every one until it is pressed
 // again; `hud(false)` hides the HUD whatever this says. A view set up for linking or inspecting shows
@@ -545,6 +549,8 @@ function controlShown(name) {
     if (controlsRevealed || controlsPayload.controls?.[name]) return true;
     if (name === 'linkCamera') return !!controlsPayload.cameraLink || cameraLinkOn;
     if (name === 'parts') return !!controlsPayload.inspector?.enabled;
+    // A view that starts traced always has the button that stops it.
+    if (name === 'pathTrace') return !!realismState.payload?.pathTrace;
     return false;
 }
 function controlsHud() { xrayHud(); featureHud(); inspectorPartHud(); }
@@ -670,7 +676,7 @@ window.FieldViewer = Object.freeze({followStatus: () => cameraFollow.status(),
     captureStatus: () => {
         const tools = viewerTools.status(), render = renderScheduler.stats();
         return {...captureState, ready:captureState.ready && !tools.pending.length && !tools.error &&
-            render.visible && render.frames > 0, error:captureState.error || tools.error};
+            render.visible && render.frames > 0 && !pathTraceSettling(), error:captureState.error || tools.error};
     }});
 let glbExporting = false;
 const formatGlbSize = n => n < 1048576 ? Math.ceil(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
@@ -971,6 +977,7 @@ studioRoot.add(studioHemi, studioKey, studioKey.target, studioRim, studioRim.tar
 /** What the payload asked for; the button decides whether it, the realism default, or nothing is drawn. */
 function applyStudio(spec, bounds, upAxis, helpers) {
     Object.assign(realismState, {payload: spec || null, bounds: bounds || null, upAxis: upAxis === 'Z' ? 'Z' : 'Y', helpers});
+    if (pathTraceState.user === null) pathTraceState.on = urlParams.get('pathtrace') === '1' || !!spec?.pathTrace;
     applyRealism();
 }
 function applyRealism() {
@@ -1471,6 +1478,17 @@ function renderPathTraceOverlay() {
         for (const [o, m] of swapped) o.material = m;
         scene.environment = environment; scene.background = background; renderer.autoClear = autoClear;
     }
+}
+// A capture of a traced view waits for its trace: denoised on WebGPU, this many samples on WebGL (its full
+// PATH_TRACE_MAX_SAMPLES would take minutes).
+const PATH_TRACE_CAPTURE_SAMPLES = 64;
+/** True while a traced view is still converging, so `captureStatus` holds a screenshot until it has finished. */
+function pathTraceSettling() {
+    if (!pathTraceActive() || pathTrace.failed) return false;
+    const gpu = pathTrace.gpu;
+    if (gpu) return gpu.stage !== 'complete' || gpu.cameraKey !== pathTraceCameraKey() || pathTrace.pending !== null;
+    const tracer = pathTrace.tracer;
+    return !tracer || tracer.samples < PATH_TRACE_CAPTURE_SAMPLES || pathTrace.cameraKey !== pathTraceCameraKey();
 }
 const pathTraceReadout = document.getElementById('path-trace-readout');
 function setPathTraceReadout(text) {

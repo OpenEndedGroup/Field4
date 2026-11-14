@@ -373,6 +373,11 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      *
      * @param ambientOcclusion darken creases and contact points (ground-truth ambient occlusion, three.js's
      * `GTAOPass`). Drawn in a single view; a contact sheet ([columns]) and X-ray draw without it.
+     *
+     * @param pathTrace start with the toolbar's **Path trace** pressed (and shown, so it can be turned off):
+     * the scene path traced with light that bounces between surfaces, denoised where the browser has
+     * WebGPU. The reader's own press wins across runs, as for Realism. Single views only, and a published
+     * page draws the raster studio instead.
      */
     fun studio(
         ground: Boolean = true,
@@ -382,9 +387,10 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         shadows: Boolean = true,
         exposure: Double = 1.0,
         ambientOcclusion: Boolean = true,
+        pathTrace: Boolean = false,
     ) {
         require(exposure.isFinite() && exposure > 0) { "exposure must be positive, got $exposure" }
-        studio = ThreeStudioSpec(ground, grid, groundY, groundColor, shadows, exposure, ambientOcclusion)
+        studio = ThreeStudioSpec(ground, grid, groundY, groundColor, shadows, exposure, ambientOcclusion, pathTrace)
         if (helpersExplicit == null) helpersExplicit = false
     }
 
