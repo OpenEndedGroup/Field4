@@ -673,7 +673,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**40871 public symbols across 1806 source files**, 24247 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**40873 public symbols across 1806 source files**, 24249 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -701,7 +701,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 92 | 2517 | 1329 (52%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 129 | 3313 | 1663 (50%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 242 | 3365 | 1362 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 242 | 3367 | 1364 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 97 | 2191 | 828 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 186 | 43 (23%) |  |
@@ -1230,7 +1230,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [FileChooser.kt](visualization.md#filechooser-kt) | Visualization | 16 | 9 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [FileManager.kt](data.md#filemanager-kt) | Data | 33 | 33 | Path resolution for the running Field session: turns a short spec into a real `File` or `Path`. | [File management](../files_and_paths.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [FileManagerSmokeTest.kt](examples.md#filemanagersmoketest-kt) | Examples · internal | 3 | 0 |  |  |
-| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [fileproxy.kt](workspace.md#fileproxy-kt) | Workspace · internal | 5 | 2 | File proxy boxes: a box whose `contents` mirror a text file, given by an absolute path or by a path under the workspace or the document folder. |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [fileproxy.kt](workspace.md#fileproxy-kt) | Workspace · internal | 7 | 4 | File proxy boxes: a box whose `contents` mirror a text file, given by an absolute path or by a path under the workspace or the document folder. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>knowledge/<wbr></small> [FilestoreDir.kt](ai4.md#filestoredir-kt) | AI4 | 9 | 6 | Where Field's derived completion indexes live, resolved in one place for every index that needs it. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>persistence/<wbr></small> [FileWatchManager.kt](workspace.md#filewatchmanager-kt) | Workspace · internal | 5 | 5 | Reloads an open document's properties when their sidecar files are edited outside Field. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [filmTimeline.kt](workspace.md#filmtimeline-kt) | Workspace · internal | 30 | 11 | A film's timeline: keys at film time, read from a JSON file, that `film-page --timeline` plays frame by frame. |  |
