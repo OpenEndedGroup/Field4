@@ -158,6 +158,38 @@ def recipe_sources(recipe: dict) -> dict[str, str]:
     return sources
 
 
+# The registry snapshot a saved document ends with: every property name the saving Field persists.
+PERSISTENT_LIST = re.compile(rb'\s*"persistentProperties"\s*\[[^\]]*\]')
+
+
+def adopt_persistent_list_changes(index: dict) -> list[str]:
+    """Re-record a source `metadata.edn` whose only change is its `"persistentProperties"` list.
+
+    That list names every property the saving Field persists, so a new one anywhere in Field (the
+    AI4 garden's `ai4_garden`, 2026-11-13) rewrites every materialized transcript at once, and each
+    landing that rematerialized them found all ~200 publications stale, recaptured for an hour and
+    bounced on whichever slow page timed out, leaving main unrefreshed for the next one. No capture
+    reads the list. A file counts as changed only in that list when its committed version (HEAD)
+    is the one the catalog recorded and the two differ in nothing else."""
+    adopted = []
+    for section in ('documents', 'emptyDocuments'):
+        for entry in index.get(section, {}).values():
+            for name, expected in list(entry.get('sources', {}).items()):
+                path = ROOT / name
+                if not name.endswith('metadata.edn') or FENCE_SOURCE in name or not path.is_file():
+                    continue
+                current = path.read_bytes()
+                if hashlib.sha256(current).hexdigest() == expected:
+                    continue
+                shown = subprocess.run(['git', '-C', str(ROOT), 'show', f'HEAD:{name}'], capture_output=True)
+                if shown.returncode != 0 or hashlib.sha256(shown.stdout).hexdigest() != expected:
+                    continue
+                if PERSISTENT_LIST.sub(b'', shown.stdout) == PERSISTENT_LIST.sub(b'', current):
+                    entry['sources'][name] = hashlib.sha256(current).hexdigest()
+                    adopted.append(name)
+    return adopted
+
+
 def snapshot_hashes(entry: dict) -> dict[str, str]:
     manifest_path = DOCS / entry['outputs']
     base = manifest_path.parent.parent
@@ -221,6 +253,12 @@ def record_empty(recipe: dict, sources: dict[str, str]) -> None:
 def sync_publications(*, mode: str = 'incremental', port: int | None = None) -> dict:
     """Refresh supported documents before building the site; an unchanged tree starts no Field."""
     available = recipes('pilot') + recipes('gallery')
+    if mode != 'never':
+        index = catalog()
+        if adopted := adopt_persistent_list_changes(index):
+            write_catalog(index)
+            print(f'Docs publications: {len(adopted)} source document(s) changed only in their '
+                  'persistentProperties list; recorded without recapturing', flush=True)
     pending = pending_recipes(available, mode=mode)
     supported = {r['source'] for r in available}
     index = catalog()
