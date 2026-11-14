@@ -673,7 +673,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**40906 public symbols across 1809 source files**, 24267 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**40907 public symbols across 1809 source files**, 24268 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -686,7 +686,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2520 | 1900 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1123 | 528 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 413 | 10158 | 6402 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 413 | 10159 | 6403 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 844 | 448 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -2390,7 +2390,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreePartStyle.kt](graphics.md#threepartstyle-kt) | Graphics | 8 | 7 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeReview.kt](graphics.md#threereview-kt) | Graphics | 0 | 0 | Geometry identity for a three-dimensional view: what a review note is pinned to. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeReviewEvidence.kt](graphics.md#threereviewevidence-kt) | Graphics | 0 | 0 | Stores the screenshots a geometry review note carries as PNG files beside the document rather than as base64 inside it. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeScene.kt](graphics.md#threescene-kt) | Graphics | 116 | 97 | The intermediate representation the Three.js viewer draws: a `ThreeDrawable` is some geometry plus how to draw it. | [Three.js scenes with `three { … }`](../three_output.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeScene.kt](graphics.md#threescene-kt) | Graphics | 117 | 98 | The intermediate representation the Three.js viewer draws: a `ThreeDrawable` is some geometry plus how to draw it. | [Three.js scenes with `three { … }`](../three_output.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeWire.kt](graphics.md#threewire-kt) | Graphics | 9 | 6 | What a Three.js view puts on the wire, and what it refuses to. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [TidalPatterns.kt](patterns.md#tidalpatterns-kt) | Patterns | 176 | 37 | Field's pattern language: a compact text notation for musical structure, an exact algebra over cycles, and a scheduler that turns the result into events in seconds. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [A pattern as a function generator](../marf.md), [Petri nets](../petri_nets.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>flow/<wbr></small> [TileAtlasLayout.kt](simulation.md#tileatlaslayout-kt) | Simulation | 8 | 1 | Maps tile slots of a `afield.graphics.render.TileResidency` onto pixel coordinates in one GPU atlas texture, with a halo border around each tile. |  |
