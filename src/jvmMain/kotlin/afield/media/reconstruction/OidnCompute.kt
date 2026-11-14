@@ -382,6 +382,8 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
     companion object {
         /** OIDN's `rt_hdr_alb_nrm` weights (Apache-2.0), as vendored with oidn-webgpu 0.6.0. */
         const val DEFAULT_WEIGHTS = "/vendor/oidn-webgpu/0.6.0/rt_hdr_alb_nrm.tza"
+        /** Accumulate the cooperative-matrix convs in fp16 (`AFIELD_OIDN_ACC16=1`). GeForce tensor cores run fp16 accumulation at twice the fp32 rate. */
+        internal val ACCUMULATE_FP16 = System.getenv("AFIELD_OIDN_ACC16") == "1"
         private fun puForward(y: Double) = when {
             y <= 1.5794576e-6 -> 1.41283765e3 * y
             y <= 3.22087631e-2 -> 1.64593172 * y.pow(4.31384981e-1) - 2.94139609e-3
@@ -570,6 +572,7 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
             #extension GL_EXT_buffer_reference : require
             #extension GL_KHR_shader_subgroup_basic : require
             const int CI=$ci, CO=$co, KB=CI/16, NT=CO/16;
+            #define ACC ${if (ACCUMULATE_FP16) "float16_t" else "float"}
             layout(local_size_x=128) in;
             layout(buffer_reference, std430, buffer_reference_align=16) buffer F16s { float16_t v[]; };
             layout(buffer_reference, std430, buffer_reference_align=16) buffer F32s { float v[]; };
@@ -579,8 +582,8 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
               int sg=int(gl_SubgroupID), lane=int(gl_SubgroupInvocationID);
               int x0=int(gl_WorkGroupID.x)*64+sg*16, y=int(gl_WorkGroupID.y);
               if(x0>=pc.w) return;
-              coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> acc[NT];
-              for(int n=0;n<NT;n++) acc[n]=coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(0.0);
+              coopmat<ACC,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> acc[NT];
+              for(int n=0;n<NT;n++) acc[n]=coopmat<ACC,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(0.0);
               int rw=pc.w+2;
               for(int t=0;t<9;t++){
                 int ky=t/3, kx=t-ky*3;
@@ -596,7 +599,8 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
                 }
               }
               int sb=sg*16*CO;
-              for(int n=0;n<NT;n++) coopMatStore(acc[n],sh,uint(sb+n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor);
+              for(int n=0;n<NT;n++){ coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> f=coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(acc[n]);
+                coopMatStore(f,sh,uint(sb+n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor); }
               subgroupMemoryBarrierShared(); subgroupBarrier();
               for(int i=lane;i<16*CO;i+=32){ int m=i/CO, o=i-m*CO; if(x0+m>=pc.w) continue;
                 pc.dst.v[((y+1)*rw+x0+m+1)*CO+o]=float16_t(max(sh[sb+i]+pc.bias.v[o],0.0)); }
