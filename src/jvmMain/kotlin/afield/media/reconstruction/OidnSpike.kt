@@ -151,7 +151,7 @@ object OidnSpike {
 
         val oidn=Oidn(oidnDir);val outputs=HashMap<String,FloatArray>()
         val devices=JSONArray()
-        for((devName,type) in listOf("metal" to 5,"cpu" to 1)) {
+        for((devName,type) in if(System.getProperty("os.name").startsWith("Mac")) listOf("metal" to 5,"cpu" to 1) else listOf("cuda" to 3,"cpu" to 1)) {
             val load0=System.nanoTime();val dev=oidn.Device(type);val deviceMs=ms(load0)
             val bytes=n*4L
             val bc=dev.buffer(bytes);val ba=dev.buffer(bytes);val bn=dev.buffer(bytes);val bo=dev.buffer(bytes)
@@ -189,21 +189,22 @@ object OidnSpike {
         report.put("devices",devices)
         val noisy=JSONArray();for(spp in budgets)noisy.put(JSONObject().put("spp",spp).put("mse",mse(captures.getValue(spp).first)).put("psnr",psnr(captures.getValue(spp).first)))
         report.put("noisy",noisy)
-        report.put("metalVsCpuMaxAbsDiff128",maxDiff(outputs.getValue("metal-high-128"),outputs.getValue("cpu-high-128")))
+        val gpuName=outputs.keys.first { !it.startsWith("cpu") }.substringBefore("-")
+        report.put("gpuVsCpuMaxAbsDiff128",maxDiff(outputs.getValue("$gpuName-high-128"),outputs.getValue("cpu-high-128")))
 
         // Pictures: full frames plus a crop montage. Columns: noisy, OIDN alb+nrm, OIDN cleanAux, reference.
         ReconstructionCapture.save(File(folder,"reference-${referenceSpp}spp.png"),reference,width,height)
         for(spp in budgets) {
             ReconstructionCapture.save(File(folder,"noisy-${spp}spp.png"),captures.getValue(spp).first,width,height)
-            ReconstructionCapture.save(File(folder,"oidn-metal-${spp}spp.png"),outputs.getValue("metal-high-$spp"),width,height)
+            ReconstructionCapture.save(File(folder,"oidn-$gpuName-${spp}spp.png"),outputs.getValue("$gpuName-high-$spp"),width,height)
             ReconstructionCapture.save(File(folder,"albedo-${spp}spp.png"),captures.getValue(spp).second,width,height)
         }
         val cx=560;val cy=300;val cw=640;val ch=400;val gap=6
         val cols=4;val m=BufferedImage(cols*cw+(cols-1)*gap,budgets.size*ch+(budgets.size-1)*gap,BufferedImage.TYPE_INT_RGB)
         fun put(p: FloatArray,col: Int,row: Int) { for(y in 0 until ch)for(x in 0 until cw){val i=((cy+y)*width+cx+x)*4
             m.setRGB(col*(cw+gap)+x,row*(ch+gap)+y,((srgb(p[i])*255).toInt() shl 16) or ((srgb(p[i+1])*255).toInt() shl 8) or (srgb(p[i+2])*255).toInt())} }
-        budgets.forEachIndexed { row,spp -> put(captures.getValue(spp).first,0,row);put(outputs.getValue("metal-high-$spp"),1,row)
-            put(outputs.getValue("metal-cleanAux-high-$spp"),2,row);put(reference,3,row) }
+        budgets.forEachIndexed { row,spp -> put(captures.getValue(spp).first,0,row);put(outputs.getValue("$gpuName-high-$spp"),1,row)
+            put(outputs.getValue("$gpuName-cleanAux-high-$spp"),2,row);put(reference,3,row) }
         ImageIO.write(m,"png",File(folder,"crops-montage.png"))
         File(folder,"measurements.json").writeText(report.toString(2));println(report.toString(2))
         println("OIDN SPIKE DONE");exitProcess(0)

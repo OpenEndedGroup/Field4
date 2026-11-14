@@ -116,10 +116,12 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
 
     /**
      * Run the convolutions as cooperative-matrix multiplies (16x16x16 fp16 in, fp32 accumulate; tensor cores on
-     * NVIDIA) when the device has `VK_KHR_cooperative_matrix`. Otherwise, and with `afield.oidn.portable=true`,
+     * NVIDIA) when the device has `VK_KHR_cooperative_matrix`. Otherwise, and with `afield.oidn.portable=true` (or
+     * `AFIELD_OIDN_PORTABLE=1`),
      * the portable kernels run. Both give the same image to within fp16 rounding.
      */
-    val cooperativeMatrix: Boolean = renderer.device.supportsCooperativeMatrix && !java.lang.Boolean.getBoolean("afield.oidn.portable")
+    val cooperativeMatrix: Boolean = renderer.device.supportsCooperativeMatrix && !java.lang.Boolean.getBoolean("afield.oidn.portable") &&
+        System.getenv("AFIELD_OIDN_PORTABLE") != "1"
 
     /** Channels-last fp16 activation with a one-pixel zero border, channels padded to 16: one 3x3 tap is a strided matrix load. */
     private inner class Nhwc(val level: Int, val real: Int, val c: Int = (real + 15) / 16 * 16) {
