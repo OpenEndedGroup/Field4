@@ -35,10 +35,12 @@ PILOTS = ("fline_examples", "three_output_gallery", "canonical_graphics") + FIEL
 # stalled the watchdog at 30 s in the full refreshes of 2026-11-07 and 2026-11-10.
 # Flow Lenia joined on 2026-11-14: its transcript launches six simulations and awaits them all,
 # which took 262 s on a0 (Linux), past the 180 s transcript limit, and bounced the origin sync there.
+# K-means (kmeans_lloyd_vs_emeans) joined on 2026-11-15: it exceeded the output budget in every full
+# refresh of 2026-11-14, retry included, and bounced flow-lenia, fm1-sim and zealous-williamson.
 # Long-compute transcripts get LONG_TRANSCRIPT_SECONDS for that run instead.
 LONG_COMPUTE = frozenset({"petri_tala_layout", "morpho_circuit_search", "alife_evolution",
                           "braitenberg_brain_search", "braitenberg_where_next", "stacksl_fit_demo",
-                          "a_pen_that_sees", "flow_lenia"})
+                          "a_pen_that_sees", "flow_lenia", "kmeans_emeans"})
 LONG_TRANSCRIPT_SECONDS = 900
 # Failures that say nothing about the document, so they get one retry in a fresh Field session:
 # a capture that ran out of time, and a WebSocket the session dropped mid-capture (1006, no close
