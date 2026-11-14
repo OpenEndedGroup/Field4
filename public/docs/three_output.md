@@ -361,7 +361,8 @@ slab: look under it, and at the back wall, for light bounced up off the floor.
 // A slab, a roof on eight posts, a wall and some blocks: enough overhang for light to bounce.
 val slab = boxMesh(8.0, 4.0, 0.15).translated(0.0, 0.0, 0.075)
 val roof = boxMesh(6.5, 3.2, 0.12).translated(0.5, 0.0, 2.6)
-val posts = [-2.4, -0.6, 1.2, 3.4].flatMap { x -> [-1.4, 1.4].map { y -> boxMesh(0.12, 0.12, 2.4).translated(x, y, 1.35) } }
+val posts =
+    [-2.4, -0.6, 1.2, 3.4].flatMap { x -> [-1.4, 1.4].map { y -> boxMesh(0.12, 0.12, 2.4).translated(x, y, 1.35) } }
 val wall = boxMesh(4.0, 0.15, 2.4).translated(-0.8, 1.2, 1.35)
 val blocks = [
     boxMesh(0.8, 0.8, 0.6).translated(-3.2, -1.0, 0.45),
