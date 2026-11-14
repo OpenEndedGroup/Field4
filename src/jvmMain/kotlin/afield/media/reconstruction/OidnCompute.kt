@@ -201,35 +201,34 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
         val input = Nhwc(0, 9)
         passes += pass("input", INPUT_NHWC, pw / 16, ph / 16, 1, mapOf("color" to tracer.accumulationBuffer, "albedo" to albedo,
             "normal" to normal, "scale" to scale, "dst" to input.buf, "width" to width, "height" to height, "pw" to pw, "ph" to ph))
-        // [split] is where the concat's second input starts, in real channels; the first input's width is a multiple of 16.
-        fun conv(name: String, src: Nhwc, split: Int? = null): Nhwc {
+        // A conv reads [src]; with [skip] it reads the nearest 2x upsample of [src] next to [skip] (the concat, fused into
+        // the kernel's input staging), so the first input's padded width is its real width.
+        fun conv(name: String, src: Nhwc, skip: Nhwc? = null): Nhwc {
             val w = tza.tensors.getValue("$name.weight"); val bias = tza.tensors.getValue("$name.bias")
             val oc = w.dims[0]; val ic = w.dims[1]
-            val ci = src.c; val co = (oc + 15) / 16 * 16; val kb = ci / 16; val nt = co / 16
-            val out = Nhwc(src.level, oc, co)
-            // B tiles: [tap][k block][n tile] of 16x16 row-major (k rows, n columns), fp16.
+            if (skip != null) check(src.c == src.real && src.level == skip.level + 1) { "$name: upsample input must be unpadded, one level down" }
+            val split = if (skip != null) src.c else null
+            val ci = if (skip != null) src.c + skip.c else src.c; val co = (oc + 15) / 16 * 16; val kb = ci / 16; val nt = co / 16
+            val level = skip?.level ?: src.level
+            val out = Nhwc(level, oc, co)
+            // B tiles: [k block][tap][n tile] of 16x16 row-major (k rows, n columns), fp16, so one k block is contiguous.
             val packed = ShortArray(9 * kb * nt * 256)
             for (o in 0 until oc) for (i in 0 until ic) for (t in 0 until 9) {
                 val p = if (split == null || i < split) i else split + (i - split)
                 check(p < ci) { "$name: channel $i maps past $ci" }
-                packed[((t * kb + p / 16) * nt + o / 16) * 256 + (p % 16) * 16 + o % 16] = java.lang.Float.floatToFloat16(w.data[(o * ic + i) * 9 + t])
+                packed[((p / 16 * 9 + t) * nt + o / 16) * 256 + (p % 16) * 16 + o % 16] = java.lang.Float.floatToFloat16(w.data[(o * ic + i) * 9 + t])
             }
             val wb = buffer(packed.size * 2L, host = true).also { b -> b.mapAndWrite_bytes { packed.forEach { putShort(it) } } }
-            val bb = buffer(co * 4L, host = true).also { b -> b.mapAndWrite_bytes { for (o in 0 until co) putFloat(if (o < oc) bias.data[o] else 0f) } }
-            passes += pass(name, convMatrix(ci, co), (src.w + 63) / 64, src.h, 1,
-                mapOf("src" to src.buf, "wt" to wb, "bias" to bb, "dst" to out.buf, "w" to src.w, "h" to src.h))
+            // Bias as 16 identical rows: one strided load initialises every accumulator.
+            val bb = buffer(16 * co * 4L, host = true).also { b -> b.mapAndWrite_bytes { repeat(16) { for (o in 0 until co) putFloat(if (o < oc) bias.data[o] else 0f) } } }
+            val lw = pw shr level; val lh = ph shr level
+            passes += pass(name, convMatrix(ci, co, skip?.let { src.c } ?: 0), (lw + CM_W - 1) / CM_W, (lh + CM_R - 1) / CM_R, 1,
+                mapOf("src" to src.buf, "src2" to (skip ?: src).buf, "wt" to wb, "bias" to bb, "dst" to out.buf, "w" to lw, "h" to lh))
             return out
         }
         fun pool(name: String, src: Nhwc): Nhwc {
             val out = Nhwc(src.level + 1, src.real, src.c); val g = src.c / 4
             passes += pass(name, POOL_NHWC, (out.w * g + 63) / 64, out.h, 1, mapOf("src" to src.buf, "dst" to out.buf, "w" to out.w, "h" to out.h, "g" to g))
-            return out
-        }
-        fun upcat(name: String, a: Nhwc, b: Nhwc): Nhwc {
-            check(a.c == a.real && a.level == b.level + 1)
-            val out = Nhwc(b.level, a.c + b.c, a.c + b.c)
-            passes += pass(name, UPCAT_NHWC, (out.w * (out.c / 4) + 63) / 64, out.h, 1,
-                mapOf("a" to a.buf, "b" to b.buf, "dst" to out.buf, "w" to out.w, "h" to out.h, "ga" to a.c / 4, "gb" to b.c / 4))
             return out
         }
         val e0 = conv("enc_conv0", input)
@@ -238,10 +237,10 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
         val p3 = pool("pool3", conv("enc_conv3", p2))
         val p4 = pool("pool4", conv("enc_conv4", p3))
         val e5b = conv("enc_conv5b", conv("enc_conv5a", p4))
-        val d4b = conv("dec_conv4b", conv("dec_conv4a", upcat("up4", e5b, p3), split = e5b.c))
-        val d3b = conv("dec_conv3b", conv("dec_conv3a", upcat("up3", d4b, p2), split = d4b.c))
-        val d2b = conv("dec_conv2b", conv("dec_conv2a", upcat("up2", d3b, p1), split = d3b.c))
-        val d1b = conv("dec_conv1b", conv("dec_conv1a", upcat("up1", d2b, input), split = d2b.c))
+        val d4b = conv("dec_conv4b", conv("dec_conv4a", e5b, p3))
+        val d3b = conv("dec_conv3b", conv("dec_conv3a", d4b, p2))
+        val d2b = conv("dec_conv2b", conv("dec_conv2a", d3b, p1))
+        val d1b = conv("dec_conv1b", conv("dec_conv1a", d2b, input))
         val d0 = conv("dec_conv0", d1b)
         passes += pass("output", OUTPUT_NHWC, (width + 15) / 16, (height + 15) / 16, 1,
             mapOf("src" to d0.buf, "scale" to scale, "dst" to denoised, "width" to width, "height" to height, "pw" to pw, "c" to d0.c))
@@ -557,49 +556,83 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
             }
         """
 
+        /** Output rows and pixels per workgroup of [convMatrix]; one subgroup per 16 pixels of a row. */
+        private const val CM_R = 2
+        private const val CM_W = 64
+
         /**
-         * 3x3 conv + bias + ReLU as an implicit GEMM on cooperative matrices. Each subgroup owns 16 consecutive pixels of
-         * one row and every output channel; for each tap and 16-channel block it loads one A tile straight from the
-         * bordered NHWC input (row stride = channels) and multiplies it into CO/16 fp32 accumulators.
+         * 3x3 conv + bias + ReLU as an implicit GEMM on cooperative matrices (16x16x16 fp16 in, fp32 accumulate).
+         * A workgroup owns CM_R rows x CM_W pixels and every output channel; each subgroup owns 16 pixels of one row.
+         * Per 16-channel input block the workgroup stages, once, the input patch with its 1-pixel apron (16 fp16 per
+         * pixel, so a tap's A tile is 512 contiguous bytes) and the block's weights for all 9 taps into shared memory;
+         * every subgroup then multiplies from there. With CA>0 the first CA channels are the nearest 2x upsample of
+         * `src` and the rest come from `src2` (the decoder's upsample + concat, read in the staging). Accumulators start
+         * from the bias; ReLU runs per element and full tiles store straight to the output.
          */
-        private fun convMatrix(ci: Int, co: Int) = """#version 460
+        private fun convMatrix(ci: Int, co: Int, ca: Int) = """#version 460
             #extension GL_KHR_cooperative_matrix : require
             #extension GL_KHR_memory_scope_semantics : require
             #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
             #extension GL_EXT_shader_16bit_storage : require
             #extension GL_EXT_buffer_reference : require
             #extension GL_KHR_shader_subgroup_basic : require
-            const int CI=$ci, CO=$co, KB=CI/16, NT=CO/16;
-            layout(local_size_x=128) in;
+            const int CI=$ci, CO=$co, KB=CI/16, NT=CO/16, CA=$ca, KA=CA/16, CB=CI-CA; const bool UP=CA>0;
+            const int R=$CM_R, W=$CM_W, SX=W/16, PW=W+2, PR=R+2, NSG=R*SX, NTH=NSG*32;
+            layout(local_size_x=NTH) in;
+            layout(buffer_reference, std430, buffer_reference_align=16) buffer U4s { uvec4 v[]; };
             layout(buffer_reference, std430, buffer_reference_align=16) buffer F16s { float16_t v[]; };
             layout(buffer_reference, std430, buffer_reference_align=16) buffer F32s { float v[]; };
-            layout(push_constant) uniform P { F16s src; F16s wt; F32s bias; F16s dst; int w; int h; } pc;
-            shared float sh[4*16*CO];
+            layout(push_constant) uniform P { U4s src; U4s src2; U4s wt; F32s bias; F16s dst; int w; int h; } pc;
+            shared uvec4 shA[PR*PW*2];
+            shared uvec4 shB[9*NT*32];
             void main(){
-              int sg=int(gl_SubgroupID), lane=int(gl_SubgroupInvocationID);
-              int x0=int(gl_WorkGroupID.x)*64+sg*16, y=int(gl_WorkGroupID.y);
-              if(x0>=pc.w) return;
+              int tid=int(gl_LocalInvocationIndex), sg=int(gl_SubgroupID), lane=int(gl_SubgroupInvocationID);
+              int ry=sg/SX, cx=(sg-ry*SX)*16;
+              int xw=int(gl_WorkGroupID.x)*W, yw=int(gl_WorkGroupID.y)*R;
+              int x0=xw+cx, y=yw+ry, rw=pc.w+2;
               coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> acc[NT];
-              for(int n=0;n<NT;n++) acc[n]=coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(0.0);
-              int rw=pc.w+2;
-              for(int t=0;t<9;t++){
-                int ky=t/3, kx=t-ky*3;
-                uint abase=uint(((y+ky)*rw+x0+kx)*CI);
-                for(int kb=0;kb<KB;kb++){
+              for(int n=0;n<NT;n++) coopMatLoad(acc[n],pc.bias.v,uint(n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor);
+              for(int kb=0;kb<KB;kb++){
+                barrier();
+                for(int i=tid;i<PR*PW*2;i+=NTH){
+                  int hf=i&1, p=i>>1, r=p/PW, c=p-r*PW, by=yw+r, bx=xw+c; uvec4 v=uvec4(0);
+                  if(by<=pc.h+1&&bx<=pc.w+1){
+                    if(UP&&kb<KA){ if(by>=1&&by<=pc.h&&bx>=1&&bx<=pc.w){ int ay=((by-1)>>1)+1, ax=((bx-1)>>1)+1;
+                        v=pc.src.v[(ay*(pc.w/2+2)+ax)*(CA/8)+kb*2+hf]; } }
+                    else if(UP) v=pc.src2.v[(by*rw+bx)*(CB/8)+(kb-KA)*2+hf];
+                    else v=pc.src.v[(by*rw+bx)*(CI/8)+kb*2+hf];
+                  }
+                  shA[i]=v;
+                }
+                for(int i=tid;i<9*NT*32;i+=NTH) shB[i]=pc.wt.v[kb*9*NT*32+i];
+                barrier();
+                for(int t=0;t<9;t++){
+                  int ky=t/3, kx=t-ky*3;
                   coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseA> a;
-                  coopMatLoad(a,pc.src.v,abase+uint(kb*16),uint(CI),gl_CooperativeMatrixLayoutRowMajor);
+                  coopMatLoad(a,shA,uint(((ry+ky)*PW+cx+kx)*2),2u,gl_CooperativeMatrixLayoutRowMajor);
                   for(int n=0;n<NT;n++){
                     coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseB> b;
-                    coopMatLoad(b,pc.wt.v,uint(((t*KB+kb)*NT+n)*256),16u,gl_CooperativeMatrixLayoutRowMajor);
+                    coopMatLoad(b,shB,uint((t*NT+n)*32),2u,gl_CooperativeMatrixLayoutRowMajor);
                     acc[n]=coopMatMulAdd(a,b,acc[n]);
                   }
                 }
               }
-              int sb=sg*16*CO;
-              for(int n=0;n<NT;n++) coopMatStore(acc[n],sh,uint(sb+n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor);
-              subgroupMemoryBarrierShared(); subgroupBarrier();
-              for(int i=lane;i<16*CO;i+=32){ int m=i/CO, o=i-m*CO; if(x0+m>=pc.w) continue;
-                pc.dst.v[((y+1)*rw+x0+m+1)*CO+o]=float16_t(max(sh[sb+i]+pc.bias.v[o],0.0)); }
+              barrier();
+              bool full=x0+16<=pc.w;
+              for(int n=0;n<NT;n++){
+                for(int i=0;i<acc[n].length();i++) acc[n][i]=max(acc[n][i],0.0);
+                coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> o=coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(acc[n]);
+                if(y>=pc.h||x0>=pc.w) continue;
+                if(full) coopMatStore(o,pc.dst.v,uint(((y+1)*rw+x0+1)*CO+n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor);
+                else {
+                  coopMatStore(o,shB,uint(sg*32),2u,gl_CooperativeMatrixLayoutRowMajor);
+                  subgroupMemoryBarrierShared(); subgroupBarrier();
+                  for(int i=lane;i<256;i+=32){ int m=i>>4, c=i&15; if(x0+m>=pc.w) continue;
+                    uvec4 q=shB[sg*32+m*2+(c>>3)]; uint u=q[(c>>1)&3]; f16vec2 hv=unpackFloat2x16(u);
+                    pc.dst.v[((y+1)*rw+x0+m+1)*CO+n*16+c]=hv[c&1]; }
+                  subgroupMemoryBarrierShared(); subgroupBarrier();
+                }
+              }
             }
         """
 
@@ -611,18 +644,6 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
               int x=i/pc.g, k=i-x*pc.g; int sw=2*pc.w+2, dw=pc.w+2;
               int s=((2*y+1)*sw+2*x+1)*pc.g+k, r=sw*pc.g;
               pc.dst.v[((y+1)*dw+x+1)*pc.g+k]=max(max(pc.src.v[s],pc.src.v[s+pc.g]),max(pc.src.v[s+r],pc.src.v[s+r+pc.g]));
-            }
-        """
-
-        /** Nearest 2x upsample of A next to B, channels A then B. */
-        private val UPCAT_NHWC = HEAD16 + """
-            layout(local_size_x=64) in;
-            layout(push_constant) uniform P { H4s a; H4s b; H4s dst; int w; int h; int ga; int gb; } pc;
-            void main(){
-              int g=pc.ga+pc.gb; int i=int(gl_GlobalInvocationID.x), y=int(gl_GlobalInvocationID.y); if(i>=pc.w*g||y>=pc.h) return;
-              int x=i/g, k=i-x*g;
-              f16vec4 v = k<pc.ga ? pc.a.v[((y/2+1)*(pc.w/2+2)+x/2+1)*pc.ga+k] : pc.b.v[((y+1)*(pc.w+2)+x+1)*pc.gb+k-pc.ga];
-              pc.dst.v[((y+1)*(pc.w+2)+x+1)*g+k]=v;
             }
         """
 
