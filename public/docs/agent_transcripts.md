@@ -2364,6 +2364,17 @@ here; the voice wants an audio device and the last one is meant to fail.
 
 [Open →](offline.html?file=assets/agent_transcripts/faust_voice/metadata.edn)
 
+### fm1_simulator
+
+Two boxes around the [FM-1 simulator](fm1.md): the M-VAVE FM-1 pocket synth's own browser simulator,
+compiled from its open firmware to WebAssembly and played by Field's audio engine. *FM-1, playing* is the
+one to click: it loads a factory project, presses PLAY, and returns the simulator as the box's last
+expression, so the box stays lit while the sequencer runs. *Offline, four projects* renders each factory
+project for three seconds after PLAY and prints its level every 100 ms as a row of bars, which shows the
+four patterns without a sound card. Only the offline box is replayed here; the other wants an audio device.
+
+[Open →](offline.html?file=assets/agent_transcripts/fm1_simulator/metadata.edn)
+
 ### popup_prior_inspect
 
 Asks Field what ranking prior the completion popup currently has for a

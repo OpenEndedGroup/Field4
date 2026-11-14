@@ -165,15 +165,17 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
     fun play() = tap(Button.PLAY)
 
     /**
-     * Play white key `n` (1..16) for `blocks` simulator blocks (128 frames each).
+     * Play white key `n` (1..16) for `blocks` simulator blocks (128 frames, about 2.9 ms each),
+     * starting `afterBlocks` blocks from now.
      *
-     * The sixteen white keys are also the step keys, numbered 01-16 on the panel.
+     * The sixteen white keys are also the step keys, numbered 01-16 on the panel. Scheduling with
+     * `afterBlocks` lands a phrase on simulator time, without the box having to wait.
      */
-    fun whiteKey(n: Int, blocks: Int = 40) {
+    fun whiteKey(n: Int, blocks: Int = 40, afterBlocks: Int = 0) {
         require(n in 1..WHITE_KEYS.size) { "FM1Sim: white key $n is outside 1..${WHITE_KEYS.size}" }
         val index = WHITE_KEYS[n - 1]
-        call("sim_control", 1, index, 1)
-        callLater(blocks, "sim_control", 1, index, 0)
+        callLater(afterBlocks, "sim_control", 1, index, 1)
+        callLater(afterBlocks + blocks, "sim_control", 1, index, 0)
     }
 
     /** Panel button indices, in the simulator's numbering. */
