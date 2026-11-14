@@ -1155,13 +1155,13 @@
       }
     },
     "assets/agent_transcripts/cuda_particles/metadata.edn": {
-      "captureDigest": "0fcbf6e3c3eeb6960f58f3cb82dba685d3fdbb401ac1028834bf2ba785bb3849",
-      "capturedAt": "2026-11-14T16:46:09.158Z",
+      "captureDigest": "378c0b1419ccd7187ddfa26faf20f5b11145a5bc319131f8e80cc22ca5f72722",
+      "capturedAt": "2026-11-14T23:50:52.802Z",
       "channels": 1,
       "file": "assets/web_publications/cuda_particles/document/metadata.edn",
       "files": {
         "assets/web_publications/cuda_particles/document/metadata.edn": "54eb7640ca9246c5a3869ef68490a39a85ab8c31653cdebc33e6ab58b6472be4",
-        "assets/web_publications/cuda_particles/document/outputs.json": "d3fbfda8284e9d36ffc5139ca69f534e6b683b7dd3cc76ece1d7c88750c0336b",
+        "assets/web_publications/cuda_particles/document/outputs.json": "ac3818036f20c87b09919064c38dddc4f72564f82a6384d1f24f2533bb05982f",
         "assets/web_publications/cuda_particles/outputs/0.html": "3f9ac275e95fbfec6109587183c9712fb137111dd482dc7acc8a245186f64551"
       },
       "kinds": [
