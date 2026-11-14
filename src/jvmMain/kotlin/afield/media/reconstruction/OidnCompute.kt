@@ -557,8 +557,13 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
         """
 
         /** Output rows and pixels per workgroup of [convMatrix]; one subgroup per 16 pixels of a row. */
-        private const val CM_R = 2
-        private const val CM_W = 64
+        private val CM_R = System.getenv("AFIELD_OIDN_CM_R")?.toInt() ?: 2
+        private val CM_W = System.getenv("AFIELD_OIDN_CM_W")?.toInt() ?: 64
+        /** Shared-memory stride of one staged pixel, in 16-byte units (2 = packed; 3 pads against bank conflicts). */
+        private val CM_PS = System.getenv("AFIELD_OIDN_CM_PS")?.toInt() ?: 2
+        private val CM_BPS = System.getenv("AFIELD_OIDN_CM_BPS")?.toInt() ?: 2
+        /** Weight-row stride in 16-byte units, padded only while A and B still fit in 48 KB of shared memory. */
+        private fun bps(co: Int) = if (9 * (co / 16) * 16 * CM_BPS * 16 + (CM_R + 2) * (CM_W + 2) * CM_PS * 16 <= 49152) CM_BPS else 2
 
         /**
          * 3x3 conv + bias + ReLU as an implicit GEMM on cooperative matrices (16x16x16 fp16 in, fp32 accumulate).
@@ -569,7 +574,86 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
          * `src` and the rest come from `src2` (the decoder's upsample + concat, read in the staging). Accumulators start
          * from the bias; ReLU runs per element and full tiles store straight to the output.
          */
-        private fun convMatrix(ci: Int, co: Int, ca: Int) = """#version 460
+        private fun convMatrix(ci: Int, co: Int, ca: Int) = if (System.getenv("AFIELD_OIDN_CM") == "1") convMatrix1(ci, co, ca) else convMatrix2(ci, co, ca)
+        private fun convMatrix2(ci: Int, co: Int, ca: Int) = """#version 460
+            #extension GL_KHR_cooperative_matrix : require
+            #extension GL_KHR_memory_scope_semantics : require
+            #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+            #extension GL_EXT_shader_16bit_storage : require
+            #extension GL_EXT_buffer_reference : require
+            #extension GL_KHR_shader_subgroup_basic : require
+            #extension GL_EXT_control_flow_attributes : require
+            const int CI=$ci, CO=$co, KB=CI/16, NT=CO/16, CA=$ca, KA=CA/16, CB=CI-CA; const bool UP=CA>0;
+            const int R=$CM_R, W=$CM_W, SX=W/16, PW=W+2, PR=R+2, NSG=R*SX, PS=$CM_PS, BPS=${bps(co)}, NTH=NSG*32;
+            layout(local_size_x=NTH) in;
+            layout(buffer_reference, std430, buffer_reference_align=16) buffer U4s { uvec4 v[]; };
+            layout(buffer_reference, std430, buffer_reference_align=16) buffer F16s { float16_t v[]; };
+            layout(buffer_reference, std430, buffer_reference_align=16) buffer F32s { float v[]; };
+            layout(push_constant) uniform P { U4s src; U4s src2; U4s wt; F32s bias; F16s dst; int w; int h; } pc;
+            shared uvec4 shA[PR*PW*PS];
+            shared uvec4 shB[9*NT*16*BPS];
+            const int NA=PR*PW*2, NB=9*NT*32, RA=(NA+NTH-1)/NTH, RB=(NB+NTH-1)/NTH;
+            uvec4 ra[RA], rb[RB];
+            int tid, xw, yw, rw;
+            uvec4 loadA(int kb,int i){
+              int hf=i&1, p=i>>1, r=p/PW, c=p-r*PW, by=yw+r, bx=xw+c; uvec4 v=uvec4(0);
+              if(by<=pc.h+1&&bx<=pc.w+1){
+                if(UP&&kb<KA){ if(by>=1&&by<=pc.h&&bx>=1&&bx<=pc.w){ int ay=((by-1)>>1)+1, ax=((bx-1)>>1)+1;
+                    v=pc.src.v[(ay*(pc.w/2+2)+ax)*(CA/8)+kb*2+hf]; } }
+                else if(UP) v=pc.src2.v[(by*rw+bx)*(CB/8)+(kb-KA)*2+hf];
+                else v=pc.src.v[(by*rw+bx)*(CI/8)+kb*2+hf];
+              }
+              return v;
+            }
+            void fetch(int kb){
+              [[unroll]] for(int j=0;j<RA;j++){ int i=tid+j*NTH; ra[j]= i<NA ? loadA(kb,i) : uvec4(0); }
+              [[unroll]] for(int j=0;j<RB;j++){ int i=tid+j*NTH; rb[j]= i<NB ? pc.wt.v[kb*NB+i] : uvec4(0); }
+            }
+            void put(){
+              [[unroll]] for(int j=0;j<RA;j++){ int i=tid+j*NTH; if(i<NA) shA[(i>>1)*PS+(i&1)]=ra[j]; }
+              [[unroll]] for(int j=0;j<RB;j++){ int i=tid+j*NTH; if(i<NB) shB[(i>>1)*BPS+(i&1)]=rb[j]; }
+            }
+            void main(){
+              tid=int(gl_LocalInvocationIndex); int sg=int(gl_SubgroupID), lane=int(gl_SubgroupInvocationID);
+              int ry=sg/SX, cx=(sg-ry*SX)*16;
+              xw=int(gl_WorkGroupID.x)*W; yw=int(gl_WorkGroupID.y)*R; rw=pc.w+2;
+              int x0=xw+cx, y=yw+ry;
+              coopmat<float,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> acc[NT];
+              for(int n=0;n<NT;n++) coopMatLoad(acc[n],pc.bias.v,uint(n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor);
+              fetch(0);
+              for(int kb=0;kb<KB;kb++){
+                barrier(); put(); barrier();
+                if(kb+1<KB) fetch(kb+1);
+                for(int t=0;t<9;t++){
+                  int ky=t/3, kx=t-ky*3;
+                  coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseA> a;
+                  coopMatLoad(a,shA,uint(((ry+ky)*PW+cx+kx)*PS),uint(PS),gl_CooperativeMatrixLayoutRowMajor);
+                  for(int n=0;n<NT;n++){
+                    coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseB> b;
+                    coopMatLoad(b,shB,uint((t*NT+n)*16*BPS),uint(BPS),gl_CooperativeMatrixLayoutRowMajor);
+                    acc[n]=coopMatMulAdd(a,b,acc[n]);
+                  }
+                }
+              }
+              barrier();
+              bool full=x0+16<=pc.w;
+              for(int n=0;n<NT;n++){
+                for(int i=0;i<acc[n].length();i++) acc[n][i]=max(acc[n][i],0.0);
+                coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator> o=coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseAccumulator>(acc[n]);
+                if(y>=pc.h||x0>=pc.w) continue;
+                if(full) coopMatStore(o,pc.dst.v,uint(((y+1)*rw+x0+1)*CO+n*16),uint(CO),gl_CooperativeMatrixLayoutRowMajor);
+                else {
+                  coopMatStore(o,shB,uint(sg*32),2u,gl_CooperativeMatrixLayoutRowMajor);
+                  subgroupMemoryBarrierShared(); subgroupBarrier();
+                  for(int i=lane;i<256;i+=32){ int m=i>>4, c=i&15; if(x0+m>=pc.w) continue;
+                    uvec4 q=shB[sg*32+m*2+(c>>3)]; uint u=q[(c>>1)&3]; f16vec2 hv=unpackFloat2x16(u);
+                    pc.dst.v[((y+1)*rw+x0+m+1)*CO+n*16+c]=hv[c&1]; }
+                  subgroupMemoryBarrierShared(); subgroupBarrier();
+                }
+              }
+            }
+        """
+        private fun convMatrix1(ci: Int, co: Int, ca: Int) = """#version 460
             #extension GL_KHR_cooperative_matrix : require
             #extension GL_KHR_memory_scope_semantics : require
             #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
@@ -577,14 +661,14 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
             #extension GL_EXT_buffer_reference : require
             #extension GL_KHR_shader_subgroup_basic : require
             const int CI=$ci, CO=$co, KB=CI/16, NT=CO/16, CA=$ca, KA=CA/16, CB=CI-CA; const bool UP=CA>0;
-            const int R=$CM_R, W=$CM_W, SX=W/16, PW=W+2, PR=R+2, NSG=R*SX, NTH=NSG*32;
+            const int R=$CM_R, W=$CM_W, SX=W/16, PW=W+2, PR=R+2, NSG=R*SX, PS=$CM_PS, BPS=${bps(co)}, NTH=NSG*32;
             layout(local_size_x=NTH) in;
             layout(buffer_reference, std430, buffer_reference_align=16) buffer U4s { uvec4 v[]; };
             layout(buffer_reference, std430, buffer_reference_align=16) buffer F16s { float16_t v[]; };
             layout(buffer_reference, std430, buffer_reference_align=16) buffer F32s { float v[]; };
             layout(push_constant) uniform P { U4s src; U4s src2; U4s wt; F32s bias; F16s dst; int w; int h; } pc;
-            shared uvec4 shA[PR*PW*2];
-            shared uvec4 shB[9*NT*32];
+            shared uvec4 shA[PR*PW*PS];
+            shared uvec4 shB[9*NT*16*BPS];
             void main(){
               int tid=int(gl_LocalInvocationIndex), sg=int(gl_SubgroupID), lane=int(gl_SubgroupInvocationID);
               int ry=sg/SX, cx=(sg-ry*SX)*16;
@@ -602,17 +686,17 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
                     else if(UP) v=pc.src2.v[(by*rw+bx)*(CB/8)+(kb-KA)*2+hf];
                     else v=pc.src.v[(by*rw+bx)*(CI/8)+kb*2+hf];
                   }
-                  shA[i]=v;
+                  shA[(i>>1)*PS+(i&1)]=v;
                 }
-                for(int i=tid;i<9*NT*32;i+=NTH) shB[i]=pc.wt.v[kb*9*NT*32+i];
+                for(int i=tid;i<9*NT*32;i+=NTH) shB[(i>>1)*BPS+(i&1)]=pc.wt.v[kb*9*NT*32+i];
                 barrier();
                 for(int t=0;t<9;t++){
                   int ky=t/3, kx=t-ky*3;
                   coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseA> a;
-                  coopMatLoad(a,shA,uint(((ry+ky)*PW+cx+kx)*2),2u,gl_CooperativeMatrixLayoutRowMajor);
+                  coopMatLoad(a,shA,uint(((ry+ky)*PW+cx+kx)*PS),uint(PS),gl_CooperativeMatrixLayoutRowMajor);
                   for(int n=0;n<NT;n++){
                     coopmat<float16_t,gl_ScopeSubgroup,16,16,gl_MatrixUseB> b;
-                    coopMatLoad(b,shB,uint((t*NT+n)*32),2u,gl_CooperativeMatrixLayoutRowMajor);
+                    coopMatLoad(b,shB,uint((t*NT+n)*16*BPS),uint(BPS),gl_CooperativeMatrixLayoutRowMajor);
                     acc[n]=coopMatMulAdd(a,b,acc[n]);
                   }
                 }
