@@ -782,6 +782,9 @@ object DemoTranscriptExecSmokeTest {
         "path_tracing_glass",
         "path_tracing_gltf",
         "path_tracing_hidden_environment",
+        // cuda.md: a CUDA kernel moving particles in a Vulkan buffer that a mesh draws. Needs a
+        // window and Linux with an NVIDIA GPU; the CUDA side is checked by cuda.interop.smoke.
+        "cuda_particles",
         "path_tracing_material_shader_check",
         // The cross-subsystem chains that end at the same tracer. Each one's CPU half — the Conway
         // operators, the Manifold Booleans, the cloth solve — is covered by its own tests; what is

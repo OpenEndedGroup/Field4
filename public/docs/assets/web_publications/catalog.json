@@ -1154,6 +1154,37 @@
         "public/docs/assets/agent_transcripts/controls_surface/surface_code_.kt": "2966b5c607705c173e031789a825a3f0381c97be87b091067d87b48f816c0351"
       }
     },
+    "assets/agent_transcripts/cuda_particles/metadata.edn": {
+      "captureDigest": "0fcbf6e3c3eeb6960f58f3cb82dba685d3fdbb401ac1028834bf2ba785bb3849",
+      "capturedAt": "2026-11-14T16:46:09.158Z",
+      "channels": 1,
+      "file": "assets/web_publications/cuda_particles/document/metadata.edn",
+      "files": {
+        "assets/web_publications/cuda_particles/document/metadata.edn": "54eb7640ca9246c5a3869ef68490a39a85ab8c31653cdebc33e6ab58b6472be4",
+        "assets/web_publications/cuda_particles/document/outputs.json": "d3fbfda8284e9d36ffc5139ca69f534e6b683b7dd3cc76ece1d7c88750c0336b",
+        "assets/web_publications/cuda_particles/outputs/0.html": "3f9ac275e95fbfec6109587183c9712fb137111dd482dc7acc8a245186f64551"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/cuda_particles/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/cuda_particles.yaml": "f71f85f18cf633a54bbd476458dd2c141490fa5a433fe4c97cd8472a737c1b42",
+        "public/docs/assets/agent_transcripts/cuda_particles/cuda_draw_code_.kt": "ca96505a7039ae67422881762801868f0df484011ae698513cefea4992581ab3",
+        "public/docs/assets/agent_transcripts/cuda_particles/cuda_draw_fragment_.glsl": "dd101111b7bb099431ec1872abb3aa807bdbc84543ce89db7dd80a9e7ee3a5f5",
+        "public/docs/assets/agent_transcripts/cuda_particles/cuda_draw_vertex_.glsl": "37f53cc4f76ca7df72acfff45aed3f5b2100cbabf2d2cf3ba8639cd9fa8152d8",
+        "public/docs/assets/agent_transcripts/cuda_particles/cuda_flow_code_.kt": "ee226bae75d3f5fa70ed654790c2e0407687a0b8bb7a71eea0d247e7875b3185",
+        "public/docs/assets/agent_transcripts/cuda_particles/cuda_renderer_code_.kt": "0be5fac9c7f639379667e24ce0233269befb5bf7b6d84cef6c16964a7c6fd132",
+        "public/docs/assets/agent_transcripts/cuda_particles/guides/cuda-a-kernel-that-moves-particles.md": "b46f2bb5c758e1073ea2acbaa52d272607955c7e3106f489cf696f142b1f5410",
+        "public/docs/assets/agent_transcripts/cuda_particles/metadata.edn": "8390a4658854bbf2f20498c50968b070d869f0bef57c7c96d6fde8342fa9ed39",
+        "public/docs/assets/cuda/particles.png": "f9076de730803f89fd9807337d3071522914aa084a8bbaeab67bc51b2ffcac03",
+        "public/docs/cuda.md#capture-box=cuda_flow": "a8cefb7ddb6bbe4f760b01127a1642391501a5d9d7d54182496a6ca1a6a2b4e3"
+      },
+      "supplementalSources": [
+        "public/docs/assets/cuda/particles.png",
+        "public/docs/cuda.md#capture-box=cuda_flow"
+      ]
+    },
     "assets/agent_transcripts/datalog_rhythm_rules/metadata.edn": {
       "captureDigest": "378c0b1419ccd7187ddfa26faf20f5b11145a5bc319131f8e80cc22ca5f72722",
       "capturedAt": "2026-11-14T22:46:49.111Z",
