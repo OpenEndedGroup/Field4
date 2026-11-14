@@ -1,0 +1,278 @@
+{
+  "auxAccumulateWallMs": 10817.470059,
+  "referenceSpp": 1024,
+  "devices": [
+    {
+      "newDeviceMs": 127.124883,
+      "device": "cuda",
+      "runs": [
+        {
+          "spp": 8,
+          "psnr": 38.12469984443628,
+          "commitMs": 8.185235,
+          "downloadMs": 9.328482,
+          "executeMsMin": 6.486962,
+          "executeMsMedian": 6.505888,
+          "variant": "high",
+          "firstExecuteMs": 8.988686,
+          "auxPrefilterMs": 0,
+          "mse": 0.01560042174958499,
+          "uploadMs": 28.26618
+        },
+        {
+          "spp": 8,
+          "psnr": 38.12309999724919,
+          "commitMs": 0.748548,
+          "downloadMs": 6.962791,
+          "executeMsMin": 4.910596,
+          "executeMsMedian": 4.931525,
+          "variant": "balanced",
+          "firstExecuteMs": 4.941123,
+          "auxPrefilterMs": 0,
+          "mse": 0.01564830767853254,
+          "uploadMs": 28.26618
+        },
+        {
+          "spp": 8,
+          "psnr": 38.27467892736708,
+          "commitMs": 44.859427,
+          "downloadMs": 5.720319,
+          "executeMsMin": 12.53278,
+          "executeMsMedian": 12.551625,
+          "variant": "cleanAux-high",
+          "firstExecuteMs": 12.540604,
+          "auxPrefilterMs": 29.097583,
+          "mse": 0.0064822622848522355,
+          "uploadMs": 28.26618
+        },
+        {
+          "spp": 32,
+          "psnr": 38.49519552814287,
+          "commitMs": 0.638744,
+          "downloadMs": 5.675015,
+          "executeMsMin": 6.457197,
+          "executeMsMedian": 6.458438,
+          "variant": "high",
+          "firstExecuteMs": 6.471362,
+          "auxPrefilterMs": 0,
+          "mse": 0.012821448622464598,
+          "uploadMs": 25.679687
+        },
+        {
+          "spp": 32,
+          "psnr": 38.49331161522085,
+          "commitMs": 0.54045,
+          "downloadMs": 5.563657,
+          "executeMsMin": 4.908533,
+          "executeMsMedian": 4.919854,
+          "variant": "balanced",
+          "firstExecuteMs": 4.982661,
+          "auxPrefilterMs": 0,
+          "mse": 0.01287899180894696,
+          "uploadMs": 25.679687
+        },
+        {
+          "spp": 32,
+          "psnr": 38.648023031058166,
+          "commitMs": 3.2443920000000013,
+          "downloadMs": 6.911996,
+          "executeMsMin": 12.536957,
+          "executeMsMedian": 12.539673,
+          "variant": "cleanAux-high",
+          "firstExecuteMs": 12.724518,
+          "auxPrefilterMs": 24.780296,
+          "mse": 0.005648644538996472,
+          "uploadMs": 25.679687
+        },
+        {
+          "spp": 128,
+          "psnr": 38.70629435329241,
+          "commitMs": 0.669061,
+          "downloadMs": 14.159839,
+          "executeMsMin": 6.468408,
+          "executeMsMedian": 6.502511,
+          "variant": "high",
+          "firstExecuteMs": 6.486581,
+          "auxPrefilterMs": 0,
+          "mse": 0.010321127719081162,
+          "uploadMs": 24.509109
+        },
+        {
+          "spp": 128,
+          "psnr": 38.700716322554435,
+          "commitMs": 0.590964,
+          "downloadMs": 5.910094,
+          "executeMsMin": 4.911378,
+          "executeMsMedian": 4.924452,
+          "variant": "balanced",
+          "firstExecuteMs": 4.907901,
+          "auxPrefilterMs": 0,
+          "mse": 0.010463466981369227,
+          "uploadMs": 24.509109
+        },
+        {
+          "spp": 128,
+          "psnr": 38.81577271719792,
+          "commitMs": 3.3560409999999976,
+          "downloadMs": 5.882382,
+          "executeMsMin": 12.541566,
+          "executeMsMedian": 12.552347,
+          "variant": "cleanAux-high",
+          "firstExecuteMs": 12.702998,
+          "auxPrefilterMs": 24.818007,
+          "mse": 0.004768330446381307,
+          "uploadMs": 24.509109
+        }
+      ]
+    },
+    {
+      "newDeviceMs": 15.587377,
+      "device": "cpu",
+      "runs": [
+        {
+          "spp": 8,
+          "psnr": 38.12601156559827,
+          "commitMs": 2.215971,
+          "downloadMs": 10.696168,
+          "executeMsMin": 392.452031,
+          "executeMsMedian": 401.643297,
+          "variant": "high",
+          "firstExecuteMs": 398.098452,
+          "auxPrefilterMs": 0,
+          "mse": 0.015536479110838887,
+          "uploadMs": 33.595388
+        },
+        {
+          "spp": 8,
+          "psnr": 38.12601156559827,
+          "commitMs": 0.390269,
+          "downloadMs": 9.725343,
+          "executeMsMin": 403.126488,
+          "executeMsMedian": 418.127299,
+          "variant": "balanced",
+          "firstExecuteMs": 445.924954,
+          "auxPrefilterMs": 0,
+          "mse": 0.015536479110838887,
+          "uploadMs": 33.595388
+        },
+        {
+          "spp": 8,
+          "psnr": 38.274220053906525,
+          "commitMs": 71.05526899999995,
+          "downloadMs": 9.957327,
+          "executeMsMin": 958.152284,
+          "executeMsMedian": 963.509835,
+          "variant": "cleanAux-high",
+          "firstExecuteMs": 988.371794,
+          "auxPrefilterMs": 1974.686815,
+          "mse": 0.00647383860798123,
+          "uploadMs": 33.595388
+        },
+        {
+          "spp": 32,
+          "psnr": 38.49711888377532,
+          "commitMs": 0.342239,
+          "downloadMs": 9.60551,
+          "executeMsMin": 403.206487,
+          "executeMsMedian": 404.137837,
+          "variant": "high",
+          "firstExecuteMs": 409.678542,
+          "auxPrefilterMs": 0,
+          "mse": 0.01285546544762954,
+          "uploadMs": 29.53412
+        },
+        {
+          "spp": 32,
+          "psnr": 38.49711888377532,
+          "commitMs": 0.317473,
+          "downloadMs": 9.619586,
+          "executeMsMin": 402.144322,
+          "executeMsMedian": 404.864024,
+          "variant": "balanced",
+          "firstExecuteMs": 412.186217,
+          "auxPrefilterMs": 0,
+          "mse": 0.01285546544762954,
+          "uploadMs": 29.53412
+        },
+        {
+          "spp": 32,
+          "psnr": 38.647069074799745,
+          "commitMs": 7.408715000000029,
+          "downloadMs": 9.983786,
+          "executeMsMin": 993.863154,
+          "executeMsMedian": 1030.009269,
+          "variant": "cleanAux-high",
+          "firstExecuteMs": 998.950902,
+          "auxPrefilterMs": 1909.173691,
+          "mse": 0.005675054943641289,
+          "uploadMs": 29.53412
+        },
+        {
+          "spp": 128,
+          "psnr": 38.70854773713717,
+          "commitMs": 0.675853,
+          "downloadMs": 9.496967,
+          "executeMsMin": 397.654402,
+          "executeMsMedian": 428.87402,
+          "variant": "high",
+          "firstExecuteMs": 455.588751,
+          "auxPrefilterMs": 0,
+          "mse": 0.010318961168943291,
+          "uploadMs": 34.124958
+        },
+        {
+          "spp": 128,
+          "psnr": 38.70854773713717,
+          "commitMs": 0.277088,
+          "downloadMs": 9.54169,
+          "executeMsMin": 402.638866,
+          "executeMsMedian": 404.416928,
+          "variant": "balanced",
+          "firstExecuteMs": 417.319769,
+          "auxPrefilterMs": 0,
+          "mse": 0.010318961168943291,
+          "uploadMs": 34.124958
+        },
+        {
+          "spp": 128,
+          "psnr": 38.81583770336282,
+          "commitMs": 2.8691220000000612,
+          "downloadMs": 9.80414,
+          "executeMsMin": 952.479731,
+          "executeMsMedian": 965.366653,
+          "variant": "cleanAux-high",
+          "firstExecuteMs": 975.920635,
+          "auxPrefilterMs": 1924.951491,
+          "mse": 0.004774918502447482,
+          "uploadMs": 34.124958
+        }
+      ]
+    }
+  ],
+  "noisy": [
+    {
+      "spp": 8,
+      "psnr": 29.509011910589557,
+      "mse": 0.009195182467889898
+    },
+    {
+      "spp": 32,
+      "psnr": 30.76084892203676,
+      "mse": 0.0016137805181991405
+    },
+    {
+      "spp": 128,
+      "psnr": 33.299079607148656,
+      "mse": 3.901120010811872E-4
+    }
+  ],
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "auxReadbackMs": 10612.039307000005,
+  "colorReadbackMs": 145.971662,
+  "width": 1920,
+  "gpuVsCpuMaxAbsDiff128": 0.47626877,
+  "referenceWallMs": 18823.060032,
+  "backend": "COMPUTE_BVH",
+  "vkDriver": "default",
+  "height": 1080
+}

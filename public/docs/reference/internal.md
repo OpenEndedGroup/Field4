@@ -4,7 +4,7 @@
 
 Implementation details explicitly marked Internal by their source. They remain available to browse here, but are not intended as entry points for code written in a Field box.
 
-21 source file(s), 159 public symbol(s), 57 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+24 source file(s), 190 public symbol(s), 73 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -416,6 +416,73 @@ Where to find the native wrapper.
 ## NgxNative.kt { #ngxnative-kt }
 
 `src/jvmMain/kotlin/afield/media/reconstruction/NgxNative.kt` — [read the source](source/jvmMain/afield/media/reconstruction/NgxNative/)
+
+## OidnCompute.kt { #oidncompute-kt }
+
+`src/jvmMain/kotlin/afield/media/reconstruction/OidnCompute.kt` — [read the source](source/jvmMain/afield/media/reconstruction/OidnCompute/)
+
+### OidnComputeDenoiser { #oidncompute-kt-oidncomputedenoiser }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">OidnComputeDenoiser</span><span class="p">(</span><span class="k">val</span> <span class="n">tracer</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span><span class="p">,</span> <span class="n">weights</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;${tracer.name}-denoise&quot;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Target</span><span class="p">,</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L70)
+
+Denoises a [`PathTracingRenderer`](renderers.md#pathtracingrenderer-kt-pathtracingrenderer)'s accumulated image on the GPU with Open Image Denoise's network.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="oidncompute-kt--oidncomputedenoiser--renderer"></a>[<code class="highlight"><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L71) |  |
+| <a id="oidncompute-kt--oidncomputedenoiser--frame"></a>[<code class="highlight"><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">PathTraceFrameOutput</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L72) |  |
+| <a id="oidncompute-kt--oidncomputedenoiser--width"></a>[<code class="highlight"><span class="k">val</span> <span class="n">width</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L73) |  |
+| <a id="oidncompute-kt--oidncomputedenoiser--height"></a>[<code class="highlight"><span class="k">val</span> <span class="n">height</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L74) |  |
+| <a id="oidncompute-kt--oidncomputedenoiser--activationbytes"></a>[<code class="highlight"><span class="k">var</span> <span class="n">activationBytes</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L79) | Device bytes held by the fp16 activations. |
+| <a id="oidncompute-kt--oidncomputedenoiser--albedo"></a>[<code class="highlight"><span class="k">val</span> <span class="n">albedo</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L91) |  |
+| <a id="oidncompute-kt--oidncomputedenoiser--normal"></a>[<code class="highlight"><span class="k">val</span> <span class="n">normal</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L92) |  |
+| <a id="oidncompute-kt--oidncomputedenoiser--denoised"></a>[<code class="highlight"><span class="k">val</span> <span class="n">denoised</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L93) |  |
+| <a id="oidncompute-kt--oidncomputedenoiser--scale"></a>[<code class="highlight"><span class="k">val</span> <span class="n">scale</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L95) |  |
+| <a id="oidncompute-kt--oidncomputedenoiser--cooperativematrix"></a>[<code class="highlight"><span class="k">val</span> <span class="n">cooperativeMatrix</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L123) | Run the convolutions as cooperative-matrix multiplies (16x16x16 fp16 in, fp32 accumulate; tensor cores on NVIDIA) when the device has `VK_KHR_cooperative_matrix`. Otherwise, and with `afield.oidn.portable=true` (or `AFIELD_OIDN_PORTABLE=1`), the portable kernels run. Both give the same image to within fp16 rounding. |
+| <a id="oidncompute-kt--oidncomputedenoiser--output"></a>[<code class="highlight"><span class="k">val</span> <span class="n">output</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L251) | Display texture: the denoised buffer copied into an RTT the same way PathTraceFrameOutput fills its images. |
+| <a id="oidncompute-kt--oidncomputedenoiser--accumulateguides"></a>[<code class="highlight"><span class="k">var</span> <span class="n">accumulateGuides</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L269) | Average albedo and normal as samples arrive. Turning it off leaves the guides of the last run in place. |
+| <a id="oidncompute-kt--oidncomputedenoiser--denoiseat"></a>[<code class="highlight"><span class="k">var</span> <span class="n">denoiseAt</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L272) | Denoise once per accumulation run when the tracer reaches this many samples; zero waits for [`request`](internal.md#oidncompute-kt--oidncomputedenoiser--request). |
+| <a id="oidncompute-kt--oidncomputedenoiser--show"></a>[<code class="highlight"><span class="k">var</span> <span class="n">show</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L274) | Show the current denoised snapshot in the tracer's `output`. |
+| <a id="oidncompute-kt--oidncomputedenoiser--request"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">request</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L277) | Denoise on each of the next `n` frames. One is a still; more are for timing. |
+| <a id="oidncompute-kt--oidncomputedenoiser--pending"></a>[<code class="highlight"><span class="k">var</span> <span class="n">pending</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L278) |  |
+| <a id="oidncompute-kt--oidncomputedenoiser--denoisecount"></a>[<code class="highlight"><span class="k">var</span> <span class="n">denoiseCount</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L281) | How many times the network has run. |
+| <a id="oidncompute-kt--oidncomputedenoiser--denoisedsamples"></a>[<code class="highlight"><span class="k">var</span> <span class="n">denoisedSamples</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L283) | The tracer's sample count at the last denoise, or -1. |
+| <a id="oidncompute-kt--oidncomputedenoiser--install"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">OidnComputeDenoiser</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L292) | Schedule on the render list after the tracer. Reusing `name` retires the previous denoiser. |
+| <a id="oidncompute-kt--oidncomputedenoiser--denoisenow"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">denoiseNow</span><span class="p">(</span><span class="n">perPass</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L305) | Timing only: record the network into its own command buffer, submit, and wait on a fence. KosmicKrisp's timestamps do not separate dispatches inside one encoder, so wall time around a fence is the measurement. `perPass` submits each pass alone (each figure then includes one submit+wait; see [`emptySubmitMs`](internal.md#oidncompute-kt--oidncomputedenoiser--emptysubmitms)). |
+| <a id="oidncompute-kt--oidncomputedenoiser--emptysubmitms"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">emptySubmitMs</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L308) |  |
+| <a id="oidncompute-kt--oidncomputedenoiser--render"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L320) |  |
+| <a id="oidncompute-kt--oidncomputedenoiser--read"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">read</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">VulkanBuffer</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatArray</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L354) | Blocking diagnostic readback of one of this denoiser's buffers. |
+| <a id="oidncompute-kt--oidncomputedenoiser--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L373) |  |
+| <a id="oidncompute-kt--oidncomputedenoiser-companion--default-weights"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;WEIGHTS</span></code>](source/jvmMain/afield/media/reconstruction/OidnCompute/#L384) | OIDN's `rt_hdr_alb_nrm` weights (Apache-2.0), as vendored with oidn-webgpu 0.6.0. |
+
+## OidnComputeSpike.kt { #oidncomputespike-kt }
+
+`src/jvmMain/kotlin/afield/media/reconstruction/OidnComputeSpike.kt` — [read the source](source/jvmMain/afield/media/reconstruction/OidnComputeSpike/)
+
+### OidnComputeSpike { #oidncomputespike-kt-oidncomputespike }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">OidnComputeSpike</span></code>](source/jvmMain/afield/media/reconstruction/OidnComputeSpike/#L30)
+
+Measurement harness for [`OidnComputeDenoiser`](internal.md#oidncompute-kt-oidncomputedenoiser): path-traces a 1080p scene, denoises it on the GPU at 8/32/128 samples, times the network with fenced submits, and compares it with native OIDN (CPU, through `Oidn`) on the same inputs. Arguments: `<oidn lib dir> <weights .tza | default> <out dir> [--timing-only]`. Results: OIDN_COMPUTE_PORT.md.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="oidncomputespike-kt--oidncomputespike--capture"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Capture</span><span class="p">(</span><span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span><span class="k">val</span> <span class="n">albedo</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span><span class="k">val</span> <span class="n">vulkan</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span><span class="k">val</span> <span class="n">texture</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span><span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/OidnComputeSpike/#L33) |  |
+| <a id="oidncomputespike-kt--oidncomputespike--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/OidnComputeSpike/#L140) |  |
+
+## OidnSpike.kt { #oidnspike-kt }
+
+`src/jvmMain/kotlin/afield/media/reconstruction/OidnSpike.kt` — [read the source](source/jvmMain/afield/media/reconstruction/OidnSpike/)
+
+### OidnSpike { #oidnspike-kt-oidnspike }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">OidnSpike</span></code>](source/jvmMain/afield/media/reconstruction/OidnSpike/#L77)
+
+The first spike: native OIDN on CPU and Metal against readback of the path tracer. Results: OIDN_SPIKE.md.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="oidnspike-kt--oidnspike--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/OidnSpike/#L79) |  |
 
 ## ReconstructionCapture.kt { #reconstructioncapture-kt }
 

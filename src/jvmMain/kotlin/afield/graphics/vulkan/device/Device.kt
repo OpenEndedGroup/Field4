@@ -169,6 +169,16 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     val supportsCooperativeVectorTraining: Boolean
 
     /**
+     * `VK_KHR_cooperative_matrix` (subgroup matrix multiply-add, tensor cores on NVIDIA), with the Vulkan
+     * memory model and 16-bit storage buffers it is used with. The open denoiser's fast path needs it.
+     * `afield.cooperativeMatrix.disabled` turns it off.
+     */
+    val supportsCooperativeMatrix: Boolean
+
+    /** `storageBuffer16BitAccess`: shaders may read and write `float16_t` in storage buffers. */
+    val supportsStorageBuffer16Bit: Boolean
+
+    /**
      * `VK_NV_cluster_acceleration_structure`, which needs acceleration structures underneath it.
      * Switched off by the system property `afield.clusterAccelerationStructure.disabled`.
      */
@@ -399,6 +409,14 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             if(hasExt(EXTShaderReplicatedComposites.VK_EXT_SHADER_REPLICATED_COMPOSITES_EXTENSION_NAME))probeExtra(replicatedFeatures.address())
             probeExtra(memoryModelFeatures.address())
             val supportedMemoryModelDeviceScope = memoryModelFeatures.vulkanMemoryModelDeviceScope()
+            val storage16Features=VkPhysicalDevice16BitStorageFeatures.calloc(stack).`sType$Default`()
+            probeExtra(storage16Features.address())
+            supportsStorageBuffer16Bit = storage16Features.storageBuffer16BitAccess()
+            val matrixFeatures=VkPhysicalDeviceCooperativeMatrixFeaturesKHR.calloc(stack).`sType$Default`()
+            val hasMatrixExtension = hasExt(KHRCooperativeMatrix.VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME)
+            if(hasMatrixExtension)probeExtra(matrixFeatures.address())
+            supportsCooperativeMatrix = hasMatrixExtension && matrixFeatures.cooperativeMatrix() && memoryModelFeatures.vulkanMemoryModel() &&
+                supportsStorageBuffer16Bit && !java.lang.Boolean.getBoolean("afield.cooperativeMatrix.disabled")
             if(hasExt(NVClusterAccelerationStructure.VK_NV_CLUSTER_ACCELERATION_STRUCTURE_EXTENSION_NAME))probeExtra(clusterFeatures.address())
             supportsClusterAccelerationStructure=supportsAccelerationStructures && clusterFeatures.clusterAccelerationStructure() &&
                 !java.lang.Boolean.getBoolean("afield.clusterAccelerationStructure.disabled")
@@ -420,6 +438,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 add(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME) // not optional
                 if(supportsOpticalFlow)add(NVOpticalFlow.VK_NV_OPTICAL_FLOW_EXTENSION_NAME)
                 if(supportsCooperativeVector){add(NVCooperativeVector.VK_NV_COOPERATIVE_VECTOR_EXTENSION_NAME);add(EXTShaderReplicatedComposites.VK_EXT_SHADER_REPLICATED_COMPOSITES_EXTENSION_NAME)}
+                if(supportsCooperativeMatrix)add(KHRCooperativeMatrix.VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME)
                 addIfSupported(KHRDynamicRendering.VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)
                 addIfSupported(KHRDepthStencilResolve.VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME)
                 addIfSupported(KHRCreateRenderpass2.VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)
@@ -565,6 +584,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 multiview(supportsMultiview)
                 shaderDrawParameters(true)
                 storagePushConstant16(true)
+                storageBuffer16BitAccess(supportsStorageBuffer16Bit)
             }
 
             val features12 = VkPhysicalDeviceVulkan12Features.calloc(stack).apply {
@@ -579,9 +599,9 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 timelineSemaphore(true)
                 // Core in 1.2; GPU profiling resets its query pools from the host (see timing.kt).
                 hostQueryReset(true)
-                vulkanMemoryModel(supportsCooperativeVector)
+                vulkanMemoryModel(supportsCooperativeVector || supportsCooperativeMatrix)
                 // Ordinary atomic shaders also use Device scope when this memory model is active.
-                vulkanMemoryModelDeviceScope(supportsCooperativeVector && supportedMemoryModelDeviceScope)
+                vulkanMemoryModelDeviceScope((supportsCooperativeVector || supportsCooperativeMatrix) && supportedMemoryModelDeviceScope)
 
                 // Descriptor indexing (promoted to 1.2) — bindless-friendly bits
                 descriptorIndexing(true)
@@ -649,7 +669,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                     .shaderStorageBufferArrayNonUniformIndexing(true)
                 memPutAddress(featureTail + VkBaseOutStructure.PNEXT, descriptorIndexing.address())
                 featureTail = descriptorIndexing.address()
-                if(supportsCooperativeVector) {
+                if(supportsCooperativeVector || supportsCooperativeMatrix) {
                     memoryModelFeatures.vulkanMemoryModelDeviceScope(supportedMemoryModelDeviceScope).vulkanMemoryModelAvailabilityVisibilityChains(false).pNext(0L)
                     memPutAddress(featureTail+VkBaseOutStructure.PNEXT,memoryModelFeatures.address());featureTail=memoryModelFeatures.address()
                 }
@@ -668,6 +688,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 replicatedFeatures.pNext(0L);memPutAddress(tail+VkBaseOutStructure.PNEXT,replicatedFeatures.address());tail=replicatedFeatures.address()
             }
 
+            if(supportsCooperativeMatrix) {
+                matrixFeatures.cooperativeMatrixRobustBufferAccess(false).pNext(0L)
+                memPutAddress(tail+VkBaseOutStructure.PNEXT,matrixFeatures.address());tail=matrixFeatures.address()
+            }
             if(supportsClusterAccelerationStructure) {
                 clusterFeatures.pNext(0L);memPutAddress(tail+VkBaseOutStructure.PNEXT,clusterFeatures.address());tail=clusterFeatures.address()
             }

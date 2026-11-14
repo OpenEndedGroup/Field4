@@ -673,20 +673,20 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**40873 public symbols across 1806 source files**, 24249 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**40906 public symbols across 1809 source files**, 24267 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
 | [Examples](examples.md) | 238 | 750 | 328 (43%) | Runnable examples, galleries and verification programs. |
-| [Internal](internal.md) | 21 | 159 | 57 (35%) | Implementation details explicitly marked Internal by their source. |
+| [Internal](internal.md) | 24 | 190 | 73 (38%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 216 | 208 (96%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 18 | 453 | 282 (62%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2520 | 1900 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1123 | 528 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 413 | 10156 | 6400 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 413 | 10158 | 6402 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 844 | 448 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -1053,7 +1053,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [descriptions.kt](workspace.md#descriptions-kt) | Workspace · internal | 1 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [DescriptorSet.kt](graphics.md#descriptorset-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [DescriptorSetLayout.kt](graphics.md#descriptorsetlayout-kt) | Graphics | 8 | 2 | Descriptor set layouts for the renderer's shaders: `DescriptorSetLayout` owns a Vulkan layout handle and releases it with its device, and `DescriptorSetLayout.SimpleDescriptorSetLayout` builds one from parallel lists of bindings and descriptor types. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [Device.kt](graphics.md#device-kt) | Graphics | 48 | 46 | The logical Vulkan device: `Device` wraps a `PhysicalDevice` and enables the extensions and features the renderer uses. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [Device.kt](graphics.md#device-kt) | Graphics | 50 | 48 | The logical Vulkan device: `Device` wraps a `PhysicalDevice` and enables the extensions and features the renderer uses. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Devices.kt](audio.md#devices-kt) | Audio | 42 | 24 | Optional compute devices for Steam Audio: `EmbreeDevice` for the Embree ray tracer, `OpenClDeviceList` and `OpenClDevice` for GPU work, and the `RadeonRaysDevice` and `TrueAudioNextDevice` built on OpenCL. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [di.kt](workspace.md#di-kt) | Workspace | 11 | 3 | Startup phases: functions annotated `RunsAt` are found by a classpath scan and called by `runAll` at a named phase. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>diag/<wbr></small> [Diagnostics.kt](languages.md#diagnostics-kt) | Languages | 14 | 14 | Where a FieldML compile says something is wrong, and how badly. |  |
@@ -1730,6 +1730,9 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr></small> [OctreeBarnesHut.kt](simulation.md#octreebarneshut-kt) | Simulation | 10 | 10 | Approximate inverse-square forces over a particle cloud, by summarising distant groups as a single mass each. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [Off.kt](polytopes.md#off-kt) | Polytopes | 1 | 1 | The one-way bridge to OFF, the plain-text polygon interchange format that Geomview and most polyhedron tooling read. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [offlineImport.kt](workspace.md#offlineimport-kt) | Workspace · internal | 1 | 1 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [OidnCompute.kt](internal.md#oidncompute-kt) | Internal · internal | 26 | 14 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [OidnComputeSpike.kt](internal.md#oidncomputespike-kt) | Internal · internal | 3 | 1 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [OidnSpike.kt](internal.md#oidnspike-kt) | Internal · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [OnnxRuntime.kt](machine-learning.md#onnxruntime-kt) | Machine learning | 21 | 16 | ONNX models, running inside Field. | [Depth and CLIP: neural vision in a box](../onnx.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [OnnxSmokeTest.kt](machine-learning.md#onnxsmoketest-kt) | Machine learning · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>lighting/<wbr></small> [OpaqueRayScene.kt](graphics.md#opaquerayscene-kt) | Graphics | 11 | 4 | Opaque triangle geometry for ray-query visibility, as used by `DirectLighting` for shadows. | [Direct lighting](../direct_lighting.md) |
