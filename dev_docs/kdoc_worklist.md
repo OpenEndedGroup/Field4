@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24554 of 41222 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24579 of 41249 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2039 undocumented entry points** (types, top-level functions and values) and 13907 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2039 undocumented entry points** (types, top-level functions and values) and 13908 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -811,7 +811,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AudioBuffer.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/AudioBuffer.kt) | Audio | — | 0 | 5 | 82% |
 | [BinauralEffect.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/BinauralEffect.kt) | Audio | — | 0 | 5 | 70% |
 | [DirectEffect.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/DirectEffect.kt) | Audio | — | 0 | 5 | 78% |
-| [FM1Sim.kt](../src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt) | Synthesis | — | 0 | 5 | 93% |
+| [FM1Sim.kt](../src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt) | Synthesis | — | 0 | 5 | 94% |
 | [DatalogWhyNot.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogWhyNot.kt) | Languages | — | 0 | 5 | 62% |
 | [ClothSimulationExample.kt](../src/jvmMain/kotlin/afield/examples/ClothSimulationExample.kt) | Examples | — | 0 | 5 | 50% |
 | [PhysarumNetworkGpuSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/PhysarumNetworkGpuSmoke.kt) | Examples | — | 0 | 5 | 16% |
@@ -919,7 +919,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [CaSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/CaSoundDocs.kt) | Patterns | — | 0 | 2 | 85% |
 | [DoughDspSmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughDspSmokeTest.kt) | Audio | — | 0 | 2 | 33% |
 | [DoughLive.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughLive.kt) | Synthesis | — | 0 | 2 | 93% |
-| [FM1SoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/FM1SoundDocs.kt) | Audio | — | 0 | 2 | 88% |
+| [FM1SoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/FM1SoundDocs.kt) | Audio | — | 0 | 2 | 90% |
 | [FaustPolySmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/FaustPolySmokeTest.kt) | Audio | — | 0 | 2 | 33% |
 | [LambdaSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/LambdaSoundDocs.kt) | Patterns | — | 0 | 2 | 93% |
 | [PatClock.kt](../src/jvmMain/kotlin/afield/audio/synth/PatClock.kt) | Patterns | — | 0 | 2 | 80% |
@@ -1012,6 +1012,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SteamAudioException.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/SteamAudioException.kt) | Audio | — | 0 | 1 | 66% |
 | [FM.kt](../src/jvmMain/kotlin/afield/audio/synth/FM.kt) | Synthesis | — | 0 | 1 | 90% |
 | [FM1FirmwareCheck.kt](../src/jvmMain/kotlin/afield/audio/synth/FM1FirmwareCheck.kt) | Audio | — | 0 | 1 | 50% |
+| [FM1HookCheck.kt](../src/jvmMain/kotlin/afield/audio/synth/FM1HookCheck.kt) | Audio | — | 0 | 1 | 50% |
 | [FaustSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/FaustSoundDocs.kt) | Audio | — | 0 | 1 | 92% |
 | [HeadTrackedSpatialSmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/HeadTrackedSpatialSmokeTest.kt) | Patterns | — | 0 | 1 | 50% |
 | [MarfSmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/MarfSmokeTest.kt) | Patterns | — | 0 | 1 | 50% |

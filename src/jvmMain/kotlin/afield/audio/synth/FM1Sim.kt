@@ -122,6 +122,11 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
             "sim_sample_encode", "sim_select", "sim_state", "sim_step",
         )
 
+        private val GLUE: String by lazy {
+            FM1Sim::class.java.getResourceAsStream("/fm1/fm1-glue.js")?.use { it.readBytes().decodeToString() }
+                ?: error("FM1Sim: /fm1/fm1-glue.js is not on the classpath")
+        }
+
         /** Bytes of flash the firmware keeps (`GROOVE_FLASH_BYTES`): projects, samples, voices, settings. */
         private const val FLASH_BYTES: Int = 69_632 + 466_944
 
@@ -214,7 +219,11 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
             .option("js.webassembly", "true")
             .option("wasm.UseUnsafeMemory", "true")
             .build()
+        /** The glue object from `fm1/fm1-glue.js`: the firmware's exports and the hook slots. */
+        val glue: Value
         val exports: Value
+        /** Whether this firmware imports `field.track`, so tracks can be given hooks. */
+        val hookable: Boolean
         val fnRender: Value
         val fnState: Value
         val fnMidiOut: Value
@@ -225,18 +234,13 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
             context.enter()
             try {
                 context.getBindings("js").putMember("__fm1Bytes", wasm)
-                exports = try {
-                    context.eval(
-                        Source.newBuilder(
-                            "js",
-                            "(function(){ var m = new WebAssembly.Module(new Uint8Array(Java.from(__fm1Bytes)));" +
-                                " return new WebAssembly.Instance(m, {}).exports; })()",
-                            "fm1-sim.js"
-                        ).buildLiteral()
-                    )
+                glue = try {
+                    context.eval(Source.newBuilder("js", GLUE, "fm1-glue.js").buildLiteral())
                 } catch (e: org.graalvm.polyglot.PolyglotException) {
                     throw IllegalArgumentException("FM1Sim: not a loadable WebAssembly module (${e.message})", e)
                 }
+                exports = glue.getMember("exports")
+                hookable = glue.getMember("hookable").asBoolean()
                 val missing = FIRMWARE_EXPORTS.filter { exports.getMember(it)?.canExecute() != true }
                 require(missing.isEmpty()) {
                     "FM1Sim: this module is not an FM-1 simulator build; it lacks ${missing.joinToString()}"
@@ -1133,6 +1137,9 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
                 try {
                     if (carried == null) next.exports.getMember("sim_boot").execute(1)
                     else restore(next, carried)
+                    // Hooks move to a firmware that has hook points; one without them drops them.
+                    if (next.hookable) hooks.forEachIndexed { t, h -> if (h != null) installHook(next, t, h) }
+                    else java.util.Arrays.fill(hooks, null)
                 } finally {
                     runCatching { next.context.leave() }
                 }
@@ -1150,6 +1157,87 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
 
     /** Go back to the firmware shipped with Field; see [loadFirmware]. */
     fun loadBuiltInFirmware(keepState: Boolean = true) = loadFirmware(builtIn, keepState)
+
+    // ── hooks ──────────────────────────────────────────────────────────────────────────────
+
+    private val hooks = arrayOfNulls<FM1Hook>(TRACKS)
+
+    /** Whether the firmware running now has hook points (a build from [FM1Hooks.firmware]). */
+    val hookable: Boolean get() = module.hookable
+
+    /**
+     * Run the StackSL program [stacksl] on every sample of [track], after the track's voice and
+     * before its level, pan and effects, and return the compiled hook.
+     *
+     * ```kotlin
+     * fm1.hook(0, "in 30 * sin 0.12 *")  // fold the 303 through a sine
+     * ```
+     *
+     * Each sample `s` arrives as `vec4(s, previous s, track, seconds)`, with 1 as the voice's full
+     * scale; the `.x` of what the program leaves is the new sample. Compiling takes a fraction of a
+     * second and happens before the swap, so a program that does not compile leaves the old hook
+     * playing. The first hook loads the firmware with hook points ([FM1Hooks.firmware]), keeping the
+     * project and the transport. Output past ±64 is held there, and NaN becomes silence.
+     *
+     * @throws FM1HookException naming the StackSL errors, or the texture words a hook cannot use
+     */
+    fun hook(track: Int, stacksl: String): FM1Hook = FM1Hooks.compile(stacksl).also { hook(track, it) }
+
+    /** Run the compiled [hook] on [track]; see the StackSL overload. */
+    fun hook(track: Int, hook: FM1Hook) {
+        requireTrack(track)
+        if (!module.hookable) loadFirmware(FM1Hooks.firmware())
+        between { installHook(module, track, hook) }
+    }
+
+    /** Take [track]'s hook out; the track plays its voice as it is. */
+    fun clearHook(track: Int) {
+        requireTrack(track)
+        hooks[track] = null
+        if (module.hookable) between {
+            module.glue.invokeMember("clearHook", track)
+            module.exports.getMember("sim_field_hooks").execute(hookMask())
+        }
+    }
+
+    /** Take every track's hook out. */
+    fun clearHooks() = (0 until TRACKS).forEach { clearHook(it) }
+
+    /** The hook [track] runs now, or null. */
+    fun hookOf(track: Int): FM1Hook? = hooks[track]
+
+    /**
+     * Why [track]'s hook stopped, if it trapped while running (an integer divided by zero, say);
+     * null while it runs or when there is none. A trapped hook is taken out and the track plays on
+     * without it.
+     */
+    fun hookError(track: Int): String? {
+        requireTrack(track)
+        if (!module.hookable) return null
+        return between { module.glue.invokeMember("error", track).takeUnless { it.isNull }?.asString() }
+    }
+
+    /**
+     * Evaluate [track]'s hook program at one input, as it would see a sample: for drawing it, or
+     * checking it, off the audio path. Null when the track has no hook.
+     */
+    fun evalHook(track: Int, x: Float, y: Float = 0f, z: Float = track.toFloat(), w: Float = 0f): FloatArray? {
+        requireTrack(track)
+        if (!module.hookable) return null
+        return between {
+            val v = module.glue.invokeMember("evalHook", track, x, y, z, w)
+            if (v.isNull) null else FloatArray(4) { v.getArrayElement(it.toLong()).asFloat() }
+        }
+    }
+
+    private fun hookMask(): Int = (0 until TRACKS).fold(0) { m, t -> if (hooks[t] != null) m or (1 shl t) else m }
+
+    /** Put [hook] into [m]'s slot for [track]. Caller holds the lock, entered in [m]'s context. */
+    private fun installHook(m: Module, track: Int, hook: FM1Hook) {
+        m.glue.invokeMember("setHook", track, hook.wasm)
+        hooks[track] = hook
+        m.exports.getMember("sim_field_hooks").execute(hookMask())
+    }
 
     /** What [loadFirmware] takes from the old module to the new one. */
     private class Carried(

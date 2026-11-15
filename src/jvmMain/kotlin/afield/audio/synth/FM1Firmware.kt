@@ -123,8 +123,11 @@ object FM1Firmware {
         return dir
     }
 
-    private fun clangIn(sdk: File): File =
-        File(sdk, if (platform().endsWith("windows")) "bin/clang.exe" else "bin/clang")
+    private fun clangIn(sdk: File): File = compiler(sdk, cxx = false)
+
+    /** The SDK's C (or, with [cxx], C++) compiler. */
+    internal fun compiler(sdk: File, cxx: Boolean): File =
+        File(sdk, "bin/" + (if (cxx) "clang++" else "clang") + if (platform().endsWith("windows")) ".exe" else "")
 
     /**
      * The firmware source in [dir], cloning [REPOSITORY] at [COMMIT] there if it holds none yet.
@@ -197,7 +200,7 @@ object FM1Firmware {
         check(code == 0) { "FM1Firmware: $what failed (exit $code): ${output.trim()}" }
     }
 
-    private fun exec(dir: File, command: List<String>): Pair<Int, String> {
+    internal fun exec(dir: File, command: List<String>): Pair<Int, String> {
         val p = ProcessBuilder(command).directory(dir).redirectErrorStream(true).start()
         val output = p.inputStream.bufferedReader().readText()
         check(p.waitFor(10, TimeUnit.MINUTES)) { p.destroyForcibly(); "FM1Firmware: ${command.first()} did not finish" }

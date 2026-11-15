@@ -48,8 +48,8 @@ object FM1SoundDocs {
     private class Figure(
         val slot: Int,
         val seconds: Double = PLAY_SECONDS,
-        /** Seconds into the clip, and what happens then; null for nothing. */
-        val later: Pair<Double, (FM1Sim) -> Unit>? = null,
+        /** Seconds into the clip, and what happens then. */
+        val events: List<Pair<Double, (FM1Sim) -> Unit>> = emptyList(),
         /** Whether the clip builds firmware, which needs the WASI SDK and the source (the network, once). */
         val buildsFirmware: Boolean = false,
         val begin: (FM1Sim) -> Unit,
@@ -75,6 +75,22 @@ object FM1SoundDocs {
     const val CRUSH_FILE = "third_party/synth/bass303.c"
     const val CRUSH_FIND = "out[i]=(int32_t)(sample*16777216);"
     const val CRUSH_REPLACE = "out[i]=(int32_t)((int)(sample*8)*2097152);"
+
+    /**
+     * The first hook in `hooks`: the 303 folded through a sine, `0.12 sin(30x)`. The 303's samples
+     * run to about a tenth of full scale, so it takes a drive of 30 to fold; 0.12 brings it back to
+     * about the 303's own level (measured in `synth.fm1.hooks`).
+     */
+    const val HOOK_FOLD = "in 30 * sin 0.12 *"
+
+    /** The second: folded harder still, `0.12 sin(80x)`, at about the same level. */
+    const val HOOK_BRIGHT = "in 80 * sin 0.12 *"
+
+    /** [HOOK_FOLD] compiled once per JVM. */
+    val hookFold: FM1Hook by lazy { FM1Hooks.compile(HOOK_FOLD) }
+
+    /** [HOOK_BRIGHT] compiled once per JVM. */
+    val hookBright: FM1Hook by lazy { FM1Hooks.compile(HOOK_BRIGHT) }
 
     /** Seconds into `firmware-swap` that the crushed firmware is swapped in. */
     const val SWAP_SECONDS = 4.0
@@ -106,8 +122,19 @@ object FM1SoundDocs {
             sim.source(1, FM1Sim.SourceType.SAMPLER)
             sim.start()
         },
-        "firmware-swap" to Figure(1, seconds = 8.0, later = SWAP_SECONDS to { it.loadFirmware(crushedFirmware) },
+        "firmware-swap" to Figure(1, seconds = 8.0, events = listOf(SWAP_SECONDS to { it.loadFirmware(crushedFirmware) }),
             buildsFirmware = true) { it.start() },
+        "hooks" to Figure(
+            1, seconds = 8.0, buildsFirmware = true,
+            events = listOf(
+                2.0 to { it.hook(0, hookFold) },
+                4.0 to { it.hook(0, hookBright) },
+                6.0 to { it.clearHook(0) },
+            ),
+        ) { sim ->
+            sim.loadFirmware(FM1Hooks.firmware())
+            sim.start()
+        },
         "voice-morph" to Figure(0, seconds = 8.0) { sim ->
             val piano = sim.voices(0)[0]
             val bell = bell(piano)
@@ -162,13 +189,13 @@ object FM1SoundDocs {
             repeat((SETTLE_SECONDS * SR / BLOCK).toInt()) { pull() }
             fig.begin(sim)
             val frames = (fig.seconds * SR).toInt()
-            val laterFrame = fig.later?.let { (it.first * SR).toInt() / BLOCK * BLOCK }
-            if (fig.buildsFirmware) crushedFirmware // build before the clock starts, not mid-clip
+            val events = fig.events.map { (seconds, f) -> (seconds * SR).toInt() / BLOCK * BLOCK to f }
+            if (fig.buildsFirmware) { crushedFirmware; hookFold; hookBright } // build before the clock starts, not mid-clip
             val left = FloatArray(frames)
             val right = FloatArray(frames)
             var at = 0
             while (at < frames) {
-                if (at == laterFrame) fig.later!!.second(sim)
+                for ((frame, f) in events) if (frame == at) f(sim)
                 pull()
                 val n = minOf(BLOCK, frames - at)
                 System.arraycopy(l, 0, left, at, n)
