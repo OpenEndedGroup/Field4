@@ -249,8 +249,8 @@ class FilmTimeline private constructor(
             val skipped = !wasDown && !isDown && (previousT == null || previousT < g.start) && t >= g.release
             when {
                 !wasDown && isDown -> { act("start", g.first); g.point(t).let { if (it != g.first) act("move", it) } }
-                wasDown && isDown -> g.point(t).let { if (it != g.point(previousT!!)) act("move", it) }
-                wasDown -> { if (g.point(previousT!!) != g.last) act("move", g.last); act("end", g.last) }
+                wasDown && isDown -> g.point(t).let { if (it != g.point(previousT)) act("move", it) }
+                wasDown -> { if (g.point(previousT) != g.last) act("move", g.last); act("end", g.last) }
                 // A whole gesture between two frames: made all the same, so the box sees every press.
                 skipped -> { act("start", g.first); if (g.last != g.first) act("move", g.last); act("end", g.last) }
             }

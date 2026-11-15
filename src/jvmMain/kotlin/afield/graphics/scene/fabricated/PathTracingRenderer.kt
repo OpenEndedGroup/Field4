@@ -290,7 +290,7 @@ class PathTracingRenderer(
     private val accumulation: VulkanBuffer
     /** The averaged linear radiance, one vec4 per pixel; `OidnComputeDenoiser` reads it in place. */
     internal val accumulationBuffer: VulkanBuffer get() = accumulation
-    private lateinit var resolveScreen: Mesh
+    private val resolveScreen: Mesh
     /**
      * Resolve [output] from [source] instead of the accumulation, or from the accumulation again when
      * null. The source must have the accumulation's layout (vec4 per pixel, linear, alpha = coverage).
