@@ -155,9 +155,9 @@ fun Box.lines(
     drawing: Boolean = false,
     liveDrawing: Boolean = false,
     framing: LinesFraming = LinesFraming.Auto,
+    handles: List<LinesHandle> = emptyList(),
     onDrag: ((LinesDragEvent) -> Unit)? = null,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
-    handles: List<LinesHandle> = emptyList(),
 ): EditableFLineViewState? {
     val lines = m.asList().renderableLines()
     val frame = linesFrame(channel, lines, framing)
@@ -203,9 +203,9 @@ fun Box.lines(
     drawing: Boolean = false,
     liveDrawing: Boolean = false,
     framing: LinesFraming = LinesFraming.Auto,
+    handles: List<LinesHandle> = emptyList(),
     onDrag: ((LinesDragEvent) -> Unit)? = null,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
-    handles: List<LinesHandle> = emptyList(),
 ): EditableFLineViewState? {
     val lines = m.renderableLines()
     val frame = linesFrame(channel, lines, framing)
