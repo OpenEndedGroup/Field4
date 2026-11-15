@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T02:11:46.114Z",
+  "capturedAt": "2026-11-14T22:36:22.040Z",
   "documentName": "studies_rings",
   "outputs": [
     {
@@ -9,7 +9,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 356,
+      "width": 348,
       "height": 683,
       "path": "outputs/0.html"
     },
@@ -19,7 +19,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 356,
+      "width": 348,
       "height": 614,
       "path": "outputs/1.html"
     }

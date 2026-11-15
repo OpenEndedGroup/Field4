@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T02:27:56.462Z",
+  "capturedAt": "2026-11-14T23:02:44.716Z",
   "documentName": "flow_lenia",
   "outputs": [
     {
@@ -34,16 +34,6 @@
       "path": "outputs/2.html"
     },
     {
-      "uid": "flow_lenia_mutation",
-      "channel": "main",
-      "open": false,
-      "warnings": [],
-      "kinds": [],
-      "width": 610,
-      "height": 40,
-      "path": "outputs/3.html"
-    },
-    {
       "uid": "flow_lenia_crescent",
       "channel": "main",
       "open": true,
@@ -51,7 +41,7 @@
       "kinds": [],
       "width": 912,
       "height": 483,
-      "path": "outputs/4.html"
+      "path": "outputs/3.html"
     }
   ]
 }

@@ -72,6 +72,8 @@ class PathTracingRenderer(
     requestedBackend: Backend = Backend.AUTO,
     val name: String = "path-tracer",
     target: RenderToTexture? = null,
+    /** Allocate the accumulation buffer exportable as an opaque fd, so CUDA or native OIDN can read it in place (Linux). */
+    val exportAccumulation: Boolean = false,
     moduleFactory: (Parameters) -> ComputeModulePointer = { ComputeModule(it).pointer() }
 ) : AutoCloseable, Target {
     enum class Backend { AUTO, COMPUTE_BVH, RAY_QUERY }
@@ -344,7 +346,7 @@ class PathTracingRenderer(
             val directions = upload(sobolWords.size * 4L) { it.asIntBuffer().put(sobolWords) }
             accumulation = own(VulkanBuffer(renderer, width.toLong() * height * 16,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT or VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, needsDeviceAddress = true)) { cleanup() }
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, needsDeviceAddress = true, exportOpaqueFd = exportAccumulation)) { cleanup() }
             val bytes = MemoryUtil.memAlloc(environment.pixels.size * 4)
             val texture = try {
                 bytes.asFloatBuffer().put(environment.pixels)

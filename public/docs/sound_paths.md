@@ -20,6 +20,7 @@ then follow the links for the details.
   [Faust](faust.md).
 * **"I want the rhythm to come from *somewhere* — a direction, a distance."** → `pat-spatial`,
   through headphones. [A pattern in space](pat_spatial.md).
+* **"I want a whole groovebox, sequencer and all."** → `fm1-sim`. [FM-1 simulator](fm1.md).
 * **"I want to patch it in Pure Data."** → `pure-data`. A patch inline in the box or a `.pd` file,
   once libpd is built. [Pure Data](pure_data.md).
 * **"I want to write an orchestra and score."** → `csound`. Use Csound as a box language or call it
@@ -32,7 +33,7 @@ then follow the links for the details.
 
 ---
 
-## The eleven that make samples
+## The twelve that make samples
 
 | path | what it is | needs | offline? | shares `render`? | page |
 | --- | --- | --- | --- | --- | --- |
@@ -41,6 +42,7 @@ then follow the links for the details.
 | `signal-graph` | Field's own DSP graph — `abstract class Signal` in `src/jvmMain/kotlin/afield/audio/synth/Signal.kt`, plus the oscillators, filters and the DoughDSP ports | nothing | both | **yes** | [DoughDSP](dough_dsp_sound.md) |
 | `faust` | a Faust program compiled at runtime and dropped into that same graph. `class FaustNode` in `src/jvmMain/kotlin/afield/audio/synth/FaustDsp.kt` | nothing — libfaust is vendored as wasm | both | **yes** | [Faust](faust.md) |
 | `faust-poly` | the same program played as an *instrument*: N instances of one compiled module, allocated to notes by a pattern, each note landing on the sample it was scheduled for. `class FaustVoiceBank` in `src/jvmMain/kotlin/afield/audio/synth/FaustPoly.kt` | nothing — as `faust` | both | **yes** | [Faust](faust.md) |
+| `fm1-sim` | the M-VAVE FM-1 pocket synth's browser simulator, built from its open firmware: an 8-track, 64-step sequencer with FM, 303, 808, pluck, PSG and sampler voices, played by MIDI note on any track, by Field patterns and signals, or through its own panel, with Field sounds on its sampler's pads. `class FM1SimNode` in `src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt` | nothing — the simulator is vendored as wasm | both | **yes** | [FM-1 simulator](fm1.md) |
 | `pure-data` | a Pure Data patch — inline text in the box, or a `.pd` file — in a libpd instance of its own, pulled a block at a time. `class PdNode` in `src/jvmMain/kotlin/afield/audio/pd/PdInstance.kt` | libpd, built once by `./gradlew buildLibpdNative` | both | **yes** | [Pure Data](pure_data.md) |
 | `csound` | a Csound orchestra and score, as a box language or from Kotlin. `class CsoundNode` in `src/jvmMain/kotlin/afield/audio/csound/CsoundInstance.kt` pulls blocks live; `CsoundInstance.renderOffline` renders to a buffer | libcsound, built with `./gradlew buildCsoundNative` or installed separately | both | **yes** | [Csound](csound.md) |
 | `dough-engine` | the whole dough/Strudel engine as a wasm module, with its own 128-frame block loop. `class DoughEngine` in `src/jvmMain/kotlin/afield/audio/synth/Dough.kt`, wrapped onto the shared `render` call by `DoughAudioSink` | the dough wasm build | both | **yes**, through `parkDough` | — |
@@ -48,7 +50,7 @@ then follow the links for the details.
 | `sonic-pi` | a Ruby program handed to Sonic Pi's own scsynth over OSC. `class SonicPi` in `src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt` | a local Sonic Pi v5 | realtime only | no | [Sonic Pi](sonic_pi.md) |
 | `modal-drum` | a drawn shape heard as a drum: its vibration modes solved by finite elements, struck, and summed as one damped sinusoid per mode. `class DrumModes` in `src/jvmMain/kotlin/afield/audio/modal/Eigendrum.kt` | nothing | offline only | no | [Eigendrum](eigendrum.md) |
 
-Four of those eleven are pattern voices: `pat-stand-in`, `dirt-samples`, `faust-poly` and
+Four of those twelve are pattern voices: `pat-stand-in`, `dirt-samples`, `faust-poly` and
 `pat-spatial`. The first two are what [Sound](sound.md) covers, with the fallback behaviour and the
 provenance audit; `faust-poly` is on [Faust](faust.md), because what it needs explaining is the voice
 allocator rather than the pattern; and `pat-spatial` has [a page of its
@@ -56,7 +58,7 @@ own](pat_spatial.md), because what it needs explaining is why a tag in a pattern
 why the synthesis is a thread away from the audio. Read whichever you have picked; this page only
 helps you pick.
 
-One of the eleven is **realtime only**: `sonic-pi`, the only path where **no sample ever
+One of the twelve is **realtime only**: `sonic-pi`, the only path where **no sample ever
 enters this process**. Field sends text and receives log lines; the audio exists entirely inside
 another program's synthesiser. You cannot filter, plot or record Sonic Pi's output the way you can
 the others'. The way back in is `link-audio-in`, below.
@@ -147,7 +149,7 @@ and N WebAssembly instances in one GraalVM context, none of which the engine has
 Because both share `render`, both get the speakers, the engine's visualisers, the Link output and
 the box lifecycle with no adapter.
 
-Of the eleven paths that make samples, two do not share `render`. No wrapper can bring `sonic-pi`
+Of the twelve paths that make samples, two do not share `render`. No wrapper can bring `sonic-pi`
 onto it: it is a different process, and no sample ever enters this one. `modal-drum` renders a
 whole strike into a buffer at once, and you hear it as a WAV file or as a player in the box's output.
 

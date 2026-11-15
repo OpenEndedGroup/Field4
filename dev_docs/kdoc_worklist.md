@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24267 of 40906 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24482 of 41137 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2040 undocumented entry points** (types, top-level functions and values) and 13883 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2039 undocumented entry points** (types, top-level functions and values) and 13894 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -27,12 +27,12 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [KotlinScriptEngine.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinScriptEngine.kt) | Workspace | changelog, running_code, agent_transcripts | 18 | 42 | 25% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/data/graph/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 16 | 109 | 20% |
 | [RectSLStudyTools.kt](../src/jvmMain/kotlin/afield/lang/rectsl/study/RectSLStudyTools.kt) | Languages | rectsl_conversation | 14 | 17 | 21% |
-| [Oscillators.kt](../src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt) | Synthesis | explainer_sound, csound, distributions | 13 | 42 | 41% |
 | [StackSLStudyTools.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLStudyTools.kt) | Languages | stacksl_conversation | 13 | 16 | 21% |
+| [Oscillators.kt](../src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt) | Synthesis | explainer_sound, csound, distributions | 12 | 42 | 42% |
 | [ThreeJsViewer.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeJsViewer.kt) | Graphics | three_output, fline_examples | 11 | 76 | 39% |
 | [PuppetBrowser.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowser.kt) | Imaging | puppet_browser | 11 | 70 | 10% |
 | [StackSL.kt](../src/jvmMain/kotlin/afield/lang/stacksl/StackSL.kt) | Languages | stacksl_examples | 11 | 47 | 15% |
-| [Filters.kt](../src/jvmMain/kotlin/afield/audio/synth/Filters.kt) | Synthesis | subharmonic_sound, agent_transcripts | 11 | 28 | 15% |
+| [Filters.kt](../src/jvmMain/kotlin/afield/audio/synth/Filters.kt) | Synthesis | subharmonic_sound, agent_transcripts, fm1 | 11 | 28 | 15% |
 | [Signal.kt](../src/jvmMain/kotlin/afield/audio/synth/Signal.kt) | Synthesis | sound_paths, faust, chain_pattern_particles | 10 | 53 | 28% |
 | [RayTracingModule.kt](../src/jvmMain/kotlin/afield/graphics/render/RayTracingModule.kt) | Graphics | ray_tracing_examples | 10 | 47 | 4% |
 | [StackAutoStudyTools.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackAutoStudyTools.kt) | Languages | stackauto_conversation, stacksl_examples | 10 | 13 | 23% |
@@ -162,7 +162,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [MorseSmale.kt](../src/jvmMain/kotlin/afield/geometry/topology/morsesmale/MorseSmale.kt) | Graphics | morse_smale, topology_tracking | 0 | 18 | 58% |
 | [SolidInverse.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidInverse.kt) | Graphics | solid_notation | 0 | 18 | 60% |
 | [DoughDsp.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughDsp.kt) | Synthesis | dough_dsp_sound | 0 | 17 | 70% |
-| [MidiDevices.kt](../src/jvmMain/kotlin/afield/audio/synth/MidiDevices.kt) | Audio | smpte_timecode | 0 | 17 | 65% |
+| [MidiDevices.kt](../src/jvmMain/kotlin/afield/audio/synth/MidiDevices.kt) | Audio | smpte_timecode, fm1 | 0 | 17 | 65% |
 | [Piano.kt](../src/jvmMain/kotlin/afield/audio/synth/Piano.kt) | Synthesis | sound | 0 | 17 | 68% |
 | [Polyvector.kt](../src/jvmMain/kotlin/afield/geometry/vectorize/polyvector/Polyvector.kt) | Graphics | polyvector | 0 | 17 | 59% |
 | [osc.kt](../src/jvmMain/kotlin/afield/io/osc/osc.kt) | Audio | osc | 0 | 17 | 50% |
@@ -231,6 +231,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [LinesHandles.kt](../src/jvmMain/kotlin/afield/ui/visualization/LinesHandles.kt) | Visualization | presentation_studio | 0 | 7 | 56% |
 | [someSkiko.kt](../src/jvmMain/kotlin/afield/ui/visualization/someSkiko.kt) | Visualization | filming_a_timeline, presentation_studio, explainer_lights | 0 | 7 | 63% |
 | [LorisVisualizer.kt](../src/jvmMain/kotlin/afield/audio/analysis/loris/LorisVisualizer.kt) | Visualization | loris | 0 | 6 | 45% |
+| [MidiPat.kt](../src/jvmMain/kotlin/afield/audio/synth/MidiPat.kt) | Audio | fm1 | 0 | 6 | 66% |
 | [FLineWiggle.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineWiggle.kt) | Graphics | fline_examples | 0 | 6 | 53% |
 | [ManifoldNative.kt](../src/jvmMain/kotlin/afield/geometry/solid/manifold/ManifoldNative.kt) | Internal | manifold | 0 | 6 | 73% |
 | [simplePLYSupport.kt](../src/jvmMain/kotlin/afield/graphics/scene/simplePLYSupport.kt) | Graphics | geometry_from_disk | 0 | 6 | 60% |
@@ -334,7 +335,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [binding.kt](../src/jvmMain/kotlin/afield/document/properties/binding.kt) | Internal | — | 10 | 12 | 4% |
 | [AgentExtensions.kt](../src/jvmMain/kotlin/afield/ai/tools/AgentExtensions.kt) | AI4 | — | 9 | 14 | 45% |
 | [ai_macro.kt](../src/jvmMain/kotlin/afield/runtime/macros/ai_macro.kt) | Workspace | — | 9 | 7 | 5% |
-| [VulkanBuffer.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/VulkanBuffer.kt) | Graphics | — | 8 | 46 | 16% |
+| [VulkanBuffer.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/VulkanBuffer.kt) | Graphics | — | 8 | 46 | 20% |
 | [GrowingGraphSimdVerletExample.kt](../src/jvmMain/kotlin/afield/examples/GrowingGraphSimdVerletExample.kt) | Examples | — | 8 | 12 | 0% |
 | [AnthropicCredentials.kt](../src/jvmMain/kotlin/afield/ai/models/AnthropicCredentials.kt) | AI4 | — | 8 | 8 | 30% |
 | [ShaderSPIRVUtils.kt](../src/jvmMain/kotlin/afield/graphics/shader/ShaderSPIRVUtils.kt) | Graphics | — | 8 | 1 | 65% |
@@ -646,7 +647,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RectSLPatternOps.kt](../src/jvmMain/kotlin/afield/lang/rectsl/RectSLPatternOps.kt) | Languages | — | 0 | 18 | 14% |
 | [Devices.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Devices.kt) | Audio | — | 0 | 17 | 57% |
 | [OpenDlssNrStudy.kt](../src/jvmMain/kotlin/afield/graphics/render/neural/OpenDlssNrStudy.kt) | Graphics | — | 0 | 17 | 26% |
-| [PathTracingRenderer.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTracingRenderer.kt) | Renderers | — | 0 | 17 | 70% |
+| [PathTracingRenderer.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTracingRenderer.kt) | Renderers | — | 0 | 17 | 71% |
 | [MegaTextureDecoder.kt](../src/jvmMain/kotlin/afield/graphics/texture/mega/MegaTextureDecoder.kt) | Graphics | — | 0 | 17 | 39% |
 | [MultiPingPongRenderToTexture.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/targets/MultiPingPongRenderToTexture.kt) | Graphics | — | 0 | 17 | 40% |
 | [MultiviewStereoTarget.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/targets/MultiviewStereoTarget.kt) | Graphics | — | 0 | 17 | 22% |
@@ -692,7 +693,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StackSLCpuGallery.kt](../src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLCpuGallery.kt) | Languages | — | 0 | 12 | 58% |
 | [PuppetBrowserVrPanel.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowserVrPanel.kt) | Imaging | — | 0 | 12 | 20% |
 | [PuppetBrowserWindowPanel.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowserWindowPanel.kt) | Imaging | — | 0 | 12 | 20% |
-| [OidnCompute.kt](../src/jvmMain/kotlin/afield/media/reconstruction/OidnCompute.kt) | Internal | — | 0 | 12 | 53% |
+| [OidnCompute.kt](../src/jvmMain/kotlin/afield/media/reconstruction/OidnCompute.kt) | Internal | — | 0 | 12 | 55% |
 | [LifecycleLedger.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/LifecycleLedger.kt) | Workspace | — | 0 | 12 | 48% |
 | [alife_script.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_script.kt) | ALife | — | 0 | 12 | 90% |
 | [SimdVerletDyn4jBridge.kt](../src/jvmMain/kotlin/afield/simulation/physics/SimdVerletDyn4jBridge.kt) | Simulation | — | 0 | 12 | 45% |
@@ -781,7 +782,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ReflectionEffect.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/ReflectionEffect.kt) | Audio | — | 0 | 6 | 82% |
 | [DoughDspPlotGallery.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughDspPlotGallery.kt) | Audio | — | 0 | 6 | 25% |
 | [FaustDsp.kt](../src/jvmMain/kotlin/afield/audio/synth/FaustDsp.kt) | Synthesis | — | 0 | 6 | 56% |
-| [MidiPat.kt](../src/jvmMain/kotlin/afield/audio/synth/MidiPat.kt) | Audio | — | 0 | 6 | 66% |
 | [PatOnsetDetection.kt](../src/jvmMain/kotlin/afield/audio/synth/PatOnsetDetection.kt) | Patterns | — | 0 | 6 | 57% |
 | [jsonparsing.kt](../src/jvmMain/kotlin/afield/data/formats/jsonparsing.kt) | Data | — | 0 | 6 | 66% |
 | [growing.kt](../src/jvmMain/kotlin/afield/data/graph/growing.kt) | Data | — | 0 | 6 | 57% |
@@ -810,6 +810,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AudioBuffer.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/AudioBuffer.kt) | Audio | — | 0 | 5 | 82% |
 | [BinauralEffect.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/BinauralEffect.kt) | Audio | — | 0 | 5 | 70% |
 | [DirectEffect.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/DirectEffect.kt) | Audio | — | 0 | 5 | 78% |
+| [FM1Sim.kt](../src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt) | Synthesis | — | 0 | 5 | 93% |
 | [DatalogWhyNot.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogWhyNot.kt) | Languages | — | 0 | 5 | 62% |
 | [ClothSimulationExample.kt](../src/jvmMain/kotlin/afield/examples/ClothSimulationExample.kt) | Examples | — | 0 | 5 | 50% |
 | [PhysarumNetworkGpuSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/PhysarumNetworkGpuSmoke.kt) | Examples | — | 0 | 5 | 16% |
@@ -863,6 +864,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [LiveProbeClient.kt](../src/jvmMain/kotlin/afield/app/diagnostics/debug/LiveProbeClient.kt) | Workspace | — | 0 | 3 | 25% |
 | [MarfGallery.kt](../src/jvmMain/kotlin/afield/audio/synth/MarfGallery.kt) | Patterns | — | 0 | 3 | 72% |
 | [PatSynthDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/PatSynthDocs.kt) | Patterns | — | 0 | 3 | 62% |
+| [CudaDriver.kt](../src/jvmMain/kotlin/afield/cuda/CudaDriver.kt) | Graphics | — | 0 | 3 | 81% |
 | [DatalogRhythmDirtDocs.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogRhythmDirtDocs.kt) | Languages | — | 0 | 3 | 25% |
 | [PersistedFingerprint.kt](../src/jvmMain/kotlin/afield/document/persistence/PersistedFingerprint.kt) | Workspace | — | 0 | 3 | 62% |
 | [GpuSchemaSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/four/GpuSchemaSmokeTest.kt) | Examples | — | 0 | 3 | 25% |
@@ -1019,6 +1021,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SoundRenderPathDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/SoundRenderPathDocs.kt) | Audio | — | 0 | 1 | 95% |
 | [TrackedPhaseSignal.kt](../src/jvmMain/kotlin/afield/audio/synth/TrackedPhaseSignal.kt) | Synthesis | — | 0 | 1 | 66% |
 | [ToneKotlinJs.kt](../src/jvmMain/kotlin/afield/audio/tone/ToneKotlinJs.kt) | Audio | — | 0 | 1 | 75% |
+| [CudaInteropProof.kt](../src/jvmMain/kotlin/afield/cuda/CudaInteropProof.kt) | Internal | — | 0 | 1 | 75% |
+| [CudaVulkan.kt](../src/jvmMain/kotlin/afield/cuda/CudaVulkan.kt) | Graphics | — | 0 | 1 | 92% |
 | [ContextWhy.kt](../src/jvmMain/kotlin/afield/document/context/ContextWhy.kt) | Workspace | — | 0 | 1 | 80% |
 | [WhyAnswer.kt](../src/jvmMain/kotlin/afield/document/context/WhyAnswer.kt) | Workspace | — | 0 | 1 | 87% |
 | [why.kt](../src/jvmMain/kotlin/afield/document/context/why.kt) | Workspace | — | 0 | 1 | 75% |
@@ -1164,6 +1168,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [VideoMaterialCadence.kt](../src/jvmMain/kotlin/afield/graphics/scene/video/VideoMaterialCadence.kt) | Graphics | — | 0 | 1 | 66% |
 | [ShaderLearningChecks.kt](../src/jvmMain/kotlin/afield/graphics/shader/learning/ShaderLearningChecks.kt) | Graphics | — | 0 | 1 | 66% |
 | [ThreePartStyle.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreePartStyle.kt) | Graphics | — | 0 | 1 | 87% |
+| [ExportedTimelineSemaphore.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/ExportedTimelineSemaphore.kt) | Graphics | — | 0 | 1 | 90% |
 | [ImageLayouts.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/ImageLayouts.kt) | Graphics | — | 0 | 1 | 75% |
 | [MacHdrActivator.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/MacHdrActivator.kt) | Graphics | — | 0 | 1 | 50% |
 | [PhysicalDevice.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/PhysicalDevice.kt) | Graphics | — | 0 | 1 | 93% |
@@ -1346,4 +1351,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `SawOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:113` |
 | `SquareOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:140` |
 
-…and **1920 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1919 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

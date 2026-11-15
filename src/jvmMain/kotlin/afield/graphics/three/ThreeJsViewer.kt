@@ -402,9 +402,9 @@ internal fun getThreeSurfaceClickCallback(callbackId: String): ((ThreeSurfaceHit
  * @param realism the **Realism** button: soft shadows, ambient occlusion and studio light, the look of
  * [ThreeSceneBuilder.studio]. A view that calls `studio(…)` starts with it pressed.
  * @param pathTrace the **Path trace** button: the Realism scene traced progressively on the GPU
- * (three-gpu-pathtracer), with light that bounces and soft shadows. It refines while the view is
- * still and falls back to the Realism raster while it moves. Single views only, and not in a
- * published page.
+ * (three-gpu-pathtracer), with light that bounces and soft shadows. Where the browser has WebGPU it
+ * traces 32 samples per pixel and denoises them (Open Image Denoise); elsewhere it traces on WebGL
+ * up to 512. Single views only, and not in a published page.
  */
 @Serializable
 data class ThreeControls(

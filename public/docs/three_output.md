@@ -339,23 +339,54 @@ when the box runs again.
 
 `controls(pathTrace = true)` adds **Path trace**, which traces the same scene on the GPU with
 [three-gpu-pathtracer](https://github.com/gkjohnson/three-gpu-pathtracer). Light bounces between
-surfaces, so the underside of a roof picks up light reflected off the floor below it. The image
-starts grainy and clears as samples accumulate; the button shows the count, and tracing stops at
-512 samples per pixel. While you orbit, or while a part moves, the Realism view draws instead,
-and the traced image fades back in once the view is still. Lines, points and handles are drawn
-over the traced image and hidden where a surface is in front of them.
+surfaces, so the underside of a roof picks up light reflected off the floor below it. Lines,
+points and handles are drawn over the traced image and hidden where a surface is in front of them.
 
-```diffstatic {data-lang=kotlin}
-three {
-    mesh(model, wireframe = false)
-    controls(realism = true, pathTrace = true)
+Where the browser offers WebGPU, the tracer runs as compute
+shaders. It stops at 32 samples per pixel and runs
+[Open Image Denoise](https://www.openimagedenoise.org/) over the result, which turns that still-grainy
+image into a clean one, usually within a few seconds. The button shows the count and then
+**denoised**. While you orbit, the view drops to a coarse traced preview and sharpens when you
+stop; a part that moves is updated in place. The first trace after opening a view takes a few
+seconds longer while the tracer compiles, and the Realism view draws meanwhile.
+
+Without WebGPU the same button traces on WebGL: slower, with no denoising, the image clearing as
+samples accumulate up to 512 per pixel, and the Realism view drawing whenever anything moves.
+
+To start a view traced, pass `pathTrace = true` to `studio()`. The view opens with **Realism** and
+**Path trace** both pressed, so a reader can turn tracing off. This pavilion's roof overhangs the
+slab: look under it, and at the back wall, for light bounced up off the floor.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/path-trace.png" alt="a white pavilion of a roof on eight posts, a back wall and three blocks on a slab, path traced: the posts cast long soft shadows across the slab, and the wall and the roof's underside are lit by light bounced off the floor" wait="2.0" capture="box" open-outputs="true" padding="20" name="three-path-trace"}
+// A slab, a roof on eight posts, a wall and some blocks: enough overhang for light to bounce.
+val slab = boxMesh(8.0, 4.0, 0.15).translated(0.0, 0.0, 0.075)
+val roof = boxMesh(6.5, 3.2, 0.12).translated(0.5, 0.0, 2.6)
+val posts =
+    [-2.4, -0.6, 1.2, 3.4].flatMap { x -> [-1.4, 1.4].map { y -> boxMesh(0.12, 0.12, 2.4).translated(x, y, 1.35) } }
+val wall = boxMesh(4.0, 0.15, 2.4).translated(-0.8, 1.2, 1.35)
+val blocks = [
+    boxMesh(0.8, 0.8, 0.6).translated(-3.2, -1.0, 0.45),
+    boxMesh(0.6, 0.6, 0.5).translated(-2.7, -1.5, 0.4),
+    boxMesh(1.6, 0.7, 0.5).translated(3.0, -2.4, 0.25),
+]
+
+three(name = "pavilion", width = 760, height = 440) {
+    for (part in [slab, roof, wall] + posts + blocks) mesh(part, wireframe = false)
+    camera(yaw = -35.0, pitch = 28.0, distance = 1.6, upAxis = ThreeUpAxis.Z)
+    studio(pathTrace = true)
 }
 ```
+
+![A path-traced white pavilion: soft post shadows across the slab, and bounced light under the roof.](assets/three_output/path-trace.png)
+
+In a box of your own, `controls(realism = true, pathTrace = true)` shows both buttons without
+starting either.
 
 !!! note
     Path tracing traces surfaces with a standard material that are not close to fully transparent;
     other surfaces are drawn over the traced image. It draws in a single view, not in a contact
-    sheet, X-ray, or a published page. It is heavy on the GPU, so it stays off until you press it.
+    sheet, X-ray, or a published page. It is heavy on the GPU, so it stays off unless the box starts
+    it or you press the button.
 
 ### One scene, two kinds of thing
 
@@ -967,10 +998,11 @@ offline.
 
 ## Play with it
 
-[Open the gallery](offline.html?file=assets/three_output_gallery/metadata.edn), with the five boxes
-on this page and their captured outputs. Drag a 3D view to orbit it; use **Parts** and **X-ray**
+[Open the gallery](offline.html?file=assets/three_output_gallery/metadata.edn), with six boxes
+from this page and their captured outputs. Drag a 3D view to orbit it; use **Parts** and **X-ray**
 to explore its geometry. Click a box to read its code. To change `facts = true` to `false`, or
-set the grid's `columns` to `4`, use **Open in Field·4** and run the edited box.
+set the grid's `columns` to `4`, use **Open in Field·4** and run the edited box. Box 6 is the
+path-traced pavilion; it traces only once it is open in Field.
 
 <iframe
     src="offline.html?file=assets/three_output_gallery/metadata.edn&amp;focus=outputs"

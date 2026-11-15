@@ -45,12 +45,45 @@ internal class Oidn(dir: Path) {
     private val commitFilter=h("oidnCommitFilter",null,ADDRESS)
     private val execute=h("oidnExecuteFilter",null,ADDRESS)
     private val releaseFilter=h("oidnReleaseFilter",null,ADDRESS)
+    // Interop (OIDN 2.x): devices by UUID, buffers and timeline semaphores imported from Vulkan fds, async execution.
+    private val newDeviceByUUID=h("oidnNewDeviceByUUID",ADDRESS,ADDRESS)
+    private val getDeviceInt=h("oidnGetDeviceInt",JAVA_INT,ADDRESS,ADDRESS)
+    private val newSharedBufferFromFD=h("oidnNewSharedBufferFromFD",ADDRESS,ADDRESS,JAVA_INT,JAVA_INT,JAVA_LONG)
+    private val newSharedSemaphoreFromFD=h("oidnNewSharedSemaphoreFromFD",ADDRESS,ADDRESS,JAVA_INT,JAVA_INT)
+    private val releaseSemaphore=h("oidnReleaseSemaphore",null,ADDRESS)
+    private val signalSemaphoresAsync=h("oidnSignalSemaphoresAsync",null,ADDRESS,ADDRESS,ADDRESS,JAVA_INT)
+    private val waitSemaphoresAsync=h("oidnWaitSemaphoresAsync",null,ADDRESS,ADDRESS,ADDRESS,ADDRESS,JAVA_INT)
+    private val executeAsync=h("oidnExecuteFilterAsync",null,ADDRESS)
+    private val syncDevice=h("oidnSyncDevice",null,ADDRESS)
     private val arena=Arena.ofShared()
     private fun s(text: String)=arena.allocateFrom(text)
 
-    inner class Device(val type: Int) : AutoCloseable {
-        val handle=newDevice.invokeWithArguments(type) as MemorySegment
-        init { check(handle.address()!=0L) { "No OIDN device of type $type" };commitDevice.invokeWithArguments(handle);check() }
+    /** [uuid] (16 bytes, e.g. Vulkan's deviceUUID) picks the physical device; [type] is then ignored. */
+    inner class Device(val type: Int,uuid: ByteArray?=null) : AutoCloseable {
+        val handle=(if(uuid==null) newDevice.invokeWithArguments(type) else newDeviceByUUID.invokeWithArguments(arena.allocateFrom(JAVA_BYTE,*uuid))) as MemorySegment
+        init { check(handle.address()!=0L) { "No OIDN device of type $type${uuid?.let { " with that UUID" } ?: ""}" };commitDevice.invokeWithArguments(handle);check() }
+        /** OIDN_DEVICE_TYPE_*: 1 CPU, 2 SYCL, 3 CUDA, 4 HIP, 5 Metal. */
+        val deviceType: Int get() = getDeviceInt.invokeWithArguments(handle,s("type")) as Int
+        /**
+         * Import a Vulkan buffer's opaque fd ([byteSize] = the exact exported allocation size). OIDN owns [fd] on success;
+         * [dedicated] adds OIDN_EXTERNAL_MEMORY_TYPE_FLAG_DEDICATED, which Field's exportable buffers need.
+         */
+        fun sharedBuffer(fd: Int,byteSize: Long,dedicated: Boolean=true): MemorySegment {
+            val b=newSharedBufferFromFD.invokeWithArguments(handle,1 or (if(dedicated) 1 shl 30 else 0),fd,byteSize) as MemorySegment
+            check();check(b.address()!=0L) { "oidnNewSharedBufferFromFD returned null" };return b
+        }
+        /** Import a Vulkan timeline semaphore's opaque fd (OIDN_EXTERNAL_SEMAPHORE_TYPE_FLAG_TIMELINE_SEMAPHORE_FD). */
+        fun sharedTimeline(fd: Int): MemorySegment {
+            val sem=newSharedSemaphoreFromFD.invokeWithArguments(handle,1 shl 7,fd) as MemorySegment
+            check();check(sem.address()!=0L) { "oidnNewSharedSemaphoreFromFD returned null" };return sem
+        }
+        fun waitAsync(sem: MemorySegment,value: Long) { Arena.ofConfined().use { a ->
+            waitSemaphoresAsync.invokeWithArguments(handle,a.allocate(ADDRESS).also { it.set(ADDRESS,0,sem) },a.allocateFrom(JAVA_LONG,value),MemorySegment.NULL,1) };check() }
+        fun signalAsync(sem: MemorySegment,value: Long) { Arena.ofConfined().use { a ->
+            signalSemaphoresAsync.invokeWithArguments(handle,a.allocate(ADDRESS).also { it.set(ADDRESS,0,sem) },a.allocateFrom(JAVA_LONG,value),1) };check() }
+        fun runAsync(f: MemorySegment) { executeAsync.invokeWithArguments(f);check() }
+        fun sync() { syncDevice.invokeWithArguments(handle);check() }
+        fun releaseSem(sem: MemorySegment)=releaseSemaphore.invokeWithArguments(sem)
         fun check() { val msg=arena.allocate(ADDRESS);val code=getError.invokeWithArguments(handle,msg) as Int
             check(code==0) { "OIDN error $code: "+(msg.get(ADDRESS,0)).reinterpret(4096).getString(0) } }
         fun buffer(bytes: Long)=newBuffer.invokeWithArguments(handle,bytes) as MemorySegment

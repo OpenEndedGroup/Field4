@@ -460,6 +460,8 @@ data class ThreeStudioSpec(
     val exposure: Double = 1.0,
     /** Ground-truth ambient occlusion (GTAO): contact shadows in creases and under overhangs. Single views only. */
     val ambientOcclusion: Boolean = true,
+    /** Start with the toolbar's **Path trace** pressed: the scene path traced, with bouncing light. Single views only. */
+    val pathTrace: Boolean = false,
 )
 
 /**

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T02:30:11.839Z",
+  "capturedAt": "2026-11-14T23:07:47.061Z",
   "documentName": "alife_search_comparison",
   "outputs": [
     {
@@ -9,7 +9,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 372,
+      "width": 368,
       "height": 268,
       "path": "outputs/0.html"
     },
@@ -19,7 +19,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 372,
+      "width": 368,
       "height": 268,
       "path": "outputs/1.html"
     },
@@ -29,7 +29,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 372,
+      "width": 368,
       "height": 268,
       "path": "outputs/2.html"
     }

@@ -525,17 +525,21 @@ const xrayOpacity = document.getElementById('xray-opacity');
 const realismState = {user: urlParams.get('realism') === '1' ? true : (urlParams.get('realism') === '0' ? false : null),
     payload: null, bounds: null, upAxis: 'Y', helpers: true};
 const realismToggle = document.getElementById('realism-toggle');
-// Path tracing draws the Realism scene, so it holds Realism on while it is on.
-const pathTraceState = {on: urlParams.get('pathtrace') === '1'};
+// Path tracing draws the Realism scene, so it holds Realism on while it is on. Like Realism, it starts as the
+// box asks (`studio(pathTrace = true)`) and keeps the reader's last press across runs (`user`).
+const pathTraceState = {on: urlParams.get('pathtrace') === '1', user: null};
 const pathTraceToggle = document.getElementById('path-trace-toggle');
 function realismOn() { return pathTraceState.on || (realismState.user ?? !!realismState.payload); }
 realismToggle.addEventListener('click', () => {
     const on = !realismOn();
     realismState.user = on;
-    if (!on) pathTraceState.on = false;
+    if (!on) pathTraceState.on = pathTraceState.user = false;
     applyRealism(); requestRender();
 });
-pathTraceToggle.addEventListener('click', () => { pathTraceState.on = !pathTraceState.on; applyRealism(); requestRender(); });
+pathTraceToggle.addEventListener('click', () => {
+    pathTraceState.on = pathTraceState.user = !pathTraceState.on;
+    applyRealism(); requestRender();
+});
 // Which of the viewer's own controls the toolbar shows (`ThreeControls` in ThreeJsViewer.kt). None unless
 // the box asked, so a plain view is a picture you can orbit. E shows every one until it is pressed
 // again; `hud(false)` hides the HUD whatever this says. A view set up for linking or inspecting shows
@@ -545,6 +549,8 @@ function controlShown(name) {
     if (controlsRevealed || controlsPayload.controls?.[name]) return true;
     if (name === 'linkCamera') return !!controlsPayload.cameraLink || cameraLinkOn;
     if (name === 'parts') return !!controlsPayload.inspector?.enabled;
+    // A view that starts traced always has the button that stops it.
+    if (name === 'pathTrace') return !!realismState.payload?.pathTrace;
     return false;
 }
 function controlsHud() { xrayHud(); featureHud(); inspectorPartHud(); }
@@ -663,14 +669,14 @@ window.FieldViewer = Object.freeze({followStatus: () => cameraFollow.status(),
         zoom:camera.zoom, fov:camera.fov}),
     setCamera,
     renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools,
-    snapshotImage: () => { render(); return renderer.domElement.toDataURL('image/png'); },
+    snapshotImage: () => { render(); return (gpuPathTraceComposite() || renderer.domElement).toDataURL('image/png'); },
     snapshotForPublication,
     turntable: () => turntable.status(), cameraLink: () => cameraLink.status(), shot: () => shot.status(),
     film: Object.freeze({begin: filmBegin, at: filmAt, end: filmEnd, status: filmStatus}),
     captureStatus: () => {
         const tools = viewerTools.status(), render = renderScheduler.stats();
         return {...captureState, ready:captureState.ready && !tools.pending.length && !tools.error &&
-            render.visible && render.frames > 0, error:captureState.error || tools.error};
+            render.visible && render.frames > 0 && !pathTraceSettling(), error:captureState.error || tools.error};
     }});
 let glbExporting = false;
 const formatGlbSize = n => n < 1048576 ? Math.ceil(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
@@ -971,6 +977,7 @@ studioRoot.add(studioHemi, studioKey, studioKey.target, studioRim, studioRim.tar
 /** What the payload asked for; the button decides whether it, the realism default, or nothing is drawn. */
 function applyStudio(spec, bounds, upAxis, helpers) {
     Object.assign(realismState, {payload: spec || null, bounds: bounds || null, upAxis: upAxis === 'Z' ? 'Z' : 'Y', helpers});
+    if (pathTraceState.user === null) pathTraceState.on = urlParams.get('pathtrace') === '1' || !!spec?.pathTrace;
     applyRealism();
 }
 function applyRealism() {
@@ -1118,25 +1125,51 @@ function renderStudioAo() {
 
 // [viewer-region pathtrace] BEGIN
 // **Path trace**: the Realism scene — its key and rim lights, the room's light and the ground — traced
-// progressively by three-gpu-pathtracer (vendored with three-mesh-bvh, loaded the first time it is
-// pressed). Samples accumulate while nothing changes; until the first few are in, and whenever the
-// camera, a surface or a part moves, the Realism raster view draws instead and the traced image fades
-// back in over it. Only lit surfaces are traced (MeshStandardMaterial, not see-through); lines,
-// points, selection overlays and handles are drawn over the traced image, hidden where a surface is
-// in front of them. One view only, like ambient occlusion; X-ray draws without it.
+// progressively by three-gpu-pathtracer (vendored, loaded the first time it is pressed). Only lit
+// surfaces are traced (MeshStandardMaterial, not see-through); lines, points, selection overlays and
+// handles are drawn over the traced image, hidden where a surface is in front of them. One view only,
+// like ambient occlusion; X-ray draws without it.
+//
+// Where the browser has WebGPU, the tracer's WebGPU build traces with compute kernels into its own
+// canvas beneath this one, from the very scene objects the viewer built (three.webgpu.js and this
+// file's three share three.core.js); this canvas then clears to transparent and draws only the
+// overlays. It stops at PATH_TRACE_DENOISE_SAMPLES and runs Open Image Denoise over the result.
+// Camera moves show its own low-resolution preview; moved parts and changed materials are updated in
+// place, and only new geometry re-bakes. Until its kernels are compiled the Realism raster draws.
+// Elsewhere (or with `?pathtraceBackend=webgl`) the WebGL tracer accumulates to PATH_TRACE_MAX_SAMPLES,
+// showing the Realism raster before its first samples and whenever anything moves.
 const PATH_TRACE_MAX_SAMPLES = 512;
+const PATH_TRACE_DENOISE_SAMPLES = 32;
 // Named through constants, not quoted in `import(…)`: a publication bundles only three and rewrites
 // every literal import in this file (publication-three.js), and its views never path trace.
-const PATH_TRACE_MODULES = {shim: '/vendor/three-gpu-pathtracer/0.0.28/cube_uv_reflection_fragment.js', tracer: 'three-gpu-pathtracer'};
-const pathTrace = {tracer: null, loading: null, failed: null, sceneKey: null, cameraKey: null, envKey: null,
+// The WebGPU files come from tools/three-pathtracer-webgpu-bundle.
+const PATH_TRACE_MODULES = {shim: '/vendor/three-gpu-pathtracer/0.0.28/cube_uv_reflection_fragment.js', tracer: 'three-gpu-pathtracer',
+    webgpu: '/vendor/three/0.187.0/three.webgpu.js', gpuTracer: '/vendor/three-gpu-pathtracer/0.0.28/webgpu/index.module.js',
+    weights: '/vendor/oidn-webgpu/0.6.0/rt_hdr_alb_nrm.tza'};
+const pathTrace = {tracer: null, gpu: null, loading: null, failed: null, sceneKey: null, cameraKey: null, envKey: null,
     rebuildAt: 0, pending: null, depthOnly: new THREE.MeshBasicMaterial({colorWrite: false, side: THREE.DoubleSide})};
 function pathTraceActive() {
     return pathTraceState.on && !isPublication && panelState.cameras.length <= 1 && !xrayState.enabled && studioRoot.visible;
 }
 function loadPathTracer() {
     if (pathTrace.loading) return pathTrace.loading;
+    pathTrace.loading = loadGpuPathTracer().catch(error => {
+        console.info('three viewer: WebGPU path tracing is unavailable; tracing on WebGL', error);
+        return null;
+    }).then(gpu => {
+        if (!gpu) return loadGlPathTracer();
+        pathTrace.gpu = gpu;
+        requestRender();
+    }).catch(error => {
+        pathTrace.failed = String(error?.message || error);
+        console.warn('three viewer: path tracing is unavailable', error);
+        xrayHud();
+    });
+    return pathTrace.loading;
+}
+function loadGlPathTracer() {
     // three 0.187 dropped a shader chunk the tracer's WebGL materials still include; see the shim.
-    pathTrace.loading = import(PATH_TRACE_MODULES.shim).then(({cubeUvReflectionFragment}) => {
+    return import(PATH_TRACE_MODULES.shim).then(({cubeUvReflectionFragment}) => {
         THREE.ShaderChunk.cube_uv_reflection_fragment ??= cubeUvReflectionFragment;
         return import(PATH_TRACE_MODULES.tracer);
     }).then(({WebGLPathTracer}) => {
@@ -1151,12 +1184,44 @@ function loadPathTracer() {
         pathTrace.tracer = tracer;
         pathTrace.sceneKey = null;
         requestRender();
-    }).catch(error => {
-        pathTrace.failed = String(error?.message || error);
-        console.warn('three viewer: path tracing is unavailable', error);
-        xrayHud();
     });
-    return pathTrace.loading;
+}
+/** The WebGPU tracer on its own canvas, or null when this browser has no WebGPU adapter. */
+async function loadGpuPathTracer() {
+    if (urlParams.get('pathtraceBackend') === 'webgl' || !navigator.gpu) return null;
+    const [WEBGPU, gpuTracer] = await Promise.all([import(PATH_TRACE_MODULES.webgpu), import(PATH_TRACE_MODULES.gpuTracer)]);
+    const canvas = document.createElement('canvas');
+    canvas.className = 'path-trace-canvas';
+    canvas.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;visibility:hidden';
+    const gpuRenderer = new WEBGPU.WebGPURenderer({canvas, alpha: true, antialias: false, trackTimestamp: true});
+    try { await gpuRenderer.init(); } catch (error) { gpuRenderer.dispose(); throw error; }
+    // WebGPURenderer quietly falls back to a WebGL 2 backend, which the tracer's compute kernels cannot use.
+    if (!gpuRenderer.backend.isWebGPUBackend) { gpuRenderer.dispose(); return null; }
+    // The tracer's background is the clear colour: transparent, so the page shows through as it does under the raster.
+    gpuRenderer.setClearColor(0x000000, 0);
+    const tracer = new gpuTracer.WebGPUPathTracer(gpuRenderer);
+    tracer.maxBounces = 6;
+    tracer.maxSamples = PATH_TRACE_DENOISE_SAMPLES;
+    // Compile in the background (seconds, the first time) while the raster draws, instead of stalling the page.
+    tracer.asyncCompile = true;
+    const gpu = {renderer: gpuRenderer, tracer, canvas, stage: 'building', samples: 0, keys: null, cameraKey: null, envKey: null,
+        equirect: {source: null, texture: null}, size: ''};
+    const denoiser = new gpuTracer.OIDNDenoiser({initUNetFromURL: gpuTracer.initUNetFromURL, auxWeightsUrl: PATH_TRACE_MODULES.weights});
+    denoiser.addEventListener('error', event => {
+        console.warn('three viewer: the path trace denoiser failed; accumulating samples instead', event.error);
+        tracer.setDenoiser(null); tracer.maxSamples = PATH_TRACE_MAX_SAMPLES; requestRender();
+    });
+    tracer.setDenoiser(denoiser);
+    tracer.addEventListener('progress', event => {
+        gpu.stage = event.stage;
+        if (event.samples) gpu.samples = event.samples.avg;
+        requestRender();
+    });
+    tracer.addEventListener('complete', () => { gpu.stage = 'complete'; requestRender(); });
+    // Beneath this canvas: a positioned element paints above a static one, so this one is positioned too.
+    renderer.domElement.style.position = 'relative';
+    renderer.domElement.before(canvas);
+    return gpu;
 }
 /** What the tracer sees: lit, opaque-enough surfaces and the studio ground. Everything else is raster. */
 function pathTraced(o) {
@@ -1169,19 +1234,26 @@ function eachPathTraced(fn) {
     baseGeometryRoot.traverseVisible(o => { if (pathTraced(o)) fn(o); });
     if (pathTraced(studioGround)) fn(studioGround);
 }
-/** A number that changes when anything the tracer baked does: geometry, placement or material. */
-function pathTraceSceneKey() {
-    let h = 17;
-    const mix = v => { h = (Math.imul(h, 31) + (Number.isFinite(v) ? Math.round(v * 1e4) : 0)) | 0; };
+/**
+ * Numbers that change when what the tracer baked does, apart: which geometry is traced, where it is, its
+ * materials, and the studio lights. The WebGPU tracer updates transforms, materials and lights in place
+ * and re-bakes only for geometry; the WebGL tracer re-bakes for any of them.
+ */
+function pathTraceKeys() {
+    const k = {geometry: 17, transform: 17, material: 17, light: 17};
+    const mix = (key, v) => { k[key] = (Math.imul(k[key], 31) + (Number.isFinite(v) ? Math.round(v * 1e4) : 0)) | 0; };
     eachPathTraced(o => {
         const g = o.geometry, m = o.material, p = g.getAttribute('position');
-        mix(o.id); mix(g.id); mix(p?.version ?? 0); mix(p?.count ?? 0); mix(g.index?.version ?? 0);
-        for (const e of o.matrixWorld.elements) mix(e);
-        mix(m.id); mix(m.version); mix(m.color.getHex()); mix(m.opacity); mix(m.roughness); mix(m.metalness);
+        mix('geometry', o.id); mix('geometry', g.id); mix('geometry', p?.version ?? 0); mix('geometry', p?.count ?? 0);
+        mix('geometry', g.index?.version ?? 0); mix('geometry', m.id);
+        for (const e of o.matrixWorld.elements) mix('transform', e);
+        mix('material', m.version); mix('material', m.color.getHex()); mix('material', m.opacity);
+        mix('material', m.roughness); mix('material', m.metalness);
     });
-    for (const light of [studioKey, studioRim]) { mix(light.intensity); for (const e of light.matrixWorld.elements) mix(e); }
-    return h;
+    for (const light of [studioKey, studioRim]) { mix('light', light.intensity); for (const e of light.matrixWorld.elements) mix('light', e); }
+    return k;
 }
+function pathTraceSceneKey() { const k = pathTraceKeys(); return `${k.geometry}|${k.transform}|${k.material}|${k.light}`; }
 function pathTraceCameraKey() {
     let h = 7;
     for (const e of camera.matrixWorld.elements) h = (Math.imul(h, 31) + Math.round(e * 1e5)) | 0;
@@ -1209,6 +1281,7 @@ function renderPathTraceRaster() {
 }
 /** One frame: re-bake or re-aim when something changed, add a sample, then draw the overlays on top. */
 function renderPathTrace() {
+    if (pathTrace.gpu) { renderGpuPathTrace(pathTrace.gpu); return; }
     const tracer = pathTrace.tracer;
     if (!tracer) { loadPathTracer(); renderPathTraceRaster(); return; }
     camera.updateMatrixWorld();
@@ -1218,7 +1291,7 @@ function renderPathTrace() {
         // While a surface keeps moving (a drag, an explode), wait for it to settle before re-baking;
         // the first bake happens at once.
         if (sceneKey !== pathTrace.pending) { pathTrace.pending = sceneKey; pathTrace.rebuildAt = now + (pathTrace.sceneKey === null ? 0 : 180); }
-        if (now < pathTrace.rebuildAt) { renderPathTraceRaster(); updatePathTraceReadout(null); requestRender(); return; }
+        if (now < pathTrace.rebuildAt) { renderPathTraceRaster(); setPathTraceReadout('…'); requestRender(); return; }
         rebuildPathTraceScene();
         pathTrace.sceneKey = sceneKey; pathTrace.pending = null;
     }
@@ -1231,8 +1304,164 @@ function renderPathTrace() {
     tracer.renderSample();
     renderer.autoClear = autoClear;
     renderPathTraceOverlay();
-    updatePathTraceReadout(tracer.samples);
+    setPathTraceReadout(`${Math.min(tracer.samples, PATH_TRACE_MAX_SAMPLES) | 0} spp`);
     if (tracer.samples < PATH_TRACE_MAX_SAMPLES || tracer.isCompiling) requestRender();
+}
+/** The WebGPU tracer's frame: its canvas traces beneath, this one draws the overlays (or the raster, until it can). */
+function renderGpuPathTrace(gpu) {
+    const {tracer} = gpu;
+    syncGpuPathTraceCanvas(gpu);
+    camera.updateMatrixWorld();
+    scene.updateMatrixWorld();
+    const keys = pathTraceKeys(), now = performance.now();
+    if (keys.geometry !== gpu.keys?.geometry) {
+        // New geometry re-bakes; while it keeps changing (a re-run streaming in), wait for it to settle.
+        if (keys.geometry !== pathTrace.pending) { pathTrace.pending = keys.geometry; pathTrace.rebuildAt = now + (gpu.keys === null ? 0 : 180); }
+        if (now < pathTrace.rebuildAt) { showGpuPathTrace(gpu, false); setPathTraceReadout('…'); requestRender(); return; }
+        try { buildGpuPathTraceScene(gpu); tracer.setScene(gpu.scene, camera); }
+        catch (error) { abandonGpuPathTrace(gpu, error); return; }
+        Object.assign(gpu, {keys, cameraKey: pathTraceCameraKey(), envKey: pathTraceEnvKey(), stage: 'building', samples: 0});
+        pathTrace.pending = null;
+    } else {
+        let reset = false;
+        if (keys.transform !== gpu.keys.transform) { syncGpuPathTraceTransforms(gpu); tracer.updateTransforms(); reset = true; }
+        if (keys.material !== gpu.keys.material) { tracer.updateMaterials(); reset = true; }
+        if (keys.light !== gpu.keys.light) { syncGpuPathTraceLights(gpu); tracer.updateLights(); reset = true; }
+        const cameraKey = pathTraceCameraKey(), envKey = pathTraceEnvKey();
+        if (cameraKey !== gpu.cameraKey) { tracer.updateCamera(); reset = true; }
+        if (envKey !== gpu.envKey) { syncGpuPathTraceEnvironment(gpu); tracer.updateEnvironment(); reset = true; }
+        Object.assign(gpu, {keys, cameraKey, envKey});
+        if (reset) Object.assign(gpu, {stage: 'rendering', samples: 0});
+    }
+    tracer.renderSample();
+    const ready = !tracer.compiling && gpu.stage !== 'building' && gpu.stage !== 'compiling';
+    showGpuPathTrace(gpu, ready);
+    const samples = Math.min(gpu.samples, PATH_TRACE_DENOISE_SAMPLES) | 0;
+    setPathTraceReadout(!ready ? '…' : gpu.stage === 'complete' && tracer.maxSamples === PATH_TRACE_DENOISE_SAMPLES ? `${samples} spp · denoised`
+        : gpu.stage === 'denoising' ? `${samples} spp · denoising` : `${Math.floor(gpu.samples)} spp`);
+    if (!ready || gpu.stage !== 'complete') requestRender();
+}
+/** A scene the WebGPU tracer cannot take: trace on WebGL from here on, rather than fail every frame. */
+function abandonGpuPathTrace(gpu, error) {
+    console.warn('three viewer: the WebGPU path tracer failed; tracing on WebGL', error);
+    pathTrace.gpu = null; pathTrace.pending = null;
+    gpu.canvas.remove();
+    try { gpu.tracer.dispose(); gpu.renderer.dispose(); } catch (_) { /* already failing */ }
+    pathTrace.loading = loadGlPathTracer().catch(failure => {
+        pathTrace.failed = String(failure?.message || failure);
+        console.warn('three viewer: path tracing is unavailable', failure);
+        xrayHud();
+    });
+    renderPathTraceRaster();
+}
+/** Show the traced canvas with the overlays on this one, or hide it and draw the raster here. */
+function showGpuPathTrace(gpu, traced) {
+    gpu.canvas.style.visibility = traced ? '' : 'hidden';
+    if (!traced) { renderPathTraceRaster(); return; }
+    renderer.setRenderTarget(null);
+    renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
+    renderer.clear();
+    renderPathTraceOverlay();
+}
+/** Hide the traced canvas while this view draws anything else (a contact sheet, X-ray, Realism off). */
+function hideGpuPathTrace() {
+    if (pathTrace.gpu && pathTrace.gpu.canvas.style.visibility !== 'hidden') pathTrace.gpu.canvas.style.visibility = 'hidden';
+}
+function syncGpuPathTraceCanvas(gpu) {
+    const r = gpu.renderer, dpr = renderer.getPixelRatio(), w = container.clientWidth, h = container.clientHeight;
+    const size = `${w}x${h}@${dpr}`;
+    if (size !== gpu.size) { r.setPixelRatio(dpr); r.setSize(w, h, false); gpu.size = size; }
+    r.toneMapping = renderer.toneMapping;
+    r.toneMappingExposure = renderer.toneMappingExposure;
+}
+/**
+ * What the WebGPU tracer is given: a scene of its own, holding a stand-in for each traced mesh (sharing its
+ * geometry and material, placed by its world matrix), the studio's key and rim lights, and the room light.
+ * Its scene walk takes every object's material and adds attributes to every geometry, visible or not, so
+ * it never sees the viewer's scene with its lines, handles and pick materials. The cube-map room light is
+ * handed over as an equirect, since the tracer converts cube maps with a synchronous pixel readback
+ * WebGPU does not have.
+ */
+function buildGpuPathTraceScene(gpu) {
+    const proxy = new THREE.Scene(), meshes = [];
+    eachPathTraced(o => {
+        const stand = new THREE.Mesh(o.geometry, o.material);
+        stand.matrixAutoUpdate = false;
+        stand.matrix.copy(o.matrixWorld);
+        proxy.add(stand);
+        meshes.push([o, stand]);
+    });
+    const lights = [studioKey, studioRim].map(light => {
+        const stand = new THREE.DirectionalLight();
+        proxy.add(stand, stand.target);
+        return [light, stand];
+    });
+    Object.assign(gpu, {scene: proxy, meshes, lights});
+    syncGpuPathTraceLights(gpu);
+    syncGpuPathTraceEnvironment(gpu);
+    proxy.updateMatrixWorld(true);
+}
+function syncGpuPathTraceTransforms(gpu) {
+    for (const [o, stand] of gpu.meshes) stand.matrix.copy(o.matrixWorld);
+    gpu.scene.updateMatrixWorld(true);
+}
+function syncGpuPathTraceLights(gpu) {
+    for (const [light, stand] of gpu.lights) {
+        stand.visible = light.visible && studioRoot.visible;
+        stand.color.copy(light.color);
+        stand.intensity = light.intensity;
+        light.getWorldPosition(stand.position);
+        light.target.getWorldPosition(stand.target.position);
+    }
+    gpu.scene.updateMatrixWorld(true);
+}
+function syncGpuPathTraceEnvironment(gpu) {
+    gpu.scene.environment = gpuPathTraceEquirect(gpu, scene.environment);
+    gpu.scene.environmentIntensity = scene.environmentIntensity;
+    gpu.scene.environmentRotation.copy(scene.environmentRotation);
+}
+const PATH_TRACE_EQUIRECT_WIDTH = 512;
+function gpuPathTraceEquirect(gpu, source) {
+    if (!source?.isCubeTexture) return source;
+    if (gpu.equirect.source === source) return gpu.equirect.texture;
+    // Unwrap the cube on this renderer, in three's equirect convention (u from atan(z, x), v from asin(y)).
+    const width = PATH_TRACE_EQUIRECT_WIDTH, height = width / 2;
+    const target = new THREE.WebGLRenderTarget(width, height, {type: THREE.FloatType, depthBuffer: false});
+    const material = new THREE.ShaderMaterial({uniforms: {env: {value: source}}, depthTest: false, depthWrite: false,
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+        fragmentShader: `uniform samplerCube env; varying vec2 vUv;
+            void main() {
+                float phi = (vUv.x - 0.5) * 6.28318530718, theta = (vUv.y - 0.5) * 3.14159265359;
+                gl_FragColor = vec4(textureCube(env, vec3(cos(theta) * cos(phi), sin(theta), cos(theta) * sin(phi))).rgb, 1.0);
+            }`});
+    const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+    const pixels = new Float32Array(width * height * 4), previous = renderer.getRenderTarget();
+    try {
+        renderer.setRenderTarget(target);
+        renderer.render(quad, new THREE.OrthographicCamera());
+        renderer.readRenderTargetPixels(target, 0, 0, width, height, pixels);
+    } finally {
+        renderer.setRenderTarget(previous);
+        target.dispose(); material.dispose(); quad.geometry.dispose();
+    }
+    const texture = new THREE.DataTexture(pixels, width, height, THREE.RGBAFormat, THREE.FloatType);
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    texture.minFilter = texture.magFilter = THREE.LinearFilter;
+    texture.needsUpdate = true;
+    gpu.equirect.texture?.dispose();
+    gpu.equirect = {source, texture};
+    return texture;
+}
+/** The view as shown: the traced canvas with this one over it, when the WebGPU tracer is showing; else null. */
+function gpuPathTraceComposite() {
+    const gpu = pathTrace.gpu;
+    if (!gpu || gpu.canvas.style.visibility === 'hidden') return null;
+    const out = document.createElement('canvas');
+    out.width = renderer.domElement.width; out.height = renderer.domElement.height;
+    const context = out.getContext('2d');
+    context.drawImage(gpu.canvas, 0, 0, out.width, out.height);
+    context.drawImage(renderer.domElement, 0, 0);
+    return out;
 }
 /** Lines, points, sprites and untraced meshes over the traced image, depth-tested against the traced surfaces. */
 function renderPathTraceOverlay() {
@@ -1250,9 +1479,20 @@ function renderPathTraceOverlay() {
         scene.environment = environment; scene.background = background; renderer.autoClear = autoClear;
     }
 }
+// A capture of a traced view waits for its trace: denoised on WebGPU, this many samples on WebGL (its full
+// PATH_TRACE_MAX_SAMPLES would take minutes).
+const PATH_TRACE_CAPTURE_SAMPLES = 64;
+/** True while a traced view is still converging, so `captureStatus` holds a screenshot until it has finished. */
+function pathTraceSettling() {
+    if (!pathTraceActive() || pathTrace.failed) return false;
+    const gpu = pathTrace.gpu;
+    if (gpu) return gpu.stage !== 'complete' || gpu.cameraKey !== pathTraceCameraKey() || pathTrace.pending !== null;
+    const tracer = pathTrace.tracer;
+    return !tracer || tracer.samples < PATH_TRACE_CAPTURE_SAMPLES || pathTrace.cameraKey !== pathTraceCameraKey();
+}
 const pathTraceReadout = document.getElementById('path-trace-readout');
-function updatePathTraceReadout(samples) {
-    const text = pathTrace.failed ? 'unavailable' : samples === null ? '…' : `${Math.min(samples, PATH_TRACE_MAX_SAMPLES) | 0} spp`;
+function setPathTraceReadout(text) {
+    if (pathTrace.failed) text = 'unavailable';
     if (pathTraceReadout.textContent !== text) pathTraceReadout.textContent = text;
 }
 // [viewer-region pathtrace] END
@@ -8215,8 +8455,10 @@ function render() {
     if (editorState.mode === 'camera') renderer.domElement.style.cursor = interactivePointer ? 'pointer' : '';
 
     if (renderer.shadowMap.enabled) syncStudioShadows();
+    const pathTracing = panelState.cameras.length <= 1 && pathTraceActive();
+    if (!pathTracing) hideGpuPathTrace();
     if (panelState.cameras.length > 1) renderPanels();
-    else if (pathTraceActive()) renderPathTrace();
+    else if (pathTracing) renderPathTrace();
     else if (studioAoActive()) renderStudioAo();
     else {
         renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
