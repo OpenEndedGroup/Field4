@@ -2850,7 +2850,7 @@ hands back a fresh instance every time it is read.
 
 `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt` — [read the source](source/jvmMain/afield/audio/synth/Oscillators/)
 
-**Used in:** [Sound](../explainer_sound.md), [Csound](../csound.md), [Distributions: values that are probability distributions](../distributions.md)
+**Used in:** [Sound](../explainer_sound.md), [Signal examples: time and frequency](../spectral_examples.md), [Csound](../csound.md)
 
 ### Phasor { #oscillators-kt-phasor }
 
