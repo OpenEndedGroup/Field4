@@ -46,9 +46,9 @@ class BondedParams {
     /** Damping of the relative velocity along a bond. */
     var bondDamping = 2f
     /** Drag on motion across a cell's bonds. */
-    var dragNormal = 3f
+    var dragNormal = 15f
     /** Drag on motion along a cell's bonds. Less than [dragNormal] is what makes swimming possible. */
-    var dragTangent = 0.3f
+    var dragTangent = 0.15f
     /** Muscle angular frequency, radians per unit time. */
     var omega = PI.toFloat()
     /** Any two cells closer than this push apart. */
@@ -204,7 +204,7 @@ class BondedWorld(val capacity: Int, val params: BondedParams = BondedParams()) 
 
     /** Builds an organism from a genome string at ([cx], [cy]) heading along [angle]. See [genome]. */
     fun grow(genomeText: String, cx: Float, cy: Float, angle: Float = 0f, waveStep: Float = 0.8f,
-             amplitude: Float = 0.25f, energy: Float = 1f): BondedOrganism {
+             amplitude: Float = 0.4f, energy: Float = 1f): BondedOrganism {
         val o = genome(this, genomeText, cx, cy, angle, waveStep, amplitude, energy, organisms.size)
         organisms += o
         return o
@@ -340,7 +340,7 @@ class BondedWorld(val capacity: Int, val params: BondedParams = BondedParams()) 
  * Any other character is skipped, so `"S MMMM MMMM S"` reads as written.
  */
 fun genome(world: BondedWorld, text: String, cx: Float, cy: Float, angle: Float = 0f, waveStep: Float = 0.8f,
-           amplitude: Float = 0.25f, energy: Float = 1f, owner: Int = 0): BondedOrganism {
+           amplitude: Float = 0.4f, energy: Float = 1f, owner: Int = 0): BondedOrganism {
     val genes = text.filter { it in "MLRSW" }
     require(genes.isNotEmpty()) { "genome '$text' has no M, L, R, S or W" }
     val n = genes.length

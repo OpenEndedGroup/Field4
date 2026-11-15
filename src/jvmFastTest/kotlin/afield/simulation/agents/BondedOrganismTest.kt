@@ -65,10 +65,10 @@ class BondedOrganismTest {
         assertTrue(spread < 0.05f, "spread $spread")
     }
 
-    /** Centroid displacement of a 12-segment worm over 60 time units. */
-    private fun swim(waveStep: Float, dragTangent: Float = 0.3f, steps: Int = 3000): Pair<Double, Double> {
+    /** Centroid displacement of a 12-segment worm over 60 time units (30 strokes). */
+    private fun swim(waveStep: Float, isotropic: Boolean = false, steps: Int = 3000): Pair<Double, Double> {
         val w = BondedWorld(64)
-        w.params.dragTangent = dragTangent
+        if (isotropic) w.params.dragTangent = w.params.dragNormal
         val o = w.grow("SMMMMMMMMMMS", 0f, 0f, waveStep = waveStep)
         val (x0, y0) = w.centroid(o)
         w.run(steps)
@@ -84,13 +84,42 @@ class BondedOrganismTest {
         val wave = swim(0.8f)
         val reversed = swim(-0.8f)
         val standing = swim(0f)
-        val isotropic = swim(0.8f, dragTangent = 3f)
+        val isotropic = swim(0.8f, isotropic = true)
         println("worm displacement over 60 time units: wave $wave (${wave.len()}), reversed wave $reversed, " +
             "standing wave ${standing.len()}, isotropic drag ${isotropic.len()}")
-        assertTrue(wave.len() > 5.0, "travelling wave moved ${wave.len()}")
+        assertTrue(wave.len() > 30.0, "travelling wave moved ${wave.len()}")
         assertTrue(standing.len() < wave.len() / 5, "standing wave moved ${standing.len()}")
         assertTrue(isotropic.len() < wave.len() / 100, "isotropic drag moved ${isotropic.len()}")
         assertTrue(wave.first * reversed.first + wave.second * reversed.second < 0.0, "reversing the wave reverses the swim")
+    }
+
+    /**
+     * The default worm (default drag, amplitude and wave step) swims more than 1.5 body lengths in 10
+     * strokes, from a straight start,, every bond intact, and the reversed wave sends it backwards along its own axis.
+     */
+    @Test fun defaultWormSwimsSeveralBodyLengths() {
+        val p = BondedParams()
+        val stroke = 2 * Math.PI / p.omega
+        val steps = (10 * stroke / p.dt).toInt()
+        val genes = "SMMMMMMMMMMS"
+        val bodyLength = (genes.length - 1).toDouble()
+        fun go(waveStep: Float): Pair<Double, Double> {
+            val w = BondedWorld(64)
+            val o = w.grow(genes, 0f, 0f, waveStep = waveStep)
+            val (x0, y0) = w.centroid(o)
+            w.run(steps)
+            val (x1, y1) = w.centroid(o)
+            assertEquals(12 + 3 * 11, w.bondCount(), "no bond broke")
+            return (x1 - x0) to (y1 - y0)
+        }
+        val fwd = go(0.8f)
+        val back = go(-0.8f)
+        println("default worm over 10 strokes: forward $fwd = ${fwd.len() / bodyLength} body lengths " +
+            "(${fwd.len() / bodyLength / 10} per stroke), reversed $back")
+        assertTrue(fwd.len() / bodyLength > 1.5, "forward ${fwd.len() / bodyLength} body lengths")
+        assertTrue(back.len() / bodyLength > 1.5, "reversed ${back.len() / bodyLength} body lengths")
+        // the worm starts along +x: one wave goes one way along that axis, the reversed one the other
+        assertTrue(fwd.first * back.first < 0.0 && abs(fwd.first) > abs(fwd.second), "forward $fwd, reversed $back")
     }
 
     @Test fun runningOutOfEnergyStopsTheWorm() {
