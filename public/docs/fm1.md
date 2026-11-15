@@ -381,13 +381,62 @@ project one second of rendering produces on your machine, so you can see how man
     pluck, PSG and sampler voices. What you hear is M-VAVE's simulator, which may differ from the
     device.
 
+## Changing the firmware
+
+The simulator is the FM-1's open firmware compiled to WebAssembly, so a box can change the C, build it
+and play the result. `FM1Firmware.checkout(folder)` clones the source into a folder, at the commit Field's
+own module was built from. `FM1Firmware.patch` changes one piece of a source file, `FM1Firmware.build`
+compiles the folder, and `fm1.loadFirmware` swaps the new module into the running simulator. This one
+cuts the 303's output down to whole eighths before it reaches the mix, a three-bit 303 at about half its level:
+
+```diffstatic {data-lang=kotlin}
+val fm1 = FM1Sim.shared
+val source = FM1Firmware.checkout(java.io.File(System.getProperty("user.home"), "fm1-crushed"))
+
+FM1Firmware.patch(
+    source,
+    "third_party/synth/bass303.c",
+    "out[i]=(int32_t)(sample*16777216);",
+    "out[i]=(int32_t)((int)(sample*8)*2097152);",
+)
+
+fm1.loadFirmware(FM1Firmware.build(source))
+```
+
+In this clip ACID ALLEY plays on the shipped firmware, and four seconds in the crushed build is swapped in
+without stopping the sequence:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/fm1/firmware-swap.wav" audio-spec="firmware-swap" audio-renderer="afield.audio.synth.FM1SoundDocs" embed=true hidden=true name="fm1-firmware-swap"}
+// FM1SoundDocs.renderWav("firmware-swap", …): ACID ALLEY, with the crushed 303 build loaded at 4 s
+```
+
+The first build downloads the WASI SDK the firmware's own build uses, about 115 MB, into
+`~/.field4/toolchains`, and checks it against the release's SHA-256. A build after that takes a few
+seconds. The firmware builds with warnings as errors. C that does not compile throws
+`FM1FirmwareBuildException`, whose message is the compiler's output, file and line first. The simulator
+keeps playing the firmware it had.
+
+`loadFirmware` builds the new module before it stops the old one, then swaps them between two audio
+blocks. Everything in the simulator's flash goes across: saved projects, the voice library, the sample
+bank and settings. So do the project loaded now, each track's MIDI channel and MIDI-out mode, the level,
+and the transport. Notes and patterns scheduled ahead still land on their blocks, and a box that returned
+`fm1.node` keeps playing without being relaunched. `loadFirmware(wasm, keepState = false)` boots the new
+firmware with its own factory storage instead, for a build whose flash layout has changed.
+`fm1.loadBuiltInFirmware()` goes back to the module Field ships.
+
+`patch` needs the text it replaces to occur exactly once in the file, so an edit written against one
+version of the source fails loudly against another instead of doing nothing. `FM1Firmware.reset(source)`
+undoes every edit. `FM1Sim.create(file)` starts a private simulator on a module of your own, which must
+export the simulator interface Field drives (`FM1Sim.FIRMWARE_EXPORTS`).
+
 ## Licence
 
 The firmware's application code is GPL-3.0 with a linking exception for M-VAVE's SDK; the voices it
 builds on are MIT (Open303, DaisySP, stmlib, emu2149) and Apache-2.0 (MSFA/Dexed). The module Field
 ships, its source commit and the command that built it are recorded in
 `src/jvmMain/resources/fm1/PROVENANCE.md`. Field adds no vendored code to it: the DX7 voice format,
-the patterns and the MIDI handling above are Field's own Kotlin.
+the patterns and the MIDI handling above are Field's own Kotlin. A module built from changed source is a
+modified version of the firmware, under the same licences.
 
 ## Limitations
 
@@ -407,8 +456,8 @@ the patterns and the MIDI handling above are Field's own Kotlin.
   mono on the way in.
 * **The panel is buttons, not the drawing.** Clicks go to the rows of buttons below the screen, not to
   the screen itself, and the knob and encoders are buttons and a slider rather than dials.
-* **The firmware can't be edited from a box.** The module is built once and shipped with Field;
-  changing the firmware's C means rebuilding it with the WASI SDK by hand (`PROVENANCE.md`).
+* **A firmware build needs the network once.** The first `FM1Firmware.checkout` and `build` clone the
+  source and fetch the WASI SDK; after that they work offline.
 
 ## Where to go next
 
@@ -420,7 +469,10 @@ the patterns and the MIDI handling above are Field's own Kotlin.
   boxes on a canvas.
 * The source: `src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt` (the simulator, MIDI, the screen and
   projects), `FM1Panel.kt` (the live panel), `FM1Patterns.kt` (patterns in, MIDI clips out) and
-  `FM1Voice.kt` (DX7 voices) and `FM1Samples.kt` (the sampler's bank); what was left out and why is in `dev_docs/FM1.md`.
+  `FM1Voice.kt` (DX7 voices), `FM1Samples.kt` (the sampler's bank) and `FM1Firmware.kt` (building the
+  firmware); what was left out and why is in `dev_docs/FM1.md`.
+* The firmware's source: [m-vave/fm1_open](https://github.com/m-vave/fm1_open). The voices are in
+  `third_party/synth/` and `web/synth/`, and the mixer and sequencer in `web/engine/`.
 
 What to build next, most useful first:
 
@@ -432,7 +484,7 @@ What to build next, most useful first:
   around the screen, with dials that turn by dragging and the step lights the firmware sets.
 * **Microtonal tuning**: write the project's tuning block from Field, so drawn pitches between the
   semitones play as drawn.
-* **Separate track outputs**: export the firmware's per-track buffers, which needs a rebuild of the
-  module.
-* **Live-coding the firmware**: edit the voice and sequencer C in a box, rebuild the module, and swap
-  it in, carrying the project across with `exportProject` and `importProject`.
+* **Separate track outputs**: a firmware patch that exports each track's buffer from `render_stereo`
+  in `web/engine/sound.c`, and a `node` per track that reads them.
+* **Firmware edited in the box's own editor**: open a source file as a box property, so saving it
+  rebuilds and swaps the firmware, with compile errors marked on their lines.

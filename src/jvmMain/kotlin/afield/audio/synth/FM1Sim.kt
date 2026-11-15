@@ -90,9 +90,40 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
         /** A private simulator with its own context; [close] it when done. */
         fun create(): FM1Sim = FM1Sim(loadWasm()).also { it.boot(clear = true) }
 
+        /**
+         * A private simulator running firmware [wasm] (a module built from the FM-1's open source,
+         * for instance by [FM1Firmware.build]) instead of the one shipped with Field.
+         *
+         * @throws IllegalArgumentException if [wasm] is not a WebAssembly module, or lacks an export
+         *   of the simulator interface ([FIRMWARE_EXPORTS]) Field drives
+         */
+        fun create(wasm: ByteArray): FM1Sim = FM1Sim(wasm).also { it.boot(clear = true) }
+
+        /** A private simulator running the firmware module in [file]; see [create]. */
+        fun create(file: File): FM1Sim = create(file.readBytes())
+
+        /** The firmware module shipped with Field (`fm1/fm1-sim.wasm`), built from [FM1Firmware.COMMIT]. */
+        fun builtInFirmware(): ByteArray = loadWasm()
+
         private fun loadWasm(): ByteArray =
             FM1Sim::class.java.getResourceAsStream("/fm1/fm1-sim.wasm")?.use { it.readBytes() }
                 ?: error("FM1Sim: /fm1/fm1-sim.wasm is not on the classpath")
+
+        /**
+         * The exports of `web/engine/Simulator.c` that Field calls. A firmware module missing any of
+         * them is refused when loaded, naming the ones it lacks, rather than failing at the first call.
+         */
+        val FIRMWARE_EXPORTS: List<String> = listOf(
+            "sim_block_frames", "sim_boot", "sim_control", "sim_export", "sim_factory", "sim_factory_name",
+            "sim_factory_project", "sim_factory_size", "sim_file", "sim_flash", "sim_frame_revision", "sim_import",
+            "sim_knobs", "sim_library_read", "sim_library_write", "sim_midi", "sim_midi_capture", "sim_midi_edit",
+            "sim_midi_output", "sim_midi_setting", "sim_panic", "sim_pixels", "sim_preset", "sim_project_name",
+            "sim_release", "sim_render", "sim_sample_alloc", "sim_sample_bank", "sim_sample_bytes",
+            "sim_sample_encode", "sim_select", "sim_state", "sim_step",
+        )
+
+        /** Bytes of flash the firmware keeps (`GROOVE_FLASH_BYTES`): projects, samples, voices, settings. */
+        private const val FLASH_BYTES: Int = 69_632 + 466_944
 
         /** Panel buttons, by the index `sim_control(0, …)` takes. */
         const val BUTTONS: Int = 14
@@ -170,21 +201,87 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
     /** Whether the sequencer is running, as of the last few blocks rendered. */
     val isPlaying: Boolean get() = playingSnapshot
 
-    private val context: Context = Context.newBuilder("js", "wasm")
-        .allowExperimentalOptions(true)
-        .allowHostAccess(HostAccess.ALL)
-        .allowPolyglotAccess(PolyglotAccess.ALL)
-        .allowHostClassLookup { true }
-        .option("js.webassembly", "true")
-        .option("wasm.UseUnsafeMemory", "true")
-        .build()
+    /**
+     * One instance of a firmware module: its own GraalVM context, exports and memory. [loadFirmware]
+     * replaces it while the simulator object, its block clock, and everything queued on it carry on.
+     */
+    private class Module(val wasm: ByteArray) : Closeable {
+        val context: Context = Context.newBuilder("js", "wasm")
+            .allowExperimentalOptions(true)
+            .allowHostAccess(HostAccess.ALL)
+            .allowPolyglotAccess(PolyglotAccess.ALL)
+            .allowHostClassLookup { true }
+            .option("js.webassembly", "true")
+            .option("wasm.UseUnsafeMemory", "true")
+            .build()
+        val exports: Value
+        val fnRender: Value
+        val fnState: Value
+        val fnMidiOut: Value
+        val memory: Value
+        val fileBuffer: Long
 
-    private val exports: Value
-    private val fnRender: Value
-    private val fnState: Value
-    private val fnMidiOut: Value
-    private val memory: Value
-    private val fileBuffer: Long
+        init {
+            context.enter()
+            try {
+                context.getBindings("js").putMember("__fm1Bytes", wasm)
+                exports = try {
+                    context.eval(
+                        Source.newBuilder(
+                            "js",
+                            "(function(){ var m = new WebAssembly.Module(new Uint8Array(Java.from(__fm1Bytes)));" +
+                                " return new WebAssembly.Instance(m, {}).exports; })()",
+                            "fm1-sim.js"
+                        ).buildLiteral()
+                    )
+                } catch (e: org.graalvm.polyglot.PolyglotException) {
+                    throw IllegalArgumentException("FM1Sim: not a loadable WebAssembly module (${e.message})", e)
+                }
+                val missing = FIRMWARE_EXPORTS.filter { exports.getMember(it)?.canExecute() != true }
+                require(missing.isEmpty()) {
+                    "FM1Sim: this module is not an FM-1 simulator build; it lacks ${missing.joinToString()}"
+                }
+                exports.getMember("_initialize")?.takeIf { it.canExecute() }?.execute()
+                fnRender = exports.getMember("sim_render")
+                fnState = exports.getMember("sim_state")
+                fnMidiOut = exports.getMember("sim_midi_output")
+                memory = exports.getMember("memory")?.getMember("buffer")
+                    ?: throw IllegalArgumentException("FM1Sim: the module exports no memory")
+                check(memory.hasBufferElements()) { "FM1Sim: wasm memory has no buffer interop" }
+                val frames = exports.getMember("sim_block_frames").execute().asInt()
+                require(frames == BLOCK) { "FM1Sim: the module renders $frames-frame blocks; Field needs $BLOCK" }
+                fileBuffer = exports.getMember("sim_file").execute().asLong()
+            } catch (t: Throwable) {
+                runCatching { context.leave() }
+                runCatching { context.close(true) }
+                throw t
+            }
+            runCatching { context.leave() }
+        }
+
+        override fun close() { runCatching { context.close(true) } }
+    }
+
+    /** The firmware running now. Replaced only under [lock], so a reader holding it sees one module. */
+    @Volatile private var module: Module = Module(wasm)
+    private val context: Context get() = module.context
+    private val exports: Value get() = module.exports
+    private val fnRender: Value get() = module.fnRender
+    private val fnState: Value get() = module.fnState
+    private val fnMidiOut: Value get() = module.fnMidiOut
+    private val memory: Value get() = module.memory
+    private val fileBuffer: Long get() = module.fileBuffer
+
+    /** SHA-256 of the firmware module running now, lowercase hex. */
+    val firmwareSha256: String get() = sha256(module.wasm)
+
+    /** Whether the firmware running now is the one shipped with Field. */
+    val builtInFirmware: Boolean get() = module.wasm.contentEquals(builtIn)
+
+    private val builtIn: ByteArray by lazy { loadWasm() }
+
+    private fun sha256(b: ByteArray): String =
+        java.security.MessageDigest.getInstance("SHA-256").digest(b).joinToString("") { "%02x".format(it) }
 
     private val scratch = ByteArray(BLOCK * 2 * 4)
     private val scratchFloats = java.nio.ByteBuffer.wrap(scratch)
@@ -206,34 +303,6 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
     /** MIDI events dropped because nobody drained them; see [drainMidi]. */
     val midiDropped: Long get() = midiDroppedCount.get()
     private val midiDroppedCount = AtomicLong()
-
-    init {
-        context.enter()
-        try {
-            context.getBindings("js").putMember("__fm1Bytes", wasm)
-            exports = context.eval(
-                Source.newBuilder(
-                    "js",
-                    "(function(){ var m = new WebAssembly.Module(new Uint8Array(Java.from(__fm1Bytes)));" +
-                        " return new WebAssembly.Instance(m, {}).exports; })()",
-                    "fm1-sim.js"
-                ).buildLiteral()
-            )
-            exports.getMember("_initialize")?.takeIf { it.canExecute() }?.execute()
-            fnRender = exports.getMember("sim_render")
-            fnState = exports.getMember("sim_state")
-            fnMidiOut = exports.getMember("sim_midi_output")
-            memory = exports.getMember("memory").getMember("buffer")
-            check(memory.hasBufferElements()) { "FM1Sim: wasm memory has no buffer interop" }
-            check(exports.getMember("sim_block_frames").execute().asInt() == BLOCK)
-            fileBuffer = exports.getMember("sim_file").execute().asLong()
-        } catch (t: Throwable) {
-            runCatching { context.leave() }
-            runCatching { context.close(true) }
-            throw t
-        }
-        runCatching { context.leave() }
-    }
 
     // ── scheduling ─────────────────────────────────────────────────────────────────────────
 
@@ -374,7 +443,8 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
     /** Set the output-level knob, 0..1 (the knob's travel; the firmware ignores anything past it). */
     fun level(value: Double) {
         require(!value.isNaN()) { "FM1Sim: level is NaN" }
-        call("sim_control", 3, 0, (value.coerceIn(0.0, 1.0) * 1023).toInt())
+        knob = (value.coerceIn(0.0, 1.0) * 1023).toInt()
+        call("sim_control", 3, 0, knob)
     }
 
     /** Toggle step `step` of the selected track. */
@@ -1018,13 +1088,123 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
         }
     }
 
+    /** The level knob as last set by [level]; [loadFirmware] sets it again on the new module. */
+    @Volatile private var knob = 1023
+
+    // ── firmware ───────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Swap the firmware this simulator runs for [wasm], keeping what it was doing.
+     *
+     * ```kotlin
+     * fm1.loadFirmware(FM1Firmware.build(source))
+     * ```
+     *
+     * The new module is compiled before anything stops, then swapped in between two audio blocks.
+     * With [keepState] the simulator's whole flash goes across (saved projects, the voice library,
+     * the sample bank, settings), then the project loaded now, each track's MIDI channel and
+     * MIDI-out mode, the level, and the transport: a playing sequence keeps playing. Notes held
+     * at the moment of the swap are released. The block clock does not restart, so notes and
+     * patterns scheduled ahead still land on their blocks, and the [node] in the audio graph keeps
+     * playing the new firmware without being relaunched.
+     *
+     * Without [keepState], or for firmware whose flash layout differs from the one Field ships,
+     * the new module boots with its own factory storage.
+     *
+     * @throws IllegalArgumentException if [wasm] is not an FM-1 simulator module; the old firmware
+     *   keeps running
+     * @throws IllegalStateException if the new firmware refuses the project; the old firmware keeps
+     *   running
+     */
+    fun loadFirmware(wasm: ByteArray, keepState: Boolean = true) {
+        check(!closed.get()) { "FM1Sim: this simulator is closed" }
+        val next = Module(wasm) // compiles off the audio thread; throws before anything changes
+        try {
+            lock.withLock {
+                val old = module
+                old.context.enter()
+                val carried = try {
+                    runDue()
+                    if (keepState) carry(old) else null
+                } finally {
+                    runCatching { old.context.leave() }
+                }
+                next.context.enter()
+                try {
+                    if (carried == null) next.exports.getMember("sim_boot").execute(1)
+                    else restore(next, carried)
+                } finally {
+                    runCatching { next.context.leave() }
+                }
+                module = next
+                old.close()
+            }
+        } catch (t: Throwable) {
+            if (module !== next) next.close()
+            throw t
+        }
+    }
+
+    /** Swap in the firmware module in [file]; see [loadFirmware]. */
+    fun loadFirmware(file: File, keepState: Boolean = true) = loadFirmware(file.readBytes(), keepState)
+
+    /** Go back to the firmware shipped with Field; see [loadFirmware]. */
+    fun loadBuiltInFirmware(keepState: Boolean = true) = loadFirmware(builtIn, keepState)
+
+    /** What [loadFirmware] takes from the old module to the new one. */
+    private class Carried(
+        val flash: ByteArray, val project: ByteArray, val playing: Boolean,
+        val channels: IntArray, val midiModes: IntArray,
+    )
+
+    private fun carry(m: Module): Carried {
+        val e = m.exports
+        val flash = ByteArray(FLASH_BYTES).also { m.memory.readBuffer(e.getMember("sim_flash").execute().asLong(), it, 0, FLASH_BYTES) }
+        val r = e.getMember("sim_export").execute().asInt()
+        check(r == 0) { "FM1Sim: the running firmware could not export its project (error $r)" }
+        val project = ByteArray(PROJECT_BYTES).also { m.memory.readBuffer(m.fileBuffer, it, 0, PROJECT_BYTES) }
+        val state = e.getMember("sim_state").execute().asLong()
+        val playing = (0 until TRACKS).any { m.memory.readBufferByte(state + 8 + it * 20 + 6) != 0.toByte() }
+        val channels = IntArray(TRACKS) { e.getMember("sim_midi_setting").execute(it, 1).asInt() }
+        val modes = IntArray(TRACKS) { e.getMember("sim_midi_setting").execute(it, 0).asInt() }
+        return Carried(flash, project, playing, channels, modes)
+    }
+
+    private fun restore(m: Module, c: Carried) {
+        val e = m.exports
+        fun put(ptr: Long, bytes: ByteArray) {
+            val b = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+            var i = 0
+            while (i + 8 <= bytes.size) { m.memory.writeBufferLong(ByteOrder.LITTLE_ENDIAN, ptr + i, b.getLong(i)); i += 8 }
+            while (i < bytes.size) { m.memory.writeBufferByte(ptr + i, bytes[i]); i++ }
+        }
+        put(e.getMember("sim_flash").execute().asLong(), c.flash)
+        e.getMember("sim_boot").execute(0) // reads the library, samples and settings back out of flash
+        put(m.fileBuffer, c.project)
+        val r = e.getMember("sim_import").execute(c.project.size).asInt()
+        check(r == 0) { "FM1Sim: the new firmware refused the running project (error $r); the old firmware keeps running" }
+        for (t in 0 until TRACKS) {
+            for ((setting, want) in listOf(1 to c.channels[t], 0 to c.midiModes[t])) {
+                val now = e.getMember("sim_midi_setting").execute(t, setting).asInt()
+                if (now != want) e.getMember("sim_midi_edit").execute(t, setting, want - now)
+            }
+        }
+        if (captureMidi) e.getMember("sim_midi_capture").execute(1)
+        e.getMember("sim_control").execute(3, 0, knob)
+        if (c.playing) {
+            val start = byteArrayOf(0xFA.toByte())
+            put(m.fileBuffer, start)
+            e.getMember("sim_midi").execute(1)
+        }
+    }
+
     /** The simulator as a node in Field's audio graph. */
     val node: StereoRenderable by lazy { FM1SimNode(this) }
 
     override fun close() {
         if (!closed.compareAndSet(false, true)) return
         stopPatterns()
-        lock.withLock { runCatching { context.close(true) } }
+        lock.withLock { module.close() }
     }
 
     override fun toString(): String = synthPrettyObject(
