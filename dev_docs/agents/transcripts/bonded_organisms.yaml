@@ -70,7 +70,7 @@ operations:
           val upload = {
               cells.write { put(world.cellFloats()) }
               bonds.write { put(world.bondFloats()) }
-              clock.step = 0
+              clock.restart()
           }
           upload()
           prop<FrameBufferGroup>(bondedCells) = cells
@@ -82,7 +82,7 @@ operations:
           val p = world.params
           m.cells = { cells }
           m.bonds = { bonds }
-          m.tick = { clock.tick() }
+          m.tick = { clock.tick(renderer.frameCounter) }
           m.count = { world.count }
           m.capacity = { world.capacity }
           m.dt = { p.dt }
@@ -118,7 +118,7 @@ operations:
           layout(push_constant) uniform P {
               CellBuf cells;
               BondBuf bonds;
-              uint tick;       // the step number; bit 31 freezes the world
+              float tick;      // the step number; -1 freezes the world
               uint count;
               uint capacity;
               float dt;
@@ -139,10 +139,11 @@ operations:
 
           void main() {
               uint i = gl_GlobalInvocationID.x;
-              if (i >= pc.count || (pc.tick & 0x80000000u) != 0u) return;
-              uint src = (pc.tick & 1u) * pc.capacity;
-              uint dst = (1u - (pc.tick & 1u)) * pc.capacity;
-              float t = float(pc.tick) * pc.dt;
+              if (i >= pc.count || pc.tick < 0.0) return;
+              uint k = uint(pc.tick);
+              uint src = (k & 1u) * pc.capacity;
+              uint dst = (1u - (k & 1u)) * pc.capacity;
+              float t = pc.tick * pc.dt;
               Cell me = pc.cells.c[src + i];
               vec2 xi = me.pv.xy, vi = me.pv.zw;
               float ei = me.e.x;

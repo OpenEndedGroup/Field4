@@ -67,17 +67,35 @@ class BondedParams {
 
 /**
  * The GPU world's step counter, shared by the boxes that step, draw and check it. [tick] is the
- * compute shader's `tick` push constant: it returns the step to take and advances, unless the
- * world has reached [freezeAt], in which case it returns the step with bit 31 set and the shader
- * writes nothing.
+ * compute shader's `tick` push constant: it returns the step to dispatch, advancing once per
+ * renderer frame, or -1 once the world has reached [freezeAt], which makes the shader write
+ * nothing.
+ *
+ * It advances on a change of frame rather than on every call because a push-constant lambda is
+ * evaluated more than once per dispatch (twice, measured), so a lambda that counts its own calls
+ * skips steps; with two calls per dispatch the ping-pong parity never changed and the world
+ * stood still. It is a float, exact to 2^24 steps, so the frozen value can be negative.
  */
 class BondedClock {
     /** Steps the GPU has been asked to take. */
     @Volatile var step = 0
     /** Stop stepping once [step] reaches this; -1 never stops. */
     @Volatile var freezeAt = -1
-    /** The push-constant value for the next dispatch. */
-    fun tick(): Int = if (freezeAt in 0..step) step or Int.MIN_VALUE else step++
+    private var lastFrame = Long.MIN_VALUE
+    private var current = -1f
+
+    /** The push-constant value for the dispatch in renderer frame [frame]. */
+    @Synchronized fun tick(frame: Long): Float {
+        if (frame != lastFrame) {
+            lastFrame = frame
+            current = if (freezeAt in 0..step) -1f else (step++).toFloat()
+        }
+        return current
+    }
+
+    /** Restarts counting from step 0. */
+    @Synchronized fun restart() { step = 0; lastFrame = Long.MIN_VALUE; current = -1f }
+
     /** Which half of the cell buffer holds the latest positions: the one the last step wrote. */
     val latestHalf: Int get() = step and 1
 }
