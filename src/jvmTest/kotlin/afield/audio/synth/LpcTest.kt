@@ -66,7 +66,7 @@ class LpcTest {
     fun complexResidualResynthesisIsExactAndCirclesArePredictable() {
         // A circle's steps rotate by a fixed angle: one complex coefficient predicts them all.
         val circle = FLine().also { f -> for (i in 0..400) { val t = i / 400.0 * 2 * PI * 1.5; if (i == 0) f.moveTo(cos(t) * 100, sin(t) * 100) else f.lineTo(cos(t) * 100, sin(t) * 100) } }
-        val s = circle.lpc(order = 2, samples = 150)
+        val s = circle.lpc(order = 2, samples = 150, removeDrift = false)
         assertTrue(s.residualRatio < 1e-3, "circle residual ratio ${s.residualRatio}")
         // Continuing it stays on the circle (radius 100 about the origin).
         val more = s.continued(60, includeStroke = false)
@@ -76,6 +76,10 @@ class LpcTest {
         val back = s.resynthesized().samplePoints(150)
         val orig = s.resampled().samplePoints(150)
         for (i in back.indices) assertEquals(orig[i].x.toDouble(), back[i].x.toDouble(), 1e-2)
+        // With the drift taken out, resynthesis is still exact.
+        val d = circle.lpc(order = 4, samples = 150)
+        val back2 = d.resynthesized().samplePoints(150)
+        for (i in back2.indices) assertEquals(orig[i].y.toDouble(), back2[i].y.toDouble(), 1e-2)
     }
 
     @Test

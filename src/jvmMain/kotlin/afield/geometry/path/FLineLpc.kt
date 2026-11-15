@@ -8,7 +8,8 @@ import kotlin.math.hypot
  * Linear prediction of a drawn stroke.
  *
  * The stroke is resampled to [samples] points evenly spaced along its length, and the steps between
- * them, `d[n] = p[n+1] - p[n]`, are read as complex numbers `dx + i·dy`. A complex order-[order]
+ * them, `d[n] = p[n+1] - p[n]`, less their mean (the stroke's overall drift, kept in [StrokeLpc.meanStepX]
+ * and [StrokeLpc.meanStepY] and added back on the way out), are read as complex numbers `dx + i·dy`. A complex order-[order]
  * predictor ([Lpc.burgComplex]) is fitted to that sequence: each step is predicted as a complex
  * weighted sum of the steps before it, so the fit captures *how the hand turns* — a steady curl, a
  * wobble, a zigzag — independent of where the stroke is or which way it faces. What the predictor
@@ -30,9 +31,14 @@ class StrokeLpc(
     val residualRe: DoubleArray,
     /** Imaginary part of the step residual. */
     val residualIm: DoubleArray,
+    /** The mean step, x part: the stroke's overall drift, taken out before fitting. */
+    val meanStepX: Double = 0.0,
+    /** The mean step, y part. */
+    val meanStepY: Double = 0.0,
 ) {
-    private val stepRe = DoubleArray(xs.size - 1) { xs[it + 1] - xs[it] }
-    private val stepIm = DoubleArray(ys.size - 1) { ys[it + 1] - ys[it] }
+    // Steps with the mean drift removed: what the predictor models.
+    private val stepRe = DoubleArray(xs.size - 1) { xs[it + 1] - xs[it] - meanStepX }
+    private val stepIm = DoubleArray(ys.size - 1) { ys[it + 1] - ys[it] - meanStepY }
 
     /** The resampled stroke as an [FLine]. */
     fun resampled(): FLine = polyline(xs, ys)
@@ -51,7 +57,7 @@ class StrokeLpc(
         val ox = DoubleArray(steps + 1); val oy = DoubleArray(steps + 1)
         ox[0] = xs.last(); oy[0] = ys.last()
         var g = 1.0
-        for (n in 0 until steps) { g *= damping; ox[n + 1] = ox[n] + dr[n] * g; oy[n + 1] = oy[n] + di[n] * g }
+        for (n in 0 until steps) { g *= damping; ox[n + 1] = ox[n] + dr[n] * g + meanStepX; oy[n + 1] = oy[n] + di[n] * g + meanStepY }
         return if (includeStroke) polyline(xs + ox.copyOfRange(1, ox.size), ys + oy.copyOfRange(1, oy.size)) else polyline(ox, oy)
     }
 
@@ -67,11 +73,31 @@ class StrokeLpc(
     }
 
     /**
-     * This stroke's predictor driven by [other]'s residual, starting at ([startX], [startY]),
-     * this stroke's first point unless given.
+     * This stroke's predictor driven by [other]'s residual, starting at ([startX], [startY]), this
+     * stroke's first point unless given. The borrowed residual loses its first `order` samples (the
+     * other fit's warm-up) and its mean; the predictor's poles are pulled in by [bandwidth]
+     * (`a_k · bandwidth^k`), because a predictor fitted to a near-perfect loop rings almost forever;
+     * and the result is scaled so its steps are as large as this stroke's. The drift of this stroke
+     * is added back, so the output travels the way this stroke did, turning the way this stroke
+     * turns, with the other stroke's irregularities.
      */
-    fun drivenBy(other: StrokeLpc, startX: Double = xs[0], startY: Double = ys[0]): FLine =
-        integrate(fit.synthesize(other.residualRe, other.residualIm), startX, startY)
+    fun drivenBy(other: StrokeLpc, startX: Double = xs[0], startY: Double = ys[0], bandwidth: Double = 0.97): FLine {
+        val p = fit.order
+        val q = other.fit.order
+        val n = other.residualRe.size
+        val mr = (q until n).sumOf { other.residualRe[it] } / (n - q).coerceAtLeast(1)
+        val mi = (q until n).sumOf { other.residualIm[it] } / (n - q).coerceAtLeast(1)
+        val er = DoubleArray(n) { if (it < q) 0.0 else other.residualRe[it] - mr }
+        val ei = DoubleArray(n) { if (it < q) 0.0 else other.residualIm[it] - mi }
+        var g = 1.0
+        val aRe = DoubleArray(p + 1); val aIm = DoubleArray(p + 1)
+        for (k in 0..p) { aRe[k] = fit.aRe[k] * g; aIm[k] = fit.aIm[k] * g; g *= bandwidth }
+        val (dr, di) = ComplexLpcFit(aRe, aIm, fit.kRe, fit.kIm, fit.error).synthesize(er, ei)
+        fun rms(r: DoubleArray, i: DoubleArray) = kotlin.math.sqrt(r.indices.sumOf { r[it] * r[it] + i[it] * i[it] } / r.size.coerceAtLeast(1))
+        val scale = rms(stepRe, stepIm) / rms(dr, di).coerceAtLeast(1e-12)
+        for (t in dr.indices) { dr[t] *= scale; di[t] *= scale }
+        return integrate(dr to di, startX, startY)
+    }
 
     /**
      * The ratio of residual energy to step energy after the first `order` steps (which have no full
@@ -88,7 +114,7 @@ class StrokeLpc(
         val (dr, di) = steps
         val ox = DoubleArray(dr.size + 1); val oy = DoubleArray(dr.size + 1)
         ox[0] = x0; oy[0] = y0
-        for (n in dr.indices) { ox[n + 1] = ox[n] + dr[n]; oy[n + 1] = oy[n] + di[n] }
+        for (n in dr.indices) { ox[n + 1] = ox[n] + dr[n] + meanStepX; oy[n + 1] = oy[n] + di[n] + meanStepY }
         return polyline(ox, oy)
     }
 
@@ -101,9 +127,12 @@ class StrokeLpc(
 
 /**
  * Fit an order-[order] complex linear predictor to this stroke's steps, after resampling it to
- * [samples] points evenly spaced along its length. See [StrokeLpc].
+ * [samples] points evenly spaced along its length. See [StrokeLpc]. With [removeDrift] (the default)
+ * the mean step is taken out before the fit and added back to everything drawn from it, which suits
+ * a stroke that travels, like handwriting; turn it off for a closed or circling one, whose
+ * continuation should come back round rather than carry on in the average direction.
  */
-fun FLine.lpc(order: Int = 8, samples: Int = 200): StrokeLpc {
+fun FLine.lpc(order: Int = 8, samples: Int = 200, removeDrift: Boolean = true): StrokeLpc {
     require(samples > order + 2) { "need more samples ($samples) than order + 2 (${order + 2})" }
     val dense = samplePoints(samples * 8)
     require(dense.size >= 2) { "stroke has fewer than two points" }
@@ -120,9 +149,11 @@ fun FLine.lpc(order: Int = 8, samples: Int = 200): StrokeLpc {
         xs[s] = dense[j].x + (dense[j + 1].x - dense[j].x) * u
         ys[s] = dense[j].y + (dense[j + 1].y - dense[j].y) * u
     }
-    val dr = DoubleArray(samples - 1) { xs[it + 1] - xs[it] }
-    val di = DoubleArray(samples - 1) { ys[it + 1] - ys[it] }
+    val mx = if (removeDrift) (xs.last() - xs[0]) / (samples - 1) else 0.0
+    val my = if (removeDrift) (ys.last() - ys[0]) / (samples - 1) else 0.0
+    val dr = DoubleArray(samples - 1) { xs[it + 1] - xs[it] - mx }
+    val di = DoubleArray(samples - 1) { ys[it + 1] - ys[it] - my }
     val fit = Lpc.burgComplex(dr, di, order)
     val (er, ei) = fit.residual(dr, di)
-    return StrokeLpc(fit, xs, ys, er, ei)
+    return StrokeLpc(fit, xs, ys, er, ei, mx, my)
 }

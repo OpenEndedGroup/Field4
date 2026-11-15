@@ -25,11 +25,11 @@ object LpcDocs {
     /** One clip's signal graph, by name. */
     fun scene(name: String): Signal = when (name) {
         "voice" -> vowelVoice()
-        "residual" -> vowelVoice() / LpcWhiten(order = 24)
+        "residual" -> vowelVoice() / LpcWhiten()
         "robot" -> Impulse(Param(90f)) / LpcVocoder(vowelVoice(), whiten = false)
         "whisper" -> WhiteNoise(5L) / LpcVocoder(vowelVoice(), whiten = false)
         "talking-synth" -> (SawOsc(Param(110f)) + SawOsc(Param(138.6f)) + SawOsc(Param(164.8f)) + SawOsc(Param(220.5f))) /
-            LpcVocoder(vowelVoice(), order = 32)
+            LpcVocoder(vowelVoice())
         else -> error("unknown LpcDocs scene '$name'")
     }
 

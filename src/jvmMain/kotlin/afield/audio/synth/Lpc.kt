@@ -374,8 +374,8 @@ internal class LpcTracker(val order: Int, val frameSize: Int, val hop: Int) {
 class LpcVocoder(
     /** The signal whose envelope is imposed: usually a voice. */
     val modulator: Signal,
-    /** Predictor order; about `sampleRate/1000 + 4` captures a voice's formants. */
-    val order: Int = 24,
+    /** Predictor order; about the sample rate in kHz, plus four, resolves a voice's formants. */
+    val order: Int = 48,
     /** Analysis frame length in samples. */
     val frameSize: Int = 1024,
     /** Samples between analyses. */
@@ -437,7 +437,7 @@ class LpcVocoder(
  */
 class LpcWhiten(
     /** Predictor order. */
-    val order: Int = 24,
+    val order: Int = 48,
     /** Analysis frame length in samples. */
     val frameSize: Int = 1024,
     /** Samples between analyses. */
