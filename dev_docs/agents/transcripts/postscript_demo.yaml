@@ -57,6 +57,7 @@ operations:
             } { pop pop } ifelse
           } def
 
+          0.55 0.85 0.4 setrgbcolor
           2 setlinewidth
           300 50 translate
           100 8 branch

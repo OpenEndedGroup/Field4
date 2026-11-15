@@ -40,7 +40,7 @@ hexadecimal.
 runs: `[2 3 add]` is `[5]`. `==` prints a value the way it would be written, and `=` prints a string
 without its parentheses.
 
-```diffstatic_runner {data-lang=postscript screenshot="assets/postscript/arrays.png" capture="editor" outputs="inline" wait="2" padding="10" timeout="180" embed=true name="postscript-arrays" w="900" h="300" alt="A PostScript box defining fib and reverse and printing three arrays with ==. Its output reads [0 1 1 2 3 5 8 13 21 34 55] twice, then [33 22 11]."}
+```diffstatic_runner {data-lang=postscript screenshot="assets/postscript/arrays.png" capture="editor" outputs="inline" wait="2" padding="10" timeout="180" embed=true name="postscript-arrays" w="900" h="300" alt="A PostScript box defining fib and reverse and printing three arrays with ==. Under its first line the printed output reads [0 1 1 2 3 5 8 13 21 34 55] (marked x2, printed twice) and [33 22 11]; ok follows the last line."}
 /fib {dup 2 ge {1 sub dup 1 sub fib exch fib add} {} ifelse} def
 [0 1 10 {fib} for] ==
 [0 1 9 {2 copy add} repeat] ==
@@ -84,13 +84,14 @@ and path.
 
 PostScript's y axis points up, and Field's canvas points down, so the drawing is flipped on the way
 out and reads the way it would on paper. Line width scales with the coordinate system, as it does on
-a printer.
+a printer. PostScript's default colour is black, which vanishes against Field's dark panel, so the
+examples here set a colour first.
 
 Recursion is where PostScript drawing earns its keep. `branch` draws a line, moves to its end, and
 calls itself twice, once rotated each way, inside `gsave` / `grestore` so that each call returns to
 where it started:
 
-```diffstatic_runner {data-lang=postscript screenshot="assets/postscript/tree.png" capture="box" open-outputs=true trim=true wait="2" wait-output=true wait-output-kind="display" timeout="180" embed=true name="postscript-tree" w="820" h="80" alt="The postscript panel of a box: a black recursive tree, one trunk splitting into two branches at each level, eight levels deep, the branches thinning and shortening as they go, spreading into a rounded crown."}
+```diffstatic_runner {data-lang=postscript screenshot="assets/postscript/tree.png" capture="box" open-outputs=true trim=true wait="2" wait-output=true wait-output-kind="display" timeout="180" embed=true name="postscript-tree" w="820" h="80" alt="The postscript panel of a box: a light green recursive tree, one trunk splitting into two branches at each level, eight levels deep, the branches shortening as they go, spreading into a rounded crown."}
 /branch { % length depth branch
   dup 0 gt {
     exch dup 0 0 moveto 0 exch lineto stroke
@@ -101,6 +102,7 @@ where it started:
   } { pop pop } ifelse
 } def
 
+0.55 0.85 0.4 setrgbcolor
 2 setlinewidth
 300 50 translate
 100 8 branch
