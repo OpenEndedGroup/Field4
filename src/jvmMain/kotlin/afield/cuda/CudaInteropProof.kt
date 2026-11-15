@@ -52,6 +52,7 @@ import kotlin.system.exitProcess
 /*
 FIELD_TEST
 id: cuda.interop.smoke
+requiresDisplay: true
 runner: jvm-main
 entrypoint: afield.cuda.CudaInteropProof
 timeoutSec: 600
