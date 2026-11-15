@@ -1,5 +1,6 @@
 package afield.ai.tools
 
+import afield.app.server.DirectoryProxyFiles
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 import com.fasterxml.jackson.core.JsonParser
@@ -31,7 +32,7 @@ import java.nio.file.attribute.BasicFileAttributes
 /** The one tree a search covers. */
 @JsonDeserialize(using = WorkspaceSearchScopeDeserializer::class)
 enum class WorkspaceSearchScope {
-    DOCUMENT_FILES, DOCUMENT_HISTORY, WORKSPACE_FILES, FIELD_KOTLIN_SOURCE, FIELD_DOCS
+    DOCUMENT_FILES, DOCUMENT_HISTORY, WORKSPACE_FILES, FIELD_KOTLIN_SOURCE, FIELD_DOCS, FILE_PROXY
 }
 
 /** Jackson otherwise accepts enum ordinals, which could silently widen a search. */
@@ -47,7 +48,7 @@ class WorkspaceSearchScopeDeserializer : JsonDeserializer<WorkspaceSearchScope>(
 @JsonClassDescription("Search saved UTF-8 files for literal text in exactly one scope. Returns the matches (path, line, text) plus complete, stopReason and skipped; results can be partial, so check them. Use it when you need where text occurs in saved files, Field's Kotlin source or Field's documentation pages; for unsaved editor state read the box instead. No regex or shell syntax. An invalid scope, query or pathPrefix fails with success=false and the reason. e.g. scope = `FIELD_KOTLIN_SOURCE`, query = `fun fromContext`; scope = `FIELD_DOCS`, query = `Byrne`.")
 @AgentToolMeta("search", effects = [ToolEffect.FILESYSTEM_READ])
 data class WorkspaceSearchRequest(
-    @param:JsonPropertyDescription("Required: DOCUMENT_FILES, DOCUMENT_HISTORY, WORKSPACE_FILES, FIELD_KOTLIN_SOURCE, or FIELD_DOCS (Field's Markdown documentation, public/docs). Never combines roots. Workspace/document files exclude backups.")
+    @param:JsonPropertyDescription("Required: DOCUMENT_FILES, DOCUMENT_HISTORY, WORKSPACE_FILES, FIELD_KOTLIN_SOURCE, FIELD_DOCS (Field's Markdown documentation, public/docs), or FILE_PROXY (one explicitly named directory proxy box). Never combines roots. Workspace/document files exclude backups.")
     val scope: WorkspaceSearchScope,
     @param:JsonPropertyDescription("Literal single-line text, 1..256 UTF-16 units. Whitespace is preserved.")
     val query: String,
@@ -57,11 +58,13 @@ data class WorkspaceSearchRequest(
     val extensions: List<String> = emptyList(),
     val ignoreCase: Boolean = false,
     @param:JsonPropertyDescription("Global matching-line limit, 1..500. Each line is returned once; reaching the cap reports partial results.")
-    val maxMatches: Int = 80
+    val maxMatches: Int = 80,
+    @param:JsonPropertyDescription("Required only for FILE_PROXY: uid or unique name of an existing directory proxy box in this document. Not a filesystem path. Refused with any other scope.")
+    val proxyBox: String = ""
 )
 
 enum class WorkspaceSearchStop {
-    MATCH_LIMIT, RESPONSE_LIMIT, ENTRY_LIMIT, DEPTH_LIMIT, INPUT_LIMIT, DEADLINE, CANCELLED
+    MATCH_LIMIT, RESPONSE_LIMIT, ENTRY_LIMIT, DEPTH_LIMIT, INPUT_LIMIT, DEADLINE, CANCELLED, ENUMERATION_LIMIT
 }
 
 data class WorkspaceSearchMatch(
@@ -70,14 +73,17 @@ data class WorkspaceSearchMatch(
     val column: Int,
     val excerpt: String,
     val excerptStartColumn: Int,
-    val excerptClipped: Boolean
+    val excerptClipped: Boolean,
+    val attachmentRef: String? = null
 )
 
 data class WorkspaceSearchSkips(
     val oversized: Int = 0,
     val nonText: Int = 0,
     val unreadable: Int = 0,
-    val changed: Int = 0
+    val changed: Int = 0,
+    /** Shared proxy-policy exclusions (intentional skips do not make a complete scan partial). */
+    val excluded: Int = 0
 )
 
 data class WorkspaceSearchResult(
@@ -97,9 +103,12 @@ data class WorkspaceSearchResult(
 private const val DOCS_REDIRECT = "Field's documentation (public/docs/*.md) is the FIELD_DOCS scope: search it with " +
     "scope=FIELD_DOCS (pathPrefix relative to public/docs), then AttachmentRequest(file=\"public/docs/<page>.md\") to read a page."
 
+internal data class WorkspaceSearchProxyRoot(val boxId: String, val root: Path)
+
 internal data class WorkspaceSearchRoots(
     val document: Path, val workspace: Path, val fieldSource: Path,
-    val fieldDocs: Path = fieldSource.resolveSibling("public").resolve("docs")
+    val fieldDocs: Path = fieldSource.resolveSibling("public").resolve("docs"),
+    val proxyRoot: (String) -> WorkspaceSearchProxyRoot? = { null }
 )
 
 /** Internal test seams, never request parameters. No caller can raise the production budgets. */
@@ -113,7 +122,8 @@ internal data class WorkspaceSearchLimits(
 )
 
 /**
- * One bounded file at a time; no subprocess, index, temporary output or whole-tree collection.
+ * One bounded file at a time; no subprocess, index or temporary output. FILE_PROXY uses the
+ * shared bounded candidate enumeration; other scopes stream their directory traversal.
  * Filesystem order is deliberately unspecified. The deadline is cooperative: a blocked OS read
  * cannot be interrupted by checking a clock. This is not an atomic filesystem snapshot or sandbox.
  */
@@ -127,6 +137,10 @@ internal class WorkspaceSearch(
     fun search(request: WorkspaceSearchRequest): WorkspaceSearchResult {
         fun failure(message: String) = WorkspaceSearchResult(false, request.scope, null, emptyList(),
             false, null, 0, 0, WorkspaceSearchSkips(), message)
+        if (request.scope == WorkspaceSearchScope.FILE_PROXY && request.proxyBox.isBlank())
+            return failure("FILE_PROXY requires proxyBox naming an existing directory proxy box")
+        if (request.scope != WorkspaceSearchScope.FILE_PROXY && request.proxyBox.isNotEmpty())
+            return failure("proxyBox is only valid with FILE_PROXY; scopes never combine roots")
         if (request.query.isEmpty() || request.query.length > 256 || request.query.any { it == '\r' || it == '\n' })
             return failure("query must contain 1..256 UTF-16 units on one line; whitespace is preserved")
         if (request.maxMatches !in 1..500) return failure("maxMatches must be in 1..500")
@@ -147,7 +161,11 @@ internal class WorkspaceSearch(
         if (prefix.length > 1024 || prefix.startsWith('/') || prefix.any { it == '\\' || it == ':' || it == '\u0000' } ||
             prefix.split('/').any { it == ".." }) return failure("pathPrefix must be a relative path without .., drive letters or backslashes")
         try {
+            val proxy = if (request.scope == WorkspaceSearchScope.FILE_PROXY)
+                roots.proxyRoot(request.proxyBox) ?: return failure("proxyBox names no unique existing directory proxy box")
+            else null
             val root = when (request.scope) {
+                WorkspaceSearchScope.FILE_PROXY -> proxy!!.root.toRealPath()
                 WorkspaceSearchScope.DOCUMENT_FILES -> roots.document.toRealPath()
                 WorkspaceSearchScope.DOCUMENT_HISTORY -> {
                     val history = roots.document.toRealPath().resolve("backups")
@@ -163,12 +181,14 @@ internal class WorkspaceSearch(
             val start = root.resolve(prefix).normalize()
             if (!start.startsWith(root) || !safeDescendant(root, start))
                 return failure("pathPrefix escapes the root or contains a symlink")
-            if (root.relativize(start).any { excluded(it.toString(), request.scope) })
+            if (request.scope != WorkspaceSearchScope.FILE_PROXY && root.relativize(start).any { excluded(it.toString(), request.scope) })
                 return failure("pathPrefix is excluded by the scope's file policy")
             if (!Files.exists(start, NOFOLLOW_LINKS)) return failure(missingPrefix(request.scope, prefix))
-            return Scan(request.copy(extensions = extensions), root).run(start)
+            return Scan(request.copy(extensions = extensions), root, proxy?.boxId).run(start)
         } catch (_: InvalidPathException) {
             return failure("Invalid pathPrefix or configured root")
+        } catch (e: IllegalArgumentException) {
+            return failure(e.message ?: "Invalid proxyBox or proxy path")
         } catch (_: IOException) {
             return failure("Scope root or requested path is unavailable or unreadable")
         } catch (_: SecurityException) {
@@ -184,12 +204,13 @@ internal class WorkspaceSearch(
                 if (prefix.startsWith("public/") || prefix.startsWith("docs") || prefix.startsWith("dev_docs")) DOCS_REDIRECT else ""
         WorkspaceSearchScope.FIELD_DOCS ->
             "pathPrefix '$prefix' does not exist under FIELD_DOCS, whose root is Field's public/docs/ directory."
+        WorkspaceSearchScope.FILE_PROXY -> "pathPrefix '$prefix' does not exist under the selected directory proxy."
         WorkspaceSearchScope.DOCUMENT_FILES -> "pathPrefix '$prefix' does not exist in the current document's folder."
         WorkspaceSearchScope.DOCUMENT_HISTORY -> "pathPrefix '$prefix' does not exist in the current document's backups/ folder."
         WorkspaceSearchScope.WORKSPACE_FILES -> "pathPrefix '$prefix' does not exist in the workspace; its first segment is a document name."
     }.trimEnd()
 
-    private inner class Scan(val request: WorkspaceSearchRequest, val root: Path) {
+    private inner class Scan(val request: WorkspaceSearchRequest, val root: Path, val proxyBoxId: String? = null) {
         val started = nanoTime()
         val matches = ArrayList<WorkspaceSearchMatch>()
         val extensions = request.extensions.map { it.lowercase(java.util.Locale.ROOT) }.toSet()
@@ -210,12 +231,25 @@ internal class WorkspaceSearch(
         }
 
         fun run(start: Path): WorkspaceSearchResult {
-            visit(start, 0, true)
+            if (proxyBoxId == null) visit(start, 0, true)
+            else if (running()) {
+                // Enumerate once; resolve checks only ancestor ignore files, never rescans the tree.
+                if (start != root && !Files.isDirectory(start, NOFOLLOW_LINKS))
+                    DirectoryProxyFiles.resolve(root.toFile(), root.relativize(start).joinToString("/"))
+                val candidates = DirectoryProxyFiles.scan(root.toFile(), root.relativize(start).joinToString("/"))
+                for (file in candidates.files) {
+                    if (!running()) break
+                    val path = file.toPath().toAbsolutePath().normalize()
+                    if (path.startsWith(start)) visit(path, start.relativize(path).nameCount, true)
+                }
+                skipped = skipped.copy(excluded = skipped.excluded + candidates.skipped)
+                if (!candidates.complete && stop == null) stop = WorkspaceSearchStop.ENUMERATION_LIMIT
+            }
             return WorkspaceSearchResult(
                 !rootFailed, request.scope, root.toString(), matches,
-                !rootFailed && stop == null && skipped == WorkspaceSearchSkips(), stop, files, bytes, skipped,
+                !rootFailed && stop == null && skipped.copy(excluded = 0) == WorkspaceSearchSkips(), stop, files, bytes, skipped,
                 if (rootFailed) "Requested path could not be read; any returned matches are partial."
-                else if (stop != null || skipped != WorkspaceSearchSkips()) "Partial saved-file search; narrow the scope or filters."
+                else if (stop != null || skipped.copy(excluded = 0) != WorkspaceSearchSkips()) "Partial saved-file search; narrow the scope or filters."
                 else "Searched eligible saved files; no live editor state was read."
             ).also {
                 // Reserve covers escaped root, counters, enums and fixed messages, even at MAX_PATH.
@@ -234,6 +268,11 @@ internal class WorkspaceSearch(
                 if (attrs.isSymbolicLink) return
                 if (!safeDescendant(root, path)) { skipped = skipped.copy(changed = skipped.changed + 1); return }
                 if (attrs.isDirectory) {
+                    if (proxyBoxId != null) {
+                        // A scanned file replaced by a directory must not start an unfiltered walk.
+                        skipped = skipped.copy(changed = skipped.changed + 1)
+                        return
+                    }
                     Files.newDirectoryStream(path).use { stream ->
                         val iterator = stream.iterator()
                         while (running() && iterator.hasNext()) visit(iterator.next(), depth + 1)
@@ -247,6 +286,9 @@ internal class WorkspaceSearch(
                     if (relative.length > MAX_PATH) { skipped = skipped.copy(unreadable = skipped.unreadable + 1); return }
                     read(path, relative, attrs)
                 }
+            } catch (e: IllegalArgumentException) {
+                if (proxyBoxId == null) throw e
+                skipped = skipped.copy(changed = skipped.changed + 1)
             } catch (_: java.nio.file.DirectoryIteratorException) {
                 unreadable(top)
             } catch (_: IOException) {
@@ -264,6 +306,7 @@ internal class WorkspaceSearch(
         fun read(path: Path, relative: String, before: BasicFileAttributes) {
             if (before.size() > limits.fileBytes) { skipped = skipped.copy(oversized = skipped.oversized + 1); return }
             val output = ByteArrayOutputStream(minOf(limits.fileBytes, 8192))
+            if (proxyBoxId != null) DirectoryProxyFiles.resolve(root.toFile(), relative)
             openFile(path).use { input ->
                 val buffer = ByteArray(8192)
                 while (running()) {
@@ -318,7 +361,8 @@ internal class WorkspaceSearch(
             if (left > start && Character.isLowSurrogate(text[left]) && Character.isHighSurrogate(text[left - 1])) left++
             if (right < end && right > left && Character.isHighSurrogate(text[right - 1]) && Character.isLowSurrogate(text[right])) right--
             val match = WorkspaceSearchMatch(path, line, first - start + 1, text.substring(left, right),
-                left - start + 1, left != start || right != end)
+                left - start + 1, left != start || right != end,
+                proxyBoxId?.let { DirectoryProxyFiles.reference(it, path) })
             val size = json.writeValueAsBytes(match).size + 1
             if (matchBytes + size > limits.responseBytes - METADATA_RESERVE) { stop = WorkspaceSearchStop.RESPONSE_LIMIT; return }
             matches += match

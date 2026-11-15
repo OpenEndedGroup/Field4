@@ -1823,13 +1823,8 @@ fun installAi4() {
 
             GlslIncludeLibraryIndex.resolveAttachment(requested)?.let { return@attachmentResolver it }
 
-            // A file box, named by uid or by name: read the file it stands for.
-            (boxByIdOrNull(requested) ?: box.inside.boxes.values.singleOrNull { it.name == requested })
-                ?.let(::fileProxyTargetOrNull)
-                ?.let { target ->
-                    val (content, language) = readFileAsText(target) ?: return@attachmentResolver null
-                    return@attachmentResolver AttachmentResponse(file = target.path, language = language, content = content)
-                }
+            afield.ai.tools.resolveProxyAttachment(box.inside.boxes.values, requested)
+                ?.let { return@attachmentResolver it }
 
             val candidatePaths = linkedSetOf<Path>()
             val requestedPath = runCatching { Paths.get(requested) }.getOrNull()
@@ -1876,7 +1871,14 @@ fun installAi4() {
             EditFileResponse(true, "Updated ${req.file}")
         }
 
-        val workspaceSearch = workspaceSearchForDocument(docPath)
+        val workspaceSearch = workspaceSearchForDocument(docPath) { token ->
+            val proxyBox = boxByIdOrNull(token)
+                ?: box.inside.boxes.values.singleOrNull { it.name == token && token.isNotBlank() }
+            proxyBox?.let { owner ->
+                fileProxyTargetOrNull(owner)?.takeIf { it.isDirectory }
+                    ?.let { afield.ai.tools.WorkspaceSearchProxyRoot(owner.id, it.toPath()) }
+            }
+        }
 
         val workspaceSymbolSearch: (WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult = workspaceSymbolSearch@{ req ->
             val query = req.query.trim()

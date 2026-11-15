@@ -4877,6 +4877,21 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="directory-proxy",
+            description="Drop a real directory, select its context-proxy menu action, catalogue/search/read eligible files and observe a live disk edit without a model request.",
+            commands=[
+                "viewport 1200x850",
+                "new-box --name DirectoryProxyFixture",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/directory-proxy.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/directory-proxy.js"), "--timeout", pw_timeout]),
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/directory-proxy.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/directory-proxy.js"), "--timeout", pw_timeout]),
+                "editor-open ReferenceContext --property contents",
+                "sleep 0.5",
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "ReferenceContext", "--with-editor", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="selection-highlight-file-proxy",
             description="Selected file-proxy boxes keep the visible selection ring on the box outline even with a subtitle, whose long path truncates in the middle.",
             commands=[

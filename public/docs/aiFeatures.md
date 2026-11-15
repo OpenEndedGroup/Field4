@@ -327,6 +327,53 @@ StackSL program drawn live in a window, with three recorded sessions, and
 [Talking to the StackSL in your shader](stackauto_conversation.md) for the
 `stack.auto` slots inside your own vertex and fragment shaders.
 
+### Giving AI4 a directory of context
+
+Drop a folder onto the canvas and choose **Create directory context proxy**. The Desktop client
+can supply its filesystem path; in a browser, Field may ask for the absolute path on the machine
+running the server. The box points at the folder—it does not copy the tree or create a box per file.
+External folders must be linked, not imported with **Create proxy for copy in document folder**.
+
+For example, drop a source checkout or a folder of Markdown notes, then ask:
+
+> List the files available through the “Reference notes” proxy. Search its Markdown files for
+> “boundary conditions”, read the matching passages, and cite the file paths and lines.
+
+Replace “Reference notes” with your proxy box's name. AI4 can read that box with
+`AttachmentRequest` to obtain a fresh, bounded catalogue. Each child has a reference such as
+`proxy:<box-uid>/notes/boundaries.md`. Reading that reference returns the usual excerpt, source
+hash and continuation offset, so another read can refuse to mix two versions of a changing file.
+PDF children can use the same text-layer extraction as individual PDF proxies; scanned pages
+still need an extraction or OCR procedure.
+
+Literal search uses `WorkspaceSearchRequest` with `scope="FILE_PROXY"`, `proxyBox` set to the
+box UID or unique name, and the usual query, extension and root-relative path filters. Its matches
+include a directly readable `attachmentRef`. Other literal-search scopes remain confined to their
+selected roots: they do not silently expand to every linked folder.
+
+Saved directory proxies also join semantic search's **workspace** corpus, with results owned by
+the proxy box and paths that can be read through it. Save the document so the index can discover
+the proxy. External edits, additions and deletions are checked independently of the document's
+metadata, with a five-second fingerprint cache; semantic results still depend on index rebuilding.
+For a just-edited file, use literal search or an attachment read rather than assuming the semantic
+index has already caught up.
+
+!!! note "Bounded, read-oriented context"
+    Enumeration considers at most 10,000 entries and 2,000 candidate files, to depth 32, under a
+    two-second cooperative time limit. Candidates are at most 2 MiB; explicit child reads allow
+    up to 10 MiB. Semantic indexing retains up to 80,000 text characters per file. Partial scans
+    are reported rather than presented as exhaustive; narrow literal search with `pathPrefix`
+    to search a particular subtree.
+
+    Hidden entries, symlinked children and common generated/dependency directories are excluded.
+    Nested `.gitignore` files support basic patterns and negation; global Git excludes and
+    `.git/info/exclude` are not consulted. Unsupported escaped patterns fail closed for that
+    subtree. These are read boundaries, not a sandbox for arbitrary code an agent can execute.
+
+    The box's displayed `contents` is a generated description, not an editable directory or a
+    promise that every file has been loaded into the prompt. Linked folders are not bundled
+    when you share the Field document; the receiving machine needs the referenced paths.
+
 ## Chat at an editor location
 
 Press ++cmd+3++, or run **AI Chat in editor**. With a selection, Field
