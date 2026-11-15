@@ -1,0 +1,330 @@
+name: bonded_organisms
+description: >
+  Bonded-particle organisms after ALIEN (https://github.com/chrxh/alien, 5.0-beta): ladder-bodied
+  worms built from genome strings, their cells joined by springs, their muscle bonds beating a
+  travelling wave through a viscous medium with resistive-force drag, run as a Vulkan compute
+  shader. Four boxes: a renderer; a world box that grows the organisms on the CPU
+  (afield.simulation.agents.BondedWorld, alife_bonded.kt), uploads them and steps them on the GPU
+  (its compute tab is the same per-cell step as BondedWorld.step); a draw box beneath it that
+  draws cells and bonds straight from the GPU buffers; and a check box that restarts the GPU world,
+  freezes it after 600 steps and compares every cell with the CPU reference stepped 600 times.
+  Edit a genome in the world box and re-run it to change the creatures. Requires a GPU/Vulkan
+  window; capture with `native-screenshot <path> --uid bonded_renderer`.
+docs:
+  - page: alife_examples.md
+    why: "Section 13 (bonded-particle organisms) is this document."
+operations:
+  - create:
+      box: bonded_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          // once: re-running this box keeps the existing window and renderer
+          once.renderer {
+              window = Window("Bonded organisms", initialDimensions = Rect(80.0, 80.0, 960.0, 600.0))
+              Renderer(window)
+          }
+          // the frame loop runs as this box's coroutine; stopping the box stops rendering
+          start(renderer::run)
+  - create:
+      box: bonded_world
+      name: organisms
+      frame: { x: 360.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          Each genome is a body, one character per segment: M muscle, L and R muscles that also
+          curve the body left or right (so it swims in circles), S stiff, W weak (tears first).
+          Edit them and re-run this box: the world is rebuilt and uploaded again.
+          */
+          val genomes = listOf("SMMMMMMMMMMS", "SLLLLLLLLLS", "SMMMMMMMMMMMMMMS", "SRRRRRRRRS")
+
+          val makeWorld = {
+              BondedWorld(1400).apply {
+                  params.wallX = 30f
+                  params.wallY = 18f
+                  genomes.forEachIndexed { k, g -> grow(g, -18f + 12f * k, if (k % 2 == 0) -6f else 6f, angle = 0.7f * k) }
+                  scatter(500, -29f, -17f, 29f, 17f)
+              }
+          }
+          val world = makeWorld()
+          prop<BondedWorld>(bonded) = world
+          prop<() -> BondedWorld>(bondedFactory) = makeWorld
+
+          var module = computeModuleHere {}
+          var m = ComputeMesh()
+          module += "mainMesh" to m
+          renderer += "bondedStep" to module
+
+          // two halves of cells (the shader reads one and writes the other) and the bond slots
+          var cells = defaultBuffer { size = (world.capacity * 4).vec4s }.buffer
+          var bonds = defaultBuffer { size = (world.capacity * 6).vec4s }.buffer
+          val clock = BondedClock()
+          val upload = {
+              cells.write { put(world.cellFloats()) }
+              bonds.write { put(world.bondFloats()) }
+              clock.step = 0
+          }
+          upload()
+          prop<FrameBufferGroup>(bondedCells) = cells
+          prop<FrameBufferGroup>(bondedBonds) = bonds
+          prop<BondedClock>(bondedClock) = clock
+          prop<() -> Unit>(bondedUpload) = upload
+
+          // push constants, in the order the compute tab declares them
+          val p = world.params
+          m.cells = { cells }
+          m.bonds = { bonds }
+          m.tick = { clock.tick() }
+          m.count = { world.count }
+          m.capacity = { world.capacity }
+          m.dt = { p.dt }
+          m.stiffness = { p.stiffness }
+          m.bondDamping = { p.bondDamping }
+          m.dragNormal = { p.dragNormal }
+          m.dragTangent = { p.dragTangent }
+          m.omega = { p.omega }
+          m.repulsionRadius = { p.repulsionRadius }
+          m.repulsionStiffness = { p.repulsionStiffness }
+          m.energyDiffusion = { p.energyDiffusion }
+          m.muscleCost = { p.muscleCost }
+          m.fullEnergy = { p.fullEnergy }
+          m.wallX = { p.wallX }
+          m.wallY = { p.wallY }
+          m.wallStiffness = { p.wallStiffness }
+          m.x = (world.capacity + 63) / 64
+          m.y = 1
+          m.z = 1
+          println("${world.organisms.size} organisms, ${world.count} cells, ${world.bondCount()} bonds")
+        compute: |
+          #version 450
+          #extension GL_EXT_buffer_reference : require
+          layout(local_size_x = 64) in;
+
+          // BondedWorld.step, one invocation per cell. Every bond is stored at both its ends,
+          // so a cell only ever writes itself.
+          struct Cell { vec4 pv; vec4 e; };      // (x, y, vx, vy), (energy, kind, owner, 0)
+          struct Bonds { vec4 partner; vec4 rest; vec4 amp; vec4 phase; vec4 limit; vec4 axis; };
+          layout(std430, buffer_reference) buffer CellBuf { Cell c[]; };
+          layout(std430, buffer_reference) buffer BondBuf { Bonds b[]; };
+
+          layout(push_constant) uniform P {
+              CellBuf cells;
+              BondBuf bonds;
+              uint tick;       // the step number; bit 31 freezes the world
+              uint count;
+              uint capacity;
+              float dt;
+              float stiffness;
+              float bondDamping;
+              float dragNormal;
+              float dragTangent;
+              float omega;
+              float repulsionRadius;
+              float repulsionStiffness;
+              float energyDiffusion;
+              float muscleCost;
+              float fullEnergy;
+              float wallX;
+              float wallY;
+              float wallStiffness;
+          } pc;
+
+          void main() {
+              uint i = gl_GlobalInvocationID.x;
+              if (i >= pc.count || (pc.tick & 0x80000000u) != 0u) return;
+              uint src = (pc.tick & 1u) * pc.capacity;
+              uint dst = (1u - (pc.tick & 1u)) * pc.capacity;
+              float t = float(pc.tick) * pc.dt;
+              Cell me = pc.cells.c[src + i];
+              vec2 xi = me.pv.xy, vi = me.pv.zw;
+              float ei = me.e.x;
+              vec2 f = vec2(0);
+              mat2 M = mat2(0);
+              float nb = 0.0, de = 0.0, cost = 0.0;
+              Bonds bd = pc.bonds.b[i];
+              for (int s = 0; s < 4; s++) {
+                  int j = int(bd.partner[s]);
+                  if (j < 0) continue;
+                  Cell o = pc.cells.c[src + uint(j)];
+                  vec2 d = o.pv.xy - xi;
+                  float len = max(length(d), 1e-6);
+                  vec2 u = d / len;
+                  // a muscle's stroke shrinks as its two cells run out of energy
+                  float scale = clamp(0.5 * (ei + o.e.x) / pc.fullEnergy, 0.0, 1.0);
+                  float r = bd.rest[s] * (1.0 + bd.amp[s] * scale * sin(pc.omega * t + bd.phase[s]));
+                  // both ends see the same numbers, so both break the bond on the same step
+                  if (abs(len - r) / r > bd.limit[s]) { pc.bonds.b[i].partner[s] = -1.0; continue; }
+                  float rv = dot(o.pv.zw - vi, u);
+                  f += (pc.stiffness * (len - r) + pc.bondDamping * rv) * u;
+                  // rails set the drag axis; rungs and braces do not
+                  M += bd.axis[s] * outerProduct(u, u);
+                  nb += bd.axis[s];
+                  de += pc.energyDiffusion * (o.e.x - ei);
+                  cost += abs(bd.amp[s]) * scale;
+              }
+              float rr = pc.repulsionRadius;
+              for (uint j = 0u; j < pc.count; j++) {
+                  if (j == i) continue;
+                  vec2 d = pc.cells.c[src + j].pv.xy - xi;
+                  float d2 = dot(d, d);
+                  if (d2 >= rr * rr || d2 < 1e-12) continue;
+                  float len = sqrt(d2);
+                  f += -pc.repulsionStiffness * (rr - len) * d / len;
+              }
+              if (pc.wallX > 0.0) {
+                  f.x -= pc.wallStiffness * (max(xi.x - pc.wallX, 0.0) + min(xi.x + pc.wallX, 0.0));
+                  f.y -= pc.wallStiffness * (max(xi.y - pc.wallY, 0.0) + min(xi.y + pc.wallY, 0.0));
+              }
+              // resistive-force drag: sideways to the bonds costs more than along them
+              if (nb > 0.0) M /= nb;
+              f += -pc.dragNormal * vi + (pc.dragNormal - pc.dragTangent) * (M * vi);
+              vec2 nv = vi + f * pc.dt;
+              pc.cells.c[dst + i].pv = vec4(xi + nv * pc.dt, nv);
+              pc.cells.c[dst + i].e = vec4(max(ei + (de - pc.muscleCost * cost) * pc.dt, 0.0), me.e.yzw);
+          }
+  - create:
+      box: bonded_draw
+      name: draw
+      frame: { x: 360.0, y: 160.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // Cells as discs and bonds as thin quads, read straight from the GPU buffers.
+          // 30 vertices per cell: 6 for its disc, 6 for each of its four bond slots.
+          var module = moduleHere { primitiveType = triangles }
+          var m = Mesh()
+          module += "mainMesh" to m
+          renderer += "bondedDraw" to module
+
+          m.cells = { bondedCells }
+          m.bonds = { bondedBonds }
+          m.latest = { bondedClock.latestHalf }
+          m.capacity = { bonded.capacity }
+          m.viewX = { 0f }
+          m.viewY = { 0f }
+          m.viewHalfHeight = { 19f }
+          m.aspect = { window.width / window.height.toFloat() }
+          m.set(bonded.count * 30, 0) {}
+          m
+        vertex: |
+          #version 450
+          #extension GL_EXT_buffer_reference : require
+          struct Cell { vec4 pv; vec4 e; };
+          struct Bonds { vec4 partner; vec4 rest; vec4 amp; vec4 phase; vec4 limit; vec4 axis; };
+          layout(std430, buffer_reference) buffer CellBuf { Cell c[]; };
+          layout(std430, buffer_reference) buffer BondBuf { Bonds b[]; };
+          layout(push_constant) uniform P {
+              CellBuf cells;
+              BondBuf bonds;
+              uint latest;
+              uint capacity;
+              float viewX;
+              float viewY;
+              float viewHalfHeight;
+              float aspect;
+          } pc;
+          layout(location = 0) out vec2 tc;
+          layout(location = 1) out vec4 col;
+          layout(location = 2) flat out int isBond;
+
+          const vec2 corner[6] = vec2[](vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(0, 0), vec2(1, 1), vec2(0, 1));
+          vec3 hue(float h) { return clamp(abs(fract(h + vec3(0, 2, 1) / 3.0) * 6.0 - 3.0) - 1.0, 0.0, 1.0); }
+
+          void main() {
+              int ci = gl_VertexIndex / 30, r = gl_VertexIndex % 30;
+              uint base = pc.latest * pc.capacity;
+              Cell me = pc.cells.c[base + uint(ci)];
+              vec2 q = corner[r % 6];
+              float kind = me.e.y;
+              // free matter is grey; each organism gets its own hue, muscles brightest
+              vec3 c = kind > 2.5 ? vec3(0.32, 0.36, 0.42) : hue(me.e.z * 0.27 + 0.03);
+              vec2 world;
+              if (r < 6) {
+                  float size = kind > 2.5 ? 0.4 : 0.75;
+                  world = me.pv.xy + (q - 0.5) * size;
+                  isBond = 0;
+                  float bright = kind > 2.5 ? 0.7 : (kind > 0.5 ? 1.0 : 0.55) * (0.35 + 0.65 * clamp(me.e.x, 0.0, 1.0));
+                  col = vec4(c * bright, 1.0);
+              } else {
+                  int s = (r - 6) / 6;
+                  int j = int(pc.bonds.b[ci].partner[s]);
+                  isBond = 1;
+                  tc = q;
+                  col = vec4(c * 0.5, 1.0);
+                  // each bond is drawn once, from its lower-numbered end
+                  if (j <= ci) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+                  vec2 a = me.pv.xy, b = pc.cells.c[base + uint(j)].pv.xy;
+                  vec2 d = b - a;
+                  vec2 n = normalize(vec2(-d.y, d.x)) * 0.07;
+                  world = a + d * q.x + n * (q.y * 2.0 - 1.0);
+              }
+              tc = q;
+              vec2 ndc = (world - vec2(pc.viewX, pc.viewY)) / pc.viewHalfHeight;
+              ndc.x /= pc.aspect;
+              gl_Position = vec4(ndc.x, -ndc.y, 0.0, 1.0);
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) in vec2 tc;
+          layout(location = 1) in vec4 col;
+          layout(location = 2) flat in int isBond;
+          layout(location = 0) out vec4 outColor;
+          void main() {
+              if (isBond == 1) { outColor = col; return; }
+              float d = length(tc - vec2(0.5));
+              float a = 1.0 - smoothstep(0.42, 0.5, d);
+              if (a < 0.01) discard;
+              outColor = vec4(col.rgb, a);
+          }
+  - create:
+      box: bonded_check
+      name: GPU against CPU
+      frame: { x: 680.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          Restarts the GPU world, lets it take exactly 600 steps, freezes it, reads the cells back
+          and compares them with a CPU BondedWorld built by the same factory and stepped 600 times.
+          Then lets it run on.
+          */
+          val n = 600
+          val clock = bondedClock
+          clock.freezeAt = 0
+          frames {
+              repeat(4) { frame() }
+              bondedUpload()
+              clock.freezeAt = n
+              while (clock.step < n) frame()
+              repeat(4) { frame() }
+              val gpu = FloatArray(bonded.capacity * 16)
+              bondedCells.read { get(gpu) }
+              val cpu = bondedFactory()
+              cpu.run(n)
+              val half = clock.latestHalf * bonded.capacity
+              var worst = 0.0
+              var travel = 0.0
+              val start = bondedFactory()
+              for (i in 0 until cpu.count) {
+                  val o = (half + i) * 8
+                  worst = maxOf(worst, Math.hypot((gpu[o] - cpu.x[i]).toDouble(), (gpu[o + 1] - cpu.y[i]).toDouble()))
+                  travel = maxOf(travel, Math.hypot((cpu.x[i] - start.x[i]).toDouble(), (cpu.y[i] - start.y[i]).toDouble()))
+              }
+              println("after $n steps: largest GPU-CPU distance $worst, largest distance a cell moved $travel, bonds ${cpu.bondCount()}")
+              clock.freezeAt = -1
+          }
+  - connect: { parent: bonded_renderer, child: bonded_world }
+  - connect: { parent: bonded_world, child: bonded_draw }
+  - connect: { parent: bonded_world, child: bonded_check }
+  - launch: { box: bonded_renderer, property: code, strand: renderer }
+  - await: {}
+  - launch: { box: bonded_world, property: code }
+  - await: {}
+  - launch: { box: bonded_draw, property: code }
+  - await: {}
