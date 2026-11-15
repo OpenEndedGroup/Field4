@@ -63,7 +63,7 @@ class DocsAudioProvenanceGuardTest {
             Origin.STAND_IN_SYNTH to 28,
             Origin.DIRT_SAMPLES to 41,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
-            Origin.DOUGH_DSP to 24,
+            Origin.DOUGH_DSP to 28,
             Origin.FAUST to 6,
             Origin.FM1_SIM to 9,
             Origin.DOUGH_WASM to 2,
@@ -318,7 +318,10 @@ class DocsAudioProvenanceGuardTest {
          *
          * `fm1.md` added one more (2026-11-15), [Origin.FM1_SIM]: ACID ALLEY's 303 sequence through two
          * StackSL note hooks in turn ([FM1Sim.noteHook]).
+         *
+         * `spectral_examples.md` added four (2026-11-15), [Origin.DOUGH_DSP]: [TptFilterDocs] renders the
+         * Korg35 sweep, the TptOnePole phaser, the TiltEQ sweep and the Resonator trio offline.
          */
-        const val EXPECTED_FENCE_COUNT = 145
+        const val EXPECTED_FENCE_COUNT = 149
     }
 }

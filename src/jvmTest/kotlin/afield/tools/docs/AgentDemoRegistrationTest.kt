@@ -87,6 +87,8 @@ class AgentDemoRegistrationTest {
             "browse_embeds",
             // 2026-09-23: interval-arithmetic envelopes for Fn; registered EXECUTE.
             "certified_envelope",
+            // 2026-11-15: evieve-family TPT filters, fft responses and audio sweeps (spectral_examples.md).
+            "evieve_filters",
             "chart_clip",
             "chart_primitive",
             // 2026-10-29: controls renewal surface and a self-rebuilding slider; registered EXECUTE.

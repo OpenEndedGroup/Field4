@@ -4,7 +4,7 @@
 
 Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. One value type carries the whole thing: `Signal` is a block-rendered mono source, `SignalProcessor` is a `Signal` that reads another one, and `/` chains the two, so `saw / OnePole(800.p)` is a filtered sawtooth and nothing else had to be declared. Control values are `Param`, which a plain number becomes with `.p`, and which can itself be driven by a signal. `audio { … }` closes a mono or stereo graph into an `AudioPatchSpec`; return one as a box's last expression and the box stays lit for as long as it is making sound. Underneath is a shared OpenAL engine, one process-wide, with warm-up passes available so the first buffer is not also the JIT's first look at your graph. On top of the oscillator / filter / effect / envelope families sit three larger things that are not Field's own DSP: **Faust**, whose compiler is embedded as WebAssembly and turns a `#faust` box into a running node in the same graph; the **dough** ports, hand-rolled float math whose inaccuracy is part of the sound; and the **spectral** and **granular** layers, which are Field's own. `Visualizers.kt` is how you look at any of it — every function there is an extension on a type declared in this category. Start from `synth.kt`, which is the terse surface a box actually imports; [Sound: from a pattern to something you can hear](../sound.md) is the prose, [Faust](../faust.md) is the embedded compiler with worked examples, and [DoughDSP: hear the primitives](../dough_dsp_sound.md) plays the ports.
 
-54 source file(s), 1935 public symbol(s), 1087 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+54 source file(s), 1957 public symbol(s), 1095 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2461,7 +2461,7 @@ drive in front of it, which is often what a ladder filter's output wants next.
 
 `src/jvmMain/kotlin/afield/audio/synth/Filters.kt` — [read the source](source/jvmMain/afield/audio/synth/Filters/)
 
-**Used in:** [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md), [Agent transcript gallery](../agent_transcripts.md), [FM-1 simulator](../fm1.md)
+**Used in:** [Signal examples: time and frequency](../spectral_examples.md), [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md), [Agent transcript gallery](../agent_transcripts.md)
 
 ### Top-level functions { #filters-kt-functions }
 
@@ -2469,6 +2469,7 @@ drive in front of it, which is often what a ladder filter's output wants next.
 | --- | --- |
 | <a id="filters-kt--lowpass"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Signal</span><span class="p">.</span><span class="nf">lowpass</span><span class="p">(</span><span class="n">cutoffHz</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.707f</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/audio/synth/Filters/#L77) | This signal through a 12 dB/octave [`Biquad`](synthesis.md#filters-kt-biquad) lowpass at `cutoffHz`: `bass.lowpass(150f)`. |
 | <a id="filters-kt--highpass"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Signal</span><span class="p">.</span><span class="nf">highpass</span><span class="p">(</span><span class="n">cutoffHz</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.707f</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/audio/synth/Filters/#L80) | This signal through a 12 dB/octave [`Biquad`](synthesis.md#filters-kt-biquad) highpass at `cutoffHz`. See [`lowpass`](synthesis.md#filters-kt--lowpass). |
+| <a id="filters-kt--impulseresponse"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">impulseResponse</span><span class="p">(</span><span class="n">processor</span><span class="p">:</span> <span class="nc">SignalProcessor</span><span class="p">,</span> <span class="n">frames</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8192</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">48</span><span class="n">&#95;000</span><span class="p">,</span> <span class="n">amplitude</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatArray</span></code>](source/jvmMain/afield/audio/synth/Filters/#L736) | The impulse response of `processor` at `sampleRate`: a unit impulse rendered through it for `frames` samples. Use small `amplitude` to read a nonlinear filter's small-signal response. The processor's state is consumed; pass a fresh one. Its magnitude response is `fft(impulseResponse(f, sampleRate), sampleRate.toDouble()).magnitudeDbOneSided()`, one bin per hertz when `frames` equals `sampleRate`. |
 
 ### OnePole { #filters-kt-onepole }
 
@@ -2585,6 +2586,73 @@ Constants: `LP`, `HP`, `BP`, `NOTCH`.
 | --- | --- |
 | <a id="filters-kt--saturator--drive"></a><code class="highlight"><span class="k">val</span> <span class="n">drive</span><span class="p">:</span> <span class="nc">Param</span></code> |  |
 | <a id="filters-kt--saturator--generate"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generate</span><span class="p">(</span><span class="n">output</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/Filters/#L519) |  |
+
+### TptOnePoleMode { #filters-kt-tptonepolemode }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">TptOnePoleMode</span></code>](source/jvmMain/afield/audio/synth/Filters/#L541)
+
+The response [`TptOnePole`](synthesis.md#filters-kt-tptonepole) reads from its one trapezoidal integrator.
+
+Constants: `LP`, `HP`, `AP`.
+
+### TptOnePole { #filters-kt-tptonepole }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">TptOnePole</span><span class="p">(</span><span class="k">val</span> <span class="n">cutoff</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mi">1000f</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">TptOnePoleMode</span> <span class="o">=</span> <span class="nc">TptOnePoleMode</span><span class="p">.</span><span class="nc">LP</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SignalProcessor</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/Filters/#L554)
+
+A first-order filter by trapezoidal integration (zero-delay feedback): the analog `1/(1+s)` mapped by the bilinear transform with its cutoff prewarped, so the −3 dB point is exactly [`cutoff`](patterns.md#patalgebra-kt--cutoff) at any sample rate. [`OnePole`](synthesis.md#filters-kt-onepole) is the cheaper impulse-invariant version, whose cutoff drifts near Nyquist and which has no allpass; this one also gives `AP`, the first-order phase shifter phasers stack.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="filters-kt--tptonepole--cutoff"></a><code class="highlight"><span class="k">val</span> <span class="n">cutoff</span><span class="p">:</span> <span class="nc">Param</span></code> |  |
+| <a id="filters-kt--tptonepole--mode"></a><code class="highlight"><span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">TptOnePoleMode</span></code> |  |
+| <a id="filters-kt--tptonepole--generate"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generate</span><span class="p">(</span><span class="n">output</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/Filters/#L561) |  |
+
+### TiltEQ { #filters-kt-tilteq }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">TiltEQ</span><span class="p">(</span><span class="k">val</span> <span class="n">pivot</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mi">800f</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">tiltDb</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mi">0f</span><span class="p">)</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SignalProcessor</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/Filters/#L587)
+
+A tilt equaliser (evieve's `evi_filter_tilt`): one trapezoidal one-pole split at [`pivot`](synthesis.md#filters-kt--tilteq--pivot) into its lowpass and highpass halves, the lows scaled by `−tilt` dB and the highs by `+tilt` dB. Positive [`tiltDb`](synthesis.md#filters-kt--tilteq--tiltdb) brightens, negative darkens, and at 0 the two halves sum back to the input exactly.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="filters-kt--tilteq--pivot"></a><code class="highlight"><span class="k">val</span> <span class="n">pivot</span><span class="p">:</span> <span class="nc">Param</span></code> |  |
+| <a id="filters-kt--tilteq--tiltdb"></a><code class="highlight"><span class="k">val</span> <span class="n">tiltDb</span><span class="p">:</span> <span class="nc">Param</span></code> |  |
+| <a id="filters-kt--tilteq--generate"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generate</span><span class="p">(</span><span class="n">output</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/Filters/#L594) |  |
+
+### Korg35Mode { #filters-kt-korg35mode }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Korg35Mode</span></code>](source/jvmMain/afield/audio/synth/Filters/#L614)
+
+Which output of [`Korg35`](synthesis.md#filters-kt-korg35) to listen to.
+
+Constants: `LP`, `HP`.
+
+### Korg35 { #filters-kt-korg35 }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">Korg35</span><span class="p">(</span><span class="k">val</span> <span class="n">cutoff</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mi">1000f</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">resonance</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mf">0.5f</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">Korg35Mode</span> <span class="o">=</span> <span class="nc">Korg35Mode</span><span class="p">.</span><span class="nc">LP</span><span class="p">,</span> <span class="k">val</span> <span class="n">drive</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mi">1f</span><span class="p">)</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SignalProcessor</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/Filters/#L627)
+
+The Korg MS-20's Sallen-Key filter (the Korg35 chip), as a zero-delay-feedback loop: two trapezoidal one-poles in the forward path and a highpass one-pole feeding the output back, with the instantaneous loop solved exactly each sample and a `tanh` on the solved feedback node, as in evieve's `evi_korgms20`/`evi_korgms10` and Pirkle's application note.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="filters-kt--korg35--cutoff"></a><code class="highlight"><span class="k">val</span> <span class="n">cutoff</span><span class="p">:</span> <span class="nc">Param</span></code> |  |
+| <a id="filters-kt--korg35--resonance"></a><code class="highlight"><span class="k">val</span> <span class="n">resonance</span><span class="p">:</span> <span class="nc">Param</span></code> |  |
+| <a id="filters-kt--korg35--mode"></a><code class="highlight"><span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">Korg35Mode</span></code> |  |
+| <a id="filters-kt--korg35--drive"></a><code class="highlight"><span class="k">val</span> <span class="n">drive</span><span class="p">:</span> <span class="nc">Param</span></code> |  |
+| <a id="filters-kt--korg35--generate"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generate</span><span class="p">(</span><span class="n">output</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/Filters/#L637) |  |
+
+### Resonator { #filters-kt-resonator }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">Resonator</span><span class="p">(</span><span class="k">val</span> <span class="n">freq</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mi">440f</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">decay</span><span class="p">:</span> <span class="nc">Param</span> <span class="o">=</span> <span class="nc">Param</span><span class="p">(</span><span class="mf">0.5f</span><span class="p">)</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SignalProcessor</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/Filters/#L695)
+
+A two-pole resonator: a pole pair at [`freq`](synthesis.md#filters-kt--resonator--freq) whose radius rings down by 60 dB in [`decay`](synthesis.md#filters-kt--resonator--decay) seconds, with the input scaled so the peak gain stays at 1 whatever the decay (evieve's `evi_band_reson` and the formlet are this cell). Strike it with an impulse for a tuned ping, feed it noise for a pitched band, or sweep [`freq`](synthesis.md#filters-kt--resonator--freq) at audio rate — the coefficients follow per sample.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="filters-kt--resonator--freq"></a><code class="highlight"><span class="k">val</span> <span class="n">freq</span><span class="p">:</span> <span class="nc">Param</span></code> |  |
+| <a id="filters-kt--resonator--decay"></a><code class="highlight"><span class="k">val</span> <span class="n">decay</span><span class="p">:</span> <span class="nc">Param</span></code> |  |
+| <a id="filters-kt--resonator--generate"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">generate</span><span class="p">(</span><span class="n">output</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/Filters/#L702) |  |
+| <a id="filters-kt--resonator-companion--resonatorcoefficients"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">resonatorCoefficients</span><span class="p">(</span><span class="n">freq</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">decay</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">sr</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Triple</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/Filters/#L718) | `(r, θ, b0)` for [`Resonator`](synthesis.md#filters-kt-resonator): pole radius, pole angle, and the gain that holds the peak at 1. |
 
 ## FnSignal.kt { #fnsignal-kt }
 
@@ -3654,7 +3722,7 @@ is what reaches [`FieldAudioEngine`](synthesis.md#fieldaudioengine-kt-fieldaudio
 
 `src/jvmMain/kotlin/afield/audio/synth/Signal.kt` — [read the source](source/jvmMain/afield/audio/synth/Signal/)
 
-**Used in:** [How to make sound in Field](../sound_paths.md), [Faust](../faust.md), [A pattern that moves particles](../chain_pattern_particles.md)
+**Used in:** [How to make sound in Field](../sound_paths.md), [Faust](../faust.md), [Signal examples: time and frequency](../spectral_examples.md)
 
 ### Top-level functions { #signal-kt-functions }
 

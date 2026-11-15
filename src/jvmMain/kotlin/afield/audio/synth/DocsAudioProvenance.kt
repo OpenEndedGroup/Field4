@@ -172,6 +172,9 @@ object DocsAudioProvenance {
         // Five sounding figures of the Sound explainer, their signal graphs rebuilt from the figure boxes and
         // played with a fixed performance. See explainer_sound.md.
         "afield.audio.synth.ExplainerSoundDocs" to Origin.DOUGH_DSP,
+        // Four signal graphs, each an evieve-family filter (Korg35, TptOnePole allpasses, TiltEQ,
+        // Resonator) with a parameter driven by an oscillator through Param.mod. See spectral_examples.md.
+        "afield.audio.synth.TptFilterDocs" to Origin.DOUGH_DSP,
         // Both of its figures are one Faust program rendered offline, so the family is the same at
         // eight voices and at one — the difference between them is voice allocation, not origin.
         "afield.audio.synth.FaustPolySoundDocs" to Origin.FAUST,

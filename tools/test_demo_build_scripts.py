@@ -130,6 +130,8 @@ CORPUS = {
     "gp_drawing",
     # 2026-10-12: inspector embeds. No build.yaml (the transcript lives in dev_docs/agents/transcripts).
     "browse_embeds",
+    # 2026-11-15: evieve filters. No build.yaml (the transcript lives in dev_docs/agents/transcripts).
+    "evieve_filters",
     "gpu_probe_bench",
     "interaction_nets_lambda",
     "keyframe_key_discovery",

@@ -664,6 +664,9 @@ object DemoTranscriptExecSmokeTest {
         // Box 2 returns a live patSynth launch (an audio-engine registration held while the box runs);
         // the drawing-to-facts path and the live re-solve are covered by DatalogRhythmLiveTest.
         "datalog_rhythm_drawn",
+        // evieve filters (2026-11-15): box 1 is an offline FFT plot, but boxes 2 and 3 end in audio(),
+        // which opens the audio device.
+        "evieve_filters",
         // Requires a connected OpenXR runtime and real tracking; geometry math is covered by BodyGeometryTest.
         "body_one",
         "text_one_vr",
