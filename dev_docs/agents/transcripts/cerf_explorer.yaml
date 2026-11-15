@@ -1,0 +1,71 @@
+name: cerf_explorer
+description: >
+  Cerf diagrams: the value of every critical point of a changing field plotted against time, with the
+  moments a pair of critical points is born or cancels marked on it, beside the field itself. A live
+  Gray–Scott run whose diagram grows as it goes, and a recorded one with a slider that scrubs a time
+  cursor and lights up the critical points on the field. Needs the optional Morse–Smale library:
+  ./gradlew buildMorseSmaleNative.
+operations:
+  - create:
+      box: cerf_live
+      name: 1 - Cerf diagram of a live simulation
+      frame: { x: 60.0, y: 60.0, w: 420.0, h: 120.0 }
+      properties:
+        code: |
+          import afield.geometry.topology.morsesmale.*
+          import afield.geometry.topology.tracking.*
+
+          // Launch this one (Alt-R). A Gray–Scott run in its wandering-worms regime, seeded with three squares.
+          // Each frame advances it 20 steps, adds the frame's critical points to the Cerf diagram, and draws
+          // the diagram so far beside the field, with births (orange) and cancellations (violet) on both.
+          var state = grayScottSeed(96, 96, patches = 3, patchSize = 10, seed = 7)
+          val cerf = CerfDiagram()
+
+          loop {
+              state = state.stepTimes(GRAY_SCOTT_WORMS, 20)
+              val v = state.v.gaussianBlur(1.0)
+              cerf.add(frameNumber.toDouble(), MorseSmale.compute(v, persistence = 0.05), minPersistence = 0.05)
+              val now = frameNumber.toDouble()
+              showImgGrid(
+                  "births ${cerf.events(CerfEventType.BIRTH).size}, cancellations ${cerf.events(CerfEventType.DEATH).size}" to
+                      Img.filled(320, 220, 1, 0.08f).drawFLines(cerf.toFLines(320.0, 220.0, cursor = now, showSwaps = false), scale = 2.0),
+                  "frame $frameNumber" to v.colormap("magma", 0f, 0.4f).drawFLines(cerf.fieldMarkers(now, 5.0, window = 2.0), scale = 4.5),
+                  columns = 2,
+                  cellSide = 440,
+              )
+          }
+  - create:
+      box: cerf_scrub
+      name: 2 - Scrubbing a recorded run
+      frame: { x: 560.0, y: 60.0, w: 420.0, h: 120.0 }
+      properties:
+        code: |
+          import afield.geometry.topology.morsesmale.*
+          import afield.geometry.topology.tracking.*
+
+          // Run this one (Alt-Enter), then drag the slider. A seed square in the middle of a Gray–Scott run in its dividing regime, sampled every 4 steps. The square
+          // pinches into four spots, so peaks are created in pairs with saddles between them.
+          val inSquare = { x: Int, y: Int -> x in 18..30 && y in 18..30 }
+          var state = GrayScottState(
+              Img.generate(48, 48) { x, y -> if (inSquare(x, y)) 0.5f else 1f },
+              Img.generate(48, 48) { x, y -> if (inSquare(x, y)) 0.25f + 0.02f * ((x * 7 + y * 3) % 5) else 0f },
+          )
+          val frames = ArrayList<Img>()
+          val cerf = CerfDiagram()
+          for (frame in 0 until 40) {
+              state = state.stepTimes(GRAY_SCOTT_MITOSIS, 4)
+              val v = state.v.gaussianBlur(1.0)
+              frames.add(v)
+              cerf.add(frame.toDouble(), MorseSmale.compute(v, persistence = 0.02), minPersistence = 0.02)
+          }
+
+          fun show(t: Double) {
+              val diagram = Img.filled(320, 220, 1, 0.08f).drawFLines(cerf.toFLines(320.0, 220.0, cursor = t, thickness = 2.0), scale = 2.0)
+              val view = frames[t.toInt()].colormap("magma", 0f, 0.4f).drawFLines(cerf.fieldMarkers(t, 6.0, window = 1.0), scale = 9.0)
+              val births = cerf.events(CerfEventType.BIRTH).size
+              val deaths = cerf.events(CerfEventType.DEATH).size
+              showImgGrid("births: $births, cancellations: $deaths" to diagram, "frame ${t.toInt()}" to view, columns = 2, cellSide = 440)
+          }
+
+          slider("frame", min = 0.0, max = 39.0, step = 1.0, initialValue = 12.0) { show(it) }
+          show(12.0)
