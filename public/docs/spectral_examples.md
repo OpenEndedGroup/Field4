@@ -450,29 +450,76 @@ VA Filter Design*, Will Pirkle's Korg35 note), not transcribed from it.
 - `Korg35(cutoff, resonance, mode, drive)`: the MS-20's Sallen-Key filter, 12 dB/octave, with a `tanh` in the feedback loop. It self-oscillates as `resonance` reaches 1.
 - `Resonator(freq, decay)`: a tuned two-pole ring whose peak gain stays at 1 whatever the decay.
 
-`frequencyResponseDb(filter, freqs)` measures any of them by rendering an impulse through a fresh
-instance and taking its DFT at `freqs`, so the curve can sit beside the filter in a box:
+`impulseResponse(filter, frames)` renders an impulse through a fresh filter. With one second of
+response, `fft(...)` gives one bin per hertz, so `magnitudeDbOneSided()` is the filter's response
+in dB indexed by frequency, and `showSignals` plots it the way the spectra above are plotted. The
+first plot is the Korg35 at 1 kHz; the tiny `amplitude` keeps its `tanh` in its linear range, so the
+curve is the small-signal response:
 
-```kotlin
-val freqs = logFrequencies(20.0, 20_000.0, 200)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tpt_filters/korg35_response.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
+:::static
+fun responseDb(filter: SignalProcessor, amplitude: Float = 1f) =
+    fft(impulseResponse(filter, 48_000, amplitude = amplitude), 48_000.0).magnitudeDbOneSided().take(5000)
+
 showSignals(
-    "res 0.5" to frequencyResponseDb(Korg35(1000.p, 0.5.p), freqs, amplitude = 1e-4f),
-    "res 0.95" to frequencyResponseDb(Korg35(1000.p, 0.95.p), freqs, amplitude = 1e-4f),
-    channel = "main", xTitle = "frequency index (20 Hz – 20 kHz, log)",
+    "resonance 0.1" to responseDb(Korg35(1000.p, 0.1.p), 1e-4f),
+    "resonance 0.5" to responseDb(Korg35(1000.p, 0.5.p), 1e-4f),
+    "resonance 0.95" to responseDb(Korg35(1000.p, 0.95.p), 1e-4f),
+    "highpass, resonance 0.8" to responseDb(Korg35(1000.p, 0.8.p, Korg35Mode.HP), 1e-4f),
+    channel = "main",
+    xTitle = "frequency (Hz)",
+    yTitle = "dB",
 )
 ```
 
-The small `amplitude` keeps the `tanh` in its linear range, so the curve is the small-signal
-response. The plots below were measured this way by `TptFilterDocs`.
+![Korg35 responses at 1 kHz on a linear axis to 5 kHz: three lowpass curves flat at 0 dB below the cutoff and falling to about −28 dB by 5 kHz, the resonance 0.95 curve peaking near +19 dB at 1 kHz, and a yellow highpass curve rising from the bottom of the plot to a peak of about +8 dB just above 1 kHz, then flattening to 0 dB](assets/tpt_filters/korg35_response.png)
 
-![Korg35 responses at 1 kHz: four lowpass curves, flat below the cutoff and falling 12 dB per octave above it, with resonant peaks rising from none at resonance 0.1 to about +19 dB at 0.95, and a purple highpass curve rising 12 dB per octave to a peak at 1 kHz](assets/tpt_filters/korg35_response.png)
+The first-order filters and the tilt, with Field's older impulse-invariant `OnePole` for comparison:
 
-![TptOnePole lowpass and highpass crossing at −3 dB at 1 kHz, the impulse-invariant OnePole lowpass flattening out near 20 kHz instead of falling, and four TiltEQ curves tilting ±6 and ±12 dB about 800 Hz](assets/tpt_filters/onepole_response.png)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tpt_filters/onepole_response.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
+:::static
+:::fold responseDb, as above
+fun responseDb(filter: SignalProcessor) =
+    fft(impulseResponse(filter, 48_000), 48_000.0).magnitudeDbOneSided().take(5000)
+:::endfold
 
-![Three Resonator responses at 1 kHz, each peaking at 0 dB, narrower as the decay grows from 0.02 s to 0.5 s](assets/tpt_filters/resonator_response.png)
+showSignals(
+    "TptOnePole LP" to responseDb(TptOnePole(1000.p, TptOnePoleMode.LP)),
+    "TptOnePole HP" to responseDb(TptOnePole(1000.p, TptOnePoleMode.HP)),
+    "OnePole LP" to responseDb(OnePole(1000.p)),
+    "TiltEQ −12 dB" to responseDb(TiltEQ(800.p, (-12).p)),
+    "TiltEQ +12 dB" to responseDb(TiltEQ(800.p, 12.p)),
+    channel = "main",
+    xTitle = "frequency (Hz)",
+    yTitle = "dB",
+)
+```
+
+![TptOnePole lowpass and highpass crossing near −3 dB at 1 kHz, the OnePole lowpass lying almost on top of the TptOnePole lowpass in this range, and two TiltEQ curves: the −12 dB tilt starting at +12 dB at the low end and sloping down through 0 dB, the +12 dB tilt rising from −12 dB to +12 dB](assets/tpt_filters/onepole_response.png)
+
+And a `Resonator` at 1 kHz with three decays:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tpt_filters/resonator_response.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
+:::static
+:::fold responseDb, as above
+fun responseDb(filter: SignalProcessor) =
+    fft(impulseResponse(filter, 48_000), 48_000.0).magnitudeDbOneSided().take(5000)
+:::endfold
+
+showSignals(
+    "decay 0.02 s" to responseDb(Resonator(1000.p, 0.02.p)),
+    "decay 0.1 s" to responseDb(Resonator(1000.p, 0.1.p)),
+    "decay 0.5 s" to responseDb(Resonator(1000.p, 0.5.p)),
+    channel = "main",
+    xTitle = "frequency (Hz)",
+    yTitle = "dB",
+)
+```
+
+![Three Resonator responses at 1 kHz on a linear axis to 5 kHz, each peaking at exactly 0 dB at 1 kHz; the 0.02 s decay is the widest and sits highest away from the peak, the 0.5 s decay the narrowest and lowest, near −75 dB by 5 kHz](assets/tpt_filters/resonator_response.png)
 
 `TptFiltersTest` compares each measured curve with the analog prototype under the prewarped
-bilinear transform, at 60 frequencies from 30 Hz to 18 kHz, and the largest difference is below
+bilinear transform, at 60 frequencies from 30 Hz to 18 kHz, and the largest difference is about
 0.001 dB. For the Korg35 lowpass that prototype is `1/(s² + (2−K)s + 1)` with
 `K = 0.01 + 1.98·resonance`.
 
@@ -484,10 +531,13 @@ driven by an oscillator through `Param.mod`.
 A 55 Hz saw through `Korg35` at resonance 0.9 and drive 2. The cutoff sweeps on a 0.5 Hz sine, and a
 110 Hz sine also moves it ±250 Hz, which puts sidebands on the resonance:
 
-```kotlin
-SawOsc(55.p) / Korg35(
-    Param(1200f).also { it.mod = SineOsc(0.5.p) * 900f + SineOsc(110.p) * 250f },
-    0.9.p, drive = 2.p)
+```diffstatic {data-lang=kotlin}
+SawOsc(55.p) /
+    Korg35(
+        Param(1200f).also { it.mod = SineOsc(0.5.p) * 900f + SineOsc(110.p) * 250f },
+        0.9.p,
+        drive = 2.p,
+    )
 ```
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/korg35.wav" audio-spec="korg35" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-korg35-audio"}
