@@ -254,10 +254,10 @@ private data class AiChatRewindWorldRequest(val uid: String, val turns: List<Str
 private data class AiChatRewindWorldReply(val uid: String, val message: String, val success: Boolean)
 
 @kotlinx.serialization.Serializable
-private data class AiChatContextRequest(val uid: String)
+private data class AiChatContextRequest(val uid: String, val action: String = "inspect")
 
 @kotlinx.serialization.Serializable
-private data class AiChatContextReply(val uid: String, val markdown: String)
+private data class AiChatContextReply(val uid: String, val markdown: String, val drafts: List<AiAssist> = emptyList())
 
 /** The composer's draft, for inline autocomplete ([afield.ai.completion.Ai4ChatAutocomplete]). */
 @kotlinx.serialization.Serializable
@@ -1020,12 +1020,33 @@ fun installAi4() {
     // `/context` in a box's chat: what the last turn sent besides the conversation, as a table.
     handlers["ai-chat-context"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<AiChatContextRequest>(message.payload!!)
-        val report = lastContextByBox["${thisSessionInfo.get().filename}\u0000${request.uid}"]
+        val info = thisSessionInfo.get()
+        val key = "${info.filename}\u0000${request.uid}"
+        val inbox = turnInboxes["$key\u0000"]
+        if (request.action.startsWith("snapshot:")) {
+            val text = runCatching { afield.ai.conversation.AiRunJournal.readSnapshot(info.filename, request.action.removePrefix("snapshot:")) }
+                .getOrElse { "_Could not read snapshot: ${it.javaClass.simpleName}._" }
+            reply(Message("ai-chat-context").payload(AiChatContextReply(request.uid, text)))
+            return@mutableSetOf Handled.yes
+        }
+        if (request.action in setOf("stop", "recall")) {
+            val pending = if (request.action == "stop") inbox?.stop().orEmpty() else inbox?.recall().orEmpty()
+            runCatching { inbox?.onQueued?.invoke() }
+            reply(Message("ai-chat-context").payload(AiChatContextReply(request.uid,
+                if (request.action == "stop") "_Stop requested. Already completed edits are not undone. Queued messages returned as drafts._"
+                else "_Undelivered messages returned as drafts._", pending.mapNotNull { it.assist })))
+            return@mutableSetOf Handled.yes
+        }
+        val report = lastContextByBox[key]
         val context = report?.toMarkdown()
             ?: "_No AI turn has run in this box since Field started, or the last one sent its instructions inline " +
                 "(AFIELD_AI4_EPHEMERAL_INSTRUCTIONS=off, or the OpenRouter provider)._"
         val continuation = thisSessionInfo.get()?.boxes?.get(request.uid)?.let { AiThreadContinuation.diagnostics(it) }.orEmpty()
-        val markdown = listOf(context, continuation).filter { it.isNotBlank() }.joinToString("\n\n")
+        val events = afield.ai.conversation.AiRunJournal.inspect(info.filename, request.uid)
+        val pending = inbox?.queued().orEmpty()
+        val queue = "**Pending input:** ${pending.count { !it.followUp }} corrections, ${pending.count { it.followUp }} follow-ups. " +
+            "Use Recall queued to edit undelivered input. Queues are in memory; they do not survive a restart."
+        val markdown = listOf(context, continuation, queue, events).filter { it.isNotBlank() }.joinToString("\n\n")
         reply(Message("ai-chat-context").payload(AiChatContextReply(request.uid, markdown)))
         Handled.yes
     })
@@ -1461,7 +1482,7 @@ fun installAi4() {
             val shown = (listOf(expandedExtraPrompt.trim()) + exec.images.map { "![attachment]($it)" })
                 .filter { it.isNotBlank() }.joinToString("\n\n")
             val pending = AiTurnInbox.Pending(shown, modelUserPrompt, exec.images, exec, thisSession.get(),
-                fromField = exec.continuationId.isNotBlank())
+                fromField = exec.continuationId.isNotBlank(), followUp = exec.delivery == "follow-up")
             if (AiConversationGarden.read(box).nodes.any { it.status == "running" }) return false
             val inbox = synchronized(turnInboxes) { turnInboxes[boxChatKey]?.takeIf { it.offer(pending) } } ?: return false
             afield.ai.agent.StudyBuildAwaits.accepted(exec.continuationId)
@@ -2127,7 +2148,8 @@ fun installAi4() {
             }
         }
 
-        val inbox = AiTurnInbox()
+        val journal = afield.ai.conversation.AiRunJournal(afield.ai.conversation.AiRunJournal.file(docPath, box.id))
+        val inbox = AiTurnInbox(journal)
         val started = synchronized(turnInboxes) {
             activeBoxChats.add(boxChatKey).also { if (it) turnInboxes[boxChatKey] = inbox }
         }
@@ -2165,7 +2187,19 @@ fun installAi4() {
         // The document's extension branch states as the turn starts (AgentExtensionBuilder.branchState), taken
         // in the turn's own coroutine: a paint canvas is tens of megabytes, too slow for the message handler.
         val branchBefore = java.util.concurrent.atomic.AtomicReference<Map<String, String>>(emptyMap())
+        try {
+            journal.event("run.started", mapOf("box" to box.id, "kind" to exec.kind, "gardenNode" to exec.gardenNode,
+                "property" to exec.property, "model" to continuationBridge.modelIdentity.toString(), "origin" to turnOrigin))
+        } catch (failure: Exception) {
+            synchronized(turnInboxes) { turnInboxes.remove(boxChatKey, inbox); activeBoxChats.remove(boxChatKey) }
+            AiBoxConversation.running(box, false)
+            notify("Could not start a durable AI run: ${failure.message}", "AI4")
+            return@mutableSetOf Handled.yes
+        }
         ai4Scope.launch {
+            val turnJob = kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]!!
+            inbox.onStop = { turnJob.cancel(java.util.concurrent.CancellationException("Stopped by the user")) }
+            inbox.checkStopped()
             branchBefore.set(runCatching { AgentExtensionRegistry.snapshotBranchStates(box) }.getOrDefault(emptyMap()))
             val chatResult: OpenAiIdeCodexBridge.SendResult?
             val editResult: IdeChatHelpers.HighLevelResult?
@@ -2248,6 +2282,10 @@ fun installAi4() {
             }
 
             val progressCallback: (OpenAiIdeCodexBridge.ProgressUpdate) -> Unit = { progress ->
+                inbox.checkStopped()
+                if (progress.title.isNotBlank() || !progress.phase.isNullOrBlank()) {
+                    journal.event("run.progress", mapOf("title" to progress.title.take(500), "phase" to progress.phase.orEmpty()))
+                }
                 if (streamActive.get()) {
                     synchronized(liveLock) {
                         progress.modelIdentity?.let { turnModel = it }
@@ -2543,7 +2581,10 @@ fun installAi4() {
                 return@launch
             }
 
-            (chatResult?.contextReport ?: editResult?.contextReport)?.let { lastContextByBox["$docPath\u0000${box.id}"] = it }
+            (chatResult?.contextReport ?: editResult?.contextReport)?.let {
+                lastContextByBox["$docPath\u0000${box.id}"] = it
+                journal.event("context.report", mapOf("markdown" to it.toMarkdown()))
+            }
             turnMeta.set(AiSessionTree.TurnMeta(
                 kind = exec.kind, property = exec.property,
                 context = chatResult?.contextReport ?: editResult?.contextReport,
@@ -2683,6 +2724,10 @@ fun installAi4() {
                 }
             }.join()
         }.invokeOnCompletion { failure ->
+            runCatching { journal.event("run.ended", mapOf("outcome" to
+                if (failure != null) { if (isAiTurnCancellation(failure)) "cancelled" else "failed" }
+                else if (AiBoxConversation.turnFailure(box) != null) "failed" else "complete")) }
+            inbox.onStop = null
             // A failed or cancelled turn is recorded too: its partial reply is in the transcript. The box stops
             // being "running" only once the turn is recorded; clearing it first let the next request (a person's,
             // or agent-task's, which waits on it) arrive while the turn still held the box, and be refused.

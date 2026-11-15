@@ -216,6 +216,8 @@ data class AiAssist(
      * (`AiTurnInbox`). The chat panel sets it; a caller that waits for its own turn, like an agent task, does not.
      */
     val queueIfBusy: Boolean = false,
+    /** `steer` affects this run; `follow-up` waits for it to finish. */
+    val delivery: String = "steer",
     /**
      * Set when Field wrote this request itself, to resume a conversation whose turn waited for builds
      * (`StudyBuildAwaits`): an id the handler reports once the request has started a turn or been queued in

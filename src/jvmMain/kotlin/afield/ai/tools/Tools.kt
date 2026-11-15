@@ -1299,6 +1299,32 @@ internal class ToolRegistry {
         typedArgs: (Class<Any>) -> Any,
         rawArgs: () -> String,
     ): Any {
+        ctx.inbox?.checkStopped()
+        val journal = ctx.inbox?.journal
+        return if (journal == null) dispatchBody(ctx, name, origin, typedArgs, rawArgs)
+        else {
+            val canonical = if (handlers.containsKey(name)) name else
+                runCatching { dynamicTool(dynamicToolsIn(ctx), name)?.name }.getOrNull() ?: name
+            journal.tool(canonical, rawArgs(), wireName = name) {
+                val result = dispatchBody(ctx, name, origin, typedArgs, rawArgs)
+                val encoded = runCatching { aiToolMapper.writeValueAsString(result) }.getOrNull()
+                val json = encoded?.let { runCatching { aiToolMapper.readTree(it) }.getOrNull() }
+                val success = if (json == null) "unknown" else
+                    (!(json.get("success")?.asBoolean(true) == false || json.get("error")?.asBoolean(false) == true)).toString()
+                journal.event("tool.verdict", mapOf("tool" to canonical, "success" to success,
+                    "resultHash" to (encoded?.let { journal.snapshot(it) } ?: "unavailable")))
+                result
+            }
+        }
+    }
+
+    private fun dispatchBody(
+        ctx: ToolExecutionContext,
+        name: String,
+        origin: CallOrigin,
+        typedArgs: (Class<Any>) -> Any,
+        rawArgs: () -> String,
+    ): Any {
         check(name !in ctx.withheld) { "Tool '$name' is not available in this conversation." }
         val h = handlers[name]
         val meta = h?.meta ?: dynamicTool(dynamicToolsIn(ctx), name)?.meta

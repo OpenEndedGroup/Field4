@@ -42,7 +42,7 @@ class AiTurnInboxTest {
 
         assertTrue(inbox.offer(pending("use red")))
         assertTrue(inbox.offer(pending("and make it bigger")))
-        assertEquals("<<queued>>\nuse red\n<<queued>>\nand make it bigger\n", inbox.queuedMarkdown())
+        assertEquals("<<queued>>\nCorrect this run: use red\n<<queued>>\nCorrect this run: and make it bigger\n", inbox.queuedMarkdown())
         assertEquals(listOf("use red", "and make it bigger"), inbox.drainForModel().map { it.shown })
         assertEquals(listOf("use red", "and make it bigger"), delivered)
         assertEquals("", inbox.queuedMarkdown())
