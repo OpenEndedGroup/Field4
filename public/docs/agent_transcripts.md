@@ -3725,6 +3725,19 @@ here are captures of that window, taken by the docs capture pipeline from these 
 carries none, there is no such capture: run the scene yourself and grab its window with a follow-on
 `native-screenshot` backdoor command (with `--with-playwright`).
 
+### bonded_organisms
+
+[Bonded-particle organisms](alife_examples.md#13-bonded-particle-organisms) after
+[ALIEN](https://github.com/chrxh/alien) as four boxes: worms built from genome strings, their cells
+joined by springs and their muscle bonds beating a travelling wave through a viscous medium, stepped
+in a Vulkan compute shader. The renderer box opens the window. The world box grows the organisms on
+the CPU with `BondedWorld`, uploads them and steps them on the GPU. The draw box beneath it draws
+cells and bonds straight from the GPU buffers. The check box freezes the GPU world after 600 steps
+and compares every cell with the CPU reference stepped 600 times. Edit a genome in the world box and
+re-run it to change the creatures.
+
+[Open →](offline.html?file=assets/agent_transcripts/bonded_organisms/metadata.edn)
+
 ### satellites
 
 **SGP4 passes and the whole satellite catalogue on the GPU.** Four boxes: a week of passes over
