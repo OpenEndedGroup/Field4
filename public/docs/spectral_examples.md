@@ -563,6 +563,167 @@ White noise through three `Resonator`s near 300 Hz, 750 Hz and 2.1 kHz. Each fre
 // Offline-rendered by TptFilterDocs.renderWav("resonator").
 ```
 
+## Linear prediction: a voice's envelope, on anything
+
+Linear predictive coding (LPC) predicts each sample from the few before it:
+`x[n] ≈ −(a₁x[n−1] + … + a_p x[n−p])`. The coefficients come from a short frame's autocorrelation
+through the Levinson-Durbin recursion, and they describe the frame's spectral envelope: the
+all-pole filter `1/A(z)`, with `A(z) = 1 + a₁z⁻¹ + … + a_p z⁻ᵖ`, has exactly that shape. Filtering
+the frame by `A(z)` instead removes the envelope and leaves the *residual*, the part that could not
+be predicted. For a voice, `1/A(z)` is the vocal tract and the residual is the buzz or breath that
+drives it, and the two can be pulled apart and recombined. This is Bishnu Atal's method, and it is
+inside every speech codec from the Speak & Spell to the CELP coders in mobile phones.
+
+`Lpc.analyze(frame, order)` fits one frame and returns an `LpcFit`: the polynomial `a`, the
+reflection coefficients `k`, the residual power `error`, and `envelopeDb(points)` for plotting.
+`Lpc.residual(x, a)` and `Lpc.synthesize(e, a)` are exact inverses of each other.
+
+The voice on this page is synthesized, so it needs no recording: an `Impulse` train at 120 Hz (the
+glottal buzz) through a `FormantFilter` held on the vowel "a". The box renders a tenth of a second,
+fits two predictors to one frame, and plots their envelopes over the frame's spectrum, all shifted
+so their peaks sit at 0 dB:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/lpc_envelope.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
+:::static
+val voice = Impulse(120.p) * 4f / FormantFilter(0.p) // the vowel "a"
+val frame = renderSignalsOffline(0.2, voice)[0].copyOfRange(4096, 4096 + 2048)
+
+val bins = 214 // 0 .. 5 kHz at 48 kHz / 2048
+val spectrum = fft(DoubleArray(frame.size) { frame[it].toDouble() }, WindowType.HANN, 48_000.0)
+    .magnitudeDbOneSided().take(bins)
+fun envelope(order: Int) = Lpc.analyze(frame, order).envelopeDb(1025).take(bins)
+fun peakAtZero(db: List<Double>) = db.max().let { top -> db.map { it - top } }
+
+showSignals(
+    "spectrum of the frame" to peakAtZero(spectrum),
+    "LPC order 12" to peakAtZero(envelope(12)),
+    "LPC order 52" to peakAtZero(envelope(52)),
+    x = List(bins) { it * 48_000.0 / 2048 },
+    channel = "main",
+    xTitle = "frequency (Hz)",
+    yTitle = "dB",
+)
+```
+
+![a dark plot to 5 kHz in dB: a cyan spectrum of harmonics 120 Hz apart whose tops rise to peaks near 800 Hz, 1200 Hz and 2900 Hz; a green order-52 LPC envelope running over those tops with three peaks at the same places; and an orange order-12 envelope that is one broad hump peaking near 1 kHz and sloping down to −21 dB at 5 kHz](assets/spectral_examples/lpc_envelope.png)
+
+The spectrum is a comb of harmonics 120 Hz apart. The order-52 envelope runs over their tops and
+puts a peak on each of the three formants, near 800 Hz, 1200 Hz and 2900 Hz. Order 12 has only six
+pole pairs for the whole band up to 24 kHz, so below 5 kHz it can draw one broad hump and no more.
+A rule of thumb for voices is an order of about the sample rate in kHz plus four, which is why the
+audio processors below default to 48.
+
+### Listening: the talking synth
+
+Two audio-rate processors track the envelope continuously: every `hop` samples they refit the last
+`frameSize` samples, and they filter with a lattice whose reflection coefficients glide from one
+fit to the next, so the filter stays stable while it moves.
+
+- `LpcWhiten()` outputs its input's residual.
+- `LpcVocoder(modulator)` imposes `modulator`'s envelope on its input. With `whiten = true`
+  (the default) it removes the input's own envelope first.
+
+Each clip is five seconds rendered offline. The voice is the impulse train above, with vibrato,
+sliding through a-e-i-o-u every 2.5 seconds:
+
+```diffstatic {data-lang=kotlin}
+val pitch = Param(120f).also { it.mod = SineOsc(5.p) * 3f + SineOsc(0.2.p) * 15f }
+val vowel = Param(0f).also { it.mod = Phasor(0.4.p) * 4f }
+val voice = (Impulse(pitch) * 4f + WhiteNoise() * 0.02f) / FormantFilter(vowel)
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/spectral_examples/lpc_voice.wav" audio-spec="voice" audio-renderer="afield.audio.synth.LpcDocs" embed=true hidden=true name="lpc-voice-audio"}
+// Offline-rendered by LpcDocs.renderWav("voice").
+```
+
+Its residual, `voice / LpcWhiten()`. The vowels are gone and the buzz is left:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/spectral_examples/lpc_residual.wav" audio-spec="residual" audio-renderer="afield.audio.synth.LpcDocs" embed=true hidden=true name="lpc-residual-audio"}
+// Offline-rendered by LpcDocs.renderWav("residual").
+```
+
+The voice's envelope on a steady 90 Hz impulse train,
+`Impulse(90.p) / LpcVocoder(voice, whiten = false)`. The vowels stay and the vibrato is gone:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/spectral_examples/lpc_robot.wav" audio-spec="robot" audio-renderer="afield.audio.synth.LpcDocs" embed=true hidden=true name="lpc-robot-audio"}
+// Offline-rendered by LpcDocs.renderWav("robot").
+```
+
+On white noise, a whisper:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/spectral_examples/lpc_whisper.wav" audio-spec="whisper" audio-renderer="afield.audio.synth.LpcDocs" embed=true hidden=true name="lpc-whisper-audio"}
+// Offline-rendered by LpcDocs.renderWav("whisper").
+```
+
+And on a chord of four saws, whitened first, the talking synth:
+
+```diffstatic {data-lang=kotlin}
+(SawOsc(110.p) + SawOsc(138.6.p) + SawOsc(164.8.p) + SawOsc(220.5.p)) / LpcVocoder(voice)
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/spectral_examples/lpc_talking_synth.wav" audio-spec="talking-synth" audio-renderer="afield.audio.synth.LpcDocs" embed=true hidden=true name="lpc-talking-synth-audio"}
+// Offline-rendered by LpcDocs.renderWav("talking-synth").
+```
+
+`LpcTest` checks the recursion against a known process: noise through a fourth-order all-pole
+filter, fitted at order 4, gives back the filter's coefficients to within 0.02, and residual then
+synthesis returns the signal to within 1e-9.
+
+### Predicting a scribble
+
+Linear prediction does not care that its input is sound. Read a drawn stroke's steps,
+`p[n+1] − p[n]`, as complex numbers `dx + i·dy`, and a complex predictor learns how the hand turns:
+a steady curl is one complex coefficient (rotate the last step by a fixed angle), loops that swell
+and shrink need a few more. The stroke's average step, its overall drift, is taken out before the
+fit and put back afterwards; pass `removeDrift = false` for a closed or circling stroke, whose
+continuation should come back round instead. `stroke.lpc(order, samples)` resamples an `FLine` evenly along its length, fits the
+predictor, and returns a `StrokeLpc`:
+
+- `continued(steps)` keeps drawing with no surprises: the predictor's own continuation.
+- `resynthesized()` rebuilds the stroke exactly from its residual.
+- `drivenBy(other)` runs this stroke's predictor on another stroke's residual.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/lpc_scribble.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
+:::static
+// A looping stroke whose loops swell and shrink, and a wobbling zigzag.
+val loops = FLine().also { f ->
+    for (i in 0..420) {
+        val t = i / 420.0 * 2 * PI * 6
+        val r = 45.0 * (1 + 0.3 * sin(t * 0.4))
+        val (x, y) = 14.0 * t - r * sin(t) to r * cos(t)
+        if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+    }
+}
+val zigzag = FLine().also { f ->
+    for (i in 0..300) {
+        val (x, y) = i * 2.0 to 25.0 * sin(i * 0.35) + 10.0 * sin(i * 0.09)
+        if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+    }
+}
+
+val fit = loops.lpc(order = 8, samples = 300)
+val other = zigzag.lpc(order = 8, samples = 300)
+
+lines(
+    fit.resampled().also { it.color = vec(1.0, 1.0, 1.0, 0.9); it.thickness = 1.5 },
+    fit.continued(150, includeStroke = false).also { it.color = vec(1.0, 0.6, 0.1, 1.0); it.thickness = 2.5 },
+    fit.drivenBy(other, startX = 0.0, startY = 220.0).also { it.color = vec(0.3, 0.8, 1.0, 1.0); it.thickness = 1.5 },
+    w = 900.0,
+    h = 420.0,
+    fitToSize = true,
+)
+println("residual / step energy: loops ${fit.residualRatio.f3}, zigzag ${other.residualRatio.f3}")
+```
+
+![a white looping stroke of six loops of varying size running left to right; an orange continuation from its right end with three more loops, each smaller than the last; and below them a blue stroke of four lumpier, taller loops, irregular where the zigzag was irregular](assets/spectral_examples/lpc_scribble.png)
+
+The white stroke is the input, resampled to 300 points. In orange, `continued(150)` carries on
+drawing from its end with nothing but the predictor: the loops keep their shape and go on
+shrinking, as the last ones were. In blue, the loops' predictor is driven by the zigzag's residual
+instead of its own, so it loops the way the white stroke loops, with the zigzag's lumps. The
+printed line gives the residual-to-step energy of each fit: about 0.000 for the loops, which the
+predictor reads almost perfectly, and 0.13 for the zigzag.
+
 ## What else is in the family
 
 - **FFT** — `fft(...)` / `ifft(...)` over `DoubleArray`, `FloatArray`, or `List<Float>`; forward and
@@ -579,6 +740,9 @@ White noise through three `Resonator`s near 300 Hz, 750 Hz and 2.1 kHz. Each fre
   filterbank at frequencies you choose, `trackingResonate(...)` / `TrackingResonatorBank` for
   resonators that lock onto and follow moving partials, with `resonatorAlphaHeuristics(...)` for
   per-frequency time constants.
+- **Linear prediction** — `Lpc.analyze(...)` / `Lpc.levinsonDurbin(...)` to an `LpcFit` (predictor,
+  reflection coefficients, envelope), `Lpc.residual` / `Lpc.synthesize`, `Lpc.quantizeReflection`;
+  the audio-rate `LpcWhiten` and `LpcVocoder`; and `FLine.lpc(...)` for strokes.
 
 ## Open the examples as a document
 

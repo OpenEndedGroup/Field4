@@ -325,10 +325,17 @@ internal class LpcTracker(val order: Int, val frameSize: Int, val hop: Int) {
     private val frame = DoubleArray(frameSize)
     val kFrom = DoubleArray(order); val kTo = DoubleArray(order)
     var gFrom = 0.0; var gTo = 0.0
+    var rFrom = 0.0; var rTo = 0.0
+    private var first = true
     /** Interpolation position within the current hop, 0..1. */
     val t: Double get() = sinceHop.toDouble() / hop
 
+    private var pushed = 0L
+    /** True once a whole frame has been seen; before that the fits describe a half-empty ring. */
+    val ready: Boolean get() = pushed >= frameSize
+
     fun push(x: Double) {
+        pushed++
         ring[pos] = x
         pos = (pos + 1) % frameSize
         sinceHop++
@@ -343,15 +350,23 @@ internal class LpcTracker(val order: Int, val frameSize: Int, val hop: Int) {
             // collapsing to whistles.
             for (i in 1 until r.size) r[i] *= kotlin.math.exp(-0.5 * (2 * PI * i / 1200.0).let { it * it })
             val fit = Lpc.levinsonDurbin(r, order)
+            // On the first fit there is nothing to glide from: start at it, or the carrier gain
+            // would ramp up from zero and the division by it would spike.
+            if (first) fit.k.copyInto(kTo)
             kTo.copyInto(kFrom)
             fit.k.copyInto(kTo)
-            gFrom = gTo
+            gFrom = if (first) fit.gain else gTo
             gTo = fit.gain
+            rFrom = if (first) sqrt(r[0]) else rTo
+            rTo = sqrt(r[0])
+            first = false
         }
     }
 
     fun k(i: Int): Double = kFrom[i] + (kTo[i] - kFrom[i]) * t
     fun gain(): Double = gFrom + (gTo - gFrom) * t
+    /** Interpolated frame RMS. */
+    fun rms(): Double = rFrom + (rTo - rFrom) * t
 }
 
 /**
@@ -415,8 +430,10 @@ class LpcVocoder(
                 whitenB[order] = bPrev
                 e = fwd[order]
             } else e = x
-            val cg = car.gain()
-            e = if (cg > 1e-9) e / cg else 0.0
+            // Whitened: divide by the carrier's prediction gain. Unwhitened: by its RMS, since a
+            // pulse train's prediction error swings to near zero when one pulse sits in the frame.
+            val cg = if (whiten) car.gain() else car.rms()
+            e = if (car.ready && mod.ready && cg > 1e-9) e / cg else 0.0
             // 2. residual → output through the synthesis lattice 1/A_mod(z), times the modulator's gain
             var f = e * mod.gain()
             for (m in order downTo 1) {

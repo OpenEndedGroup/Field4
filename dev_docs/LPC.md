@@ -19,10 +19,11 @@ section of `public/docs/spectral_examples.md`; demo boxes in the third column of
   RMS, and multiplied by a Gaussian lag window (`exp(-½(2πi/1200)²)`, ~40 Hz at 48 kHz) so
   formant bandwidths do not collapse into whistles. The lag window is in samples, so at other
   sample rates its width in Hz scales.
-- Vocoder level: the carrier residual is divided by the carrier tracker's gain and multiplied by
-  the modulator's. With `whiten = false` the divisor is still the carrier's *prediction* error, which
-  equals its RMS only for a spectrally flat carrier (noise, a low impulse train): exactly the
-  carriers that mode is for.
+- Vocoder level: the carrier is divided by the carrier tracker's prediction gain (whitened) or its
+  frame RMS (`whiten = false`), then multiplied by the modulator's prediction gain. Dividing an
+  unwhitened impulse train by its prediction error spiked: with one pulse in a 1024-sample frame the
+  error is near zero (found in the robot clip, first 0.5 s at 20x the level of the rest). The first
+  fit is also adopted directly rather than glided to from zero.
 - Strokes: `FLine.lpc` resamples by arc length (dense `samplePoints` then linear walk), models the
   *steps* not the positions (positions are non-stationary; steps of a curl are a rotation), with no
   window, so the ends count.
