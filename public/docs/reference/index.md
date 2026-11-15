@@ -620,7 +620,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ### simulation
 
-- *agents* — [ALife](alife.md#alife-kt) · [Simulation](simulation.md#alife-tree-growth-kt)
+- *agents* — [ALife](alife.md#alife-kt) · [Simulation](simulation.md#alife-bonded-kt)
 - *automata* — [ALife](alife.md#alife-ca-kt) · [Data](data.md#booleannetworks-kt)
 - [creatures](simulation.md#creatures-kt)
 - [flow](simulation.md#flowshaders-kt)
@@ -678,7 +678,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**41137 public symbols across 1820 source files**, 24482 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**41192 public symbols across 1821 source files**, 24527 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -695,7 +695,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Renderers](renderers.md) | 46 | 845 | 449 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 55 | 1772 | 1029 (58%) | Making a shape behave. |
+| [Simulation](simulation.md) | 56 | 1827 | 1074 (58%) | Making a shape behave. |
 | [Imaging](imaging.md) | 55 | 917 | 475 (51%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 24 | 1381 | 1252 (90%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 632 | 424 (67%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -782,6 +782,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_agents.kt](alife.md#alife-agents-kt) | ALife | 62 | 59 | Agent-based spatial ALife: boids flocking, a Physarum (slime-mould) deposit–sense–move population over a trail `Img`, and diffusion-limited aggregation. | [Spatial artificial life](../alife_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_animate.kt](alife.md#alife-animate-kt) | ALife | 5 | 5 | One shared way to *animate* the `alife*.kt` family — because every system in it is a time evolution, and a montage of frozen generations is the one view that hides the thing they are about. | [Spatial artificial life](../alife_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_bml.kt](alife.md#alife-bml-kt) | ALife | 22 | 22 | The Biham–Middleton–Levine traffic model on the GPU: a torus of cells, each empty or holding one car, advanced by a single full-screen fragment pass into a ping-pong texture. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_bonded.kt](simulation.md#alife-bonded-kt) | Simulation | 55 | 45 |  | [Spatial artificial life](../alife_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>automata/<wbr></small> [alife_ca.kt](alife.md#alife-ca-kt) | ALife | 88 | 83 | Discrete cellular automata: life-like and outer-totalistic rules on a 2-D lattice, cyclic multi-state CA, Wolfram's elementary 1-D rules as a space-time raster, and a 3-D life-like CA that marches out to a `TriMesh`. | [Spatial artificial life](../alife_examples.md), [Three-dimensional Life, counted and traced](../chain_life3d_render.md), [A cellular automaton you can hear](../chain_ca_sound.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_continuous.kt](alife.md#alife-continuous-kt) | ALife | 86 | 79 | Continuous spatial ALife: reaction–diffusion (Gray–Scott / Turing) and Lenia, all shaped as `Img -> Img` steps so they compose with the imaging family. | [Spatial artificial life](../alife_examples.md), [Agent transcript gallery](../agent_transcripts.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_dla.kt](alife.md#alife-dla-kt) | ALife | 35 | 35 | Diffusion-limited aggregation on the GPU: a buffer of random walkers stepped, stuck and drawn by a single vertex shader, with the growing cluster held in a texture rather than in any Kotlin data structure. |  |
