@@ -120,7 +120,8 @@
         appearance: base-select;
     }
 
-    .field-menu-select::picker(select) {
+    .field-menu-select::picker(select),
+    .field-control-popup {
         /* Top-layer popups escape the canvas transform; keep their type and spacing at its scale. */
         zoom: var(--canvas-zoom, 1);
         font: 400 11px / 1.35 var(--field-font);
@@ -134,7 +135,8 @@
         overflow-y: auto;
     }
 
-    .field-menu-select option {
+    .field-menu-select option,
+    .field-control-popup [role="menuitem"] {
         font: inherit;
         padding: 4px 8px;
         min-block-size: 24px;
@@ -147,7 +149,9 @@
     }
 
     .field-menu-select option:hover,
-    .field-menu-select option:focus-visible {
+    .field-menu-select option:focus-visible,
+    .field-control-popup [role="menuitem"]:hover:not(:disabled),
+    .field-control-popup [role="menuitem"]:focus-visible {
         background: var(--field-accent-border-faint);
     }
 }

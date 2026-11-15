@@ -23,7 +23,27 @@ import afield.app.protocol.AiAssist
  * never saved, and a delivered one as an ordinary `<<you>>` block at the point in the turn where the
  * model received it.
  */
-class AiTurnInbox {
+class AiTurnInbox(val journal: AiRunJournal? = null) {
+    @Volatile private var stopped = false
+    @Volatile var onStop: (() -> Unit)? = null
+
+    fun checkStopped() {
+        if (stopped) throw java.util.concurrent.CancellationException("Stopped by the user")
+    }
+
+    fun stop(): List<Pending> {
+        val drafts = synchronized(this) {
+            stopped = true
+            closed = true
+            pending.toList().also { pending.clear() }
+        }
+        // Cancellation must still work when the diagnostic disk is full or unavailable.
+        runCatching { journal?.event("run.stop-requested") }.onFailure {
+            System.err.println("AI4 could not record stop: ${it.javaClass.simpleName}")
+        }
+        onStop?.invoke()
+        return drafts
+    }
     data class Pending(
         /** What the panel shows: the message as typed, `/box` references expanded, attachments as images. */
         val shown: String,
@@ -36,6 +56,9 @@ class AiTurnInbox {
         val session: io.ktor.websocket.WebSocketSession? = null,
         /** Field wrote it (the outcome of builds a turn awaited), not the person. */
         val fromField: Boolean = false,
+        /** Explicit follow-up: never delivered to the running model. */
+        val followUp: Boolean = false,
+        val id: String = java.util.UUID.randomUUID().toString(),
     )
 
     private val pending = mutableListOf<Pending>()
@@ -52,18 +75,37 @@ class AiTurnInbox {
     @Synchronized
     fun offer(message: Pending): Boolean {
         if (closed) return false
+        journal?.event("input.queued", mapOf("id" to message.id, "mode" to if (message.followUp) "follow-up" else "steer"))
         pending += message
         return true
     }
 
     @Synchronized fun queued(): List<Pending> = pending.toList()
 
+    @Synchronized fun recall(): List<Pending> = pending.toList().also {
+        it.forEach { message -> journal?.event("input.withdrawn", mapOf("id" to message.id)) }
+        pending.clear()
+    }
+
     /** The waiting messages as transcript blocks, to show after the live turn; empty when none wait. */
-    fun queuedMarkdown(): String = queued().joinToString("") { "<<queued>>\n${it.shown.trim()}\n" }
+    fun queuedMarkdown(): String = queued().joinToString("") {
+        "<<queued>>\n${if (it.followUp) "Do next: " else "Correct this run: "}${it.shown.trim()}\n"
+    }
+
+    @Synchronized fun withdraw(id: String): Pending? = pending.firstOrNull { it.id == id }?.also {
+        journal?.event("input.withdrawn", mapOf("id" to id))
+        pending.remove(it)
+    }
 
     /** Take everything waiting, for the bridge to send now, and report it delivered. */
     fun drainForModel(): List<Pending> {
-        val taken = synchronized(this) { pending.toList().also { pending.clear() } }
+        checkStopped()
+        val taken = synchronized(this) {
+            pending.filterNot { it.followUp }.also { messages ->
+                messages.forEach { journal?.event("input.delivered", mapOf("id" to it.id)) }
+                pending.removeAll(messages.toSet())
+            }
+        }
         if (taken.isNotEmpty()) onDelivered?.invoke(taken)
         return taken
     }

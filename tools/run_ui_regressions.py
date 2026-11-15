@@ -4562,6 +4562,15 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="ai-run-controls",
+            description="Real AI4 timing, Context and Recall controls; empty recall preserves drafts and controls fit a narrow panel without model requests.",
+            commands=[
+                "new-box --name RunControls --x 40 --y 40",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/ai-run-controls.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="ai-chat-autocomplete",
             description="Composer completes before trailing whitespace, inserts at the caret, requests after cursor movement, and retries the latest draft without overlapping requests.",
             commands=[

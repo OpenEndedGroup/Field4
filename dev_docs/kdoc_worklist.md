@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24267 of 40906 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24270 of 40919 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2040 undocumented entry points** (types, top-level functions and values) and 13883 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2040 undocumented entry points** (types, top-level functions and values) and 13893 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -753,6 +753,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ElectronRTTView.kt](../src/jvmMain/kotlin/afield/media/stream/ElectronRTTView.kt) | Imaging | — | 0 | 8 | 33% |
 | [AgentWorktreeManager.kt](../src/jvmMain/kotlin/afield/tools/automation/AgentWorktreeManager.kt) | Workspace | — | 0 | 8 | 11% |
 | [GeometryFinding.kt](../src/jvmMain/kotlin/afield/ui/visualization/GeometryFinding.kt) | Visualization | — | 0 | 8 | 11% |
+| [AiTurnInbox.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiTurnInbox.kt) | AI4 | — | 0 | 7 | 56% |
 | [Dreaming.kt](../src/jvmMain/kotlin/afield/ai/memory/Dreaming.kt) | Machine learning | — | 0 | 7 | 61% |
 | [BoxOutputLog.kt](../src/jvmMain/kotlin/afield/app/diagnostics/BoxOutputLog.kt) | Workspace | — | 0 | 7 | 50% |
 | [Scene.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Scene.kt) | Audio | — | 0 | 7 | 80% |
@@ -801,6 +802,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FileChooser.kt](../src/jvmMain/kotlin/afield/ui/output/FileChooser.kt) | Visualization | — | 0 | 6 | 56% |
 | [LineNoteTools.kt](../src/jvmMain/kotlin/afield/ui/output/LineNoteTools.kt) | Workspace | — | 0 | 6 | 45% |
 | [StudyBuildAwaits.kt](../src/jvmMain/kotlin/afield/ai/agent/StudyBuildAwaits.kt) | AI4 | — | 0 | 5 | 73% |
+| [AiRunJournal.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiRunJournal.kt) | AI4 | — | 0 | 5 | 37% |
 | [AiThreadContinuation.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiThreadContinuation.kt) | AI4 | — | 0 | 5 | 28% |
 | [IdeChatHelpers.kt](../src/jvmMain/kotlin/afield/ai/conversation/IdeChatHelpers.kt) | AI4 | — | 0 | 5 | 28% |
 | [ScriptedLlmBridge.kt](../src/jvmMain/kotlin/afield/ai/models/ScriptedLlmBridge.kt) | AI4 | — | 0 | 5 | 44% |
@@ -901,7 +903,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DocsSearch.kt](../src/jvmMain/kotlin/afield/tools/docs/DocsSearch.kt) | Workspace | — | 0 | 3 | 40% |
 | [LiveOutputIframe.kt](../src/jvmMain/kotlin/afield/ui/output/LiveOutputIframe.kt) | Visualization | — | 0 | 3 | 78% |
 | [pointing_render.kt](../src/jvmMain/kotlin/afield/ui/visualization/pointing_render.kt) | Graphics | — | 0 | 3 | 82% |
-| [AiTurnInbox.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiTurnInbox.kt) | AI4 | — | 0 | 2 | 81% |
 | [ChatLogViews.kt](../src/jvmMain/kotlin/afield/ai/conversation/chatlog/ChatLogViews.kt) | AI4 | — | 0 | 2 | 83% |
 | [DepthAnythingWorker.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/DepthAnythingWorker.kt) | Machine learning | — | 0 | 2 | 85% |
 | [OrderedKeyframeGroup.kt](../src/jvmMain/kotlin/afield/animation/keyframes/OrderedKeyframeGroup.kt) | Graphics | — | 0 | 2 | 84% |
