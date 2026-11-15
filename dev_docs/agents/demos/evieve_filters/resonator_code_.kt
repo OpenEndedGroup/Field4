@@ -1,12 +1,14 @@
 // Three Resonators on white noise, each frequency drifting on its own slow sine,
 // with the 1 kHz resonator's response at three decays plotted beside it.
-val freqs = (logFrequencies(200.0, 5_000.0, 200) + 1000.0).sorted()
+fun responseDb(filter: SignalProcessor) =
+    fft(impulseResponse(filter, 48_000), 48_000.0).magnitudeDbOneSided().take(5000)
+
 showSignals(
-    "decay 0.02 s" to frequencyResponseDb(Resonator(1000.p, 0.02.p), freqs, frames = 48_000),
-    "decay 0.1 s" to frequencyResponseDb(Resonator(1000.p, 0.1.p), freqs, frames = 48_000),
-    "decay 0.5 s" to frequencyResponseDb(Resonator(1000.p, 0.5.p), freqs, frames = 48_000),
+    "decay 0.02 s" to responseDb(Resonator(1000.p, 0.02.p)),
+    "decay 0.1 s" to responseDb(Resonator(1000.p, 0.1.p)),
+    "decay 0.5 s" to responseDb(Resonator(1000.p, 0.5.p)),
     channel = "main",
-    xTitle = "frequency, 200 Hz to 5 kHz (log)",
+    xTitle = "frequency (Hz)",
 )
 val noise = WhiteNoise() * 0.3f
 fun band(f: Float, drift: Float, rate: Float, decay: Float) =
