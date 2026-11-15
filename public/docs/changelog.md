@@ -6,6 +6,32 @@ fixes and wording changes, open **Changelog** on the Welcome screen.
 
 ## November 2026
 
+<!-- changelog: f9bc7add6a..204f1d2bba -->
+### Bonded organisms, Cerf diagrams, evieve filters and live FM-1 firmware
+
+*15 November 2026*
+
+- **Bonded-particle organisms** swim across a world on the GPU.
+  [Bonded-particle organisms](alife_examples.md#13-bonded-particle-organisms).
+- **Cerf diagrams** record births, cancellations and swaps of tracked critical points.
+  [Cerf diagrams](topology_tracking.md#cerf-diagrams-when-the-topology-changes).
+- **Audio-rate filters from evieve**: one-pole, tilt EQ, Korg35 and resonator, with measured
+  responses. [Audio-rate filters](spectral_examples.md#audio-rate-filters-from-evieve).
+- **FM-1 firmware** built from source, swapped into a running simulator, and live-coded with
+  StackSL hooks. [Live-coding the firmware](fm1.md#live-coding-the-firmware).
+
+<!-- changelog: 22128b85fc..a63bc60df0 -->
+### An FM-1 simulator, CUDA beside the renderer, and WebGPU path tracing
+
+*14–15 November 2026*
+
+- **FM-1 simulator**: the M-VAVE FM-1 runs as an audio node, with MIDI on every track, patterns,
+  DX7 voices, Field sounds on its pads and a live front panel. [FM-1 simulator](fm1.md).
+- **CUDA beside the renderer**: CUDA kernels share Field's Vulkan memory without copies, and Open
+  Image Denoise runs natively on CUDA. [CUDA Beside the Renderer](cuda.md).
+- **Path trace on WebGPU** in the three.js viewer, denoised, with `studio(pathTrace = true)`.
+  [Realism and path tracing](three_output.md#realism-and-path-tracing).
+
 <!-- changelog: eda344b7aa..4f7c62cb60 -->
 ### Realism and path tracing in the 3D viewer, a denoiser, and a light theme
 
