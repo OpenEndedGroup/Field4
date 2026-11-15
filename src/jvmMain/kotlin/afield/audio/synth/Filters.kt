@@ -729,7 +729,9 @@ class Resonator(
 /**
  * The impulse response of [processor] at [sampleRate]: a unit impulse rendered through it for
  * [frames] samples. Use small [amplitude] to read a nonlinear filter's small-signal response.
- * The processor's state is consumed; pass a fresh one.
+ * The processor's state is consumed; pass a fresh one. Its magnitude response is
+ * `fft(impulseResponse(f, sampleRate), sampleRate.toDouble()).magnitudeDbOneSided()`, one bin per
+ * hertz when [frames] equals [sampleRate].
  */
 fun impulseResponse(processor: SignalProcessor, frames: Int = 8192, sampleRate: Int = 48_000, amplitude: Float = 1f): FloatArray {
     var first = true
@@ -743,28 +745,3 @@ fun impulseResponse(processor: SignalProcessor, frames: Int = 8192, sampleRate: 
     if (amplitude != 1f) for (i in h.indices) h[i] /= amplitude
     return h
 }
-
-/**
- * The measured magnitude response of [processor], in dB, at each frequency of [freqsHz]: its
- * [impulseResponse] evaluated by a direct DFT at exactly those frequencies. This is the plot that
- * sits beside a filter: `showSignals("Korg35" to frequencyResponseDb(Korg35(1000.p, 0.8.p), freqs))`.
- */
-fun frequencyResponseDb(
-    processor: SignalProcessor,
-    freqsHz: List<Double>,
-    sampleRate: Int = 48_000,
-    frames: Int = 16_384,
-    amplitude: Float = 1f
-): List<Float> {
-    val h = impulseResponse(processor, frames, sampleRate, amplitude)
-    return freqsHz.map { f ->
-        val w = 2.0 * PI * f / sampleRate
-        var re = 0.0; var im = 0.0
-        for (n in h.indices) { re += h[n] * cos(w * n); im -= h[n] * sin(w * n) }
-        (20.0 * log10(sqrt(re * re + im * im).coerceAtLeast(1e-12))).toFloat()
-    }
-}
-
-/** [count] frequencies spaced evenly in octaves from [lowHz] to [highHz], the x axis for [frequencyResponseDb]. */
-fun logFrequencies(lowHz: Double = 20.0, highHz: Double = 20_000.0, count: Int = 200): List<Double> =
-    List(count) { lowHz * (highHz / lowHz).pow(it / (count - 1.0)) }

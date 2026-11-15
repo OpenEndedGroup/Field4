@@ -1,17 +1,22 @@
 package afield.audio.synth
 
+import afield.audio.analysis.fft
 import kotlin.math.*
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
 /**
- * Each evieve-family filter's measured response (impulse → DFT, [frequencyResponseDb]) against its
+ * Each evieve-family filter's measured response (an [impulseResponse] through [fft], one bin per hertz) against its
  * analytic one: the analog prototype mapped by the prewarped bilinear transform, which is what a
  * trapezoidal-integrator filter computes exactly. A wrong loop solve or state update shows up as dB.
  */
 class TptFiltersTest {
     private val sr = 48_000
-    private val freqs = logFrequencies(30.0, 18_000.0, 60)
+    private val freqs = List(60) { (30.0 * 600.0.pow(it / 59.0)).roundToInt() }
+
+    /** Measured magnitude in dB at every whole hertz: one second of impulse response, then an FFT. */
+    private fun responseDb(p: SignalProcessor, amplitude: Float = 1f) =
+        fft(impulseResponse(p, sr, sr, amplitude), sr.toDouble()).magnitudeDbOneSided()
 
     private data class C(val re: Double, val im: Double) {
         operator fun plus(o: C) = C(re + o.re, im + o.im)
@@ -30,8 +35,8 @@ class TptFiltersTest {
         return ((one - zi) / (one + zi)) * r(1.0 / tan(PI * fc / sr))
     }
 
-    private fun check(name: String, measured: List<Float>, analytic: (Double) -> Double, tolDb: Double = 0.05) {
-        val worst = freqs.indices.maxOf { abs(measured[it] - analytic(freqs[it])) }
+    private fun check(name: String, measured: DoubleArray, analytic: (Double) -> Double, tolDb: Double = 0.05) {
+        val worst = freqs.maxOf { abs(measured[it] - analytic(it.toDouble())) }
         println("$name: worst |measured − analytic| = ${"%.4f".format(worst)} dB")
         assertTrue(worst < tolDb, "$name deviates by $worst dB")
     }
@@ -40,15 +45,15 @@ class TptFiltersTest {
         val fc = 1200.0
         val lp = { f: Double -> (one / (one + s(f, fc))).db() }
         val hp = { f: Double -> (s(f, fc) / (one + s(f, fc))).db() }
-        check("TptOnePole LP", frequencyResponseDb(TptOnePole(Param(fc.toFloat()), TptOnePoleMode.LP), freqs, sr), lp)
-        check("TptOnePole HP", frequencyResponseDb(TptOnePole(Param(fc.toFloat()), TptOnePoleMode.HP), freqs, sr), hp)
-        check("TptOnePole AP", frequencyResponseDb(TptOnePole(Param(fc.toFloat()), TptOnePoleMode.AP), freqs, sr), { 0.0 })
+        check("TptOnePole LP", responseDb(TptOnePole(Param(fc.toFloat()), TptOnePoleMode.LP)), lp)
+        check("TptOnePole HP", responseDb(TptOnePole(Param(fc.toFloat()), TptOnePoleMode.HP)), hp)
+        check("TptOnePole AP", responseDb(TptOnePole(Param(fc.toFloat()), TptOnePoleMode.AP)), { 0.0 })
     }
 
     @Test fun tiltIsShelfPairAboutPivot() {
         val fc = 800.0; val up = 10.0.pow(6.0 / 20)
         val h = { f: Double -> val ss = s(f, fc); ((r(1 / up) + ss * r(up)) / (one + ss)).db() }
-        check("TiltEQ +6", frequencyResponseDb(TiltEQ(Param(fc.toFloat()), Param(6f)), freqs, sr), h)
+        check("TiltEQ +6", responseDb(TiltEQ(Param(fc.toFloat()), Param(6f))), h)
     }
 
     @Test fun korg35SmallSignalMatchesSallenKeyPrototype() {
@@ -57,15 +62,14 @@ class TptFiltersTest {
             val lp = { f: Double -> val ss = s(f, fc); (one / (ss * ss + ss * r(2 - K) + one)).db() }
             val hp = { f: Double -> val ss = s(f, fc); (ss * ss / (ss * ss + ss * r(2 - K) + one)).db() }
             // tiny impulse keeps tanh linear
-            check("Korg35 LP res=$res", frequencyResponseDb(Korg35(Param(fc.toFloat()), Param(res.toFloat())), freqs, sr, amplitude = 1e-4f), lp)
-            check("Korg35 HP res=$res", frequencyResponseDb(Korg35(Param(fc.toFloat()), Param(res.toFloat()), Korg35Mode.HP), freqs, sr, amplitude = 1e-4f), hp)
+            check("Korg35 LP res=$res", responseDb(Korg35(Param(fc.toFloat()), Param(res.toFloat())), amplitude = 1e-4f), lp)
+            check("Korg35 HP res=$res", responseDb(Korg35(Param(fc.toFloat()), Param(res.toFloat()), Korg35Mode.HP), amplitude = 1e-4f), hp)
         }
     }
 
     @Test fun korg35DriveCompressesResonantPeak() {
-        val f = listOf(1500.0)
-        val small = frequencyResponseDb(Korg35(Param(1500f), Param(0.95f)), f, sr, amplitude = 1e-4f)[0]
-        val loud = frequencyResponseDb(Korg35(Param(1500f), Param(0.95f), drive = Param(4f)), f, sr, amplitude = 1f)[0]
+        val small = responseDb(Korg35(Param(1500f), Param(0.95f)), amplitude = 1e-4f)[1500]
+        val loud = responseDb(Korg35(Param(1500f), Param(0.95f), drive = Param(4f)))[1500]
         println("Korg35 peak: small-signal $small dB, driven $loud dB")
         assertTrue(loud < small - 3, "tanh in the loop should limit the peak")
     }
@@ -76,8 +80,8 @@ class TptFiltersTest {
             val w = 2 * PI * f / sr; val zi = C(cos(w), -sin(w))
             (r(b0) / (one - r(2 * rr * cos(th)) * zi + r(rr * rr) * zi * zi)).db()
         }
-        check("Resonator", frequencyResponseDb(Resonator(Param(1000f), Param(0.2f)), freqs, sr, frames = 48_000), h)
-        val peak = frequencyResponseDb(Resonator(Param(1000f), Param(0.2f)), listOf(1000.0), sr, frames = 48_000)[0]
+        check("Resonator", responseDb(Resonator(Param(1000f), Param(0.2f))), h)
+        val peak = responseDb(Resonator(Param(1000f), Param(0.2f)))[1000]
         assertTrue(abs(peak) < 0.05, "peak gain $peak dB")
     }
 
