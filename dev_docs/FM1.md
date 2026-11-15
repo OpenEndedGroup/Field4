@@ -55,17 +55,28 @@ what a user does not need: why things are the way they are, and what was left an
   pad. The factory bank rebuilds byte for byte through `FM1SampleBank.parse`/`bytes`. The pad
   notes are `sample_notes` in `web/synth/sample_metadata.inc`.
 
+- **Building and swapping firmware** (`FM1Firmware.kt`, `FM1Sim.loadFirmware`). The WASI SDK 27
+  release's own clang 20 and `wasm-ld` build the firmware in about 4 seconds warm (11 s cold); the
+  built-in module was built with Homebrew clang 23 against the same SDK's sysroot, so the bytes
+  differ (295,723 bytes against the shipped 288,774), but the result plays the factory projects. The SDK
+  archives are pinned by the SHA-256 GitHub publishes for each release asset (arm64-macos verified
+  against a local download, x86_64-windows against `tools/Build-Web.ps1`'s own pin). A swap copies
+  the whole 536,576-byte flash (`GROOVE_FLASH_BYTES`) to the new module, boots it with
+  `sim_boot(0)` so it reads the library, samples and settings back out, then imports the live
+  project (unsaved edits included), re-applies each track's channel and MIDI-out mode, the knob,
+  MIDI capture, and sends `FA` if the sequence was playing. Both modules are entered only under the
+  render lock, so the audio thread sees one or the other, never neither. `FM1Sim.FIRMWARE_EXPORTS`
+  lists the `sim_*` exports Field calls; a module lacking any is refused by name at load. The
+  `synth.fm1.firmware` smoke test (tagged `network`) builds the source, checks a broken build's
+  message names the file, and that the `firmware-swap` clip is identical to the unswapped one
+  before the swap.
+
 ## Not done, and why
 
 - **Per-track stems.** The firmware mixes the eight tracks (and their reverb/delay sends) inside
   `render_stereo`; `sim_render` returns the mix only. Stems need a firmware change (an export of
   the per-track scratch buffers) and a rebuild, or eight simulators each soloing one track, which
   costs eight times the CPU and loses the shared effects.
-- **Live-coding the firmware.** Rebuilding needs Homebrew clang + wasm-ld and the WASI SDK
-  sysroot (`PROVENANCE.md`), about a minute of compile, and swapping a module mid-performance
-  loses all simulator state unless the project is exported and re-imported around the swap
-  (`exportProject`/`importProject` now make that possible). Not worth it before someone wants to
-  change the voice C.
 - **MIDI clock both ways.** FM-1 → Field: turn on clock-out (setting 5) and read `F8` from
   `drainMidi()`; but that disables `start()` (above). Field → FM-1: set clock source (setting 6,
   which also switches the clock mode to MIDI) and send `F8` 24 times a beat on the block clock.

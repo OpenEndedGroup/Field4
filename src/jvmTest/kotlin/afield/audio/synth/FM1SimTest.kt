@@ -356,5 +356,57 @@ class FM1SimTest {
         assertTrue(rms > 0.005, "ACID ALLEY's kick steps play pad 0 (rms of the difference $rms)")
         assertTrue(power(diff, 60.0, 44_100.0) > 20 * power(diff, 90.0, 44_100.0), "and what they play is the 60 Hz pad")
     }
+
+    @Test
+    fun aModuleThatIsNotFM1FirmwareIsRefusedByName() {
+        val empty = byteArrayOf(0, 0x61, 0x73, 0x6d, 1, 0, 0, 0) // a valid, empty WebAssembly module
+        val lacks = runCatching { FM1Sim.create(empty) }.exceptionOrNull()
+        assertTrue(lacks is IllegalArgumentException && "lacks sim_block_frames" in lacks.message!!, "$lacks")
+        val junk = runCatching { FM1Sim.create(ByteArray(64) { 7 }) }.exceptionOrNull()
+        assertTrue(junk is IllegalArgumentException && "not a loadable" in junk.message!!, "$junk")
+    }
+
+    @Test
+    fun loadingFirmwareMidSequenceKeepsTheProjectPadsVoicesAndTransport() = FM1Sim.create().use { sim ->
+        val p = Pull(sim)
+        sim.preset(1)
+        sim.sample(0, sine(200.0, 0.2, 32_000), 32_000.0, "KEPT")
+        val voices = sim.voices(1).toMutableList()
+        voices[0] = voices[0].copy().apply { name = "KEPTVOICE" }
+        sim.setVoices(1, voices)
+        sim.midiOut(1, FM1Sim.MidiOut.ALSO)
+        sim.level(0.5)
+        sim.start()
+        p.rms(1.0)
+        assertTrue(sim.isPlaying)
+        sim.drainMidi()
+        val name = sim.projectName
+        val before = sim.blocksRendered
+        assertTrue(sim.builtInFirmware)
+
+        sim.loadFirmware(FM1Sim.builtInFirmware())
+
+        assertEquals(before, sim.blocksRendered, "the block clock carries on rather than restarting")
+        assertTrue(p.rms(1.0) > 0.005, "the new module plays at once, from the same node")
+        assertTrue(sim.isPlaying, "and the sequence is still running")
+        assertEquals(name, sim.projectName)
+        assertEquals("KEPT", sim.samples()[0].name)
+        assertEquals("KEPTVOICE", sim.voices(1)[0].name)
+        assertTrue(sim.drainMidi().isNotEmpty(), "track 1 still sends its notes as MIDI")
+        assertEquals(64, sim.firmwareSha256.length)
+
+        val refused = runCatching { sim.loadFirmware(ByteArray(16)) }.exceptionOrNull()
+        assertTrue(refused is IllegalArgumentException, "$refused")
+        assertTrue(p.rms(0.5) > 0.005 && sim.isPlaying, "a refused module leaves the old one playing")
+    }
+
+    @Test
+    fun loadingFirmwareWithoutStateBootsTheFactoryStorage() = FM1Sim.create().use { sim ->
+        val p = Pull(sim)
+        sim.sample(0, sine(200.0, 0.2, 32_000), 32_000.0, "GONE")
+        sim.loadFirmware(FM1Sim.builtInFirmware(), keepState = false)
+        p.take(0.1)
+        assertTrue(sim.samples()[0].name != "GONE", "factory pads come back: ${sim.samples()[0]}")
+    }
 }
 
