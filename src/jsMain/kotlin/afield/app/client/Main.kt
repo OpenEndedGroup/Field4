@@ -5094,7 +5094,8 @@ private data class DroppedFileProxy(
     val file: dynamic,
     val fileName: String,
     val path: String?,
-    val mimeType: String?
+    val mimeType: String?,
+    val directory: Boolean = false
 )
 
 // Be liberal in what we accept as a droppable transcript — match everything the
@@ -5396,11 +5397,15 @@ private fun showDropMenu(event: dynamic, build: (x: Double, y: Double) -> List<D
 }
 
 /** Plain-file options: the historical file-proxy menu (unchanged labels + angles). */
-private fun plainDropOptions(dropped: DroppedFileProxy, x: Double, y: Double): List<DropMenuOption> = listOf(
-    DropMenuOption("Copy path to clipboard", angle = 270.0) { copyDroppedPathToClipboard(dropped) },
-    DropMenuOption("Create absolute proxy box", angle = 90.0) { createAbsoluteProxyForDrop(dropped, x, y) },
-    DropMenuOption("Create proxy for copy in document folder", angle = 0.0) { createDocumentCopyProxyForDrop(dropped, x, y) },
-)
+private fun plainDropOptions(dropped: DroppedFileProxy, x: Double, y: Double): List<DropMenuOption> = buildList {
+    add(DropMenuOption("Copy path to clipboard", angle = 270.0) { copyDroppedPathToClipboard(dropped) })
+    add(DropMenuOption(if (dropped.directory) "Create directory context proxy" else "Create absolute proxy box", angle = 90.0) {
+        createAbsoluteProxyForDrop(dropped, x, y)
+    })
+    if (!dropped.directory) add(DropMenuOption("Create proxy for copy in document folder", angle = 0.0) {
+        createDocumentCopyProxyForDrop(dropped, x, y)
+    })
+}
 
 private fun showDroppedFileProxyMenu(event: dynamic, dropped: DroppedFileProxy) =
     showDropMenu(event) { x, y -> plainDropOptions(dropped, x, y) }
@@ -7303,7 +7308,8 @@ suspend fun main() {
                 file = file,
                 fileName = fileName,
                 path = extractDroppedFilePath(file, dropEvent.dataTransfer),
-                mimeType = mimeType
+                mimeType = mimeType,
+                directory = runCatching { dropEvent.dataTransfer.items[0].webkitGetAsEntry()?.isDirectory == true }.getOrDefault(false)
             )
             val plainMenu = { showDroppedFileProxyMenu(dropEvent, dropped) }
             val readText = { onText: (String) -> Unit ->
@@ -7312,7 +7318,9 @@ suspend fun main() {
                 reader.readAsText(file)
             }
 
-            when (classifyDroppedFile(fileName, lowerName, mimeType)) {
+            // A folder must not enter the extensionless transcript FileReader path.
+            if (dropped.directory) plainMenu()
+            else when (classifyDroppedFile(fileName, lowerName, mimeType)) {
                 DropKind.METADATA_EDN -> readText { ednText ->
                     console.info("[import] metadata.edn file: $fileName")
                     showDropMenu(dropEvent) { x, y -> metadataDropOptions(dropped, ednText, x, y) }
