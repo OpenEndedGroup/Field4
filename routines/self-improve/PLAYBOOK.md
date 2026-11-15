@@ -309,7 +309,15 @@ agent's cwd *inside* a worktree) — a little reviewability lost for real cwd is
 >    say so.
 > 2. **Execute.** Implement it. Match surrounding code style. Commit in small, message-rich
 >    steps (`git -C ⟨WORKTREE_PATH⟩ commit`), ending commit messages with the standard
->    Co-Authored-By trailer for Claude.
+>    Co-Authored-By trailer for Claude. **Never park on a background job.** Run a long command
+>    in the foreground with a `timeout`, or check a background one explicitly. 2026-11-15: two
+>    agents reported "waiting on background work" at 07:10 and did nothing until a human noticed
+>    at 13:22. The job had ended (one was a Zensical build wedged at "Build started"), and nothing
+>    woke them.
+>    **Docs figures follow `DOCS_WRITING_RULES.md` 14a/14b:** plot with Field's own visualization
+>    as box code in `diffstatic` fences captured by the runner, never a Java2D generator in `src/`.
+>    Show the run's interesting state, cropped to content. 2026-11-15 sent two branches back for
+>    exactly this.
 > 3. **Verify (best-effort).** Compile/JVM-smoke the module you touched — prefer a
 >    module-scoped Gradle task over a full build. Where cheap, drive the change through the
 >    Field backdoor (`tools/field_backdoor.py`) or the operation-transcript path and capture
@@ -578,6 +586,17 @@ In the journal worktree (`$JOURNAL`):
 ## Failure handling
 
 - Any single agent failing does not abort the night — record it and continue.
+- **"Waiting on its own background work" is not proof of life.** About 30 minutes after that
+  notification, check the newest file mtime in the agent's worktree (excluding `build/` and
+  `.gradle/`) and `lsof +D <WT> -d cwd`. If both are stale, the agent is parked. `SendMessage` it
+  to resume, naming what its last log shows. An expired-token death (HTTP 401) is handled the
+  same way as a 429: resume, don't abandon. 2026-11-15 lost six hours on two branches because a
+  progress check read commits and missed the timestamps.
+- **Before reporting a branch done, run the lander's cheap guards in its worktree:**
+  `generateCodebaseReference` (for any new `.kt`), then `./gradlew --continue checkKDocAttachment
+  checkCodebaseReference checkBoxIdioms checkBoxCodeFormat checkBoxCodeCompiles citationGates`.
+  2026-11-15 branch 1 failed four of those five on first run: raw fences, a `listOf`, an unformatted
+  transcript and an unclassified transcript.
 - **A rate-limit death is NOT a failure; it is a pause.** If agents die with `HTTP 429 … session
   limit · resets <time>`, do not end your turn and wait for the human. Arm a wakeup for reset +
   ~2 min (for example a background `sleep` sized to the gap, which re-invokes you when it exits), then
