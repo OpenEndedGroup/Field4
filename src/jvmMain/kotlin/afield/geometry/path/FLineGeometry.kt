@@ -5748,7 +5748,7 @@ fun clothoidSplineFrom(
  * @param closed join the last knot back to the first, smoothly
  */
 fun hobbySplineFrom(points: List<Vec2>, z: Number = 0, closed: Boolean = false): FLine {
-    val pts = ArrayList<Vec2>()
+    val pts: MutableList<Vec2> = ArrayList()
     for (p in points) if (pts.isEmpty() || hypot((p.x - pts.last().x).toDouble(), (p.y - pts.last().y).toDouble()) > 1e-6) pts.add(p)
     if (closed && pts.size > 1 && hypot((pts[0].x - pts.last().x).toDouble(), (pts[0].y - pts.last().y).toDouble()) < 1e-6) pts.removeAt(pts.lastIndex)
     val line = FLine()

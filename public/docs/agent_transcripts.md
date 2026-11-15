@@ -3725,6 +3725,19 @@ here are captures of that window, taken by the docs capture pipeline from these 
 carries none, there is no such capture: run the scene yourself and grab its window with a follow-on
 `native-screenshot` backdoor command (with `--with-playwright`).
 
+### bonded_organisms
+
+[Bonded-particle organisms](alife_examples.md#13-bonded-particle-organisms) after
+[ALIEN](https://github.com/chrxh/alien) as four boxes: worms built from genome strings, their cells
+joined by springs and their muscle bonds beating a travelling wave through a viscous medium, stepped
+in a Vulkan compute shader. The renderer box opens the window. The world box grows the organisms on
+the CPU with `BondedWorld`, uploads them and steps them on the GPU. The draw box beneath it draws
+cells and bonds straight from the GPU buffers. The check box freezes the GPU world after 600 steps
+and compares every cell with the CPU reference stepped 600 times. Edit a genome in the world box and
+re-run it to change the creatures.
+
+[Open →](offline.html?file=assets/agent_transcripts/bonded_organisms/metadata.edn)
+
 ### satellites
 
 **SGP4 passes and the whole satellite catalogue on the GPU.** Four boxes: a week of passes over
@@ -5054,6 +5067,20 @@ and, beneath it, `ShaderParticleLenia` running 6400 particles in 64 clusters und
 20 steps per frame, in the native window. Clusters that drift into each other merge.
 
 [Open →](offline.html?file=assets/agent_transcripts/particle_lenia_gpu/metadata.edn)
+
+### cuda_particles
+
+**A CUDA kernel moving 200,000 particles that a Field mesh draws**, from the same GPU buffer. Three
+boxes: a renderer, a box that compiles two CUDA C kernels with NVRTC and runs one between every two
+frames, and lesson 3b's particle drawing reading the buffer the kernel writes. Linux with an NVIDIA
+GPU only; elsewhere the CUDA box stops with the reason. See
+[CUDA Beside the Renderer](cuda.md#a-kernel-that-moves-particles).
+
+![Two hundred thousand coloured dots, scattered as a disc and folded by a CUDA kernel's flow, drawn by a Field mesh from the same GPU buffer](assets/cuda/particles.png)
+
+- The CUDA session: [`CudaVulkan`](reference/graphics.md#cudavulkan-kt-cudavulkan).
+
+[Open →](offline.html?file=assets/agent_transcripts/cuda_particles/metadata.edn)
 
 ## Graphics building blocks
 

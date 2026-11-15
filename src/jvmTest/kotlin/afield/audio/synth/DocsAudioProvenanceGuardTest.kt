@@ -60,16 +60,17 @@ class DocsAudioProvenanceGuardTest {
 
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
-            Origin.STAND_IN_SYNTH to 22,
-            Origin.DIRT_SAMPLES to 40,
+            Origin.STAND_IN_SYNTH to 28,
+            Origin.DIRT_SAMPLES to 41,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
-            Origin.DOUGH_DSP to 23,
+            Origin.DOUGH_DSP to 24,
             Origin.FAUST to 6,
             Origin.FM1_SIM to 7,
             Origin.DOUGH_WASM to 2,
             Origin.STEAM_AUDIO_HRTF to 3,
             Origin.SONIC_PI to 1,
-            Origin.MODAL_SYNTHESIS to 12,
+            Origin.MODAL_SYNTHESIS to 27,
+            Origin.ADDITIVE_GRAINS to 3,
         )
         assertEquals(
             expected,
@@ -312,6 +313,6 @@ class DocsAudioProvenanceGuardTest {
          * `fm1.md` added one more (2026-11-15), [Origin.FM1_SIM]: ACID ALLEY with firmware built from
          * patched source swapped in four seconds in ([FM1Firmware], [FM1Sim.loadFirmware]).
          */
-        const val EXPECTED_FENCE_COUNT = 117
+        const val EXPECTED_FENCE_COUNT = 143
     }
 }

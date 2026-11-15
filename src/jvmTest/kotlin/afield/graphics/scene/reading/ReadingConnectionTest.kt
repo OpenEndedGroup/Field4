@@ -134,7 +134,7 @@ class ReadingConnectionTest {
         val points = List(6) { Vector3f(it.toFloat(), if (it == 2) .3f else 0f, 0f) }
         val forces = connectionCurvatureForces(points)
         fun energy() = (1 until points.lastIndex).sumOf { i ->
-            (Vector3f(points[i - 1]).fma(-2f, points[i]).add(points[i + 1]).lengthSquared() * .5).toDouble()
+            Vector3f(points[i - 1]).fma(-2f, points[i]).add(points[i + 1]).lengthSquared() * .5
         }
         val epsilon = .0001f
         for (i in 1 until points.lastIndex) {

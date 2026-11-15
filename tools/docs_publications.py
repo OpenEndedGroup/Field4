@@ -33,14 +33,52 @@ PILOTS = ("fline_examples", "three_output_gallery", "canonical_graphics") + FIEL
 # capture digest) stalled them on four landing attempts in a row, one of them on an idle host.
 # A Pen That Sees joined on 2026-11-10: its `ps_measure` box ("seeing against blind, measured")
 # stalled the watchdog at 30 s in the full refreshes of 2026-11-07 and 2026-11-10.
+# Flow Lenia joined on 2026-11-14: its transcript launches six simulations and awaits them all,
+# which took 262 s on a0 (Linux), past the 180 s transcript limit, and bounced the origin sync there.
+# K-means (kmeans_lloyd_vs_emeans) joined on 2026-11-15: it exceeded the output budget in every full
+# refresh of 2026-11-14, retry included, and bounced flow-lenia, fm1-sim and zealous-williamson.
+# Long-compute transcripts get LONG_TRANSCRIPT_SECONDS for that run instead.
 LONG_COMPUTE = frozenset({"petri_tala_layout", "morpho_circuit_search", "alife_evolution",
                           "braitenberg_brain_search", "braitenberg_where_next", "stacksl_fit_demo",
-                          "a_pen_that_sees"})
+                          "a_pen_that_sees", "flow_lenia", "kmeans_emeans"})
+LONG_TRANSCRIPT_SECONDS = 900
 # Failures that say nothing about the document, so they get one retry in a fresh Field session:
 # a capture that ran out of time, and a WebSocket the session dropped mid-capture (1006, no close
 # frame). The drop bounced full refreshes on 2026-11-07 (box_graph_demo), 2026-11-08
 # (spreadsheet_constraints) and 2026-11-10 (fline_exact_booleans), a different document each time.
-TRANSIENT_CAPTURE_ERRORS = ("Output capture exceeded", "ConnectionClosedError", "code=1006")
+# A bare TimeoutError (a backdoor wait that ran out) is the same kind: flow_lenia hit it in two
+# refreshes on 2026-11-14 and captured cleanly in the run between.
+TRANSIENT_CAPTURE_ERRORS = ("Output capture exceeded", "ConnectionClosedError", "code=1006", "TimeoutError")
+# The backdoor's refusal when another checkout's Field answers the port this one started on.
+PORT_COLLISION = "is answered by a Field this session did not start"
+PORT_COLLISION_ATTEMPTS = 3
+
+# Failures that come from the machine rather than the document: the transient ones above, a box the
+# runloop watchdog stopped, a step that ran out of time, a full disk, and a port another checkout
+# took while this one was building. On 2026-11-14 three unrelated branches bounced on these
+# (flow_lenia and morpho_circuit_search timing out, uncrossed_leapers stopped by the watchdog,
+# port 9479 taken by a sibling worktree, no space left on device). `sync` exits MACHINE_STATE_EXIT
+# when every failure is one of these, and merge_regen passes that on only when none of the failed
+# documents is one the batch changed, so the lander retries instead of bouncing.
+MACHINE_STATE_ERRORS = TRANSIENT_CAPTURE_ERRORS + (
+    "TimeoutError", "(watchdog)", "Runloop stalled", "No space left on device",
+    "this session did not start", "No free Field automation port")
+MACHINE_STATE_EXIT = 75  # EX_TEMPFAIL
+# Publication capture starts its own Field. Its ports are disjoint from the backdoor, smoke and docs
+# runners (first free from 9477) and the UI runner (9490 up), which every worktree shares: the
+# lander's refresh picked 9479 on 2026-11-14 and a sibling worktree's runner bound it mid-build.
+PUBLICATION_PORT_START = 9620
+PUBLICATION_PORT_SPAN = 20
+REFRESH_REPORT = 'build/docs-publications-refresh.json'
+
+
+def machine_state_error(message: str) -> bool:
+    return any(mark in message for mark in MACHINE_STATE_ERRORS)
+
+
+def publication_port() -> int:
+    from verification_runtime import select_automation_port
+    return select_automation_port(PUBLICATION_PORT_START, explicit=False, attempts=PUBLICATION_PORT_SPAN)
 
 
 def publication_node() -> str | None:
@@ -149,6 +187,38 @@ def recipe_sources(recipe: dict) -> dict[str, str]:
     return sources
 
 
+# The registry snapshot a saved document ends with: every property name the saving Field persists.
+PERSISTENT_LIST = re.compile(rb'\s*"persistentProperties"\s*\[[^\]]*\]')
+
+
+def adopt_persistent_list_changes(index: dict) -> list[str]:
+    """Re-record a source `metadata.edn` whose only change is its `"persistentProperties"` list.
+
+    That list names every property the saving Field persists, so a new one anywhere in Field (the
+    AI4 garden's `ai4_garden`, 2026-11-13) rewrites every materialized transcript at once, and each
+    landing that rematerialized them found all ~200 publications stale, recaptured for an hour and
+    bounced on whichever slow page timed out, leaving main unrefreshed for the next one. No capture
+    reads the list. A file counts as changed only in that list when its committed version (HEAD)
+    is the one the catalog recorded and the two differ in nothing else."""
+    adopted = []
+    for section in ('documents', 'emptyDocuments'):
+        for entry in index.get(section, {}).values():
+            for name, expected in list(entry.get('sources', {}).items()):
+                path = ROOT / name
+                if not name.endswith('metadata.edn') or FENCE_SOURCE in name or not path.is_file():
+                    continue
+                current = path.read_bytes()
+                if hashlib.sha256(current).hexdigest() == expected:
+                    continue
+                shown = subprocess.run(['git', '-C', str(ROOT), 'show', f'HEAD:{name}'], capture_output=True)
+                if shown.returncode != 0 or hashlib.sha256(shown.stdout).hexdigest() != expected:
+                    continue
+                if PERSISTENT_LIST.sub(b'', shown.stdout) == PERSISTENT_LIST.sub(b'', current):
+                    entry['sources'][name] = hashlib.sha256(current).hexdigest()
+                    adopted.append(name)
+    return adopted
+
+
 def snapshot_hashes(entry: dict) -> dict[str, str]:
     manifest_path = DOCS / entry['outputs']
     base = manifest_path.parent.parent
@@ -212,6 +282,12 @@ def record_empty(recipe: dict, sources: dict[str, str]) -> None:
 def sync_publications(*, mode: str = 'incremental', port: int | None = None) -> dict:
     """Refresh supported documents before building the site; an unchanged tree starts no Field."""
     available = recipes('pilot') + recipes('gallery')
+    if mode != 'never':
+        index = catalog()
+        if adopted := adopt_persistent_list_changes(index):
+            write_catalog(index)
+            print(f'Docs publications: {len(adopted)} source document(s) changed only in their '
+                  'persistentProperties list; recorded without recapturing', flush=True)
     pending = pending_recipes(available, mode=mode)
     supported = {r['source'] for r in available}
     index = catalog()
@@ -238,7 +314,7 @@ def sync_publications(*, mode: str = 'incremental', port: int | None = None) -> 
         retried = asyncio.run(capture([r for r in pending if r['name'] in retry_names], port=port, force=True))
         by_name = {r['name']: {**r, 'attempts': 2} for r in retried}
         report = [by_name.get(r['name'], r) for r in report]
-    report_path = ROOT / 'build/docs-publications-refresh.json'
+    report_path = ROOT / REFRESH_REPORT
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, indent=2) + '\n')
     failed = [r for r in report if not r['ok']]
@@ -555,8 +631,22 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
             if not recipe.get("transcript") or recipe.get('retainedNative'):
                 shutil.copytree((DOCS / recipe["source"]).parent, workspace / recipe["name"])
         async def start(watchdog_ms: int = 30000):
+            # Each restart picks a port anew, and another checkout can bind it while this Field
+            # builds; the backdoor then stops ours rather than talk to theirs. That says nothing
+            # about the documents (it bounced 2026-11-14's three viewer landing twice), so take
+            # the next free port. An explicit --port is the caller's to keep.
+            for attempt in range(1, PORT_COLLISION_ATTEMPTS + 1):
+                try:
+                    return await start_once(watchdog_ms)
+                except fb.BackdoorError as error:
+                    if port is not None or PORT_COLLISION not in str(error) or attempt == PORT_COLLISION_ATTEMPTS:
+                        raise
+                    print(f"Port taken by another checkout's Field; starting on the next free port "
+                          f"(attempt {attempt + 1}/{PORT_COLLISION_ATTEMPTS})", flush=True)
+
+        async def start_once(watchdog_ms: int):
             log = fb.SessionLogger(fb.LOG_ROOT, ["docs-publications"])
-            client = fb.FieldBackdoor(port=port or fb.resolve_cli_port(None, attach_existing=False)[0],
+            client = fb.FieldBackdoor(port=port or publication_port(),
                                      workspace=str(workspace), logger=log, default_timeout=180)
             key = 'AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS'
             previous = os.environ.get(key)
@@ -602,6 +692,7 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                 if opened >= 16 or wanted_budget != budget:
                     await client.close()
                     log.close()
+                    client = None  # if the restart fails, the finally below has nothing left to close
                     budget = wanted_budget
                     client, log = await start(budget)
                     opened = 0
@@ -616,7 +707,8 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                     elif transcript := recipe.get("transcript"):
                         await client.macro_transcript_command(command="write", name=name,
                             content=(ROOT / transcript).read_text(), timeout=60)
-                        result = await client.macro_transcript_command(command="run", name=name, timeout=180)
+                        result = await client.macro_transcript_command(command="run", name=name,
+                            timeout=LONG_TRANSCRIPT_SECONDS if recipe.get('longCompute') else 180)
                         if not result.get("success"):
                             raise RuntimeError(json.dumps(result)[:3500])
                         import yaml
@@ -703,7 +795,7 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                     print(f"CAPTURE {name}: {entry['channels']} channels", flush=True)
                 except Exception as error:
                     message = fb.exception_message(error)
-                    report.append({"name": name, "ok": False, "error": message})
+                    report.append({"name": name, "ok": False, "error": message, "sources": sorted(sources)})
                     print(f"FAIL {name}: {message}", flush=True)
                     try:
                         await client.wait_frames(2, timeout=10)
@@ -713,9 +805,33 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                     if recipe.get('longCompute'):
                         opened = 16
         finally:
-            await client.close()
-            log.close()
+            if client is not None:
+                await client.close()
+                log.close()
     return report
+
+
+def sync_exit(run) -> int:
+    """Run a sync and turn its failure into an exit code: MACHINE_STATE_EXIT when every failure came
+    from the machine (see MACHINE_STATE_ERRORS), 1 otherwise. A failure outside any one capture
+    (the port taken, the disk full) is written to the refresh report as `{"machine": message}`, so
+    merge_regen can read what failed either way."""
+    try:
+        run()
+        return 0
+    except Exception as error:
+        import traceback
+        traceback.print_exc()
+        report_path = ROOT / REFRESH_REPORT
+        message = f'{type(error).__name__}: {error}'
+        if str(error).startswith('Publication capture failed:') and report_path.is_file():
+            failed = [r for r in json.loads(report_path.read_text()) if not r['ok']]
+            machine = bool(failed) and all(machine_state_error(r.get('error', '')) for r in failed)
+        else:
+            machine = machine_state_error(message) or isinstance(error, OSError) and error.errno == 28
+            report_path.parent.mkdir(parents=True, exist_ok=True)
+            report_path.write_text(json.dumps([{'machine': message, 'ok': False}], indent=2) + '\n')
+        return MACHINE_STATE_EXIT if machine else 1
 
 
 def main() -> int:
@@ -728,9 +844,11 @@ def main() -> int:
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--report", type=Path, default=ROOT / "build/docs-publications-report.json")
     args = parser.parse_args()
-    if args.action in ('sync', 'check'):
-        sync_publications(mode='never' if args.action == 'check' else args.mode, port=args.port)
+    if args.action == 'check':
+        sync_publications(mode='never', port=args.port)
         return 0
+    if args.action == 'sync':
+        return sync_exit(lambda: sync_publications(mode=args.mode, port=args.port))
     if args.action == 'prune':
         print(f'Removed {prune_runtimes()} unused runtime files')
         return 0

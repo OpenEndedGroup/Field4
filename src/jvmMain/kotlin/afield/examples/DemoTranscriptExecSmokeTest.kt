@@ -646,6 +646,8 @@ object DemoTranscriptExecSmokeTest {
         // satellites.md: a week of SGP4 passes over Chicago (CPU), then a renderer, an Earth box and
         // every catalogued satellite propagated in a vertex shader. Opens a Window, so compile-only.
         "satellites",
+        // alife_examples.md section 13: bonded-particle organisms on GPU compute. Opens a Window, so compile-only.
+        "bonded_organisms",
         // The pilot explainer deck (2026-11-09): its deck box opens Electron audience windows and
         // its figure box returns an audio patch for the audio device. PresentationFiguresTest
         // covers the figure engine without either.
@@ -782,6 +784,9 @@ object DemoTranscriptExecSmokeTest {
         "path_tracing_glass",
         "path_tracing_gltf",
         "path_tracing_hidden_environment",
+        // cuda.md: a CUDA kernel moving particles in a Vulkan buffer that a mesh draws. Needs a
+        // window and Linux with an NVIDIA GPU; the CUDA side is checked by cuda.interop.smoke.
+        "cuda_particles",
         "path_tracing_material_shader_check",
         // The cross-subsystem chains that end at the same tracer. Each one's CPU half — the Conway
         // operators, the Manifold Booleans, the cloth solve — is covered by its own tests; what is

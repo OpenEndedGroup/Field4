@@ -1265,6 +1265,11 @@ button.md-search__icon[aria-label="Clear"] {
     visibility: hidden;
 }
 
+/* The burger drawer opens over the rail's column; hide the rail while it is open. */
+body:has(#__drawer:checked) .field-reading-rail {
+    visibility: hidden;
+}
+
 .field-reading-rail__progress {
     position: absolute;
     inset: 0;

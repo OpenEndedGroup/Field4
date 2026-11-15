@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T02:10:04.796Z",
+  "capturedAt": "2026-11-14T22:32:34.387Z",
   "documentName": "offline_viewer_demo",
   "outputs": [
     {
@@ -11,7 +11,7 @@
       "kinds": [
         "svg"
       ],
-      "width": 306,
+      "width": 298,
       "height": 151,
       "path": "outputs/0.html"
     }

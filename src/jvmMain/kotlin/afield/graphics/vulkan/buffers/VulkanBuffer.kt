@@ -19,6 +19,10 @@ import org.lwjgl.util.vma.VmaAllocationInfo
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK12.*
 import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.KHRExternalMemoryFd
+import org.lwjgl.vulkan.VkExportMemoryAllocateInfo
+import org.lwjgl.vulkan.VkExternalMemoryBufferCreateInfo
+import org.lwjgl.vulkan.VkMemoryGetFdInfoKHR
 import org.lwjgl.vulkan.VkBufferCreateInfo
 import org.lwjgl.vulkan.VkBufferDeviceAddressInfo
 import org.lwjgl.vulkan.VkBufferMemoryBarrier2
@@ -134,6 +138,13 @@ class VulkanBuffer(
     val reqMask: Int,
     val needsDeviceAddress: Boolean = false,
     val cpuOnly: Boolean = false,
+    /**
+     * Allocate this buffer as its own dedicated, device-local allocation that Vulkan can export as
+     * an opaque POSIX fd ([exportOpaqueFd]), for CUDA or native OIDN to use the same memory. Linux
+     * with `VK_KHR_external_memory_fd` only. Such a buffer is not host mapped: read it through a
+     * staging copy. A [realloc] replaces the memory, so an importer must import again after one.
+     */
+    val exportOpaqueFd: Boolean = false,
 ) : HasBuffer, BufferWriteable, BufferReadable, DynamicallyWriteable {
 
     // Volatile, like the handle fields below: the render workers read these while recording, on
@@ -157,6 +168,17 @@ class VulkanBuffer(
     /** VmaAllocation handle (NOT a VkDeviceMemory) */
     @Volatile
     private var allocation: Long = 0L
+
+    /** The VkDeviceMemory behind an [exportOpaqueFd] buffer (its own, offset 0), else 0. */
+    @Volatile
+    private var exportedMemory: Long = 0L
+
+    /**
+     * The exact size of the exported allocation, which can exceed [requestedSize]; importers
+     * (`cuImportExternalMemory`, `oidnNewSharedBufferFromFD`) must be given this size. Zero unless
+     * [exportOpaqueFd].
+     */
+    val exportedAllocationSize: Long get() = if (exportOpaqueFd) allocationSize else 0L
 
     /** CPU pointer; stays valid while mapped (we keep it persistently mapped) */
     @Volatile
@@ -229,6 +251,13 @@ class VulkanBuffer(
                 usage(usageBits)
                 sharingMode(VK_SHARING_MODE_EXCLUSIVE)
             }
+            if (exportOpaqueFd) {
+                check(renderer.device.supportsExternalMemoryFd) {
+                    "VulkanBuffer(exportOpaqueFd = true) needs VK_KHR_external_memory_fd (Linux); this device does not enable it"
+                }
+                bufCI.pNext(VkExternalMemoryBufferCreateInfo.calloc(stack).`sType$Default`()
+                    .handleTypes(VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT).address())
+            }
 
             val allocCI = VmaAllocationCreateInfo.calloc(stack).apply {
                 usage(Vma.VMA_MEMORY_USAGE_AUTO)
@@ -267,8 +296,22 @@ class VulkanBuffer(
             val pAlloc  = stack.mallocPointer(1)
             val allocator = allocatorForRenderer(renderer)
 
-            val err = Vma.vmaCreateBuffer(allocator, bufCI, allocCI, pBuffer, pAlloc, null)
-            require(err == VK_SUCCESS) { "vmaCreateBuffer failed: $err" }
+            if (exportOpaqueFd) {
+                // Device-local only and unmapped: the memory is for the GPU and its importers.
+                allocCI.flags(0).requiredFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT).preferredFlags(0)
+                // A dedicated allocation of its own, so the exported fd is this buffer and nothing
+                // else, at offset 0. VMA chains VkMemoryDedicatedAllocateInfo (and the device-address
+                // flag) itself; the export request rides on pMemoryAllocateNext. Importers must
+                // then say "dedicated" too (CUDA_EXTERNAL_MEMORY_DEDICATED,
+                // OIDN_EXTERNAL_MEMORY_TYPE_FLAG_DEDICATED), as for Image.exportOpaqueFd.
+                val export = VkExportMemoryAllocateInfo.calloc(stack).`sType$Default`()
+                    .handleTypes(VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT)
+                val err = Vma.vmaCreateDedicatedBuffer(allocator, bufCI, allocCI, export.address(), pBuffer, pAlloc, null)
+                require(err == VK_SUCCESS) { "vmaCreateDedicatedBuffer (exportable) failed: $err" }
+            } else {
+                val err = Vma.vmaCreateBuffer(allocator, bufCI, allocCI, pBuffer, pAlloc, null)
+                require(err == VK_SUCCESS) { "vmaCreateBuffer failed: $err" }
+            }
 
             val newBuffer = pBuffer[0]
             val newAllocation = pAlloc[0]
@@ -295,7 +338,10 @@ class VulkanBuffer(
                 require(newAddress != 0L) { "vkGetBufferDeviceAddress returned 0; check features/flags/usage." }
             }
 
+            if (exportOpaqueFd) check(info.offset() == 0L) { "exportable buffer was suballocated at offset ${info.offset()}" }
+
             // Publish: everything else first, the handle and the descriptor binding last.
+            exportedMemory = if (exportOpaqueFd) info.deviceMemory() else 0L
             allocation = newAllocation
             allocationSize = info.size()
             allocationMemoryType = newMemoryType
@@ -438,6 +484,24 @@ class VulkanBuffer(
                 "drop the binding before releasing it"
         }
         return bound
+    }
+
+    /**
+     * A new opaque fd for this buffer's memory, owned by the caller until an importer takes it
+     * (CUDA and OIDN take ownership on a successful import). Each call returns a fresh fd, because
+     * each import consumes one. Import with [exportedAllocationSize] and the dedicated flag set.
+     */
+    fun exportOpaqueFd(): Int {
+        requireLiveRenderer()
+        check(exportOpaqueFd) { "$this was not created with exportOpaqueFd = true" }
+        check(!released && exportedMemory != 0L) { "$this has no live exportable memory" }
+        MemoryStack.stackPush().use { stack ->
+            val fd = stack.mallocInt(1)
+            vkCheck(KHRExternalMemoryFd.vkGetMemoryFdKHR(renderer.device.vkDevice,
+                VkMemoryGetFdInfoKHR.calloc(stack).`sType$Default`().memory(exportedMemory)
+                    .handleType(VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT), fd), "vkGetMemoryFdKHR(buffer)")
+            return fd[0]
+        }
     }
 
     /** Map via VMA (or host-only); keep persistently mapped (recommended). */
@@ -625,6 +689,7 @@ class VulkanBuffer(
         buffer = VK_NULL_HANDLE
         allocation = 0L
         mappedMemory = 0L
+        exportedMemory = 0L
         allocationSize = 0L
         allocationMemoryType = -1
         allocationMemoryFlags = 0

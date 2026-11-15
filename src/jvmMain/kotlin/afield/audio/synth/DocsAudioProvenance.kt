@@ -118,10 +118,19 @@ object DocsAudioProvenance {
         SONIC_PI("a live recording of a real Sonic Pi — not sample-reproducible"),
 
         /**
-         * Vibration modes struck and summed: a drawn drum's (`EigendrumDocs`) or a tiling's spring
-         * network's (`PenroseSpectraDocs`); deterministic.
+         * Vibration modes struck and summed: a drawn drum's (`EigendrumDocs`), a tiling's spring
+         * network's (`PenroseSpectraDocs`), or a piano's stiff strings (`PianoDocs`, [Piano]: each
+         * string mode a pair of decaying phasors, then a synthesised soundboard and room);
+         * deterministic.
          */
-        MODAL_SYNTHESIS("a drum's finite-element modes, struck and summed as damped sinusoids"),
+        MODAL_SYNTHESIS("struck vibration modes — a drum's, a spring network's or a piano string's — summed as damped sinusoids"),
+
+        /**
+         * Hann-windowed grains of a fixed three-harmonic sine, summed directly ([renderGrains] with
+         * no source). No samples and no synth voice; deterministic. A grain set played from a
+         * recording is classified by its source instead.
+         */
+        ADDITIVE_GRAINS("windowed three-harmonic sine grains summed directly — no samples, no synth voice"),
 
         /** Present in the tree, no producing code found. Must be in [UNDERIVABLE]. */
         UNDERIVABLE("no producing code found in the repository"),
@@ -196,6 +205,12 @@ object DocsAudioProvenance {
         "afield.lang.forth.ForthStepsDocs" to Origin.STAND_IN_SYNTH,
         "afield.lang.forth.ForthStepsDirtDocs" to Origin.DIRT_SAMPLES,
         "afield.examples.sonicpi.SonicPiSoundDocs" to Origin.SONIC_PI,
+        // A hand's track from a recorded body, read as notes and played by patRenderStereo on a
+        // triangle patVoice. See chain_tracked_body.md.
+        "afield.audio.synth.TrackedBodyDocs" to Origin.STAND_IN_SYNTH,
+        // Field's physically modelled piano (Piano), rendered offline: hammer, string modes,
+        // soundboard, room. See sound.md#a-piano.
+        "afield.audio.synth.PianoDocs" to Origin.MODAL_SYNTHESIS,
         // One strike of a meshed drum, rendered by DrumModes.render. See eigendrum.md.
         "afield.audio.modal.EigendrumDocs" to Origin.MODAL_SYNTHESIS,
         // A Penrose tiling's vertex graph as a spring network, struck at one vertex and rendered by
@@ -310,6 +325,17 @@ object DocsAudioProvenance {
                 "faust" -> Origin.FAUST
                 else -> null
             }
+
+        // Per clip as well: three scenes sum synthetic grains, and `matched` granulates the first
+        // pinned Dirt-Samples `arpy` one-shot, so the clip's source is a real sample.
+        "afield.simulation.agents.GrainSetSoundDocs" ->
+            if (published.spec == "matched") Origin.DIRT_SAMPLES else Origin.ADDITIVE_GRAINS
+
+        // Five scenes are patterns through patRenderStereo on a patVoice; `held-pitch` is a SineOsc
+        // under an ADSR whose pitch is a distribution parameter, rendered by renderSignalsOffline —
+        // Field's Kotlin signal graph, the family FnSoundDocs is in.
+        "afield.math.distribution.DistributionSoundDocs" ->
+            if (published.spec == "held-pitch") Origin.DOUGH_DSP else Origin.STAND_IN_SYNTH
 
         else -> ORIGIN_BY_RENDERER[published.renderer]
     }

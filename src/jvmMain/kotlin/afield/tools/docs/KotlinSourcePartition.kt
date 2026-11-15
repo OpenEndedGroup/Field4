@@ -699,12 +699,15 @@ object KotlinSourcePartition {
         /**
          * A non-blank line carrying only annotations and/or modifiers — no declaration keyword. A
          * context-parameter list on its own line (`context(context: CheckerContext, reporter: …)` above
-         * an `override fun`, as FIR checkers are written) is a prefix of the same kind.
+         * an `override fun`, as FIR checkers are written) is a prefix of the same kind — but only when
+         * the parenthesis opened by `context(` is the one that ends the line. A call to a function
+         * named `context` continuing an expression body (`context(a, b) + "\n" + tail(c)`) also starts
+         * with `context(`, ends with `)` and balances; read as a prefix, it was left unattributed.
          */
         fun isPrefixOnlyLine(index: Int): Boolean {
             val text = masked.code[index].trim()
             if (text.isEmpty()) return false
-            if (text.startsWith("context(") && text.endsWith(")") && text.count { it == '(' } == text.count { it == ')' }) return true
+            if (text.startsWith("context(") && closingParenOf(text, "context".length) == text.lastIndex) return true
             val stripped = stripAnnotations(text)
             if (stripped.isEmpty()) return true
             val tokens = stripped.split(WHITESPACE).filter { it.isNotEmpty() }
@@ -1088,6 +1091,21 @@ object KotlinSourcePartition {
             at++
         }
         return if (depth > 0) open to depth else null
+    }
+
+    /**
+     * Index of the `)` that closes the `(` at [open] in [text], or null when it is not closed on this
+     * line. [text] is masked code, so parentheses inside strings and comments are already gone.
+     */
+    private fun closingParenOf(text: String, open: Int): Int? {
+        var depth = 0
+        for (i in open until text.length) {
+            when (text[i]) {
+                '(' -> depth++
+                ')' -> if (--depth == 0) return i
+            }
+        }
+        return null
     }
 
     /** [text] with any leading run of modifier words removed. */

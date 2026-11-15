@@ -1,0 +1,164 @@
+name: cuda_particles
+description: A CUDA kernel moves 200,000 particles in a Vulkan buffer every frame, and a Field mesh draws them from that same buffer (Linux, NVIDIA).
+docs:
+  - page: cuda.md#a-kernel-that-moves-particles
+    why: "Walks through the CUDA box and the draw box this document builds."
+operations:
+  - create:
+      box: cuda_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          once.renderer {
+              window = Window("Field · CUDA particles")
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: cuda_flow
+      name: CUDA flow
+      frame: { x: 360.0, y: 180.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.cuda.CudaVulkan
+
+          // One CUDA context per renderer, on the same GPU (matched by UUID).
+          val cuda = CudaVulkan.forRenderer(renderer)
+
+          // Each particle is a float4: x, y in world units (about -2..2), a phase, and a size.
+          val count = 200_000
+          val particles = cuda.sharedBuffer("particles", count * 16L)
+
+          // CUDA C, compiled for this GPU by NVRTC when the box runs.
+          val program =
+              cuda.compile(
+                  """
+              extern "C" __global__ void seed(float4* p, int n) {
+                  int i = blockIdx.x * blockDim.x + threadIdx.x;
+                  if (i >= n) return;
+                  unsigned h = i * 747796405u + 2891336453u;
+                  h = ((h >> ((h >> 28) + 4u)) ^ h) * 277803737u;
+                  h = (h >> 22) ^ h;
+                  float a = (h & 0xffffu) / 65535.0f * 6.2831853f;
+                  float r = 2.0f * sqrtf((h >> 16) / 65535.0f);
+                  p[i] = make_float4(r * cosf(a), r * sinf(a), a, 0.4f + 0.3f * r);
+              }
+
+              // Advect every particle through a flow that turns slowly with t.
+              extern "C" __global__ void flow(float4* p, int n, float t, float dt) {
+                  int i = blockIdx.x * blockDim.x + threadIdx.x;
+                  if (i >= n) return;
+                  float4 q = p[i];
+                  float u = sinf(2.5f * q.y + t) - 0.35f * q.x;
+                  float v = cosf(2.5f * q.x - 0.7f * t + 0.3f * q.z) - 0.35f * q.y;
+                  q.x += dt * u;
+                  q.y += dt * v;
+                  p[i] = q;
+              }
+              """,
+              )
+          val seed = program.function("seed")
+          val flow = program.function("flow")
+          val threads = 256
+          val blocks = (count + threads - 1) / threads
+
+          // Scatter the particles once, then move them between every two frames.
+          cuda.run { stream -> seed.launch(blocks, threads, stream, particles.pointer, count) }
+          var t = 0f
+          val dt = 1f / 60f
+          cuda.everyFrame("flow") { stream ->
+              t += dt
+              flow.launch(blocks, threads, stream, particles.pointer, count, t, dt)
+          }
+
+          // The draw box beneath this one reads the same memory.
+          prop<VulkanBuffer>(cudaParticles) = particles.buffer
+          prop<Int>(cudaParticleCount) = count
+
+          frames {
+              repeat(600) { frame() }
+              println("cuda particles running on ${cuda.device.name}: ${cuda.framesWithCuda} frames with CUDA")
+          }
+  - create:
+      box: cuda_draw
+      name: draw particles
+      frame: { x: 680.0, y: 320.0, w: 300.0, h: 100.0 }
+      properties:
+        vertex: |
+          #version 450
+          #extension GL_EXT_buffer_reference : require
+
+          // The CUDA box's buffer: xy position in world units, z phase, w size.
+          layout(std430, buffer_reference) buffer Particles
+          {
+              vec4 p[];
+          };
+
+          layout(location = 0) out vec2 tc;
+          layout(location = 1) out float phase;
+
+          layout(push_constant) uniform push {
+              Particles particles;
+              float aspectRatio;
+          } pc;
+
+          // The six corners of a unit square, as two triangles
+          const vec2[6] corner = {
+              vec2(0, 0), vec2(1, 0), vec2(1, 1),
+              vec2(0, 0), vec2(1, 1), vec2(0, 1)
+          };
+
+          void main()
+          {
+              vec4 q = pc.particles.p[gl_VertexIndex / 6];
+              vec2 c = corner[gl_VertexIndex % 6];
+              vec2 xy = q.xy * 0.42 + (c - 0.5) * 0.006 * q.w;
+              gl_Position = vec4(xy.x / pc.aspectRatio, xy.y, 0, 1);
+              tc = c;
+              phase = q.z;
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) out vec4 uFragColor;
+          layout(location = 0) in vec2 tc;
+          layout(location = 1) in float phase;
+          void main()
+          {
+              // A soft round dot, tinted by the particle's starting angle.
+              float d = length(tc - vec2(0.5));
+              float coverage = 1.0 - smoothstep(0.25, 0.5, d);
+              if (coverage < 0.01) discard;
+              vec3 tint = 0.6 + 0.4 * cos(phase + vec3(0.0, 2.1, 4.2));
+              uFragColor = vec4(tint, coverage * 0.35);
+          }
+        code: |
+          var module = moduleHere {
+              primitiveType = triangles
+          }
+          var m = Mesh()
+          module += "particles" to m
+          renderer += "cuda particles" to module
+
+          // Published by the CUDA box above with `prop`.
+          m.particles = { cudaParticles }
+          m.aspectRatio = { window.width / window.height.toFloat() }
+
+          // Six vertices per particle, no index buffer.
+          m.set(cudaParticleCount * 6, 0) {}
+
+          m
+  - connect: { parent: cuda_renderer, child: cuda_flow }
+  - connect: { parent: cuda_flow, child: cuda_draw }
+  - launch: { box: cuda_renderer, property: code, strand: renderer }
+  - await: { wait: pending }
+  - wait: { frames: 3 }
+  - launch: { box: cuda_flow, property: code }
+  - wait: { frames: 3 }
+  - launch: { box: cuda_draw, property: code }
+  - await: { wait: pending }

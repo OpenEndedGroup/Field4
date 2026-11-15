@@ -188,6 +188,54 @@ class KeyframerTest {
     }
 
     @Test
+    fun anApplicationBatchPreparesBeforeAnyWriteAndBypassesItsLanesSetters() {
+        val scope = KeyframeScope()
+        val writes = mutableListOf<String>()
+        scope.doubleTarget("speed", { 1.0 }) { writes += "speed setter $it" }
+        scope.doubleTarget("gain", { 0.0 }) { writes += "gain setter $it" }
+        scope.applicationBatch("transport", setOf("speed")) { incoming ->
+            val speed = incoming["speed"] as Double
+            require(speed > 0) { "speed must be positive" }
+            val commit: () -> Unit = { writes += "batch speed $speed" }
+            commit
+        }
+
+        scope.Key("speed" to 2.0, "gain" to 0.5)()
+        assertEquals(listOf("batch speed 2.0", "gain setter 0.5"), writes, "the batch commits, then the remaining lanes write")
+
+        writes.clear()
+        assertFailsWith<IllegalArgumentException> { scope.Key("speed" to -1.0, "gain" to 0.25)() }
+        assertEquals(emptyList<String>(), writes, "a rejected prepare leaves every lane untouched")
+
+        assertFailsWith<IllegalArgumentException>("two batches cannot share a lane") {
+            scope.applicationBatch("other", setOf("speed")) { { } }
+        }
+        scope.applicationBatch("transport", setOf("speed")) { { writes += "replaced" } }
+        scope.Key("speed" to 3.0)()
+        assertEquals(listOf("replaced"), writes, "re-registering an id replaces its batch")
+    }
+
+    @Test
+    fun aCustomInterpolatorOwnsItsLaneAfterRemap() {
+        val scope = KeyframeScope()
+        // Hue wraps: the short way from 350° to 10° passes through 0°, not 180°.
+        scope.interpolators["hue"] = { a, b, t ->
+            val from = (a as Number).toDouble()
+            val delta = (((b as Number).toDouble() - from + 540.0) % 360.0) - 180.0
+            (from + delta * t + 360.0) % 360.0
+        }
+        val a = scope.Key("hue" to 350.0, "size" to 0.0)
+        val b = scope.Key("hue" to 10.0, "size" to 10.0)
+
+        val mid = scope.interpolate(a, b, 0.5)
+        assertEquals(0.0, mid["hue"] as Double, 1e-9)
+        assertEquals(5.0, mid["size"] as Double, 1e-9, "lanes without an interpolator still lerp")
+
+        scope.remap["hue"] = { t -> t * t }
+        assertEquals(355.0, scope.interpolate(a, b, 0.5)["hue"] as Double, 1e-9, "the interpolator sees the remapped t")
+    }
+
+    @Test
     fun captureSeesBoundPropertiesAndSetValues() {
         // capture() reads binding-then-value, the precedence Structure.get and writeMembersToBuffer
         // use. Before that it read bindings alone, and a property written by value snapshotted as a

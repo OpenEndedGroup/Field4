@@ -1401,11 +1401,83 @@ another bounce to make. So `emitterSampling = true` at three bounces transports 
 bug — but a strict A/B of the two flags at equal `maxBounces` shows the deeper
 setting slightly brighter, and on this scene that difference is 1.9% of the image.
 
+## Denoising a still
+
+A few dozen samples per pixel give the right picture with grain on top. `OidnComputeDenoiser`
+removes the grain once, when the tracer reaches a sample count you choose. It runs Intel's
+[Open Image Denoise](https://www.openimagedenoise.org) network as Field compute shaders on any
+Vulkan GPU. No native library is involved, and the weights ship with Field.
+
+Add it after installing the tracer from the material study above:
+
+```diffstatic {data-lang=kotlin}
+import afield.media.reconstruction.OidnComputeDenoiser
+
+val denoiser = OidnComputeDenoiser(tracer).install()
+denoiser.denoiseAt = 32 // samples per pixel; 0 waits for denoiser.request()
+```
+
+When the tracer reaches 32 samples, the denoiser runs once. From then on, `tracer.output` and
+`blitToScreen()` show the denoised image. Tracing carries on underneath. Moving the camera, or
+anything else that resets accumulation, brings back the live progressive image. The next time the
+count reaches 32, the denoiser runs again. Set `denoiser.show = false` to keep the progressive
+image on screen. `denoiser.denoisedSamples` and `denoiser.current` say what the snapshot holds.
+Rerunning the box replaces the previous denoiser.
+
+The network sees more than the noisy colour. It also reads each pixel's albedo and normal at the
+first hit, averaged over the same jittered samples. That is how it keeps texture, edges and
+reflections while it smooths the noise.
+
+![Crops at 8, 32 and 128 samples per pixel (rows). Columns: the tracer's accumulated image, Field's denoised image, native Open Image Denoise on the same inputs, and a 1024-sample reference](assets/path_tracing/denoise/crops.jpg)
+
+At 8 samples the denoised image is already free of grain. It is also free of the bright specks on
+the red sphere that 1024 samples still show. The denoiser only ever sees the samples it is given,
+though. At very low counts it smooths a glossy coat's fine detail along with the noise.
+
+| Samples | Accumulated | Denoised | Native Open Image Denoise |
+| ---: | ---: | ---: | ---: |
+| 8 | 29.5 dB | 38.1 dB | 38.1 dB |
+| 32 | 30.8 dB | 38.5 dB | 38.5 dB |
+| 128 | 33.3 dB | 38.7 dB | 38.7 dB |
+
+PSNR is against a 1024-sample reference, on display values. Field's output and native Open Image
+Denoise differ by about 1/40 of one 8-bit level.
+
+| GPU, 1920 × 1080 | One denoise | Scratch memory |
+| --- | ---: | ---: |
+| NVIDIA RTX 4090, cooperative matrices (tensor cores) | 5.3 ms | 1.1 GB |
+| NVIDIA RTX 4090, portable kernels | 16 ms | 870 MB |
+| Apple M1 Max, KosmicKrisp | 0.7 s | 870 MB |
+
+On Linux with an NVIDIA GPU, Intel's native Open Image Denoise can also denoise the tracer's
+buffers in place on CUDA, in 7 ms at this size: see
+[CUDA Beside the Renderer](cuda.md#native-open-image-denoise-on-cuda).
+
+The denoiser uses `VK_KHR_cooperative_matrix` when the device has it. `denoiser.cooperativeMatrix`
+says which path it took. Tracing slows only on the frame that runs the denoise, plus a small pass
+each frame that averages the albedo and normal.
+
+!!! note "Opaque scenes"
+    The denoiser reads the same per-pixel guides as [Ray Reconstruction](path_traced_reconstruction.md),
+    so it shares that adapter's limits: opaque materials and a pinhole camera, without fog or a
+    medium. Constructing it on a scene with glass fails with a message saying so.
+
+??? aside "How the figure and numbers were made"
+
+    `OidnComputeSpike` traces this scene at 1920 × 1080, denoises it on the GPU at each sample
+    count, and runs native Open Image Denoise 2.5.1 on the CPU over the identical colour, albedo and
+    normal. The figure is that harness's output, not a runner capture. On the RTX 4090 native
+    Open Image Denoise on CUDA takes 6.5 ms at its default quality, so Field's path is slightly faster there. The network topology, weight
+    format and transfer curve follow Open Image Denoise and
+    [oidn-webgpu](https://github.com/pissang/oidn-webgpu). The kernels, the timing method and what
+    is left are in
+    [OIDN_COMPUTE_PORT.md](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/lighting/OIDN_COMPUTE_PORT.md).
+
 ## Current limits
 
 This is a basic static-scene renderer. It does not yet include heterogeneous scattering volumes,
-nested dielectric media, deformation/refitting, motion blur, spatial denoising or an
-OpenXR stereo pass. Emissive triangles are importance-sampled by area and power (see
+nested dielectric media, deformation/refitting, motion blur, per-frame spatial denoising (the
+denoiser above cleans a still) or an OpenXR stereo pass. Emissive triangles are importance-sampled by area and power (see
 above), but there is no spatial or directional light hierarchy, so a scene with
 thousands of small lamps still spends most of its shadow rays on lamps that cannot
 reach the shading point.
@@ -1602,7 +1674,8 @@ is the same guarantee the material-shader path gives.
 A successful reload sets `samples` back to 0 at once, so waiting on a sample count afterwards waits
 for the new integrator's samples.
 
-The opaque path tracer can also feed [Ray Reconstruction](path_traced_reconstruction.md), with raw and progressive views retained.
+The opaque path tracer can also feed [Ray Reconstruction](path_traced_reconstruction.md), with raw and progressive views retained,
+or be [denoised once](#denoising-a-still) when it reaches a sample count.
 
 ## API reference
 
@@ -1623,3 +1696,4 @@ Implementation and parameter details for the helpers used above:
 - [Neural particles](neural_particles.md) trains a velocity field with the same `VectorMLP` and runs it in a compute shader.
 - [A learned shader function](learned_shader.md) fits a network to a shader's output on the GPU.
 - [Path-traced reconstruction](path_traced_reconstruction.md) cleans up a noisy path-traced frame.
+- [Denoising a still](#denoising-a-still) cleans up an accumulated image once, on any Vulkan GPU.

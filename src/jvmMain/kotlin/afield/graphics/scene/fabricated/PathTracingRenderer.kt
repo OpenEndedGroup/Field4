@@ -72,6 +72,8 @@ class PathTracingRenderer(
     requestedBackend: Backend = Backend.AUTO,
     val name: String = "path-tracer",
     target: RenderToTexture? = null,
+    /** Allocate the accumulation buffer exportable as an opaque fd, so CUDA or native OIDN can read it in place (Linux). */
+    val exportAccumulation: Boolean = false,
     moduleFactory: (Parameters) -> ComputeModulePointer = { ComputeModule(it).pointer() }
 ) : AutoCloseable, Target {
     enum class Backend { AUTO, COMPUTE_BVH, RAY_QUERY }
@@ -286,6 +288,16 @@ class PathTracingRenderer(
     private val envWidth = environment.width
     private val envHeight = environment.height
     private val accumulation: VulkanBuffer
+    /** The averaged linear radiance, one vec4 per pixel; `OidnComputeDenoiser` reads it in place. */
+    internal val accumulationBuffer: VulkanBuffer get() = accumulation
+    private lateinit var resolveScreen: Mesh
+    /**
+     * Resolve [output] from [source] instead of the accumulation, or from the accumulation again when
+     * null. The source must have the accumulation's layout (vec4 per pixel, linear, alpha = coverage).
+     * `OidnComputeDenoiser` uses it to show a denoised snapshot everywhere [output] is shown.
+     */
+    internal fun resolveFrom(source: VulkanBuffer?) { if (!closed) resolveScreen.push["accumulation"] = source ?: accumulation }
+    internal val isClosed: Boolean get() = closed
     val materialModule: ComputeModulePointer
     val materialMesh: ComputeMesh
     /** Premultiplied linear HDR RGBA; alpha is primary visibility coverage, not sample count. */
@@ -334,7 +346,7 @@ class PathTracingRenderer(
             val directions = upload(sobolWords.size * 4L) { it.asIntBuffer().put(sobolWords) }
             accumulation = own(VulkanBuffer(renderer, width.toLong() * height * 16,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT or VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, needsDeviceAddress = true)) { cleanup() }
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, needsDeviceAddress = true, exportOpaqueFd = exportAccumulation)) { cleanup() }
             val bytes = MemoryUtil.memAlloc(environment.pixels.size * 4)
             val texture = try {
                 bytes.asFloatBuffer().put(environment.pixels)
@@ -395,6 +407,7 @@ class PathTracingRenderer(
             screen.resize(3, 0, resolve)
             screen.push.setMembers(display.fi.pushConstants.single().members)
             screen.push["accumulation"] = accumulation
+            resolveScreen = screen
             screen.push["width"] = width; screen.push["height"] = height
             resolve.current.meshes["screen"] = screen
             output.modules["$name-resolve"] = resolve

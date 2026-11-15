@@ -1165,7 +1165,7 @@ class KMeansTree(val levels: List<KMeansTreeLevel>) {
 
 /** [path] without repeated points, keeping every [stride]-th of the rest and always its last. */
 private fun thinPath(path: List<Vec2>, stride: Int): List<Vec2> {
-    val distinct = ArrayList<Vec2>(path.size)
+    val distinct: MutableList<Vec2> = ArrayList(path.size)
     for (p in path) {
         val last = distinct.lastOrNull()
         if (last == null || last.x != p.x || last.y != p.y) distinct.add(p)
@@ -2311,7 +2311,7 @@ private fun kMeans(
             KMeansAlgorithm.LLOYD -> runLloyd(rows, seeds, options.epochs ?: 25, options)
             KMeansAlgorithm.EMEANS -> runEmeans(rows, seeds, options.epochs ?: 5, options, rng)
         }
-        if (best == null || run.inertia < best!!.inertia) best = run
+        if (best == null || run.inertia < best.inertia) best = run
     }
     return best!!
 }

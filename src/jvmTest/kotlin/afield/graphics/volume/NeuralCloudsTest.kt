@@ -75,7 +75,7 @@ class NeuralCloudsTest {
         val spirv = try { ShaderSPIRVUtils.compileShader("cloud.frag", src, ShaderKind.FRAGMENT_SHADER) } catch (t: Throwable) {
             throw AssertionError("cloud fragment did not compile: ${t.message}\n$src", t)
         }
-        assertTrue(spirv != null)
+        assertTrue((spirv.bytecode()?.remaining() ?: 0) > 0, "cloud fragment compiled to empty SPIR-V")
         // and the zero-network fallback compiles too
         ShaderSPIRVUtils.compileShader("cloud0.frag", src.replace(NeuralCloud.glslInclude(net, NeuralCloud.ambient(samples)), NeuralCloud.glslInclude(null, null)), ShaderKind.FRAGMENT_SHADER)
     }

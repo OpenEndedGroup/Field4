@@ -117,7 +117,8 @@ The crib:
 | Offline asset ownership | `uv run python tools/check_offline_assets.py` |
 
 The smoke and docs runners pick the first free port from 9477 (never 9092); pass `--port` /
-`FIELD_DOCS_RUNNER_PORT` only to pin one. The UI runner uses 9490 upward. Per-test smoke
+`FIELD_DOCS_RUNNER_PORT` only to pin one. The UI runner uses 9490 upward; the web-publication
+refresh (`tools/docs_publications.py sync`, which the lander runs) uses 9620–9639. Per-test smoke
 timeouts come from each `FIELD_TEST` annotation's `timeoutSec`. Runner details (prewarm,
 coverage ordering, artifact retention) are in
 [`FIELD_BACKDOOR.md`](dev_docs/agents/FIELD_BACKDOOR.md#suite-runner-details).

@@ -88,8 +88,8 @@ class SpatialWavPlayerTest {
         val a = java.util.concurrent.atomic.AtomicLong()
         val b = java.util.concurrent.atomic.AtomicLong()
         fun signal(counter: java.util.concurrent.atomic.AtomicLong) = object : StereoRenderable {
-            override fun render(l: FloatArray, r: FloatArray, frames: Int, context: SynthContext) {
-                l.fill(0f); r.fill(0f); counter.incrementAndGet()
+            override fun render(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext) {
+                outL.fill(0f); outR.fill(0f); counter.incrementAndGet()
             }
         }
         FieldAudioEngine.openBinauralOutput(device!!).use { first ->
