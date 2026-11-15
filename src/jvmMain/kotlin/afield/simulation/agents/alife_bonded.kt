@@ -1,5 +1,9 @@
 package afield.simulation.agents
 
+import afield.graphics.render.ComputeModulePointer
+import afield.graphics.render.computeMemoryBarrier
+import afield.graphics.vulkan.Target
+import afield.math.linalg.Rectanglef
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -68,8 +72,8 @@ class BondedParams {
 /**
  * The GPU world's step counter, shared by the boxes that step, draw and check it. [tick] is the
  * compute shader's `tick` push constant: it returns the step to dispatch, advancing once per
- * renderer frame, or -1 once the world has reached [freezeAt], which makes the shader write
- * nothing.
+ * dispatch ([stepsPerFrame] dispatches a frame through [stepping]), or -1 once the world has
+ * reached [freezeAt], which makes the shader write nothing.
  *
  * It advances on a change of frame rather than on every call because a push-constant lambda is
  * evaluated more than once per dispatch (twice, measured), so a lambda that counts its own calls
@@ -81,20 +85,41 @@ class BondedClock {
     @Volatile var step = 0
     /** Stop stepping once [step] reaches this; -1 never stops. */
     @Volatile var freezeAt = -1
+    /** Steps taken in each renderer frame by the [Target] that [stepping] returns. */
+    @Volatile var stepsPerFrame = 1
+    private var substep = 0
     private var lastFrame = Long.MIN_VALUE
+    private var lastSubstep = -1
     private var current = -1f
 
-    /** The push-constant value for the dispatch in renderer frame [frame]. */
+    /** The push-constant value for the dispatch in renderer frame [frame] (and the current substep). */
     @Synchronized fun tick(frame: Long): Float {
-        if (frame != lastFrame) {
+        if (frame != lastFrame || substep != lastSubstep) {
             lastFrame = frame
+            lastSubstep = substep
             current = if (freezeAt in 0..step) -1f else (step++).toFloat()
         }
         return current
     }
 
+    /**
+     * Dispatches [module] [stepsPerFrame] times a frame, with a compute barrier after each, so
+     * each step reads what the one before it wrote. Register it in place of the module:
+     * `renderer.computeList += "bondedStep" to clock.stepping(module)`.
+     */
+    fun stepping(module: ComputeModulePointer): Target {
+        val bounds = Rectanglef(0f, 0f, 0f, 0f)
+        return Target { command, _ ->
+            repeat(stepsPerFrame.coerceAtLeast(1)) { k ->
+                synchronized(this) { substep = k }
+                module.render(command, bounds)
+                computeMemoryBarrier(command, null as Long?)
+            }
+        }
+    }
+
     /** Restarts counting from step 0. */
-    @Synchronized fun restart() { step = 0; lastFrame = Long.MIN_VALUE; current = -1f }
+    @Synchronized fun restart() { step = 0; lastFrame = Long.MIN_VALUE; lastSubstep = -1; current = -1f }
 
     /** Which half of the cell buffer holds the latest positions: the one the last step wrote. */
     val latestHalf: Int get() = step and 1

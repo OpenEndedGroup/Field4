@@ -61,12 +61,14 @@ operations:
           var module = computeModuleHere {}
           var m = ComputeMesh()
           module += "mainMesh" to m
-          renderer += "bondedStep" to module
+          // several steps a frame, each reading what the last one wrote: raise it to speed the worms up
+          val clock = BondedClock()
+          clock.stepsPerFrame = 2
+          renderer.computeList += "bondedStep" to clock.stepping(module)
 
           // two halves of cells (the shader reads one and writes the other) and the bond slots
           var cells = defaultBuffer { size = (world.capacity * 4).vec4s }.buffer
           var bonds = defaultBuffer { size = (world.capacity * 6).vec4s }.buffer
-          val clock = BondedClock()
           val upload = {
               cells.write { put(world.cellFloats()) }
               bonds.write { put(world.bondFloats()) }
