@@ -429,6 +429,53 @@ version of the source fails loudly against another instead of doing nothing. `FM
 undoes every edit. `FM1Sim.create(file)` starts a private simulator on a module of your own, which must
 export the simulator interface Field drives (`FM1Sim.FIRMWARE_EXPORTS`).
 
+## Live-coding the firmware
+
+`fm1.hook(track, program)` runs a [StackSL](stacksl_cheatsheet.md) program inside the firmware, on every
+sample of one track, after the track's voice and before its level, pan and effects. Running the box again
+with a changed program changes the sound from the next block, about 3 ms later. The sequence, the voices
+and the rest of the firmware keep running.
+
+```diffstatic {data-lang=kotlin}
+val fm1 = FM1Sim.shared
+fm1.preset(1)
+fm1.start()
+fm1.hook(0, "in 30 * sin 0.12 *") // ACID ALLEY's 303, folded through a sine
+fm1.node
+```
+
+In this clip the 303 plays unchanged, then folded by `in 30 * sin 0.12 *` from two seconds, by
+`in 80 * sin 0.12 *` from four, and unchanged again from six:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/fm1/hooks.wav" audio-spec="hooks" audio-renderer="afield.audio.synth.FM1SoundDocs" embed=true hidden=true name="fm1-hooks"}
+// FM1SoundDocs.renderWav("hooks", …): ACID ALLEY's 303 through two StackSL hooks in turn
+```
+
+Each sample reaches the program as its input, `vec4(sample, previous sample, track, seconds)`, with 1 at
+the voice's full scale, so `in` is the sample. The `.x` of what the program leaves on top is what the
+track plays. The voices' samples mostly stay within a tenth or so of full scale, which is why the fold
+above drives the sample 30 times and then scales it back. A program sees one sample at a time, so it shapes, folds and mixes rather than filtering or
+delaying; the previous sample in `.y` is the only memory it has. Output past ±64 is held there, and NaN
+becomes silence.
+
+A hook compiles in about a tenth of a second. The first one also loads a build of the firmware with the
+hook points in it, which is built once and kept in `~/.field4/fm1`, and carries the project and transport
+across as `loadFirmware` does. A program that does not compile throws `FM1HookException` with StackSL's
+message, and the track keeps the hook it had. StackSL's image words (`sample`, `gather`, `blur` and the
+rest) are refused, since a hook has a stream of samples and no picture to read. A hook that fails while
+it runs is taken out, `fm1.hookError(track)` says why, and the track plays on without it.
+`fm1.clearHook(track)` takes a hook out, and `fm1.evalHook(track, x)` runs the program once on a value,
+for drawing its curve.
+
+??? aside "How the hooks are checked"
+    `fm1.hook` compiles StackSL to GLSL, rewrites that lightly into C++ (`FM1Hooks.glslToCpp`), and builds
+    it with the WASI SDK's clang against `fm1/glsl_prelude.hpp`, where clang's vector types supply GLSL's
+    swizzles. The `synth.fm1.hooks` smoke test compiles every StackSL program on Field's docs pages this
+    way. All 73 that do not read a texture build, and each one's `eval` agrees with Field's CPU GLSL
+    interpreter at six inputs to within 1.4 × 10⁻⁵. The same test checks that an identity hook (`in`)
+    leaves the 303 bit-for-bit as it was, and that a hook that traps is removed while the track keeps
+    playing.
+
 ## Licence
 
 The firmware's application code is GPL-3.0 with a linking exception for M-VAVE's SDK; the voices it
@@ -469,8 +516,8 @@ modified version of the firmware, under the same licences.
   boxes on a canvas.
 * The source: `src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt` (the simulator, MIDI, the screen and
   projects), `FM1Panel.kt` (the live panel), `FM1Patterns.kt` (patterns in, MIDI clips out) and
-  `FM1Voice.kt` (DX7 voices), `FM1Samples.kt` (the sampler's bank) and `FM1Firmware.kt` (building the
-  firmware); what was left out and why is in `dev_docs/FM1.md`.
+  `FM1Voice.kt` (DX7 voices), `FM1Samples.kt` (the sampler's bank), `FM1Firmware.kt` (building the
+  firmware) and `FM1Hooks.kt` (StackSL hooks); what was left out and why is in `dev_docs/FM1.md`.
 * The firmware's source: [m-vave/fm1_open](https://github.com/m-vave/fm1_open). The voices are in
   `third_party/synth/` and `web/synth/`, and the mixer and sequencer in `web/engine/`.
 
@@ -486,5 +533,9 @@ What to build next, most useful first:
   semitones play as drawn.
 * **Separate track outputs**: a firmware patch that exports each track's buffer from `render_stereo`
   in `web/engine/sound.c`, and a `node` per track that reads them.
+* **More hook points**: the master bus before the effects, and the sequencer's notes as it plays them,
+  so a StackSL program can reshape the FM-1's own patterns.
+* **Hooks with memory**: give a hook a block of state that lasts between samples, so it can filter and
+  delay.
 * **Firmware edited in the box's own editor**: open a source file as a box property, so saving it
   rebuilds and swaps the firmware, with compile errors marked on their lines.

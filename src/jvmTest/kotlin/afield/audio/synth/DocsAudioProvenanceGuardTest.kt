@@ -65,7 +65,7 @@ class DocsAudioProvenanceGuardTest {
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 24,
             Origin.FAUST to 6,
-            Origin.FM1_SIM to 7,
+            Origin.FM1_SIM to 8,
             Origin.DOUGH_WASM to 2,
             Origin.STEAM_AUDIO_HRTF to 3,
             Origin.SONIC_PI to 1,
@@ -312,7 +312,10 @@ class DocsAudioProvenanceGuardTest {
          *
          * `fm1.md` added one more (2026-11-15), [Origin.FM1_SIM]: ACID ALLEY with firmware built from
          * patched source swapped in four seconds in ([FM1Firmware], [FM1Sim.loadFirmware]).
+         *
+         * `fm1.md` added one more (2026-11-15), [Origin.FM1_SIM]: ACID ALLEY's 303 through two StackSL
+         * hooks in turn, run inside the firmware ([FM1Hooks], [FM1Sim.hook]).
          */
-        const val EXPECTED_FENCE_COUNT = 143
+        const val EXPECTED_FENCE_COUNT = 144
     }
 }

@@ -71,6 +71,22 @@ what a user does not need: why things are the way they are, and what was left an
   message names the file, and that the `firmware-swap` clip is identical to the unswapped one
   before the swap.
 
+- **StackSL hooks** (`FM1Hooks.kt`, `FM1Sim.hook`, `fm1/fm1-glue.js`, `fm1/glsl_prelude.hpp`). Five
+  edits of the firmware source (`FM1Hooks.PATCHES`): an imported `field.track(track, left, right,
+  frames, clock)`, a frame clock bumped at the top of `render()`, a call after each track's voice in
+  both `render_stereo` and the mono path of `render` (the firmware picks per block; a hook in only
+  one goes silent whenever the mix turns mono), and `sim_field_hooks(mask)` so unhooked tracks never
+  leave the module. The hookable build is cached in `~/.field4/fm1/fm1-sim-hooks-<key>.wasm`, the
+  key a digest of the commit, patches and flags. The JS glue instantiates the firmware with
+  `field.track` when the module imports it, copies the block into the hook's own memory (so a bad
+  hook cannot write over the firmware), calls it, and copies back; a trap drops the hook and keeps
+  the message. All voices use 2^24 as 1.0 (303, pluck and `voices.c` scale by 16777216 before
+  `fm1_mix128`). StackSL's GLSL becomes C++ by two rewrites (constructors `vec4(`→`vec4_(`, `f` on
+  float literals) plus the prelude: clang `ext_vector_type` gives swizzles and arithmetic, overloads
+  give GLSL's built-ins, structs with `operator*` give the `mat2`/`mat3` StackSL's noise library
+  multiplies by. C was tried first and fails on the matrices. A hook builds in ~0.1 s (0.13 s
+  measured in a box, 0.31 s for the first, which also loads the hookable firmware).
+
 ## Not done, and why
 
 - **Per-track stems.** The firmware mixes the eight tracks (and their reverb/delay sends) inside
