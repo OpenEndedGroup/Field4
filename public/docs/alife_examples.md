@@ -3236,7 +3236,7 @@ rungs and braces. `M` is a muscle segment, whose left and right rails beat half 
 the segment bends one way and then the other. `L` and `R` are muscles that also curve the body, so
 it swims in a circle. `S` is stiff, and `W` is weak, the place the body tears first:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val world = BondedWorld(256)
 val worm = world.grow("SMMMMMMMMMMS", 0f, 0f, waveStep = 0.8f)
 world.run(3000)
@@ -3262,8 +3262,8 @@ uploads them, and steps them in its `organisms` box's `compute` tab; a `draw` bo
 the cells and bonds straight from the GPU buffers. The genomes are the first line of the
 `organisms` box:
 
-```kotlin
-val genomes = listOf("SMMMMMMMMMMS", "SLLLLLLLLLS", "SMMMMMMMMMMMMMMS", "SRRRRRRRRS")
+```diffstatic {data-lang=kotlin}
+val genomes = ["SMMMMMMMMMMS", "SLLLLLLLLLS", "SMMMMMMMMMMMMMMS", "SRRRRRRRRS"]
 ```
 
 Edit one and run the box again to grow different creatures. Each genome has a start and a

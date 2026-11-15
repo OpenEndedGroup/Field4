@@ -44,7 +44,7 @@ operations:
           curve the body left or right (so it swims in circles), S stiff, W weak (tears first).
           Edit them and re-run this box: the world is rebuilt and uploaded again.
           */
-          val genomes = listOf("SMMMMMMMMMMS", "SLLLLLLLLLS", "SMMMMMMMMMMMMMMS", "SRRRRRRRRS")
+          val genomes = ["SMMMMMMMMMMS", "SLLLLLLLLLS", "SMMMMMMMMMMMMMMS", "SRRRRRRRRS"]
 
           val makeWorld = {
               BondedWorld(1400).apply {
@@ -52,8 +52,16 @@ operations:
                   params.wallY = 18f
                   // where each one starts and the way it heads (radians): the straight worms cross the
                   // world, the L and R worms turn
-                  val starts = listOf(Triple(-22f, -12f, 0f), Triple(-16f, 8f, 0f), Triple(21f, 8f, PI.toFloat()), Triple(16f, -2f, PI.toFloat()))
-                  genomes.forEachIndexed { k, g -> val (sx, sy, heading) = starts[k]; grow(g, sx, sy, angle = heading) }
+                  val starts = listOf(
+                      Triple(-22f, -12f, 0f),
+                      Triple(-16f, 8f, 0f),
+                      Triple(21f, 8f, PI.toFloat()),
+                      Triple(16f, -2f, PI.toFloat()),
+                  )
+                  genomes.forEachIndexed { k, g ->
+                      val (sx, sy, heading) = starts[k]
+                      grow(g, sx, sy, angle = heading)
+                  }
                   scatter(500, -29f, -17f, 29f, 17f)
               }
           }
@@ -115,15 +123,29 @@ operations:
 
           // BondedWorld.step, one invocation per cell. Every bond is stored at both its ends,
           // so a cell only ever writes itself.
-          struct Cell { vec4 pv; vec4 e; };      // (x, y, vx, vy), (energy, kind, owner, 0)
-          struct Bonds { vec4 partner; vec4 rest; vec4 amp; vec4 phase; vec4 limit; vec4 axis; };
-          layout(std430, buffer_reference) buffer CellBuf { Cell c[]; };
-          layout(std430, buffer_reference) buffer BondBuf { Bonds b[]; };
+          struct Cell {
+              vec4 pv;
+              vec4 e;
+          }; // (x, y, vx, vy), (energy, kind, owner, 0)
+          struct Bonds {
+              vec4 partner;
+              vec4 rest;
+              vec4 amp;
+              vec4 phase;
+              vec4 limit;
+              vec4 axis;
+          };
+          layout(std430, buffer_reference) buffer CellBuf {
+              Cell c[];
+          };
+          layout(std430, buffer_reference) buffer BondBuf {
+              Bonds b[];
+          };
 
           layout(push_constant) uniform P {
               CellBuf cells;
               BondBuf bonds;
-              float tick;      // the step number; -1 freezes the world
+              float tick; // the step number; -1 freezes the world
               uint count;
               uint capacity;
               float dt;
@@ -167,7 +189,10 @@ operations:
                   float scale = clamp(0.5 * (ei + o.e.x) / pc.fullEnergy, 0.0, 1.0);
                   float r = bd.rest[s] * (1.0 + bd.amp[s] * scale * sin(pc.omega * t + bd.phase[s]));
                   // both ends see the same numbers, so both break the bond on the same step
-                  if (abs(len - r) / r > bd.limit[s]) { pc.bonds.b[i].partner[s] = -1.0; continue; }
+                  if (abs(len - r) / r > bd.limit[s]) {
+                      pc.bonds.b[i].partner[s] = -1.0;
+                      continue;
+                  }
                   float rv = dot(o.pv.zw - vi, u);
                   f += (pc.stiffness * (len - r) + pc.bondDamping * rv) * u;
                   // rails set the drag axis; rungs and braces do not
@@ -222,10 +247,24 @@ operations:
         vertex: |
           #version 450
           #extension GL_EXT_buffer_reference : require
-          struct Cell { vec4 pv; vec4 e; };
-          struct Bonds { vec4 partner; vec4 rest; vec4 amp; vec4 phase; vec4 limit; vec4 axis; };
-          layout(std430, buffer_reference) buffer CellBuf { Cell c[]; };
-          layout(std430, buffer_reference) buffer BondBuf { Bonds b[]; };
+          struct Cell {
+              vec4 pv;
+              vec4 e;
+          };
+          struct Bonds {
+              vec4 partner;
+              vec4 rest;
+              vec4 amp;
+              vec4 phase;
+              vec4 limit;
+              vec4 axis;
+          };
+          layout(std430, buffer_reference) buffer CellBuf {
+              Cell c[];
+          };
+          layout(std430, buffer_reference) buffer BondBuf {
+              Bonds b[];
+          };
           layout(push_constant) uniform P {
               CellBuf cells;
               BondBuf bonds;
@@ -241,7 +280,9 @@ operations:
           layout(location = 2) flat out int isBond;
 
           const vec2 corner[6] = vec2[](vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(0, 0), vec2(1, 1), vec2(0, 1));
-          vec3 hue(float h) { return clamp(abs(fract(h + vec3(0, 2, 1) / 3.0) * 6.0 - 3.0) - 1.0, 0.0, 1.0); }
+          vec3 hue(float h) {
+              return clamp(abs(fract(h + vec3(0, 2, 1) / 3.0) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+          }
 
           void main() {
               int ci = gl_VertexIndex / 30, r = gl_VertexIndex % 30;
@@ -258,14 +299,18 @@ operations:
                   isBond = 0;
                   float bright = kind > 2.5 ? 0.7 : (kind > 0.5 ? 1.0 : 0.55) * (0.35 + 0.65 * clamp(me.e.x, 0.0, 1.0));
                   col = vec4(c * bright, 1.0);
-              } else {
+              }
+              else {
                   int s = (r - 6) / 6;
                   int j = int(pc.bonds.b[ci].partner[s]);
                   isBond = 1;
                   tc = q;
                   col = vec4(c * 0.5, 1.0);
                   // each bond is drawn once, from its lower-numbered end
-                  if (j <= ci) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+                  if (j <= ci) {
+                      gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+                      return;
+                  }
                   vec2 a = me.pv.xy, b = pc.cells.c[base + uint(j)].pv.xy;
                   vec2 d = b - a;
                   vec2 n = normalize(vec2(-d.y, d.x)) * 0.07;
@@ -283,7 +328,10 @@ operations:
           layout(location = 2) flat in int isBond;
           layout(location = 0) out vec4 outColor;
           void main() {
-              if (isBond == 1) { outColor = col; return; }
+              if (isBond == 1) {
+                  outColor = col;
+                  return;
+              }
               float d = length(tc - vec2(0.5));
               float a = 1.0 - smoothstep(0.42, 0.5, d);
               if (a < 0.01) discard;
@@ -322,7 +370,9 @@ operations:
                   worst = maxOf(worst, Math.hypot((gpu[o] - cpu.x[i]).toDouble(), (gpu[o + 1] - cpu.y[i]).toDouble()))
                   travel = maxOf(travel, Math.hypot((cpu.x[i] - start.x[i]).toDouble(), (cpu.y[i] - start.y[i]).toDouble()))
               }
-              println("after $n steps: largest GPU-CPU distance $worst, largest distance a cell moved $travel, bonds ${cpu.bondCount()}")
+              println(
+                  "after $n steps: largest GPU-CPU distance $worst, largest distance a cell moved $travel, bonds ${cpu.bondCount()}",
+              )
               clock.freezeAt = -1
           }
   - connect: { parent: bonded_renderer, child: bonded_world }
