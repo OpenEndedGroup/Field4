@@ -184,7 +184,7 @@ At first the flank only has a shoulder. Once the small hill is tall enough, a ma
 (green) appear together at an orange dot. When it shrinks again they meet and cancel at a violet one.
 The field beside the diagram shows frame 20, where the cursor is:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/topology_tracking/cerf_flank.png" alt="left, a Cerf diagram on dark grey: a flat red line at the top for the broad hill's peak, and below it a red arc and a green arc that start together at an orange dot, rise, and meet again at a violet dot, crossed by a white vertical cursor in the middle; flat blue and green lines along the bottom for the minima and saddles on the frame's edge. Right, the field at the cursor in viridis: a big yellow hill and a smaller one to its right, each with a red dot, and a green saddle dot between them" wait="4" timeout="240" capture="box" open-outputs="true" padding="20" requires="morse-smale" name="tracking-cerf-flank" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/topology_tracking/cerf_flank.png" alt="left, a Cerf diagram on dark grey: a flat red line at the top for the broad hill's peak, and below it a red arc and a green arc that start together at an orange dot, rise, and meet again at a violet dot, crossed by a white vertical cursor in the middle; flat blue and green lines along the bottom for the minima and saddles on the frame's edge. Right, the field at the cursor in viridis: a big yellow hill and a smaller one to its right, each with a red dot, and a green saddle dot between them" wait="4" timeout="240" capture="box" open-outputs="true" padding="16" trim="true" requires="morse-smale" name="tracking-cerf-flank" embed=true}
 import afield.geometry.topology.morsesmale.*
 import afield.geometry.topology.tracking.*
 
@@ -198,7 +198,8 @@ fun field(t: Double) =
 val cerf = CerfDiagram()
 for (frame in 0..40) cerf.add(frame.toDouble(), MorseSmale.compute(field(frame / 40.0)), minPersistence = 1e-3)
 
-val diagram = Img.filled(300, 200, 1, 0.08f).drawFLines(cerf.toFLines(300.0, 200.0, cursor = 20.0, thickness = 2.0), scale = 2.0)
+val diagram =
+    Img.filled(300, 200, 1, 0.08f).drawFLines(cerf.toFLines(300.0, 200.0, cursor = 20.0, thickness = 2.0), scale = 2.0)
 val view = field(0.5).normalized().colormap("viridis").drawFLines(cerf.fieldMarkers(20.0, 7.0), scale = 4.0)
 showImgGrid("Cerf diagram, cursor at frame 20" to diagram, "frame 20" to view, columns = 2, cellSide = 420)
 ```
@@ -210,52 +211,58 @@ the same way. Each event has its `time`, `value`, the `tracks` involved and its 
 the field. `pairIndex` is 0 for a minimum–saddle pair and 1 for a saddle–maximum pair. The flat
 lines along the bottom are critical points on the edge of the grid, where the field is cut off.
 
-### A scrubbable cursor on a simulation
+### A simulation whose topology churns
 
 The diagram is most useful beside a field you did not design. This box runs a
-[Gray–Scott reaction](alife_examples.md) from one square seed in the regime where spots divide.
-It records the diagram over 40 frames, then draws the diagram and the field at the frame the
-slider picks. `fieldMarkers(t)` marks the critical points alive at `t`, and puts a large orange or
-violet dot where a pair is born or cancels within `window` frames of it:
+[Gray–Scott reaction](alife_examples.md) from three seed patches in its spot regime, where every
+spot grows, splits in two and pushes its daughters apart until spots fill the field. It records
+120 frames, 40 steps apart, and draws the diagram with its cursor at frame 70 beside the field at that frame.
+`fieldMarkers(t)` marks the critical points alive at `t`, and puts a large orange or violet dot
+where a pair is born or cancels within `window` frames of it:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/topology_tracking/cerf_grayscott.png" alt="a frame slider above two panels. Left, a Cerf diagram: red maximum curves falling steeply from orange birth dots near the start, levelling off and rising again, a green saddle curve and a blue minimum curve falling below them, one violet cancellation dot near the bottom, and the white cursor at frame 12. Right, the Gray–Scott field at frame 12 in magma: a glowing square ring on black with red dots at its four corners, green saddle dots at the middle of each side and a blue minimum in its darker centre" wait="5" timeout="240" capture="box" open-outputs="true" padding="20" requires="morse-smale" name="tracking-cerf-grayscott" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/topology_tracking/cerf_grayscott.png" alt="two panels. Left, a dense Cerf diagram: a band of thin red maximum curves near the top and a band of green saddle curves below it, both rising out of a few curves at the left and fanning into dozens that weave through each other, blue minimum curves along the bottom, orange birth dots and violet cancellation dots scattered between the bands, and a white cursor at frame 70. Right, the Gray–Scott field at frame 70 in magma: a front of magenta spots spreading from both sides of the frame across a black middle, a green saddle dot between neighbouring spots, and a few large orange and violet dots where spots are splitting" wait="8" timeout="300" capture="box" open-outputs="true" padding="20" trim="true" requires="morse-smale" name="tracking-cerf-grayscott" embed=true}
 import afield.geometry.topology.morsesmale.*
 import afield.geometry.topology.tracking.*
 
-// A seed square in the middle of a Gray–Scott run in its dividing regime, sampled every 4 steps. The square
-// pinches into four spots, so peaks are created in pairs with saddles between them.
-val inSquare = { x: Int, y: Int -> x in 18..30 && y in 18..30 }
-var state = GrayScottState(
-    Img.generate(48, 48) { x, y -> if (inSquare(x, y)) 0.5f else 1f },
-    Img.generate(48, 48) { x, y -> if (inSquare(x, y)) 0.25f + 0.02f * ((x * 7 + y * 3) % 5) else 0f },
-)
+// Three seed patches in Gray–Scott's spot regime, where each spot grows, splits in two and pushes its
+// daughters apart until the spots fill the field. 120 frames, 40 steps apart: 4,800 steps in all.
+var state = grayScottSeed(96, 96, patches = 3, patchSize = 10, seed = 7)
 val frames = ArrayList<Img>()
 val cerf = CerfDiagram()
-for (frame in 0 until 40) {
-    state = state.stepTimes(GRAY_SCOTT_MITOSIS, 4)
-    val v = state.v.gaussianBlur(1.0)
+for (frame in 0 until 120) {
+    state = state.stepTimes(GRAY_SCOTT_SPOTS, 40)
+    val v = state.v.gaussianBlur(1.5)
     frames.add(v)
-    cerf.add(frame.toDouble(), MorseSmale.compute(v, persistence = 0.02), minPersistence = 0.02)
+    cerf.add(frame.toDouble(), MorseSmale.compute(v, persistence = 0.05), minPersistence = 0.05)
 }
+
+val births = cerf.events(CerfEventType.BIRTH).size
+val deaths = cerf.events(CerfEventType.DEATH).size
+val swaps = cerf.events(CerfEventType.SWAP).size
 
 fun show(t: Double) {
-    val diagram = Img.filled(320, 220, 1, 0.08f).drawFLines(cerf.toFLines(320.0, 220.0, cursor = t, thickness = 2.0), scale = 2.0)
-    val view = frames[t.toInt()].colormap("magma", 0f, 0.4f).drawFLines(cerf.fieldMarkers(t, 6.0, window = 1.0), scale = 9.0)
-    val births = cerf.events(CerfEventType.BIRTH).size
-    val deaths = cerf.events(CerfEventType.DEATH).size
-    showImgGrid("births: $births, cancellations: $deaths" to diagram, "frame ${t.toInt()}" to view, columns = 2, cellSide = 440)
+    val diagram =
+        Img.filled(480, 320, 1, 0.08f)
+            .drawFLines(cerf.toFLines(480.0, 320.0, cursor = t, showSwaps = false, thickness = 1.0), scale = 2.0)
+    val view =
+        frames[t.toInt()].colormap("magma", 0f, 0.4f).drawFLines(cerf.fieldMarkers(t, 4.0, window = 1.0), scale = 5.0)
+    showImgGrid(
+        "$births births, $deaths cancellations, $swaps swaps" to diagram,
+        "frame ${t.toInt()}" to view,
+        columns = 2,
+        cellSide = 480,
+    )
 }
 
-slider("frame", min = 0.0, max = 39.0, step = 1.0, initialValue = 12.0) { show(it) }
-show(12.0)
+show(70.0)
 ```
 
-The square seed becomes a ring, with the reagent piling up at its corners. Four maxima are born
-there in the first frames, each paired with a saddle, and a minimum opens in the middle. Drag the
-slider to see each event's dots light up on the field in the frame where it happens. A busier
-regime, such as `GRAY_SCOTT_WORMS`, produces hundreds of events. Raise `minPersistence` until the
-diagram shows the changes you care about. Pass `showSwaps = false` to `toFLines` to leave out the
-swap dots, which outnumber the other events in a busy field.
+The few curves at the left are the seed patches. Each time a spot divides, a new maximum is born with
+the saddle that separates it from its sister, so the red and green bands thicken together. Spots
+squeezed out by their neighbours cancel with a saddle at a violet dot. Inside each band the curves
+cross all the time: the run has thousands of swaps, which is why this box passes `showSwaps = false`
+to `toFLines`. Call `show` with another frame, or wrap it in a `slider` as the
+[`cerf_explorer`](agent_transcripts.md#cerf_explorer) demo does, to watch each event's dots light up on the field in the frame where it happens. Raise `minPersistence` until the diagram shows only the changes you care about.
 
 !!! note "Sampled in time"
     `CerfDiagram` looks at the field at the frames you give it, so an event is placed at the first
