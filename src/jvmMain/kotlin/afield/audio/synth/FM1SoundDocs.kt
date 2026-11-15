@@ -86,6 +86,18 @@ object FM1SoundDocs {
     /** The second: folded harder still, `0.12 sin(80x)`, at about the same level. */
     const val HOOK_BRIGHT = "in 80 * sin 0.12 *"
 
+    /** The first note hook in `note-hooks`: odd steps of the sequence a fifth up. */
+    const val NOTE_FIFTHS = "in in .x in .z 2 mod 7 * + >x"
+
+    /** The second: every note an octave up, velocities as written. */
+    const val NOTE_OCTAVE = "in in .x 12 + >x"
+
+    /** [NOTE_FIFTHS] compiled once per JVM. */
+    val noteFifths: FM1Hook by lazy { FM1Hooks.compileNotes(NOTE_FIFTHS) }
+
+    /** [NOTE_OCTAVE] compiled once per JVM. */
+    val noteOctave: FM1Hook by lazy { FM1Hooks.compileNotes(NOTE_OCTAVE) }
+
     /** [HOOK_FOLD] compiled once per JVM. */
     val hookFold: FM1Hook by lazy { FM1Hooks.compile(HOOK_FOLD) }
 
@@ -130,6 +142,16 @@ object FM1SoundDocs {
                 2.0 to { it.hook(0, hookFold) },
                 4.0 to { it.hook(0, hookBright) },
                 6.0 to { it.clearHook(0) },
+            ),
+        ) { sim ->
+            sim.loadFirmware(FM1Hooks.firmware())
+            sim.start()
+        },
+        "note-hooks" to Figure(
+            1, seconds = 8.0, buildsFirmware = true,
+            events = listOf(
+                2.0 to { it.hook(0, noteFifths) },
+                5.0 to { it.hook(0, noteOctave) },
             ),
         ) { sim ->
             sim.loadFirmware(FM1Hooks.firmware())
@@ -190,7 +212,7 @@ object FM1SoundDocs {
             fig.begin(sim)
             val frames = (fig.seconds * SR).toInt()
             val events = fig.events.map { (seconds, f) -> (seconds * SR).toInt() / BLOCK * BLOCK to f }
-            if (fig.buildsFirmware) { crushedFirmware; hookFold; hookBright } // build before the clock starts, not mid-clip
+            if (fig.buildsFirmware) { crushedFirmware; hookFold; hookBright; noteFifths; noteOctave } // build before the clock starts
             val left = FloatArray(frames)
             val right = FloatArray(frames)
             var at = 0

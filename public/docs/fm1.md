@@ -467,6 +467,38 @@ it runs is taken out, `fm1.hookError(track)` says why, and the track plays on wi
 `fm1.clearHook(track)` takes a hook out, and `fm1.evalHook(track, x)` runs the program once on a value,
 for drawing its curve.
 
+### Hooking the sequence
+
+`fm1.noteHook(track, program)` runs a StackSL program on each note the track's own sequence plays, before
+the voice hears it. The note reaches the program as `vec4(note, velocity, step, seconds)`, with MIDI note
+numbers, velocity from 1 to 127 and the step from 0 to 63. The program's `.x` is the note played and `.y`
+its velocity. `>x` replaces just the note, so `in in .x 12 + >x` plays the sequence an octave up with its
+velocities as written:
+
+```diffstatic {data-lang=kotlin}
+val fm1 = FM1Sim.shared
+fm1.preset(1)
+fm1.start()
+fm1.noteHook(0, "in in .x in .z 2 mod 7 * + >x") // the 303's odd steps a fifth up
+fm1.node
+```
+
+In this clip the 303 plays its line as written, then with its odd steps a fifth up from two seconds, and
+an octave up from five:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/fm1/note-hooks.wav" audio-spec="note-hooks" audio-renderer="afield.audio.synth.FM1SoundDocs" embed=true hidden=true name="fm1-note-hooks"}
+// FM1SoundDocs.renderWav("note-hooks", …): ACID ALLEY's 303 sequence through two StackSL note hooks
+```
+
+A velocity at or below zero drops the note, and so do a note outside 0 to 127 and NaN, so
+`in 0 >y` silences a track's sequence. Two notes of a chord moved onto the same note sound once. The
+note-off goes to the note that was played, so a hook changed in the middle of a note does not leave it
+hanging. Only melodic tracks' own sequences pass through a note hook. Drum tracks' pads don't, and nor do
+notes Field sends with `fm1.note`, a pattern or a keyboard, which Field can change itself before sending.
+`fm1.evalNoteHook(track, note, velocity, step)` says what the hook does to one note,
+`fm1.clearNoteHook(track)` takes it out, and `fm1.noteHookError(track)` says why one that failed was
+removed.
+
 ??? aside "How the hooks are checked"
     `fm1.hook` compiles StackSL to GLSL, rewrites that lightly into C++ (`FM1Hooks.glslToCpp`), and builds
     it with the WASI SDK's clang against `fm1/glsl_prelude.hpp`, where clang's vector types supply GLSL's
@@ -474,7 +506,8 @@ for drawing its curve.
     way. All 73 that do not read a texture build, and each one's `eval` agrees with Field's CPU GLSL
     interpreter at six inputs to within 1.4 × 10⁻⁵. The same test checks that an identity hook (`in`)
     leaves the 303 bit-for-bit as it was, and that a hook that traps is removed while the track keeps
-    playing.
+    playing. For note hooks it reads ACID ALLEY's 303 back through its MIDI out: with
+    `in in .x 12 + >x` every one of its notes comes out exactly 12 higher, and with `in 0 >y` none play.
 
 ## Licence
 
@@ -533,8 +566,7 @@ What to build next, most useful first:
   semitones play as drawn.
 * **Separate track outputs**: a firmware patch that exports each track's buffer from `render_stereo`
   in `web/engine/sound.c`, and a `node` per track that reads them.
-* **More hook points**: the master bus before the effects, and the sequencer's notes as it plays them,
-  so a StackSL program can reshape the FM-1's own patterns.
+* **More hook points**: the master bus before the effects, and drum tracks' pads in the sequence.
 * **Hooks with memory**: give a hook a block of state that lasts between samples, so it can filter and
   delay.
 * **Firmware edited in the box's own editor**: open a source file as a box property, so saving it

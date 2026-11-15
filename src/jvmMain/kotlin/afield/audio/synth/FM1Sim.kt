@@ -489,8 +489,17 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
     fun midiAt(block: Long, vararg bytes: Int) {
         require(bytes.isNotEmpty() && bytes.all { it in 0..255 }) { "FM1Sim: MIDI bytes must be 0..255" }
         val message = ByteArray(bytes.size) { bytes[it].toByte() }
-        at(block) { send(it, message) }
+        at(block) {
+            send(it, message)
+            // Remember transport as sent: the sequencer reports itself playing only after a block
+            // has rendered, and [loadFirmware] may come before one does.
+            if (message.size == 1 && (bytes[0] == 0xFA || bytes[0] == 0xFB)) startSentAt = blocksRendered
+            if (message.size == 1 && bytes[0] == 0xFC) startSentAt = -1L
+        }
     }
+
+    /** The block a MIDI Start or Continue was last delivered in, or -1 after a Stop. Lock-confined. */
+    private var startSentAt = -1L
 
     /** A message on [track]'s channel, resolved when it is sent so a re-routed track still hears it. */
     private fun channelMessage(block: Long, track: Int, status: Int, a: Int, b: Int = -1) {
@@ -1140,6 +1149,8 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
                     // Hooks move to a firmware that has hook points; one without them drops them.
                     if (next.hookable) hooks.forEachIndexed { t, h -> if (h != null) installHook(next, t, h) }
                     else java.util.Arrays.fill(hooks, null)
+                    if (next.noteHookable) noteHooks.forEachIndexed { t, h -> if (h != null) installHook(next, t, h) }
+                    else java.util.Arrays.fill(noteHooks, null)
                 } finally {
                     runCatching { next.context.leave() }
                 }
@@ -1161,6 +1172,11 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
     // ── hooks ──────────────────────────────────────────────────────────────────────────────
 
     private val hooks = arrayOfNulls<FM1Hook>(TRACKS)
+    private val noteHooks = arrayOfNulls<FM1Hook>(TRACKS)
+
+    /** Whether the firmware running now has the note hook point too (a newer [FM1Hooks.firmware] build). */
+    private val Module.noteHookable: Boolean
+        get() = hookable && exports.getMember("sim_field_note_hooks")?.canExecute() == true
 
     /** Whether the firmware running now has hook points (a build from [FM1Hooks.firmware]). */
     val hookable: Boolean get() = module.hookable
@@ -1183,11 +1199,66 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
      */
     fun hook(track: Int, stacksl: String): FM1Hook = FM1Hooks.compile(stacksl).also { hook(track, it) }
 
-    /** Run the compiled [hook] on [track]; see the StackSL overload. */
+    /** Run the compiled [hook] on [track]: on its samples or its notes, by [FM1Hook.kind]. */
     fun hook(track: Int, hook: FM1Hook) {
         requireTrack(track)
-        if (!module.hookable) loadFirmware(FM1Hooks.firmware())
+        val ready = if (hook.kind == FM1Hook.Kind.NOTES) between { module.noteHookable } else module.hookable
+        if (!ready) loadFirmware(FM1Hooks.firmware())
         between { installHook(module, track, hook) }
+    }
+
+    /**
+     * Run the StackSL program [stacksl] on each note [track]'s own sequence plays, before the voice
+     * hears it, and return the compiled hook.
+     *
+     * ```kotlin
+     * fm1.noteHook(0, "in in .x in .z 2 mod 7 * + >x")  // odd steps a fifth up
+     * ```
+     *
+     * Each note arrives as `vec4(note, velocity, step, seconds)` (MIDI note numbers, velocity
+     * 1..127, the step 0..63); the program's `.x` is the note played and `.y` its velocity, both
+     * rounded. A velocity at or below zero, a note outside 0..127, or NaN drops the note, and two
+     * notes of a chord moved onto one sound once. Only melodic tracks' sequences pass through it:
+     * not drum tracks, not notes from [note], a pattern or a keyboard.
+     *
+     * @throws FM1HookException as [hook] does
+     */
+    fun noteHook(track: Int, stacksl: String): FM1Hook = FM1Hooks.compileNotes(stacksl).also { hook(track, it) }
+
+    /** Take [track]'s note hook out; its sequence plays as written. */
+    fun clearNoteHook(track: Int) {
+        requireTrack(track)
+        noteHooks[track] = null
+        if (module.hookable) between {
+            module.glue.invokeMember("clearNoteHook", track)
+            if (module.noteHookable) module.exports.getMember("sim_field_note_hooks").execute(hookMask(noteHooks))
+        }
+    }
+
+    /** The note hook [track] runs now, or null. */
+    fun noteHookOf(track: Int): FM1Hook? = noteHooks[track]
+
+    /** Why [track]'s note hook stopped, if it trapped; see [hookError]. */
+    fun noteHookError(track: Int): String? {
+        requireTrack(track)
+        if (!module.hookable) return null
+        return between { module.glue.invokeMember("noteError", track).takeUnless { it.isNull }?.asString() }
+    }
+
+    /**
+     * What [track]'s note hook does to one note: `[note, velocity]` as the firmware would play it,
+     * or null if the note is dropped or the track has none.
+     */
+    fun evalNoteHook(track: Int, note: Int, velocity: Int = 100, step: Int = 0, seconds: Float = 0f): IntArray? {
+        requireTrack(track)
+        if (!module.hookable) return null
+        val v = between {
+            module.glue.invokeMember("evalHook", track, note.toFloat(), velocity.toFloat(), step.toFloat(), seconds, true)
+                .takeUnless { it.isNull }?.let { r -> FloatArray(2) { r.getArrayElement(it.toLong()).asFloat() } }
+        } ?: return null
+        if (v[0].isNaN() || v[1].isNaN()) return null
+        val n = kotlin.math.round(v[0]).toInt(); val vel = kotlin.math.round(v[1]).toInt()
+        return if (n !in 0..127 || vel <= 0) null else intArrayOf(n, vel.coerceAtMost(127))
     }
 
     /** Take [track]'s hook out; the track plays its voice as it is. */
@@ -1196,12 +1267,12 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
         hooks[track] = null
         if (module.hookable) between {
             module.glue.invokeMember("clearHook", track)
-            module.exports.getMember("sim_field_hooks").execute(hookMask())
+            module.exports.getMember("sim_field_hooks").execute(hookMask(hooks))
         }
     }
 
-    /** Take every track's hook out. */
-    fun clearHooks() = (0 until TRACKS).forEach { clearHook(it) }
+    /** Take every track's hooks out, on samples and notes. */
+    fun clearHooks() = (0 until TRACKS).forEach { clearHook(it); clearNoteHook(it) }
 
     /** The hook [track] runs now, or null. */
     fun hookOf(track: Int): FM1Hook? = hooks[track]
@@ -1225,18 +1296,24 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
         requireTrack(track)
         if (!module.hookable) return null
         return between {
-            val v = module.glue.invokeMember("evalHook", track, x, y, z, w)
+            val v = module.glue.invokeMember("evalHook", track, x, y, z, w, false)
             if (v.isNull) null else FloatArray(4) { v.getArrayElement(it.toLong()).asFloat() }
         }
     }
 
-    private fun hookMask(): Int = (0 until TRACKS).fold(0) { m, t -> if (hooks[t] != null) m or (1 shl t) else m }
+    private fun hookMask(of: Array<FM1Hook?>): Int = (0 until TRACKS).fold(0) { m, t -> if (of[t] != null) m or (1 shl t) else m }
 
     /** Put [hook] into [m]'s slot for [track]. Caller holds the lock, entered in [m]'s context. */
     private fun installHook(m: Module, track: Int, hook: FM1Hook) {
-        m.glue.invokeMember("setHook", track, hook.wasm)
-        hooks[track] = hook
-        m.exports.getMember("sim_field_hooks").execute(hookMask())
+        if (hook.kind == FM1Hook.Kind.NOTES) {
+            m.glue.invokeMember("setNoteHook", track, hook.wasm)
+            noteHooks[track] = hook
+            m.exports.getMember("sim_field_note_hooks").execute(hookMask(noteHooks))
+        } else {
+            m.glue.invokeMember("setHook", track, hook.wasm)
+            hooks[track] = hook
+            m.exports.getMember("sim_field_hooks").execute(hookMask(hooks))
+        }
     }
 
     /** What [loadFirmware] takes from the old module to the new one. */
@@ -1252,7 +1329,8 @@ class FM1Sim private constructor(wasm: ByteArray) : Closeable {
         check(r == 0) { "FM1Sim: the running firmware could not export its project (error $r)" }
         val project = ByteArray(PROJECT_BYTES).also { m.memory.readBuffer(m.fileBuffer, it, 0, PROJECT_BYTES) }
         val state = e.getMember("sim_state").execute().asLong()
-        val playing = (0 until TRACKS).any { m.memory.readBufferByte(state + 8 + it * 20 + 6) != 0.toByte() }
+        val playing = (0 until TRACKS).any { m.memory.readBufferByte(state + 8 + it * 20 + 6) != 0.toByte() } ||
+            (startSentAt >= 0 && blocksRendered - startSentAt < 32) // started, but not yet seen playing
         val channels = IntArray(TRACKS) { e.getMember("sim_midi_setting").execute(it, 1).asInt() }
         val modes = IntArray(TRACKS) { e.getMember("sim_midi_setting").execute(it, 0).asInt() }
         return Carried(flash, project, playing, channels, modes)

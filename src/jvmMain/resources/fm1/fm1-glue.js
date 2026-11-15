@@ -5,11 +5,12 @@
 // whose bit is set with sim_field_hooks). This glue answers that call by copying the block into the
 // track's hook module, a separate WebAssembly instance with its own memory, running it, and copying
 // the block back. A hook that traps is dropped and its error kept for FM1Sim.hookError; the firmware
-// itself never sees the failure.
+// itself never sees the failure. field.note works the same way for the notes a track's sequence
+// plays: the note hook answers note | velocity << 8, or a negative number to drop the note.
 (function (bytes) {
   var module = new WebAssembly.Module(new Uint8Array(Java.from(bytes)));
   var hookable = WebAssembly.Module.imports(module).some(function (i) { return i.module === "field"; });
-  var hooks = [], errors = [], firmware = null;
+  var hooks = [], errors = [], noteHooks = [], noteErrors = [], firmware = null;
   var imports = {};
   if (hookable) {
     imports.field = {
@@ -28,6 +29,17 @@
           hooks[t] = null;
           errors[t] = String(e);
         }
+      },
+      note: function (t, step, note, velocity, clock) {
+        var h = noteHooks[t];
+        if (!h) return note | (velocity << 8);
+        try {
+          return h.exports.note(t, step, note, velocity, clock);
+        } catch (e) {
+          noteHooks[t] = null;
+          noteErrors[t] = String(e);
+          return note | (velocity << 8);
+        }
       }
     };
   }
@@ -42,10 +54,19 @@
       hooks[t] = { exports: e, buf: e.field_buf() };
       errors[t] = null;
     },
+    setNoteHook: function (t, hookBytes) {
+      var m = new WebAssembly.Module(new Uint8Array(Java.from(hookBytes)));
+      var e = new WebAssembly.Instance(m, {}).exports;
+      if (e._initialize) e._initialize();
+      noteHooks[t] = { exports: e };
+      noteErrors[t] = null;
+    },
     clearHook: function (t) { hooks[t] = null; errors[t] = null; },
+    clearNoteHook: function (t) { noteHooks[t] = null; noteErrors[t] = null; },
     error: function (t) { return errors[t] || null; },
-    evalHook: function (t, x, y, z, w) {
-      var h = hooks[t];
+    noteError: function (t) { return noteErrors[t] || null; },
+    evalHook: function (t, x, y, z, w, notes) {
+      var h = notes ? noteHooks[t] : hooks[t];
       if (!h) return null;
       var p = h.exports.eval(x, y, z, w);
       var f = new Float32Array(h.exports.memory.buffer, p, 4);
