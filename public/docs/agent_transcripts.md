@@ -3493,6 +3493,18 @@ largest blur it survives. Needs the optional Morse–Smale library: `./gradlew b
 
 [Open →](offline.html?file=assets/agent_transcripts/tracking_explorer/metadata.edn)
 
+### cerf_explorer
+
+[Cerf diagrams](topology_tracking.md#cerf-diagrams-when-the-topology-changes): the value of every
+critical point of a changing field plotted against time, with the moments a pair of critical points
+is born or cancels marked on it. The first box, launched, runs Gray–Scott worms and grows the
+diagram as it goes. The second records 4,800 steps of spots splitting from three seeds, over a
+hundred births and thousands of swaps, and scrubs a time cursor across it with a slider while the
+field beside it lights up the critical points. Needs the optional Morse–Smale library:
+`./gradlew buildMorseSmaleNative`.
+
+[Open →](offline.html?file=assets/agent_transcripts/cerf_explorer/metadata.edn)
+
 ### eagle_flow_explorer
 
 **An eagle's flight, read in two frames of reference.** A 1930s film of a golden eagle landing on a
