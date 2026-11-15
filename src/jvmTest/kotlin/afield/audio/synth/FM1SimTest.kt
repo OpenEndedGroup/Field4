@@ -408,5 +408,15 @@ class FM1SimTest {
         p.take(0.1)
         assertTrue(sim.samples()[0].name != "GONE", "factory pads come back: ${sim.samples()[0]}")
     }
-}
 
+    @Test
+    fun aSwapRightAfterStartKeepsTheSequencePlaying() = FM1Sim.create().use { sim ->
+        val p = Pull(sim)
+        sim.preset(1)
+        p.take(0.2)
+        sim.start()
+        sim.loadFirmware(FM1Sim.builtInFirmware()) // no block rendered since start()
+        p.take(0.5)
+        assertTrue(sim.isPlaying, "the Start delivered just before the swap still counts")
+    }
+}

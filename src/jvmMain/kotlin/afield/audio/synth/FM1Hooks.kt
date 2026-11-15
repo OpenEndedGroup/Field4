@@ -45,8 +45,8 @@ object FM1Hooks {
                 " * after its voice renders, for the tracks whose bit is set in field_hooked. */\n" +
                 "__attribute__((import_module(\"field\"), import_name(\"track\")))\n" +
                 "void field_track(unsigned track, int32_t *left, int32_t *right, unsigned frames, uint32_t clock);\n" +
-                "unsigned field_hooked;\n" +
-                "static uint32_t field_clock;\n",
+                "unsigned field_hooked, field_note_hooked;\n" +
+                "uint32_t field_clock;\n",
         ),
         Patch(
             "web/engine/sound.c",
@@ -70,11 +70,48 @@ object FM1Hooks {
                 "        lfo_render(t, mono, NULL, NULL, NULL);\n",
         ),
         Patch(
+            "web/engine/sequencer.c",
+            "#include \"internal.h\"\n#include <string.h>\n",
+            "#include \"internal.h\"\n#include <string.h>\n" +
+                "/* Field: field.note is imported from the host and called with each note a melodic track's\n" +
+                " * step plays, for the tracks whose bit is set in field_note_hooked. It answers\n" +
+                " * note | velocity << 8, or a negative number to drop the note. */\n" +
+                "__attribute__((import_module(\"field\"), import_name(\"note\")))\n" +
+                "int field_note(unsigned track, unsigned step, unsigned note, unsigned velocity, uint32_t clock);\n" +
+                "extern unsigned field_note_hooked;\n" +
+                "extern uint32_t field_clock;\n",
+        ),
+        Patch(
+            "web/engine/sequencer.c",
+            "            if (note < 128)\n                notes[n] = (uint8_t)note;\n        }\n",
+            "            if (note < 128)\n                notes[n] = (uint8_t)note;\n        }\n" +
+                "        uint8_t field_vel[8];\n" +
+                "        memset(field_vel, v->velocity, sizeof field_vel);\n" +
+                "        if (field_note_hooked & (1U << track)) {\n" +
+                "            for (unsigned n = 0; n < count; ++n)\n" +
+                "                if (notes[n] != 255) {\n" +
+                "                    int r = field_note(track, s, notes[n], v->velocity, field_clock);\n" +
+                "                    if (r < 0 || (r >> 8) == 0) notes[n] = 255;\n" +
+                "                    else { notes[n] = (uint8_t)(r & 127); field_vel[n] = (uint8_t)((r >> 8) > 127 ? 127 : (r >> 8)); }\n" +
+                "                }\n" +
+                "            for (unsigned n = 1; n < count; ++n) /* two notes moved onto one sound once */\n" +
+                "                for (unsigned k = 0; k < n; ++k)\n" +
+                "                    if (notes[n] != 255 && notes[k] == notes[n]) notes[n] = 255;\n" +
+                "        }\n",
+        ),
+        Patch(
+            "web/engine/sequencer.c",
+            "groove_note_ex(track, notes[n], v->velocity, 1, (v->drums >> 13) & 1U);",
+            "groove_note_ex(track, notes[n], field_vel[n], 1, (v->drums >> 13) & 1U);",
+        ),
+        Patch(
             "web/engine/Simulator.c",
             "EXPORT(\"sim_frame_revision\") uint32_t sim_frame_revision(void) { return frame_revision; }\n",
             "EXPORT(\"sim_frame_revision\") uint32_t sim_frame_revision(void) { return frame_revision; }\n" +
                 "extern unsigned field_hooked;\n" +
-                "EXPORT(\"sim_field_hooks\") void sim_field_hooks(unsigned mask) { field_hooked = mask & 0xffU; }\n",
+                "EXPORT(\"sim_field_hooks\") void sim_field_hooks(unsigned mask) { field_hooked = mask & 0xffU; }\n" +
+                "extern unsigned field_note_hooked;\n" +
+                "EXPORT(\"sim_field_note_hooks\") void sim_field_note_hooks(unsigned mask) { field_note_hooked = mask & 0xffU; }\n",
         ),
     )
 
@@ -132,7 +169,7 @@ object FM1Hooks {
      *
      * @throws FM1HookException if the program does not compile, or reads a texture
      */
-    fun cpp(stacksl: String): String {
+    fun cpp(stacksl: String, kind: FM1Hook.Kind = FM1Hook.Kind.SAMPLES): String {
         val r = compileStackSL(
             stacksl,
             StackSLCompileOptions(includeHeader = false, declareSamplers = false, sampleTextures = emptyList()),
@@ -148,7 +185,8 @@ object FM1Hooks {
         return buildString {
             append("#include \"glsl_prelude.hpp\"\n\n")
             append(glslToCpp(r.glsl))
-            append(HARNESS)
+            append(if (kind == FM1Hook.Kind.SAMPLES) HARNESS else NOTE_HARNESS)
+            append(EVAL)
         }
     }
 
@@ -157,7 +195,6 @@ object FM1Hooks {
 // Field: run stacksl() on each sample of a block, in place. 1.0 is the voices' full scale, 2^24.
 static int field_buf[256];
 static float field_prev[8][2];
-static float field_out[4];
 extern "C" {
 __attribute__((export_name("field_buf"))) int *field_buf_ptr() { return field_buf; }
 __attribute__((export_name("track"))) void field_hook_track(int n, int t, unsigned clock, int stereo) {
@@ -177,11 +214,32 @@ __attribute__((export_name("track"))) void field_hook_track(int n, int t, unsign
         field_prev[k][c] = prev;
     }
 }
-__attribute__((export_name("eval"))) float *field_hook_eval(float x, float y, float z, float w) {
+}
+"""
+
+    private const val NOTE_HARNESS = """
+
+// Field: run stacksl() on one note of a track's step. In vec4(note, velocity, step, seconds); out .x is
+// the note and .y the velocity, rounded; a velocity at or below zero, or a note outside 0..127, drops it.
+extern "C" {
+__attribute__((export_name("note"))) int field_hook_note(int t, int s, int note, int velocity, unsigned clock) {
+    (void)t;
+    vec4 v = stacksl(vec4{(float)note, (float)velocity, (float)s, (float)((double)clock / 44100.0)});
+    float n = v.x, y = v.y;
+    if (!(n == n) || !(y == y)) return -1;
+    int ni = (int)__builtin_roundf(n), vi = (int)__builtin_roundf(y);
+    if (ni < 0 || ni > 127 || vi <= 0) return -1;
+    return ni | ((vi > 127 ? 127 : vi) << 8);
+}
+}
+"""
+
+    private const val EVAL = """
+static float field_out[4];
+extern "C" __attribute__((export_name("eval"))) float *field_hook_eval(float x, float y, float z, float w) {
     vec4 v = stacksl(vec4{x, y, z, w});
     field_out[0] = v.x; field_out[1] = v.y; field_out[2] = v.z; field_out[3] = v.w;
     return field_out;
-}
 }
 """
 
@@ -200,10 +258,20 @@ __attribute__((export_name("eval"))) float *field_hook_eval(float x, float y, fl
     fun compile(stacksl: String): FM1Hook = compileCpp(stacksl, cpp(stacksl))
 
     /**
+     * Compile [stacksl] into a note hook for [FM1Sim.noteHook]: it sees each note a track's sequence
+     * plays as `vec4(note, velocity, step, seconds)` and answers the note in `.x` and the velocity in
+     * `.y`, so `in in .x 12 + >x` plays the sequence an octave up.
+     *
+     * @throws FM1HookException as [compile] does
+     */
+    fun compileNotes(stacksl: String): FM1Hook =
+        compileCpp(stacksl, cpp(stacksl, FM1Hook.Kind.NOTES), FM1Hook.Kind.NOTES)
+
+    /**
      * Compile hook C++ written by hand (it must export `field_buf`, `track` and `eval` as [cpp]'s
      * harness does), labelled [label]. For hooks StackSL cannot say, and for testing the glue.
      */
-    fun compileCpp(label: String, source: String): FM1Hook {
+    fun compileCpp(label: String, source: String, kind: FM1Hook.Kind = FM1Hook.Kind.SAMPLES): FM1Hook {
         val dir = Files.createTempDirectory("fm1-hook").toFile()
         try {
             File(dir, "glsl_prelude.hpp").writeText(PRELUDE)
@@ -213,7 +281,7 @@ __attribute__((export_name("eval"))) float *field_hook_eval(float x, float y, fl
                 HOOK_FLAGS + listOf("hook.cpp", "-o", "hook.wasm")
             val (code, output) = FM1Firmware.exec(dir, command)
             if (code != 0) throw FM1HookException("the generated C++ did not compile (a bug in FM1Hooks):\n${output.trim()}\n\n$source")
-            return FM1Hook(label, source, File(dir, "hook.wasm").readBytes())
+            return FM1Hook(label, source, File(dir, "hook.wasm").readBytes(), kind)
         } finally {
             dir.deleteRecursively()
         }
@@ -221,14 +289,19 @@ __attribute__((export_name("eval"))) float *field_hook_eval(float x, float y, fl
 }
 
 /**
- * A StackSL program compiled to run inside the FM-1's firmware; give it to [FM1Sim.hook].
+ * A StackSL program compiled to run inside the FM-1's firmware: on a track's samples
+ * ([FM1Sim.hook]) or on the notes its sequence plays ([FM1Sim.noteHook]).
  *
  * @param stacksl the program
  * @param cpp the C++ it was compiled from
  * @param wasm the hook module
+ * @param kind which of the two it runs on
  */
-class FM1Hook(val stacksl: String, val cpp: String, val wasm: ByteArray) {
-    override fun toString(): String = "FM1Hook(\"$stacksl\", ${wasm.size} bytes)"
+class FM1Hook(val stacksl: String, val cpp: String, val wasm: ByteArray, val kind: Kind = Kind.SAMPLES) {
+    /** What a hook runs on. */
+    enum class Kind { SAMPLES, NOTES }
+
+    override fun toString(): String = "FM1Hook(${kind.name.lowercase()}, \"$stacksl\", ${wasm.size} bytes)"
 }
 
 /** A hook could not be made; [message] says why, in StackSL's or the compiler's words. */

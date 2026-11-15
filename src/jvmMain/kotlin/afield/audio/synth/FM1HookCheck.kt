@@ -33,7 +33,9 @@ expect:
  *  - an identity hook leaves a track's sound as it was, and a folding hook changes it, while the
  *    sequence keeps playing through the swaps;
  *  - a hook that traps is taken out and reported, and the track plays on;
- *  - the `hooks` clip on `fm1.md` is reproducible.
+ *  - a note hook moves, keeps or drops the notes a track's sequence plays, as read back through
+ *    the track's MIDI out, and its `eval` says what it does to one note;
+ *  - the `hooks` and `note-hooks` clips on `fm1.md` are reproducible.
  *
  * Needs the network the first time, to clone the firmware and fetch the WASI SDK.
  */
@@ -133,10 +135,44 @@ object FM1HookCheck {
             println("a trapping hook is taken out and reported: ${error.lineSequence().first().take(80)}")
         }
 
-        val (a, _) = FM1SoundDocs.render("hooks")
-        val (b, _) = FM1SoundDocs.render("hooks")
-        check(a.contentEquals(b)) { "hooks: two renders differ, so a published clip could not be reproduced" }
-        println("hooks clip: ${a.size} frames, deterministic")
+        // Note hooks: what one note becomes, then the 303's own sequence read back through MIDI out.
+        FM1Sim.create(FM1Hooks.firmware()).use { sim ->
+            sim.noteHook(0, FM1SoundDocs.NOTE_OCTAVE)
+            check(sim.evalNoteHook(0, 60, 100)!!.toList() == listOf(72, 100)) { "octave hook: ${sim.evalNoteHook(0, 60, 100)?.toList()}" }
+            sim.noteHook(0, FM1SoundDocs.NOTE_FIFTHS)
+            check(sim.evalNoteHook(0, 60, 90, step = 0)!!.toList() == listOf(60, 90)) { "fifths hook, even step" }
+            check(sim.evalNoteHook(0, 60, 90, step = 3)!!.toList() == listOf(67, 90)) { "fifths hook, odd step" }
+            sim.noteHook(0, "in 0 >y")
+            check(sim.evalNoteHook(0, 60, 90) == null) { "a velocity of 0 drops the note" }
+            val bad = runCatching { sim.noteHook(0, "in frobnicate") }.exceptionOrNull()
+            check(bad is FM1HookException) { "a broken note program throws, got $bad" }
+            check(sim.noteHookOf(0)!!.stacksl == "in 0 >y") { "a refused program leaves the old note hook" }
+        }
+        fun notesOn(program: String?): List<Int> = FM1Sim.create(FM1Hooks.firmware()).use { sim ->
+            sim.preset(1)
+            sim.midiOut(0, FM1Sim.MidiOut.ALSO)
+            if (program != null) sim.noteHook(0, program)
+            val l = FloatArray(4800); val r = FloatArray(4800)
+            repeat(5) { sim.render(l, r, 4800, 48_000f) }
+            sim.drainMidi()
+            sim.start()
+            repeat(40) { sim.render(l, r, 4800, 48_000f) }
+            sim.drainMidi().filter { (it.bytes[0] and 0xF0) == 0x90 && it.bytes[2] > 0 }.map { it.bytes[1] }
+        }
+        val written = notesOn(null)
+        val octave = notesOn(FM1SoundDocs.NOTE_OCTAVE)
+        val dropped = notesOn("in 0 >y")
+        check(written.size >= 8) { "the 303 played only ${written.size} notes" }
+        check(octave == written.map { it + 12 }) { "an octave hook did not move every note up 12: $written -> $octave" }
+        check(dropped.isEmpty()) { "a velocity-0 hook still played ${dropped.size} notes" }
+        println("note hooks: the 303's ${written.size} notes ${written.take(6)}... come out ${octave.take(6)}... an octave up, and none with velocity 0")
+
+        for (clip in listOf("hooks", "note-hooks")) {
+            val (a, _) = FM1SoundDocs.render(clip)
+            val (b, _) = FM1SoundDocs.render(clip)
+            check(a.contentEquals(b)) { "$clip: two renders differ, so a published clip could not be reproduced" }
+            println("$clip clip: ${a.size} frames, deterministic")
+        }
         println("fm1 hooks checked")
     }
 }

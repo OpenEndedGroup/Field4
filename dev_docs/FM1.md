@@ -87,6 +87,18 @@ what a user does not need: why things are the way they are, and what was left an
   multiplies by. C was tried first and fails on the matrices. A hook builds in ~0.1 s (0.13 s
   measured in a box, 0.31 s for the first, which also loads the hookable firmware).
 
+- **Note hooks** (`FM1Sim.noteHook`). Three more patches, to `web/engine/sequencer.c`'s
+  `sequence_event`: an imported `field.note(track, step, note, velocity, clock)` returning
+  `note | velocity << 8` or negative to drop; a pass over the step's `notes[]` (chord included) right
+  after they are built, so `c->held` stores the transformed notes and the later note-offs release
+  what was actually played; a per-note velocity array replacing `v->velocity` in the
+  `groove_note_ex` call; and a dedupe so two chord notes moved onto one sound once.
+  `sim_field_note_hooks(mask)` gates it per track. The pad (drum) branch is not hooked: it plays
+  every set pad at one velocity and would need its own shape (which pads, not which notes).
+  `field_clock` lost its `static` so the sequencer can pass it. The hookable build's cache key is a
+  digest of the patches, so the extra patches rebuilt it; `hooks.wav` re-rendered on the new build is
+  byte-identical to the one captured on the old.
+
 ## Not done, and why
 
 - **Per-track stems.** The firmware mixes the eight tracks (and their reverb/delay sends) inside
