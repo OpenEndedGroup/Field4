@@ -60,16 +60,17 @@ class DocsAudioProvenanceGuardTest {
 
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
-            Origin.STAND_IN_SYNTH to 22,
-            Origin.DIRT_SAMPLES to 40,
+            Origin.STAND_IN_SYNTH to 28,
+            Origin.DIRT_SAMPLES to 41,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
-            Origin.DOUGH_DSP to 23,
+            Origin.DOUGH_DSP to 24,
             Origin.FAUST to 6,
             Origin.FM1_SIM to 6,
             Origin.DOUGH_WASM to 2,
             Origin.STEAM_AUDIO_HRTF to 3,
             Origin.SONIC_PI to 1,
-            Origin.MODAL_SYNTHESIS to 12,
+            Origin.MODAL_SYNTHESIS to 27,
+            Origin.ADDITIVE_GRAINS to 3,
         )
         assertEquals(
             expected,
@@ -309,6 +310,6 @@ class DocsAudioProvenanceGuardTest {
          * `fm1.md` added one more (2026-11-14), [Origin.FM1_SIM]: ACID ALLEY's drum track on the sampler,
          * its pads holding a kit rendered from Field signals.
          */
-        const val EXPECTED_FENCE_COUNT = 116
+        const val EXPECTED_FENCE_COUNT = 142
     }
 }

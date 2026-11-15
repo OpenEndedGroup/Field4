@@ -31,8 +31,8 @@ class SoundProvenanceGuardTest {
     /** One `audio="…" audio-spec="…" audio-renderer="…"` fence, as the page wrote it. */
     private class Fence(val audio: String, val spec: String, val renderer: String?, val index: Int)
 
-    /** The audio fences on the page, in order. Mirrors `parse_runner_options` in docs_hooks.py. */
-    private fun fences(): List<Fence> {
+    /** Every audio fence on the page, in order. Mirrors `parse_runner_options` in docs_hooks.py. */
+    private fun allFences(): List<Fence> {
         val text = page.readText()
         val header = Regex("""```+[a-z_]*runner \{([^}\n]*)\}""")
         return header.findAll(text).mapIndexedNotNull { index, match ->
@@ -43,9 +43,28 @@ class SoundProvenanceGuardTest {
         }.toList()
     }
 
+    /**
+     * The render-path figures: every fence that does not name another renderer.
+     *
+     * `sound.md` also carries the piano section (`PianoDocs`), whose clips have one family each and
+     * no voice to declare. Those belong to [DocsAudioProvenance] and its guard, which classifies every
+     * published fence by renderer; this guard is about the figures that can disagree with their own
+     * caption. A fence with no `audio-renderer` stays here, so it still fails the first test.
+     */
+    private fun fences(): List<Fence> =
+        allFences().filter { it.renderer == null || it.renderer == RENDER_PATH_DOCS }
+
     @Test
     fun `the page exists and its audio fences all come from this renderer`() {
         assertTrue(page.isFile, "${page.path} is missing; the guard has nothing to check")
+        val others = allFences().filter { it.renderer != null && it.renderer != RENDER_PATH_DOCS }
+        others.forEach { fence ->
+            assertTrue(
+                fence.renderer in DocsAudioProvenance.ORIGIN_BY_RENDERER,
+                "${page.path}: audio fence ${fence.audio} names ${fence.renderer}, which neither this " +
+                    "guard nor DocsAudioProvenance.ORIGIN_BY_RENDERER knows",
+            )
+        }
         val fences = fences()
         assertTrue(fences.isNotEmpty(), "${page.path} publishes no audio at all, which cannot be right")
         fences.forEach { fence ->
@@ -223,5 +242,7 @@ class SoundProvenanceGuardTest {
          * the page today put the label 200-400 characters after the `audio=` attribute.
          */
         const val NEARBY_CHARS = 1200
+
+        const val RENDER_PATH_DOCS = "afield.audio.synth.SoundRenderPathDocs"
     }
 }

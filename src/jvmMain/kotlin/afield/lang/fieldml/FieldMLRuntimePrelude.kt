@@ -9,6 +9,11 @@ import afield.runtime.completion.KotlinSourceIndex
 import afield.geometry.path.FLine
 import afield.ui.visualization.lines
 import afield.lang.fieldml.core.FieldMLHostBridge
+import kotlin.reflect.KClass
+import kotlin.reflect.KParameter
+import kotlin.reflect.jvm.isAccessible
+import kotlin.reflect.jvm.javaType
+import kotlin.reflect.jvm.kotlinFunction
 import afield.lang.fieldml.core.FieldMLValue
 import afield.lang.fieldml.core.applyFieldMLFunction
 import afield.lang.fieldml.core.fieldMLValueToHost
@@ -988,12 +993,84 @@ object FieldMLRuntimePrelude {
                 val result = runCatching { FieldMLHostBridge.callStaticMethod(candidate.name, javaClass, built) }
                 if (result.isSuccess) return
                 errors += "${candidate.ownerClassName}.${candidate.name}: ${result.exceptionOrNull()?.message}"
+                continue
             }
+            // A default this parser cannot evaluate (`framing: LinesFraming = LinesFraming.Auto`) rules
+            // out the positional call, which has to write every argument. `callBy` leaves such a
+            // parameter out and lets Kotlin evaluate its default.
+            val named = candidate.buildNamedArguments(namedArguments, input) ?: continue
+            val result = runCatching { candidate.callByDefaults(named, box) }
+            if (result.isSuccess) return
+            errors += "${candidate.ownerClassName}.${candidate.name} (by name): ${result.exceptionOrNull()?.message}"
         }
         error(
             "No compatible indexed hostTap target '$target'. Tried: " +
                 (errors.ifEmpty { candidates.map { "${it.ownerClassName}.${it.name}" } }).joinToString("; "),
         )
+    }
+
+    /**
+     * [buildArguments] for a call by name: the same binding of named arguments and the one input,
+     * but a defaulted parameter nobody named is left out rather than written, so any default works.
+     */
+    private fun IndexedHostFunction.buildNamedArguments(
+        namedArguments: Map<String, FieldMLValue>,
+        input: FieldMLValue,
+    ): Map<String, Any?>? {
+        if (receiverType != null && receiverType != "Box" && receiverType != "afield.document.graph.Box") return null
+        if (!namedArguments.keys.all { name -> parameters.any { it.name == name } }) return null
+        val out = mutableMapOf<String, Any?>()
+        var usedInput = false
+        for (parameter in parameters) {
+            val value = namedArguments[parameter.name]
+            if (value != null) {
+                out[parameter.name] = fieldMLValueToHost(value)
+            } else if (!parameter.hasDefault) {
+                if (usedInput) return null
+                val host = fieldMLValueToHost(input)
+                out[parameter.name] = if (parameter.isVararg || parameter.type.startsWith("List<")) listOf(host) else host
+                usedInput = true
+            }
+        }
+        return out.takeIf { usedInput }
+    }
+
+    /**
+     * Calls exactly the overload this index entry describes — same value-parameter names, same
+     * `vararg` — through `callBy`. Choosing by the name set alone is ambiguous here: `lines(vararg m)`
+     * and `lines(m: List<FLine>)` take the same names.
+     */
+    private fun IndexedHostFunction.callByDefaults(arguments: Map<String, Any?>, box: Box?): Any? {
+        val owner = Class.forName(ownerClassName)
+        val wantsReceiver = receiverType != null
+        val function = owner.methods
+            .filter { it.name == name && java.lang.reflect.Modifier.isStatic(it.modifiers) }
+            .mapNotNull { runCatching { it.kotlinFunction }.getOrNull() }
+            .firstOrNull { f ->
+                val values = f.parameters.filter { it.kind == KParameter.Kind.VALUE }
+                (f.parameters.any { it.kind == KParameter.Kind.EXTENSION_RECEIVER } == wantsReceiver) &&
+                    values.map { it.name } == parameters.map { it.name } &&
+                    values.map { it.isVararg } == parameters.map { it.isVararg }
+            } ?: error("no compiled overload of $ownerClassName.$name matches its indexed parameters")
+        val bound = mutableMapOf<KParameter, Any?>()
+        for (parameter in function.parameters) {
+            when (parameter.kind) {
+                KParameter.Kind.EXTENSION_RECEIVER ->
+                    bound[parameter] = box ?: error("hostTap target '$qualifiedName' needs a current Field box")
+                KParameter.Kind.VALUE -> if (parameter.name in arguments) {
+                    val raw = (parameter.type.classifier as? KClass<*>)?.java
+                    val value = arguments[parameter.name]
+                    bound[parameter] = if (raw == null) value else FieldMLHostBridge.coerce(raw, parameter.type.javaType, value)
+                }
+                else -> {}
+            }
+        }
+        function.isAccessible = true
+        return try {
+            function.callBy(bound)
+        } catch (e: java.lang.reflect.InvocationTargetException) {
+            throw e.targetException
+        }
     }
 
     private fun IndexedHostFunction.buildArguments(
