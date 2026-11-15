@@ -3244,9 +3244,13 @@ world.centroid(worm)
 ```
 
 `waveStep` is the phase difference between neighbouring segments, so a non-zero value sends a
-wave down the body. Over 60 time units this worm's centre moves **12.7** body widths. Its controls
-fail: with `waveStep = 0` (every segment bending in step) it moves **1.3**, with equal drags along
-and across the body it moves **1e-6**, and with the wave reversed it swims the other way.
+wave down the body. The default medium makes moving sideways a hundred times dearer than moving
+lengthways (`dragNormal = 15`, `dragTangent = 0.15`) and each muscle stretches and shrinks by 40%
+(`amplitude = 0.4`). Once the wave is running, this 11-unit worm travels **0.26 body lengths per
+stroke**, about 2.9 units every two time units; over 60 time units its centre moves **83**. Its
+controls fail: with `waveStep = 0` (every segment bending in step) it moves **1.4**, with equal
+drags along and across the body it moves **6e-7**, and with the wave reversed it swims the other
+way, 65 units.
 
 ### Four worms on the GPU
 
@@ -3262,19 +3266,21 @@ the cells and bonds straight from the GPU buffers. The genomes are the first lin
 val genomes = listOf("SMMMMMMMMMMS", "SLLLLLLLLLS", "SMMMMMMMMMMMMMMS", "SRRRRRRRRS")
 ```
 
-Edit one and run the box again to grow different creatures. The world box takes two steps every
-renderer frame (`clock.stepsPerFrame = 2`), so the worms beat about twice a second on screen;
-raise it to speed them up. The video starts from straight bodies. Within a second the travelling
-waves are running down them: the orange `M` worm swims to the right along its own axis, the cyan one
-bends into a long curve, the magenta `R` worm turns, and the green `L` worm folds onto itself:
+Edit one and run the box again to grow different creatures. Each genome has a start and a
+heading: the two straight worms start at opposite sides heading inwards, the `L` and `R` worms
+between them. The world box takes two steps every renderer frame (`clock.stepsPerFrame = 2`), so
+the worms beat about once a second on screen; raise it to speed them up. In the 16-second video
+the orange `M` worm swims from the left edge to the right wall, about three of its body lengths,
+the cyan one crosses from the right side to the lower left, and the green `L` and magenta `R` worms swim
+in curves:
 
-```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="bonded_renderer" transcript="dev_docs/agents/transcripts/bonded_organisms.yaml" video="assets/alife_examples/bonded-organisms.mp4" duration="16" wait="0.2" timeout="300" embed=true hidden=true name="alife-bonded-organisms" alt="four ladder-bodied worms, orange, green, cyan and magenta, among scattered grey loose cells on a black field. They start straight, then bending waves run down their bodies, about two beats a second: the orange worm swims slowly right along its length, the cyan one bends into a long curve, the magenta one turns through a right angle, and the green one folds into a wriggling zig-zag"}
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="bonded_renderer" transcript="dev_docs/agents/transcripts/bonded_organisms.yaml" video="assets/alife_examples/bonded-organisms.mp4" duration="16" wait="0.2" timeout="300" embed=true hidden=true name="alife-bonded-organisms" alt="four ladder-bodied worms, orange, green, cyan and magenta, among scattered grey loose cells on a black field. They start straight, then bending waves travel down their bodies about once a second: the orange worm swims from the left edge across to the right, the cyan one swims from the right side to the lower left, and the green and magenta worms swim in curves among the loose cells"}
 // The transcript is the bonded_organisms document: a renderer, the organisms box and the draw box.
 ```
 
 The document's `GPU against CPU` box restarts the GPU world, freezes it after 600 steps, reads the
 cells back and steps a CPU `BondedWorld` built by the same code 600 times. The largest distance
-between a GPU cell and its CPU twin was **2.2e-5**, while cells had moved up to 2.3.
+between a GPU cell and its CPU twin was **5.8e-5**, while cells had moved up to 9.8.
 
 ??? aside "What this cut leaves out, and a push-constant trap"
     No sensors, no constructor cells that grow a body over time, no food, and no audio: the genome
