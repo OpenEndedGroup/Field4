@@ -437,6 +437,82 @@ step of a percent or two above that plateau, not a spike, because all three trac
 `RmsFilter` all maintain their own ring buffer and recompute on each hop, so they behave like any
 other per-sample filter in the toolkit.
 
+## Audio-rate filters from evieve
+
+The filters in `Filters.kt` read every coefficient per sample, so a cutoff can be another `Signal`:
+give a `Param` a `mod` and the filter follows it sample by sample. Four of them follow families in
+[evieve](https://github.com/steadykammer/evieve), Pete Dowling's GPL-3.0 library of GenExpr code
+for Max's gen~. They are written in Kotlin from the methods evieve cites (Zavalishin's *The Art of
+VA Filter Design*, Will Pirkle's Korg35 note), not transcribed from it.
+
+- `TptOnePole(cutoff, mode)`: a first-order filter with lowpass, highpass and allpass outputs. Its −3 dB point is exactly `cutoff` up to Nyquist.
+- `TiltEQ(pivot, tiltDb)`: lows down and highs up about a pivot, flat at 0 dB.
+- `Korg35(cutoff, resonance, mode, drive)`: the MS-20's Sallen-Key filter, 12 dB/octave, with a `tanh` in the feedback loop. It self-oscillates as `resonance` reaches 1.
+- `Resonator(freq, decay)`: a tuned two-pole ring whose peak gain stays at 1 whatever the decay.
+
+`frequencyResponseDb(filter, freqs)` measures any of them by rendering an impulse through a fresh
+instance and taking its DFT at `freqs`, so the curve can sit beside the filter in a box:
+
+```kotlin
+val freqs = logFrequencies(20.0, 20_000.0, 200)
+showSignals(
+    "res 0.5" to frequencyResponseDb(Korg35(1000.p, 0.5.p), freqs, amplitude = 1e-4f),
+    "res 0.95" to frequencyResponseDb(Korg35(1000.p, 0.95.p), freqs, amplitude = 1e-4f),
+    channel = "main", xTitle = "frequency index (20 Hz – 20 kHz, log)",
+)
+```
+
+The small `amplitude` keeps the `tanh` in its linear range, so the curve is the small-signal
+response. The plots below were measured this way by `TptFilterDocs`.
+
+![Korg35 responses at 1 kHz: four lowpass curves, flat below the cutoff and falling 12 dB per octave above it, with resonant peaks rising from none at resonance 0.1 to about +19 dB at 0.95, and a purple highpass curve rising 12 dB per octave to a peak at 1 kHz](assets/tpt_filters/korg35_response.png)
+
+![TptOnePole lowpass and highpass crossing at −3 dB at 1 kHz, the impulse-invariant OnePole lowpass flattening out near 20 kHz instead of falling, and four TiltEQ curves tilting ±6 and ±12 dB about 800 Hz](assets/tpt_filters/onepole_response.png)
+
+![Three Resonator responses at 1 kHz, each peaking at 0 dB, narrower as the decay grows from 0.02 s to 0.5 s](assets/tpt_filters/resonator_response.png)
+
+`TptFiltersTest` compares each measured curve with the analog prototype under the prewarped
+bilinear transform, at 60 frequencies from 30 Hz to 18 kHz, and the largest difference is below
+0.001 dB. For the Korg35 lowpass that prototype is `1/(s² + (2−K)s + 1)` with
+`K = 0.01 + 1.98·resonance`.
+
+### Listening
+
+Each clip is four seconds of one signal graph rendered offline. In each one a filter parameter is
+driven by an oscillator through `Param.mod`.
+
+A 55 Hz saw through `Korg35` at resonance 0.9 and drive 2. The cutoff sweeps on a 0.5 Hz sine, and a
+110 Hz sine also moves it ±250 Hz, which puts sidebands on the resonance:
+
+```kotlin
+SawOsc(55.p) / Korg35(
+    Param(1200f).also { it.mod = SineOsc(0.5.p) * 900f + SineOsc(110.p) * 250f },
+    0.9.p, drive = 2.p)
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/korg35.wav" audio-spec="korg35" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-korg35-audio"}
+// Offline-rendered by TptFilterDocs.renderWav("korg35").
+```
+
+A phaser: a three-saw chord through four `TptOnePole` allpasses, summed with the dry chord, while the
+allpass cutoff sweeps between 150 Hz and 1650 Hz:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/phaser.wav" audio-spec="phaser" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-phaser-audio"}
+// Offline-rendered by TptFilterDocs.renderWav("phaser").
+```
+
+White noise through `TiltEQ`, the tilt swinging between −12 dB and +12 dB every four seconds:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/tilt.wav" audio-spec="tilt" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-tilt-audio"}
+// Offline-rendered by TptFilterDocs.renderWav("tilt").
+```
+
+White noise through three `Resonator`s near 300 Hz, 750 Hz and 2.1 kHz. Each frequency drifts on its own slow sine:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/resonator.wav" audio-spec="resonator" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-resonator-audio"}
+// Offline-rendered by TptFilterDocs.renderWav("resonator").
+```
+
 ## What else is in the family
 
 - **FFT** — `fft(...)` / `ifft(...)` over `DoubleArray`, `FloatArray`, or `List<Float>`; forward and

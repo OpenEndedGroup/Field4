@@ -629,6 +629,7 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/modal/PenroseSpectraDocs.kt" to "modal-drum",
                 // Landed 11-09..11-13 without a declaration; caught by this marker on 11-13.
                 "src/jvmMain/kotlin/afield/audio/synth/ExplainerSoundDocs.kt" to "signal-graph",
+                "src/jvmMain/kotlin/afield/audio/synth/TptFilterDocs.kt" to "signal-graph",
                 // Piano is a StereoNode: the same graph, rendered offline a block at a time.
                 "src/jvmMain/kotlin/afield/audio/synth/PianoDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/audio/synth/TrackedBodyDocs.kt" to "pat-stand-in",
