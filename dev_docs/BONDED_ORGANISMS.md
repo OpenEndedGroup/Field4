@@ -3,7 +3,7 @@
 After ALIEN by Christian Heinemann (https://github.com/chrxh/alien, 5.0-beta).
 
 - Library: `src/jvmMain/kotlin/afield/simulation/agents/alife_bonded.kt` (`BondedWorld`, `genome`,
-  `BondedClock`). CPU tests: `src/jvmFastTest/kotlin/afield/simulation/agents/BondedOrganismTest.kt`.
+  `BondedClock`). CPU tests: `src/jvmFastTest/kotlin/afield/simulation/agents/BondedOrganismTest.kt` (7/7 pass under `./gradlew fastTest --tests afield.simulation.agents.BondedOrganismTest`).
 - Demo: `dev_docs/agents/transcripts/bonded_organisms.yaml` (renderer, organisms [compute tab],
   draw, GPU against CPU). Docs: `public/docs/alife_examples.md` section 13.
 - The shader lives only in the transcript's `compute` tab; `BondedWorld.step` is its CPU twin,
