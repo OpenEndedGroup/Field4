@@ -37,6 +37,32 @@ class MergeRegenTest(unittest.TestCase):
                             for call in run.call_args_list))
         git_call.assert_any_call(self.repo, 'add', '-A', '--', 'public/docs/assets/web_publications')
 
+    def _publication_code(self, sync_code: int, report: list[dict], changed: set[str]) -> int:
+        sys.path.insert(0, str(SCRIPT.parent))
+        import json, merge_regen
+        (self.repo / 'build').mkdir(exist_ok=True)
+        (self.repo / 'build/docs-publications-refresh.json').write_text(json.dumps(report))
+        return merge_regen.publication_failure_code(self.repo, sync_code, changed)
+
+    def test_machine_state_in_untouched_documents_is_a_retry(self) -> None:
+        # 2026-11-14: claude/fm1-sim bounced on flow_lenia timing out, a page it never edited.
+        report = [{'name': 'flow_lenia', 'ok': False, 'error': 'TimeoutError',
+                   'sources': ['public/docs/assets/agent_transcripts/flow_lenia/metadata.edn']},
+                  {'name': 'fine', 'ok': True}]
+        self.assertEqual(self._publication_code(75, report, {'src/jvmMain/kotlin/afield/FM1Sim.kt'}), 75)
+
+    def test_machine_state_outside_any_document_is_a_retry(self) -> None:
+        report = [{'ok': False, 'machine': 'BackdoorError: Port 9479 is answered by a Field this session did not start'}]
+        self.assertEqual(self._publication_code(75, report, {'x.txt'}), 75)
+
+    def test_a_timeout_in_a_document_the_batch_changes_still_bounces(self) -> None:
+        page = 'public/docs/flow_lenia.md'
+        report = [{'name': 'flow_lenia', 'ok': False, 'error': 'TimeoutError', 'sources': [f'{page}#capture-box=fl']}]
+        self.assertEqual(self._publication_code(75, report, {page}), 1)
+
+    def test_a_document_failure_still_bounces(self) -> None:
+        self.assertEqual(self._publication_code(1, [], {'x.txt'}), 1)
+
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.repo = Path(self._tmp.name)
