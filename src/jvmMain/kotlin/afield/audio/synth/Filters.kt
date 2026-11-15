@@ -525,3 +525,246 @@ class Saturator(
         }
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+//  Topology-preserving filters after evieve (Pete Dowling, GPL-3.0)
+// ═══════════════════════════════════════════════════════════════════
+//
+// The filters below follow the families in evieve, a Max package of GenExpr audio code
+// (https://github.com/steadykammer/evieve, © Peter Dowling 2026, GPL v3). They are written from the
+// published methods those files cite — Zavalishin's "The Art of VA Filter Design" for the
+// trapezoidal one-pole and the instantaneous loop solve, Will Pirkle's Korg35 application note for
+// the MS-20 topology — rather than transcribed, and every coefficient is computed per sample from
+// its Param, so any of them can be swept by another Signal at audio rate (`Param().also { it.mod = lfo }`).
+
+/** The response [TptOnePole] reads from its one trapezoidal integrator. */
+enum class TptOnePoleMode { LP, HP, AP }
+
+/**
+ * A first-order filter by trapezoidal integration (zero-delay feedback): the analog `1/(1+s)` mapped
+ * by the bilinear transform with its cutoff prewarped, so the −3 dB point is exactly [cutoff] at any
+ * sample rate. [OnePole] is the cheaper impulse-invariant version, whose cutoff drifts near Nyquist
+ * and which has no allpass; this one also gives `AP`, the first-order phase shifter phasers stack.
+ *
+ * ```kotlin
+ * val sweep = Param(800f).also { it.mod = SineOsc(Param(3f)) * 600f }
+ * saw / TptOnePole(sweep, TptOnePoleMode.LP)
+ * ```
+ */
+class TptOnePole(
+    val cutoff: Param = Param(1000f),
+    val mode: TptOnePoleMode = TptOnePoleMode.LP
+) : SignalProcessor() {
+    private var s = 0.0
+    private var inBuf = FloatArray(0); private var cBuf = FloatArray(0)
+
+    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        if (inBuf.size < numFrames) { inBuf = FloatArray(numFrames); cBuf = FloatArray(numFrames) }
+        input.render(inBuf, numFrames, ctx)
+        cutoff.render(cBuf, numFrames, ctx)
+        val sr = ctx.sampleRate.toDouble()
+        for (i in 0 until numFrames) {
+            val g = tan(PI * cBuf[i].toDouble().coerceIn(1.0, sr * 0.49) / sr)
+            val G = g / (1.0 + g)
+            val x = inBuf[i].toDouble()
+            val v = (x - s) * G
+            val lp = v + s
+            s = lp + v
+            output[i] = when (mode) {
+                TptOnePoleMode.LP -> lp
+                TptOnePoleMode.HP -> x - lp
+                TptOnePoleMode.AP -> 2.0 * lp - x
+            }.toFloat()
+        }
+    }
+}
+
+/**
+ * A tilt equaliser (evieve's `evi_filter_tilt`): one trapezoidal one-pole split at [pivot] into its
+ * lowpass and highpass halves, the lows scaled by `−tilt` dB and the highs by `+tilt` dB. Positive
+ * [tiltDb] brightens, negative darkens, and at 0 the two halves sum back to the input exactly.
+ */
+class TiltEQ(
+    val pivot: Param = Param(800f),
+    val tiltDb: Param = Param(0f)
+) : SignalProcessor() {
+    private var s = 0.0
+    private var inBuf = FloatArray(0); private var pBuf = FloatArray(0); private var tBuf = FloatArray(0)
+
+    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        if (inBuf.size < numFrames) { inBuf = FloatArray(numFrames); pBuf = FloatArray(numFrames); tBuf = FloatArray(numFrames) }
+        input.render(inBuf, numFrames, ctx)
+        pivot.render(pBuf, numFrames, ctx)
+        tiltDb.render(tBuf, numFrames, ctx)
+        val sr = ctx.sampleRate.toDouble()
+        for (i in 0 until numFrames) {
+            val g = tan(PI * pBuf[i].toDouble().coerceIn(1.0, sr * 0.49) / sr)
+            val G = g / (1.0 + g)
+            val x = inBuf[i].toDouble()
+            val v = (x - s) * G
+            val lp = v + s
+            s = lp + v
+            val up = 10.0.pow(tBuf[i].toDouble() / 20.0)
+            output[i] = (lp / up + (x - lp) * up).toFloat()
+        }
+    }
+}
+
+/** Which output of [Korg35] to listen to. */
+enum class Korg35Mode { LP, HP }
+
+/**
+ * The Korg MS-20's Sallen-Key filter (the Korg35 chip), as a zero-delay-feedback loop: two
+ * trapezoidal one-poles in the forward path and a highpass one-pole feeding the output back, with
+ * the instantaneous loop solved exactly each sample and a `tanh` on the solved feedback node, as in
+ * evieve's `evi_korgms20`/`evi_korgms10` and Pirkle's application note.
+ *
+ * At small signal the lowpass is `K/(s² + (2−K)s + 1)` divided back down by `K`, a 12 dB/octave
+ * resonant lowpass whose damping `2−K` reaches zero, and self-oscillation, as [resonance] reaches 1.
+ * The highpass mirrors it — highpass stages forward, a lowpass in the feedback — giving `s²/(s² + (2−K)s + 1)`. [drive] is the gain into the
+ * `tanh`: at 1 it is the circuit's soft limit on the resonant peak; push it for the MS-20's growl.
+ */
+class Korg35(
+    val cutoff: Param = Param(1000f),
+    val resonance: Param = Param(0.5f),
+    val mode: Korg35Mode = Korg35Mode.LP,
+    val drive: Param = Param(1f)
+) : SignalProcessor() {
+    private var s1 = 0.0; private var s2 = 0.0; private var s3 = 0.0
+    private var inBuf = FloatArray(0); private var cBuf = FloatArray(0)
+    private var rBuf = FloatArray(0); private var dBuf = FloatArray(0)
+
+    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        if (inBuf.size < numFrames) {
+            inBuf = FloatArray(numFrames); cBuf = FloatArray(numFrames)
+            rBuf = FloatArray(numFrames); dBuf = FloatArray(numFrames)
+        }
+        input.render(inBuf, numFrames, ctx)
+        cutoff.render(cBuf, numFrames, ctx)
+        resonance.render(rBuf, numFrames, ctx)
+        drive.render(dBuf, numFrames, ctx)
+        val sr = ctx.sampleRate.toDouble()
+        for (i in 0 until numFrames) {
+            val g = tan(PI * cBuf[i].toDouble().coerceIn(20.0, sr * 0.45) / sr)
+            val G = g / (1.0 + g)
+            val K = 0.01 + 1.98 * rBuf[i].toDouble().coerceIn(0.0, 1.0)
+            val d = dBuf[i].toDouble().coerceAtLeast(1e-3)
+            val x = inBuf[i].toDouble()
+
+            // stage 1: lowpass (LP mode) or highpass (HP mode) of the input
+            val v1 = (x - s1) * G
+            val lp1 = v1 + s1
+            s1 = lp1 + v1
+            val y1 = if (mode == Korg35Mode.LP) lp1 else x - lp1
+
+            // LP loop: y = K·LP2(y1 + HP3(y)); HP loop: y = K·HP2(y1 + LP3(y)).
+            // Each one-pole's lowpass is G·in + c·state (c = 1 − G); solve the loop for y, then saturate u.
+            val c = 1.0 - G
+            val out: Double
+            if (mode == Korg35Mode.LP) {
+                val y = K * (G * y1 - G * c * s3 + c * s2) / (1.0 - K * G * c)
+                val u = tanh(d * (y1 + c * (y - s3))) / d
+                val v2 = (u - s2) * G
+                val lp2 = v2 + s2
+                s2 = lp2 + v2
+                out = K * lp2
+                val v3 = (out - s3) * G
+                s3 = v3 + s3 + v3
+            } else {
+                val y = K * c * (y1 + c * s3 - s2) / (1.0 - K * G * c)
+                val u = tanh(d * (y1 + G * y + c * s3)) / d
+                val v2 = (u - s2) * G
+                val lp2 = v2 + s2
+                s2 = lp2 + v2
+                out = K * (u - lp2)
+                val v3 = (out - s3) * G
+                s3 = v3 + s3 + v3
+            }
+
+            output[i] = (out / K).toFloat()
+        }
+    }
+}
+
+/**
+ * A two-pole resonator: a pole pair at [freq] whose radius rings down by 60 dB in [decay] seconds,
+ * with the input scaled so the peak gain stays at 1 whatever the decay (evieve's `evi_band_reson`
+ * and the formlet are this cell). Strike it with an impulse for a tuned ping, feed it noise for a
+ * pitched band, or sweep [freq] at audio rate — the coefficients follow per sample.
+ */
+class Resonator(
+    val freq: Param = Param(440f),
+    val decay: Param = Param(0.5f)
+) : SignalProcessor() {
+    private var y1 = 0.0; private var y2 = 0.0
+    private var inBuf = FloatArray(0); private var fBuf = FloatArray(0); private var dBuf = FloatArray(0)
+
+    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        if (inBuf.size < numFrames) { inBuf = FloatArray(numFrames); fBuf = FloatArray(numFrames); dBuf = FloatArray(numFrames) }
+        input.render(inBuf, numFrames, ctx)
+        freq.render(fBuf, numFrames, ctx)
+        decay.render(dBuf, numFrames, ctx)
+        val sr = ctx.sampleRate.toDouble()
+        for (i in 0 until numFrames) {
+            val (r, theta, b0) = resonatorCoefficients(fBuf[i].toDouble(), dBuf[i].toDouble(), sr)
+            val y = b0 * inBuf[i] + 2.0 * r * cos(theta) * y1 - r * r * y2
+            y2 = y1; y1 = y
+            output[i] = y.toFloat()
+        }
+    }
+
+    companion object {
+        /** `(r, θ, b0)` for [Resonator]: pole radius, pole angle, and the gain that holds the peak at 1. */
+        fun resonatorCoefficients(freq: Double, decay: Double, sr: Double): Triple<Double, Double, Double> {
+            val theta = 2.0 * PI * freq.coerceIn(1.0, sr * 0.49) / sr
+            val r = exp(ln(0.001) / (decay.coerceAtLeast(1e-4) * sr))
+            // |1 − 2r cosθ e^{−jθ} + r² e^{−2jθ}| at the peak
+            val re = 1.0 - 2.0 * r * cos(theta) * cos(theta) + r * r * cos(2.0 * theta)
+            val im = 2.0 * r * cos(theta) * sin(theta) - r * r * sin(2.0 * theta)
+            return Triple(r, theta, sqrt(re * re + im * im))
+        }
+    }
+}
+
+/**
+ * The impulse response of [processor] at [sampleRate]: a unit impulse rendered through it for
+ * [frames] samples. Use small [amplitude] to read a nonlinear filter's small-signal response.
+ * The processor's state is consumed; pass a fresh one.
+ */
+fun impulseResponse(processor: SignalProcessor, frames: Int = 8192, sampleRate: Int = 48_000, amplitude: Float = 1f): FloatArray {
+    var first = true
+    processor.input = object : Signal() {
+        override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+            Buf.clear(output, 0, numFrames)
+            if (first && numFrames > 0) { output[0] = amplitude; first = false }
+        }
+    }
+    val h = renderSignalsOffline(frames.toDouble() / sampleRate, processor, sampleRate = sampleRate)[0]
+    if (amplitude != 1f) for (i in h.indices) h[i] /= amplitude
+    return h
+}
+
+/**
+ * The measured magnitude response of [processor], in dB, at each frequency of [freqsHz]: its
+ * [impulseResponse] evaluated by a direct DFT at exactly those frequencies. This is the plot that
+ * sits beside a filter: `showSignals("Korg35" to frequencyResponseDb(Korg35(1000.p, 0.8.p), freqs))`.
+ */
+fun frequencyResponseDb(
+    processor: SignalProcessor,
+    freqsHz: List<Double>,
+    sampleRate: Int = 48_000,
+    frames: Int = 16_384,
+    amplitude: Float = 1f
+): List<Float> {
+    val h = impulseResponse(processor, frames, sampleRate, amplitude)
+    return freqsHz.map { f ->
+        val w = 2.0 * PI * f / sampleRate
+        var re = 0.0; var im = 0.0
+        for (n in h.indices) { re += h[n] * cos(w * n); im -= h[n] * sin(w * n) }
+        (20.0 * log10(sqrt(re * re + im * im).coerceAtLeast(1e-12))).toFloat()
+    }
+}
+
+/** [count] frequencies spaced evenly in octaves from [lowHz] to [highHz], the x axis for [frequencyResponseDb]. */
+fun logFrequencies(lowHz: Double = 20.0, highHz: Double = 20_000.0, count: Int = 200): List<Double> =
+    List(count) { lowHz * (highHz / lowHz).pow(it / (count - 1.0)) }
