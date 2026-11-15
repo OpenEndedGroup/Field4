@@ -1,5 +1,12 @@
 # visionOS architecture and current seams
 
+Scope: this note covers the native Field4Vision frontend and RTT/Live Metal paths.
+[Linux → CloudXR → AVP](../tools/cloudxr/README.md) is now a working desktop OpenXR
+streaming route. It uses a separate
+client, verified hand actions and optional IDE surfaces. Chrome on a Mac through Mac Virtual
+Display is the tested editing workflow. The proposed shared scene/runtime/editor boundary
+is in [the wrapper design](vr/OPENXR_WORKSPACE_WRAPPER.md).
+
 Status: the native SwiftUI/RealityKit shell and both RTT sender backends are in
 the repository. A distinct Kotlin/JS presentation bundle remains deferred.
 

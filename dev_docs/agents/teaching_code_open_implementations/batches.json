@@ -1,0 +1,585 @@
+{
+  "sound-chains": {
+    "targets": [
+      {
+        "path": "public/docs/chain_ca_sound.md",
+        "name": "chain-ca-survey",
+        "capture": true,
+        "probes": [
+          {
+            "label": "CA default columns and condensation",
+            "assertions": "check(rules == CaSoundDocs.CONDENSATION_SURVEY)\ncheck(columns == rules.map { CaSoundDocs.centreColumnBar(it, steps, atom).mask })\ncheck(bars.zip(rules).all { (bar, rule) -> bar.compression == CaSoundDocs.centreColumnBar(rule, steps, atom).compression })"
+          },
+          {
+            "label": "CA shorter columns and changed atom",
+            "replace": {
+              "val steps = 32": "val steps = 16",
+              "val atom = \"x\"": "val atom = \"hh\""
+            },
+            "assertions": "check(columns == rules.map { CaSoundDocs.centreColumnBar(it, steps, atom).mask })"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/chain_pattern_particles.md",
+        "name": "chain-pattern-bands",
+        "capture": true,
+        "probes": [
+          {
+            "label": "band audio and default overlapping windows",
+            "assertions": "val referenceAudio = PatSynthDocs.SCENES.first { it.name == \"seam-bands\" }.render()\ncheck(audio.left.contentEquals(referenceAudio.left) && audio.right.contentEquals(referenceAudio.right))\nval referenceSeries = PatSynthDocs.bandSeries(audio, logBands(4, lowHz = 70.0, highHz = 8000.0, sampleRate = sampleRate), windowFrames, hopFrames)\ncheck(series.size == referenceSeries.size && series.zip(referenceSeries).all { (a, b) -> a.contentEquals(b) })"
+          },
+          {
+            "label": "band shorter windows and hops",
+            "replace": {
+              "val windowFrames = 2048": "val windowFrames = 1024",
+              "val hopFrames = 256": "val hopFrames = 128"
+            },
+            "assertions": "val referenceSeries = PatSynthDocs.bandSeries(audio, logBands(4, lowHz = 70.0, highHz = 8000.0, sampleRate = sampleRate), windowFrames, hopFrames)\ncheck(series.size == referenceSeries.size && series.zip(referenceSeries).all { (a, b) -> a.contentEquals(b) })"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/chain_lambda_sound.md",
+        "name": "chain-lambda-one",
+        "capture": true,
+        "probes": [
+          {
+            "label": "lambda default reaction trace",
+            "assertions": "val reference = LambdaSoundDocs.trace(name, order, maxSteps)\ncheck(initialNodes == reference.initialNodes)\ncheck(beats.size == reference.beats.size)\ncheck(beats.zip(reference.beats).all { (a, b) -> a.index == b.index && a.rule == b.rule && a.kinds == b.kinds && a.nodes == b.nodes && a.activePairs == b.activePairs && a.reduciblePairs == b.reduciblePairs })\ncheck(LambdaTerms.alphaEquivalent(LambdaTerms.readback(compiled), reference.result))"
+          },
+          {
+            "label": "lambda changed term and scheduler",
+            "replace": {
+              "\"church-exp-two-cubed\"": "\"erase-argument\"",
+              "ActivationOrder.FIRST_FOUND": "ActivationOrder.RIGHTMOST_BY_ID"
+            },
+            "assertions": "val reference = LambdaSoundDocs.trace(name, order, maxSteps)\ncheck(initialNodes == reference.initialNodes)\ncheck(beats.size == reference.beats.size)\ncheck(beats.zip(reference.beats).all { (a, b) -> a.index == b.index && a.rule == b.rule && a.kinds == b.kinds && a.nodes == b.nodes && a.activePairs == b.activePairs && a.reduciblePairs == b.reduciblePairs })\ncheck(LambdaTerms.alphaEquivalent(LambdaTerms.readback(compiled), reference.result))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/chain_lambda_sound.md",
+        "contains": "val intervals =",
+        "capture": false,
+        "probes": [
+          {
+            "label": "lambda reaction-to-pitch mapping",
+            "assertions": "check(notes == LambdaSoundDocs.trace(name).melody)"
+          },
+          {
+            "label": "lambda melody transposition",
+            "replace": {
+              "val root = 45": "val root = 57"
+            },
+            "assertions": "check(notes == LambdaSoundDocs.trace(name).melody.map { it + 12 })"
+          }
+        ]
+      }
+    ]
+  },
+  "function-roundtrip": {
+    "targets": [
+      {
+        "path": "public/docs/chain_fn_sound_roundtrip.md",
+        "name": "chain-fn-roundtrip",
+        "capture": true,
+        "probes": [
+          {
+            "label": "function roundtrip wave bytes, recovered frames, delay and bounds",
+            "assertions": "for (actual in [loud, pitch]) {\n    val expected = FnSoundDocs.roundTrip(actual.encoding, FnSoundDocs.Route.PER_SAMPLE, dir = java.io.File(dir, \"reference\"), fn = f)\n    check(actual.wav.readBytes().contentEquals(expected.wav.readBytes()))\n    check(actual.frames == expected.frames)\n    check(actual.bestLagSamples == expected.bestLagSamples)\n    check(actual.insideCount == expected.insideCount)\n}"
+          },
+          {
+            "label": "changed input function, same render-and-read pipeline",
+            "replace": {
+              "val f = FnSoundDocs.contour() // the formula above": "val f = with(Functions) { FnSoundDocs.contour().scaleY(0.8) }"
+            },
+            "assertions": "for (actual in [loud, pitch]) {\n    val expected = FnSoundDocs.roundTrip(actual.encoding, FnSoundDocs.Route.PER_SAMPLE, dir = java.io.File(dir, \"reference\"), fn = f)\n    check(actual.wav.readBytes().contentEquals(expected.wav.readBytes()))\n    check(actual.frames == expected.frames)\n    check(actual.bestLagSamples == expected.bestLagSamples)\n    check(actual.insideCount == expected.insideCount)\n}"
+          }
+        ]
+      }
+    ]
+  },
+  "morpho-problem": {
+    "targets": [
+      {
+        "path": "public/docs/morpho_search.md",
+        "name": "morpho-search-control",
+        "capture": true,
+        "probes": [
+          {
+            "label": "explicit full-adder truth table and seeded generator",
+            "replace": {
+              "val budget = 4000": "val budget = 32"
+            },
+            "assertions": "val reference = MorphoProblems.fullAdderCell(maxStatements)\ncheck(spec.widths == reference.spec.widths)\nfor (a in 0L..1L) for (b in 0L..1L) for (c in 0L..1L) {\n    val input = longArrayOf(a, b, c)\n    check(spec.oracle(input, 1).contentEquals(reference.spec.oracle(input, 1)))\n}\nfor (seed in [1, 2, 42]) {\n    check(problem.generator.random(kotlin.random.Random(seed)).render() == reference.generator.random(kotlin.random.Random(seed)).render())\n}"
+          },
+          {
+            "label": "changed grammar budget",
+            "replace": {
+              "val budget = 4000": "val budget = 32",
+              "val maxStatements = 6": "val maxStatements = 4"
+            },
+            "assertions": "val reference = MorphoProblems.fullAdderCell(maxStatements)\ncheck(spec.widths == reference.spec.widths)\nfor (a in 0L..1L) for (b in 0L..1L) for (c in 0L..1L) {\n    val input = longArrayOf(a, b, c)\n    check(spec.oracle(input, 1).contentEquals(reference.spec.oracle(input, 1)))\n}\nfor (seed in [1, 2, 42]) {\n    check(problem.generator.random(kotlin.random.Random(seed)).render() == reference.generator.random(kotlin.random.Random(seed)).render())\n}"
+          }
+        ]
+      }
+    ]
+  },
+  "lambda-checks": {
+    "targets": [
+      {
+        "path": "public/docs/chain_lambda_sound.md",
+        "name": "chain-lambda-sweep",
+        "capture": true,
+        "probes": [
+          {
+            "label": "corpus reaction counts, rule multisets and spellings",
+            "assertions": "check(counts == LambdaSoundDocs.stepCountIsScheduleInvariant(sweep))\ncheck(multisets == LambdaSoundDocs.ruleMultisetIsScheduleInvariant(sweep))\ncheck(spellings == LambdaSoundDocs.spellingsPerTerm(sweep))"
+          },
+          {
+            "label": "smaller corpus and two schedulers on rerun",
+            "replace": {
+              "val names = LambdaTerms.corpus().keys": "val names = LambdaTerms.corpus().keys.take(3)",
+              "ActivationOrder.HIGHEST_PAIR_ENERGY,": "",
+              "ActivationOrder.RIGHTMOST_BY_ID,": ""
+            },
+            "assertions": "check(sweep.size == 3)\ncheck(sweep.values.all { it.size == 2 })\ncheck(counts == LambdaSoundDocs.stepCountIsScheduleInvariant(sweep))\ncheck(multisets == LambdaSoundDocs.ruleMultisetIsScheduleInvariant(sweep))\ncheck(spellings == LambdaSoundDocs.spellingsPerTerm(sweep))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/chain_lambda_sound.md",
+        "name": "chain-lambda-four",
+        "capture": true,
+        "probes": [
+          {
+            "label": "four schedule answers and beta counts",
+            "assertions": "check(answer == LambdaSoundDocs.answerIsScheduleInvariant(traces))\ncheck(betas == LambdaSoundDocs.betaIsScheduleInvariant(traces))"
+          },
+          {
+            "label": "changed term, same independent oracle checks",
+            "replace": {
+              "val name = \"church-exp-two-cubed\"": "val name = \"erase-argument\""
+            },
+            "assertions": "check(answer == LambdaSoundDocs.answerIsScheduleInvariant(traces))\ncheck(betas == LambdaSoundDocs.betaIsScheduleInvariant(traces))"
+          }
+        ]
+      }
+    ]
+  },
+  "drawn-listening": {
+    "targets": [
+      {
+        "path": "public/docs/chain_drawn_score.md",
+        "name": "chain-drawn-score-heard",
+        "capture": true,
+        "probes": [
+          {
+            "label": "drawn score onsets and median pitches",
+            "assertions": "val reference = DrawnScoreDocs.listen(audio, notes, cycles, cps, voice.sustain)\ncheck(heard.heard.size == reference.heard.size)\ncheck(heard.heard.zip(reference.heard).all { (a, b) -> a.note == b.note && a.scheduledSeconds.toBits() == b.scheduledSeconds.toBits() && a.onsetSeconds.toBits() == b.onsetSeconds.toBits() && a.heardMidi.toBits() == b.heardMidi.toBits() })\ncheck(heard.frames == reference.frames)\ncheck(heard.onsetsDetected == reference.onsetsDetected)\ncheck(heard.trace() == reference.trace())"
+          },
+          {
+            "label": "slower score rerun with matching detector measurements",
+            "replace": {
+              "val cps = 0.25": "val cps = 0.2"
+            },
+            "assertions": "val reference = DrawnScoreDocs.listen(audio, notes, cycles, cps, voice.sustain)\ncheck(heard.heard.size == reference.heard.size)\ncheck(heard.heard.zip(reference.heard).all { (a, b) -> a.note == b.note && a.scheduledSeconds.toBits() == b.scheduledSeconds.toBits() && a.onsetSeconds.toBits() == b.onsetSeconds.toBits() && a.heardMidi.toBits() == b.heardMidi.toBits() })\ncheck(heard.frames == reference.frames)\ncheck(heard.onsetsDetected == reference.onsetsDetected)\ncheck(heard.trace() == reference.trace())"
+          }
+        ]
+      }
+    ]
+  },
+  "penrose-strikes": {
+    "targets": [
+      {
+        "path": "public/docs/debruijn_tilings.md",
+        "name": "penrose-spectra-strike",
+        "capture": true,
+        "probes": [
+          {
+            "label": "same graphs, mode weights and chosen strike vertices",
+            "assertions": "check(penrose.vertexCount == PenroseSpectraDocs.penrose().vertexCount)\ncheck(square.vertexCount == PenroseSpectraDocs.square().vertexCount)\ncheck(confined == PenroseSpectraDocs.strikeVertex(penrose, pm, true))\ncheck(open == PenroseSpectraDocs.strikeVertex(penrose, pm, false))\ncheck(stiffness == PenroseSpectraDocs.STIFFNESS)"
+          },
+          {
+            "label": "smaller patch, same interior-selection rules",
+            "replace": {
+              "radius = 6.0": "radius = 5.0"
+            },
+            "assertions": "check(confined == PenroseSpectraDocs.strikeVertex(penrose, pm, true))\ncheck(open == PenroseSpectraDocs.strikeVertex(penrose, pm, false))"
+          }
+        ]
+      }
+    ]
+  },
+  "loris-audio": {
+    "targets": [
+      {
+        "path": "public/docs/loris.md",
+        "name": "loris-dialogue",
+        "capture": true,
+        "probeFullCode": true,
+        "probes": [
+          {
+            "label": "dialogue analysis and published reconstruction PCM",
+            "before": "val sync =",
+            "assertions": "check(options == LorisDocs.options)\ncheck(result.model == client.analyze(wav.samples, wav.sampleRate, LorisDocs.options).model)\nval checkWav = java.nio.file.Files.createTempFile(\"field-loris-teaching-\", \".wav\").toFile()\ntry {\n    afield.audio.engine.WavFloatArrayWriter.writeMono16(checkWav.path, result.samples, result.model.sampleRate)\n    check(checkWav.readBytes().contentEquals(java.io.File(\"public/docs/assets/loris/reconstruction.wav\").readBytes())) { \"PCM differs from the published reconstruction.wav\" }\n} finally { checkWav.delete() }"
+          },
+          {
+            "label": "changed analysis resolution on rerun",
+            "before": "val sync =",
+            "assertions": "check(options == LorisDocs.options.copy(resolutionHz = 45.0))\ncheck(result.model == client.analyze(wav.samples, wav.sampleRate, LorisDocs.options.copy(resolutionHz = 45.0)).model)",
+            "replace": {
+              "resolutionHz = 35.0": "resolutionHz = 45.0"
+            }
+          }
+        ]
+      },
+      {
+        "path": "public/docs/loris.md",
+        "name": "loris-whirlpool",
+        "capture": true,
+        "probeFullCode": true,
+        "probes": [
+          {
+            "label": "explicit whirlpool breakpoint mapping and published PCM",
+            "before": "display(\n",
+            "assertions": "val expectedModel = model.spectralWhirlpool(chunkStart, chunkDuration)\ncheck(changed == expectedModel)\ncheck(edited.samples.contentEquals(client.synthesize(expectedModel).samples))\nval checkWav = java.nio.file.Files.createTempFile(\"field-loris-teaching-\", \".wav\").toFile()\ntry {\n    afield.audio.engine.WavFloatArrayWriter.writeMono16(checkWav.path, edited.samples, edited.model.sampleRate)\n    check(checkWav.readBytes().contentEquals(java.io.File(\"public/docs/assets/loris/spectral-whirlpool.wav\").readBytes())) { \"PCM differs from the published spectral-whirlpool.wav\" }\n} finally { checkWav.delete() }"
+          },
+          {
+            "label": "moved whirlpool window on rerun",
+            "before": "display(\n",
+            "assertions": "val expectedModel = model.spectralWhirlpool(chunkStart, chunkDuration)\ncheck(changed == expectedModel)\ncheck(edited.samples.contentEquals(client.synthesize(expectedModel).samples))",
+            "replace": {
+              "val chunkStart = 6.0": "val chunkStart = 5.0",
+              "val chunkDuration = 3.0": "val chunkDuration = 2.0"
+            }
+          }
+        ]
+      },
+      {
+        "path": "public/docs/loris.md",
+        "name": "loris-tonal-edit",
+        "capture": true,
+        "probeFullCode": true,
+        "probes": [
+          {
+            "label": "tonal transformation and published PCM",
+            "before": "display(\n",
+            "assertions": "check(edited.samples.contentEquals(client.synthesize(analyzed.model.transformed(frequencyScale = frequencyScale, bandwidthScale = bandwidthScale, gain = gain)).samples))\nval checkWav = java.nio.file.Files.createTempFile(\"field-loris-teaching-\", \".wav\").toFile()\ntry {\n    afield.audio.engine.WavFloatArrayWriter.writeMono16(checkWav.path, edited.samples, edited.model.sampleRate)\n    check(checkWav.readBytes().contentEquals(java.io.File(\"public/docs/assets/loris/three-quarter-tonal.wav\").readBytes())) { \"PCM differs from the published three-quarter-tonal.wav\" }\n} finally { checkWav.delete() }"
+          },
+          {
+            "label": "changed pitch scale on rerun",
+            "before": "display(\n",
+            "assertions": "check(edited.samples.contentEquals(client.synthesize(analyzed.model.transformed(frequencyScale = frequencyScale, bandwidthScale = bandwidthScale, gain = gain)).samples))",
+            "replace": {
+              "val frequencyScale = 0.75": "val frequencyScale = 0.9"
+            }
+          }
+        ]
+      },
+      {
+        "path": "public/docs/loris.md",
+        "name": "loris-morph-a",
+        "capture": true,
+        "probeFullCode": true,
+        "probes": [
+          {
+            "label": "distilled, aligned and morphed models and published PCM",
+            "before": "val result = when",
+            "assertions": "val expectedA = client.distill(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0))\nval expectedB = client.distill(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0))\nval expectedAligned = client.dilate(expectedB.model, [0.0, expectedB.model.loudestTimeSeconds(), end], [0.0, expectedA.model.loudestTimeSeconds(), end], durationSeconds = end)\nval expectedRaw = client.morph(expectedA.model.dropUnlabeled(), expectedAligned.model.dropUnlabeled(), LorisEnvelope.ramp(morphStart, morphEnd))\nval expectedGain = if (expectedRaw.peak > 0.95f) 0.95 / expectedRaw.peak else 1.0\nval expected = if (expectedGain == 1.0) expectedRaw else client.synthesize(expectedRaw.model.transformed(gain = expectedGain))\ncheck(a == expectedA.model && b == expectedB.model && aligned == expectedAligned.model)\ncheck(morphed.model == expected.model && morphed.samples.contentEquals(expected.samples))\nval checkWav = java.nio.file.Files.createTempFile(\"field-loris-teaching-\", \".wav\").toFile()\ntry {\n    afield.audio.engine.WavFloatArrayWriter.writeMono16(checkWav.path, morphed.samples, morphed.model.sampleRate)\n    check(checkWav.readBytes().contentEquals(java.io.File(\"public/docs/assets/loris/morph-a-to-b.wav\").readBytes())) { \"PCM differs from the published morph-a-to-b.wav\" }\n} finally { checkWav.delete() }"
+          },
+          {
+            "label": "changed morph envelope on rerun",
+            "before": "val result = when",
+            "assertions": "val expectedA = client.distill(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0))\nval expectedB = client.distill(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0))\nval expectedAligned = client.dilate(expectedB.model, [0.0, expectedB.model.loudestTimeSeconds(), end], [0.0, expectedA.model.loudestTimeSeconds(), end], durationSeconds = end)\nval expectedRaw = client.morph(expectedA.model.dropUnlabeled(), expectedAligned.model.dropUnlabeled(), LorisEnvelope.ramp(morphStart, morphEnd))\nval expectedGain = if (expectedRaw.peak > 0.95f) 0.95 / expectedRaw.peak else 1.0\nval expected = if (expectedGain == 1.0) expectedRaw else client.synthesize(expectedRaw.model.transformed(gain = expectedGain))\ncheck(a == expectedA.model && b == expectedB.model && aligned == expectedAligned.model)\ncheck(morphed.model == expected.model && morphed.samples.contentEquals(expected.samples))",
+            "replace": {
+              "val morphStart = 0.4": "val morphStart = 0.6",
+              "val morphEnd = 1.6": "val morphEnd = 1.4"
+            }
+          }
+        ]
+      },
+      {
+        "path": "public/docs/loris.md",
+        "name": "loris-morph-b",
+        "capture": true,
+        "probeFullCode": true,
+        "probes": [
+          {
+            "label": "phrase B uses the same explicit morph pipeline",
+            "before": "val result = when",
+            "assertions": "val expectedA = client.distill(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0))\nval expectedB = client.distill(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0))\nval expectedAligned = client.dilate(expectedB.model, [0.0, expectedB.model.loudestTimeSeconds(), end], [0.0, expectedA.model.loudestTimeSeconds(), end], durationSeconds = end)\nval expectedRaw = client.morph(expectedA.model.dropUnlabeled(), expectedAligned.model.dropUnlabeled(), LorisEnvelope.ramp(morphStart, morphEnd))\nval expectedGain = if (expectedRaw.peak > 0.95f) 0.95 / expectedRaw.peak else 1.0\nval expected = if (expectedGain == 1.0) expectedRaw else client.synthesize(expectedRaw.model.transformed(gain = expectedGain))\ncheck(a == expectedA.model && b == expectedB.model && aligned == expectedAligned.model)\ncheck(morphed.model == expected.model && morphed.samples.contentEquals(expected.samples))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/loris.md",
+        "name": "loris-morph-result",
+        "capture": true,
+        "probeFullCode": true,
+        "probes": [
+          {
+            "label": "morph view uses the same explicit morph pipeline",
+            "before": "val result = when",
+            "assertions": "val expectedA = client.distill(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0))\nval expectedB = client.distill(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0))\nval expectedAligned = client.dilate(expectedB.model, [0.0, expectedB.model.loudestTimeSeconds(), end], [0.0, expectedA.model.loudestTimeSeconds(), end], durationSeconds = end)\nval expectedRaw = client.morph(expectedA.model.dropUnlabeled(), expectedAligned.model.dropUnlabeled(), LorisEnvelope.ramp(morphStart, morphEnd))\nval expectedGain = if (expectedRaw.peak > 0.95f) 0.95 / expectedRaw.peak else 1.0\nval expected = if (expectedGain == 1.0) expectedRaw else client.synthesize(expectedRaw.model.transformed(gain = expectedGain))\ncheck(a == expectedA.model && b == expectedB.model && aligned == expectedAligned.model)\ncheck(morphed.model == expected.model && morphed.samples.contentEquals(expected.samples))"
+          }
+        ]
+      }
+    ]
+  },
+  "subharmonic-spectra": {
+    "targets": [
+      {
+        "path": "public/docs/subharmonic_sound.md",
+        "name": "subharmonic-bass-octave-spectrum",
+        "capture": true,
+        "probes": [
+          {
+            "label": "bass-octave: explicit graph samples match the scene",
+            "assertions": "check(samples.contentEquals(SubharmonicSoundDocs.render(\"bass-octave\")))"
+          },
+          {
+            "label": "bass-octave: shorter render on rerun",
+            "replace": {
+              "val seconds = 6f": "val seconds = 3f"
+            },
+            "assertions": "val expected = SubharmonicSoundDocs.render(\"bass-octave\")\ncheck(samples.size < expected.size)\ncheck(samples.contentEquals(expected.copyOf(samples.size)))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/subharmonic_sound.md",
+        "name": "subharmonic-bass-trackers-spectrum",
+        "capture": true,
+        "probes": [
+          {
+            "label": "bass-trackers: explicit graph samples match the scene",
+            "assertions": "check(samples.contentEquals(SubharmonicSoundDocs.render(\"bass-trackers\")))"
+          },
+          {
+            "label": "bass-trackers: shorter render on rerun",
+            "replace": {
+              "val seconds = 12f": "val seconds = 6f"
+            },
+            "assertions": "val expected = SubharmonicSoundDocs.render(\"bass-trackers\")\ncheck(samples.size < expected.size)\ncheck(samples.contentEquals(expected.copyOf(samples.size)))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/subharmonic_sound.md",
+        "name": "subharmonic-divisions-spectrum",
+        "capture": true,
+        "probes": [
+          {
+            "label": "divisions: explicit graph samples match the scene",
+            "assertions": "check(samples.contentEquals(SubharmonicSoundDocs.render(\"divisions\")))"
+          },
+          {
+            "label": "divisions: shorter render on rerun",
+            "replace": {
+              "val seconds = 18f": "val seconds = 9f"
+            },
+            "assertions": "val expected = SubharmonicSoundDocs.render(\"divisions\")\ncheck(samples.size < expected.size)\ncheck(samples.contentEquals(expected.copyOf(samples.size)))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/subharmonic_sound.md",
+        "name": "subharmonic-kick-spectrum",
+        "capture": true,
+        "probes": [
+          {
+            "label": "kick: explicit graph samples match the scene",
+            "assertions": "check(samples.contentEquals(SubharmonicSoundDocs.render(\"kick\")))"
+          },
+          {
+            "label": "kick: shorter render on rerun",
+            "replace": {
+              "val seconds = 12f": "val seconds = 6f"
+            },
+            "assertions": "val expected = SubharmonicSoundDocs.render(\"kick\")\ncheck(samples.size < expected.size)\ncheck(samples.contentEquals(expected.copyOf(samples.size)))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/subharmonic_sound.md",
+        "name": "subharmonic-arpy-spectrum",
+        "capture": true,
+        "probes": [
+          {
+            "label": "arpy: explicit graph samples match the scene",
+            "assertions": "check(samples.contentEquals(SubharmonicSoundDocs.render(\"arpy\")))"
+          },
+          {
+            "label": "arpy: shorter render on rerun",
+            "replace": {
+              "val seconds = 8f": "val seconds = 4f"
+            },
+            "assertions": "val expected = SubharmonicSoundDocs.render(\"arpy\")\ncheck(samples.size < expected.size)\ncheck(samples.contentEquals(expected.copyOf(samples.size)))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/subharmonic_sound.md",
+        "name": "subharmonic-film-naive-spectrum",
+        "capture": true,
+        "probes": [
+          {
+            "label": "film-naive: explicit graph samples match the scene",
+            "assertions": "check(samples.contentEquals(SubharmonicSoundDocs.render(\"film-naive\")))"
+          },
+          {
+            "label": "film-naive: shorter render on rerun",
+            "replace": {
+              "val seconds = 7.5f": "val seconds = 3.75f"
+            },
+            "assertions": "val expected = SubharmonicSoundDocs.render(\"film-naive\")\ncheck(samples.size < expected.size)\ncheck(samples.contentEquals(expected.copyOf(samples.size)))"
+          }
+        ]
+      },
+      {
+        "path": "public/docs/subharmonic_sound.md",
+        "name": "subharmonic-film-shaped-spectrum",
+        "capture": true,
+        "probes": [
+          {
+            "label": "film-shaped: explicit graph samples match the scene",
+            "assertions": "check(samples.contentEquals(SubharmonicSoundDocs.render(\"film-shaped\")))"
+          },
+          {
+            "label": "film-shaped: shorter render on rerun",
+            "replace": {
+              "val seconds = 13.5f": "val seconds = 6.75f"
+            },
+            "assertions": "val expected = SubharmonicSoundDocs.render(\"film-shaped\")\ncheck(samples.size < expected.size)\ncheck(samples.contentEquals(expected.copyOf(samples.size)))"
+          }
+        ]
+      }
+    ]
+  },
+  "interval-subdivision": {
+    "targets": [
+      {
+        "path": "public/docs/stacksl_intervals.md",
+        "name": "stacksl-intervals-ring",
+        "capture": true,
+        "probes": [
+          {
+            "label": "explicit quadtree matches native tiles, work count and pixels",
+            "assertions": "val expected = StackSLIntervals.tilePicture(program, dim, tolerance, time)\ncheck(tiles.size == expected.tiles.size && enclosures == expected.enclosures)\ncheck(tiles.zip(expected.tiles).all { (a, b) ->\n    a.x == b.x && a.y == b.y && a.size == b.size && a.settled == b.settled &&\n    a.bound.lo.contentEquals(b.bound.lo) && a.bound.hi.contentEquals(b.bound.hi) &&\n    a.bound.maybeNaN == b.bound.maybeNaN && a.bound.maybeDiscarded == b.bound.maybeDiscarded && a.bound.refusal == b.bound.refusal\n})\ncheck(render.rgba.contentEquals(expected.render.rgba))"
+          },
+          {
+            "label": "smaller render with wider tolerance on rerun",
+            "replace": {
+              "val dim = 128": "val dim = 64",
+              "val tolerance = 2f / 255f": "val tolerance = 4f / 255f"
+            },
+            "assertions": "val expected = StackSLIntervals.tilePicture(program, dim, tolerance, time)\ncheck(tiles.size == expected.tiles.size && enclosures == expected.enclosures)\ncheck(tiles.zip(expected.tiles).all { (a, b) ->\n    a.x == b.x && a.y == b.y && a.size == b.size && a.settled == b.settled &&\n    a.bound.lo.contentEquals(b.bound.lo) && a.bound.hi.contentEquals(b.bound.hi) &&\n    a.bound.maybeNaN == b.bound.maybeNaN && a.bound.maybeDiscarded == b.bound.maybeDiscarded && a.bound.refusal == b.bound.refusal\n})\ncheck(render.rgba.contentEquals(expected.render.rgba))"
+          }
+        ]
+      }
+    ]
+  },
+  "morpho-remaining": {
+    "targets": [
+      {
+        "path": "public/docs/morpho_search.md",
+        "name": "morpho-search-recursion",
+        "capture": true,
+        "probes": [
+          {
+            "label": "or-reduce truth tables and seeded grammar",
+            "replace": {},
+            "assertions": "val reference = MorphoProblems.orReduce(widths, maxStatements, designWidth)\ncheck(problem.name == reference.name && problem.about == reference.about)\nfor (width in widths) for (x in 0L until (1L shl width)) {\n    check(spec.oracle(longArrayOf(x), width).contentEquals(reference.spec.oracle(longArrayOf(x), width)))\n}\nfor (seed in [1, 2, 42]) check(problem.generator.random(kotlin.random.Random(seed)).render() == reference.generator.random(kotlin.random.Random(seed)).render())"
+          },
+          {
+            "label": "or-reduce altered widths and grammar on rerun",
+            "replace": {
+              "val widths = [2, 3, 5]": "val widths = [2, 3]",
+              "val maxStatements = 6": "val maxStatements = 4"
+            },
+            "assertions": "val reference = MorphoProblems.orReduce(widths, maxStatements, designWidth)\ncheck(problem.name == reference.name && problem.about == reference.about)\nfor (width in widths) for (x in 0L until (1L shl width)) {\n    check(spec.oracle(longArrayOf(x), width).contentEquals(reference.spec.oracle(longArrayOf(x), width)))\n}\nfor (seed in [1, 2, 42]) check(problem.generator.random(kotlin.random.Random(seed)).render() == reference.generator.random(kotlin.random.Random(seed)).render())"
+          },
+          {
+            "label": "short search with no correct design still renders",
+            "probeUntil": false,
+            "replace": {
+              "val budget = 6000": "val budget = 32"
+            },
+            "assertions": "check(found.isEmpty())\ncheck(cost.isEmpty())"
+          }
+        ],
+        "probeUntil": "println(problem)"
+      },
+      {
+        "path": "public/docs/morpho_search.md",
+        "name": "morpho-search-adder",
+        "capture": true,
+        "probes": [
+          {
+            "label": "free and guided adder oracles and seeded grammar",
+            "replace": {},
+            "assertions": "val references = [MorphoProblems.recursiveAdder(widths, maxStatements, designWidth), MorphoProblems.guidedRecursiveAdder(widths, maxStatements, designWidth)]\nfor ((actual, reference) in [free, guided].zip(references)) {\n    check(actual.name == reference.name && actual.about == reference.about)\n    for (width in widths) for (a in [0L, 1L, (1L shl width)-1]) for (b in [0L, 1L, (1L shl width)-1]) for (c in 0L..1L) {\n        val inputs = longArrayOf(a, b, c)\n        check(actual.spec.oracle(inputs, width).contentEquals(reference.spec.oracle(inputs, width)))\n    }\n    for (seed in [1, 2, 42]) check(actual.generator.random(kotlin.random.Random(seed)).render() == reference.generator.random(kotlin.random.Random(seed)).render())\n}"
+          },
+          {
+            "label": "altered adder grammar on rerun",
+            "replace": {
+              "val maxStatements = 10": "val maxStatements = 8"
+            },
+            "assertions": "val references = [MorphoProblems.recursiveAdder(widths, maxStatements, designWidth), MorphoProblems.guidedRecursiveAdder(widths, maxStatements, designWidth)]\nfor ((actual, reference) in [free, guided].zip(references)) {\n    check(actual.name == reference.name && actual.about == reference.about)\n    for (width in widths) for (a in [0L, 1L, (1L shl width)-1]) for (b in [0L, 1L, (1L shl width)-1]) for (c in 0L..1L) {\n        val inputs = longArrayOf(a, b, c)\n        check(actual.spec.oracle(inputs, width).contentEquals(reference.spec.oracle(inputs, width)))\n    }\n    for (seed in [1, 2, 42]) check(actual.generator.random(kotlin.random.Random(seed)).render() == reference.generator.random(kotlin.random.Random(seed)).render())\n}"
+          }
+        ],
+        "probeUntil": "val budget = 6000"
+      }
+    ]
+  },
+  "path-scenes": {
+    "targets": [
+      {
+        "path": "public/docs/path_tracing.md",
+        "contains": "// A floor and three independently editable spheres."
+      },
+      {
+        "path": "public/docs/path_tracing.md",
+        "contains": "requestedBackend = PathTracingRenderer.Backend.RAY_QUERY"
+      },
+      {
+        "path": "public/docs/path_tracing.md",
+        "contains": "val sky = PathTraceEnvironment.fromAtmosphere"
+      },
+      {
+        "path": "public/docs/imgui_vr_panel.md",
+        "contains": "imgui.addUi(\"panel\")"
+      },
+      {
+        "path": "public/docs/imgui_vr_panel.md",
+        "contains": "fun updateRayHit()"
+      }
+    ]
+  },
+  "rig-measurement": {
+    "targets": [
+      {
+        "path": "public/docs/chain_scene_to_light.md",
+        "name": "chain-scene-to-light-aliasing",
+        "capture": true,
+        "probes": [
+          {
+            "label": "default light totals and peaks exactly match the original measurement",
+            "replace": {},
+            "assertions": "val expected = SceneOnARig.aliasing(frameCount, line)\ncheck(point.total.contentEquals(expected.first.total) && point.peak.contentEquals(expected.first.peak))\ncheck(area.total.contentEquals(expected.second.total) && area.peak.contentEquals(expected.second.peak))"
+          },
+          {
+            "label": "wider line and fewer samples on rerun",
+            "replace": {
+              "val frameCount = 121": "val frameCount = 61",
+              "val lineWidth = 0.25": "val lineWidth = 0.5"
+            },
+            "assertions": "val expected = SceneOnARig.aliasing(frameCount, line)\ncheck(point.total.contentEquals(expected.first.total) && point.peak.contentEquals(expected.first.peak))\ncheck(area.total.contentEquals(expected.second.total) && area.peak.contentEquals(expected.second.peak))\ncheck(lineTruth == 4.0)"
+          }
+        ]
+      }
+    ]
+  }
+}

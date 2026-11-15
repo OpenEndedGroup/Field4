@@ -19,9 +19,11 @@ There is no external key, hosted scene, or platform-specific page to set up.
 To sketch in a browser tab on your desktop, with no headset involved, start with [Javascript in a
 browser tab](remotejs.md); this page is the reference for the head itself and for WebXR.
 
-This is the *browser* head. Field's other head is native and does not go through WebXR at all. See
-[Apple Vision Pro](vision.md) for the visionOS front end, its RealityKit and Live Metal surfaces,
-and the pose channel that lets the desktop renderer draw from the wearer's own viewpoint.
+This is the *browser* head. For an existing desktop OpenXR scene on Vision Pro over Wi-Fi,
+use [Linux → CloudXR → AVP](cloudxr_vision_pro.md), with head/hand tracking and an optional
+IDE panel. With a Mac, Chrome connected to Linux Field remains a usable editor through
+Mac Virtual Display. For code running on the headset or video on a native surface, see
+[Apple Vision Pro](vision.md): its RealityKit, Live Metal and RTT receiver are separate paths.
 
 ## Start a RemoteJS document
 

@@ -123,6 +123,9 @@ nav:
     # Beside moving_around_the_canvas.md: a canvas flight is a camera move through its bookmarks,
     # filmed to MP4.
     - Filming the Canvas: filming_the_canvas.md
+    # Beside filming_the_canvas.md: a film of a document's own outputs (3D views, drawings, displays) from
+    # a timeline file of keys, frame by frame, with the stage the outputs are laid out on.
+    - Filming a Timeline: filming_a_timeline.md
     # Beside filming_the_canvas.md: the showcase canvas built by demo_document.yaml, and the film of it
     # that plays behind the home page.
     - The Demo Document: demo_document.md
@@ -307,6 +310,7 @@ nav:
       - "Audio Curves: Sound as a Few Controls": audio_curves.md
       - Sonic Pi: sonic_pi.md
       - Faust: faust.md
+      - FM-1 simulator: fm1.md
       - Pure Data: pure_data.md
       - Csound: csound.md
       - ORCA: orca.md
@@ -424,6 +428,10 @@ nav:
       # dispatch, this teaches what changes when the shader's input is its own last output, and
       # field_probes instruments exactly that kind of scene.
       - GPU State: gpu_state.md
+      # Linux/NVIDIA only, which the page says in its first paragraph: CUDA kernels on the
+      # renderer's own buffers, the particle scene being lesson 3b with CUDA in place of the
+      # compute shader.
+      - CUDA Beside the Renderer: cuda.md
       # The worked example of the two pages above it, and here rather than under "Working in a
       # Document" where it first landed: nothing on it is about working in a document. It is an
       # eight-box render-to-texture graph — four light bands, two reductions, two aperture filters
@@ -471,6 +479,7 @@ nav:
       # after the page above — same transport, real Kotlin instead of raw JS — and directly before
       # the two visionOS pages whose `visionmetal` profile it is the compile route for.
       - Kotlin in the Head: kotlin_in_the_head.md
+      - Linux to Vision Pro (CloudXR): cloudxr_vision_pro.md
       - Apple Vision Pro (WiP): vision.md
       - Geometry in the Headset: vision_geometry.md
       - Stereo RTT composite: stereo_rtt_composite.md

@@ -11,6 +11,7 @@
 
 package afield.ai.models
 
+import afield.ai.conversation.AiConversationGarden
 import afield.ai.conversation.AiBoxConversation
 import afield.ai.conversation.AiThreadContinuation
 import afield.ai.conversation.AiLiveConversation
@@ -1191,12 +1192,55 @@ fun installAi4() {
         Handled.yes
     })
 
+    // Structured conversation operations use the same session/box access boundary as ai-chat-history.
+    handlers["ai-garden"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<afield.ai.conversation.GardenRequest>(message.payload!!)
+        val info = thisSessionInfo.get()
+        val target = info.boxes[request.uid]
+        val key = "${info.filename}\u0000${request.uid}\u0000"
+        val result = runCatching {
+            require(target != null) { "Choose an existing box." }
+            when (request.action) {
+                "initialize" -> AiConversationGarden.initialize(target)
+                "read" -> if (key !in activeBoxChats) AiConversationGarden.recover(target) else AiConversationGarden.read(target)
+                "enqueue" -> AiConversationGarden.enqueue(target, request.prompt, request.anchor, request.property, request.anchorText, request.wholeDocument).first
+                "delete" -> AiConversationGarden.deleteBranch(target, request.node)
+                "move" -> AiConversationGarden.moveBranch(target, request.node, request.anchor, request.beforeNode)
+                "run" -> {
+                    check(key !in activeBoxChats) { "This box has an agent running. The reply remains queued." }
+                    val node = AiConversationGarden.read(target).nodes.single { it.id == request.node }
+                    require(node.status == "queued") { "This reply is ${node.status}; reply to it to continue." }
+                    handle(Message("ai-assist").payload(AiAssist(uid = target.id,
+                        prompt = (target.getPropertyRaw(node.property) as? String).orEmpty(), extraPrompt = node.prompt,
+                        property = node.property, kind = "general", gardenNode = node.id))) { }
+                    val garden = AiConversationGarden.read(target)
+                    check(garden.nodes.single { it.id == node.id }.status != "queued") { "Agent did not start. Check AI4 setup and try Play again." }
+                    garden
+                }
+                else -> error("Unknown garden operation.")
+            }
+        }
+        val resultGarden = result.getOrNull()
+        reply(Message("ai-garden").payload(afield.ai.conversation.GardenReply(request.uid,
+            resultGarden?.takeUnless { request.action == "read" && it.revision == request.knownRevision }?.let { AiConversationGarden.forDisplay(target!!, it) },
+            error = result.exceptionOrNull()?.message.orEmpty(), busy = key in activeBoxChats)))
+        Handled.yes
+    })
+
     VoiceTranscriber.install()
 
     handlers["ai-assist"] = mutableSetOf({ message, _ ->
         invalidateBridgesAfterSettingsChange()
         val exec = Json.decodeFromJsonElement<AiAssist>(message.payload!!)
         val box = box(exec.uid)
+        val gardenNode = exec.gardenNode.takeIf { it.isNotBlank() }
+        if (gardenNode != null) {
+            val node = AiConversationGarden.read(box).nodes.singleOrNull { it.id == gardenNode }
+            if (exec.kind != "general" || node?.status != "queued" || node.prompt != exec.extraPrompt || node.property != exec.property) {
+                notify("Garden reply is no longer queued or its request changed.", "AI4")
+                return@mutableSetOf Handled.yes
+            }
+        }
 
         if (bridge == null) {
             val uiLog = NotifyLog()
@@ -1249,9 +1293,23 @@ fun installAi4() {
         val escapedDocPath = Regex.escape(docPath)
         val fileKey = fileRefFor(docName, exec.uid, exec.property)
         val boxChatKey = "$docPath\u0000${box.id}\u0000"
-        val conversationKey = boxChatKey + exec.property
-        fun history() = AiBoxConversation.read(box)
-        fun saveHistory(text: String) = AiBoxConversation.write(box, text)
+        val conversationKey = boxChatKey + exec.property + (gardenNode?.let { "\u0000garden:$it" } ?: "")
+        // The garden renders only this run's output, while the model receives its frozen ancestry.
+        var gardenHistory = ""
+        fun history() = if (gardenNode == null) AiBoxConversation.read(box) else gardenHistory
+        fun saveHistory(text: String) {
+            if (gardenNode == null) AiBoxConversation.write(box, text)
+            else {
+                gardenHistory = text
+                AiConversationGarden.update(box, gardenNode, text)
+            }
+        }
+        if (gardenNode != null) {
+            chatGraph.gardenOwner = box
+            chatGraph.onTextEdit = { target, property, before, after ->
+                AiConversationGarden.edit(box, gardenNode, target, property, before, after)
+            }
+        }
         val textProperties = linkedSetOf(
             "code",
             "vertex",
@@ -1399,11 +1457,12 @@ fun installAi4() {
 
         // Sent from the panel while this box's turn runs: give it to that turn (AiTurnInbox), never refuse it.
         fun queueForRunningTurn(): Boolean {
-            if (!exec.queueIfBusy || exec.kind != "general") return false
+            if (gardenNode != null || !exec.queueIfBusy || exec.kind != "general") return false
             val shown = (listOf(expandedExtraPrompt.trim()) + exec.images.map { "![attachment]($it)" })
                 .filter { it.isNotBlank() }.joinToString("\n\n")
             val pending = AiTurnInbox.Pending(shown, modelUserPrompt, exec.images, exec, thisSession.get(),
                 fromField = exec.continuationId.isNotBlank())
+            if (AiConversationGarden.read(box).nodes.any { it.status == "running" }) return false
             val inbox = synchronized(turnInboxes) { turnInboxes[boxChatKey]?.takeIf { it.offer(pending) } } ?: return false
             afield.ai.agent.StudyBuildAwaits.accepted(exec.continuationId)
             inbox.onQueued?.invoke()
@@ -1743,6 +1802,14 @@ fun installAi4() {
 
             GlslIncludeLibraryIndex.resolveAttachment(requested)?.let { return@attachmentResolver it }
 
+            // A file box, named by uid or by name: read the file it stands for.
+            (boxByIdOrNull(requested) ?: box.inside.boxes.values.singleOrNull { it.name == requested })
+                ?.let(::fileProxyTargetOrNull)
+                ?.let { target ->
+                    val (content, language) = readFileAsText(target) ?: return@attachmentResolver null
+                    return@attachmentResolver AttachmentResponse(file = target.path, language = language, content = content)
+                }
+
             val candidatePaths = linkedSetOf<Path>()
             val requestedPath = runCatching { Paths.get(requested) }.getOrNull()
             if (requestedPath != null) {
@@ -1759,11 +1826,13 @@ fun installAi4() {
 
             for (candidate in candidatePaths) {
                 if (!Files.exists(candidate) || !Files.isRegularFile(candidate)) continue
-                val content = runCatching { Files.readString(candidate, StandardCharsets.UTF_8) }.getOrNull() ?: continue
+                val isPdf = candidate.toString().endsWith(".pdf", ignoreCase = true)
+                val content = if (isPdf) readFileAsText(candidate.toFile())?.first ?: continue
+                    else runCatching { Files.readString(candidate, StandardCharsets.UTF_8) }.getOrNull() ?: continue
                 val related = RelatedContextDiscovery.forPath(candidate.toString())
                 return@attachmentResolver AttachmentResponse(
                     file = candidate.toString(),
-                    language = languageForFilePath(candidate),
+                    language = if (isPdf) "plaintext" else languageForFilePath(candidate),
                     content = content,
                     relatedGuides = related.guides,
                     relatedExamples = related.examples
@@ -1988,7 +2057,7 @@ fun installAi4() {
             return match.groupValues.getOrNull(2)?.trim().orEmpty()
         }
 
-        parsedScreenshotCommand()?.let { target ->
+        (if (gardenNode == null) parsedScreenshotCommand() else null)?.let { target ->
             ai4Scope.launch {
                 val response = runCatching {
                     captureChatScreenshot(AiChatScreenshotRequest(uid = exec.uid, target = target), sessionInfo)
@@ -2077,14 +2146,15 @@ fun installAi4() {
         val provisionalBeforeAi = provisionalEntries(docPath)
             .associate { provisionalKey(it) to it.contents }
 
-        AiBoxConversation.recoverInterrupted(box)
+        if (gardenNode == null) AiBoxConversation.recoverInterrupted(box)
+        else AiConversationGarden.status(box, gardenNode, "running")
         AiBoxConversation.running(box, true)
         // Switching property or assistance kind resumes from the shared transcript, not a stale thread.
         val currentThreads = if (exec.kind == "general") chatThreadByKey else threadByKey
         val otherThreads = if (exec.kind == "general") threadByKey else chatThreadByKey
         currentThreads.keys.removeIf { it.startsWith(boxChatKey) && it != conversationKey }
         otherThreads.keys.removeIf { it.startsWith(boxChatKey) }
-        val savedHistory = history()
+        val savedHistory = if (gardenNode == null) history() else AiConversationGarden.context(box, gardenNode)
         val continuationBridge = if (exec.kind == "general") chatBridge!! else bridge!!
         // What the session tree records about this turn once it ends (AiSessionTree.recordTurn).
         val turnMeta = java.util.concurrent.atomic.AtomicReference<AiSessionTree.TurnMeta?>(null)
@@ -2126,6 +2196,7 @@ fun installAi4() {
             // The panel is sent the transcript plus whatever waits in the inbox, with a build wait's row open
             // while it lasts; only the transcript is saved.
             fun sendToPanel(markdown: String) {
+                if (gardenNode != null) return // Garden reads structured updates, never replaces the linear panel.
                 val queued = inbox.queuedMarkdown()
                 val shown = awaits.shown(sessionInfo, box, markdown).let { if (queued.isEmpty()) it else it.trimEnd() + "\n" + queued }
                 _send(Message("set-output").payload(Set_output(box.id, "outputarea", "ai-chat", shown)), document = escapedDocPath)
@@ -2206,7 +2277,7 @@ fun installAi4() {
                     "error" -> "Starting error fix"
                     else -> "Starting AI work"
                 },
-                userBlock = visibleUserBlockForKind()
+                userBlock = if (gardenNode == null) visibleUserBlockForKind() else ""
             )
 
             // Append any caller-supplied instruction (e.g. from the error-suggestion "Ask AI4"
@@ -2219,7 +2290,7 @@ fun installAi4() {
 
             try {
                 val state = if (exec.kind == "general") {
-                    chatThreadFor(fileKey, exec.prompt, conversationKey, savedHistory, box)
+                    chatThreadFor(fileKey, exec.prompt, conversationKey, savedHistory, if (gardenNode == null) box else null)
                 } else {
                     threadFor(fileKey, exec.prompt, conversationKey, savedHistory, box)
                 }
@@ -2268,7 +2339,7 @@ fun installAi4() {
                         chatResult = chatHelpers!!.chatGeneral(
                             maxToolRounds = exec.maxToolRounds,
                             // AwaitStudyBuildsRequest may end this turn: StudyBuildAwaits resumes it.
-                            suspendable = true,
+                            suspendable = gardenNode == null,
                             state = state,
                             code = exec.prompt,
                             lang = lang,
@@ -2626,11 +2697,14 @@ fun installAi4() {
                         }.getOrDefault(emptyMap()),
                         branchBefore = branchBefore.get(),
                         branchAfter = runCatching { AgentExtensionRegistry.snapshotBranchStates(box) }.getOrDefault(emptyMap()))
-                AiSessionTree.recordTurn(box, savedHistory, history(), meta)
+                if (gardenNode == null) AiSessionTree.recordTurn(box, savedHistory, history(), meta)
             }.onFailure { lprintln("warning,ai4", "session tree: could not record the turn: ${it.message}") }
             runCatching {
                 val state = currentThreads[conversationKey]
-                if (failure == null && AiBoxConversation.turnFailure(box) == null && state != null) {
+                if (gardenNode != null) {
+                    currentThreads.remove(conversationKey)
+                    agentMemoryByKey.remove(conversationKey)
+                } else if (failure == null && AiBoxConversation.turnFailure(box) == null && state != null) {
                     AiThreadContinuation.save(box, continuationBridge, state, if (exec.kind == "general") "general" else "edit")
                 } else AiThreadContinuation.clear(box)
             }.onFailure { lprintln("warning,ai4", "could not checkpoint provider continuation: ${it.message}") }
@@ -2642,12 +2716,16 @@ fun installAi4() {
                 if (failure != null) AiBoxConversation.failed(box,
                     "AI ${exec.kind} ${if (isAiTurnCancellation(failure)) "cancelled" else "failed"}: ${failure.message ?: failure::class.java.simpleName}")
             } finally {
+                if (gardenNode != null) runCatching {
+                    val error = failure?.message ?: AiBoxConversation.turnFailure(box)
+                    AiConversationGarden.status(box, gardenNode, if (error == null) "complete" else "failed", error.orEmpty())
+                }.onFailure { lprintln("warning,ai4", "garden: could not finish reply: ${it.message}") }
+                AiBoxConversation.running(box, false)
                 undelivered = synchronized(turnInboxes) {
                     turnInboxes.remove(boxChatKey, inbox)
                     activeBoxChats.remove(boxChatKey)
                     inbox.close()
                 }
-                AiBoxConversation.running(box, false)
             }
             if (undelivered.isNotEmpty()) startFollowUpTurn(sessionInfo, undelivered)
         }

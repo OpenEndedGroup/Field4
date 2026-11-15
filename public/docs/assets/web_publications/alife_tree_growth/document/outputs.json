@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T03:30:48.753Z",
+  "capturedAt": "2026-11-14T22:56:57.530Z",
   "documentName": "alife_tree_growth",
   "outputs": [
     {
@@ -22,7 +22,7 @@
         "svg"
       ],
       "width": 473,
-      "height": 56,
+      "height": 54,
       "path": "outputs/1.html"
     },
     {

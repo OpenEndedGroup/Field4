@@ -88,4 +88,6 @@ uv run --project . --group backdoor python tools/run_field_tests.py --id four.st
 ```
 
 For interactive controls in the scene itself, continue with [ImGui as an in-VR panel](imgui_vr_panel.md).
-For another source of stereo eye matrices, see [Apple Vision Pro](vision.md).
+For a desktop OpenXR scene on Vision Pro over Wi-Fi, use
+[Linux → CloudXR → AVP](cloudxr_vision_pro.md). For an RTT shown as a stereo video surface,
+see the separate [Vision Pro native receiver](vision.md#streaming-the-rendered-scene-as-video).

@@ -49,8 +49,8 @@ internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String
     val notes = mutableListOf<String>()
     val commands = mutableListOf<List<String>>()
     if (manager != null && manager != "brew") packages += missing.filter { it in setOf("curl", "tar", "gzip") }
-    val native = extras.any { it in setOf("ceres", "tetgen", "libpd", "csound", "paint", "syphon", "docs", "tracker", "patchy-web") }
-    val python = extras.any { it in setOf("python", "cv", "voice", "sentences", "ceres", "tetgen", "libpd", "csound", "docs", "tracker", "patchy-web") }
+    val native = extras.any { it in setOf("ceres", "tetgen", "libpd", "csound", "paint", "syphon", "docs", "tracker", "patchy-web", "wivrn-macos", "wivrn-macos-kk") }
+    val python = extras.any { it in setOf("python", "cv", "voice", "sentences", "ceres", "tetgen", "libpd", "csound", "docs", "tracker", "patchy-web", "wivrn-macos", "wivrn-macos-kk") }
     val buildMissing = (desktop || native) && missing.any { it in setOf("g++", "cmake", "make", "xcrun") }
     when (manager) {
         "apt-get" -> {
@@ -99,7 +99,7 @@ internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String
         }
         "brew" -> {
             if ("git-lfs" in missing) packages += "git-lfs"
-            if (python) packages += "python@3.12"
+            if (python && "python3" in missing) packages += "python@3.12"
             if ("cmake" in missing && native) packages += "cmake"
             if (missing.any { it in setOf("cargo", "rustc") }) packages += "rust"
             if ("csound" in extras) packages += listOf("flex", "bison", "pkg-config", "libsndfile")
@@ -108,7 +108,7 @@ internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String
             if ("lua" in extras) packages += "luajit"
             if ("polyvector" in extras) packages += listOf("opencv", "boost", "eigen")
             if (packages.isNotEmpty()) commands += listOf("brew", "install", "--") + packages
-            if (buildMissing || "python" in extras) notes += "Apple Command Line Tools: xcode-select --install (finish Apple's dialog, then rerun setup)."
+            if ("xcrun" in missing) notes += "Apple Command Line Tools: xcode-select --install (finish Apple's dialog, then rerun setup)."
             if ("vulkan" in extras) notes += "Use the welcome page's Vulkan panel for macOS SDK/driver setup; Linux Vulkan packages do not apply."
         }
         else -> {
@@ -136,6 +136,21 @@ internal fun findExecutable(name: String, environment: Map<String, String> = Sys
     return environment.entries.firstOrNull { it.key.equals("PATH", ignoreCase = true) }?.value.orEmpty()
         .split(File.pathSeparator).filter { it.isNotBlank() }.flatMap { dir -> suffixes.map { File(dir, name + it) } }
         .firstOrNull { it.isFile && (windows || it.canExecute()) }
+}
+
+/**
+ * Recovery advice printed after a package-manager command fails. Homebrew's commonest first-run
+ * failure is its own state, not Field's request: an earlier interrupted install leaves a keg
+ * poured and linked but unrecorded, so the next install re-pours it and stops at
+ * "Cannot link <formula> / Another version is already linked" even when both versions match.
+ * Unlinking that formula lets the rerun link it cleanly.
+ */
+internal fun installFailureAdvice(manager: String?): List<String> = when (manager) {
+    "brew" -> listOf(
+        "If Homebrew said \"Cannot link <formula>\" and \"Another version is already linked\", an earlier install was interrupted. Run brew unlink <formula> (e.g. brew unlink ca-certificates), then rerun --setup.",
+        "For other Homebrew errors, brew doctor names what it found broken.",
+    )
+    else -> emptyList()
 }
 
 internal fun toolAvailable(name: String): Boolean {
@@ -233,7 +248,7 @@ fun main(args: Array<String>) {
     val mode = readAnswer("Choose 1 or 2 [$defaultMode]: ")?.ifEmpty { defaultMode } ?: return
     if (mode !in setOf("1", "2")) { println(ui.error("Choose 1 or 2. No changes made.")); exitProcess(1) }
     ui.section(2, "Make it yours")
-    val options = featureOptions(platform, winget = manager == "winget")
+    val options = featureOptions(platform, winget = manager == "winget", homebrew = manager == "brew")
     val remembered = previous.getProperty("extras", "").split(',').filter(String::isNotEmpty).toSet()
     val extras = selectFeatures(options, remembered) ?: return
     val applicable = extrasCatalog.filter { it.id in extras && platform in it.platforms }.map { it.id }.toSet()
@@ -270,6 +285,7 @@ fun main(args: Array<String>) {
         if (install == "INSTALL") {
             if (plan.commands.any { !runCommand(it, root) }) {
                 println(ui.error("Installation failed. Fix the reported error and rerun --setup."))
+                installFailureAdvice(manager).forEach { ui.paragraph(it, dim = true) }
                 exitProcess(1)
             }
             installed = true
@@ -291,7 +307,7 @@ fun main(args: Array<String>) {
     if (prepare.isNotEmpty() && !deferPreparation) {
         if (readAnswer("BUILD to prepare the displayed extras / Enter for later: ") == "BUILD") {
             // Only tools for executable preparations gate BUILD; guidance-only selections do not.
-            val buildExtras = extrasCatalog.filter { it.id in applicable && it.task != null }.map { it.id }.toSet()
+            val buildExtras = extrasCatalog.filter { it.id in applicable && (it.task != null || it.preparation.isNotEmpty()) }.map { it.id }.toSet()
             val buildMissing = extraTools(buildExtras, platform).filter { !toolAvailable(it) }
             if (!ready || buildMissing.isNotEmpty()) {
                 println(ui.error("Cannot prepare yet. Resolve core prerequisites/LFS and missing build tools: ${buildMissing.joinToString()}. Rerun --setup."))
@@ -318,7 +334,7 @@ fun main(args: Array<String>) {
         setProperty("completed", ready.toString())
         setProperty("launchMode", if (mode == "1") "desktop" else "server-only")
         setProperty("extras", extras.sorted().joinToString(","))
-        setProperty("preparedExtras", if (built) extrasCatalog.filter { it.id in applicable && it.task != null }.joinToString(",") { it.id } else "")
+        setProperty("preparedExtras", if (built) extrasCatalog.filter { it.id in applicable && (it.task != null || it.preparation.isNotEmpty()) }.joinToString(",") { it.id } else "")
     }
     config.parentFile.mkdirs()
     config.outputStream().use { settings.store(it, "Field first-run choices; no credentials") }

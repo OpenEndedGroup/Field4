@@ -105,7 +105,8 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
                     ?: ctx.resolveAttachment?.takeIf { !normalizedRequested.startsWith("/") && !normalizedRequested.startsWith("src/") }
                         ?.invoke("src/$normalizedRequested")
                     ?: throw IllegalArgumentException(
-                        "No attachment or resolvable file named '$requested'. Call ListAttachments first."
+                        "No attachment or readable file named '$requested'. A file box's uid or name, an existing text or PDF " +
+                            "path, or a name from ListAttachments works; a binary file with no text layer cannot be read here."
                     )
             }
             resolved.excerpt(req)

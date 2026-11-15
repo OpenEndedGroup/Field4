@@ -2364,6 +2364,17 @@ here; the voice wants an audio device and the last one is meant to fail.
 
 [Open →](offline.html?file=assets/agent_transcripts/faust_voice/metadata.edn)
 
+### fm1_simulator
+
+Two boxes around the [FM-1 simulator](fm1.md): the M-VAVE FM-1 pocket synth's own browser simulator,
+compiled from its open firmware to WebAssembly and played by Field's audio engine. *FM-1, playing* is the
+one to click: it loads a factory project, presses PLAY, and returns the simulator as the box's last
+expression, so the box stays lit while the sequencer runs. *Offline, four projects* renders each factory
+project for three seconds after PLAY and prints its level every 100 ms as a row of bars, which shows the
+four patterns without a sound card. Only the offline box is replayed here; the other wants an audio device.
+
+[Open →](offline.html?file=assets/agent_transcripts/fm1_simulator/metadata.edn)
+
 ### popup_prior_inspect
 
 Asks Field what ranking prior the completion popup currently has for a
@@ -4262,8 +4273,8 @@ require version 140 or higher": a message about nothing. Hence `fragmentSource`.
 
 ### imgui_vr_panel
 
-[Dear ImGui as an in-VR panel](imgui_vr_panel.md), in four working lines on top
-of the renderer box: a side-by-side stereo target, the demo panel, and a mouse-driven mock controller.
+[Dear ImGui as an in-VR panel](imgui_vr_panel.md), in two editable boxes: one creates the renderer;
+the other builds a side-by-side stereo target, the panel and a mouse-driven mock controller.
 The ImGui frame goes into a 2048×2048 render-to-texture, onto a world-space quad 1.5 m out, rendered
 once per eye, so the panel has real stereo depth rather than being pasted flat, and the packed
 side-by-side image is blitted to the desktop window. **No headset required**: the mouse aims the ray
@@ -5043,6 +5054,20 @@ and, beneath it, `ShaderParticleLenia` running 6400 particles in 64 clusters und
 20 steps per frame, in the native window. Clusters that drift into each other merge.
 
 [Open →](offline.html?file=assets/agent_transcripts/particle_lenia_gpu/metadata.edn)
+
+### cuda_particles
+
+**A CUDA kernel moving 200,000 particles that a Field mesh draws**, from the same GPU buffer. Three
+boxes: a renderer, a box that compiles two CUDA C kernels with NVRTC and runs one between every two
+frames, and lesson 3b's particle drawing reading the buffer the kernel writes. Linux with an NVIDIA
+GPU only; elsewhere the CUDA box stops with the reason. See
+[CUDA Beside the Renderer](cuda.md#a-kernel-that-moves-particles).
+
+![Two hundred thousand coloured dots, scattered as a disc and folded by a CUDA kernel's flow, drawn by a Field mesh from the same GPU buffer](assets/cuda/particles.png)
+
+- The CUDA session: [`CudaVulkan`](reference/graphics.md#cudavulkan-kt-cudavulkan).
+
+[Open →](offline.html?file=assets/agent_transcripts/cuda_particles/metadata.edn)
 
 ## Graphics building blocks
 

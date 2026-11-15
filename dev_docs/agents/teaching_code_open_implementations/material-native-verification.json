@@ -1,0 +1,18 @@
+{
+  "source": "dev_docs/agents/transcripts/path_tracing_materials.yaml",
+  "sha256": "78d0fb60abb05b7bb30faa08244aaa1be4abeff017a8bb67e28fbc6f70616263",
+  "defaultPackedGeometryMaterialsBvhCameraEqual": true,
+  "defaultTriangleCountEqual": true,
+  "parameterRerun": true,
+  "resolution": [
+    320,
+    180
+  ],
+  "convergenceSamples": 32,
+  "comparison": "Exact packed triangles/materials/BVH and camera against the original installer; real Vulkan render, then changed material/geometry in the same box.",
+  "nativeImages": [
+    "material-default.png",
+    "material-variant.png"
+  ],
+  "log": "build/teaching-code-open-implementations/material-verification.log"
+}

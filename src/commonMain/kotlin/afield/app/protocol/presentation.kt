@@ -123,6 +123,13 @@ data class ArrangeBoxesResult(val id: String, val frames: List<Set_rect>)
  * A pointer drag on a `lines(..., onDrag = { })` drawing, sent by the viewer: [id] names the box
  * and channel, [phase] is `start`, `move` or `end`, and [x], [y] are in the drawing's own SVG
  * coordinates (the server undoes any fit back to the lines' coordinates).
+ *
+ * [handle] names the drag handle the drag holds (`lines(..., handles = ...)`), or is null for a
+ * drag that took none. [own] marks [x], [y] as already in the lines' own coordinates, as a drag
+ * by handle name from the page sends them, so no fit is undone.
  */
 @Serializable
-data class LinesDrag(val id: String, val phase: String, val x: Double, val y: Double)
+data class LinesDrag(
+    val id: String, val phase: String, val x: Double, val y: Double,
+    val handle: String? = null, val own: Boolean = false,
+)

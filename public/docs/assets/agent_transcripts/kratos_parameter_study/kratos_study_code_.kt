@@ -4,6 +4,54 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 
+val probePoint = SimulationProbe("arm", 0.30, 0.0, 0.0)
+val sourcePower = 100.0 // W/m³
+val boundaryTemperature = 293.15 // K
+val bounds = SimulationBounds(-1.0, -1.0, -1.0, 1.0, 1.0, 1.0)
+val resolution = 12
+val targetTemperature = 294.15 // K: one kelvin above the skin
+
+fun makeBody(armEnd: Double): SimulationCSG = SimulationCSG(
+    "body",
+    SimulationBox("base", SimulationBounds(-0.73, -0.63, -0.52, 0.23, 0.53, 0.62)),
+    SimulationBox("arm", SimulationBounds(-0.13, -0.32, -0.42, armEnd, 0.33, 0.42)),
+)
+
+fun makeStudy(
+    worker: KratosSession,
+    target: Double,
+    onSample: (StudySample) -> Unit,
+): KratosStudy<KratosStudyDemo.Design> {
+    val space = StudySpace(
+        KratosStudyDemo.Design(),
+        StudyVariable("arm end", 0.35..0.85, "m") { design, value -> design.copy(armEnd = value) },
+        StudyVariable("conductivity", 0.8..6.0, "w per m k") { design, value -> design.copy(conductivity = value) },
+    )
+    return KratosStudy(
+        session = worker,
+        space = space,
+        objectiveName = "miss from ${target.f2} k",
+        goal = StudyGoal.MINIMISE,
+        plan = { design ->
+            StudyCase(
+                parameters = ThermalParameters(
+                    conductivity = design.conductivity,
+                    source = sourcePower,
+                    boundaryTemperature = boundaryTemperature,
+                ),
+                geometry = makeBody(design.armEnd),
+            )
+        },
+        // An unsupported probe is infeasible, rather than an apparently perfect zero.
+        measure = { _, result -> result.sample(probePoint).value?.let { abs(it - target) } },
+        metrics = mapOf(
+            "probe" to { _, result -> result.sample(probePoint).value ?: Double.NaN },
+            "peak" to { _, result -> result.range("temperature").second },
+        ),
+        onSample = onSample,
+    )
+}
+
 /*
 Launch (Alt-R), then press "Sweep the grid".
 Install once: uv sync --project optional/kratos --frozen
@@ -18,7 +66,7 @@ curve k* = q*phi(arm)/(T-Tb) through the design plane — the dark valley in
 the heat map. Nothing here knows that; the sweep measures it.
 */
 
-val settings = AtomicReference([7.0, KratosStudyDemo.TARGET])
+val settings = AtomicReference([7.0, targetTemperature])
 val action = AtomicReference("")
 val done = AtomicInteger(0)
 val cancelling = AtomicReference(false)
@@ -32,7 +80,7 @@ controlGroup("controls") {
         min = 293.7,
         max = 294.6,
         step = 0.05,
-        initialValue = KratosStudyDemo.TARGET,
+        initialValue = targetTemperature,
     ) {
         change(1, it)
     }
@@ -43,9 +91,7 @@ controlGroup("controls") {
 displayOpen("controls")
 
 /*
-Everything this box says is markdown, so it goes through the markdown card. `display` with a
-hand-rolled div would show the `###` and the `**` literally, and would not theme with the rest
-of the output.
+Status text uses a Markdown card so headings, emphasis and colours follow the current theme.
 */
 fun status(text: String) {
     markdown("status", text.trimIndent(), width = 800)
@@ -65,10 +111,19 @@ frames {
         status("Manifold unavailable: ${mdEscape(ManifoldLibrary.describe())}")
         return@frames
     }
-    val config = KratosConfig.candidates().first()
+    val probing = Kratos.probeAny()
+    while (!probing.isDone) frame()
+    val availability = probing.get()
+    if (!availability.available) {
+        status(
+            "Worker unavailable: ${mdEscape(availability.capability)}\n\n${mdEscape(Kratos.howToInstall(availability.config))}",
+        )
+        return@frames
+    }
+    val config = availability.config
     val opening = KratosSession.openAsync(
-        KratosStudyDemo.BOUNDS,
-        KratosStudyDemo.RESOLUTION,
+        bounds,
+        resolution,
         config,
     )
     var session: KratosSession? = null
@@ -81,7 +136,7 @@ frames {
         // One study object for the whole session, so its cache survives every press:
         // re-running an overlapping grid re-solves only the points it has not seen.
         var target = settings.get()[1]
-        var study = KratosStudyDemo.study(worker, target) {
+        var study = makeStudy(worker, target) {
             done.incrementAndGet()
             // Throwing from the progress callback aborts the sweep — that is what
             // Cancel does, rather than poisoning one point with a null result.
@@ -89,7 +144,7 @@ frames {
         }
         var running: CompletableFuture<StudyOutcome>? = null
         var expected = 0
-        var resultText = "Press <b>Sweep the grid</b>. Each point is one Kratos solve."
+        var resultText = "Press **Sweep the grid**. Each point is one Kratos solve."
         var previous = ""
 
         while (true) {
@@ -100,7 +155,7 @@ frames {
             // background domain are reused.
             if (values[1] != target && running == null) {
                 target = values[1]
-                study = KratosStudyDemo.study(worker, target) {
+                study = makeStudy(worker, target) {
                     done.incrementAndGet()
                     if (cancelling.get()) throw java.util.concurrent.CancellationException("cancelled")
                 }
@@ -162,7 +217,7 @@ frames {
                         // best" but here it is, and here is what it does.
                         val field = requireNotNull(outcome.winningField)
                         showMeshGrid(
-                            "Winning body · drag to orbit" to KratosDemo.body(design.armEnd).surface(),
+                            "Winning body · drag to orbit" to makeBody(design.armEnd).surface(),
                             channel = "geometry",
                             cellWidth = 380,
                             view = MeshView(yawDegrees = -28.0, pitchDegrees = 18.0, wireframe = false),
@@ -176,8 +231,11 @@ frames {
                         )
                         displayOpen("geometry")
                         displayOpen("slice")
-                        val predicted = KratosStudyDemo.predictedConductivity(winner, target)
                         val probe = winner.metrics["probe"] ?: Double.NaN
+                        // Recover phi(shape) from the measured sample, then solve T = Tb + q*phi/k for k.
+                        val response = (probe - boundaryTemperature) * design.conductivity / sourcePower
+                        val predicted =
+                            if (probe.isFinite()) sourcePower * response / (target - boundaryTemperature) else null
                         val peak = winner.metrics["peak"] ?: Double.NaN
                         resultText =
                             """
@@ -214,7 +272,7 @@ frames {
 
                 Background ${mdEscape(worker.domain.id)} · builds ${worker.domain.buildCount} · ${worker.domain.nodeCount} nodes · ${worker.domain.cellCount} tetrahedra
 
-                Asking for ${values[1].f2} K at (${KratosStudyDemo.PROBE.x}, ${KratosStudyDemo.PROBE.y}, ${KratosStudyDemo.PROBE.z}) m
+                Asking for ${values[1].f2} K at (${probePoint.x}, ${probePoint.y}, ${probePoint.z}) m
 
                 $resultText
 

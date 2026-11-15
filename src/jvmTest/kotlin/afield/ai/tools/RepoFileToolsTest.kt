@@ -82,4 +82,35 @@ class RepoFileToolsTest {
         assertEquals(listOf(RepoMatch("docs/page.md", 2, "two needle")), r.matches)
         assertFalse(f.tools.search(RepoSearchRequest("(", regex = true)).success)
     }
+
+    /** Models send optional strings as "": the mdcontext turn's `glob: ""` searched 0 files in 9.5 s and read as a clean miss. */
+    @Test fun blankGlobSearchesEverythingAndAnEmptyGlobMatchSaysSo() = Fixture(read = listOf("docs/*.md")).use { f ->
+        val all = f.tools.search(RepoSearchRequest("needle", glob = ""))
+        assertEquals(setOf("docs/other.md", "docs/page.md"), all.matches.map { it.path }.toSet())
+        assertEquals(listOf("docs/other.md", "docs/page.md"), f.tools.list(RepoListFilesRequest(glob = " ")).files)
+        val none = f.tools.search(RepoSearchRequest("needle", glob = "nowhere/**"))
+        assertEquals(0, none.filesSearched)
+        assertTrue("nothing was searched" in none.message, none.message)
+    }
+
+    /** In a git checkout only what git counts as source is searched: never ignored trees such as other worktrees, except the personal layer. */
+    @Test fun aGitCheckoutSearchesTrackedAndUnignoredFilesOnly() {
+        val root = Files.createTempDirectory("field-repo-git")
+        try {
+            fun put(path: String, text: String) = root.resolve(path).also { Files.createDirectories(it.parent); Files.writeString(it, text) }
+            fun git(vararg args: String) = assertEquals(0, ProcessBuilder(listOf("git", "-C", root.toString()) + args)
+                .redirectErrorStream(true).start().also { it.inputStream.readBytes() }.waitFor())
+            git("init", "-q")
+            // Built from the allow-list rather than spelled out: PersonalBoundaryTest refuses committed paths into the private tree.
+            val mine = RepoFileTools.IGNORED_BUT_SEARCHED.single() + "/kotlin/Mine.kt"
+            put(".gitignore", "worktrees/\n${RepoFileTools.IGNORED_BUT_SEARCHED.single()}/\n")
+            put("src/A.kt", "val needle = 1\n")
+            put("notes.md", "needle, untracked but not ignored\n")
+            put("worktrees/copy/src/A.kt", "val needle = 1\n")
+            put(mine, "val needle = 2\n")
+            git("add", "src/A.kt", ".gitignore")
+            val r = RepoFileTools(RepoScope(root, listOf("**"))).search(RepoSearchRequest("needle", glob = ""))
+            assertEquals(setOf("notes.md", "src/A.kt", mine), r.matches.map { it.path }.toSet())
+        } finally { root.toFile().deleteRecursively() }
+    }
 }

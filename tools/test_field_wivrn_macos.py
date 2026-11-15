@@ -1,4 +1,5 @@
 """Exercise WiVRn runtime discovery, the encoder setting, and the real launcher environment/argv handoff."""
+import io
 import json
 import os
 from pathlib import Path
@@ -7,9 +8,11 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
-from tools.field_wivrn_macos import (configure_encoder, encoder_configured, launch_environment,
-                                     runtime_manifest, write_kk_manifest)
+from tools.field_wivrn_macos import (configure_encoder, default_app, encoder_configured, install_runtime,
+                                     kk_pin, kk_patch_sha256, kk_runtime_state, launch_environment,
+                                     runtime_formulas, runtime_manifest, write_kk_manifest)
 
 
 class FieldWivrnMacosTest(unittest.TestCase):
@@ -61,11 +64,56 @@ class FieldWivrnMacosTest(unittest.TestCase):
         manifest = write_kk_manifest(runtime, runtime / 'libopenxr_wivrn.dylib')
         self.assertEqual(json.loads(manifest.read_text())['runtime']['library_path'], './libopenxr_wivrn.dylib')
 
+    def test_existing_app_is_validated_without_download_or_replacement(self):
+        with mock.patch('tools.field_wivrn_macos.urllib.request.urlopen') as download:
+            self.assertEqual(install_runtime(self.app), self.manifest.resolve())
+            download.assert_not_called()
+        self.manifest.write_text('{}')
+        with self.assertRaises(ValueError):
+            install_runtime(self.app)
+        self.assertEqual(self.manifest.read_text(), '{}')
+
+    def test_bad_download_never_reaches_extraction_or_installs_an_app(self):
+        app = self.home / 'Applications/WiVRn.app'
+        with mock.patch('tools.field_wivrn_macos.urllib.request.urlopen', return_value=io.BytesIO(b'wrong archive')), \
+             mock.patch('tools.field_wivrn_macos.subprocess.run') as extract:
+            with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
+                install_runtime(app)
+            extract.assert_not_called()
+        self.assertFalse(app.exists())
+        self.assertEqual(list(app.parent.iterdir()), [])
+
+    def test_default_app_supports_non_admin_user_installation(self):
+        system = self.home / 'system/WiVRn.app'
+        with mock.patch('tools.field_wivrn_macos.DEFAULT_APP', system):
+            self.assertEqual(default_app(self.home), self.home / 'Applications/WiVRn.app')
+            system.mkdir(parents=True)
+            self.assertEqual(default_app(self.home), system)
+
+    def test_runtime_formulas_skip_the_dashboard(self):
+        brewfile = self.home / 'Brewfile'
+        brewfile.write_text('# comment\nbrew "cmake"\nbrew "x264"  # encoder\n\nbrew "qt"\nbrew "ki18n"\ncask "x"\n')
+        self.assertEqual(runtime_formulas(brewfile), ['cmake', 'x264'])
+
+    def test_kk_runtime_is_current_only_for_this_pin_and_patch(self):
+        runtime = self.home / 'wivrn-kk'
+        runtime.mkdir()
+        self.assertEqual(kk_runtime_state(runtime), 'missing')
+        write_kk_manifest(runtime, runtime / 'libopenxr_wivrn.dylib')
+        self.assertEqual(kk_runtime_state(runtime), 'unknown')  # built before builds were recorded
+        pin = kk_pin()
+        info = runtime / 'build-info.json'
+        info.write_text(json.dumps({**pin, 'patchSha256': kk_patch_sha256(pin)}))
+        self.assertEqual(kk_runtime_state(runtime), 'current')
+        info.write_text(json.dumps({**pin, 'patchSha256': 'an older patch'}))
+        self.assertEqual(kk_runtime_state(runtime), 'stale')
+
     def test_exec_preserves_arguments_and_scopes_runtime_driver_and_loader(self):
         repo = self.home / 'Field checkout'
         (repo / 'tools').mkdir(parents=True)
         script = repo / 'tools/field_wivrn_macos.py'
         shutil.copyfile(Path(__file__).with_name('field_wivrn_macos.py'), script)
+        shutil.copytree(Path(__file__).resolve().parents[1] / 'optional/wivrn-macos', repo / 'optional/wivrn-macos')
         loader = repo / '.afield-local/openxr/lib/libopenxr_loader.dylib'
         loader.parent.mkdir(parents=True)
         loader.touch()
@@ -90,7 +138,7 @@ class FieldWivrnMacosTest(unittest.TestCase):
         self.assertEqual(len(plan['problems']), 1)  # the encoder is not configured yet
         refused = subprocess.run([*command, *args], env=env, text=True, capture_output=True)
         self.assertNotEqual(refused.returncode, 0)
-        self.assertIn('--configure-encoder', refused.stderr)
+        self.assertIn('--prepare', refused.stderr)
 
         subprocess.run([*command, '--configure-encoder'], env=env, text=True, capture_output=True, check=True)
         result = subprocess.run([*command, *args], env=env, text=True, capture_output=True, check=True)
@@ -102,10 +150,19 @@ class FieldWivrnMacosTest(unittest.TestCase):
         kk = [*command, '--kosmickrisp', *args]
         missing = subprocess.run(kk, env=env, text=True, capture_output=True)
         self.assertNotEqual(missing.returncode, 0)
-        self.assertIn('--build-kk-runtime', missing.stderr)
+        self.assertIn('--prepare --kosmickrisp', missing.stderr)
         kk_manifest = repo / '.afield-local/wivrn-kk/openxr_wivrn_kk.json'
         kk_manifest.parent.mkdir(parents=True)
         kk_manifest.write_text('{}')
+        unrecorded = subprocess.run(kk, env=env, text=True, capture_output=True, check=True)
+        self.assertIn('no build record', unrecorded.stderr)
+        info = kk_manifest.parent / 'build-info.json'
+        pin = kk_pin()
+        info.write_text(json.dumps({**pin, 'patchSha256': 'an older patch'}))
+        stale = subprocess.run(kk, env=env, text=True, capture_output=True)
+        self.assertNotEqual(stale.returncode, 0)
+        self.assertIn('older pin or patch', stale.stderr)
+        info.write_text(json.dumps({**pin, 'patchSha256': kk_patch_sha256(pin)}))
         launched = json.loads(subprocess.run(kk, env=env, text=True, capture_output=True, check=True).stdout)
         self.assertEqual((launched['runtime'], launched['driver']), (str(kk_manifest), 'kosmickrisp'))
 

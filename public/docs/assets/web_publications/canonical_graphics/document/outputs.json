@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T03:14:37.288Z",
+  "capturedAt": "2026-11-14T22:27:22.703Z",
   "documentName": "canonical_graphics",
   "outputs": [
     {
@@ -76,7 +76,7 @@
       "path": "outputs/6.html"
     },
     {
-      "uid": "b42d7b13-680e-4f9b-b789-8e6e7d8c4a21",
+      "uid": "85e8478b-529b-406e-b835-7c00912848f2",
       "channel": "window",
       "open": true,
       "warnings": [],
@@ -86,16 +86,6 @@
       "path": "outputs/7.html"
     },
     {
-      "uid": "85e8478b-529b-406e-b835-7c00912848f2",
-      "channel": "window",
-      "open": true,
-      "warnings": [],
-      "kinds": [],
-      "width": 440,
-      "height": 272,
-      "path": "outputs/8.html"
-    },
-    {
       "uid": "715eae62-197d-49a1-a202-464ae4465cd5",
       "channel": "window",
       "open": true,
@@ -103,7 +93,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/9.html"
+      "path": "outputs/8.html"
     },
     {
       "uid": "176b09bd-6e1c-4cb4-9c8a-b046d54c6dde",
@@ -115,7 +105,7 @@
       ],
       "width": 560,
       "height": 427,
-      "path": "outputs/10.html"
+      "path": "outputs/9.html"
     },
     {
       "uid": "176b09bd-6e1c-4cb4-9c8a-b046d54c6dde",
@@ -125,7 +115,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/11.html"
+      "path": "outputs/10.html"
     },
     {
       "uid": "d9733b9a-73a8-4045-a756-2a6e28e08c21",
@@ -135,7 +125,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/12.html"
+      "path": "outputs/11.html"
     },
     {
       "uid": "fd8503ec-e5e2-4fa9-86fe-3d65ad96911f",
@@ -145,7 +135,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/13.html"
+      "path": "outputs/12.html"
     },
     {
       "uid": "e1d6dd17-1ebd-40e7-a0ef-309779c562ff",
@@ -157,7 +147,7 @@
       ],
       "width": 560,
       "height": 348,
-      "path": "outputs/14.html"
+      "path": "outputs/13.html"
     },
     {
       "uid": "e1d6dd17-1ebd-40e7-a0ef-309779c562ff",
@@ -167,7 +157,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/15.html"
+      "path": "outputs/14.html"
     },
     {
       "uid": "e39270ec-8faf-4d26-8f4e-ce4d23ec4af1",
@@ -177,7 +167,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/16.html"
+      "path": "outputs/15.html"
     },
     {
       "uid": "b2ba23e8-18e5-4f07-a709-2b89116a83b3",
@@ -187,7 +177,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/17.html"
+      "path": "outputs/16.html"
     },
     {
       "uid": "cc81ab4e-6c43-4908-bfff-7c8f827c927c",
@@ -197,7 +187,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/18.html"
+      "path": "outputs/17.html"
     },
     {
       "uid": "3cbcadc0-b279-470d-9a5f-afc120518829",
@@ -207,7 +197,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/19.html"
+      "path": "outputs/18.html"
     },
     {
       "uid": "9df25333-3cb1-4bba-b628-b34c7ba61909",
@@ -217,7 +207,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/20.html"
+      "path": "outputs/19.html"
     },
     {
       "uid": "57eb613c-90e0-46e1-b075-8e1578bc4934",
@@ -229,7 +219,7 @@
       ],
       "width": 560,
       "height": 427,
-      "path": "outputs/21.html"
+      "path": "outputs/20.html"
     },
     {
       "uid": "57eb613c-90e0-46e1-b075-8e1578bc4934",
@@ -239,7 +229,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/22.html"
+      "path": "outputs/21.html"
     },
     {
       "uid": "1b0f6eb5-b860-401d-913a-6469b4285774",
@@ -249,7 +239,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/23.html"
+      "path": "outputs/22.html"
     },
     {
       "uid": "72b68fa7-a8c3-4d4a-964d-2f66306692e3",
@@ -259,7 +249,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/24.html"
+      "path": "outputs/23.html"
     },
     {
       "uid": "459b9c54-6363-4c27-a033-2f145e017022",
@@ -269,7 +259,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/25.html"
+      "path": "outputs/24.html"
     },
     {
       "uid": "af0946dd-f25d-4355-984d-f0d24a43ee12",
@@ -279,7 +269,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/26.html"
+      "path": "outputs/25.html"
     },
     {
       "uid": "0e01f4b0-4b65-40db-a8b0-cd6cde4048d6",
@@ -289,7 +279,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/27.html"
+      "path": "outputs/26.html"
     },
     {
       "uid": "f1d2cbea-b20d-4794-b9f7-37b847dcdeb6",
@@ -299,7 +289,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/28.html"
+      "path": "outputs/27.html"
     },
     {
       "uid": "65bd0587-dbfa-451a-8f6a-e003ff3d1abf",
@@ -309,7 +299,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/29.html"
+      "path": "outputs/28.html"
     },
     {
       "uid": "42056e8d-ec8b-4bf8-b84a-1cd1d8524510",
@@ -319,7 +309,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/30.html"
+      "path": "outputs/29.html"
     },
     {
       "uid": "954d64d5-ee3f-4cb7-8ac7-1e2cce8a9073",
@@ -329,7 +319,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/31.html"
+      "path": "outputs/30.html"
     },
     {
       "uid": "1103f132-7484-4440-8102-5bd159a29fbf",
@@ -339,7 +329,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/32.html"
+      "path": "outputs/31.html"
     },
     {
       "uid": "c4b18f02-6d3a-4e7f-8b95-2a1e7d9c0f63",
@@ -349,7 +339,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/33.html"
+      "path": "outputs/32.html"
     }
   ]
 }

@@ -1,0 +1,25 @@
+{
+  "probes": {
+    "passed": [
+      "corpus reaction counts, rule multisets and spellings",
+      "smaller corpus and two schedulers on rerun",
+      "four schedule answers and beta counts",
+      "changed term, same independent oracle checks"
+    ]
+  },
+  "captures": [
+    {
+      "path": "public/docs/chain_lambda_sound.md",
+      "name": "chain-lambda-sweep",
+      "asset": "assets/chain_lambda_sound/sweep.png",
+      "fenceSha256": "a92c391db49b1773c14cf5fb57d387e3493c49f1dc1c77c75f2a7969686c0706"
+    },
+    {
+      "path": "public/docs/chain_lambda_sound.md",
+      "name": "chain-lambda-four",
+      "asset": "assets/chain_lambda_sound/four_schedules.png",
+      "fenceSha256": "b5afc4de2e7f3d4f096f5d3f2435a843cf553996001fbb1b36cc989d3478df58"
+    }
+  ],
+  "postCaptureEdit": "Corrected the four-schedules alt text from 0.20 to the measured 0.28 for FIRST_FOUND; executable body unchanged."
+}

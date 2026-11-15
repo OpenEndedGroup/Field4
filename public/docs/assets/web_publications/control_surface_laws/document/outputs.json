@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T03:49:17.324Z",
+  "capturedAt": "2026-11-14T23:29:05.227Z",
   "documentName": "control_surface_laws",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 536,
-      "height": 160,
+      "height": 154,
       "path": "outputs/0.html"
     },
     {
@@ -24,7 +24,7 @@
         "svg"
       ],
       "width": 536,
-      "height": 212,
+      "height": 204,
       "path": "outputs/1.html"
     },
     {
@@ -36,7 +36,7 @@
         "svg"
       ],
       "width": 536,
-      "height": 102,
+      "height": 98,
       "path": "outputs/2.html"
     }
   ]

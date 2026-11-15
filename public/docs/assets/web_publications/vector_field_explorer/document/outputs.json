@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T03:16:44.625Z",
+  "capturedAt": "2026-11-14T22:31:40.134Z",
   "documentName": "vector_field_explorer",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 473,
-      "height": 56,
+      "height": 54,
       "path": "outputs/0.html"
     },
     {
@@ -34,7 +34,7 @@
         "svg"
       ],
       "width": 473,
-      "height": 56,
+      "height": 54,
       "path": "outputs/2.html"
     },
     {
@@ -43,7 +43,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 368,
+      "width": 364,
       "height": 350,
       "path": "outputs/3.html"
     }

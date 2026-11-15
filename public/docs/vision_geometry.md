@@ -20,7 +20,9 @@ A Live Metal program has three parts, and you write each one somewhere different
 
 </div>
 
-This page is about the middle one.
+This page is about the middle one. It runs geometry on the headset; for a scene that already
+runs in desktop OpenXR, [Linux → CloudXR → AVP](cloudxr_vision_pro.md) streams it over Wi-Fi
+instead. [The route comparison](vision.md) distinguishes that from the native RTT surface.
 
 ## Why the geometry runs in the headset
 

@@ -1,5 +1,18 @@
 # Field on Apple Vision Pro
 
+There are three ways to put Field graphics in Vision Pro. Choose by where the rendering
+should happen and what you want to bring into the headset:
+
+| Route | Best starting point for |
+| --- | --- |
+| **[Linux OpenXR → CloudXR → AVP](cloudxr_vision_pro.md)** | An existing desktop OpenXR scene, streamed over Wi-Fi with head and hand tracking. A working route for development; edit in Chrome on a Mac through Mac Virtual Display, if you have a Mac. |
+| **[RTT → native video surface](#streaming-the-rendered-scene-as-video)** | A rendered image or side-by-side stereo video on a movable screen or window. |
+| **[Kotlin → Live Metal](#live-metal-programmable-native-graphics)** | Geometry and shaders running on the headset itself, with the program sent from Field. |
+
+CloudXR is the starting point for “this runs in desktop OpenXR; put it on AVP over Wi-Fi.”
+The rest of this page describes the separate native frontend, RTT receiver and Live Metal
+path. Their status notes do not describe the CloudXR route.
+
 !!! warning "Work in progress"
     This is an early snapshot of Field's native **visionOS** front end. Some pieces are
     solid and verified; others are half-built and named as such. Expect it to move.
@@ -433,7 +446,7 @@ The third column says how each state is known: on a device, in the simulator, or
 | Reprojection on the head from the pose tail | **Not built** | Needs the present path moved off RealityKit onto Compositor Services |
 | Latency attribution — `visionPoseLatencyReport()` | **Built, arithmetic verified** | `visionpose.latency` recovers a known offset from a synthetic head. **No span has ever been measured against real hardware** |
 | Tracked accessories (PSVR2 Sense) over the pose channel | **Written, never read** | `AccessoryTrackingProvider.isSupported` is false on the simulator; the button/axis mapping is a guess that degrades to "not pressed" |
-| Hand tracking (26 joints, `pinchStrength`) | **OpenXR only; read by the pointer layer** | WiVRn + Quest 3. `pinchPointer` consumes `handState`, tested against constructed hand states only and never a device. Nothing on visionOS |
+| Hand tracking in this native frontend | **Not connected to its pose uplink** | Separate from the verified [CloudXR OpenXR hand actions and joints](cloudxr_vision_pro.md#hand-interaction). WiVRn/Quest also exposes OpenXR hand joints. |
 
 </div>
 

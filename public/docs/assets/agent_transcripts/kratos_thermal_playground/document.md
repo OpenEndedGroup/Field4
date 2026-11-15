@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Kratos thermal playground
@@ -11,13 +11,19 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kratos_thermal" index="0" -->
 
 ```edn [field-box id="kratos_thermal" role="properties"]
-{"id" "kratos_thermal" "index" 0 "name" "Kratos thermal playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos thermal playground" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_thermal_code_.kt" "lines" 148 "characters" 8115 "sha256" "89edf19b0cae543e24c6757fbebcdc95dd9c4ee661e9a44c50643fd56a0331b0"}]}
+{"id" "kratos_thermal" "index" 0 "name" "Kratos thermal playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos thermal playground" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_thermal_code_.kt" "lines" 172 "characters" 8294 "sha256" "b9d21920e4727cae6f3ed394d5abe0e6f95282e0c10d8abba8b4bee70f36df9c"}]}
 ```
 
 ```kotlin [field-property box="kratos_thermal" name="code" path="kratos_thermal_code_.kt"]
 import afield.geometry.solid.manifold.ManifoldLibrary
 import afield.simulation.kratos.*
 import java.util.concurrent.atomic.AtomicReference
+
+fun makeBody(armEnd: Double): SimulationCSG = SimulationCSG(
+    "body",
+    SimulationBox("base", SimulationBounds(-0.73, -0.63, -0.52, 0.23, 0.53, 0.62)),
+    SimulationBox("arm", SimulationBounds(-0.13, -0.32, -0.42, armEnd, 0.33, 0.42)),
+)
 
 /*
 Launch (Alt-R). Drag controls in the output or on /controllers.
@@ -38,19 +44,31 @@ controlGroup("controls") {
     button("Cancel pending") { if (it) action.set("cancel") }
 }
 displayOpen("controls")
-fun safe(value: Any?): String = value.toString().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 fun status(text: String) {
-    display("status", "<div id='kratos-playground-status' style='padding:12px;max-width:720px'>$text</div>")
-    displayOpen("status")
+    markdown("status", text, width = 720)
 }
 status("Starting optional worker… Drag sliders for automatic previews. Stop and relaunch to restart.")
 
 frames {
     if (!ManifoldLibrary.isAvailable) {
-        status("Manifold unavailable: ${safe(ManifoldLibrary.describe())}")
+        status("Manifold unavailable: ${mdEscape(ManifoldLibrary.describe())}")
         return@frames
     }
-    val opening = KratosSession.openAsync(SimulationBounds(-1.0, -1.0, -1.0, 1.0, 1.0, 1.0), resolution = 12)
+    val probing = Kratos.probeAny()
+    while (!probing.isDone) frame()
+    val availability = probing.get()
+    if (!availability.available) {
+        status(
+            "Worker unavailable: ${mdEscape(availability.capability)}\n\n${mdEscape(Kratos.howToInstall(availability.config))}",
+        )
+        return@frames
+    }
+    val config = availability.config
+    val opening = KratosSession.openAsync(
+        SimulationBounds(-1.0, -1.0, -1.0, 1.0, 1.0, 1.0),
+        resolution = 12,
+        config = config,
+    )
     var session: KratosSession? = null
     try {
         while (!opening.isDone) frame()
@@ -58,7 +76,7 @@ frames {
         session = worker
         println(worker.capabilities)
         var submitted = emptyList<Double>()
-        var skin = KratosDemo.body(settings.get()[0]).surface()
+        var skin = makeBody(settings.get()[0]).surface()
         var pending: java.util.concurrent.CompletableFuture<ThermalResult?>? = null
         var baseline: ThermalResult? = null
         var resultText = "No solution yet."
@@ -73,7 +91,7 @@ frames {
                 resultText = "Cancelled pending work. Move a slider or press Solve now to continue."
             } else if (values != submitted || command == "solve") {
                 val geometryChanged = submitted.isEmpty() || values[0] != submitted[0]
-                val body = KratosDemo.body(values[0])
+                val body = makeBody(values[0])
                 if (geometryChanged) {
                     skin = body.surface()
                     showMeshGrid("Authored solid · drag to orbit" to skin, channel = "geometry", cellWidth = 360)
@@ -120,31 +138,38 @@ frames {
                             displayOpen("temperature")
                             val visualMs = (System.nanoTime() - visualStart) / 1e6
                             val d = result.diagnostics
+                            fun ms(key: String): String = (d[key] as? Number)?.f1 ?: "?"
+                            val minimum = (d["temperatureMin"] as? Number)?.f2 ?: "?"
+                            val maximum = (d["temperatureMax"] as? Number)?.f2 ?: "?"
                             resultText =
-                                "<span id='kratos-result' data-background='${result.domain.id}' " +
-                                    "data-revision='${result.revision.simulation}' data-arm='${submitted[0]}' " +
-                                    "data-changed='$changed' data-delta='$delta'>" +
-                                    "Result revision ${result.revision} · arm ${submitted[0]} m<br>" +
-                                    "Changed classification vs first: $changed nodes · max ΔT ${delta.f4} K<br>" +
-                                    "Temperature ${safe(d["temperatureMin"])}–${safe(d["temperatureMax"])} K<br>" +
-                                    "Classification ${safe(d["classificationMs"])} ms (${safe(d["classificationScope"])}) · " +
-                                    "model ${safe(d["modelUpdateMs"])} ms<br>Assembly ${safe(d["assemblyMs"])} ms · solve ${safe(d["solveMs"])} ms<br>" +
-                                    "Transfer out/in ${safe(d["geometryTransferMs"])}/${safe(d["resultTransferMs"])} ms · view ${visualMs.f1} ms<br>" +
-                                    "Relative residual ${safe(d["relativeLinearResidual"])}<br>" +
-                                    "Blue → red: each slice uses its own temperature range; grey means no active support.</span>"
+                                """
+                                **Result revision ${result.revision}** · arm ${submitted[0]} m
+
+                                - Changed classification vs first: $changed nodes · max ΔT ${delta.f4} K
+                                - Temperature ${minimum}–${maximum} K
+                                - Classification ${ms("classificationMs")} ms (${mdEscape(d["classificationScope"])}) · model ${ms("modelUpdateMs")} ms
+                                - Assembly ${ms("assemblyMs")} ms · solve ${ms("solveMs")} ms
+                                - Transfer out/in ${ms("geometryTransferMs")}/${ms("resultTransferMs")} ms · view ${visualMs.f1} ms
+                                - Relative residual ${mdEscape(d["relativeLinearResidual"])}
+
+                                Blue → red: each slice uses its own temperature range; grey means no active support.""".trimIndent()
                         }
                     }
                 } catch (failure: Exception) {
                     resultText =
-                        "Solve failed: ${safe(failure.cause?.message ?: failure.message)}. Adjust controls and retry."
+                        "Solve failed: ${mdEscape(failure.cause?.message ?: failure.message)}. Adjust controls and retry."
                 }
             }
             val text =
-                "<b>${worker.state}</b> · requested revision ${worker.revision}<br>" +
-                    "Background ${worker.domain.id} · builds ${worker.domain.buildCount}<br>" +
-                    "${worker.domain.nodeCount} nodes · ${worker.domain.cellCount} tetrahedra · fixed resolution 12<br>" +
-                    resultText +
-                    "<br>Old result views remain visible while a new solve is pending. Stop releases the worker."
+                """
+                **${mdEscape(worker.state)}** · requested revision ${worker.revision}
+
+                Background ${worker.domain.id} · builds ${worker.domain.buildCount}
+                ${worker.domain.nodeCount} nodes · ${worker.domain.cellCount} tetrahedra · fixed resolution 12
+
+                $resultText
+
+                Old result views remain visible while a new solve is pending. Stop releases the worker.""".trimIndent()
             if (text != previousStatus) {
                 status(text)
                 previousStatus = text
@@ -155,9 +180,8 @@ frames {
         throw cancelled
     } catch (failure: Exception) {
         status(
-            "Worker unavailable: ${safe(failure.cause?.message ?: failure.message)}<br>" +
-                "Install with <code>uv sync --project optional/kratos --frozen</code>, then launch again. " +
-                "For another environment set AFIELD_KRATOS_PYTHON before starting Field.",
+            "Worker unavailable: ${mdEscape(failure.cause?.message ?: failure.message)}\n\n" +
+                mdEscape(Kratos.howToInstall(config)),
         )
     } finally {
         if (session != null) session!!.close() else opening.thenAccept { it.close() }

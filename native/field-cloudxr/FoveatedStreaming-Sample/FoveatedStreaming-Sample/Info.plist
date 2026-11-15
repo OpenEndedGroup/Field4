@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ApprovedStreamingEndpoints</key>
+	<dict>
+		<key>Example Endpoint</key>
+		<string>example.com:55000</string>
+	</dict>
+	<key>CFBundleDisplayName</key>
+	<string>Field CloudXR</string>
+	<key>NSAccessoryTrackingUsageDescription</key>
+	<string>Use tracked controllers and accessories to interact with your streamed Field workspace.</string>
+	<key>NSHandsTrackingUsageDescription</key>
+	<string>Use your hands to point, pinch, and move the Field IDE in your streamed workspace.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Connect to your Field server to edit the live document alongside the streamed scene.</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationPreferredDefaultSceneSessionRole</key>
+		<string>UIWindowSceneSessionRoleApplication</string>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<true/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UISceneSessionRoleImmersiveSpaceApplication</key>
+			<array>
+				<dict>
+					<key>UISceneInitialImmersionStyle</key>
+					<string>UIImmersionStyleMixed</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+</dict>
+</plist>

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T03:44:41.058Z",
+  "capturedAt": "2026-11-14T23:24:07.242Z",
   "documentName": "stipple_sheet",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 536,
-      "height": 160,
+      "height": 154,
       "path": "outputs/0.html"
     },
     {

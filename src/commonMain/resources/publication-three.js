@@ -1,5 +1,8 @@
 /** Bundle the canonical viewer's modules into local Blob URLs, including inside opaque sandboxes. */
-const THREE_ROOT = 'vendor/three/0.184.0/';
+const THREE_ROOT = 'vendor/three/0.187.0/';
+// three's WebGPU build, beside three.core.js only so the live viewer's WebGPU path tracer shares its scene
+// objects. A publication never path traces, so it neither bundles nor ships these (WebPublication.kt).
+export const WEBGPU_ONLY = new Set([THREE_ROOT + 'three.webgpu.js', THREE_ROOT + 'three.tsl.js']);
 const literal = value => JSON.stringify(value).replace(/</g,'\\u003c');
 const moduleId = path => 'field-publication/' + path;
 
@@ -24,7 +27,7 @@ export function prepareThreePublication(files) {
     if (!code) throw new Error('Three.js viewer module is unavailable');
     const modules = new Map([['viewer.js',code]]);
     for (const [path,bytes] of files) {
-        if ((path.startsWith(THREE_ROOT) || /^(threejs_|geometry_review_).*\.js$/.test(path)) && path.endsWith('.js')) {
+        if ((path.startsWith(THREE_ROOT) || /^(threejs_|geometry_review_).*\.js$/.test(path)) && path.endsWith('.js') && !WEBGPU_ONLY.has(path)) {
             modules.set(path,decoder.decode(bytes));
         }
     }

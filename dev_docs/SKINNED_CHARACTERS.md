@@ -22,7 +22,7 @@ src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceGltf.kt:173:
 
 The only mention of a bone in the whole JVM source tree was the path tracer refusing to render one
 — the codebase naming a missing capability in its own error message. Meanwhile the vendored
-`three.module.js` (0.184.0) has full skinning, so this was a named Three.js parity gap and not an
+`three.module.js` (0.187.0) has full skinning, so this was a named Three.js parity gap and not an
 open question.
 
 What *did* exist: `simpleGLTFSupport.kt` loads glTF through Assimp and samples per-**node** rigid TRS

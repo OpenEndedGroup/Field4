@@ -136,9 +136,11 @@ three {
 ```
 
 `xray` is the **X-ray** button, `export` is **Export GLB**, `linkCamera` is **Link camera**,
-`review` is **Pick** with its notes, `parts` is the **Parts** list and `light` is the **Light**
-slider. `controls(ThreeControls.ALL)` asks for every one. `threeLines(...)` and
-`threeInspect(...)` take the same choice as a `controls = ThreeControls(...)` argument.
+`review` is **Pick** with its notes, `parts` is the **Parts** list, `light` is the **Light**
+slider, `realism` is **Realism** and `pathTrace` is **Path trace**
+([below](#realism-and-path-tracing)). `controls(ThreeControls.ALL)` asks for every one.
+`threeLines(...)` and `threeInspect(...)` take the same choice as a `controls = ThreeControls(...)`
+argument.
 
 Press **E** in any view to show all the controls it did not ask for; press it again to put them
 away. That way you can still pick a feature or export a file from a figure that was made only to
@@ -326,6 +328,66 @@ three(name = "studio", channel = "studio", width = 560, height = 420) {
 view. A contact sheet and X-ray draw without it, and `studio(ambientOcclusion = false)` turns it off.
 `geometry { }` uses this look for its models; see the `madp_geometry` starting point.
 
+### Realism and path tracing
+
+`controls(realism = true)` puts a **Realism** button on the toolbar that turns the studio look on
+and off from the view, so you can compare a model plain and lit without editing the box. It works
+in Y-up and Z-up views. A view that calls `studio()` starts with it pressed and uses that
+call's settings. Any other view gets soft shadows, ambient occlusion and the light of a neutral
+room, which keeps faces the key light misses from going flat. The button keeps its last setting
+when the box runs again.
+
+`controls(pathTrace = true)` adds **Path trace**, which traces the same scene on the GPU with
+[three-gpu-pathtracer](https://github.com/gkjohnson/three-gpu-pathtracer). Light bounces between
+surfaces, so the underside of a roof picks up light reflected off the floor below it. Lines,
+points and handles are drawn over the traced image and hidden where a surface is in front of them.
+
+Where the browser offers WebGPU, the tracer runs as compute
+shaders. It stops at 32 samples per pixel and runs
+[Open Image Denoise](https://www.openimagedenoise.org/) over the result, which turns that still-grainy
+image into a clean one, usually within a few seconds. The button shows the count and then
+**denoised**. While you orbit, the view drops to a coarse traced preview and sharpens when you
+stop; a part that moves is updated in place. The first trace after opening a view takes a few
+seconds longer while the tracer compiles, and the Realism view draws meanwhile.
+
+Without WebGPU the same button traces on WebGL: slower, with no denoising, the image clearing as
+samples accumulate up to 512 per pixel, and the Realism view drawing whenever anything moves.
+
+To start a view traced, pass `pathTrace = true` to `studio()`. The view opens with **Realism** and
+**Path trace** both pressed, so a reader can turn tracing off. This pavilion's roof overhangs the
+slab: look under it, and at the back wall, for light bounced up off the floor.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/path-trace.png" alt="a white pavilion of a roof on eight posts, a back wall and three blocks on a slab, path traced: the posts cast long soft shadows across the slab, and the wall and the roof's underside are lit by light bounced off the floor" wait="2.0" capture="box" open-outputs="true" padding="20" name="three-path-trace"}
+// A slab, a roof on eight posts, a wall and some blocks: enough overhang for light to bounce.
+val slab = boxMesh(8.0, 4.0, 0.15).translated(0.0, 0.0, 0.075)
+val roof = boxMesh(6.5, 3.2, 0.12).translated(0.5, 0.0, 2.6)
+val posts =
+    [-2.4, -0.6, 1.2, 3.4].flatMap { x -> [-1.4, 1.4].map { y -> boxMesh(0.12, 0.12, 2.4).translated(x, y, 1.35) } }
+val wall = boxMesh(4.0, 0.15, 2.4).translated(-0.8, 1.2, 1.35)
+val blocks = [
+    boxMesh(0.8, 0.8, 0.6).translated(-3.2, -1.0, 0.45),
+    boxMesh(0.6, 0.6, 0.5).translated(-2.7, -1.5, 0.4),
+    boxMesh(1.6, 0.7, 0.5).translated(3.0, -2.4, 0.25),
+]
+
+three(name = "pavilion", width = 760, height = 440) {
+    for (part in [slab, roof, wall] + posts + blocks) mesh(part, wireframe = false)
+    camera(yaw = -35.0, pitch = 28.0, distance = 1.6, upAxis = ThreeUpAxis.Z)
+    studio(pathTrace = true)
+}
+```
+
+![A path-traced white pavilion: soft post shadows across the slab, and bounced light under the roof.](assets/three_output/path-trace.png)
+
+In a box of your own, `controls(realism = true, pathTrace = true)` shows both buttons without
+starting either.
+
+!!! note
+    Path tracing traces surfaces with a standard material that are not close to fully transparent;
+    other surfaces are drawn over the traced image. It draws in a single view, not in a contact
+    sheet, X-ray, or a published page. It is heavy on the GPU, so it stays off unless the box starts
+    it or you press the button.
+
 ### One scene, two kinds of thing
 
 A gyroid marched inside a finite box is an **open** surface. Where it reaches the edge of the
@@ -392,6 +454,11 @@ CPU rasterizer's camera:
 - **`fieldOfViewDegrees`** — vertical. Smaller is a longer lens and less perspective.
 
 The names and meanings match, so one camera can be handed to either renderer.
+
+From the page, a script or a film reads and sets the view's camera directly: `FieldViewer.cameraPose()` returns
+`{eye, target, up, zoom, fov}` in the scene's units, and `FieldViewer.setCamera(pose)` puts the camera there and
+draws at once (`up`, `fov` and `zoom` are optional). A pose set this way holds across the box's redraws, as an orbit
+by hand does, until the box asks for a different `camera(...)`.
 
 ## Contact sheets
 
@@ -532,7 +599,7 @@ lists them all, and what each is for:
 
 | path | what it draws | where the pixels are made | reach for it when |
 |---|---|---|---|
-| `three`, `threeGrid`, `threeTurntable`, `threeLines`, `threeInspect` — `afield/graphics/three/Three.kt`, `ThreeJsViewer.kt` | FLines and `TriMesh`es together, in 3D | **WebGL** (three.js r184, vendored) in a `/threejs` iframe inside the box output | you want to turn it; you want a solid and its annotations in one scene. The default for the whole `showMesh` family |
+| `three`, `threeGrid`, `threeTurntable`, `threeLines`, `threeInspect` — `afield/graphics/three/Three.kt`, `ThreeJsViewer.kt` | FLines and `TriMesh`es together, in 3D | **WebGL** (three.js r187, vendored) in a `/threejs` iframe inside the box output | you want to turn it; you want a solid and its annotations in one scene. The default for the whole `showMesh` family |
 | `renderPng`, `renderPixels`, `toFigureHtml`, `toHTML`, `showMeshDiagnosis`, `MeshRenderer.CPU` — `afield/graphics/visionos/VisionGeometryPreview.kt` | one `TriMesh`, fixed camera, still | **CPU z-buffer in the JVM**, AWT-free, encoded by `PngEncoder` | you need the same pixels twice (see below); there is no WebGL context to spare; you want a pixel buffer to composite by hand |
 | `lines`, `l`, `drawToSVG`, `inspect` — `afield/ui/visualization/someSkiko.kt` | FLines, **2D only** | **SVG text** emitted by a Skia recording canvas; the browser rasterizes it | 2D figures: crisp at any zoom, tiny payload, headless-safe |
 | `lines(editable = true)`, and the automatic upgrade when an FLine has `onClick` or `hoverColor` — `FLineEditableSvg.kt` | the same, plus click / hover / drag / freehand | SVG in the browser, plus a server-side edit session | direct manipulation of control points; a figure you can click to name |
@@ -774,10 +841,8 @@ Hidden geometry is excluded from picking and visible-scene exports, including X-
 
 ## Parts by id: layers, metadata and styles
 
-A mesh's `id` names a part, and everything the view does with parts goes by that id. Give the part a
-`layer` path and the **Parts** list folds by it; give it `metadata` and a viewer tool, or a script in the
-page, finds the part by id with that data beside it, so nothing needs to be hidden in an overlay. A part
-can start `hidden`.
+A mesh's `id` names a part in the viewer. Give it a `layer` path to group it in the **Parts** list,
+or attach `metadata` for a viewer tool or page script to find by id. A part can also start `hidden`.
 
 ```diffstatic {data-lang=kotlin}
 three(name = "house") {
@@ -795,8 +860,8 @@ three(name = "house") {
 }
 ```
 
-What the reader hides, and the part they selected, is kept by id when the box draws the view again,
-however different the new geometry is. `hidden = true` applies only the first time the view sees that id.
+When the box redraws, the viewer remembers which parts you hid and which part you selected, by id,
+even if their geometry has changed. `hidden = true` applies only the first time the view sees that id.
 From the page, `FieldViewer.parts()` lists the parts with their layers, metadata and visibility, and
 `FieldViewer.hidePart(id)` hides one; a viewer tool has the same through `ctx.parts()`, `ctx.part(id)`,
 `ctx.metadata()` and `ctx.hidePart(id)`, with each part's three.js objects.
@@ -869,10 +934,9 @@ plays the motion a clearance check walked; the track is plain numbers. From a pa
 
 ## Redrawing a scene as it changes
 
-Call `three { … }` again with the same name and the view on screen is updated rather than replaced, and only
-what changed is sent. Each part's arrays go out with a content hash, and the viewer fetches only arrays it does
-not already hold, keeps the drawn object of every part whose geometry it has, and builds new objects only for
-parts whose geometry is new:
+Call `three { … }` again with the same name to update the view on screen. Field sends only what
+changed: each part's arrays have a content hash, so the viewer fetches arrays it does not already
+have and keeps the drawn objects whose geometry is unchanged. In particular:
 
 * an unchanged part costs a few hundred bytes of description;
 * a part that only **moved** (turned and moved as a whole, with the same mesh) is found by the server and sent
@@ -887,6 +951,13 @@ update cost in its window's `fieldThreeWireStats` (bytes fetched, objects built 
 server's `lastUpdate` on the view returned by `three` says how many parts went out as transforms.
 
 A part is matched to its previous self by its `id`, so give moving parts ids.
+
+When the box knows a part only moved, it can say so: pass the **same** mesh each redraw with
+`mesh(m, id = "carriage", transform = translation(x, 0.0, 0.0))` (or any column-major 4×4 matrix). The mesh is
+prepared once, nothing about it is hashed or compared again, and the viewer only moves its object. A `TriMesh`
+is a value whose arrays are never changed, so a mesh object handed over again is known to be the same mesh. On a
+large assembly whose parts mostly ride along with a few that reshape, keeping the riding parts as unchanged meshes
+placed by transforms, and the reshaping ones as small meshes of their own, is what keeps a drag step short.
 
 ## Editing a curve before an expensive operation
 
@@ -922,15 +993,16 @@ positions, normals and triangles it already has, downloads only the colours and 
 mesh on screen instead of rebuilding it. A 10,000-vertex sphere relit this way downloads 123 kB per
 redraw instead of 533 kB.
 
-Three.js ships with Field (`src/commonMain/resources/vendor/three/0.184.0/`), so the viewer works
+Three.js ships with Field (`src/commonMain/resources/vendor/three/0.187.0/`), so the viewer works
 offline.
 
 ## Play with it
 
-[Open the gallery](offline.html?file=assets/three_output_gallery/metadata.edn), with the five boxes
-on this page and their captured outputs. Drag a 3D view to orbit it; use **Parts** and **X-ray**
+[Open the gallery](offline.html?file=assets/three_output_gallery/metadata.edn), with six boxes
+from this page and their captured outputs. Drag a 3D view to orbit it; use **Parts** and **X-ray**
 to explore its geometry. Click a box to read its code. To change `facts = true` to `false`, or
-set the grid's `columns` to `4`, use **Open in Field·4** and run the edited box.
+set the grid's `columns` to `4`, use **Open in Field·4** and run the edited box. Box 6 is the
+path-traced pavilion; it traces only once it is open in Field.
 
 <iframe
     src="offline.html?file=assets/three_output_gallery/metadata.edn&amp;focus=outputs"

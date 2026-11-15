@@ -105,6 +105,9 @@ object DocsAudioProvenance {
         /** A Faust program compiled at runtime and rendered offline. See [SoundPathMap]. */
         FAUST("a Faust program compiled at runtime and rendered with no audio device"),
 
+        /** The FM-1 synth's open-firmware simulator, a wasm module, rendered offline. See [FM1SoundDocs]. */
+        FM1_SIM("the FM-1 synth's open-firmware simulator, run as WebAssembly with no audio device"),
+
         /**
          * A live recording of a real Sonic Pi, made by `SonicPiSoundDocs`.
          *
@@ -175,6 +178,7 @@ object DocsAudioProvenance {
         // One Faust program each, rendered offline through FaustDsp/FaustNode; the dry clip is the
         // reverb's input on its own, Field's SawOsc pair, so it is Faust's page but not Faust's sound.
         "afield.audio.synth.FaustSoundDocs" to Origin.FAUST,
+        "afield.audio.synth.FM1SoundDocs" to Origin.FM1_SIM,
         "afield.audio.synth.PatSpatialSoundDocs" to Origin.DOUGH_WASM,
         "afield.audio.synth.PatSpatialHeadTrackedDocs" to Origin.STEAM_AUDIO_HRTF,
         // The page's two placed patterns through patSpatial and Steam Audio, with a still listener.

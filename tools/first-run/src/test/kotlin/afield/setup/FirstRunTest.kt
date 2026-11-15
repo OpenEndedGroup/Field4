@@ -8,6 +8,10 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class FirstRunTest {
+    @Test fun homebrewFailureNamesTheInterruptedLinkRecovery() {
+        assertTrue(installFailureAdvice("brew").any { "brew unlink" in it && "Cannot link" in it })
+        assertTrue(installFailureAdvice("apt-get").isEmpty())
+    }
     @Test fun browserOnlyWithoutExtrasDoesNotRequireCompilersOrDesktopPackages() {
         assertTrue(packagePlan("apt-get", false, setOf("g++", "cmake"), emptySet(), true).commands.isEmpty())
     }
@@ -132,5 +136,44 @@ class FirstRunTest {
             assertTrue(File(root, extra.guide).isFile, "Missing guide for ${extra.id}: ${extra.guide}")
             extra.task?.let { assertTrue("\"$it\"" in build, "Missing preparation task for ${extra.id}: $it") }
         }
+    }
+}
+
+class WiVRnPreparationTest {
+    @kotlin.test.Test fun macPreparationUsesTheInstallerRatherThanTheFieldBuild() {
+        kotlin.test.assertEquals(
+            listOf(listOf("python3", "tools/field_wivrn_macos.py", "--prepare")),
+            preparationCommands(setOf("wivrn-macos"), "mac"),
+        )
+        kotlin.test.assertTrue(preparationCommands(setOf("wivrn-macos"), "linux").isEmpty())
+        kotlin.test.assertTrue(preparationCommands(setOf("wivrn-macos"), "windows").isEmpty())
+    }
+
+    @kotlin.test.Test fun kosmicKrispPreparationAlsoBuildsThePatchedRuntime() {
+        kotlin.test.assertEquals(
+            listOf(listOf("python3", "tools/field_wivrn_macos.py", "--prepare", "--kosmickrisp")),
+            preparationCommands(setOf("wivrn-macos-kk"), "mac"),
+        )
+        kotlin.test.assertTrue(preparationCommands(setOf("wivrn-macos-kk"), "linux").isEmpty())
+        kotlin.test.assertTrue("brew" in extraTools(setOf("wivrn-macos-kk"), "mac"))
+    }
+
+    @kotlin.test.Test fun macWiVRnDoesNotReinstallAvailablePythonOrCommandLineTools() {
+        val plan = packagePlan("brew", true, setOf("cmake"),
+            setOf("openxr", "slug", "wivrn-macos"), false, "mac")
+        kotlin.test.assertEquals(listOf(listOf("brew", "install", "--", "cmake")), plan.commands)
+        kotlin.test.assertFalse(plan.notes.any { "xcode-select" in it })
+        val ready = packagePlan("brew", true, emptySet(), setOf("wivrn-macos"), false, "mac")
+        kotlin.test.assertTrue(ready.commands.isEmpty())
+    }
+
+    @kotlin.test.Test fun macCanSelectMissingBrewPrerequisitesAndInstallThem() {
+        val choices = featureOptions("mac", { it !in setOf("cmake", "python3") },
+            nvidia = false, rustErrors = emptyList(), solidcraftErrors = emptyList(), homebrew = true)
+        val choice = choices.single { it.extra.id == "wivrn-macos" }
+        kotlin.test.assertTrue(choice.enabled)
+        val plan = packagePlan("brew", false, choice.missing.toSet(), setOf("wivrn-macos"), false, "mac")
+        kotlin.test.assertTrue(plan.commands.flatten().containsAll(listOf("cmake", "python@3.12")))
+        kotlin.test.assertTrue(featureOptions("linux").none { it.extra.id == "wivrn-macos" })
     }
 }

@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. path tracing renderer
@@ -32,21 +32,40 @@ start(renderer::run)
 <!-- field-box id="path_trace_hidden_environment" index="1" -->
 
 ```edn [field-box id="path_trace_hidden_environment" role="properties"]
-{"id" "path_trace_hidden_environment" "index" 1 "name" "environment lighting without a visible sky" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "environment lighting without a visible sky" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_hidden_environment_code_.kt" "lines" 25 "characters" 889 "sha256" "9803893402681c2315563f5cc5824e6dd72b7a3aee4da57acdebdd592c8d13bb"}]}
+{"id" "path_trace_hidden_environment" "index" 1 "name" "environment lighting without a visible sky" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "environment lighting without a visible sky" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_hidden_environment_code_.kt" "lines" 44 "characters" 1785 "sha256" "700d356182e626affb9527004ced3044d0928b419e457870c1302c76b020ac56"}]}
 ```
 
 ```kotlin [field-property box="path_trace_hidden_environment" name="code" path="path_trace_hidden_environment_code_.kt"]
-import afield.graphics.scene.fabricated.PathTraceDemo
-import afield.graphics.scene.fabricated.PathTracingRenderer
-import java.io.File
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
 
 prop<PathTracingRenderer>(tracer)
-tracer = PathTraceDemo.install(
+val scene = PathTraceScene()
+// Colours are linear RGB; the sphere materials end with roughness.
+val floor = scene.material(PathTraceMaterial.diffuse(0.48f, 0.48f, 0.48f))
+val red = scene.material(PathTraceMaterial.plastic(0.65f, 0.055f, 0.025f, 0.22f))
+val gold = scene.material(PathTraceMaterial.metal(0.95f, 0.7f, 0.3f, 0.12f))
+val rough = scene.material(PathTraceMaterial.metal(0.55f, 0.65f, 0.8f, 0.55f))
+// A floor and three independently editable spheres.
+scene.quad(Vector3f(-15f, 0f, -15f), Vector3f(-15f, 0f, 15f), Vector3f(15f, 0f, 15f), Vector3f(15f, 0f, -15f), floor)
+scene.sphere(Vector3f(-1.7f, 0.8f, 0f), 0.8f, red, 48, 24)
+scene.sphere(Vector3f(0f, 0.8f, 0f), 0.8f, gold, 48, 24)
+scene.sphere(Vector3f(1.7f, 0.8f, 0f), 0.8f, rough, 48, 24)
+val camera = Camera(renderer).also {
+    it.at.set(3.5f, 2.4f, 7.5f)
+    it.target.set(0f, 0.65f, 0f)
+    it.p.fov = 0.62
+}
+
+val environment = PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
+tracer = PathTracingRenderer(
     renderer,
+    scene,
+    environment,
     width = 1280,
     height = 720,
-    environmentPath = File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath,
-)
+    camera = camera,
+).install()
 tracer.samplesPerFrame = 1
 tracer.maxBounces = 5
 tracer.indirectClamp = 10f // Optional biased suppression of indirect fireflies.

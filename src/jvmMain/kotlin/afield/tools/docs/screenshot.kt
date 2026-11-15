@@ -382,41 +382,17 @@ private fun postProcessScreenshot(path: Path) {
       error("pageEval scriptMode must be 'expression' or 'body'")
     }
 
-    val raw = page.evaluate(
-      """
-      async ({ source, mode }) => {
-        const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-        const replacer = (_key, value) => {
-          if (typeof value === "bigint") return value.toString();
-          if (typeof value === "function") return `[Function ${'$'}{value.name || "anonymous"}]`;
-          if (value instanceof Element) {
-            return {
-              tagName: value.tagName,
-              id: value.id || "",
-              className: typeof value.className === "string" ? value.className : "",
-              textContent: value.textContent || ""
-            };
-          }
-          return value;
-        };
-
-        const value = mode === "body"
-          ? await new AsyncFunction(source).call(window)
-          : await (0, eval)(source);
-
-        if (value === undefined) {
-          return { ok: true, json: "null", message: "Evaluation returned undefined" };
-        }
-
-        const json = JSON.stringify(value, replacer);
-        if (json === undefined) {
-          return { ok: true, json: "null", message: `Evaluation returned ${'$'}{typeof value}` };
-        }
-        return { ok: true, json, message: "" };
-      }
-      """.trimIndent(),
-      mapOf("source" to source, "mode" to mode)
-    )
+    val view = request.viewUid?.let { locateBoxView(page, it, request.viewChannel) }
+    // A three.js view runs the script in its own page; any other output gets it as `view`.
+    val frame = view?.asElement()?.let { element ->
+      if (element.evaluate("(e) => e.tagName === 'IFRAME'") == true) element.contentFrame() else null
+    }
+    val raw = try {
+      if (frame != null) frame.evaluate(PAGE_EVAL_WRAPPER, mapOf("source" to source, "mode" to mode, "view" to null))
+      else page.evaluate(PAGE_EVAL_WRAPPER, mapOf("source" to source, "mode" to mode, "view" to view))
+    } finally {
+      view?.dispose()
+    }
     val result = raw as? Map<*, *> ?: error("pageEval returned an invalid response")
     if (result["ok"] != true) {
       error(responseString(result["message"]).ifBlank { "pageEval failed" })
@@ -424,6 +400,34 @@ private fun postProcessScreenshot(path: Path) {
     val json = responseString(result["json"]).ifBlank { "null" }
     val message = responseString(result["message"])
     return Json.parseToJsonElement(json) to message
+  }
+
+  /**
+   * The element of box [uid]'s output [channel] (the first holding a three.js view when null): the view's iframe,
+   * or the output's content. Fails naming the box's channels when there is no such output.
+   */
+  private fun locateBoxView(page: Page, uid: String, channel: String?): com.microsoft.playwright.JSHandle {
+    val handle = page.evaluateHandle(
+      """
+      ({ uid, channel }) => {
+        const box = [...document.querySelectorAll('.box')].find((b) => b.uid === uid);
+        if (!box) return 'no box ' + uid + ' on the page';
+        const all = [...box.querySelectorAll('.outputArea .disclosure')].filter((d) => d.closest('.box') === box);
+        const three = (d) => d.querySelector('iframe[src*="/threejs"]');
+        const d = channel ? all.find((x) => x.__disclosureId === channel) : (all.find(three) || all[0]);
+        if (!d) return 'box ' + (box.name || uid) + ' has no output' + (channel ? ' "' + channel + '"' : '') +
+          (all.length ? ' (its outputs: ' + all.map((x) => x.__disclosureId).join(', ') + ')' : '');
+        return three(d) || d.querySelector('.disclosure-content') || d;
+      }
+      """.trimIndent(),
+      mapOf("uid" to uid, "channel" to channel)
+    )
+    if (handle.asElement() == null) {
+      val why = runCatching { handle.jsonValue() as? String }.getOrNull()
+      handle.dispose()
+      error(why ?: "no output of box $uid")
+    }
+    return handle
   }
 
   private fun performWindowAction(page: Page, request: AgentPlaywrightInputRequest): Pair<JsonElement?, String> {
@@ -607,6 +611,48 @@ private fun WindowScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf
     "preserveSelection" to preserveSelection,
     "includeNotifications" to includeNotifications
 )
+
+/**
+ * The page side of `pageEval`: runs `source` as an expression or a function body (with `view` bound when given)
+ * and answers its value as JSON text, elements and functions described rather than dropped.
+ */
+private val PAGE_EVAL_WRAPPER = """
+      async ({ source, mode, view }) => {
+        const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+        const replacer = (_key, value) => {
+          if (typeof value === "bigint") return value.toString();
+          if (typeof value === "function") return `[Function ${'$'}{value.name || "anonymous"}]`;
+          if (value instanceof Element) {
+            return {
+              tagName: value.tagName,
+              id: value.id || "",
+              className: typeof value.className === "string" ? value.className : "",
+              textContent: value.textContent || ""
+            };
+          }
+          return value;
+        };
+
+        // With a view (a box's output, `page-eval --view`), the script sees it as `view`.
+        const value = view
+          ? (mode === "body"
+            ? await new AsyncFunction("view", source).call(window, view)
+            : await new AsyncFunction("view", "__source", "return await eval(__source)").call(window, view, source))
+          : mode === "body"
+            ? await new AsyncFunction(source).call(window)
+            : await (0, eval)(source);
+
+        if (value === undefined) {
+          return { ok: true, json: "null", message: "Evaluation returned undefined" };
+        }
+
+        const json = JSON.stringify(value, replacer);
+        if (json === undefined) {
+          return { ok: true, json: "null", message: `Evaluation returned ${'$'}{typeof value}` };
+        }
+        return { ok: true, json, message: "" };
+      }
+""".trimIndent()
 
 /**
  * [Page.evaluate] of an async [script], with a wall clock the page cannot hold open.
@@ -2950,6 +2996,36 @@ class DocsUiDriver internal constructor(
         val reply = runBlocking { film.await() }
         check(reply.ok) { "filmCanvasFlight: ${reply.message}" }
         lprintln("info,docs", "drive filmed a canvas flight: ${reply.frameCount} frames -> $path")
+        return reply
+    }
+
+    /**
+     * Films the timeline file at [timeline] (`film-page --timeline`, [FilmTimeline]) of this driver's document to
+     * [path] (the drive's video, `vid` in the script), frame by frame, instead of recording the drive in real time.
+     * The timeline's duration, rate and size apply unless given here; box names in it are this document's.
+     */
+    fun filmTimeline(
+        path: String,
+        timeline: String,
+        durationSec: Double? = null,
+        fps: Int? = null,
+        width: Int? = null,
+        height: Int? = null,
+        pixelRatio: Double? = null,
+    ): afield.app.protocol.AgentPageFilmResponse {
+        val info = session ?: error("filmTimeline: this driver has no document")
+        recorder?.let { runBlocking { it.discard() } }
+        val file = java.io.File(timeline).let { if (it.isAbsolute) it else java.io.File(System.getProperty("user.dir"), timeline) }
+        val request = afield.app.protocol.AgentPageFilm(
+            url = "@session", path = path, durationSec = durationSec ?: 0.0, fps = fps ?: 0, width = width ?: 0, height = height ?: 0,
+            pixelRatio = pixelRatio ?: 0.0, timeline = file.readText(), loadTimeoutMs = 120_000,
+        )
+        val film = playwrightScope.async { filmPage(request, info) }
+        // Keep the runloop turning while the film is made, as [pause] does.
+        while (!film.isCompleted) idle(20L)
+        val reply = runBlocking { film.await() }
+        check(reply.ok) { "filmTimeline: ${reply.message}" }
+        lprintln("info,docs", "drive filmed a timeline: ${reply.frameCount} frames -> $path")
         return reply
     }
 

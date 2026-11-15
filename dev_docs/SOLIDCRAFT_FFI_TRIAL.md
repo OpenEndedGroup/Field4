@@ -1,7 +1,8 @@
 # Optional SolidCraft FFM trial
 
 Field keeps its existing Manifold binding. This trial adds a separate, optional path to SolidCraft's
-document and B-rep engine at pinned upstream release v0.15.0 (commit `fa691707c224cae580c42201ed3a22d5e4b8c716`).
+document and B-rep engine at pinned upstream release v0.41.0 (commit `3c8efdb51952ed9a5f3ebc722c2bad1454fe6d80`;
+the pin lives in `tools/build_solidcraft_native.py`).
 Ordinary `compileKotlinJvm`, `check`, and Field startup do not download or load SolidCraft.
 
 ## Try it
@@ -73,21 +74,25 @@ engine validates it, failures name the feature, and the result saves, edits and 
 loaded file. No new native entry points were needed. `smokeSolidCraft` runs one design per
 feature (`SolidCraftBuilderSmokeTest`) and checks volumes, areas or bounds against closed forms.
 
-Facts found doing so, at v0.15.0:
+Facts found doing so, rechecked at v0.41.0, where sweeps go through SolidCraft's SMLib backend:
 
 - A sweep keeps the profile at the angle it was drawn to the path. A path that leaves the
   profile 27° off square gives a section `cos 27°` of the drawn one; start the path square to the
-  profile for a true tube.
+  profile for a true tube (`planeSquareTo(fline)`).
 - A sweep with guide rails takes no twist or end scale (the rails set both); the builder refuses
   the combination before SolidCraft does.
-- A sweep caps both ends even when its path closes: a full-circle sweep has the torus's area plus
-  two discs, its caps pressed together inside. A ring is two half sweeps joined — on arc paths
-  the join removes the caps (exact torus area, watertight, genus 1, under 2 s). The same join on
-  two freeform halves of a trefoil knot runs minutes in truck's surface intersection and fails
-  with "no result", with abutting or overlapping halves; a closed knotted ring needs a periodic
-  sweep upstream (no closed-path sweep issue exists there as of 2026-10-18).
-- `surfaceBoundary` builds two boundaries only (three or four: SolidCraft issue #763), and the
-  two curves must run the same way.
+- A sweep round a closed path joins its end to its start with no caps: a full-circle sweep is
+  exactly a torus (area to 1e-10, watertight, genus 1). Before v0.41 it capped both ends, and a
+  ring had to be two half sweeps joined, which still works.
+- Knotted paths do not close yet. A closed trefoil sweep fails in solidcore's boolean
+  ("no radial sector of the edge takes the new edge use"), and joining two freeform halves of the
+  knot is refused by SMLib's check of the result. Both fail in seconds; at v0.15.0 the join ran
+  for minutes and returned "no result". An open knot sweeps as a capped tube.
+- SMLib refuses a sweep along a densely sampled wire: a 2.5 mm tube along an `FLine` trefoil or
+  helix fails with `SMLib failed (status 1001)` at `wire(line, spacing = 0.5f)` and builds at
+  1 mm (the default), 1.5 mm and 2 mm, within 0.1% of πr²L. It is the spacing and not the point
+  count: half the knot at 0.5 mm (~230 points) fails where the whole knot at 1 mm (~230) builds.
+- `surfaceBoundary` builds from three curves as well as two; the curves must run the same way.
 - Sketch points the builder draws are fixed and it adds no constraints; parametric dimensions go
   through expressions (`param`) in feature fields, not sketch constraints.
 

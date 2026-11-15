@@ -69,7 +69,7 @@ import java.io.File
  * covered by the real browser captures in
  * `dev_docs/agents/artifacts/tessellate_facing/multi_plane_fill_demo/`.
  *
- * Note that three.js *is* now loadable in-repo — `src/commonMain/resources/vendor/three/0.184.0/`,
+ * Note that three.js *is* now loadable in-repo — `src/commonMain/resources/vendor/three/0.187.0/`,
  * vendored when the mesh examples moved onto this viewer and a CDN stopped being an acceptable
  * dependency for ~68 docs captures. So a shim using the real `THREE.ShapeUtils` has become possible.
  * It is deliberately still not what runs here, for the three reasons above: substituting the real one

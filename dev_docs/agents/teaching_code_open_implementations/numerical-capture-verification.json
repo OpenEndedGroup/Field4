@@ -1,0 +1,21 @@
+[
+  {
+    "path": "public/docs/stacksl_intervals.md",
+    "name": "stacksl-intervals-ring",
+    "asset": "assets/stacksl_intervals/ring.png",
+    "fenceSha256": "74571ad4478c562d75c919056d5e9df3e3898ce53506517323c7ca22c0e3d0d8",
+    "evidence": "Successful capture-intervals.log invocation, followed by the dependent morpho capture command."
+  },
+  {
+    "path": "public/docs/morpho_search.md",
+    "name": "morpho-search-recursion",
+    "asset": "assets/morpho_examples/search-recursion.png",
+    "fenceSha256": "b4f7a06c1e2fa33b20a5b3e73c3ea8928f2ef8e159232603acafa3a51641bb1c"
+  },
+  {
+    "path": "public/docs/morpho_search.md",
+    "name": "morpho-search-adder",
+    "asset": "assets/morpho_examples/search-adder.png",
+    "fenceSha256": "f0d7ff055cec359a1944bb68b64cef09132c31e72720a4c833141be4ed5b4126"
+  }
+]

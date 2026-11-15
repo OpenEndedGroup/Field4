@@ -150,6 +150,10 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * @param hidden start hidden. Applied the first time the view sees this [id]; after that the reader's
      * choice is kept by id across every later redraw.
      * @param style colour, opacity and emphasis by part id, as [style] sets them. Needs an [id].
+     * @param transform where the mesh is placed: 16 floats, a column-major 4×4 matrix (as three.js's
+     * `Matrix4.fromArray` reads it), or `null` for where its positions are. A part that moves while its shape
+     * stays the same is cheapest given as the **same** mesh each redraw with a new transform: nothing is prepared,
+     * hashed afresh or fetched for it, and the viewer only moves its object. [translation] makes one.
      */
     fun mesh(
         mesh: TriMesh,
@@ -175,7 +179,11 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         metadata: Map<String, Any?> = emptyMap(),
         hidden: Boolean = false,
         style: ThreePartStyle? = null,
+        transform: FloatArray? = null,
     ) {
+        require(transform == null || (transform.size == 16 && transform.all { it.isFinite() })) {
+            "transform must be 16 finite floats (a column-major 4x4 matrix)"
+        }
         require(solidOpacity == null || (solidOpacity.isFinite() && solidOpacity in 0.0..1.0)) {
             "solidOpacity must be between 0 and 1, got $solidOpacity"
         }
@@ -197,13 +205,20 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             callbackId = onClick?.let { registerThreeSurfaceClickCallback(it) } ?: "",
             hoverColor = hoverColor?.let { floatArrayOf(it.x, it.y, it.z, it.w) },
             pickable = pickable,
-        ).withIdentity(layer, metadata, hidden)
+        ).withIdentity(layer, metadata, hidden).placed(transform)
         if (edges) drawables += mesh.toThreeEdgeDrawable(
             color = edgeColor?.let { floatArrayOf(it.x, it.y, it.z) } ?: floatArrayOf(.08f, .1f, .12f),
             panel = panel, group = group, id = id, explode = explode,
-        ).withIdentity(layer, metadata, hidden)
+        ).withIdentity(layer, metadata, hidden).placed(transform)
         if (style != null) style(id, style)
     }
+
+    private fun ThreeDrawable.placed(transform: FloatArray?): ThreeDrawable =
+        if (transform == null) this else copy(transform = transform.copyOf())
+
+    /** A [mesh] `transform` that moves by ([x], [y], [z]) in the scene's units. */
+    fun translation(x: Double, y: Double, z: Double = 0.0): FloatArray =
+        floatArrayOf(1f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f, 0f, x.toFloat(), y.toFloat(), z.toFloat(), 1f)
 
     private fun ThreeDrawable.withIdentity(layer: List<String>, metadata: Map<String, Any?>, hidden: Boolean): ThreeDrawable {
         require(layer.all { it.isNotBlank() }) { "a layer path's names must not be blank, got $layer" }
@@ -353,8 +368,16 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * ```
      *
      * @param groundY the height of the ground; `null` puts it a little below the scene's lowest point.
-     * @param ambientOcclusion darken creases and contact points (screen-space ambient occlusion, three.js's
-     * `SSAOPass`). Drawn in a single view; a contact sheet ([columns]) and X-ray draw without it.
+     * The toolbar's **Realism** button ([controls] `(realism = true)`) turns the same look on and off in
+     * the view; a view that calls `studio` starts with it on.
+     *
+     * @param ambientOcclusion darken creases and contact points (ground-truth ambient occlusion, three.js's
+     * `GTAOPass`). Drawn in a single view; a contact sheet ([columns]) and X-ray draw without it.
+     *
+     * @param pathTrace start with the toolbar's **Path trace** pressed (and shown, so it can be turned off):
+     * the scene path traced with light that bounces between surfaces, denoised where the browser has
+     * WebGPU. The reader's own press wins across runs, as for Realism. Single views only, and a published
+     * page draws the raster studio instead.
      */
     fun studio(
         ground: Boolean = true,
@@ -364,9 +387,10 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         shadows: Boolean = true,
         exposure: Double = 1.0,
         ambientOcclusion: Boolean = true,
+        pathTrace: Boolean = false,
     ) {
         require(exposure.isFinite() && exposure > 0) { "exposure must be positive, got $exposure" }
-        studio = ThreeStudioSpec(ground, grid, groundY, groundColor, shadows, exposure, ambientOcclusion)
+        studio = ThreeStudioSpec(ground, grid, groundY, groundColor, shadows, exposure, ambientOcclusion, pathTrace)
         if (helpersExplicit == null) helpersExplicit = false
     }
 
@@ -456,8 +480,10 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         review: Boolean = false,
         parts: Boolean = false,
         light: Boolean = false,
+        realism: Boolean = false,
+        pathTrace: Boolean = false,
     ) {
-        controls = ThreeControls(xray, export, linkCamera, review, parts, light)
+        controls = ThreeControls(xray, export, linkCamera, review, parts, light, realism, pathTrace)
     }
 
     /** Put the controls in [controls] on the toolbar; `controls(ThreeControls.ALL)` for every one. */

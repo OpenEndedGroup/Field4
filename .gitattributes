@@ -19,6 +19,7 @@
 *.pdf binary
 *.zip binary
 *.gz binary
+*.tza binary
 
 # SavingContext's canonical transcript mirror deliberately ends its final fenced block with a blank line.
 public/docs/assets/agent_transcripts/**/document.md whitespace=-blank-at-eof

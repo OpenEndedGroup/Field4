@@ -34,6 +34,27 @@ try {
     near(rect().top,rl.top-30,0.5,'latched wheel over an output area');
     await pause(400); // let the wheel latch expire before the next gesture
 
+    // The reverse: a flick an output area's scroller takes stays there. Its momentum past the end
+    // of the scroll does not pan the canvas; the next gesture, once the wheel is idle, does.
+    // (A synthetic wheel does not scroll natively, so the test moves scrollTop as momentum would.)
+    const scroller=document.createElement('div');
+    scroller.style.cssText='height:40px;overflow:auto';
+    scroller.innerHTML='<div style="height:400px">scroll me</div>';
+    output.appendChild(scroller);
+    await frame();
+    const rs=rect();
+    scroller.dispatchEvent(new WheelEvent('wheel',{deltaY:30,bubbles:true,cancelable:true}));
+    scroller.scrollTop=scroller.scrollHeight;
+    await frame();
+    for(let i=0;i<3;i++){scroller.dispatchEvent(new WheelEvent('wheel',{deltaY:20,bubbles:true,cancelable:true}));await frame();}
+    near(rect().top,rs.top,0.5,'scroller momentum past its end stays off the canvas');
+    await pause(400);
+    scroller.dispatchEvent(new WheelEvent('wheel',{deltaY:20,bubbles:true,cancelable:true}));
+    await frame();
+    near(rect().top,rs.top-20,0.5,'a new gesture over a scrolled-out panel pans the canvas');
+    scroller.remove();
+    await pause(400);
+
     const r1=rect();
     // A middle drag is latched from its mousedown on the canvas.
     viewport.dispatchEvent(new MouseEvent('mousedown',{button:1,buttons:4,clientX:5,clientY:5,bubbles:true,cancelable:true}));
@@ -43,7 +64,7 @@ try {
     near(rect().left,r1.left+15,0.5,'middle-drag x');near(rect().top,r1.top-10,0.5,'middle-drag y');
 
     const r2=rect();const cx=r2.left+r2.width/2,cy=r2.top+r2.height/2;const z0=window.canvasZoom();
-    viewport.dispatchEvent(new WheelEvent('wheel',{deltaY:-40,ctrlKey:true,clientX:cx,clientY:cy,bubbles:true,cancelable:true}));
+    viewport.dispatchEvent(new WheelEvent('wheel',{deltaY:-400,ctrlKey:true,clientX:cx,clientY:cy,bubbles:true,cancelable:true}));
     await frame();
     const z1=window.canvasZoom();
     check(z1>z0*1.2,`pinch zoom in: ${z0} -> ${z1}`);

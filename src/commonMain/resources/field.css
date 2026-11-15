@@ -16,7 +16,7 @@
     /* Typography. */
     --field-font: "Iosevka Web", monospace;
     --field-font-system: "Iosevka Web", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --field-font-code: "Iosevka Web", Monaco, Menlo, Consolas, "Courier New", monospace;
+    --field-font-code: "Iosevka Web", Monaco, Menlo, Consolas, monospace;
     --field-font-code-fallback: "Iosevka", "JetBrains Mono", Menlo, Consolas, monospace;
     --field-font-weight: 300;
 
@@ -31,6 +31,39 @@
     --field-search-rgb: 255, 209, 102;
     --field-info-rgb: 100, 150, 255;
     --field-success-rgb: 80, 180, 100;
+    /* Shadows stay dark in every theme; "black" above is the deepest surface, not a shadow. */
+    --field-shadow-rgb: 0, 0, 0;
+
+    /* The canvas background (fieldWebglBackground.js reads these): centre and vignette edge,
+       the dots and axes drawn over it, and the flat band past a split pane's world. */
+    --field-canvas-center-rgb: 24, 24, 24;
+    --field-canvas-edge-rgb: 2, 2, 2;
+    --field-canvas-ink-rgb: 255, 255, 255;
+    --field-canvas-band-rgb: 52, 52, 52;
+
+    /* A box on the canvas: translucent over the background, set inline by createBox (Main.kt). */
+    --field-box-bg: rgba(50, 50, 50, 0.5);
+    --field-box-fg: rgba(var(--field-white-rgb), 0.8);
+    --field-box-backdrop: blur(3px) saturate(2.5) contrast(1.1) brightness(0.9) hue-rotate(-38deg);
+    --field-box-selected-border: rgba(var(--field-cyan-rgb), 0.78);
+
+    /* Highlights drawn in "chalk": white in the dark theme, where they already were. */
+    --field-chalk-rgb: 255, 255, 255;
+
+    /* The ambient help beside the cursor darkens what is behind it before its panel is laid on. */
+    --field-hoverlay-backdrop: blur(10px) brightness(0.0);
+
+    /* A line note in the ambient help (fieldSuggest.css): caption, value, its bold results, meta. */
+    --field-line-note-caption: #9a9aa0;
+    --field-line-note-value: #b8b8be;
+    --field-line-note-strong: #f2f2f5;
+    --field-line-note-meta: #7c7c84;
+
+    /* Toasts (notify.js), bottom left. */
+    --field-toast-bg: rgba(0, 0, 0, 0.98);
+    --field-toast-border: rgba(var(--field-accent-rgb), 0.26);
+    --field-toast-shadow: none;
+    --field-toast-stale-opacity: 0.72;
 
     /* Surfaces derived from the palette. */
     --field-bg: rgb(var(--field-base-rgb));
@@ -153,14 +186,14 @@
     --field-slide-home-border: rgba(var(--field-accent-rgb), 0.35);
 
     /* Shadows. */
-    --field-shadow-sm: 0 1px 2px rgba(var(--field-black-rgb), 0.35);
-    --field-shadow-md: 0 4px 12px rgba(var(--field-black-rgb), 0.4);
-    --field-shadow-lg: 0 8px 30px rgba(var(--field-black-rgb), 0.45);
+    --field-shadow-sm: 0 1px 2px rgba(var(--field-shadow-rgb), 0.35);
+    --field-shadow-md: 0 4px 12px rgba(var(--field-shadow-rgb), 0.4);
+    --field-shadow-lg: 0 8px 30px rgba(var(--field-shadow-rgb), 0.45);
     --field-shadow-xl: var(--field-shadow-lg);
-    --field-shadow-tray: 0 0 30px rgba(var(--field-black-rgb), 0.8);
-    --field-shadow-inset: rgba(var(--field-black-rgb), 0.35);
-    --field-drop-shadow-soft: drop-shadow(0px 0px 4px rgba(var(--field-black-rgb), 0.2));
-    --field-text-shadow-strong: 0 2px 12px rgba(var(--field-black-rgb), 0.6);
+    --field-shadow-tray: 0 0 30px rgba(var(--field-shadow-rgb), 0.8);
+    --field-shadow-inset: rgba(var(--field-shadow-rgb), 0.35);
+    --field-drop-shadow-soft: drop-shadow(0px 0px 4px rgba(var(--field-shadow-rgb), 0.2));
+    --field-text-shadow-strong: 0 2px 12px rgba(var(--field-shadow-rgb), 0.6);
 
     /* Legacy aliases kept while older components are migrated. */
     --bg: var(--field-editor-bg);
@@ -174,6 +207,134 @@
     --field-cyan-muted: var(--field-accent-muted);
     --field-text: var(--field-accent-text-soft);
     --field-text-soft: var(--field-accent-text);
+}
+
+/* Light theme: chalk and pencil on a warm mid-grey ground. `theme.js` sets data-field-theme on <html>
+   from the "Use Light Theme" command and keeps it in localStorage. The palette keeps its dark-theme
+   meaning: "black" is the deepest surface (here a pale warm grey, a little lighter than the ground)
+   and "white" is ink (warm graphite). The tokens after the palette are the ones where that swap alone
+   reads wrong: borders that were drawn in the surface colour, accent and status text mixed towards
+   white for contrast on black, and chalk (--field-chalk-rgb) for highlights and selection. */
+[data-field-theme="light"] {
+    color-scheme: light;
+
+    --field-black-rgb: 204, 199, 190;
+    --field-white-rgb: 36, 33, 29;
+    --field-base-rgb: 172, 167, 158;
+    --field-editor-rgb: 196, 191, 182;
+    --field-accent-rgb: 28, 92, 138;
+    --field-danger-rgb: 168, 36, 30;
+    --field-warning-rgb: 150, 82, 14;
+    --field-search-rgb: 168, 120, 0;
+    --field-info-rgb: 34, 74, 150;
+    --field-success-rgb: 30, 110, 50;
+    --field-shadow-rgb: 46, 40, 32;
+    --field-chalk-rgb: 250, 248, 242;
+
+    --field-canvas-center-rgb: 172, 167, 158;
+    --field-canvas-edge-rgb: 156, 151, 142;
+    --field-canvas-ink-rgb: 36, 33, 29;
+    --field-canvas-band-rgb: 146, 141, 133;
+
+    /* Boxes: a shade darker than the ground, graphite titles and edges, a gutter-coloured ring when selected. */
+    --field-box-bg: rgba(140, 135, 126, 0.62);
+    --field-box-fg: rgba(var(--field-white-rgb), 0.9);
+    --field-box-backdrop: blur(3px);
+    --field-box-selected-border: rgb(var(--field-black-rgb));
+    /* The light theme also draws the box's 5px frame (.box::before) when it is selected, in the
+       editor gutter's colour (BootstrapMonacoInit.kt: editorGutter.background). */
+    --field-box-selected-frame: rgb(var(--field-black-rgb));
+
+    --field-surface-quiet: rgb(var(--field-editor-rgb));
+    --field-surface-raised: color-mix(in srgb, rgb(var(--field-black-rgb)) 50%, rgb(var(--field-chalk-rgb)));
+    --field-surface-muted: color-mix(in srgb, rgb(var(--field-black-rgb)) 70%, rgb(var(--field-base-rgb)));
+    --field-panel: rgba(var(--field-black-rgb), 0.88);
+    --field-panel-soft: rgba(var(--field-black-rgb), 0.7);
+    --field-panel-strong: rgba(var(--field-black-rgb), 0.94);
+    --field-panel-solid: rgba(var(--field-black-rgb), 0.97);
+    --field-overlay: rgba(var(--field-black-rgb), 0.96);
+    --field-tray-bg: rgba(var(--field-black-rgb), 0.96);
+
+    --field-fg-strong: rgb(var(--field-white-rgb));
+    --field-fg-inverse: rgb(var(--field-white-rgb));
+    --field-fg-soft: rgba(var(--field-white-rgb), 0.78);
+    --field-fg-muted: rgba(var(--field-white-rgb), 0.68);
+    --field-fg-dim: rgba(var(--field-white-rgb), 0.56);
+
+    --field-border: rgba(var(--field-white-rgb), 0.2);
+    --field-border-dark-strong: rgba(var(--field-white-rgb), 0.3);
+    --field-border-dark-solid: rgba(var(--field-white-rgb), 0.4);
+    --field-border-muted: rgba(var(--field-white-rgb), 0.08);
+    --field-border-subtle: rgba(var(--field-white-rgb), 0.11);
+    --field-border-soft: rgba(var(--field-white-rgb), 0.14);
+    --field-border-medium: rgba(var(--field-white-rgb), 0.2);
+    --field-border-strong: rgba(var(--field-white-rgb), 0.28);
+    --field-border-selected: rgba(var(--field-chalk-rgb), 0.95);
+    --field-hover: rgba(var(--field-chalk-rgb), 0.22);
+    --field-hover-soft: rgba(var(--field-chalk-rgb), 0.14);
+    --field-hover-medium: rgba(var(--field-chalk-rgb), 0.3);
+    --field-hover-strong: rgba(var(--field-chalk-rgb), 0.45);
+    --field-scrollbar-thumb-dark: rgba(var(--field-white-rgb), 0.22);
+    --field-scrollbar-thumb: rgba(var(--field-white-rgb), 0.28);
+    --field-scrollbar-thumb-hover: rgba(var(--field-white-rgb), 0.42);
+
+    --field-accent-text: color-mix(in srgb, rgb(var(--field-accent-rgb)) 88%, rgb(var(--field-white-rgb)));
+    --field-accent-text-soft: color-mix(in srgb, rgb(var(--field-accent-rgb)) 80%, rgb(var(--field-white-rgb)));
+    --field-accent-link: rgb(var(--field-accent-rgb));
+    --field-accent-link-hover: color-mix(in srgb, rgb(var(--field-accent-rgb)) 70%, rgb(var(--field-white-rgb)));
+    --field-accent-pale: color-mix(in srgb, rgb(var(--field-accent-rgb)) 18%, rgb(var(--field-black-rgb)));
+    --field-accent-subtle: rgba(var(--field-accent-rgb), 0.14);
+    --field-danger-deep: color-mix(in srgb, rgb(var(--field-danger-rgb)) 22%, rgb(var(--field-black-rgb)));
+    --field-danger-bg: rgba(var(--field-danger-rgb), 0.16);
+    --field-code-accent: color-mix(in srgb, rgb(var(--field-warning-rgb)) 88%, rgb(var(--field-white-rgb)));
+    --field-fg-on-warning: rgb(var(--field-chalk-rgb));
+    --field-selection: rgb(var(--field-chalk-rgb));
+    --field-search-active-soft: rgba(var(--field-chalk-rgb), 0.35);
+    --field-type-params: color-mix(in srgb, rgb(var(--field-info-rgb)) 75%, rgb(var(--field-white-rgb)));
+    --field-type-name: color-mix(in srgb, rgb(var(--field-info-rgb)) 45%, rgb(var(--field-white-rgb)));
+    --field-syntax-int: color-mix(in srgb, rgb(var(--field-danger-rgb)) 85%, rgb(var(--field-white-rgb)));
+    --field-syntax-float: color-mix(in srgb, rgb(var(--field-warning-rgb)) 85%, rgb(var(--field-white-rgb)));
+    --field-line-number: rgba(var(--field-white-rgb), 0.5);
+    --field-line-number-active: rgb(var(--field-white-rgb));
+    --field-debug-title: color-mix(in srgb, rgb(var(--field-info-rgb)) 80%, rgb(var(--field-white-rgb)));
+    --field-debug-pill-bg: rgba(var(--field-info-rgb), 0.16);
+    --field-debug-pill-fg: color-mix(in srgb, rgb(var(--field-info-rgb)) 75%, rgb(var(--field-white-rgb)));
+    --field-debug-body: color-mix(in srgb, rgb(var(--field-info-rgb)) 55%, rgb(var(--field-white-rgb)));
+    --field-keycast-fg: color-mix(in srgb, rgb(var(--field-accent-rgb)) 45%, rgb(var(--field-white-rgb)));
+    --field-marking-bg: rgba(var(--field-chalk-rgb), 0.18);
+    --field-marking-hover-fg: rgb(var(--field-white-rgb));
+    --field-marking-active-bg: rgba(var(--field-chalk-rgb), 0.85);
+    --field-marking-active-fg: rgb(var(--field-white-rgb));
+
+    --field-line-note-caption: rgba(var(--field-white-rgb), 0.62);
+    --field-line-note-value: rgba(var(--field-white-rgb), 0.78);
+    --field-line-note-strong: rgb(var(--field-white-rgb));
+    --field-line-note-meta: rgba(var(--field-white-rgb), 0.55);
+
+    --field-toast-bg: rgba(var(--field-black-rgb), 0.97);
+    --field-toast-border: rgba(var(--field-white-rgb), 0.16);
+    --field-toast-shadow: 0 2px 10px rgba(var(--field-shadow-rgb), 0.2);
+    --field-toast-stale-opacity: 0.88;
+    --field-hoverlay-backdrop: blur(10px);
+
+    --field-shadow-sm: 0 1px 2px rgba(var(--field-shadow-rgb), 0.18);
+    --field-shadow-md: 0 4px 12px rgba(var(--field-shadow-rgb), 0.2);
+    --field-shadow-lg: 0 8px 30px rgba(var(--field-shadow-rgb), 0.22);
+    --field-shadow-tray: 0 0 30px rgba(var(--field-shadow-rgb), 0.28);
+    --field-shadow-inset: rgba(var(--field-shadow-rgb), 0.16);
+    --field-text-shadow-strong: 0 1px 4px rgba(var(--field-chalk-rgb), 0.6);
+}
+
+/* No Courier. Form controls do not inherit a font, and code/kbd/samp/tt take the browser's generic
+   `monospace`, which is Courier on macOS; either shows up the moment a rule forgets a family (the box
+   chat's textarea did). `:where` keeps this at zero specificity, so every rule that names a family wins.
+   The Electron shell also repoints the generic itself (FIELD_DEFAULT_FONT_FAMILY in electron/main.js). */
+:where(textarea, input, select, button) {
+    font-family: var(--field-font);
+}
+
+:where(code, kbd, samp, tt) {
+    font-family: var(--field-font-code), var(--field-font-code-fallback);
 }
 
 /* Output areas. */
@@ -912,6 +1073,8 @@ pre code {
     border: 0;
     border-radius: 8px;
     padding: 8px;
+    /* A textarea does not inherit its font; without this Chromium's UA `monospace` (Courier on macOS) shows. */
+    font-family: var(--field-font);
     font-size: 10px;
     /*resize: vertical;*/
     min-height: 96px;
@@ -2034,10 +2197,12 @@ body.field-pane-resizing-h * {
 .field-control {
     position: relative; /* hosts the type-in field (sliders.js beginValueEdit) */
     font-family: var(--field-font);
+    font-size: 11px;
+    line-height: 1.35;
     background: rgba(var(--field-black-rgb), 0.78);
     border: 1px solid var(--field-accent-border-faint);
-    border-radius: 10px;
-    padding: 6px 6px;
+    border-radius: 4px;
+    padding: 5px 6px;
     margin: 1px 0;
     box-sizing: border-box;
     /*box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);*/
@@ -2784,7 +2949,7 @@ accent so it marks the control without boxing it in.
     background: var(--field-overlay);
     border: 1px solid var(--field-accent-border-medium);
     border-radius: 6px;
-    box-shadow: 0 8px 22px rgba(var(--field-black-rgb), 0.6);
+    box-shadow: 0 8px 22px rgba(var(--field-shadow-rgb), 0.6);
     font-family: var(--field-font);
     font-size: 12px;
     color: var(--field-fg-body);
@@ -4226,6 +4391,10 @@ accent so it marks the control without boxing it in.
    is set by CanvasCamera.applyTransforms). It is a descendant of the .box, so a press on it reaches
    interact.js, whose 20 px edge margin, measured against the box's own rect, then picks the resize
    edge. z-index -1 keeps it under the box's content; the child selector outranks `.box *`. */
+[data-field-theme="light"] .box.selected::before {
+    border-color: var(--field-box-selected-frame);
+}
+
 .box > .box-resize-halo {
     position: absolute;
     inset: calc(-8px / var(--canvas-zoom, 1));
@@ -5004,7 +5173,7 @@ kbd {
 }
 
 .hoverlay {
-    backdrop-filter: blur(10px) brightness(0.0);
+    backdrop-filter: var(--field-hoverlay-backdrop);
     position: absolute;
     bottom: 0px;
     right: 0px;
@@ -5022,7 +5191,7 @@ kbd {
 }
 
 .hoverlay-left {
-    backdrop-filter: blur(10px) brightness(0.0);
+    backdrop-filter: var(--field-hoverlay-backdrop);
     position: absolute;
     bottom: 0px;
     left: 35px;
@@ -5230,7 +5399,7 @@ kbd {
     border-radius: 6px;
     background: rgba(var(--field-base-rgb), 0.9);
     color: var(--field-fg);
-    box-shadow: 0 8px 28px rgba(var(--field-black-rgb), 0.38);
+    box-shadow: 0 8px 28px rgba(var(--field-shadow-rgb), 0.38);
     pointer-events: none;
     transition: opacity 180ms ease-out, transform 180ms ease-out;
 }
@@ -5279,10 +5448,11 @@ kbd {
     width: fit-content;
     max-width: min(420px, calc(100vw - 20px));
     padding: 9px 11px;
-    border: 1px solid rgba(var(--field-accent-rgb), 0.26);
+    border: 1px solid var(--field-toast-border);
     border-radius: 6px;
     /* The same black as the drawing layer's Excalidraw islands (see "Excalidraw, dressed as Field"). */
-    background: rgba(0, 0, 0, 0.98);
+    background: var(--field-toast-bg);
+    box-shadow: var(--field-toast-shadow);
     color: var(--field-fg);
     font-family: var(--field-font-system);
     font-size: 12px;
@@ -5319,7 +5489,7 @@ body.canvas-flight-recording .monaco-editor .cursor {
 
 .bubble.field-toast-stale,
 .field-toast.field-toast-stale {
-    opacity: 0.72;
+    opacity: var(--field-toast-stale-opacity);
     border-color: rgba(var(--field-white-rgb), 0.12);
 }
 
@@ -5559,7 +5729,7 @@ body.canvas-flight-recording .monaco-editor .cursor {
 
 .quickpick-detail-pane .quickpick-detail-body {
     white-space: normal;
-    font-family: var(--monaco-monospace-font, Monaco, Menlo, Consolas, "Courier New", monospace);
+    font-family: var(--monaco-monospace-font, Monaco, Menlo, Consolas, monospace);
     font-size: 11px;
     line-height: 1.4;
     overflow-y: auto;
@@ -6093,19 +6263,20 @@ body.mode-editor-only .field-toast {
 
 /* Excalidraw, dressed as Field: Iosevka, black islands with Field's thin border, and Field's accent
    instead of Excalidraw's purple. Excalidraw's own stylesheet is injected after this one, so every
-   rule here is scoped by #field-drawing-layer to outrank it. Excalidraw themes itself almost
+   rule here is scoped by #field-drawing-layer to outrank it, and written in Field's tokens so it
+   serves Excalidraw's light theme as well as its dark one. Excalidraw themes itself almost
    entirely through these custom properties; they are listed in its bundled index.css. */
-#field-drawing-layer .excalidraw.theme--dark {
+#field-drawing-layer .excalidraw {
     --ui-font: var(--field-font-system);
-    --island-bg-color: rgba(0, 0, 0, 0.92);
-    --popup-bg-color: rgba(0, 0, 0, 0.94);
-    --default-bg-color: #000;
-    --input-bg-color: #000;
-    --color-surface-lowest: #000;
+    --island-bg-color: rgba(var(--field-black-rgb), 0.92);
+    --popup-bg-color: rgba(var(--field-black-rgb), 0.94);
+    --default-bg-color: rgb(var(--field-black-rgb));
+    --input-bg-color: rgb(var(--field-black-rgb));
+    --color-surface-lowest: rgb(var(--field-black-rgb));
     --color-surface-low: rgba(var(--field-base-rgb), 1);
-    --color-surface-mid: #000;
+    --color-surface-mid: rgb(var(--field-black-rgb));
     --color-surface-high: rgba(var(--field-accent-rgb), 0.14);
-    --button-gray-1: #000;
+    --button-gray-1: rgb(var(--field-black-rgb));
     --button-gray-2: rgba(var(--field-accent-rgb), 0.14);
     --button-gray-3: rgba(var(--field-accent-rgb), 0.22);
     --button-hover-bg: rgba(var(--field-accent-rgb), 0.12);
@@ -6130,7 +6301,7 @@ body.mode-editor-only .field-toast {
 #field-drawing-layer .excalidraw .help-icon,
 #field-drawing-layer .excalidraw .dropdown-menu-button,
 #field-drawing-layer .excalidraw .sidebar-trigger {
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--field-border-soft);
     border-radius: 6px;
     box-shadow: none;
 }
@@ -6196,8 +6367,8 @@ body.mode-editor-only .field-toast {
 }
 .field-panel-body::-webkit-scrollbar { width: 0; height: 0; }
 .field-panel button {
-    border: 1px solid #2b2b2b;
-    background: #050505;
+    border: 1px solid var(--fp-control-border);
+    background: var(--fp-control-bg);
     color: var(--fp-muted);
     border-radius: 6px;
     font-family: var(--field-font);
@@ -6206,12 +6377,12 @@ body.mode-editor-only .field-toast {
     padding: 0 8px;
     cursor: pointer;
 }
-.field-panel button:hover:not(:disabled) { border-color: #464646; background: #101010; color: #f0f0f0; }
+.field-panel button:hover:not(:disabled) { border-color: var(--fp-control-hover-border); background: var(--fp-control-hover-bg); color: var(--fp-control-hover-fg); }
 .field-panel button:disabled { opacity: 0.38; cursor: default; }
 .field-panel input[type="text"] {
     border: 1px solid transparent;
     background: transparent;
-    color: #d8d8d8;
+    color: var(--fp-fg);
     border-radius: 6px;
     font-family: var(--field-font);
     font-size: 10.2px;
@@ -6219,8 +6390,8 @@ body.mode-editor-only .field-toast {
     padding: 0 6px;
     min-width: 0;
 }
-.field-panel input[type="text"]:hover { border-color: #2b2b2b; }
-.field-panel input[type="text"]:focus { border-color: #464646; background: #050505; }
+.field-panel input[type="text"]:hover { border-color: var(--fp-control-border); }
+.field-panel input[type="text"]:focus { border-color: var(--fp-control-hover-border); background: var(--fp-control-bg); }
 .field-panel-card {
     border-radius: 6px;
     background: var(--fp-panel-2);
@@ -6229,7 +6400,7 @@ body.mode-editor-only .field-toast {
     flex-direction: column;
     gap: 6px;
 }
-.field-panel-card.is-empty { background: #111111; }
+.field-panel-card.is-empty { background: var(--fp-card-quiet); }
 .field-panel-card-head {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto auto;
@@ -6238,13 +6409,13 @@ body.mode-editor-only .field-toast {
 }
 .field-panel-meta { color: var(--fp-muted); font-size: 9px; white-space: nowrap; }
 .field-panel-pill {
-    background: #111111;
+    background: var(--fp-card-quiet);
     border-radius: 6px;
     color: var(--fp-muted);
     padding: 3px 5px;
     font-size: 10px;
     white-space: nowrap;
-    box-shadow: inset 0 0 0 1px #2a2a2a;
+    box-shadow: inset 0 0 0 1px var(--fp-hairline);
 }
 .field-panel-pill.is-accent { color: rgb(var(--field-accent-rgb)); box-shadow: inset 0 0 0 1px rgba(var(--field-accent-rgb), 0.45); }
 .field-panel-actions { display: flex; gap: 4px; }
@@ -6260,15 +6431,15 @@ body.mode-editor-only .field-toast {
 }
 .bookmark-top { justify-content: flex-end; }
 .bookmark-detail { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 8px; }
-.bookmark-map { width: 168px; height: 104px; background: #111111; border-radius: 5px; display: block; }
-.bookmark-map .bm-box { fill: #3a3a3a; }
-.bookmark-map .bm-box.has-open { fill: #6a6a6a; }
+.bookmark-map { width: 168px; height: 104px; background: var(--fp-card-quiet); border-radius: 5px; display: block; }
+.bookmark-map .bm-box { fill: var(--fp-map-box); }
+.bookmark-map .bm-box.has-open { fill: var(--fp-map-box-open); }
 .bookmark-map .bm-box.is-selected { fill: rgba(var(--field-accent-rgb), 0.55); }
-.bookmark-map .bm-panel { fill: rgba(216, 216, 216, 0.10); stroke: #8a8a8a; stroke-width: 1; vector-effect: non-scaling-stroke; }
-.bookmark-map .bm-view { fill: none; stroke: #d8d8d8; stroke-width: 1; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
+.bookmark-map .bm-panel { fill: var(--fp-map-panel); stroke: var(--fp-muted); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.bookmark-map .bm-view { fill: none; stroke: var(--fp-fg); stroke-width: 1; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
 .bookmark-summary { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .bookmark-summary-line { color: var(--fp-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bookmark-summary-line strong { color: #d8d8d8; font-weight: 400; }
+.bookmark-summary-line strong { color: var(--fp-fg); font-weight: 400; }
 .bookmark-pills { display: flex; flex-wrap: wrap; gap: 3px; }
 .bookmark-options { display: flex; flex-wrap: wrap; gap: 4px 10px; }
 
@@ -6281,46 +6452,46 @@ body.mode-editor-only .field-toast {
 .layer-active { margin: 0; accent-color: rgb(var(--field-accent-rgb)); cursor: pointer; }
 .layer-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .layer-name.is-active { color: rgb(var(--field-accent-rgb)); }
-.field-panel button.layer-eye.is-on { opacity: 1; color: #d8d8d8; }
+.field-panel button.layer-eye.is-on { opacity: 1; color: var(--fp-fg); }
 .layer-footer { justify-content: flex-end; padding-top: 4px; }
 
 /* Saved history stays separate from the transcript and never selects the live document state. */
-.state-tree-toolbar, .state-tree-browser { font:13px/1.4 Iosevka, monospace; color:#d8d8d8; background:#000; }
+.state-tree-toolbar, .state-tree-browser { font:13px/1.4 Iosevka, monospace; color:var(--fp-fg); background:var(--fp-bg); }
 .state-tree-toolbar { display:flex; align-items:center; gap:12px; padding:6px 10px; flex:0 0 auto; }
-.state-tree-caption { color:#8a8a8a; font-size:12px; }
+.state-tree-caption { color:var(--fp-muted); font-size:12px; }
 .state-tree-browser { display:flex; flex-direction:column; flex:0 1 430px; min-height:180px; max-height:55%; overflow:hidden; padding:10px; box-sizing:border-box; }
 .state-tree-controls, .state-tree-status { flex:0 0 auto; }
 .state-tree-toolbar[hidden], .state-tree-browser[hidden] { display:none; }
 .state-tree-controls, .state-tree-actions, .state-tree-paging { display:flex; gap:6px; flex-wrap:wrap; }
-.state-tree-toolbar button, .state-tree-browser button, .state-tree-browser select { font:inherit; color:#d8d8d8; background:#242424; border:0; border-radius:8px; padding:7px 10px; cursor:pointer; text-transform:none; letter-spacing:normal; box-shadow:none; }
+.state-tree-toolbar button, .state-tree-browser button, .state-tree-browser select { font:inherit; color:var(--fp-fg); background:var(--fp-card); border:0; border-radius:8px; padding:7px 10px; cursor:pointer; text-transform:none; letter-spacing:normal; box-shadow:none; }
 .state-tree-controls select { flex:1; min-width:100px; width:180px; appearance:none; padding:7px 34px 7px 12px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='m3 5 4 4 4-4' fill='none' stroke='%238a8a8a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; color-scheme:dark; }
 .state-tree-browser button:disabled { opacity:.4; cursor:default; }
-.state-tree-browser button:focus-visible, .state-tree-toolbar button:focus-visible, .state-tree-browser select:focus { outline:none; box-shadow:none; color:rgb(var(--field-accent-rgb)); background-color:#303030; }
-.state-tree-toolbar button:hover, .state-tree-browser button:not(:disabled):hover { color:rgb(var(--field-accent-rgb)); background-color:#303030; }
+.state-tree-browser button:focus-visible, .state-tree-toolbar button:focus-visible, .state-tree-browser select:focus { outline:none; box-shadow:none; color:rgb(var(--field-accent-rgb)); background-color:var(--fp-selected); }
+.state-tree-toolbar button:hover, .state-tree-browser button:not(:disabled):hover { color:rgb(var(--field-accent-rgb)); background-color:var(--fp-selected); }
 .state-tree-toolbar button[aria-expanded="true"] { color:rgb(var(--field-accent-rgb)); }
-.state-tree-status { color:#8a8a8a; margin:8px 0; font-size:12px; white-space:pre-wrap; }
-.state-tree-body { position:relative; display:flex; flex:1 1 auto; min-height:80px; gap:12px; height:275px; padding:8px 8px 44px; box-sizing:border-box; background:#242424; border-radius:10px; }
+.state-tree-status { color:var(--fp-muted); margin:8px 0; font-size:12px; white-space:pre-wrap; }
+.state-tree-body { position:relative; display:flex; flex:1 1 auto; min-height:80px; gap:12px; height:275px; padding:8px 8px 44px; box-sizing:border-box; background:var(--fp-card); border-radius:10px; }
 .state-tree-graph, .state-tree-inspector { min-width:0; overflow:auto; background:transparent; border:0; }
 .state-tree-graph { flex:1 1 0; }
 .state-tree-inspector { flex:0 1 42%; max-width:280px; padding:4px; display:flex; flex-direction:column; align-items:flex-end; overflow:hidden; margin-left:auto; text-align:right; }
 .state-tree-inspector > :not(.state-tree-detail) { flex:0 0 auto; }
 .state-tree-detail:empty { display:none; }
-.state-tree-pinned { color:#8a8a8a; font-size:11px; overflow-wrap:anywhere; margin:0 0 8px; }
+.state-tree-pinned { color:var(--fp-muted); font-size:11px; overflow-wrap:anywhere; margin:0 0 8px; }
 .state-tree-pinned { margin-top:8px; }
 .state-tree-actions { justify-content:flex-end; gap:4px; }
-.state-tree-actions button { background:#181818; font-size:11px; padding:4px 7px; border-radius:6px; }
-.state-tree-detail { flex:1 1 auto; min-height:0; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font:11px/1.4 Iosevka, monospace; color:#aaa; user-select:text; margin:10px 0 0; width:100%; }
+.state-tree-actions button { background:var(--fp-card-2); font-size:11px; padding:4px 7px; border-radius:6px; }
+.state-tree-detail { flex:1 1 auto; min-height:0; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font:11px/1.4 Iosevka, monospace; color:var(--fp-soft); user-select:text; margin:10px 0 0; width:100%; }
 .state-tree-rows { position:relative; }
 .state-tree-rows svg { z-index:1; position:absolute; top:0; left:0; pointer-events:none; }
-.state-tree-rows path { stroke:#666; stroke-width:1; fill:none; }
-.state-tree-rows circle { stroke:#aaa; fill:#242424; }
+.state-tree-rows path { stroke:var(--fp-line); stroke-width:1; fill:none; }
+.state-tree-rows circle { stroke:var(--fp-soft); fill:var(--fp-card); }
 .state-tree-rows circle.is-current { fill:rgb(var(--field-accent-rgb)); stroke:rgb(var(--field-accent-rgb)); stroke-width:2; }
 .state-tree-browser .state-tree-node { display:block; height:43px; width:100%; text-align:left; border:0; border-radius:6px; background:transparent; padding-top:4px; padding-bottom:4px; }
 .state-tree-node-title { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-.state-tree-node small { display:block; color:#8a8a8a; font-size:10px; }
-.state-tree-browser .state-tree-node[aria-pressed="true"] { background:#303030; color:rgb(var(--field-accent-rgb)); }
+.state-tree-node small { display:block; color:var(--fp-muted); font-size:10px; }
+.state-tree-browser .state-tree-node[aria-pressed="true"] { background:var(--fp-selected); color:rgb(var(--field-accent-rgb)); }
 .state-tree-paging { position:absolute; right:8px; bottom:8px; gap:4px; }
-.state-tree-paging button { background:#1f1f1f; padding:4px 9px; font-size:12px; }
+.state-tree-paging button { background:var(--fp-card-3); padding:4px 9px; font-size:12px; }
 
 /* ------------------------------------------------------------------------ */
 /* Presentation figure (?figure=<uid>, figureMode.kt): one box's output area  */
@@ -6471,4 +6642,451 @@ body.mode-editor-only .field-toast {
    are editing tools, shown only when the box asks for drawing (`lines(..., drawing = true)`). */
 #field-figure-host .field-figure-box .field-fline-editor-overlay:not(:has(.field-fline-editor-modegroup:not(.is-hidden))) {
     display: none !important;
+}
+
+/* Conversation garden shares the history/palette shell and control tokens. */
+.ai-chat-window.garden-mounted {
+    cursor: default;
+    border: 0;
+    border-radius: 0;
+    font-family: var(--field-font);
+    font-size: var(--fp-title-size);
+    font-weight: 300;
+}
+.garden-bar {
+    display: flex;
+    flex: none;
+    box-sizing: border-box;
+    align-items: center;
+    min-height: var(--fp-head-height);
+    gap: 12px;
+    padding: 4px var(--fp-pad);
+    border-bottom: 1px solid var(--fp-control-border);
+}
+.ai-chat-window .garden-bar button,
+.garden-bar select,
+.garden-bar input,
+.conversation-garden button,
+.conversation-garden select,
+.conversation-garden input {
+    box-sizing: border-box;
+    min-height: var(--fp-head-height);
+    height: var(--fp-head-height);
+    margin: 0;
+    padding: 4px 8px;
+    border: 1px solid var(--fp-control-border);
+    border-radius: var(--fp-control-radius);
+    background: var(--fp-control-bg);
+    color: var(--fp-fg);
+    font: inherit;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+.ai-chat-window .garden-bar button:hover,
+.conversation-garden button:hover:not(:disabled),
+.conversation-garden input:hover {
+    border-color: var(--fp-control-hover-border);
+    background: var(--fp-control-hover-bg);
+    color: var(--fp-control-hover-fg);
+}
+.ai-chat-window .garden-bar > button {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    font-weight: var(--fp-title-weight);
+}
+.conversation-garden {
+    position: relative;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-height: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    gap: 6px;
+    padding: 4px 0;
+    background: var(--fp-bg);
+    color: var(--fp-fg);
+    font-family: var(--field-font);
+    font-size: var(--fp-title-size);
+    font-weight: 300;
+}
+.conversation-garden[hidden],
+.garden-controls[hidden],
+.garden-open > .ai-chat-messages,
+.garden-open > .ai-chat-input,
+.garden-open > .state-tree-toolbar,
+.garden-open > .state-tree-browser { display: none; }
+.garden-controls, .garden-actions {
+    display: flex;
+    padding: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+.garden-bar .garden-controls { flex: 1; min-width: 0; font-size: var(--fp-font-size); }
+.garden-controls input { flex: 1; min-width: 60px; width: 95px; }
+.garden-bar select, .conversation-garden select {
+    appearance: none;
+    padding-right: 28px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 14 14'%3E%3Cpath d='m3 5 4 4 4-4' fill='none' stroke='%23d8d8d8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+}
+.garden-bar select:hover, .conversation-garden select:hover {
+    background-color: var(--fp-control-hover-bg);
+    border-color: var(--fp-control-hover-border);
+}
+.garden-status, .garden-model, .garden-node-heading {
+    padding: 4px 0;
+    color: var(--fp-muted);
+    font-size: var(--fp-font-size);
+}
+.conversation-garden > .garden-status {
+    position: absolute;
+    top: 12px;
+    right: 18px;
+    z-index: 1;
+    max-width: calc(100% - 36px);
+    padding: 0;
+    background: var(--fp-card);
+    pointer-events: none;
+}
+.garden-status.error, .garden-error { color: var(--field-danger); }
+.garden-body {
+    border: 0;
+    border-radius: 8px;
+    background: var(--fp-card);
+}
+.garden-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: auto;
+    box-sizing: border-box;
+    min-height: 0;
+    max-height: none;
+    overflow-anchor: none;
+    padding: 4px 8px;
+}
+.garden-node { padding: 4px 0 12px; }
+.garden-node-heading { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+.garden-human {
+    padding: 8px 10px;
+    border-left: 2px solid var(--ai-chat-you-fg);
+    border-radius: 0 6px 6px 0;
+    background: transparent;
+    color: var(--ai-chat-you-fg);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.garden-agent { color: var(--ai-chat-ai-fg, var(--field-accent-text)); border-left: 2px solid var(--field-accent-muted); }
+.garden-passage { position: relative; padding: 5px 68px 7px 10px; margin: 6px 0; overflow-wrap: anywhere; }
+.garden-prose p { margin: 4px 0; }
+.garden-prose pre, .garden-edit pre {
+    overflow: auto;
+    max-height: 300px;
+    padding: 8px;
+    border-radius: var(--fp-control-radius);
+    background: var(--fp-bg);
+    font: inherit;
+    white-space: pre;
+}
+.garden-prose img { max-width: 100%; }
+.garden-branch { margin: 8px 0 12px 15px; padding-left: 12px; border-left: 1px solid var(--field-border); }
+.garden-progress { color: var(--fp-muted); font-size: var(--fp-font-size); border-left: 2px solid var(--field-border-medium); }
+.garden-tags { color: var(--ai-chat-you-fg); }
+.garden-entries { flex: none; }
+.garden-composer {
+    display: flex;
+    flex-direction: column;
+    flex: 1 0 auto;
+    padding: 8px 2px 2px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+.garden-composer[hidden], .garden-composer > .garden-target[hidden] { display: none; }
+.garden-target { margin-bottom: 8px; color: var(--ai-chat-you-fg); font-size: var(--fp-title-size); font-weight: var(--fp-title-weight); overflow-wrap: anywhere; }
+.conversation-garden textarea {
+    cursor: text;    box-sizing: border-box;
+    width: 100%;
+    flex: 1;
+    min-height: 90px;
+    padding: 0;
+    resize: none;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--ai-chat-you-fg);
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.5;
+    box-shadow: none;
+}
+.conversation-garden textarea:focus, .conversation-garden textarea:focus-visible { outline: none; box-shadow: none; }
+.garden-bar input::placeholder, .conversation-garden textarea::placeholder, .conversation-garden input::placeholder { color: var(--fp-muted); opacity: 1; }
+.ai-chat-window.garden-mounted *:focus, .ai-chat-window.garden-mounted *:focus-visible,
+.garden-dispatch-menu:focus, .garden-dispatch-menu *:focus, .garden-dispatch-menu *:focus-visible { outline: none !important; box-shadow: none !important; }
+.garden-edit { margin: 10px 0; padding: 8px; border: 4px solid var(--fp-bg); border-radius: 8px; color: var(--fp-fg); }
+.garden-edit summary { cursor: pointer; color: var(--ai-chat-ai-fg, var(--field-accent-text)); }
+.garden-edit .garden-actions { margin-top: 8px; }
+.garden-outline-summary { color: var(--ai-chat-ai-fg, var(--field-accent-text)); margin: 5px 10px; font-size: 12px; }
+.garden-bar button:disabled, .conversation-garden button:disabled { color: var(--fp-dim); border-color: var(--fp-control-border); opacity: 1; }
+.garden-bar button[aria-pressed="true"], .conversation-garden button[aria-pressed="true"] { border-color: var(--ai-chat-you-fg); color: var(--ai-chat-you-fg); }
+.garden-empty { margin: 0; padding: 14px; color: var(--fp-muted); }
+.garden-prose, .garden-prose *, .garden-human, .garden-edit pre { user-select: text; -webkit-user-select: text; }
+.garden-passage .ai-chat-markdown { color: inherit; font-size: 12px; }
+
+/* Reading stays quiet; its paragraph margin and branch spine carry the operations. */
+.garden-tools-toggle { flex: none; }
+.garden-tools-toggle svg { display: block; }
+.garden-node { position: relative; padding: 0; }
+.garden-node-heading {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    z-index: 2;
+    padding: 0 4px;
+    background: var(--fp-card);
+    opacity: 0;
+    pointer-events: none;
+}
+.garden-node:hover:not(:has(.garden-node:hover)) > .garden-node-heading,
+.garden-node-heading:focus-within { opacity: 1; pointer-events: auto; }
+.garden-passage { padding: 4px 8px; margin: 3px 0; }
+.garden-activity { display: none; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin: 2px 0 2px 10px; }
+.garden-show-tools .garden-activity { display: flex; }
+.garden-activity .garden-progress, .garden-activity .garden-model {
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ai-chat-ai-fg);
+    font-size: var(--fp-font-size);
+    opacity: .5;
+}
+.garden-progress details > div { max-width: 500px; }
+.garden-branch { position: relative; margin: 2px 0 2px 8px; padding: 0 0 0 7px; min-height: 24px; border-left-color: transparent; }
+.garden-branch > summary {
+    position: absolute;
+    top: 2px;
+    left: -10px;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    background: transparent;
+    cursor: pointer;
+    list-style: none;
+    color: var(--field-border);
+    font-size: 12px;
+    line-height: 1;
+}
+.garden-branch > summary::-webkit-details-marker { display: none; }
+.garden-fold-label { position: absolute; left: 27px; top: 2px; white-space: nowrap; font-family: inherit; font-size: var(--fp-title-size); font-weight: 300; line-height: normal; color: var(--ai-chat-you-fg); opacity: .65; }
+.garden-fold-label[hidden] { display: none; }
+.garden-branch.garden-quoted-branch > summary { display: none; }
+.garden-branch.garden-quoted-branch:not([open]) { display: none; }
+.garden-quoted-range { background: transparent; color: inherit; }
+.garden-quoted-range.is-highlighted { background: color-mix(in srgb, var(--ai-chat-you-fg) 22%, transparent); text-decoration: underline; text-decoration-color: var(--ai-chat-you-fg); }
+.conversation-garden .garden-quote-anchor {
+    position: relative;
+    display: inline-block;
+    width: 0;
+    height: 0;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--ai-chat-you-fg);
+    vertical-align: baseline;
+    overflow: visible;
+}
+.garden-prose { position: relative; isolation: isolate; }
+.garden-quote-anchor::before {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: 3px;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 7px solid var(--field-border);
+    z-index: -1;
+    transition: transform .2s ease, border-top-color .2s ease;
+}
+.garden-quote-anchor[aria-expanded="false"]::before { transform: rotate(180deg); }
+.garden-quote-anchor:hover::before { border-top-color: var(--field-fg-strong); }
+.garden-quote-anchor::after { content: ''; position: absolute; left: -8px; top: -2px; width: 16px; height: 16px; }
+.garden-dispatch-menu {
+    position: fixed;
+    z-index: 13000;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 150px;
+    padding: 4px;
+    border: 1px solid var(--fp-control-border);
+    border-radius: var(--fp-control-radius);
+    background: var(--fp-bg);
+    font: 11px/1.3 var(--field-font);
+}
+.garden-dispatch-menu[hidden] { display: none; }
+.garden-dispatch-menu button { border: 0; border-radius: 3px; padding: 5px 8px; background: transparent; color: var(--fp-fg); font: inherit; text-align: left; }
+.garden-dispatch-menu button:hover, .garden-dispatch-menu button:focus { outline: none; background: var(--fp-card); }
+.garden-composer.is-anchored { flex: none; margin: 2px 0 2px 8px; padding: 2px 0 2px 7px; border-left: 1px solid transparent; }
+.garden-composer.is-anchored textarea { flex: none; min-height: 38px; }
+.garden-composer { position: relative; }
+.garden-target { position: absolute; bottom: 100%; left: 12px; max-width: calc(100% - 24px); margin: 0; padding: 2px 4px; background: var(--fp-card); opacity: 0; pointer-events: none; font-size: var(--fp-font-size); font-weight: 300; }
+.garden-composer:hover > .garden-target { opacity: 1; }
+
+/* A running response occupies its own branch, with no global busy banner. */
+.garden-running { margin: 2px 0; padding: 0 8px 0 10px; color: var(--ai-chat-ai-fg, var(--field-accent-text)); line-height: 1.5; }
+.garden-running span { display: inline-block; opacity: .25; animation: garden-running-dot 1.5s ease-in-out infinite; }
+@keyframes garden-running-dot { 0%, 65%, 100% { opacity: .25; } 30% { opacity: .8; } }
+@media (prefers-reduced-motion: reduce) { .garden-running span { animation: none; opacity: .5; } }
+
+/* Keep the reading rhythm compact; hover reveals structure without moving prose. */
+.garden-prose p { margin: 0; padding: 0; }
+.garden-human { border-left-color: transparent; }
+.garden-agent { border-left-color: transparent; }
+.garden-branch:hover, .garden-composer.is-anchored:hover { border-left-color: var(--field-border); }
+
+.garden-node-heading:empty { display: none; }
+
+/* Reply directly where the reader releases the pointer; selection remains native. */
+.garden-passage .garden-prose, .garden-passage .garden-prose * {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M4 2v16l4-4 3 7 3-1-3-7h6z' fill='%23111111' stroke='%23dddddd' stroke-width='1'/%3E%3Cpath d='M18 5h4v5h-6m0 0 2-2m-2 2 2 2' fill='none' stroke='%23dddddd' stroke-width='1.3'/%3E%3C/svg%3E") 4 2, text;
+}
+.garden-passage .garden-prose a { cursor: pointer; }
+
+/* Match output-area disclosures: neutral triangles brighten on hover, with modifier actions. */
+.garden-fold-glyph {
+    display: block; width: 0; height: 0;
+    border-top: 5px solid transparent; border-bottom: 5px solid transparent;
+    border-left: 7px solid var(--field-border);
+    transition: transform .2s ease, border-left-color .2s ease;
+}
+.garden-fold-glyph.is-open { transform: rotate(90deg); }
+.garden-branch > summary:hover .garden-fold-glyph { border-left-color: var(--field-fg-strong); }
+.garden-delete-mode .garden-fold-glyph, .garden-focus-mode .garden-fold-glyph {
+    position: relative; width: 12px; height: 12px; border: 0; transform: none;
+}
+.garden-delete-mode .garden-fold-glyph::before, .garden-delete-mode .garden-fold-glyph::after {
+    content: ''; position: absolute; width: 12px; height: 2px; top: 5px; left: 0; background: var(--field-danger);
+}
+.garden-delete-mode .garden-fold-glyph::before { transform: rotate(45deg); }
+.garden-delete-mode .garden-fold-glyph::after { transform: rotate(-45deg); }
+.garden-focus-mode .garden-fold-glyph::before { content: '!'; position: absolute; inset: 0; font: 300 14px/12px var(--field-font); color: var(--field-fg-strong); text-align: center; }
+.garden-delete-mode .garden-quote-anchor::before, .garden-focus-mode .garden-quote-anchor::before {
+    left: -5px; top: 0; width: 10px; height: 12px; border: 0; transform: none; font: 300 12px/12px var(--field-font); text-align: center;
+}
+.garden-delete-mode .garden-quote-anchor::before { content: '×'; color: var(--field-danger); }
+.garden-focus-mode .garden-quote-anchor::before { content: '!'; color: var(--field-fg-strong); }
+
+.garden-body { position: relative; }
+.garden-quote-anchor::before { transform: rotate(0deg); }
+.garden-passage .garden-prose .garden-quote-anchor { cursor: pointer; }
+.garden-dragging, .garden-dragging * { cursor: grabbing !important; user-select: none !important; }
+.garden-drag-source { opacity: .35; }
+.garden-drag-label { position: fixed; z-index: 15000; max-width: 250px; padding: 4px 7px; background: var(--fp-control-bg); color: var(--fp-fg); border: 1px solid var(--fp-control-border); border-radius: 4px; font: 11px/1.4 var(--field-font); pointer-events: none; }
+.garden-drop-indicator { position: fixed; z-index: 14999; height: 2px; background: var(--ai-chat-ai-fg, var(--field-accent-text)); pointer-events: none; }
+.garden-drop-indicator[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+    .garden-fold-glyph, .garden-quote-anchor::before { transition: none; }
+}
+
+/* Garden prose and drafts use Field's Iosevka typography. */
+.conversation-garden {
+    --garden-reading-font: var(--field-font);
+    --garden-reading-size: var(--fp-title-size);
+}
+.conversation-garden .garden-prose,
+.conversation-garden .garden-fold-label,
+.conversation-garden .garden-outline-summary,
+.conversation-garden textarea {
+    font-family: var(--garden-reading-font);
+    font-size: var(--garden-reading-size);
+    font-weight: 300;
+    line-height: 1.5;
+}
+.conversation-garden .garden-prose .ai-chat-markdown { font: inherit; }
+.conversation-garden .garden-human:not(.garden-passage) { font-family: var(--garden-reading-font); font-size: var(--garden-reading-size); font-weight: 300; line-height: 1.5; }
+.ai-chat-window .conversation-garden .garden-prose pre,
+.ai-chat-window .conversation-garden .garden-prose code,
+.conversation-garden .garden-edit pre {
+    font-family: var(--field-font-code);
+    font-size: 12px;
+    line-height: 1.5;
+}
+.conversation-garden .garden-branch > summary { top: 4px; }
+.conversation-garden .garden-fold-label { top: 0; }
+.conversation-garden .garden-prose h1,
+.conversation-garden .garden-prose h2,
+.conversation-garden .garden-prose h3 { font-family: inherit; }
+.conversation-garden .garden-prose h1 { font-size: 1.35em; }
+.conversation-garden .garden-prose h2 { font-size: 1.2em; }
+.conversation-garden .garden-prose h3 { font-size: 1.1em; }
+
+/* Light theme: highlight.js. index.html loads github-dark.min.css for every theme; these are the
+   matching GitHub light colours, scoped so the dark stylesheet stays untouched. */
+[data-field-theme="light"] .hljs { color: #24292f; background: rgba(var(--field-chalk-rgb), 0.35); }
+[data-field-theme="light"] .hljs-doctag,
+[data-field-theme="light"] .hljs-keyword,
+[data-field-theme="light"] .hljs-meta .hljs-keyword,
+[data-field-theme="light"] .hljs-template-tag,
+[data-field-theme="light"] .hljs-template-variable,
+[data-field-theme="light"] .hljs-type,
+[data-field-theme="light"] .hljs-variable.language_ { color: #cf222e; }
+[data-field-theme="light"] .hljs-title,
+[data-field-theme="light"] .hljs-title.class_,
+[data-field-theme="light"] .hljs-title.class_.inherited__,
+[data-field-theme="light"] .hljs-title.function_ { color: #8250df; }
+[data-field-theme="light"] .hljs-attr,
+[data-field-theme="light"] .hljs-attribute,
+[data-field-theme="light"] .hljs-literal,
+[data-field-theme="light"] .hljs-meta,
+[data-field-theme="light"] .hljs-number,
+[data-field-theme="light"] .hljs-operator,
+[data-field-theme="light"] .hljs-selector-attr,
+[data-field-theme="light"] .hljs-selector-class,
+[data-field-theme="light"] .hljs-selector-id,
+[data-field-theme="light"] .hljs-variable { color: #0550ae; }
+[data-field-theme="light"] .hljs-meta .hljs-string,
+[data-field-theme="light"] .hljs-regexp,
+[data-field-theme="light"] .hljs-string { color: #0a3069; }
+[data-field-theme="light"] .hljs-built_in,
+[data-field-theme="light"] .hljs-symbol { color: #953800; }
+[data-field-theme="light"] .hljs-code,
+[data-field-theme="light"] .hljs-comment,
+[data-field-theme="light"] .hljs-formula { color: #6e7781; }
+[data-field-theme="light"] .hljs-name,
+[data-field-theme="light"] .hljs-quote,
+[data-field-theme="light"] .hljs-selector-pseudo,
+[data-field-theme="light"] .hljs-selector-tag { color: #116329; }
+[data-field-theme="light"] .hljs-subst,
+[data-field-theme="light"] .hljs-emphasis,
+[data-field-theme="light"] .hljs-strong { color: #24292f; }
+[data-field-theme="light"] .hljs-section { color: #0550ae; }
+[data-field-theme="light"] .hljs-bullet { color: #953800; }
+[data-field-theme="light"] .hljs-addition { color: #116329; background-color: #dafbe1; }
+[data-field-theme="light"] .hljs-deletion { color: #82071e; background-color: #ffebe9; }
+
+/* Theme crossfade: theme.js switches inside document.startViewTransition, so the old and new
+   pictures of the whole window fade into each other. Scoped by the class theme.js holds for the
+   duration, so no other view transition inherits this timing. */
+html.field-theme-transition::view-transition-old(root),
+html.field-theme-transition::view-transition-new(root) {
+    animation-duration: 520ms;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }

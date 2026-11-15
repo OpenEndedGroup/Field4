@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T03:40:59.519Z",
+  "capturedAt": "2026-11-14T23:18:36.789Z",
   "documentName": "gp_drawing",
   "outputs": [
     {
@@ -19,7 +19,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 252,
+      "width": 248,
       "height": 248,
       "path": "outputs/1.html"
     },
@@ -32,7 +32,7 @@
         "svg"
       ],
       "width": 1576,
-      "height": 496,
+      "height": 490,
       "path": "outputs/2.html"
     },
     {
@@ -56,7 +56,7 @@
         "svg"
       ],
       "width": 536,
-      "height": 108,
+      "height": 104,
       "path": "outputs/4.html"
     },
     {

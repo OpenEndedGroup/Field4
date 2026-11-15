@@ -5,6 +5,11 @@ controller poses exposed by WiVRn, with orientation axes and a desktop mirror of
 You can also use world-space bounds and closest-point queries to bring that tracking into your own
 graphics and interactions.
 
+Vision Pro through [CloudXR](cloudxr_vision_pro.md#hand-interaction) also supplies native
+OpenXR hand joints and aim/pinch/grasp actions. Those were verified on AVP; this page's
+body-tracker mapping and captures remain specific to Quest/WiVRn. The CloudXR starter opts
+into hand-as-controller actions explicitly with `handInteractionActions = true`.
+
 [Open body_one →](offline.html?file=assets/agent_transcripts/body_one/metadata.edn)
 
 Connect the headset to WiVRn and launch **1 · Headset / preview / Field pane**,

@@ -1,0 +1,78 @@
+{
+  "probes": {
+    "passed": [
+      "CA default columns and condensation",
+      "CA shorter columns and changed atom",
+      "band audio and default overlapping windows",
+      "band shorter windows and hops",
+      "lambda default reaction trace",
+      "lambda changed term and scheduler",
+      "lambda reaction-to-pitch mapping",
+      "lambda melody transposition"
+    ]
+  },
+  "captures": [
+    {
+      "path": "public/docs/chain_ca_sound.md",
+      "name": "chain-ca-survey",
+      "asset": "assets/chain_ca_sound/survey.png",
+      "fenceSha256": "99558b63019f31714451e343271c969da98913a441e4527ef57eb425bba1f929"
+    },
+    {
+      "path": "public/docs/chain_pattern_particles.md",
+      "name": "chain-pattern-bands",
+      "asset": "assets/chain_pattern_particles/bands.png",
+      "fenceSha256": "426cea542f14967d6932db8324d1f0125afc95e635ece64dd2b3234a0276b171"
+    },
+    {
+      "path": "public/docs/chain_lambda_sound.md",
+      "name": "chain-lambda-one",
+      "asset": "assets/chain_lambda_sound/one_reduction.png",
+      "fenceSha256": "c23290a5aa9990de8503ed1ac0ffdc72c64ce4af1be1bad1802b4775f4d5c2b3"
+    }
+  ],
+  "images": [
+    {
+      "path": "public/docs/assets/chain_ca_sound/survey.png",
+      "sameDimensions": true,
+      "changedPixels": 654,
+      "pixelsOver3": 148,
+      "totalPixels": 1241424,
+      "maxDifference": 29,
+      "differenceBounds": [
+        73,
+        98,
+        1643,
+        600
+      ]
+    },
+    {
+      "path": "public/docs/assets/chain_pattern_particles/bands.png",
+      "sameDimensions": true,
+      "changedPixels": 325,
+      "pixelsOver3": 105,
+      "totalPixels": 3500640,
+      "maxDifference": 45,
+      "differenceBounds": [
+        121,
+        88,
+        2038,
+        1468
+      ]
+    },
+    {
+      "path": "public/docs/assets/chain_lambda_sound/one_reduction.png",
+      "sameDimensions": true,
+      "changedPixels": 1133,
+      "pixelsOver3": 296,
+      "totalPixels": 6111630,
+      "maxDifference": 46,
+      "differenceBounds": [
+        75,
+        88,
+        2535,
+        2088
+      ]
+    }
+  ]
+}

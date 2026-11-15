@@ -1,0 +1,44 @@
+[
+  {
+    "path": "public/docs/subharmonic_sound.md",
+    "name": "subharmonic-bass-octave-spectrum",
+    "asset": "assets/subharmonic_sound/bass-octave-spectrum.png",
+    "fenceSha256": "aad1d311c640c8785630f9a1b7da6f813f0d5d41908e20ff33a185305fa42eea"
+  },
+  {
+    "path": "public/docs/subharmonic_sound.md",
+    "name": "subharmonic-bass-trackers-spectrum",
+    "asset": "assets/subharmonic_sound/bass-trackers-spectrum.png",
+    "fenceSha256": "0f02b8b30f9465b47bdeb6eeaec8929383d5620202219b5db9d67bc8b243a1b4"
+  },
+  {
+    "path": "public/docs/subharmonic_sound.md",
+    "name": "subharmonic-divisions-spectrum",
+    "asset": "assets/subharmonic_sound/divisions-spectrum.png",
+    "fenceSha256": "69338d65417bd46f752f865789e9214fe3a6657871a59cc38602dcf75311b8f6"
+  },
+  {
+    "path": "public/docs/subharmonic_sound.md",
+    "name": "subharmonic-kick-spectrum",
+    "asset": "assets/subharmonic_sound/kick-spectrum.png",
+    "fenceSha256": "4722584ac93ef3272f7bb9fb4ee21cd24cad48019f0e85e272a3ed3177e88beb"
+  },
+  {
+    "path": "public/docs/subharmonic_sound.md",
+    "name": "subharmonic-arpy-spectrum",
+    "asset": "assets/subharmonic_sound/arpy-spectrum.png",
+    "fenceSha256": "37c72be9639d9348c3a0d640fb9b04e40f4e53e52d22c7083b7e8506b05a5259"
+  },
+  {
+    "path": "public/docs/subharmonic_sound.md",
+    "name": "subharmonic-film-naive-spectrum",
+    "asset": "assets/subharmonic_sound/film-naive-spectrum.png",
+    "fenceSha256": "0c3e6fbaad0ea149c2fc2b64ff4b93576a14884ac2343d8fd88b5b2bde4af830"
+  },
+  {
+    "path": "public/docs/subharmonic_sound.md",
+    "name": "subharmonic-film-shaped-spectrum",
+    "asset": "assets/subharmonic_sound/film-shaped-spectrum.png",
+    "fenceSha256": "66659faa2b3bdeb43031fbddd3c778de716620f418454c65cb209ccbf07859f8"
+  }
+]

@@ -9,6 +9,11 @@ Read `dev_docs/scout/BACKFILL_2026-11-06.md` once if this is your first run on a
 journal's `reports/` is empty). It is the year-long test this routine was designed from, and its
 cards are the standard to write to.
 
+To shorten the commands below, define a shell function, not a variable: the agent's shell is
+zsh, which does not word-split `$S`, so `S="uv run ... scout.py"; $S harvest` fails with "no such
+file or directory". `S(){ uv run --project $REPO python $REPO/tools/scout.py "$@"; }` works in
+zsh and bash.
+
 ## 1. Marc's verdicts
 
 `uv run --project $REPO python $REPO/tools/scout.py verdicts`

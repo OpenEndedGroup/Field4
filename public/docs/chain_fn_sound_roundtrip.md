@@ -14,7 +14,7 @@ one from how the pitch detector reports time. Both can be measured to the sample
 
 ## The function, and two ways to hear it
 
-[`FnSoundDocs.contour`](reference/synthesis.md) is three seconds of a slow curve: a resting level, a
+[`FnSoundDocs.contour`](reference/synthesis.md#fnsounddocs-kt--fnsounddocs--contour) is three seconds of a slow curve: a resting level, a
 broad swell, a step up to a plateau that wobbles at 6 Hz, and one bump with a 3 ms sigma, narrower
 than either analysis window. It is built only from ops that have a formula, so every interval of it
 has a certified range.
@@ -59,7 +59,7 @@ block. So at time `t` the audio hears, to first order, the function at `t` minus
 `toSignal()`. In code, the two look like this:
 
 ```diffstatic {data-lang=kotlin}
-val perSample = SineOsc(Param(375f)) * f.scaleY(0.8).toSignal()
+val perSample = with(Functions) { SineOsc(Param(375f)) * f.scaleY(0.8).toSignal() }
 val perBlock = SineOsc(Param(375f)) * Param { 0.8f * f(time.toDouble()).toFloat() }
 ```
 
@@ -71,18 +71,67 @@ The loudness is recovered by `patEnergyEnvelope`, an RMS per hop, with a window 
 estimator, told the pitch range to expect. The box below draws the function, both recovered curves
 and their errors on one timeline, with the loudness render underneath.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_fn_sound_roundtrip/roundtrip.png" wait="12" capture="box" open-outputs="true" w="1180" h="900" padding="18" timeout="240" name="chain-fn-roundtrip" embed=true alt="A four-lane time-axis viewer over three seconds. The top two lanes draw the function in white, a slow swell, a step up to a wobbling plateau and one narrow spike, with its certified band behind it, too tight to separate from the line at this zoom, and the curves recovered from the loudness and from the pitch of the rendered sound drawn dashed on top of it and hidden by it. The two lower lanes are the recovery errors: flat near zero except for a spike at the narrow bump, with a faint ripple along the pitch lane's plateau. Below, an audio player showing the loudness render's waveform, and a table of frame counts, errors, lags and certified-band containment for both encodings"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_fn_sound_roundtrip/roundtrip.png" wait="12" capture="box" open-outputs="true" w="1180" h="900" padding="18" timeout="240" name="chain-fn-roundtrip" scale="2" embed=true alt="A four-lane time-axis viewer over three seconds. The top two lanes draw the function in white, a slow swell, a step up to a wobbling plateau and one narrow spike, with its certified band behind it, too tight to separate from the line at this zoom, and the curves recovered from the loudness and from the pitch of the rendered sound drawn dashed on top of it and hidden by it. The two lower lanes are the recovery errors: flat near zero except for a spike at the narrow bump, with a faint ripple along the pitch lane's plateau. Below, an audio player showing the loudness render's waveform, and a table of frame counts, errors, lags and certified-band containment for both encodings"}
 :::static
+import afield.audio.engine.WavFloatArrayLoader
+import afield.audio.engine.WavFloatArrayWriter
 import afield.audio.synth.FnSoundDocs.Encoding
 
-/*
-Each roundTrip renders through FnSignal, writes a 16-bit .wav with no normalisation, reads that
-file back, and analyses what it read. `inside` is checked against the proven bounds of
-certifiedRange over the samples each frame read, not against a sampled curve.
-*/
-val loud = FnSoundDocs.roundTrip(Encoding.LOUDNESS)
-val pitch = FnSoundDocs.roundTrip(Encoding.PITCH)
-val f = loud.fn
+val sampleRate = 48_000
+val seconds = 3.0
+val gain = 0.8
+val carrierHz = 375.0
+val baseHz = 220.0
+val rmsWindow = 256
+val rmsHop = 32
+val f = FnSoundDocs.contour() // the formula above
+// Reuse this box's temporary WAVs on rerun.
+val dir = java.io.File(System.getProperty("java.io.tmpdir"), "field-fn-roundtrip-${id}")
+dir.mkdirs()
+
+fun roundTrip(encoding: Encoding): FnSoundDocs.RoundTrip {
+    val signal = when (encoding) {
+        Encoding.LOUDNESS -> {
+            val amplitude = with(Functions) { f.scaleY(gain) }
+            SineOsc(Param(carrierHz.toFloat())) * amplitude.toSignal()
+        }
+        Encoding.PITCH -> {
+            val hz = with(Functions) { f.scaleY(ln(2.0)).exp().scaleY(baseHz) }
+            SineOsc(Param(0f).modulate(hz.toSignal())) * 0.5
+        }
+    }
+    val wav = java.io.File(dir, "${encoding.name.lowercase()}-per_sample.wav")
+    val samples = doughRenderMono(signal, seconds.toFloat(), sampleRate)
+    WavFloatArrayWriter.writeMono16(wav, samples, sampleRate, normalizePeak = null)
+    val decoded = WavFloatArrayLoader.loadWavToFloatArray(wav.path)
+    check(decoded.sampleRate == sampleRate)
+
+    val frames = when (encoding) {
+        Encoding.LOUDNESS ->
+            patEnergyEnvelope(decoded.samples, rmsHop, rmsWindow).mapIndexed { i, rms ->
+                val first = i * rmsHop
+                FnSoundDocs.Frame(
+                    first,
+                    first + rmsWindow - 1,
+                    (first + (rmsWindow - 1) / 2.0) / sampleRate,
+                    sqrt(2.0) * rms / gain,
+                )
+            }
+        Encoding.PITCH ->
+            patF0Frames(decoded.samples, sampleRate, minHz = 200.0, maxHz = 450.0).map { frame ->
+                val recovered = if (frame.voiced && frame.hz > 0.0) ln(frame.hz / baseHz) / ln(2.0) else Double.NaN
+                FnSoundDocs.Frame(
+                    frame.startSample,
+                    frame.startSample + frame.spanSamples - 1,
+                    frame.measuredCenterSample.toDouble() / sampleRate,
+                    recovered,
+                )
+            }
+    }
+    return FnSoundDocs.RoundTrip(encoding, FnSoundDocs.Route.PER_SAMPLE, f, wav, frames)
+}
+val loud = roundTrip(Encoding.LOUDNESS)
+val pitch = roundTrip(Encoding.PITCH)
 
 :::fold the viewer, the audio, and the numbers
 val sync = "chain-fn-roundtrip"
@@ -94,7 +143,7 @@ val viewer = SignalViewer(
         SignalChannel("pitch − f", pitch::errorAt, -0.1, 0.1),
     ],
     0.0,
-    FnSoundDocs.SECONDS,
+    seconds,
     sampleStep = 1.0 / 4000,
     gaps = true,
 )
@@ -113,7 +162,7 @@ displaySignal(
 displayAudioBytes(
     loud.wav.readBytes(),
     channel = "audio",
-    durationSeconds = FnSoundDocs.SECONDS,
+    durationSeconds = seconds,
     label = "the loudness render, as analysed",
     options = AudioVisualizerOptions(width = 1100, syncGroup = sync),
 )
@@ -149,9 +198,12 @@ samples as an RMS frame here, and a wider window has a wider range to land in.
 
 ## Delays, measured to the sample
 
-The harness also asks what delay best aligns each recovered curve with the function, searching two
-blocks either way at one-sample resolution. The box below plays both encodings through both
-bridges and zooms in on the narrow bump.
+The [`FnSoundDocs`](reference/synthesis.md#fnsounddocs-kt-fnsounddocs) API packages the rendering,
+file readback and analysis above as [`roundTrip`](reference/synthesis.md#fnsounddocs-kt--fnsounddocs--roundtrip-2),
+with a choice of per-sample or per-block input.
+It also asks what delay best aligns each recovered curve with the function, searching two
+blocks either way at one-sample resolution. The box below runs all four combinations and zooms
+in on the narrow bump.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_fn_sound_roundtrip/delays.png" wait="12" capture="box" open-outputs="true" w="1180" h="640" padding="18" timeout="240" name="chain-fn-delays" embed=true alt="A two-lane time-axis viewer zoomed to thirty milliseconds around the narrow bump. In the top lane the curve read back from the per-sample render sits on the function; in the lower lane the curve read back from the per-block Param render is visibly shifted to the right of it. Below, a table of the four trips giving each one's RMS error, the delay that best aligns it in samples, and the RMS error at that delay"}
 :::static

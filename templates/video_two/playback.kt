@@ -17,7 +17,7 @@ fun setAllStyles(speed: Double, mix: Float, halfLife: Double? = null) {
     }
 }
 fun showTransport() {
-    controlGroup("shared transport") {
+    controlGroup("shared transport", restoreValues = false) {
         playingControl = checkbox(
             "Playing",
             initialValue = source.playing,
@@ -75,7 +75,7 @@ fun showTransport() {
             carousel.surfaces.forEach { it.flipVertically = flip }
         }
     }
-    controlGroup("all screens") {
+    controlGroup("all screens", restoreValues = false) {
         button("1x sharp · all") { down -> if (down) setAllStyles(1.0, 0f) }
         button("2x sharp · all") { down -> if (down) setAllStyles(2.0, 0f) }
         button("2x blur · all") { down ->
@@ -115,7 +115,7 @@ fun showTransport() {
 fun openMovie() {
     if (carousel.load(selectedFile)) showTransport()
 }
-controlGroup("movie file") {
+controlGroup("movie file", restoreValues = false) {
     stringInput("Full SBS file", initialValue = selectedFile) { selectedFile = it }
     button("Load movie") { down -> if (down) openMovie() }
 }

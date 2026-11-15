@@ -152,7 +152,8 @@ Without `--record` the flight plays in the document's windows. `--size 1280x720`
 command unless the finished file holds exactly `N` frames. `film-page <url> <path>` films any other
 web page the same way, frame by frame. It takes a setup script run once and a frame script run
 before each frame (scroll a column, say), and `--drag DX,DY` to orbit a three.js page with the
-mouse.
+mouse. To film a document's own outputs (a 3D view turning, a drawing dragged, a slider moved) from a
+file of keys, see [Filming a Timeline](filming_a_timeline.md).
 
 ## Limits
 
