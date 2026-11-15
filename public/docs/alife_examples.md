@@ -3262,15 +3262,15 @@ the cells and bonds straight from the GPU buffers. The genomes are the first lin
 val genomes = listOf("SMMMMMMMMMMS", "SLLLLLLLLLS", "SMMMMMMMMMMMMMMS", "SRRRRRRRRS")
 ```
 
-Edit one and run the box again to grow different creatures. The worms half a second in, still
-straight:
+Edit one and run the box again to grow different creatures. The world box takes two steps every
+renderer frame (`clock.stepsPerFrame = 2`), so the worms beat about twice a second on screen;
+raise it to speed them up. The video starts from straight bodies. Within a second the travelling
+waves are running down them: the orange `M` worm swims to the right along its own axis, the cyan one
+bends into a long curve, the magenta `R` worm turns, and the green `L` worm folds onto itself:
 
-![four ladder-bodied worms, orange, green, cyan and magenta, lying straight among scattered grey loose cells on a black field](assets/alife_examples/bonded-organisms-start.png)
-
-and some thousands of steps later, bent by their travelling waves. The orange worm has swum to the
-right; the curved `L` and `R` worms have turned, and the green one has folded onto itself:
-
-![the same four worms later: orange moved right along its own axis, cyan bent into a long curve, magenta turned through a right angle, green crumpled into a zig-zag](assets/alife_examples/bonded-organisms-later.png)
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="bonded_renderer" transcript="dev_docs/agents/transcripts/bonded_organisms.yaml" video="assets/alife_examples/bonded-organisms.mp4" duration="16" wait="0.2" timeout="300" embed=true hidden=true name="alife-bonded-organisms" alt="four ladder-bodied worms, orange, green, cyan and magenta, among scattered grey loose cells on a black field. They start straight, then bending waves run down their bodies, about two beats a second: the orange worm swims slowly right along its length, the cyan one bends into a long curve, the magenta one turns through a right angle, and the green one folds into a wriggling zig-zag"}
+// The transcript is the bonded_organisms document: a renderer, the organisms box and the draw box.
+```
 
 The document's `GPU against CPU` box restarts the GPU world, freezes it after 600 steps, reads the
 cells back and steps a CPU `BondedWorld` built by the same code 600 times. The largest distance
@@ -3280,10 +3280,10 @@ between a GPU cell and its CPU twin was **2.2e-5**, while cells had moved up to 
     No sensors, no constructor cells that grow a body over time, no food, and no audio: the genome
     is read once, when the body is built. Repulsion between cells is a brute-force loop over every
     pair, which is fine for a few thousand cells and needs a neighbour grid
-    beyond that. The step counter is `BondedClock`, which advances once per renderer frame: a
-    `ComputeMesh` push-constant lambda runs more than once per dispatch, so a lambda that counted
-    its own calls advanced two steps per dispatch, the ping-pong buffers never swapped, and the
-    world stood still. `BondedOrganismTest` pins the CPU claims above.
+    beyond that. The step counter is `BondedClock`, which advances once per dispatch, keyed on
+    the renderer frame and the step within it: a `ComputeMesh` push-constant lambda runs more than
+    once per dispatch, so a lambda that counted its own calls advanced two steps per dispatch, the
+    ping-pong buffers never swapped, and the world stood still. `BondedOrganismTest` pins the CPU claims above.
 
 ## Evaluating one of these in a box: the inline views
 
