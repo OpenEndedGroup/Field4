@@ -2845,6 +2845,16 @@ These boxes are all compiled through Field's real Kotlin/preamble path, but not 
 their purpose is to cross a process, audio-device or capture-device boundary that the lightweight
 build does not own.
 
+### evieve_filters
+
+[Audio-rate filters from evieve](spectral_examples.md#audio-rate-filters-from-evieve): the Korg35
+(MS-20) and Resonator filters, measured and played. Box 1 runs a 1 kHz Korg35 impulse response
+through an FFT at three resonances and in highpass mode. Box 2 plays a 55 Hz saw through Korg35 with
+its cutoff swept per sample. Box 3 plots a Resonator at three decays and plays three drifting
+Resonators on white noise. Boxes 2 and 3 need the audio device.
+
+[Open →](offline.html?file=assets/agent_transcripts/evieve_filters/metadata.edn)
+
 ### datalog_rhythm_drawn
 
 [Rules that listen to the drawing](datalog.md#rules-that-listen-to-the-drawing): Datalog rhythm
