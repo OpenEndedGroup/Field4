@@ -76,15 +76,15 @@ it runs proof 2 alone.
 
 ### CudaInteropProof { #cudainteropproof-kt-cudainteropproof }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">CudaInteropProof</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L64)
+[<code class="highlight"><span class="k">object</span> <span class="nc">CudaInteropProof</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L65)
 
 The proof that [`CudaDriver`](graphics.md#cudadriver-kt-cudadriver) and Field's Vulkan renderer share memory on the same GPU with no copies, and the measurements behind `dev_docs/graphics/CUDA_DRIVER_FFM.md`.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="cudainteropproof-kt--cudainteropproof--fill-ptx"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">FILL&#95;PTX</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L66) | `field_fill(float4* out, uint width, uint height, float t)`: out[y*width+x] = (x/width, y/height, t, 1). Hand-written PTX, JIT-compiled by the driver. |
-| <a id="cudainteropproof-kt--cudainteropproof--rings-cu"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">RINGS&#95;CU</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L117) | The NVRTC kernel: a radial pattern, with FMA contraction off so the CPU can predict every bit. |
-| <a id="cudainteropproof-kt--cudainteropproof--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L134) |  |
+| <a id="cudainteropproof-kt--cudainteropproof--fill-ptx"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">FILL&#95;PTX</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L67) | `field_fill(float4* out, uint width, uint height, float t)`: out[y*width+x] = (x/width, y/height, t, 1). Hand-written PTX, JIT-compiled by the driver. |
+| <a id="cudainteropproof-kt--cudainteropproof--rings-cu"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">RINGS&#95;CU</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L118) | The NVRTC kernel: a radial pattern, with FMA contraction off so the CPU can predict every bit. |
+| <a id="cudainteropproof-kt--cudainteropproof--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/cuda/CudaInteropProof/#L135) |  |
 
 ## binding.kt { #binding-kt }
 
