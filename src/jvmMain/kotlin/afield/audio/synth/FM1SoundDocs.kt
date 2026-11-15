@@ -2,6 +2,8 @@
 package afield.audio.synth
 
 import afield.audio.engine.WavFloatArrayWriter
+import java.io.File
+import java.nio.file.Files
 
 /*
 FIELD_TEST
@@ -24,6 +26,9 @@ expect:
  * of the simulator: `pattern` lays a Field pattern on ACID ALLEY's DX7 track, `cutoff-lfo` lets a
  * slow sine turn the 303's filter, and `voice-morph` plays one phrase eight times while the voice
  * moves from the factory piano to a bell built in Field.
+ * `firmware-swap` plays ACID ALLEY and, four seconds in, swaps in a build of the firmware whose 303 is
+ * cut down to eighths ([crushedFirmware]); it needs the WASI SDK, so the `synth.fm1.firmware` smoke
+ * test checks it rather than this object's [main].
  */
 object FM1SoundDocs {
 
@@ -40,7 +45,67 @@ object FM1SoundDocs {
     const val PLAY_SECONDS = 6.0
 
     /** A clip: the factory project it starts from, how long it runs, and what it does once loaded. */
-    private class Figure(val slot: Int, val seconds: Double = PLAY_SECONDS, val begin: (FM1Sim) -> Unit)
+    private class Figure(
+        val slot: Int,
+        val seconds: Double = PLAY_SECONDS,
+        /** Seconds into the clip, and what happens then. */
+        val events: List<Pair<Double, (FM1Sim) -> Unit>> = emptyList(),
+        /** Whether the clip builds firmware, which needs the WASI SDK and the source (the network, once). */
+        val buildsFirmware: Boolean = false,
+        val begin: (FM1Sim) -> Unit,
+    )
+
+    /**
+     * The firmware [firmwareSwap] changes to: the shipped source with the 303's output quantized to
+     * eighths before it is scaled to the mix, a three-bit 303. Built once per JVM from a copy of the
+     * source, so the shared checkout stays as it was cloned.
+     */
+    val crushedFirmware: ByteArray by lazy {
+        val copy = Files.createTempDirectory("fm1-crushed").toFile()
+        try {
+            FM1Firmware.checkout().copyRecursively(copy, overwrite = true)
+            FM1Firmware.patch(copy, CRUSH_FILE, CRUSH_FIND, CRUSH_REPLACE)
+            FM1Firmware.build(copy, File(copy, "crushed.wasm")).readBytes()
+        } finally {
+            copy.deleteRecursively()
+        }
+    }
+
+    /** The line of `bass303.c` the crushed firmware changes, and what it becomes. */
+    const val CRUSH_FILE = "third_party/synth/bass303.c"
+    const val CRUSH_FIND = "out[i]=(int32_t)(sample*16777216);"
+    const val CRUSH_REPLACE = "out[i]=(int32_t)((int)(sample*8)*2097152);"
+
+    /**
+     * The first hook in `hooks`: the 303 folded through a sine, `0.12 sin(30x)`. The 303's samples
+     * run to about a tenth of full scale, so it takes a drive of 30 to fold; 0.12 brings it back to
+     * about the 303's own level (measured in `synth.fm1.hooks`).
+     */
+    const val HOOK_FOLD = "in 30 * sin 0.12 *"
+
+    /** The second: folded harder still, `0.12 sin(80x)`, at about the same level. */
+    const val HOOK_BRIGHT = "in 80 * sin 0.12 *"
+
+    /** The first note hook in `note-hooks`: odd steps of the sequence a fifth up. */
+    const val NOTE_FIFTHS = "in in .x in .z 2 mod 7 * + >x"
+
+    /** The second: every note an octave up, velocities as written. */
+    const val NOTE_OCTAVE = "in in .x 12 + >x"
+
+    /** [NOTE_FIFTHS] compiled once per JVM. */
+    val noteFifths: FM1Hook by lazy { FM1Hooks.compileNotes(NOTE_FIFTHS) }
+
+    /** [NOTE_OCTAVE] compiled once per JVM. */
+    val noteOctave: FM1Hook by lazy { FM1Hooks.compileNotes(NOTE_OCTAVE) }
+
+    /** [HOOK_FOLD] compiled once per JVM. */
+    val hookFold: FM1Hook by lazy { FM1Hooks.compile(HOOK_FOLD) }
+
+    /** [HOOK_BRIGHT] compiled once per JVM. */
+    val hookBright: FM1Hook by lazy { FM1Hooks.compile(HOOK_BRIGHT) }
+
+    /** Seconds into `firmware-swap` that the crushed firmware is swapped in. */
+    const val SWAP_SECONDS = 4.0
 
     /** The bell [voiceMorph] ends on: the factory piano with a brighter algorithm and inharmonic ratios. */
     fun bell(piano: Dx7Voice): Dx7Voice = piano.copy().apply {
@@ -67,6 +132,29 @@ object FM1SoundDocs {
         "field-kit" to Figure(1) { sim ->
             fieldKit(sim)
             sim.source(1, FM1Sim.SourceType.SAMPLER)
+            sim.start()
+        },
+        "firmware-swap" to Figure(1, seconds = 8.0, events = listOf(SWAP_SECONDS to { it.loadFirmware(crushedFirmware) }),
+            buildsFirmware = true) { it.start() },
+        "hooks" to Figure(
+            1, seconds = 8.0, buildsFirmware = true,
+            events = listOf(
+                2.0 to { it.hook(0, hookFold) },
+                4.0 to { it.hook(0, hookBright) },
+                6.0 to { it.clearHook(0) },
+            ),
+        ) { sim ->
+            sim.loadFirmware(FM1Hooks.firmware())
+            sim.start()
+        },
+        "note-hooks" to Figure(
+            1, seconds = 8.0, buildsFirmware = true,
+            events = listOf(
+                2.0 to { it.hook(0, noteFifths) },
+                5.0 to { it.hook(0, noteOctave) },
+            ),
+        ) { sim ->
+            sim.loadFirmware(FM1Hooks.firmware())
             sim.start()
         },
         "voice-morph" to Figure(0, seconds = 8.0) { sim ->
@@ -123,10 +211,13 @@ object FM1SoundDocs {
             repeat((SETTLE_SECONDS * SR / BLOCK).toInt()) { pull() }
             fig.begin(sim)
             val frames = (fig.seconds * SR).toInt()
+            val events = fig.events.map { (seconds, f) -> (seconds * SR).toInt() / BLOCK * BLOCK to f }
+            if (fig.buildsFirmware) { crushedFirmware; hookFold; hookBright; noteFifths; noteOctave } // build before the clock starts
             val left = FloatArray(frames)
             val right = FloatArray(frames)
             var at = 0
             while (at < frames) {
+                for ((frame, f) in events) if (frame == at) f(sim)
                 pull()
                 val n = minOf(BLOCK, frames - at)
                 System.arraycopy(l, 0, left, at, n)
@@ -148,6 +239,10 @@ object FM1SoundDocs {
     @JvmStatic
     fun main(args: Array<String>) {
         for (name in FIGURES) {
+            if (figures.getValue(name).buildsFirmware) {
+                println("$name: builds firmware, so it is checked by synth.fm1.firmware (FM1FirmwareCheck)")
+                continue
+            }
             val (a, _) = render(name)
             val (b, _) = render(name)
             val peak = a.maxOf { kotlin.math.abs(it) }

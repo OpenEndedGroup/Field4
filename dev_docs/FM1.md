@@ -55,17 +55,56 @@ what a user does not need: why things are the way they are, and what was left an
   pad. The factory bank rebuilds byte for byte through `FM1SampleBank.parse`/`bytes`. The pad
   notes are `sample_notes` in `web/synth/sample_metadata.inc`.
 
+- **Building and swapping firmware** (`FM1Firmware.kt`, `FM1Sim.loadFirmware`). The WASI SDK 27
+  release's own clang 20 and `wasm-ld` build the firmware in about 4 seconds warm (11 s cold); the
+  built-in module was built with Homebrew clang 23 against the same SDK's sysroot, so the bytes
+  differ (295,723 bytes against the shipped 288,774), but the result plays the factory projects. The SDK
+  archives are pinned by the SHA-256 GitHub publishes for each release asset (arm64-macos verified
+  against a local download, x86_64-windows against `tools/Build-Web.ps1`'s own pin). A swap copies
+  the whole 536,576-byte flash (`GROOVE_FLASH_BYTES`) to the new module, boots it with
+  `sim_boot(0)` so it reads the library, samples and settings back out, then imports the live
+  project (unsaved edits included), re-applies each track's channel and MIDI-out mode, the knob,
+  MIDI capture, and sends `FA` if the sequence was playing. Both modules are entered only under the
+  render lock, so the audio thread sees one or the other, never neither. `FM1Sim.FIRMWARE_EXPORTS`
+  lists the `sim_*` exports Field calls; a module lacking any is refused by name at load. The
+  `synth.fm1.firmware` smoke test (tagged `network`) builds the source, checks a broken build's
+  message names the file, and that the `firmware-swap` clip is identical to the unswapped one
+  before the swap.
+
+- **StackSL hooks** (`FM1Hooks.kt`, `FM1Sim.hook`, `fm1/fm1-glue.js`, `fm1/glsl_prelude.hpp`). Five
+  edits of the firmware source (`FM1Hooks.PATCHES`): an imported `field.track(track, left, right,
+  frames, clock)`, a frame clock bumped at the top of `render()`, a call after each track's voice in
+  both `render_stereo` and the mono path of `render` (the firmware picks per block; a hook in only
+  one goes silent whenever the mix turns mono), and `sim_field_hooks(mask)` so unhooked tracks never
+  leave the module. The hookable build is cached in `~/.field4/fm1/fm1-sim-hooks-<key>.wasm`, the
+  key a digest of the commit, patches and flags. The JS glue instantiates the firmware with
+  `field.track` when the module imports it, copies the block into the hook's own memory (so a bad
+  hook cannot write over the firmware), calls it, and copies back; a trap drops the hook and keeps
+  the message. All voices use 2^24 as 1.0 (303, pluck and `voices.c` scale by 16777216 before
+  `fm1_mix128`). StackSL's GLSL becomes C++ by two rewrites (constructors `vec4(`→`vec4_(`, `f` on
+  float literals) plus the prelude: clang `ext_vector_type` gives swizzles and arithmetic, overloads
+  give GLSL's built-ins, structs with `operator*` give the `mat2`/`mat3` StackSL's noise library
+  multiplies by. C was tried first and fails on the matrices. A hook builds in ~0.1 s (0.13 s
+  measured in a box, 0.31 s for the first, which also loads the hookable firmware).
+
+- **Note hooks** (`FM1Sim.noteHook`). Three more patches, to `web/engine/sequencer.c`'s
+  `sequence_event`: an imported `field.note(track, step, note, velocity, clock)` returning
+  `note | velocity << 8` or negative to drop; a pass over the step's `notes[]` (chord included) right
+  after they are built, so `c->held` stores the transformed notes and the later note-offs release
+  what was actually played; a per-note velocity array replacing `v->velocity` in the
+  `groove_note_ex` call; and a dedupe so two chord notes moved onto one sound once.
+  `sim_field_note_hooks(mask)` gates it per track. The pad (drum) branch is not hooked: it plays
+  every set pad at one velocity and would need its own shape (which pads, not which notes).
+  `field_clock` lost its `static` so the sequencer can pass it. The hookable build's cache key is a
+  digest of the patches, so the extra patches rebuilt it; `hooks.wav` re-rendered on the new build is
+  byte-identical to the one captured on the old.
+
 ## Not done, and why
 
 - **Per-track stems.** The firmware mixes the eight tracks (and their reverb/delay sends) inside
   `render_stereo`; `sim_render` returns the mix only. Stems need a firmware change (an export of
   the per-track scratch buffers) and a rebuild, or eight simulators each soloing one track, which
   costs eight times the CPU and loses the shared effects.
-- **Live-coding the firmware.** Rebuilding needs Homebrew clang + wasm-ld and the WASI SDK
-  sysroot (`PROVENANCE.md`), about a minute of compile, and swapping a module mid-performance
-  loses all simulator state unless the project is exported and re-imported around the swap
-  (`exportProject`/`importProject` now make that possible). Not worth it before someone wants to
-  change the voice C.
 - **MIDI clock both ways.** FM-1 → Field: turn on clock-out (setting 5) and read `F8` from
   `drainMidi()`; but that disables `start()` (above). Field → FM-1: set clock source (setting 6,
   which also switches the clock mode to MIDI) and send `F8` 24 times a beat on the block clock.

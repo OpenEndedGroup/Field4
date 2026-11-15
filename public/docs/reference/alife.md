@@ -422,7 +422,7 @@ neighbour counting a claim they must agree on exactly.
 
 `src/jvmMain/kotlin/afield/simulation/agents/alife_continuous.kt` — [read the source](source/jvmMain/afield/simulation/agents/alife_continuous/)
 
-**Used in:** [Spatial artificial life](../alife_examples.md), [Agent transcript gallery](../agent_transcripts.md)
+**Used in:** [Spatial artificial life](../alife_examples.md), [Agent transcript gallery](../agent_transcripts.md), [Tracking features through time and scale](../topology_tracking.md)
 
 ### Top-level functions { #alife-continuous-kt-functions }
 

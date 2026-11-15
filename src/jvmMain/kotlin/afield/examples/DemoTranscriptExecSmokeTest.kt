@@ -646,6 +646,8 @@ object DemoTranscriptExecSmokeTest {
         // satellites.md: a week of SGP4 passes over Chicago (CPU), then a renderer, an Earth box and
         // every catalogued satellite propagated in a vertex shader. Opens a Window, so compile-only.
         "satellites",
+        // alife_examples.md section 13: bonded-particle organisms on GPU compute. Opens a Window, so compile-only.
+        "bonded_organisms",
         // The pilot explainer deck (2026-11-09): its deck box opens Electron audience windows and
         // its figure box returns an audio patch for the audio device. PresentationFiguresTest
         // covers the figure engine without either.
@@ -734,6 +736,8 @@ object DemoTranscriptExecSmokeTest {
         "morse_smale_explorer",
         // Optional native field_morse_smale; the live box loops forever.
         "tracking_explorer",
+        // Optional native field_morse_smale; the live box loops forever.
+        "cerf_explorer",
         // vector_field_topology.md's footage starting point: decodes its clip with FFmpeg, and the movie box renders 306 frames.
         "eagle_flow_explorer",
         // Optional native field_principal_curves (./gradlew buildPrincipalCurvesNative); the live box loops forever.

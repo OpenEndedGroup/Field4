@@ -3493,6 +3493,18 @@ largest blur it survives. Needs the optional Morse–Smale library: `./gradlew b
 
 [Open →](offline.html?file=assets/agent_transcripts/tracking_explorer/metadata.edn)
 
+### cerf_explorer
+
+[Cerf diagrams](topology_tracking.md#cerf-diagrams-when-the-topology-changes): the value of every
+critical point of a changing field plotted against time, with the moments a pair of critical points
+is born or cancels marked on it. The first box, launched, runs Gray–Scott worms and grows the
+diagram as it goes. The second records 4,800 steps of spots splitting from three seeds, over a
+hundred births and thousands of swaps, and scrubs a time cursor across it with a slider while the
+field beside it lights up the critical points. Needs the optional Morse–Smale library:
+`./gradlew buildMorseSmaleNative`.
+
+[Open →](offline.html?file=assets/agent_transcripts/cerf_explorer/metadata.edn)
+
 ### eagle_flow_explorer
 
 **An eagle's flight, read in two frames of reference.** A 1930s film of a golden eagle landing on a
@@ -3724,6 +3736,19 @@ here are captures of that window, taken by the docs capture pipeline from these 
 (`capture="native-window"`). Where an entry
 carries none, there is no such capture: run the scene yourself and grab its window with a follow-on
 `native-screenshot` backdoor command (with `--with-playwright`).
+
+### bonded_organisms
+
+[Bonded-particle organisms](alife_examples.md#13-bonded-particle-organisms) after
+[ALIEN](https://github.com/chrxh/alien) as four boxes: worms built from genome strings, their cells
+joined by springs and their muscle bonds beating a travelling wave through a viscous medium, stepped
+in a Vulkan compute shader. The renderer box opens the window. The world box grows the organisms on
+the CPU with `BondedWorld`, uploads them and steps them on the GPU. The draw box beneath it draws
+cells and bonds straight from the GPU buffers. The check box freezes the GPU world after 600 steps
+and compares every cell with the CPU reference stepped 600 times. Edit a genome in the world box and
+re-run it to change the creatures.
+
+[Open →](offline.html?file=assets/agent_transcripts/bonded_organisms/metadata.edn)
 
 ### satellites
 

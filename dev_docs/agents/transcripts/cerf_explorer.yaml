@@ -1,0 +1,84 @@
+name: cerf_explorer
+description: >
+  Cerf diagrams: the value of every critical point of a changing field plotted against time, with the
+  moments a pair of critical points is born or cancels marked on it, beside the field itself. A live
+  Gray–Scott run whose diagram grows as it goes, and a recorded 4,800-step spot-splitting run, with over a hundred births, with a slider that scrubs a time
+  cursor and lights up the critical points on the field. Needs the optional Morse–Smale library:
+  ./gradlew buildMorseSmaleNative.
+operations:
+  - create:
+      box: cerf_live
+      name: 1 - Cerf diagram of a live simulation
+      frame: { x: 60.0, y: 60.0, w: 420.0, h: 120.0 }
+      properties:
+        code: |
+          import afield.geometry.topology.morsesmale.*
+          import afield.geometry.topology.tracking.*
+
+          /*
+          Launch this one (Alt-R). A Gray–Scott run in its wandering-worms regime, seeded with three squares.
+          Each frame advances it 20 steps, adds the frame's critical points to the Cerf diagram, and draws
+          the diagram so far beside the field, with births (orange) and cancellations (violet) on both.
+          */
+          var state = grayScottSeed(96, 96, patches = 3, patchSize = 10, seed = 7)
+          val cerf = CerfDiagram()
+
+          loop {
+              state = state.stepTimes(GRAY_SCOTT_WORMS, 20)
+              val v = state.v.gaussianBlur(1.0)
+              cerf.add(frameNumber.toDouble(), MorseSmale.compute(v, persistence = 0.05), minPersistence = 0.05)
+              val now = frameNumber.toDouble()
+              showImgGrid(
+                  "births ${cerf.events(CerfEventType.BIRTH).size}, cancellations ${cerf.events(CerfEventType.DEATH).size}" to
+                      Img.filled(320, 220, 1, 0.08f)
+                          .drawFLines(cerf.toFLines(320.0, 220.0, cursor = now, showSwaps = false), scale = 2.0),
+                  "frame $frameNumber" to
+                      v.colormap("magma", 0f, 0.4f).drawFLines(cerf.fieldMarkers(now, 5.0, window = 2.0), scale = 4.5),
+                  columns = 2,
+                  cellSide = 440,
+              )
+          }
+  - create:
+      box: cerf_churn
+      name: 2 - Scrubbing a run whose topology churns
+      frame: { x: 560.0, y: 60.0, w: 420.0, h: 120.0 }
+      properties:
+        code: |
+          import afield.geometry.topology.morsesmale.*
+          import afield.geometry.topology.tracking.*
+
+          /*
+          Run this one (Alt-Enter), then drag the slider. Three seed patches in Gray–Scott's spot regime, where each spot
+          grows, splits in two and pushes its
+          daughters apart until the spots fill the field. 120 frames, 40 steps apart: 4,800 steps in all.
+          */
+          var state = grayScottSeed(96, 96, patches = 3, patchSize = 10, seed = 7)
+          val frames = ArrayList<Img>()
+          val cerf = CerfDiagram()
+          for (frame in 0 until 120) {
+              state = state.stepTimes(GRAY_SCOTT_SPOTS, 40)
+              val v = state.v.gaussianBlur(1.5)
+              frames.add(v)
+              cerf.add(frame.toDouble(), MorseSmale.compute(v, persistence = 0.05), minPersistence = 0.05)
+          }
+
+          val births = cerf.events(CerfEventType.BIRTH).size
+          val deaths = cerf.events(CerfEventType.DEATH).size
+          val swaps = cerf.events(CerfEventType.SWAP).size
+
+          fun show(t: Double) {
+              val diagram =
+                  Img.filled(480, 320, 1, 0.08f)
+                      .drawFLines(cerf.toFLines(480.0, 320.0, cursor = t, showSwaps = false, thickness = 1.0), scale = 2.0)
+              val view =
+                  frames[t.toInt()].colormap("magma", 0f, 0.4f).drawFLines(cerf.fieldMarkers(t, 4.0, window = 1.0), scale = 5.0)
+              showImgGrid(
+                  "$births births, $deaths cancellations, $swaps swaps" to diagram,
+                  "frame ${t.toInt()}" to view,
+                  columns = 2,
+                  cellSide = 480,
+              )
+          }
+
+          slider("frame", min = 0.0, max = 119.0, step = 1.0, initialValue = 70.0) { show(it) }
+          show(70.0)

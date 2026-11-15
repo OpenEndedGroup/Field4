@@ -70,6 +70,17 @@ This file is about what goes on a page and how it reads.
 14. **Captures come from the runner.** Videos come from a `capture="ui"` fence or an operation
    transcript (use `hide-toasts=true` when notifications cover the subject), never a hand
    recording, which goes stale silently. AGENTS.md section 3 forbids faking one.
+14a. **A plot is drawn the way a reader would draw it.** A figure of data, such as a response
+   curve, a histogram or a field, is box code in a `diffstatic {data-lang=kotlin}` fence. Plot it
+   with what `chart.md`, `tour_data.md` and `visualizers.md` recommend (FLine charts,
+   `showSignals`, the inline visualizers) and let the runner capture it. Never a `src/` generator
+   that paints a PNG with Java2D: it shows the reader nothing they can use, and the next page
+   copies it (Marc, 2026-11-15: "the wrong plotting technology … sets a drift precedent"). Fewer
+   lines that reuse the existing plotting beat a new renderer.
+14b. **The capture shows the interesting state.** A simulation figure shows the run once it has
+   become itself, not its initial condition (2026-11-15: a Gray–Scott Cerf diagram captured at
+   frame 12 was "basically a square"). It is cropped to its content, with no empty panel beside
+   it.
 15. **A page about sound has sound, made from real material.** Use the pinned Dirt-Samples
    (`./gradlew fetchDocsDirtSamples`), not a stand-in synth that sounds like noise. A page whose
    subject is audio and has nothing to listen to should not be a page yet. One exception: a
@@ -158,6 +169,8 @@ cheapest first checks, none of them written yet:
 | 6 | a heading line followed, after blank lines only, by a fence |
 | 7 | inside a runner fence: `fromContext<Renderer>()`, `import afield.stdlib.`, `_print(` |
 | 13 | a capture whose bottom rows are a uniform background colour over some height |
+| 14a | a `src/jvmMain` file that imports `java.awt.image.BufferedImage` or `java.awt.Graphics2D` and writes under `public/docs/assets/`, flagged in `tools/land.py precheck` |
+| 14b | rule 13's check extended to the right edge: a capture whose right-hand columns are a uniform colour over some width |
 | 16 | `chains.md` has a card for every page in its nav section (two were missing, 2026-10-11) |
 | 16a | every `public/docs/*.md` outside `reference/` and `assets/` is in `nav:` or on a named exclusion list; and a page a branch adds whose opening paragraph links an existing example page is flagged in `tools/land.py precheck` |
 | 19 | a `**[...](...)**` link; a GitHub link not spelled `OpenEndedGroup/Field4` |

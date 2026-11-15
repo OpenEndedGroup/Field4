@@ -381,13 +381,142 @@ project one second of rendering produces on your machine, so you can see how man
     pluck, PSG and sampler voices. What you hear is M-VAVE's simulator, which may differ from the
     device.
 
+## Changing the firmware
+
+The simulator is the FM-1's open firmware compiled to WebAssembly, so a box can change the C, build it
+and play the result. `FM1Firmware.checkout(folder)` clones the source into a folder, at the commit Field's
+own module was built from. `FM1Firmware.patch` changes one piece of a source file, `FM1Firmware.build`
+compiles the folder, and `fm1.loadFirmware` swaps the new module into the running simulator. This one
+cuts the 303's output down to whole eighths before it reaches the mix, a three-bit 303 at about half its level:
+
+```diffstatic {data-lang=kotlin}
+val fm1 = FM1Sim.shared
+val source = FM1Firmware.checkout(java.io.File(System.getProperty("user.home"), "fm1-crushed"))
+
+FM1Firmware.patch(
+    source,
+    "third_party/synth/bass303.c",
+    "out[i]=(int32_t)(sample*16777216);",
+    "out[i]=(int32_t)((int)(sample*8)*2097152);",
+)
+
+fm1.loadFirmware(FM1Firmware.build(source))
+```
+
+In this clip ACID ALLEY plays on the shipped firmware, and four seconds in the crushed build is swapped in
+without stopping the sequence:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/fm1/firmware-swap.wav" audio-spec="firmware-swap" audio-renderer="afield.audio.synth.FM1SoundDocs" embed=true hidden=true name="fm1-firmware-swap"}
+// FM1SoundDocs.renderWav("firmware-swap", …): ACID ALLEY, with the crushed 303 build loaded at 4 s
+```
+
+The first build downloads the WASI SDK the firmware's own build uses, about 115 MB, into
+`~/.field4/toolchains`, and checks it against the release's SHA-256. A build after that takes a few
+seconds. The firmware builds with warnings as errors. C that does not compile throws
+`FM1FirmwareBuildException`, whose message is the compiler's output, file and line first. The simulator
+keeps playing the firmware it had.
+
+`loadFirmware` builds the new module before it stops the old one, then swaps them between two audio
+blocks. Everything in the simulator's flash goes across: saved projects, the voice library, the sample
+bank and settings. So do the project loaded now, each track's MIDI channel and MIDI-out mode, the level,
+and the transport. Notes and patterns scheduled ahead still land on their blocks, and a box that returned
+`fm1.node` keeps playing without being relaunched. `loadFirmware(wasm, keepState = false)` boots the new
+firmware with its own factory storage instead, for a build whose flash layout has changed.
+`fm1.loadBuiltInFirmware()` goes back to the module Field ships.
+
+`patch` needs the text it replaces to occur exactly once in the file, so an edit written against one
+version of the source fails loudly against another instead of doing nothing. `FM1Firmware.reset(source)`
+undoes every edit. `FM1Sim.create(file)` starts a private simulator on a module of your own, which must
+export the simulator interface Field drives (`FM1Sim.FIRMWARE_EXPORTS`).
+
+## Live-coding the firmware
+
+`fm1.hook(track, program)` runs a [StackSL](stacksl_cheatsheet.md) program inside the firmware, on every
+sample of one track, after the track's voice and before its level, pan and effects. Running the box again
+with a changed program changes the sound from the next block, about 3 ms later. The sequence, the voices
+and the rest of the firmware keep running.
+
+```diffstatic {data-lang=kotlin}
+val fm1 = FM1Sim.shared
+fm1.preset(1)
+fm1.start()
+fm1.hook(0, "in 30 * sin 0.12 *") // ACID ALLEY's 303, folded through a sine
+fm1.node
+```
+
+In this clip the 303 plays unchanged, then folded by `in 30 * sin 0.12 *` from two seconds, by
+`in 80 * sin 0.12 *` from four, and unchanged again from six:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/fm1/hooks.wav" audio-spec="hooks" audio-renderer="afield.audio.synth.FM1SoundDocs" embed=true hidden=true name="fm1-hooks"}
+// FM1SoundDocs.renderWav("hooks", …): ACID ALLEY's 303 through two StackSL hooks in turn
+```
+
+Each sample reaches the program as its input, `vec4(sample, previous sample, track, seconds)`, with 1 at
+the voice's full scale, so `in` is the sample. The `.x` of what the program leaves on top is what the
+track plays. The voices' samples mostly stay within a tenth or so of full scale, which is why the fold
+above drives the sample 30 times and then scales it back. A program sees one sample at a time, so it shapes, folds and mixes rather than filtering or
+delaying; the previous sample in `.y` is the only memory it has. Output past ±64 is held there, and NaN
+becomes silence.
+
+A hook compiles in about a tenth of a second. The first one also loads a build of the firmware with the
+hook points in it, which is built once and kept in `~/.field4/fm1`, and carries the project and transport
+across as `loadFirmware` does. A program that does not compile throws `FM1HookException` with StackSL's
+message, and the track keeps the hook it had. StackSL's image words (`sample`, `gather`, `blur` and the
+rest) are refused, since a hook has a stream of samples and no picture to read. A hook that fails while
+it runs is taken out, `fm1.hookError(track)` says why, and the track plays on without it.
+`fm1.clearHook(track)` takes a hook out, and `fm1.evalHook(track, x)` runs the program once on a value,
+for drawing its curve.
+
+### Hooking the sequence
+
+`fm1.noteHook(track, program)` runs a StackSL program on each note the track's own sequence plays, before
+the voice hears it. The note reaches the program as `vec4(note, velocity, step, seconds)`, with MIDI note
+numbers, velocity from 1 to 127 and the step from 0 to 63. The program's `.x` is the note played and `.y`
+its velocity. `>x` replaces just the note, so `in in .x 12 + >x` plays the sequence an octave up with its
+velocities as written:
+
+```diffstatic {data-lang=kotlin}
+val fm1 = FM1Sim.shared
+fm1.preset(1)
+fm1.start()
+fm1.noteHook(0, "in in .x in .z 2 mod 7 * + >x") // the 303's odd steps a fifth up
+fm1.node
+```
+
+In this clip the 303 plays its line as written, then with its odd steps a fifth up from two seconds, and
+an octave up from five:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/fm1/note-hooks.wav" audio-spec="note-hooks" audio-renderer="afield.audio.synth.FM1SoundDocs" embed=true hidden=true name="fm1-note-hooks"}
+// FM1SoundDocs.renderWav("note-hooks", …): ACID ALLEY's 303 sequence through two StackSL note hooks
+```
+
+A velocity at or below zero drops the note, and so do a note outside 0 to 127 and NaN, so
+`in 0 >y` silences a track's sequence. Two notes of a chord moved onto the same note sound once. The
+note-off goes to the note that was played, so a hook changed in the middle of a note does not leave it
+hanging. Only melodic tracks' own sequences pass through a note hook. Drum tracks' pads don't, and nor do
+notes Field sends with `fm1.note`, a pattern or a keyboard, which Field can change itself before sending.
+`fm1.evalNoteHook(track, note, velocity, step)` says what the hook does to one note,
+`fm1.clearNoteHook(track)` takes it out, and `fm1.noteHookError(track)` says why one that failed was
+removed.
+
+??? aside "How the hooks are checked"
+    `fm1.hook` compiles StackSL to GLSL, rewrites that lightly into C++ (`FM1Hooks.glslToCpp`), and builds
+    it with the WASI SDK's clang against `fm1/glsl_prelude.hpp`, where clang's vector types supply GLSL's
+    swizzles. The `synth.fm1.hooks` smoke test compiles every StackSL program on Field's docs pages this
+    way. All 73 that do not read a texture build, and each one's `eval` agrees with Field's CPU GLSL
+    interpreter at six inputs to within 1.4 × 10⁻⁵. The same test checks that an identity hook (`in`)
+    leaves the 303 bit-for-bit as it was, and that a hook that traps is removed while the track keeps
+    playing. For note hooks it reads ACID ALLEY's 303 back through its MIDI out: with
+    `in in .x 12 + >x` every one of its notes comes out exactly 12 higher, and with `in 0 >y` none play.
+
 ## Licence
 
 The firmware's application code is GPL-3.0 with a linking exception for M-VAVE's SDK; the voices it
 builds on are MIT (Open303, DaisySP, stmlib, emu2149) and Apache-2.0 (MSFA/Dexed). The module Field
 ships, its source commit and the command that built it are recorded in
 `src/jvmMain/resources/fm1/PROVENANCE.md`. Field adds no vendored code to it: the DX7 voice format,
-the patterns and the MIDI handling above are Field's own Kotlin.
+the patterns and the MIDI handling above are Field's own Kotlin. A module built from changed source is a
+modified version of the firmware, under the same licences.
 
 ## Limitations
 
@@ -407,8 +536,8 @@ the patterns and the MIDI handling above are Field's own Kotlin.
   mono on the way in.
 * **The panel is buttons, not the drawing.** Clicks go to the rows of buttons below the screen, not to
   the screen itself, and the knob and encoders are buttons and a slider rather than dials.
-* **The firmware can't be edited from a box.** The module is built once and shipped with Field;
-  changing the firmware's C means rebuilding it with the WASI SDK by hand (`PROVENANCE.md`).
+* **A firmware build needs the network once.** The first `FM1Firmware.checkout` and `build` clone the
+  source and fetch the WASI SDK; after that they work offline.
 
 ## Where to go next
 
@@ -420,7 +549,10 @@ the patterns and the MIDI handling above are Field's own Kotlin.
   boxes on a canvas.
 * The source: `src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt` (the simulator, MIDI, the screen and
   projects), `FM1Panel.kt` (the live panel), `FM1Patterns.kt` (patterns in, MIDI clips out) and
-  `FM1Voice.kt` (DX7 voices) and `FM1Samples.kt` (the sampler's bank); what was left out and why is in `dev_docs/FM1.md`.
+  `FM1Voice.kt` (DX7 voices), `FM1Samples.kt` (the sampler's bank), `FM1Firmware.kt` (building the
+  firmware) and `FM1Hooks.kt` (StackSL hooks); what was left out and why is in `dev_docs/FM1.md`.
+* The firmware's source: [m-vave/fm1_open](https://github.com/m-vave/fm1_open). The voices are in
+  `third_party/synth/` and `web/synth/`, and the mixer and sequencer in `web/engine/`.
 
 What to build next, most useful first:
 
@@ -432,7 +564,10 @@ What to build next, most useful first:
   around the screen, with dials that turn by dragging and the step lights the firmware sets.
 * **Microtonal tuning**: write the project's tuning block from Field, so drawn pitches between the
   semitones play as drawn.
-* **Separate track outputs**: export the firmware's per-track buffers, which needs a rebuild of the
-  module.
-* **Live-coding the firmware**: edit the voice and sequencer C in a box, rebuild the module, and swap
-  it in, carrying the project across with `exportProject` and `importProject`.
+* **Separate track outputs**: a firmware patch that exports each track's buffer from `render_stereo`
+  in `web/engine/sound.c`, and a `node` per track that reads them.
+* **More hook points**: the master bus before the effects, and drum tracks' pads in the sequence.
+* **Hooks with memory**: give a hook a block of state that lasts between samples, so it can filter and
+  delay.
+* **Firmware edited in the box's own editor**: open a source file as a box property, so saving it
+  rebuilds and swaps the firmware, with compile errors marked on their lines.
