@@ -34,4 +34,19 @@ class FieldBrowserHostsTest {
             }
         } finally { Files.deleteIfExists(path) }
     }
+
+    @Test fun `a host added to the file while Field runs is honoured without a restart`() {
+        val dir = Files.createTempDirectory("field-browser-hosts")
+        val path = dir.resolve("browser-hosts.json")
+        try {
+            val file = FieldBrowserHostsFile(path, null)
+            assertEquals(emptySet(), file.current())
+            Files.writeString(path, "[\"a0.example.ts.net:8443\"]")
+            assertEquals(hosts, file.current())
+            Files.writeString(path, "[\"a0.example.ts.net:8443\", \"b1.example.ts.net\"]")
+            assertEquals(hosts + "b1.example.ts.net", file.current())
+            Files.delete(path)
+            assertEquals(emptySet(), file.current())
+        } finally { Files.deleteIfExists(path); Files.deleteIfExists(dir) }
+    }
 }
