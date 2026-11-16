@@ -1826,16 +1826,15 @@
       }
     },
     "assets/agent_transcripts/fn_differentiable_fit_demo/metadata.edn": {
-      "captureDigest": "378c0b1419ccd7187ddfa26faf20f5b11145a5bc319131f8e80cc22ca5f72722",
-      "capturedAt": "2026-11-14T22:38:45.893Z",
-      "channels": 3,
+      "captureDigest": "aaa64f59f3bd08f0c6c6c24821b783f71a13d8daf22ddaa23dc1523bcc6bc322",
+      "capturedAt": "2026-11-16T15:04:46.417Z",
+      "channels": 2,
       "file": "assets/web_publications/fn_differentiable_fit_demo/document/metadata.edn",
       "files": {
-        "assets/web_publications/fn_differentiable_fit_demo/document/metadata.edn": "616068160b83cf91099617c8c827c6b3ff26841e3d14715c1c8202b268f7c661",
-        "assets/web_publications/fn_differentiable_fit_demo/document/outputs.json": "ad5c04bd7437e9ff63ecb485fd2e4e42ab6b40dcd47175e7450ee3803f223851",
-        "assets/web_publications/fn_differentiable_fit_demo/outputs/0.html": "095ffc56fce965d585f78d1dcec31bb497b3a676a4f416b41be13a02229c8942",
-        "assets/web_publications/fn_differentiable_fit_demo/outputs/1.html": "b4cb0db49000a78b917e9ef2c42b3ff1538324d71e201db836396d56656b7387",
-        "assets/web_publications/fn_differentiable_fit_demo/outputs/2.html": "5f693a5d3395b0a3fbbef5beabca1e6dc4227f36e2eb15dd0654f8cdccf94ace"
+        "assets/web_publications/fn_differentiable_fit_demo/document/metadata.edn": "206ce4282c58a6a6cb14cc39417c1211864b098ecdfda33963f1c81b8088fe62",
+        "assets/web_publications/fn_differentiable_fit_demo/document/outputs.json": "3f90dc78fb91c2967869bcab2fd93e6580a5282ed729ab06fc5263e0fe9a3907",
+        "assets/web_publications/fn_differentiable_fit_demo/outputs/0.html": "3bb2467e427439cf8c6f5af709e9450d9a8748ffcd75504150ae70f2e2f63eaf",
+        "assets/web_publications/fn_differentiable_fit_demo/outputs/1.html": "6edded185ddb8cce537ce672b1bcfbc3ebca9b16658777e727b01a78a6a0d355"
       },
       "kinds": [
         "plotly",
