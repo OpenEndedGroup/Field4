@@ -78,4 +78,29 @@ class LinesFramingTest {
             assertEquals(first, fittedWidth(), 1e-6)
         }
     }
+
+    /**
+     * Raw coordinates past the w×h canvas still draw: the SVG is overflow:visible, and Skia's cull
+     * used to drop a path wholly outside the canvas, leaving an empty `<svg/>` (the pen video's
+     * LPC continuation at x 934..1121 in a 900-wide figure).
+     */
+    @Test fun aLineWhollyOutsideTheCanvasIsStillDrawn() {
+        for (line in listOf(
+            fline { moveTo(950.0, 50.0); lineTo(1100.0, 60.0) },
+            fline { moveTo(-300.0, -40.0); lineTo(-100.0, -20.0) },
+        )) {
+            val svg = drawToSVG(listOf(line), 900.0, 160.0)
+            assertTrue(Regex("<path").containsMatchIn(svg), "no path drawn: $svg")
+            assertTrue("width=\"900\"" in svg && "height=\"160\"" in svg, "root keeps w×h: $svg")
+        }
+        val b = box()
+        b.lines(fline { moveTo(950.0, 50.0); lineTo(1100.0, 60.0) }, w = 900.0, h = 160.0)
+        assertTrue("<path" in shown.last(), shown.last())
+    }
+
+    @Test fun aLineInsideTheCanvasRendersAsBefore() {
+        val svg = drawToSVG(listOf(fline { moveTo(10.0, 10.0); lineTo(100.0, 60.0) }), 900.0, 160.0)
+        assertFalse("<g transform=\"translate" in svg, svg)
+        assertTrue("<path" in svg)
+    }
 }
