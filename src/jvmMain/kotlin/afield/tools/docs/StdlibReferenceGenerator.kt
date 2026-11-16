@@ -287,6 +287,7 @@ object StdlibReferenceGenerator {
         "src/jvmMain/kotlin/afield/ui/controls/" to "Visualization",
         "src/jvmMain/kotlin/afield/ui/output/" to "Visualization",
         "src/jvmMain/kotlin/afield/lang/lua/" to LANGUAGES,
+        "src/jvmMain/kotlin/afield/lang/postscript/" to LANGUAGES,
         "src/jvmMain/kotlin/afield/lang/brief/" to "Solvers",
         "src/jvmMain/kotlin/afield/lang/solidsl/" to "Graphics",
         "src/jvmMain/kotlin/afield/lang/lambda/" to "Function",

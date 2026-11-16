@@ -21,7 +21,7 @@ const DEFAULT_LANGUAGES = new Set([
   "yaml",
   "stacksl",
   "rectsl",
-  "brief", "pd", "lua", "csound",
+  "brief", "pd", "lua", "csound", "postscript",
 ]);
 const MAX_VISIBLE_ITEMS = 80;
 const REFRESH_DELAY_MS = 110;

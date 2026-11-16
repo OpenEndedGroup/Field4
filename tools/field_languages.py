@@ -24,7 +24,7 @@ again: `requires="csound"`, built with `./gradlew buildCsoundNative`.
 
 from __future__ import annotations
 
-MAIN_LANGUAGE_ROOT_LANGUAGES: tuple[str, ...] = ("fieldml", "python", "datalog", "clojure", "pd", "lua", "csound")
+MAIN_LANGUAGE_ROOT_LANGUAGES: tuple[str, ...] = ("fieldml", "python", "datalog", "clojure", "pd", "lua", "csound", "postscript")
 
 
 def needs_language_root(language: str | None) -> bool:

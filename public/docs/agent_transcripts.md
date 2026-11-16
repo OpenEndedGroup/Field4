@@ -3223,6 +3223,18 @@ skips the Csound ones. [Csound](csound.md) has the walkthrough.
 
 [Open →](offline.html?file=assets/agent_transcripts/csound_demo/metadata.edn)
 
+### postscript_demo
+
+**PostScript in a box.** A Kotlin root whose `mainLanguage` makes five PostScript boxes under it.
+**double** defines `/double {2 mul} def` and answers `ok · <1> 6`. **arrays and control flow** prints
+the Fibonacci numbers twice (by `for` and by `repeat`) and `[33 22 11]`, and leaves `10` from a
+`loop` that `exit`s. **tree** draws a recursive tree with `gsave` / `rotate` / `grestore`, and
+**rosette** thirty-six curves turned ten degrees apart through the colour wheel, both in the box's
+`postscript` panel. **error** marks line 3, `10 10 lineto`, with `nocurrentpoint`. Run each child box
+on its own. [PostScript in a Box](postscript.md) has the walkthrough.
+
+[Open →](offline.html?file=assets/agent_transcripts/postscript_demo/metadata.edn)
+
 ### orca_hello
 
 [ORCA](orca.md) in a box output, playing a melody and a bass line through a `PatSynthBank`. Run the
