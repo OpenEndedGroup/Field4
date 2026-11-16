@@ -39,7 +39,7 @@ tool log: files=1/1 truncated=false roots=1
   "surfaceArea" : 0.009275409038869269,
   "volume" : null,
   "watertight" : false,
-  "eulerCharacteristic" : 1909,
+  "eulerCharacteristic" : 5,
   "boundaryLoopCount" : 2782,
   "notes" : [ "Not watertight. For a modelled asset this is normal — UV seams and hard edges are real cuts in the surface — and only matters if you need a volume, a boolean or a printer." ]
 }
