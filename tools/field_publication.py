@@ -11,7 +11,8 @@ from typing import Any
 
 
 async def publish_document(client: Any, path: str, *, timeout: float, include_viewer: bool = True,
-                           native_images: list[dict] | None = None) -> dict[str, Any]:
+                           native_images: list[dict] | None = None,
+                           capture_budget_ms: int | None = None) -> dict[str, Any]:
     target = Path(path).expanduser().resolve()
     if target.suffix.lower() != ".zip":
         raise ValueError("Publication path must end in .zip")
@@ -37,7 +38,9 @@ async def publish_document(client: Any, path: str, *, timeout: float, include_vi
             window.__fieldPublicationTransfers[TOKEN] = bytes;
             return {bytes:bytes.length, manifest:result.manifest, warnings:result.warnings};
         """.replace("TOKEN", token).replace("OPTIONS", json.dumps({"includeViewer": include_viewer,
-                                                                    "nativeImages": native_images or []})))
+                                                                    "nativeImages": native_images or [],
+                                                                    **({"captureBudgetMs": capture_budget_ms}
+                                                                       if capture_budget_ms else {})})))
         size = result["bytes"]
         if not isinstance(size, int) or not 0 < size <= 256 * 1024 * 1024:
             raise RuntimeError("Publication archive exceeds the 256 MB transfer limit")

@@ -346,5 +346,31 @@ class FieldJavaSelectionTests(unittest.TestCase):
         self.assertEqual(env["JAVA_HOME"], str(graal.parent.parent))
 
 
+class LoadScaledBudgets(unittest.TestCase):
+    """A hang guard sized on an idle machine stretches with load, up to MAX_LOAD_FACTOR."""
+
+    def factor(self, load, cpus=10):
+        import tools.verification_runtime as vr
+        with patch('os.getloadavg', return_value=(load, 0.0, 0.0)), patch('os.cpu_count', return_value=cpus):
+            return vr.load_factor()
+
+    def test_an_idle_machine_keeps_the_budget(self):
+        self.assertEqual(self.factor(2.0), 1.0)
+
+    def test_a_busy_machine_stretches_it_up_to_the_cap(self):
+        import tools.verification_runtime as vr
+        self.assertAlmostEqual(self.factor(25.0), 2.5)
+        self.assertEqual(self.factor(104.7), vr.MAX_LOAD_FACTOR)
+
+    def test_an_explicit_value_is_taken_as_given(self):
+        import tools.verification_runtime as vr
+        with patch('os.getloadavg', return_value=(100.0, 0.0, 0.0)), patch('os.cpu_count', return_value=10):
+            with patch.dict(os.environ, {vr.MANAGED_JVM_START_TIMEOUT_ENV: '90'}):
+                self.assertEqual(vr.load_scaled_seconds(vr.MANAGED_JVM_START_TIMEOUT_ENV, 120.0), 90.0)
+            with patch.dict(os.environ, {}, clear=False):
+                os.environ.pop(vr.MANAGED_JVM_START_TIMEOUT_ENV, None)
+                self.assertEqual(vr.load_scaled_seconds(vr.MANAGED_JVM_START_TIMEOUT_ENV, 120.0), 480.0)
+
+
 if __name__ == "__main__":
     unittest.main()

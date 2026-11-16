@@ -425,6 +425,12 @@ class SyncExitClassifiesMachineState(unittest.TestCase):
         written = json.loads((self.root / publications.REFRESH_REPORT).read_text())
         self.assertIn('9479', written[0]['machine'])
 
+    def test_a_jvm_that_missed_its_start_budget_is_machine_state(self):
+        # 2026-11-16: avp-threejs-viewer bounced on this at load ~100, in a refresh it never touched.
+        error = RuntimeError('Field server did not become healthy on https://localhost:9620/health: Gradle '
+                             'reached :runJvm 121s ago and the JVM did not answer within its 120s start budget')
+        self.assertEqual(self.failing(error), publications.MACHINE_STATE_EXIT)
+
     def test_a_full_disk_is_machine_state(self):
         self.assertEqual(self.failing(OSError(28, 'No space left on device')), publications.MACHINE_STATE_EXIT)
 

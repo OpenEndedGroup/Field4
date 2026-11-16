@@ -43,6 +43,7 @@ from verification_runtime import (  # noqa: E402
     automation_workspace,
     field_instance_info,
     field_instance_problem,
+    load_scaled_seconds,
     pinned_graalvm_args,
     select_automation_port,
 )
@@ -874,7 +875,7 @@ class FieldBackdoor:
             popen_kwargs["start_new_session"] = True
 
         ceiling = self.startup_timeout or env_seconds(MANAGED_STARTUP_CEILING_ENV, DEFAULT_MANAGED_STARTUP_CEILING)
-        jvm_timeout = self.jvm_start_timeout or env_seconds(
+        jvm_timeout = self.jvm_start_timeout or load_scaled_seconds(
             MANAGED_JVM_START_TIMEOUT_ENV, DEFAULT_MANAGED_JVM_START_TIMEOUT
         )
         self.logger.log(
