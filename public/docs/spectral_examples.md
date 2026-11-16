@@ -948,8 +948,9 @@ loop {
         fit.head(n).resampled().also { it.color = vec(1.0, 1.0, 1.0, 0.9); it.thickness = 1.5 },
         recent.continued(80, includeStroke = false).also { it.color = vec(1.0, 0.6, 0.1, 1.0); it.thickness = 2.5 },
         w = 900.0,
-        h = 160.0,
-        framing = LinesFraming.fixed(-20.0, -95.0, 1060.0, 190.0),
+        h = 136.0,
+        fitToSize = true,
+        framing = LinesFraming.fixed(-20.0, -95.0, 1260.0, 190.0),
     )
 }
 ```
