@@ -21,7 +21,9 @@ class SceneOnARigDemoBundleTest {
     private val calls = mapOf(
         "scene_sender" to listOf("RectSLImager(", "sacnOut(", "animate("),
         "rig_receiver" to listOf("sacnIn(", "showReceived("),
-        "rig_measure" to listOf("SceneOnARig.roundTrip(", "SceneOnARig.aliasing("),
+        // The measure box spells out the aliasing sweep (point vs area sampling through the rig's
+        // own patch) rather than calling SceneOnARig.aliasing(), so pin the calls it does make.
+        "rig_measure" to listOf("SceneOnARig.roundTrip(", "SceneOnARig.Rig(", "mapImage(", "RectSLImager("),
     )
 
     @Test
