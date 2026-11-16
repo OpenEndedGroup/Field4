@@ -36,8 +36,9 @@ data class AiChatBlock(
     val modelFromRun: Boolean = false,
 ) {
     val isProgress: Boolean get() = role.startsWith("progress")
-    val title: String get() = content.lines().firstOrNull()?.trim().orEmpty()
-    val body: String get() = content.lines().drop(1).joinToString("\n").trim()
+    // Kept once: the panel's grouping reads these for every block on every streamed render.
+    val title: String by lazy(LazyThreadSafetyMode.PUBLICATION) { content.lines().firstOrNull()?.trim().orEmpty() }
+    val body: String by lazy(LazyThreadSafetyMode.PUBLICATION) { content.lines().drop(1).joinToString("\n").trim() }
 
     /** A progress block with nothing under its title: the panel shows these as one inline status row. */
     val isStatusOnly: Boolean get() = isProgress && (body.isBlank() || body == title)
@@ -118,38 +119,63 @@ private val chatMarkers = listOf("<<you>>", "<<ai>>", "<<summary>>", "<<progress
 /** The `<<run-model:{json}>>` line a saved chat may open with: the model its run is recorded as using. */
 private const val RUN_MODEL = "<<run-model:"
 
-fun parseAiChatBlocks(history: String?): List<AiChatBlock> {
-    var text = (history ?: "").replace("\r\n", "\n")
-    val runModel = if (text.startsWith(RUN_MODEL)) {
-        val line = text.substringBefore('\n')
-        text = text.substringAfter('\n', "")
-        runCatching {
-            kotlinx.serialization.json.Json.decodeFromString<AiChatModelIdentity>(line.removePrefix(RUN_MODEL).removeSuffix(">>"))
-        }.getOrNull()
-    } else null
-    val tokens = mutableListOf<String>()
-    var idx = 0
-    while (idx < text.length) {
-        val hit = chatMarkers.mapNotNull { marker ->
-            val at = text.indexOf(marker, idx)
-            if (at == -1) null else at to marker
-        }.minByOrNull { it.first }
-        if (hit == null) {
-            tokens.add(text.substring(idx))
-            break
-        }
-        val (next, marker) = hit
-        if (next > idx) tokens.add(text.substring(idx, next))
-        tokens.add(marker)
-        idx = next + marker.length
-    }
+fun parseAiChatBlocks(history: String?): List<AiChatBlock> = parseAiChatHistory(history).blocks
 
+/**
+ * A parsed transcript that can be resumed. A streaming chat only grows at its end, so the next parse keeps
+ * every block before the last marker and reparses from there (`parseAiChatHistory(next, previous)`).
+ */
+class AiChatParse internal constructor(
+    val blocks: List<AiChatBlock>,
+    internal val header: String,
+    internal val runModel: AiChatModelIdentity?,
+    /** The transcript (after its header) up to its last marker; null when it has no markers. */
+    internal val stablePrefix: String?,
+    /** How many of [blocks] come before the last marker. */
+    internal val stableBlocks: Int,
+)
+
+/**
+ * Parse [history], reusing [previous] when [history] extends it: everything before [previous]'s last marker is
+ * unchanged, so only the rest is tokenized. The result is the same as a fresh parse.
+ */
+fun parseAiChatHistory(history: String?, previous: AiChatParse? = null): AiChatParse {
+    var text = (history ?: "").replace("\r\n", "\n")
+    val header = if (text.startsWith(RUN_MODEL)) text.substringBefore('\n') else ""
+    if (header.isNotEmpty()) text = text.substringAfter('\n', "")
+    val prefix = previous?.stablePrefix
+    if (previous != null && prefix != null && previous.header == header && text.startsWith(prefix)) {
+        val tail = parseTranscript(text, prefix.length, previous.runModel)
+        val blocks = previous.blocks.subList(0, previous.stableBlocks) + tail.blocks
+        return AiChatParse(withFallback(blocks, text), header, previous.runModel,
+            if (tail.lastMarkerAt >= 0) text.substring(0, tail.lastMarkerAt) else prefix,
+            previous.stableBlocks + if (tail.lastMarkerAt >= 0) tail.stableBlocks else 0)
+    }
+    val runModel = if (header.isEmpty()) null else runCatching {
+        kotlinx.serialization.json.Json.decodeFromString<AiChatModelIdentity>(header.removePrefix(RUN_MODEL).removeSuffix(">>"))
+    }.getOrNull()
+    val parsed = parseTranscript(text, 0, runModel)
+    return AiChatParse(withFallback(parsed.blocks, text), header, runModel,
+        if (parsed.lastMarkerAt >= 0) text.substring(0, parsed.lastMarkerAt) else null, parsed.stableBlocks)
+}
+
+/** Text with no block of its own (no markers, or only empty ones) shows as one ai block, as it always has. */
+private fun withFallback(blocks: List<AiChatBlock>, text: String): List<AiChatBlock> =
+    if (blocks.isEmpty() && text.trim().isNotEmpty()) listOf(AiChatBlock("ai", text.trim())) else blocks
+
+private class TranscriptBlocks(val blocks: List<AiChatBlock>, val lastMarkerAt: Int, val stableBlocks: Int)
+
+/** Blocks of [text] from [from], which is 0 or the offset of a marker. */
+private fun parseTranscript(text: String, from: Int, runModel: AiChatModelIdentity?): TranscriptBlocks {
     val blocks = mutableListOf<AiChatBlock>()
     var currentRole: String? = null
     val buffer = StringBuilder()
+    var lastMarkerAt = -1
+    var stableBlocks = 0
 
     fun flush() {
-        val role = currentRole ?: return
+        // Text before the first marker belongs to no block.
+        val role = currentRole ?: run { buffer.clear(); return }
         val content = buffer.toString().trim()
         if (content.isNotEmpty()) {
             val (model, rest) = if (role == "ai") AiChatModelIdentity.splitFromContent(content) else null to content
@@ -162,17 +188,32 @@ fun parseAiChatBlocks(history: String?): List<AiChatBlock> {
         buffer.clear()
     }
 
-    for (token in tokens) {
-        if (token in chatMarkers) {
-            flush()
-            currentRole = token.removePrefix("<<").removeSuffix(">>")
-        } else {
-            buffer.append(token)
+    var idx = from
+    // Each marker's next position, searched again only once the scan has passed it. Searching every marker
+    // from every token made this quadratic: a marker absent from the rest of the text was scanned to the end
+    // once per token, which in a long chat cost the panel ~70 ms per streamed chunk.
+    val nextAt = IntArray(chatMarkers.size) { -2 }
+    while (idx < text.length) {
+        var best = -1
+        for (m in chatMarkers.indices) {
+            if (nextAt[m] != -1 && nextAt[m] < idx) nextAt[m] = text.indexOf(chatMarkers[m], idx)
+            if (nextAt[m] != -1 && (best == -1 || nextAt[m] < nextAt[best])) best = m
         }
+        if (best == -1) {
+            buffer.append(text, idx, text.length)
+            break
+        }
+        val next = nextAt[best]
+        val marker = chatMarkers[best]
+        buffer.append(text, idx, next)
+        flush()
+        currentRole = marker.removePrefix("<<").removeSuffix(">>")
+        lastMarkerAt = next
+        stableBlocks = blocks.size
+        idx = next + marker.length
     }
     flush()
-    if (blocks.isEmpty() && text.trim().isNotEmpty()) blocks.add(AiChatBlock("ai", text.trim()))
-    return blocks
+    return TranscriptBlocks(blocks, lastMarkerAt, stableBlocks)
 }
 
 /**

@@ -211,4 +211,11 @@ fun ContextReport.toMarkdown(): String = buildString {
     appendLine()
     appendLine()
     appendLine(placementNote(placement))
+    if (tools.isNotEmpty()) {
+        appendLine("\n**Tool schemas sent (${tools.size}):** ${tools.joinToString { "`$it`" }}")
+    }
+    if (dynamicTools.isNotEmpty()) {
+        appendLine("\n**Box tool revisions**\n\n| tool | owner | source revision |\n| --- | --- | --- |")
+        dynamicTools.forEach { appendLine("| `${it.name}` | `${it.box}` | `${it.sourceRevision}` |") }
+    }
 }

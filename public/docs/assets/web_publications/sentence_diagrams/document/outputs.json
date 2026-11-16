@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T22:28:13.218Z",
+  "capturedAt": "2026-11-16T13:47:24.731Z",
   "documentName": "sentence_diagrams",
   "outputs": [
     {
@@ -48,7 +48,7 @@
         "svg"
       ],
       "width": 776,
-      "height": 325,
+      "height": 324,
       "path": "outputs/3.html"
     }
   ]

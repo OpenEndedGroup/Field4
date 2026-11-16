@@ -47,6 +47,37 @@ class PreviewServerTests(unittest.TestCase):
         self.assertEqual(["index.html"], sorted(p.name for p in (self.tree / "public" / "field4").iterdir()))
         self.assertTrue((self.registry.parent / "preview-logs" / f"{server['port']}.log").exists())
 
+    def test_a_burst_of_page_requests_is_all_served(self) -> None:
+        # A docs page opens 50-70 connections at once; `python -m http.server` queues 5, and macOS
+        # resets the rest, so pages lost their fence scripts and figures (2026-11-16).
+        import socket
+        from concurrent.futures import ThreadPoolExecutor
+
+        server = self.start(self.tree / "public" / "field4")
+        held = [socket.create_connection(("127.0.0.1", server["port"]), timeout=5) for _ in range(40)]
+        try:
+            def fetch(_: int) -> bytes:
+                with urllib.request.urlopen(server["url"] + "index.html", timeout=10) as response:
+                    return response.read()
+            with ThreadPoolExecutor(max_workers=60) as pool:
+                bodies = list(pool.map(fetch, range(120)))
+        finally:
+            for sock in held:
+                sock.close()
+        self.assertEqual([b"hello preview\n"] * 120, bodies)
+
+    def test_a_rebuilt_site_renamed_into_place_is_served(self) -> None:
+        # The docs build renders into a staging directory and renames it over public/field4.
+        site = self.tree / "public" / "field4"
+        server = self.start(site)
+        staging = self.tree / "public" / "staging"
+        staging.mkdir()
+        (staging / "index.html").write_text("rebuilt\n")
+        site.rename(self.tree / "public" / "old")
+        staging.rename(site)
+        with urllib.request.urlopen(server["url"] + "index.html", timeout=5) as response:
+            self.assertEqual(b"rebuilt\n", response.read())
+
     def test_stop_by_age_leaves_a_young_server_running(self) -> None:
         server = self.start(self.tree)
         result = self.tool("stop", "--older-than-hours", "1")

@@ -346,6 +346,27 @@ operator fun Vector2fc.times(v: Quaternionfc): Vector2fc =
  */
 operator fun Vector3fc.times(v: DualQuaternionf): Vector3f = v.transform(this, Vector3f())
 
+/**
+ * `q * r` — the Hamilton product, into a new [Quat]; neither operand is modified.
+ *
+ * For unit quaternions this composes rotations (`r` is applied first, then `q`), the same as
+ * `Quat(q).mul(r)`. It is also plain algebra on any four numbers: `i * j == k` but `j * i == -k`, so
+ * order matters, and a power series such as `exp` can be summed with nothing but `*` and `+`.
+ */
+operator fun Quaternionfc.times(r: Quaternionfc): Quat = Quaternionf(this).mul(r)
+
+/** `q * s` — every component scaled by [s], into a new [Quat]. Not a rotation unless renormalized. */
+operator fun Quaternionfc.times(s: Number): Quat =
+    s.toFloat().let { Quaternionf(x() * it, y() * it, z() * it, w() * it) }
+
+/** `q + r` — the component-wise sum, into a new [Quat]. Not a unit quaternion in general. */
+operator fun Quaternionfc.plus(r: Quaternionfc): Quat =
+    Quaternionf(x() + r.x(), y() + r.y(), z() + r.z(), w() + r.w())
+
+/** `q - r` — the component-wise difference, into a new [Quat]. */
+operator fun Quaternionfc.minus(r: Quaternionfc): Quat =
+    Quaternionf(x() - r.x(), y() - r.y(), z() - r.z(), w() - r.w())
+
 
 /**
  * A rotation of [angle] **radians** about [axis], as a [Quat].

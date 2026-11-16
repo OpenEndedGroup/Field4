@@ -254,10 +254,10 @@ private data class AiChatRewindWorldRequest(val uid: String, val turns: List<Str
 private data class AiChatRewindWorldReply(val uid: String, val message: String, val success: Boolean)
 
 @kotlinx.serialization.Serializable
-private data class AiChatContextRequest(val uid: String)
+private data class AiChatContextRequest(val uid: String, val action: String = "inspect")
 
 @kotlinx.serialization.Serializable
-private data class AiChatContextReply(val uid: String, val markdown: String)
+private data class AiChatContextReply(val uid: String, val markdown: String, val drafts: List<AiAssist> = emptyList())
 
 /** The composer's draft, for inline autocomplete ([afield.ai.completion.Ai4ChatAutocomplete]). */
 @kotlinx.serialization.Serializable
@@ -705,7 +705,7 @@ class Ai4CodeToolProviders(
             failed = true
             diagnostics += CompileDiagnostic(
                 severity = "ERROR",
-                message = throwable.message ?: throwable::class.java.name
+                message = afield.ai.conversation.FieldStaleClasses.messageFor(throwable) ?: throwable.message ?: throwable::class.java.name
             )
         }
 
@@ -713,6 +713,16 @@ class Ai4CodeToolProviders(
         val hasHardDiagnostic = diagnostics.any { severity ->
             val normalized = severity.severity.uppercase()
             normalized != "DEBUG" && normalized != "INFO" && normalized != "WARNING"
+        }
+        // A rebuild under this Field leaves the compiler classpath it built at start pointing at rewritten classes:
+        // hundreds of "Unresolved reference 'graphics'" that say one thing, so they are said once.
+        val stale = afield.ai.conversation.FieldStaleClasses.summarizeMassUnresolved(diagnostics.map { it.message })
+        if (stale != null) {
+            lprintln("info,ai4", "compileKotlin: ${diagnostics.size} diagnostics collapsed as field-stale")
+            return@compileKotlin CompileKotlinResult(
+                success = false, file = fileRefFor(docName, target.id, "code"), message = stale,
+                diagnostics = diagnostics.take(3), stage = afield.ai.conversation.FieldStaleClasses.STAGE,
+            )
         }
         val success = !failed && !hasHardDiagnostic
         val changed = setupChanges(before, after)
@@ -1020,12 +1030,33 @@ fun installAi4() {
     // `/context` in a box's chat: what the last turn sent besides the conversation, as a table.
     handlers["ai-chat-context"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<AiChatContextRequest>(message.payload!!)
-        val report = lastContextByBox["${thisSessionInfo.get().filename}\u0000${request.uid}"]
+        val info = thisSessionInfo.get()
+        val key = "${info.filename}\u0000${request.uid}"
+        val inbox = turnInboxes["$key\u0000"]
+        if (request.action.startsWith("snapshot:")) {
+            val text = runCatching { afield.ai.conversation.AiRunJournal.readSnapshot(info.filename, request.action.removePrefix("snapshot:")) }
+                .getOrElse { "_Could not read snapshot: ${it.javaClass.simpleName}._" }
+            reply(Message("ai-chat-context").payload(AiChatContextReply(request.uid, text)))
+            return@mutableSetOf Handled.yes
+        }
+        if (request.action in setOf("stop", "recall")) {
+            val pending = if (request.action == "stop") inbox?.stop().orEmpty() else inbox?.recall().orEmpty()
+            runCatching { inbox?.onQueued?.invoke() }
+            reply(Message("ai-chat-context").payload(AiChatContextReply(request.uid,
+                if (request.action == "stop") "_Stop requested. Already completed edits are not undone. Queued messages returned as drafts._"
+                else "_Undelivered messages returned as drafts._", pending.mapNotNull { it.assist })))
+            return@mutableSetOf Handled.yes
+        }
+        val report = lastContextByBox[key]
         val context = report?.toMarkdown()
             ?: "_No AI turn has run in this box since Field started, or the last one sent its instructions inline " +
                 "(AFIELD_AI4_EPHEMERAL_INSTRUCTIONS=off, or the OpenRouter provider)._"
         val continuation = thisSessionInfo.get()?.boxes?.get(request.uid)?.let { AiThreadContinuation.diagnostics(it) }.orEmpty()
-        val markdown = listOf(context, continuation).filter { it.isNotBlank() }.joinToString("\n\n")
+        val events = afield.ai.conversation.AiRunJournal.inspect(info.filename, request.uid)
+        val pending = inbox?.queued().orEmpty()
+        val queue = "**Pending input:** ${pending.count { !it.followUp }} corrections, ${pending.count { it.followUp }} follow-ups. " +
+            "Use Recall queued to edit undelivered input. Queues are in memory; they do not survive a restart."
+        val markdown = listOf(context, continuation, queue, events).filter { it.isNotBlank() }.joinToString("\n\n")
         reply(Message("ai-chat-context").payload(AiChatContextReply(request.uid, markdown)))
         Handled.yes
     })
@@ -1461,7 +1492,7 @@ fun installAi4() {
             val shown = (listOf(expandedExtraPrompt.trim()) + exec.images.map { "![attachment]($it)" })
                 .filter { it.isNotBlank() }.joinToString("\n\n")
             val pending = AiTurnInbox.Pending(shown, modelUserPrompt, exec.images, exec, thisSession.get(),
-                fromField = exec.continuationId.isNotBlank())
+                fromField = exec.continuationId.isNotBlank(), followUp = exec.delivery == "follow-up")
             if (AiConversationGarden.read(box).nodes.any { it.status == "running" }) return false
             val inbox = synchronized(turnInboxes) { turnInboxes[boxChatKey]?.takeIf { it.offer(pending) } } ?: return false
             afield.ai.agent.StudyBuildAwaits.accepted(exec.continuationId)
@@ -1802,13 +1833,8 @@ fun installAi4() {
 
             GlslIncludeLibraryIndex.resolveAttachment(requested)?.let { return@attachmentResolver it }
 
-            // A file box, named by uid or by name: read the file it stands for.
-            (boxByIdOrNull(requested) ?: box.inside.boxes.values.singleOrNull { it.name == requested })
-                ?.let(::fileProxyTargetOrNull)
-                ?.let { target ->
-                    val (content, language) = readFileAsText(target) ?: return@attachmentResolver null
-                    return@attachmentResolver AttachmentResponse(file = target.path, language = language, content = content)
-                }
+            afield.ai.tools.resolveProxyAttachment(box.inside.boxes.values, requested)
+                ?.let { return@attachmentResolver it }
 
             val candidatePaths = linkedSetOf<Path>()
             val requestedPath = runCatching { Paths.get(requested) }.getOrNull()
@@ -1855,7 +1881,14 @@ fun installAi4() {
             EditFileResponse(true, "Updated ${req.file}")
         }
 
-        val workspaceSearch = workspaceSearchForDocument(docPath)
+        val workspaceSearch = workspaceSearchForDocument(docPath) { token ->
+            val proxyBox = boxByIdOrNull(token)
+                ?: box.inside.boxes.values.singleOrNull { it.name == token && token.isNotBlank() }
+            proxyBox?.let { owner ->
+                fileProxyTargetOrNull(owner)?.takeIf { it.isDirectory }
+                    ?.let { afield.ai.tools.WorkspaceSearchProxyRoot(owner.id, it.toPath()) }
+            }
+        }
 
         val workspaceSymbolSearch: (WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult = workspaceSymbolSearch@{ req ->
             val query = req.query.trim()
@@ -2127,7 +2160,8 @@ fun installAi4() {
             }
         }
 
-        val inbox = AiTurnInbox()
+        val journal = afield.ai.conversation.AiRunJournal(afield.ai.conversation.AiRunJournal.file(docPath, box.id))
+        val inbox = AiTurnInbox(journal)
         val started = synchronized(turnInboxes) {
             activeBoxChats.add(boxChatKey).also { if (it) turnInboxes[boxChatKey] = inbox }
         }
@@ -2165,7 +2199,19 @@ fun installAi4() {
         // The document's extension branch states as the turn starts (AgentExtensionBuilder.branchState), taken
         // in the turn's own coroutine: a paint canvas is tens of megabytes, too slow for the message handler.
         val branchBefore = java.util.concurrent.atomic.AtomicReference<Map<String, String>>(emptyMap())
+        try {
+            journal.event("run.started", mapOf("box" to box.id, "kind" to exec.kind, "gardenNode" to exec.gardenNode,
+                "property" to exec.property, "model" to continuationBridge.modelIdentity.toString(), "origin" to turnOrigin))
+        } catch (failure: Exception) {
+            synchronized(turnInboxes) { turnInboxes.remove(boxChatKey, inbox); activeBoxChats.remove(boxChatKey) }
+            AiBoxConversation.running(box, false)
+            notify("Could not start a durable AI run: ${failure.message}", "AI4")
+            return@mutableSetOf Handled.yes
+        }
         ai4Scope.launch {
+            val turnJob = kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]!!
+            inbox.onStop = { turnJob.cancel(java.util.concurrent.CancellationException("Stopped by the user")) }
+            inbox.checkStopped()
             branchBefore.set(runCatching { AgentExtensionRegistry.snapshotBranchStates(box) }.getOrDefault(emptyMap()))
             val chatResult: OpenAiIdeCodexBridge.SendResult?
             val editResult: IdeChatHelpers.HighLevelResult?
@@ -2248,6 +2294,10 @@ fun installAi4() {
             }
 
             val progressCallback: (OpenAiIdeCodexBridge.ProgressUpdate) -> Unit = { progress ->
+                inbox.checkStopped()
+                if (progress.title.isNotBlank() || !progress.phase.isNullOrBlank()) {
+                    journal.event("run.progress", mapOf("title" to progress.title.take(500), "phase" to progress.phase.orEmpty()))
+                }
                 if (streamActive.get()) {
                     synchronized(liveLock) {
                         progress.modelIdentity?.let { turnModel = it }
@@ -2543,7 +2593,10 @@ fun installAi4() {
                 return@launch
             }
 
-            (chatResult?.contextReport ?: editResult?.contextReport)?.let { lastContextByBox["$docPath\u0000${box.id}"] = it }
+            (chatResult?.contextReport ?: editResult?.contextReport)?.let {
+                lastContextByBox["$docPath\u0000${box.id}"] = it
+                journal.event("context.report", mapOf("markdown" to it.toMarkdown()))
+            }
             turnMeta.set(AiSessionTree.TurnMeta(
                 kind = exec.kind, property = exec.property,
                 context = chatResult?.contextReport ?: editResult?.contextReport,
@@ -2683,6 +2736,10 @@ fun installAi4() {
                 }
             }.join()
         }.invokeOnCompletion { failure ->
+            runCatching { journal.event("run.ended", mapOf("outcome" to
+                if (failure != null) { if (isAiTurnCancellation(failure)) "cancelled" else "failed" }
+                else if (AiBoxConversation.turnFailure(box) != null) "failed" else "complete")) }
+            inbox.onStop = null
             // A failed or cancelled turn is recorded too: its partial reply is in the transcript. The box stops
             // being "running" only once the turn is recorded; clearing it first let the next request (a person's,
             // or agent-task's, which waits on it) arrive while the turn still held the box, and be refused.
@@ -3049,8 +3106,5 @@ private fun formatMarkdown(text: String): String {
  */
 internal fun evaluationFailureMessage(throwable: Throwable): String {
     val text = "${throwable::class.java.simpleName}: ${throwable.message ?: ""}".trimEnd(':', ' ')
-    return if (throwable is LinkageError)
-        "$text. Field's own classes changed on disk while it was running (a rebuild); this is not the expression's fault, " +
-            "and every evaluation will fail the same way until Field is restarted. Check values with RunBoxRequest and println instead."
-    else text
+    return afield.ai.conversation.FieldStaleClasses.messageFor(throwable)?.let { "$text. $it" } ?: text
 }

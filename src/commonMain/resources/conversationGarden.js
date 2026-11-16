@@ -1,5 +1,5 @@
 // A second view over AI4's harness. All durable mutations go through the server-owned garden.
-export function mountConversationGarden(host, {request, chatUid, chatProperty, markdown, decorate, openBox}) {
+export function mountConversationGarden(host, {request, chatUid, chatProperty, markdown, decorate, openBox, externalToggle = false}) {
     const el = (tag, cls = '', text) => {
         const node = document.createElement(tag); node.className = cls;
         if (text !== undefined) node.textContent = text;
@@ -9,10 +9,11 @@ export function mountConversationGarden(host, {request, chatUid, chatProperty, m
         const b = el('button', cls, label); b.type = 'button'; b.addEventListener('click', action); return b;
     };
     const bar = el('div', 'garden-bar');
-    const toggle = button('Garden', () => active ? close() : open());
+    const toggle = button(externalToggle ? 'Back to chat' : 'Garden', () => active ? close() : open());
     toggle.setAttribute('aria-expanded', 'false');
     toggle.title = 'Branch this conversation from a paragraph or selected text';
     bar.append(toggle);
+    bar.hidden = externalToggle;
     const panel = el('section', 'conversation-garden'); panel.hidden = true;
     panel.setAttribute('aria-label', 'Conversation garden');
     const controls = el('div', 'garden-controls');
@@ -96,7 +97,7 @@ export function mountConversationGarden(host, {request, chatUid, chatProperty, m
     }
     async function open() {
         active = true; owner = chatUid(); generation++; signature = '';
-        host.classList.add('garden-open'); panel.hidden = false; controls.hidden = false; toggle.setAttribute('aria-expanded', 'true');
+        host.classList.add('garden-open'); bar.hidden = false; panel.hidden = false; controls.hidden = false; toggle.setAttribute('aria-expanded', 'true');
         input.value = drafts.get(owner) || '';
         try { if (await call({action: 'initialize'})) { render(); await load(); } }
         catch (error) { fail(error); }
@@ -106,6 +107,7 @@ export function mountConversationGarden(host, {request, chatUid, chatProperty, m
         drafts.set(owner, input.value); active = false; playing = false; generation++;
         closeMenu();
         clearInterval(timer); timer = null; host.classList.remove('garden-open'); panel.hidden = true; controls.hidden = true;
+        bar.hidden = externalToggle;
         toggle.setAttribute('aria-expanded', 'false');
     }
     const sourcePassage = () => anchor && nodeById(anchor.node)?.passages.find(p => p.id === anchor.passage);
@@ -621,7 +623,7 @@ export function mountConversationGarden(host, {request, chatUid, chatProperty, m
         }
     });
     updateAnchor();
-    return {viewState() { return {active, draft: input.value, anchor, anchorText, selected, focused, showTools, draftVisible: !composer.hidden, folded: [...foldedBranches], scroll: body.scrollTop}; },
+    return {open, close, viewState() { return {active, draft: input.value, anchor, anchorText, selected, focused, showTools, draftVisible: !composer.hidden, folded: [...foldedBranches], scroll: body.scrollTop}; },
     async restore(state) {
         if (!state?.active) return;
         await open(); input.value = state.draft || ''; anchor = state.anchor; anchorText = state.anchorText || '';

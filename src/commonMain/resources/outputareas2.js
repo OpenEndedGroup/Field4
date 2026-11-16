@@ -1,6 +1,6 @@
 import { mountConversationGarden } from "./conversationGarden.js";
 import { mountStateTreeBrowser } from "./stateTreeBrowser.js";
-import { aiChatMarkdownToHtml, aiChatHistoryToHtml, aiChatSetToolFamilies, send, sendWithReply } from "./afield.mjs";
+import { aiChatMarkdownToHtml, aiChatHistoryToHtml, aiChatHistoryToUnits, aiChatSetToolFamilies, send, sendWithReply } from "./afield.mjs";
 import { renderAiChatFences } from "./aiChatFenceRenderers.js";
 import { typesetAiChatMath } from "./aiChatMath.js";
 import { installAiChatFenceCatalog } from "./aiChatFenceCatalog.js";
@@ -13,6 +13,8 @@ function rerenderOpenChats() {
                 const markdown = messages.__chatMarkdown;
                 if (markdown == null) return;
                 messages.__chatMarkdown = null;
+                // A catalog changes how unchanged turns render too: rebuild every unit, not just the changed ones.
+                messages.__chatUnits = null;
                 renderChatMessages(messages, markdown);
         });
 }
@@ -1902,43 +1904,44 @@ function renderChatMessages(messages, markdown, options) {
                 messages.__chatScrollInputBound = true;
         }
 
-        // Keep known image aspect ratios through DOM replacement, avoiding collapsed screenshots.
-        const dimensions = new Map();
-        messages.querySelectorAll("img").forEach(img => {
-                const width = img.naturalWidth || Number(img.getAttribute("width"));
-                const height = img.naturalHeight || Number(img.getAttribute("height"));
-                if (width > 0 && height > 0) dimensions.set(img.getAttribute("src"), {width, height});
-        });
         // Round numbers belong to one transcript: another box's chat, or a cleared one, starts afresh.
         const previous = messages.__chatMarkdown;
-        if (previous != null && messages.__chatRoundStates && previous.slice(0, 256) !== text.slice(0, 256)) {
-                messages.__chatRoundStates.clear();
+        if (previous != null && previous.slice(0, 256) !== text.slice(0, 256)) {
+                messages.__chatRoundStates?.clear();
+                // Nor do its units: a matching round in another chat must not carry over this one's fold.
+                messages.__chatUnits = null;
         }
-        messages.innerHTML = aiChatHistoryToHtml(text);
+        const fresh = renderChatUnits(messages, aiChatHistoryToUnits(text));
         messages.__chatMarkdown = text;
-        restoreRoundStates(messages);
-        // Phase-lock the live-status shimmer to the document clock; a burst of tool updates would
-        // otherwise restart the sweep on every render and it would never get across the text.
-        messages.querySelectorAll(".ai-chat-shimmer").forEach(el => {
-                el.getAnimations().forEach(animation => { animation.startTime = 0; });
-        });
-        decorateAfieldLinks(messages);
-        applyCodeHighlight(messages);
+        // Only the units that changed are new DOM; everything older keeps its highlighting, fence previews,
+        // typeset math, loaded images and fold state, so a streamed chunk costs the size of the tail.
+        const images = [];
+        let pendingFenceRenders = 0;
         const onRenderLayout = (event) => {
                 if (event === "settled") pendingFenceRenders--;
                 finish();
         };
-        let pendingFenceRenders = renderAiChatFences(messages, onRenderLayout);
-        pendingFenceRenders += typesetAiChatMath(messages, onRenderLayout);
-        const images = Array.from(messages.querySelectorAll("img"));
-        images.forEach(img => {
-                const size = dimensions.get(img.getAttribute("src"));
-                if (size && !img.hasAttribute("width") && !img.hasAttribute("height")) {
-                        img.width = size.width;
-                        img.height = size.height;
-                }
-        });
-
+        for (const {node, dimensions} of fresh) {
+                restoreRoundStates(messages, node);
+                // Phase-lock the live-status shimmer to the document clock; a burst of tool updates would
+                // otherwise restart the sweep on every render and it would never get across the text.
+                node.querySelectorAll(".ai-chat-shimmer").forEach(el => {
+                        el.getAnimations().forEach(animation => { animation.startTime = 0; });
+                });
+                decorateAfieldLinks(node);
+                applyCodeHighlight(node);
+                pendingFenceRenders += renderAiChatFences(node, onRenderLayout);
+                pendingFenceRenders += typesetAiChatMath(node, onRenderLayout);
+                node.querySelectorAll("img").forEach(img => {
+                        // Keep known image aspect ratios through replacement, avoiding collapsed screenshots.
+                        const size = dimensions.get(img.getAttribute("src"));
+                        if (size && !img.hasAttribute("width") && !img.hasAttribute("height")) {
+                                img.width = size.width;
+                                img.height = size.height;
+                        }
+                        images.push(img);
+                });
+        }
         const settle = () => {
                 // Old image callbacks cannot override a newer render or the reader's own gesture.
                 if (messages.__chatScrollRestore !== restore) return;
@@ -1959,10 +1962,67 @@ function renderChatMessages(messages, markdown, options) {
         requestAnimationFrame(finish);
 }
 
-function restoreRoundStates(messages) {
+/**
+ * Bring the thread's units in line with [units] (aiChatHistoryToUnits), reusing every unit whose HTML is
+ * unchanged and building only the rest. Returns the new units, each with the image sizes of the unit it
+ * replaced, for the caller to decorate. `messages.__chatUnits = null` forces a full rebuild.
+ */
+function renderChatUnits(messages, units) {
+        let thread = messages.__chatThread;
+        if (units.length === 0) {
+                messages.innerHTML = "";
+                messages.__chatThread = null;
+                messages.__chatUnits = [];
+                return [];
+        }
+        if (!thread || thread.parentNode !== messages || !messages.__chatUnits) {
+                messages.innerHTML = "";
+                thread = document.createElement("div");
+                thread.className = "ai-chat-thread";
+                messages.appendChild(thread);
+                messages.__chatThread = thread;
+                messages.__chatUnits = [];
+        }
+        // Old units by HTML, so a unit that only moved (a queued message dropped above it) is kept too.
+        const byHtml = new Map();
+        for (const unit of messages.__chatUnits) {
+                const list = byHtml.get(unit.html);
+                if (list) list.push(unit); else byHtml.set(unit.html, [unit]);
+        }
+        const next = units.map(html => {
+                const kept = byHtml.get(html)?.shift();
+                return kept || {html, node: null};
+        });
+        const leftover = [...byHtml.values()].flat();
+        const leftoverDimensions = new Map();
+        for (const unit of leftover) {
+                unit.node.querySelectorAll("img").forEach(img => {
+                        const width = img.naturalWidth || Number(img.getAttribute("width"));
+                        const height = img.naturalHeight || Number(img.getAttribute("height"));
+                        if (width > 0 && height > 0) leftoverDimensions.set(img.getAttribute("src"), {width, height});
+                });
+                unit.node.remove();
+        }
+        const fresh = [];
+        let cursor = thread.firstChild;
+        for (const unit of next) {
+                if (!unit.node) {
+                        unit.node = document.createElement("div");
+                        unit.node.className = "ai-chat-unit";
+                        unit.node.innerHTML = unit.html;
+                        fresh.push({node: unit.node, dimensions: leftoverDimensions});
+                }
+                if (unit.node === cursor) cursor = cursor.nextSibling;
+                else thread.insertBefore(unit.node, cursor);
+        }
+        messages.__chatUnits = next;
+        return fresh;
+}
+
+function restoreRoundStates(messages, root = messages) {
         const states = messages.__chatRoundStates;
         if (!states || states.size === 0) return;
-        messages.querySelectorAll(".ai-chat-round[data-ai-round]").forEach(round => {
+        root.querySelectorAll(".ai-chat-round[data-ai-round]").forEach(round => {
                 const open = states.get(round.dataset.aiRound);
                 if (open !== undefined) round.open = open;
         });
@@ -2079,6 +2139,88 @@ function ensureAiChat(container, uid, property) {
         function sendAiChat(payload) {
                 send("ai-assist", payload);
         }
+
+        const runControls = document.createElement("div");
+        runControls.className = "ai-chat-run-controls";
+        const actionsButton = document.createElement("button");
+        actionsButton.type = "button";
+        actionsButton.className = "ai-chat-actions-toggle";
+        actionsButton.setAttribute("aria-label", "Chat actions");
+        actionsButton.setAttribute("aria-haspopup", "menu");
+        actionsButton.setAttribute("aria-expanded", "false");
+        actionsButton.title = "Chat actions";
+        actionsButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M3 4h10M3 8h10M3 12h10"/></svg>';
+        const actionsMenu = document.createElement("div");
+        actionsMenu.className = "ai-chat-actions-menu field-control-popup";
+        actionsMenu.setAttribute("popover", "auto");
+        actionsMenu.setAttribute("role", "menu");
+        actionsMenu.setAttribute("aria-label", "Chat actions");
+        runControls.append(actionsButton, actionsMenu);
+        function closeActions() { actionsMenu.hidePopover(); }
+        function positionActions() {
+                if (!actionsMenu.matches(":popover-open")) return;
+                if (!actionsButton.isConnected) { closeActions(); return; }
+                const anchor = actionsButton.getBoundingClientRect();
+                const width = actionsMenu.getBoundingClientRect().width;
+                actionsMenu.style.left = Math.max(8, Math.min(anchor.right - width, innerWidth - width - 8)) + "px";
+                actionsMenu.style.bottom = Math.max(8, innerHeight - anchor.top + 6) + "px";
+                actionsMenu.style.maxHeight = Math.max(40, anchor.top - 16) + "px";
+                requestAnimationFrame(positionActions);
+        }
+        actionsMenu.addEventListener("toggle", event => {
+                actionsButton.setAttribute("aria-expanded", String(event.newState === "open"));
+        });
+        actionsButton.addEventListener("click", () => {
+                if (actionsMenu.matches(":popover-open")) { closeActions(); return; }
+                actionsMenu.querySelectorAll('[data-send]').forEach(item => {
+                        item.disabled = !textarea.value.trim() && attachments.length === 0;
+                });
+                actionsMenu.showPopover();
+                positionActions();
+                actionsMenu.querySelector('button:not(:disabled)')?.focus();
+        });
+        actionsMenu.addEventListener("keydown", event => {
+                const items = [...actionsMenu.querySelectorAll('button:not(:disabled)')];
+                const index = items.indexOf(document.activeElement);
+                if (["ArrowDown", "ArrowUp", "Home", "End", "Escape"].includes(event.key)) {
+                        event.preventDefault(); event.stopPropagation();
+                        if (event.key === "Escape") { closeActions(); actionsButton.focus(); return; }
+                        const next = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1
+                                : (index + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+                        items[next]?.focus();
+                }
+        });
+        function chatAction(label, action, sendDraft = false) {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.setAttribute("role", "menuitem");
+                button.textContent = label;
+                if (sendDraft) button.dataset.send = "true";
+                button.addEventListener("click", () => { closeActions(); action(); });
+                actionsMenu.appendChild(button);
+        }
+        chatAction("Correct this run", () => submitPrompt(), true);
+        chatAction("Do next", () => submitPrompt({followUp: true}), true);
+        function control(action) {
+                const targetUid = chatUid();
+                sendWithReply("ai-chat-context", {uid: targetUid, action},
+                        `ai-chat-control-${targetUid}-${Date.now()}`, (_message, response) => {
+                                if (chatUid() !== targetUid) return "remove";
+                                if (response?.markdown) appendLocalChatTurn("ai", response.markdown);
+                                const drafts = response?.drafts || [];
+                                if (drafts.length) {
+                                        textarea.value = [textarea.value, ...drafts.map(d => d.extraPrompt)].filter(Boolean).join("\n\n");
+                                        for (const draft of drafts) for (const src of draft.images || []) attachments.push({src});
+                                        renderPreview();
+                                        textarea.focus();
+                                }
+                                return "remove";
+                        });
+        }
+        for (const [label, action] of [["Stop", "stop"], ["Recall queued", "recall"], ["Context", "inspect"]]) {
+                chatAction(label, () => control(action));
+        }
+        chatAction("Open Garden", () => garden.open());
 
         const attachments = [];
         // Geometry picks quoted from a three.js viewer's Ask AI (`geometry-reference-ask`); each goes out as a
@@ -2392,7 +2534,7 @@ function ensureAiChat(container, uid, property) {
                         textarea.value = "";
                         const targetUid = chatUid();
                         // Shown locally like /help: never saved, so never fed back to the model.
-                        sendWithReply("ai-chat-context", {uid: targetUid},
+                        sendWithReply("ai-chat-context", {uid: targetUid, action: rest ? `snapshot:${rest.trim()}` : "inspect"},
                                 `ai-chat-context-${targetUid}-${Date.now()}`, (_message, response) => {
                                         if (chatUid() === targetUid) appendLocalChatTurn("ai", response?.markdown || "_No context report._");
                                         return "remove";
@@ -2473,6 +2615,7 @@ function ensureAiChat(container, uid, property) {
                 if (options.dictated) payload.dictated = true;
                 // While this box's turn runs, the server gives the message to that turn instead of refusing it.
                 payload.queueIfBusy = true;
+                payload.delivery = options.followUp ? "follow-up" : "steer";
                 noteAiChatUsed(container);
                 sendAiChat(payload);
                 attachments.length = 0;
@@ -2482,7 +2625,7 @@ function ensureAiChat(container, uid, property) {
         textarea.addEventListener("keydown", (event) => {
             if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();
-                    submitPrompt();
+                    submitPrompt({followUp: event.altKey});
             }
         });
         sendButton.addEventListener("click", () => submitPrompt());
@@ -2532,10 +2675,13 @@ function ensureAiChat(container, uid, property) {
         });
 
         inputWrap.appendChild(preview);
-        inputWrap.appendChild(textarea);
+        const entry = document.createElement("div");
+        entry.className = "ai-chat-entry";
+        entry.append(textarea, runControls);
+        inputWrap.appendChild(entry);
         inputWrap.appendChild(micButton);
         inputWrap.appendChild(sendButton);
-        const autocomplete = mountChatAutocomplete(inputWrap, textarea, {chatUid, chatProperty});
+        const autocomplete = mountChatAutocomplete(entry, textarea, {chatUid, chatProperty});
 
         const stateBrowser = mountStateTreeBrowser(root, {
                 chatUid,
@@ -2552,7 +2698,7 @@ function ensureAiChat(container, uid, property) {
                 }
         });
         const garden = mountConversationGarden(root, {
-                chatUid, chatProperty,
+                chatUid, chatProperty, externalToggle: true,
                 markdown: aiChatMarkdownToHtml,
                 decorate: node => { decorateAfieldLinks(node); applyCodeHighlight(node); renderAiChatFences(node); typesetAiChatMath(node); },
                 openBox: (uid, property) => {

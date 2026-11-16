@@ -887,6 +887,10 @@ object DemoTranscriptExecSmokeTest {
         // boxes are a guest language and skipped, as Pd's are. afield.audio.csound.* tests run the calls
         // against a real Csound when one is built. Every box was run by hand on 2026-10-02.
         "csound_demo",
+        // PostScript: the root's Kotlin is compiled; the five PostScript boxes are a guest language and
+        // skipped. PostScriptInterpreterTest runs the programs; every box was run through the backdoor
+        // on 2026-11-16.
+        "postscript_demo",
         "four_summary_pyramid",
         "four_morton_quadtree",
         // Opens its own Window + Renderer and then renders a still and a clip per blend for a dozen

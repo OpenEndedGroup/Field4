@@ -77,5 +77,6 @@ export const aiChatMarkdownToHtml = (markdown) =>
   `<div class="stub-markdown">${String(markdown ?? "")}</div>`;
 
 export const aiChatHistoryToHtml = () => "";
+export const aiChatHistoryToUnits = () => [];
 export const monacoHandleOutput = () => {};
 export const clearEditorOutputsForBoxBeforeLaunch = () => {};

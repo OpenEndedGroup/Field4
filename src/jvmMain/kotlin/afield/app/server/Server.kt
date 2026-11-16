@@ -3011,6 +3011,14 @@ class Server {
                     targetBox.getPropertyRaw(set.property)?.toString().orEmpty()
                 }
 
+                if (set.property == "contents" && fileProxyTargetOrNull(targetBox)?.isDirectory == true) {
+                    refreshFileProxyBox(targetBox)
+                    needsResync.add(targetBox to "contents")
+                    if (refusedFileProxyWritesReported.add(set.uid))
+                        notify("Directory proxy contents are a generated catalogue; read files through the proxy instead.", "error")
+                    return@mutableSetOf Handled.yes
+                }
+
                 if (set.property == "name") {
                     lprintln("debug,server", "got set-string for name ${set.value}")
                     targetBox.name = set.value

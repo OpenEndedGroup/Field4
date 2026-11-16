@@ -91,3 +91,33 @@ run {
         }
     }
 }
+
+// --- Warn when a live Field runs from this checkout's class output -------------------------------
+// A Field started from this checkout loads its classes from build/classes/kotlin/jvm/main lazily; a
+// build here rewrites them, and every class it had not loaded yet then fails for the rest of its life
+// (NoClassDefFoundError). On 2026-11-16 an agent rebuilt under a running Field and an AI4 chat in it
+// spent five rounds on errors that were only that. Field's own tools refuse such a build
+// (RepoCommandTools.liveBuildHazard) and answer the errors with stage="field-stale"
+// (afield.ai.conversation.FieldStaleClasses); a raw ./gradlew only warns, naming the pid to restart.
+// AFIELD_LIVE_FIELD_CHECK=off silences it.
+run {
+    val off = providers.environmentVariable("AFIELD_LIVE_FIELD_CHECK").orNull?.trim()?.lowercase() == "off"
+    val classes = runCatching { settingsDir.resolve("build/classes/kotlin/jvm/main").canonicalPath }.getOrNull()
+    if (!off && classes != null && System.getProperty("idea.sync.active") != "true") {
+        val me = ProcessHandle.current()
+        val ancestors = generateSequence(me) { it.parent().orElse(null) }.map { it.pid() }.toSet()
+        val live = runCatching {
+            ProcessHandle.allProcesses().filter { h ->
+                val cmd = h.info().commandLine().orElse("")
+                h.pid() !in ancestors && "afield.app.server.Server" in cmd && classes in cmd
+            }.map { it.pid() }.toList()
+        }.getOrDefault(emptyList())
+        if (live.isNotEmpty()) {
+            println(
+                "WARN gradle: a Field JVM (pid ${live.joinToString()}) runs from this checkout's build/classes. " +
+                    "A compile here rewrites classes under it, and it will fail with NoClassDefFoundError until restarted " +
+                    "(stop it: kill -INT <pid>). Build in another worktree to avoid that; AFIELD_LIVE_FIELD_CHECK=off silences this."
+            )
+        }
+    }
+}

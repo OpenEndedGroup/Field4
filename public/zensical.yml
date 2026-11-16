@@ -385,6 +385,7 @@ nav:
     # with the host's objects reachable directly — and a reader who has read one wants the contrast.
     - Clojure in a Box: clojure.md
     - Lua in a Box: lua.md
+    - PostScript in a Box: postscript.md
     # The desktop, browser-tab side of RemoteJS, beside the other guest languages. Its WebXR and
     # headset reference (ar_reference.md) stays under Heads & Headsets.
     - Javascript in a Browser Tab: remotejs.md

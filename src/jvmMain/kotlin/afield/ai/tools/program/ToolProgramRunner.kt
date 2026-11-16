@@ -134,6 +134,7 @@ internal class ToolProgramRunner(private val registry: ToolRegistry) {
                 e.isSyntaxError -> {
                     stage = "syntax"
                     message = "${e.message}" + (e.sourceLocation?.let { " (line ${it.startLine})" } ?: "")
+                    syntaxHint(request.code)?.let { message += " $it" }
                 }
                 e.isCancelled || (e.message ?: "").contains("Statement count limit") -> {
                     stage = "statement-limit"; message = "The program ran more than $STATEMENT_LIMIT statements."
@@ -539,3 +540,9 @@ function describe(name) { return JSON.parse(__describe(String(name))); }
         }.getOrDefault(false)
     }
 }
+
+/** A hint for a syntax error the model keeps making in JS, judged from the [code] it sent. */
+internal fun syntaxHint(code: String): String? =
+    if ("'''" in code || "\"\"\"" in code)
+        "Hint: JavaScript has no triple-quoted strings (''' or \"\"\"); use a template literal `...` (escape ` and \${ inside it) for multi-line text."
+    else null

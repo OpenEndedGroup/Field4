@@ -520,6 +520,426 @@ if (intersectRayAabb(origin, direction, minimum, maximum, nearFar)) {
 }
 ```
 
+## Spinny algebras: complex, dual and quaternion numbers
+
+A `Quat` is four numbers, and so is a `Vec4`. What makes one a rotation is its multiplication.
+This section builds that up from two numbers, following the argument of 2swap's video
+[*The best algebras are spinny*](https://youtube.com/watch?v=-k-Dnw0F3kc), redrawn here from the
+textbook math with FLines. Every figure is the box code above it.
+
+### Two numbers and one rule
+
+Take pairs `a + bε`, add them component by component, and multiply them by expanding the brackets.
+The only choice left is what `ε²` is. Up to rescaling there are three answers:
+
+- `ε² = -1` gives the **complex numbers**;
+- `ε² = 0` gives the **dual numbers**;
+- `ε² = +1` gives the **split-complex numbers**.
+
+Multiplying by a fixed number `w` is a linear map of the plane, so the clearest way to see an
+algebra is to multiply a whole grid by one `w` and draw where it lands. Here `w = 0.9 + 0.5ε` in
+all three, and only `ε²` changes:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spinny_algebras/grid.png" embed=true name="spinny-grid" alt="Three copies of a 7×7 grid, each multiplied by 0.9 + 0.5ε, over the faint original: on the left (ε² = -1) the grid is turned and enlarged but still square; in the middle (ε² = 0) it is sheared upward; on the right (ε² = +1) it is squeezed into a long thin parallelogram along the diagonal"}
+:::static
+// Multiply every point of a grid by one fixed number w = a + bε, in three algebras that differ only in ε².
+fun times(a: Double, b: Double, c: Double, d: Double, eps2: Double) =
+    vec(a * c + eps2 * b * d, a * d + b * c)
+
+fun gridTimes(a: Double, b: Double, eps2: Double, ox: Double, tint: Vec4): List<FLine> {
+    val s = 40.0
+    val grid = (-3..3).flatMap { k ->
+        listOf(
+            (0..60).map { vec(k / 3.0, -1 + it / 30.0) }, // a vertical line of the grid
+            (0..60).map { vec(-1 + it / 30.0, k / 3.0) }, // a horizontal one
+        )
+    }
+    fun draw(pts: List<Vec2>, col: Vec4, t: Double) = fline {
+        pts.forEachIndexed { i, p ->
+            val q = times(a, b, p.x.toDouble(), p.y.toDouble(), eps2)
+            if (i == 0) moveTo(ox + s * q.x, -s * q.y) else lineTo(ox + s * q.x, -s * q.y)
+        }
+        color = col
+        thickness = t
+    }
+    val before = grid.map { pts -> fline {
+        pts.forEachIndexed { i, p -> if (i == 0) moveTo(ox + s * p.x, -s * p.y) else lineTo(ox + s * p.x, -s * p.y) }
+        color = vec(1, 1, 1, 0.15)
+    } }
+    return before + grid.map { draw(it, tint, 1.5) }
+}
+
+lines(
+    *(gridTimes(0.9, 0.5, -1.0, 0.0, vec(0.35, 0.8, 1.0, 0.9)) +   // complex: ε² = -1
+      gridTimes(0.9, 0.5, 0.0, 170.0, vec(0.95, 0.85, 0.3, 0.9)) +  // dual: ε² = 0
+      gridTimes(0.9, 0.5, 1.0, 340.0, vec(1.0, 0.45, 0.55, 0.9))).toTypedArray(), // split-complex: ε² = +1
+    w = 760.0, h = 260.0, fitToSize = true,
+)
+```
+
+In the complex numbers (blue) the grid turns and grows, and stays square: multiplication is a
+rotation and a scale. The dual numbers (yellow) shear it. The split-complex numbers (red) squeeze
+it along one diagonal and stretch it along the other.
+
+### Sine and cosine fall out of `exp`
+
+The exponential is a power series, `exp(x) = 1 + x + x²/2! + x³/3! + ...`, and it needs only `+`
+and `*`, so every algebra has one. Sum `exp(tε)` for `t` from -π to π and plot it:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spinny_algebras/taylor.png" embed=true name="spinny-taylor" alt="Left: exp(tε) for t from -π to π in three algebras, the 30-term sums drawn bold over faint 3- and 5-term sums: a blue unit circle (ε² = -1), a yellow vertical line through 1 (ε² = 0), and a red hyperbola opening to the right (ε² = +1)"}
+:::static
+// exp(tε) = 1 + tε + (tε)²/2! + ..., summed with nothing but the algebra's own multiplication.
+fun times(p: Vec2, q: Vec2, eps2: Double) =
+    vec(p.x * q.x + eps2 * p.y * q.y, p.x * q.y + p.y * q.x)
+
+fun expSeries(t: Double, eps2: Double, terms: Int): Vec2 {
+    var sum = vec(0.0, 0.0)
+    var term = vec(1.0, 0.0)
+    for (n in 1..terms) {
+        sum = sum + term
+        term = times(term, vec(0.0, t / n), eps2) // term · tε / n
+    }
+    return sum
+}
+
+val s = 60.0
+fun curve(eps2: Double, terms: Int, col: Vec4, ox: Double, width: Double = 1.5) = fline {
+    (0..200).forEach {
+        val t = Math.PI * (-1.0 + 2.0 * it / 200)
+        val p = expSeries(t, eps2, terms)
+        if (p.length() < 4.0) {
+            if (nodes.isEmpty()) moveTo(ox + s * p.x, -s * p.y) else lineTo(ox + s * p.x, -s * p.y)
+        }
+    }
+    color = col
+    thickness = width
+}
+
+val axes = [
+    fline { moveTo(-3 * s, 0); lineTo(4 * s, 0); color = vec(1, 1, 1, 0.25) },
+    fline { moveTo(0, -3 * s); lineTo(0, 3 * s); color = vec(1, 1, 1, 0.25) },
+]
+
+// The three named algebras, with the series cut off after 3, 5 and 30 terms.
+val named = [-1.0 to vec(0.35, 0.8, 1.0), 0.0 to vec(0.95, 0.85, 0.3), 1.0 to vec(1.0, 0.45, 0.55)]
+    .flatMap { (k, c) ->
+        [3 to 0.25, 5 to 0.5, 30 to 1.0].map { (n, a) -> curve(k, n, vec(c.x, c.y, c.z, a), 0.0, if (n == 30) 2.0 else 1.0) }
+    }
+
+lines(*(axes + named).toTypedArray(), w = 760.0, h = 340.0, fitToSize = true)
+```
+
+Each algebra is summed to 3, 5 and 30 terms (faint to bold). With `ε² = -1` the series closes into
+the unit circle, and its two parts are `cos t` and `sin t`. With `ε² = 0` every term after `tε`
+vanishes, so `exp(tε) = 1 + tε`, a straight line. With `ε² = +1` it is `cosh t + ε sinh t`, a
+hyperbola.
+
+`ε²` need not be one of the three. Let it slide from -1 to +1 and back, and draw both pictures at
+once: the grid multiplied by `0.9 + 0.5ε` on the left, and `exp(tε)` on the right with a dot
+running along it. The bar underneath shows where `ε²` is:
+
+```diffstatic_runner {data-lang=kotlin video="assets/spinny_algebras/eps_sweep.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="300" w="1000" embed=true name="spinny-eps-sweep" alt="ε² sliding from -1 to +1 and back. Left, a 7×7 grid multiplied by 0.9 + 0.5ε turns while square, shears, then stretches along a diagonal. Right, exp(tε) is a unit circle with a dot going round it; it stretches into an ellipse, opens into a vertical line and bends into a hyperbola that the dot runs off, then closes again. A bar at the bottom tracks ε²"}
+:::static
+:::fold the product, exp, and the fixed frame
+fun times(p: Vec2, q: Vec2, eps2: Double) =
+    vec(p.x * q.x + eps2 * p.y * q.y, p.x * q.y + p.y * q.x)
+
+fun expSeries(t: Double, eps2: Double): Vec2 {
+    var sum = vec(0.0, 0.0)
+    var term = vec(1.0, 0.0)
+    for (n in 1..30) {
+        sum = sum + term
+        term = times(term, vec(0.0, t / n), eps2)
+    }
+    return sum
+}
+
+val s = 55.0
+val gridX = 0.0
+val expX = 420.0
+val barY = 200.0
+
+// A fixed border, drawn every frame, so fitToSize does not rescale the view as the shapes move.
+val border = fline { rect(-220.0, -190.0, 880.0, 420.0); color = vec(1, 1, 1, 0.08) }
+
+// Blue at ε² = -1, yellow at 0, red at +1, as in the figures above.
+fun tint(k: Double, a: Double = 0.95): Vec4 {
+    val f = (k + 1) / 2
+    return if (f < 0.5) vec(0.35 + 1.2 * f, 0.8 + 0.1 * f, 1.0 - 1.4 * f, a)
+    else vec(0.95 + 0.1 * (f - 0.5), 0.85 - 0.8 * (f - 0.5), 0.3 + 0.5 * (f - 0.5), a)
+}
+
+fun polyline(pts: List<Vec2>, col: Vec4, width: Double) = fline {
+    pts.forEachIndexed { i, p -> if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) }
+    color = col
+    thickness = width
+}
+
+val gridLines = (-3..3).flatMap { j ->
+    [(0..40).map { vec(j / 3.0, -1 + it / 20.0) }, (0..40).map { vec(-1 + it / 20.0, j / 3.0) }]
+}
+:::endfold
+
+// While ε² < 0 the curve closes after t = 2π / √(-ε²), so draw one whole period. Past that the
+// series runs off the frame, and t up to ±6 is plenty to show the shape.
+fun halfSpan(k: Double) = if (k < 0) kotlin.math.min(Math.PI / kotlin.math.sqrt(-k), 6.0) else 6.0
+
+fun draw(k: Double, phase: Double) {
+    val w = vec(0.9, 0.5)
+    val span = halfSpan(k)
+    val tau = span * (2 * phase - 1) // the dot's parameter: one trip from -span to +span per phase
+    val grid = gridLines.map { pts ->
+        polyline(pts.map { p -> times(w, p, k).let { q -> vec(gridX + s * q.x, -s * q.y) } }, tint(k, 0.9), 1.4)
+    }
+    val curve = (0..240).map { expSeries(span * (-1.0 + it / 120.0), k) }
+        .filter { it.length() < 3.2 }
+        .map { vec(expX + s * it.x, -s * it.y) }
+    val p = expSeries(tau, k)
+    val dot = fline {
+        if (p.length() < 3.2) circle(expX + s * p.x, -s * p.y, 6.0, segments = 20)
+        color = vec(1, 1, 1, 1)
+        filled = true
+        stroked = false
+    }
+    val axes = [
+        fline { moveTo(expX - 3 * s, 0); lineTo(expX + 3.5 * s, 0); color = vec(1, 1, 1, 0.25) },
+        fline { moveTo(expX, -3 * s); lineTo(expX, 3 * s); color = vec(1, 1, 1, 0.25) },
+    ]
+    // The ε² bar: a track from -1 to +1 with ticks at -1, 0 and +1, and a marker at k.
+    val track = fline {
+        moveTo(100.0, barY); lineTo(340.0, barY)
+        for (x in [100.0, 220.0, 340.0]) { moveTo(x, barY - 6); lineTo(x, barY + 6) }
+        color = vec(1, 1, 1, 0.4)
+    }
+    val marker = fline {
+        circle(220.0 + 120.0 * k, barY, 7.0, segments = 20)
+        color = tint(k, 1.0)
+        filled = true
+        stroked = false
+    }
+    lines(border, *grid.toTypedArray(), *axes.toTypedArray(), polyline(curve, tint(k), 2.2), dot, track, marker,
+        channel = "main", w = 1000.0, h = 480.0, fitToSize = true)
+}
+
+val started = AnimationClock.nowSeconds()
+loop {
+    val t = AnimationClock.nowSeconds() - started
+    val k = -kotlin.math.cos(2 * Math.PI * t / 10.0) // -1 → +1 → -1 every ten seconds
+    draw(k, (t / 2.5) % 1.0) // the dot goes once round every 2.5 seconds
+}
+```
+
+The grid stays square only at `ε² = -1`. For any negative `ε²` the curve still closes, into an
+ellipse that takes longer to go round (its period is `2π / √(-ε²)`), and the dot comes back to 1.
+From `ε² = 0` up it never does. That is what "spinny" means here: an algebra whose `exp` is
+periodic, so repeated multiplication goes round rather than off to infinity.
+
+### Three numbers do not work
+
+The obvious next step is `a + bi + cj` with `i² = j² = -1`. It has to say what `ij` is, and
+closure means `ij = p + qi + rj` for some real `p`, `q`, `r`. Multiply both sides on the left by
+`i`, and use `i² = -1` on the left and `ij` again on the right:
+
+```diffstatic {data-lang=text}
+i(ij) = -j
+i(p + qi + rj) = pi - q + r(ij) = pi - q + r(p + qi + rj)
+```
+
+Matching the `j` parts gives `r² = -1`, which no real number satisfies. No three-number algebra
+of this kind exists (Frobenius's theorem says the same for all of them).
+
+### Four numbers: quaternions and bicomplex numbers
+
+Add a fourth number `k` to hold `ij`. Two consistent choices keep `i² = j² = -1`:
+
+- **quaternions**: `ij = k = -ji`. Multiplication does not commute, and `k² = -1`.
+- **bicomplex numbers**: `ij = ji = k`. Multiplication commutes, and `k² = +1`.
+
+Field's `Quat` is a quaternion, and `*` between two of them is the Hamilton product, so the
+series can be written with `Quat` directly. The bicomplex product is written out by hand. Both
+sum `exp(t·u)` for seven unit directions `u = cos θ·i + sin θ·j` between `i` and `j`, draw
+`(real, i, j)` in an oblique projection and colour the fourth component `k` (blue negative, red
+positive):
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spinny_algebras/quat.png" embed=true name="spinny-quat" alt="Seven paths exp(t·u) for t from 0 to 2π, drawn in an oblique projection of (real, i, j) and coloured by k. Left, the quaternions: seven grey circles all passing through the same two points, 1 and -1, with no k colour. Right, the bicomplex numbers: tangled loops that turn blue and orange as they pick up k and do not close"}
+:::static
+// exp(t·u) summed as a power series, once with Field's Quat and once in the bicomplex numbers.
+// Both are four numbers (real, i, j, k) with i² = j² = -1; they differ in what ij and ji are.
+fun quatExp(u: Quat, t: Double): Quat {
+    var sum = Quat(0f, 0f, 0f, 0f)
+    var term = Quat() // the identity, 1
+    for (n in 1..40) {
+        sum = sum + term
+        term = term * u * (t / n)
+    }
+    return sum
+}
+
+// Bicomplex: ij = ji = k, so k² = +1. Stored as (real, i, j, k).
+fun biTimes(p: Vec4, q: Vec4) = vec(
+    p.x * q.x - p.y * q.y - p.z * q.z + p.w * q.w,
+    p.x * q.y + p.y * q.x - p.z * q.w - p.w * q.z,
+    p.x * q.z + p.z * q.x - p.y * q.w - p.w * q.y,
+    p.x * q.w + p.w * q.x + p.y * q.z + p.z * q.y,
+)
+
+fun biExp(u: Vec4, t: Double): Vec4 {
+    var sum = vec(0, 0, 0, 0)
+    var term = vec(1, 0, 0, 0)
+    for (n in 1..40) {
+        sum = sum + term
+        term = biTimes(term, u * (t / n).toFloat())
+    }
+    return sum
+}
+
+// Draw (real, i, j) in an oblique projection and colour by k: blue for k < 0, red for k > 0.
+val s = 55.0
+fun path(points: List<Vec4>, ox: Double) = points.zipWithNext().filter { (a, _) -> a.length() < 3.5 }.map { (a, b) ->
+    fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
+    val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
+    fline {
+        moveTo(at(a)); lineTo(at(b))
+        color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
+        thickness = 1.8
+    }
+}
+
+val ts = (0..240).map { it * 2 * Math.PI / 240 }
+val angles = (0..6).map { it * Math.PI / 6 } // u = cos θ·i + sin θ·j, a unit "imaginary"
+
+val quaternion = angles.flatMap { th ->
+    val u = Quat(kotlin.math.cos(th).toFloat(), kotlin.math.sin(th).toFloat(), 0f, 0f)
+    path(ts.map { quatExp(u, it).let { q -> vec(q.w, q.x, q.y, q.z) } }, 0.0)
+}
+val bicomplex = angles.flatMap { th ->
+    val u = vec(0.0, kotlin.math.cos(th), kotlin.math.sin(th), 0.0)
+    path(ts.map { biExp(u, it) }, 230.0)
+}
+
+lines(*(quaternion + bicomplex).toTypedArray(), w = 760.0, h = 340.0, fitToSize = true)
+```
+
+Every quaternion path (left) is a circle through 1, with `k = 0` the whole way round: any unit
+imaginary quaternion squares to -1, so every direction between `i` and `j` (and `k`) is a copy of the
+complex plane, and `exp` turns at the same rate in all of them. The bicomplex paths (right) are
+circles only along `i` and `j` themselves. In between, `u²` is `-1` plus some `k`, the path splits
+into two rotations at different speeds, and it wanders off the plane into `k` and does not come back to 1 after one turn.
+The bicomplex numbers also have zero divisors: `(1 + k)(1 - k) = 0`, so a product can vanish without
+either factor vanishing. A quaternion's length is multiplied by every product, which is why a unit
+quaternion can stand for a rotation.
+
+### Sliding between them
+
+Keep `i² = -1` and `ij = -ji = k`, and let `j² = κ` be any number. `κ = -1` is the quaternions;
+`κ = +1` is the split-quaternions. The same seven paths, while `κ` slides from -1 to +1 and back
+(the bar underneath):
+
+```diffstatic_runner {data-lang=kotlin video="assets/spinny_algebras/kappa_sweep.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="300" w="1000" embed=true name="spinny-kappa-sweep" alt="The seven exp(t·u) paths as j² = κ slides from -1 to +1 and back. At κ = -1 they are seven grey circles through 1 and -1; as κ rises the path along j straightens into a vertical line and the others stretch into long loops; past 0 the directions near j open into hyperbolic branches that leave the frame, picking up blue and orange k colour, while those near i still loop; then they close back into circles"}
+:::static
+// Keep i² = -1 and ij = -ji = k, but let j² = κ be any number. κ = -1 is the quaternions.
+// Elements are (real, i, j, k); with these rules k² = κ as well.
+fun times(p: Vec4, q: Vec4, kappa: Double): Vec4 {
+    val K = kappa.toFloat()
+    return vec(
+        p.x * q.x - p.y * q.y + K * (p.z * q.z + p.w * q.w),
+        p.x * q.y + p.y * q.x + K * (p.w * q.z - p.z * q.w),
+        p.x * q.z + p.z * q.x - p.y * q.w + p.w * q.y,
+        p.x * q.w + p.w * q.x + p.y * q.z - p.z * q.y,
+    )
+}
+
+fun exp(u: Vec4, t: Double, kappa: Double): Vec4 {
+    var sum = vec(0, 0, 0, 0)
+    var term = vec(1, 0, 0, 0)
+    for (n in 1..40) {
+        sum = sum + term
+        term = times(term, u * (t / n).toFloat(), kappa)
+    }
+    return sum
+}
+
+val s = 70.0
+fun panel(kappa: Double, ox: Double): List<FLine> {
+    val ts = (0..160).map { it * 2 * Math.PI / 160 }
+    return (0..6).flatMap { step ->
+        val th = step * Math.PI / 6
+        val u = vec(0.0, kotlin.math.cos(th), kotlin.math.sin(th), 0.0)
+        ts.map { exp(u, it, kappa) }.zipWithNext().filter { (a, _) -> a.length() < 3.5 }.map { (a, b) ->
+            fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
+            val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
+            fline {
+                moveTo(at(a)); lineTo(at(b))
+                color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
+                thickness = 1.6
+            }
+        }
+    }
+}
+
+// A fixed border so fitToSize does not rescale as the paths move, and a bar for κ.
+val border = fline { rect(-260.0, -260.0, 520.0, 400.0); color = vec(1, 1, 1, 0.08) }
+fun bar(kappa: Double) = [
+    fline {
+        moveTo(-120.0, 115.0); lineTo(120.0, 115.0)
+        for (x in [-120.0, 0.0, 120.0]) { moveTo(x, 109.0); lineTo(x, 121.0) }
+        color = vec(1, 1, 1, 0.4)
+    },
+    fline {
+        circle(120.0 * kappa, 115.0, 7.0, segments = 20)
+        color = vec(1, 1, 1, 0.9)
+        filled = true
+        stroked = false
+    },
+]
+
+val started = AnimationClock.nowSeconds()
+loop {
+    val t = AnimationClock.nowSeconds() - started
+    val kappa = -kotlin.math.cos(2 * Math.PI * t / 10.0) // -1 → +1 → -1 every ten seconds
+    lines(border, *(panel(kappa, 0.0) + bar(kappa)).toTypedArray(),
+        channel = "main", w = 1000.0, h = 760.0, fitToSize = true)
+}
+```
+
+At `κ = -1` all seven paths are circles. At `κ = 0` the path along `j` is a straight line and the
+others stretch into long loops. At `κ = +1` every direction nearer to `j` than to `i` has a
+positive square, so its path is a hyperbola and leaves the frame: only part of the space still
+spins. The demo document
+[`spinny_algebras/metadata.edn`](assets/spinny_algebras/metadata.edn) has a slider for `ε²` and one
+for `κ`, so you can watch the circle open.
+
+### Why rotations in Field are quaternions
+
+A unit quaternion `q` rotates a point `p` as `q p q⁻¹`, and `exp` above is the bridge between an
+axis-and-angle and that `q`: `quat(angle, axis)` is `exp(angle/2 · axis)`. Because the unit
+quaternions are spinny in every direction, the shortest path between two orientations is a great
+circle, and `Quat.slerp` walks along it at constant speed with no gimbal lock. A rotation matrix
+has no such path: blending two matrices shrinks and skews in between.
+
+`DualQuat` combines the last two ideas: a quaternion whose coefficients are dual numbers. The
+quaternion half rotates; the `ε` half, whose square is 0, carries translation. Interpolating one
+(`DualQuaternionf.sclerp`) is a screw motion, which is how Field moves a camera between keys
+([A camera move is a screw motion](keyframer_examples.md#a-camera-move-is-a-screw-motion-not-a-straight-line)),
+and blending several is dual quaternion skinning, which keeps a twisted limb from collapsing
+([A twisted limb, weighed and traced](chain_skinned_volume.md)).
+
+### Ideas for extensions
+
+- **Draw the 4D paths on the renderer.** The quaternion and κ figures are oblique projections in
+  FLines; a Vulkan version could spin the projection by hand and colour `k` on the GPU.
+- **A whole multiplication table as sliders.** Here only `ε²` and `j²` move. Making `i²`, `j²` and
+  `ij` all free walks through every 4D algebra of this family, including the ones that stop being
+  associative.
+- **Octonions.** Eight numbers, one more doubling past the quaternions: still spinny in every
+  direction, but `(ab)c ≠ a(bc)`, which a figure of `exp` paths cannot show and a figure of
+  products can.
+- **Geometric algebra.** Rotors in 3D are the quaternions under another name, and the same
+  construction gives rotations in any dimension and the motors of projective geometric algebra,
+  a common language for `Quat` and `DualQuat`.
+- **Slerp, drawn.** The great-circle path `Quat.slerp` follows, against a straight blend of two
+  rotation matrices, as a pair of animated figures.
+
 ## The shape of it
 
 For vectors: name components in any order to read them, assign through
@@ -535,5 +955,19 @@ vector are done with the single-precision `Matrix4f`.
 
 For the complete member listing of every type, precision, and storage form, see
 the [generated vector API reference](linear_algebra_api.md).
+
+## Where to go next
+
+- [Visualizers & Controls](visualizers.md#vectors-matrices-and-quaternions) shows how `.h` draws a
+  `Quat` and the other values on this page; the sliders in the demo are the controls described there.
+- [A camera move is a screw motion](keyframer_examples.md#a-camera-move-is-a-screw-motion-not-a-straight-line)
+  interpolates `DualQuat` camera poses, and [A twisted limb, weighed and traced](chain_skinned_volume.md)
+  measures what dual quaternion skinning keeps that linear blending loses.
+- [Values over time: interpolants & keyframes](interpolants_examples.md) eases quaternions towards a target alongside the rest of Field's values.
+- Open [`spinny_algebras/metadata.edn`](assets/spinny_algebras/metadata.edn) to drag `ε²` and `j²`
+  yourself; the source of `Quat`'s operators is `src/jvmMain/kotlin/afield/math/linalg/linalg.kt`.
+- Next builds: draw the `j²` sweep on the Vulkan renderer as a live 3D figure, with the fourth
+  component as colour; a `DualQuat` grid figure like the one at the top of the spinny section,
+  showing a screw motion as repeated multiplication; octonions, where associativity goes too.
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`linalg.kt`](reference/math.md#linalg-kt). Start from [what's already in the box](reference/index.md).*

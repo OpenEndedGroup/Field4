@@ -19,6 +19,9 @@ description: >
   (field_run_transcript) to see all four on screen, then edit a signal or swap the window
   (WindowType.HANN / HAMMING / BLACKMAN) and re-run a box to change it live. Each `execute` op omits
   inline code, so it runs the box's stored `code` property. See public/docs/spectral_examples.md.
+  A third column holds linear prediction (afield.audio.synth/Lpc.kt): a vowel's LPC envelope over its
+  spectrum, LPC continuing and cross-synthesizing a drawn stroke, and the talking synth (LpcVocoder)
+  rendered offline into a player, with a `live` flag to hear it through `audio { }`.
 docs:
   - page: spectral_examples.md
     why: "Explains each spectral example in this document."
@@ -342,6 +345,100 @@ operations:
               channel = "main",
               xTitle = "sample",
           )
+  - create:
+      box: spectral_lpc_envelope
+      name: LPC envelope of a vowel
+      frame: { x: 960.0, y: 80.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          val voice = Impulse(120.p) * 4f / FormantFilter(0.p) // the vowel "a"
+          val frame = renderSignalsOffline(0.2, voice)[0].copyOfRange(4096, 4096 + 2048)
+
+          val bins = 214 // 0 .. 5 kHz at 48 kHz / 2048
+          val spectrum =
+              fft(DoubleArray(frame.size) { frame[it].toDouble() }, WindowType.HANN, 48_000.0).magnitudeDbOneSided().take(bins)
+          fun envelope(order: Int) = Lpc.analyze(frame, order).envelopeDb(1025).take(bins)
+          fun peakAtZero(db: List<Double>) = db.max().let { top -> db.map { it - top } }
+
+          showSignals(
+              "spectrum of the frame" to peakAtZero(spectrum),
+              "LPC order 12" to peakAtZero(envelope(12)),
+              "LPC order 52" to peakAtZero(envelope(52)),
+              x = List(bins) { it * 48_000.0 / 2048 },
+              channel = "main",
+              xTitle = "frequency (Hz)",
+              yTitle = "dB",
+          )
+  - create:
+      box: spectral_lpc_scribble
+      name: LPC on a scribble
+      frame: { x: 960.0, y: 440.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // A looping stroke whose loops swell and shrink, and a wobbling zigzag.
+          val loops =
+              FLine().also { f ->
+                  for (i in 0..420) {
+                      val t = i / 420.0 * 2 * PI * 6
+                      val r = 45.0 * (1 + 0.3 * sin(t * 0.4))
+                      val (x, y) = 14.0 * t - r * sin(t) to r * cos(t)
+                      if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+                  }
+              }
+          val zigzag =
+              FLine().also { f ->
+                  for (i in 0..300) {
+                      val (x, y) = i * 2.0 to 25.0 * sin(i * 0.35) + 10.0 * sin(i * 0.09)
+                      if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+                  }
+              }
+
+          val fit = loops.lpc(order = 8, samples = 300)
+          val other = zigzag.lpc(order = 8, samples = 300)
+
+          lines(
+              fit.resampled().also {
+                  it.color = vec(1.0, 1.0, 1.0, 0.9)
+                  it.thickness = 1.5
+              },
+              fit.continued(150, includeStroke = false).also {
+                  it.color = vec(1.0, 0.6, 0.1, 1.0)
+                  it.thickness = 2.5
+              },
+              fit.drivenBy(other, startX = 0.0, startY = 220.0).also {
+                  it.color = vec(0.3, 0.8, 1.0, 1.0)
+                  it.thickness = 1.5
+              },
+              w = 900.0,
+              h = 420.0,
+              fitToSize = true,
+          )
+          println("residual / step energy: loops ${fit.residualRatio.f3}, zigzag ${other.residualRatio.f3}")
+  - create:
+      box: spectral_lpc_talking_synth
+      name: LPC talking synth
+      frame: { x: 960.0, y: 820.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // The talking synth: a synthesized voice's LPC envelope on a chord of four saws.
+          val pitch = Param(120f).also { it.mod = SineOsc(5.p) * 3f + SineOsc(0.2.p) * 15f }
+          val vowel = Param(0f).also { it.mod = Phasor(0.4.p) * 4f }
+          val voice = (Impulse(pitch) * 4f + WhiteNoise() * 0.02f) / FormantFilter(vowel)
+          val chord = SawOsc(110.p) + SawOsc(138.6.p) + SawOsc(164.8.p) + SawOsc(220.5.p)
+          val talking = chord / LpcVocoder(voice)
+
+          // Five seconds rendered offline into a player in this box's output.
+          val clip = renderSignalsOffline(5.0, talking)[0]
+          display(
+              "talking synth",
+              afield.audio.engine.WavFloatArrayWriter.encodeStereo16(clip, clip, 48_000, normalizePeak = 0.7f),
+          )
+          displayOpen("talking synth")
+
+          // Flip to true to hear it live instead. False by default because `audio { }` opens a real output
+          // device, and this transcript is replayed end to end on machines that have none.
+          val live = false
+          if (live) audio { chord / LpcVocoder(voice) * 0.3f }
   - execute: { box: spectral_one_spectrum, property: code }
   - execute: { box: spectral_spectrogram, property: code }
   - execute: { box: spectral_mel, property: code }
@@ -349,6 +446,9 @@ operations:
   - execute: { box: spectral_streaming, property: code }
   - execute: { box: spectral_filter_chains, property: code }
   - execute: { box: spectral_distribution_events, property: code }
+  - execute: { box: spectral_lpc_envelope, property: code }
+  - execute: { box: spectral_lpc_scribble, property: code }
+  - execute: { box: spectral_lpc_talking_synth, property: code }
   - await:
       wait: pending
   - wait:

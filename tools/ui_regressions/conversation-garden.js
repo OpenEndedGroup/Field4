@@ -14,11 +14,10 @@ try {
     await wait(() => root.querySelector('.ai-chat-messages').textContent.includes('earlier positions'), 'linear history restores');
     const oldHistory = root.querySelector('.ai-chat-messages').textContent;
     const button = label => [...root.querySelectorAll('button'), ...document.querySelectorAll('.garden-dispatch-menu button')].find(b => b.textContent === label);
-    const gardenToggle = button('Garden'); gardenToggle.focus();
-    const toggleAppearance = () => { const r = gardenToggle.getBoundingClientRect(), c = getComputedStyle(gardenToggle); return {x:r.x,y:r.y,width:r.width,height:r.height,font:c.font,border:c.border,padding:c.padding}; };
-    const closedToggle = toggleAppearance();
-    check(getComputedStyle(gardenToggle).outlineStyle === 'none' && getComputedStyle(gardenToggle).boxShadow === 'none', 'closed Garden toggle never shows a focus ring');
-    gardenToggle.click();
+    const openGarden = () => { root.querySelector('.ai-chat-actions-toggle').click(); button('Open Garden').click(); };
+    check(root.querySelector('.garden-bar').offsetHeight === 0, 'closed Garden reserves no toolbar row');
+    openGarden();
+    const gardenToggle = button('Back to chat');
     const panel = root.querySelector('.conversation-garden');
     await wait(() => panel.textContent.includes('short trail'), 'structured conversation loads');
     const readingFonts = await document.fonts.load('300 11px "Iosevka Web"');
@@ -28,8 +27,6 @@ try {
     check(readingStyle.fontFamily.includes('Iosevka'), 'Garden prose uses Field Iosevka');
     check(getComputedStyle(root).borderTopWidth === '0px', 'Garden adds no extra frame inside the output panel');
     check(root.querySelector('.ai-chat-messages').offsetHeight === 0, 'linear view hidden');
-    const openToggle = toggleAppearance();
-    check(Object.keys(closedToggle).every(k => typeof closedToggle[k] === 'number' ? Math.abs(closedToggle[k]-openToggle[k]) < .5 : closedToggle[k] === openToggle[k]), 'Garden toggle keeps its placement and style when opened');
     gardenToggle.focus(); check(getComputedStyle(gardenToggle).outlineStyle === 'none', 'open Garden toggle has no focus ring');
     const tokenProbe = document.createElement('span'); root.append(tokenProbe);
     tokenProbe.style.color = 'var(--ai-chat-ai-fg)';
@@ -206,13 +203,10 @@ try {
     edit.open = true;
     const then = [...edit.querySelectorAll('button')].find(b => b.textContent === 'Then'); then.click();
     check(edit.querySelector('pre').textContent === 'val trail = 0.92', 'historical code stays available');
-    button('Garden').click();
+    gardenToggle.click();
     check(root.querySelector('.ai-chat-messages').textContent === oldHistory, 'ordinary transcript untouched');
-    gardenToggle.focus();
-    check(getComputedStyle(gardenToggle).outlineStyle === 'none' && getComputedStyle(gardenToggle).boxShadow === 'none', 'closing Garden does not restore a focus ring');
-    const closedAgain = toggleAppearance();
-    check(Math.abs(openToggle.x-closedAgain.x) < .5 && Math.abs(openToggle.y-closedAgain.y) < .5, 'Garden toggle stays anchored when closed');
-    button('Garden').click();
+    check(root.querySelector('.garden-bar').offsetHeight === 0, 'closing Garden releases toolbar space');
+    openGarden();
     await wait(() => panel.querySelectorAll('.garden-node').length === 4, 'queued replies survive closing and reopening');
     // Command-drag grafts a real branch in this isolated document, without rerunning a model.
     await delay(280);
@@ -292,6 +286,10 @@ try {
     const well = body.getBoundingClientRect(), rule = root.querySelector('.garden-bar').getBoundingClientRect();
     check(Math.abs(well.left-rule.left) < 1 && Math.abs(well.right-rule.right) < 1, 'reading area spans the full header rule width');
     check(window.FieldTheme, 'merged checkout exposes the real theme runtime');
+    // Local user CSS may intentionally pin dark palette tokens in both themes.
+    // Exercise the built-in palettes without that machine-specific override.
+    const userTheme = document.documentElement.classList.contains('field-user-theme');
+    document.documentElement.classList.remove('field-user-theme');
     window.FieldTheme.set('dark', {persist:false, animate:false}); await delay(80);
     const darkWell = getComputedStyle(body).backgroundColor;
     const darkAgent = getComputedStyle(panel.querySelector('.garden-agent')).color;
@@ -300,10 +298,11 @@ try {
     check(document.documentElement.dataset.fieldTheme === 'light', 'real light theme is active');
     check(getComputedStyle(body).backgroundColor !== darkWell, 'reading surface follows the light palette');
     check(getComputedStyle(panel.querySelector('.garden-agent')).color !== darkAgent, 'agent cyan follows the light palette');
-    check(getComputedStyle(panel.querySelector('.garden-human')).color !== darkHuman, 'human amber follows the light palette');
+    check(getComputedStyle(panel.querySelector('.garden-human')).color !== darkHuman, `human amber follows the light palette: dark=${darkHuman}, light=${getComputedStyle(panel.querySelector('.garden-human')).color}, token=${getComputedStyle(root).getPropertyValue('--ai-chat-you-fg')}, white=${getComputedStyle(root).getPropertyValue('--field-white-rgb')}`);
     check(getComputedStyle(panel.querySelector('.garden-prose')).fontFamily.includes('Iosevka'), 'theme switching preserves Iosevka reading type');
     gardenToggle.focus();
     check(getComputedStyle(gardenToggle).outlineStyle === 'none' && getComputedStyle(gardenToggle).boxShadow === 'none', 'light-theme Garden toggle has no focus ring');
+    if (userTheme) document.documentElement.classList.add('field-user-theme');
     input.focus({preventScroll:true});
     return {ok:true, anchoredReplies:true, selection:true, queue:true, path:true, tags:true, code:true, legacy:true, inline:true, marking:true, folds:true, sizing:true, lightTheme:true};
 } catch (error) { return {ok:false, reason:String(error)}; }

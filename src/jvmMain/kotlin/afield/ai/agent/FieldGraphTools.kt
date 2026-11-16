@@ -83,7 +83,7 @@ data class SetBoxPropertyRequest(
     val value: String,
 )
 
-@JsonClassDescription("Edit part of a box's text property in place, without resending the whole text. Either find/replace (`find` must match exactly; matches are counted without overlap; `occurrence` N = the Nth match, 0 = every match; the call fails if `find` is absent or, with occurrence 1, ambiguous unless allowMultiple) or a line range (`startLine`..`endLine`, 1-based, inclusive, replaced by `replacement`; endLine 0 means endLine = startLine; `insert` = true inserts `replacement` before startLine instead of replacing). Returns success and the length before and after. Recorded like SetBoxPropertyRequest. Does not run it.")
+@JsonClassDescription("Edit part of a box's text property in place, without resending the whole text. This is the cheap way to change code: prefer it to GetBoxProperty + string replace + SetBoxProperty (by hand or in a RunToolProgram), which re-reads and resends everything. Three forms: (1) `edits` = [{find, replace}, ...] applies several exact find/replace edits in order, all or nothing: each `find` must occur exactly once in the text as left by the earlier edits, and if any is missing or ambiguous nothing is written and the reply names each failing anchor; (2) a single `find`/`replace` (`occurrence` N = the Nth non-overlapping match, 0 = every match; fails if absent or, with occurrence 1, ambiguous unless allowMultiple); (3) a line range (`startLine`..`endLine`, 1-based, inclusive, replaced by `replacement`; endLine 0 means endLine = startLine; `insert` = true inserts before startLine). Returns success, the length before and after, and a short diff of what changed. `runAfter` = true then runs the box (like RunBoxRequest) in the same call and returns its verdict and output. Recorded like SetBoxPropertyRequest.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.MUTATE_DOCUMENT])
 data class PatchBoxTextRequest(
     val box: String,
@@ -96,7 +96,15 @@ data class PatchBoxTextRequest(
     val endLine: Int = 0,
     val replacement: String = "",
     val insert: Boolean = false,
+    @JsonPropertyDescription("Several exact find/replace edits applied in order, all or nothing; each `find` must occur exactly once.")
+    val edits: List<PatchEdit> = emptyList(),
+    @JsonPropertyDescription("Run the box after a successful patch and return its verdict and output.")
+    val runAfter: Boolean = false,
+    val timeoutSeconds: Double = 30.0,
 )
+
+/** One anchor of [PatchBoxTextRequest.edits]. */
+data class PatchEdit(val find: String = "", val replace: String = "")
 
 @JsonClassDescription("Read a text property of a box, most often `code` (e.g. box = `Primes`, property = `code`). Returns its text as `value`; a property the box does not have, or one that is not text, fails with success=false. Use it when you need a box's current text; a failed RunBox already reports its errors and lines. An unknown or ambiguous box fails with the list of known boxes.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.READ_DOCUMENT])
@@ -489,13 +497,31 @@ class FieldGraphTools(
             uid = box.id, name = box.name, property = req.property).noted(box, req.property, value, previous)
     }
 
-    fun patchText(req: PatchBoxTextRequest): FieldGraphResult = host.onOwner(info) {
+    fun patchText(req: PatchBoxTextRequest): FieldGraphResult {
+        val patched = patchTextOnly(req)
+        if (!req.runAfter || !patched.success) return patched
+        val ran = run(RunBoxRequest(patched.uid, timeoutSeconds = req.timeoutSeconds))
+        return ran.copy(message = patched.message.removeSuffix(" Not run.") + " Then ran: " + ran.message,
+            property = patched.property, notes = patched.notes + ran.notes)
+    }
+
+    private fun patchTextOnly(req: PatchBoxTextRequest): FieldGraphResult = host.onOwner(info) {
         val box = resolve(req.box)
         refuseReplyOwned(box, req.property)?.let { return@onOwner it }
         check(!info.readOnly) { "This document is read-only." }
         val before = box.getPropertyRaw(req.property) as? String
             ?: return@onOwner FieldGraphResult(false, "'${box.name}' has no text property '${req.property}'.", uid = box.id, name = box.name, property = req.property)
+        var diff = ""
         val after = when {
+            req.edits.isNotEmpty() -> {
+                val applied = applyPatchEdits(before, req.edits)
+                if (applied.failures.isNotEmpty()) return@onOwner FieldGraphResult(false,
+                    "No edits written: " + applied.failures.joinToString("; ") +
+                        ". Each `find` must match exactly once in the text as left by the edits before it.",
+                    uid = box.id, name = box.name, property = req.property)
+                diff = applied.diff
+                applied.text
+            }
             req.find.isNotEmpty() -> {
                 // One counting rule for both "how many" and "which one": non-overlapping, left to right.
                 val starts = generateSequence(before.indexOf(req.find).takeIf { it >= 0 }) { prev ->
@@ -544,7 +570,8 @@ class FieldGraphTools(
         applyAgentPropertyRecorded(box, req.property, JsonPrimitive(after), origin)
         needsResync.add(box to req.property)
         doResync()
-        FieldGraphResult(true, "Patched ${req.property} on '${box.name}' (${before.length} -> ${after.length} chars). Not run.",
+        if (diff.isEmpty()) diff = lineDiff(before, after)
+        FieldGraphResult(true, "Patched ${req.property} on '${box.name}' (${before.length} -> ${after.length} chars).\n$diff\nNot run.",
             uid = box.id, name = box.name, property = req.property, value = after.takeIf { it.length <= 4000 }).noted(box, req.property, after, before)
     }
 
@@ -680,6 +707,10 @@ class FieldGraphTools(
                 message = "No verdict for the $verb of '${box.name}' within ${timeoutSeconds}s. " +
                     "It may still be compiling or be stuck; check ReadBoxOutput, or StopBox it."
             )
+            !report.success && afield.ai.conversation.FieldStaleClasses.errorTextIsStale(report.error) -> common.copy(
+                stage = afield.ai.conversation.FieldStaleClasses.STAGE, error = BoxOutputLog.decodeHtmlEntities(report.error).take(4000),
+                message = afield.ai.conversation.FieldStaleClasses.restartMessage("the $verb of '${box.name}' failed loading ${report.error.trim().take(200)}")
+            )
             !report.success -> common.copy(
                 stage = report.stage, error = BoxOutputLog.decodeHtmlEntities(report.error).take(4000),
                 message = "The $verb of '${box.name}' FAILED. Read `error` and `errors`, fix the code, and try again."
@@ -787,3 +818,50 @@ val fieldGraphToolNames: List<String> = listOf(
     GetBoxPropertyRequest::class, PatchBoxTextRequest::class, ConnectBoxesRequest::class, DisconnectBoxesRequest::class, RunBoxRequest::class,
     LaunchBoxRequest::class, StopBoxRequest::class, ReadBoxOutputRequest::class, ViewBoxOutputRequest::class, SymbolAtRequest::class
 ).map { it.java.simpleName }
+
+
+internal class PatchEditsResult(val text: String, val failures: List<String>, val diff: String)
+
+/**
+ * Applies [edits] to [text] in order, each `find` required to match exactly once in the text the earlier
+ * edits left. Every failing anchor is reported (not just the first), so one retry can fix them all.
+ */
+internal fun applyPatchEdits(text: String, edits: List<PatchEdit>): PatchEditsResult {
+    var current = text
+    val failures = mutableListOf<String>()
+    val hunks = mutableListOf<String>()
+    edits.forEachIndexed { i, e ->
+        val label = "edit ${i + 1} (`${e.find.lineSequence().first().take(60)}`)"
+        if (e.find.isEmpty()) { failures += "$label has an empty find"; return@forEachIndexed }
+        val first = current.indexOf(e.find)
+        when {
+            first < 0 -> failures += "$label not found"
+            current.indexOf(e.find, first + e.find.length) >= 0 -> {
+                var n = 0; var at = first
+                while (at >= 0) { n++; at = current.indexOf(e.find, at + e.find.length) }
+                failures += "$label matches $n times"
+            }
+            else -> {
+                val line = current.substring(0, first).count { it == '\n' } + 1
+                hunks += "@@ line $line\n" + e.find.lines().joinToString("\n") { "- $it" } +
+                    (if (e.replace.isEmpty()) "" else "\n" + e.replace.lines().joinToString("\n") { "+ $it" })
+                current = current.substring(0, first) + e.replace + current.substring(first + e.find.length)
+            }
+        }
+    }
+    return PatchEditsResult(current, failures, truncateDiff(hunks.joinToString("\n")))
+}
+
+/** The changed middle of [before] vs [after]: common leading and trailing lines trimmed. */
+internal fun lineDiff(before: String, after: String): String {
+    val a = before.split("\n"); val b = after.split("\n")
+    var head = 0
+    while (head < a.size && head < b.size && a[head] == b[head]) head++
+    var tail = 0
+    while (tail < a.size - head && tail < b.size - head && a[a.size - 1 - tail] == b[b.size - 1 - tail]) tail++
+    val removed = a.subList(head, a.size - tail).map { "- $it" }
+    val added = b.subList(head, b.size - tail).map { "+ $it" }
+    return truncateDiff((listOf("@@ line ${head + 1}") + removed + added).joinToString("\n"))
+}
+
+private fun truncateDiff(d: String, max: Int = 1500) = if (d.length <= max) d else d.take(max) + "\n... (diff truncated)"

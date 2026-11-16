@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T23:18:36.789Z",
+  "capturedAt": "2026-11-16T14:25:21.563Z",
   "documentName": "gp_drawing",
   "outputs": [
     {
@@ -19,7 +19,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 248,
+      "width": 252,
       "height": 248,
       "path": "outputs/1.html"
     },
