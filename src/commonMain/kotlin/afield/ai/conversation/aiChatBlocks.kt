@@ -36,8 +36,9 @@ data class AiChatBlock(
     val modelFromRun: Boolean = false,
 ) {
     val isProgress: Boolean get() = role.startsWith("progress")
-    val title: String get() = content.lines().firstOrNull()?.trim().orEmpty()
-    val body: String get() = content.lines().drop(1).joinToString("\n").trim()
+    // Kept once: the panel's grouping reads these for every block on every streamed render.
+    val title: String by lazy(LazyThreadSafetyMode.PUBLICATION) { content.lines().firstOrNull()?.trim().orEmpty() }
+    val body: String by lazy(LazyThreadSafetyMode.PUBLICATION) { content.lines().drop(1).joinToString("\n").trim() }
 
     /** A progress block with nothing under its title: the panel shows these as one inline status row. */
     val isStatusOnly: Boolean get() = isProgress && (body.isBlank() || body == title)
@@ -129,16 +130,23 @@ fun parseAiChatBlocks(history: String?): List<AiChatBlock> {
     } else null
     val tokens = mutableListOf<String>()
     var idx = 0
+    // Each marker's next position, searched again only once the scan has passed it. Searching every marker
+    // from every token made this quadratic: a marker absent from the rest of the text was scanned to the end
+    // once per token, which in a long chat cost the panel ~70 ms per streamed chunk.
+    val markers = chatMarkers.toList()
+    val nextAt = IntArray(markers.size) { -2 }
     while (idx < text.length) {
-        val hit = chatMarkers.mapNotNull { marker ->
-            val at = text.indexOf(marker, idx)
-            if (at == -1) null else at to marker
-        }.minByOrNull { it.first }
-        if (hit == null) {
+        var best = -1
+        for (m in markers.indices) {
+            if (nextAt[m] != -1 && nextAt[m] < idx) nextAt[m] = text.indexOf(markers[m], idx)
+            if (nextAt[m] != -1 && (best == -1 || nextAt[m] < nextAt[best])) best = m
+        }
+        if (best == -1) {
             tokens.add(text.substring(idx))
             break
         }
-        val (next, marker) = hit
+        val next = nextAt[best]
+        val marker = markers[best]
         if (next > idx) tokens.add(text.substring(idx, next))
         tokens.add(marker)
         idx = next + marker.length

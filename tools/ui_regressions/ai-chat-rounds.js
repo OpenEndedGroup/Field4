@@ -58,7 +58,7 @@ for (const noun of ['1 note', '1 edit', '1 look']) check(line.includes(noun), `"
 check(first.querySelectorAll('.ai-chat-round-body > .ai-chat-progress').length === 4, 'the four tool blocks render inside as before');
 check(first.querySelector('.ai-chat-round-body .ai-chat-status')?.textContent === 'Waiting for model', 'the status line renders inside as before');
 check(!messages.querySelector('.ai-chat-round + .ai-chat-turn.ai + .ai-chat-round'), 'the lone Completed status is not a round');
-check([...messages.querySelectorAll(':scope .ai-chat-thread > .ai-chat-status-row')].some(row => row.textContent === 'Completed'), 'status lines alone stay a status row');
+check([...messages.querySelectorAll(':scope .ai-chat-thread > .ai-chat-unit > .ai-chat-status-row')].some(row => row.textContent === 'Completed'), 'status lines alone stay a status row');
 
 // The reader opens the round; the next streamed render keeps it open.
 first.querySelector('summary').click();
