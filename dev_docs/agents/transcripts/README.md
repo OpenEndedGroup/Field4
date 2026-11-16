@@ -322,6 +322,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `history_box_story.yaml`: **one box's code across every saved version** — four saved values of
   `sketch` for the history view's This Box list (row click selects a version, Restore puts back that
   property of that box only). Replay into a saving document, not `--scratch`; the waits are the autosave.
+- `cuda_particles.yaml`: **a CUDA kernel moving particles that a Field mesh draws** from the same
+  Vulkan buffer (`CudaVulkan.sharedBuffer`, `compile`, `run`, `everyFrame`), as in
+  `public/docs/cuda.md`. Linux with an NVIDIA GPU, and NVRTC; COMPILE_ONLY in CI, while
+  `cuda.interop.smoke` checks the CUDA side on a machine that has it.
 - `controls_surface.yaml`: **a performer's control surface** from the `controlGroup` DSL (log-law
   slider, XY pad with keyboard nudges and reset, toggle, text, colour) feeding a live figure, and a
   slider whose callback rebuilds its own group mid-drag without dropping the drag.

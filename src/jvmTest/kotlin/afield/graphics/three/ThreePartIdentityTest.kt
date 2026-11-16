@@ -33,7 +33,7 @@ class ThreePartIdentityTest {
             assertEquals(listOf("Ground", "Doors"), d.layer)
             assertTrue(d.hidden)
             assertEquals("swing", d.metadata!!["kind"]!!.jsonPrimitive.content)
-            assertEquals(3, d.metadata!!["pivot"]!!.jsonArray.size)
+            assertEquals(3, d.metadata["pivot"]!!.jsonArray.size)
         }
         assertEquals(3.5, payload.metadata!!["datum"]!!.jsonPrimitive.content.toDouble())
         val wire = json.parseToJsonElement(json.encodeToString(ThreeGeometryPayload.serializer(), payload)).jsonObject

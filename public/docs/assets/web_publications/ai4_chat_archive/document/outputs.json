@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T20:38:40.145Z",
+  "capturedAt": "2026-11-14T22:30:56.164Z",
   "documentName": "ai4_chat_archive",
   "outputs": [
     {
@@ -21,7 +21,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 1570,
+      "width": 1434,
       "height": 921,
       "path": "outputs/1.html"
     },
@@ -31,7 +31,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 900,
+      "width": 823,
       "height": 193,
       "path": "outputs/2.html"
     },

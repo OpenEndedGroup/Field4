@@ -38,6 +38,9 @@ if pathlib.Path("WAIT_FOR_CAFFEINATE").exists():
     while not awake.exists() and time.monotonic() < deadline:
         time.sleep(0.05)
     assert awake.exists(), "the awake helper never started"
+if pathlib.Path("MACHINE").exists():
+    print("merge_regen: every publication failure is machine state; exiting for a retry", file=sys.stderr)
+    sys.exit(75)
 if pathlib.Path("COUNT").exists() and pathlib.Path("COUNT").read_text().strip() == "wrong":
     print("merge_regen: CountTest > count matches FAILED", file=sys.stderr)
     sys.exit(1)
@@ -592,6 +595,19 @@ class LandQueueTest(unittest.TestCase):
         mine = self.land(Path(self._tmp.name) / "wedge", "mine").stdout
         self.assertIn("watchdog", mine)
         self.assertEqual(self.guard_calls(), 2, "one retry, then the bounce")
+
+    def test_machine_state_retries_the_batch_without_bisecting_then_bounces(self) -> None:
+        # 2026-11-14: a refresh that timed out in documents no branch touched bisected a batch of 4
+        # and bounced each branch on its own; merge_regen now exits 75 for that, and the batch goes
+        # again whole, twice at most.
+        root = self.use_fixer("decline", "slow")
+        self.land(self.branch_with("slow", "MACHINE"), "enqueue")
+        self.land(self.branch_with("bystander", "bystander.txt"), "enqueue")
+        self.run_lander()
+        self.assertEqual(self.guard_calls(), 2, "two whole-batch rounds and no bisecting")
+        self.assertEqual(self.states(), {"slow": "bounced", "bystander": "bounced"})
+        self.assertIn("machine state", self.land(Path(self._tmp.name) / "slow", "mine").stdout)
+        self.assertFalse((root / "FIXER_CALLS").exists(), "machine state is not the fixer's")
 
     def test_a_build_holds_the_machine_awake_until_it_exits(self) -> None:
         # A stand-in for caffeinate that records how it was asked, and whether the build was still

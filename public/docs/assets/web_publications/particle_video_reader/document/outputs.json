@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T20:38:46.313Z",
+  "capturedAt": "2026-11-14T22:31:09.790Z",
   "documentName": "particle_video_reader",
   "outputs": [
     {
@@ -21,7 +21,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 420,
+      "width": 416,
       "height": 343,
       "path": "outputs/1.html"
     }

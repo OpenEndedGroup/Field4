@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T21:09:43.732Z",
+  "capturedAt": "2026-11-14T23:26:59.618Z",
   "documentName": "fline_hit_records",
   "outputs": [
     {
@@ -9,7 +9,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 226,
+      "width": 200,
       "height": 73,
       "path": "outputs/0.html"
     },

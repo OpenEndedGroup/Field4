@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T20:50:20.582Z",
+  "capturedAt": "2026-11-14T22:53:45.653Z",
   "documentName": "kmeans_emeans",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 1134,
-      "height": 424,
+      "height": 425,
       "path": "outputs/0.html"
     },
     {
@@ -24,7 +24,7 @@
         "svg"
       ],
       "width": 918,
-      "height": 504,
+      "height": 505,
       "path": "outputs/1.html"
     },
     {
@@ -48,7 +48,7 @@
         "svg"
       ],
       "width": 918,
-      "height": 504,
+      "height": 505,
       "path": "outputs/3.html"
     },
     {
@@ -60,7 +60,7 @@
         "svg"
       ],
       "width": 878,
-      "height": 484,
+      "height": 485,
       "path": "outputs/4.html"
     }
   ]

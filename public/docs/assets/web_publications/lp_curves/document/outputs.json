@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T20:59:46.829Z",
+  "capturedAt": "2026-11-14T23:09:10.253Z",
   "documentName": "lp_curves",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 545,
-      "height": 584,
+      "height": 585,
       "path": "outputs/0.html"
     },
     {
@@ -24,7 +24,7 @@
         "svg"
       ],
       "width": 1190,
-      "height": 629,
+      "height": 631,
       "path": "outputs/1.html"
     },
     {

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T20:47:38.501Z",
+  "capturedAt": "2026-11-14T22:50:37.078Z",
   "documentName": "audio_ai_speech_embeddings",
   "outputs": [
     {
@@ -26,13 +26,13 @@
     {
       "uid": "speech_embedding_visualizer_gallery",
       "channel": "speech spaces",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [
         "canvas-image"
       ],
       "width": 1052,
-      "height": 854,
+      "height": 865,
       "path": "outputs/2.html"
     }
   ]

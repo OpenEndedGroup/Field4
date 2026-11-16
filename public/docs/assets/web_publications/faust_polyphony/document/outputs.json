@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T20:45:05.869Z",
+  "capturedAt": "2026-11-14T22:46:23.208Z",
   "documentName": "faust_polyphony",
   "outputs": [
     {
@@ -23,7 +23,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 912,
+      "width": 877,
       "height": 458,
       "path": "outputs/1.html"
     },

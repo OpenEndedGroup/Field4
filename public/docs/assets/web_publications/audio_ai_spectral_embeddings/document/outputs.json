@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T20:47:41.829Z",
+  "capturedAt": "2026-11-14T22:50:40.289Z",
   "documentName": "audio_ai_spectral_embeddings",
   "outputs": [
     {
@@ -32,7 +32,7 @@
         "canvas-image"
       ],
       "width": 1052,
-      "height": 1322,
+      "height": 1316,
       "path": "outputs/2.html"
     }
   ]

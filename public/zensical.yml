@@ -310,6 +310,7 @@ nav:
       - "Audio Curves: Sound as a Few Controls": audio_curves.md
       - Sonic Pi: sonic_pi.md
       - Faust: faust.md
+      - FM-1 simulator: fm1.md
       - Pure Data: pure_data.md
       - Csound: csound.md
       - ORCA: orca.md
@@ -427,6 +428,10 @@ nav:
       # dispatch, this teaches what changes when the shader's input is its own last output, and
       # field_probes instruments exactly that kind of scene.
       - GPU State: gpu_state.md
+      # Linux/NVIDIA only, which the page says in its first paragraph: CUDA kernels on the
+      # renderer's own buffers, the particle scene being lesson 3b with CUDA in place of the
+      # compute shader.
+      - CUDA Beside the Renderer: cuda.md
       # The worked example of the two pages above it, and here rather than under "Working in a
       # Document" where it first landed: nothing on it is about working in a document. It is an
       # eight-box render-to-texture graph — four light bands, two reductions, two aperture filters

@@ -66,6 +66,35 @@ def _driver_registered(repo: Path, name: str = "field-generated") -> bool:
     return _git(repo, "config", "--get", f"merge.{name}.driver", check=False).strip() != ""
 
 
+# What `docs_publications.py sync` exits with when every failure came from the machine (a timeout,
+# the watchdog, a port another checkout took, a full disk); kept in step with its MACHINE_STATE_EXIT.
+MACHINE_STATE_EXIT = 75
+
+
+def publication_failure_code(repo: Path, code: int, changed: set[str]) -> int:
+    """MACHINE_STATE_EXIT when the refresh failed only on the machine's account and in documents
+    [changed] (the batch's own diff) does not touch, so the lander retries the batch instead of
+    bouncing a branch for a slow page it never edited; otherwise 1. On 2026-11-14 claude/fm1-sim
+    bounced on flow_lenia and morpho_circuit_search timing out and claude/three-webgpu-spike on a
+    sibling worktree taking port 9479."""
+    if code != MACHINE_STATE_EXIT:
+        return 1
+    import json  # noqa: PLC0415
+    try:
+        report = json.loads((repo / "build/docs-publications-refresh.json").read_text())
+    except (OSError, ValueError):
+        return 1
+    touched = sorted(r["name"] for r in report if not r.get("ok") and "name" in r
+                     and any(s.partition("#capture-box=")[0] in changed for s in r.get("sources", ())))
+    if touched:
+        print(f"merge_regen: the publication refresh failed in document(s) this batch changes: "
+              f"{', '.join(touched)}", file=sys.stderr)
+        return 1
+    print("merge_regen: every publication failure is machine state (timeout, watchdog, port, disk) "
+          "in documents this batch does not change; exiting for a retry", file=sys.stderr)
+    return MACHINE_STATE_EXIT
+
+
 def regenerate(repo: Path, changed: set[str]) -> tuple[int, set[str]]:
     """Rerun every generator whose inputs are in [changed], in ONE Gradle invocation, and stage what
     they wrote. Returns (exit code, the guard tasks whose drift check that has made redundant)."""
@@ -99,7 +128,7 @@ def regenerate(repo: Path, changed: set[str]) -> tuple[int, set[str]]:
         code = subprocess.run([sys.executable, str(repo / 'tools/docs_publications.py'), 'sync'], cwd=repo).returncode
         if code != 0:
             print('merge_regen: publication refresh failed; merge remains uncommitted', file=sys.stderr)
-            return code, set()
+            return publication_failure_code(repo, code, changed), set()
         _git(repo, 'add', '-A', '--', 'public/docs/assets/web_publications')
 
     # GUARD_CORPORA.md counts corpora across the whole tree, so any merge can move it. Cheap: no Gradle.

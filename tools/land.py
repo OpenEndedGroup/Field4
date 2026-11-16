@@ -88,6 +88,12 @@ POLL_SECONDS = 15
 # detached worktree is exactly what tools/reap_merged_worktrees.py removes; it protects this name.
 LANDER_BRANCH = "land/lander"
 MAX_MAIN_RACES = 3
+# merge_regen's exit when the only failures were machine state (a capture timing out, the watchdog,
+# a port another checkout took, a full disk) in documents no branch in the batch changes. The batch
+# goes again as it is, without bisecting or the fixer; the MAX_MACHINE_RETRIES-th time it bounces,
+# so a page that is slow on this machine cannot hold the queue forever.
+MACHINE_STATE_EXIT = 75
+MAX_MACHINE_RETRIES = 2
 
 
 def _git(cwd: Path, *args: str, check: bool = True) -> str:
@@ -1837,6 +1843,19 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
                     _move(queue, item, BOUNCED)
                 else:
                     _requeue(queue, item, f"{batch_id}: watchdog stopped a build silent for {WATCHDOG_MINUTES:.0f} min; retrying")
+            return "blocked"
+        if code == MACHINE_STATE_EXIT:
+            failures = _collect_failures(wt, round_started, log)
+            _reset(wt, main_sha)
+            for item in members:
+                item["machine_retries"] = item.get("machine_retries", 0) + 1
+                if item["machine_retries"] >= MAX_MACHINE_RETRIES:
+                    item.update(reason=f"machine state {MAX_MACHINE_RETRIES} times running, in documents no branch "
+                                       f"in the batch changes: {failures or _first_error(log)}", finished=_now())
+                    _move(queue, item, BOUNCED)
+                else:
+                    _requeue(queue, item, f"{batch_id}: machine state in untouched documents "
+                                          f"({failures or 'see the log'}); retrying")
             return "blocked"
         if code != 0:
             failures = _collect_failures(wt, round_started, log)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import subprocess
 import hashlib
@@ -272,6 +273,56 @@ class PublicationRefreshTest(unittest.TestCase):
             self.assertEqual(publications.sync_publications()['refreshed'], 1)
         self.assertEqual(len(calls), 2)
 
+    def test_a_bare_backdoor_timeout_gets_one_fresh_session_retry(self):
+        calls = []
+        async def capture(recipes, **kwargs):
+            calls.append(recipes)
+            if len(calls) == 1:
+                return [{'name': 'example', 'ok': False, 'error': 'TimeoutError'}]
+            self.record()
+            return [{'name': 'example', 'ok': True, 'channels': 0}]
+        with patch.object(publications, 'capture', new=AsyncMock(side_effect=capture)):
+            self.assertEqual(publications.sync_publications()['refreshed'], 1)
+        self.assertEqual(len(calls), 2)
+
+    def fake_backdoor(self, collisions: int):
+        import field_backdoor as fb
+        started = []
+        class Backdoor:
+            def __init__(self, *, port, **_kwargs):
+                self.port, self.managed_process = port, object()
+                started.append(self)
+            async def ensure_server(self):
+                if len(started) <= collisions:
+                    raise fb.BackdoorError(f"Port {self.port} {publications.PORT_COLLISION}: the server belongs to elsewhere")
+            async def connect(self): pass
+            async def close(self): pass
+        class Log:
+            def __init__(self, *_args): pass
+            def close(self): pass
+        ports = iter(range(9620, 9640))
+        fakes = contextlib.ExitStack()
+        fakes.enter_context(patch.multiple(fb, FieldBackdoor=Backdoor, SessionLogger=Log))
+        fakes.enter_context(patch.object(publications, 'publication_port', lambda: next(ports)))
+        return started, fakes
+
+    def test_a_port_taken_by_another_checkout_starts_on_the_next_free_port(self):
+        import asyncio
+        started, fakes = self.fake_backdoor(collisions=1)
+        with fakes, patch.object(publications, 'publication_node', return_value=None):
+            self.assertEqual(asyncio.run(publications.capture([], port=None, force=True)), [])
+        self.assertEqual([b.port for b in started], [9620, 9621])
+
+    def test_an_explicit_port_or_a_port_that_stays_taken_still_fails(self):
+        import asyncio
+        import field_backdoor as fb
+        for port, collisions, attempts in ((9600, 1, 1), (None, 99, publications.PORT_COLLISION_ATTEMPTS)):
+            started, fakes = self.fake_backdoor(collisions=collisions)
+            with fakes, patch.object(publications, 'publication_node', return_value=None):
+                with self.assertRaisesRegex(fb.BackdoorError, 'did not start'):
+                    asyncio.run(publications.capture([], port=port, force=True))
+            self.assertEqual(len(started), attempts)
+
     def test_a_real_failure_is_not_retried(self):
         with patch.object(publications, 'capture', new=AsyncMock(return_value=[
                 {'name': 'example', 'ok': False, 'error': 'Box interrupted: compile error'}])) as runner:
@@ -338,6 +389,94 @@ class LongComputeNamesRealRecipes(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertIn(name, recipes, f'{name} is no longer a publication recipe; drop it from LONG_COMPUTE')
                 self.assertTrue(recipes[name]['longCompute'])
+
+
+class SyncExitClassifiesMachineState(unittest.TestCase):
+    """2026-11-14: unrelated branches bounced on refresh timeouts, a port a sibling worktree took,
+    and a full disk; `sync` exits MACHINE_STATE_EXIT for those so the lander retries."""
+
+    def setUp(self):
+        self.root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.enterContext(patch.multiple(publications, ROOT=self.root))
+        self.enterContext(patch('traceback.print_exc'))
+
+    def failing(self, error, report=None):
+        if report is not None:
+            (self.root / 'build').mkdir()
+            (self.root / publications.REFRESH_REPORT).write_text(json.dumps(report))
+        def run():
+            raise error
+        return publications.sync_exit(run)
+
+    def test_capture_timeouts_and_watchdog_stops_are_machine_state(self):
+        report = [{'name': 'flow_lenia', 'ok': False, 'error': 'TimeoutError'},
+                  {'name': 'uncrossed_leapers', 'ok': False, 'error': 'Box interrupted: Runloop stalled 30073 ms (watchdog)'}]
+        self.assertEqual(self.failing(ValueError('Publication capture failed: ...'), report),
+                         publications.MACHINE_STATE_EXIT)
+
+    def test_one_real_failure_among_timeouts_is_not(self):
+        report = [{'name': 'flow_lenia', 'ok': False, 'error': 'TimeoutError'},
+                  {'name': 'fit', 'ok': False, 'error': "Uncaptured channels: ['fit: No rendered output']"}]
+        self.assertEqual(self.failing(ValueError('Publication capture failed: ...'), report), 1)
+
+    def test_a_port_taken_mid_build_is_machine_state_and_reported(self):
+        error = RuntimeError('Port 9479 is answered by a Field this session did not start')
+        self.assertEqual(self.failing(error), publications.MACHINE_STATE_EXIT)
+        written = json.loads((self.root / publications.REFRESH_REPORT).read_text())
+        self.assertIn('9479', written[0]['machine'])
+
+    def test_a_full_disk_is_machine_state(self):
+        self.assertEqual(self.failing(OSError(28, 'No space left on device')), publications.MACHINE_STATE_EXIT)
+
+    def test_publication_ports_avoid_the_shared_automation_ranges(self):
+        span = range(publications.PUBLICATION_PORT_START,
+                     publications.PUBLICATION_PORT_START + publications.PUBLICATION_PORT_SPAN)
+        for shared in (range(9477, 9477 + 60), range(9490, 9490 + 60)):
+            self.assertFalse(set(span) & set(shared))
+
+
+class PersistentPropertyListIsNotACaptureInput(unittest.TestCase):
+    """2026-11-14: a new persistent property (`ai4_garden`) rewrote the list at the end of every
+    materialized transcript, and every landing that rematerialized them recaptured all ~200
+    publications for an hour, then bounced on a slow page."""
+
+    SOURCE = 'public/docs/assets/agent_transcripts/demo/metadata.edn'
+    OLD = b'{"version" 2 "boxes" [{"id" "a"}] "persistentProperties" ["frame" "code"]}'
+
+    def setUp(self):
+        self.root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        git = lambda *a: subprocess.run(['git', *a], cwd=self.root, check=True, capture_output=True)
+        git('init', '-q')
+        (self.root / self.SOURCE).parent.mkdir(parents=True)
+        (self.root / self.SOURCE).write_bytes(self.OLD)
+        git('add', '-A')
+        git('-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'base')
+        self.index = {'documents': {'assets/agent_transcripts/demo/metadata.edn': {
+            'sources': {self.SOURCE: hashlib.sha256(self.OLD).hexdigest()}}}}
+        self.enterContext(patch.multiple(publications, ROOT=self.root))
+
+    def rematerialize(self, text: bytes) -> list[str]:
+        (self.root / self.SOURCE).write_bytes(text)
+        return publications.adopt_persistent_list_changes(self.index)
+
+    def recorded(self) -> str:
+        return self.index['documents']['assets/agent_transcripts/demo/metadata.edn']['sources'][self.SOURCE]
+
+    def test_a_new_persistent_property_is_recorded_without_a_recapture(self):
+        new = self.OLD.replace(b'"code"]', b'"code" "ai4_garden"]')
+        self.assertEqual(self.rematerialize(new), [self.SOURCE])
+        self.assertEqual(self.recorded(), hashlib.sha256(new).hexdigest())
+
+    def test_a_change_to_the_document_itself_still_makes_it_stale(self):
+        new = self.OLD.replace(b'"a"', b'"b"').replace(b'"code"]', b'"code" "ai4_garden"]')
+        self.assertEqual(self.rematerialize(new), [])
+        self.assertEqual(self.recorded(), hashlib.sha256(self.OLD).hexdigest())
+
+    def test_a_record_that_is_not_the_committed_file_is_left_alone(self):
+        self.index['documents']['assets/agent_transcripts/demo/metadata.edn']['sources'][self.SOURCE] = 'f' * 64
+        self.assertEqual(self.rematerialize(self.OLD.replace(b'"code"]', b'"code" "x"]')), [])
+        self.assertEqual(self.recorded(), 'f' * 64)
+
 
 if __name__ == '__main__':
     unittest.main()

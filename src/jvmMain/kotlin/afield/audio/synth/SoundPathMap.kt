@@ -168,7 +168,7 @@ object SoundPathMap {
     }
 
     /**
-     * The map. Ten sample sources, five ways out, four ways in.
+     * The map. Thirteen sample sources, five ways out, four ways in.
      *
      * Ordered the way a person reads it: the things that make sound, then the things that carry it
      * away, then the things that feed it. Every `page = null` is a real gap and is named as one on
@@ -241,6 +241,20 @@ object SoundPathMap {
             file = "src/jvmMain/kotlin/afield/audio/synth/FaustPoly.kt",
             entryPoint = "class FaustVoiceBank",
             page = "public/docs/faust.md",
+        ),
+
+        SoundPath(
+            id = "fm1-sim",
+            role = Role.MAKES, timing = Timing.BOTH, onSeam = true,
+            needs = "nothing (the simulator is vendored as WebAssembly)",
+            channels = "stereo, rendered at 44.1 kHz and resampled",
+            what = "the M-VAVE FM-1 pocket synth's browser simulator, built from its open firmware: an " +
+                "8-track, 64-step sequencer with FM, 303, 808, pluck, PSG and sampler voices, played " +
+                "by MIDI note on any track, by Field patterns and signals, or through its own panel, " +
+                "with Field sounds on its sampler's pads",
+            file = "src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt",
+            entryPoint = "class FM1SimNode",
+            page = "public/docs/fm1.md",
         ),
 
         SoundPath(
@@ -332,6 +346,18 @@ object SoundPathMap {
             file = "src/jvmMain/kotlin/afield/audio/modal/Eigendrum.kt",
             entryPoint = "class DrumModes",
             page = "public/docs/eigendrum.md",
+        ),
+
+        SoundPath(
+            id = "grains",
+            role = Role.MAKES, timing = Timing.OFFLINE, onSeam = false,
+            needs = "nothing (a recording to granulate is optional)",
+            channels = "stereo",
+            what = "a list of grains — onset, length, pitch, gain, pan — each a Hann-windowed burst of a " +
+                "three-harmonic sine or of a recording, summed straight into a buffer",
+            file = "src/jvmMain/kotlin/afield/simulation/agents/alife_grains.kt",
+            entryPoint = "fun renderGrains",
+            page = "public/docs/alife_examples.md",
         ),
 
         // ── things that take samples out ───────────────────────────────────────────────────
@@ -475,8 +501,11 @@ object SoundPathMap {
      * also render offline. This was caught by the marker before the map declared the route.
      * Eleven with `modal-drum`, the eigendrum page's modal synthesis, which the docs-audio-producer
      * and inline-audio-player markers caught when it landed undeclared.
+     * Twelve with `grains` (2026-11-13): alife_examples.md's grain sets, summed into a buffer by
+     * renderGrains. The docs-audio-producer marker caught GrainSetSoundDocs landing undeclared.
+     * Thirteen with `fm1-sim`, the FM-1 synth's open-firmware simulator as a wasm module on the seam.
      */
-    const val SOURCE_COUNT = 11
+    const val SOURCE_COUNT = 13
 
     /** How many ways samples leave this process. Five, of which three are separate OpenAL contexts. */
     const val SINK_COUNT = 5
@@ -504,8 +533,9 @@ object SoundPathMap {
      *
      * Twelve since 2026-09-28, for the most ordinary reason of all: `pure-data` arrived on it.
      * Thirteen with Csound's StereoNode, which pulls libcsound's performance from the audio thread.
+     * Fourteen with `fm1-sim`, whose FM1SimNode pulls the simulator a block at a time.
      */
-    const val SEAM_COUNT = 13
+    const val SEAM_COUNT = 14
 
     // ── derivation from the code ───────────────────────────────────────────────────────────
 
@@ -587,6 +617,7 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/data/query/datalog/DatalogRhythmDirtDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/audio/synth/FaustPolySoundDocs.kt" to "faust-poly",
                 "src/jvmMain/kotlin/afield/audio/synth/FaustSoundDocs.kt" to "faust",
+                "src/jvmMain/kotlin/afield/audio/synth/FM1SoundDocs.kt" to "fm1-sim",
                 // A take recorded from a real Sonic Pi; not sample-reproducible, so the audit skips it.
                 "src/jvmMain/kotlin/afield/examples/sonicpi/SonicPiSoundDocs.kt" to "sonic-pi",
                 // The *mono source* pat-spatial hands Steam Audio, which needs no uncommitted binary.
@@ -596,6 +627,14 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/synth/PatSpatialPlacementDocs.kt" to "pat-spatial",
                 "src/jvmMain/kotlin/afield/audio/modal/EigendrumDocs.kt" to "modal-drum",
                 "src/jvmMain/kotlin/afield/audio/modal/PenroseSpectraDocs.kt" to "modal-drum",
+                // Landed 11-09..11-13 without a declaration; caught by this marker on 11-13.
+                "src/jvmMain/kotlin/afield/audio/synth/ExplainerSoundDocs.kt" to "signal-graph",
+                // Piano is a StereoNode: the same graph, rendered offline a block at a time.
+                "src/jvmMain/kotlin/afield/audio/synth/PianoDocs.kt" to "signal-graph",
+                "src/jvmMain/kotlin/afield/audio/synth/TrackedBodyDocs.kt" to "pat-stand-in",
+                // Five pattern scenes on patVoice; held-pitch is a SineOsc graph (DocsAudioProvenance.originOf).
+                "src/jvmMain/kotlin/afield/math/distribution/DistributionSoundDocs.kt" to "pat-stand-in",
+                "src/jvmMain/kotlin/afield/simulation/agents/alife_grains.kt" to "grains",
             ),
         ),
         Marker(
@@ -614,6 +653,10 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/synth/CsoundBox.kt" to "box-output-player",
                 // DrumModes.modeTable puts one player per mode in a table cell, not one per box.
                 "src/jvmMain/kotlin/afield/audio/modal/Eigendrum.kt" to "modal-drum",
+                // PianoRender.wav() hands display(...) the bytes; no <audio> tag of its own.
+                "src/jvmMain/kotlin/afield/audio/synth/Piano.kt" to "signal-graph",
+                // GrainAudio.wav(), the same: bytes for display(...), no tag of its own.
+                "src/jvmMain/kotlin/afield/simulation/agents/alife_grains.kt" to "grains",
             ),
         ),
         Marker(
@@ -632,10 +675,13 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/synth/Sampling.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/audio/synth/Visualizers.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/audio/synth/DoughDsp.kt" to "signal-graph",
+                // Piano is a StereoNode whose controls are Params; audio(Piano()) plays it like any graph.
+                "src/jvmMain/kotlin/afield/audio/synth/Piano.kt" to "signal-graph",
                 // One file per path, for the four sources that reach the seam through a node.
                 "src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/audio/synth/Dough.kt" to "dough-engine",
                 "src/jvmMain/kotlin/afield/audio/synth/FaustDsp.kt" to "faust",
+                "src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt" to "fm1-sim",
                 "src/jvmMain/kotlin/afield/audio/synth/FaustPoly.kt" to "faust-poly",
                 "src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt" to "pat-stand-in",
                 // PdNode, the audio thread's end of a libpd instance.

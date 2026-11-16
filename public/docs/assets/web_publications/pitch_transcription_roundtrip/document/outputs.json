@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T20:46:09.564Z",
+  "capturedAt": "2026-11-14T22:48:13.370Z",
   "documentName": "pitch_transcription_roundtrip",
   "outputs": [
     {
@@ -21,7 +21,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 417,
+      "width": 382,
       "height": 40,
       "path": "outputs/1.html"
     },
@@ -41,7 +41,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 473,
+      "width": 433,
       "height": 40,
       "path": "outputs/3.html"
     },
@@ -51,8 +51,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 478,
-      "height": 60,
+      "width": 464,
+      "height": 59,
       "path": "outputs/4.html"
     },
     {
@@ -95,8 +95,8 @@
       "open": false,
       "warnings": [],
       "kinds": [],
-      "width": 473,
-      "height": 47,
+      "width": 478,
+      "height": 40,
       "path": "outputs/8.html"
     },
     {
@@ -105,8 +105,8 @@
       "open": false,
       "warnings": [],
       "kinds": [],
-      "width": 473,
-      "height": 73,
+      "width": 474,
+      "height": 59,
       "path": "outputs/9.html"
     },
     {
@@ -116,7 +116,7 @@
       "warnings": [],
       "kinds": [],
       "width": 478,
-      "height": 73,
+      "height": 72,
       "path": "outputs/10.html"
     },
     {
@@ -137,7 +137,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 268,
+      "width": 246,
       "height": 40,
       "path": "outputs/12.html"
     },
@@ -147,7 +147,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 338,
+      "width": 309,
       "height": 40,
       "path": "outputs/13.html"
     },
@@ -157,8 +157,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 478,
-      "height": 73,
+      "width": 474,
+      "height": 72,
       "path": "outputs/14.html"
     },
     {
@@ -168,7 +168,7 @@
       "warnings": [],
       "kinds": [],
       "width": 478,
-      "height": 73,
+      "height": 72,
       "path": "outputs/15.html"
     },
     {
@@ -178,7 +178,7 @@
       "warnings": [],
       "kinds": [],
       "width": 461,
-      "height": 535,
+      "height": 531,
       "path": "outputs/16.html"
     },
     {
@@ -187,8 +187,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 478,
-      "height": 60,
+      "width": 474,
+      "height": 46,
       "path": "outputs/17.html"
     }
   ]

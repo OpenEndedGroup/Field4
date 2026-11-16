@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T20:39:03.647Z",
+  "capturedAt": "2026-11-14T22:32:15.822Z",
   "documentName": "staged_project",
   "outputs": [
     {
@@ -42,7 +42,7 @@
       "warnings": [],
       "kinds": [],
       "width": 536,
-      "height": 417,
+      "height": 436,
       "path": "outputs/3.html"
     },
     {

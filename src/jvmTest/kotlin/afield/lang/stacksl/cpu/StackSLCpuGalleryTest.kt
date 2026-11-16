@@ -131,16 +131,25 @@ class StackSLCpuGalleryTest {
      * between the shader and the bytes, and that conversion tracks the curve closely without being
      * correctly rounded. Measured: 10 of 512 columns in red and 10 of 512 rows in green come out
      * one level from the correctly rounded value, and every one of them is a value within 0.0164
-     * of a rounding tie. So the claim is now exactly that: agreement everywhere except at ties.
+     * of a rounding tie.
+     *
+     * That held for the MoltenVK capture and does not for the 2026-11-06 recapture
+     * (`4be607fb7f`), most likely made on KosmicKrisp: 30,720 channel values moved by one level
+     * against the previous still, e.g. 54 for an exact 53.415, nowhere near a tie. The sRGB encode is
+     * the driver's, not Field's, so the claim is now the one every driver meets: every channel within
+     * one level of the correctly rounded value. That still rules out a Y flip and a swapped channel
+     * (hundreds of levels); it no longer distinguishes a half-pixel offset or a truncating quantiser,
+     * which move values by under a level. The miss count and the worst distance from a tie are
+     * printed, so a change of driver shows in the test output.
      */
     @Test
-    fun `the simplest program differs only at rounding ties, which pins the raster convention`() {
+    fun `the simplest program is within one level everywhere, which pins the raster orientation`() {
         val entry = StackSLCpuGallery.load(root).single { it.name == "uv-coordinates" }
         val (gpu, width) = readArgb(entry.gpuPng!!)
         val cpu = StackSLCpuGallery.render(entry)
         val agreement = StackSLCpuGallery.compare(entry.name, AgreementTier.EXACT_OPS, cpu, gpu, width)
         println(agreement)
-        assertTrue(agreement.maxLevels <= 1, "uv saturate may only miss by a level at a rounding tie: $agreement")
+        assertTrue(agreement.maxLevels <= 1, "uv saturate may only miss by one level: $agreement")
         assertEquals(StackSLCpuGallery.DIM * StackSLCpuGallery.DIM, agreement.pixels)
 
         var missed = 0
@@ -150,11 +159,10 @@ class StackSLCpuGalleryTest {
             val exact = CpuRaster.linearToSrgb(cpu.rgba[p * 4 + c]) * 255.0
             if (gpuByte == Math.round(exact).toInt()) continue
             missed++
-            val tieDistance = kotlin.math.abs(exact - kotlin.math.floor(exact) - 0.5)
-            worstTieDistance = maxOf(worstTieDistance, tieDistance)
+            worstTieDistance = maxOf(worstTieDistance, kotlin.math.abs(exact - kotlin.math.floor(exact) - 0.5))
             assertTrue(
-                tieDistance < TIE_BAND,
-                "pixel ${p % width},${p / width} channel $c: GPU $gpuByte against exact $exact, which is not near a rounding tie"
+                kotlin.math.abs(gpuByte - exact) < 1.5,
+                "pixel ${p % width},${p / width} channel $c: GPU $gpuByte against exact $exact, more than one level from it"
             )
         }
         println("uv saturate: $missed channel values off by a level, worst distance from a tie %.4f".format(worstTieDistance))
@@ -316,14 +324,5 @@ class StackSLCpuGalleryTest {
         } finally {
             temp.deleteRecursively()
         }
-    }
-
-    private companion object {
-        /**
-         * How far from a rounding tie a value may be and still be rounded the other way by the
-         * GPU's sRGB conversion. Measured worst 0.0164 of a level on the committed
-         * `uv-coordinates` still; a half-pixel offset would move values by 0.1 to 3 levels.
-         */
-        const val TIE_BAND = 0.02
     }
 }

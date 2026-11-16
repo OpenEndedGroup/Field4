@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T20:59:36.467Z",
+  "capturedAt": "2026-11-14T23:08:52.238Z",
   "documentName": "debruijn_tilings_demo",
   "outputs": [
     {
@@ -84,7 +84,7 @@
         "svg"
       ],
       "width": 838,
-      "height": 929,
+      "height": 931,
       "path": "outputs/6.html"
     },
     {
