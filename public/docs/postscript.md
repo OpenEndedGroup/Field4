@@ -138,6 +138,20 @@ newpath
 stroke
 ```
 
+## Ideas for extensions
+
+- **Text.** `findfont scalefont setfont` and `show` are not here yet. Field already lays text out
+  as FLines (`layoutText`), so `show` could draw outlines that stroke, fill and transform like any
+  other path.
+- **Clipping and dashes.** `clip`, `setdash`, `arcto` and the rest of the path operators, using
+  FLine's boolean operations for the clip.
+- **The Blue Book, whole.** Run the programs from the *PostScript Language Tutorial and Cookbook*
+  and compare each against Ghostscript's rendering, the way the tests already compare the tree.
+- **Live parameters.** Bind a Field slider to a PostScript name, so `/angle 30 def` becomes a knob
+  and the recursive tree moves as you drag it.
+- **Draw on the renderer.** Send the box's FLines to the Vulkan renderer as well as the panel, so a
+  PostScript program can drive a 3D scene or an animation frame by frame.
+
 ## Where to go next
 
 - [Let's Write a PostScript Interpreter](https://beyondloom.com/blog/postscript.html), John Earnest's
