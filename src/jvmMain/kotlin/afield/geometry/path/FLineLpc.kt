@@ -100,6 +100,38 @@ class StrokeLpc(
     }
 
     /**
+     * The residual drawn as a stroke of its own: the hand's surprises integrated from this stroke's
+     * first point, with no predictor between them, and the drift added back. Where the predictor
+     * reads the stroke well this is a nearly straight line along the drift with a kink at each
+     * surprise; where it reads it badly it looks like the stroke. The first `order` steps (the
+     * warm-up, which has no full history to predict from) are left out.
+     */
+    fun residualStroke(): FLine {
+        val p = fit.order
+        val er = DoubleArray(residualRe.size) { if (it < p) 0.0 else residualRe[it] }
+        val ei = DoubleArray(residualIm.size) { if (it < p) 0.0 else residualIm[it] }
+        return integrate(er to ei)
+    }
+
+    /**
+     * The same fit made from only the first [points] resampled points of this stroke, at the same
+     * order: what the predictor would have learned had the pen stopped there. Continue the result
+     * with [continued] and draw it against the rest of [resampled] to see whether the prediction
+     * guesses what the hand did next.
+     */
+    fun head(points: Int): StrokeLpc = span(0, points)
+
+    /**
+     * The same fit made from resampled points [from] (inclusive) to [until] (exclusive) only, at the
+     * same order and with the same drift handling. A window that slides along the stroke follows a
+     * hand that changes what it is doing, which a fit of everything so far ([head]) is slow to do.
+     */
+    fun span(from: Int, until: Int): StrokeLpc {
+        require(from >= 0 && until <= xs.size && until - from >= fit.order + 3) { "span $from until $until must lie in 0..${xs.size} and hold at least ${fit.order + 3} points" }
+        return fitStroke(xs.copyOfRange(from, until), ys.copyOfRange(from, until), fit.order, meanStepX != 0.0 || meanStepY != 0.0)
+    }
+
+    /**
      * The ratio of residual energy to step energy after the first `order` steps (which have no full
      * history to predict from): near 0 for a stroke the predictor reads well, near 1 for noise.
      */
@@ -131,8 +163,20 @@ class StrokeLpc(
  * the mean step is taken out before the fit and added back to everything drawn from it, which suits
  * a stroke that travels, like handwriting; turn it off for a closed or circling one, whose
  * continuation should come back round rather than carry on in the average direction.
+ *
+ * With [alongLength] false the stroke is not resampled: its own vertices are used as they are and
+ * [samples] is ignored. A pen stroke from the drawing layer records a point per pen sample, so this
+ * keeps the hand's timing (fast strokes have long steps, slow ones short) and predicts it as well;
+ * a stroke built in code from a parameter `t` keeps that parameter, so a sum of `k` rotating
+ * steps is predicted exactly at order `k`. Resampling along the length, the default, is what
+ * makes two strokes drawn at different speeds comparable.
  */
-fun FLine.lpc(order: Int = 8, samples: Int = 200, removeDrift: Boolean = true): StrokeLpc {
+fun FLine.lpc(order: Int = 8, samples: Int = 200, removeDrift: Boolean = true, alongLength: Boolean = true): StrokeLpc {
+    if (!alongLength) {
+        val points = nodes.map { it.to }
+        require(points.size > order + 2) { "need more vertices (${points.size}) than order + 2 (${order + 2})" }
+        return fitStroke(DoubleArray(points.size) { points[it].x.toDouble() }, DoubleArray(points.size) { points[it].y.toDouble() }, order, removeDrift)
+    }
     require(samples > order + 2) { "need more samples ($samples) than order + 2 (${order + 2})" }
     val dense = samplePoints(samples * 8)
     require(dense.size >= 2) { "stroke has fewer than two points" }
@@ -149,6 +193,11 @@ fun FLine.lpc(order: Int = 8, samples: Int = 200, removeDrift: Boolean = true): 
         xs[s] = dense[j].x + (dense[j + 1].x - dense[j].x) * u
         ys[s] = dense[j].y + (dense[j + 1].y - dense[j].y) * u
     }
+    return fitStroke(xs, ys, order, removeDrift)
+}
+
+internal fun fitStroke(xs: DoubleArray, ys: DoubleArray, order: Int, removeDrift: Boolean): StrokeLpc {
+    val samples = xs.size
     val mx = if (removeDrift) (xs.last() - xs[0]) / (samples - 1) else 0.0
     val my = if (removeDrift) (ys.last() - ys[0]) / (samples - 1) else 0.0
     val dr = DoubleArray(samples - 1) { xs[it + 1] - xs[it] - mx }

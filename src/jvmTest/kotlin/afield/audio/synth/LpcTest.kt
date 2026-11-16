@@ -83,6 +83,44 @@ class LpcTest {
     }
 
     @Test
+    fun residualStrokeAndHeadOfAPredictableStroke() {
+        // A drifting curl is predictable: its residual stroke is nearly the straight drift line.
+        val curl = FLine().also { f -> for (i in 0..400) { val t = i / 400.0 * 2 * PI * 5; val x = 8.0 * t - 40 * sin(t); val y = 40 * cos(t); if (i == 0) f.moveTo(x, y) else f.lineTo(x, y) } }
+        val s = curl.lpc(order = 4, samples = 200)
+        val res = s.residualStroke().samplePoints(50)
+        val maxDev = res.maxOf { abs(it.y.toDouble() - res.first().y.toDouble()) }
+        assertTrue(maxDev < 10.0, "residual stroke strays $maxDev from the drift line")
+        // Fitted on the first three loops only, the continuation lands near where the real stroke went.
+        val h = s.head(121) // exactly three of the five loops: 40 points a loop
+        assertEquals(121, h.xs.size)
+        val guess = h.continued(79, includeStroke = false).samplePoints(2).last()
+        val dist = hypot(guess.x.toDouble() - s.xs.last(), guess.y.toDouble() - s.ys.last())
+        assertTrue(dist < 30.0, "head continuation ends $dist from the real end")
+        // A window from the middle keeps its own points.
+        val w = s.span(40, 161)
+        assertEquals(s.xs[40], w.xs[0], 1e-12)
+        assertEquals(121, w.xs.size)
+    }
+
+    @Test
+    fun threeWheelsAreExactAtOrderThreeOnTheirOwnVertices() {
+        // Steps that are a sum of three rotating phasors: an order-3 complex process.
+        var x = 0.0; var y = 0.0
+        val wheels = FLine().also { f ->
+            f.moveTo(x, y)
+            for (n in 0 until 400) {
+                x += 30 * cos(0.25 * n) + 12 * cos(-0.75 * n) + 5 * cos(1.1 * n)
+                y += 30 * sin(0.25 * n) + 12 * sin(-0.75 * n) + 5 * sin(1.1 * n)
+                f.lineTo(x, y)
+            }
+        }
+        val two = wheels.lpc(order = 2, removeDrift = false, alongLength = false).residualRatio
+        val three = wheels.lpc(order = 3, removeDrift = false, alongLength = false).residualRatio
+        assertTrue(two > 0.01, "order 2 residual $two")
+        assertTrue(three < 1e-4, "order 3 residual $three")
+    }
+
+    @Test
     fun latticeWhitenFlattensAnArProcess() {
         val x = arProcess(48_000, seed = 9)
         val peak = x.maxOf { abs(it) }
