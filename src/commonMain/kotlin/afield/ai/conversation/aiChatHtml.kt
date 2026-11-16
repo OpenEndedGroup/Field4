@@ -454,10 +454,42 @@ fun aiChatHistoryHtml(history: String?, toolFamilies: AiChatToolFamilies?): Stri
             // The badge says Field wrote it; the model reads the prefix, the panel need not show it twice.
             val shown = if (turn.isFieldMessage) turn.content.removePrefix(AiChatBlock.FIELD_MESSAGE_PREFIX).replaceFirstChar { it.uppercase() }
                 else turn.content
-            html.append("<div class=\"ai-chat-turn $roleClass\"$turnAttrs$sourceAttr${addressAttr(turn)}>" + badge + aiChatMarkdownHtml(shown) + actions + "</div>")
+            val body = if (turn.role == "you") geometryReferenceTurnHtml(shown) else aiChatMarkdownHtml(shown)
+            html.append("<div class=\"ai-chat-turn $roleClass\"$turnAttrs$sourceAttr${addressAttr(turn)}>" + badge + body + actions + "</div>")
         }
     }
     return "<div class=\"ai-chat-thread\">$html</div>"
+}
+
+/**
+ * A user turn whose top lines are GeometryReference headers (a three.js viewer's Ask AI): each header, and the
+ * hint line under it, shows as the same chip the composer showed, with an "open at line" button when the part
+ * carries its source line (outputareas2.js opens it). The rest of the turn is ordinary markdown.
+ */
+internal fun geometryReferenceTurnHtml(content: String): String {
+    val lines = content.lines()
+    val chips = StringBuilder()
+    var i = 0
+    while (i < lines.size) {
+        val ref = afield.app.protocol.GeometryReferenceAsk.parseHeader(lines[i]) ?: break
+        chips.append(geometryReferenceChipHtml(ref))
+        i++
+        if (lines.getOrNull(i)?.trim() == afield.app.protocol.GeometryReferenceAsk.HEADER_HINT) i++
+    }
+    if (i == 0) return aiChatMarkdownHtml(content)
+    val rest = lines.drop(i).joinToString("\n").trim()
+    return "<div class=\"ai-chat-geometry-refs\">$chips</div>" + (if (rest.isEmpty()) "" else aiChatMarkdownHtml(rest))
+}
+
+/** One quoted pick, as outputareas2.js's `geometryReferenceChip` draws it. */
+internal fun geometryReferenceChipHtml(ref: afield.app.protocol.GeometryReferenceAsk): String {
+    val what = listOfNotNull(ref.label ?: ref.partId, ref.kind, ref.element).filter { it.isNotBlank() }.joinToString(" · ")
+    val note = if (ref.note.isBlank()) "" else "<em> “${escapeHtml(ref.note)}”</em>"
+    val open = ref.sourceLine?.takeIf { it.line > 0 }?.let { at ->
+        "<button type=\"button\" class=\"ai-chat-geometry-open\" data-uid=\"${escapeHtml(at.box)}\" data-property=\"${escapeHtml(at.property)}\" " +
+            "data-line=\"${at.line}\" title=\"Open the code at the line that drew this part\">line ${at.line}${at.variable?.let { " · " + escapeHtml(it) } ?: ""}</button>"
+    } ?: ""
+    return "<span class=\"ai-chat-geometry-chip\" title=\"${escapeHtml(ref.view + " · " + ref.revision)}\">${escapeHtml(what.ifEmpty { "geometry" })}$note$open</span>"
 }
 
 /**

@@ -1600,6 +1600,40 @@ pre code {
     margin-bottom: 2px;
 }
 
+/* A geometry pick quoted from a three.js viewer's Ask AI, in the composer and in a sent turn. */
+.ai-chat-geometry-refs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.ai-chat-geometry-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--field-accent, #62d7ff);
+    font-size: 11px;
+    overflow-wrap: anywhere;
+}
+
+.ai-chat-geometry-chip em {
+    opacity: 0.75;
+}
+
+.ai-chat-geometry-open, .ai-chat-geometry-remove {
+    font: inherit;
+    padding: 0 4px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--field-accent, #62d7ff);
+    cursor: pointer;
+}
+
 /* Rewind / edit-and-resend on a request: quiet until the turn is hovered. The server refuses them while a turn runs. */
 .ai-chat-turn-actions {
     display: flex;

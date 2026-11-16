@@ -1704,6 +1704,52 @@ data class DocumentBoxNavigationResult(
     val visible: Boolean = false
 )
 
+/**
+ * The line of a box's source that added a part of a three.js scene: the box, its source property, the
+ * 1-based line, and the variable that line assigns when it assigns one. Read off the call stack when the
+ * scene is built (`threeCallSite`, jvmMain); a review reference carries it and the review revision ignores it.
+ */
+@Serializable
+data class GeometrySourceLine(
+    val box: String,
+    val property: String = "code",
+    val line: Int,
+    val variable: String? = null,
+)
+
+/**
+ * A geometry pick the person asked AI4 about, sent from the viewer's **Ask AI** (`POST /three-review-ask`)
+ * to the document's frontends as `geometry-reference-ask`. The chat composer shows it as a chip and, on send,
+ * puts [header] at the top of the user turn. The full record stays with the view: the model reads it as the
+ * live `selection` of `ReadGeometryReviewsRequest`, or looks with `InspectGeometryViewRequest`.
+ */
+@Serializable
+data class GeometryReferenceAsk(
+    val view: String,
+    val revision: String,
+    val kind: String,
+    val partId: String? = null,
+    val label: String? = null,
+    val element: String? = null,
+    val note: String = "",
+    /** The box that owns the view, which is the chat the reference is meant for. */
+    val sourceBox: String? = null,
+    val sourceLine: GeometrySourceLine? = null,
+) {
+    /** The compact header the user turn starts with; [parseHeader] reads it back for the chat's chip. */
+    val header: String get() = HEADER_PREFIX + headerJson.encodeToString(serializer(), this) + "\n" + HEADER_HINT
+
+    companion object {
+        const val HEADER_PREFIX = "GeometryReference: "
+        const val HEADER_HINT = "(Full record: the live `selection` of ReadGeometryReviewsRequest for this view, or look with InspectGeometryViewRequest at this revision.)"
+        private val headerJson = Json { encodeDefaults = false; ignoreUnknownKeys = true }
+
+        /** The reference on a header line, or null when [line] is not one. */
+        fun parseHeader(line: String): GeometryReferenceAsk? = line.trim().takeIf { it.startsWith(HEADER_PREFIX) }
+            ?.let { runCatching { headerJson.decodeFromString(serializer(), it.removePrefix(HEADER_PREFIX)) }.getOrNull() }
+    }
+}
+
 // Slideshow messages
 @Serializable
 data class SelectAndEditBox(

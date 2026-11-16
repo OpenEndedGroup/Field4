@@ -91,6 +91,9 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal val motions = ArrayList<ThreePartMotion>()
     internal var timeline: ThreeTimeline? = null
     private var helpersExplicit: Boolean? = null
+    /** The box whose code builds this scene, for [threeCallSite]; null for library-built scenes. */
+    internal var sourceBox: Box? = null
+    private val lineProvenance = java.util.IdentityHashMap<FLine, ThreeSourceLine>()
 
     /**
      * Whether the reference grid and axis tripod are drawn.
@@ -189,6 +192,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         }
         // Left out, the mesh goes into the panel declared most recently (the first, before any).
         @Suppress("NAME_SHADOWING") val panel = panel ?: (panels.size - 1).coerceAtLeast(0)
+        val provenance = threeCallSite(sourceBox)
         drawables += mesh.toThreeDrawable(
             style = ThreeDrawStyle.surface(
                 wireframe = wireframe,
@@ -205,11 +209,11 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             callbackId = onClick?.let { registerThreeSurfaceClickCallback(it) } ?: "",
             hoverColor = hoverColor?.let { floatArrayOf(it.x, it.y, it.z, it.w) },
             pickable = pickable,
-        ).withIdentity(layer, metadata, hidden).placed(transform)
+        ).withIdentity(layer, metadata, hidden).placed(transform).copy(provenance = provenance)
         if (edges) drawables += mesh.toThreeEdgeDrawable(
             color = edgeColor?.let { floatArrayOf(it.x, it.y, it.z) } ?: floatArrayOf(.08f, .1f, .12f),
             panel = panel, group = group, id = id, explode = explode,
-        ).withIdentity(layer, metadata, hidden).placed(transform)
+        ).withIdentity(layer, metadata, hidden).placed(transform).copy(provenance = provenance)
         if (style != null) style(id, style)
     }
 
@@ -298,11 +302,13 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
 
     /** Add FLines. They keep every behaviour they have in [Box.threeLines] — picking, hover, fills. */
     fun lines(lines: Collection<FLine>) {
+        threeCallSite(sourceBox)?.let { at -> lines.forEach { lineProvenance[it] = at } }
         flines += lines
     }
 
     /** Vararg convenience for [lines]. */
     fun lines(vararg lines: FLine) {
+        threeCallSite(sourceBox)?.let { at -> lines.forEach { lineProvenance[it] = at } }
         flines += lines
     }
 
@@ -698,7 +704,9 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             lines = base?.lines,
             fills = base?.fills,
             points = base?.points,
-            interactive = base?.interactive ?: emptyList(),
+            interactive = base?.interactive?.map { o ->
+                flines.getOrNull(o.lineIndex)?.let(lineProvenance::get)?.let { o.copy(provenance = it) } ?: o
+            } ?: emptyList(),
             bounds = fitBox ?: tracker.toBounds(),
             fitBounds = fitBox != null,
             meta = ThreeMeta(
@@ -841,7 +849,7 @@ fun Box.three(
     width: Int? = null,
     block: ThreeSceneBuilder.() -> Unit,
 ): ThreeGeometryViewState {
-    val builder = ThreeSceneBuilder(samplesPerCubic).apply(block)
+    val builder = ThreeSceneBuilder(samplesPerCubic).also { it.sourceBox = this }.apply(block)
     val uid = threeViewerUid(this, name)
     // The size must be in **pixels on the iframe itself**, and that is not decoration.
     //

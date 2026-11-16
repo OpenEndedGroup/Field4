@@ -2081,6 +2081,9 @@ function ensureAiChat(container, uid, property) {
         }
 
         const attachments = [];
+        // Geometry picks quoted from a three.js viewer's Ask AI (`geometry-reference-ask`); each goes out as a
+        // GeometryReference header at the top of the next user turn.
+        const geometryRefs = [];
 
         function currentSelectedUid() {
                 const selected = window.currentSelectedCode;
@@ -2116,11 +2119,26 @@ function ensureAiChat(container, uid, property) {
 
         function renderPreview() {
                 preview.innerHTML = "";
-                if (attachments.length === 0) {
+                if (attachments.length === 0 && geometryRefs.length === 0) {
                         preview.style.display = "none";
                         return;
                 }
                 preview.style.display = "flex";
+                geometryRefs.forEach((ref, idx) => {
+                        const chip = geometryReferenceChip(ref);
+                        const remove = document.createElement("button");
+                        remove.type = "button";
+                        remove.className = "ai-chat-geometry-remove";
+                        remove.textContent = "×";
+                        remove.title = "Do not quote this feature";
+                        remove.addEventListener("click", (e) => {
+                                e.preventDefault();
+                                geometryRefs.splice(idx, 1);
+                                renderPreview();
+                        });
+                        chip.appendChild(remove);
+                        preview.appendChild(chip);
+                });
                 attachments.forEach((attachment, idx) => {
                         const src = attachmentSrc(attachment);
                         if (!src) return;
@@ -2427,13 +2445,15 @@ function ensureAiChat(container, uid, property) {
         }
 
         function submitPrompt(options = {}) {
-                const text = textarea.value.trim();
-                if (!text && attachments.length === 0) return;
+                const typed = textarea.value.trim();
+                if (!typed && attachments.length === 0 && geometryRefs.length === 0) return;
                 autocomplete.clear();
-                if (text.startsWith("/")) {
-                        if (handleSlashCommand(text)) return;
+                if (typed.startsWith("/")) {
+                        if (handleSlashCommand(typed)) return;
                 }
                 textarea.value = "";
+                const text = [...geometryRefs.map((ref) => ref.header), typed].filter((part) => part).join("\n");
+                geometryRefs.length = 0;
                 const history = container.__aiChatHistory || "";
                 const nextHistory = history ? history + "\n" : "";
                 const imageMarkdown = attachments
@@ -2544,7 +2564,14 @@ function ensureAiChat(container, uid, property) {
         container.innerHTML = "";
         container.appendChild(root);
 
-        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code", micButton, stateBrowser, garden, submit: submitPrompt};
+        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code", micButton, stateBrowser, garden, submit: submitPrompt,
+                addGeometryReference(ref) {
+                        if (!ref?.header || geometryRefs.some((r) => r.header === ref.header)) return;
+                        geometryRefs.push(ref);
+                        renderPreview();
+                        textarea.focus();
+                }};
+        for (const ref of takePendingGeometryReferences(uid)) container.__aiChat.addGeometryReference(ref);
         restoreAiChat(container, uid);
         return container.__aiChat;
 }
@@ -2890,6 +2917,66 @@ window.openAiStateBrowser = async (uid, source, node, offset) => {
 // gets a chat opened for it.
 
 let stickyAiChat = null;
+
+// --- Geometry references (a three.js viewer's Ask AI) ---------------------------------------------------
+// The chip a quoted pick shows as in the composer, and in a sent turn (aiChatHtml.kt renders the same markup).
+function geometryReferenceChip(ref) {
+        const chip = document.createElement("span");
+        chip.className = "ai-chat-geometry-chip";
+        chip.title = `${ref.view} · ${ref.revision}`;
+        const what = [ref.label || ref.partId, ref.kind, ref.element].filter(Boolean).join(" · ");
+        chip.append(document.createTextNode(what || "geometry"));
+        if (ref.note) {
+                const note = document.createElement("em");
+                note.textContent = " “" + ref.note + "”";
+                chip.append(note);
+        }
+        const at = ref.sourceLine;
+        if (at && at.box && at.line > 0) {
+                const open = document.createElement("button");
+                open.type = "button";
+                open.className = "ai-chat-geometry-open";
+                open.dataset.uid = at.box;
+                open.dataset.property = at.property || "code";
+                open.dataset.line = String(at.line);
+                open.textContent = `line ${at.line}${at.variable ? " · " + at.variable : ""}`;
+                open.title = "Open the code at the line that drew this part";
+                chip.append(open);
+        }
+        return chip;
+}
+
+// Any "open at line" button in a chat, in the composer or in a sent turn.
+document.addEventListener("click", (event) => {
+        const open = event.target?.closest?.(".ai-chat-geometry-open");
+        if (!open) return;
+        event.preventDefault();
+        window.fieldOpenBoxLine?.(open.dataset.uid, open.dataset.property || "code", Number(open.dataset.line));
+});
+
+var pendingGeometryReferences = [];
+window.fieldPendingGeometryReferences = pendingGeometryReferences;
+function takePendingGeometryReferences(uid) {
+        const taken = pendingGeometryReferences.filter((ref) => !ref.sourceBox || ref.sourceBox === uid);
+        for (const ref of taken) pendingGeometryReferences.splice(pendingGeometryReferences.indexOf(ref), 1);
+        return taken;
+}
+
+/**
+ * Put a quoted pick into a chat composer: the owning box's chat when it is open, else the chat used last.
+ * Returns false when no chat is open; the reference then waits for the owning box's chat to mount.
+ */
+window.fieldDeliverGeometryReference = (ref) => {
+        const own = ref?.sourceBox ? aiChatContainerForBox({uid: ref.sourceBox}) : null;
+        const target = (liveAiChat(own) && own) || (liveAiChat(stickyAiChat) && stickyAiChat) ||
+                [...document.querySelectorAll(".ai-chat-window")].map((root) => root.parentElement).find(liveAiChat);
+        if (!target) {
+                pendingGeometryReferences.push(ref);
+                return false;
+        }
+        target.__aiChat.addGeometryReference(ref);
+        return true;
+};
 
 function noteAiChatUsed(container) {
         if (container && container.__aiChat) stickyAiChat = container;

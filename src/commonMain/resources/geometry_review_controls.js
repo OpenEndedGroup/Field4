@@ -54,6 +54,7 @@ const composerHtml = `    <label id="feature-angle-wrap" data-role="angle-wrap" 
     <label>Note<textarea id="feature-note" rows="2" placeholder="What should change here?"></textarea></label>
     <div id="feature-actions" data-role="actions">
         <button type="button" id="feature-copy">Copy reference</button>
+        <button type="button" id="feature-ask" title="Quote this feature in the AI4 chat composer">Ask AI</button>
         <button type="button" id="feature-save" data-role="save">Save note</button>
         <button type="button" id="feature-clear">Clear</button>
     </div>
@@ -96,6 +97,8 @@ export function mountReviewControls(toolbar, composer, options = {}) {
             catch (_) { elements.reference.value = text; elements.reference.classList.remove('hidden');
                 elements.reference.focus(); elements.reference.select(); message('Copy this selected reference.'); }
         });
+        elements.ask.hidden = !adapter.ask;
+        elements.ask.onclick = protect(() => adapter.ask?.(elements.note.value));
         elements.save.onclick = protect(() => {
             const text = elements.note.value.trim();
             if (!text) { message('Write a note before saving.', true); return; }

@@ -6483,7 +6483,14 @@ function featureHud() {
     document.getElementById('feature-review').classList.toggle('hidden',!s && featureModeEl.value==='off');
     const source=s && featureSources().find(p=>p.id===s.partId);
     document.getElementById('feature-description').textContent=s ? `${source.label} · ${s.kind}${s.region?' · '+s.region.surfaces.length+' visible part(s)':''}\n${s.point.map(v=>v.toFixed(3)).join(', ')} ${inspectorState.spec?.units||''}` : (featureModeEl.value==='region'?'Drag a rectangle over visible surfaces. Rotate it with the Angle slider.':'Click a feature. Edge and vertex picks snap within 12 pixels.');
-    for(const id of ['feature-copy','feature-save'])document.getElementById(id).disabled=!s || (id==='feature-save' && featureSaving);
+    for(const id of ['feature-copy','feature-ask','feature-save'])document.getElementById(id).disabled=!s || (id==='feature-save' && featureSaving);
+}
+// The box line that drew a part (`provenance`, ThreeProvenance.kt); not part of the revision.
+function featureSourceLine(source) {
+    const s=source?.source; if(!s)return null;
+    const entry=s.kind==='drawable'?featurePayload?.drawables?.[s.index]
+        : s.kind==='fline'?(featurePayload?.interactive||[]).find(o=>(o.lineIndex??-1)===s.index):null;
+    return entry?.provenance||null;
 }
 function featureObservation(text,verdict='note') {
     if(!['note','accepted','rejected'].includes(verdict)||typeof text!=='string')throw new Error('Invalid observation');
@@ -6493,6 +6500,7 @@ function featureObservation(text,verdict='note') {
     const source=featureSources().find(s=>s.id===inspectorState.selection?.partId);
     return {schemaVersion:2,viewId:clientUid,sourceBox:featurePayload?.sourceBox||null,artifactDigest:view.artifactDigest,
         source:source?.source||null,coordinatePrecision:source?.canonical?'canonical-double':'display-float',
+        ...(source?{partLabel:source.label}:{}),...(featureSourceLine(source)?{sourceLine:featureSourceLine(source)}:{}),
         selection:featureClone(inspectorState.selection),text,verdict,view,createdAt:new Date().toISOString()};
 }
 // Render the saved observation synchronously and restore the user's current view before paint.
@@ -6554,6 +6562,11 @@ reviewControls.bind({
         else featureRectangleBox({...region,angle});
     },
     reference: featureObservation,
+    ask: async text => {
+        const response=await fetch('/three-review-ask?'+new URLSearchParams({uid:clientUid}),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(featureObservation(text))});
+        if(!response.ok)throw new Error(await response.text()||'Could not send the reference');
+        featureMessage('Sent to the AI chat. It is waiting in the composer.');
+    },
     save: text => {
         if(featureSaving)return;
         if(!wsState.ws || wsState.ws.readyState!==WebSocket.OPEN)throw new Error('Field is disconnected; reconnect before saving');

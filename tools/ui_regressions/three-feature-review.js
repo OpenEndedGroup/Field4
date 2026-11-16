@@ -78,6 +78,33 @@ try {
  expect(note.coordinatePrecision==='display-float'&&note.sourceBox,'Rendered precision and source box are explicit');
  api.review(note);
  expect(JSON.stringify(api.snapshot().selection)===JSON.stringify(selected),'Ordinary geometry note restores');
+ // Ask AI: the reference names the box line that drew the part (fixture line 8, `mesh(... id="quad")`),
+ // reaches the AI4 composer as a chip, and renders in a sent turn with an "open at line" button.
+ p=api.project(mesh.id,[-40,0,0]);selected=api.pick(p.x,p.y,'face');
+ const asked=api.observe('Why is this face here?');
+ expect(asked.sourceLine?.line===8&&asked.sourceLine.box===asked.sourceBox&&asked.partLabel==='quad','Mesh reference carries its source line and label');
+ const revisionBefore=api.snapshot().artifactDigest;
+ const chipsBefore=document.querySelectorAll('.ai-chat-input .ai-chat-geometry-chip').length, pendingBefore=(window.fieldPendingGeometryReferences||[]).length;
+ doc.getElementById('feature-note').value='Why is this face here?';
+ expect(!doc.getElementById('feature-ask').hidden&&!doc.getElementById('feature-ask').disabled,'Ask AI sits beside Copy reference');
+ doc.getElementById('feature-ask').click();
+ let delivered=null;
+ for(let i=0;i<60&&!delivered;i++){await delay(100);
+  const chip=document.querySelectorAll('.ai-chat-input .ai-chat-geometry-chip');
+  const pending=window.fieldPendingGeometryReferences||[];
+  delivered=chip.length>chipsBefore?{chip:chip[chip.length-1]}:pending.length>pendingBefore?{ref:pending[pending.length-1]}:null;}
+ expect(delivered,'Ask AI reaches the AI4 composer (or waits for the box chat to open)');
+ expect(/Sent to the AI chat/.test(diagnostic.textContent),'Viewer confirms the reference was sent');
+ const ref=delivered.ref||null;
+ if(ref){
+  expect(ref.kind==='face'&&ref.partId===mesh.id&&ref.sourceLine?.line===8&&ref.note==='Why is this face here?'&&ref.revision===revisionBefore,'Reference header fields: view, revision, kind, part, note, source line');
+  expect(ref.header.startsWith('GeometryReference: ')&&ref.header.includes('ReadGeometryReviewsRequest'),'Header points the model at the full record');
+  const {aiChatHistoryToHtml}=await import('/afield.mjs');
+  const html=aiChatHistoryToHtml('<<you>>\n'+ref.header+'\nWhat drew this?');
+  expect(html.includes('ai-chat-geometry-chip')&&html.includes('data-line="8"')&&html.includes('What drew this?')&&(()=>{const d=document.createElement('div');d.innerHTML=html;return !d.textContent.includes('GeometryReference:');})(),'Sent turn shows the chip with open-at-line, not the raw header');
+  window.fieldPendingGeometryReferences.splice(window.fieldPendingGeometryReferences.indexOf(ref),1);
+ } else expect(delivered.chip.querySelector('.ai-chat-geometry-open')?.dataset.line==='8','Composer chip offers open at line 8');
+ expect(api.snapshot().artifactDigest===revisionBefore&&revisionBefore.startsWith('r2-'),'Source lines stay out of the r2- revision');
  // Exercise explicit display densities and off-centre surfaces in standalone
  // viewers, rather than relying on the embedded capture's current settings.
  const standalone=document.createElement('iframe');
