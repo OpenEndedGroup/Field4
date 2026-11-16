@@ -401,14 +401,39 @@ fun aiChatHistoryUnits(
     history: String?,
     toolFamilies: AiChatToolFamilies?,
     markdown: (String?) -> String = ::aiChatMarkdownHtml,
+): List<String> = aiChatHistoryUnits(parseAiChatBlocks(history), toolFamilies, markdown)
+
+/**
+ * The units of the last render, by position, for [aiChatHistoryUnits] to reuse: a unit whose blocks (compared by
+ * reference first, so the blocks a resumed [parseAiChatHistory] carries over cost nothing) and numbering are
+ * unchanged keeps its HTML.
+ */
+class AiChatUnitCache {
+    internal var keys: List<Any> = emptyList()
+    internal var htmls: List<String> = emptyList()
+}
+
+private data class UnitKey(val blocks: List<AiChatBlock>, val ordinal: Int, val open: Boolean, val toolFamilies: AiChatToolFamilies?)
+
+/** [aiChatHistoryUnits] over blocks already parsed, e.g. by a resumed [parseAiChatHistory]. */
+fun aiChatHistoryUnits(
+    turns: List<AiChatBlock>,
+    toolFamilies: AiChatToolFamilies?,
+    markdown: (String?) -> String = ::aiChatMarkdownHtml,
+    cache: AiChatUnitCache? = null,
 ): List<String> {
-    val turns = parseAiChatBlocks(history)
-    if (turns.isEmpty()) return emptyList()
+    if (turns.isEmpty()) {
+        cache?.keys = emptyList(); cache?.htmls = emptyList()
+        return emptyList()
+    }
     val units = mutableListOf<String>()
-    val html = StringBuilder()
-    fun flush() {
-        if (html.isNotEmpty()) units += html.toString()
-        html.clear()
+    val keys = mutableListOf<Any>()
+    fun unit(blocks: List<AiChatBlock>, ordinal: Int = -1, open: Boolean = false, render: () -> String) {
+        val key = UnitKey(blocks.toList(), ordinal, open, toolFamilies)
+        val at = units.size
+        val html = if (cache != null && cache.keys.getOrNull(at) == key) cache.htmls[at] else render()
+        units += html
+        keys += key
     }
     // A question is open while nobody has written after it: everything before the last "you" turn is answered.
     val lastYou = turns.indexOfLast { it.role == "you" }
@@ -424,22 +449,25 @@ fun aiChatHistoryUnits(
         if (turn.isProgress) {
             // A build wait stands on its own: it is what the conversation is doing now, not one more tool call.
             if (turn.isBuildWait) {
-                html.append(renderProgressTurn(turn, markdown))
-                flush()
+                unit(listOf(turn)) { renderProgressTurn(turn, markdown) }
                 i++
                 continue
             }
             // So does a question; only the last one in the chat is still waiting for its answer.
             if (turn.isQuestion) {
-                html.append(renderQuestion(turn, open = lastYou < i, markdown))
-                flush()
+                val open = lastYou < i
+                unit(listOf(turn), open = open) { renderQuestion(turn, open, markdown) }
                 i++
                 continue
             }
             val end = (i until turns.size).firstOrNull { !turns[it].isProgress || turns[it].isBuildWait || turns[it].isQuestion } ?: turns.size
             val run = turns.subList(i, end)
-            html.append(if (AiChatRound.folds(run)) renderRound(run, roundOrdinal++, toolFamilies, markdown) else renderProgressRun(run, markdown))
-            flush()
+            if (AiChatRound.folds(run)) {
+                val ordinal = roundOrdinal++
+                unit(run, ordinal) { renderRound(run, ordinal, toolFamilies, markdown) }
+            } else {
+                unit(run) { renderProgressRun(run, markdown) }
+            }
             i = end
             continue
         }
@@ -447,46 +475,54 @@ fun aiChatHistoryUnits(
         if (turn.role == "queued") {
             // Sent while the turn runs (AiTurnInbox on the server): not part of the conversation until the
             // agent reads it, so it has no ordinal and no rewind/edit.
-            html.append("<div class=\"ai-chat-turn you queued\">" +
-                "<div class=\"ai-chat-queued-label\">queued: the agent reads this after its current step</div>" +
-                markdown(turn.content) + "</div>")
-            flush()
+            unit(listOf(turn)) {
+                "<div class=\"ai-chat-turn you queued\">" +
+                    "<div class=\"ai-chat-queued-label\">queued: the agent reads this after its current step</div>" +
+                    markdown(turn.content) + "</div>"
+            }
         } else {
-            val badge = if (turn.isFieldMessage) {
-                "<div class=\"ai-chat-model\" title=\"Written by Field, not by you: the outcome of the builds the last turn waited for.\">Field</div>"
-            } else if (turn.role == "ai" || turn.role == "summary") {
-                // A lens block (it cites the chat it summarizes) is labelled as one; its record names the model.
-                val lens = turn.model == null && turn.sources.isNotEmpty()
-                val label = turn.model?.label()?.let { if (turn.modelFromRun) "$it (from the run's record)" else it }
-                    ?: if (lens) "Lens" else "Model not recorded"
-                val title = turn.model?.let { m ->
-                    if (turn.modelFromRun) "This entry predates per-response model records; the run it belongs to is recorded as ${m.requestedModel} on ${m.provider}."
-                    else m.description()
-                }
-                    ?: if (lens) "Written as a lens over a longer chat; it stands for ${turn.sources.joinToString(", ")}."
-                    else "This older chat entry did not record its provider or model."
-                "<div class=\"ai-chat-model\" title=\"${escapeHtml(title)}\">${escapeHtml(label)}</div>"
-            } else ""
-            val turnAttrs = if (turn.role == "you") {
-                " data-ai-turn=\"${userOrdinal++}\" data-ai-text=\"${escapeHtml(turn.content)}\""
-            } else ""
-            val actions = if (turn.role == "you") {
-                "<span class=\"ai-chat-turn-actions\">" +
-                    "<button type=\"button\" class=\"ai-chat-turn-action\" data-ai-action=\"edit\" title=\"Edit this message and send it again (the rest is kept as a branch)\">edit</button>" +
-                    "<button type=\"button\" class=\"ai-chat-turn-action\" data-ai-action=\"rewind\" title=\"Rewind to before this message (the rest is kept as a branch)\">rewind</button>" +
-                    "</span>"
-            } else ""
-            // A lens block's citations, for the viewer that draws a line from it to the chat it summarizes.
-            val sourceAttr = if (turn.sources.isNotEmpty()) " data-ai-sources=\"${escapeHtml(turn.sources.joinToString(","))}\"" else ""
-            val roleClass = if (turn.isFieldMessage) "you field" else turn.role
-            // The badge says Field wrote it; the model reads the prefix, the panel need not show it twice.
-            val shown = if (turn.isFieldMessage) turn.content.removePrefix(AiChatBlock.FIELD_MESSAGE_PREFIX).replaceFirstChar { it.uppercase() }
-                else turn.content
-            html.append("<div class=\"ai-chat-turn $roleClass\"$turnAttrs$sourceAttr${addressAttr(turn)}>" + badge + markdown(shown) + actions + "</div>")
-            flush()
+            val ordinal = if (turn.role == "you") userOrdinal++ else -1
+            unit(listOf(turn), ordinal) { renderTurn(turn, ordinal, markdown) }
         }
     }
+    cache?.keys = keys
+    cache?.htmls = units
     return units
+}
+
+/** An ordinary turn (yours, the model's, a summary, or one Field wrote); [userOrdinal] numbers yours, else -1. */
+private fun renderTurn(turn: AiChatBlock, userOrdinal: Int, markdown: (String?) -> String): String {
+    val badge = if (turn.isFieldMessage) {
+        "<div class=\"ai-chat-model\" title=\"Written by Field, not by you: the outcome of the builds the last turn waited for.\">Field</div>"
+    } else if (turn.role == "ai" || turn.role == "summary") {
+        // A lens block (it cites the chat it summarizes) is labelled as one; its record names the model.
+        val lens = turn.model == null && turn.sources.isNotEmpty()
+        val label = turn.model?.label()?.let { if (turn.modelFromRun) "$it (from the run's record)" else it }
+            ?: if (lens) "Lens" else "Model not recorded"
+        val title = turn.model?.let { m ->
+            if (turn.modelFromRun) "This entry predates per-response model records; the run it belongs to is recorded as ${m.requestedModel} on ${m.provider}."
+            else m.description()
+        }
+            ?: if (lens) "Written as a lens over a longer chat; it stands for ${turn.sources.joinToString(", ")}."
+            else "This older chat entry did not record its provider or model."
+        "<div class=\"ai-chat-model\" title=\"${escapeHtml(title)}\">${escapeHtml(label)}</div>"
+    } else ""
+    val turnAttrs = if (turn.role == "you") {
+        " data-ai-turn=\"$userOrdinal\" data-ai-text=\"${escapeHtml(turn.content)}\""
+    } else ""
+    val actions = if (turn.role == "you") {
+        "<span class=\"ai-chat-turn-actions\">" +
+            "<button type=\"button\" class=\"ai-chat-turn-action\" data-ai-action=\"edit\" title=\"Edit this message and send it again (the rest is kept as a branch)\">edit</button>" +
+            "<button type=\"button\" class=\"ai-chat-turn-action\" data-ai-action=\"rewind\" title=\"Rewind to before this message (the rest is kept as a branch)\">rewind</button>" +
+            "</span>"
+    } else ""
+    // A lens block's citations, for the viewer that draws a line from it to the chat it summarizes.
+    val sourceAttr = if (turn.sources.isNotEmpty()) " data-ai-sources=\"${escapeHtml(turn.sources.joinToString(","))}\"" else ""
+    val roleClass = if (turn.isFieldMessage) "you field" else turn.role
+    // The badge says Field wrote it; the model reads the prefix, the panel need not show it twice.
+    val shown = if (turn.isFieldMessage) turn.content.removePrefix(AiChatBlock.FIELD_MESSAGE_PREFIX).replaceFirstChar { it.uppercase() }
+        else turn.content
+    return "<div class=\"ai-chat-turn $roleClass\"$turnAttrs$sourceAttr${addressAttr(turn)}>" + badge + markdown(shown) + actions + "</div>"
 }
 
 /**
@@ -540,13 +576,14 @@ private fun renderRound(run: List<AiChatBlock>, ordinal: Int, toolFamilies: AiCh
         "</details>"
 }
 
+private val PROGRESS_FILE = Regex("""(?:"file"\s*:\s*"([^"]+)"|\bfile=([^\s,}]+))""")
+
 private fun renderProgressTurn(turn: AiChatBlock, markdown: (String?) -> String): String {
     val lines = turn.content.lines()
     val title = lines.firstOrNull()?.trim()?.ifBlank { null } ?: "AI activity"
     val body = lines.drop(1).joinToString("\n").trim().ifBlank { turn.content }
     val isEdit = title.contains("EditFile", ignoreCase = true) || title.contains("edit file", ignoreCase = true)
-    val file = Regex("""(?:"file"\s*:\s*"([^"]+)"|\bfile=([^\s,}]+))""")
-        .find(turn.content)
+    val file = PROGRESS_FILE.find(turn.content)
         ?.groupValues
         ?.drop(1)
         ?.firstOrNull { it.isNotBlank() }
