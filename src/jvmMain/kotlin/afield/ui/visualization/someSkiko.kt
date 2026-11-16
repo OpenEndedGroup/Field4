@@ -503,11 +503,27 @@ fun drawToSVG(n: List<FLine>, w: Double = -1.0, h: Double = -1.0): String {
         lines
     }
 
+    // The SVG is emitted with overflow:visible, so geometry outside w×h is meant to show. Skia culls
+    // anything wholly outside its canvas, though, so a line drawn past the edge used to vanish
+    // (an empty <svg/>). When content leaves the canvas, draw on a canvas that covers it, shifted so
+    // nothing is negative, and keep the root's width/height at w×h with the shift undone by a <g>.
+    val drawnBounds = if (autoWidth || autoHeight) renderedLines.combinedRenderableBoundsOrNull() else bounds
+    val margin = 64.0 // stroke width, point markers and text reach past the geometric bounds
+    val overflows = drawnBounds != null && (drawnBounds.x < 0.0 || drawnBounds.y < 0.0 ||
+        drawnBounds.x + drawnBounds.w > we || drawnBounds.y + drawnBounds.h > he)
+    val shiftX = if (overflows && drawnBounds!!.x < 0.0) -drawnBounds.x + margin else 0.0
+    val shiftY = if (overflows && drawnBounds!!.y < 0.0) -drawnBounds.y + margin else 0.0
+    val canvasW = if (overflows) max(we, drawnBounds!!.x + drawnBounds.w + margin) + shiftX else we
+    val canvasH = if (overflows) max(he, drawnBounds!!.y + drawnBounds.h + margin) + shiftY else he
+    val toDraw = if (shiftX != 0.0 || shiftY != 0.0)
+        renderedLines.map { line -> line.transform { p -> vec(p.x + shiftX, p.y + shiftY, p.z) } }
+    else renderedLines
+
     var s: Canvas? = null
     try {
-        s = SVGCanvas.make(Rect.makeWH(we.toFloat(), he.toFloat()), o, true, true)
+        s = SVGCanvas.make(Rect.makeWH(canvasW.toFloat(), canvasH.toFloat()), o, true, true)
 
-        renderedLines.forEach {
+        toDraw.forEach {
             outputTo(it, s)
         }
     } finally {
@@ -516,8 +532,25 @@ fun drawToSVG(n: List<FLine>, w: Double = -1.0, h: Double = -1.0): String {
     }
 
     val hack = "xmlns=\"http://www.w3.org/2000/svg\""
-    return ba.toString().replace(hack, " style='overflow:visible' " + hack)
+    var svg = ba.toString().replace(hack, " style='overflow:visible' " + hack)
+    if (overflows) svg = restoreCanvasSize(svg, we, he, shiftX, shiftY)
+    return svg
+}
 
+/** Puts the root `<svg>` back to [w]×[h] and undoes the drawing shift, after an enlarged-canvas render. */
+private fun restoreCanvasSize(svg: String, w: Double, h: Double, shiftX: Double, shiftY: Double): String {
+    val open = Regex("<svg\\b[^>]*?(/?)>").find(svg) ?: return svg
+    val selfClosing = open.groupValues[1] == "/"
+    val tag = open.value
+        .replace(Regex("\\bwidth=\"[^\"]*\""), "width=\"${jsonN(w)}\"")
+        .replace(Regex("\\bheight=\"[^\"]*\""), "height=\"${jsonN(h)}\"")
+    if (selfClosing) return svg.replaceRange(open.range, tag)
+    val close = svg.lastIndexOf("</svg>")
+    if (close < 0) return svg.replaceRange(open.range, tag)
+    val body = svg.substring(open.range.last + 1, close)
+    val wrapped = if (shiftX != 0.0 || shiftY != 0.0)
+        "<g transform=\"translate(${jsonN(-shiftX)} ${jsonN(-shiftY)})\">$body</g>" else body
+    return svg.substring(0, open.range.first) + tag + wrapped + svg.substring(close)
 }
 
 internal data class FitTransform(val scale: Float, val offsetX: Float, val offsetY: Float)
