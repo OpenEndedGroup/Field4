@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24612 of 41311 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24638 of 41346 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2039 undocumented entry points** (types, top-level functions and values) and 13936 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2039 undocumented entry points** (types, top-level functions and values) and 13945 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -769,6 +769,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [WebcamTexture.kt](../src/jvmMain/kotlin/afield/graphics/texture/video/WebcamTexture.kt) | Graphics | — | 0 | 7 | 50% |
 | [GpuPassProbe.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/GpuPassProbe.kt) | Graphics | — | 0 | 7 | 22% |
 | [superpc.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/superpc.kt) | Graphics | — | 0 | 7 | 68% |
+| [PostScriptLanguage.kt](../src/jvmMain/kotlin/afield/lang/postscript/PostScriptLanguage.kt) | Languages | — | 0 | 7 | 46% |
 | [StackSLFeedback.kt](../src/jvmMain/kotlin/afield/lang/stacksl/StackSLFeedback.kt) | Graphics | — | 0 | 7 | 84% |
 | [CopiedExternalBrowserSurface.kt](../src/jvmMain/kotlin/afield/media/browser/CopiedExternalBrowserSurface.kt) | Imaging | — | 0 | 7 | 12% |
 | [TileAtlasLayout.kt](../src/jvmMain/kotlin/afield/simulation/flow/TileAtlasLayout.kt) | Simulation | — | 0 | 7 | 12% |
@@ -977,6 +978,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [GpuProbe.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/GpuProbe.kt) | Graphics | — | 0 | 2 | 94% |
 | [MqttBroker.kt](../src/jvmMain/kotlin/afield/io/mqtt/MqttBroker.kt) | Networking | — | 0 | 2 | 66% |
 | [MorphoSim.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoSim.kt) | Languages | — | 0 | 2 | 77% |
+| [PostScriptInterpreter.kt](../src/jvmMain/kotlin/afield/lang/postscript/PostScriptInterpreter.kt) | Languages | — | 0 | 2 | 90% |
 | [RemoteLifecycleKotlinJs.kt](../src/jvmMain/kotlin/afield/lang/remotejs/RemoteLifecycleKotlinJs.kt) | Languages | — | 0 | 2 | 33% |
 | [StackAutoStudy.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackAutoStudy.kt) | Languages | — | 0 | 2 | 92% |
 | [DistributionSoundDocs.kt](../src/jvmMain/kotlin/afield/math/distribution/DistributionSoundDocs.kt) | Math | — | 0 | 2 | 85% |

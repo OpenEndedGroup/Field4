@@ -549,6 +549,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - [lua](languages.md#luacatalog-kt)
 - [morpho](languages.md#morphocircuit-kt)
 - [nano](languages.md#nanoassembler-kt)
+- [postscript](languages.md#postscriptinterpreter-kt)
 - *python* — [Data](data.md#numpy-kt) · [Languages](languages.md#numpyshared-kt)
 - [rectsl](languages.md#rectsl-kt)
     - [study](languages.md#embeddedrectsl-kt)
@@ -678,7 +679,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**41311 public symbols across 1827 source files**, 24612 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**41346 public symbols across 1829 source files**, 24638 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -705,7 +706,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 40 | 1332 | 729 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 96 | 2550 | 1355 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 129 | 3313 | 1663 (50%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 131 | 3348 | 1689 (50%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 242 | 3367 | 1364 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 97 | 2191 | 828 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
@@ -1947,6 +1948,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>vectorize/<wbr>polyvector/<wbr></small> [PolyvectorRequiredGraph.kt](graphics.md#polyvectorrequiredgraph-kt) | Graphics | 9 | 4 | Polyvector tracing under a graph the result has to reproduce: a `Polyvector.vectorize` overload that takes the curves the trace must keep, and a `RequiredGraphDrawing` saying which of them it kept. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>search/<wbr></small> [PopulationSearch.kt](search.md#populationsearch-kt) | Search | 50 | 50 | Population search over *any* genome type — the generic drivers that `alife_evolve.kt`, `FunctionEvolve.kt` and `afield.simulation.kratos.KratosStudy` all run on. | [Spatial artificial life](../alife_examples.md), [Braitenberg vehicles with memory](../braitenberg_vehicles.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>vision/<wbr></small> [PortableOpticalFlowSmoke.kt](imaging.md#portableopticalflowsmoke-kt) | Imaging | 2 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>postscript/<wbr></small> [PostScriptInterpreter.kt](languages.md#postscriptinterpreter-kt) | Languages | 22 | 20 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>postscript/<wbr></small> [PostScriptLanguage.kt](languages.md#postscriptlanguage-kt) | Languages | 13 | 6 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>execution/<wbr></small> [PreambleFailureStopsExecutionTest.kt](workspace.md#preamblefailurestopsexecutiontest-kt) | Workspace | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>slides/<wbr></small> [Presentation.kt](visualization.md#presentation-kt) | Visualization | 18 | 18 | Giving a talk from a Field document: `Box.presentation` builds the same steps a `slideShow` does, and each step can carry a slide for a separate audience display. | [Presenting with Field](../presentation_studio.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>slides/<wbr></small> [PresentationArrangement.kt](visualization.md#presentationarrangement-kt) | Visualization | 6 | 6 |  |  |
