@@ -1960,6 +1960,42 @@ function renderChatMessages(messages, markdown, options) {
                 img.addEventListener("error", finish, {once: true});
         });
         requestAnimationFrame(finish);
+        if (restore.stick) keepChatAtBottom(messages, forceBottom);
+}
+
+/**
+ * Units off screen have estimated heights (content-visibility), which become real as they render near the
+ * viewport, so one `scrollTop = scrollHeight` lands short of the bottom and a message you just sent stays
+ * out of sight. For a moment after a render that sticks, re-pin whenever the thread's height changes,
+ * until the reader scrolls themself.
+ */
+function keepChatAtBottom(messages, force) {
+        const thread = messages.__chatThread;
+        if (!thread || typeof ResizeObserver === "undefined") return;
+        clearTimeout(messages.__chatStickTimer);
+        messages.__chatStickForce = force || messages.__chatStickForce;
+        if (!messages.__chatStickObserver) {
+                const stop = () => {
+                        messages.__chatStickObserver?.disconnect();
+                        messages.__chatStickObserver = null;
+                        messages.__chatStickForce = false;
+                };
+                messages.__chatStickStop = stop;
+                messages.__chatStickObserver = new ResizeObserver(() => {
+                        messages.scrollTop = messages.scrollHeight;
+                        messages.__chatStickTop = messages.scrollTop;
+                });
+                messages.__chatStickObserver.observe(thread);
+                // Any scroll that is not our own pin (wheel, keys, scrollbar, script) hands control back.
+                const onScroll = () => {
+                        if (!messages.__chatStickObserver) return messages.removeEventListener("scroll", onScroll);
+                        if (Math.abs(messages.scrollTop - messages.__chatStickTop) > 4 && !chatPinnedToBottom(messages)) stop();
+                };
+                messages.addEventListener("scroll", onScroll, {passive: true});
+        }
+        messages.scrollTop = messages.scrollHeight;
+        messages.__chatStickTop = messages.scrollTop;
+        messages.__chatStickTimer = setTimeout(() => messages.__chatStickStop?.(), messages.__chatStickForce ? 1500 : 600);
 }
 
 /**
