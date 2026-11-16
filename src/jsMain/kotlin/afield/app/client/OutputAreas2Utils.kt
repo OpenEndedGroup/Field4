@@ -2,7 +2,10 @@ package afield.app.client
 
 import afield.app.canvas.invoke
 
+import afield.ai.conversation.AiChatParse
+import afield.ai.conversation.AiChatUnitCache
 import afield.ai.conversation.AiChatToolFamilies
+import afield.ai.conversation.parseAiChatHistory
 import afield.ai.conversation.aiChatHistoryHtml
 import afield.ai.conversation.aiChatHistoryUnits
 import afield.ai.conversation.aiChatMarkdownHtml
@@ -46,5 +49,12 @@ private fun cachedMarkdownHtml(markdown: String?): String {
  */
 @OptIn(ExperimentalJsExport::class)
 @JsExport
-fun aiChatHistoryToUnits(history: String?): Array<String> =
-    aiChatHistoryUnits(history, toolFamilies, ::cachedMarkdownHtml).toTypedArray()
+fun aiChatHistoryToUnits(history: String?): Array<String> {
+    // A streamed chat only grows at its end: resume the last parse instead of tokenizing megabytes again.
+    val parse = parseAiChatHistory(history, lastParse)
+    lastParse = parse
+    return aiChatHistoryUnits(parse.blocks, toolFamilies, ::cachedMarkdownHtml, unitCache).toTypedArray()
+}
+
+private var lastParse: AiChatParse? = null
+private val unitCache = AiChatUnitCache()

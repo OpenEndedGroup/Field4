@@ -35,6 +35,28 @@ class AiChatHistoryUnitsTest {
     }
 
     @Test
+    fun aResumedParseMatchesAFreshOne() {
+        val runModel = "<<run-model:{\"provider\":\"openai\",\"requestedModel\":\"m\"}>>\n"
+        for (start in listOf("", "stray text before any marker\n", runModel)) {
+            val full = start + history + "\n<<you>>\nNow red\n<<progress-open>>\nWaiting for model\n<<ai>>\nPainting it red, done."
+            var previous: AiChatParse? = null
+            val cache = AiChatUnitCache()
+            // Every prefix, as a stream delivers it: resuming the last parse must agree with parsing from scratch.
+            for (end in 1..full.length) {
+                val text = full.substring(0, end)
+                val resumed = parseAiChatHistory(text, previous)
+                assertEquals(parseAiChatBlocks(text), resumed.blocks, "prefix of length $end (start ${start.take(12)})")
+                // And the cached units, as the panel renders them, agree with an uncached render.
+                assertEquals(aiChatHistoryUnits(text, null), aiChatHistoryUnits(resumed.blocks, null, cache = cache), "units at $end")
+                previous = resumed
+            }
+        }
+        // A different transcript does not reuse the old one's blocks.
+        val first = parseAiChatHistory(history)
+        assertEquals(parseAiChatBlocks("<<you>>\nOther"), parseAiChatHistory("<<you>>\nOther", first).blocks)
+    }
+
+    @Test
     fun aQuestionClosesOnceAnswered() {
         val asked = "<<you>>\nGo\n<<progress>>\nAskUserQuestion\nKeep it?"
         val open = aiChatHistoryUnits(asked, null)
