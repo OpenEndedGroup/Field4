@@ -4898,26 +4898,30 @@
     },
     "assets/agent_transcripts/spectral_examples/metadata.edn": {
       "captureDigest": "378c0b1419ccd7187ddfa26faf20f5b11145a5bc319131f8e80cc22ca5f72722",
-      "capturedAt": "2026-11-14T22:42:59.502Z",
-      "channels": 7,
+      "capturedAt": "2026-11-16T06:33:35.744Z",
+      "channels": 10,
       "file": "assets/web_publications/spectral_examples/document/metadata.edn",
       "files": {
-        "assets/web_publications/spectral_examples/document/metadata.edn": "717da9d8ccdafb3cbc5c0bf2fdfc6b17e253aeb4ec2bee0b827070a3d254c7ce",
-        "assets/web_publications/spectral_examples/document/outputs.json": "0064f9bf9dc479b73d8333e9b32ac9f407348e7268497d2c427a0b83e52dc2d9",
-        "assets/web_publications/spectral_examples/outputs/0.html": "b9c118b661ed1063074462bd002c042a2f79b25286b5f6e42a894574bcca8216",
-        "assets/web_publications/spectral_examples/outputs/1.html": "ff50de4f6f2347a8aafec001f814e644837e17415a3dc12f7f92961deecb77bf",
-        "assets/web_publications/spectral_examples/outputs/2.html": "6e23b22683782796df75639c833c497468134837e30502c515fd618b3a41bbf1",
-        "assets/web_publications/spectral_examples/outputs/3.html": "36b2f68780f2ea5fad72ef0025d8d9667e2140dd0173582d22f9f2a96be67c05",
-        "assets/web_publications/spectral_examples/outputs/4.html": "3b0a13fac7bfa44ecf48eeaed6b60c0bdc0dd2f09a6eee557ff70edf05124b11",
-        "assets/web_publications/spectral_examples/outputs/5.html": "0c10a007e2523087181579c3934ee85193800b18a6f9533056f1b9dd203ea9d4",
-        "assets/web_publications/spectral_examples/outputs/6.html": "2a858a507ef3a0cf8577ab4aba9b179935cb21539cbf4329df826bdbbd808837"
+        "assets/web_publications/spectral_examples/document/metadata.edn": "bd090975a3e473ae917baebda0f04441544d29d370db63a1dc754c721ca71bc9",
+        "assets/web_publications/spectral_examples/document/outputs.json": "7b8adf3c74e6449f4e0c2372bd02b2d42be42485349b3d83085b40828f888093",
+        "assets/web_publications/spectral_examples/outputs/0.html": "12d09bce908aa91e4fcadb0afa04d9772f5f60d5382da2040d925df38bea6b00",
+        "assets/web_publications/spectral_examples/outputs/1.html": "f535dc69a4c4ea1b6cfe1e87f0e85e4d6f622d77bd9bc08ea7964ff685b5dd54",
+        "assets/web_publications/spectral_examples/outputs/2.html": "37f68d1342614a8f509bc35bbba1a46c9978d151926cb799ced000f5fd1d5d3a",
+        "assets/web_publications/spectral_examples/outputs/3.html": "09dc00fe45ed97b0c0049ae0c35441d38666419f0f5dcc64c7b0be42af96069f",
+        "assets/web_publications/spectral_examples/outputs/4.html": "0dd97d9e9795391477db86ae73794c1a83f76d7aa410773c60cde27a3856db0c",
+        "assets/web_publications/spectral_examples/outputs/5.html": "66b42a80ba45cbc9f07a0761486d7b9d3dd63a16a74cfeb7a17fc63c4c5791ca",
+        "assets/web_publications/spectral_examples/outputs/6.html": "af1a8a1e7261a0fc2b19347fde9c19cce017bb1fac013118fd1dba9bd0d705f6",
+        "assets/web_publications/spectral_examples/outputs/7.html": "2828c27efd41cace3ed9228b53c7e3dedffc3c3cfe418ead93ccc74bfcd68d6f",
+        "assets/web_publications/spectral_examples/outputs/8.html": "c284004fe3be1e5b280f813e32c12284e1d24674682b42d5a934f8be319ed8d2",
+        "assets/web_publications/spectral_examples/outputs/9.html": "4856fcb50e1c02d1f6231b20d25522765b05b69c6ed397c4295bfaeafc855a8e"
       },
       "kinds": [
-        "plotly"
+        "plotly",
+        "svg"
       ],
       "outputs": "assets/web_publications/spectral_examples/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/spectral_examples.yaml": "6b8f51589bbceaca310aaf3350918d68ec9b836bc763c198c2a44b026f2cb335",
+        "dev_docs/agents/transcripts/spectral_examples.yaml": "577d68da20b142bb07ae5e3871a914f7b1940c7eebf30354edbaae38d2c9875f",
         "public/docs/assets/agent_transcripts/spectral_examples/guides/spectral_examples.md": "bdac30767a5c0250edcbcd6d4df89b2c13915f928bee04cadbbdac485592db28",
         "public/docs/assets/agent_transcripts/spectral_examples/metadata.edn": "c14a2bdcdb82983cd2fd91b50e292db1f0fc21180ce54cb1a1a843a2f8952c8c",
         "public/docs/assets/agent_transcripts/spectral_examples/spectral_distribution_events_code_.kt": "61a7ff3344cb3bcf724ebc9d7c7e4244550ff5b62557e2b5ed563d35601f37fd",
