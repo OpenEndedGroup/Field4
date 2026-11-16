@@ -511,10 +511,10 @@ fun drawToSVG(n: List<FLine>, w: Double = -1.0, h: Double = -1.0): String {
     val margin = 64.0 // stroke width, point markers and text reach past the geometric bounds
     val overflows = drawnBounds != null && (drawnBounds.x < 0.0 || drawnBounds.y < 0.0 ||
         drawnBounds.x + drawnBounds.w > we || drawnBounds.y + drawnBounds.h > he)
-    val shiftX = if (overflows && drawnBounds!!.x < 0.0) -drawnBounds.x + margin else 0.0
-    val shiftY = if (overflows && drawnBounds!!.y < 0.0) -drawnBounds.y + margin else 0.0
-    val canvasW = if (overflows) max(we, drawnBounds!!.x + drawnBounds.w + margin) + shiftX else we
-    val canvasH = if (overflows) max(he, drawnBounds!!.y + drawnBounds.h + margin) + shiftY else he
+    val shiftX = if (overflows && drawnBounds.x < 0.0) -drawnBounds.x + margin else 0.0
+    val shiftY = if (overflows && drawnBounds.y < 0.0) -drawnBounds.y + margin else 0.0
+    val canvasW = if (overflows) max(we, drawnBounds.x + drawnBounds.w + margin) + shiftX else we
+    val canvasH = if (overflows) max(he, drawnBounds.y + drawnBounds.h + margin) + shiftY else he
     val toDraw = if (shiftX != 0.0 || shiftY != 0.0)
         renderedLines.map { line -> line.transform { p -> vec(p.x + shiftX, p.y + shiftY, p.z) } }
     else renderedLines
