@@ -680,6 +680,10 @@ class FieldGraphTools(
                 message = "No verdict for the $verb of '${box.name}' within ${timeoutSeconds}s. " +
                     "It may still be compiling or be stuck; check ReadBoxOutput, or StopBox it."
             )
+            !report.success && afield.ai.conversation.FieldStaleClasses.errorTextIsStale(report.error) -> common.copy(
+                stage = afield.ai.conversation.FieldStaleClasses.STAGE, error = BoxOutputLog.decodeHtmlEntities(report.error).take(4000),
+                message = afield.ai.conversation.FieldStaleClasses.restartMessage("the $verb of '${box.name}' failed loading ${report.error.trim().take(200)}")
+            )
             !report.success -> common.copy(
                 stage = report.stage, error = BoxOutputLog.decodeHtmlEntities(report.error).take(4000),
                 message = "The $verb of '${box.name}' FAILED. Read `error` and `errors`, fix the code, and try again."

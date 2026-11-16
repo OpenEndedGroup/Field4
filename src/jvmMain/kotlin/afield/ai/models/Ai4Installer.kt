@@ -705,7 +705,7 @@ class Ai4CodeToolProviders(
             failed = true
             diagnostics += CompileDiagnostic(
                 severity = "ERROR",
-                message = throwable.message ?: throwable::class.java.name
+                message = afield.ai.conversation.FieldStaleClasses.messageFor(throwable) ?: throwable.message ?: throwable::class.java.name
             )
         }
 
@@ -713,6 +713,16 @@ class Ai4CodeToolProviders(
         val hasHardDiagnostic = diagnostics.any { severity ->
             val normalized = severity.severity.uppercase()
             normalized != "DEBUG" && normalized != "INFO" && normalized != "WARNING"
+        }
+        // A rebuild under this Field leaves the compiler classpath it built at start pointing at rewritten classes:
+        // hundreds of "Unresolved reference 'graphics'" that say one thing, so they are said once.
+        val stale = afield.ai.conversation.FieldStaleClasses.summarizeMassUnresolved(diagnostics.map { it.message })
+        if (stale != null) {
+            lprintln("info,ai4", "compileKotlin: ${diagnostics.size} diagnostics collapsed as field-stale")
+            return@compileKotlin CompileKotlinResult(
+                success = false, file = fileRefFor(docName, target.id, "code"), message = stale,
+                diagnostics = diagnostics.take(3), stage = afield.ai.conversation.FieldStaleClasses.STAGE,
+            )
         }
         val success = !failed && !hasHardDiagnostic
         val changed = setupChanges(before, after)
@@ -3049,8 +3059,5 @@ private fun formatMarkdown(text: String): String {
  */
 internal fun evaluationFailureMessage(throwable: Throwable): String {
     val text = "${throwable::class.java.simpleName}: ${throwable.message ?: ""}".trimEnd(':', ' ')
-    return if (throwable is LinkageError)
-        "$text. Field's own classes changed on disk while it was running (a rebuild); this is not the expression's fault, " +
-            "and every evaluation will fail the same way until Field is restarted. Check values with RunBoxRequest and println instead."
-    else text
+    return afield.ai.conversation.FieldStaleClasses.messageFor(throwable)?.let { "$text. $it" } ?: text
 }
