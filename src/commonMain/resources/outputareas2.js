@@ -2140,6 +2140,88 @@ function ensureAiChat(container, uid, property) {
                 send("ai-assist", payload);
         }
 
+        const runControls = document.createElement("div");
+        runControls.className = "ai-chat-run-controls";
+        const actionsButton = document.createElement("button");
+        actionsButton.type = "button";
+        actionsButton.className = "ai-chat-actions-toggle";
+        actionsButton.setAttribute("aria-label", "Chat actions");
+        actionsButton.setAttribute("aria-haspopup", "menu");
+        actionsButton.setAttribute("aria-expanded", "false");
+        actionsButton.title = "Chat actions";
+        actionsButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M3 4h10M3 8h10M3 12h10"/></svg>';
+        const actionsMenu = document.createElement("div");
+        actionsMenu.className = "ai-chat-actions-menu field-control-popup";
+        actionsMenu.setAttribute("popover", "auto");
+        actionsMenu.setAttribute("role", "menu");
+        actionsMenu.setAttribute("aria-label", "Chat actions");
+        runControls.append(actionsButton, actionsMenu);
+        function closeActions() { actionsMenu.hidePopover(); }
+        function positionActions() {
+                if (!actionsMenu.matches(":popover-open")) return;
+                if (!actionsButton.isConnected) { closeActions(); return; }
+                const anchor = actionsButton.getBoundingClientRect();
+                const width = actionsMenu.getBoundingClientRect().width;
+                actionsMenu.style.left = Math.max(8, Math.min(anchor.right - width, innerWidth - width - 8)) + "px";
+                actionsMenu.style.bottom = Math.max(8, innerHeight - anchor.top + 6) + "px";
+                actionsMenu.style.maxHeight = Math.max(40, anchor.top - 16) + "px";
+                requestAnimationFrame(positionActions);
+        }
+        actionsMenu.addEventListener("toggle", event => {
+                actionsButton.setAttribute("aria-expanded", String(event.newState === "open"));
+        });
+        actionsButton.addEventListener("click", () => {
+                if (actionsMenu.matches(":popover-open")) { closeActions(); return; }
+                actionsMenu.querySelectorAll('[data-send]').forEach(item => {
+                        item.disabled = !textarea.value.trim() && attachments.length === 0;
+                });
+                actionsMenu.showPopover();
+                positionActions();
+                actionsMenu.querySelector('button:not(:disabled)')?.focus();
+        });
+        actionsMenu.addEventListener("keydown", event => {
+                const items = [...actionsMenu.querySelectorAll('button:not(:disabled)')];
+                const index = items.indexOf(document.activeElement);
+                if (["ArrowDown", "ArrowUp", "Home", "End", "Escape"].includes(event.key)) {
+                        event.preventDefault(); event.stopPropagation();
+                        if (event.key === "Escape") { closeActions(); actionsButton.focus(); return; }
+                        const next = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1
+                                : (index + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+                        items[next]?.focus();
+                }
+        });
+        function chatAction(label, action, sendDraft = false) {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.setAttribute("role", "menuitem");
+                button.textContent = label;
+                if (sendDraft) button.dataset.send = "true";
+                button.addEventListener("click", () => { closeActions(); action(); });
+                actionsMenu.appendChild(button);
+        }
+        chatAction("Correct this run", () => submitPrompt(), true);
+        chatAction("Do next", () => submitPrompt({followUp: true}), true);
+        function control(action) {
+                const targetUid = chatUid();
+                sendWithReply("ai-chat-context", {uid: targetUid, action},
+                        `ai-chat-control-${targetUid}-${Date.now()}`, (_message, response) => {
+                                if (chatUid() !== targetUid) return "remove";
+                                if (response?.markdown) appendLocalChatTurn("ai", response.markdown);
+                                const drafts = response?.drafts || [];
+                                if (drafts.length) {
+                                        textarea.value = [textarea.value, ...drafts.map(d => d.extraPrompt)].filter(Boolean).join("\n\n");
+                                        for (const draft of drafts) for (const src of draft.images || []) attachments.push({src});
+                                        renderPreview();
+                                        textarea.focus();
+                                }
+                                return "remove";
+                        });
+        }
+        for (const [label, action] of [["Stop", "stop"], ["Recall queued", "recall"], ["Context", "inspect"]]) {
+                chatAction(label, () => control(action));
+        }
+        chatAction("Open Garden", () => garden.open());
+
         const attachments = [];
 
         function currentSelectedUid() {
@@ -2434,7 +2516,7 @@ function ensureAiChat(container, uid, property) {
                         textarea.value = "";
                         const targetUid = chatUid();
                         // Shown locally like /help: never saved, so never fed back to the model.
-                        sendWithReply("ai-chat-context", {uid: targetUid},
+                        sendWithReply("ai-chat-context", {uid: targetUid, action: rest ? `snapshot:${rest.trim()}` : "inspect"},
                                 `ai-chat-context-${targetUid}-${Date.now()}`, (_message, response) => {
                                         if (chatUid() === targetUid) appendLocalChatTurn("ai", response?.markdown || "_No context report._");
                                         return "remove";
@@ -2513,6 +2595,7 @@ function ensureAiChat(container, uid, property) {
                 if (options.dictated) payload.dictated = true;
                 // While this box's turn runs, the server gives the message to that turn instead of refusing it.
                 payload.queueIfBusy = true;
+                payload.delivery = options.followUp ? "follow-up" : "steer";
                 noteAiChatUsed(container);
                 sendAiChat(payload);
                 attachments.length = 0;
@@ -2522,7 +2605,7 @@ function ensureAiChat(container, uid, property) {
         textarea.addEventListener("keydown", (event) => {
             if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();
-                    submitPrompt();
+                    submitPrompt({followUp: event.altKey});
             }
         });
         sendButton.addEventListener("click", () => submitPrompt());
@@ -2565,10 +2648,13 @@ function ensureAiChat(container, uid, property) {
         });
 
         inputWrap.appendChild(preview);
-        inputWrap.appendChild(textarea);
+        const entry = document.createElement("div");
+        entry.className = "ai-chat-entry";
+        entry.append(textarea, runControls);
+        inputWrap.appendChild(entry);
         inputWrap.appendChild(micButton);
         inputWrap.appendChild(sendButton);
-        const autocomplete = mountChatAutocomplete(inputWrap, textarea, {chatUid, chatProperty});
+        const autocomplete = mountChatAutocomplete(entry, textarea, {chatUid, chatProperty});
 
         const stateBrowser = mountStateTreeBrowser(root, {
                 chatUid,
@@ -2585,7 +2671,7 @@ function ensureAiChat(container, uid, property) {
                 }
         });
         const garden = mountConversationGarden(root, {
-                chatUid, chatProperty,
+                chatUid, chatProperty, externalToggle: true,
                 markdown: aiChatMarkdownToHtml,
                 decorate: node => { decorateAfieldLinks(node); applyCodeHighlight(node); renderAiChatFences(node); typesetAiChatMath(node); },
                 openBox: (uid, property) => {

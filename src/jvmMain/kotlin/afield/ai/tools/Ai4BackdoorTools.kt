@@ -10,6 +10,7 @@ import afield.ai.models.uniqueBoxOrRefuse
 import afield.runtime.lifecycle.Runloop
 import afield.app.server.app
 import afield.app.server.home
+import afield.app.server.fileProxyTargetOrNull
 import afield.document.graph.Box
 import afield.app.server.SessionInformation
 import afield.ai.retrieval.SemanticRetrievalQueryRequest
@@ -189,7 +190,15 @@ internal object Ai4BackdoorTools {
             listKotlinContextVariables = runtimeTools.listKotlinContextVariables,
             codeUseQuery = runtimeTools.codeUseQuery,
             workspaceSymbolSearch = runtimeTools.workspaceSymbolSearch,
-            workspaceSearch = workspaceSearchForDocument(docPath),
+            workspaceSearch = workspaceSearchForDocument(docPath) { token ->
+                val box = boxByIdOrNull(token)
+                    ?: uniqueBoxOrRefuse(token, sessionInfo.boxes.values.filter { it.name == token && token.isNotBlank() })
+                box?.let { target ->
+                    fileProxyTargetOrNull(target)?.takeIf { it.isDirectory }
+                        ?.let { WorkspaceSearchProxyRoot(target.id, it.toPath()) }
+                }
+            },
+            resolveAttachment = { raw -> resolveProxyAttachment(sessionInfo.boxes.values, raw) },
             listMacros = listMacros,
             readMacro = readMacro,
             writeMacro = writeMacro,
@@ -274,9 +283,12 @@ internal fun resolveBackdoorFileRef(sessionInfo: SessionInformation, docName: St
 }
 
 /** Both chat and backdoor use the attached document and the configured roots, never cwd fallback. */
-internal fun workspaceSearchForDocument(documentPath: String): (WorkspaceSearchRequest) -> WorkspaceSearchResult {
+internal fun workspaceSearchForDocument(
+    documentPath: String,
+    proxyRoot: (String) -> WorkspaceSearchProxyRoot? = { null }
+): (WorkspaceSearchRequest) -> WorkspaceSearchResult {
     val search = WorkspaceSearch(WorkspaceSearchRoots(
-        File(documentPath).toPath(), File(home).toPath(), File(app, "src").toPath()
+        File(documentPath).toPath(), File(home).toPath(), File(app, "src").toPath(), proxyRoot = proxyRoot
     ))
     return { request ->
         check(!Runloop.isMainThread) { "Workspace search reads disk; call it off the Field Runloop." }

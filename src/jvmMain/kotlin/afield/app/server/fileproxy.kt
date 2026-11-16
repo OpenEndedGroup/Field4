@@ -30,8 +30,9 @@ import java.util.UUID
 import kotlin.io.path.pathString
 
 /**
- * File proxy boxes: a box whose `contents` mirror a text file, given by an absolute path or by a
- * path under the workspace or the document folder.
+ * File proxy boxes: a box whose `contents` mirror a text file, or describe a live directory of
+ * context, given by an absolute path or a path under the workspace or document folder.
+ * Directory catalogues and child reads use [DirectoryProxyFiles] off the UI refresh path.
  *
  * [refreshFileProxyBox] and [refreshFileProxyBoxes] reload a proxy from disk, and
  * [writeFileProxyContents] writes an edit back, reporting the outcome as a [FileProxyWriteResult].
@@ -175,7 +176,7 @@ fun readFileAsText(file: File): Pair<String, String>? {
     return readProxyText(file)
 }
 
-/** The file a file box stands for, or `null` when [box] is not a file box or its path is invalid. */
+/** The file or directory a proxy stands for, or `null` when [box] is not a proxy or its path is invalid. */
 fun fileProxyTargetOrNull(box: Box): File? =
     if (box.isFileProxy()) runCatching { resolveFileProxyTarget(box) }.getOrNull() else null
 
@@ -216,6 +217,35 @@ fun refreshFileProxyBox(box: Box, notifyMissing: Boolean = false) {
 
     if ((box.getPropertyRaw("file_proxy_error") as? String).orEmpty().isNotBlank()) {
         box.setPropertyRaw("file_proxy_error", "")
+    }
+    if (target.isDirectory) {
+        // Refresh runs on document/UI paths: leave recursive I/O to off-Runloop agent reads.
+        box.setPropertyRaw("contents", """
+            # Directory context proxy
+
+            This box links to a folder on disk.
+
+            Ask AI4 to:
+
+            - **List** its available files.
+            - **Search** this folder.
+            - **Read** a matching source.
+
+            Files remain in their original location.
+            Reads see the current saved contents.
+
+            The catalogue excludes hidden files,
+            generated files, ignored files and symlinks.
+
+            Large trees are searched under explicit limits.
+            The whole folder is not loaded into the prompt.
+
+            This is a live link, not a copied directory.
+            This description is generated, not editable.
+        """.trimIndent())
+        box.setPropertyRaw("contents_language", "markdown")
+        box.setPropertyRaw("default_property", "contents")
+        return
     }
     val text = readProxyText(target)
     if (text != null) {
@@ -268,6 +298,7 @@ fun writeFileProxyContents(box: Box, contents: String): FileProxyWriteResult {
     if (!target.exists()) {
         throw IllegalStateException("file proxy target is missing: ${target.path}")
     }
+    require(!target.isDirectory) { "Directory proxy contents are a generated catalogue, not an editable file." }
     target.writeText(contents)
     box.setPropertyRaw("contents_language", languageForFile(target.name))
     return FileProxyWriteResult.Written
@@ -326,6 +357,7 @@ internal fun createProxyTarget(request: CreateFileProxyBox): CreatedProxy {
             if (sourcePath != null && sourcePath.exists() && canonicalStartsWith(sourcePath, documentDir)) {
                 CreatedProxy("document", relativePath(documentDir, sourcePath), sourcePath, sourcePath.absolutePath)
             } else {
+                require(sourcePath?.isDirectory != true) { "Directories must be linked with an absolute/workspace proxy, not copied into the document." }
                 val data = bytes ?: sourcePath?.takeIf { it.exists() }?.readBytes()
                     ?: throw IllegalArgumentException("copying into the document needs dropped file bytes")
                 val destination = uniqueDestination(documentDir, request.fileName, data)

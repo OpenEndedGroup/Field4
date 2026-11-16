@@ -19,6 +19,9 @@ import afield.document.persistence.SavingContext
 import afield.app.server.broadcastWelcomeEvent
 import afield.app.server.currentFieldPreferences
 import afield.app.server.home
+import afield.app.server.DirectoryProxyFiles
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
 import afield.app.diagnostics.logging.lprintln
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -558,7 +561,12 @@ object SemanticRetrievalService {
 
     fun status(): SemanticRetrievalStatus {
         val cached = lastStatus
-        if (cached != null) return cached.copy(indexExists = indexExists())
+        if (cached != null) {
+            val exists = indexExists()
+            if (exists && currentCorpusFingerprint() != cached.currentCorpusFingerprint)
+                return computeStatus("")
+            return cached.copy(indexExists = exists)
+        }
         return computeStatus("Semantic retrieval index has not been built in this process.")
     }
 
@@ -863,6 +871,7 @@ object SemanticRetrievalService {
                 "workspaceDocuments=${build.workspaceDocuments}",
                 "workspaceSidecarFiles=${build.workspaceSidecarFiles}",
                 "corpusFingerprint=${build.corpusFingerprint}",
+                "indexWarnings=${build.warnings.joinToString(" ").replace('\n', ' ').replace('\r', ' ')}",
                 "workspaceRoot=${workspaceRootPath()?.toString().orEmpty()}"
             ).joinToString("\n")
             Files.writeString(path.resolve(META_FILE), meta, StandardCharsets.UTF_8)
@@ -1033,7 +1042,10 @@ object SemanticRetrievalService {
             indexStale = exists && (vectorsOutdated(meta) || currentFingerprint.isNotBlank() &&
                     (indexedFingerprint.isBlank() || indexedFingerprint != currentFingerprint)),
             staleDocuments = if (exists) staleDocumentCount() else -1,
-            message = message.ifBlank { if (config.enabled) embedderMessage else "Semantic search is off." }
+            message = listOf(message.ifBlank { if (config.enabled) embedderMessage else "Semantic search is off." },
+                meta["indexWarnings"].orEmpty(),
+                "External proxy freshness is checked at most every 5 seconds (mtime/size and membership, not content hashes); directory children are filtered, non-UTF8/binary-control text is omitted and text previews capped at 80,000 characters.")
+                .filter { it.isNotBlank() }.joinToString(" ")
         )
         lastStatus = status
         return status
@@ -1233,7 +1245,8 @@ object SemanticRetrievalService {
         val capsules: List<SemanticCapsule>,
         val workspaceDocuments: Int,
         val workspaceSidecarFiles: Int,
-        val corpusFingerprint: String
+        val corpusFingerprint: String,
+        val warnings: List<String> = emptyList()
     )
 
     private data class WorkspaceSidecarRecord(
@@ -1247,7 +1260,9 @@ object SemanticRetrievalService {
         val file: Path,
         val relativePath: String,
         val sizeBytes: Long,
-        val modifiedEpochMs: Long
+        val modifiedEpochMs: Long,
+        val proxyRoot: Path? = null,
+        val proxyRelative: String = ""
     )
 
     private data class WorkspaceSourceFragment(
@@ -1267,9 +1282,10 @@ object SemanticRetrievalService {
         val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
         val kotlinCapsules = sourceCapsules(root, index)
         val docsCapsules = docsCapsules(root)
-        val workspaceRecords = workspaceSidecarRecords()
+        val warnings = mutableListOf<String>()
+        val workspaceRecords = workspaceSidecarRecords(warnings)
         val workspaceCapsules = workspaceSidecarCapsules(workspaceRecords)
-        val tutorialCapsules = workspaceSidecarCapsules(sidecarRecords(root, tutorialDocumentDirs(root)), corpus = "tutorials") +
+        val tutorialCapsules = workspaceSidecarCapsules(sidecarRecords(root, tutorialDocumentDirs(root), warnings), corpus = "tutorials") +
             tutorialSummaryCapsules(root)
         val allLeafCapsules = kotlinCapsules + docsCapsules + workspaceCapsules + tutorialCapsules
         val subsystemCapsules = subsystemCapsules(allLeafCapsules)
@@ -1289,20 +1305,35 @@ object SemanticRetrievalService {
             capsules = (allLeafCapsules + subsystemCapsules + repositoryCapsule).filter { onlyCorpora == null || normalizeCorpusName(it.corpus) in onlyCorpora },
             workspaceDocuments = workspaceRecords.map { it.documentName }.toSet().size,
             workspaceSidecarFiles = workspaceRecords.size,
-            corpusFingerprint = corpusFingerprint(workspaceRecords)
+            corpusFingerprint = corpusFingerprint(workspaceRecords),
+            warnings = warnings
         )
     }
 
     private fun workspaceSidecarCapsules(records: List<WorkspaceSidecarRecord>, corpus: String = "workspace"): List<SemanticCapsule> {
         return records.flatMap { record ->
-            val source = runCatching { Files.readString(record.file, StandardCharsets.UTF_8) }.getOrNull()
+            val source = runCatching {
+                if (record.proxyRoot == null) Files.readString(record.file, StandardCharsets.UTF_8)
+                else {
+                    val file = DirectoryProxyFiles.resolve(record.proxyRoot.toFile(), record.proxyRelative)
+                    val bytes = file.inputStream().use { it.readNBytes(2 * 1024 * 1024 + 1) }
+                    require(bytes.size <= 2 * 1024 * 1024 && bytes.none { it == 0.toByte() })
+                    StandardCharsets.UTF_8.newDecoder()
+                        .onMalformedInput(CodingErrorAction.REPORT)
+                        .onUnmappableCharacter(CodingErrorAction.REPORT)
+                        .decode(ByteBuffer.wrap(bytes)).toString().also { text ->
+                            require(text.none { it.isISOControl() && it !in "\t\r\n" })
+                        }
+                }
+            }.getOrNull()
+                ?.takeIf { '\u0000' !in it }
                 ?.take(80_000)
                 ?: return@flatMap emptyList()
             if (source.isBlank()) return@flatMap emptyList()
             val firstLine = source.lineSequence().firstOrNull { it.trim().isNotBlank() }?.trim().orEmpty()
             val hash = source.sha256Id()
             val lineCount = source.count { it == '\n' } + 1
-            val propertyId = "$corpus:${record.documentName}:${record.boxId}:${record.property}:$hash".sha256Id()
+            val propertyId = "$corpus:${record.documentName}:${record.boxId}:${record.property}:${record.relativePath}:$hash".sha256Id()
             val symbol = listOf(record.documentName, record.boxName.ifBlank { record.boxId }, record.property)
                 .filter { it.isNotBlank() }
                 .joinToString(" / ")
@@ -1329,6 +1360,8 @@ object SemanticRetrievalService {
                     appendLine("box_uid: ${record.boxId}")
                     appendLine("property: ${record.property}")
                     appendLine("language: ${record.language}")
+                    appendLine("source_path: ${record.file}")
+                    if (record.proxyRelative.isNotBlank()) appendLine("relative_path: ${record.proxyRelative}")
                     appendLine("file_hash: $hash")
                     appendLine("byte_size: ${record.sizeBytes}")
                     appendLine("modified_epoch_ms: ${record.modifiedEpochMs}")
@@ -1360,6 +1393,8 @@ object SemanticRetrievalService {
                             appendLine("box_uid: ${record.boxId}")
                             appendLine("property: ${record.property}")
                             appendLine("language: ${record.language}")
+                            appendLine("source_path: ${record.file}")
+                            if (record.proxyRelative.isNotBlank()) appendLine("relative_path: ${record.proxyRelative}")
                             appendLine("parent_property_id: $propertyId")
                             if (fragment.metadata.isNotBlank()) appendLine(fragment.metadata)
                         }.trim(),
@@ -1565,10 +1600,10 @@ object SemanticRetrievalService {
     private fun String.leadingWhitespace(): Int =
         takeWhile { it == ' ' || it == '\t' }.sumOf { if (it == '\t') 4 else 1 }
 
-    private fun workspaceSidecarRecords(): List<WorkspaceSidecarRecord> {
+    private fun workspaceSidecarRecords(warnings: MutableList<String> = mutableListOf()): List<WorkspaceSidecarRecord> {
         val root = workspaceRootPath() ?: return emptyList()
         if (!Files.isDirectory(root)) return emptyList()
-        return sidecarRecords(root, workspaceDocumentDirs(root))
+        return sidecarRecords(root, workspaceDocumentDirs(root), warnings)
     }
 
     /**
@@ -1622,7 +1657,7 @@ object SemanticRetrievalService {
         return out
     }
 
-    private fun sidecarRecords(root: Path, documentDirs: List<Path>): List<WorkspaceSidecarRecord> {
+    private fun sidecarRecords(root: Path, documentDirs: List<Path>, warnings: MutableList<String> = mutableListOf()): List<WorkspaceSidecarRecord> {
         val context = SavingContext()
         val out = mutableListOf<WorkspaceSidecarRecord>()
 
@@ -1674,7 +1709,26 @@ object SemanticRetrievalService {
                         }
                         if (boundary != null && !candidate.startsWith(boundary)) null else candidate
                     }.getOrNull()
-                    if (source != null && Files.isRegularFile(source)) {
+                    if (source == null) warnings += "File proxy ${transfer.id}: target unavailable or outside its configured boundary."
+                    if (source != null && Files.isDirectory(source)) {
+                        val scan = runCatching { DirectoryProxyFiles.scan(source.toFile()) }.getOrElse {
+                            warnings += "Directory proxy ${transfer.id}: PARTIAL scan failed."
+                            return@forEach
+                        }
+                        if (!scan.complete || scan.skipped > 0) warnings +=
+                            "Directory proxy ${transfer.id}: ${if (scan.complete) "filtered" else "PARTIAL (${scan.stopReason})"}; skipped ${scan.skipped}."
+                        scan.files.forEach { child ->
+                            val relative = source.relativize(child.toPath()).toString().replace("\\", "/")
+                            runCatching {
+                                out += WorkspaceSidecarRecord(
+                                    documentName, documentDir, metadataMtime, transfer.id, boxName, "contents",
+                                    sidecarLanguage("contents", child.extension, transfer.properties), child.toPath(),
+                                    DirectoryProxyFiles.reference(transfer.id, relative), child.length(), child.lastModified(),
+                                    source, relative
+                                )
+                            }.onFailure { warnings += "Directory proxy ${transfer.id}: skipped unreadable child." }
+                        }
+                    } else if (source != null && Files.isRegularFile(source)) {
                         val size = runCatching { Files.size(source) }.getOrDefault(0L)
                         if (size in 1..10_000_000) {
                             val extension = source.fileName.toString().substringAfterLast('.', "").lowercase(Locale.ROOT)
@@ -1704,7 +1758,7 @@ object SemanticRetrievalService {
                 }
             }
         }
-        return out.sortedWith(compareBy<WorkspaceSidecarRecord> { it.documentName }.thenBy { it.boxId }.thenBy { it.property })
+        return out.sortedWith(compareBy<WorkspaceSidecarRecord> { it.documentName }.thenBy { it.boxId }.thenBy { it.property }.thenBy { it.relativePath })
     }
 
     private fun workspaceDocumentDirs(root: Path): List<Path> {
@@ -1751,9 +1805,10 @@ object SemanticRetrievalService {
             "glsl" -> "glsl"
             "slang" -> "slang"
             "stacksl" -> "stacksl"
-            "js" -> "javascript"
+            "js", "jsx", "mjs", "cjs" -> "javascript"
+            "ts", "tsx" -> "typescript"
             "py" -> "python"
-            "md" -> "markdown"
+            "md", "markdown" -> "markdown"
             "yaml", "yml" -> "yaml"
             else -> extension.lowercase(Locale.ROOT)
         }
@@ -1776,19 +1831,23 @@ object SemanticRetrievalService {
         return payload.sha256Id()
     }
 
-    // Memoize the (expensive) corpus fingerprint against a cheap signature built purely from
-    // per-document metadata.edn mtime+size — no EDN parsing. Saving a document rewrites its
-    // metadata.edn, so this signature changes whenever content that could affect the fingerprint
-    // changes, and we only pay the full scan again after a real edit.
+    // Metadata-only invalidation misses external proxy edits and directory membership changes.
+    // Poll the bounded helper scan at most once per five seconds, not on every query keystroke.
+    private const val EXTERNAL_REFRESH_NANOS = 5_000_000_000L
+    @Volatile private var fingerprintCheckedAtNanos = 0L
     @Volatile
     private var fingerprintCache: Pair<String, String>? = null
 
-    private fun currentCorpusFingerprint(): String {
-        val signature = workspaceFingerprintSignature()
-        fingerprintCache?.let { if (it.first == signature) return it.second }
+    internal fun currentCorpusFingerprint(nowNanos: Long = System.nanoTime()): String = synchronized(lock) {
+        val signature = workspaceRootPath().toString() + "\n" + workspaceFingerprintSignature()
+        fingerprintCache?.let {
+            if (it.first == signature && nowNanos - fingerprintCheckedAtNanos in 0 until EXTERNAL_REFRESH_NANOS)
+                return@synchronized it.second
+        }
         val fingerprint = corpusFingerprint(workspaceSidecarRecords())
         fingerprintCache = signature to fingerprint
-        return fingerprint
+        fingerprintCheckedAtNanos = nowNanos
+        fingerprint
     }
 
     private fun workspaceFingerprintSignature(): String {

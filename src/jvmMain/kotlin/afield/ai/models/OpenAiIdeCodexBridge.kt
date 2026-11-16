@@ -216,6 +216,8 @@ class OpenAiIdeCodexBridge(
         turnContext: TurnContext? = null
     ): SendResult {
         val t0 = System.nanoTime()
+        ctx.inbox?.checkStopped()
+        state.journal = ctx.inbox?.journal
 
         // OpenRouter's stateless Responses path keeps its own history and its support for a per-request
         // `instructions` is unverified, so it stays on the one-string prompt.
@@ -260,6 +262,7 @@ class OpenAiIdeCodexBridge(
             appendLine(prompt)
         }
         val inputText = inputTextFor(tc?.durablePrompt() ?: userPrompt)
+        state.journal?.context(turnContext, if (tc != null) "developer-once+input" else "inline", inputText, imageDataUrls)
         // What a stateless history keeps of this prompt once the turn is over: the request and its durable
         // context, not the instructions, which every newer prompt carries again.
         val durableInputText = turnContext?.takeIf { runtimeConfig.usesStatelessResponses }
@@ -365,7 +368,12 @@ class OpenAiIdeCodexBridge(
             var succeeded = false
             try {
                 return action().also { result ->
+                    ctx.inbox?.checkStopped()
                     succeeded = true
+                    (result as? Response)?.takeIf { it.output().any { item -> item.isCompaction() } }?.let {
+                        state.journal?.event("context.provider-compacted", mapOf("response" to it.id(),
+                            "visibility" to "Provider-managed compaction; original provider context is not available locally."))
+                    }
                     (result as? Response)?.usage()?.orElse(null)?.let { usage ->
                         inputTokens = (inputTokens ?: 0L) + usage.inputTokens()
                         outputTokens = (outputTokens ?: 0L) + usage.outputTokens()
@@ -500,6 +508,7 @@ class OpenAiIdeCodexBridge(
         var rounds = 0
         var suspension: TurnSuspension? = null
         while (rounds < maxToolRounds) {
+            ctx.inbox?.checkStopped()
             val calls = response.output()
                 .filter { it.isFunctionCall() }
                 .mapNotNull { it.functionCall().orElse(null) }
@@ -1069,6 +1078,9 @@ class OpenAiIdeCodexBridge(
          */
         val promotedTools: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
 
+        @get:JsonIgnore
+        var journal: afield.ai.conversation.AiRunJournal? = null
+
         /** The hash of the stable instructions this conversation already holds as a developer message. */
         @Volatile
         var stableInstructionsHash: String? = null
@@ -1539,6 +1551,8 @@ class OpenAiIdeCodexBridge(
         fun over() = StatelessHistory.chars(history) + tailChars > budgetChars
         if (!over()) return history.toList()
         val before = StatelessHistory.chars(history)
+        val beforeSnapshot = state.journal?.snapshot(mapper.writeValueAsString(history))
+        state.journal?.event("context.reduction-started", mapOf("reason" to "context-window", "before" to beforeSnapshot.orEmpty()))
         val seedCount = seedHistory(state).size
         val protectFrom = state.currentPrompt?.let { p -> history.indexOfFirst { it === p } }?.takeIf { it >= 0 } ?: history.size
         val removed = StatelessHistory.dropOldestTurns(history, seedCount, protectFrom, ::over)
@@ -1546,6 +1560,10 @@ class OpenAiIdeCodexBridge(
             val turnStart = state.currentPrompt?.let { p -> history.indexOfFirst { it === p } }?.takeIf { it >= 0 } ?: seedCount
             StatelessHistory.settle(history, turnStart + 1)
         }
+        state.journal?.event("context.reduced", mapOf("reason" to "context-window", "before" to beforeSnapshot.orEmpty(),
+            "after" to state.journal!!.snapshot(mapper.writeValueAsString(history)),
+            "beforeChars" to before.toString(), "afterChars" to StatelessHistory.chars(history).toString(),
+            "removedItems" to removed.toString(), "stillOverBudget" to over().toString()))
         warn("stateless history fitted to ${window}-token window: $before -> ${StatelessHistory.chars(history)} chars " +
             "($removed item(s) dropped, ${"%.2f".format(charsPerToken)} chars/token, tail $tailChars chars)" +
             if (over()) "; still over budget" else "")
@@ -1555,7 +1573,12 @@ class OpenAiIdeCodexBridge(
     /** At a turn boundary: the finished turn's prompt becomes its durable text, and old outputs and images shrink. */
     private fun settleStatelessHistory(state: ThreadState) {
         val history = statelessHistory[state.localThreadId] ?: return
+        val before = mapper.writeValueAsString(history)
+        val snapshot = state.journal?.snapshot(before)
         StatelessHistory.settle(history, seedHistory(state).size, replace = state.settleOnNextTurn)
+        val after = mapper.writeValueAsString(history)
+        if (before != after) state.journal?.event("context.reduced", mapOf("reason" to "settle-old-output",
+            "before" to snapshot.orEmpty(), "after" to state.journal!!.snapshot(after)))
         state.settleOnNextTurn = null
         state.currentPrompt = null
     }
@@ -1615,7 +1638,11 @@ class OpenAiIdeCodexBridge(
         if (history.size > maxItems) {
             // Whole earlier turns only: cutting at an arbitrary item left function calls without their outputs.
             val protectFrom = state.currentPrompt?.let { p -> history.indexOfFirst { it === p } }?.takeIf { it >= 0 } ?: history.size
-            StatelessHistory.dropOldestTurns(history, seedHistory(state).size, protectFrom) { history.size > maxItems }
+            val before = state.journal?.snapshot(mapper.writeValueAsString(history))
+            val removed = StatelessHistory.dropOldestTurns(history, seedHistory(state).size, protectFrom) { history.size > maxItems }
+            if (removed > 0) state.journal?.event("context.reduced", mapOf("reason" to "history-item-limit",
+                "before" to before.orEmpty(), "after" to state.journal!!.snapshot(mapper.writeValueAsString(history)),
+                "removedItems" to removed.toString()))
         }
     }
 

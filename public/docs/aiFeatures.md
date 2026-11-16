@@ -77,10 +77,50 @@ for corrections or to add it to the dictionary.
 
 ### Writing while it works
 
-You can send a correction or a new instruction while AI4 is working. Your message appears at the
-end of the conversation marked *queued*. The model reads it between tool calls, and the message
-moves to the point in the reply where it was read. If the reply finishes first, Field sends the
-queued message as your next message; several queued messages go together.
+Open the **≡** menu at the bottom right of the chat to send your draft with **Correct this run**
+or **Do next**. Return sends a correction; Alt–Return sends a follow-up.
+The same menu holds **Stop**, **Recall queued**, **Context** and **Open Garden**.
+A correction enters after the current tool round. A follow-up waits until the current run ends.
+If AI4 is idle, either choice starts a turn immediately.
+
+Undelivered messages appear as *queued*, labelled with their timing. **Recall queued** returns
+all undelivered messages and their attachments to the input so you can edit them. A message already
+read by the model cannot be recalled. Queues are held in memory and do not survive closing Field.
+
+**Stop** requests cancellation and returns undelivered messages as drafts instead of running them.
+It does not undo edits or stop a box that AI4 has already launched. A blocking provider request or
+tool may take time to return; no subsequent tool should start after the stop request.
+
+#### Try correcting a run
+
+Run this in a box to give AI4 a small tool with a visible pause. The pause suspends the tool without
+blocking Field's main loop. This demo and the next two use your configured model when you send their
+requests; running the setup code alone makes no model request.
+
+<!-- ai4-demo: controls -->
+```diffstatic {data-lang=kotlin}
+import kotlinx.coroutines.delay
+
+aiTool("demo.tick") {
+    describe("Wait two seconds, then return the requested label.")
+    val label by param<String>("label for this step")
+    action {
+        delay(2000)
+        mapOf("success" to true, "label" to label())
+    }
+}
+markdown("demo", "Open this box's AI4 chat and ask for five labelled steps using demo.tick.")
+```
+
+Ask: “Call demo.tick five times, one at a time, with labels red-1 through red-5.” While it is
+working, send “Use blue for the remaining labels” with **Correct this run**. Then choose **Do next** from the menu
+and send “Explain the labels you used.” The correction belongs inside the first run; the explanation
+starts afterwards. Repeat and use **Recall queued** or **Stop** to compare their effects.
+
+![AI4 chat reports red-1 followed by blue-2 through blue-5, answers the queued explanation in a later turn, and shows a subsequent run stopped by the user. The burger menu inside the text entry shows Correct this run, Do next, Stop, Recall queued, Context and Open Garden.](assets/ai4_run_features/controls.png)
+
+The **Garden** view keeps its own explicit queue. Its replies retain
+frozen ancestry rather than steering a running linear-chat turn.
 
 ### Waiting for long builds
 
@@ -191,6 +231,84 @@ costs less than sending the changing context separately.
 Anthropic gets the stable instructions with every request and the changing context
 with the newest request only.
 
+### Inspecting a run
+
+The **Context** button opens the same report as `/context`, followed by pending-input counts and
+recent durable run events. Inspecting a run is local to the panel: the report is not appended to the
+conversation sent to the model.
+
+Tool events distinguish **started**, **completed** and **failed**. Completion means the tool returned;
+a separate verdict records whether its structured result reported success. A refused call or a thrown
+exception is not a successful result. A start without an ending event can identify work interrupted
+by closing Field. These records are diagnostic evidence, not instructions to repeat the operations.
+
+#### Try successful and unsuccessful calls
+
+Run this setup in another box. Its tool returns a verdict without throwing an exception.
+
+<!-- ai4-demo: events -->
+```diffstatic {data-lang=kotlin}
+aiTool("demo.verdict") {
+    describe("Return a requested test verdict without changing the document.")
+    val pass by param<Boolean>("whether this test should pass")
+    action {
+        mapOf("success" to pass(), "message" to if (pass()) "Passed" else "Held")
+    }
+}
+markdown("demo", "Ask AI4 to call demo.verdict with pass=true, then pass=false.")
+```
+
+Send “Call demo.verdict once with pass=true and once with pass=false, then report both outcomes.”
+Open **Context** afterwards. Both calls completed, but the second verdict is false. Reopen the
+saved document and inspect again: durable events remain even when the in-memory context report
+is no longer available.
+
+![The run inspector shows demo.verdict returning success=false, followed by a tool.completed event. Argument and result snapshot references appear beside the call.](assets/ai4_run_features/events.png)
+
+### When older context is shortened
+
+For local and other stateless Responses providers, Field shortens older outputs between turns and
+drops whole older turns when a request would exceed the context window. Context-reduction events
+record why this happened and keep before-and-after snapshots locally. The saved conversation is
+not deleted. A provider-managed compaction is labelled separately: Field cannot recover the
+provider's hidden context from its response identifier.
+
+#### Try shortening an earlier tool result
+
+This tool generates a small table long enough for Field's old-output reduction to apply. Use a
+local or other stateless Responses provider for this exercise.
+
+<!-- ai4-demo: context -->
+```diffstatic {data-lang=kotlin}
+aiTool("demo.samples") {
+    describe("Generate eighty labelled square-number samples as a table.")
+    action {
+        (1..80).joinToString("\n") { i -> "sample %03d: value=%06d, square=%08d".format(i, i, i * i) }
+    }
+}
+markdown("demo", "Ask AI4 to call demo.samples, then send a second message in this chat.")
+```
+
+Ask “Call demo.samples and tell me the last square.” After the reply, send “What was the first
+sample?” Open **Context** to find the `settle-old-output` reduction and its before-and-after
+snapshot references. Enter `/context <hash>` with either reference to read that snapshot without
+changing the conversation. The inspector shows the first 32,000 characters; the complete compressed
+snapshot stays on disk. On a hosted provider this particular reduction is not expected; the report
+continues to describe the provider's own placement and any compaction it reports.
+
+![A context.reduced event records the settle-old-output reason and separate before and after snapshot references, followed by the next run's prepared input.](assets/ai4_run_features/context.png)
+
+??? aside "About these captures"
+    The three examples are executed by the [demo and capture runner](https://github.com/OpenEndedGroup/Field4/blob/main/tools/capture_ai4_run_features.py)
+    in a separate browser and temporary workspace. The reduction figure exercises Field's real stateless
+    Responses bridge against the live OpenAI API; it is not a local-model performance result. The
+    model generates the reply and Field performs the reduction. No transcript or inspector content is
+    substituted for the capture.
+
+Snapshots can include prompts, source and images. They stay in the document's `ai4_events` folder
+alongside the event log, and are not automatically pruned. Treat that folder as conversation data
+when sharing a document. Inspecting an earlier context does not rerun tools or restore the live world.
+
 You can paste images into the chat input. Field sends those attachments with
 the next message, which is useful when the desired change is easier to point at
 than describe.
@@ -208,6 +326,53 @@ and editable tools for plotting, checking and exporting the function.
 StackSL program drawn live in a window, with three recorded sessions, and
 [Talking to the StackSL in your shader](stackauto_conversation.md) for the
 `stack.auto` slots inside your own vertex and fragment shaders.
+
+### Giving AI4 a directory of context
+
+Drop a folder onto the canvas and choose **Create directory context proxy**. The Desktop client
+can supply its filesystem path; in a browser, Field may ask for the absolute path on the machine
+running the server. The box points at the folder—it does not copy the tree or create a box per file.
+External folders must be linked, not imported with **Create proxy for copy in document folder**.
+
+For example, drop a source checkout or a folder of Markdown notes, then ask:
+
+> List the files available through the “Reference notes” proxy. Search its Markdown files for
+> “boundary conditions”, read the matching passages, and cite the file paths and lines.
+
+Replace “Reference notes” with your proxy box's name. AI4 can read that box with
+`AttachmentRequest` to obtain a fresh, bounded catalogue. Each child has a reference such as
+`proxy:<box-uid>/notes/boundaries.md`. Reading that reference returns the usual excerpt, source
+hash and continuation offset, so another read can refuse to mix two versions of a changing file.
+PDF children can use the same text-layer extraction as individual PDF proxies; scanned pages
+still need an extraction or OCR procedure.
+
+Literal search uses `WorkspaceSearchRequest` with `scope="FILE_PROXY"`, `proxyBox` set to the
+box UID or unique name, and the usual query, extension and root-relative path filters. Its matches
+include a directly readable `attachmentRef`. Other literal-search scopes remain confined to their
+selected roots: they do not silently expand to every linked folder.
+
+Saved directory proxies also join semantic search's **workspace** corpus, with results owned by
+the proxy box and paths that can be read through it. Save the document so the index can discover
+the proxy. External edits, additions and deletions are checked independently of the document's
+metadata, with a five-second fingerprint cache; semantic results still depend on index rebuilding.
+For a just-edited file, use literal search or an attachment read rather than assuming the semantic
+index has already caught up.
+
+!!! note "Bounded, read-oriented context"
+    Enumeration considers at most 10,000 entries and 2,000 candidate files, to depth 32, under a
+    two-second cooperative time limit. Candidates are at most 2 MiB; explicit child reads allow
+    up to 10 MiB. Semantic indexing retains up to 80,000 text characters per file. Partial scans
+    are reported rather than presented as exhaustive; narrow literal search with `pathPrefix`
+    to search a particular subtree.
+
+    Hidden entries, symlinked children and common generated/dependency directories are excluded.
+    Nested `.gitignore` files support basic patterns and negation; global Git excludes and
+    `.git/info/exclude` are not consulted. Unsupported escaped patterns fail closed for that
+    subtree. These are read boundaries, not a sandbox for arbitrary code an agent can execute.
+
+    The box's displayed `contents` is a generated description, not an editable directory or a
+    promise that every file has been loaded into the prompt. Linked folders are not bundled
+    when you share the Field document; the receiving machine needs the referenced paths.
 
 ## Chat at an editor location
 

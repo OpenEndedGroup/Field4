@@ -4562,6 +4562,15 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="ai-run-controls",
+            description="Real AI4 timing, Context and Recall controls; empty recall preserves drafts and controls fit a narrow panel without model requests.",
+            commands=[
+                "new-box --name RunControls --x 40 --y 40",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/ai-run-controls.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="ai-chat-autocomplete",
             description="Composer completes before trailing whitespace, inserts at the caret, requests after cursor movement, and retries the latest draft without overlapping requests.",
             commands=[
@@ -4866,6 +4875,21 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["screenshot-editor", "@last", str(BUILD_ROOT / "scratch" / "selection-screenshot-backdoor-editor.png"), "--padding", "10", "--no-pan", "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="directory-proxy",
+            description="Drop a real directory, select its context-proxy menu action, catalogue/search/read eligible files and observe a live disk edit without a model request.",
+            commands=[
+                "viewport 1200x850",
+                "new-box --name DirectoryProxyFixture",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/directory-proxy.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/directory-proxy.js"), "--timeout", pw_timeout]),
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/directory-proxy.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/directory-proxy.js"), "--timeout", pw_timeout]),
+                "editor-open ReferenceContext --property contents",
+                "sleep 0.5",
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "ReferenceContext", "--with-editor", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="selection-highlight-file-proxy",

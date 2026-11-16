@@ -107,10 +107,10 @@ data class ListAttachmentsResult(val attachments: List<AttachmentInfo>)
 data class AttachmentInfo(val file: String, val language: String, val description: String = "")
 
 /** Tool: read a bounded excerpt of an attachment or resolvable source. */
-@JsonClassDescription("Read an attachment or resolvable file/ref in bounded excerpts (default 6000 UTF-16 code units, maximum 65536). The response identifies the whole source hash and totalChars, marks isExcerpt and gives nextOffset when more remains. Continue with nextOffset and expectedSourceHash to refuse mixed versions. An excerpt is not the entire file: never replace a file with just its excerpt. Use find for a case-sensitive literal search starting at offset: return a bounded excerpt around the first match instead of reading unrelated source. searchMatched=false means no match, not an empty file. Related guides/examples are preserved.")
+@JsonClassDescription("Read an attachment or resolvable file/ref in bounded excerpts (default 6000 UTF-16 code units, maximum 65536). The response identifies the whole source hash and totalChars, marks isExcerpt and gives nextOffset when more remains. Continue with nextOffset and expectedSourceHash to refuse mixed versions. An excerpt is not the entire file: never replace a file with just its excerpt. Use find for a case-sensitive literal search starting at offset: return a bounded excerpt around the first match instead of reading unrelated source. searchMatched=false means no match, not an empty file. Related guides/examples are preserved. A directory-proxy box uid or unique name returns its bounded file catalogue; read a child using the returned proxy:<box-uid>/<relative-path> reference. Directory proxy reads are live, not a copied tree.")
 @AgentToolMeta("context", effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
 data class AttachmentRequest(
-    /** The attachment name, or a resolvable file or `afield://` ref. */
+    /** The attachment name, file, `afield://` ref, directory-proxy uid/name, or `proxy:<uid>/<relative-path>` child. */
     val file: String,
     /** Where the excerpt starts, in UTF-16 code units; pass the previous response's `nextOffset` to continue. */
     val offset: Int = 0,
@@ -1293,6 +1293,32 @@ internal class ToolRegistry {
      * two of the graph tools checked for themselves and NewBox, Connect and Delete did not.
      */
     private fun dispatch(
+        ctx: ToolExecutionContext,
+        name: String,
+        origin: CallOrigin,
+        typedArgs: (Class<Any>) -> Any,
+        rawArgs: () -> String,
+    ): Any {
+        ctx.inbox?.checkStopped()
+        val journal = ctx.inbox?.journal
+        return if (journal == null) dispatchBody(ctx, name, origin, typedArgs, rawArgs)
+        else {
+            val canonical = if (handlers.containsKey(name)) name else
+                runCatching { dynamicTool(dynamicToolsIn(ctx), name)?.name }.getOrNull() ?: name
+            journal.tool(canonical, rawArgs(), wireName = name) {
+                val result = dispatchBody(ctx, name, origin, typedArgs, rawArgs)
+                val encoded = runCatching { aiToolMapper.writeValueAsString(result) }.getOrNull()
+                val json = encoded?.let { runCatching { aiToolMapper.readTree(it) }.getOrNull() }
+                val success = if (json == null) "unknown" else
+                    (!(json.get("success")?.asBoolean(true) == false || json.get("error")?.asBoolean(false) == true)).toString()
+                journal.event("tool.verdict", mapOf("tool" to canonical, "success" to success,
+                    "resultHash" to (encoded?.let { journal.snapshot(it) } ?: "unavailable")))
+                result
+            }
+        }
+    }
+
+    private fun dispatchBody(
         ctx: ToolExecutionContext,
         name: String,
         origin: CallOrigin,

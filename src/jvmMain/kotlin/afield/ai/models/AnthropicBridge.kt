@@ -150,6 +150,7 @@ class AnthropicBridge(
         turnContext: TurnContext?
     ): LlmSendResult {
         val t0 = System.nanoTime()
+        ctx.inbox?.checkStopped()
         if (imageDataUrls.isNotEmpty()) {
             warn("imageDataUrls (${imageDataUrls.size}) ignored — image input is a v1 follow-up for the Anthropic bridge.")
         }
@@ -193,6 +194,10 @@ class AnthropicBridge(
             MessageParam.builder().role(MessageParam.Role.USER).contentOfBlockParams(
                 suspendedResults.map { ContentBlockParam.ofToolResult(toolResultBlock(it.callId, it.outputJson, it.isError, it.outputJson, ::warn)) } +
                     ContentBlockParam.ofText(TextBlockParam.builder().text(text).build())).build()
+        ctx.inbox?.journal?.context(turnContext, if (tc != null) "system+prefix" else "inline",
+            if (volatilePrefix.isEmpty()) inputText else "$volatilePrefix\n\n$inputText", emptyList())
+        if (imageDataUrls.isNotEmpty()) ctx.inbox?.journal?.event("context.images-omitted", mapOf(
+            "count" to imageDataUrls.size.toString(), "reason" to "This bridge does not send user image attachments."))
         val turnMessageIndex = messages.size
         messages += turnMessage(if (volatilePrefix.isEmpty()) inputText else "$volatilePrefix\n\n$inputText")
         // In the history now, so a retry after a failed request does not send the results twice.
@@ -289,6 +294,7 @@ class AnthropicBridge(
         var rounds = 0
         var suspension: TurnSuspension? = null
         while (response.stopReason().orElse(null) == StopReason.TOOL_USE) {
+            ctx.inbox?.checkStopped()
             val toolUses = response.content().mapNotNull { it.toolUse().orElse(null) }
             if (toolUses.isEmpty()) break
 
@@ -436,6 +442,7 @@ class AnthropicBridge(
             if (!includeTools) break
         }
 
+        ctx.inbox?.checkStopped()
         val text = response.content().mapNotNull { it.text().orElse(null)?.text() }.joinToString("")
         if (text.isBlank()) {
             warn("model returned no text. stopReason=${response.stopReason().orElse(null)} — try higher maxOutputTokens.")
