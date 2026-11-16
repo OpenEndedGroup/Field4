@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24702 of 41416 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24722 of 41457 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2039 undocumented entry points** (types, top-level functions and values) and 13950 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2039 undocumented entry points** (types, top-level functions and values) and 13971 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -356,7 +356,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Spectral.kt](../src/jvmMain/kotlin/afield/audio/synth/Spectral.kt) | Synthesis | — | 5 | 32 | 33% |
 | [VisionMetal.kt](../src/jvmMain/kotlin/afield/graphics/visionos/VisionMetal.kt) | Graphics | — | 5 | 30 | 50% |
 | [execution.kt](../src/jvmMain/kotlin/afield/runtime/execution/execution.kt) | Workspace | — | 5 | 30 | 7% |
-| [WorkspaceSearch.kt](../src/jvmMain/kotlin/afield/ai/tools/WorkspaceSearch.kt) | AI4 | — | 5 | 27 | 5% |
+| [WorkspaceSearch.kt](../src/jvmMain/kotlin/afield/ai/tools/WorkspaceSearch.kt) | AI4 | — | 5 | 29 | 8% |
 | [fmchirp.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/fmchirp.kt) | Graphics | — | 5 | 19 | 7% |
 | [smile_interpolation_regression.kt](../src/jvmMain/kotlin/afield/math/statistics/smile_interpolation_regression.kt) | Math | — | 5 | 15 | 13% |
 | [LowSegmentFLineFitting.kt](../src/jvmMain/kotlin/afield/geometry/path/LowSegmentFLineFitting.kt) | Graphics | — | 5 | 13 | 37% |
@@ -757,8 +757,10 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ElectronRTTView.kt](../src/jvmMain/kotlin/afield/media/stream/ElectronRTTView.kt) | Imaging | — | 0 | 8 | 33% |
 | [AgentWorktreeManager.kt](../src/jvmMain/kotlin/afield/tools/automation/AgentWorktreeManager.kt) | Workspace | — | 0 | 8 | 11% |
 | [GeometryFinding.kt](../src/jvmMain/kotlin/afield/ui/visualization/GeometryFinding.kt) | Visualization | — | 0 | 8 | 11% |
+| [AiTurnInbox.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiTurnInbox.kt) | AI4 | — | 0 | 7 | 56% |
 | [Dreaming.kt](../src/jvmMain/kotlin/afield/ai/memory/Dreaming.kt) | Machine learning | — | 0 | 7 | 61% |
 | [BoxOutputLog.kt](../src/jvmMain/kotlin/afield/app/diagnostics/BoxOutputLog.kt) | Workspace | — | 0 | 7 | 50% |
+| [DirectoryProxyFiles.kt](../src/jvmMain/kotlin/afield/app/server/DirectoryProxyFiles.kt) | Workspace | — | 0 | 7 | 36% |
 | [Scene.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Scene.kt) | Audio | — | 0 | 7 | 80% |
 | [HarmonicPhaseTracker.kt](../src/jvmMain/kotlin/afield/audio/synth/HarmonicPhaseTracker.kt) | Synthesis | — | 0 | 7 | 74% |
 | [OrcaSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/OrcaSoundDocs.kt) | Patterns | — | 0 | 7 | 22% |
@@ -805,6 +807,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FileChooser.kt](../src/jvmMain/kotlin/afield/ui/output/FileChooser.kt) | Visualization | — | 0 | 6 | 56% |
 | [LineNoteTools.kt](../src/jvmMain/kotlin/afield/ui/output/LineNoteTools.kt) | Workspace | — | 0 | 6 | 45% |
 | [StudyBuildAwaits.kt](../src/jvmMain/kotlin/afield/ai/agent/StudyBuildAwaits.kt) | AI4 | — | 0 | 5 | 73% |
+| [AiRunJournal.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiRunJournal.kt) | AI4 | — | 0 | 5 | 37% |
 | [AiThreadContinuation.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiThreadContinuation.kt) | AI4 | — | 0 | 5 | 28% |
 | [IdeChatHelpers.kt](../src/jvmMain/kotlin/afield/ai/conversation/IdeChatHelpers.kt) | AI4 | — | 0 | 5 | 28% |
 | [ScriptedLlmBridge.kt](../src/jvmMain/kotlin/afield/ai/models/ScriptedLlmBridge.kt) | AI4 | — | 0 | 5 | 44% |
@@ -908,7 +911,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DocsSearch.kt](../src/jvmMain/kotlin/afield/tools/docs/DocsSearch.kt) | Workspace | — | 0 | 3 | 40% |
 | [LiveOutputIframe.kt](../src/jvmMain/kotlin/afield/ui/output/LiveOutputIframe.kt) | Visualization | — | 0 | 3 | 78% |
 | [pointing_render.kt](../src/jvmMain/kotlin/afield/ui/visualization/pointing_render.kt) | Graphics | — | 0 | 3 | 82% |
-| [AiTurnInbox.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiTurnInbox.kt) | AI4 | — | 0 | 2 | 81% |
+| [FieldStaleClasses.kt](../src/jvmMain/kotlin/afield/ai/conversation/FieldStaleClasses.kt) | AI4 | — | 0 | 2 | 83% |
 | [ChatLogViews.kt](../src/jvmMain/kotlin/afield/ai/conversation/chatlog/ChatLogViews.kt) | AI4 | — | 0 | 2 | 83% |
 | [DepthAnythingWorker.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/DepthAnythingWorker.kt) | Machine learning | — | 0 | 2 | 85% |
 | [OrderedKeyframeGroup.kt](../src/jvmMain/kotlin/afield/animation/keyframes/OrderedKeyframeGroup.kt) | Graphics | — | 0 | 2 | 84% |
@@ -1282,57 +1285,57 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `RepoMatch` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:68` |
 | `RepoListResult` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:69` |
 | `RepoSearchResult` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:70` |
-| `ListAttachmentsResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:106` |
-| `AttachmentInfo` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:107` |
-| `AttachmentResponse` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:125` |
-| `ListDefinitionsResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:164` |
-| `DefinitionInfo` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:165` |
-| `ListContentsResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:172` |
-| `PreamblePropertyHint` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:187` |
-| `ListContentEntry` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:206` |
-| `ListKotlinContextVariablesRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:225` |
-| `KotlinContextVariableInfo` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:232` |
-| `ListKotlinContextVariablesResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:251` |
-| `EvaluateKotlinExpressionRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:270` |
-| `EvaluateKotlinExpressionResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:281` |
-| `EditFileResponse` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:317` |
-| `CompileDiagnostic` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:331` |
-| `SetupPropertyChange` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:341` |
-| `CompileKotlinResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:349` |
-| `ReloadShadersRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:359` |
-| `ShaderReloadError` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:365` |
-| `ReloadShadersResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:382` |
-| `CaptureRenderWindowResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:450` |
-| `MacroListResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:492` |
-| `MacroReadRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:500` |
-| `MacroReadResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:502` |
-| `MacroWriteRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:512` |
-| `MacroWriteResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:517` |
-| `MacroRunRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:526` |
-| `MacroRunResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:533` |
-| `CodeUseQueryResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:565` |
-| `CodeUseCallersForSourceLineRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:586` |
-| `CodeUseReferencesForCodeRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:594` |
-| `CodeUseHotSymbolsRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:601` |
-| `CodeUseEarlyDocumentSymbolsRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:608` |
-| `CodeUseRelatedSourceForCodeRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:616` |
-| `CodeUseSemanticAnalyzeCodeRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:625` |
-| `SemanticRetrievalStatusRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:653` |
-| `SemanticRetrievalRebuildRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:657` |
-| `SemanticRetrievalToolResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:659` |
-| `ScratchpadUpdateRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:676` |
-| `ScratchpadResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:681` |
-| `ChecklistReadRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:690` |
-| `ChecklistUpdateRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:694` |
-| `ChecklistItemInput` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:702` |
-| `ChecklistItem` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:708` |
-| `ChecklistResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:714` |
-| `AgentMemoryState` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:720` |
-| `WorkspaceSymbolSearchResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:984` |
-| `WorkspaceSymbolMatch` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:990` |
-| `Remember` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:1010` |
-| `Recall` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:1013` |
-| `ToolExecutionContext` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:1015` |
+| `ListAttachmentsResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:108` |
+| `AttachmentInfo` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:109` |
+| `AttachmentResponse` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:127` |
+| `ListDefinitionsResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:166` |
+| `DefinitionInfo` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:167` |
+| `ListContentsResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:174` |
+| `PreamblePropertyHint` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:189` |
+| `ListContentEntry` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:208` |
+| `ListKotlinContextVariablesRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:227` |
+| `KotlinContextVariableInfo` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:234` |
+| `ListKotlinContextVariablesResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:253` |
+| `EvaluateKotlinExpressionRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:272` |
+| `EvaluateKotlinExpressionResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:283` |
+| `EditFileResponse` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:319` |
+| `CompileDiagnostic` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:333` |
+| `SetupPropertyChange` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:343` |
+| `CompileKotlinResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:351` |
+| `ReloadShadersRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:363` |
+| `ShaderReloadError` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:369` |
+| `ReloadShadersResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:386` |
+| `CaptureRenderWindowResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:454` |
+| `MacroListResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:496` |
+| `MacroReadRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:504` |
+| `MacroReadResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:506` |
+| `MacroWriteRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:516` |
+| `MacroWriteResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:521` |
+| `MacroRunRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:530` |
+| `MacroRunResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:537` |
+| `CodeUseQueryResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:569` |
+| `CodeUseCallersForSourceLineRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:590` |
+| `CodeUseReferencesForCodeRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:598` |
+| `CodeUseHotSymbolsRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:605` |
+| `CodeUseEarlyDocumentSymbolsRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:612` |
+| `CodeUseRelatedSourceForCodeRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:620` |
+| `CodeUseSemanticAnalyzeCodeRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:629` |
+| `SemanticRetrievalStatusRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:657` |
+| `SemanticRetrievalRebuildRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:661` |
+| `SemanticRetrievalToolResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:663` |
+| `ScratchpadUpdateRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:680` |
+| `ScratchpadResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:685` |
+| `ChecklistReadRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:694` |
+| `ChecklistUpdateRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:698` |
+| `ChecklistItemInput` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:706` |
+| `ChecklistItem` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:712` |
+| `ChecklistResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:718` |
+| `AgentMemoryState` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:724` |
+| `WorkspaceSymbolSearchResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:988` |
+| `WorkspaceSymbolMatch` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:994` |
+| `Remember` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:1014` |
+| `Recall` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:1017` |
+| `ToolExecutionContext` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:1019` |
 | `Keyframe` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:642` |
 | `Handles` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:651` |
 | `Handle` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:657` |
