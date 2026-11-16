@@ -2521,6 +2521,13 @@ function ensureAiChat(container, uid, property) {
                 }
                 if (handled) {
                         event.preventDefault();
+                        return;
+                }
+                // A pasted Copy reference record becomes the same chip Ask AI makes.
+                const ref = geometryReferenceFromRecord(event.clipboardData?.getData("text/plain"));
+                if (ref) {
+                        event.preventDefault();
+                        container.__aiChat?.addGeometryReference(ref);
                 }
         });
 
@@ -2953,6 +2960,36 @@ document.addEventListener("click", (event) => {
         event.preventDefault();
         window.fieldOpenBoxLine?.(open.dataset.uid, open.dataset.property || "code", Number(open.dataset.line));
 });
+
+// The reference a Copy reference record (pasted text) stands for, or null. Mirrors threeGeometryReferenceAsk
+// in ThreeReview.kt, and writes the header in GeometryReferenceAsk's field order (rpc.kt).
+function geometryReferenceFromRecord(text) {
+        if (!text || !/^\s*\{/.test(text) || !text.includes("artifactDigest")) return null;
+        let record;
+        try { record = JSON.parse(text); } catch (_) { return null; }
+        const sel = record?.selection;
+        if (!sel?.kind || !record.artifactDigest || !record.viewId) return null;
+        const has = (v) => v !== undefined && v !== null;
+        let element = null;
+        if (sel.kind === "edge" && Array.isArray(sel.edge) && sel.edge.length === 2) element = `edge v${sel.edge[0]}–v${sel.edge[1]}`;
+        else if (sel.kind === "vertex" && has(sel.vertex)) element = `vertex ${sel.vertex}`;
+        else if (sel.kind === "face") element = [has(sel.face) ? `face ${sel.face}` : null, has(sel.triangle) ? `triangle ${sel.triangle}` : null].filter(Boolean).join(" · ") || null;
+        else if (sel.kind === "region") element = sel.region ? `${sel.region.surfaces?.length ?? 0} visible part(s)` : null;
+        else if (has(sel.triangle)) element = `triangle ${sel.triangle}`;
+        const at = record.sourceLine;
+        const sourceLine = at?.box && at.line > 0 ? {box: at.box, property: at.property || "code", line: at.line, ...(at.variable ? {variable: at.variable} : {})} : null;
+        const ref = {view: record.viewId, revision: record.artifactDigest, kind: sel.kind};
+        if (sel.partId) ref.partId = sel.partId;
+        if (record.partLabel) ref.label = record.partLabel;
+        if (element) ref.element = element;
+        const note = String(record.text || "").slice(0, 2000);
+        if (note) ref.note = note;
+        if (record.sourceBox) ref.sourceBox = record.sourceBox;
+        if (sourceLine) ref.sourceLine = sourceLine;
+        ref.header = "GeometryReference: " + JSON.stringify(ref) + "\n" +
+                "(Full record: the live `selection` of ReadGeometryReviewsRequest for this view, or look with InspectGeometryViewRequest at this revision.)";
+        return ref;
+}
 
 var pendingGeometryReferences = [];
 window.fieldPendingGeometryReferences = pendingGeometryReferences;
