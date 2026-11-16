@@ -66,6 +66,18 @@ class PreviewServerTests(unittest.TestCase):
                 sock.close()
         self.assertEqual([b"hello preview\n"] * 120, bodies)
 
+    def test_a_rebuilt_site_renamed_into_place_is_served(self) -> None:
+        # The docs build renders into a staging directory and renames it over public/field4.
+        site = self.tree / "public" / "field4"
+        server = self.start(site)
+        staging = self.tree / "public" / "staging"
+        staging.mkdir()
+        (staging / "index.html").write_text("rebuilt\n")
+        site.rename(self.tree / "public" / "old")
+        staging.rename(site)
+        with urllib.request.urlopen(server["url"] + "index.html", timeout=5) as response:
+            self.assertEqual(b"rebuilt\n", response.read())
+
     def test_stop_by_age_leaves_a_young_server_running(self) -> None:
         server = self.start(self.tree)
         result = self.tool("stop", "--older-than-hours", "1")
