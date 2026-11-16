@@ -431,6 +431,12 @@ class SyncExitClassifiesMachineState(unittest.TestCase):
                              'reached :runJvm 121s ago and the JVM did not answer within its 120s start budget')
         self.assertEqual(self.failing(error), publications.MACHINE_STATE_EXIT)
 
+    def test_an_output_frame_that_never_loaded_is_machine_state(self):
+        report = [{'name': 'three_output_gallery', 'ok': False, 'error': "Uncaptured channels: "
+                   "['three-output-path-trace/main: Output frame did not finish loading before publication']"}]
+        self.assertEqual(self.failing(ValueError('Publication capture failed: ...'), report),
+                         publications.MACHINE_STATE_EXIT)
+
     def test_a_full_disk_is_machine_state(self):
         self.assertEqual(self.failing(OSError(28, 'No space left on device')), publications.MACHINE_STATE_EXIT)
 
