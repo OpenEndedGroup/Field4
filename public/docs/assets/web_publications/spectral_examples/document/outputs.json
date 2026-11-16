@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T22:42:59.502Z",
+  "capturedAt": "2026-11-16T06:33:35.744Z",
   "documentName": "spectral_examples",
   "outputs": [
     {
@@ -72,6 +72,18 @@
       "path": "outputs/5.html"
     },
     {
+      "uid": "spectral_lpc_scribble",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/6.html"
+    },
+    {
       "uid": "spectral_resonator",
       "channel": "output",
       "open": true,
@@ -79,7 +91,31 @@
       "kinds": [],
       "width": 912,
       "height": 368,
-      "path": "outputs/6.html"
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "spectral_lpc_envelope",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "spectral_lpc_talking_synth",
+      "channel": "talking synth",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/9.html"
     }
   ]
 }
