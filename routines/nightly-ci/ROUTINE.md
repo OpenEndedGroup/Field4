@@ -3,7 +3,7 @@ name: nightly-ci
 title: Nightly CI
 summary: Builds main from clean, fixes Kotlin warnings that are new since the last run, runs the full docs build and smoke catalog as the test suite, and writes a report.
 kind: agent
-schedule: 2 5 * * *
+schedule: 32 0 * * *
 runtime-hours: 4
 disk-gib: 36
 quiet: no
