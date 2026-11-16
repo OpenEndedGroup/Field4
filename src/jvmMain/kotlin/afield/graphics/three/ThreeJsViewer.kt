@@ -699,6 +699,20 @@ class ThreeGeometryViewState(val uid: String) {
         sessions.forEach { if (it != from) sendTo(it, message) }
     }
 
+    /**
+     * A command from one client of the view to the others, as `three/view-command`: the native viewer's
+     * pick, `{select: drawableId}`, which the browser viewer applies as a click. Not stored; a command
+     * is an event, not state.
+     */
+    internal fun relayViewCommand(from: WebSocketSession, command: kotlinx.serialization.json.JsonElement) {
+        val message = kotlinx.serialization.json.buildJsonObject {
+            put("type", kotlinx.serialization.json.JsonPrimitive("three/view-command"))
+            put("uid", kotlinx.serialization.json.JsonPrimitive(uid))
+            put("command", command)
+        }.toString().encodeToByteArray()
+        sessions.forEach { if (it != from) sendTo(it, message) }
+    }
+
     /** Stop sending this view to [session]: a viewer that follows the selection has moved on. */
     fun detach(session: WebSocketSession) {
         sessions.remove(session)
@@ -1166,6 +1180,10 @@ fun installThreeJsHandler() {
             "three-view-state" -> {
                 val state = payload["state"] as? kotlinx.serialization.json.JsonObject ?: return@add Handled.no
                 knownThreeViews[uid]?.relayViewState(session, state)
+            }
+            "three-view-command" -> {
+                val command = payload["command"] as? kotlinx.serialization.json.JsonObject ?: return@add Handled.no
+                knownThreeViews[uid]?.relayViewCommand(session, command)
             }
             else -> {
                 // Default: treat as a hello/attach message.

@@ -52,6 +52,8 @@ struct ThreeWireStyle: Decodable {
     let unlit: Bool?
     let flatShading: Bool?
     let material: ThreeWireMaterial?
+    /// A shot's x-ray mixes a surface from this opacity (at 0) to its authored [opacity] (at 1).
+    var solidOpacity: Float? = nil
 }
 
 struct ThreeWireDrawable: Decodable {
@@ -112,6 +114,36 @@ struct ThreeWireDescription: Decodable {
     let drawables: [ThreeWireDrawable]?
     let inspector: ThreeWireInspector?
     let buffers: ThreeWireBuffers?
+    /// Part styles by drawable id, applied over the geometry (`partAppearancePayload` in the browser).
+    let partAppearance: [String: ThreePartStyle]?
+    /// The scene's own part styles from `three { style(id, …) }`: colour, opacity, emphasis.
+    let partStyles: [String: ThreeSceneStyle]?
+}
+
+/// `ThreePartStyle.kt`: how the box styles a part. A stored part appearance wins over it.
+struct ThreeSceneStyle: Decodable, Equatable, Hashable {
+    let color: [Float]?
+    let opacity: Float?
+    /// `"NONE"`, `"HIGHLIGHT"` or `"MUTED"`.
+    let emphasis: String?
+}
+
+/// One part's style override: `applyPartAppearance` in `ThreePartAppearance.kt`.
+struct ThreePartStyle: Decodable, Equatable, Hashable {
+    let color: [Float]
+    let unlit: Bool?
+    let xrayOpacity: Float?
+}
+
+/// `three/appearance`: part styles changed without the geometry being sent again.
+struct ThreeAppearanceMessage: Decodable {
+    let uid: String
+    let revision: String?
+    let parts: [String: ThreePartStyle]?
+    /// Replace every style rather than merge into them.
+    let replace: Bool?
+    /// A replay's: it belongs to the geometry message that follows it.
+    let beforeGeometry: Bool?
 }
 
 // MARK: - Follow
@@ -126,11 +158,35 @@ struct ThreeFollowMessage: Decodable {
     let views: [View]
 }
 
-/// `three/view-state`: what the browser viewer of this view in Field shows — its explode amount and
-/// the drawable ids hidden in its Parts list. The headset mirrors it.
+/// `three/view-state`: what the browser viewer of this view in Field shows, sent after each frame it
+/// draws. The headset mirrors it. `placements` is each drawable's matrix after everything that moves
+/// parts — explode, motion sliders, assembly steps, a shot's keyframes — so none of that arithmetic is
+/// repeated here; `groupOffsets` moves the FLine half, group by group.
 struct ThreeViewState: Decodable, Equatable {
+    struct XRay: Decodable, Equatable { var enabled = false; var opacity: Float = 0.12 }
+    /// A playing shot's look: its per-vertex explode amount and x-ray mix.
+    struct Shot: Decodable, Equatable { var explode: Float = 0; var xray: Float = 0 }
     var explode: Float = 0
     var hidden: [String] = []
+    /// Column-major 4×4 by drawable id, relative to the geometry root. Absent from older viewers.
+    var placements: [String: [Float]]?
+    var groupOffsets: [[Float]]?
+    var selected: String?
+    var xray: XRay?
+    var shot: Shot?
+
+    init() {}
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: Keys.self)
+        explode = try c.decodeIfPresent(Float.self, forKey: .explode) ?? 0
+        hidden = try c.decodeIfPresent([String].self, forKey: .hidden) ?? []
+        placements = try c.decodeIfPresent([String: [Float]].self, forKey: .placements)
+        groupOffsets = try c.decodeIfPresent([[Float]].self, forKey: .groupOffsets)
+        selected = try c.decodeIfPresent(String.self, forKey: .selected)
+        xray = try c.decodeIfPresent(XRay.self, forKey: .xray)
+        shot = try c.decodeIfPresent(Shot.self, forKey: .shot)
+    }
+    private enum Keys: String, CodingKey { case explode, hidden, placements, groupOffsets, selected, xray, shot }
 }
 
 struct ThreeViewStateMessage: Decodable {
@@ -151,7 +207,11 @@ struct ThreeGeometry {
     var alpha: [Float]?
     /// Per-vertex explode offsets: at explode amount `t`, a vertex sits at `position + t * explode`.
     var explode: [SIMD3<Float>]?
+    /// Per-vertex assembly group (the FLine half), which explode moves by.
+    var groups: [Float]?
     var indices: [UInt32]?
+    /// The content hashes of the arrays this was read from, joined: equal keys, equal geometry.
+    var key: String = ""
     var isEmpty: Bool { positions.isEmpty }
 }
 
@@ -168,6 +228,10 @@ struct ThreeDrawable {
     var hidden: Bool
     var callbackId: String
     var pickable: Bool
+    /// The style override from Field's part appearance, if any.
+    var appearance: ThreePartStyle?
+    /// The scene's style for this part, if any.
+    var sceneStyle: ThreeSceneStyle? = nil
 }
 
 struct ThreeScene {
@@ -178,6 +242,16 @@ struct ThreeScene {
     var bounds: (min: SIMD3<Float>, max: SIMD3<Float>)?
     /// Present when the view has an inspector, which is what turns explode on.
     var inspector: ThreeWireInspector?
+    /// The geometry message as it arrived, kept so a `three/appearance` message can be applied to it.
+    var appearance: [String: ThreePartStyle] = [:]
+
+    /// The scene with part styles applied: replaced, or merged into the current ones.
+    func styled(_ parts: [String: ThreePartStyle], replace: Bool) -> ThreeScene {
+        var next = self
+        next.appearance = replace ? parts : appearance.merging(parts) { _, new in new }
+        for i in next.drawables.indices { next.drawables[i].appearance = next.appearance[next.drawables[i].id] }
+        return next
+    }
 }
 
 enum ThreeWireError: Error, CustomStringConvertible {
@@ -202,15 +276,14 @@ enum ThreeBinding {
         let reader = Reader(bytes: bytes, entries: d.buffers?.entries ?? [])
 
         var drawables: [ThreeDrawable] = []
-        // The FLine half first, drawn as the web viewer draws it: under the drawables.
-        if let g = d.fills, let geometry = try reader.geometry(g), !geometry.isEmpty {
-            drawables.append(flineHalf(.surface, geometry, id: "__fills"))
-        }
-        if let g = d.lines, let geometry = try reader.geometry(g), !geometry.isEmpty {
-            drawables.append(flineHalf(.lines, geometry, id: "__lines"))
-        }
-        if let g = d.points, let geometry = try reader.geometry(g), !geometry.isEmpty {
-            drawables.append(flineHalf(.points, geometry, id: "__points"))
+        // The FLine half first, drawn as the web viewer draws it: under the drawables. Split by assembly
+        // group, so explode moves each group as an entity instead of rewriting vertices.
+        for (geometry, kind, id) in [(d.fills, ThreeDrawable.Kind.surface, "__fills"),
+                                     (d.lines, .lines, "__lines"), (d.points, .points, "__points")] {
+            guard let g = geometry, let bound = try reader.geometry(g), !bound.isEmpty else { continue }
+            for (group, piece) in splitByGroup(bound, kind: kind) {
+                drawables.append(flineHalf(kind, piece, id: group < 0 ? id : "\(id)#\(group)", group: group))
+            }
         }
         for (ordinal, w) in (d.drawables ?? []).enumerated() {
             guard let geometry = try reader.geometry(w.geometry), !geometry.isEmpty else { continue }
@@ -224,7 +297,9 @@ enum ThreeBinding {
                 id: (w.id?.isEmpty == false ? w.id! : "drawable-\(ordinal)"),
                 label: w.label, group: w.group ?? -1,
                 transform: matrix(w.transform), layer: w.layer ?? [], hidden: w.hidden ?? false,
-                callbackId: w.callbackId ?? "", pickable: w.pickable ?? false))
+                callbackId: w.callbackId ?? "", pickable: w.pickable ?? false,
+                appearance: w.id.flatMap { d.partAppearance?[$0] },
+                sceneStyle: w.id.flatMap { d.partStyles?[$0] }))
         }
 
         var bounds: (min: SIMD3<Float>, max: SIMD3<Float>)?
@@ -235,16 +310,59 @@ enum ThreeBinding {
         }
         return ThreeScene(uid: d.uid, revision: d.revision, generation: d.buffers?.generation,
                           drawables: drawables, bounds: bounds,
-                          inspector: d.inspector?.enabled == false ? nil : d.inspector)
+                          inspector: d.inspector?.enabled == false ? nil : d.inspector,
+                          appearance: d.partAppearance ?? [:])
     }
 
-    private static func flineHalf(_ kind: ThreeDrawable.Kind, _ g: ThreeGeometry, id: String) -> ThreeDrawable {
+    /// The FLine half's primitives bucketed by the group of their first vertex, each bucket compacted
+    /// to its own vertices. Without a group attribute the geometry is one piece, group -1.
+    static func splitByGroup(_ g: ThreeGeometry, kind: ThreeDrawable.Kind) -> [(Int, ThreeGeometry)] {
+        guard let groups = g.groups, groups.count == g.positions.count else { return [(-1, g)] }
+        let size = kind == .surface ? 3 : (kind == .lines ? 2 : 1)
+        let index: [UInt32] = g.indices ?? (0..<UInt32(g.positions.count)).map { $0 }
+        var buckets: [Int: (remap: [UInt32: UInt32], geometry: ThreeGeometry)] = [:]
+        var order: [Int] = []
+        var p = 0
+        while p + size <= index.count {
+            let corners = index[p..<(p + size)].map(Int.init)
+            p += size
+            guard corners.allSatisfy({ $0 < g.positions.count }) else { continue }
+            let group = Int(groups[corners[0]].rounded())
+            if buckets[group] == nil {
+                var piece = ThreeGeometry()
+                piece.indices = []
+                if g.normals != nil { piece.normals = [] }
+                if g.colors != nil { piece.colors = [] }
+                if g.alpha != nil { piece.alpha = [] }
+                piece.key = "\(g.key)#\(group)"
+                buckets[group] = ([:], piece)
+                order.append(group)
+            }
+            var bucket = buckets[group]!
+            for v in corners {
+                let local: UInt32
+                if let known = bucket.remap[UInt32(v)] { local = known } else {
+                    local = UInt32(bucket.geometry.positions.count)
+                    bucket.remap[UInt32(v)] = local
+                    bucket.geometry.positions.append(g.positions[v])
+                    if let n = g.normals { bucket.geometry.normals!.append(v < n.count ? n[v] : SIMD3(0, 0, 1)) }
+                    if let c = g.colors { bucket.geometry.colors!.append(v < c.count ? c[v] : SIMD3(1, 1, 1)) }
+                    if let a = g.alpha { bucket.geometry.alpha!.append(v < a.count ? a[v] : 1) }
+                }
+                bucket.geometry.indices!.append(local)
+            }
+            buckets[group] = bucket
+        }
+        return order.map { ($0, buckets[$0]!.geometry) }
+    }
+
+    private static func flineHalf(_ kind: ThreeDrawable.Kind, _ g: ThreeGeometry, id: String, group: Int) -> ThreeDrawable {
         // FLine fills are translucent sheets with no inside; lines and points are unlit data colours.
         let style = ThreeWireStyle(kind: kind == .surface ? "surface" : (kind == .lines ? "lines" : "points"),
                                    doubleSided: true, opacity: 1, unlit: true, flatShading: false, material: nil)
-        return ThreeDrawable(kind: kind, geometry: g, style: style, id: id, label: nil, group: -1,
+        return ThreeDrawable(kind: kind, geometry: g, style: style, id: id, label: nil, group: group,
                              transform: matrix_identity_float4x4, layer: [], hidden: false,
-                             callbackId: "", pickable: false)
+                             callbackId: "", pickable: false, appearance: nil)
     }
 
     static func measuredBounds(_ drawables: [ThreeDrawable]) -> (min: SIMD3<Float>, max: SIMD3<Float>)? {
@@ -260,7 +378,7 @@ enum ThreeBinding {
         return any ? (lo, hi) : nil
     }
 
-    private static func matrix(_ m: [Float]?) -> simd_float4x4 {
+    static func matrix(_ m: [Float]?) -> simd_float4x4 {
         guard let m, m.count == 16 else { return matrix_identity_float4x4 }
         return simd_float4x4(columns: (SIMD4(m[0], m[1], m[2], m[3]), SIMD4(m[4], m[5], m[6], m[7]),
                                        SIMD4(m[8], m[9], m[10], m[11]), SIMD4(m[12], m[13], m[14], m[15])))
@@ -290,9 +408,17 @@ enum ThreeBinding {
             }
             if let a = g.attributes["alpha"] { out.alpha = try floats(a) }
             if let a = g.attributes["explode"] { out.explode = vec3(try floats(a)) }
+            if let a = g.attributes["group"] { out.groups = try floats(a) }
             if let index = g.index {
                 if let i = index.buffer { out.indices = try uints(i) } else { out.indices = index.array }
             }
+            // What the arrays are, by content: the mesh cache reuses a build whose key it has seen.
+            // An array with no hash (inline, or an older server) makes the key unique: never reused.
+            func hash(_ buffer: Int?) -> String? { buffer.flatMap { $0 < entries.count ? entries[$0].hash : nil } }
+            var parts: [String] = []
+            for name in g.attributes.keys.sorted() { parts.append("\(name)=\(hash(g.attributes[name]!.buffer) ?? UUID().uuidString)") }
+            if let index = g.index { parts.append("index=\(hash(index.buffer) ?? UUID().uuidString)") }
+            out.key = parts.joined(separator: ";")
             return out
         }
 

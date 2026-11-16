@@ -186,11 +186,24 @@ Four improvements on top of the PoC:
     `recordControllerSelection` (`controllers.kt`) feeds it the selection, and publishing a view
     re-announces it to followers of its owner. The old `subscribe-all` and the separate native-JSON
     encoding are gone.
-  - **Not yet:** explode of the FLine half (its per-vertex groups) and of shot keyframes (the
-    per-vertex `explode` attribute), assembly steps, motion sliders, part appearance (`three/appearance`), lights and studio
-    spec, picking, labels and overlays, multi-panel scenes (every panel is drawn superimposed), and
-    `/three-buffers?only=` reuse (every update refetches all arrays). Surfaces are de-indexed, so a
-    vertex is stored once per triangle. Spatial input can only be checked on the device.
+  - **Mirrored, not recomputed:** the browser viewer sends its state after every frame it draws
+    (`three/view-state`): each drawable's final matrix (`placements`, with explode, motion sliders
+    and assembly steps already applied), each assembly group's explode offset (`groupOffsets`, which
+    moves the FLine half, split by group into one entity per group), hidden parts, the selected part,
+    x-ray (`xray`), and while a shot plays its look (`shot`: the per-vertex `explode` amount, rebuilt
+    in thirtieths and cached, and the solid-to-authored opacity mix).
+  - **Styles:** the scene's `partStyles` (colour, opacity, highlight, muted) and the stored part
+    appearance (`partAppearance`, `three/appearance`, which wins) are applied as the browser applies them.
+  - **Picking:** tap a part to select it in Field; the volume sends `three-view-command`
+    `{select: id}`, Field relays it to the browser viewer, which selects it as a click would, and its
+    next state draws the yellow selection box here. Tap it again to clear.
+  - **Updates:** arrays are reused by content hash and only the rest fetched
+    (`/three-buffers?only=`); a drawable whose arrays and style are unchanged reuses its built mesh.
+  - **Lights:** one key light plus the volume's environment lighting; the browser's studio and
+    path-trace modes are not mirrored.
+  - **Not yet:** drag-design handles (the interactive FLine objects are not drawn), labels and
+    overlays, section cuts, multi-panel scenes (every panel is drawn superimposed). Surfaces are
+    de-indexed, so a vertex is stored once per triangle. Spatial input can only be checked on the device.
 
 ## Live Metal — programmable native graphics
 

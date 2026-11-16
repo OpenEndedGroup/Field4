@@ -32,6 +32,8 @@ final class ThreeClient {
     private(set) var revision = 0
     /// The browser viewer's explode and hidden parts, by view uid, mirrored onto the built scene.
     private(set) var viewStates: [String: ThreeViewState] = [:]
+    /// How many viewer volumes are on screen: the 3D View button opens one only when there is none.
+    var openVolumes = 0
 
     private let server: ServerConfig
     private let trustDelegate = FieldServerTrustDelegate()
@@ -42,6 +44,13 @@ final class ThreeClient {
     /// Newest description per uid; a fetch that lands after a newer one arrived is dropped.
     private var latest: [String: String] = [:]
     private var attached: Set<String> = []
+    /// Arrays from earlier descriptions by content hash, per view: a description whose buffers are
+    /// mostly unchanged fetches only the rest (`/three-buffers?only=`).
+    private var held: [String: [String: Data]] = [:]
+    /// Part styles that arrived ahead of their geometry (a replay), by view uid.
+    private var pendingAppearance: [String: ThreeAppearanceMessage] = [:]
+    /// What the last geometry update cost, for the status line.
+    private(set) var lastFetch: (fetched: Int, reused: Int) = (0, 0)
 
     /// Restrict following to one document's selection; `nil` follows whatever was selected last.
     var document: String? = ProcessInfo.processInfo.environment["FIELD4_THREE_DOCUMENT"]
@@ -135,6 +144,10 @@ final class ThreeClient {
             if let m = try? Self.decoder.decode(ThreeViewStateMessage.self, from: data), attached.contains(m.uid) {
                 viewStates[m.uid] = m.state
             }
+        case "three/appearance":
+            if let m = try? Self.decoder.decode(ThreeAppearanceMessage.self, from: data), attached.contains(m.uid) {
+                appearance(m)
+            }
         case "three/geometry":
             do {
                 let description = try Self.decoder.decode(ThreeWireDescription.self, from: data)
@@ -165,6 +178,8 @@ final class ThreeClient {
             scenes[uid] = nil
             latest[uid] = nil
             viewStates[uid] = nil
+            held[uid] = nil
+            pendingAppearance[uid] = nil
         }
         for uid in wanted.subtracting(attached) {
             send(["channel": "__threejs__", "debug_uid": uid, "type": "hello", "buffers": "1"])
@@ -184,7 +199,19 @@ final class ThreeClient {
             publish(description, bytes: Data())
             return
         }
-        guard let url = bufferURL(uid: description.uid, generation: table.generation), let session else { return }
+        // Arrays already held, by hash, and the indices still to fetch.
+        let have = held[description.uid] ?? [:]
+        var missing: [Int] = []
+        for (i, e) in table.entries.enumerated() where e.hash.flatMap({ have[$0] })?.count != e.count * Self.width(e.type) {
+            missing.append(i)
+        }
+        if missing.isEmpty {
+            publish(description, bytes: Self.assemble(table, have: have, missing: [], partial: Data()))
+            lastFetch = (0, table.entries.count)
+            return
+        }
+        guard let url = bufferURL(uid: description.uid, generation: table.generation,
+                                  only: missing.count < table.entries.count ? missing : nil), let session else { return }
         Task { [weak self] in
             do {
                 let (bytes, response) = try await session.data(from: url)
@@ -194,7 +221,10 @@ final class ThreeClient {
                     // 404: superseded, and the description that replaced it is on its way.
                     if code == 404 { return }
                     guard code == 200 else { self.status = "Geometry buffers: HTTP \(code)"; return }
-                    self.publish(description, bytes: bytes)
+                    let full = missing.count < table.entries.count
+                        ? Self.assemble(table, have: have, missing: missing, partial: bytes) : bytes
+                    self.lastFetch = (bytes.count, table.entries.count - missing.count)
+                    self.publish(description, bytes: full)
                 }
             } catch {
                 await MainActor.run { self?.status = "Geometry buffers: \(error.localizedDescription)" }
@@ -204,16 +234,79 @@ final class ThreeClient {
 
     private func publish(_ description: ThreeWireDescription, bytes: Data) {
         do {
-            scenes[description.uid] = try ThreeBinding.bind(description, bytes: bytes)
+            var scene = try ThreeBinding.bind(description, bytes: bytes)
+            // Styles a replay sent ahead of this geometry are this geometry's.
+            if let early = pendingAppearance.removeValue(forKey: description.uid), early.revision == description.revision {
+                scene = scene.styled(early.parts ?? [:], replace: true)
+            }
+            scenes[description.uid] = scene
+            if let table = description.buffers {
+                var next: [String: Data] = [:]
+                for e in table.entries {
+                    guard let h = e.hash else { continue }
+                    let n = e.count * Self.width(e.type)
+                    next[h] = bytes.subdata(in: e.offset..<(e.offset + n))
+                }
+                held[description.uid] = next
+            }
             revision += 1
         } catch {
             status = "Geometry: \(error)"
         }
     }
 
-    private func bufferURL(uid: String, generation: String) -> URL? {
+    /// `receiveWireMessage` for a `three/appearance` message: merged into the styles (or replacing them)
+    /// for the revision on show; one for another revision is stale, and the next geometry brings its own.
+    private func appearance(_ m: ThreeAppearanceMessage) {
+        if m.beforeGeometry == true { pendingAppearance[m.uid] = m; return }
+        guard let scene = scenes[m.uid], scene.revision == m.revision else { return }
+        scenes[m.uid] = scene.styled(m.parts ?? [:], replace: m.replace == true)
+        revision += 1
+    }
+
+    /// Select a part in the browser viewer of the shown view, as a click there would: a pick on the
+    /// headset. `nil` clears the selection.
+    func select(part id: String?) {
+        guard let uid = shownUID else { return }
+        let command: [String: Any] = ["select": id ?? NSNull()]
+        guard let data = try? JSONSerialization.data(withJSONObject: [
+            "channel": "__threejs__", "debug_uid": uid, "type": "three-view-command", "command": command]),
+              let text = String(data: data, encoding: .utf8) else { return }
+        task?.send(.string(text)) { _ in }
+        // Shown at once; the browser's next state confirms it.
+        var state = viewStates[uid] ?? ThreeViewState()
+        state.selected = id
+        viewStates[uid] = state
+    }
+
+    private static func width(_ type: String) -> Int {
+        ["Float64Array": 8, "Float32Array": 4, "Uint32Array": 4, "Int32Array": 4,
+         "Uint16Array": 2, "Int16Array": 2, "Uint8Array": 1, "Int8Array": 1][type] ?? 1
+    }
+
+    /// `wireAssemble`: the whole buffer table from held arrays and an `only=` response holding the
+    /// missing ones, each padded to eight bytes from its start.
+    private static func assemble(_ table: ThreeWireBuffers, have: [String: Data], missing: [Int], partial: Data) -> Data {
+        var full = Data(count: table.bytes)
+        let missingSet = Set(missing)
+        for (i, e) in table.entries.enumerated() where !missingSet.contains(i) {
+            if let h = e.hash, let bytes = have[h] { full.replaceSubrange(e.offset..<(e.offset + bytes.count), with: bytes) }
+        }
+        var at = 0
+        for i in missing {
+            let e = table.entries[i], n = e.count * width(e.type)
+            at = (at + 7) / 8 * 8
+            guard at + n <= partial.count else { break }
+            full.replaceSubrange(e.offset..<(e.offset + n), with: partial.subdata(in: at..<(at + n)))
+            at += n
+        }
+        return full
+    }
+
+    private func bufferURL(uid: String, generation: String, only: [Int]? = nil) -> URL? {
         var comps = URLComponents(url: server.baseURL.appendingPathComponent("three-buffers"), resolvingAgainstBaseURL: false)
         comps?.queryItems = [URLQueryItem(name: "uid", value: uid), URLQueryItem(name: "generation", value: generation)]
+        if let only { comps?.queryItems?.append(URLQueryItem(name: "only", value: only.map(String.init).joined(separator: ","))) }
         return comps?.url
     }
 

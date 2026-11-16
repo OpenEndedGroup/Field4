@@ -66,7 +66,7 @@ struct ContentView: View {
             // Pass via `SIMCTL_CHILD_FIELD4_THREE_AUTOSTART=1`.
             if ProcessInfo.processInfo.environment["FIELD4_THREE_AUTOSTART"] == "1" {
                 threeClient.start()
-                openWindow(id: Field4VisionApp.threeWindowID)
+                if threeClient.openVolumes == 0 { openWindow(id: Field4VisionApp.threeWindowID) }
             }
             if ProcessInfo.processInfo.environment["FIELD4_LIVE_METAL_AUTOSTART"] == "1",
                !liveMetalClient.immersiveRequested {
@@ -137,7 +137,7 @@ struct ContentView: View {
             Button {
                 shellLog.notice("tap: three-3d")
                 threeClient.start()
-                openWindow(id: Field4VisionApp.threeWindowID)
+                if threeClient.openVolumes == 0 { openWindow(id: Field4VisionApp.threeWindowID) }
             } label: {
                 Label("3D View", systemImage: "cube.transparent")
             }

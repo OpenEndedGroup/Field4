@@ -14,43 +14,154 @@ enum ThreeMeshBuilder {
     struct Built {
         let root = Entity()
         /// Drawable entities by drawable id. Each sits at the origin of `root` so explode can move it by
-        /// setting its position; its child carries the drawable's own transform.
+        /// setting its position; its child (`placed`) carries the drawable's own transform, or the
+        /// placement the browser viewer mirrors.
         var parts: [String: Entity] = [:]
+        var placed: [String: Entity] = [:]
+        /// Surface parts, which x-ray makes see-through (lines and points stay as they are, as in the browser).
+        var surfaces: Set<String> = []
         var triangles = 0
         var segments = 0
         var points = 0
+        /// How many drawables reused a mesh built for an earlier update.
+        var reused = 0
+    }
+
+    /// Meshes by what they were built from. A rebuild after a geometry update clones the model of every
+    /// drawable whose arrays, style and appearance are unchanged — the usual case when one part of 197
+    /// moved — and builds only the rest. Models not used by the latest build are let go.
+    @MainActor
+    final class Cache {
+        fileprivate struct Entry { let model: ModelEntity; let triangles: Int; let segments: Int; let points: Int }
+        fileprivate var entries: [String: Entry] = [:]
+        fileprivate var used: Set<String> = []
     }
 
     /// The most colour buckets one drawable gets before the rest fall into the nearest-of-the-first.
     static let maxBuckets = 48
 
     @MainActor
-    static func build(_ scene: ThreeScene) -> Built {
+    static func build(_ scene: ThreeScene, cache: Cache? = nil) -> Built {
         var built = Built()
         let diag: Float = scene.bounds.map { max(length($0.max - $0.min), 1e-4) } ?? 1
-        for drawable in scene.drawables {
+        cache?.used = []
+        for source in scene.drawables {
+            var drawable = source
+            if let style = drawable.appearance { applyAppearance(style, to: &drawable) }
+            else if let style = drawable.sceneStyle { applySceneStyle(style, to: &drawable) }
             let entity = Entity()
             entity.name = drawable.id
             entity.isEnabled = !drawable.hidden
             let placed = Entity()
             placed.transform = Transform(matrix: drawable.transform)
             entity.addChild(placed)
-            let mesh: (MeshResource, [any RealityKit.Material])?
-            switch drawable.kind {
-            case .surface:
-                mesh = surface(drawable, built: &built)
-            case .lines:
-                mesh = lines(drawable, radius: diag * 0.0015, built: &built)
-            case .points:
-                mesh = points(drawable, radius: diag * 0.004, built: &built)
-            }
-            if let (resource, materials) = mesh {
-                placed.addChild(ModelEntity(mesh: resource, materials: materials))
+            // Sizes of tubes and points follow the diagonal, so it is part of what a line mesh was built from.
+            let key = "\(drawable.kind)|\(drawable.geometry.key)|\(String(describing: drawable.style))|\(String(format: "%.4g", diag))"
+            if let model = cachedModel(drawable, key: key, diag: diag, cache: cache, built: &built) {
+                placed.addChild(model)
             }
             built.root.addChild(entity)
             built.parts[drawable.id] = entity
+            built.placed[drawable.id] = placed
+            if drawable.kind == .surface { built.surfaces.insert(drawable.id) }
         }
+        if let cache { cache.entries = cache.entries.filter { cache.used.contains($0.key) } }
         return built
+    }
+
+    /// The model for [drawable]: a clone of the cached one for [key], or built and cached.
+    @MainActor
+    private static func cachedModel(_ drawable: ThreeDrawable, key: String, diag: Float, cache: Cache?,
+                                    built: inout Built) -> ModelEntity? {
+        if let hit = cache?.entries[key] {
+            built.triangles += hit.triangles; built.segments += hit.segments; built.points += hit.points
+            built.reused += 1
+            cache?.used.insert(key)
+            return hit.model.clone(recursive: true)
+        }
+        let before = (built.triangles, built.segments, built.points)
+        let mesh: (MeshResource, [any RealityKit.Material])?
+        switch drawable.kind {
+        case .surface: mesh = surface(drawable, built: &built)
+        case .lines: mesh = lines(drawable, radius: diag * 0.0015, built: &built)
+        case .points: mesh = points(drawable, radius: diag * 0.004, built: &built)
+        }
+        guard let (resource, materials) = mesh else { return nil }
+        let model = ModelEntity(mesh: resource, materials: materials)
+        // A box from the mesh bounds is enough to pick a part by, and cheap at 197 parts.
+        model.generateCollisionShapes(recursive: false)
+        model.components.set(InputTargetComponent())
+        if let cache, !drawable.geometry.key.isEmpty {
+            cache.entries[key] = .init(model: model, triangles: built.triangles - before.0,
+                                       segments: built.segments - before.1, points: built.points - before.2)
+            cache.used.insert(key)
+        }
+        return model
+    }
+
+    /// A shot's look for one drawable: its vertices moved by `amount` times their `explode` attribute.
+    /// Amounts are quantised to thirtieths and kept, so a looping shot builds each step once. `nil`
+    /// for a drawable without the attribute.
+    @MainActor
+    static func shotModel(_ source: ThreeDrawable, amount: Float, diag: Float, cache: Cache) -> ModelEntity? {
+        guard let offsets = source.geometry.explode, offsets.count == source.geometry.positions.count else { return nil }
+        let step = (amount * 30).rounded() / 30
+        var d = source
+        if let style = d.appearance { applyAppearance(style, to: &d) } else if let style = d.sceneStyle { applySceneStyle(style, to: &d) }
+        if step != 0 { d.geometry.positions = zip(d.geometry.positions, offsets).map { $0 + $1 * step } }
+        d.geometry.key += "|shot=\(step)"
+        let key = "\(d.kind)|\(d.geometry.key)|\(String(describing: d.style))|\(String(format: "%.4g", diag))"
+        var scratch = Built()
+        let model = cachedModel(d, key: key, diag: diag, cache: cache, built: &scratch)
+        cache.used.insert(key)
+        return model
+    }
+
+    static let highlightColor: [Float] = [0.95, 0.12, 0.08]
+    static let mutedColor: [Float] = [0.62, 0.64, 0.66]
+
+    /// The scene's part style, as `styledMaterial` in the browser viewer applies it: a colour replaces
+    /// the part's own, muted greys it and makes it see-through, highlight makes it glow.
+    private static func applySceneStyle(_ style: ThreeSceneStyle, to d: inout ThreeDrawable) {
+        let muted = style.emphasis == "MUTED", highlight = style.emphasis == "HIGHLIGHT"
+        let authored = d.style.opacity ?? 1
+        var colour = style.color.flatMap { $0.count >= 3 ? $0 : nil } ?? (muted ? mutedColor : highlight ? highlightColor : nil)
+        var opacity = style.opacity ?? (muted ? 0.18 : authored)
+        var material = d.style.material
+        if d.kind == .lines {
+            guard colour != nil || style.opacity != nil || muted else { return }
+            colour = colour ?? [0.08, 0.1, 0.12]
+            opacity = min(1, opacity * (muted ? 1.6 : 1))
+        } else if d.kind == .surface {
+            if highlight {
+                let glow = colour ?? highlightColor
+                material = ThreeWireMaterial(color: colour == nil ? material?.color : [1, 1, 1], roughness: material?.roughness,
+                                             metalness: material?.metalness, emissive: glow.map { $0 * 0.45 }, emissiveIntensity: 1)
+            } else if colour != nil {
+                material = ThreeWireMaterial(color: [1, 1, 1], roughness: material?.roughness, metalness: material?.metalness,
+                                             emissive: material?.emissive, emissiveIntensity: material?.emissiveIntensity)
+            }
+        } else { return }
+        if let c = colour {
+            d.geometry.colors = Array(repeating: SIMD3(c[0], c[1], c[2]), count: d.geometry.positions.count)
+            d.geometry.alpha = nil
+        }
+        d.style = ThreeWireStyle(kind: d.style.kind, doubleSided: d.style.doubleSided, opacity: opacity,
+                                 unlit: d.style.unlit, flatShading: d.style.flatShading, material: material,
+                                 solidOpacity: d.style.solidOpacity)
+        d.geometry.key += "|style=\(style.hashValue)"
+    }
+
+    /// Field's part appearance, as `applyPartAppearance` applies it: every vertex takes the part's
+    /// colour, and the style takes its `unlit`.
+    private static func applyAppearance(_ style: ThreePartStyle, to d: inout ThreeDrawable) {
+        guard style.color.count >= 3 else { return }
+        d.geometry.colors = Array(repeating: SIMD3(style.color[0], style.color[1], style.color[2]), count: d.geometry.positions.count)
+        d.geometry.alpha = nil
+        d.style = ThreeWireStyle(kind: d.style.kind, doubleSided: d.style.doubleSided, opacity: d.style.opacity,
+                                 unlit: style.unlit ?? false, flatShading: d.style.flatShading, material: d.style.material,
+                                 solidOpacity: d.style.solidOpacity)
+        d.geometry.key += "|appearance=\(style.color)"
     }
 
     // MARK: - Colour buckets

@@ -83,6 +83,8 @@ struct Field4VisionApp: App {
         .windowStyle(.volumetric)
         .defaultSize(width: 0.8, height: 0.8, depth: 0.8, in: .meters)
         .windowResizability(.contentSize)
+        // One volume follows the selection; a relaunch should not bring back the last one beside a new one.
+        .restorationBehavior(.disabled)
 
         // The RTT receiver's present half: a dimmed immersive theatre showing the decoded UDP
         // stream (see WIRE_FORMAT.md → "Implementing the receiver"). Mixed style so the dimmed
