@@ -1057,9 +1057,10 @@ id: docs.distributions.gpu-includes
 runner: backdoor-box
 tags: [docs, distributions, gpu, graphics]
 timeoutSec: 180
+# A backdoor-box run has no renderer graph (the capture builds one from macro-file), so this pins
+# that the page's box compiles and runs; the shader's pixels are four.noiselang.gpu-includes' job.
 expect:
-  screenshot:
-    kind: native-window
+  outputContains: [GpShaderModel]
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/distributions-gpu.png" alt="three panels drawn by one fragment shader: on the left a blue ring of 320 points; in the middle, orange points on the part of the same ring above a thin grey diagonal line, the posterior given x + y > 0.5; on the right, twenty pale blue Gaussian-process curves threaded through five orange readings, a white mean curve, and a dark band two standard deviations wide that is narrow at the readings and wide between and beyond them" timeout="180" capture="native-window" native-wait-frames="30" max-width="1600" embed=true name="distributions-gpu" macro-file="../../dev_docs/agents/transcripts/noiselang_gpu.yaml" capture-box="noiselang_gpu"}
 :::static
