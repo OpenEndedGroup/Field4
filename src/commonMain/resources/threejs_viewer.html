@@ -978,6 +978,7 @@ studioRoot.add(studioHemi, studioKey, studioKey.target, studioRim, studioRim.tar
 function applyStudio(spec, bounds, upAxis, helpers) {
     Object.assign(realismState, {payload: spec || null, bounds: bounds || null, upAxis: upAxis === 'Z' ? 'Z' : 'Y', helpers});
     if (pathTraceState.user === null) pathTraceState.on = urlParams.get('pathtrace') === '1' || !!spec?.pathTrace;
+    pathTraceExposure.enabled = urlParams.get('autoexposure') !== '0' && spec?.autoExposure !== false;
     applyRealism();
 }
 function applyRealism() {
@@ -1294,18 +1295,22 @@ function renderPathTrace() {
         if (now < pathTrace.rebuildAt) { renderPathTraceRaster(); setPathTraceReadout('…'); requestRender(); return; }
         rebuildPathTraceScene();
         pathTrace.sceneKey = sceneKey; pathTrace.pending = null;
+        resetPathTraceExposure();
     }
     const cameraKey = pathTraceCameraKey();
     if (cameraKey !== pathTrace.cameraKey) { tracer.updateCamera(); pathTrace.cameraKey = cameraKey; }
     const envKey = pathTraceEnvKey();
-    if (envKey !== pathTrace.envKey) { tracer.updateEnvironment(); pathTrace.envKey = envKey; }
-    const autoClear = renderer.autoClear;
+    if (envKey !== pathTrace.envKey) { tracer.updateEnvironment(); pathTrace.envKey = envKey; resetPathTraceExposure(); }
+    const autoClear = renderer.autoClear, exposure = renderer.toneMappingExposure;
     renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
-    tracer.renderSample();
+    renderer.toneMappingExposure = pathTraceExposureValue();
+    try { tracer.renderSample(); } finally { renderer.toneMappingExposure = exposure; }
     renderer.autoClear = autoClear;
+    // Meter the traced image (before the overlays, in the same task, so the drawing buffer is still there).
+    const meter = !tracer.isCompiling && tracer.samples >= 16 && meterPathTraceExposure(renderer.domElement);
     renderPathTraceOverlay();
     setPathTraceReadout(`${Math.min(tracer.samples, PATH_TRACE_MAX_SAMPLES) | 0} spp`);
-    if (tracer.samples < PATH_TRACE_MAX_SAMPLES || tracer.isCompiling) requestRender();
+    if (tracer.samples < PATH_TRACE_MAX_SAMPLES || tracer.isCompiling || meter) requestRender();
 }
 /** The WebGPU tracer's frame: its canvas traces beneath, this one draws the overlays (or the raster, until it can). */
 function renderGpuPathTrace(gpu) {
@@ -1322,14 +1327,15 @@ function renderGpuPathTrace(gpu) {
         catch (error) { abandonGpuPathTrace(gpu, error); return; }
         Object.assign(gpu, {keys, cameraKey: pathTraceCameraKey(), envKey: pathTraceEnvKey(), stage: 'building', samples: 0});
         pathTrace.pending = null;
+        resetPathTraceExposure();
     } else {
         let reset = false;
         if (keys.transform !== gpu.keys.transform) { syncGpuPathTraceTransforms(gpu); tracer.updateTransforms(); reset = true; }
-        if (keys.material !== gpu.keys.material) { tracer.updateMaterials(); reset = true; }
-        if (keys.light !== gpu.keys.light) { syncGpuPathTraceLights(gpu); tracer.updateLights(); reset = true; }
+        if (keys.material !== gpu.keys.material) { tracer.updateMaterials(); reset = true; resetPathTraceExposure(); }
+        if (keys.light !== gpu.keys.light) { syncGpuPathTraceLights(gpu); tracer.updateLights(); reset = true; resetPathTraceExposure(); }
         const cameraKey = pathTraceCameraKey(), envKey = pathTraceEnvKey();
         if (cameraKey !== gpu.cameraKey) { tracer.updateCamera(); reset = true; }
-        if (envKey !== gpu.envKey) { syncGpuPathTraceEnvironment(gpu); tracer.updateEnvironment(); reset = true; }
+        if (envKey !== gpu.envKey) { syncGpuPathTraceEnvironment(gpu); tracer.updateEnvironment(); reset = true; resetPathTraceExposure(); }
         Object.assign(gpu, {keys, cameraKey, envKey});
         if (reset) Object.assign(gpu, {stage: 'rendering', samples: 0});
     }
@@ -1339,7 +1345,9 @@ function renderGpuPathTrace(gpu) {
     const samples = Math.min(gpu.samples, PATH_TRACE_DENOISE_SAMPLES) | 0;
     setPathTraceReadout(!ready ? '…' : gpu.stage === 'complete' && tracer.maxSamples === PATH_TRACE_DENOISE_SAMPLES ? `${samples} spp · denoised`
         : gpu.stage === 'denoising' ? `${samples} spp · denoising` : `${Math.floor(gpu.samples)} spp`);
-    if (!ready || gpu.stage !== 'complete') requestRender();
+    // Meter the finished (denoised) image; each step re-blits it at the new exposure.
+    const meter = ready && gpu.stage === 'complete' && meterPathTraceExposure(gpu.canvas);
+    if (!ready || gpu.stage !== 'complete' || meter) requestRender();
 }
 /** A scene the WebGPU tracer cannot take: trace on WebGL from here on, rather than fail every frame. */
 function abandonGpuPathTrace(gpu, error) {
@@ -1372,7 +1380,7 @@ function syncGpuPathTraceCanvas(gpu) {
     const size = `${w}x${h}@${dpr}`;
     if (size !== gpu.size) { r.setPixelRatio(dpr); r.setSize(w, h, false); gpu.size = size; }
     r.toneMapping = renderer.toneMapping;
-    r.toneMappingExposure = renderer.toneMappingExposure;
+    r.toneMappingExposure = pathTraceExposureValue();
 }
 /**
  * What the WebGPU tracer is given: a scene of its own, holding a stand-in for each traced mesh (sharing its
@@ -1489,6 +1497,44 @@ function pathTraceSettling() {
     if (gpu) return gpu.stage !== 'complete' || gpu.cameraKey !== pathTraceCameraKey() || pathTrace.pending !== null;
     const tracer = pathTrace.tracer;
     return !tracer || tracer.samples < PATH_TRACE_CAPTURE_SAMPLES || pathTrace.cameraKey !== pathTraceCameraKey();
+}
+/**
+ * Auto-exposure for the traced image. The tracer's light is physical, so the Realism raster's exposure
+ * rarely suits it. Once a frame is worth judging, this meters the image on screen (a 48-pixel copy,
+ * covered pixels only) and scales the exposure so the brightest 2 % sit just below white: keyed to highlights,
+ * since a dark ground or room fills most of the frame and would drag a median-keyed meter bright. It is a feedback loop on what is displayed, so it needs no tone-curve inverse. Changing
+ * exposure only re-blits the accumulated samples, so it costs no samples. `studio(autoExposure = false)` or
+ * `?autoexposure=0` turns it off.
+ */
+const pathTraceExposure = {factor: 1, steps: 0, enabled: urlParams.get('autoexposure') !== '0', meter: null};
+const AUTO_EXPOSURE_HIGH = 0.85, AUTO_EXPOSURE_MAX_STEPS = 8;
+function pathTraceExposureValue() { return renderer.toneMappingExposure * (pathTraceExposure.enabled ? pathTraceExposure.factor : 1); }
+/** A new picture (geometry, lights or room light changed) is metered again; camera moves keep the setting. */
+function resetPathTraceExposure() { pathTraceExposure.steps = 0; }
+/** Meter `canvas` and step the exposure; returns true while it is still settling (so another frame is drawn). */
+function meterPathTraceExposure(canvas) {
+    const state = pathTraceExposure;
+    if (!state.enabled || state.steps >= AUTO_EXPOSURE_MAX_STEPS) return false;
+    const n = 48;
+    if (!state.meter) { state.meter = document.createElement('canvas'); state.meter.width = state.meter.height = n; }
+    const context = state.meter.getContext('2d', {willReadFrequently: true});
+    context.clearRect(0, 0, n, n);
+    try { context.drawImage(canvas, 0, 0, n, n); } catch (_) { state.steps = AUTO_EXPOSURE_MAX_STEPS; return false; }
+    const pixels = context.getImageData(0, 0, n, n).data, values = [];
+    for (let i = 0; i < pixels.length; i += 4) {
+        if (pixels[i + 3] < 128) continue;
+        values.push((0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2]) / 255);
+    }
+    state.steps++;
+    if (values.length < 32) return false;
+    values.sort((a, b) => a - b);
+    const at = q => Math.max(values[Math.floor(q * (values.length - 1))], 1e-3);
+    // Displayed values are sRGB-encoded, so squaring gives a rough linear ratio, but ACES flattens toward
+    // white: up there a small displayed change is a large exposure change, so push much harder.
+    const high = at(0.98), ratio = (AUTO_EXPOSURE_HIGH / high) ** (high > 0.8 ? 6 : 2);
+    if (Math.abs(Math.log(ratio)) < 0.06) { state.steps = AUTO_EXPOSURE_MAX_STEPS; return false; }
+    state.factor = Math.min(20, Math.max(0.05, state.factor * Math.min(2.5, Math.max(0.4, ratio ** 0.8))));
+    return true;
 }
 const pathTraceReadout = document.getElementById('path-trace-readout');
 function setPathTraceReadout(text) {
