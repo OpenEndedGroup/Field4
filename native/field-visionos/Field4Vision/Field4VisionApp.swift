@@ -11,9 +11,9 @@ struct Field4VisionApp: App {
     // status) and the ImmersiveSpace presents it, so both share one instance via the environment.
     @State private var rtt = RTTStream()
 
-    // The native FLine viewer's discovery client is app-scoped too: the main window opens the viewer
-    // window and both share this one WebSocket subscription via the environment.
-    @State private var flineClient = FLineViewerClient()
+    // The native three.js viewer's client is app-scoped too: the main window opens the viewer
+    // window and both share this one selection-following subscription via the environment.
+    @State private var threeClient = ThreeClient()
 
     // Source, JavaScript and status bridge for the autonomous Compositor Services renderer.
     @State private var liveMetalClient = LiveMetalClient()
@@ -32,7 +32,7 @@ struct Field4VisionApp: App {
         WindowGroup {
             ContentView()
                 .environment(rtt)
-                .environment(flineClient)
+                .environment(threeClient)
                 .environment(liveMetalClient)
         }
         // NOT `.windowResizability(.contentSize)`. This is a shell window whose content is a
@@ -74,12 +74,11 @@ struct Field4VisionApp: App {
         .defaultSize(width: 1.0, height: 0.6, depth: 0.2, in: .meters)
         .windowResizability(.contentSize)
 
-        // The first native viewer: a fully-3D RealityKit FLine viewer (the native equivalent of the
-        // three.js iframe), in its own movable/resizable volume. Cube-ish default — FLine models are
-        // arbitrary 3D. Same `in: .meters` requirement as the stream volume.
-        WindowGroup(id: Field4VisionApp.flineWindowID) {
-            FLineViewerView()
-                .environment(flineClient)
+        // The native three.js viewer: the 3D views of the box selected in Field, in their own
+        // movable/resizable volume. Same `in: .meters` requirement as the stream volume.
+        WindowGroup(id: Field4VisionApp.threeWindowID) {
+            ThreeViewerView()
+                .environment(threeClient)
         }
         .windowStyle(.volumetric)
         .defaultSize(width: 0.8, height: 0.8, depth: 0.8, in: .meters)
@@ -105,7 +104,7 @@ struct Field4VisionApp: App {
 
     static let rttSpaceID = "RTTImmersive"
     static let rttWindowID = "RTTWindow"
-    static let flineWindowID = "FLineViewer"
+    static let threeWindowID = "ThreeViewer"
     static let liveMetalSpaceID = "FieldLiveMetal"
 }
 

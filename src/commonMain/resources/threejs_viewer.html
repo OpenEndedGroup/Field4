@@ -6822,7 +6822,32 @@ function inspectorRefresh() {
     if (motionState.entries.length) motionReadout();
     inspectorPartsSync();
     inspectorRebuildOverlay();
+    viewStateSend();
 }
+
+// [viewer-region view-state-mirror] BEGIN
+// What this viewer is showing — explode amount and hidden parts, by drawable id — sent to Field, which
+// relays it to every other client of the view (`three-view-state` in ThreeJsViewer.kt). The native
+// visionOS viewer mirrors it, so the controls stay here, in the Field you are coding in. At most one
+// message a frame, the last state always sent; an unchanged state is not resent.
+const viewStateOut = { last: '', timer: null };
+function viewStateSend() {
+    if (viewStateOut.timer) return;
+    viewStateOut.timer = setTimeout(() => {
+        viewStateOut.timer = null;
+        const hidden = [];
+        for (const source of featureSources()) {
+            const id = source.slot && source.slot.stableId;
+            if (id && inspectorState.hidden.has(source.id)) hidden.push(id);
+        }
+        const state = { explode: inspectorState.explodeAmount || 0, hidden: [...new Set(hidden)].sort() };
+        const text = JSON.stringify(state);
+        if (text === viewStateOut.last) return;
+        viewStateOut.last = text;
+        sendMessage({ type: 'three-view-state', state });
+    }, 16);
+}
+// [viewer-region view-state-mirror] END
 
 function inspectorUpdateHud() {
     const spec = inspectorState.spec;

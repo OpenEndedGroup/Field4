@@ -5666,7 +5666,7 @@ class Server {
                                 LiveOutputIframeBridge.gone(ts)
                                 detachDocumentSession(ts)
                                 leaveSelectionContexts(ts)
-                                afield.graphics.three.detachThreeGlobalListener(ts)
+                                afield.graphics.three.detachThreeSession(ts)
                                 afield.graphics.visionos.detachVisionMetalGlobalListener(ts)
                                 afield.graphics.visionos.VisionPoseStream.detach(ts)
                                 // Clean up back pressure state for this session.

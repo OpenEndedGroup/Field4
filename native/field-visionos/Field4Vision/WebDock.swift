@@ -157,7 +157,7 @@ struct WebDock: UIViewRepresentable {
         }
 
         private static func isTrustedDevHost(_ host: String) -> Bool {
-            isTrustedFieldDevHost(host)   // shared with FLineViewerClient — see ServerConfig.swift
+            isTrustedFieldDevHost(host)   // shared with ThreeClient — see ServerConfig.swift
         }
     }
 }

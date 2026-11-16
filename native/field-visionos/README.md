@@ -158,24 +158,39 @@ Four improvements on top of the PoC:
   projection keeps Monaco/docs hidden but now permits the full-width history overlay. The
   `visionos-shared-history-panel` browser regression drives two independent clients to protect the
   handoff.
-- **First native viewer — `FLine/`.** A fully-3D RealityKit FLine viewer, the native equivalent of the
-  three.js iframe. It speaks the SAME `__threejs__` protocol over `/ws` (`FLineViewerClient` sends one
-  `subscribe-all` and receives every live view's `three/geometry` payload, keyed by uid). Strokes →
-  swept **tubes** (real thickness, unlike three.js's flat lines), fills → triangles, points → spheres;
-  per-FLine tinted `UnlitMaterial`. Orbit/scale/reset, tap → `fline-click`, and (editable views)
-  node-drag → `fline-edit-translate` + Clear. Presented in a resizable volumetric window (scene
-  `flineWindowID`); ornament button "FLine 3D". Files: `FLineWire` (Codable payload/edit mirrors),
-  `FLineViewerClient` (WS + self-signed trust via the shared `isTrustedFieldDevHost`), `FLineMeshBuilder`
-  (procedural geometry — no `.rkassets`, so no pbxproj edits), `FLineViewerView` (RealityView + gestures).
-  - **Server side (field4 repo):** `ThreeJsViewer.kt` gained a `threeGlobalListeners` broadcast + a
-    `subscribe-all` message; `Server.kt`'s `/ws` finally calls `detachThreeGlobalListener`. No protocol
-    change — existing web viewers are untouched. Editing/thickness need a view created
-    `threeLines(..., editable = true)` (only that path emits the `scene` block), same as the web viewer.
-  - **Parity gaps (documented):** marquee / point-edge-face selection masks (need screen-space
-    projection a volume doesn't expose) → replaced by tap-select; freehand begin/append/end-line has
-    wire + client support but no gesture UI yet; cubic C1/C2 control handles are a stretch; fills in edit
-    mode use fan triangulation (convex-correct); whole-FLine tap targets use an AABB (coarse). All
-    RealityKit interaction is **device-verify** (the sim is non-interactive for spatial input).
+- **Native three.js viewer — `Three/`.** A RealityKit volume that shows the 3D views of the box
+  selected in Field: select a box on the Mac (in Mac Virtual Display) and its `three { }` /
+  `threeLines(...)` views appear in the volume. Ornament button "3D View" (scene `threeWindowID`).
+  - **Wire:** the same descriptions and buffers the browser viewer gets. `ThreeClient` sends `follow` on
+    the `__threejs__` channel (optionally `document`, or `FIELD4_THREE_DOCUMENT`). Field answers with
+    `three/follow`, listing the selected boxes and the views they own, and sends it again whenever that
+    changes. The client sends an ordinary hello for each view and `detach` for views it no longer needs.
+    For each `three/geometry` description it fetches the typed arrays from `/three-buffers` and binds
+    them (`ThreeWire.swift`, the Swift twin of `bindWireBuffers`).
+  - **Drawing:** `ThreeMeshBuilder` makes one entity per drawable, named by its id, with its transform
+    and `hidden` applied. The FLine half (`lines`/`fills`/`points`) is handled as three more drawables.
+    Surfaces get `PhysicallyBasedMaterial` from the drawable's material (or `UnlitMaterial` when
+    `unlit`), lines become swept tubes and points small octahedra. RealityKit has no per-vertex colour,
+    so colours are bucketed: each triangle, segment or point takes its first vertex's colour (quantised,
+    at most 48 per drawable), and each bucket is one mesh part.
+  - **Holding:** when the selection moves to a box with no 3D view (the plan beside the model), the
+    volume keeps what it shows and marks it with a pin. Selecting a box that has views replaces them.
+  - **Explode and layers come from Field.** The browser viewer of the same view, in the Field you are
+    coding in, sends `three-view-state` (its explode amount and the drawable ids hidden in its Parts
+    list) whenever either changes. Field keeps the latest per view, relays it to the view's other
+    clients as `three/view-state`, and replays it to a client that attaches later. The headset moves
+    each drawable by its assembly group's offset (`ThreeAssembly.swift`, the same radial/axis
+    arithmetic as `explodeOffsets`) and hides what the browser hides. The controls stay on the Mac;
+    the headset has none of its own yet. It works the way the controller page's sliders do.
+  - **Server side:** `follow`, `detach`, `three/follow` and the view-state relay live in `ThreeJsViewer.kt`.
+    `recordControllerSelection` (`controllers.kt`) feeds it the selection, and publishing a view
+    re-announces it to followers of its owner. The old `subscribe-all` and the separate native-JSON
+    encoding are gone.
+  - **Not yet:** explode of the FLine half (its per-vertex groups) and of shot keyframes (the
+    per-vertex `explode` attribute), assembly steps, motion sliders, part appearance (`three/appearance`), lights and studio
+    spec, picking, labels and overlays, multi-panel scenes (every panel is drawn superimposed), and
+    `/three-buffers?only=` reuse (every update refetches all arrays). Surfaces are de-indexed, so a
+    vertex is stored once per triangle. Spatial input can only be checked on the device.
 
 ## Live Metal — programmable native graphics
 
@@ -308,7 +323,7 @@ onStart {
 current `normal()`, `color()`, `uv()` and `extra()` state; `triangle()` and `quad()` supply indices,
 so a vertex can be shared between faces or duplicated per face for facet normals. Winding is
 counter-clockwise; the head culls back faces. On top of that: `cube`, `plane`, `sphere`, and `tube` —
-which sweeps a polygon along a polyline, the same treatment the native FLine viewer gives a stroke, so
+which sweeps a polygon along a polyline, the same treatment the native three.js viewer gives a stroke, so
 a line drawn in Kotlin has real thickness in the headset.
 
 Call `geometry { … }` again at any time, including from `onFrame`, to replace the mesh. The swap

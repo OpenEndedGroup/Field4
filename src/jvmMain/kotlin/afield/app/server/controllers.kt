@@ -350,6 +350,7 @@ fun recordControllerSelection(info: SessionInformation, selection: ControllerSel
     controllerSelectionKeys(info).forEach { key ->
         controllerSelections[key] = record
     }
+    afield.graphics.three.threeFollowSelection(info.documentName, normalized.selectedUids.mapNotNull { info.boxes[it] })
 }
 
 fun broadcastControllerControlUpdates(controls: List<ControllerControl>, targetDocument: String = "") {

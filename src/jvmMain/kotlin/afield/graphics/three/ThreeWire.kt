@@ -79,8 +79,7 @@ class ThreePayloadTooLargeException internal constructor(
 /** A part of a payload and about how many bytes it accounts for. */
 internal data class ThreeWireCost(val what: String, val bytes: Long)
 
-/** `-12.345678,`: `Float.toString` of a typical coordinate, and its comma. */
-private const val PLAIN_FLOAT_BYTES = 11L
+/** An index of unknown width, costed as a typical integer and its comma in JSON. */
 private const val PLAIN_INT_BYTES = 7L
 
 /** Bytes per element of the integer index types the viewer's `typedArrayCtor` knows. Others stay JSON. */
@@ -101,9 +100,6 @@ private fun drawableName(drawable: ThreeDrawable, ordinal: Int): String =
 private fun bufferBytes(data: ThreeGeometryData?): Long = if (data == null) 0L else
     data.attributes.values.sumOf { it.array.size * 4L } +
         (data.index?.let { index -> index.array.size * (INDEX_WIDTH[index.type]?.toLong() ?: PLAIN_INT_BYTES) } ?: 0L)
-
-private fun plainBytes(data: ThreeGeometryData?): Long = if (data == null) 0L else
-    data.attributes.values.sumOf { it.array.size * PLAIN_FLOAT_BYTES } + (data.index?.array?.size ?: 0) * PLAIN_INT_BYTES
 
 private fun interactiveName(obj: ThreeInteractiveObject) = "interactive FLine ${obj.lineIndex}" + (obj.label?.let { " ($it)" } ?: "")
 
@@ -132,12 +128,6 @@ internal fun threeWireCosts(payload: ThreeGeometryPayload): List<ThreeWireCost> 
             part.positions.size * 8L + (part.indices.size + part.faces.size) * 4L + part.edges.size * 8L))
     }
 }
-
-/** The same, for the JSON a native client is sent instead: FLine arrays as decimal text, nothing else large. */
-private fun nativeCost(payload: ThreeGeometryPayload): Long =
-    plainBytes(payload.lines) + plainBytes(payload.fills) + plainBytes(payload.points) +
-        payload.interactive.sumOf { plainBytes(it.lines) + plainBytes(it.fills) + plainBytes(it.points) + it.vertices.size * 48L + it.topology.length } +
-        (payload.scene?.lines?.sumOf { it.nodes.size * 96L + it.topology.length } ?: 0L)
 
 private fun megabytes(bytes: Long): String = String.format(Locale.ROOT, "%.1f MB", bytes / 1_048_576.0)
 
@@ -405,18 +395,6 @@ internal fun writeThreeBuffers(sources: List<ThreeWireSource>, out: OutputStream
     }
     flush()
     out.flush()
-}
-
-/** What a client that does not fetch buffers is sent: the FLine half, without what it does not read. */
-internal fun ThreeGeometryPayload.forNativeClient(): ThreeGeometryPayload =
-    copy(drawables = emptyList(), inspector = inspector?.copy(parts = emptyMap()))
-
-/** [forNativeClient], encoded, or `null` when even its estimate is over [limitBytes]. */
-internal fun encodeForNativeClient(json: Json, stamped: ThreeGeometryPayload, limitBytes: Long): ByteArray? {
-    val native = stamped.forNativeClient()
-    val estimate = nativeCost(native)
-    if (estimate > limitBytes) return null
-    return encodeThreeWire(json, native, estimate).takeIf { it.size <= limitBytes }
 }
 
 /** Encode straight to UTF-8 bytes, in a buffer sized from the estimate: these bytes are the frame. */

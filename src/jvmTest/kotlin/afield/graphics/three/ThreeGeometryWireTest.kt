@@ -147,28 +147,9 @@ class ThreeGeometryWireTest {
         geometry["attributes"]!!.jsonObject.forEach { (name, attribute) -> assertReferenced(attribute.jsonObject, "attribute $name") }
         assertNotNull(geometry["index"]!!.jsonObject["buffer"])
 
-        // `FLineWire.swift` decodes the FLine arrays as `[Float]`, and never reads drawables.
-        val native = parse(view.nativeMessage()!!)
-        assertEquals(6, native["lines"]!!.jsonObject["attributes"]!!.jsonObject["position"]!!.jsonObject["array"]!!.jsonArray.size)
-        assertNull(native["drawables"])
-        assertNull(native["buffers"])
-        assertFalse("\"buffer\"" in view.nativeMessage()!!.decodeToString())
-
         // Every other encoding, the review revision's included, never sees the wire-only fields.
         val source = json.encodeToString(ThreeGeometryPayload.serializer(), view.sourcePayload!!)
         assertFalse("\"buffer" in source || "partAppearance" in source, source)
-    }
-
-    @Test
-    fun aNativeClientIsSentNothingRatherThanJsonOverTheLimit() {
-        val view = ThreeGeometryViewState("wire-native-limit-${UUID.randomUUID()}")
-        // 120 kB as buffers, about 330 kB as decimal text.
-        val payload = ThreeGeometryPayload(uid = view.uid,
-            lines = ThreeGeometryData(mapOf("position" to ThreeAttribute(3, FloatArray(30_000) { it * 0.001f }))))
-        view.payloadLimitBytes = 200_000
-        view.update(payload)
-        assertNotNull(view.buffers(generation(parse(view.replayMessages().single()))))
-        assertNull(view.nativeMessage())
     }
 
     @Test
