@@ -218,6 +218,9 @@ data class ThreeDrawable(
      */
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val hidden: Boolean = false,
+    /** The box line that added this part ([threeCallSite]); carried into review references, left out of the revision. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val provenance: ThreeSourceLine? = null,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeDrawable",

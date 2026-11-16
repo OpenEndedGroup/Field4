@@ -270,7 +270,11 @@ data class ThreeInteractiveObject(
      * the same line differently. Only their picking differs, which it must: one has a click in a plane,
      * the other a raycast hit that already knows whether it landed on a line, a fill or a point.
      */
-    val topology: String = ""
+    val topology: String = "",
+    /** The box line whose `lines(…)` call added this FLine ([threeCallSite]); left out of the revision. */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val provenance: ThreeSourceLine? = null,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeInteractiveObject",
@@ -966,6 +970,21 @@ fun threeGeometryReviews(uid: String, includeResolved: Boolean = false): kotlinx
 
 internal fun updateThreeGeometryReview(uid: String, request: kotlinx.serialization.json.JsonObject): kotlinx.serialization.json.JsonObject? =
     (knownThreeViews[uid]?.reviewInbox ?: customGeometryReviewInbox(uid))?.updateNote(request)
+
+/**
+ * The viewer's **Ask AI**: [record] is the reference Copy reference would put on the clipboard. It is checked
+ * against the view's current revision and published as the live selection (as a pick is), then sent to the
+ * owning document's frontends as `geometry-reference-ask`, where the AI4 composer shows it as a chip. Null
+ * for an unknown view; throws, as [ThreeReviewInbox.receive] does, for a stale or malformed record. Main thread.
+ */
+internal fun askAboutThreeGeometry(uid: String, record: kotlinx.serialization.json.JsonObject): afield.app.protocol.GeometryReferenceAsk? {
+    val inbox = knownThreeViews[uid]?.reviewInbox ?: customGeometryReviewInbox(uid) ?: return null
+    inbox.receive(record, note = false)
+    val ask = threeGeometryReferenceAsk(uid, record, inbox.owner?.id)
+    val message = afield.app.protocol.Message("geometry-reference-ask").payload(ask)
+    inbox.owner?.let { afield.ui.slides.sendToHostDocument(it, message) } ?: afield.app.protocol._send(message)
+    return ask
+}
 
 /** What one [ThreeGeometryViewState.update] sent. */
 data class ThreeUpdateStats(

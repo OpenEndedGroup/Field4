@@ -5842,6 +5842,29 @@ class Server {
                                 }
                             }
                         }
+                        route("/three-review-ask") {
+                            post {
+                                // The viewer's Ask AI: the same reference record as Copy reference, checked
+                                // against the view and handed to the AI4 composer as a quotable chip.
+                                if (call.refuseUnlessSameSiteDocsClient(DocsAccessPolicy())) return@post
+                                if (call.request.contentType().withoutParameters() != ContentType.Application.Json) {
+                                    call.respond(HttpStatusCode.UnsupportedMediaType); return@post
+                                }
+                                val uid = call.request.queryParameters["uid"] ?: ""
+                                val text = call.receiveText()
+                                if (text.length > 128_000) { call.respond(HttpStatusCode.PayloadTooLarge); return@post }
+                                val result = runCatching {
+                                    val record = Json.parseToJsonElement(text) as? kotlinx.serialization.json.JsonObject
+                                        ?: throw IllegalArgumentException("A reference must be an object")
+                                    withContext(Runloop.runLoop.main) { afield.graphics.three.askAboutThreeGeometry(uid, record) }
+                                }
+                                when {
+                                    result.isFailure -> call.respondText(result.exceptionOrNull()?.message ?: "Invalid reference", status = HttpStatusCode.BadRequest)
+                                    result.getOrNull() == null -> call.respond(HttpStatusCode.NotFound, "Unknown geometry view")
+                                    else -> call.respondText(Json.encodeToString(afield.app.protocol.GeometryReferenceAsk.serializer(), result.getOrThrow()!!), ContentType.Application.Json)
+                                }
+                            }
+                        }
                         route("/threejs") {
                             handle {
                                 val originalContent =

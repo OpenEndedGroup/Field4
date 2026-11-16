@@ -98,7 +98,7 @@ private val revisionJson = Json { encodeDefaults = true }
 
 /** The payload keys a revision covers, and the keys it ignores at every depth. */
 private val REVISION_KEYS = setOf("lines", "fills", "points", "drawables", "interactive", "scene")
-private val REVISION_IGNORED = setOf("callbackId", "sessionId", "hoverColor", "style", "label", "layer", "metadata", "hidden")
+private val REVISION_IGNORED = setOf("callbackId", "sessionId", "hoverColor", "style", "label", "layer", "metadata", "hidden", "provenance")
 
 /**
  * The text a revision hashes, fed to [digest] as kotlinx writes the payload, never held whole.
@@ -451,4 +451,38 @@ internal class ThreeReviewInbox(private val uid: String) {
         val box = owner
         return buildJsonObject { put("ok", true); put("id", saved.getValue("id")); put("message", if (box?.isInsideInitialized() == true && !box.inside.ephemeral) "Note added to Field." else "Note added to Field's live review inbox.") }
     }
+}
+
+/**
+ * The compact form of a review reference ([record], as the viewer's `featureObservation` writes it) that a chat
+ * turn quotes: which view and revision, what kind of feature on which part, the element, the note, and the box
+ * line that drew the part (`sourceLine`, from the part's [ThreeDrawable.provenance]).
+ */
+internal fun threeGeometryReferenceAsk(uid: String, record: JsonObject, owner: String?): afield.app.protocol.GeometryReferenceAsk {
+    val selection = record["selection"] as? JsonObject ?: error("Pick a feature before asking about it")
+    fun str(o: JsonObject?, key: String) = (o?.get(key) as? JsonPrimitive)?.contentOrNull
+    fun ints(key: String) = (selection[key] as? JsonArray)?.mapNotNull { it.jsonPrimitive.intOrNull }
+    val kind = str(selection, "kind") ?: error("Feature has no kind")
+    val element = when (kind) {
+        "edge" -> ints("edge")?.takeIf { it.size == 2 }?.let { "edge v${it[0]}–v${it[1]}" }
+        "vertex" -> str(selection, "vertex")?.let { "vertex $it" }
+        "face" -> listOfNotNull(str(selection, "face")?.let { "face $it" }, str(selection, "triangle")?.let { "triangle $it" }).joinToString(" · ").ifEmpty { null }
+        "region" -> (selection["region"] as? JsonObject)?.let { r -> "${(r["surfaces"] as? JsonArray)?.size ?: 0} visible part(s)" }
+        else -> str(selection, "triangle")?.let { "triangle $it" }
+    }
+    val sourceLine = (record["sourceLine"] as? JsonObject)?.let { o ->
+        val box = str(o, "box"); val line = str(o, "line")?.toIntOrNull()
+        if (box != null && line != null && line > 0) afield.app.protocol.GeometrySourceLine(box, str(o, "property") ?: "code", line, str(o, "variable")) else null
+    }
+    return afield.app.protocol.GeometryReferenceAsk(
+        view = uid,
+        revision = str(record, "artifactDigest") ?: error("Reference has no revision"),
+        kind = kind,
+        partId = str(selection, "partId"),
+        label = str(record, "partLabel"),
+        element = element,
+        note = str(record, "text").orEmpty().take(2_000),
+        sourceBox = owner ?: str(record, "sourceBox"),
+        sourceLine = sourceLine,
+    )
 }

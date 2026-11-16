@@ -76,6 +76,7 @@ import afield.app.protocol.PresentationShown
 import afield.app.protocol.ProvisionalSet
 import afield.app.protocol.Rect
 import afield.app.protocol.SelectAndEditBox
+import afield.app.protocol.GeometryReferenceAsk
 import afield.app.protocol.SetActiveLayer
 import afield.app.protocol.SetVisibleLayers
 import afield.app.protocol.Set_animated_rect
@@ -6953,6 +6954,24 @@ suspend fun main() {
             val state = JSON.parse<dynamic>(message.payload.toString())
             bridge.presentGuide(state)
             send(Message("presentation-shown").payload(PresentationShown(state.slideshowId as String)))
+        }
+        Handled.yes
+    }
+
+    // A three.js viewer's Ask AI: quote the pick in an AI4 chat composer (outputareas2.js), opening the owning
+    // box's chat when none is open.
+    window.asDynamic().fieldOpenBoxLine = { uid: String, property: String, line: Int ->
+        navigateToBoxProperty(uid, property.ifBlank { "code" }, scrollToLine = line, highlightLine = line, center = true)
+    }
+    handlers.put("geometry-reference-ask") { message, _ ->
+        val ask = Json.decodeFromJsonElement<GeometryReferenceAsk>(message.payload!!)
+        val ref = JSON.parse<dynamic>(Json.encodeToString(GeometryReferenceAsk.serializer(), ask))
+        ref.header = ask.header
+        val deliver = window.asDynamic().fieldDeliverGeometryReference
+        val delivered = deliver != null && deliver(ref) == true
+        val owner = ask.sourceBox
+        if (!delivered && owner != null) navigateDocumentBox(DocumentBoxNavigation(owner, surface = "output", channel = "ai-chat")) {
+            if (!it.success) window.asDynamic().notify?.invoke("Open an AI chat on this box to ask about the geometry; the reference is waiting for it.", "AI4")
         }
         Handled.yes
     }
