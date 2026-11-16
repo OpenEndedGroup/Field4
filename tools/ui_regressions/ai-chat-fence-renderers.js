@@ -61,6 +61,15 @@ try {
     push(diagram);
     await wait(() => messages.querySelector('.ai-chat-fence-preview svg'), 'Mermaid rerenders');
 
+    // Text streaming in after a rendered diagram rebuilds its turn on every chunk; the diagram stays drawn
+    // through each one instead of flashing back to its source.
+    for (const more of [' The', ' hall', ' leads on.']) {
+        push(diagram + '\n\nAfter the diagram:' + more);
+        check(messages.querySelector('.ai-chat-fence-preview svg'), `diagram dropped to source while streaming "${more}"`);
+        check(messages.querySelector('.ai-chat-code-block pre').hidden, 'source shown while streaming');
+        await delay(30);
+    }
+
     // Math: inline and display delimiters in prose, a math fence, and TeX that does not parse.
     check(catalog.fences.some(f => f.language === 'math' && f.modulePath === '/katex/field-katex.js'), 'math missing from shared catalog');
     const prose = 'The form \\(Q = ax^2 + bxy + cy^2\\) costs $5, not $10.\n\n$$\\Delta = b^2 - 4ac$$\n\nBroken \\(\\frac{1}{\\)';
