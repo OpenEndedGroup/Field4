@@ -29,13 +29,24 @@ define("bithero/postscript", ["require", "vs/editor/editor.api"], function (requ
     var graphics = [
         "newpath", "moveto", "rmoveto", "lineto", "rlineto", "curveto", "rcurveto", "arc", "arcn", "closepath",
         "stroke", "fill", "eofill", "gsave", "grestore", "translate", "rotate", "scale", "setlinewidth",
-        "setgray", "setrgbcolor", "sethsbcolor", "showpage", "currentpoint", "initmatrix"
+        "setgray", "setrgbcolor", "sethsbcolor", "showpage", "currentpoint", "initmatrix",
+        "setlinecap", "setlinejoin", "currentlinewidth"
+    ];
+    // The stack, arithmetic, array, dictionary and conversion operators the interpreter defines.
+    var operators = [
+        "dup", "pop", "exch", "copy", "index", "roll", "clear", "count", "mark", "cleartomark", "counttomark",
+        "add", "sub", "mul", "div", "idiv", "mod", "neg", "abs", "sqrt", "sin", "cos", "atan", "exp", "ln",
+        "log", "floor", "ceiling", "round", "truncate", "rand", "srand", "eq", "ne", "gt", "ge", "lt", "le",
+        "and", "or", "not", "xor", "array", "length", "get", "put", "getinterval", "aload", "astore", "dict",
+        "load", "store", "known", "where", "currentdict", "cvi", "cvr", "cvs", "cvx", "cvlit", "type",
+        "print", "pstack", "stack", "=", "=="
     ];
 
     monaco.languages.setMonarchTokensProvider(languageId, {
         tokenPostfix: ".ps",
         control: control,
         graphics: graphics,
+        operators: operators,
         tokenizer: {
             root: [
                 [/%.*$/, "comment"],
@@ -47,6 +58,7 @@ define("bithero/postscript", ["require", "vs/editor/editor.api"], function (requ
                     cases: {
                         "@control": "keyword.control",
                         "@graphics": "keyword",
+                        "@operators": "type",
                         "@default": "identifier"
                     }
                 }],

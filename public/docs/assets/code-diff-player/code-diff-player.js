@@ -213,6 +213,52 @@
     forthRegistered = true;
   }
 
+  // PostScript, for `data-lang=postscript` fences. Not aliased to `forth`: PostScript comments with
+  // `%`, strings are balanced `( … )`, and `/name` is a literal name, none of which Forth shares.
+  // The word lists match the editor grammar (src/commonMain/resources/postscript.js): control words
+  // and the graphics operators of afield.lang.postscript, plus the stack, arithmetic and dictionary
+  // operators the interpreter defines. An unlisted word falls through as plain text.
+  let postscriptRegistered = false;
+  function registerPostScriptLanguage() {
+    if (!window.hljs || postscriptRegistered || hljs.getLanguage("postscript")) {
+      postscriptRegistered = true;
+      return;
+    }
+
+    hljs.registerLanguage("postscript", function(hljs) {
+      const PS_WORD = /[^\s\[\]{}()\/%<>]+/;
+      return {
+        name: "PostScript",
+        aliases: ["ps", "eps"],
+        case_insensitive: false,
+        keywords: {
+          $pattern: PS_WORD,
+          keyword: "if ifelse for repeat loop exit forall exec def begin end bind",
+          built_in:
+            "newpath moveto rmoveto lineto rlineto curveto rcurveto arc arcn closepath stroke fill " +
+            "eofill gsave grestore translate rotate scale setlinewidth setgray setrgbcolor sethsbcolor " +
+            "showpage currentpoint initmatrix " +
+            "dup pop exch copy index roll clear count mark cleartomark counttomark " +
+            "add sub mul div idiv mod neg abs sqrt sin cos atan exp ln log floor ceiling round truncate " +
+            "rand srand eq ne gt ge lt le and or not xor array length get put aload astore dict load " +
+            "store known where = == print pstack stack",
+          literal: "true false null"
+        },
+        contains: [
+          hljs.COMMENT("%", "$"),
+          { scope: "string", begin: /\(/, end: /\)/, contains: ["self"], relevance: 0 },
+          { scope: "symbol", begin: /\/[^\s\[\]{}()\/%<>]+/, relevance: 0 },
+          {
+            scope: "number",
+            begin: /[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?(?![^\s\[\]{}()\/%<>])/,
+            relevance: 0
+          }
+        ]
+      };
+    });
+    postscriptRegistered = true;
+  }
+
   // MorphoHDL, for `data-lang=morpho` fences. Python-shaped but not Python: `@morpho` is the only
   // decorator, SPLIT/CAT/LSLICE are language primitives rather than library calls, and truth tables
   // are written as underscore-grouped binary (0b1001_0110) that a Python lexer breaks in half.
@@ -685,6 +731,7 @@
    */
   function registerFieldLanguages() {
     registerForthLanguage();
+    registerPostScriptLanguage();
     registerMorphoLanguage();
     registerClojureLanguage();
     registerRectSLLanguage();
