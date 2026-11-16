@@ -1192,6 +1192,20 @@ pre code {
     gap: 8px;
 }
 
+/* One unit of the thread (a turn, a round, a run of activity), rebuilt only when its own HTML changes
+   (outputareas2.js, renderChatUnits). A finished unit off screen skips layout and paint; `auto` remembers
+   its last rendered height so the scrollbar does not jump. The newest unit is always laid out. */
+.ai-chat-unit {
+    display: flex;
+    flex-direction: column;
+    gap: inherit;
+}
+
+.ai-chat-unit:not(:last-child) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 120px;
+}
+
 .ai-chat-turn {
     width: 100%;
     box-sizing: border-box;

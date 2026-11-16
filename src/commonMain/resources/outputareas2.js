@@ -1,6 +1,6 @@
 import { mountConversationGarden } from "./conversationGarden.js";
 import { mountStateTreeBrowser } from "./stateTreeBrowser.js";
-import { aiChatMarkdownToHtml, aiChatHistoryToHtml, aiChatSetToolFamilies, send, sendWithReply } from "./afield.mjs";
+import { aiChatMarkdownToHtml, aiChatHistoryToHtml, aiChatHistoryToUnits, aiChatSetToolFamilies, send, sendWithReply } from "./afield.mjs";
 import { renderAiChatFences } from "./aiChatFenceRenderers.js";
 import { typesetAiChatMath } from "./aiChatMath.js";
 import { installAiChatFenceCatalog } from "./aiChatFenceCatalog.js";
@@ -13,6 +13,8 @@ function rerenderOpenChats() {
                 const markdown = messages.__chatMarkdown;
                 if (markdown == null) return;
                 messages.__chatMarkdown = null;
+                // A catalog changes how unchanged turns render too: rebuild every unit, not just the changed ones.
+                messages.__chatUnits = null;
                 renderChatMessages(messages, markdown);
         });
 }
@@ -1902,43 +1904,44 @@ function renderChatMessages(messages, markdown, options) {
                 messages.__chatScrollInputBound = true;
         }
 
-        // Keep known image aspect ratios through DOM replacement, avoiding collapsed screenshots.
-        const dimensions = new Map();
-        messages.querySelectorAll("img").forEach(img => {
-                const width = img.naturalWidth || Number(img.getAttribute("width"));
-                const height = img.naturalHeight || Number(img.getAttribute("height"));
-                if (width > 0 && height > 0) dimensions.set(img.getAttribute("src"), {width, height});
-        });
         // Round numbers belong to one transcript: another box's chat, or a cleared one, starts afresh.
         const previous = messages.__chatMarkdown;
-        if (previous != null && messages.__chatRoundStates && previous.slice(0, 256) !== text.slice(0, 256)) {
-                messages.__chatRoundStates.clear();
+        if (previous != null && previous.slice(0, 256) !== text.slice(0, 256)) {
+                messages.__chatRoundStates?.clear();
+                // Nor do its units: a matching round in another chat must not carry over this one's fold.
+                messages.__chatUnits = null;
         }
-        messages.innerHTML = aiChatHistoryToHtml(text);
+        const fresh = renderChatUnits(messages, aiChatHistoryToUnits(text));
         messages.__chatMarkdown = text;
-        restoreRoundStates(messages);
-        // Phase-lock the live-status shimmer to the document clock; a burst of tool updates would
-        // otherwise restart the sweep on every render and it would never get across the text.
-        messages.querySelectorAll(".ai-chat-shimmer").forEach(el => {
-                el.getAnimations().forEach(animation => { animation.startTime = 0; });
-        });
-        decorateAfieldLinks(messages);
-        applyCodeHighlight(messages);
+        // Only the units that changed are new DOM; everything older keeps its highlighting, fence previews,
+        // typeset math, loaded images and fold state, so a streamed chunk costs the size of the tail.
+        const images = [];
+        let pendingFenceRenders = 0;
         const onRenderLayout = (event) => {
                 if (event === "settled") pendingFenceRenders--;
                 finish();
         };
-        let pendingFenceRenders = renderAiChatFences(messages, onRenderLayout);
-        pendingFenceRenders += typesetAiChatMath(messages, onRenderLayout);
-        const images = Array.from(messages.querySelectorAll("img"));
-        images.forEach(img => {
-                const size = dimensions.get(img.getAttribute("src"));
-                if (size && !img.hasAttribute("width") && !img.hasAttribute("height")) {
-                        img.width = size.width;
-                        img.height = size.height;
-                }
-        });
-
+        for (const {node, dimensions} of fresh) {
+                restoreRoundStates(messages, node);
+                // Phase-lock the live-status shimmer to the document clock; a burst of tool updates would
+                // otherwise restart the sweep on every render and it would never get across the text.
+                node.querySelectorAll(".ai-chat-shimmer").forEach(el => {
+                        el.getAnimations().forEach(animation => { animation.startTime = 0; });
+                });
+                decorateAfieldLinks(node);
+                applyCodeHighlight(node);
+                pendingFenceRenders += renderAiChatFences(node, onRenderLayout);
+                pendingFenceRenders += typesetAiChatMath(node, onRenderLayout);
+                node.querySelectorAll("img").forEach(img => {
+                        // Keep known image aspect ratios through replacement, avoiding collapsed screenshots.
+                        const size = dimensions.get(img.getAttribute("src"));
+                        if (size && !img.hasAttribute("width") && !img.hasAttribute("height")) {
+                                img.width = size.width;
+                                img.height = size.height;
+                        }
+                        images.push(img);
+                });
+        }
         const settle = () => {
                 // Old image callbacks cannot override a newer render or the reader's own gesture.
                 if (messages.__chatScrollRestore !== restore) return;
@@ -1959,10 +1962,67 @@ function renderChatMessages(messages, markdown, options) {
         requestAnimationFrame(finish);
 }
 
-function restoreRoundStates(messages) {
+/**
+ * Bring the thread's units in line with [units] (aiChatHistoryToUnits), reusing every unit whose HTML is
+ * unchanged and building only the rest. Returns the new units, each with the image sizes of the unit it
+ * replaced, for the caller to decorate. `messages.__chatUnits = null` forces a full rebuild.
+ */
+function renderChatUnits(messages, units) {
+        let thread = messages.__chatThread;
+        if (units.length === 0) {
+                messages.innerHTML = "";
+                messages.__chatThread = null;
+                messages.__chatUnits = [];
+                return [];
+        }
+        if (!thread || thread.parentNode !== messages || !messages.__chatUnits) {
+                messages.innerHTML = "";
+                thread = document.createElement("div");
+                thread.className = "ai-chat-thread";
+                messages.appendChild(thread);
+                messages.__chatThread = thread;
+                messages.__chatUnits = [];
+        }
+        // Old units by HTML, so a unit that only moved (a queued message dropped above it) is kept too.
+        const byHtml = new Map();
+        for (const unit of messages.__chatUnits) {
+                const list = byHtml.get(unit.html);
+                if (list) list.push(unit); else byHtml.set(unit.html, [unit]);
+        }
+        const next = units.map(html => {
+                const kept = byHtml.get(html)?.shift();
+                return kept || {html, node: null};
+        });
+        const leftover = [...byHtml.values()].flat();
+        const leftoverDimensions = new Map();
+        for (const unit of leftover) {
+                unit.node.querySelectorAll("img").forEach(img => {
+                        const width = img.naturalWidth || Number(img.getAttribute("width"));
+                        const height = img.naturalHeight || Number(img.getAttribute("height"));
+                        if (width > 0 && height > 0) leftoverDimensions.set(img.getAttribute("src"), {width, height});
+                });
+                unit.node.remove();
+        }
+        const fresh = [];
+        let cursor = thread.firstChild;
+        for (const unit of next) {
+                if (!unit.node) {
+                        unit.node = document.createElement("div");
+                        unit.node.className = "ai-chat-unit";
+                        unit.node.innerHTML = unit.html;
+                        fresh.push({node: unit.node, dimensions: leftoverDimensions});
+                }
+                if (unit.node === cursor) cursor = cursor.nextSibling;
+                else thread.insertBefore(unit.node, cursor);
+        }
+        messages.__chatUnits = next;
+        return fresh;
+}
+
+function restoreRoundStates(messages, root = messages) {
         const states = messages.__chatRoundStates;
         if (!states || states.size === 0) return;
-        messages.querySelectorAll(".ai-chat-round[data-ai-round]").forEach(round => {
+        root.querySelectorAll(".ai-chat-round[data-ai-round]").forEach(round => {
                 const open = states.get(round.dataset.aiRound);
                 if (open !== undefined) round.open = open;
         });
