@@ -496,6 +496,8 @@ data class ThreeOverlay(
     val html: String,
     /** `"top-right"`, `"top-left"`, `"bottom-right"` or `"bottom-left"`. */
     val corner: String = "top-right",
+    /** Draw the block on the viewer's legend panel (set by [ThreeSceneBuilder.markdown]). */
+    val panel: Boolean = false,
 )
 
 /**
