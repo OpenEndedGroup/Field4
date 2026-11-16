@@ -115,6 +115,14 @@ class ToolProgramTest {
     }
 
     @Test
+    fun aPythonTripleQuotedStringGetsATemplateLiteralHint() {
+        val result = run("const s = '''a\nb''';\nreturn s;")
+        assertEquals("syntax", result.stage)
+        assertTrue(result.message.contains("template literal"), result.message)
+        assertFalse(run("return (;").message.contains("template literal"))
+    }
+
+    @Test
     fun aRefusedCallAndAFailedResultBothThrowCatchably() {
         val result = run("""
             let refused = "", failed = null;

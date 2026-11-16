@@ -150,6 +150,25 @@ class Ai4ChatGraphWiringTest {
     }
 
     @Test
+    fun patchEditsApplyAllOrNothingAndCanRunAfter() {
+        val info = document()
+        val tools = FieldGraphTools(info, InFieldAgentHarnessTest.FakeHost(mapOf(
+            "val a = 5\nval b = 6\nprintln(a + b)" to InFieldAgentHarnessTest.Fake(out = listOf("11")))))
+        val b = tools.newBox(NewBoxRequest("M", code = "val a = 1\nval b = 2\nprintln(a + b)"))
+        fun code() = info.boxes[b.uid]!!.getPropertyRaw("code")
+        val refused = tools.patchText(PatchBoxTextRequest("M", edits = listOf(PatchEdit("val a = 1", "val a = 5"), PatchEdit("nope", "x"), PatchEdit("val", "var"))))
+        assertFalse(refused.success)
+        assertTrue(refused.message.contains("edit 2 (`nope`) not found") && refused.message.contains("edit 3 (`val`) matches 2 times"), refused.message)
+        assertEquals("val a = 1\nval b = 2\nprintln(a + b)", code(), "nothing written when any anchor fails")
+        val ran = tools.patchText(PatchBoxTextRequest("M", edits = listOf(PatchEdit("val a = 1", "val a = 5"), PatchEdit("val b = 2", "val b = 6")), runAfter = true, timeoutSeconds = 10.0))
+        assertTrue(ran.success && ran.stdout == listOf("11"), ran.message)
+        assertTrue(ran.message.contains("- val a = 1") && ran.message.contains("+ val a = 5") && ran.message.contains("Then ran"), ran.message)
+        assertEquals("val a = 5\nval b = 6\nprintln(a + b)", code())
+        val single = tools.patchText(PatchBoxTextRequest("M", find = "println(a + b)", replace = "println(a * b)"))
+        assertTrue(single.message.contains("@@ line 3\n- println(a + b)\n+ println(a * b)"), single.message)
+    }
+
+    @Test
     fun agentRoutesAreLoopbackLocalhostAndSameOriginOnly() {
         assertNull(agentRouteRefusal("127.0.0.1", "localhost:19611", null, null), "curl/backdoor")
         assertNull(agentRouteRefusal("::1", "[::1]:9611", "same-origin", "https://[::1]:9611"))
