@@ -76,6 +76,24 @@ def command_of(pid: int) -> str | None:
     return result.stdout.strip() or None
 
 
+# What a started server runs. ``python3 -m http.server`` listens with ``request_queue_size = 5``; a
+# docs page asks for 50-70 files at once (scripts, fonts, figures, clips), macOS resets every
+# connection past the fifth queued one, and the page comes up with its fence scripts missing (raw
+# ``:::static`` code, no highlighting) and figures broken. 2026-11-16: all three nightly pages
+# looked half-built for that reason alone. The argv keeps ``http.server`` and the port as their own
+# words so ``is_our_server`` recognises servers started before and after this change. The directory
+# is passed as a path and resolved on every request, not held as the cwd: the docs build renames a
+# fresh ``public/field4`` into place, and a server holding the old directory kept serving the
+# pre-rebuild site (2026-11-16).
+SERVE = (
+    "import sys, functools, http.server as h; "
+    "h.ThreadingHTTPServer.request_queue_size = 256; "
+    "h.ThreadingHTTPServer.daemon_threads = True; "
+    "h.ThreadingHTTPServer(('127.0.0.1', int(sys.argv[2])), "
+    "functools.partial(h.SimpleHTTPRequestHandler, directory=sys.argv[3])).serve_forever()"
+)
+
+
 def is_our_server(entry: dict) -> bool:
     """The PID is alive and is still the ``http.server`` on the port we registered."""
     command = command_of(int(entry["pid"]))
@@ -95,7 +113,7 @@ def start(directory: Path, port: int | None, owner: str) -> int:
     logs.mkdir(parents=True, exist_ok=True)
     log = open(logs / f"{port}.log", "ab")
     process = subprocess.Popen(
-        [sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1"],
+        [sys.executable, "-c", SERVE, "http.server", str(port), str(directory)],
         cwd=directory, stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True,
     )
     deadline = time.time() + 10
