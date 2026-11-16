@@ -962,7 +962,7 @@ far longer to change its mind.
 
 ### Predicting your own scribble
 
-The drawing layer (Alt+D) records a freedraw stroke as a point per pen sample, and
+The drawing layer (++alt+d++) records a freedraw stroke as a point per pen sample, and
 [`notation`](drawing_and_notation.md) hands it to box code as an `FLine`. This box continues the latest stroke
 drawn by hand and draws the continuation back into the layer in orange; `notation.onStroke` does it
 again for every stroke drawn after the box runs:
