@@ -682,6 +682,8 @@ predictor, and returns a `StrokeLpc`:
 - `continued(steps)` keeps drawing with no surprises: the predictor's own continuation.
 - `resynthesized()` rebuilds the stroke exactly from its residual.
 - `drivenBy(other)` runs this stroke's predictor on another stroke's residual.
+- `head(points)` and `span(from, until)` refit on part of the stroke; `residualStroke()` draws the
+  residual as a stroke.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/lpc_scribble.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -723,6 +725,277 @@ shrinking, as the last ones were. In blue, the loops' predictor is driven by the
 instead of its own, so it loops the way the white stroke loops, with the zigzag's lumps. The
 printed line gives the residual-to-step energy of each fit: about 0.000 for the loops, which the
 predictor reads almost perfectly, and 0.13 for the zigzag.
+
+### How many poles a stroke needs
+
+The strokes above are resampled evenly along their length, which makes two strokes drawn at
+different speeds comparable. A stroke built in code from a parameter, or one recorded from a pen,
+already has its own timing, and `lpc(..., alongLength = false)` keeps it: the fit then runs over the
+stroke's own vertices and `samples` is ignored. Keeping the timing makes the arithmetic exact, so
+the order a stroke needs can be read straight off how it was made.
+
+Here the pen is pushed by three wheels: each step is the sum of three arms rotating at different
+rates, which is the step sequence a complex predictor of order 3 describes exactly. `head(120)`
+refits on the first 120 points only, as if the pen had stopped there, and each order is asked for the
+next 180 steps. The faint stroke under the orange one is what the pen really drew:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/lpc_scribble_wheels.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
+:::static
+// A pen pushed by three wheels: each step is the sum of three rotating arms.
+var x = 0.0
+var y = 0.0
+val wheels = FLine().also { f ->
+    f.moveTo(x, y)
+    for (n in 0 until 300) {
+        x += 6.0 * cos(0.21 * n) + 3.5 * cos(-0.52 * n) + 1.5 * cos(0.87 * n)
+        y += 6.0 * sin(0.21 * n) + 3.5 * sin(-0.52 * n) + 1.5 * sin(0.87 * n)
+        f.lineTo(x, y)
+    }
+}
+
+// Fit on the first 120 points at each order, ask for the next 180, and lay the rows side by side.
+val drawn = [1, 2, 3, 4].mapIndexed { k, order ->
+    val whole = wheels.lpc(order = order, removeDrift = false, alongLength = false)
+    val head = whole.head(120)
+    println("order ${order}: residual / step energy ${head.residualRatio.f3}")
+    val shift = vec(k * 130.0, 0.0)
+    [
+        (whole.resampled() + shift).also { it.color = vec(1.0, 1.0, 1.0, 0.2); it.thickness = 1.0 },
+        (head.resampled() + shift).also { it.color = vec(1.0, 1.0, 1.0, 0.9); it.thickness = 1.5 },
+        (head.continued(180, includeStroke = false) + shift).also { it.color = vec(1.0, 0.6, 0.1, 1.0); it.thickness = 1.5 },
+    ]
+}
+lines(drawn.flatten(), w = 900.0, h = 300.0, fitToSize = true)
+```
+
+![four rosettes in a row, each a white star-like tangle of loops with a faint continuation under it; in the first an orange arc swings out of the star and away; in the second an orange curl spirals in on itself; in the third and fourth the orange rosette continues the star's pattern and covers it](assets/spectral_examples/lpc_scribble_wheels.png)
+
+Order 1 knows one wheel and draws a single arc that leaves the figure; order 2 knows two and curls
+into a spiral. At order 3 the predictor holds all three wheels, the residual falls to 0.000 (from
+0.16 and 0.05), and the continuation goes on drawing the rosette, petal for petal, over the true
+one. Order 4 adds a pole with nothing to do and draws the same thing.
+
+A corner is harder. This zigzag turns the same way every 16.7 steps, but each corner is a sudden
+change of direction, and a predictor that sees only the last few steps cannot know one is coming:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/lpc_scribble_zigzag.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
+:::static
+// Nine teeth over 300 steps: a corner every 16.7 steps, the same shape each time.
+val zigzag = FLine().also { f ->
+    for (i in 0..300) {
+        val phase = (i / 300.0 * 9) % 1.0
+        val (x, y) = i * 1.8 to 60.0 * (if (phase < 0.5) 4 * phase - 1 else 3 - 4 * phase)
+        if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+    }
+}
+
+// Fit the first 180 points at four orders and ask each for the last 120.
+val drawn = [4, 12, 24, 40].mapIndexed { row, order ->
+    val whole = zigzag.lpc(order = order, alongLength = false)
+    val head = whole.head(180)
+    println("order ${order}: residual / step energy ${head.residualRatio.f3}")
+    val shift = vec(0.0, row * 160.0)
+    [
+        (whole.resampled() + shift).also { it.color = vec(1.0, 1.0, 1.0, 0.2); it.thickness = 1.0 },
+        (head.resampled() + shift).also { it.color = vec(1.0, 1.0, 1.0, 0.9); it.thickness = 1.5 },
+        (head.continued(120, includeStroke = false) + shift).also { it.color = vec(1.0, 0.6, 0.1, 1.0); it.thickness = 2.0 },
+    ]
+}
+lines(drawn.flatten(), w = 900.0, h = 520.0, fitToSize = true)
+```
+
+![four zigzags stacked, each with six white teeth and an orange continuation: at the top the orange line runs straight off downhill; in the second it wobbles in shrinking waves; in the third it draws rounded teeth that drift downward; at the bottom it draws three more sharp teeth in step with the faint true ones](assets/spectral_examples/lpc_scribble_zigzag.png)
+
+At order 4 the continuation goes straight on: the teeth are all surprise, residual 0.14. Order 12
+has seen three quarters of a tooth and draws waves that die away. At order 24, more than one tooth
+long, the predictor has the zigzag's period, the residual drops to 0.012, and the teeth come back
+rounded. At order 40, two teeth and more, it draws them sharp and in step with the real ones (0.005).
+A smooth curl needs a pole for each rotation in it; a corner needs enough history to see the last
+corner, so the order has to cover the zigzag's period.
+
+### Where prediction holds and where it lets go
+
+Three strokes, each fitted at order 8 on its first 180 points and continued for the 120 steps the
+hand actually drew next. The spiral is fitted with `removeDrift = false`, since it circles rather
+than travels:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/lpc_scribble_fates.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
+:::static
+fun stroke(n: Int, at: (Double) -> Pair<Double, Double>) = FLine().also { f ->
+    for (i in 0..n) {
+        val (x, y) = at(i / n.toDouble())
+        if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+    }
+}
+
+// Three strokes of 300 steps; each predictor sees the first 180 points and draws the rest.
+val spiral = stroke(300) { u ->
+    val t = u * 2 * PI * 3.5
+    val r = 20.0 * exp(0.12 * t)
+    r * cos(t) to r * sin(t)
+}
+val fading = stroke(300) { u ->
+    val t = u * 2 * PI * 6
+    val r = 50.0 * exp(-0.025 * t)
+    12.0 * t - 0.6 * r * sin(t) to r * cos(t)
+}
+val signature = stroke(300) { u ->
+    val t = u * 2 * PI
+    90.0 * t + 50 * sin(3 * t) * (1 - u) to 55.0 * sin(5.3 * t + 2 * sin(1.7 * t)) + 30 * u * u * sin(11 * t)
+}
+
+val drawn = [spiral, fading, signature].mapIndexed { k, stroke ->
+    val whole = stroke.lpc(order = 8, removeDrift = k != 0, alongLength = false)
+    val head = whole.head(180)
+    val shift = [vec(0.0, 0.0), vec(330.0, 40.0), vec(330.0, -170.0)][k]
+    [
+        (whole.resampled() + shift).also { it.color = vec(1.0, 1.0, 1.0, 0.2); it.thickness = 1.0 },
+        (head.resampled() + shift).also { it.color = vec(1.0, 1.0, 1.0, 0.9); it.thickness = 1.5 },
+        (head.continued(120, includeStroke = false) + shift).also { it.color = vec(1.0, 0.6, 0.1, 1.0); it.thickness = 2.5 },
+    ]
+}
+lines(drawn.flatten(), w = 900.0, h = 480.0, fitToSize = true)
+```
+
+![on the left a white spiral growing outward with an orange continuation that winds two more turns, just inside a faint outer turn; on the right, a row of white loops shrinking to the right with an orange continuation of two smaller loops on top of the faint true ones; above it a white irregular signature-like scribble whose orange continuation waves up and down, away from the faint true ending](assets/spectral_examples/lpc_scribble_fates.png)
+
+The spiral grows by the same factor every turn, which is one complex coefficient of magnitude a
+little over 1: the predictor continues it for two more turns and finishes just inside the true one.
+The fading loops shrink by the same factor every turn too, and the continuation lies on top of the
+real ending. The signature is smooth, so a step ahead is easy to guess and its fitted residual is as
+small as the loops'; but its rhythm never repeats, and the continuation, plausible as a scribble, is
+not what the hand did. A low residual says the stroke is smooth. Only the continuation says whether
+the predictor has found its rhythm.
+
+### The residual, drawn
+
+`residualStroke()` draws what the predictor could not predict as a stroke of its own: the residual
+steps added up from the stroke's first point, with the drift put back. Where the predictor reads
+the stroke perfectly it is a straight line along the drift, and each surprise is a kink:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/lpc_scribble_residual.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
+:::static
+// The zigzag again, and the fading loops with a hand's tremor added.
+val tremor = kotlin.random.Random(4)
+val zigzag = FLine().also { f ->
+    for (i in 0..300) {
+        val phase = (i / 300.0 * 9) % 1.0
+        val (x, y) = i * 1.8 to 60.0 * (if (phase < 0.5) 4 * phase - 1 else 3 - 4 * phase)
+        if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+    }
+}
+val shaky = FLine().also { f ->
+    for (i in 0..300) {
+        val t = i / 300.0 * 2 * PI * 6
+        val r = 50.0 * exp(-0.025 * t)
+        val (x, y) = 12.0 * t - 0.6 * r * sin(t) + tremor.nextDouble(-1.5, 1.5) to r * cos(t) + tremor.nextDouble(-1.5, 1.5)
+        if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+    }
+}
+
+// Each stroke in white, and below it, in blue, its residual drawn as a stroke of its own.
+val drawn = [zigzag, shaky].mapIndexed { k, stroke ->
+    val fit = stroke.lpc(order = 8, alongLength = false)
+    println("residual / step energy ${fit.residualRatio.f3}")
+    val shift = vec(k * 620.0, 0.0)
+    [
+        (fit.resampled() + shift).also { it.color = vec(1.0, 1.0, 1.0, 0.9); it.thickness = 1.5 },
+        (fit.residualStroke() + shift + vec(0.0, 160.0)).also { it.color = vec(0.3, 0.8, 1.0, 1.0); it.thickness = 1.5 },
+    ]
+}
+lines(drawn.flatten(), w = 900.0, h = 320.0, fitToSize = true)
+```
+
+![on the left a white zigzag of nine teeth above a blue nearly straight line with a small kink under each corner; on the right a row of white loops with a hand's tremor in them above a blue line that wanders gently with a fine jitter](assets/spectral_examples/lpc_scribble_residual.png)
+
+For the zigzag the residual is the corners and nothing else: one kink under each, flat between. For
+the shaky loops it is the tremor, with a gentle wave once a loop: with the tremor in the way, the
+order-8 fit no longer catches the loops exactly. `drivenBy` feeds exactly this sequence through another stroke's
+predictor, which is how the blue stroke in the first scribble figure got the zigzag's lumps.
+
+### The pen carries on
+
+`span(from, until)` refits on any stretch of the stroke. Here a pen loops one way for 200 steps and
+then the other way, tighter, for 200 more. At each frame the predictor is refitted on the last 100
+points the pen has drawn, and the orange line is where it expects the pen to go next:
+
+```diffstatic_runner {data-lang=kotlin video="assets/spectral_examples/lpc_scribble_pen.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="900" embed=true name="lpc-scribble-pen" alt="a white pen stroke drawing loops from left to right, with an orange predicted continuation running ahead of it; after the pen switches to tighter loops turning the other way, the orange line goes wrong for a moment and then loops the new way"}
+:::static
+// A pen that loops one way for 200 steps, then the other way, tighter, for 200 more.
+var x = 0.0
+var y = 0.0
+var heading = 0.0
+val pen = FLine().also { f ->
+    f.moveTo(x, y)
+    for (n in 0 until 400) {
+        heading += if (n < 200) 0.3 else -0.45
+        x += 2.5 + 6.0 * cos(heading)
+        y += 6.0 * sin(heading)
+        f.lineTo(x, y)
+    }
+}
+val fit = pen.lpc(order = 4, alongLength = false)
+
+val seconds = 7.0
+val window = 100 // the predictor sees only the last 100 points
+val started = AnimationClock.nowSeconds()
+
+loop {
+    val t = (AnimationClock.nowSeconds() - started) / seconds
+    val n = (20 + t.coerceIn(0.0, 1.0) * 380).toInt()
+    val recent = fit.span((n - window).coerceAtLeast(0), n)
+    lines(
+        fit.head(n).resampled().also { it.color = vec(1.0, 1.0, 1.0, 0.9); it.thickness = 1.5 },
+        recent.continued(80, includeStroke = false).also { it.color = vec(1.0, 0.6, 0.1, 1.0); it.thickness = 2.5 },
+        w = 900.0,
+        h = 160.0,
+        framing = LinesFraming.fixed(-20.0, -95.0, 1060.0, 190.0),
+    )
+}
+```
+
+While the pen keeps looping one way the orange line runs ahead as more of the same loops. When it
+switches, the window holds both kinds of loop, and the prediction is wrong until the window has
+filled with the new ones; then it loops the new way. A fit of everything so far (`head`) would take
+far longer to change its mind.
+
+### Predicting your own scribble
+
+The drawing layer (Alt+D) records a freedraw stroke as a point per pen sample, and
+[`notation`](drawing_and_notation.md) hands it to box code as an `FLine`. This box continues the latest stroke
+drawn by hand and draws the continuation back into the layer in orange; `notation.onStroke` does it
+again for every stroke drawn after the box runs:
+
+```diffstatic {data-lang=kotlin}
+fun carryOn(drawn: Mark) {
+    val fit = drawn.toFLine().lpc(order = 12, alongLength = false)
+    val more = fit.continued(200, includeStroke = false)
+    notation("continuation") { stroke(more.nodes.map { vec(it.to.x, it.to.y) }, stroke = "#f08c00") }
+    println("residual / step energy ${fit.residualRatio.f3}")
+}
+
+notation.strokes.lastOrNull { it.handDrawn }?.let { carryOn(it) }
+notation.onStroke { carryOn(it) }
+```
+
+Keeping the pen's timing (`alongLength = false`) means a stroke drawn fast and slowing down is
+continued slowing down. Loops drawn at a steady pace continue best; a stroke with a sharp corner in
+its last few points carries on straight, as the zigzag did.
+
+### Ideas for extensions
+
+- **Multipulse and CELP excitation for strokes.** Replace the residual with a few well-placed
+  pulses, or entries from a small codebook of residual shapes, and draw a stroke from a handful of
+  numbers: a codec for handwriting.
+- **Pitch tracking.** A long-term predictor (`x[n] ≈ g·x[n−T]`) beside the short one would find the
+  zigzag's period directly, without the forty poles it takes above, and for the voice it would find
+  the 120 Hz buzz.
+- **Pen pressure.** Excalidraw records pressure along a stroke; predicting it as a third channel
+  would continue a stroke's weight as well as its path.
+- **A live continuation.** Predict while the pen is still down, from the drawing layer's live
+  points, so the tail runs ahead of the hand as in the video.
+- **Cross-synthesis between people.** One person's loops driven by another's residual, both drawn
+  in the layer.
 
 ## What else is in the family
 
