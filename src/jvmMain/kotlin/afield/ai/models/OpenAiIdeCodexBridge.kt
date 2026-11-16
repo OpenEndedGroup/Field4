@@ -1327,6 +1327,7 @@ class OpenAiIdeCodexBridge(
         private var reasoningChars = 0
         private var toolChars = 0
         private var textChars = 0
+        private var reported = 0
 
         fun observe(event: com.openai.models.responses.ResponseStreamEvent) {
             if (onProgress == null) return
@@ -1336,8 +1337,11 @@ class OpenAiIdeCodexBridge(
             event.customToolCallInputDelta().ifPresent { toolChars += it.delta().length }
             event.outputTextDelta().ifPresent { textChars += it.delta().length }
             val now = System.nanoTime()
-            if (now - lastReport < 1_000_000_000L || reasoningChars + toolChars == 0) return
+            // Report only while invisible work grows: once the answer streams, a repeated "Thinking · n chars"
+            // line lands between its chunks and splits the reply into fragments (2026-11-16).
+            if (now - lastReport < 1_000_000_000L || reasoningChars + toolChars == reported) return
             lastReport = now
+            reported = reasoningChars + toolChars
             val seconds = (now - started) / 1_000_000_000L
             val doing = when {
                 toolChars > 0 -> "Writing a tool call · ${kilo(toolChars)} chars"

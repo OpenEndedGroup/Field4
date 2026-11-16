@@ -14,6 +14,36 @@ export function registerAiChatFenceRenderer(language, render) {
     };
 }
 
+// Rendered previews by language and source. A streaming turn rebuilds its unit on every chunk; a fence
+// whose source has not changed shows its diagram again at once instead of flashing back to source.
+const rendered = new Map();
+const RENDERED_LIMIT = 64;
+
+function remember(key, node) {
+    rendered.delete(key);
+    rendered.set(key, node);
+    if (rendered.size > RENDERED_LIMIT) rendered.delete(rendered.keys().next().value);
+}
+
+function install(block, preview, result, onLayoutChange) {
+    preview.replaceChildren(result);
+    const codeArea = block.querySelector("pre");
+    codeArea.hidden = true;
+    const toggle = document.createElement("button");
+    toggle.className = "ai-chat-fence-source-toggle";
+    toggle.type = "button";
+    toggle.textContent = "Source";
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.addEventListener("click", () => {
+        const showing = codeArea.hidden;
+        codeArea.hidden = !showing;
+        toggle.textContent = showing ? "Hide source" : "Source";
+        toggle.setAttribute("aria-expanded", String(showing));
+        onLayoutChange("layout");
+    });
+    block.appendChild(toggle);
+}
+
 export function renderAiChatFences(root, onLayoutChange = () => {}) {
     let pending = 0;
     for (const block of root.querySelectorAll('.ai-chat-code-block[data-fence-closed="true"]')) {
@@ -21,18 +51,27 @@ export function renderAiChatFences(root, onLayoutChange = () => {}) {
         const render = renderers.get(language);
         const code = block.querySelector("pre code");
         if (!render || !code || !code.textContent?.trim()) continue;
-        pending++;
 
         const source = code.textContent;
+        const key = `${language}\n${source}`;
         const preview = document.createElement("div");
         preview.className = "ai-chat-fence-preview";
         preview.setAttribute("role", "img");
         preview.setAttribute("aria-label", `${language} diagram`);
-        preview.textContent = "Rendering diagram…";
         block.appendChild(preview);
 
-        // AI4 replaces the whole transcript as text streams in. A short delay avoids starting
-        // work for intermediate chunks; the connected check discards an obsolete result.
+        // Only from the renderer now registered for this language; a replaced one renders afresh.
+        const known = rendered.get(key)?.render === render ? rendered.get(key).node : null;
+        if (known) {
+            // A copy: the earlier block may still be on the page (another chat, or a unit not yet removed).
+            install(block, preview, known.cloneNode(true), onLayoutChange);
+            continue;
+        }
+        pending++;
+        preview.textContent = "Rendering diagram…";
+
+        // A short delay avoids starting work for intermediate chunks; the connected check discards an
+        // obsolete result.
         setTimeout(async () => {
             if (!block.isConnected || !preview.isConnected) return;
             try {
@@ -40,22 +79,8 @@ export function renderAiChatFences(root, onLayoutChange = () => {}) {
                 const result = await render(source, id);
                 if (!block.isConnected || !preview.isConnected) return;
                 if (!(result instanceof Node)) throw new TypeError(`${language} renderer returned no DOM node`);
-                preview.replaceChildren(result);
-                const codeArea = block.querySelector("pre");
-                codeArea.hidden = true;
-                const toggle = document.createElement("button");
-                toggle.className = "ai-chat-fence-source-toggle";
-                toggle.type = "button";
-                toggle.textContent = "Source";
-                toggle.setAttribute("aria-expanded", "false");
-                toggle.addEventListener("click", () => {
-                    const showing = codeArea.hidden;
-                    codeArea.hidden = !showing;
-                    toggle.textContent = showing ? "Hide source" : "Source";
-                    toggle.setAttribute("aria-expanded", String(showing));
-                    onLayoutChange("layout");
-                });
-                block.appendChild(toggle);
+                remember(key, {render, node: result.cloneNode(true)});
+                install(block, preview, result, onLayoutChange);
                 onLayoutChange("settled");
             } catch (error) {
                 if (!block.isConnected || !preview.isConnected) return;
