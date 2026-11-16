@@ -299,6 +299,32 @@ GRADLE_LOCK_WAIT_PREFIX = "WAIT gradle: verification lock held"
 GRADLE_LOCK_RELEASED_PREFIX = "gradle: verification lock released"
 
 
+# How much slower than an idle machine this one is likely to run right now: the one-minute load
+# average per CPU, at least 1 and at most MAX_LOAD_FACTOR. A flat budget sized on a quiet machine
+# fails on a busy one for reasons that say nothing about the code; on 2026-11-16 the lander's
+# publication refresh bounced one branch three times running at load ~100 on 10 CPUs (60 s
+# capture limits, a JVM that missed its 120 s start budget). Budgets that only guard against a
+# hang scale by this; an explicit environment value is taken as given.
+MAX_LOAD_FACTOR = 4.0
+
+
+def load_factor() -> float:
+    try:
+        per_cpu = os.getloadavg()[0] / max(os.cpu_count() or 1, 1)
+    except (AttributeError, OSError):
+        return 1.0
+    return min(max(per_cpu, 1.0), MAX_LOAD_FACTOR)
+
+
+def load_scaled_seconds(name: str, default: float) -> float:
+    """`env_seconds(name, default)`, except that the default (not an explicit value) is stretched
+    by `load_factor()`."""
+    raw = os.environ.get(name)
+    if raw is not None and raw.strip():
+        return env_seconds(name, default)
+    return default * load_factor()
+
+
 def env_seconds(name: str, default: float) -> float:
     """A positive number of seconds from the environment, or `default` when unset or blank."""
     raw = os.environ.get(name)
