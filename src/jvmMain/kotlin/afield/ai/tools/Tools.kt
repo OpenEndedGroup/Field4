@@ -11,6 +11,8 @@ import afield.ai.models.toolResultBlock
 
 import afield.ai.conversation.AiTurnInbox
 import afield.ai.conversation.aiToolFailureEndsTurn
+import afield.ai.conversation.FieldStaleClasses
+import afield.ai.conversation.fieldStaleToolResult
 import afield.ai.conversation.aiToolFailureMessage
 import afield.ai.models.LlmProgressUpdate
 import afield.runtime.languages.MalformedAI
@@ -351,7 +353,9 @@ data class CompileKotlinResult(
     val file: String,
     val message: String,
     val diagnostics: List<CompileDiagnostic> = emptyList(),
-    val setupChanges: List<SetupPropertyChange> = emptyList()
+    val setupChanges: List<SetupPropertyChange> = emptyList(),
+    /** `"field-stale"` when the failure is Field's own classes rewritten under it ([afield.ai.conversation.FieldStaleClasses]). */
+    val stage: String = "",
 )
 
 @JsonClassDescription("Reload shader modules for the current Field box or target box/file ref. Call this after editing GLSL/Slang shader properties and before finishing the turn; fix errors and rerun until success.")
@@ -1355,9 +1359,12 @@ internal class ToolRegistry {
                 dynamicTool(dynamicToolsIn(ctx), name)!!.runBlockingFromToolLoop(ctx, rawArgs())
             }
         } catch (e: Throwable) {
+            // A class rewritten under this Field is not the call's fault and no retry fixes it: an answer, not a throw.
+            val stale = if (aiToolFailureEndsTurn(e)) null else FieldStaleClasses.messageFor(e)
             if (view != null && !aiToolFailureEndsTurn(e)) {
-                AgentExtensionRegistry.after(documentKey, view, ToolResultView(false, aiToolFailureMessage(e), (System.nanoTime() - started) / 1_000_000))
+                AgentExtensionRegistry.after(documentKey, view, ToolResultView(false, stale ?: aiToolFailureMessage(e), (System.nanoTime() - started) / 1_000_000))
             }
+            if (stale != null) return fieldStaleToolResult(name, stale)
             throw e
         }
         if (view != null) {

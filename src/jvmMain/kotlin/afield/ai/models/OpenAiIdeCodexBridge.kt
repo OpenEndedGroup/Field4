@@ -556,7 +556,8 @@ class OpenAiIdeCodexBridge(
                     tools.execute(callCtx, call)
                 } catch (e: Throwable) {
                     if (aiToolFailureEndsTurn(e)) throw e
-                    val message = aiToolFailureMessage(e)
+                    val stale = afield.ai.conversation.FieldStaleClasses.messageFor(e)
+                    val message = stale ?: aiToolFailureMessage(e)
                     error("tool: ERROR name=${call.name()} msg=$message")
                     toolIo(
                         "tool_exception",
@@ -568,7 +569,8 @@ class OpenAiIdeCodexBridge(
                             "message" to message
                         )
                     )
-                    mapOf(
+                    if (stale != null) afield.ai.conversation.fieldStaleToolResult(call.name(), stale)
+                    else mapOf(
                         "error" to true,
                         "tool" to call.name(),
                         "message" to message
@@ -576,11 +578,18 @@ class OpenAiIdeCodexBridge(
                 }
 
                 val toolResultJson = runCatching { mapper.writeValueAsString(toolResult) }
-                    .getOrElse { toolResult.toString() }
+                    .recoverCatching { toolResult.toString() }
+                    .getOrElse { failure -> mapper.writeValueAsString(afield.ai.conversation.FieldStaleClasses.messageFor(failure)
+                        ?.let { afield.ai.conversation.fieldStaleToolResult(call.name(), it) }
+                        ?: mapOf("error" to true, "tool" to call.name(), "message" to aiToolFailureMessage(failure))) }
                 val toolMs = (System.nanoTime() - toolStarted) / 1_000_000
                 toolElapsedMs += toolMs
                 activeToolStarted = null
-                val toolResultSummary = summarizeToolResult(toolResult)
+                // Reading the result can load classes for the first time (its members' types); after a rebuild under
+                // this Field that throws a LinkageError, which ended a turn on 2026-11-16 (CodeUseQueryRequest,
+                // NoClassDefFoundError CodeUseSourceTarget, no tool_exception logged). Nothing here may end the turn.
+                val toolResultSummary = runCatching { summarizeToolResult(toolResult) }
+                    .getOrElse { "type=${toolResult::class.java.simpleName} (summary failed: ${it::class.java.simpleName})" }
                 val toolFailed = runCatching { mapper.readTree(toolResultJson).let {
                     it["success"]?.asBoolean() == false || it["error"]?.asBoolean() == true
                 } }.getOrDefault(false)
@@ -593,7 +602,7 @@ class OpenAiIdeCodexBridge(
                     resultJson = toolResultJson,
                     elapsedMs = toolMs
                 )
-                toolTranscript += afield.ai.tools.program.nestedTranscriptEntries(call.callId(), toolResult)
+                toolTranscript += runCatching { afield.ai.tools.program.nestedTranscriptEntries(call.callId(), toolResult) }.getOrDefault(emptyList())
 
                 trace?.log(
                     "TOOL_OUTPUT",
@@ -620,12 +629,12 @@ class OpenAiIdeCodexBridge(
                             ((toolResult as? CarriesToolImages)?.toolImages?.map { it.caption } ?: emptyList())
                     )
                 )
-                afield.ai.tools.program.nestedToolIoEvents(rounds + 1, call.callId(), toolResult)
+                runCatching { afield.ai.tools.program.nestedToolIoEvents(rounds + 1, call.callId(), toolResult) }.getOrDefault(emptyList())
                     .forEach { (event, fields) -> toolIo(event, fields) }
                 onProgress?.invoke(
                     ProgressUpdate(
                         title = "${call.name()} ${if (toolFailed) "failed" else "finished"} (${toolMs} ms)",
-                        body = afield.ai.tools.program.nestedTraceMarkdown(toolResult) ?: if (toolFailed) toolResultSummary else "",
+                        body = runCatching { afield.ai.tools.program.nestedTraceMarkdown(toolResult) }.getOrNull() ?: if (toolFailed) toolResultSummary else "",
                         phase = "tool_result"
                     )
                 )
@@ -647,10 +656,13 @@ class OpenAiIdeCodexBridge(
                     }
                 }
 
-                val outputItem = ResponseInputItem.FunctionCallOutput.builder()
-                    .callId(call.callId())
-                    .outputAsJson(toolResult)
-                    .build()
+                // The SDK serializes the result with its own mapper; when that throws (a LinkageError after a
+                // rebuild included), the JSON already made above, which never throws, is the output.
+                val outputItem = runCatching {
+                    ResponseInputItem.FunctionCallOutput.builder().callId(call.callId()).outputAsJson(toolResult).build()
+                }.getOrElse {
+                    ResponseInputItem.FunctionCallOutput.builder().callId(call.callId()).output(toolResultJson).build()
+                }
                 toolOutputs += ResponseInputItem.ofFunctionCallOutput(outputItem)
                 roundResults += toolResult
                 roundOutputs += PendingToolOutput(call.callId(), call.name(), toolResultJson, toolFailed)

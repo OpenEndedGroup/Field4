@@ -109,6 +109,36 @@ class ToolErrorThreadTest {
         }
     }
 
+    data class Query(val kind: String = "failures")
+
+    /** A result whose classes were rewritten under the JVM: touching its member throws, as CodeUseQueryResult's did. */
+    class StaleResult {
+        val target: String get() = throw NoClassDefFoundError("afield/app/diagnostics/CodeUseSourceTarget")
+        override fun toString(): String = throw NoClassDefFoundError("afield/app/diagnostics/CodeUseSourceTarget")
+    }
+
+    @Test fun aLinkageErrorFromAToolIsAFieldStaleOutputAndTheTurnContinues() {
+        val fake = FakeResponses(listOf("[${call("call_1", "Query")}]", "[${text("Field needs a restart.")}]"))
+        fake.run(register = { it.registerTool(Query::class.java) { _, _ -> throw NoClassDefFoundError("afield/app/diagnostics/CodeUseSourceTarget") } }) { bridge ->
+            val state = OpenAiIdeCodexBridge.ThreadState("local", "conv", "fixture", previousResponseId = "previous")
+            assertEquals("Field needs a restart.", bridge.send(state, "Which boxes failed?").text)
+            val output = mapper.readTree(outputsOf(fake.bodies[1]).getValue("call_1"))
+            assertEquals(FieldStaleClasses.STAGE, output["stage"].asText(), output.toString())
+            assertTrue("restart" in output["message"].asText(), output.toString())
+        }
+    }
+
+    /** 2026-11-16: the tool returned, and reading its result (the SDK's serializer) threw outside the tool's catch. */
+    @Test fun aResultThatThrowsALinkageErrorWhenReadDoesNotEndTheTurn() {
+        val fake = FakeResponses(listOf("[${call("call_1", "Query")}]", "[${text("Answered.")}]"))
+        fake.run(register = { it.registerTool(Query::class.java) { _, _ -> StaleResult() } }) { bridge ->
+            val state = OpenAiIdeCodexBridge.ThreadState("local", "conv", "fixture", previousResponseId = "previous")
+            assertEquals("Answered.", bridge.send(state, "Which boxes failed?").text)
+            val output = mapper.readTree(outputsOf(fake.bodies[1]).getValue("call_1"))
+            assertEquals(FieldStaleClasses.STAGE, output["stage"].asText(), output.toString())
+        }
+    }
+
     @Test fun anOutOfMemoryErrorEndsTheTurnButLeavesTheNextTurnAnOutputForEveryCall() {
         val fake = FakeResponses(listOf(
             "[${call("call_1", "Probe")},${call("call_2", "Exhaust")},${call("call_3", "Probe")}]",

@@ -384,10 +384,9 @@ class RepoCommandTools(val files: RepoFileTools, val scope: RepoCommandScope) {
      */
     internal fun liveBuildHazard(
         classPath: String = System.getProperty("java.class.path").orEmpty(),
-        startedMs: Long? = ProcessHandle.current().info().startInstant().orElse(null)?.toEpochMilli(),
+        startedMs: Long? = afield.ai.conversation.FieldStaleClasses.jvmStartMs(),
     ): String? {
-        val classes = runCatching { File(root, "build/classes/kotlin/jvm/main").canonicalFile }.getOrNull() ?: return null
-        val runsFromHere = classPath.split(File.pathSeparator).any { entry -> runCatching { File(entry).canonicalFile == classes }.getOrDefault(false) }
+        val runsFromHere = afield.ai.conversation.FieldStaleClasses.runsFrom(File(root, "build/classes/kotlin/jvm/main"), classPath)
         if (!runsFromHere || startedMs == null) return null
         val newer = SOURCE_ROOTS.map { File(root, it) }.filter { it.exists() }.asSequence()
             .flatMap { it.walkTopDown().filter { f -> f.isFile && (f.extension == "kt" || f.extension == "kts" || f.extension == "java") && f.lastModified() > startedMs } }
