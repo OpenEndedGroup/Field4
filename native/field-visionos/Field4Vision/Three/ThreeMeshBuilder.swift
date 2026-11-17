@@ -311,6 +311,18 @@ enum ThreeMeshBuilder {
             segments[bucket].append(g.positions[a]); segments[bucket].append(g.positions[b])
             built.segments += 1
         }
+        // RealityKit has no polygon offset, so lines lying on a surface (`edges = true`) fight it for
+        // depth and shimmer. Push every line a hair out from its own centre, as the web viewer pushes
+        // surfaces back: 0.2% of the lines' extent, too little to see as a gap.
+        var lo = SIMD3<Float>(repeating: .infinity), hi = -lo
+        for part in segments { for v in part { lo = simd_min(lo, v); hi = simd_max(hi, v) } }
+        if lo.x <= hi.x {
+            let centre = (lo + hi) / 2, eps = 0.002 * simd_length(hi - lo)
+            segments = segments.map { $0.map { v in
+                let d = v - centre, len = simd_length(d)
+                return len > 0 ? v + d / len * eps : v
+            } }
+        }
         guard let resource = lineList(segments) else { return nil }
         return (resource, colors.map(unlit))
     }
