@@ -873,6 +873,16 @@ complete example from [Drawing with FLines](fline_examples.md), the same code th
 
 [Open →](offline.html?file=assets/agent_transcripts/three_inspector_wall/metadata.edn)
 
+### three_handles
+
+**Points you drag in a three.js scene.** [Drag handles](three_output.md#drag-handles) as two boxes.
+Box 1 is a cubic curve whose four control points are free handles; the curve, its control polygon and
+the length label follow every drag. Box 2 is a slab whose height is a handle held to a vertical line
+(`axis`), and a post that slides only across the slab's top (`normal`). Each drag calls the box's
+`draw()` again. The same handles can be pinched in the visionOS viewer.
+
+[Open →](offline.html?file=assets/agent_transcripts/three_handles/metadata.edn)
+
 ### fline_hit_records
 
 **What a click on a figure returns.** A wall of panels drawn through `Box.inspect`. Click a panel and

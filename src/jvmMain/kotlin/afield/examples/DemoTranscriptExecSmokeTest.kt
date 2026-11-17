@@ -470,6 +470,9 @@ object DemoTranscriptExecSmokeTest {
         // Own-document tour (2026-10-29): numbers, squares, and a three-step slideShow that
         // selects them by name. Pure CPU.
         "slideshow_own_tour",
+        // Drag handles (2026-11-17): two three { } scenes with free, axis and normal handles, each
+        // redrawn from its drag callback. three() writes a three.js viewer into an output; no Window.
+        "three_handles",
         // Controls renewal (2026-10-29): a five-control surface feeding a live figure and a slider
         // that re-renders itself mid-drag. Pure CPU, output-channel controls only.
         "controls_surface",
