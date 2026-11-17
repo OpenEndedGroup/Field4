@@ -12,6 +12,7 @@ distilled: 2026-09-30T04:07:36.258513Z from agent-eval mode=live openai gpt-6-as
 
 - To add lines with `PatchBoxTextRequest`, anchor on text, not a line number: `find` a unique existing line and `replace` it with that line plus the new ones. Line numbers counted in a `\n`-escaped string land in the wrong place (2026-10-22: an insert at startLine 36 went inside a `while` loop).
 - A capture shows what was drawn, not that the code computed the right thing. For a named construction (an Ulam spiral, a known sequence, a fractal), check the code against its definition, for example by printing the first values it placed, before calling the picture correct (2026-10-22: a spiral of odd numbers only was reported as "a textbook Ulam spiral" with diagonals it did not have).
+- When the user points at something on the canvas ("this", "the circled part", "my sketch", "the arrow"), it is usually on the drawing layer (Alt+D), which no box output shows. Read it with `ReadNotationRequest` (marks with labels, world bounds and the boxes under them), then look at it with `ViewNotationRequest` (mark = an id or label). Box code reads the same marks as `notation.marks`.
 
 ## Distilled
 
