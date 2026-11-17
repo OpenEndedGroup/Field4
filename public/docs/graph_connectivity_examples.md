@@ -465,9 +465,9 @@ val start = grid.index(5, 12)
 val goal = grid.index(31, 12)
 
 val dijkstra = graphAStarSearch(grid.graph, start, goal)
-val one = graphLandmarks(grid.graph, listOf(grid.index(0, 12)))
+val one = graphLandmarks(grid.graph, [grid.index(0, 12)])
 val several = graphFarthestPointLandmarks(grid.graph, 4)
-val sideways = graphLandmarks(grid.graph, listOf(grid.index(18, 0)))
+val sideways = graphLandmarks(grid.graph, [grid.index(18, 0)])
 
 fun dots(nodes: Iterable<Int>, dx: Double, dy: Double, size: Double, c: Vec4) = fline {
     nodes.forEach { n -> moveTo(grid.points[n].x + dx, grid.points[n].y + dy) }
@@ -487,14 +487,14 @@ fun panel(result: GraphSearchResult, landmarks: List<Int>, dx: Double, dy: Doubl
         color = vec(1.0, 0.9, 0.3, 1.0)
         thickness = 4.0
     }
-    return listOf(
+    return [
         dots(open, dx, dy, 3.0, vec(0.6, 0.65, 0.75, 0.4)),
         dots(result.expanded, dx, dy, 9.0, vec(0.25, 0.55, 1.0, 0.85)),
         dots(grid.blocked, dx, dy, 10.0, vec(0.8, 0.82, 0.88, 1.0)),
         route,
         dots(landmarks, dx, dy, 13.0, vec(1.0, 0.3, 0.5, 1.0)),
-        dots(listOf(start, goal), dx, dy, 11.0, vec(1.0, 0.9, 0.3, 1.0))
-    )
+        dots([start, goal], dx, dy, 11.0, vec(1.0, 0.9, 0.3, 1.0))
+    ]
 }
 
 val out = panel(dijkstra, emptyList(), 0.0, 0.0) +
