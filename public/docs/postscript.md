@@ -1,14 +1,13 @@
 # PostScript in a Box
 
 PostScript is the page-description language from Adobe's laser printers: a stack language, like
-Forth, whose programs draw. Field runs it in a box. A PostScript box keeps a stack and a set of
-dictionaries between runs, as a REPL does, and draws whatever it strokes and fills into the box's
-`postscript` panel as Field lines (`FLine`s).
+Forth, whose programs draw. In Field you can run it in a box, draw into its `postscript` panel and
+work with the result as Field lines (`FLine`s). Running a selection keeps the stack and page;
+running the whole box clears them. Definitions in the box's interpreter persist between runs.
 
-The interpreter is a Kotlin reimplementation of the one John Earnest builds in
-[Let's Write a PostScript Interpreter](https://beyondloom.com/blog/postscript.html), which covers
-the language: tokens, the operand and dictionary stacks, procedures, arrays and control flow. Field
-adds the half that post leaves out, the graphics state and the path operators, so a program can draw.
+The interpreter follows John Earnest's [Let's Write a PostScript Interpreter](https://beyondloom.com/blog/postscript.html)
+for the language: tokens, stacks, procedures, arrays and control flow. Field adds the graphics state
+and path operators so the programs can draw.
 
 ## Making a PostScript box
 
@@ -49,7 +48,7 @@ without its parentheses.
 [11 22 33] reverse ==
 ```
 
-These are the post's own examples, and Field's tests check each gives the answer the post gives.
+These examples come from Earnest's post; Field's tests check their results against it.
 
 The operators:
 
@@ -154,6 +153,8 @@ stroke
 
 ## Where to go next
 
+- Open the [PostScript starting point](agent_transcripts.md#postscript_demo) to try these examples
+  in their own boxes.
 - [Let's Write a PostScript Interpreter](https://beyondloom.com/blog/postscript.html), John Earnest's
   post, which this interpreter follows for the language.
 - The [PostScript Language Reference](https://www.adobe.com/jp/print/postscript/pdfs/PLRM.pdf),

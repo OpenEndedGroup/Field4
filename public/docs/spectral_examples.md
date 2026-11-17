@@ -95,15 +95,12 @@ For inline diagnostics of similar live values, continue with [Visualizers](visua
 
 ## From time to frequency
 
-Sometimes the question is what a signal is *made of*: which frequencies carry the energy, how
-bright the timbre is, where a chirp is heading. For that Field has an FFT, a windowed `Spectrum`,
-a `Spectrogram` (a short-time FFT, or STFT), the usual spectral features, and a resonator bank,
-which measures energy at frequencies you choose without running a transform at all. Any length
-of signal can be transformed, not just powers of two, and nothing needs an external library or a
-GPU.
+Which frequencies carry a signal's energy? How bright is its timbre, or where is a chirp heading?
+Field has an FFT, a windowed `Spectrum`, a `Spectrogram` (a short-time FFT, or STFT), spectral
+features and a resonator bank. The bank measures frequencies you choose without a transform. You
+can transform signals of any length, and none of these tools needs an external library or GPU.
 
-Each example below synthesises its own signal, analyses it, and draws the result into the box's
-output.
+Each example below makes a signal, analyses it and draws the result in the box's output.
 
 ## One spectrum
 
@@ -572,7 +569,7 @@ all-pole filter `1/A(z)`, with `A(z) = 1 + a₁z⁻¹ + … + a_p z⁻ᵖ`, has 
 the frame by `A(z)` instead removes the envelope and leaves the *residual*, the part that could not
 be predicted. For a voice, `1/A(z)` is the vocal tract and the residual is the buzz or breath that
 drives it, and the two can be pulled apart and recombined. This is Bishnu Atal's method, and it is
-inside every speech codec from the Speak & Spell to the CELP coders in mobile phones.
+used in the Speak & Spell and in CELP speech codecs for mobile phones.
 
 `Lpc.analyze(frame, order)` fits one frame and returns an `LpcFit`: the polynomial `a`, the
 reflection coefficients `k`, the residual power `error`, and `envelopeDb(points)` for plotting.

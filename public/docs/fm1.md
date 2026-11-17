@@ -1,14 +1,12 @@
 # FM-1 simulator
 
-The [M-VAVE FM-1](https://open.m-vave.com/fm1-workbench) is a pocket groovebox: eight tracks of 64 steps,
-with DX7-style FM, a 303 bass line, 808 drums, a plucked string, a chip-tune PSG and a sampler. Its
-firmware is open source, and the same source builds a simulator that runs in a web page. Field runs that
-simulator in its audio engine, so a box can play the FM-1's sixteen factory projects, play any of its
-tracks by pitch, hand a track a Field pattern, turn its controls with a signal, give it DX7 voices built
-in Field, and read its sequence back out as MIDI.
+The [M-VAVE FM-1](https://open.m-vave.com/fm1-workbench) is a pocket groovebox with eight 64-step
+tracks: DX7-style FM, a 303 bass, 808 drums, a plucked string, a chip-tune PSG and a sampler. Field
+runs its browser simulator in the audio engine. Load a factory project, play its tracks from a box,
+feed them Field patterns, turn controls with signals, or read the sequence back as MIDI.
 
-There is nothing to install and no hardware involved. The simulator comes with Field as a WebAssembly
-module, built from the [open firmware](https://github.com/m-vave/fm1_open).
+The simulator ships with Field as a WebAssembly module built from the [open firmware](https://github.com/m-vave/fm1_open).
+You can try it without installing anything or owning the device.
 
 ## A box that plays it
 
@@ -545,8 +543,8 @@ modified version of the firmware, under the same licences.
 * [Faust](faust.md): the same WebAssembly hosting, for DSP you write yourself.
 * [Sound](sound.md): Field's patterns, which `fm1.play` plays.
 * [Drawing and notation](drawing_and_notation.md): the drawn scores `toPattern()` reads.
-* The starting-point document `fm1_simulator` in [Agent transcripts](agent_transcripts.md) opens these
-  boxes on a canvas.
+* Open the [FM-1 starting point](agent_transcripts.md#fm1_simulator) to try the simulator, a pattern
+  and the front panel in their own boxes.
 * The source: `src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt` (the simulator, MIDI, the screen and
   projects), `FM1Panel.kt` (the live panel), `FM1Patterns.kt` (patterns in, MIDI clips out) and
   `FM1Voice.kt` (DX7 voices), `FM1Samples.kt` (the sampler's bank), `FM1Firmware.kt` (building the

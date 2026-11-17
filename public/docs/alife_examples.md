@@ -3257,7 +3257,7 @@ way, 65 units.
 `BondedWorld.step` is written one cell at a time and reads only the previous state, so it ports to
 a compute shader unchanged. Every bond is stored at both its ends, so no invocation writes another
 cell, and both ends of a bond reach the same break decision from the same numbers. The
-[`bonded_organisms`](agent_transcripts.md) document grows four worms and 500 loose cells on the CPU,
+[`bonded_organisms`](agent_transcripts.md#bonded_organisms) document grows four worms and 500 loose cells on the CPU,
 uploads them, and steps them in its `organisms` box's `compute` tab; a `draw` box beneath it draws
 the cells and bonds straight from the GPU buffers. The genomes are the first line of the
 `organisms` box:

@@ -746,7 +746,8 @@ i(p + qi + rj) = pi - q + r(ij) = pi - q + r(p + qi + rj)
 ```
 
 Matching the `j` parts gives `r² = -1`, which no real number satisfies. No three-number algebra
-of this kind exists (Frobenius's theorem says the same for all of them).
+with these rules exists. Frobenius's theorem classifies the finite-dimensional associative real
+division algebras: the reals, complexes and quaternions.
 
 ### Four numbers: quaternions and bicomplex numbers
 
@@ -755,11 +756,10 @@ Add a fourth number `k` to hold `ij`. Two consistent choices keep `i² = j² = -
 - **quaternions**: `ij = k = -ji`. Multiplication does not commute, and `k² = -1`.
 - **bicomplex numbers**: `ij = ji = k`. Multiplication commutes, and `k² = +1`.
 
-Field's `Quat` is a quaternion, and `*` between two of them is the Hamilton product, so the
-series can be written with `Quat` directly. The bicomplex product is written out by hand. Both
-sum `exp(t·u)` for seven unit directions `u = cos θ·i + sin θ·j` between `i` and `j`, draw
-`(real, i, j)` in an oblique projection and colour the fourth component `k` (blue negative, red
-positive):
+Field's `Quat` is a quaternion: multiplying two of them gives the Hamilton product. The box uses
+it to sum `exp(t·u)` in seven unit directions `u = cos θ·i + sin θ·j` between `i` and `j`, then
+repeats the calculation with the bicomplex product written out by hand. Each path is projected onto
+`(real, i, j)` and coloured by its fourth component `k` (blue negative, red positive):
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spinny_algebras/quat.png" embed=true name="spinny-quat" alt="Seven paths exp(t·u) for t from 0 to 2π, drawn in an oblique projection of (real, i, j) and coloured by k. Left, the quaternions: seven grey circles all passing through the same two points, 1 and -1, with no k colour. Right, the bicomplex numbers: tangled loops that turn blue and orange as they pick up k and do not close"}
 :::static

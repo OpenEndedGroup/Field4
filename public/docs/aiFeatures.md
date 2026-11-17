@@ -119,8 +119,8 @@ starts afterwards. Repeat and use **Recall queued** or **Stop** to compare their
 
 ![AI4 chat reports red-1 followed by blue-2 through blue-5, answers the queued explanation in a later turn, and shows a subsequent run stopped by the user. The burger menu inside the text entry shows Correct this run, Do next, Stop, Recall queued, Context and Open Garden.](assets/ai4_run_features/controls.png)
 
-The **Garden** view keeps its own explicit queue. Its replies retain
-frozen ancestry rather than steering a running linear-chat turn.
+The **Garden** view has its own queue. Each reply keeps the branch it was sent from; it does not
+steer a running turn in the linear chat.
 
 ### Waiting for long builds
 
@@ -237,10 +237,9 @@ The **Context** button opens the same report as `/context`, followed by pending-
 recent durable run events. Inspecting a run is local to the panel: the report is not appended to the
 conversation sent to the model.
 
-Tool events distinguish **started**, **completed** and **failed**. Completion means the tool returned;
-a separate verdict records whether its structured result reported success. A refused call or a thrown
-exception is not a successful result. A start without an ending event can identify work interrupted
-by closing Field. These records are diagnostic evidence, not instructions to repeat the operations.
+Tool events distinguish **started**, **completed** and **failed**. A completed tool has returned;
+its separate verdict says whether the structured result reported success. A start without an ending
+event can help you find work interrupted when Field closed.
 
 #### Try successful and unsuccessful calls
 
@@ -329,22 +328,22 @@ StackSL program drawn live in a window, with three recorded sessions, and
 
 ### Giving AI4 a directory of context
 
-Drop a folder onto the canvas and choose **Create directory context proxy**. The Desktop client
-can supply its filesystem path; in a browser, Field may ask for the absolute path on the machine
-running the server. The box points at the folder—it does not copy the tree or create a box per file.
-External folders must be linked, not imported with **Create proxy for copy in document folder**.
+Drop a folder onto the canvas and choose **Create directory context proxy** to let AI4 read from
+it. The desktop client can supply its path; in a browser, Field may ask for the absolute path on the
+server's machine. The resulting box points to the folder. It does not copy the tree or create a box
+for each file. To use an external folder, link it rather than choosing **Create proxy for copy in
+document folder**.
 
 For example, drop a source checkout or a folder of Markdown notes, then ask:
 
 > List the files available through the “Reference notes” proxy. Search its Markdown files for
 > “boundary conditions”, read the matching passages, and cite the file paths and lines.
 
-Replace “Reference notes” with your proxy box's name. AI4 can read that box with
-`AttachmentRequest` to obtain a fresh, bounded catalogue. Each child has a reference such as
-`proxy:<box-uid>/notes/boundaries.md`. Reading that reference returns the usual excerpt, source
-hash and continuation offset, so another read can refuse to mix two versions of a changing file.
-PDF children can use the same text-layer extraction as individual PDF proxies; scanned pages
-still need an extraction or OCR procedure.
+Replace “Reference notes” with your proxy box's name. AI4 can read the box to get a fresh catalogue
+of its contents, then read a file through a reference such as `proxy:<box-uid>/notes/boundaries.md`.
+Each excerpt includes a source hash and continuation offset, so a later read can detect if the file
+has changed. PDFs use the same text-layer extraction as individual PDF proxies; scanned pages still
+need extraction or OCR.
 
 Literal search uses `WorkspaceSearchRequest` with `scope="FILE_PROXY"`, `proxyBox` set to the
 box UID or unique name, and the usual query, extension and root-relative path filters. Its matches
