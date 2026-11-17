@@ -30,15 +30,20 @@ fun biExp(u: Vec4, t: Double): Vec4 {
 
 // Draw (real, i, j) in an oblique projection and colour by k: blue for k < 0, red for k > 0.
 val s = 55.0
-fun path(points: List<Vec4>, ox: Double) = points.zipWithNext().filter { (a, _) -> a.length() < 3.5 }.map { (a, b) ->
-    fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
-    val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
-    fline {
-        moveTo(at(a)); lineTo(at(b))
-        color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
-        thickness = 1.8
-    }
-}
+fun path(points: List<Vec4>, ox: Double) =
+    points
+        .zipWithNext()
+        .filter { (a, _) -> a.length() < 3.5 }
+        .map { (a, b) ->
+            fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
+            val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
+            fline {
+                moveTo(at(a))
+                lineTo(at(b))
+                color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
+                thickness = 1.8
+            }
+        }
 
 val ts = (0..240).map { it * 2 * Math.PI / 240 }
 val angles = (0..6).map { it * Math.PI / 6 } // u = cos θ·i + sin θ·j, a unit "imaginary"

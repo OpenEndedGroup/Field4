@@ -1,7 +1,6 @@
 // Drag ε² from -1 (complex) through 0 (dual) to +1 (split-complex).
 // Left: a grid multiplied by w = 0.9 + 0.5ε. Right: exp(tε) for t from -π to π.
-fun times(p: Vec2, q: Vec2, eps2: Double) =
-    vec(p.x * q.x + eps2 * p.y * q.y, p.x * q.y + p.y * q.x)
+fun times(p: Vec2, q: Vec2, eps2: Double) = vec(p.x * q.x + eps2 * p.y * q.y, p.x * q.y + p.y * q.x)
 
 fun expSeries(t: Double, eps2: Double): Vec2 {
     var sum = vec(0.0, 0.0)
@@ -16,9 +15,10 @@ fun expSeries(t: Double, eps2: Double): Vec2 {
 fun draw(eps2: Double) {
     val s = 45.0
     val w = vec(0.9, 0.5)
-    val grid = (-3..3).flatMap { k ->
-        listOf((0..60).map { vec(k / 3.0, -1 + it / 30.0) }, (0..60).map { vec(-1 + it / 30.0, k / 3.0) })
-    }
+    val grid =
+        (-3..3).flatMap { k ->
+            listOf((0..60).map { vec(k / 3.0, -1 + it / 30.0) }, (0..60).map { vec(-1 + it / 30.0, k / 3.0) })
+        }
     val mapped = grid.map { pts ->
         fline {
             pts.forEachIndexed { i, p ->
@@ -39,8 +39,16 @@ fun draw(eps2: Double) {
         thickness = 2.5
     }
     val axes = listOf(
-        fline { moveTo(260 - 3 * s, 0); lineTo(260 + 4 * s, 0); color = vec(1, 1, 1, 0.25) },
-        fline { moveTo(260, -3 * s); lineTo(260, 3 * s); color = vec(1, 1, 1, 0.25) },
+        fline {
+            moveTo(260 - 3 * s, 0)
+            lineTo(260 + 4 * s, 0)
+            color = vec(1, 1, 1, 0.25)
+        },
+        fline {
+            moveTo(260, -3 * s)
+            lineTo(260, 3 * s)
+            color = vec(1, 1, 1, 0.25)
+        },
     )
     lines(*(mapped + axes + curve).toTypedArray(), w = 620.0, h = 300.0, fitToSize = true)
 }

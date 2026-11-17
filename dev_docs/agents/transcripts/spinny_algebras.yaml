@@ -17,8 +17,7 @@ operations:
         "code": |
           // Drag ε² from -1 (complex) through 0 (dual) to +1 (split-complex).
           // Left: a grid multiplied by w = 0.9 + 0.5ε. Right: exp(tε) for t from -π to π.
-          fun times(p: Vec2, q: Vec2, eps2: Double) =
-              vec(p.x * q.x + eps2 * p.y * q.y, p.x * q.y + p.y * q.x)
+          fun times(p: Vec2, q: Vec2, eps2: Double) = vec(p.x * q.x + eps2 * p.y * q.y, p.x * q.y + p.y * q.x)
 
           fun expSeries(t: Double, eps2: Double): Vec2 {
               var sum = vec(0.0, 0.0)
@@ -33,9 +32,10 @@ operations:
           fun draw(eps2: Double) {
               val s = 45.0
               val w = vec(0.9, 0.5)
-              val grid = (-3..3).flatMap { k ->
-                  listOf((0..60).map { vec(k / 3.0, -1 + it / 30.0) }, (0..60).map { vec(-1 + it / 30.0, k / 3.0) })
-              }
+              val grid =
+                  (-3..3).flatMap { k ->
+                      listOf((0..60).map { vec(k / 3.0, -1 + it / 30.0) }, (0..60).map { vec(-1 + it / 30.0, k / 3.0) })
+                  }
               val mapped = grid.map { pts ->
                   fline {
                       pts.forEachIndexed { i, p ->
@@ -56,8 +56,16 @@ operations:
                   thickness = 2.5
               }
               val axes = listOf(
-                  fline { moveTo(260 - 3 * s, 0); lineTo(260 + 4 * s, 0); color = vec(1, 1, 1, 0.25) },
-                  fline { moveTo(260, -3 * s); lineTo(260, 3 * s); color = vec(1, 1, 1, 0.25) },
+                  fline {
+                      moveTo(260 - 3 * s, 0)
+                      lineTo(260 + 4 * s, 0)
+                      color = vec(1, 1, 1, 0.25)
+                  },
+                  fline {
+                      moveTo(260, -3 * s)
+                      lineTo(260, 3 * s)
+                      color = vec(1, 1, 1, 0.25)
+                  },
               )
               lines(*(mapped + axes + curve).toTypedArray(), w = 620.0, h = 300.0, fitToSize = true)
           }
@@ -70,9 +78,11 @@ operations:
       frame: { x: 0.0, y: 800.0, w: 300.0, h: 100.0 }
       properties:
         "code": |
-          // Drag j² = κ from -1 (quaternions) through 0 to +1 (split-quaternions). Colour is the k component.
-          // Keep i² = -1 and ij = -ji = k, but let j² = κ be any number. κ = -1 is the quaternions.
-          // Elements are (real, i, j, k); with these rules k² = κ as well.
+          /*
+          Drag j² = κ from -1 (quaternions) through 0 to +1 (split-quaternions). Colour is the k component.
+          Keep i² = -1 and ij = -ji = k, but let j² = κ be any number. κ = -1 is the quaternions.
+          Elements are (real, i, j, k); with these rules k² = κ as well.
+          */
           fun times(p: Vec4, q: Vec4, kappa: Double): Vec4 {
               val K = kappa.toFloat()
               return vec(
@@ -99,15 +109,19 @@ operations:
               return (0..6).flatMap { step ->
                   val th = step * Math.PI / 6
                   val u = vec(0.0, kotlin.math.cos(th), kotlin.math.sin(th), 0.0)
-                  ts.map { exp(u, it, kappa) }.zipWithNext().filter { (a, _) -> a.length() < 3.5 }.map { (a, b) ->
-                      fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
-                      val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
-                      fline {
-                          moveTo(at(a)); lineTo(at(b))
-                          color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
-                          thickness = 1.6
+                  ts.map { exp(u, it, kappa) }
+                      .zipWithNext()
+                      .filter { (a, _) -> a.length() < 3.5 }
+                      .map { (a, b) ->
+                          fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
+                          val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
+                          fline {
+                              moveTo(at(a))
+                              lineTo(at(b))
+                              color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
+                              thickness = 1.6
+                          }
                       }
-                  }
               }
           }
 
@@ -122,17 +136,17 @@ operations:
       properties:
         "code": |
           // Multiply every point of a grid by one fixed number w = a + bε, in three algebras that differ only in ε².
-          fun times(a: Double, b: Double, c: Double, d: Double, eps2: Double) =
-              vec(a * c + eps2 * b * d, a * d + b * c)
+          fun times(a: Double, b: Double, c: Double, d: Double, eps2: Double) = vec(a * c + eps2 * b * d, a * d + b * c)
 
           fun gridTimes(a: Double, b: Double, eps2: Double, ox: Double, tint: Vec4): List<FLine> {
               val s = 40.0
-              val grid = (-3..3).flatMap { k ->
-                  listOf(
-                      (0..60).map { vec(k / 3.0, -1 + it / 30.0) }, // a vertical line of the grid
-                      (0..60).map { vec(-1 + it / 30.0, k / 3.0) }, // a horizontal one
-                  )
-              }
+              val grid =
+                  (-3..3).flatMap { k ->
+                      listOf(
+                          (0..60).map { vec(k / 3.0, -1 + it / 30.0) }, // a vertical line of the grid
+                          (0..60).map { vec(-1 + it / 30.0, k / 3.0) }, // a horizontal one
+                      )
+                  }
               fun draw(pts: List<Vec2>, col: Vec4, t: Double) = fline {
                   pts.forEachIndexed { i, p ->
                       val q = times(a, b, p.x.toDouble(), p.y.toDouble(), eps2)
@@ -141,18 +155,25 @@ operations:
                   color = col
                   thickness = t
               }
-              val before = grid.map { pts -> fline {
-                  pts.forEachIndexed { i, p -> if (i == 0) moveTo(ox + s * p.x, -s * p.y) else lineTo(ox + s * p.x, -s * p.y) }
-                  color = vec(1, 1, 1, 0.15)
-              } }
+              val before = grid.map { pts ->
+                  fline {
+                      pts.forEachIndexed { i, p ->
+                          if (i == 0) moveTo(ox + s * p.x, -s * p.y) else lineTo(ox + s * p.x, -s * p.y)
+                      }
+                      color = vec(1, 1, 1, 0.15)
+                  }
+              }
               return before + grid.map { draw(it, tint, 1.5) }
           }
 
           lines(
-              *(gridTimes(0.9, 0.5, -1.0, 0.0, vec(0.35, 0.8, 1.0, 0.9)) +   // complex: ε² = -1
-                gridTimes(0.9, 0.5, 0.0, 170.0, vec(0.95, 0.85, 0.3, 0.9)) +  // dual: ε² = 0
-                gridTimes(0.9, 0.5, 1.0, 340.0, vec(1.0, 0.45, 0.55, 0.9))).toTypedArray(), // split-complex: ε² = +1
-              w = 760.0, h = 260.0, fitToSize = true,
+              *(gridTimes(0.9, 0.5, -1.0, 0.0, vec(0.35, 0.8, 1.0, 0.9)) + // complex: ε² = -1
+                      gridTimes(0.9, 0.5, 0.0, 170.0, vec(0.95, 0.85, 0.3, 0.9)) + // dual: ε² = 0
+                      gridTimes(0.9, 0.5, 1.0, 340.0, vec(1.0, 0.45, 0.55, 0.9)))
+                  .toTypedArray(), // split-complex: ε² = +1
+              w = 760.0,
+              h = 260.0,
+              fitToSize = true,
           )
   - create:
       box: "exp_series"
@@ -161,8 +182,7 @@ operations:
       properties:
         "code": |
           // exp(tε) = 1 + tε + (tε)²/2! + ..., summed with nothing but the algebra's own multiplication.
-          fun times(p: Vec2, q: Vec2, eps2: Double) =
-              vec(p.x * q.x + eps2 * p.y * q.y, p.x * q.y + p.y * q.x)
+          fun times(p: Vec2, q: Vec2, eps2: Double) = vec(p.x * q.x + eps2 * p.y * q.y, p.x * q.y + p.y * q.x)
 
           fun expSeries(t: Double, eps2: Double, terms: Int): Vec2 {
               var sum = vec(0.0, 0.0)
@@ -187,17 +207,28 @@ operations:
               thickness = width
           }
 
-          val axes = listOf(0.0, 480.0).flatMap { ox ->
-              listOf(
-                  fline { moveTo(ox - 3 * s, 0); lineTo(ox + 4 * s, 0); color = vec(1, 1, 1, 0.25) },
-                  fline { moveTo(ox, -3 * s); lineTo(ox, 3 * s); color = vec(1, 1, 1, 0.25) },
-              )
-          }
+          val axes =
+              listOf(0.0, 480.0).flatMap { ox ->
+                  listOf(
+                      fline {
+                          moveTo(ox - 3 * s, 0)
+                          lineTo(ox + 4 * s, 0)
+                          color = vec(1, 1, 1, 0.25)
+                      },
+                      fline {
+                          moveTo(ox, -3 * s)
+                          lineTo(ox, 3 * s)
+                          color = vec(1, 1, 1, 0.25)
+                      },
+                  )
+              }
 
           // Left: the three named algebras, with the series cut off after 3, 5 and 30 terms.
-          val named = listOf(-1.0 to vec(0.35, 0.8, 1.0), 0.0 to vec(0.95, 0.85, 0.3), 1.0 to vec(1.0, 0.45, 0.55))
-              .flatMap { (k, c) ->
-                  listOf(3 to 0.25, 5 to 0.5, 30 to 1.0).map { (n, a) -> curve(k, n, vec(c.x, c.y, c.z, a), 0.0, if (n == 30) 2.0 else 1.0) }
+          val named =
+              listOf(-1.0 to vec(0.35, 0.8, 1.0), 0.0 to vec(0.95, 0.85, 0.3), 1.0 to vec(1.0, 0.45, 0.55)).flatMap { (k, c) ->
+                  listOf(3 to 0.25, 5 to 0.5, 30 to 1.0).map { (n, a) ->
+                      curve(k, n, vec(c.x, c.y, c.z, a), 0.0, if (n == 30) 2.0 else 1.0)
+                  }
               }
 
           // Right: ε² swept continuously from -1 to +1; the circle opens through a line into a hyperbola.
@@ -246,15 +277,20 @@ operations:
 
           // Draw (real, i, j) in an oblique projection and colour by k: blue for k < 0, red for k > 0.
           val s = 55.0
-          fun path(points: List<Vec4>, ox: Double) = points.zipWithNext().filter { (a, _) -> a.length() < 3.5 }.map { (a, b) ->
-              fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
-              val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
-              fline {
-                  moveTo(at(a)); lineTo(at(b))
-                  color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
-                  thickness = 1.8
-              }
-          }
+          fun path(points: List<Vec4>, ox: Double) =
+              points
+                  .zipWithNext()
+                  .filter { (a, _) -> a.length() < 3.5 }
+                  .map { (a, b) ->
+                      fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
+                      val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
+                      fline {
+                          moveTo(at(a))
+                          lineTo(at(b))
+                          color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
+                          thickness = 1.8
+                      }
+                  }
 
           val ts = (0..240).map { it * 2 * Math.PI / 240 }
           val angles = (0..6).map { it * Math.PI / 6 } // u = cos θ·i + sin θ·j, a unit "imaginary"
@@ -303,16 +339,25 @@ operations:
               return (0..6).flatMap { step ->
                   val th = step * Math.PI / 6
                   val u = vec(0.0, kotlin.math.cos(th), kotlin.math.sin(th), 0.0)
-                  ts.map { exp(u, it, kappa) }.zipWithNext().filter { (a, _) -> a.length() < 3.5 }.map { (a, b) ->
-                      fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
-                      val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
-                      fline {
-                          moveTo(at(a)); lineTo(at(b))
-                          color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
-                          thickness = 1.6
+                  ts.map { exp(u, it, kappa) }
+                      .zipWithNext()
+                      .filter { (a, _) -> a.length() < 3.5 }
+                      .map { (a, b) ->
+                          fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
+                          val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
+                          fline {
+                              moveTo(at(a))
+                              lineTo(at(b))
+                              color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
+                              thickness = 1.6
+                          }
                       }
-                  }
               }
           }
 
-          lines(*(panel(-1.0, 0.0) + panel(0.0, 260.0) + panel(1.0, 520.0)).toTypedArray(), w = 760.0, h = 280.0, fitToSize = true)
+          lines(
+              *(panel(-1.0, 0.0) + panel(0.0, 260.0) + panel(1.0, 520.0)).toTypedArray(),
+              w = 760.0,
+              h = 280.0,
+              fitToSize = true,
+          )

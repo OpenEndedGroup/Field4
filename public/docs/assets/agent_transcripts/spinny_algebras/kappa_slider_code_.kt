@@ -1,6 +1,8 @@
-// Drag j² = κ from -1 (quaternions) through 0 to +1 (split-quaternions). Colour is the k component.
-// Keep i² = -1 and ij = -ji = k, but let j² = κ be any number. κ = -1 is the quaternions.
-// Elements are (real, i, j, k); with these rules k² = κ as well.
+/*
+Drag j² = κ from -1 (quaternions) through 0 to +1 (split-quaternions). Colour is the k component.
+Keep i² = -1 and ij = -ji = k, but let j² = κ be any number. κ = -1 is the quaternions.
+Elements are (real, i, j, k); with these rules k² = κ as well.
+*/
 fun times(p: Vec4, q: Vec4, kappa: Double): Vec4 {
     val K = kappa.toFloat()
     return vec(
@@ -27,15 +29,19 @@ fun panel(kappa: Double, ox: Double): List<FLine> {
     return (0..6).flatMap { step ->
         val th = step * Math.PI / 6
         val u = vec(0.0, kotlin.math.cos(th), kotlin.math.sin(th), 0.0)
-        ts.map { exp(u, it, kappa) }.zipWithNext().filter { (a, _) -> a.length() < 3.5 }.map { (a, b) ->
-            fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
-            val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
-            fline {
-                moveTo(at(a)); lineTo(at(b))
-                color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
-                thickness = 1.6
+        ts.map { exp(u, it, kappa) }
+            .zipWithNext()
+            .filter { (a, _) -> a.length() < 3.5 }
+            .map { (a, b) ->
+                fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
+                val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
+                fline {
+                    moveTo(at(a))
+                    lineTo(at(b))
+                    color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
+                    thickness = 1.6
+                }
             }
-        }
     }
 }
 
