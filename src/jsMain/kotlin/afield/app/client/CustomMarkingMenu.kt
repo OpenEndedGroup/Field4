@@ -41,6 +41,25 @@ fun requestCustomMarkingMenu(uid: String, x: Double, y: Double, event: dynamic) 
                 "radius" to 1.0, "angle" to 90.0
             )
         }
+        if (window.asDynamic().currentDocumentReadOnly != true) {
+            fun visibilityEntry(label: String, actionId: String, angle: Double) = json(
+                "text" to label,
+                "callback" to { send(Message("perform-action").payload(afield.app.protocol.Perform_action(listOf(uid), actionId))) },
+                "radius" to 1.0, "angle" to angle
+            )
+            builtins += json(
+                "text" to "Hide / Reveal", "radius" to 1.0,
+                "angle" to if (x < 260) { if (y < 200) 45.0 else 180.0 } else 270.0,
+                "children" to arrayOf(
+                    visibilityEntry("Hide all children", "-hide-children", 135.0),
+                    visibilityEntry("Hide this and all children", "-hide-with-children", 90.0),
+                    visibilityEntry("Reveal all children", "-reveal-children", 45.0),
+                    visibilityEntry("Hide all parents", "-hide-parents", 225.0),
+                    visibilityEntry("Hide this and all parents", "-hide-with-parents", 270.0),
+                    visibilityEntry("Reveal all parents", "-reveal-parents", 315.0)
+                )
+            )
+        }
         val menus = (response.entries.map { entry ->
             json(
                 "text" to entry.label,

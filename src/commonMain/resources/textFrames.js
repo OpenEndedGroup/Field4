@@ -321,7 +321,8 @@ document.addEventListener('pointerdown', event => {
 // DOM focus can outlive a canvas selection (notably after spatial navigation). The selected
 // box owns Return; a previously focused reader must never reopen itself instead.
 const canvasSelection = () => Array.from(window.selectedList || []).filter(box =>
-    box.isConnected && !box.classList.contains('tombstoned'));
+    box.isConnected && !box.classList.contains('tombstoned') &&
+    getComputedStyle(box).display !== 'none' && getComputedStyle(box).visibility !== 'hidden');
 window.addEventListener('field-selection-changed', () => {
     const selection = canvasSelection();
     for (const state of frames.values()) if (!selection.includes(state.box)) {

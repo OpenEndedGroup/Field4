@@ -1041,6 +1041,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         }
 
         init {
+            installGraphVisibilityActions()
 
             actionTable["-connect"] = { boxes ->
                 val a = boxes[0]

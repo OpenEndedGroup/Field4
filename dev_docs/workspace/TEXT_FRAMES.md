@@ -25,6 +25,7 @@ with matching typography. For other box kinds this entry is in their Shift+Alt-c
 A new frame receives keyboard focus immediately. **Right** chooses **Open settings**: this force-opens
 the normal editor on the `textFrame` YAML property, even with automatic editor opening switched off,
 and fills missing defaults. Existing YAML comments and unknown keys are preserved.
+The **Hide / Reveal** submenu hides or reveals descendants and ancestors; see [graph visibility](GRAPH_VISIBILITY.md).
 
 Text starts at the frame's configured padding, without a title or button bar. Selection shows Field’s
 cyan outline with its normal 5px corners. Editing uses a pure black background without an outline.
@@ -71,8 +72,9 @@ Light, regular and bold each have real upright and italic webfont faces; Markdow
 The reproducible webfont derivation and license are documented in `tools/fonts/README.md`.
 
 Connections reveal a short portion of the frame border on each side of their attachment, following
-the rounded corners. Routing starts 10 screen pixels inside the source's bottom-right corner and
-the destination's top-left corner, then trims the connecting ray to each frame boundary. Each ordinary
+the rounded corners, with the trace and connection endpoints outset 5 screen pixels from the frame
+border at every zoom. Routing starts 10 screen pixels inside the source's bottom-right corner and
+the destination's top-left corner, then trims the connecting ray to the outset boundary. Each ordinary
 box endpoint still uses its centre. Frame curve radii respect the room along the endpoint normals so
 wide frames with a small gap do not force large looping turns. The resulting bend radius is then
 increased by 15% for a small switchback. `connectionBorderLength` sets the border distance in screen pixels (default 100,

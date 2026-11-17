@@ -520,16 +520,24 @@ private fun addPerpendicularTerminalTick(layer: SVGElement, point: Point, endNor
     }
 }
 
-/** A dash of the actual rounded frame perimeter, centred on the connection's attachment. */
+private const val TEXT_FRAME_CONNECTION_OUTSET = 5.0
+
+private fun textFrameConnectionRect(rect: DOMRect): DOMRect {
+    val gap = TEXT_FRAME_CONNECTION_OUTSET / mainZoom
+    return DOMRect(rect.x - gap, rect.y - gap, rect.width + 2 * gap, rect.height + 2 * gap)
+}
+
+/** A dash of the outset rounded frame perimeter, centred on the connection's attachment. */
 private fun addTextFrameConnectionBorder(
-    layer: SVGElement, box: HTMLElement, rect: DOMRect, attachment: Point, opacity: Double, color: String
+    layer: SVGElement, box: HTMLElement, frameRect: DOMRect, attachment: Point, opacity: Double, color: String
 ) {
-    if (!box.classList.contains("text-frame-box") || rect.width <= 0.0 || rect.height <= 0.0) return
+    if (!box.classList.contains("text-frame-box") || frameRect.width <= 0.0 || frameRect.height <= 0.0) return
+    val rect = textFrameConnectionRect(frameRect)
     val pixels = box.getAttribute("data-connection-border-length")?.toDoubleOrNull() ?: 100.0
     if (!pixels.isFinite() || pixels <= 0.0) return
     val half = pixels.coerceAtMost(200.0) / mainZoom
     // Match textFrames.css. Rectangles and corner radii are world units; the dash length is screen pixels.
-    val r = min(3.0, min(rect.width, rect.height) / 2.0)
+    val r = min(5.0 + TEXT_FRAME_CONNECTION_OUTSET / mainZoom, min(rect.width, rect.height) / 2.0)
     val x = rect.x
     val y = rect.y
     val right = rect.right
@@ -2501,9 +2509,11 @@ private fun boxConnectionEndpoints(
     } else Point(end.x - start.x, end.y - start.y)
     // Only keep clear of the rounded corner itself; the old 20-unit clearance defeats corner anchors.
     fun clearance(rect: DOMRect, text: Boolean) =
-        if (text) min(3.0, min(rect.width, rect.height) / 2) else EDGE_CHEAT
-    return clipRay(fromRect, direction.x, direction.y, start, clearance(fromRect, fromText)) to
-        clipRay(toRect, -direction.x, -direction.y, end, clearance(toRect, toText))
+        if (text) min(5.0 + TEXT_FRAME_CONNECTION_OUTSET / mainZoom, min(rect.width, rect.height) / 2) else EDGE_CHEAT
+    val fromBoundary = if (fromText) textFrameConnectionRect(fromRect) else fromRect
+    val toBoundary = if (toText) textFrameConnectionRect(toRect) else toRect
+    return clipRay(fromBoundary, direction.x, direction.y, start, clearance(fromBoundary, fromText)) to
+        clipRay(toBoundary, -direction.x, -direction.y, end, clearance(toBoundary, toText))
 }
 
 /**

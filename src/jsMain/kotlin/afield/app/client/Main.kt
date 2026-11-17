@@ -6195,6 +6195,7 @@ suspend fun main() {
                     )
                     box.asDynamic().server_visible = set.number
                     applyBoxVisibilityImmediate(box)
+                    if (!isBoxVisible(box) && selected.contains(box)) deselectBox(box)
                     requestConnectionGroupRebuild()
                 }
             }

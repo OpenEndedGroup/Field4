@@ -4898,6 +4898,25 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="graph-visibility",
+            description="Nested marking menus and ancestor/descendant visibility across cycles and shared branches, with palette recovery.",
+            commands=[
+                "viewport 1200x900",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/graph-visibility.js"), "--timeout", pw_timeout]),
+                shell_join(["macro", "write", "graph_visibility_menu", "--file", str(TOOLS_ROOT / "ui_regressions/graph-visibility-menu.yaml")]),
+                *[command for _ in range(8) for command in [
+                    "macro run graph_visibility_menu",
+                    shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/graph-visibility-assert.js"), "--timeout", pw_timeout]),
+                ]],
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/marking-submenus.js"), "--timeout", pw_timeout]),
+                shell_join(["macro", "write", "marking_submenus", "--file", str(TOOLS_ROOT / "ui_regressions/marking-submenus.yaml")]),
+                "macro run marking_submenus",
+                shell_join(["macro", "write", "graph_visibility_preview", "--file", str(TOOLS_ROOT / "ui_regressions/graph-visibility-preview.yaml")]),
+                "macro run graph_visibility_preview",
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="directory-proxy",
             description="Drop a real directory, select its context-proxy menu action, catalogue/search/read eligible files and observe a live disk edit without a model request.",
             commands=[
