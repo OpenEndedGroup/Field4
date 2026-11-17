@@ -4,7 +4,7 @@ import {renderFieldMarkdown} from './markdownView.js';
 
 // Text belongs to the box. DOM, editing state and uncommitted conflict drafts are local to a view.
 const frames = new Map();
-const defaults = {fontFamily: '"Field Etoile", serif', fontSize: 18, fontWeight: 400, lineHeight: 1.5, padding: 16, sizing: 'grow'};
+const defaults = {fontFamily: '"Field Etoile", serif', fontSize: 18, fontWeight: 400, lineHeight: 1.5, padding: 16, sizing: 'grow', connectionBorderLength: 24};
 const node = (tag, cls, text) => {
     const result = document.createElement(tag);
     result.className = cls;
@@ -26,6 +26,7 @@ function settingsFor(box) {
     return {...raw,
         fontFamily: typeof raw.fontFamily === 'string' && raw.fontFamily.trim() ? raw.fontFamily : defaults.fontFamily,
         fontSize: number('fontSize', 8, 120), fontWeight: number('fontWeight', 100, 900), lineHeight: number('lineHeight', 1, 3), padding: number('padding', 0, 96),
+        connectionBorderLength: number('connectionBorderLength', 0, 200),
         sizing: raw.sizing === 'fixed' ? 'fixed' : 'grow'};
 }
 function write(box, property, value) {
@@ -56,6 +57,10 @@ function layout(state) {
     state.layoutFrame = requestAnimationFrame(() => {
         if (!state.box.isConnected || !(state.box.data_w > 0 && state.box.data_h > 0)) return;
         const config = settingsFor(state.box);
+        if (state.box.getAttribute('data-connection-border-length') !== String(config.connectionBorderLength)) {
+            state.box.setAttribute('data-connection-border-length', config.connectionBorderLength);
+            window.requestConnectionGroupRebuild?.();
+        }
         state.box.style.setProperty('--text-frame-font', config.fontFamily);
         state.box.style.setProperty('--text-frame-size', `${config.fontSize}px`);
         state.box.style.setProperty('--text-frame-weight', config.fontWeight);

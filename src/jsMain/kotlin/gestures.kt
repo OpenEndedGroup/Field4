@@ -227,6 +227,12 @@ private fun connect_center_with_terminal(
     val visibilityScale = if (isHighlighted) HIGHLIGHTED_CONNECTION_VISIBILITY else DIMMED_CONNECTION_VISIBILITY
     val drawOpacity = (opacity * visibilityScale).coerceIn(0.0, 1.0)
     val markerLayer = currentFrontMarkerLayer ?: svg
+    if (terminals.start.style != ConnectionTerminalStyle.PerpendicularTick) {
+        addTextFrameConnectionBorder(markerLayer, a_box, a_rect, rawA.point, drawOpacity, color)
+    }
+    if (terminals.end.style != ConnectionTerminalStyle.PerpendicularTick) {
+        addTextFrameConnectionBorder(markerLayer, b_box, b_rect, rawB.point, drawOpacity, color)
+    }
     val startMarkerPoint = Point(a.point.x - a.normal.x * TERMINAL_MARKER_OFFSET, a.point.y - a.normal.y * TERMINAL_MARKER_OFFSET)
     val endMarkerPoint = Point(b.point.x + b.normal.x * TERMINAL_MARKER_OFFSET, b.point.y + b.normal.y * TERMINAL_MARKER_OFFSET)
     val startLabel = if (isHighlighted) terminalLabels.start else null
@@ -497,6 +503,77 @@ private fun addPerpendicularTerminalTick(layer: SVGElement, point: Point, endNor
         this.path.setAttribute("stroke-linecap", "round")
         appendTo(layer)
     }
+}
+
+/** A dash of the actual rounded frame perimeter, centred on the connection's attachment. */
+private fun addTextFrameConnectionBorder(
+    layer: SVGElement, box: HTMLElement, rect: DOMRect, attachment: Point, opacity: Double, color: String
+) {
+    if (!box.classList.contains("text-frame-box") || rect.width <= 0.0 || rect.height <= 0.0) return
+    val pixels = box.getAttribute("data-connection-border-length")?.toDoubleOrNull() ?: 24.0
+    if (!pixels.isFinite() || pixels <= 0.0) return
+    val half = pixels.coerceAtMost(200.0) / mainZoom
+    // Match textFrames.css. Rectangles and corner radii are world units; the dash length is screen pixels.
+    val r = min(3.0, min(rect.width, rect.height) / 2.0)
+    val x = rect.x
+    val y = rect.y
+    val right = rect.right
+    val bottom = rect.bottom
+    val horizontal = rect.width - 2 * r
+    val vertical = rect.height - 2 * r
+    val quarter = PI * r / 2
+    val perimeter = 2 * (horizontal + vertical) + 4 * quarter
+    var nearestDistance = Double.POSITIVE_INFINITY
+    var position = 0.0
+    var offset = 0.0
+    fun candidate(px: Double, py: Double, along: Double) {
+        val distance = hypot(px - attachment.x, py - attachment.y)
+        if (distance < nearestDistance) {
+            nearestDistance = distance
+            position = offset + along
+        }
+    }
+    fun line(ax: Double, ay: Double, bx: Double, by: Double, length: Double) {
+        val t = if (length > 0) ((attachment.x - ax) * (bx - ax) +
+            (attachment.y - ay) * (by - ay)).div(length * length).coerceIn(0.0, 1.0) else 0.0
+        candidate(ax + (bx - ax) * t, ay + (by - ay) * t, length * t)
+        offset += length
+    }
+    fun corner(cx: Double, cy: Double, start: Double) {
+        var angle = atan2(attachment.y - cy, attachment.x - cx)
+        while (angle < start) angle += 2 * PI
+        // Include both ends: a point outside this quadrant can be closer to either one.
+        candidate(cx + r * cos(start), cy + r * sin(start), 0.0)
+        candidate(cx + r * cos(start + PI / 2), cy + r * sin(start + PI / 2), quarter)
+        if (angle <= start + PI / 2) candidate(cx + r * cos(angle), cy + r * sin(angle), (angle - start) * r)
+        offset += quarter
+    }
+    line(x + r, y, right - r, y, horizontal)
+    corner(right - r, y + r, -PI / 2)
+    line(right, y + r, right, bottom - r, vertical)
+    corner(right - r, bottom - r, 0.0)
+    line(right - r, bottom, x + r, bottom, horizontal)
+    corner(x + r, bottom - r, PI / 2)
+    line(x, bottom - r, x, y + r, vertical)
+    corner(x + r, y + r, PI)
+
+    val border = document.createElementNS("http://www.w3.org/2000/svg", "path") as SVGElement
+    border.setAttribute("d", "M ${x + r} $y H ${right - r} A $r $r 0 0 1 $right ${y + r} " +
+        "V ${bottom - r} A $r $r 0 0 1 ${right - r} $bottom H ${x + r} " +
+        "A $r $r 0 0 1 $x ${bottom - r} V ${y + r} A $r $r 0 0 1 ${x + r} $y Z")
+    border.setAttribute("class", "text-frame-connection-border")
+    border.setAttribute("data-box-uid", elementUidOrNull(box) ?: "")
+    border.setAttribute("fill", "none")
+    border.setAttribute("stroke", color)
+    border.setAttribute("stroke-width", (1.0 / mainZoom).toString())
+    border.setAttribute("stroke-linecap", "round")
+    border.setAttribute("opacity", opacity.toString())
+    if (2 * half < perimeter) {
+        // A period of exactly one perimeter also carries the dash across the closed-path seam.
+        border.setAttribute("stroke-dasharray", "${2 * half} ${perimeter - 2 * half}")
+        border.setAttribute("stroke-dashoffset", (half - position).toString())
+    }
+    layer.appendChild(border)
 }
 
 private fun addTerminalDecoration(

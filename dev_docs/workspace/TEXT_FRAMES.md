@@ -36,12 +36,17 @@ turn that off for an inline-only writing session.
 - `textFrame` holds JSON, editable through Settings or the property editor. Defaults are:
 
 ```json
-{"fontFamily":"\"Field Etoile\", serif","fontSize":18,"fontWeight":400,"lineHeight":1.5,"padding":16,"sizing":"grow","autocomplete":false}
+{"fontFamily":"\"Field Etoile\", serif","fontSize":18,"fontWeight":400,"lineHeight":1.5,"padding":16,"sizing":"grow","autocomplete":false,"connectionBorderLength":24}
 ```
 
 The default is **Field Etoile**, the bundled Iosevka Etoile text face with Field's reverse-slashed zero.
 Light, regular and bold each have real upright and italic webfont faces; Markdown code spans keep Field's code font.
 The reproducible webfont derivation and license are documented in `tools/fonts/README.md`.
+
+Connections reveal a short portion of the frame border on each side of their attachment, following
+the rounded corners. `connectionBorderLength` sets that distance in screen pixels (default 24,
+range 0–200; 0 hides it), independent of canvas zoom. These segments follow the connection's color
+and selection visibility; ordinary boxes and nested proxy viewport terminations keep their existing rendering.
 
 Unknown settings keys survive UI edits. Invalid JSON falls back to defaults for display and remains
 available in the property editor for repair. Typography uses CSS font family syntax; font files must

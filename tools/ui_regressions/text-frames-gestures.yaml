@@ -34,7 +34,7 @@ operations:
         ui.type("### Follow-up\n\nMade from the marking menu, already connected.")
         ui.press("Escape")
         ui.pause(500)
-        check(ui.eval("return window.__shortcutFrame.box_children.length === 1;").toString() == "true") { "Marking-menu child state: " + ui.eval("return JSON.stringify({source:window.__shortcutFrame.uid,children:window.__shortcutFrame.box_children,frames:[...document.querySelectorAll('.text-frame-box')].map(b=>({uid:b.uid,x:b.data_x,y:b.data_y,children:b.box_children}))});") }
+        check(ui.eval("for(let i=0;i<100;i++){if(window.__shortcutFrame.box_children.length===1)return true;await new Promise(r=>setTimeout(r,50));}return false;").toString() == "true") { "Marking-menu child state: " + ui.eval("return JSON.stringify({source:window.__shortcutFrame.uid,children:window.__shortcutFrame.box_children,frames:[...document.querySelectorAll('.text-frame-box')].map(b=>({uid:b.uid,x:b.data_x,y:b.data_y,children:b.box_children}))});") }
         ui.eval("window.setAutoDisplayEditor(true); return true;")
         ui.clickAt(160.0, 170.0)
         ui.pause(500)
